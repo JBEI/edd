@@ -1,0 +1,6 @@
+.DS_Store
+*.pyc
+
+# per-machine configuration file; contains secrets, DO NOT CHECK-IN
+server.cfg
+
