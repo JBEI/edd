@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils import timezone
-from main.models import MeasurementType, Protocol, Update
+from main.models import *
 
 
 class ProtocolAdmin(admin.ModelAdmin):
@@ -19,6 +19,7 @@ class ProtocolAdmin(admin.ModelAdmin):
         obj.updated = update
         obj.save()
 
+
 class MeasurementTypeAdmin(admin.ModelAdmin):
     """
     Definition for admin-edit of Measurement Types
@@ -26,6 +27,32 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
     fields = ['type_name', 'short_name', 'type_group']
     list_display = ['type_name', 'short_name', 'type_group']
 
+
+class UserPermissionInline(admin.TabularInline):
+    """
+    """
+    model = UserPermission
+    extra = 1
+
+
+class GroupPermissionInline(admin.TabularInline):
+    """
+    """
+    model = GroupPermission
+    extra = 1
+    
+
+class StudyAdmin(admin.ModelAdmin):
+    """
+    Definition for admin-edit of Studies
+    """
+    fields = None
+    exclude = ['study_name', 'description', 'active', 'created', 'updated', 'contact',
+               'contact_extra']
+    list_display = ['study_name', 'description']
+    inlines = [UserPermissionInline, GroupPermissionInline]
+
+
 admin.site.register(Protocol, ProtocolAdmin)
 admin.site.register(MeasurementType, MeasurementTypeAdmin)
-
+admin.site.register(Study, StudyAdmin)

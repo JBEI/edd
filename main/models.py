@@ -18,7 +18,7 @@ class Update(models.Model):
     mod_by = models.ForeignKey(settings.AUTH_USER_MODEL, editable=False)
 
     def __str__(self):
-        return '%s by %s' % (mod_time, mod_by)
+        return '%s by %s' % (self.mod_time, self.mod_by)
 
     @classmethod
     def load_request_update(cls, request):
@@ -47,7 +47,7 @@ class Study(models.Model):
     contact_extra = models.TextField()
 
     def user_can_read(self, user):
-        return Permission.read_in_set(
+        return StudyPermission.read_in_set(
             chain(
                 self.userpermission_set.filter(user=user),
                 self.grouppermission_set.filter(group=user.groups.all()),
@@ -55,7 +55,7 @@ class Study(models.Model):
         )
 
     def user_can_write(self, user):
-        return Permission.write_in_set(
+        return StudyPermission.write_in_set(
             chain(
                 self.userpermission_set.filter(user=user),
                 self.grouppermission_set.filter(group=user.groups.all()),
@@ -66,7 +66,7 @@ class Study(models.Model):
         return self.study_name
 
 
-class Permission(models.Model):
+class StudyPermission(models.Model):
     """
     Access given for a *specific* study instance, rather than for object types provided by Django.
     """
@@ -95,7 +95,7 @@ class Permission(models.Model):
         return any(p.permission_type == cls.WRITE for p in set)
 
 
-class UserPermission(Permission):
+class UserPermission(StudyPermission):
     class Meta:
         db_table = 'study_user_permission'
     user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='+')
@@ -104,7 +104,7 @@ class UserPermission(Permission):
         return self.user == user
 
 
-class GroupPermission(Permission):
+class GroupPermission(StudyPermission):
     class Meta:
         db_table = 'study_group_permission'
     group = models.ForeignKey('auth.Group', related_name='+')
