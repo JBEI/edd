@@ -1,0 +1,24 @@
+<!doctype html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Experiment Data Depot</title>
+</head>
+<body>
+    {% if study_list %}
+    <table>
+        <tr>
+            <th>Study Name</th>
+            <th>Description</th>
+        </tr>
+        {% for study in study_list %}
+        <tr>
+            <td><a href="{% url 'main:detail' study.id %}">{{ study.study_name }}</a></td>
+            <td>{{ study.description }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p>No studies found.</p>
+    {% endif %}
+</body>
+</html>

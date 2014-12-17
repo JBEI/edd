@@ -28,17 +28,14 @@ except IOError:
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'f#%$hb%wvf)jl=hyd(%jpv8y+)61&i94)=jez=9m6g$$0z)eqb'
-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-
 TEMPLATE_DEBUG = True
-
+ADMINS = (('William', 'wcmorrell@lbl.gov'))
 ALLOWED_HOSTS = []
 
 
 # Application definition
-
 INSTALLED_APPS = (
     'django.contrib.admin',
     'django.contrib.auth',
@@ -46,9 +43,9 @@ INSTALLED_APPS = (
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'haystack',
     'main',
 )
-
 MIDDLEWARE_CLASSES = (
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -66,9 +63,7 @@ AUTHENTICATION_BACKENDS = (
     'django_auth_ldap.backend.LDAPBackend',
     'django.contrib.auth.backends.RemoteUserBackend',
 )
-
 ROOT_URLCONF = 'edd.urls'
-
 WSGI_APPLICATION = 'edd.wsgi.application'
 
 # LDAP Configuration
@@ -87,6 +82,7 @@ AUTH_LDAP_GROUP_SEARCH = LDAPSearch(
     config['ldap'].get('group_search', '(objectClass=groupOfUniqueNames)'),
 )
 AUTH_LDAP_GROUP_TYPE = GroupOfUniqueNamesType(name_attr='cn')
+AUTH_LDAP_MIRROR_GROUPS = True
 AUTH_LDAP_USER_ATTR_MAP = {
     'first_name': 'givenName',
     'last_name': 'sn',
@@ -96,9 +92,16 @@ AUTH_LDAP_PROFILE_ATTR_MAP = {
     'employee_number': 'lblempnum',
 }
 
+# Solr/Haystack Configuration
+HAYSTACK_CONNECTIONS = {
+    'default': {
+        'ENGINE': 'haystack.backends.solr_backend.SolrEngine',
+        'URL': config['solr'].get('url', 'http://localhost:8080/studies'),
+    },
+}
+
 # Database
 # https://docs.djangoproject.com/en/1.7/ref/settings/#databases
-
 DATABASES = {
     'default': {
         'ENGINE': config['db'].get('driver', 'django.db.backends.postgresql_psycopg2'),
@@ -112,19 +115,14 @@ DATABASES = {
 
 # Internationalization
 # https://docs.djangoproject.com/en/1.7/topics/i18n/
-
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'America/Los_Angeles'
-
 USE_I18N = True
-
 USE_L10N = True
-
 USE_TZ = True
 
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.7/howto/static-files/
-
+STATIC_ROOT = '/Users/wcmorrell/django/static/'
 STATIC_URL = '/static/'
