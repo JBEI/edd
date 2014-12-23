@@ -3,6 +3,7 @@ from django.contrib.auth.models import Group
 from django.db import models
 from django.utils import timezone
 from itertools import chain
+from main.solr import StudySearch
 
 
 class Update(models.Model):
@@ -23,11 +24,11 @@ class Update(models.Model):
     @classmethod
     def load_request_update(cls, request):
         if not hasattr(request, 'update_key'):
-            update = Update(mod_time=timezone.now(), mod_by=request.user)
+            update = cls(mod_time=timezone.now(), mod_by=request.user)
             update.save()
             request.update_key = update.pk
         else:
-            update = Update.objects.get(pk=request.update_key)
+            update = cls.objects.get(pk=request.update_key)
         return update
     
     
@@ -45,22 +46,39 @@ class Study(models.Model):
     contact = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True,
                                 related_name='contact_study_set')
     contact_extra = models.TextField()
+    
+    def to_solr_json(self):
+        """
+        Convert the Study model to a dict structure formatted for Solr JSON.
+        """
+        permissions = chain(self.userpermission_set.all(), self.grouppermission_set.all())
+        # TODO: figure out how to efficiently load in the protocol, metabolite, and part listings
+        return {
+            'id': self.pk,
+            'name': self.study_name,
+            'description': self.description,
+            'creator': self.created.mod_by.pk,
+            'creator_email': self.created.mod_by.email,
+            'creator_name': ' '.join(self.created.mod_by.first_name, self.created.mod_by.last_name),
+            'contact': self.contact.pk,
+            'active': self.active,
+            'created': self.created.mod_time.isoformat(),
+            'modified': self.updated.mod_time.isoformat(),
+            'aclr': [p for p in permissions if p.is_read()],
+            'aclw': [p for p in permissions if p.is_write()],
+        }
 
     def user_can_read(self, user):
-        return StudyPermission.read_in_set(
-            chain(
+        return any(p.is_read() for p in chain(
                 self.userpermission_set.filter(user=user),
-                self.grouppermission_set.filter(group=user.groups.all()),
-            )
-        )
+                self.grouppermission_set.filter(group=user.groups.all())
+        ))
 
     def user_can_write(self, user):
-        return StudyPermission.write_in_set(
-            chain(
+        return any(p.is_write() for p in chain(
                 self.userpermission_set.filter(user=user),
-                self.grouppermission_set.filter(group=user.groups.all()),
-            )
-        )
+                self.grouppermission_set.filter(group=user.groups.all())
+        ))
 
     def __str__(self):
         return self.study_name
@@ -84,15 +102,34 @@ class StudyPermission(models.Model):
     permission_type = models.CharField(max_length=8, choices=TYPE_CHOICE, default=NONE)
     
     def applies_to_user(self, user):
+        """
+        Test if permission applies to given user.
+        
+        Base class will always return False, override in child classes.
+        Arguments:
+            user: to be tested, model from django.contrib.auth.models.User
+        Returns:
+            True if StudyPermission applies to the User
+        """
         return False;
-    
-    @classmethod
-    def read_in_set(cls, set):
-        return any(p.permission_type == cls.READ or p.permission_type == cls.WRITE for p in set)
-    
-    @classmethod
-    def write_in_set(cls, set):
-        return any(p.permission_type == cls.WRITE for p in set)
+
+    def is_read(self):
+        """
+        Test if the permission grants read privileges.
+        
+        Returns:
+            True if permission grants read
+        """
+        return self.permission_type == self.READ or self.permission_type == self.WRITE
+
+    def is_write(self):
+        """
+        Test if the permission grants write privileges.
+        
+        Returns:
+            True if permission grants write
+        """
+        return self.permission_type == self.WRITE
 
 
 class UserPermission(StudyPermission):
@@ -103,6 +140,9 @@ class UserPermission(StudyPermission):
     def applies_to_user(self, user):
         return self.user == user
 
+    def __str__(self):
+        return 'u:%(user)s' % {'user':self.user.username}
+
 
 class GroupPermission(StudyPermission):
     class Meta:
@@ -111,6 +151,9 @@ class GroupPermission(StudyPermission):
     
     def applies_to_user(self, user):
         return user.groups.contains(user)
+
+    def __str__(self):
+        return 'g:%(group)s' % {'group':self.group.name}
 
 
 class Line(models.Model):

@@ -1,6 +1,8 @@
 from django.contrib.auth.models import User, Group
 from django.test import TestCase
 from main.models import Study, Update, UserPermission, GroupPermission
+from main.solr import StudySearch
+
 
 class StudyTests(TestCase):
     
@@ -25,10 +27,8 @@ class StudyTests(TestCase):
         study2 = Study.objects.create(study_name='Test Study 2', description='',
                                       created=up2, updated=up3)
 
-
     def tearDown(self):
         TestCase.tearDown(self)
-
 
     def test_read_with_no_permissions(self):
         """
@@ -39,7 +39,6 @@ class StudyTests(TestCase):
         user1 = User.objects.get(username='test1')
         # Asserts
         self.assertFalse(study.user_can_read(user1))
-
 
     def test_user_read_write_permission(self):
         """
@@ -60,7 +59,6 @@ class StudyTests(TestCase):
         self.assertFalse(study.user_can_write(user2))
         self.assertFalse(study.user_can_read(user3))
         self.assertFalse(study.user_can_write(user3))
-
 
     def test_group_read_write_permission(self):
         """
@@ -86,4 +84,21 @@ class StudyTests(TestCase):
         self.assertTrue(study.user_can_write(user3))
         self.assertFalse(study.user_can_read(user4))
         self.assertFalse(study.user_can_write(user4))
-        
+
+
+class SolrTests(TestCase):
+    solr = StudySearch(settings_key='test')
+
+    def setUp(self):
+        TestCase.setUp(self)
+
+    def tearDown(self):
+        TestCase.tearDown(self)
+
+    def test_search(self):
+        # TODO: get some fixtures loaded into test solr, make sure sane things come from search
+        pass
+
+    def test_update(self):
+        # TODO: create study object, update test solr, make sure it can be retrieved from solr
+        pass

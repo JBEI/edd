@@ -27,7 +27,9 @@ except IOError:
 # See https://docs.djangoproject.com/en/1.7/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'f#%$hb%wvf)jl=hyd(%jpv8y+)61&i94)=jez=9m6g$$0z)eqb'
+# default quote from http://thedoomthatcametopuppet.tumblr.com/
+SECRET_KEY = config['site'].get('secret', 'I was awake and dreaming at the same time, which is why \
+                                            this only works for local variables')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 TEMPLATE_DEBUG = True
@@ -43,7 +45,6 @@ INSTALLED_APPS = (
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'haystack',
     'main',
 )
 MIDDLEWARE_CLASSES = (
@@ -93,10 +94,12 @@ AUTH_LDAP_PROFILE_ATTR_MAP = {
 }
 
 # Solr/Haystack Configuration
-HAYSTACK_CONNECTIONS = {
+EDD_MAIN_SOLR = {
     'default': {
-        'ENGINE': 'haystack.backends.solr_backend.SolrEngine',
         'URL': config['solr'].get('url', 'http://localhost:8080/studies'),
+    },
+    'test': {
+        'URL': 'http://localhost:8080/test',
     },
 }
 
@@ -110,7 +113,7 @@ DATABASES = {
         'PASSWORD': config['db'].get('pass', ''),
         'HOST': config['db'].get('host', 'localhost'),
         'PORT': config['db'].get('port', '5432'),
-    }
+    },
 }
 
 # Internationalization
