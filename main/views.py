@@ -15,7 +15,7 @@ class IndexView(generic.ListView):
         return Study.objects.all()
 
 
-class DetailView(generic.ListView):
+class StudyDetailView(generic.DetailView):
     """
     """
     model = Study
