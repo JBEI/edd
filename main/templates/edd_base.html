@@ -1,0 +1,39 @@
+<!doctype html>
+{% load staticfiles %}
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>{% block head_title %}Experiment Data Depot{% endblock head_title %}</title>
+    <link rel="stylesheet" type="text/css" href="{% static 'main/common.css' %}" />
+    {% block js_css %}
+    {% endblock js_css%}
+</head>
+<body>
+    <div class="topBanner">
+        <div class="siteLogo">
+            <a href="{% url 'main:index' %}">
+                <img src="{% static 'main/images/JBEI_Corner_Logo-EDD.png' %}"
+                        alt="EDD Logo - Home"/>
+            </a>
+        </div>
+        <div class="pageName">
+            {% block body_title %}
+            Experiment Data Depot
+            {% endblock body_title %}
+        </div>
+        <div class="userMenu">
+            <!-- Put User name here -->
+            <!-- Log Out link -->
+            <!-- Help icon/link -->
+        </div>
+    </div>
+    <div class="statusMessage">
+    {% block status %}
+    {% endblock status %}
+    </div>
+    <div class="content">
+    {% block content %}
+    {% endblock content %}
+    </div>
+</body>
+</html>
