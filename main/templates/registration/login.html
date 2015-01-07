@@ -1,0 +1,26 @@
+{% extends "edd_base.html" %}
+
+{% block status %}
+    {% if form.errors %}
+    <p class="bad">Login failed. Please try again.</p>
+    {% endif %}
+{% endblock status %}
+
+{% block content %}
+    <form method="POST" action="{% url 'django.contrib.auth.views.login' %}">
+        {% csrf_token %}
+        <fieldset>
+            <legend>Login</legend>
+            <div>
+                {{ form.username.label_tag }}
+                {{ form.username }}
+            </div>
+            <div>
+                {{ form.password.label_tag }}
+                {{ form.password }}
+            </div>
+            <button type="submit">Login</button>
+            <input type="hidden" name="next" value="{{ next }}"/>
+        </fieldset>
+    </form>
+{% endblock content %}
