@@ -19,7 +19,7 @@ class StudySearch(object):
             self.url = url
         elif hasattr(settings.EDD_MAIN_SOLR, settings_key) and \
                 hasattr(settings.EDD_MAIN_SOLR[settings_key], 'URL'):
-            self.url = settings.SOLR[settings_key]['URL']
+            self.url = settings.EDD_MAIN_SOLR[settings_key]['URL']
         else:
             self.url = 'http://localhost:8080/'
 

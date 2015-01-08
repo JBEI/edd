@@ -107,10 +107,10 @@ ACCOUNT_ACTIVATION_DAYS=1
 # Solr/Haystack Configuration
 EDD_MAIN_SOLR = {
     'default': {
-        'URL': config['solr'].get('url', 'http://localhost:8080/studies'),
+        'URL': config['solr'].get('url', 'http://localhost:8080/studies/'),
     },
     'test': {
-        'URL': 'http://localhost:8080/test',
+        'URL': 'http://localhost:8080/test/',
     },
 }
 
