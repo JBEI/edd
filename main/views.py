@@ -8,11 +8,12 @@ from main.models import Study
 class IndexView(generic.ListView):
     """
     """
+    model = Study
     template_name = 'main/index.html'
     context_object_name = 'study_list'
     
-    def get_queryset(self):
-        return Study.objects.all()
+    #def get_queryset(self):
+    #    return Study.objects.all()
 
 
 class StudyDetailView(generic.DetailView):

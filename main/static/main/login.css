@@ -1,0 +1,16 @@
+.login_form {
+    margin: 100px auto;
+    padding: 20px 30px;
+    width: 400px;
+}
+.login_form > fieldset > div {
+    clear: both;
+    margin-bottom: 0.5em;
+    min-height: 1.5em;
+    padding: 0 0 5px 80px;
+}
+.login_form > fieldset > div > label {
+    display: inline-block;
+    float: left;
+    width: 6em;
+}

@@ -16,6 +16,10 @@ table {
     border-collapse: collapse;
     border-spacing: 0;
 }
+fieldset {
+    border: 1px dotted #D7E9FE;
+    padding: 1em;
+}
 
 
 /* EDD basic style */
@@ -103,11 +107,13 @@ a:hover {
 
 /* Top banner styling */
 div.topBanner {
+    height: 76px;
     margin: 0 0 1px 0;
     width: 100%;
 }
 div.topBanner > div {
     float: left;
+    height: 100%;
 }
 div.topBanner > div.siteLogo {
     width: 175px;
@@ -115,8 +121,10 @@ div.topBanner > div.siteLogo {
 div.topBanner > div.pageName {
     color: #867c6c;
     font-size: 20pt;
+    line-height: 70px;
 }
 div.topBanner > div.userMenu {
+    float: right;
 }
 
 
@@ -126,18 +134,39 @@ div.statusMessage {
     font-size:12px;
 	padding:0.7em 0.6em 0.1em 0.6em;
 }
-div.statusMessage p {
-	padding:0em;
-	margin:0.1em 0em;
+div.statusMessage > p {
+    border-width: 2px;
+    border-radius: 6px;
+    border-style: solid;
+    color: black;
+    margin:0;
+	padding: 0.25em 0.75em;
+    -webkit-border-radius: 6px;
+    -moz-border-radius: 6px;
+}
+div.errorMessage {
+    background: #FFF0F0;
+    margin: 0;
+    border: 2px solid red;
+    border-radius: 6px;
+    -webkit-border-radius: 6px;
+    -moz-border-radius: 6px;
 }
 .good {
-	color:green;
+    background-color: #F3F9F4;
+    border-color: green;
 }
 .neutral {
-	color:rgb(200, 130, 0);
+    background-color: #D8E4F1;
+    border-color: #77B1EF;
+}
+.warn {
+    background-color: #FFFDF6;
+    border-color: #FFEAAE;
 }
 .bad {
-	color:red;
+    background-color: #FFCCCC;
+    border-color: red;
 }
 
 

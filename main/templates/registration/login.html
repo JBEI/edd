@@ -1,4 +1,9 @@
 {% extends "edd_base.html" %}
+{% load staticfiles %}
+
+{% block js_css %}
+    <link rel="stylesheet" type="text/css" href="{% static 'main/login.css' %}" />
+{% endblock js_css %}
 
 {% block status %}
     {% if form.errors %}
@@ -7,7 +12,7 @@
 {% endblock status %}
 
 {% block content %}
-    <form method="POST" action="{% url 'django.contrib.auth.views.login' %}">
+    <form class="login_form" method="POST" action="{% url 'django.contrib.auth.views.login' %}">
         {% csrf_token %}
         <fieldset>
             <legend>Login</legend>

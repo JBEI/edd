@@ -13,6 +13,8 @@ import os
 import json
 import ldap
 from django_auth_ldap.config import LDAPSearch, GroupOfUniqueNamesType
+from test_app.settings import ACCOUNT_ACTIVATION_DAYS
+from django.conf.global_settings import LOGIN_REDIRECT_URL
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 
 try:
@@ -35,16 +37,20 @@ DEBUG = True
 TEMPLATE_DEBUG = True
 ADMINS = (('William', 'wcmorrell@lbl.gov'))
 ALLOWED_HOSTS = []
+SITE_ID = 1
+LOGIN_REDIRECT_URL = '/'
 
 
 # Application definition
 INSTALLED_APPS = (
     'django.contrib.admin',
     'django.contrib.auth',
+    'django.contrib.sites',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'registration',
     'main',
 )
 MIDDLEWARE_CLASSES = (
@@ -58,6 +64,7 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 )
 
+
 # See https://pythonhosted.org/django-auth-ldap/install.html
 # See https://docs.djangoproject.com/en/1.7/howto/auth-remote-user/
 AUTHENTICATION_BACKENDS = (
@@ -66,7 +73,6 @@ AUTHENTICATION_BACKENDS = (
 )
 ROOT_URLCONF = 'edd.urls'
 WSGI_APPLICATION = 'edd.wsgi.application'
-
 # LDAP Configuration
 # https://pythonhosted.org/django-auth-ldap/example.html
 AUTH_LDAP_SERVER_URI = config['ldap'].get('uri', '')
@@ -93,6 +99,11 @@ AUTH_LDAP_PROFILE_ATTR_MAP = {
     'employee_number': 'lblempnum',
 }
 
+
+# See http://django-registration-redux.readthedocs.org/en/latest/quickstart.html
+ACCOUNT_ACTIVATION_DAYS=1
+
+
 # Solr/Haystack Configuration
 EDD_MAIN_SOLR = {
     'default': {
@@ -102,6 +113,7 @@ EDD_MAIN_SOLR = {
         'URL': 'http://localhost:8080/test',
     },
 }
+
 
 # Database
 # https://docs.djangoproject.com/en/1.7/ref/settings/#databases
@@ -115,6 +127,7 @@ DATABASES = {
         'PORT': config['db'].get('port', '5432'),
     },
 }
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/1.7/topics/i18n/
