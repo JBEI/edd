@@ -34,7 +34,7 @@ class StudySearch(object):
             tuple of (read permission filter, write permission eval)
         """
         # Admins get no filter on read, and a query that will always eval true for write
-        if ident.is_admin:
+        if ident.is_superuser:
             return ('', 'id:*')
         acl = ['"u:'+ident.username] + map(lambda g: '"g:'+g+'"', ident.groups.all())
         return (
