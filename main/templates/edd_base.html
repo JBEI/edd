@@ -17,9 +17,15 @@
             </a>
         </div>
         <div class="userMenu">
-            <!-- Put User name here -->
-            <!-- Log Out link -->
-            <!-- Help icon/link -->
+            {% if user.is_authenticated %}
+            <div>{{ user.first_name }} {{ user.last_name }}</div>
+            <div><a href="{% url 'django.contrib.auth.views.logout' %}">Logout</a></div>
+            {% endif %}
+            <div>
+            {% block top_help %}
+            <a href="{% static 'main/help/index.html' %}">Help</a>
+            {% endblock top_help %}
+            </div>
         </div>
         <div class="pageName">
             {% block body_title %}

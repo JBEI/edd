@@ -125,6 +125,8 @@ div.topBanner > div.pageName {
 }
 div.topBanner > div.userMenu {
     float: right;
+    height: auto;
+    margin: 10px;
 }
 
 
