@@ -17,11 +17,17 @@ class StudySearch(object):
         self.ident = ident
         if url is not None:
             self.url = url
-        elif hasattr(settings.EDD_MAIN_SOLR, settings_key) and \
-                hasattr(settings.EDD_MAIN_SOLR[settings_key], 'URL'):
+        elif settings_key in settings.EDD_MAIN_SOLR and \
+                'URL' in settings.EDD_MAIN_SOLR[settings_key]:
             self.url = settings.EDD_MAIN_SOLR[settings_key]['URL']
         else:
             self.url = 'http://localhost:8080/'
+
+    def __str__(self, *args, **kwargs):
+        return 'StudySearch[%s][%s]' % (self.url, self.ident)
+
+    def __repr__(self, *args, **kwargs):
+        return self.__str__()
 
     @staticmethod
     def build_acl_filter(ident):

@@ -18,8 +18,10 @@
         </div>
         <div class="userMenu">
             {% if user.is_authenticated %}
-            <div>{{ user.first_name }} {{ user.last_name }}</div>
-            <div><a href="{% url 'django.contrib.auth.views.logout' %}">Logout</a></div>
+            <div>
+                <span class="user_welcome">{{ user.first_name }} {{ user.last_name }}</span>
+                <a href="{% url 'django.contrib.auth.views.logout' %}">Logout</a>
+            </div>
             {% endif %}
             <div>
             {% block top_help %}
