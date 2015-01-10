@@ -5,6 +5,8 @@
 /// <reference path="lib/jquery.d.ts" />
 
 
+declare var EDDData:EDDData;
+
 module IndexPage {
 
 	var studiesDataGridSpec:DataGridSpecStudies = null;
@@ -19,9 +21,10 @@ module IndexPage {
 
 	export function prepareTable() {
 		// Instantiate a table specification for the Studies table
-		this.studiesDataGridSpec = new DataGridSpecStudies().data(EDDData.Studies, EDDData.StudiesSize, EDDData.StudiesStart);
+		this.studiesDataGridSpec = new DataGridSpecStudies();
 		// Instantiate the table itself with the spec
 		this.studiesDataGrid = new DataGrid(this.studiesDataGridSpec);
+        this.studiesDataGridSpec.requestPageOfData();
 	}
 
 
@@ -70,13 +73,6 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
 	defineTableSpec():DataGridTableSpec {
         return new DataGridTableSpec('studies', { 'name': 'Studies' });
 	}
-    
-    
-    private loadInstitution(index) {
-        var owner:string = this.dataObj[index].own;
-        var ownerRecord = EDDData.Users[owner];
-        return ownerRecord ? ownerRecord.institution.toUpperCase() : '?';
-    }
 
         
 	// Specification for the headers along the top of the table
@@ -104,7 +100,7 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
             new DataGridHeaderSpec(5, 'hStudyOwnerInstitute', {
                 'name': 'Institute',
                 'nowrap': true,
-                'sortBy': (i) => this.loadInstitution(i),
+                'sortBy': (i) => '?',
                 'sortAfter': 0 }),
             new DataGridHeaderSpec(6, 'hStudyCreated', {
                 'name': 'Created',
@@ -168,11 +164,9 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
 
 
     generateInstitutionCells(gridSpec:DataGridSpecStudies, index:number):DataGridDataCell[] {
-        var owner:string = gridSpec.dataObj[index].own;
-        var ownerRecord = EDDData.Users[owner];
         return [
             new DataGridDataCell(gridSpec, index, {
-                'contentString': ownerRecord ? ownerRecord.institution : '?'
+                'contentString': '?'
             })
         ];
     }
@@ -306,8 +300,8 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
     
     requestPageOfData(callback?:(success:boolean) => void):DGPageDataSource {
         $.ajax({
-            'url': 'FormAjaxResp.cgi?action=studySearch',
-            'type': 'POST',
+            'url': '/study/search/',
+            'type': 'GET',
             'data': { 'q': this._query, 'i': this._offset, 'size': this._pageSize },
             'error': (xhr, status, e) => {
                 console.log(['Search failed: ', status, ';', e].join(''));

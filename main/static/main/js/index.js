@@ -20,9 +20,10 @@ var IndexPage;
     IndexPage.prepareIt = prepareIt;
     function prepareTable() {
         // Instantiate a table specification for the Studies table
-        this.studiesDataGridSpec = new DataGridSpecStudies().data(EDDData.Studies, EDDData.StudiesSize, EDDData.StudiesStart);
+        this.studiesDataGridSpec = new DataGridSpecStudies();
         // Instantiate the table itself with the spec
         this.studiesDataGrid = new DataGrid(this.studiesDataGridSpec);
+        this.studiesDataGridSpec.requestPageOfData();
     }
     IndexPage.prepareTable = prepareTable;
     // This creates an EditableElement object for each Study description that the user is allowed to edit.
@@ -72,11 +73,6 @@ var DataGridSpecStudies = (function (_super) {
     DataGridSpecStudies.prototype.defineTableSpec = function () {
         return new DataGridTableSpec('studies', { 'name': 'Studies' });
     };
-    DataGridSpecStudies.prototype.loadInstitution = function (index) {
-        var owner = this.dataObj[index].own;
-        var ownerRecord = EDDData.Users[owner];
-        return ownerRecord ? ownerRecord.institution.toUpperCase() : '?';
-    };
     // Specification for the headers along the top of the table
     DataGridSpecStudies.prototype.defineHeaderSpec = function () {
         var _this = this;
@@ -115,7 +111,7 @@ var DataGridSpecStudies = (function (_super) {
             new DataGridHeaderSpec(5, 'hStudyOwnerInstitute', {
                 'name': 'Institute',
                 'nowrap': true,
-                'sortBy': function (i) { return _this.loadInstitution(i); },
+                'sortBy': function (i) { return '?'; },
                 'sortAfter': 0
             }),
             new DataGridHeaderSpec(6, 'hStudyCreated', {
@@ -178,11 +174,9 @@ var DataGridSpecStudies = (function (_super) {
         ];
     };
     DataGridSpecStudies.prototype.generateInstitutionCells = function (gridSpec, index) {
-        var owner = gridSpec.dataObj[index].own;
-        var ownerRecord = EDDData.Users[owner];
         return [
             new DataGridDataCell(gridSpec, index, {
-                'contentString': ownerRecord ? ownerRecord.institution : '?'
+                'contentString': '?'
             })
         ];
     };
@@ -287,8 +281,8 @@ var DataGridSpecStudies = (function (_super) {
     DataGridSpecStudies.prototype.requestPageOfData = function (callback) {
         var _this = this;
         $.ajax({
-            'url': 'FormAjaxResp.cgi?action=studySearch',
-            'type': 'POST',
+            'url': '/study/search/',
+            'type': 'GET',
             'data': { 'q': this._query, 'i': this._offset, 'size': this._pageSize },
             'error': function (xhr, status, e) {
                 console.log(['Search failed: ', status, ';', e].join(''));

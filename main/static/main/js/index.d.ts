@@ -3,6 +3,7 @@
 /// <reference path="DataGrid.d.ts" />
 /// <reference path="Utl.d.ts" />
 /// <reference path="lib/jquery.d.ts" />
+declare var EDDData: EDDData;
 declare module IndexPage {
     function prepareIt(): void;
     function prepareTable(): void;
@@ -15,7 +16,6 @@ declare class DataGridSpecStudies extends DataGridSpecBase implements DGPageData
     private _pageSize;
     private _query;
     defineTableSpec(): DataGridTableSpec;
-    private loadInstitution(index);
     defineHeaderSpec(): DataGridHeaderSpec[];
     generateStudyNameCells(gridSpec: DataGridSpecStudies, index: number): DataGridDataCell[];
     generateDescriptionCells(gridSpec: DataGridSpecStudies, index: number): DataGridDataCell[];

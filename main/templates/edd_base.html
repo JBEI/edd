@@ -6,6 +6,10 @@
     <title>{% block head_title %}Experiment Data Depot{% endblock head_title %}</title>
     <link rel="stylesheet" type="text/css" href="{% static 'main/common.css' %}" />
     {% block js_css %}
+    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.js' %}"></script>
+    {% if user.is_authenticated %}
+    <script type="text/javascript">EDDData = {}; EDDData.currentUserID = {{ user.id }}</script>
+    {% endif %}
     {% endblock js_css%}
 </head>
 <body>
