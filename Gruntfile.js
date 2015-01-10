@@ -6,7 +6,7 @@ module.exports = function(grunt) {
 	    typescript: {
 	      base: {
 	        src: ['./typescript/*.ts'],
-	        dest: './main/static/main/',
+	        dest: './main/static/main/js/',
 	        options: {
 			  basePath: './typescript',
 	          sourceMap: true,
