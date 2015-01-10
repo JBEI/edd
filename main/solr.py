@@ -99,6 +99,7 @@ class StudySearch(object):
         if response.status_code == requests.codes.ok:
             return response.json()
         else:
+            print response.url
             response.raise_for_status()
 
     def update(self, studies=[]):

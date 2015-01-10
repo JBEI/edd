@@ -19,11 +19,15 @@ var IndexPage;
     }
     IndexPage.prepareIt = prepareIt;
     function prepareTable() {
+        var _this = this;
         // Instantiate a table specification for the Studies table
         this.studiesDataGridSpec = new DataGridSpecStudies();
         // Instantiate the table itself with the spec
         this.studiesDataGrid = new DataGrid(this.studiesDataGridSpec);
-        this.studiesDataGridSpec.requestPageOfData();
+        this.studiesDataGridSpec.requestPageOfData(function (success) {
+            if (success)
+                _this.studiesDataGrid.triggerDataReset();
+        });
     }
     IndexPage.prepareTable = prepareTable;
     // This creates an EditableElement object for each Study description that the user is allowed to edit.
@@ -286,17 +290,11 @@ var DataGridSpecStudies = (function (_super) {
             'data': { 'q': this._query, 'i': this._offset, 'size': this._pageSize },
             'error': function (xhr, status, e) {
                 console.log(['Search failed: ', status, ';', e].join(''));
-                callback.call({}, false);
+                callback && callback.call({}, false);
             },
             'success': function (data) {
-                var docs = data.data;
-                if (data.type !== 'Success') {
-                    console.log(['Failed to retrieve data: ', data.message].join(''));
-                }
-                else {
-                    _this.data(_this._transformData(docs), docs.numFound, docs.start);
-                }
-                callback.call({}, data.type === 'Success');
+                _this.data(_this._transformData(data), data.numFound, data.start);
+                callback && callback.call({}, true);
             }
         });
         return this;
@@ -382,7 +380,7 @@ var DataGridSpecStudies = (function (_super) {
 // initialized with a query string, can search study fields for matches to query terms
 var ResultMatcher = (function () {
     function ResultMatcher(query) {
-        this._query = query.split(/\s+/);
+        this._query = query.split(/\s+/).filter(function (x) { return x.length > 0; });
         this._match = {};
     }
     // searches for constructor text query in the source string, saving to field name if found

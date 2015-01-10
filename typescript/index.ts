@@ -24,7 +24,9 @@ module IndexPage {
 		this.studiesDataGridSpec = new DataGridSpecStudies();
 		// Instantiate the table itself with the spec
 		this.studiesDataGrid = new DataGrid(this.studiesDataGridSpec);
-        this.studiesDataGridSpec.requestPageOfData();
+        this.studiesDataGridSpec.requestPageOfData((success) => {
+            if (success) this.studiesDataGrid.triggerDataReset();
+        });
 	}
 
 
@@ -305,16 +307,11 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
             'data': { 'q': this._query, 'i': this._offset, 'size': this._pageSize },
             'error': (xhr, status, e) => {
                 console.log(['Search failed: ', status, ';', e].join(''));
-                callback.call({}, false);
+                callback && callback.call({}, false);
              },
             'success': (data) => {
-                var docs = data.data;
-                if (data.type !== 'Success') {
-                    console.log(['Failed to retrieve data: ', data.message].join(''));
-                } else {
-                    this.data(this._transformData(docs), docs.numFound, docs.start);
-                }
-                callback.call({}, data.type === 'Success');
+                this.data(this._transformData(data), data.numFound, data.start);
+                callback && callback.call({}, true);
             }
         });
         return this;
@@ -427,7 +424,7 @@ class ResultMatcher {
     
     
     constructor(query:string) {
-        this._query = query.split(/\s+/);
+        this._query = query.split(/\s+/).filter((x) => x.length > 0);
         this._match = {};
     }
     
