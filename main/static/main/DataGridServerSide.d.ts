@@ -1,0 +1,67 @@
+/// <reference path="typescript-declarations.d.ts" />
+declare class DataGridServerSide {
+    constructor(table: any, tablebody: any);
+    getRowsWithGroupID(groupID: any): any;
+    isGroupExpanded(groupID: any): boolean;
+    clickedSort(thisth: any): void;
+    isRowVisible(lineID: any): any;
+    setColumnVisibility(columnID: any, visible: any): void;
+    getColumnCells(columnID: any, includeHeaders: any): any;
+    private _handleRowToggleTable();
+    private _clickedRefresh();
+    private _refreshIt();
+    private _handleTableControls();
+    private _handleSelectAllButton(oneToggleControl);
+    private _isRowEnabled(rowIndex);
+    private _handleShowRowsButton(oneToggleControl);
+    private _handleMultiTableShowRowsButton(oneToggleControl);
+    private _handleShowRowsPulldown(oneToggleControl);
+    private _refreshRowObjects();
+    private _stripeIt();
+    private _handlePulldownOrColumnMenu(oneToggleControl);
+    private _handleColumnMenu(oneToggleControl);
+    private _handleStriping();
+    private _getColumnIndexByID(columnID);
+    private _getHeaderCells();
+    private _getHeaderRows(headerrows, nonheaderrows);
+    private _handleSortable();
+    private _handleColumnCheckbox(oneToggleControl);
+    private _getLineIDFromRow(row);
+    private _getRowByLineID(lineID);
+    private _refreshColObjects();
+    private _sortIt(thisth, sameSortOrder?);
+    private _getIndexedList(inputList, order);
+    private _reinsertRows(rows);
+    static scanPageForTables(): void;
+    private static _setRowVisible(row, isVisible);
+    private static _isRowVisible(row);
+    private static _clickedRowControl(control);
+    private static _clickedColMenuWhileOff(control);
+    private static _clickedColMenuWhileOn(control);
+    private static _clickedColControl(control);
+    private static _parseNumberList(inList, outList);
+    private static _updateColumnSettings(obj);
+    private _table;
+    private _tablebody;
+    private _tableMainElementID;
+    private _headerrows;
+    private _datarows;
+    private _tablerowcontrols;
+    private _tablecolcontrols;
+    private _lastHeaderThatSorted;
+    private _showRowsButton;
+    private _enabledRows;
+    private _groupIDToRowIDs;
+    private _groupIDToRows;
+    private _groupIDToHeader;
+    private _groupsCollapsed;
+    private _helper;
+    private _triggerButton;
+    private _checkboxestoprocess;
+    private _stripingA;
+    private _stripingB;
+}
+declare class DataGridHelperBase {
+    onInitialized(dataGrid: DataGridServerSide): void;
+    onRowVisibilityChanged(): void;
+}

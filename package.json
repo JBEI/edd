@@ -6,7 +6,9 @@
   "dependencies": {
     "grunt": "^0.4.5"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "grunt-typescript": ""
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
