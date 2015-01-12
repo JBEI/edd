@@ -87,18 +87,31 @@ class StudyTests(TestCase):
 
 
 class SolrTests(TestCase):
-    solr = StudySearch(settings_key='test')
 
     def setUp(self):
         TestCase.setUp(self)
+        email = 'wcmorrell@lbl.gov'
+        self.admin = User.objects.create_superuser(username='admin', email=email, password='12345')
+        self.user1 = User.objects.create_user(username='test1', email=email, password='password')
+        self.solr_admin = StudySearch(ident=self.admin, settings_key='test')
+        self.solr_user = StudySearch(ident=self.user1, settings_key='test')
+        up1 = Update.objects.create(mod_by=self.user1)
+        self.study1 = Study.objects.create(study_name='Test Study 1',
+                                           description='Lorem ipsum dolor sit amet',
+                                           created=up1, updated=up1)
+        self.solr_admin.clear()
 
     def tearDown(self):
+        self.solr_admin.clear()
         TestCase.tearDown(self)
 
-    def test_search(self):
-        # TODO: get some fixtures loaded into test solr, make sure sane things come from search
-        pass
+    def test_initially_empty(self):
+        result = self.solr_user.query(query='*:*')
+        self.assertEqual(result['response']['numFound'], 0, "The test index is not initially empty")
 
-    def test_update(self):
-        # TODO: create study object, update test solr, make sure it can be retrieved from solr
-        pass
+    def test_add_and_retrieve(self):
+        pre_add = self.solr_admin.query(query='description:dolor')
+        add = self.solr_user.update([self.study1])
+        post_add = self.solr_admin.query(query='description:dolor')
+        self.assertEqual(pre_add['response']['numFound'], 0, "Study in index before it was added")
+        self.assertEqual(post_add['response']['numFound'], 1, "Added study was not found in query")

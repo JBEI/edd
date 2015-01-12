@@ -52,6 +52,10 @@ class Study(models.Model):
         Convert the Study model to a dict structure formatted for Solr JSON.
         """
         permissions = chain(self.userpermission_set.all(), self.grouppermission_set.all())
+        if self.contact == None:
+            contact = None
+        else:
+            contact = self.contact.pk
         # TODO: figure out how to efficiently load in the protocol, metabolite, and part listings
         return {
             'id': self.pk,
@@ -59,11 +63,12 @@ class Study(models.Model):
             'description': self.description,
             'creator': self.created.mod_by.pk,
             'creator_email': self.created.mod_by.email,
-            'creator_name': ' '.join(self.created.mod_by.first_name, self.created.mod_by.last_name),
-            'contact': self.contact.pk,
+            'creator_name': ' '.join([self.created.mod_by.first_name,
+                                      self.created.mod_by.last_name]),
+            'contact': contact,
             'active': self.active,
-            'created': self.created.mod_time.isoformat(),
-            'modified': self.updated.mod_time.isoformat(),
+            'created': self.created.mod_time.strftime('%Y-%m-%dT%H:%M:%SZ'),
+            'modified': self.updated.mod_time.strftime('%Y-%m-%dT%H:%M:%SZ'),
             'aclr': [p for p in permissions if p.is_read()],
             'aclw': [p for p in permissions if p.is_write()],
         }

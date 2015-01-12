@@ -48,6 +48,19 @@ class StudySearch(object):
             ' OR '.join(map(lambda w: 'aclw:'+w, acl)),
         )
 
+    def clear(self):
+        """
+        Clear the index, deleting everything.
+        """
+        url = self.url + '/update/json'
+        command = '{"delete":{"query":"*:*"},"commit":{}}'
+        headers = {'content-type': 'application/json'}
+        response = requests.post(url, data=command, headers=headers)
+        if response.status_code != requests.codes.ok:
+            print url
+            print response.text
+            raise Exception('Commit to Solr failed')
+
     def query(self, query='active:true', options={}):
         """
         Run a query against Solr index.
@@ -99,7 +112,6 @@ class StudySearch(object):
         if response.status_code == requests.codes.ok:
             return response.json()
         else:
-            print response.url
             response.raise_for_status()
 
     def update(self, studies=[]):
@@ -108,6 +120,8 @@ class StudySearch(object):
         
         Arguments:
             docs: an iterable of Study objects to update in Solr
+        Returns:
+            ???
         """
         # TODO: do some additional checking to ensure current user has write access before updating
         url = self.url + '/update/json'
@@ -117,10 +131,14 @@ class StudySearch(object):
         if response.status_code == requests.codes.ok:
             # if the add worked, still need to send commit command
             add_json = response.json()
+            print 'Added the studies to index: %s' % add_json
             response = requests.post(url, data='{"commit":{}}', headers=headers)
+            print 'Trying to commit'
             if response.status_code == requests.codes.ok:
+                print 'Succeeded commit: %s' % response.json()
                 return add_json
             else:
                 raise Exception('Commit to Solr failed')
         else:
-            raise Exception('Adding studies to Solr failed')
+            print response.text
+            raise Exception('Adding studies to Solr failed: %s' % response.json()['error']['msg'])

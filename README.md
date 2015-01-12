@@ -36,3 +36,8 @@
  4. `psql edddjango < edddb.sql`
  5. `psql edddjango < convert.sql`
 
+## Solr
+ * Refer to documentation in the edd (perl) project for specifics on Solr setup.
+ * Tests in this project make use of a `test` core, which will need to be created
+    * Create a new data directory (e.g. `/usr/local/var/solr/data/test`)
+    * Add new line to `solr.xml` using same studies `instanceDir` and new data directory
