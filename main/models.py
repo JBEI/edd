@@ -2,6 +2,7 @@ from django.conf import settings
 from django.contrib.auth.models import Group
 from django.db import models
 from django.utils import timezone
+from django_extensions.db.fields import PostgreSQLUUIDField
 from itertools import chain
 from main.solr import StudySearch
 
@@ -331,4 +332,17 @@ class MeasurementVector(models.Model):
 
     def __str__(self):
         return '(%f,%f)' % (self.x, self.y)
+
+
+class Strain(models.Model):
+    """
+    A link to a strain/part in the JBEI ICE Registry.
+    """
+    class Meta:
+        db_table = 'strain'
+    strain_name = models.CharField(max_length=255)
+    registry_id = PostgreSQLUUIDField(blank=True, null=True)
+    registry_url = models.URLField(max_length=255, blank=True, null=True)
+    created = models.ForeignKey(Update, related_name='+')
+    updated = models.ForeignKey(Update, related_name='+')
 

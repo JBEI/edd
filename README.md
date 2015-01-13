@@ -8,6 +8,7 @@
 ### Required Packages
  * Django `pip install django`
  * django-auth-ldap `pip install django-auth-ldap`
+ * django-extensions `pip install django-extensions`
  * django-registration `pip install django-registration-redux`
  * requests `pip install requests`
  * psycopg2 `pip install psycopg2`

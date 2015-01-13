@@ -1,6 +1,7 @@
 -- This file contains the SQL commands used to convert the existing EDD/perl
 ---- schema data into the EDD/django schema
 
+
 --
 -- copy over users
 --
@@ -13,6 +14,7 @@ INSERT INTO public.auth_user(
     FROM old_edd.accounts;
 -- Update sequence with the current maximum
 SELECT setval('public.auth_user_id_seq', SELECT max(id) FROM public.auth_user);
+
 
 --
 -- copy over update timestamps
@@ -38,7 +40,46 @@ INSERT INTO public.update_info(mod_time, mod_by_id)
         modified_by AS update_user
     FROM old_edd.lines
     WHERE modified_by > 0
+    UNION
+    SELECT date_trunc('second', creation_time) AS update_time,
+        created_by AS update_user
+    FROM old_edd.assays
+    UNION
+    SELECT date_trunc('second', modification_time) AS update_time,
+        modified_by AS update_user
+    FROM old_edd.assays
+    WHERE modified_by > 0
+    UNION
+    SELECT date_trunc('second', creation_time) AS update_time,
+        created_by AS update_user
+    FROM old_edd.assay_measurements
+    UNION
+    SELECT date_trunc('second', modification_time) AS update_time,
+        modified_by AS update_user
+    FROM old_edd.assay_measurements
+    WHERE modified_by > 0
+    UNION
+    SELECT date_trunc('second', modification_time) AS update_time,
+        modified_by AS update_user
+    FROM old_edd.assay_measurement_data
+    WHERE modified_by > 0
+    UNION
+    -- protocols only has created_by and modification_time
+    SELECT date_trunc('second', modification_time) AS update_time,
+        created_by AS update_user
+    FROM old_edd.protocols
+    WHERE modified_by > 0
+    UNION
+    SELECT date_trunc('second', creation_time) AS update_time,
+        created_by AS update_user
+    FROM old_edd.strains
+    UNION
+    SELECT date_trunc('second', modification_time) AS update_time,
+        modified_by AS update_user
+    FROM old_edd.strains
+    WHERE modified_by > 0
     ORDER BY update_time;
+
 
 --
 -- copy over studies
@@ -73,6 +114,9 @@ INSERT INTO public.study_group_permission(permission_type, study_id, group_id)
     WHERE sub.permission ~ 'g:__Everyone__'
     ORDER BY sub.id;
 -- For now, skipping migration of metabolic maps
+-- Update study sequence with current maximum value
+SELECT setval('public.study_id_seq', SELECT max(id) FROM public.study);
+
 
 --
 -- copy over lines
@@ -92,3 +136,29 @@ INSERT INTO public.line(
         date_trunc('second', l.modification_time)
         AND m.mod_by_id = l.created_by
     ORDER BY l.id;
+-- Update line sequence with current maximum value
+SELECT setval('public.line_id_seq', SELECT max(id) FROM public.line);
+
+
+--
+-- copy over protocols
+--
+
+
+
+--
+-- copy over assays
+--
+
+
+
+--
+-- copy over assay_measurements
+--
+
+
+
+--
+-- copy over strains
+--
+
