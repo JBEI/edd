@@ -17,6 +17,8 @@ class Update(models.Model):
         db_table = 'update_info'
     mod_time = models.DateTimeField(auto_now_add=True, editable=False)
     mod_by = models.ForeignKey(settings.AUTH_USER_MODEL, editable=False)
+    path = models.TextField(blank=True, null=True)
+    origin = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return '%s by %s' % (self.mod_time, self.mod_by)
@@ -24,7 +26,10 @@ class Update(models.Model):
     @classmethod
     def load_request_update(cls, request):
         if not hasattr(request, 'update_key'):
-            update = cls(mod_time=timezone.now(), mod_by=request.user)
+            update = cls(mod_time=timezone.now(),
+                         mod_by=request.user,
+                         path=request.get_full_path(),
+                         origin=request.META['REMOTE_HOST'])
             update.save()
             request.update_key = update.pk
         else:
