@@ -35,7 +35,9 @@ SECRET_KEY = config['site'].get('secret', 'I was awake and dreaming at the same 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 TEMPLATE_DEBUG = True
-ADMINS = (('William', 'wcmorrell@lbl.gov'))
+ADMINS = (('William', 'wcmorrell@lbl.gov'),
+          ('Nat', 'nechols@lbl.gov'),
+          ('Garrett', 'gwbirkel@lbl.gov'),)
 ALLOWED_HOSTS = []
 SITE_ID = 1
 LOGIN_REDIRECT_URL = '/'
@@ -51,6 +53,7 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_extensions',
+    'debug_toolbar',
     'registration',
     'main',
 )

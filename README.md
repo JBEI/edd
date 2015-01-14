@@ -8,7 +8,10 @@
 ### Debian
  * `sudo apt-get install -t testing libpq-dev` for headers required by psycopg2
  * `sudo apt-get install libldap2-dev libsasl2-dev libssl-dev` for headers
-    required by python-ldap  
+    required by python-ldap
+ * Configure LDAP SSL handling in `/etc/ldap/ldap.conf`
+    * Add line `TLS_CACERTDIR   /etc/ssl/certs`
+    * Add line `TLS_CACERT  /etc/ssl/certs/ca-certificates.crt`
  
 ## Python Packages
 ### Required Packages

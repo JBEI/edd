@@ -42,7 +42,9 @@ class StudySearch(object):
         # Admins get no filter on read, and a query that will always eval true for write
         if ident.is_superuser:
             return ('', 'id:*')
-        acl = ['"u:'+ident.username+'"'] + map(lambda g: '"g:'+g+'"', ident.groups.all())
+        acl = ['"u:'+ident.username+'"'] + \
+            map(lambda g: '"g:'+g.name+'"', ident.groups.all()) + \
+            ['g:__Everyone__']
         return (
             ' OR '.join(map(lambda r: 'aclr:'+r, acl)),
             ' OR '.join(map(lambda w: 'aclw:'+w, acl)),
