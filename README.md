@@ -4,18 +4,25 @@
     obtained via experimentation.
  * [edd.jbei.org](https://edd.jbei.org).
 
+## System Pre-requisites
+### Debian
+ * `sudo apt-get install -t testing libpq-dev` for headers required by psycopg2
+ * `sudo apt-get install libldap2-dev libsasl2-dev libssl-dev` for headers
+    required by python-ldap  
+ 
 ## Python Packages
 ### Required Packages
- * Django `pip install django`
- * django-auth-ldap `pip install django-auth-ldap`
- * django-extensions `pip install django-extensions`
- * django-registration `pip install django-registration-redux`
- * requests `pip install requests`
- * psycopg2 `pip install psycopg2`
+ * Django `sudo pip install Django`
+ * django-auth-ldap `sudo pip install django-auth-ldap`
+ * django-extensions `sudo pip install django-extensions`
+ * django-registration `sudo pip install django-registration-redux`
+ * requests `sudo pip install requests`
+ * psycopg2 `sudo pip install psycopg2`
+ * python-ldap `sudo pip install python-ldap`
 
 ### Helpful Packages
  * django-debug-toolbar `pip install django-debug-toolbar`
-    Include 'debug_toolbar' in settings.py INSTALLED_APPS
+    Include `debug_toolbar` in settings.py INSTALLED_APPS
 
 ## Build Tools
  * This project makes use of Node.js and grunt for builds; it would be a good
