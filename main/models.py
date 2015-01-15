@@ -4,7 +4,6 @@ from django.db import models
 from django.utils import timezone
 from django_extensions.db.fields import PostgreSQLUUIDField
 from itertools import chain
-from main.solr import StudySearch
 
 
 class Update(models.Model):

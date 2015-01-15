@@ -56,6 +56,7 @@ INSTALLED_APPS = (
     'debug_toolbar',
     'registration',
     'main',
+    'edd.profile',
 )
 MIDDLEWARE_CLASSES = (
     'django.contrib.sessions.middleware.SessionMiddleware',
