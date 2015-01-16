@@ -91,9 +91,11 @@ INSERT INTO public.study(
         u.id, c.id, coalesce(m.id, c.id)
     FROM old_edd.studies s
     LEFT JOIN public.auth_user u ON lower(u.email) = lower(s.contact)
-    LEFT JOIN public.update_info c ON c.mod_time = s.creation_time
+    LEFT JOIN public.update_info c ON date_trunc('second', c.mod_time) = 
+        date_trunc('second', s.creation_time)
         AND c.mod_by_id = s.created_by
-    LEFT JOIN public.update_info m ON m.mod_time = s.modification_time
+    LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
+        date_trunc('second', s.modification_time)
         AND m.mod_by_id = s.modified_by
     ORDER BY s.id;
 -- Copy permissions; right now only group permission is special __Everyone__
@@ -123,7 +125,7 @@ SELECT setval('public.study_id_seq', SELECT max(id) FROM public.study);
 --
 INSERT INTO public.line(
         id, line_name, active, contact_extra, contact_id, experimenter_id,
-        study_id, created_id, modified_id
+        study_id, created_id, updated_id
     ) SELECT l.id, l.line_name, NOT l.disabled, l.contact, u.id,
         CASE WHEN l.experimenter = 0 THEN NULL ELSE l.experimenter END,
         l.study_id, c.id, coalesce(m.id, c.id)
@@ -134,7 +136,7 @@ INSERT INTO public.line(
         AND c.mod_by_id = l.created_by
     LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
         date_trunc('second', l.modification_time)
-        AND m.mod_by_id = l.created_by
+        AND m.mod_by_id = l.modified_by
     ORDER BY l.id;
 -- Update line sequence with current maximum value
 SELECT setval('public.line_id_seq', SELECT max(id) FROM public.line);
@@ -143,11 +145,48 @@ SELECT setval('public.line_id_seq', SELECT max(id) FROM public.line);
 --
 -- copy over protocols
 --
-
+INSERT INTO public.protocol(
+        id, protocol_name, description, active, owned_by_id, variant_of_id, 
+        created_id, updated_id
+    ) SELECT p.id, p.protocol_name, p.description, NOT p.disabled,
+        CASE WHEN p.owned_by = 0 THEN NULL ELSE p.owned_by END,
+        CASE WHEN p.variant_of_id = 0 THEN NULL ELSE p.variant_of_id END,
+        c.id, coalesce(m.id, c.id)
+    FROM old_edd.protocols p
+    LEFT JOIN public.update_info c ON date_trunc('second', c.mod_time) =
+        date_trunc('second', p.creation_time)
+        AND c.mod_by_id = p.created_by
+    LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
+        date_trunc('second', p.modification_time)
+        AND m.mod_by_id = p.modified_by
+    ORDER BY p.id;
+-- Update protocol sequence with current maximum value
+SELECT setval('public.protocol_id_seq', SELECT max(id) from public.protocol);
 
 
 --
 -- copy over assays
+--
+INSERT INTO public.assay(
+        id, assay_name, description, active, experimenter_id, line_id,
+        protocol_id, created_id, updated_id
+    ) SELECT a.id, a.assay_name, a.description, NOT a.disabled,
+        CASE WHEN a.experimenter = 0 THEN NULL ELSE a.experimenter END,
+        a.line_id, a.protocol_id, c.id, coalesce(m.id, c.id)
+    FROM old_edd.assays a
+    LEFT JOIN public.update_info c ON date_trunc('second', c.mod_time) =
+        date_trunc('second', a.creation_time)
+        AND c.mod_by_id = a.created_by
+    LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
+        date_trunc('second', a.modification_time)
+        AND m.mod_by_id = a.modified_by
+    ORDER BY a.id;
+-- Update protocol sequence with current maximum value
+SELECT setval('public.assay_id_seq', SELECT max(id) from public.assay);
+
+
+--
+-- copy over measurement_type
 --
 
 

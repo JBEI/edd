@@ -233,6 +233,22 @@ class Assay(models.Model):
         return self.assay_name
 
 
+class MeasurementGroup(object):
+    """
+    Does not need its own table in database, but multiple models will reference measurements that
+    are specific to a specific group category: metabolomics, proteomics, etc.
+    """
+    GENERIC = '_'
+    METABOLITE = 'm'
+    GENEID = 'g'
+    # transcript level? expression level? 
+    GROUP_CHOICE = (
+        (GENERIC, 'Generic'),
+        (METABOLITE, 'Metabolite'),
+        (GENEID, 'Gene Identifier'),
+    )
+
+
 class MeasurementType(models.Model):
     """
     Defines the type of measurement being made. A generic measurement only has name and short name;
@@ -240,17 +256,11 @@ class MeasurementType(models.Model):
     """
     class Meta:
         db_table = 'measurement_type'
-    GENERIC = '_'
-    METABOLITE = 'm'
-    GENEID = 'g'
-    GROUP_CHOICE = (
-        (GENERIC, 'Generic'),
-        (METABOLITE, 'Metabolite'),
-        (GENEID, 'Gene Identifier'),
-    )
     type_name = models.CharField(max_length=255)
     short_name = models.CharField(max_length=255, blank=True, null=True)
-    type_group = models.CharField(max_length=8, choices=GROUP_CHOICE, default=GENERIC)
+    type_group = models.CharField(max_length=8,
+                                  choices=MeasurementGroup.GROUP_CHOICE,
+                                  default=MeasurementGroup.GENERIC)
 
     def __str__(self):
         return self.type_name
@@ -282,6 +292,19 @@ class GeneIdentifier(MeasurementType):
     gene_length = models.IntegerField()
 
 
+class MeasurementUnits(models.Model):
+    """
+    Defines a unit type and metadata on measurement values.
+    """
+    class Meta:
+        db_table = 'measurement_units'
+    units_name = models.CharField(max_length=255)
+    display = models.BooleanField(default=True)
+    type_group = models.CharField(max_length=8,
+                                  choices=MeasurementGroup.GROUP_CHOICE,
+                                  default=MeasurementGroup.GENERIC)
+
+
 class Measurement(models.Model):
     """
     A plot of data points for an (assay, measurement type) pair. Points can either be single (x,y)
@@ -293,8 +316,6 @@ class Measurement(models.Model):
     experimenter = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True,
                                      related_name='+')
     measurement_type = models.ForeignKey(MeasurementType)
-    x_units = models.CharField(max_length=255)
-    y_units = models.CharField(max_length=255)
     created = models.ForeignKey(Update, related_name='+')
     updated = models.ForeignKey(Update, related_name='+')
     active = models.BooleanField(default=True)
@@ -310,6 +331,8 @@ class MeasurementDatum(models.Model):
     class Meta:
         db_table = 'measurement_datum'
     measurement = models.ForeignKey(Measurement)
+    x_units = models.ForeignKey(MeasurementUnits, related_name='+')
+    y_units = models.ForeignKey(MeasurementUnits, related_name='+')
     x = models.DecimalField(max_digits=16, decimal_places=5)
     y = models.DecimalField(max_digits=16, decimal_places=5, blank=True, null=True)
     updated = models.ForeignKey(Update, related_name='+')
@@ -325,6 +348,8 @@ class MeasurementVector(models.Model):
     class Meta:
         db_table = 'measurement_vector'
     measurement = models.ForeignKey(Measurement)
+    x_units = models.ForeignKey(MeasurementUnits, related_name='+')
+    y_units = models.ForeignKey(MeasurementUnits, related_name='+')
     x = models.DecimalField(max_digits=16, decimal_places=5)
     y = models.TextField()
     updated = models.ForeignKey(Update, related_name='+')
