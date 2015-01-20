@@ -1,0 +1,10 @@
+{% extends "edd_base.html" %}
+{% load staticfiles %}
+
+{% block js_css %}
+    <link rel="stylesheet" type="text/css" href="{% static 'main/login.css' %}" />
+{% endblock js_css %}
+
+{% block content %}
+    <p>You have registered an account with EDD. Check your email for an activation link.</p>
+{% endblock content %}
