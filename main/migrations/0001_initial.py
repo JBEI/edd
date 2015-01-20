@@ -84,7 +84,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('type_name', models.CharField(max_length=255)),
                 ('short_name', models.CharField(max_length=255, null=True, blank=True)),
-                ('type_group', models.CharField(default=b'_', max_length=8, choices=[(b'_', b'Generic'), (b'm', b'Metabolite'), (b'g', b'Gene Identifier')])),
+                ('type_group', models.CharField(default=b'_', max_length=8, choices=[(b'_', b'Generic'), (b'm', b'Metabolite'), (b'g', b'Gene Identifier'), (b'p', b'Protein Identifer')])),
             ],
             options={
                 'db_table': 'measurement_type',
@@ -95,11 +95,11 @@ class Migration(migrations.Migration):
             name='GeneIdentifier',
             fields=[
                 ('measurementtype_ptr', models.OneToOneField(parent_link=True, auto_created=True, primary_key=True, serialize=False, to='main.MeasurementType')),
-                ('location_in_genome', models.TextField()),
+                ('location_in_genome', models.TextField(null=True, blank=True)),
                 ('positive_strand', models.BooleanField(default=True)),
-                ('location_start', models.IntegerField()),
-                ('location_end', models.IntegerField()),
-                ('gene_length', models.IntegerField()),
+                ('location_start', models.IntegerField(null=True, blank=True)),
+                ('location_end', models.IntegerField(null=True, blank=True)),
+                ('gene_length', models.IntegerField(null=True, blank=True)),
             ],
             options={
                 'db_table': 'gene_identifier',
@@ -107,15 +107,15 @@ class Migration(migrations.Migration):
             bases=('main.measurementtype',),
         ),
         migrations.CreateModel(
-            name='MeasurementUnits',
+            name='MeasurementUnit',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('units_name', models.CharField(max_length=255)),
+                ('unit_name', models.CharField(max_length=255)),
                 ('display', models.BooleanField(default=True)),
-                ('type_group', models.CharField(default=b'_', max_length=8, choices=[(b'_', b'Generic'), (b'm', b'Metabolite'), (b'g', b'Gene Identifier')])),
+                ('type_group', models.CharField(default=b'_', max_length=8, choices=[(b'_', b'Generic'), (b'm', b'Metabolite'), (b'g', b'Gene Identifier'), (b'p', b'Protein Identifer')])),
             ],
             options={
-                'db_table': 'measurement_units',
+                'db_table': 'measurement_unit',
             },
             bases=(models.Model,),
         ),
@@ -271,13 +271,13 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='measurementvector',
             name='x_units',
-            field=models.ForeignKey(related_name='+', to='main.MeasurementUnits'),
+            field=models.ForeignKey(related_name='+', to='main.MeasurementUnit'),
             preserve_default=True,
         ),
         migrations.AddField(
             model_name='measurementvector',
             name='y_units',
-            field=models.ForeignKey(related_name='+', to='main.MeasurementUnits'),
+            field=models.ForeignKey(related_name='+', to='main.MeasurementUnit'),
             preserve_default=True,
         ),
         migrations.AddField(
@@ -289,13 +289,13 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='measurementdatum',
             name='x_units',
-            field=models.ForeignKey(related_name='+', to='main.MeasurementUnits'),
+            field=models.ForeignKey(related_name='+', to='main.MeasurementUnit'),
             preserve_default=True,
         ),
         migrations.AddField(
             model_name='measurementdatum',
             name='y_units',
-            field=models.ForeignKey(related_name='+', to='main.MeasurementUnits'),
+            field=models.ForeignKey(related_name='+', to='main.MeasurementUnit'),
             preserve_default=True,
         ),
         migrations.AddField(

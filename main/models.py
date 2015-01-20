@@ -241,11 +241,12 @@ class MeasurementGroup(object):
     GENERIC = '_'
     METABOLITE = 'm'
     GENEID = 'g'
-    # transcript level? expression level? 
+    PROTEINID = 'p' 
     GROUP_CHOICE = (
         (GENERIC, 'Generic'),
         (METABOLITE, 'Metabolite'),
         (GENEID, 'Gene Identifier'),
+        (PROTEINID, 'Protein Identifer'),
     )
 
 
@@ -285,20 +286,29 @@ class GeneIdentifier(MeasurementType):
     """
     class Meta:
         db_table = 'gene_identifier'
-    location_in_genome = models.TextField()
+    location_in_genome = models.TextField(blank=True, null=True)
     positive_strand = models.BooleanField(default=True)
-    location_start = models.IntegerField()
-    location_end = models.IntegerField()
-    gene_length = models.IntegerField()
+    location_start = models.IntegerField(blank=True, null=True)
+    location_end = models.IntegerField(blank=True, null=True)
+    gene_length = models.IntegerField(blank=True, null=True)
 
 
-class MeasurementUnits(models.Model):
+# Commented out until there is more to ProteinIdentifier than what already is in MeasurementType
+# class ProteinIdentifier(MeasurementType):
+#     """
+#     Defines additional metadata on gene identifier transcription measurement type.
+#     """
+#     class Meta:
+#         db_table = 'protein_identifier'
+
+
+class MeasurementUnit(models.Model):
     """
     Defines a unit type and metadata on measurement values.
     """
     class Meta:
-        db_table = 'measurement_units'
-    units_name = models.CharField(max_length=255)
+        db_table = 'measurement_unit'
+    unit_name = models.CharField(max_length=255)
     display = models.BooleanField(default=True)
     type_group = models.CharField(max_length=8,
                                   choices=MeasurementGroup.GROUP_CHOICE,
@@ -331,8 +341,8 @@ class MeasurementDatum(models.Model):
     class Meta:
         db_table = 'measurement_datum'
     measurement = models.ForeignKey(Measurement)
-    x_units = models.ForeignKey(MeasurementUnits, related_name='+')
-    y_units = models.ForeignKey(MeasurementUnits, related_name='+')
+    x_units = models.ForeignKey(MeasurementUnit, related_name='+')
+    y_units = models.ForeignKey(MeasurementUnit, related_name='+')
     x = models.DecimalField(max_digits=16, decimal_places=5)
     y = models.DecimalField(max_digits=16, decimal_places=5, blank=True, null=True)
     updated = models.ForeignKey(Update, related_name='+')
@@ -348,8 +358,8 @@ class MeasurementVector(models.Model):
     class Meta:
         db_table = 'measurement_vector'
     measurement = models.ForeignKey(Measurement)
-    x_units = models.ForeignKey(MeasurementUnits, related_name='+')
-    y_units = models.ForeignKey(MeasurementUnits, related_name='+')
+    x_units = models.ForeignKey(MeasurementUnit, related_name='+')
+    y_units = models.ForeignKey(MeasurementUnit, related_name='+')
     x = models.DecimalField(max_digits=16, decimal_places=5)
     y = models.TextField()
     updated = models.ForeignKey(Update, related_name='+')

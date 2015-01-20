@@ -40,9 +40,9 @@
 
 ## Database conversion
  1. `pg_dump -i -h postgres -U edduser -F p -b -v -f edddb.sql edddb`
- 2. Create a new schema in the django database, e.g. `CREATE SCHEMA edd_convert`
+ 2. Create a new schema in the django database, e.g. `CREATE SCHEMA edd_old`
  3. Edit the SQL file to prepend the new schema to the `SET search_path` line,
-    and replace all instances of `public.` with `edd_convert.` (or whatever the
+    and replace all instances of `public.` with `edd_old.` (or whatever the
     schema name is)
  4. `psql edddjango < edddb.sql`
  5. `psql edddjango < convert.sql`
