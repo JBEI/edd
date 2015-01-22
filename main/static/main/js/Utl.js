@@ -171,7 +171,11 @@ var Utl;
         };
         JS.assert = function (condition, message) {
             if (!condition) {
-                throw message || "Assertion failed";
+                message = message || "Assertion failed";
+                if (typeof Error !== 'undefined')
+                    throw Error(message);
+                else
+                    throw message;
             }
         };
         JS.convertHashToList = function (hash) {

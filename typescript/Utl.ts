@@ -206,7 +206,9 @@ module Utl {
 
 		static assert(condition:boolean, message:string):void {
 		    if (!condition) {
-		        throw message || "Assertion failed";
+                message = message || "Assertion failed";
+                if (typeof Error !== 'undefined') throw Error(message);
+                else throw message;
 		    }
 		}
 

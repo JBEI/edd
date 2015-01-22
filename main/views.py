@@ -59,4 +59,8 @@ def study_search(request):
     opt = request.GET.copy()
     opt['edismax'] = True
     data = solr.query(query=query, options=opt)
-    return HttpResponse(json.dumps(data['response']), content_type='application/json; charset=utf-8')
+    # loop through results and attach URL to each
+    query_response = data['response']
+    for doc in query_response['docs']:
+        doc['url'] = reverse('main:detail', kwargs={'pk':doc['id']})
+    return HttpResponse(json.dumps(query_response), content_type='application/json; charset=utf-8')

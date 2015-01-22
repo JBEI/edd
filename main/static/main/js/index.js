@@ -55,6 +55,7 @@ var IndexPage;
                         return data[cell.recordID].des;
                     },
                     'setValue': function (self, value) { return data[cell.recordID].des = value; },
+                    // TODO edit this to provide proper URL to EditableElement.ts
                     'makeFormData': function (self, value) {
                         return {
                             'action': 'Update Study Description',
@@ -141,8 +142,9 @@ var DataGridSpecStudies = (function (_super) {
         ];
     };
     DataGridSpecStudies.prototype.generateStudyNameCells = function (gridSpec, index) {
+        var studyDoc = gridSpec.dataObj[index];
         var sideMenuItems = [];
-        var match = gridSpec.dataObj[index].match;
+        var match = studyDoc.match;
         if (match) {
             sideMenuItems = match.getFields().map(function (field) {
                 var matches = match.getMatches(field, '<span class="search_match">', '</span>', 10);
@@ -154,7 +156,7 @@ var DataGridSpecStudies = (function (_super) {
                 'hoverEffect': true,
                 'nowrap': true,
                 'sideMenuItems': sideMenuItems,
-                'contentString': ['<a href="Study.cgi?studyID=', index, '" class="darker">', gridSpec.dataObj[index].n, '</a>'].join('')
+                'contentString': ['<a href="', studyDoc.url, '" class="darker">', studyDoc.n, '</a>'].join('')
             })
         ];
     };
@@ -366,6 +368,7 @@ var DataGridSpecStudies = (function (_super) {
             transformed[doc.id] = {
                 'n': doc.name,
                 'id': doc.id,
+                'url': doc.url,
                 'active': doc.active,
                 'des': doc.description,
                 'con': doc.contact,

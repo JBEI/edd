@@ -5,7 +5,7 @@
 /// <reference path="lib/jquery.d.ts" />
 
 
-declare var EDDData:EDDData;
+declare var EDDData:EDDData;  // sticking this here as IDE isn't following references
 
 module IndexPage {
 
@@ -52,6 +52,7 @@ module IndexPage {
                     'editAllowed': () => { return true; },
                     'getValue': (self) => { return data[cell.recordID].des; },
                     'setValue': (self, value) => data[cell.recordID].des = value,
+                    // TODO edit this to provide proper URL to EditableElement.ts
                     'makeFormData': (self, value) => {
                         return {
                             'action': 'Update Study Description',
@@ -124,8 +125,9 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
     
     
     generateStudyNameCells(gridSpec:DataGridSpecStudies, index:number):DataGridDataCell[] {
+        var studyDoc = gridSpec.dataObj[index];
         var sideMenuItems = [];
-        var match:ResultMatcher = gridSpec.dataObj[index].match;
+        var match:ResultMatcher = studyDoc.match;
         if (match) {
             sideMenuItems = match.getFields().map((field):string => {
                 var matches = match.getMatches(field, '<span class="search_match">', '</span>', 10);
@@ -137,7 +139,7 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
                 'hoverEffect': true,
                 'nowrap': true,
                 'sideMenuItems': sideMenuItems,
-                'contentString': [ '<a href="Study.cgi?studyID=', index, '" class="darker">', gridSpec.dataObj[index].n, '</a>' ].join('')
+                'contentString': [ '<a href="', studyDoc.url, '" class="darker">', studyDoc.n, '</a>' ].join('')
             })
         ];
     }
@@ -398,6 +400,7 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
             transformed[doc.id] = {
                 'n': doc.name,
                 'id': doc.id,
+                'url': doc.url,
                 'active': doc.active,
                 'des': doc.description,
                 'con': doc.contact,
