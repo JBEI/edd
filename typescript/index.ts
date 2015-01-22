@@ -15,8 +15,15 @@ module IndexPage {
 
 	// Called when the page loads.
 	export function prepareIt() {
-		setTimeout( () => IndexPage.prepareTable(), 1 );
+        IndexPage.prepareTable();
+        $('.disclose').find('a.discloseLink').on('click', disclose);
 	}
+    
+    
+    export function disclose() {
+        $(this).closest('.disclose').toggleClass('discloseHide');
+        return false;
+    }
 
 
 	export function prepareTable() {
@@ -672,6 +679,5 @@ class DGDisabledStudiesWidget extends DataGridOptionWidget {
 	}
 }
 
-
-
-window.addEventListener('load', function() { IndexPage.prepareIt(); }, false);
+// use JQuery ready event shortcut to call prepareIt when page is ready
+$(IndexPage.prepareIt);

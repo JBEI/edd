@@ -1,15 +1,42 @@
-<!doctype html>
-<html>
-<head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Experiment Data Depot - {{ study.study_name }}</title>
-</head>
-<body>
+{% extends "edd_base.html" %}
+{% load staticfiles %}
+
+{% block js_css %}
+    {{ block.super }}
+    <script type="text/javascript" src="lib/jquery/jquery.flot.js"></script>
+    <script type="text/javascript" src="lib/jquery/jquery.flot.crosshair.js"></script>
+    <script type="text/javascript" src="lib/jquery/jquery.flot.resize.js"></script>
+    <script type="text/javascript" src="lib/jquery/jquery.flot.navigate.js"></script>
+    <script type="text/javascript" src="lib/jquery/jquery.flot.dashes.js"></script>
+    <script type="text/javascript" src="lib/jquery/jquery.flot.threshold.js"></script>
+    <script type="text/javascript" src="lib/jquery/jquery.flot.orderbars.js"></script>
+    <script type="text/javascript" src="lib/jquery/jquery.flot.stack.js"></script>
+    
+    <script type="text/javascript" src="lib/qtip/jquery.qtip.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="lib/qtip/jquery.qtip.min.css">
+
+    <script type="text/javascript" src="lib/jquery-ui/jquery-ui.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="lib/jquery-ui/jquery-ui.min.css">
+
+    <script type="text/javascript" src="js-compiled/Autocomplete.js"></script>
+    <script type="text/javascript" src="js-compiled/EditableElement.js"></script>
+
+    <script type="text/javascript" src="lib/jquery.bind-first/jquery.bind-first.js"></script>
+    <script type="text/javascript" src="js-compiled/PermissionsDialog.js"></script>
+    <script type="text/javascript" src="js-compiled/BiomassCalculationUI.js"></script>
+    
+    <script type="text/javascript" src="js-compiled/Study.js"></script>
+    <script type="text/javascript" src="js-compiled/StudyGraphing.js"></script>
+    <script type="text/javascript" src="js-compiled/CarbonSummation.js"></script>
+    <script type="text/javascript" src="js-compiled/StudyCarbonBalance.js"></script>
+    <script type="text/javascript" src="js-compiled/StudySBMLExport.js"></script>
+{% endblock js_css %}
+
+{% block content %}
     <h1>{{ study.study_name }}</h1>
     <p>{{ study.description }}</p>
     <dl>
         <dt>Created</dt>
         <dd>{{ study.created.mod_by }} @ {{ study.created.mod_time }}</dd>
     </dl>
-</body>
-</html>
+{% endblock content %}

@@ -5,7 +5,6 @@
     {{ block.super }}
     <script type="text/javascript" src="{% static 'main/js/Autocomplete.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/Disclosure.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/EDDEditing.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/EditableElement.js' %}"></script>
@@ -14,6 +13,39 @@
 {% endblock js_css %}
 
 
+{% block status %}
+    {% if form.errors %}
+    {{ form.errors }}
+    {% endif %}
+{% endblock status %}
+
+
 {% block content %}
-    <table id="studiesTable"></table>
+    <div class="pageSection disclose discloseHide" id="addNewStudyMain">
+        <div class="sectionHead">
+            <a href="#" class="discloseLink">Add A New Study</a>
+        </div>
+        <div class="sectionContent discloseBody">
+            <form action="{% url 'main:create_study' %}" method="POST">
+                {% csrf_token %}
+                <div>
+                    <label for="id_study_name">Study Name</label>
+                    <input id="id_study_name" type="text" name="study_name" maxlength="255" />
+                </div>
+                <div>
+                    <label for="id_contact">Contact</label>
+                    <input id="id_contact" type="text" name="contact_extra" maxlength="255" />
+                    <input id="contact_hidden" type="hidden" name="contact"/>
+                </div>
+                <div>
+                    <label for="id_description">Description</label>
+                    <textarea id="id_description" name="description" rows="2" cols="65"></textarea>
+                </div>
+                <button type="submit">Add Study</button>
+            </form>
+        </div>
+    </div>
+    <div class="pageSection">
+        <table id="studiesTable"></table>
+    </div>
 {% endblock content %}

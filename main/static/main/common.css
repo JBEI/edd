@@ -103,6 +103,17 @@ a:hover {
     height:16px;
     vertical-align:-25%;
 }
+.discloseHide > .discloseBody {
+    display:none;
+    visibility:hidden;
+}
+.discloseHide .discloseLink:before {
+    content: '►';
+}
+.discloseLink:before {
+    color:blue;
+    content: '▼';
+}
 
 
 /* Top banner styling */

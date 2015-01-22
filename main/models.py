@@ -48,6 +48,10 @@ class Study(models.Model):
     active = models.BooleanField(default=True)
     created = models.ForeignKey(Update, related_name='created_study_set')
     updated = models.ForeignKey(Update, related_name='+')
+    # contact info has two fields to support:
+    # 1. linking to a specific user in EDD
+    # 2. "This is data I got from 'Improving unobtanium production in Bio-Widget using foobar'
+    #    published in Feb 2016 Bio-Widget Journal, paper has hpotter@hogwarts.edu as contact"
     contact = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True,
                                 related_name='contact_study_set')
     contact_extra = models.TextField()

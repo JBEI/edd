@@ -15,9 +15,15 @@ var IndexPage;
     var studiesDataGrid = null;
     // Called when the page loads.
     function prepareIt() {
-        setTimeout(function () { return IndexPage.prepareTable(); }, 1);
+        IndexPage.prepareTable();
+        $('.disclose').find('a.discloseLink').on('click', disclose);
     }
     IndexPage.prepareIt = prepareIt;
+    function disclose() {
+        $(this).closest('.disclose').toggleClass('discloseHide');
+        return false;
+    }
+    IndexPage.disclose = disclose;
     function prepareTable() {
         var _this = this;
         // Instantiate a table specification for the Studies table
@@ -586,7 +592,6 @@ var DGDisabledStudiesWidget = (function (_super) {
     };
     return DGDisabledStudiesWidget;
 })(DataGridOptionWidget);
-window.addEventListener('load', function () {
-    IndexPage.prepareIt();
-}, false);
+// use JQuery ready event shortcut to call prepareIt when page is ready
+$(IndexPage.prepareIt);
 //# sourceMappingURL=index.js.map

@@ -6,6 +6,7 @@
 declare var EDDData: EDDData;
 declare module IndexPage {
     function prepareIt(): void;
+    function disclose(): boolean;
     function prepareTable(): void;
     function initDescriptionEditFields(): void;
 }
