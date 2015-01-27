@@ -1336,11 +1336,6 @@ class DataGridDataCell {
 			this.cellElementJQ.addClass('off');
 		}
 
-		// By default, we are initializing any checkbox called for in the options so it supports the Dragbox feature.
-		// Note that this disables text-selection in the given cell.
-		if (this.checkboxWithID) {
-			Dragboxes.initCell(c, this.checkboxElement, 1);
-		}
 		this.createdElement = true;
 	}
 
