@@ -851,51 +851,49 @@ var StudyD;
         this.assaysActionPanelRefreshTimer = null;
         this.assaysDataGridSpecs = {};
         this.assaysDataGrids = {};
-        var editableFields = [
-            {
-                id: 'studyContact',
-                type: 'email',
-                editAllowed: function (i) {
-                    return EDDData.currentUserHasPageWriteAccess;
+        $('.disclose').find('.discloseLink').on('click', function (e) {
+            $(e.target).closest('.disclose').toggleClass('discloseHide');
+        });
+        if (EDDData.currentUserHasPageWriteAccess) {
+            EditableElements.initializeElements([
+                {
+                    id: 'studyContact',
+                    type: 'email',
+                    getValue: function (i) {
+                        return EDDData.Studies[EDDData.currentStudyID].con;
+                    },
+                    setValue: function (i, v) {
+                        EDDData.Studies[EDDData.currentStudyID].con = v;
+                    },
+                    makeFormData: function (i, v) {
+                        return {
+                            "action": "Update Study Contact",
+                            "studyID": EDDData.currentStudyID,
+                            "contact": v
+                        };
+                    }
                 },
-                getValue: function (i) {
-                    return EDDData.Studies[EDDData.currentStudyID].con;
-                },
-                setValue: function (i, v) {
-                    EDDData.Studies[EDDData.currentStudyID].con = v;
-                },
-                makeFormData: function (i, v) {
-                    return {
-                        "action": "Update Study Contact",
-                        "studyID": EDDData.currentStudyID,
-                        "contact": v
-                    };
+                {
+                    id: 'studyDescription',
+                    type: 'text',
+                    minimumRows: 3,
+                    maximumRows: 15,
+                    getValue: function (i) {
+                        return EDDData.Studies[EDDData.currentStudyID].des || '(None)';
+                    },
+                    setValue: function (i, v) {
+                        EDDData.Studies[EDDData.currentStudyID].des = v;
+                    },
+                    makeFormData: function (i, v) {
+                        return {
+                            "action": "Update Study Description",
+                            "studyID": EDDData.currentStudyID,
+                            "desc": v
+                        };
+                    }
                 }
-            },
-            {
-                id: 'studyDescription',
-                type: 'text',
-                minimumRows: 3,
-                maximumRows: 15,
-                editAllowed: function (i) {
-                    return EDDData.currentUserHasPageWriteAccess;
-                },
-                getValue: function (i) {
-                    return EDDData.Studies[EDDData.currentStudyID].des || '(None)';
-                },
-                setValue: function (i, v) {
-                    EDDData.Studies[EDDData.currentStudyID].des = v;
-                },
-                makeFormData: function (i, v) {
-                    return {
-                        "action": "Update Study Description",
-                        "studyID": EDDData.currentStudyID,
-                        "desc": v
-                    };
-                }
-            }
-        ];
-        EditableElements.initializeElements(editableFields);
+            ]);
+        }
         this.prepareFilteringSection();
         // Instantiate a table specification for the Lines table
         this.linesDataGridSpec = new DataGridSpecLines();

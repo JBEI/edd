@@ -1,11 +1,11 @@
 /// <reference path="typescript-declarations.d.ts" />
+/// <reference path="lib/jquery.d.ts" />
 /// <reference path="Utl.d.ts" />
 declare module EditableElements {
     class EditableElement {
         options: any;
         element: HTMLElement;
-        elementJQ: any;
-        elementID: string;
+        $element: JQuery;
         type: string;
         inputElement: any;
         editButtonElement: HTMLElement;

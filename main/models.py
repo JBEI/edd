@@ -35,9 +35,86 @@ class Update(models.Model):
         else:
             update = cls.objects.get(pk=request.update_key)
         return update
+
+
+class Comment(models.Model):
+    """
+    """
+    class Meta:
+        db_table = 'comment'
+    body = models.TextField()
+    created = models.ForeignKey(Update, related_name='+')
+
+
+class Attachment(models.Model):
+    """
+    """
+    class Meta:
+        db_table = 'attachment'
+    file = models.FileField(max_length=255)
+    filename = models.CharField(max_length=255)
+    created = models.ForeignKey(Update, related_name='+')
     
     
-class Study(models.Model):
+class EDDObject(models.Model):
+    """
+    A first-class EDD object, with update trail, comments, attachments.
+    """
+    class Meta:
+        db_table = 'edd_object'
+    updates = models.ManyToManyField(Update, db_table='edd_object_update', related_name='+')
+    comments = models.ManyToManyField(Comment, db_table='edd_object_comment', related_name='+')
+    files = models.ManyToManyField(Attachment, db_table='edd_object_attachment', related_name='+')
+    
+    def created(self):
+        return self.updates.order_by('mod_time')[:1]
+    
+    def updated(self):
+        return self.updates.order_by('-mod_time')[:1]
+
+
+class MetadataGroup(models.Model):
+    """
+    """
+    class Meta:
+        db_table = 'metadata_group'
+    group_name = models.CharField(max_length=255)
+
+
+class MetadataType(models.Model):
+    """
+    """
+    STUDY = 'S'
+    LINE = 'L'
+    PROTOCOL = 'P'
+    LINE_OR_PROTOCOL = 'LP'
+    CONTEXT_SET = (
+        (STUDY, 'Study'),
+        (LINE, 'Line'),
+        (PROTOCOL, 'Protocol'),
+        (LINE_OR_PROTOCOL, 'Line or Protocol'),
+    )
+    class Meta:
+        db_table = 'metadata_type'
+    group = models.ForeignKey(MetadataGroup)
+    type_name = models.CharField(max_length=255)
+    input_size = models.IntegerField(default=6)
+    default_value = models.CharField(max_length=255, blank=True)
+    prefix = models.CharField(max_length=255, blank=True)
+    postfix = models.CharField(max_length=255, blank=True)
+    for_context = models.CharField(max_length=8, choices=CONTEXT_SET)
+    
+    def for_line(self):
+        return self.for_context == self.LINE or self.for_context == self.LINE_OR_PROTOCOL
+    
+    def for_protocol(self):
+        return self.for_context == self.PROTOCOL or self.for_context == self.LINE_OR_PROTOCOL
+    
+    def for_study(self):
+        return self.for_context == self.STUDY
+
+
+class Study(EDDObject):
     """
     A collection of items to be studied.
     """
@@ -46,8 +123,7 @@ class Study(models.Model):
     study_name = models.CharField(max_length=255)
     description = models.TextField()
     active = models.BooleanField(default=True)
-    created = models.ForeignKey(Update, related_name='created_study_set')
-    updated = models.ForeignKey(Update, related_name='+')
+    object_ref = models.OneToOneField(EDDObject, parent_link=True)
     # contact info has two fields to support:
     # 1. linking to a specific user in EDD
     # 2. "This is data I got from 'Improving unobtanium production in Bio-Widget using foobar'
@@ -61,6 +137,8 @@ class Study(models.Model):
         Convert the Study model to a dict structure formatted for Solr JSON.
         """
         permissions = chain(self.userpermission_set.all(), self.grouppermission_set.all())
+        created = self.created()[0]
+        updated = self.updated()[0]
         if self.contact == None:
             contact = None
         else:
@@ -70,14 +148,13 @@ class Study(models.Model):
             'id': self.pk,
             'name': self.study_name,
             'description': self.description,
-            'creator': self.created.mod_by.pk,
-            'creator_email': self.created.mod_by.email,
-            'creator_name': ' '.join([self.created.mod_by.first_name,
-                                      self.created.mod_by.last_name]),
+            'creator': created.mod_by.pk,
+            'creator_email': created.mod_by.email,
+            'creator_name': ' '.join([created.mod_by.first_name, created.mod_by.last_name]),
             'contact': contact,
             'active': self.active,
-            'created': self.created.mod_time.strftime('%Y-%m-%dT%H:%M:%SZ'),
-            'modified': self.updated.mod_time.strftime('%Y-%m-%dT%H:%M:%SZ'),
+            'created': created.mod_time.strftime('%Y-%m-%dT%H:%M:%SZ'),
+            'modified': updated.mod_time.strftime('%Y-%m-%dT%H:%M:%SZ'),
             'aclr': [p for p in permissions if p.is_read()],
             'aclw': [p for p in permissions if p.is_write()],
         }
@@ -170,7 +247,19 @@ class GroupPermission(StudyPermission):
         return 'g:%(group)s' % {'group':self.group.name}
 
 
-class Line(models.Model):
+class Strain(EDDObject):
+    """
+    A link to a strain/part in the JBEI ICE Registry.
+    """
+    class Meta:
+        db_table = 'strain'
+    strain_name = models.CharField(max_length=255)
+    registry_id = PostgreSQLUUIDField(blank=True, null=True)
+    registry_url = models.URLField(max_length=255, blank=True, null=True)
+    object_ref = models.OneToOneField(EDDObject, parent_link=True)
+
+
+class Line(EDDObject):
     """
     A single item to be studied (contents of well, tube, dish, etc).
     """
@@ -178,8 +267,9 @@ class Line(models.Model):
         db_table = 'line'
     study = models.ForeignKey(Study)
     line_name = models.CharField(max_length=255)
-    created = models.ForeignKey(Update, related_name='+')
-    updated = models.ForeignKey(Update, related_name='+')
+    control = models.BooleanField(default=False)
+    replicate = models.ForeignKey('self', blank=True, null=True)
+    object_ref = models.OneToOneField(EDDObject, parent_link=True)
     contact = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True, related_name='+')
     contact_extra = models.TextField()
     experimenter = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True,
@@ -190,7 +280,30 @@ class Line(models.Model):
         return self.line_name
 
 
-class Protocol(models.Model):
+class LineMetadata(models.Model):
+    """
+    Base form for line metadata tracks which line is referred to, type, and who/when.
+    """
+    class Meta:
+        db_table = 'line_metadata'
+    line = models.ForeignKey(Line)
+    data_type = models.ForeignKey(MetadataType, related_name='+')
+    data_value = models.TextField()
+    updated = models.ForeignKey(Update, related_name='+')
+
+
+class LineStrain(models.Model):
+    """
+    A metadata value linking to an ICE/Registry strain.
+    """
+    class Meta:
+        db_table = 'line_strain'
+    line = models.ForeignKey(Line)
+    strain = models.ForeignKey(Strain)
+    updated = models.ForeignKey(Update, related_name='+')
+
+
+class Protocol(EDDObject):
     """
     A defined method of examining a Line.
     """
@@ -198,8 +311,7 @@ class Protocol(models.Model):
         db_table = 'protocol'
     protocol_name = models.CharField(max_length=255)
     description = models.TextField()
-    created = models.ForeignKey(Update, related_name='+')
-    updated = models.ForeignKey(Update, related_name='+')
+    object_ref = models.OneToOneField(EDDObject, parent_link=True)
     owned_by = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='edd_protocol_set')
     active = models.BooleanField(default=True)
     variant_of = models.ForeignKey('self', blank=True, null=True, related_name='derived_set')
@@ -217,7 +329,7 @@ class Protocol(models.Model):
         return self.protocol_name
 
 
-class Assay(models.Model):
+class Assay(EDDObject):
     """
     An examination of a Line, containing the Protocol and set of Measurements.
     """
@@ -227,8 +339,7 @@ class Assay(models.Model):
     assay_name = models.CharField(max_length=255)
     description = models.TextField()
     protocol = models.ForeignKey(Protocol)
-    created = models.ForeignKey(Update, related_name='+')
-    updated = models.ForeignKey(Update, related_name='+')
+    object_ref = models.OneToOneField(EDDObject, parent_link=True)
     experimenter = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True,
                                      related_name='+')
     active = models.BooleanField(default=True)
@@ -319,7 +430,7 @@ class MeasurementUnit(models.Model):
                                   default=MeasurementGroup.GENERIC)
 
 
-class Measurement(models.Model):
+class Measurement(EDDObject):
     """
     A plot of data points for an (assay, measurement type) pair. Points can either be single (x,y)
     or an (x, (y0, y1, ... , yn)) scalar and vector.
@@ -330,8 +441,7 @@ class Measurement(models.Model):
     experimenter = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True,
                                      related_name='+')
     measurement_type = models.ForeignKey(MeasurementType)
-    created = models.ForeignKey(Update, related_name='+')
-    updated = models.ForeignKey(Update, related_name='+')
+    object_ref = models.OneToOneField(EDDObject, parent_link=True)
     active = models.BooleanField(default=True)
 
     def __str__(self):
@@ -370,17 +480,4 @@ class MeasurementVector(models.Model):
 
     def __str__(self):
         return '(%f,%f)' % (self.x, self.y)
-
-
-class Strain(models.Model):
-    """
-    A link to a strain/part in the JBEI ICE Registry.
-    """
-    class Meta:
-        db_table = 'strain'
-    strain_name = models.CharField(max_length=255)
-    registry_id = PostgreSQLUUIDField(blank=True, null=True)
-    registry_url = models.URLField(max_length=255, blank=True, null=True)
-    created = models.ForeignKey(Update, related_name='+')
-    updated = models.ForeignKey(Update, related_name='+')
 

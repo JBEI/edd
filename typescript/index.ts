@@ -15,8 +15,9 @@ module IndexPage {
 
 	// Called when the page loads.
 	export function prepareIt() {
+        $('.disclose').find('.discloseLink').on('click', disclose);
+        // TODO: make autocomplete looking up users for $('#id_contact');
         IndexPage.prepareTable();
-        $('.disclose').find('a.discloseLink').on('click', disclose);
 	}
     
     

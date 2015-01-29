@@ -4,6 +4,7 @@
 /// <reference path="Dragboxes.d.ts" />
 /// <reference path="EditableElement.d.ts" />
 /// <reference path="BiomassCalculationUI.d.ts" />
+declare var EDDData: EDDData;
 declare module StudyD {
     var metabolicMapID: any;
     var metabolicMapName: any;

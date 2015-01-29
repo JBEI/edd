@@ -5,6 +5,7 @@
 /// <reference path="EditableElement.ts" />
 /// <reference path="BiomassCalculationUI.ts" />
 
+declare var EDDData:EDDData;
 
 module StudyD {
 
@@ -981,47 +982,49 @@ module StudyD {
 
 		this.assaysDataGridSpecs = {};
 		this.assaysDataGrids = {};
-		
 
-		var editableFields = [
-			{
-				id: 'studyContact',
-				type: 'email',
-				editAllowed: function(i) {	return EDDData.currentUserHasPageWriteAccess; },
-				getValue: function(i) {	return EDDData.Studies[EDDData.currentStudyID].con; },
-				setValue: function(i, v) {
-					EDDData.Studies[EDDData.currentStudyID].con = v;
-				},
-				makeFormData: function(i, v) {
-					return {
-						"action": "Update Study Contact",
-						"studyID": EDDData.currentStudyID,
-						"contact": v
-					};
-				}
-			},
-			{
-				id: 'studyDescription',
-				type: 'text',
-				minimumRows: 3,
-				maximumRows: 15,
-				editAllowed: function(i) {	return EDDData.currentUserHasPageWriteAccess; },
-				getValue: function(i) {	return EDDData.Studies[EDDData.currentStudyID].des || '(None)'; },
-				setValue: function(i, v) {
-					EDDData.Studies[EDDData.currentStudyID].des = v;
-				},
-				makeFormData: function(i, v) {
-					return {
-						"action": "Update Study Description",
-						"studyID": EDDData.currentStudyID,
-						"desc": v
-					};
-				}
-			}
-		];
-		EditableElements.initializeElements(editableFields);
+        $('.disclose').find('.discloseLink').on('click', (e) => {
+            $(e.target).closest('.disclose').toggleClass('discloseHide');
+        });
 
-		this.prepareFilteringSection();
+        if (EDDData.currentUserHasPageWriteAccess) {
+    		EditableElements.initializeElements([
+                {
+                    id: 'studyContact',
+                    type: 'email',
+                    getValue: function(i) { return EDDData.Studies[EDDData.currentStudyID].con; },
+                    setValue: function(i, v) {
+                        EDDData.Studies[EDDData.currentStudyID].con = v;
+                    },
+                    makeFormData: function(i, v) {
+                        return {
+                            "action": "Update Study Contact",
+                            "studyID": EDDData.currentStudyID,
+                            "contact": v
+                        };
+                    }
+                },
+                {
+                    id: 'studyDescription',
+                    type: 'text',
+                    minimumRows: 3,
+                    maximumRows: 15,
+                    getValue: function(i) { return EDDData.Studies[EDDData.currentStudyID].des || '(None)'; },
+                    setValue: function(i, v) {
+                        EDDData.Studies[EDDData.currentStudyID].des = v;
+                    },
+                    makeFormData: function(i, v) {
+                        return {
+                            "action": "Update Study Description",
+                            "studyID": EDDData.currentStudyID,
+                            "desc": v
+                        };
+                    }
+                }
+            ]);
+        }
+
+		StudyD.prepareFilteringSection();
 
 		// Instantiate a table specification for the Lines table
 		this.linesDataGridSpec = new DataGridSpecLines();

@@ -1,4 +1,5 @@
 /// <reference path="typescript-declarations.d.ts" />
+/// <reference path="lib/jquery.d.ts" />
 /// <reference path="Utl.ts" />
 var __extends = this.__extends || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -50,15 +51,13 @@ var EditableElements;
             // First thing we need to do is locate the element we're making editable
             if (opt.element) {
                 this.element = opt.element;
-                this.elementID = this.element.id;
             }
             else {
                 Utl.JS.assert(opt.id, "EditableElement needs an element or an elementID in options.");
                 Utl.JS.assert(document.getElementById(opt.id) ? true : false, "EditableElement cannot find element ID " + opt.id);
-                this.elementID = opt.id;
                 this.element = document.getElementById(opt.id);
             }
-            this.elementJQ = $(this.element);
+            this.$element = $(this.element);
             // Next we extract all the defined getter and setter functions from the options.
             // Two are mandatory - the one that gets the raw value to edit, and the one that builds an AJAX URL
             // for submitting the edit to the server.  Without both of these, there's no point in making an EditableElement.
@@ -84,7 +83,7 @@ var EditableElements;
             this.generateControlsContainer();
             this.generateControlButtons();
             this.setUpEditableMode();
-            this.elementJQ.click(this.clickToEditHandler);
+            this.$element.click(this.clickToEditHandler);
         }
         // This is called one time to do any necessary manipulation of the main element
         // during setup.
@@ -93,7 +92,7 @@ var EditableElements;
             // as well as the styling of the main element itself.
             // For example it gives each button a style of "block" instead of "inline-block",
             // preventing the buttons from appearing side-by-side.
-            this.elementJQ.addClass('verticalButtons');
+            this.$element.addClass('verticalButtons');
         };
         // Generate a container for the editing buttons(s), and a positioning element to
         // put the controls in the right place relative to the main element.
@@ -134,11 +133,7 @@ var EditableElements;
         // Changes the styling of the container element to indicate that editing is allowed,
         // and adds a mouse-over control to engage editing.
         EditableElement.prototype.setUpEditableMode = function () {
-            this.elementJQ.addClass('editable-field');
-            this.elementJQ.removeClass('active');
-            this.elementJQ.removeClass('saving');
-            this.elementJQ.addClass('inactive');
-            this.element.setAttribute('title', 'click to edit');
+            this.$element.addClass('editable-field inactive').removeClass('active saving').attr('title', 'click to edit');
             var c = this.editControlsPositioner;
             var p = this.element;
             // We want this to be the first element so the vertical height of the rest of the content
@@ -161,13 +156,11 @@ var EditableElements;
         // container element.
         EditableElement.prototype.setUpEditingMode = function () {
             var pThis = this;
-            this.elementJQ.removeClass('inactive');
-            this.elementJQ.removeClass('saving');
-            this.elementJQ.addClass('active');
+            this.$element.removeClass('inactive saving').addClass('active');
             // Figure out how high to make the text edit box.
-            var desiredFontSize = this.elementJQ.css("font-size");
+            var desiredFontSize = this.$element.css("font-size");
             var lineHeight = parseInt(desiredFontSize, 10);
-            var desiredNumLines = this.elementJQ.height() / lineHeight;
+            var desiredNumLines = this.$element.height() / lineHeight;
             desiredNumLines = Math.floor(desiredNumLines) + 1;
             if (this.options.minimumRows) {
                 if (desiredNumLines < this.options.minimumRows) {
@@ -185,7 +178,7 @@ var EditableElements;
             i.type = "text";
             i.value = this.getValueFn(this);
             // Copy font attributes from our underlying control.
-            $(i).css("font-family", this.elementJQ.css("font-family"));
+            $(i).css("font-family", this.$element.css("font-family"));
             $(i).css("font-size", desiredFontSize);
             // Set width and height.
             i.style.width = "100%";
@@ -295,9 +288,7 @@ var EditableElements;
                 this.editControlsContainer.removeChild(this.editControlsContainer.firstChild);
             }
             this.editControlsContainer.appendChild(this.waitButtonElement);
-            this.elementJQ.removeClass('active');
-            this.elementJQ.removeClass('inactive');
-            this.elementJQ.addClass('saving');
+            this.$element.removeClass('active inactive').addClass('saving');
         };
         EditableElement.prototype.getEditedValue = function () {
             return this.inputElement.value;
@@ -321,7 +312,7 @@ var EditableElements;
             this.autoCompleteObject = null;
         }
         EditableAutocomplete.prototype.setUpMainElement = function () {
-            this.elementJQ.addClass('horizontalButtons');
+            this.$element.addClass('horizontalButtons');
         };
         // Override this with your specific autocomplete type
         EditableAutocomplete.prototype.createAutoCompleteObject = function () {
@@ -339,8 +330,10 @@ var EditableElements;
             EditableElement._uniqueIndex += 1;
             EDDAutoComplete.initializeElement(auto.inputElement);
             // Copy font attributes from our underlying control.
-            $(auto.inputElement).css("font-family", this.elementJQ.css("font-family"));
-            $(auto.inputElement).css("font-size", this.elementJQ.css("font-size"));
+            $(auto.inputElement).css({
+                "font-family": this.$element.css("font-family"),
+                "font-size": this.$element.css("font-size")
+            });
             //auto.inputElement.callAfterAutoChange = EDDATD.userChangedMeasurementDisam;
             // Set width and height.
             auto.inputElement.style.width = "100%";
@@ -349,9 +342,7 @@ var EditableElements;
         };
         EditableAutocomplete.prototype.setUpEditingMode = function () {
             var pThis = this;
-            this.elementJQ.removeClass('inactive');
-            this.elementJQ.removeClass('saving');
-            this.elementJQ.addClass('active');
+            this.$element.removeClass('inactive saving').addClass('active');
             var auto = this.getAutoCompleteObject(); // Calling this may set it up for the first time
             this.inputElement = auto.inputElement;
             this.clearElementForEditing();

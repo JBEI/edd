@@ -3,8 +3,8 @@ html, body, div, span, h1, h2, h3, h4, h5, h6, p, a, em, img, strike, strong, su
 u, i, center, dl, dt, dd, ol, ul, li, fieldset, form, label, legend, table, tbody, thead,
 tfoot, tr, th, td {
     border: 0;
-    font: inherit;
-    font-size: 100%;
+    color: inherit;
+    font-size: inherit;
     margin: 0;
     padding: 0;
     vertical-align: baseline;
@@ -25,8 +25,8 @@ fieldset {
 /* EDD basic style */
 HTML {
     color: #000000;
-	font-family: "Verdana", "Arial", Helvetica, sans-serif;
-	font-size: 11pt;
+    font-family: "Verdana", "Arial", Helvetica, sans-serif;
+    font-size: 12px;
 }
 H1, H2, H3, H4 {
 	margin:3px;
@@ -51,6 +51,9 @@ a:hover {
 
 
 /* Functional classes */
+.clear {
+    clear:both;
+}
 .nowrap {
 	white-space:nowrap;
 }
@@ -103,14 +106,23 @@ a:hover {
     height:16px;
     vertical-align:-25%;
 }
-.discloseHide > .discloseBody {
+/* .discloseAlt is alternate content to show when an .disclose element is collapsed */
+.disclose .discloseAlt {
     display:none;
     visibility:hidden;
 }
-.discloseHide .discloseLink:before {
+.disclose.discloseHide .discloseAlt {
+    display:inherit;
+    visibility:inherit;
+}
+.disclose.discloseHide > .discloseBody {
+    display:none;
+    visibility:hidden;
+}
+.disclose.discloseHide .discloseLink:before {
     content: '►';
 }
-.discloseLink:before {
+.disclose .discloseLink:before {
     color:blue;
     content: '▼';
 }
@@ -261,7 +273,7 @@ div.pageSection div.sectionChapter {
 	color:#1C5294;
 	font-size:12px;
 	margin:0px;
-	padding:2px 2px 1px 6px;
+	padding:3px;
 	background: linear-gradient(top, rgba(108,164,233,0.2) 0%, rgba(108,164,233,0.3) 50%, rgba(108,164,233,0.1) 100%);
 	background: -o-linear-gradient(top, rgba(108,164,233,0.2) 0%, rgba(108,164,233,0.3) 50%, rgba(108,164,233,0.1) 100%);
 	background: -moz-linear-gradient(top, rgba(108,164,233,0.2) 0%, rgba(108,164,233,0.3) 50%, rgba(108,164,233,0.1) 100%);
@@ -294,14 +306,16 @@ div.pageSection div.sectionActions {
 	padding:0px;
 	background-color:rgba(108,164,233,0.18);
 }
-div.undisclosedPageSection {
-	margin:12px 8px 3px 10px;
+div.pageSection.discloseHide.minor {
+    background: transparent;
+    border-width: 0;
 	color:#3C75B9;
 	font-size:13px;
 	font-weight:bold;
-	padding:2px 10px 2px 6px;
 }
-
+div.pageSection.minor div.sectionHead {
+    background: transparent;
+}
 
 /* Data tables and controls */
 table.dataTable {
@@ -1323,6 +1337,16 @@ div.errorMessage > a.close {
     cursor: pointer;
     float: right;
     margin: 0 5px;
+}
+
+
+dl.infolist > dt {
+    clear: left;
+    float: left;
+    width: 10em;
+}
+dl.infolist > dd {
+    margin: 0.5em 0;
 }
 
 /* End of common styles */

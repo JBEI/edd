@@ -1,3 +1,4 @@
+from django.core import serializers
 from django.core.urlresolvers import reverse
 from django.db.models import Q
 from django.http import HttpResponse, HttpResponseRedirect
@@ -10,23 +11,9 @@ from main.solr import StudySearch
 import json
 
 
-class IndexView(generic.ListView):
-    """
-    Main index/search page, contains a form to add new study.
-    """
-    model = Study
-    template_name = 'main/index.html'
-    context_object_name = 'study_list'
-    
-    def get_context_data(self, **kwargs):
-        context = super(IndexView, self).get_context_data(**kwargs)
-        context['form'] = CreateStudyForm()
-        return context
-
-
 class StudyCreateView(generic.edit.CreateView):
     """
-    View for request to create a study.
+    View for request to create a study, and the index page.
     """
     form_class = CreateStudyForm
     template_name = 'main/index.html'
@@ -45,9 +32,19 @@ class StudyCreateView(generic.edit.CreateView):
 
 class StudyDetailView(generic.DetailView):
     """
+    Study details page, displays line/assay data.
     """
     model = Study
     template_name = 'main/detail.html'
+
+
+def study_lines(request, study):
+    """
+    Request information on lines in a study.
+    """
+    model = Study.objects.get(pk=study)
+    lines = serializers.serialize('json', model.line_set.all())
+    return HttpResponse(lines, content_type='application/json; charset=utf-8')
 
 
 def study_search(request):

@@ -12,16 +12,6 @@ class Institution(models.Model):
     description = models.TextField(blank=True, null=True)
 
 
-class InstitutionID(models.Model):
-    """
-    A link to an Institution with an (optional) identifier; e.g. JBEI with LBL employee ID number.
-    """
-    class Meta:
-        db_table = 'profile_institution_user'
-    institution = models.ForeignKey(Institution)
-    identifier = models.CharField(max_length=255, blank=True, null=True)
-
-
 class UserProfile(models.Model):
     """
     Additional profile information on a user.
@@ -29,9 +19,20 @@ class UserProfile(models.Model):
     class Meta:
         db_table = 'profile_user'
     user = models.OneToOneField(settings.AUTH_USER_MODEL)
-    institutions = models.ManyToManyField(InstitutionID)
     initials = models.CharField(max_length=10, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
+    institutions = models.ManyToManyField(Institution, through='InstitutionID')
+
+
+class InstitutionID(models.Model):
+    """
+    A link to an Institution with an (optional) identifier; e.g. JBEI with LBL employee ID number.
+    """
+    class Meta:
+        db_table = 'profile_institution_user'
+    institution = models.ForeignKey(Institution)
+    profile = models.ForeignKey(UserProfile)
+    identifier = models.CharField(max_length=255, blank=True, null=True)
 
 
 class UserPreference(models.Model):

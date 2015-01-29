@@ -22,10 +22,8 @@ class StudyTests(TestCase):
         up1 = Update.objects.create(mod_by=user1)
         up2 = Update.objects.create(mod_by=user2)
         up3 = Update.objects.create(mod_by=user3)
-        study1 = Study.objects.create(study_name='Test Study 1', description='',
-                                      created=up1, updated=up1)
-        study2 = Study.objects.create(study_name='Test Study 2', description='',
-                                      created=up2, updated=up3)
+        study1 = Study.objects.create(study_name='Test Study 1', description='')
+        study2 = Study.objects.create(study_name='Test Study 2', description='')
 
     def tearDown(self):
         TestCase.tearDown(self)
@@ -97,8 +95,8 @@ class SolrTests(TestCase):
         self.solr_user = StudySearch(ident=self.user1, settings_key='test')
         up1 = Update.objects.create(mod_by=self.user1)
         self.study1 = Study.objects.create(study_name='Test Study 1',
-                                           description='Lorem ipsum dolor sit amet',
-                                           created=up1, updated=up1)
+                                           description='Lorem ipsum dolor sit amet')
+        self.study1.updates.add(up1)
         self.solr_admin.clear()
 
     def tearDown(self):

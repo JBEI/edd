@@ -15,8 +15,9 @@ var IndexPage;
     var studiesDataGrid = null;
     // Called when the page loads.
     function prepareIt() {
+        $('.disclose').find('.discloseLink').on('click', disclose);
+        // TODO: make autocomplete looking up users for $('#id_contact');
         IndexPage.prepareTable();
-        $('.disclose').find('a.discloseLink').on('click', disclose);
     }
     IndexPage.prepareIt = prepareIt;
     function disclose() {

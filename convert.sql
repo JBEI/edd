@@ -14,7 +14,19 @@ INSERT INTO public.auth_user(
     FROM old_edd.accounts;
 -- Update sequence with the current maximum
 SELECT setval('public.auth_user_id_seq', max(id)) FROM public.auth_user;
-
+INSERT INTO public.profile_institution(institution_name)
+    VALUES ('Lawrence Berkeley National Lab');
+INSERT INTO public.profile_user(initials, user_id)
+    SELECT u.initials, u.id
+    FROM old_edd.accounts u;
+-- Add everyone to LBNL, copy ldap ID if there
+INSERT INTO public.profile_institution_user(identifier, profile_id, institution_id)
+    SELECT a.ldap_id, p.id, 1
+    FROM old_edd.accounts a
+    INNER JOIN public.profile_user p ON p.user_id = a.id
+    ORDER BY p.id;
+-- Make sure there is an ESE group for later
+INSERT INTO public.auth_group(name) VALUES ('ESE');
 
 --
 -- copy over update timestamps
@@ -77,108 +89,233 @@ INSERT INTO public.update_info(mod_time, mod_by_id)
         modified_by AS update_user
     FROM old_edd.strains
     WHERE modified_by > 0
+    UNION
+    SELECT date_trunc('second', creation_time) AS update_time,
+        created_by AS update_user
+    FROM old_edd.comments
+    UNION
+    SELECT date_trunc('second', creation_time) AS update_time,
+        created_by AS update_user
+    FROM old_edd.attachments
     ORDER BY update_time;
 
 
 --
 -- copy over studies
 --
+-- edd_object entries won't exist yet, make a temp column to track
+ALTER TABLE public.edd_object ADD COLUMN study_id integer UNIQUE DEFAULT NULL;
+INSERT INTO public.edd_object(study_id)
+    SELECT id FROM old_edd.studies ORDER BY id;
 INSERT INTO public.study(
-        id, study_name, description, active, contact_extra, contact_id,
-        created_id, updated_id
-    ) SELECT s.id, s.study_name, s.additional_info, NOT s.disabled, s.contact,
-        u.id, c.id, coalesce(m.id, c.id)
+        study_name, description, active, contact_extra, contact_id,
+        object_ref_id
+    ) SELECT s.study_name, s.additional_info, NOT s.disabled, s.contact, u.id,
+        o.id
     FROM old_edd.studies s
+    INNER JOIN public.edd_object o ON o.study_id = s.id
     LEFT JOIN public.auth_user u ON lower(u.email) = lower(s.contact)
+    ORDER BY s.id;
+-- add create/update to edd_object
+INSERT INTO public.edd_object_update(eddobject_id, update_id)
+    SELECT o.id, c.id
+    FROM public.edd_object o
+    INNER JOIN old_edd.studies s ON s.id = o.study_id
     LEFT JOIN public.update_info c ON date_trunc('second', c.mod_time) = 
         date_trunc('second', s.creation_time)
         AND c.mod_by_id = s.created_by
+    UNION
+    SELECT o.id, m.id
+    FROM public.edd_object o
+    INNER JOIN old_edd.studies s ON s.id = o.study_id
     LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
         date_trunc('second', s.modification_time)
         AND m.mod_by_id = s.modified_by
-    ORDER BY s.id;
+    WHERE s.modified_by > 0;
 -- Copy permissions; right now only group permission is special __Everyone__
 INSERT INTO public.study_user_permission(permission_type, study_id, user_id)
-    SELECT upper(right(sub.permission, 1)), sub.id, u.id FROM (
+    SELECT upper(right(sub.permission, 1)), o.id, u.id FROM (
         SELECT id, regexp_split_to_table(permissions, ',') AS permission
             FROM old_edd.studies
         ) sub
     INNER JOIN old_edd.accounts u ON sub.permission ~ u.ldap_id
+    INNER JOIN public.edd_object o ON o.study_id = sub.id
     ORDER BY sub.id;
 -- Converting __Everyone__ permissions to ESE
 INSERT INTO public.study_group_permission(permission_type, study_id, group_id)
-    SELECT upper(right(sub.permission, 1)), sub.id, g.id FROM (
+    SELECT upper(right(sub.permission, 1)), o.id, g.id FROM (
         SELECT id, regexp_split_to_table(permissions, ',') AS permission
             FROM old_edd.studies
         ) sub
     INNER JOIN public.auth_group g ON g.name = 'ESE'
+    INNER JOIN public.edd_object o ON o.study_id = sub.id
     WHERE sub.permission ~ 'g:__Everyone__'
     ORDER BY sub.id;
 -- For now, skipping migration of metabolic maps
--- Update study sequence with current maximum value
-SELECT setval('public.study_id_seq', max(id)) FROM public.study;
+
+
+--
+-- copy over strains
+--
+-- edd_object entries won't exist yet, make a temp column to track
+ALTER TABLE public.edd_object ADD COLUMN strain_id integer UNIQUE DEFAULT NULL;
+INSERT INTO public.edd_object(strain_id)
+    SELECT id FROM old_edd.strains ORDER BY id;
+INSERT INTO public.strain(
+        strain_name, registry_id, registry_url, object_ref_id
+    ) SELECT coalesce(sr.label, s.strain_name), s.registry_record_id, sr.url,
+        o.id
+    FROM old_edd.strains s
+    INNER JOIN public.edd_object o ON o.strain_id = s.id
+    LEFT JOIN old_edd.strains_registry sr ON sr.id = s.registry_record_id
+    ORDER BY s.id;
+-- add create/update to edd_object
+INSERT INTO public.edd_object_update(eddobject_id, update_id)
+    SELECT o.id, c.id
+    FROM public.edd_object o
+    INNER JOIN old_edd.strains s ON s.id = o.strain_id
+    LEFT JOIN public.update_info c ON date_trunc('second', c.mod_time) =
+        date_trunc('second', s.creation_time)
+        AND c.mod_by_id = s.created_by
+    UNION
+    SELECT o.id, m.id
+    FROM public.edd_object o
+    INNER JOIN old_edd.strains s ON s.id = o.strain_id
+    LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
+        date_trunc('second', s.modification_time)
+        AND m.mod_by_id = s.modified_by
+    WHERE s.modified_by > 0;
+
+
+--
+-- copy over metadata types
+--
+INSERT INTO public.metadata_group (id, group_name)
+    SELECT g.id, g.group_name
+    FROM old_edd.metadata_groups g;
+INSERT INTO public.metadata_type (
+        id, type_name, input_size, default_value, prefix, postfix, for_context,
+        group_id
+    ) SELECT t.id, t.type_name, t.input_size, t.default_value, t.prefix,
+        t.postfix, CASE WHEN t.line_level AND t.protocol_level THEN 'LP'
+        WHEN t.line_level THEN 'L'
+        WHEN t.protocol_level THEN 'P'
+        ELSE 'S' END, t.metadata_group_id
+    FROM old_edd.metadata_types t;
 
 
 --
 -- copy over lines
 --
+-- edd_object entries won't exist yet, make a temp column to track
+ALTER TABLE public.edd_object ADD COLUMN line_id integer UNIQUE DEFAULT NULL;
+INSERT INTO public.edd_object(line_id)
+    SELECT id FROM old_edd.lines ORDER BY id;
 INSERT INTO public.line(
-        id, line_name, active, contact_extra, contact_id, experimenter_id,
-        study_id, created_id, updated_id
-    ) SELECT l.id, l.line_name, NOT l.disabled, l.contact, u.id,
+        line_name, control, active, contact_extra, contact_id, experimenter_id,
+        object_ref_id, study_id
+    ) SELECT l.line_name, l.is_control, NOT l.disabled, l.contact, u.id,
         CASE WHEN l.experimenter = 0 THEN NULL ELSE l.experimenter END,
-        l.study_id, c.id, coalesce(m.id, c.id)
+        o.id, os.id
     FROM old_edd.lines l
+    INNER JOIN public.edd_object o ON o.line_id = l.id
+    INNER JOIN public.edd_object os ON os.study_id = l.study_id
     LEFT JOIN public.auth_user u ON lower(u.email) = lower(l.contact)
+    ORDER BY l.id;
+-- add create/update to edd_object
+INSERT INTO public.edd_object_update(eddobject_id, update_id)
+    SELECT o.id, c.id
+    FROM public.edd_object o
+    INNER JOIN old_edd.lines l ON l.id = o.line_id
     LEFT JOIN public.update_info c ON date_trunc('second', c.mod_time) =
         date_trunc('second', l.creation_time)
         AND c.mod_by_id = l.created_by
+    UNION
+    SELECT o.id, m.id
+    FROM public.edd_object o
+    INNER JOIN old_edd.lines l ON l.id = o.line_id
     LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
         date_trunc('second', l.modification_time)
         AND m.mod_by_id = l.modified_by
-    ORDER BY l.id;
--- Update line sequence with current maximum value
-SELECT setval('public.line_id_seq', max(id)) FROM public.line;
+    WHERE l.modified_by > 0;
+-- handle replicate IDs
+CREATE TEMP TABLE replicate(
+    line_id integer PRIMARY KEY,
+    replicate_id integer NOT NULL);
+INSERT INTO replicate SELECT o.id, min(ro.id)
+    FROM old_edd.lines l
+    INNER JOIN old_edd.lines rl ON rl.replicate_id = l.replicate_id
+        AND rl.study_id = l.study_id
+    INNER JOIN public.edd_object o ON o.line_id = l.id
+    INNER JOIN public.edd_object ro ON ro.line_id = rl.id 
+    WHERE l.replicate_id > 0
+    GROUP BY o.id ORDER BY o.id;
+UPDATE public.line l SET replicate_id = r.replicate_id
+    FROM replicate r
+    WHERE r.line_id = l.object_ref_id;
+DROP TABLE replicate;
 
 
 --
 -- copy over protocols
 --
+-- edd_object entries won't exist yet, make a temp column to track
+ALTER TABLE public.edd_object ADD COLUMN protocol_id integer UNIQUE DEFAULT NULL;
+INSERT INTO public.edd_object(protocol_id)
+    SELECT id FROM old_edd.protocols ORDER BY id;
 INSERT INTO public.protocol(
-        id, protocol_name, description, active, owned_by_id, variant_of_id, 
-        created_id, updated_id
-    ) SELECT p.id, p.protocol_name, p.description, NOT p.disabled,
-        CASE WHEN p.owned_by = 0 THEN 5 ELSE p.owned_by END,
-        CASE WHEN p.variant_of_id = 0 THEN NULL ELSE p.variant_of_id END,
-        c.id, c.id
+        protocol_name, description, active, object_ref_id, owned_by_id,
+        variant_of_id
+    ) SELECT p.protocol_name, p.description, NOT p.disabled, o.id,
+        CASE WHEN p.owned_by = 0 THEN 5 ELSE p.owned_by END, v.id
     FROM old_edd.protocols p
+    INNER JOIN public.edd_object o ON o.protocol_id = p.id
+    LEFT JOIN public.edd_object v ON v.protocol_id = p.variant_of_id
+    ORDER BY p.id;
+-- add create to edd_object
+INSERT INTO public.edd_object_update(eddobject_id, update_id)
+    SELECT o.id, c.id
+    FROM public.edd_object o
+    INNER JOIN old_edd.protocols p ON p.id = o.protocol_id
     LEFT JOIN public.update_info c ON date_trunc('second', c.mod_time) =
         date_trunc('second', p.modification_time)
-        AND c.mod_by_id = p.created_by
-    ORDER BY p.id;
--- Update protocol sequence with current maximum value
-SELECT setval('public.protocol_id_seq', max(id)) FROM public.protocol;
+        AND c.mod_by_id = p.created_by;
 
 
 --
 -- copy over assays
 --
+-- edd_object entries won't exist yet, make a temp column to track
+ALTER TABLE public.edd_object ADD COLUMN assay_id integer UNIQUE DEFAULT NULL;
+INSERT INTO public.edd_object(assay_id)
+    SELECT id FROM old_edd.assays ORDER BY id;
 INSERT INTO public.assay(
-        id, assay_name, description, active, experimenter_id, line_id,
-        protocol_id, created_id, updated_id
-    ) SELECT a.id, a.assay_name, coalesce(a.description, ''), NOT a.disabled,
+        assay_name, description, active, experimenter_id, line_id,
+        object_ref_id, protocol_id
+    ) SELECT a.assay_name, coalesce(a.description, ''), NOT a.disabled,
         CASE WHEN a.experimenter = 0 THEN NULL ELSE a.experimenter END,
-        a.line_id, a.protocol_id, c.id, coalesce(m.id, c.id)
+        ol.id, o.id, op.id
     FROM old_edd.assays a
+    INNER JOIN public.edd_object o ON o.assay_id = a.id
+    INNER JOIN public.edd_object ol ON ol.line_id = a.line_id
+    INNER JOIN public.edd_object op ON op.protocol_id = a.protocol_id
+    ORDER BY a.id;
+-- add create/update to edd_object
+INSERT INTO public.edd_object_update(eddobject_id, update_id)
+    SELECT o.id, c.id
+    FROM public.edd_object o
+    INNER JOIN old_edd.assays a ON a.id = o.assay_id
     LEFT JOIN public.update_info c ON date_trunc('second', c.mod_time) =
         date_trunc('second', a.creation_time)
         AND c.mod_by_id = a.created_by
+    UNION
+    SELECT o.id, m.id
+    FROM public.edd_object o
+    INNER JOIN old_edd.assays a ON a.id = o.assay_id
     LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
         date_trunc('second', a.modification_time)
         AND m.mod_by_id = a.modified_by
-    ORDER BY a.id;
--- Update protocol sequence with current maximum value
-SELECT setval('public.assay_id_seq', max(id)) FROM public.assay;
+    WHERE a.modified_by > 0;
 
 
 --
@@ -236,28 +373,48 @@ SELECT setval('public.measurement_unit_id_seq', max(id))
 --
 -- copy over assay_measurements
 --
+-- edd_object entries won't exist yet, make a temp column to track
+ALTER TABLE public.edd_object
+    ADD COLUMN measurement_id integer UNIQUE DEFAULT NULL;
+INSERT INTO public.edd_object(measurement_id)
+    SELECT id FROM old_edd.assay_measurements ORDER BY id;
 INSERT INTO public.measurement(
-        id, assay_id, measurement_type_id, experimenter_id, active, created_id,
-        updated_id
-    ) SELECT a.id, a.assay_id, a.measurement_type_id,
+        assay_id, measurement_type_id, experimenter_id, active, object_ref_id
+    ) SELECT ao.id, a.measurement_type_id,
         CASE WHEN a.experimenter = 0 THEN NULL ELSE a.experimenter END,
-        NOT a.disabled, c.id, coalesce(m.id, c.id)
+        NOT a.disabled, o.id
     FROM old_edd.assay_measurements a
-    LEFT JOIN public.update_info c ON date_trunc('second', c.mod_time) =
-        date_trunc('second', a.creation_time)
-        AND c.mod_by_id = a.created_by
+    INNER JOIN public.edd_object o ON o.measurement_id = a.id
+    INNER JOIN public.edd_object ao ON ao.assay_id = a.assay_id
     LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
         date_trunc('second', a.modification_time)
         AND m.mod_by_id = a.modified_by
     ORDER BY a.id;
-SELECT setval('public.measurement_id_seq', max(id)) FROM public.measurement;
+-- add create/update to edd_object
+INSERT INTO public.edd_object_update(eddobject_id, update_id)
+    SELECT o.id, c.id
+    FROM public.edd_object o
+    INNER JOIN old_edd.assay_measurements a ON a.id = o.measurement_id
+    LEFT JOIN public.update_info c ON date_trunc('second', c.mod_time) =
+        date_trunc('second', a.creation_time)
+        AND c.mod_by_id = a.created_by
+    UNION
+    SELECT o.id, m.id
+    FROM public.edd_object o
+    INNER JOIN old_edd.assay_measurements a ON a.id = o.measurement_id
+    LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
+        date_trunc('second', a.modification_time)
+        AND m.mod_by_id = a.modified_by
+    WHERE a.modified_by > 0;
+-- copy data values
 INSERT INTO public.measurement_datum(
         measurement_id, x, y, x_units_id, y_units_id, updated_id
-    ) SELECT a.id, am.x, am.y,
+    ) SELECT o.id, am.x, am.y,
         CASE WHEN a.x_axis_units = 0 THEN 1 ELSE a.x_axis_units END,
         CASE WHEN a.y_axis_units = 0 THEN 1 ELSE a.y_axis_units END,
         m.id
     FROM old_edd.assay_measurements a
+    INNER JOIN public.edd_object o ON o.measurement_id = a.id
     INNER JOIN old_edd.assay_measurement_data am ON am.measurement_id = a.id
     LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
         date_trunc('second', am.modification_time)
@@ -266,11 +423,12 @@ INSERT INTO public.measurement_datum(
     ORDER BY a.id;
 INSERT INTO public.measurement_vector(
         measurement_id, x, y, x_units_id, y_units_id, updated_id
-    ) SELECT a.id, am.x, coalesce(am.yvector, ''),
+    ) SELECT o.id, am.x, coalesce(am.yvector, ''),
         CASE WHEN a.x_axis_units = 0 THEN 1 ELSE a.x_axis_units END,
         CASE WHEN a.y_axis_units = 0 THEN 1 ELSE a.y_axis_units END,
         m.id
     FROM old_edd.assay_measurements a
+    INNER JOIN public.edd_object o ON o.measurement_id = a.id
     INNER JOIN old_edd.assay_measurement_data am ON am.measurement_id = a.id
     LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
         date_trunc('second', am.modification_time)
@@ -279,22 +437,10 @@ INSERT INTO public.measurement_vector(
     ORDER BY a.id;
 
 
---
--- copy over strains
---
-INSERT INTO public.strain(
-        id, strain_name, registry_id, registry_url, created_id, updated_id
-    ) SELECT s.id, coalesce(sr.label, s.strain_name), s.registry_record_id,
-        sr.url, c.id, coalesce(m.id, c.id)
-    FROM old_edd.strains s
-    LEFT JOIN old_edd.strains_registry sr ON sr.id = s.registry_record_id
-    LEFT JOIN public.update_info c ON date_trunc('second', c.mod_time) =
-        date_trunc('second', s.creation_time)
-        AND c.mod_by_id = s.created_by
-    LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
-        date_trunc('second', s.modification_time)
-        AND m.mod_by_id = s.modified_by
-    ORDER BY s.id;
-SELECT setval('public.strain_id_seq', max(id)) FROM public.strain;
-
-
+-- drop temp columns
+ALTER TABLE public.edd_object DROP COLUMN study_id;
+ALTER TABLE public.edd_object DROP COLUMN strain_id;
+ALTER TABLE public.edd_object DROP COLUMN line_id;
+ALTER TABLE public.edd_object DROP COLUMN protocol_id;
+ALTER TABLE public.edd_object DROP COLUMN assay_id;
+ALTER TABLE public.edd_object DROP COLUMN measurement_id;

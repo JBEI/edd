@@ -54,7 +54,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('initials', models.CharField(max_length=10, null=True, blank=True)),
                 ('description', models.TextField(null=True, blank=True)),
-                ('institutions', models.ManyToManyField(to='profile.InstitutionID')),
+                ('institutions', models.ManyToManyField(to='profile.Institution', through='profile.InstitutionID')),
                 ('user', models.OneToOneField(to=settings.AUTH_USER_MODEL)),
             ],
             options={
@@ -64,6 +64,12 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name='userpreference',
+            name='profile',
+            field=models.ForeignKey(to='profile.UserProfile'),
+            preserve_default=True,
+        ),
+        migrations.AddField(
+            model_name='institutionid',
             name='profile',
             field=models.ForeignKey(to='profile.UserProfile'),
             preserve_default=True,
