@@ -15,6 +15,7 @@
  
 ## Python Packages
 ### Required Packages
+ * Arrow `sudo pip install arrow`
  * Django `sudo pip install Django`
  * django-auth-ldap `sudo pip install django-auth-ldap`
  * django-extensions `sudo pip install django-extensions`

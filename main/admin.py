@@ -8,8 +8,7 @@ class ProtocolAdmin(admin.ModelAdmin):
     Definition for admin-edit of Protocols
     """
     fields = ['protocol_name', 'description', 'active', 'variant_of']
-    list_display = ['protocol_name', 'description', 'active', 'variant_of', 'creator', 'owner',
-                    'last_modified']
+    list_display = ['protocol_name', 'description', 'active', 'variant_of', 'owner',]
 
     def save_model(self, request, obj, form, change):
         update = Update.load_request_update(request)
@@ -40,16 +39,16 @@ class GroupPermissionInline(admin.TabularInline):
     """
     model = GroupPermission
     extra = 1
-    
+
 
 class StudyAdmin(admin.ModelAdmin):
     """
     Definition for admin-edit of Studies
     """
-    fields = None
-    exclude = ['study_name', 'description', 'active', 'created', 'updated', 'contact',
-               'contact_extra']
-    list_display = ['study_name', 'description']
+    fields = []
+    exclude = ['study_name', 'description', 'active', 'updates', 'comments',
+               'files', 'contact', 'contact_extra']
+    list_display = ['study_name', 'description', 'created', 'updated']
     inlines = [UserPermissionInline, GroupPermissionInline]
 
 

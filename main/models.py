@@ -4,6 +4,7 @@ from django.db import models
 from django.utils import timezone
 from django_extensions.db.fields import PostgreSQLUUIDField
 from itertools import chain
+import arrow
 
 
 class Update(models.Model):
@@ -21,7 +22,11 @@ class Update(models.Model):
     origin = models.TextField(blank=True, null=True)
 
     def __str__(self):
-        return '%s by %s' % (self.mod_time, self.mod_by)
+        try:
+            time = arrow.get(self.mod_time).humanize()
+        except Exception as e:
+            time = self.mod_time
+        return '%s by %s' % (time, self.mod_by)
 
     @classmethod
     def load_request_update(cls, request):
@@ -67,10 +72,12 @@ class EDDObject(models.Model):
     files = models.ManyToManyField(Attachment, db_table='edd_object_attachment', related_name='+')
     
     def created(self):
-        return self.updates.order_by('mod_time')[:1]
+        created = self.updates.order_by('mod_time')[:1] 
+        return created[0] if created else None
     
     def updated(self):
-        return self.updates.order_by('-mod_time')[:1]
+        updated = self.updates.order_by('-mod_time')[:1]
+        return updated[0] if updated else None
 
 
 class MetadataGroup(models.Model):
