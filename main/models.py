@@ -79,6 +79,12 @@ class EDDObject(models.Model):
         updated = self.updates.order_by('-mod_time')[:1]
         return updated[0] if updated else None
 
+    def get_attachment_count(self):
+        return 0
+
+    def get_comment_count(self):
+        return 0
+
 
 class MetadataGroup(models.Model):
     """
@@ -86,6 +92,9 @@ class MetadataGroup(models.Model):
     class Meta:
         db_table = 'metadata_group'
     group_name = models.CharField(max_length=255)
+
+    def __str__(self):
+        return self.group_name
 
 
 class MetadataType(models.Model):
@@ -120,6 +129,9 @@ class MetadataType(models.Model):
     def for_study(self):
         return self.for_context == self.STUDY
 
+    def __str__(self):
+        return self.type_name
+
 
 class Study(EDDObject):
     """
@@ -138,19 +150,17 @@ class Study(EDDObject):
     contact = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True,
                                 related_name='contact_study_set')
     contact_extra = models.TextField()
-    
+
     def to_solr_json(self):
         """
         Convert the Study model to a dict structure formatted for Solr JSON.
         """
-        permissions = chain(self.userpermission_set.all(), self.grouppermission_set.all())
-        created = self.created()[0]
-        updated = self.updated()[0]
+        created = self.created()
+        updated = self.updated()
         if self.contact == None:
             contact = None
         else:
             contact = self.contact.pk
-        # TODO: figure out how to efficiently load in the protocol, metabolite, and part listings
         return {
             'id': self.pk,
             'name': self.study_name,
@@ -162,8 +172,12 @@ class Study(EDDObject):
             'active': self.active,
             'created': created.mod_time.strftime('%Y-%m-%dT%H:%M:%SZ'),
             'modified': updated.mod_time.strftime('%Y-%m-%dT%H:%M:%SZ'),
-            'aclr': [p for p in permissions if p.is_read()],
-            'aclw': [p for p in permissions if p.is_write()],
+            'attachment_count': self.get_attachment_count(),
+            'comment_count': self.get_comment_count(),
+            'metabolite': self.get_metabolite_types_used(),
+            'protocol': self.get_protocols_used(),
+            'aclr': [p.__str__() for p in self.get_combined_permission() if p.is_read()],
+            'aclw': [p.__str__() for p in self.get_combined_permission() if p.is_write()],
         }
 
     def user_can_read(self, user):
@@ -177,6 +191,15 @@ class Study(EDDObject):
                 self.userpermission_set.filter(user=user),
                 self.grouppermission_set.filter(group=user.groups.all())
         ))
+
+    def get_combined_permission(self):
+        return chain(self.userpermission_set.all(), self.grouppermission_set.all())
+
+    def get_protocols_used(self):
+        return []
+
+    def get_metabolite_types_used(self):
+        return []
 
     def __str__(self):
         return self.study_name

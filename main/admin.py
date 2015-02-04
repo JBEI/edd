@@ -3,6 +3,22 @@ from django.utils import timezone
 from main.models import *
 
 
+class MetadataGroupAdmin(admin.ModelAdmin):
+    """
+    Definition for admin-edit of Metadata Groups
+    """
+    fields = ['group_name']
+
+
+class MetadataTypeAdmin(admin.ModelAdmin):
+    """
+    Definition for admin-edit of Metadata Types
+    """
+    fields = ['type_name', 'input_size', 'default_value', 'prefix', 'postfix',
+              'group', 'for_context']
+    radio_fields = {'group': admin.VERTICAL, 'for_context': admin.VERTICAL}
+
+
 class ProtocolAdmin(admin.ModelAdmin):
     """
     Definition for admin-edit of Protocols
@@ -45,13 +61,20 @@ class StudyAdmin(admin.ModelAdmin):
     """
     Definition for admin-edit of Studies
     """
-    fields = []
+    actions = ['solr_index']
     exclude = ['study_name', 'description', 'active', 'updates', 'comments',
                'files', 'contact', 'contact_extra']
-    list_display = ['study_name', 'description', 'created', 'updated']
+    fields = []
     inlines = [UserPermissionInline, GroupPermissionInline]
+    list_display = ['study_name', 'description', 'created', 'updated']
+
+    def solr_index(self, request, queryset):
+        pass
+    solr_index.short_description = 'Index in Solr'
 
 
+admin.site.register(MetadataGroup, MetadataGroupAdmin)
+admin.site.register(MetadataType, MetadataTypeAdmin)
 admin.site.register(Protocol, ProtocolAdmin)
 admin.site.register(MeasurementType, MeasurementTypeAdmin)
 admin.site.register(Study, StudyAdmin)
