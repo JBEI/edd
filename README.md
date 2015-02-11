@@ -49,7 +49,12 @@
  5. `psql edddjango < convert.sql`
 
 ## Solr
+ * TODO expand on this w/ documentation in other EDD project
  * Refer to documentation in the edd (perl) project for specifics on Solr setup.
  * Tests in this project make use of a `test` core, which will need to be created
     * Create a new data directory (e.g. `/usr/local/var/solr/data/test`)
     * Add new line to `solr.xml` using same studies `instanceDir` and new data directory
+
+TODO: how to install homebrew
+TODO: instructions on setting up server.cfg + template for server.cfg
+TODO: walkthrough on a clean mac 
