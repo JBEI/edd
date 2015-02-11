@@ -80,10 +80,10 @@ class EDDObject(models.Model):
         return updated[0] if updated else None
 
     def get_attachment_count(self):
-        return 0
+        return self.files.count()
 
     def get_comment_count(self):
-        return 0
+        return self.comments.count()
 
 
 class MetadataGroup(models.Model):
@@ -196,10 +196,10 @@ class Study(EDDObject):
         return chain(self.userpermission_set.all(), self.grouppermission_set.all())
 
     def get_protocols_used(self):
-        return []
+        return Protocol.objects.filter(assay__line__study=self).distinct()
 
     def get_metabolite_types_used(self):
-        return []
+        return Metabolite.objects.filter(measurement__assay__line__study=self).distinct()
 
     def __str__(self):
         return self.study_name
@@ -277,62 +277,6 @@ class GroupPermission(StudyPermission):
         return 'g:%(group)s' % {'group':self.group.name}
 
 
-class Strain(EDDObject):
-    """
-    A link to a strain/part in the JBEI ICE Registry.
-    """
-    class Meta:
-        db_table = 'strain'
-    strain_name = models.CharField(max_length=255)
-    registry_id = PostgreSQLUUIDField(blank=True, null=True)
-    registry_url = models.URLField(max_length=255, blank=True, null=True)
-    object_ref = models.OneToOneField(EDDObject, parent_link=True)
-
-
-class Line(EDDObject):
-    """
-    A single item to be studied (contents of well, tube, dish, etc).
-    """
-    class Meta:
-        db_table = 'line'
-    study = models.ForeignKey(Study)
-    line_name = models.CharField(max_length=255)
-    control = models.BooleanField(default=False)
-    replicate = models.ForeignKey('self', blank=True, null=True)
-    object_ref = models.OneToOneField(EDDObject, parent_link=True)
-    contact = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True, related_name='+')
-    contact_extra = models.TextField()
-    experimenter = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True,
-                                     related_name='+')
-    active = models.BooleanField(default=True)
-
-    def __str__(self):
-        return self.line_name
-
-
-class LineMetadata(models.Model):
-    """
-    Base form for line metadata tracks which line is referred to, type, and who/when.
-    """
-    class Meta:
-        db_table = 'line_metadata'
-    line = models.ForeignKey(Line)
-    data_type = models.ForeignKey(MetadataType, related_name='+')
-    data_value = models.TextField()
-    updated = models.ForeignKey(Update, related_name='+')
-
-
-class LineStrain(models.Model):
-    """
-    A metadata value linking to an ICE/Registry strain.
-    """
-    class Meta:
-        db_table = 'line_strain'
-    line = models.ForeignKey(Line)
-    strain = models.ForeignKey(Strain)
-    updated = models.ForeignKey(Update, related_name='+')
-
-
 class Protocol(EDDObject):
     """
     A defined method of examining a Line.
@@ -359,23 +303,63 @@ class Protocol(EDDObject):
         return self.protocol_name
 
 
-class Assay(EDDObject):
+class Strain(EDDObject):
     """
-    An examination of a Line, containing the Protocol and set of Measurements.
+    A link to a strain/part in the JBEI ICE Registry.
     """
     class Meta:
-        db_table = 'assay'
-    line = models.ForeignKey(Line)
-    assay_name = models.CharField(max_length=255)
-    description = models.TextField()
-    protocol = models.ForeignKey(Protocol)
+        db_table = 'strain'
+    strain_name = models.CharField(max_length=255)
+    registry_id = PostgreSQLUUIDField(blank=True, null=True)
+    registry_url = models.URLField(max_length=255, blank=True, null=True)
     object_ref = models.OneToOneField(EDDObject, parent_link=True)
+
+
+class Line(EDDObject):
+    """
+    A single item to be studied (contents of well, tube, dish, etc).
+    """
+    class Meta:
+        db_table = 'line'
+    study = models.ForeignKey(Study)
+    line_name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    control = models.BooleanField(default=False)
+    replicate = models.ForeignKey('self', blank=True, null=True)
+    object_ref = models.OneToOneField(EDDObject, parent_link=True)
+    contact = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True, related_name='+')
+    contact_extra = models.TextField()
     experimenter = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True,
                                      related_name='+')
     active = models.BooleanField(default=True)
+    protocols = models.ManyToManyField(Protocol, through='Assay')
+    strains = models.ManyToManyField(Strain, through='LineStrain')
 
     def __str__(self):
-        return self.assay_name
+        return self.line_name
+
+
+class LineMetadata(models.Model):
+    """
+    Base form for line metadata tracks which line is referred to, type, and who/when.
+    """
+    class Meta:
+        db_table = 'line_metadata'
+    line = models.ForeignKey(Line)
+    data_type = models.ForeignKey(MetadataType, related_name='+')
+    data_value = models.TextField()
+    updated = models.ForeignKey(Update, related_name='+')
+
+
+class LineStrain(models.Model):
+    """
+    A metadata value linking to an ICE/Registry strain.
+    """
+    class Meta:
+        db_table = 'line_strain'
+    line = models.ForeignKey(Line)
+    strain = models.ForeignKey(Strain)
+    updated = models.ForeignKey(Update, related_name='+')
 
 
 class MeasurementGroup(object):
@@ -416,6 +400,9 @@ class Metabolite(MeasurementType):
     """
     Defines additional metadata on a metabolite measurement type; charge, carbon count, molar mass,
     and molecular formula.
+    TODO: aliases for metabolite type_name/short_name
+    TODO: datasource; BiGG vs JBEI-created records
+    TODO: links to kegg files?
     """
     class Meta:
         db_table = 'metabolite'
@@ -458,6 +445,26 @@ class MeasurementUnit(models.Model):
     type_group = models.CharField(max_length=8,
                                   choices=MeasurementGroup.GROUP_CHOICE,
                                   default=MeasurementGroup.GENERIC)
+
+
+class Assay(EDDObject):
+    """
+    An examination of a Line, containing the Protocol and set of Measurements.
+    """
+    class Meta:
+        db_table = 'assay'
+    line = models.ForeignKey(Line)
+    assay_name = models.CharField(max_length=255)
+    description = models.TextField()
+    protocol = models.ForeignKey(Protocol)
+    object_ref = models.OneToOneField(EDDObject, parent_link=True)
+    experimenter = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True,
+                                     related_name='+')
+    active = models.BooleanField(default=True)
+    measurement_types = models.ManyToManyField(MeasurementType, through='Measurement')
+
+    def __str__(self):
+        return self.assay_name
 
 
 class Measurement(EDDObject):
