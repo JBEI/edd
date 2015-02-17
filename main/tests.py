@@ -22,8 +22,8 @@ class StudyTests(TestCase):
         up1 = Update.objects.create(mod_by=user1)
         up2 = Update.objects.create(mod_by=user2)
         up3 = Update.objects.create(mod_by=user3)
-        study1 = Study.objects.create(study_name='Test Study 1', description='')
-        study2 = Study.objects.create(study_name='Test Study 2', description='')
+        study1 = Study.objects.create(name='Test Study 1', description='')
+        study2 = Study.objects.create(name='Test Study 2', description='')
 
     def tearDown(self):
         TestCase.tearDown(self)
@@ -33,7 +33,7 @@ class StudyTests(TestCase):
         Ensure that a study without permissions cannot be read.
         """
         # Load objects
-        study = Study.objects.get(study_name='Test Study 1')
+        study = Study.objects.get(name='Test Study 1')
         user1 = User.objects.get(username='test1')
         # Asserts
         self.assertFalse(study.user_can_read(user1))
@@ -43,7 +43,7 @@ class StudyTests(TestCase):
         Ensure that a study with user having read or write permissions can be read.
         """
         # Load objects
-        study = Study.objects.get(study_name='Test Study 1')
+        study = Study.objects.get(name='Test Study 1')
         user1 = User.objects.get(username='test1')
         user2 = User.objects.get(username='test2')
         user3 = User.objects.get(username='test3')
@@ -63,7 +63,7 @@ class StudyTests(TestCase):
         Ensure that a study with group having read or write permissions can be read.
         """
         # Load objects
-        study = Study.objects.get(study_name='Test Study 1')
+        study = Study.objects.get(name='Test Study 1')
         fuels = Group.objects.get(name='Fuels Synthesis')
         decon = Group.objects.get(name='Deconstruction')
         user1 = User.objects.get(username='test1') # fuels
@@ -94,7 +94,7 @@ class SolrTests(TestCase):
         self.solr_admin = StudySearch(ident=self.admin, settings_key='test')
         self.solr_user = StudySearch(ident=self.user1, settings_key='test')
         up1 = Update.objects.create(mod_by=self.user1)
-        self.study1 = Study.objects.create(study_name='Test Study 1',
+        self.study1 = Study.objects.create(name='Test Study 1',
                                            description='Lorem ipsum dolor sit amet')
         self.study1.updates.add(up1)
         self.solr_admin.clear()

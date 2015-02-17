@@ -43,7 +43,7 @@ def study_lines(request, study):
     Request information on lines in a study.
     """
     model = Study.objects.get(pk=study)
-    lines = serializers.serialize('json', model.line_set.all())
+    lines = json.dumps(map(lambda l: l.to_json(), model.line_set.all()))
     return HttpResponse(lines, content_type='application/json; charset=utf-8')
 
 

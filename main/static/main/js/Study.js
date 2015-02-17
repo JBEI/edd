@@ -894,7 +894,7 @@ var StudyD;
                 }
             ]);
         }
-        this.prepareFilteringSection();
+        StudyD.prepareFilteringSection();
         // Instantiate a table specification for the Lines table
         this.linesDataGridSpec = new DataGridSpecLines();
         // Instantiate the table itself with the spec

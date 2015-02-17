@@ -443,7 +443,7 @@ class ResultMatcher {
     // searches for constructor text query in the source string, saving to field name if found
     findAndSet(field:string, source:string):ResultMatcher {
         var index:number;
-        var lower:string = source.toLocaleLowerCase();
+        var lower:string = (source || '').toLocaleLowerCase();
         this._query.forEach((q) => {
             if ((index = lower.indexOf(q.toLocaleLowerCase())) >= 0) {
                 (this._match[field] = this._match[field] || []).push({

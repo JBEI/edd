@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.utils import timezone
 from main.models import *
+from main.solr import StudySearch
 
 
 class MetadataGroupAdmin(admin.ModelAdmin):
@@ -23,8 +24,8 @@ class ProtocolAdmin(admin.ModelAdmin):
     """
     Definition for admin-edit of Protocols
     """
-    fields = ['protocol_name', 'description', 'active', 'variant_of']
-    list_display = ['protocol_name', 'description', 'active', 'variant_of', 'owner',]
+    fields = ['name', 'description', 'active', 'variant_of']
+    list_display = ['name', 'description', 'active', 'variant_of', 'owner',]
 
     def save_model(self, request, obj, form, change):
         update = Update.load_request_update(request)
@@ -62,14 +63,15 @@ class StudyAdmin(admin.ModelAdmin):
     Definition for admin-edit of Studies
     """
     actions = ['solr_index']
-    exclude = ['study_name', 'description', 'active', 'updates', 'comments',
-               'files', 'contact', 'contact_extra']
+    exclude = ['name', 'description', 'active', 'updates', 'comments',
+               'files', 'contact', 'contact_extra', 'metadata']
     fields = []
     inlines = [UserPermissionInline, GroupPermissionInline]
-    list_display = ['study_name', 'description', 'created', 'updated']
+    list_display = ['name', 'description', 'created', 'updated']
 
     def solr_index(self, request, queryset):
-        pass
+        solr = StudySearch(ident=request.user)
+        solr.update(queryset)
     solr_index.short_description = 'Index in Solr'
 
 

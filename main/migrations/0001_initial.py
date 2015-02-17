@@ -41,6 +41,8 @@ class Migration(migrations.Migration):
             name='EDDObject',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
+                ('name', models.CharField(max_length=255)),
+                ('description', models.TextField(null=True, blank=True)),
             ],
             options={
                 'db_table': 'edd_object',
@@ -48,10 +50,21 @@ class Migration(migrations.Migration):
             bases=(models.Model,),
         ),
         migrations.CreateModel(
+            name='CarbonSource',
+            fields=[
+                ('eddobject_ptr', models.OneToOneField(parent_link=True, auto_created=True, primary_key=True, serialize=False, to='main.EDDObject')),
+                ('labeling', models.CharField(max_length=255)),
+                ('volume', models.DecimalField(max_digits=16, decimal_places=5)),
+                ('active', models.BooleanField(default=True)),
+            ],
+            options={
+                'db_table': 'carbon_source',
+            },
+            bases=('main.eddobject',),
+        ),
+        migrations.CreateModel(
             name='Assay',
             fields=[
-                ('assay_name', models.CharField(max_length=255)),
-                ('description', models.TextField()),
                 ('object_ref', models.OneToOneField(parent_link=True, primary_key=True, serialize=False, to='main.EDDObject')),
                 ('active', models.BooleanField(default=True)),
                 ('experimenter', models.ForeignKey(related_name='+', blank=True, to=settings.AUTH_USER_MODEL, null=True)),
@@ -76,14 +89,13 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Line',
             fields=[
-                ('line_name', models.CharField(max_length=255)),
                 ('control', models.BooleanField(default=False)),
                 ('object_ref', models.OneToOneField(parent_link=True, primary_key=True, serialize=False, to='main.EDDObject')),
                 ('contact_extra', models.TextField()),
                 ('active', models.BooleanField(default=True)),
+                ('carbon_source', models.ManyToManyField(to='main.CarbonSource', db_table=b'line_carbon_source')),
                 ('contact', models.ForeignKey(related_name='+', blank=True, to=settings.AUTH_USER_MODEL, null=True)),
                 ('experimenter', models.ForeignKey(related_name='+', blank=True, to=settings.AUTH_USER_MODEL, null=True)),
-                ('replicate', models.ForeignKey(blank=True, to='main.Line', null=True)),
             ],
             options={
                 'db_table': 'line',
@@ -91,31 +103,9 @@ class Migration(migrations.Migration):
             bases=('main.eddobject',),
         ),
         migrations.CreateModel(
-            name='LineMetadata',
-            fields=[
-                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('data_value', models.TextField()),
-            ],
-            options={
-                'db_table': 'line_metadata',
-            },
-            bases=(models.Model,),
-        ),
-        migrations.CreateModel(
-            name='LineStrain',
-            fields=[
-                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('line', models.ForeignKey(to='main.Line')),
-            ],
-            options={
-                'db_table': 'line_strain',
-            },
-            bases=(models.Model,),
-        ),
-        migrations.CreateModel(
             name='Measurement',
             fields=[
-                ('object_ref', models.OneToOneField(parent_link=True, primary_key=True, serialize=False, to='main.EDDObject')),
+                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('active', models.BooleanField(default=True)),
                 ('assay', models.ForeignKey(to='main.Assay')),
                 ('experimenter', models.ForeignKey(related_name='+', blank=True, to=settings.AUTH_USER_MODEL, null=True)),
@@ -123,7 +113,7 @@ class Migration(migrations.Migration):
             options={
                 'db_table': 'measurement',
             },
-            bases=('main.eddobject',),
+            bases=(models.Model,),
         ),
         migrations.CreateModel(
             name='MeasurementDatum',
@@ -207,6 +197,17 @@ class Migration(migrations.Migration):
             bases=('main.measurementtype',),
         ),
         migrations.CreateModel(
+            name='Metadata',
+            fields=[
+                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
+                ('data_value', models.TextField()),
+            ],
+            options={
+                'db_table': 'metadata',
+            },
+            bases=(models.Model,),
+        ),
+        migrations.CreateModel(
             name='MetadataGroup',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
@@ -237,8 +238,6 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Protocol',
             fields=[
-                ('protocol_name', models.CharField(max_length=255)),
-                ('description', models.TextField()),
                 ('object_ref', models.OneToOneField(parent_link=True, primary_key=True, serialize=False, to='main.EDDObject')),
                 ('active', models.BooleanField(default=True)),
                 ('owned_by', models.ForeignKey(related_name='edd_protocol_set', to=settings.AUTH_USER_MODEL)),
@@ -252,7 +251,6 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Strain',
             fields=[
-                ('strain_name', models.CharField(max_length=255)),
                 ('registry_id', django_extensions.db.fields.PostgreSQLUUIDField(null=True, editable=False, blank=True)),
                 ('registry_url', models.URLField(max_length=255, null=True, blank=True)),
                 ('object_ref', models.OneToOneField(parent_link=True, primary_key=True, serialize=False, to='main.EDDObject')),
@@ -265,8 +263,6 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Study',
             fields=[
-                ('study_name', models.CharField(max_length=255)),
-                ('description', models.TextField()),
                 ('active', models.BooleanField(default=True)),
                 ('object_ref', models.OneToOneField(parent_link=True, primary_key=True, serialize=False, to='main.EDDObject')),
                 ('contact_extra', models.TextField()),
@@ -274,6 +270,7 @@ class Migration(migrations.Migration):
             ],
             options={
                 'db_table': 'study',
+                'verbose_name_plural': 'Studies',
             },
             bases=('main.eddobject',),
         ),
@@ -303,6 +300,24 @@ class Migration(migrations.Migration):
                 'db_table': 'study_user_permission',
             },
             bases=(models.Model,),
+        ),
+        migrations.AddField(
+            model_name='metadata',
+            name='data_type',
+            field=models.ForeignKey(to='main.MetadataType'),
+            preserve_default=True,
+        ),
+        migrations.AddField(
+            model_name='metadata',
+            name='edd_object',
+            field=models.ForeignKey(related_name='+', to='main.EDDObject'),
+            preserve_default=True,
+        ),
+        migrations.AddField(
+            model_name='metadata',
+            name='updated',
+            field=models.ForeignKey(related_name='+', to='main.Update'),
+            preserve_default=True,
         ),
         migrations.AddField(
             model_name='measurementvector',
@@ -347,33 +362,27 @@ class Migration(migrations.Migration):
             preserve_default=True,
         ),
         migrations.AddField(
-            model_name='linestrain',
-            name='strain',
-            field=models.ForeignKey(to='main.Strain'),
-            preserve_default=True,
-        ),
-        migrations.AddField(
-            model_name='linestrain',
-            name='updated',
+            model_name='measurement',
+            name='update_ref',
             field=models.ForeignKey(related_name='+', to='main.Update'),
             preserve_default=True,
         ),
         migrations.AddField(
-            model_name='linemetadata',
-            name='data_type',
-            field=models.ForeignKey(related_name='+', to='main.MetadataType'),
+            model_name='line',
+            name='protocols',
+            field=models.ManyToManyField(to='main.Protocol', through='main.Assay'),
             preserve_default=True,
         ),
         migrations.AddField(
-            model_name='linemetadata',
-            name='line',
-            field=models.ForeignKey(to='main.Line'),
+            model_name='line',
+            name='replicate',
+            field=models.ForeignKey(blank=True, to='main.Line', null=True),
             preserve_default=True,
         ),
         migrations.AddField(
-            model_name='linemetadata',
-            name='updated',
-            field=models.ForeignKey(related_name='+', to='main.Update'),
+            model_name='line',
+            name='strains',
+            field=models.ManyToManyField(to='main.Strain', db_table=b'line_strain'),
             preserve_default=True,
         ),
         migrations.AddField(
@@ -390,14 +399,8 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name='eddobject',
-            name='comments',
-            field=models.ManyToManyField(related_name='+', db_table=b'edd_object_comment', to='main.Comment'),
-            preserve_default=True,
-        ),
-        migrations.AddField(
-            model_name='eddobject',
-            name='files',
-            field=models.ManyToManyField(related_name='+', db_table=b'edd_object_attachment', to='main.Attachment'),
+            name='metadata',
+            field=models.ManyToManyField(to='main.MetadataType', through='main.Metadata'),
             preserve_default=True,
         ),
         migrations.AddField(
@@ -413,15 +416,33 @@ class Migration(migrations.Migration):
             preserve_default=True,
         ),
         migrations.AddField(
+            model_name='comment',
+            name='object_ref',
+            field=models.ForeignKey(related_name='comments', to='main.EDDObject'),
+            preserve_default=True,
+        ),
+        migrations.AddField(
             model_name='attachment',
             name='created',
             field=models.ForeignKey(related_name='+', to='main.Update'),
             preserve_default=True,
         ),
         migrations.AddField(
+            model_name='attachment',
+            name='object_ref',
+            field=models.ForeignKey(related_name='files', to='main.EDDObject'),
+            preserve_default=True,
+        ),
+        migrations.AddField(
             model_name='assay',
             name='line',
             field=models.ForeignKey(to='main.Line'),
+            preserve_default=True,
+        ),
+        migrations.AddField(
+            model_name='assay',
+            name='measurement_types',
+            field=models.ManyToManyField(to='main.MeasurementType', through='main.Measurement'),
             preserve_default=True,
         ),
         migrations.AddField(

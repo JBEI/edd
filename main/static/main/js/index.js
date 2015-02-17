@@ -397,7 +397,7 @@ var ResultMatcher = (function () {
     ResultMatcher.prototype.findAndSet = function (field, source) {
         var _this = this;
         var index;
-        var lower = source.toLocaleLowerCase();
+        var lower = (source || '').toLocaleLowerCase();
         this._query.forEach(function (q) {
             if ((index = lower.indexOf(q.toLocaleLowerCase())) >= 0) {
                 (_this._match[field] = _this._match[field] || []).push({

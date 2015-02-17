@@ -8,4 +8,4 @@ class CreateStudyForm(forms.ModelForm):
     """
     class Meta:
         model = Study
-        fields = ['study_name', 'description', 'contact', 'contact_extra']
+        fields = ['name', 'description', 'contact', 'contact_extra']

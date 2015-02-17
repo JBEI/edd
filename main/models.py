@@ -47,6 +47,7 @@ class Comment(models.Model):
     """
     class Meta:
         db_table = 'comment'
+    object_ref = models.ForeignKey('EDDObject', related_name='comments')
     body = models.TextField()
     created = models.ForeignKey(Update, related_name='+')
 
@@ -56,34 +57,10 @@ class Attachment(models.Model):
     """
     class Meta:
         db_table = 'attachment'
+    object_ref = models.ForeignKey('EDDObject', related_name='files')
     file = models.FileField(max_length=255)
     filename = models.CharField(max_length=255)
     created = models.ForeignKey(Update, related_name='+')
-    
-    
-class EDDObject(models.Model):
-    """
-    A first-class EDD object, with update trail, comments, attachments.
-    """
-    class Meta:
-        db_table = 'edd_object'
-    updates = models.ManyToManyField(Update, db_table='edd_object_update', related_name='+')
-    comments = models.ManyToManyField(Comment, db_table='edd_object_comment', related_name='+')
-    files = models.ManyToManyField(Attachment, db_table='edd_object_attachment', related_name='+')
-    
-    def created(self):
-        created = self.updates.order_by('mod_time')[:1] 
-        return created[0] if created else None
-    
-    def updated(self):
-        updated = self.updates.order_by('-mod_time')[:1]
-        return updated[0] if updated else None
-
-    def get_attachment_count(self):
-        return self.files.count()
-
-    def get_comment_count(self):
-        return self.comments.count()
 
 
 class MetadataGroup(models.Model):
@@ -131,6 +108,47 @@ class MetadataType(models.Model):
 
     def __str__(self):
         return self.type_name
+    
+    
+class EDDObject(models.Model):
+    """
+    A first-class EDD object, with update trail, comments, attachments.
+    """
+    class Meta:
+        db_table = 'edd_object'
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    updates = models.ManyToManyField(Update, db_table='edd_object_update', related_name='+')
+    metadata = models.ManyToManyField(MetadataType, through='Metadata')
+    
+    def created(self):
+        created = self.updates.order_by('mod_time')[:1] 
+        return created[0] if created else None
+    
+    def updated(self):
+        updated = self.updates.order_by('-mod_time')[:1]
+        return updated[0] if updated else None
+
+    def get_attachment_count(self):
+        return self.files.count()
+
+    def get_comment_count(self):
+        return self.comments.count()
+
+    def __str__(self):
+        return self.name
+
+
+class Metadata(models.Model):
+    """
+    Base form for line metadata tracks which line is referred to, type, and who/when.
+    """
+    class Meta:
+        db_table = 'metadata'
+    edd_object = models.ForeignKey(EDDObject, related_name='+')
+    data_type = models.ForeignKey(MetadataType)
+    data_value = models.TextField()
+    updated = models.ForeignKey(Update, related_name='+')
 
 
 class Study(EDDObject):
@@ -139,8 +157,7 @@ class Study(EDDObject):
     """
     class Meta:
         db_table = 'study'
-    study_name = models.CharField(max_length=255)
-    description = models.TextField()
+        verbose_name_plural = 'Studies'
     active = models.BooleanField(default=True)
     object_ref = models.OneToOneField(EDDObject, parent_link=True)
     # contact info has two fields to support:
@@ -157,25 +174,24 @@ class Study(EDDObject):
         """
         created = self.created()
         updated = self.updated()
-        if self.contact == None:
-            contact = None
-        else:
-            contact = self.contact.pk
+        owner = created.mod_by.userprofile if hasattr(created.mod_by, 'userprofile') else None
         return {
             'id': self.pk,
-            'name': self.study_name,
+            'name': self.name,
             'description': self.description,
             'creator': created.mod_by.pk,
             'creator_email': created.mod_by.email,
             'creator_name': ' '.join([created.mod_by.first_name, created.mod_by.last_name]),
-            'contact': contact,
+            'initials': owner.initials if owner != None else None,
+            'contact': self.get_contact(),
             'active': self.active,
             'created': created.mod_time.strftime('%Y-%m-%dT%H:%M:%SZ'),
             'modified': updated.mod_time.strftime('%Y-%m-%dT%H:%M:%SZ'),
             'attachment_count': self.get_attachment_count(),
             'comment_count': self.get_comment_count(),
-            'metabolite': self.get_metabolite_types_used(),
-            'protocol': self.get_protocols_used(),
+            'metabolite': [m.to_solr_value() for m in self.get_metabolite_types_used()],
+            'protocol': [p.to_solr_value() for p in self.get_protocols_used()],
+            'part': [s.to_solr_value() for s in self.get_strains_used()],
             'aclr': [p.__str__() for p in self.get_combined_permission() if p.is_read()],
             'aclw': [p.__str__() for p in self.get_combined_permission() if p.is_write()],
         }
@@ -195,14 +211,22 @@ class Study(EDDObject):
     def get_combined_permission(self):
         return chain(self.userpermission_set.all(), self.grouppermission_set.all())
 
-    def get_protocols_used(self):
-        return Protocol.objects.filter(assay__line__study=self).distinct()
+    def get_contact(self):
+        if self.contact is None:
+            return self.contact_extra
+        return contact.email
+
+    def get_line_metadata_types(self):
+        return list(MetadataType.objects.filter(linemetadata__line__study=self).distinct())
 
     def get_metabolite_types_used(self):
-        return Metabolite.objects.filter(measurement__assay__line__study=self).distinct()
+        return list(Metabolite.objects.filter(measurement__assay__line__study=self).distinct())
 
-    def __str__(self):
-        return self.study_name
+    def get_protocols_used(self):
+        return list(Protocol.objects.filter(assay__line__study=self).distinct())
+
+    def get_strains_used(self):
+        return list(Strain.objects.filter(line__study=self).distinct())
 
 
 class StudyPermission(models.Model):
@@ -283,8 +307,6 @@ class Protocol(EDDObject):
     """
     class Meta:
         db_table = 'protocol'
-    protocol_name = models.CharField(max_length=255)
-    description = models.TextField()
     object_ref = models.OneToOneField(EDDObject, parent_link=True)
     owned_by = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='edd_protocol_set')
     active = models.BooleanField(default=True)
@@ -299,6 +321,9 @@ class Protocol(EDDObject):
     def last_modified(self):
         return self.updated.mod_time
 
+    def to_solr_value(self):
+        return '%(id)s@%(name)s' % {'id':self.pk, 'name':self.name}
+
     def __str__(self):
         return self.protocol_name
 
@@ -309,10 +334,26 @@ class Strain(EDDObject):
     """
     class Meta:
         db_table = 'strain'
-    strain_name = models.CharField(max_length=255)
     registry_id = PostgreSQLUUIDField(blank=True, null=True)
     registry_url = models.URLField(max_length=255, blank=True, null=True)
     object_ref = models.OneToOneField(EDDObject, parent_link=True)
+
+    def to_solr_value(self):
+        return '%(id)s@%(name)s' % {'id':self.registry_id, 'name':self.name}
+
+    def __str__(self):
+        return self.name
+
+
+class CarbonSource(EDDObject):
+    """
+    Information about carbon sources, isotope labeling.
+    """
+    class Meta:
+        db_table = 'carbon_source'
+    labeling = models.CharField(max_length=255)
+    volume = models.DecimalField(max_digits=16, decimal_places=5)
+    active = models.BooleanField(default=True)
 
 
 class Line(EDDObject):
@@ -322,8 +363,6 @@ class Line(EDDObject):
     class Meta:
         db_table = 'line'
     study = models.ForeignKey(Study)
-    line_name = models.CharField(max_length=255)
-    description = models.TextField(blank=True, null=True)
     control = models.BooleanField(default=False)
     replicate = models.ForeignKey('self', blank=True, null=True)
     object_ref = models.OneToOneField(EDDObject, parent_link=True)
@@ -332,34 +371,22 @@ class Line(EDDObject):
     experimenter = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True,
                                      related_name='+')
     active = models.BooleanField(default=True)
+    carbon_source = models.ManyToManyField(CarbonSource, db_table='line_carbon_source')
     protocols = models.ManyToManyField(Protocol, through='Assay')
-    strains = models.ManyToManyField(Strain, through='LineStrain')
+    strains = models.ManyToManyField(Strain, db_table='line_strain')
 
-    def __str__(self):
-        return self.line_name
-
-
-class LineMetadata(models.Model):
-    """
-    Base form for line metadata tracks which line is referred to, type, and who/when.
-    """
-    class Meta:
-        db_table = 'line_metadata'
-    line = models.ForeignKey(Line)
-    data_type = models.ForeignKey(MetadataType, related_name='+')
-    data_value = models.TextField()
-    updated = models.ForeignKey(Update, related_name='+')
-
-
-class LineStrain(models.Model):
-    """
-    A metadata value linking to an ICE/Registry strain.
-    """
-    class Meta:
-        db_table = 'line_strain'
-    line = models.ForeignKey(Line)
-    strain = models.ForeignKey(Strain)
-    updated = models.ForeignKey(Update, related_name='+')
+    def to_json(self):
+        return {
+            'id': self.pk,
+            'name': self.line_name,
+            'description': self.description,
+            'study': self.study.pk,
+            'control': self.control,
+            'replicate': self.replicate.pk if self.replicate else None,
+            'contact': {},
+            'experimenter': {},
+            'meta': {},
+        }
 
 
 class MeasurementGroup(object):
@@ -391,6 +418,9 @@ class MeasurementType(models.Model):
     type_group = models.CharField(max_length=8,
                                   choices=MeasurementGroup.GROUP_CHOICE,
                                   default=MeasurementGroup.GENERIC)
+
+    def to_solr_value(self):
+        return '%(id)s@%(name)s' % {'id':self.pk, 'name':self.type_name}
 
     def __str__(self):
         return self.type_name
@@ -454,8 +484,6 @@ class Assay(EDDObject):
     class Meta:
         db_table = 'assay'
     line = models.ForeignKey(Line)
-    assay_name = models.CharField(max_length=255)
-    description = models.TextField()
     protocol = models.ForeignKey(Protocol)
     object_ref = models.OneToOneField(EDDObject, parent_link=True)
     experimenter = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True,
@@ -463,11 +491,8 @@ class Assay(EDDObject):
     active = models.BooleanField(default=True)
     measurement_types = models.ManyToManyField(MeasurementType, through='Measurement')
 
-    def __str__(self):
-        return self.assay_name
 
-
-class Measurement(EDDObject):
+class Measurement(models.Model):
     """
     A plot of data points for an (assay, measurement type) pair. Points can either be single (x,y)
     or an (x, (y0, y1, ... , yn)) scalar and vector.
@@ -478,7 +503,7 @@ class Measurement(EDDObject):
     experimenter = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True,
                                      related_name='+')
     measurement_type = models.ForeignKey(MeasurementType)
-    object_ref = models.OneToOneField(EDDObject, parent_link=True)
+    update_ref = models.ForeignKey(Update, related_name='+')
     active = models.BooleanField(default=True)
 
     def __str__(self):
