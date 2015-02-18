@@ -49,11 +49,38 @@
  5. `psql edddjango < convert.sql`
 
 ## Solr
- * TODO expand on this w/ documentation in other EDD project
- * Refer to documentation in the edd (perl) project for specifics on Solr setup.
- * Tests in this project make use of a `test` core, which will need to be created
-    * Create a new data directory (e.g. `/usr/local/var/solr/data/test`)
-    * Add new line to `solr.xml` using same studies `instanceDir` and new data directory
+### Solr Setup on dev MacOS Environment
+  * Check out old Perl edd sources
+
+  * Install tomcat7:
+    * `brew install tomcat`
+    * Make link to easily access tomcat install directory:
+    * `ln -s /usr/local/Cellar/tomcat/7.0.54/libexec/ /usr/local/tomcat`
+
+  * Download Solr (http://lucene.apache.org/solr/) and install:
+    * Create Solr directories:
+    * `mkdir -p /usr/local/var/solr`
+    * Copy contents of edd/other/solr to solr directory
+    * Copy contents of ${solr-download}/example/lib/ext to Tomcat lib (/usr/local/tomcat/lib)
+
+  * Configure tomcat:
+    * Remove /usr/local/tomcat/webapp/ROOT
+    * Add /usr/local/tomcat/conf/Catalina/localhost/ROOT.xml with content (replace version number as needed):
+      <?xml version="1.0" encoding="utf-8"?>
+      <Context path="" docBase="/usr/local/solr-4.9.0/dist/solr-4.9.0.war" debug="0" reloadable="true"/>
+    * Add /usr/local/tomcat/bin/setenv.sh and chmod +x with content:
+      #!/bin/bash
+      JAVA_OPTS="$JAVA_OPTS -Dsolr.solr.home=/usr/local/var/solr"
+    * Change server.xml to listen only on localhost:
+      <Connector address="localhost" port="8080" ...
+
+  * Start Tomcat:
+    * `catalina start`
+
+  * Access Solr Admin web interface @ http://localhost:8080/
+    * Lets you poke at various internals and confirm that the index is working
+    * Note that if you get a blank page here you may be running a version of the Java VM that is too old to include the websocket functionality by default.  (OS X 10.7, for example, has the 1.6 VM which is too old.)  To fix this, download and install a more recent version of the JDK from:
+    http://www.oracle.com/technetwork/java/javase/downloads/index.html
 
 TODO: how to install homebrew
 TODO: instructions on setting up server.cfg + template for server.cfg
