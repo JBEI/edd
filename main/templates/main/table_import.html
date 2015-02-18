@@ -1,0 +1,451 @@
+{% extends "edd_base.html" %}
+{% load staticfiles %}
+
+{% block js_css %}
+    {{ block.super }}
+    <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/Disclosure.js' %}"></script>
+
+    <script type="text/javascript" src="{% static 'main/js/EDDEditing.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.crosshair.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.resize.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.navigate.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.dashes.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.threshold.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.orderbars.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.stack.js' %}"></script>
+
+<!-- some page-specific code -->
+<script type="text/javascript">
+var ATData = {}; // this needs to be declared before loading AssayTableData.js!
+var EDDData = { }; // Declaring the object for later use
+EDDData.currentUserID = {{ user.pk }};
+var atdata_url = "/study/{{ study.id }}/assaydata";
+
+// Populate ATData and EDDData objects via AJAX calls
+$(window).load(function () {
+    jQuery.ajax(atdata_url, {
+        "success" : function (data, textStatus, response) {
+            for (var keyname in data) {
+                ATData[keyname] = data[keyname];
+            }
+            EDDATD.prepareIt();
+        }
+    }).fail(function (x, s, e) {
+        alert(s);
+    });
+    jQuery.ajax("/global/edddata/assay", {
+        "success" : function (data, textStatus, response) {
+            for (var keyname in data) {
+                EDDData[keyname] = data[keyname];
+            }
+        }
+    }).fail(function (x, s, e) {
+        alert(s);
+    });
+});
+</script>
+ 
+  <script type="text/javascript" src="{% static 'main/js/Autocomplete.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/AssayTableData.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/AssayTableDataGraphing.js' %}"></script>
+
+{% endblock js_css %}
+
+
+{% block head_title %}
+    {{ study.name }} - Experiment Data Depot
+{% endblock head_title %}
+
+
+{% block body_title %}
+    <h1>Data import for {{ study.name }}</h1>
+{% endblock body_title %}
+
+{% block content %}
+
+<form method="post" id="assayTableForm" action="https://edd.jbei.org/AssayTableData.cgi">
+
+<div class="pageSection" id="mainModeDiv">
+<div class="sectionHead">Step 1 : Specify the kind of data you wish to import.</div>
+
+<div class="sectionContent" style="padding:0em 0em 3px 0em;">
+<ul style="font-size:13px;list-style-type:none;">
+<li>
+  <input type="radio" name="datalayout" value="std" id="stdlayout" checked="checked" />
+  <label for="stdlayout">
+    A <b>table of data</b>, with Lines, Assays, measurements, and/or metadata.
+  </label>
+  <span style="font-size:12px;"
+     id="stdlayoutpexamplehide"
+     onclick="Disclose.click(this);"
+     hidethese="stdlayoutpexamplehide"
+     showthese="stdlayoutpexampleshow,stdlayoutexample">
+    <a href="#"><span style="color:blue;">&#x25BA;</span> Examples</a>
+  </span>
+  <span style="font-size:12px;"
+     class="off"
+     id="stdlayoutpexampleshow"
+     onclick="Disclose.click(this);"
+     hidethese="stdlayoutpexampleshow,stdlayoutexample"
+     showthese="stdlayoutpexamplehide">
+    <a href="#"><span style="color:blue;">&#x25BC;</span> Examples</a>
+  </span>
+  <div class="off" id="stdlayoutexample" style="color:#44D;font-size:12px;margin-left:1.2em;">
+    <p>Example 1:</p>
+    <img src="{% static 'main/images/excel_example-a.png' %}" style="border:none;padding:5px;">
+    <p>Here is a sequence of metabolites measured at different times.
+      To import this, you would paste it into the Step 2 box.  The EDD automatically flips
+      the axes and detects the presence of a time sequence and measurement names,
+      and sets the pulldowns in Step 3 like so:</p>
+    <img src="{% static 'main/images/excel_example-a-settings.png' %}" style="border:none;padding:5px;">
+      <p>Then in Step 4, you would select the Line and Assay where the data will be imported.</p>
+    <p>Example 2:</p>
+    <img src="{% static 'main/images/excel_example-b.png' %}" style="border:none;padding:5px;">
+    <p>Here is a sequence of measurements for multiple metabolites across different Lines.
+      The EDD will recognize the metabolites, but might not recognize the top row as Line names,
+      in which case the pulldowns will start out looking like this:</p>
+    <img src="{% static 'main/images/excel_example-b-settings.png' %}" style="border:none;padding:5px;">
+    <p>If you set the first pulldown to "Assay/Line Names", you can proceed to link the items with existing Lines or Assays in
+      Step 4 before submitting the data.</p>
+  </div>
+</li>
+<li>
+  <input type="radio" name="datalayout" value="tr" id="trlayout" />
+  <label for="trlayout">
+    <b>Gene transcription</b> data, as a table of RPKM values.
+  </label>
+  <span style="font-size:12px;"
+     id="trlayoutpexamplehide"
+     onclick="Disclose.click(this);"
+     hidethese="trlayoutpexamplehide"
+     showthese="trlayoutpexampleshow,trlayoutexample">
+    <a href="#"><span style="color:blue;">&#x25BA;</span> Example</a>
+  </span>
+  <span style="font-size:12px;"
+     class="off"
+     id="trlayoutpexampleshow"
+     onclick="Disclose.click(this);"
+     hidethese="trlayoutpexampleshow,trlayoutexample"
+     showthese="trlayoutpexamplehide">
+    <a href="#"><span style="color:blue;">&#x25BC;</span> Example</a>
+  </span>
+  <div class="off" id="trlayoutexample" style="color:#44D;font-size:12px;margin-left:1.2em;">
+    <img src="{% static 'main/images/transcription_example.png' %}" style="border:none;padding:5px;">
+    <p>In this typical example of gene transcription data, the only two columns that the EDD
+      actually cares about are the gene name, and the RPKM value, highlighted in green.</p>
+    <p>After you paste your document in, you'll need to tell the EDD where to find these columns.</p>
+  </div>
+</li>
+<li>
+  <input type="radio" name="datalayout" value="pr" id="prlayout" />
+  <label for="prlayout">
+    <b>Proteomics</b> data, as a table of protein names and measurements.
+  </label>
+  <span style="font-size:12px;"
+     id="prlayoutpexamplehide"
+     onclick="Disclose.click(this);"
+     hidethese="prlayoutpexamplehide"
+     showthese="prlayoutpexampleshow,prlayoutexample">
+    <a href="#"><span style="color:blue;">&#x25BA;</span> Example</a>
+  </span>
+  <span style="font-size:12px;"
+     class="off"
+     id="prlayoutpexampleshow"
+     onclick="Disclose.click(this);"
+     hidethese="prlayoutpexampleshow,prlayoutexample"
+     showthese="prlayoutpexamplehide">
+    <a href="#"><span style="color:blue;">&#x25BC;</span> Example</a>
+  </span>
+  <div class="off" id="prlayoutexample" style="color:#44D;font-size:12px;margin-left:1.2em;">
+    <img src="{% static 'main/images/proteomics_example.png' %}" style="border:none;padding:5px;">
+    <p>In this example of proteomics data, the columns represent protein names,
+      and the rows represent Line or Assay names.</p>
+  </div>
+</li>
+<li>
+  <input type="radio" name="datalayout" value="mdv" id="mdvlayout" />
+  <label for="mdvlayout">
+    A JBEI <b>Mass Distribution Vector</b> document
+  </label>
+  <span style="font-size:12px;"
+     id="mdvlayoutpexamplehide"
+     onclick="Disclose.click(this);"
+     hidethese="mdvlayoutpexamplehide"
+     showthese="mdvlayoutpexampleshow,mdvlayoutexample">
+    <a href="#"><span style="color:blue;">&#x25BA;</span> Example</a>
+  </span>
+  <span style="font-size:12px;"
+     class="off"
+     id="mdvlayoutpexampleshow"
+     onclick="Disclose.click(this);"
+     hidethese="mdvlayoutpexampleshow,mdvlayoutexample"
+     showthese="mdvlayoutpexamplehide">
+    <a href="#"><span style="color:blue;">&#x25BC;</span> Example</a>
+  </span>
+  <div class="off" id="mdvlayoutexample" style="color:#44D;font-size:12px;margin-left:1.2em;">
+    <p>Example:</p>
+    <img src="{% static 'main/images/excel_example-jbei_mdv.png' %}" style="border:none;padding:5px;">
+    <p>The data will be for a single Line.  Multiple Assays will be created automatically in the selected Protocol,
+      with each Assay holding the carbon ratio data from a different column of the document.</p>
+    <p>Make sure you select the whole table, including the headers along the top, when you copy your data to the clipboard.</p>
+  </div>
+</li>
+</ul>
+</div>
+
+<div class="sectionContent" style="border-top:1px solid #6CA5E9;padding:0em 1em 3px 3em;">
+  <table class="formTable" style="margin-left:1em;">
+    <tr>
+      <td rowspan="2" style="vertical-align:middle;">
+        <span>Data Are For Protocol:
+          <select name="masterProtocol" id="masterProtocol">
+          {% for protocol in protocols %}
+            <option value="{{ protocol.id }}">{{ protocol.name }}</option>
+          {% endfor %}
+          </select></span>
+      </td>
+      <td>
+        <input type="radio" name="writemode" value="m" id="writemodem" checked="checked" />
+      </td>
+      <td>
+        <p>
+          <label for="writemodem">Merge with existing data</label>
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <input type="radio" name="writemode" value="r" id="writemoder" />
+      </td>
+      <td>
+        <p>
+          <label for="writemoder">Replace existing data</label>
+        </p>
+      </td>
+    </tr>
+  </table>
+</div>
+
+</div>
+<div class="pageSection" id="mainModeDiv">
+  <div class="sectionHead" style="padding-right:7px;">
+
+    <div class="helpBadgeDiv" style="float:left;">Help
+      <div class="helpContent">
+        <P>Drag a selection box around your data and copy it to the clipboard.</P>
+        <P>Paste the clipboard into this text area.</P>
+        <P>You can edit it after it's pasted here, and the changes will propagate to later steps.</P>
+      </div>
+    </div>
+
+    Step 2 : Type or paste in your raw data.
+
+    <span class="tableControl" style="padding-top:1px;">
+      <input type="checkbox"
+          name="ignoreGaps"
+          id="ignoreGaps" value="1" />
+      <label for="ignoreGaps">Ignore gaps</label>
+    </span>
+
+    <span class="tableControl" style="padding-top:1px;">
+      <input type="checkbox" 
+          name="transpose"
+          id="transpose" value="1" />
+      <label for="transpose">Transpose</label>
+    </span>
+
+    <span class="tableControl">
+      Data Format:
+      <select name="rawdataformat" id="rawdataformatp">
+        <option value="tab" selected="selected">Tab-separated</option>
+        <option value="csv">Comma-separated (CSV)</option>  
+      </select>
+    </span>
+
+  </div>
+
+  <div class="sectionContent" style="padding:0em;text-align:center;">
+    <textarea class="dataTextArea" rows="16" style="width:98.5%;margin:2px;" id="textData" name="textData"></textarea>
+  </div>
+</div>
+
+<div class="pageSection">
+
+  <div class="sectionHead">
+
+    <div class="helpBadgeDiv" style="float:left;">Help
+      <div class="helpContent">
+<p>Set the pulldown menus on the left to tell the EDD how to interpret each row.  The system will make an educated guess
+at how the pulldowns should be set, but you may need to tweak it.</p>
+<P>Click the boxes on the top, or the left side, to enable and disable entire rows or columns.</P>
+<P>Double-click inside the table area to enable or disable individual values.</P>
+<P>You can edit your data in Step 2 without losing your settings here.</P>
+      </div>
+    </div>
+
+    <div class="resetButtonDiv" style="float:right;" onclick="EDDATD.resetEnabledFlagMarkers();">Reset</div>
+
+    Step 3 : Verify the data has been interpreted correctly, and disable any values you don't want.
+
+  </div>
+
+  <div id="dataTableDiv" class="dataTableDiv">
+    <div class="disabledStepLabel">
+      Enter some data in Step 2 first!
+    </div>
+  </div>
+
+  <center>
+    <div id="graphDiv" style="width:98%;height:240px;padding:0px;margin:5px 0px 5px 0px;"></div>
+  </center>
+
+</div>
+<div class="pageSection">
+  <div class="sectionHead">
+
+    <div class="helpBadgeDiv" style="float:left;">Help
+      <div class="helpContent">
+        <p>The EDD will do its best to pre-set these values for you,
+          based on data already present in the system, but you should always verify its work.</p>
+        <p>Usually you'll be matching measurement types with known types, and only rarely creating new ones.
+          Most of the time you'll be using pre-existing metadata types as well.
+          In the case of Lines or Assays, however, you may need to create dozens of new ones all at once.
+          To aid in this, any time you select 'Create New' in the pulldown menu for an Assay,
+          all the rest of the pulldowns in the sequence will change to 'Create New' as well.</p>
+        <p>Keep in mind that all the Assays in the pulldown and all the Assays created by this import process
+          are for the Protocol you've selected at the top of the page.
+          You cannot import data for more than one Protocol at the same time.</p>
+        <p>If you're importing for pre-existing Assays, remember that you can get different behavior depending
+          on whether you select merge or replace at the top of the page.</p>
+        <p>For example, if your Assay already has CO2 data in it for timestamps 0-7, and you're importing CO2
+          data for timestamps 8-12, selecting "merge" will give you a complete set from 0-12, whereas
+          selecting "replace" will delete measurements 0-7.</p>
+      </div>
+    </div>
+
+    <div class="resetButtonDiv" style="float:right;" onclick="EDDATD.resetInfoTableFields();">Re-parse</div>
+
+    Step 4 : Help to disambiguate some of the detected values.
+  </div>
+
+  <div class="disabledStepLabel" id="emptyDisambiguationLabel">
+    Enter some data in Step 2 first!
+  </div>
+
+  <div class="sectionContent off" id="masterTimestampDiv">
+
+    <table class="formTable" style="margin-left:1em;">
+      <tr>
+        <td style="vertical-align:middle;">
+          <span>
+            Timestamp for all the data:
+            <input  type="text"
+                size="6"
+                name="masterTimestamp"
+                id="masterTimestamp"
+                value="">
+          </span>
+        </td>
+      </tr>
+    </table>
+
+  </div>
+
+  <div class="sectionContent off" id="masterAssayLineDiv">
+
+    <table class="formTable" style="margin-left:1em;">
+      <tr>
+        <td style="vertical-align:middle;">
+          <span>
+            Assay for the all data:
+            <select name="masterAssay" id="masterAssay"><option value="new">(Create New)</option></select>
+          </span>
+          <span id="masterLineSpan">
+            for Line:<select name="masterLine" id="masterLine">
+<option value="new">(Create New)</option>
+<option value="431" selected="selected">I-1</option>
+<option value="432">I-2</option>
+</select>
+          </span>
+        </td>
+      </tr>
+    </table>
+
+  </div>
+
+  <div class="sectionContent off" id="masterMTypeDiv">
+
+    <table class="formTable" style="margin-left:1em;">
+    <tr>
+      <td>
+        <p>Metabolite Type for all data:</p>
+      </td><td>
+        <input  class="autocomplete" type="text" autocomplete="off"
+            autocompletetype="measurementcompartment"
+            size="4"
+            autocompletevalue="masterMCompValue"
+            name="masterMComp"
+            id="masterMComp"
+            value=""
+            style="margin-right: 2px; ">
+        <input type="hidden" id="masterMCompValue" name="masterMCompValue" value="0">
+      </td><td>
+        <input  class="autocomplete" type="text" autocomplete="off"
+            autocompletetype="metabolite"
+            size="45"
+            autocompletevalue="masterMTypeValue"
+            name="masterMType"
+            id="masterMType"
+            value=""
+            style="margin-right: 2px;">
+        <input type="hidden" id="masterMTypeValue" name="masterMTypeValue" value="0">
+      </td><td>
+        <input  class="autocomplete" type="text" autocomplete="off"
+            autocompletetype="units"
+            size="15"
+            autocompletevalue="masterMUnitsValue"
+            name="masterMUnits"
+            id="masterMUnits"
+            value="">
+        <input type="hidden" id="masterMUnitsValue" name="masterMUnitsValue" value="0">
+      </td>
+    </tr>
+    </table>
+
+  </div>
+
+  <div class="sectionContent disambiguationSection"
+     id="disambiguateLinesAssaysSection">
+    <h3>Lines/Assays</h3>
+  </div>
+
+  <div class="sectionContent disambiguationSection"
+     id="disambiguateMeasurementsSection">
+    <h3>Metabolite Types</h3>
+    <div id="noCompartmentWarning" class="statusMessage neutral">
+      Make sure you specify a compartment (Intracellular/Extracellular) for your mass distribution measurements.
+    </div>
+  </div>
+
+  <div class="sectionContent disambiguationSection"
+     id="disambiguateMetadataSection">
+    <h3>Metadata Types</h3>
+  </div>
+
+</div>
+
+<div style="width:99%;text-align:right;margin:10px 0px 10px 0px;">
+  <input type="submit" name="action" value="Submit Data" onclick="EDDATD.generateFormSubmission();" />
+</div>
+
+<input type="hidden" id="jsonoutput" name="jsonoutput" />
+
+  <textarea class="dataTextArea" rows="5" style="width:99%;margin:2px;" id="jsondebugarea" name="jsondebugarea"></textarea>
+
+<input type="hidden" name="studyID" value="{{ study.id }}"/>
+
+{% endblock content %}

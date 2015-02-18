@@ -3,6 +3,7 @@ from django.contrib.auth.models import Group
 from django.db import models
 from django.utils import timezone
 from django_extensions.db.fields import PostgreSQLUUIDField
+from django.utils.dateformat import format as format_date
 from itertools import chain
 import arrow
 
@@ -141,6 +142,12 @@ class EDDObject(models.Model):
         updated = self.updates.order_by('-mod_time')[:1]
         return updated[0] if updated else None
 
+    def mod_epoch (self) :
+        mod_date = self.updated()
+        if (mod_date) :
+          return format_date(mod_date, 'U')
+        return None
+
     def get_attachment_count(self):
         return self.files.count()
 
@@ -242,6 +249,13 @@ class Study(EDDObject):
 
     def get_assays (self) :
         return list(Assay.objects.filter(line__study=self))
+
+    def get_assays_by_protocol (self) :
+        protocols = Protocol.objects.all()
+        assays_by_protocol = { p.id : [] for p in protocols }
+        for assay in self.get_assays() :
+            assays_by_protocol[assay.protocol.id].append(assay.id)
+        return assays_by_protocol
 
 class StudyPermission(models.Model):
     """
@@ -358,6 +372,11 @@ class Strain(EDDObject):
     def __str__(self):
         return self.name
 
+    def to_json (self) :
+        return {
+            "name" : self.name,
+            "desc" : self.description,
+        }
 
 class CarbonSource(EDDObject):
     """
@@ -369,6 +388,18 @@ class CarbonSource(EDDObject):
     volume = models.DecimalField(max_digits=16, decimal_places=5)
     active = models.BooleanField(default=True)
 
+    def to_json (self) :
+        return {
+            "carbon" : None, # TODO
+            "labeling" : self.labeling,
+            "initials" : None, # TODO
+            "vol" : self.volume,
+            "mod" : self.mod_epoch(),
+            "modstr" : str(self.updated()),
+            "ainfo" : None, # TODO
+            "userid" : None, # TODO
+            "disabled" : not self.active,
+        }
 
 class Line(EDDObject):
     """

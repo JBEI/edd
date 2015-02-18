@@ -1976,5 +1976,5 @@ EDDATD = {
         EDDATD.queueProcessImportSettings();
     }
 };
-window.addEventListener('load', EDDATD.prepareIt, false);
+//window.addEventListener('load', EDDATD.prepareIt, false);
 //# sourceMappingURL=AssayTableData.js.map

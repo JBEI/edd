@@ -6,9 +6,10 @@ from django.http.response import HttpResponseForbidden
 from django.shortcuts import render, get_object_or_404
 from django.views import generic
 from main.forms import CreateStudyForm
-from main.models import Study, Update, MetadataType, MeasurementUnit, \
-  Metabolite, Protocol
+from main.models import Study, Update, Protocol
 from main.solr import StudySearch
+from main.utilities import get_edddata_assays, get_edddata_study, \
+    get_edddata_misc
 import json
 
 
@@ -63,42 +64,45 @@ def study_search(request):
         doc['url'] = reverse('main:detail', kwargs={'pk':doc['id']})
     return HttpResponse(json.dumps(query_response), content_type='application/json; charset=utf-8')
 
-def study_assays (request, study) :
+def study_edddata (request, study) :
+    """
+    Various information (both global and study-specific) that populates the
+    EDDData JS object on the client.
+    """
+    data_misc = get_edddata_misc()
+    data_assay = get_eddata_assays()
+    data_study = get_edddata_study(study)
+    data_study.update(data_misc)
+    data_study.update(data_assay)
+    return JsonResponse(data_study)
+
+def assay_edddata (request) :
+    """
+    Information required for assay data import, used to populate the EDDData
+    object on the client.
+    """
+    return JsonResponse(get_edddata_assays())
+
+def study_assay_table_data (request, study) :
     """
     Request information on assays associated with a study.
     """
     model = Study.objects.get(pk=study)
-    return JsonResponse({ a.id : a.to_json() for a in model.get_assays() })
+    protocols = Protocol.objects.all()
+    lines = model.line_set.all()
+    return JsonResponse({
+      "existingProtocols" : { p.id : p.name for p in protocols },
+      "existingLines" : [ {"n":l.name,"id":l.id} for l in lines ],
+      "existingAssays" : model.get_assays_by_protocol(),
+    })
 
-def globals_metadata_types (request) :
+def study_import_table (request, study) :
     """
-    Request information on metadata types stored globally.
+    View for importing tabular assay data (replaces AssayTableData.cgi).
     """
-    mdtypes = MetadataType.objects.all()
-    return JsonResponse({ m.id : m.to_json() for m in mdtypes })
-
-def globals_unit_types (request) :
-    """
-    Request information on measurement unit types stored globally.
-    """
-    unit_types = MeasurementUnit.objects.all()
-    return JsonResponse({ ut.id : ut.to_json() for ut in unit_types })
-
-def globals_metabolite_types (request) :
-    """
-    Request information on metabolite types stored globally.
-    """
-    metab_types = Metabolite.objects.all()
-    return JsonResponse({ mt.id : mt.to_json() for mt in metab_types })
-
-# XXX this is a little inconsistent...
-def globals_measurement_compartments (request) :
-    return JsonResponse({ i : comp for i, comp in enumerate([
-      # XXX should these be stored elsewhere (postgres, other module)?
-      { "name" : "", "sn" : "" },
-      { "name" : "Intracellular/Cytosol (Cy)", "sn" : "IC" },
-      { "name" : "Extracellular", "sn" : "EC" },
-    ]) })
-
-def globals_protocols (request) :
-    return JsonResponse({ p.id : p.name for p in Protocol.objects.all() })
+    model = Study.objects.get(pk=study)
+    protocols = Protocol.objects.all()
+    return render(request, "main/table_import.html", {
+      "study" : model,
+      "protocols" : protocols,
+    })
