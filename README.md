@@ -5,6 +5,51 @@
  * [edd.jbei.org](https://edd.jbei.org).
 
 ## System Pre-requisites
+### MacOS X
+ * XCode (and associated Developer Tools) via the App Store
+ * [Homebrew](http://brew.sh)
+    * `ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"`
+    * `brew doctor`
+ * [pip](https://pip.pypa.io)
+    * Download get-pip.py, run `python get-pip.py`
+ * Establish `/usr/include` with: `sudo ln -s \`xcrun --show-sdk-path\`/usr/include /usr/include`
+ * PostgreSQL (required for installing psycopg2 driver)
+    * `brew install postgresql`
+    * Following PostgreSQL steps are optional if using external database server
+    * Instructions on startup can be found with `brew info postgresql`
+        * Manually start with `postgres -D /usr/local/var/postgres`
+    * `createdb edd`
+ * Tomcat/Solr (optional if using external server for Solr)
+    * `brew install tomcat solr`
+    * Link to easily access tomcat and solr install directories:
+            ln -s /usr/local/Cellar/tomcat/(VERSION)/libexec/ /usr/local/tomcat
+            ln -s /usr/local/Cellar/solr/(VERSION)/ /usr/local/solr
+    * Copy Solr libraries to Tomcat lib:
+      `cp /usr/local/solr/example/lib/ext/* /usr/local/tomcat/lib/`
+    * Create Solr directories:
+      `mkdir -p /usr/local/var/solr`
+    * Copy Solr configuration from `edd-django/solr` to `/usr/local/var/solr`
+    * `cp /usr/local/solr/libexec/dist/solr-(VERSION).war /usr/local/tomcat/webapps/solr.war`
+    * Add a `setenv.sh` to `/usr/local/tomcat/bin/` and chmod +x
+            #!/bin/bash
+            JAVA_OPTS="$JAVA_OPTS -Dsolr.solr.home=/usr/local/var/solr"
+    * Modify `/usr/local/tomcat/conf/server.xml` to only listen on localhost
+        * find `<Connector port="8080" ...`
+        * add attribute `address="localhost"`
+    * Service is controlled with `catalina` command; `catalina start` and `catalina stop`
+    * Access admin interface via <http://localhost:8080/solr>
+ * Install python packages (these can be combined into one `sudo pip install`)
+    * Arrow `sudo pip install arrow`
+    * Django `sudo pip install Django`
+    * django-auth-ldap `sudo pip install django-auth-ldap`
+    * django-extensions `sudo pip install django-extensions`
+    * django-registration `sudo pip install django-registration-redux`
+    * requests `sudo pip install requests`
+    * psycopg2 `sudo pip install psycopg2`
+    * python-ldap `sudo pip install python-ldap`
+ * Use `server.cfg-example` as a template to create a `server.cfg` file
+    * Need to put in appropriate values for `site.secret`, `db.pass`, and `ldap.pass`
+    * _*DO NOT CHECK THIS FILE INTO SOURCE CONTROL*_
 ### Debian
  * `sudo apt-get install -t testing libpq-dev` for headers required by psycopg2
  * `sudo apt-get install libldap2-dev libsasl2-dev libssl-dev` for headers
@@ -12,21 +57,13 @@
  * Configure LDAP SSL handling in `/etc/ldap/ldap.conf`
     * Add line `TLS_CACERTDIR   /etc/ssl/certs`
     * Add line `TLS_CACERT  /etc/ssl/certs/ca-certificates.crt`
+ * (_optional_) `sudo apt-get install tomcat7` for Tomcat/Solr
+    * Download [Solr](http://lucene.apache.org/solr/) and copy WAR to webapps folder
+ * TODO complete Debian instructions
  
-## Python Packages
-### Required Packages
- * Arrow `sudo pip install arrow`
- * Django `sudo pip install Django`
- * django-auth-ldap `sudo pip install django-auth-ldap`
- * django-extensions `sudo pip install django-extensions`
- * django-registration `sudo pip install django-registration-redux`
- * requests `sudo pip install requests`
- * psycopg2 `sudo pip install psycopg2`
- * python-ldap `sudo pip install python-ldap`
-
-### Helpful Packages
+## Helpful Python Packages
  * django-debug-toolbar `pip install django-debug-toolbar`
-    Include `debug_toolbar` in settings.py INSTALLED_APPS
+    * Include `debug_toolbar` in settings.py INSTALLED_APPS
 
 ## Build Tools
  * This project makes use of Node.js and grunt for builds; it would be a good
@@ -40,13 +77,13 @@
     * `sudo npm install grunt-typescript`
 
 ## Database conversion
- 1. `pg_dump -i -h postgres -U edduser -F p -b -v -f edddb.sql edddb`
+ 1. `pg_dump -i -h postgres.jbei.org -U edduser -F p -b -v -f edddb.sql edddb`
  2. Create a new schema in the django database, e.g. `CREATE SCHEMA edd_old`
  3. Edit the SQL file to prepend the new schema to the `SET search_path` line,
     and replace all instances of `public.` with `edd_old.` (or whatever the
     schema name is)
- 4. `psql edddjango < edddb.sql`
- 5. `psql edddjango < convert.sql`
+ 4. `psql edd < edddb.sql`
+ 5. `psql edd < convert.sql`
 
 ## Solr
  * TODO expand on this w/ documentation in other EDD project
