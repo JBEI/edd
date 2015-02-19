@@ -8,8 +8,7 @@ from django.views import generic
 from main.forms import CreateStudyForm
 from main.models import Study, Update, Protocol
 from main.solr import StudySearch
-from main.utilities import get_edddata_assays, get_edddata_study, \
-    get_edddata_misc
+from main.utilities import get_edddata_study, get_edddata_misc
 import json
 
 
@@ -69,19 +68,11 @@ def study_edddata (request, study) :
     Various information (both global and study-specific) that populates the
     EDDData JS object on the client.
     """
+    model = Study.objects.get(pk=study)
     data_misc = get_edddata_misc()
-    data_assay = get_eddata_assays()
-    data_study = get_edddata_study(study)
+    data_study = get_edddata_study(model)
     data_study.update(data_misc)
-    data_study.update(data_assay)
     return JsonResponse(data_study)
-
-def assay_edddata (request) :
-    """
-    Information required for assay data import, used to populate the EDDData
-    object on the client.
-    """
-    return JsonResponse(get_edddata_assays())
 
 def study_assay_table_data (request, study) :
     """
@@ -91,9 +82,12 @@ def study_assay_table_data (request, study) :
     protocols = Protocol.objects.all()
     lines = model.line_set.all()
     return JsonResponse({
-      "existingProtocols" : { p.id : p.name for p in protocols },
-      "existingLines" : [ {"n":l.name,"id":l.id} for l in lines ],
-      "existingAssays" : model.get_assays_by_protocol(),
+      "ATData" : {
+        "existingProtocols" : { p.id : p.name for p in protocols },
+        "existingLines" : [ {"n":l.name,"id":l.id} for l in lines ],
+        "existingAssays" : model.get_assays_by_protocol(),
+      },
+      "EDDData" : get_edddata_study(model),
     })
 
 def study_import_table (request, study) :

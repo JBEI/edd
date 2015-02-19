@@ -355,6 +355,11 @@ class Protocol(EDDObject):
     def __str__(self):
         return self.protocol_name
 
+    def to_json (self) :
+        return {
+            "name" : self.name,
+            "disabled" : not self.active,
+        }
 
 class Strain(EDDObject):
     """
@@ -423,7 +428,8 @@ class Line(EDDObject):
     def to_json(self):
         return {
             'id': self.pk,
-            'name': self.line_name,
+            'name': self.name,
+            'n' : self.name, # XXX used by ArrayTableData.ts
             'description': self.description,
             'study': self.study.pk,
             'control': self.control,

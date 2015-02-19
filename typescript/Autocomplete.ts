@@ -3293,4 +3293,4 @@ jQuery.fn.indexOf = function(e){
 };
 
 
-window.addEventListener('load', EDDAutoComplete.initializeAllPageElements, false);
+//window.addEventListener('load', EDDAutoComplete.initializeAllPageElements, false);

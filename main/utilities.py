@@ -2,10 +2,11 @@
 from main.models import Study, Update, MetadataType, MeasurementUnit, \
   Metabolite, Protocol, CarbonSource
 
-def get_edddata_assays () :
+def get_edddata_study (study) :
     """
     Dump of selected database contents used to populate EDDData object on the
-    client.  This contains only global metadata, not specific to any one study.
+    client.  This contains mostly global metadata, but the assays are specific
+    to a study..
     """
     mdtypes = MetadataType.objects.all()
     unit_types = MeasurementUnit.objects.all()
@@ -13,6 +14,9 @@ def get_edddata_assays () :
     protocols = Protocol.objects.all()
     enabled_protocols = Protocol.objects.filter(active=True)
     carbon_sources = CarbonSource.objects.all()
+    assays = study.get_assays()
+    strains = study.get_strains_used()
+    lines = study.line_set.all()
     # Static metadata
     # XXX should these be stored elsewhere (postgres, other module)?
     measurement_compartments = { i : comp for i, comp in enumerate([
@@ -40,10 +44,22 @@ def get_edddata_assays () :
       # Protocols
       "ProtocolIDs" : [ p.id for p in protocols ],
       "EnabledProtocolIDs" : [ p.id for p in enabled_protocols ],
-      "Protocols" : { p.id : p.name for p in protocols },
+      "Protocols" : { p.id : p.to_json() for p in protocols },
       # Measurement units
       "UnitTypeIDs" : [ ut.id for ut in unit_types ],
       "UnitTypes" : { ut.id : ut.to_json() for ut in unit_types },
+      ### Everything below here is study-specific
+      # Assays
+      "AssayIDs" : [ a.id for a in assays ],
+      "EnabledAssayIDs" : [ a.id for a in assays if a.active ],
+      "Assays" : { a.id : a.to_json() for a in assays },
+      # Strains
+      "StrainIDs" : [ s.id for s in strains ],
+      "EnabledStrainIDs" : [ s.id for s in strains if s.active ],
+      "Strains" : { s.id : s.to_json() for s in strains },
+      # Lines
+      "LineIDs" : [ l.id for l in lines ],
+      "Lines" : { l.id : l.to_json() for l in lines },
     }
 
 def get_edddata_misc () :
@@ -67,17 +83,4 @@ def get_edddata_misc () :
       "UserIDs" : [ u.id for u in users ],
       "EnabledUserIDs" : [ u.id for u in users if u.is_active ],
       "Users" : {},
-    }
-
-def get_edddata_study (study_id) :
-    """
-    Dump of study-specific database contents used to populate EDDData object
-    on the client.
-    """
-    model = Study.objects.get(pk=study_id)
-    strains = model.get_strains_used()
-    return {
-        "StrainIDs" : [ s.id for s in strains ],
-        "EnabledStrainIDs" : [ s.id for s in strains if s.active ],
-        "Strains" : { s.id : s.to_json() for s in strains },
     }

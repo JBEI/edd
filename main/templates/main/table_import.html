@@ -21,7 +21,7 @@
 <!-- some page-specific code -->
 <script type="text/javascript">
 var ATData = {}; // this needs to be declared before loading AssayTableData.js!
-var EDDData = { }; // Declaring the object for later use
+var EDDData = { }; // this needs to be declared before loading Autocomplete.js!
 EDDData.currentUserID = {{ user.pk }};
 var atdata_url = "/study/{{ study.id }}/assaydata";
 
@@ -29,19 +29,12 @@ var atdata_url = "/study/{{ study.id }}/assaydata";
 $(window).load(function () {
     jQuery.ajax(atdata_url, {
         "success" : function (data, textStatus, response) {
-            for (var keyname in data) {
-                ATData[keyname] = data[keyname];
+            ATData = data.ATData;
+            for (var keyname in data.EDDData) {
+                EDDData[keyname] = data.EDDData[keyname];
             }
             EDDATD.prepareIt();
-        }
-    }).fail(function (x, s, e) {
-        alert(s);
-    });
-    jQuery.ajax("/global/edddata/assay", {
-        "success" : function (data, textStatus, response) {
-            for (var keyname in data) {
-                EDDData[keyname] = data[keyname];
-            }
+            EDDAutoComplete.initializeAllPageElements();
         }
     }).fail(function (x, s, e) {
         alert(s);
@@ -362,7 +355,9 @@ at how the pulldowns should be set, but you may need to tweak it.</p>
         <td style="vertical-align:middle;">
           <span>
             Assay for the all data:
-            <select name="masterAssay" id="masterAssay"><option value="new">(Create New)</option></select>
+            <select name="masterAssay" id="masterAssay">
+              <option value="new">(Create New)</option>
+            </select>
           </span>
           <span id="masterLineSpan">
             for Line:<select name="masterLine" id="masterLine">
@@ -444,7 +439,7 @@ at how the pulldowns should be set, but you may need to tweak it.</p>
 
 <input type="hidden" id="jsonoutput" name="jsonoutput" />
 
-  <textarea class="dataTextArea" rows="5" style="width:99%;margin:2px;" id="jsondebugarea" name="jsondebugarea"></textarea>
+  <textarea class="dataTextArea" rows="5" style="width:98%;margin:10px;" id="jsondebugarea" name="jsondebugarea"></textarea>
 
 <input type="hidden" name="studyID" value="{{ study.id }}"/>
 
