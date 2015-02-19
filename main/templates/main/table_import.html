@@ -60,8 +60,24 @@ $(window).load(function () {
 
 {% block content %}
 
-<form method="post" id="assayTableForm" action="https://edd.jbei.org/AssayTableData.cgi">
+{% if pageError %}
 
+  <div style="padding:1em;color:red;">{{ pageError }}</div>
+
+{% endif %}
+
+{% if pageMessage %}
+
+  <div class="statusMessage">{{ pageMessage }}</div>
+  <p><a href="/study/{{ study.id }}">Return to the Study page</a>
+    or import more data below...</p>
+
+{% endif %}
+
+<form method="post" id="assayTableForm" action="/study/{{ study.id }}/import">
+{% csrf_token %}
+
+<!-- section 1 -->
 <div class="pageSection" id="mainModeDiv">
 <div class="sectionHead">Step 1 : Specify the kind of data you wish to import.</div>
 
@@ -224,6 +240,9 @@ $(window).load(function () {
 </div>
 
 </div>
+
+
+<!-- section 2 -->
 <div class="pageSection" id="mainModeDiv">
   <div class="sectionHead" style="padding-right:7px;">
 
@@ -266,6 +285,7 @@ $(window).load(function () {
   </div>
 </div>
 
+<!-- section 3 -->
 <div class="pageSection">
 
   <div class="sectionHead">
@@ -297,6 +317,9 @@ at how the pulldowns should be set, but you may need to tweak it.</p>
   </center>
 
 </div>
+
+
+<!-- section 4 -->
 <div class="pageSection">
   <div class="sectionHead">
 
@@ -442,5 +465,6 @@ at how the pulldowns should be set, but you may need to tweak it.</p>
   <textarea class="dataTextArea" rows="5" style="width:98%;margin:10px;" id="jsondebugarea" name="jsondebugarea"></textarea>
 
 <input type="hidden" name="studyID" value="{{ study.id }}"/>
+</form>
 
 {% endblock content %}

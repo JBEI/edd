@@ -3,7 +3,9 @@ from django.core.urlresolvers import reverse
 from django.db.models import Q
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.http.response import HttpResponseForbidden
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect, \
+  render_to_response
+from django.template import RequestContext
 from django.views import generic
 from main.forms import CreateStudyForm
 from main.models import Study, Update, Protocol
@@ -96,7 +98,18 @@ def study_import_table (request, study) :
     """
     model = Study.objects.get(pk=study)
     protocols = Protocol.objects.all()
-    return render(request, "main/table_import.html", {
-      "study" : model,
-      "protocols" : protocols,
-    })
+    pageMessage = pageError = None
+    if (request.method == "POST") :
+        for key in request.POST :
+            if (not key in "jsondebugarea") :
+                print key, ":", request.POST[key]
+                print ""
+    return render_to_response("main/table_import.html",
+        dictionary={
+            "study" : model,
+            "protocols" : protocols,
+            "pageMessage" : pageMessage,
+            "pageError" : pageError,
+        },
+        context_instance=RequestContext(request))
+      #return redirect("/study/%s" % study)
