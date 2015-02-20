@@ -7,14 +7,14 @@
 ## System Pre-requisites
 ### MacOS X
  * Install XCode (and associated Developer Tools) via the App Store
-    * Could also run `xcode-select --install` to just get command-line tools
+    * As of OS X 10.9 "Mavericks": `xcode-select --install` to just get command-line tools
 
  * [Homebrew](http://brew.sh)
     * `ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"`
     * `brew doctor`
 
  * [pip](https://pip.pypa.io)
-    * Download get-pip.py, run `python get-pip.py`
+    * Download get-pip.py, run `sudo python get-pip.py`
 
  * Establish `/usr/include` with: ``sudo ln -s `xcrun --show-sdk-path`/usr/include /usr/include``
 
@@ -88,6 +88,7 @@
     * From project root, `./manage.py migrate` will create the needed database tables.
     * `./manage.py runserver` will launch the application at <http://localhost:8000/>
     * `./manage.py test main` will run unit tests on the main application
+        * Solr tests make use of a different core, see Solr section below.
 
 ### Debian
  * `sudo apt-get install -t testing libpq-dev` for headers required by psycopg2
