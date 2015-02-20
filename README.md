@@ -6,20 +6,29 @@
 
 ## System Pre-requisites
 ### MacOS X
- * XCode (and associated Developer Tools) via the App Store
+ * Install XCode (and associated Developer Tools) via the App Store
+    * Could also run `xcode-select --install` to just get command-line tools
+
  * [Homebrew](http://brew.sh)
     * `ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"`
     * `brew doctor`
+
  * [pip](https://pip.pypa.io)
     * Download get-pip.py, run `python get-pip.py`
+
  * Establish `/usr/include` with: ``sudo ln -s `xcrun --show-sdk-path`/usr/include /usr/include``
+
  * PostgreSQL (required for installing psycopg2 driver)
     * `brew install postgresql`
     * Following PostgreSQL steps are optional if using external database server
     * Instructions on startup can be found with `brew info postgresql`
         * Manually start with `postgres -D /usr/local/var/postgres`
     * `createdb edd`
-    * `psql edd` and `CREATE USER edduser WITH PASSWORD 'somegoodpassword';`
+    * `psql edd` and
+
+            CREATE USER edduser WITH PASSWORD 'somegoodpassword'
+                NOSUPERUSER INHERIT CREATEDB NOCREATEROLE NOREPLICATION;
+
  * Tomcat/Solr (optional if using external server for Solr)
     * Install a JDK7+ from [Oracle](http://java.oracle.com)
     * `brew install tomcat solr`
@@ -44,6 +53,7 @@
         * add attribute `address="localhost"`
     * Service is controlled with `catalina` command; `catalina start` and `catalina stop`
     * Access admin interface via <http://localhost:8080/solr>
+
  * Install python packages (these can be combined into one `sudo pip install`)
     * Arrow `sudo pip install arrow`
     * Django `sudo pip install Django`
@@ -53,10 +63,12 @@
     * requests `sudo pip install requests`
     * psycopg2 `sudo pip install psycopg2`
     * python-ldap `sudo pip install python-ldap`
+
  * Use `server.cfg-example` as a template to create a `server.cfg` file
     * Need to put in appropriate values for `site.secret`, `db.pass`, and `ldap.pass`
     * Update `site`, `db`, `solr`, `ldap`, and `ice` for appropriate connection parameters
     * _*DO NOT CHECK THIS FILE INTO SOURCE CONTROL*_
+
  * Configure LDAP SSL handling in `/etc/openldap/ldap.conf`
     * Pull CA certificates from `identity.lbl.gov`
         * As root in `/System/Library/OpenSSL/certs`
@@ -75,16 +87,21 @@
    instructions on copying data.
     * From project root, `./manage.py migrate` will create the needed database tables.
     * `./manage.py runserver` will launch the application at <http://localhost:8000/>
+    * `./manage.py test main` will run unit tests on the main application
 
 ### Debian
  * `sudo apt-get install -t testing libpq-dev` for headers required by psycopg2
+
  * `sudo apt-get install libldap2-dev libsasl2-dev libssl-dev` for headers
     required by python-ldap
+
  * Configure LDAP SSL handling in `/etc/ldap/ldap.conf`
     * Add line `TLS_CACERTDIR   /etc/ssl/certs`
     * Add line `TLS_CACERT  /etc/ssl/certs/ca-certificates.crt`
+
  * \(_optional_\) `sudo apt-get install tomcat7` for Tomcat/Solr
     * Download [Solr](http://lucene.apache.org/solr/) and copy WAR to webapps folder
+
  * TODO complete Debian instructions
  
 ## Helpful Python Packages
@@ -97,10 +114,12 @@
     * `brew install node`
     * `sudo npm install -g grunt-cli`
     * `sudo npm install grunt`
+
  * EDD uses [TypeScript](http://typescriptlang.org) for its client-side
     interface; you will want:
     * `sudo npm install -g typescript`
     * `sudo npm install grunt-typescript`
+
  * Compile changes in `*.ts` to `*.js` by simply running `grunt` 
 
 ## Database conversion
