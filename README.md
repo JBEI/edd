@@ -12,7 +12,7 @@
     * `brew doctor`
  * [pip](https://pip.pypa.io)
     * Download get-pip.py, run `python get-pip.py`
- * Establish `/usr/include` with: `sudo ln -s \`xcrun --show-sdk-path\`/usr/include /usr/include`
+ * Establish `/usr/include` with: ``sudo ln -s `xcrun --show-sdk-path`/usr/include /usr/include``
  * PostgreSQL (required for installing psycopg2 driver)
     * `brew install postgresql`
     * Following PostgreSQL steps are optional if using external database server
