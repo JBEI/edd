@@ -99,17 +99,18 @@ def study_import_table (request, study) :
     model = Study.objects.get(pk=study)
     protocols = Protocol.objects.all()
     pageMessage = pageError = None
+    post_contents = []
     if (request.method == "POST") :
-        for key in request.POST :
+        for key in sorted(request.POST) :
             if (not key in "jsondebugarea") :
                 print key, ":", request.POST[key]
-                print ""
+                post_contents.append("%s : %s" % (key, request.POST[key]))
     return render_to_response("main/table_import.html",
         dictionary={
             "study" : model,
             "protocols" : protocols,
             "pageMessage" : pageMessage,
             "pageError" : pageError,
+            "post_contents" : "\n".join(post_contents), # XXX DEBUG
         },
         context_instance=RequestContext(request))
-      #return redirect("/study/%s" % study)

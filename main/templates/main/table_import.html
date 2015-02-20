@@ -1,8 +1,21 @@
 {% extends "edd_base.html" %}
 {% load staticfiles %}
 
+{% if post_contents %}
+
+<!--
+
+POSTed query:
+
+{{ post_contents }}
+
+-->
+
+{% endif %}
+
 {% block js_css %}
     {{ block.super }}
+  <link rel="stylesheet" type="text/css" href="{% static 'main/import.css' %}" />
     <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/Disclosure.js' %}"></script>
 
