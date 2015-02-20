@@ -70,18 +70,23 @@
     * _*DO NOT CHECK THIS FILE INTO SOURCE CONTROL*_
 
  * Configure LDAP SSL handling in `/etc/openldap/ldap.conf`
-    * Pull CA certificates from `identity.lbl.gov`
-        * As root in `/System/Library/OpenSSL/certs`
-            * `openssl s_client -showcerts -connect identity.lbl.gov:636 > godaddy.crt`
-            * Edit `godaddy.crt` to remove all non-certificate blocks (outside BEGIN/END), and the
-              first certificate block (the identity.lbl.gov certificate).
-    * Edit as root `/etc/openldap/ldap.conf`
-        * Add line `TLS_CACERTDIR   /System/Library/OpenSSL/certs`
-        * Add line `TLS_CACERT      /System/Library/OpenSSL/certs/godaddy.crt`
-    * Test with:
+    * For OS X 10.9.x "Mavericks":
+        * Pull CA certificates from `identity.lbl.gov`
+            * As root in `/System/Library/OpenSSL/certs`
+                * `openssl s_client -showcerts -connect identity.lbl.gov:636 > godaddy.crt`
+                * Edit `godaddy.crt` to remove all non-certificate blocks (outside BEGIN/END), and the
+                  first certificate block (the identity.lbl.gov certificate).
+        * Edit as root `/etc/openldap/ldap.conf`
+            * Add line `TLS_CACERTDIR   /System/Library/OpenSSL/certs`
+            * Add line `TLS_CACERT      /System/Library/OpenSSL/certs/godaddy.crt`
+        * Test with:
 
-            ldapsearch -H ldaps://identity.lbl.gov -b "ou=People,dc=lbl,dc=gov" -W \
-                -D "uid=jbei_auth,cn=operational,cn=other" -s base "objectclass=*"
+                ldapsearch -H ldaps://identity.lbl.gov -b "ou=People,dc=lbl,dc=gov" -W \
+                    -D "uid=jbei_auth,cn=operational,cn=other" -s base "objectclass=*"
+
+    * For OS X 10.10.x "Yosemite":
+        * TBD; something changed in certificate checking with ldapsearch
+        * Work-around, comment out the `TLS_REQCERT` line
 
  * The EDD should now be ready to run with an empty database. See Database Conversion below for
    instructions on copying data.
