@@ -24,18 +24,21 @@
     * Install a JDK7+ from [Oracle](http://java.oracle.com)
     * `brew install tomcat solr`
     * Link to easily access tomcat and solr install directories:
-    
+
             ln -s /usr/local/Cellar/tomcat/(VERSION)/libexec/ /usr/local/tomcat
             ln -s /usr/local/Cellar/solr/(VERSION)/ /usr/local/solr
+
     * Copy Solr libraries to Tomcat lib:
       `cp /usr/local/solr/example/lib/ext/* /usr/local/tomcat/lib/`
     * Create Solr directories:
       `mkdir -p /usr/local/var/solr`
     * Copy Solr configuration from `edd-django/solr` to `/usr/local/var/solr`
     * `cp /usr/local/solr/libexec/dist/solr-(VERSION).war /usr/local/tomcat/webapps/solr.war`
-    * Add a `setenv.sh` to `/usr/local/tomcat/bin/` and chmod +x
+    * Add a `setenv.sh` to `/usr/local/tomcat/bin/` and `chmod +x /usr/local/tomcat/bin/setenv.sh`
+    
             #!/bin/bash
             JAVA_OPTS="$JAVA_OPTS -Dsolr.solr.home=/usr/local/var/solr"
+
     * Modify `/usr/local/tomcat/conf/server.xml` to only listen on localhost
         * find `<Connector port="8080" ...`
         * add attribute `address="localhost"`
@@ -63,12 +66,16 @@
     * Edit as root `/etc/openldap/ldap.conf`
         * Add line `TLS_CACERTDIR   /System/Library/OpenSSL/certs`
         * Add line `TLS_CACERT      /System/Library/OpenSSL/certs/godaddy.crt`
-    * Test with `ldapsearch -H ldaps://identity.lbl.gov -b "ou=People,dc=lbl,dc=gov" -W \
-      -D "uid=jbei_auth,cn=operational,cn=other" -s base "objectclass=*"`
+    * Test with:
+
+            ldapsearch -H ldaps://identity.lbl.gov -b "ou=People,dc=lbl,dc=gov" -W \
+                -D "uid=jbei_auth,cn=operational,cn=other" -s base "objectclass=*"
+
  * The EDD should now be ready to run with an empty database. See Database Conversion below for
    instructions on copying data.
     * From project root, `./manage.py migrate` will create the needed database tables.
     * `./manage.py runserver` will launch the application at <http://localhost:8000/>
+
 ### Debian
  * `sudo apt-get install -t testing libpq-dev` for headers required by psycopg2
  * `sudo apt-get install libldap2-dev libsasl2-dev libssl-dev` for headers
@@ -76,7 +83,7 @@
  * Configure LDAP SSL handling in `/etc/ldap/ldap.conf`
     * Add line `TLS_CACERTDIR   /etc/ssl/certs`
     * Add line `TLS_CACERT  /etc/ssl/certs/ca-certificates.crt`
- * (_optional_) `sudo apt-get install tomcat7` for Tomcat/Solr
+ * \(_optional_\) `sudo apt-get install tomcat7` for Tomcat/Solr
     * Download [Solr](http://lucene.apache.org/solr/) and copy WAR to webapps folder
  * TODO complete Debian instructions
  
@@ -106,12 +113,6 @@
  5. `psql edd < convert.sql`
 
 ## Solr
- * TODO expand on this w/ documentation in other EDD project
- * Refer to documentation in the edd (perl) project for specifics on Solr setup.
  * Tests in this project make use of a `test` core, which will need to be created
     * Create a new data directory (e.g. `/usr/local/var/solr/data/test`)
     * Add new line to `solr.xml` using same studies `instanceDir` and new data directory
-
-TODO: how to install homebrew
-TODO: instructions on setting up server.cfg + template for server.cfg
-TODO: walkthrough on a clean mac 
