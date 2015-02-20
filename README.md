@@ -24,6 +24,7 @@
     * Install a JDK7+ from [Oracle](http://java.oracle.com)
     * `brew install tomcat solr`
     * Link to easily access tomcat and solr install directories:
+    
             ln -s /usr/local/Cellar/tomcat/(VERSION)/libexec/ /usr/local/tomcat
             ln -s /usr/local/Cellar/solr/(VERSION)/ /usr/local/solr
     * Copy Solr libraries to Tomcat lib:
