@@ -1,13 +1,16 @@
 from django.core import serializers
 from django.core.urlresolvers import reverse
 from django.db.models import Q
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.http.response import HttpResponseForbidden
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect, \
+  render_to_response
+from django.template import RequestContext
 from django.views import generic
 from main.forms import CreateStudyForm
-from main.models import Study, Update
+from main.models import Study, Update, Protocol
 from main.solr import StudySearch
+from main.utilities import get_edddata_study, get_edddata_misc
 import json
 
 
@@ -61,3 +64,52 @@ def study_search(request):
     for doc in query_response['docs']:
         doc['url'] = reverse('main:detail', kwargs={'pk':doc['id']})
     return HttpResponse(json.dumps(query_response), content_type='application/json; charset=utf-8')
+
+def study_edddata (request, study) :
+    """
+    Various information (both global and study-specific) that populates the
+    EDDData JS object on the client.
+    """
+    model = Study.objects.get(pk=study)
+    data_misc = get_edddata_misc()
+    data_study = get_edddata_study(model)
+    data_study.update(data_misc)
+    return JsonResponse(data_study)
+
+def study_assay_table_data (request, study) :
+    """
+    Request information on assays associated with a study.
+    """
+    model = Study.objects.get(pk=study)
+    protocols = Protocol.objects.all()
+    lines = model.line_set.all()
+    return JsonResponse({
+      "ATData" : {
+        "existingProtocols" : { p.id : p.name for p in protocols },
+        "existingLines" : [ {"n":l.name,"id":l.id} for l in lines ],
+        "existingAssays" : model.get_assays_by_protocol(),
+      },
+      "EDDData" : get_edddata_study(model),
+    })
+
+def study_import_table (request, study) :
+    """
+    View for importing tabular assay data (replaces AssayTableData.cgi).
+    """
+    model = Study.objects.get(pk=study)
+    protocols = Protocol.objects.all()
+    pageMessage = pageError = None
+    if (request.method == "POST") :
+        for key in request.POST :
+            if (not key in "jsondebugarea") :
+                print key, ":", request.POST[key]
+                print ""
+    return render_to_response("main/table_import.html",
+        dictionary={
+            "study" : model,
+            "protocols" : protocols,
+            "pageMessage" : pageMessage,
+            "pageError" : pageError,
+        },
+        context_instance=RequestContext(request))
+      #return redirect("/study/%s" % study)

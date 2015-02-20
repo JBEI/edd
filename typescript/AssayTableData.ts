@@ -2258,4 +2258,5 @@ prepareIt:function() {
 
 };
 
-window.addEventListener('load', EDDATD.prepareIt, false);
+// XXX this won't work if we decide to load ATData via AJAX
+//window.addEventListener('load', EDDATD.prepareIt, false);
