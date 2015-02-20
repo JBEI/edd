@@ -19,7 +19,9 @@
     * Instructions on startup can be found with `brew info postgresql`
         * Manually start with `postgres -D /usr/local/var/postgres`
     * `createdb edd`
+    * `psql edd` and `CREATE USER edduser WITH PASSWORD 'somegoodpassword';`
  * Tomcat/Solr (optional if using external server for Solr)
+    * Install a JDK7+ from [Oracle](http://java.oracle.com)
     * `brew install tomcat solr`
     * Link to easily access tomcat and solr install directories:
             ln -s /usr/local/Cellar/tomcat/(VERSION)/libexec/ /usr/local/tomcat
@@ -49,7 +51,23 @@
     * python-ldap `sudo pip install python-ldap`
  * Use `server.cfg-example` as a template to create a `server.cfg` file
     * Need to put in appropriate values for `site.secret`, `db.pass`, and `ldap.pass`
+    * Update `site`, `db`, `solr`, `ldap`, and `ice` for appropriate connection parameters
     * _*DO NOT CHECK THIS FILE INTO SOURCE CONTROL*_
+ * Configure LDAP SSL handling in `/etc/openldap/ldap.conf`
+    * Pull CA certificates from `identity.lbl.gov`
+        * As root in `/System/Library/OpenSSL/certs`
+            * `openssl s_client -showcerts -connect identity.lbl.gov:636 > godaddy.crt`
+            * Edit `godaddy.crt` to remove all non-certificate blocks (outside BEGIN/END), and the
+              first certificate block (the identity.lbl.gov certificate).
+    * Edit as root `/etc/openldap/ldap.conf`
+        * Add line `TLS_CACERTDIR   /System/Library/OpenSSL/certs`
+        * Add line `TLS_CACERT      /System/Library/OpenSSL/certs/godaddy.crt`
+    * Test with `ldapsearch -H ldaps://identity.lbl.gov -b "ou=People,dc=lbl,dc=gov" -W \
+      -D "uid=jbei_auth,cn=operational,cn=other" -s base "objectclass=*"`
+ * The EDD should now be ready to run with an empty database. See Database Conversion below for
+   instructions on copying data.
+    * From project root, `./manage.py migrate` will create the needed database tables.
+    * `./manage.py runserver` will launch the application at <http://localhost:8000/>
 ### Debian
  * `sudo apt-get install -t testing libpq-dev` for headers required by psycopg2
  * `sudo apt-get install libldap2-dev libsasl2-dev libssl-dev` for headers
@@ -75,6 +93,7 @@
     interface; you will want:
     * `sudo npm install -g typescript`
     * `sudo npm install grunt-typescript`
+ * Compile changes in `*.ts` to `*.js` by simply running `grunt` 
 
 ## Database conversion
  1. `pg_dump -i -h postgres.jbei.org -U edduser -F p -b -v -f edddb.sql edddb`
