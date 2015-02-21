@@ -17,6 +17,8 @@ from test_app.settings import ACCOUNT_ACTIVATION_DAYS
 from django.conf.global_settings import LOGIN_REDIRECT_URL
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 
+ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, ldap.OPT_X_TLS_ALLOW)
+
 try:
     with open(os.path.join(BASE_DIR, 'server.cfg')) as server_cfg:
         config = json.load(server_cfg)
@@ -54,7 +56,7 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     'django_extensions',
     'debug_toolbar',
-    'registration',
+    #'registration',
     'main',
     'edd.profile',
 )

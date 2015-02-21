@@ -476,6 +476,26 @@ class MeasurementType(models.Model):
     def __str__(self):
         return self.type_name
 
+    @classmethod
+    def proteins (cls) :
+        """
+        Return all instances of protein measurements.
+        """
+        return cls.objects.filter(type_group=MeasurementGroup.PROTEINID)
+
+    @classmethod
+    def proteins_by_name (cls) :
+        """
+        Generate a dictionary of proteins keyed by name.
+        """
+        return {p.type_name : p for p in cls.proteins().order_by("type_name")}
+
+    @classmethod
+    def create_protein (self, type_name, short_name=None) :
+        return cls(
+            type_name=type_name,
+            short_name=short_name,
+            type_group=MeasurementGroup.PROTEINID)
 
 class Metabolite(MeasurementType):
     """
@@ -528,6 +548,13 @@ class GeneIdentifier(MeasurementType):
     location_end = models.IntegerField(blank=True, null=True)
     gene_length = models.IntegerField(blank=True, null=True)
 
+    @classmethod
+    def by_name (cls) :
+        """
+        Generate a dictionary of genes keyed by name.
+        """
+        genes = cls.objects.all().order_by("type_name")
+        return { g.type_name : g for g in genes }
 
 # Commented out until there is more to ProteinIdentifier than what already is in MeasurementType
 # class ProteinIdentifier(MeasurementType):
@@ -597,6 +624,12 @@ class Assay(EDDObject):
             "exp" : self.experimenter.id,
         }
 
+class MeasurementCompartment (object) :
+    UNKNOWN, INTRACELLULAR, EXTRACELLULAR = range(3)
+    short_names = ["", "IC", "EC"]
+    names = ["", "Intracellular/Cytosol (Cy)", "Extracellular"]
+    GROUP_CHOICE = ( (str(i), cn) for (i,cn) in enumerate(names) )
+
 class Measurement(models.Model):
     """
     A plot of data points for an (assay, measurement type) pair. Points can either be single (x,y)
@@ -610,10 +643,12 @@ class Measurement(models.Model):
     measurement_type = models.ForeignKey(MeasurementType)
     update_ref = models.ForeignKey(Update, related_name='+')
     active = models.BooleanField(default=True)
+    compartment = models.CharField(max_length=1,
+                                   choices=MeasurementCompartment.GROUP_CHOICE,
+                                   default=MeasurementCompartment.UNKNOWN)
 
     def __str__(self):
         return 'Measurement{%d}{%s}' % (self.assay.id, self.measurement_type)
-
 
 class MeasurementDatum(models.Model):
     """

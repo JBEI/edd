@@ -1,6 +1,7 @@
 from django.core import serializers
 from django.core.urlresolvers import reverse
 from django.db.models import Q
+from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.http.response import HttpResponseForbidden
 from django.shortcuts import render, get_object_or_404, redirect, \
@@ -11,7 +12,9 @@ from main.forms import CreateStudyForm
 from main.models import Study, Update, Protocol
 from main.solr import StudySearch
 from main.utilities import get_edddata_study, get_edddata_misc
+from io import BytesIO
 import json
+import csv
 
 
 class StudyCreateView(generic.edit.CreateView):
@@ -114,3 +117,48 @@ def study_import_table (request, study) :
             "post_contents" : "\n".join(post_contents), # XXX DEBUG
         },
         context_instance=RequestContext(request))
+
+# FIXME it would be much better to avoid csrf_exempt...
+@csrf_exempt
+def utilities_parse_table (request) :
+    """
+    Attempt to process posted data as either a TSV or CSV file or Excel
+    spreadsheet and extract a table of data automatically.
+    """
+    default_error = JsonResponse({"python_error" : "The uploaded file "+
+        "could not be interpreted as either an Excel spreadsheet or a "+
+        "CSV/TSV file.  Please check that the contents are formatted "+
+        "correctly.  (Word documents are not allowed!)" })
+    data = request.read()
+    try :
+        parsed = csv.reader(data, delimiter='\t')
+        assert (len(parsed[0]) > 1)
+        return JsonResponse({
+            "file_type" : "tab",
+            "file_data" : data,
+        })
+    except Exception as e :
+        try :
+            parsed = csv.reader(data, delimiter=',')
+            assert (len(parsed[0]) > 1)
+            return JsonResponse({
+                "file_type" : "csv",
+                "file_data" : data,
+            })
+        except Exception as e :
+            try :
+                from jbei_tools.parsers import excel
+                result = excel.import_xlsx_tables(
+                    file=BytesIO(data))
+                return JsonResponse({
+                    "file_type" : "xlsx",
+                    "file_data" : result,
+                })
+            except ImportError as e :
+                return JsonResponse({ "python_error" :
+                    "jbei_tools module required to handle Excel table input."
+                })
+            except ValueError as e :
+                return JsonResponse({ "python_error" : str(e) })
+            except Exception as e :
+                return default_error

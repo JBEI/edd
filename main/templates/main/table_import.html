@@ -30,6 +30,7 @@ POSTed query:
     <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.threshold.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.orderbars.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.stack.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/lib/filedrop-min.js' %}"></script>
 
 <!-- some page-specific code -->
 <script type="text/javascript">
@@ -297,6 +298,50 @@ $(window).load(function () {
     <textarea class="dataTextArea" rows="16" style="width:98.5%;margin:2px;" id="textData" name="textData"></textarea>
   </div>
 </div>
+
+<!-- JavaScript to handle Excel drag-and-drop -->
+<script>
+/* see http://filedropjs.org */
+var options = {iframe: {url: '/utilities/parsefile'}};
+var zone = new FileDrop('textData', options);
+zone.multiple(false);
+zone.event('send', function (files) {
+  files.each(function (file) {
+    file.event('done', function (xhr) {
+      var result = jQuery.parseJSON(xhr.responseText);
+      console.log(result);
+      if (result.python_error) {
+        alert(result.python_error);
+      } else if (result.file_type == "xlsx") {
+        var ws = result.file_data["worksheets"][0];
+        console.log(ws);
+        var table = ws[0];
+        var csv = [];
+        if (table.headers) {
+          csv.push(table.headers.join());
+        }
+        for (var i = 0; i < table.values.length; i++) {
+          csv.push(table.values[i].join());
+        }
+        $("#rawdataformatp").val("csv");
+        $("#textData").text(csv.join("\n"));
+        EDDATD.parseAndDisplayText(); // AssayTableData.ts
+      } else {
+        $("#rawdataformatp").val(result.file_type);
+        $("#textData").text(result.file_data);
+        EDDATD.parseAndDisplayText(); // AssayTableData.ts
+      }
+    });
+
+    file.event('error', function (e, xhr) {
+      alert('Error uploading ' + this.name + ': ' +
+            xhr.status + ', ' + xhr.statusText);
+    });
+
+    file.sendTo("/utilities/parsefile");
+  });
+});
+</script>
 
 <!-- section 3 -->
 <div class="pageSection">
