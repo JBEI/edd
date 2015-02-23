@@ -404,7 +404,7 @@ var StudyD;
                 var assayRecord = EDDData.Assays[assayID];
                 var lineID = assayRecord.lid;
                 var lineRecord = EDDData.Lines[lineID];
-                var cs = lineRecord.cs; // Carbon Sources (array of IDs)
+                var cs = lineRecord.cs || []; // Carbon Sources (array of IDs)
                 var csns = []; // Carbon Source names
                 if (cs.length > 0) {
                     for (var j = 0; j < cs.length; j++) {
@@ -447,7 +447,7 @@ var StudyD;
                 var assayRecord = EDDData.Assays[assayID];
                 var lineID = assayRecord.lid;
                 var lineRecord = EDDData.Lines[lineID];
-                var cs = lineRecord.cs; // Carbon Sources (array of IDs)
+                var cs = lineRecord.cs || []; // Carbon Sources (array of IDs)
                 var labns = []; // Carbon Source labeling names
                 if (cs.length > 0) {
                     for (var j = 0; j < cs.length; j++) {
@@ -824,6 +824,7 @@ var StudyD;
     StudyD.GeneFilterSection = GeneFilterSection;
     // Called when the page loads.
     function prepareIt() {
+        var _this = this;
         this.mainGraphObject = null;
         this.allFilteringWidgets = [];
         this.assayFilteringWidgets = [];
@@ -853,6 +854,7 @@ var StudyD;
         this.assaysDataGrids = {};
         $('.disclose').find('.discloseLink').on('click', function (e) {
             $(e.target).closest('.disclose').toggleClass('discloseHide');
+            return false;
         });
         if (EDDData.currentUserHasPageWriteAccess) {
             EditableElements.initializeElements([
@@ -894,34 +896,45 @@ var StudyD;
                 }
             ]);
         }
-        StudyD.prepareFilteringSection();
-        // Instantiate a table specification for the Lines table
-        this.linesDataGridSpec = new DataGridSpecLines();
-        // Instantiate the table itself with the spec
-        this.linesDataGrid = new DataGrid(this.linesDataGridSpec);
-        // Find out which protocols have assays with measurements - disabled or no
-        var protocolsWithMeasurements = {};
-        for (var assayID in EDDData.Assays) {
-            var assayRecord = EDDData.Assays[assayID];
-            var lineRecord = EDDData.Lines[assayRecord.lid];
-            if (lineRecord.dis) {
-                continue;
+        $.ajax({
+            'url': 'edddata',
+            'type': 'GET',
+            'error': function (xhr, status, e) {
+                console.log(['Loading EDDData failed: ', status, ';', e].join(''));
+            },
+            'success': function (data) {
+                EDDData = $.extend(EDDData || {}, data);
+                //// Moved following into callback
+                StudyD.prepareFilteringSection();
+                // Instantiate a table specification for the Lines table
+                _this.linesDataGridSpec = new DataGridSpecLines();
+                // Instantiate the table itself with the spec
+                _this.linesDataGrid = new DataGrid(_this.linesDataGridSpec);
+                // Find out which protocols have assays with measurements - disabled or no
+                var protocolsWithMeasurements = {};
+                for (var assayID in EDDData.Assays) {
+                    var assayRecord = EDDData.Assays[assayID];
+                    var lineRecord = EDDData.Lines[assayRecord.lid];
+                    if (lineRecord.dis) {
+                        continue;
+                    }
+                    if (!assayRecord.mea_c) {
+                        continue;
+                    }
+                    var protocolID = assayRecord.pid;
+                    protocolsWithMeasurements[protocolID] = true;
+                }
+                for (var i = 0; i < EDDData.ProtocolIDs.length; i++) {
+                    var pID = EDDData.ProtocolIDs[i];
+                    if (!protocolsWithMeasurements[pID]) {
+                        continue;
+                    }
+                    // Instantiate an Assays table specification, and table, for the Protocol
+                    _this.assaysDataGridSpecs[pID] = new DataGridSpecAssays(pID);
+                    _this.assaysDataGrids[pID] = new DataGridAssays(_this.assaysDataGridSpecs[pID]);
+                }
             }
-            if (!assayRecord.mea_c) {
-                continue;
-            }
-            var protocolID = assayRecord.pid;
-            protocolsWithMeasurements[protocolID] = true;
-        }
-        for (var i = 0; i < EDDData.ProtocolIDs.length; i++) {
-            var pID = EDDData.ProtocolIDs[i];
-            if (!protocolsWithMeasurements[pID]) {
-                continue;
-            }
-            // Instantiate an Assays table specification, and table, for the Protocol
-            this.assaysDataGridSpecs[pID] = new DataGridSpecAssays(pID);
-            this.assaysDataGrids[pID] = new DataGridAssays(this.assaysDataGridSpecs[pID]);
-        }
+        });
     }
     StudyD.prepareIt = prepareIt;
     // Read through the Lines, Assays, and AssayMeasurements data and prepare a secondary data structure for
@@ -3784,7 +3797,6 @@ var DGAssaysSearchWidget = (function (_super) {
     };
     return DGAssaysSearchWidget;
 })(DGSearchWidget);
-window.addEventListener('load', function () {
-    StudyD.prepareIt();
-}, false);
+// use JQuery ready event shortcut to call prepareIt when page is ready
+$(StudyD.prepareIt);
 //# sourceMappingURL=Study.js.map

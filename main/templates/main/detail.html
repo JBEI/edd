@@ -168,4 +168,24 @@
             </form>
         </div>
     </div>
+    <div class="pageSection off" id="assaysSection"></div>
+
+    <div class="pageSection minor disclose discloseHide" id="measurementMain">
+        <div class="sectionHead">
+            <span class="discloseLink"><a href="#">Add Measurements To Selected Assays</a></span>
+        </div>
+        <div class="sectionContent discloseBody">
+            <form action="" method="POST">
+                {% csrf_token %}
+                <div>
+                    <label for="id_measurement_type">Measurement Type</label>
+                    <input id="id_measurement_type" type="text" name="measurement_type"
+                            maxlength="255"/>
+                </div>
+                {# TODO finish form elements #}
+                <button type="submit">Add Measurement</button>
+            </form>
+        </div>
+    </div>
+    
 {% endblock content %}

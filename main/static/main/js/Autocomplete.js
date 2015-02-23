@@ -2747,5 +2747,4 @@ jQuery.fn.indexOf = function (e) {
     }
     return -1;
 };
-//window.addEventListener('load', EDDAutoComplete.initializeAllPageElements, false);
 //# sourceMappingURL=Autocomplete.js.map

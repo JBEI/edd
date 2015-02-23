@@ -495,8 +495,8 @@ module StudyD {
 				var lineID = assayRecord.lid;
 				var lineRecord = EDDData.Lines[lineID];
 
-				var cs = lineRecord.cs;		// Carbon Sources (array of IDs)
-				var csns = [];				// Carbon Source names
+				var cs = lineRecord.cs || [];   // Carbon Sources (array of IDs)
+				var csns = [];                  // Carbon Source names
 				if (cs.length > 0) {
 					for (var j=0; j<cs.length; j++) {
 						csns.push(EDDData.CSources[cs[j]].carbon || '(None)');
@@ -539,8 +539,8 @@ module StudyD {
 				var lineID = assayRecord.lid;
 				var lineRecord = EDDData.Lines[lineID];
 
-				var cs = lineRecord.cs;		// Carbon Sources (array of IDs)
-				var labns = [];				// Carbon Source labeling names
+				var cs = lineRecord.cs || [];   // Carbon Sources (array of IDs)
+				var labns = [];                 // Carbon Source labeling names
 				if (cs.length > 0) {
 					for (var j=0; j<cs.length; j++) {
 						labns.push(EDDData.CSources[cs[j]].labeling || '(None)');
@@ -985,6 +985,7 @@ module StudyD {
 
         $('.disclose').find('.discloseLink').on('click', (e) => {
             $(e.target).closest('.disclose').toggleClass('discloseHide');
+            return false;
         });
 
         if (EDDData.currentUserHasPageWriteAccess) {
@@ -1023,40 +1024,53 @@ module StudyD {
                 }
             ]);
         }
-
-		StudyD.prepareFilteringSection();
-
-		// Instantiate a table specification for the Lines table
-		this.linesDataGridSpec = new DataGridSpecLines();
-		// Instantiate the table itself with the spec
-		this.linesDataGrid = new DataGrid(this.linesDataGridSpec);
-
-		// Find out which protocols have assays with measurements - disabled or no
-		var protocolsWithMeasurements:any = {};
-		for (var assayID in EDDData.Assays) {
-			var assayRecord = EDDData.Assays[assayID];
-			var lineRecord = EDDData.Lines[assayRecord.lid];
-			if (lineRecord.dis) {		// Skip any Assays in disabled Lines
-				continue;
-			}
-			if (!assayRecord.mea_c) {
-				continue;
-			}
-			var protocolID = assayRecord.pid;
-			protocolsWithMeasurements[protocolID] = true;
-		}
-
-		// For each protocol with measurements, create a DataGridAssays object.
-		for (var i = 0; i < EDDData.ProtocolIDs.length; i++) {
-			var pID = EDDData.ProtocolIDs[i];
-			if (!protocolsWithMeasurements[pID]) {
-				continue;
-			}
-
-			// Instantiate an Assays table specification, and table, for the Protocol
-			this.assaysDataGridSpecs[pID] = new DataGridSpecAssays(pID);
-			this.assaysDataGrids[pID] = new DataGridAssays(this.assaysDataGridSpecs[pID]);
-		}
+        
+        $.ajax({
+            'url': 'edddata',
+            'type': 'GET',
+            'error': (xhr, status, e) => {
+                console.log(['Loading EDDData failed: ', status, ';', e].join(''));
+            },
+            'success': (data) => {
+                EDDData = $.extend(EDDData || {}, data);
+                
+                //// Moved following into callback
+                
+                StudyD.prepareFilteringSection();
+        
+                // Instantiate a table specification for the Lines table
+                this.linesDataGridSpec = new DataGridSpecLines();
+                // Instantiate the table itself with the spec
+                this.linesDataGrid = new DataGrid(this.linesDataGridSpec);
+        
+                // Find out which protocols have assays with measurements - disabled or no
+                var protocolsWithMeasurements:any = {};
+                for (var assayID in EDDData.Assays) {
+                    var assayRecord = EDDData.Assays[assayID];
+                    var lineRecord = EDDData.Lines[assayRecord.lid];
+                    if (lineRecord.dis) {       // Skip any Assays in disabled Lines
+                        continue;
+                    }
+                    if (!assayRecord.mea_c) {
+                        continue;
+                    }
+                    var protocolID = assayRecord.pid;
+                    protocolsWithMeasurements[protocolID] = true;
+                }
+        
+                // For each protocol with measurements, create a DataGridAssays object.
+                for (var i = 0; i < EDDData.ProtocolIDs.length; i++) {
+                    var pID = EDDData.ProtocolIDs[i];
+                    if (!protocolsWithMeasurements[pID]) {
+                        continue;
+                    }
+        
+                    // Instantiate an Assays table specification, and table, for the Protocol
+                    this.assaysDataGridSpecs[pID] = new DataGridSpecAssays(pID);
+                    this.assaysDataGrids[pID] = new DataGridAssays(this.assaysDataGridSpecs[pID]);
+                }
+            }
+        });
 	}
 
 
@@ -4395,5 +4409,6 @@ class DGAssaysSearchWidget extends DGSearchWidget {
 }
 
 
-window.addEventListener('load', function() { StudyD.prepareIt(); }, false);
+// use JQuery ready event shortcut to call prepareIt when page is ready
+$(StudyD.prepareIt);
 

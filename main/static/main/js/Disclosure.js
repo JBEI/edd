@@ -1,9 +1,9 @@
 var Disclose;
 Disclose = {
     click: function (n) {
+        // If either of these are present, refer to them for what to hide AND show.
         var showTheseString = n.getAttribute("showthese");
         var hideTheseString = n.getAttribute("hidethese");
-
         if (showTheseString || hideTheseString) {
             if (showTheseString) {
                 var showList = showTheseString.split(',');
@@ -17,7 +17,6 @@ Disclose = {
                     }
                 }
             }
-
             if (hideTheseString) {
                 var hideList = hideTheseString.split(',');
                 for (var objIndex = 0; objIndex < hideList.length; objIndex++) {
@@ -33,12 +32,15 @@ Disclose = {
         }
     },
     disclosedHelpForFirstTime: function () {
+        // Build an AJAX URL containing the required action
         var url = "/PreferencesAjaxResp.cgi?action=disclosedHelpForFirstTime";
         $.ajax({
             url: url,
             dataTypeString: "json",
             success: function (data, textStatus, jqXHR) {
+                //        receiveData(data, textStatus, jqXHR); // No response needed
             }
         });
     }
 };
+//# sourceMappingURL=Disclosure.js.map
