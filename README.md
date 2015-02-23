@@ -141,3 +141,4 @@
  * Tests in this project make use of a `test` core, which will need to be created
     * Create a new data directory (e.g. `/usr/local/var/solr/data/test`)
     * Add new line to `solr.xml` using same studies `instanceDir` and new data directory
+

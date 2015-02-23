@@ -3,6 +3,7 @@ from django.contrib.auth.models import Group
 from django.db import models
 from django.utils import timezone
 from django_extensions.db.fields import PostgreSQLUUIDField
+from django.utils.dateformat import format as format_date
 from itertools import chain
 import arrow
 
@@ -108,7 +109,19 @@ class MetadataType(models.Model):
 
     def __str__(self):
         return self.type_name
-    
+
+    def to_json (self) :
+        return {
+            "id" : self.pk,
+            "gn" : self.group.group_name,
+            "name" : self.type_name,
+            "is" : self.input_size,
+            "pre" : self.prefix,
+            "postfix" : self.postfix,
+            "default" : self.default_value,
+            "ll" : self.for_line(),
+            "pl" : self.for_protocol(),
+        }
     
 class EDDObject(models.Model):
     """
@@ -128,6 +141,12 @@ class EDDObject(models.Model):
     def updated(self):
         updated = self.updates.order_by('-mod_time')[:1]
         return updated[0] if updated else None
+
+    def mod_epoch (self) :
+        mod_date = self.updated()
+        if (mod_date) :
+          return format_date(mod_date, 'U')
+        return None
 
     def get_attachment_count(self):
         return self.files.count()
@@ -214,7 +233,7 @@ class Study(EDDObject):
     def get_contact(self):
         if self.contact is None:
             return self.contact_extra
-        return contact.email
+        return self.contact.email
 
     def get_line_metadata_types(self):
         return list(MetadataType.objects.filter(linemetadata__line__study=self).distinct())
@@ -228,6 +247,15 @@ class Study(EDDObject):
     def get_strains_used(self):
         return list(Strain.objects.filter(line__study=self).distinct())
 
+    def get_assays (self) :
+        return list(Assay.objects.filter(line__study=self))
+
+    def get_assays_by_protocol (self) :
+        protocols = Protocol.objects.all()
+        assays_by_protocol = { p.id : [] for p in protocols }
+        for assay in self.get_assays() :
+            assays_by_protocol[assay.protocol.id].append(assay.id)
+        return assays_by_protocol
 
 class StudyPermission(models.Model):
     """
@@ -327,6 +355,11 @@ class Protocol(EDDObject):
     def __str__(self):
         return self.protocol_name
 
+    def to_json (self) :
+        return {
+            "name" : self.name,
+            "disabled" : not self.active,
+        }
 
 class Strain(EDDObject):
     """
@@ -344,6 +377,11 @@ class Strain(EDDObject):
     def __str__(self):
         return self.name
 
+    def to_json (self) :
+        return {
+            "name" : self.name,
+            "desc" : self.description,
+        }
 
 class CarbonSource(EDDObject):
     """
@@ -355,6 +393,18 @@ class CarbonSource(EDDObject):
     volume = models.DecimalField(max_digits=16, decimal_places=5)
     active = models.BooleanField(default=True)
 
+    def to_json (self) :
+        return {
+            "carbon" : None, # TODO
+            "labeling" : self.labeling,
+            "initials" : None, # TODO
+            "vol" : self.volume,
+            "mod" : self.mod_epoch(),
+            "modstr" : str(self.updated()),
+            "ainfo" : None, # TODO
+            "userid" : None, # TODO
+            "disabled" : not self.active,
+        }
 
 class Line(EDDObject):
     """
@@ -378,7 +428,8 @@ class Line(EDDObject):
     def to_json(self):
         return {
             'id': self.pk,
-            'name': self.line_name,
+            'name': self.name,
+            'n' : self.name, # XXX used by ArrayTableData.ts
             'description': self.description,
             'study': self.study.pk,
             'control': self.control,
@@ -441,6 +492,29 @@ class Metabolite(MeasurementType):
     molar_mass = models.DecimalField(max_digits=16, decimal_places=5)
     molecular_formula = models.TextField()
 
+    @property
+    def charge_as_number (self) :
+        if (self.charge is not None) :
+            return self.charge
+        return 0
+
+    @property
+    def carbon_count_as_number (self) :
+        if (self.carbon_count is not None) :
+            return self.carbon_count
+        return 0
+
+    def to_json (self) :
+        return {
+            "name" : self.type_name,
+            "sn" : self.short_name,
+            "ans" : "", # TODO alternate_names
+            "f" : self.molecular_formula,
+            "mm" : self.molar_mass,
+            "cc" : self.carbon_count_as_number,
+            "chg" : self.charge,
+            "chgn" : self.charge_as_number,
+        }
 
 class GeneIdentifier(MeasurementType):
     """
@@ -470,12 +544,15 @@ class MeasurementUnit(models.Model):
     """
     class Meta:
         db_table = 'measurement_unit'
+    # TODO alternate_unit_names ???
     unit_name = models.CharField(max_length=255)
     display = models.BooleanField(default=True)
     type_group = models.CharField(max_length=8,
                                   choices=MeasurementGroup.GROUP_CHOICE,
                                   default=MeasurementGroup.GENERIC)
 
+    def to_json (self) :
+        return { "name" : self.unit_name }
 
 class Assay(EDDObject):
     """
@@ -491,6 +568,34 @@ class Assay(EDDObject):
     active = models.BooleanField(default=True)
     measurement_types = models.ManyToManyField(MeasurementType, through='Measurement')
 
+    def get_metabolite_measurements (self) :
+        return self.measurement_set.filter(
+            measurement_type__type_group=MeasurementGroup.METABOLITE)
+
+    def get_protein_measurements (self) :
+        return self.measurement_set.filter(
+            measurement_type__type_group=MeasurementGroup.PROTEINID)
+
+    def get_gene_measurements (self) :
+        return self.measurement_set.filter(
+            measurement_type__type_group=MeasurementGroup.GENEID)
+
+    def to_json (self) :
+        return {
+            "fn" : self.name,
+            "ln" : self.line.name,
+            "an" : self.name,
+            "des" : self.description,
+            "dis" : not self.active,
+            "lid" : self.line.pk,
+            "pid" : self.protocol.pk,
+            "mea_c" : len(self.measurement_set.all()),
+            "met_c" : len(self.get_metabolite_measurements()),
+            "tra_c" : len(self.get_protein_measurements()),
+            "pro_c" : len(self.get_gene_measurements()),
+            "mod" : str(self.updated()),
+            "exp" : self.experimenter.id,
+        }
 
 class Measurement(models.Model):
     """
