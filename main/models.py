@@ -145,7 +145,7 @@ class EDDObject(models.Model):
     def mod_epoch (self) :
         mod_date = self.updated()
         if (mod_date) :
-          return format_date(mod_date, 'U')
+          return format_date(mod_date.mod_time, 'U')
         return None
 
     def get_attachment_count(self):
@@ -483,6 +483,15 @@ class MeasurementType(models.Model):
     def __str__(self):
         return self.type_name
 
+    def is_metabolite (self) :
+        return self.type_group == MeasurementGroup.METABOLITE
+
+    def is_protein (self) :
+        return self.type_group == MeasurementGroup.PROTEINID
+
+    def is_gene (self) :
+        return self.type_group == MeasurementGroup.GENEID
+
     @classmethod
     def proteins (cls) :
         """
@@ -658,7 +667,7 @@ class Measurement(models.Model):
         return 'Measurement{%d}{%s}' % (self.assay.id, self.measurement_type)
 
     def extract_data_xvalues (self) :
-        return [ m.x for m in self.measurementdatum_set.all() ]
+        return [ float(m.x) for m in self.measurementdatum_set.all() ]
 
 class MeasurementDatum(models.Model):
     """
