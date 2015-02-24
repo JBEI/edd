@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<solr persistent="false" sharedLib="lib">
+    <cores adminPath="/admin/cores" shareSchema="true">
+        <core name="studies" default="true" instanceDir="./cores/studies" dataDir="../../data/studies0"/>
+        <core name="studies_swap" instanceDir="./cores/studies" dataDir="../../data/studies1"/>
+    </cores>
+</solr>

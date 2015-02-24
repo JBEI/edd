@@ -1,0 +1,34 @@
+{
+    "site": {
+        "root": "http://localhost/edd/",
+        "host": "localhost",
+        "secret": "GENERATE SOME RANDOM TEXT HERE"
+    },
+
+    "db": {
+        "driver": "django.db.backends.postgresql_psycopg2",
+        "user": "edduser",
+        "pass": "PASSWORD FOR EDDUSER",
+        "host": "localhost",
+        "database": "edddjango"
+    },
+
+    "solr": {
+        "url": "http://localhost:8080/studies"
+    },
+
+    "ldap": {
+        "uri": "ldaps://identity.lbl.gov:636",
+        "dn": "uid=jbei_auth,cn=operational,cn=other",
+        "pass": "PASSWORD FOR JBEI_AUTH",
+        "people_base_dn": "ou=People,dc=lbl,dc=gov",
+        "people_search": "(&(uid=%(user)s)(objectclass=lblperson)(lblaccountstatus=active))",
+        "group_base_dn": "ou=JBEI-Groups,ou=Groups,dc=lbl,dc=gov",
+        "group_search": "(objectclass=groupofuniquenames)"
+    },
+
+    "ice": {
+        "url": "https://registry-test.jbei.org/",
+        "cert": "./certs/registry-test.pem"
+    }
+}
