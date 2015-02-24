@@ -157,7 +157,6 @@ class EDDObject(models.Model):
     def __str__(self):
         return self.name
 
-
 class Metadata(models.Model):
     """
     Base form for line metadata tracks which line is referred to, type, and who/when.
@@ -439,6 +438,14 @@ class Line(EDDObject):
             'meta': {},
         }
 
+    @property
+    def strain_ids (self) :
+        return ",".join([ s.id for s in self.strains.all() ])
+
+    @property
+    def carbon_source_names (self) :
+        return ",".join([ "%s (%s)" % (cs.name, cs.labeling)
+                          for cs in self.carbon_source.all() ])
 
 class MeasurementGroup(object):
     """
@@ -649,6 +656,9 @@ class Measurement(models.Model):
 
     def __str__(self):
         return 'Measurement{%d}{%s}' % (self.assay.id, self.measurement_type)
+
+    def extract_data_xvalues (self) :
+        return [ m.x for m in self.measurementdatum_set.all() ]
 
 class MeasurementDatum(models.Model):
     """

@@ -1,0 +1,274 @@
+{% extends "edd_base.html" %}
+{% load staticfiles %}
+
+{% block js_css %}
+  {{ block.super }}
+  <script type="text/javascript" src="{% static 'main/lib/jquery.js' %}"></script>
+<script type="text/javascript" src="{% static 'main/Disclosure.js' %}"></script>
+<script type="text/javascript" src="{% static 'main/Dragboxes.js' %}"></script>
+<script type="text/javascript" src="{% static 'main/EDDEditing.js' %}"></script>
+<script type="text/javascript">
+//<![CDATA[
+EDDData = { }; // Declaring the object for later use
+
+EDDData.currentUserID = {{ user.pk }};
+
+//]]>
+</script>
+<script type="text/javascript" src="{% statuc 'main/Utl.js' %}"></script>
+<script type="text/javascript" src="{% static 'main/DataGrid.js' %}"></script>
+<style type="text/css"><!-- @import "https://edd-test.jbei.org/Common.css"; --></style>
+<style type="text/css"><!-- @import "LineTableData.css"; --></style>
+{% endblock js_css %}
+
+{% block head_title %}
+  Data Export For {{ study.name }}
+{% endblock head_title %}
+
+{% block body_title %}
+  Data Export For {{ study.name }}
+{% endblock body_title %}
+
+{% block content %}
+
+<p style="font-size:10pt;cursor:pointer;color:#44D;padding:0px;margin:6px 4px 4px 6px;font-weight:bold;"
+   id="existinglineshide"
+   onclick="Disclose.click(this);"
+   hidethese="existinglineshide"
+   showthese="existinglinesshow,existingLinesSection">
+  <span style="color:blue;">&#x25BA;</span>
+    {{ n_meas }} Measurements in {{ n_assays }} Assays in {{ n_lines }} Lines Selected
+  </p>
+  <p style="font-size:10pt;cursor:pointer;color:#44D;padding:0px;margin:6px 4px 4px 6px;font-weight:bold;"
+     class="off"
+     id="existinglinesshow"
+     onclick="Disclose.click(this);"
+     hidethese="existinglinesshow,existingLinesSection"
+     showthese="existinglineshide">
+    <span style="color:blue;">&#x25BC;</span>
+    {{ n_meas }} Measurements in {{ n_assays }} Assays in {{ n_lines }} Lines Selected
+  </p>
+  <div id="existingLinesSection" class="pageSection off" style="border-width:1px;margin:0px 2px 5px 2px;">  
+    <div class="sectionHead">
+      Lines 
+    </div>
+    <table cellpadding="0" cellspacing="0"
+        class="dataTable"
+        id="lineSelectionsTable">
+    <tr class="columnLabels">
+      <th class="sortheader" style="text-align:left">
+        <div>Name</div>
+      </th>
+      <th class="sortheader" style="text-align:left" id="hStrain">
+        <div>Strain</div>
+      </th>
+      <th class="sortheader" style="text-align:left" id="hMedia">
+        <div>Media</div>
+      </th>
+      <th class="sortheader" style="text-align:left" id="hCSource">
+        <div>Carbon Source</div>
+      </th>
+      <th class="sortheader" style="text-align:left" id="hLabeling">
+        <div>Labeling</div>
+      </th>
+      <th class="sortheader" style="text-align:center" id="hExperimenter">
+        <div>Experimenter</div>
+      </th>
+      <th class="sortheader" style="text-align:left;border-right-width:0px" id="hModified">
+        <div>Last Modified</div>
+      </th>
+    </tr>
+
+    {% for line in line_info %}
+    <tr class="stripeRowA" data-line-id="{{ line.id }}"><td>I-1</td>
+      <td>{{ line.strain_ids }}</td>
+      <td>{{ line.media }}</td>
+      <td><ul><li>{{ line.carbon_source.name }}</li></ul></td>
+      <td><ul><li>{{ line.carbon_source.labeling }}</li></ul></td>
+      <td style="text-align:center;">{{ line.experimenter }}</td>
+      <td>{{ line.last_modified }}</td>
+    </tr>
+    </table>
+  </div>
+
+<!-- start of main form --
+<form method="post" id="exportForm" action="StudyExport.cgi">
+{% csrf_token %}
+<div class="pageSection" style="margin-right:0px;margin-left:0px;" id="mainModeDiv">
+<div class="sectionHead">Specify the layout of the data you wish to export.</div>
+
+<div class="sectionContent">
+
+<ul style="font-size:13px;list-style-type:none;">
+<li>
+  A table of <b>metadata and Lines</b>, with
+  <select name="dlayouttype" id="dlayoutp">
+    <option value="dbyl" >columns of metadata types, and rows of Line names</option>
+        <option value="dbya" >columns of metadata types, and rows of single measurements</option>
+    <option value="lbyd" >columns of Line names, and rows of metadata types</option>
+  </select>
+  <span style="font-size:12px;"
+     id="dlayoutpexamplehide"
+     onclick="Disclose.click(this);"
+     hidethese="dlayoutpexamplehide"
+     showthese="dlayoutpexampleshow,dlayoutexample">
+    <a href="#"><span style="color:blue;">&#x25BA;</span> Example</a>
+  </span>
+  <span style="font-size:12px;"
+     class="off"
+     id="dlayoutpexampleshow"
+     onclick="Disclose.click(this);"
+     hidethese="dlayoutpexampleshow,dlayoutexample"
+     showthese="dlayoutpexamplehide">
+    <a href="#"><span style="color:blue;">&#x25BC;</span> Example</a>
+  </span>
+  <div class="off" id="dlayoutexample" style="color:#44D;font-size:12px;">
+    <p>Example:</p>
+    <IMG SRC="images/excel_example-d.png" style="border:2px solid #44D;padding:5px;">
+    <p>The data will be for multiple Lines, providing values for multiple kinds of metadata.
+      Depending on the options you choose, the first row will become a set of metadata types,
+      and the first column will become a set of Line names, or vice-versa.</P>
+  </div>
+</li>
+</ul>
+  <div style="font-size:13px;">
+    <p style="border-bottom:1px dotted #CCCCCC;
+          padding:0px 0px 3px 0px;
+          margin:0px 0px 3px 0px;">Metadata to include:</p>
+        <div style="width:160px;display:inline-block;padding:0px 0px 0px 5px;">
+      <input type="checkbox" name="colStudyIDinclude" id="colStudyIDinclude" value="1"  checked="checked"/>
+      <label for="colStudyIDinclude"><span>Study ID</span></label>
+    </div>
+    <div style="width:160px;display:inline-block;padding:0px 0px 0px 5px;">
+      <input type="checkbox" name="colLineIDinclude" id="colLineIDinclude" value="1"  checked="checked"/>
+      <label for="colLineIDinclude"><span>Line ID</span></label>
+    </div>
+    <div style="width:160px;display:inline-block;padding:0px 0px 0px 5px;">
+      <input type="checkbox" name="colLineinclude" id="colLineinclude" value="1"  checked="checked"/>
+      <label for="colLineinclude"><span>Line</span></label>
+    </div>
+    <div style="width:160px;display:inline-block;padding:0px 0px 0px 5px;">
+      <input type="checkbox" name="colControlinclude" id="colControlinclude" value="1"  checked="checked"/>
+      <label for="colControlinclude"><span>Control</span></label>
+    </div>
+    <div style="width:160px;display:inline-block;padding:0px 0px 0px 5px;">
+      <input type="checkbox" name="colStraininclude" id="colStraininclude" value="1"  checked="checked"/>
+      <label for="colStraininclude"><span>Strain</span></label>
+    </div>
+    <div style="width:160px;display:inline-block;padding:0px 0px 0px 5px;">
+      <input type="checkbox" name="colMediainclude" id="colMediainclude" value="1"  checked="checked"/>
+      <label for="colMediainclude"><span>Media</span></label>
+    </div>
+    <div style="width:160px;display:inline-block;padding:0px 0px 0px 5px;">
+      <input type="checkbox" name="colCarbonSourceinclude" id="colCarbonSourceinclude" value="1"  checked="checked"/>
+      <label for="colCarbonSourceinclude"><span>Carbon Source</span></label>
+    </div>
+    <div style="width:160px;display:inline-block;padding:0px 0px 0px 5px;">
+      <input type="checkbox" name="colCarbonLabelinginclude" id="colCarbonLabelinginclude" value="1"  checked="checked"/>
+      <label for="colCarbonLabelinginclude"><span>Carbon Labeling</span></label>
+    </div>
+    <div style="width:160px;display:inline-block;padding:0px 0px 0px 5px;">
+      <input type="checkbox" name="colLineMetadatainclude" id="colLineMetadatainclude" value="1"  checked="checked"/>
+      <label for="colLineMetadatainclude"><span>Line Metadata</span></label>
+    </div>
+    <div style="width:160px;display:inline-block;padding:0px 0px 0px 5px;">
+      <input type="checkbox" name="colLineExperimenterinclude" id="colLineExperimenterinclude" value="1"  checked="checked"/>
+      <label for="colLineExperimenterinclude"><span>Line Experimenter</span></label>
+    </div>
+    <div style="width:160px;display:inline-block;padding:0px 0px 0px 5px;">
+      <input type="checkbox" name="colLineContactinclude" id="colLineContactinclude" value="1"  checked="checked"/>
+      <label for="colLineContactinclude"><span>Line Contact</span></label>
+    </div>
+    <div style="width:160px;display:inline-block;padding:0px 0px 0px 5px;">
+      <input type="checkbox" name="colLineLastModifiedinclude" id="colLineLastModifiedinclude" value="1"  checked="checked"/>
+      <label for="colLineLastModifiedinclude"><span>Line Last Modified</span></label>
+    </div>
+    <div style="width:160px;display:inline-block;padding:0px 0px 0px 5px;">
+      <input type="checkbox" name="colProtocolinclude" id="colProtocolinclude" value="1"  checked="checked"/>
+      <label for="colProtocolinclude"><span>Protocol</span></label>
+    </div>
+    <div style="width:160px;display:inline-block;padding:0px 0px 0px 5px;">
+      <input type="checkbox" name="colAssaySuffixinclude" id="colAssaySuffixinclude" value="1"  checked="checked"/>
+      <label for="colAssaySuffixinclude"><span>Assay Suffix</span></label>
+    </div>
+    <div style="width:160px;display:inline-block;padding:0px 0px 0px 5px;">
+      <input type="checkbox" name="colAssayMetadatainclude" id="colAssayMetadatainclude" value="1"  checked="checked"/>
+      <label for="colAssayMetadatainclude"><span>Assay Metadata</span></label>
+    </div>
+    <div style="width:160px;display:inline-block;padding:0px 0px 0px 5px;">
+      <input type="checkbox" name="colAssayExperimenterinclude" id="colAssayExperimenterinclude" value="1"  checked="checked"/>
+      <label for="colAssayExperimenterinclude"><span>Assay Experimenter</span></label>
+    </div>
+    <div style="width:160px;display:inline-block;padding:0px 0px 0px 5px;">
+      <input type="checkbox" name="colAssayLastModifiedinclude" id="colAssayLastModifiedinclude" value="1"  checked="checked"/>
+      <label for="colAssayLastModifiedinclude"><span>Assay Last Modified</span></label>
+    </div>
+    <div style="width:160px;display:inline-block;padding:0px 0px 0px 5px;">
+      <input type="checkbox" name="colMeasurementCompartmentinclude" id="colMeasurementCompartmentinclude" value="1"  checked="checked"/>
+      <label for="colMeasurementCompartmentinclude"><span>Measurement Compartment</span></label>
+    </div>
+
+  </div>
+</div>
+<div class="sectionContent" style="border-top:1px solid #6CA5E9;" id="dmodeoptions">
+
+  <table style="width:100%;font-size:13px;">
+  <tr>
+    <td>
+      Record Separators:
+      <select name="recordformat" id="recordformatp">
+        <option value="csv" >Comma-separated (CSV)</option> 
+        <option value="tab" >Tab-separated</option>
+      </select> 
+    </td>
+    <td>
+      <input type="checkbox" name="separatelines" value="1" id="cseparatelines" />
+      <label for="cseparatelines">Lines / Assays in separate sections</label>
+    </td>
+    <td>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      Include Measurement Data:
+      <select name="mdataformat" id="mdataformatp">
+        <option value="all"  selected="selected">All</option> 
+        <option value="sum" >Summarize</option>
+        <option value="none" >None</option>
+      </select> 
+    </td>
+    <td>
+      <input type="checkbox" name="separateprotocols" value="1" id="cseparateprotocols" />
+      <label for="cseparateprotocols">Each Protocol in its own section</label>
+    </td>
+    <td style="vertical-align:bottom;text-align:right;margin-right:1em;">
+      <input type="submit" name="action" value="Apply" />
+    </td>
+  </tr>
+  </table>
+
+</div>
+
+<input type="hidden" name="assaylevel" value="1"/>
+<input type="hidden" name="selectedLineIDs" value="431,432"/>
+<input type="hidden" name="selectedAssayIDs" value="1322,1326"/>
+<input type="hidden" name="selectedMeasurementIDs" value="10088,10087"/>
+<input type="hidden" name="studyID" value="38" />
+
+</div>
+</form>
+<div class="pageSection" style="margin-right:0px;margin-left:0px;">
+    <div class="sectionHead">View the current output here, or <A HREF="StudyExport.cgi?download=1&studyID=38&selectedLineIDs=431,432&dlayouttype=&recordformat=&mdataformat=all&separatelines=0&separateprotocols=0">click this link</A> to download it as a file.</div>
+    <div class="sectionContent" style="padding:0em;text-align:center;">
+        <textarea class="dataTextArea" rows="32" style="width:98.5%;margin:2px;" id="textData" name="textData">
+</textarea>
+    </div>
+</div>
+<div style="clear:all;
+            text-align:right;
+            color:gray;
+            font-size:10px;">
+        Page render time: 0.447016954421997s
+      </div>
+    </body>
+    </html>
