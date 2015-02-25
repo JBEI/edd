@@ -153,18 +153,27 @@ def extract_line_info_rows (lines, column_flags) :
         rows[line.id] = row
     return rows
 
-def extract_line_column_headers (column_flags) :
+def get_unique_metadata_names (objects) :
+    names = []
+    for obj in objects :
+        metadata = obj.metadata.all()
+        for item in metadata :
+            if (not item.type_name in names) :
+                names.append(item.type_name)
+    return names
+
+def extract_line_column_headers (column_flags) :#, line_metadata) :
     row = TableRow(column_flags)
     row.add_header_if_not_flagged("Study ID")
     row.add_header_if_not_flagged("Line ID")
     row.add_header_if_not_flagged("Line")
     row.add_header_if_not_flagged("Control")
     row.add_header_if_not_flagged("Strain")
-    # TODO leaving blank for now because not in model
-    #add_column_if_not_flagged("Media")
     row.add_header_if_not_flagged("Carbon Source")
     if (not column_flags.get("LineMetadata")) :
-        pass # TODO
+        pass
+        #for name in line_metadata :
+        #    row.append(name)
     row.add_header_if_not_flagged("Line Experimenter")
     row.add_header_if_not_flagged("Line Contact")
     row.add_header_if_not_flagged("Line Last Modified")
@@ -216,10 +225,10 @@ def assemble_table (
         separate_protocols=False) :
     assert (mdata_format in ["all", "sum", "none"])
     assert (dlayout_type in ["dbya", "dbyl", "lbyd"])
-    import time
-    t1 = time.time()
     # Collect column headers and partial columns for lines
+    #line_metadata_labels = get_unique_metadata_names(lines)
     line_headers = extract_line_column_headers(column_flags)
+        #line_metadata_labels)
     line_info = extract_line_info_rows(lines, column_flags)
     # Now the data generation process for Assays...
     # This is going to be a bit more complicated, because we may have to
@@ -271,7 +280,6 @@ def assemble_table (
             return float(n)
         except ValueError :
             return None
-    t2 = time.time()
     for protocol_name in used_protocols :
         protocol_headers[protocol_name] = extract_protocol_column_headers(
             column_flags)
@@ -344,7 +352,6 @@ def assemble_table (
             assay_have_data[assay.id] = found_meas_data
             # End of Assay loop
         # End of Protocol loop
-    t3 = time.time()
     # Now we can connect together all our prepared arrays and print them.
     table = []
     # separate section for lines
@@ -384,6 +391,7 @@ def assemble_table (
             table.append(headers)
         protocol_assays = sorted(assays_by_protocol[protocol_name],
             lambda a,b: cmp(a.name, b.name))
+        print protocol_assays
         for assay in protocol_assays :
             common_values = []
             line_id = assay.line.id
@@ -403,72 +411,52 @@ def assemble_table (
             # COMMON FUNCTIONS
             def create_rows_dbya (m) :
                 mt_name = m.measurement_type.short_name
+                # Only include the measurement if there is data for it.
+                # FIXME confirm that this is actually what happens...
                 for i in range(len(all_xvalues)) :
                     row = list(common_values)
                     row.extend([ all_xvalues[i], mt_name ])
-                    if (not separate_protocols) :
-                        row.append(measurement_export_rows[m.id][i])
-                    else :
+                    if separate_protocols :
                         row.append(measurement_protocol_export_rows[m.id][i])
+                    else :
+                        row.append(measurement_export_rows[m.id][i])
                     table.append(row)
             def create_row_other (m, mt_compartment) :
+                print m
                 mt_name = m.measurement_type.short_name
                 row = list(common_values)
                 if (not column_flags.get("MeasurementCompartment", False)):
                     row.append(mt_compartment)
                 row.append(mt_name)
-                if (not separate_protocols) :
-                    row.extend(measurement_export_rows[m.id])
-                else :
+                if separate_protocols :
                     row.extend(measurement_protocol_export_rows[m.id])
+                else :
+                    row.extend(measurement_export_rows[m.id])
                 table.append(row)
-            all_measurements = sorted_by_measurement_type_name(
+            assay_measurements = sorted_by_measurement_type_name(
                 measurements_dict[assay.id])
             # METABOLITES
-            #all_metabolites = sorted_by_measurement_type_name(
-            #    assay.get_metabolite_measurements())
-            for m in all_measurements : #metabolites :
+            for m in assay_measurements :
                 if (not m.measurement_type.is_metabolite()) : continue
-                #if (not m.id in measurement_inclusion_hash) : continue
-                mt_name = m.measurement_type.short_name
                 mt_compartment = "" # TODO
-                mdata = measurement_export_rows[m.id]
-                # Only include the measurement if there is data for it.
-                # FIXME confirm that this is actually what happens...
                 if (dlayout_type == "dbya") :
                     create_rows_dbya(m)
                 elif (len(mdata) > 0) :
                     create_row_other(m, mt_compartment)
             # GENES
-            #all_genes = sorted_by_measurement_type_name(
-            #    assay.get_gene_measurements())
-            for m in all_measurements :
-                #if (not m.id in measurement_inclusion_hash) : continue
+            for m in assay_measurements :
                 if (not m.measurement_type.is_gene()) : continue
-                mt_name = m.measurement_type.short_name
-                row = list(common_values)
                 if (dlayout_type == "dbya") :
                     create_rows_dbya(m)
                 else :
                     create_row_other(m, "") # compartment always blank?
             # PROTEINS
-            #all_proteins = sorted_by_measurement_type_name(
-            #    assay.get_protein_measurements())
-            for m in all_measurements :
+            for m in assay_measurements :
                 if (not m.measurement_type.is_protein()) : continue
-                #if (not m.id in measurement_inclusion_hash) : continue
-                mt_name = m.measurement_type.short_name
-                row = list(common_values)
                 if (dlayout_type == "dbya") :
                     create_rows_dbya(m)
                 else :
                     create_row_other(m, "") # compartment always blank?
-    t4 = time.time()
-    # DEBUG
-    #print "Setup : %.1fms" % (1000*(t2-t1))
-    #print "Loop 1: %.1fms" % (1000*(t3-t2))
-    #print "Loop 2: %.1fms" % (1000*(t4-t3))
-    #print "Total : %.1fms" % (1000*(t4-t1))
     return table
 
 def export_table (table, sep=",") :
