@@ -164,6 +164,7 @@ declare class DataGridSpecLines extends DataGridSpecBase {
     private loadLineName(index);
     private loadStrainName(index);
     private loadMedia(index);
+    private loadFirstCarbonSource(index);
     private loadCarbonSource(index);
     private loadCarbonSourceLabeling(index);
     private loadExperimenterInitials(index);
