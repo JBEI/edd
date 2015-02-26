@@ -1291,9 +1291,6 @@ module StudyD {
         // Initialize the description edit fields.
         this.initDescriptionEditFields();
 
-        // Hook up the permissions link.
-        this.setupPermissionsLink();
-
         // Hacky button for changing the metabolic map
         $("#metabolicMapName").click( () => this.onClickedMetabolicMapName() );
 
@@ -1380,9 +1377,7 @@ module StudyD {
             }
             myThis.processNewGeneData.call(myThis, response.data.data);
         };
-        var requestDone = () => {
-//            console.log(($.now()/1000) + ' done with request of gene data');
-        };
+        var requestDone = () => {};
         var error = (xhr, status, e) => {
             console.log('Failed to fetch gene data!');
             console.log(status);
@@ -1631,52 +1626,32 @@ module StudyD {
         if ( this.linesActionPanelRefreshTimer ) {
             clearTimeout ( this.linesActionPanelRefreshTimer );
         }
-        this.linesActionPanelRefreshTimer = setTimeout(StudyD.linesActionPanelShow, 150 );
+        this.linesActionPanelRefreshTimer = setTimeout(() => StudyD.linesActionPanelShow(), 150 );
     }
 
 
     export function linesActionPanelShow() {
 
         // Figure out how many lines are selected.
-        var checkedBoxes = this.linesDataGrid.getSelectedCheckboxElements();
-        var checkedLen = checkedBoxes.length;
 
-        var linesActionPanel = <any>document.getElementById('linesActionPanel');
-        if (!linesActionPanel) {
-            return;
-        }
-    
-        $(linesActionPanel).removeClass('off');
-        if (!checkedLen) {
-            $(linesActionPanel).addClass('off');
-            return;
-        }
-
-        var linesSelectedCell = <any>document.getElementById('linesSelectedCell');
-
-        while (linesSelectedCell.firstChild) {
-            linesSelectedCell.removeChild(linesSelectedCell.firstChild);
-        }
-        linesSelectedCell.appendChild(document.createTextNode(checkedLen + " selected"));
-
-        var editOneLineButton = <any>document.getElementById('editOneLineButton');
-        var editMultipleLinesButton = <any>document.getElementById('editMultipleLinesButton');
-        var cloneOneLineButton = <any>document.getElementById('cloneOneLineButton');
-        var cloneMultipleLinesButton = <any>document.getElementById('cloneMultipleLinesButton');
-
-        $(editOneLineButton).removeClass('off');
-        $(editMultipleLinesButton).removeClass('off');
-        $(cloneOneLineButton).removeClass('off');
-        $(cloneMultipleLinesButton).removeClass('off');
-
-        if (checkedLen < 2) {
-            editOneLineButton.oneSelectedLine = (checkedLen == 0 ? 0 : checkedBoxes[0].value);
-            $(editMultipleLinesButton).addClass('off');
-            $(cloneMultipleLinesButton).addClass('off');
+        var checkedBoxes, checkedLen;
+        if (this.linesDataGrid) {
+            checkedBoxes = this.linesDataGrid.getSelectedCheckboxElements();
         } else {
-            $(editOneLineButton).addClass('off');
-            $(cloneOneLineButton).addClass('off');
+            checkedBoxes = [];
         }
+        checkedLen = checkedBoxes.length;
+
+        var linesActionPanel = $('#linesActionPanel').removeClass('off');
+        if (!linesActionPanel.size()) {
+            return;
+        }
+        if (!checkedLen) {
+            linesActionPanel.addClass('off');
+            return;
+        }
+
+        $('#linesSelectedCell').empty().text(checkedLen + ' selected');
     }
 
 
@@ -1688,7 +1663,7 @@ module StudyD {
         if ( this.assaysActionPanelRefreshTimer ) {
             clearTimeout ( this.assaysActionPanelRefreshTimer );
         }
-        this.assaysActionPanelRefreshTimer = setTimeout(StudyD.assaysActionPanelShow, 150 );
+        this.assaysActionPanelRefreshTimer = setTimeout(() => StudyD.assaysActionPanelShow(), 150 );
     }
 
 
@@ -1760,7 +1735,7 @@ module StudyD {
         if ( this.mainGraphRefreshTimerID ) {
             clearTimeout( this.mainGraphRefreshTimerID );
         }
-        this.mainGraphRefreshTimerID = setTimeout(this.remakeMainGraphArea, 200);
+        this.mainGraphRefreshTimerID = setTimeout(() => this.remakeMainGraphArea(), 200);
     }
 
 
@@ -2383,31 +2358,6 @@ module StudyD {
     }
 
 
-    export function setupPermissionsLink() {
-        var that = this;
-        var readonly:boolean = !EDDData.currentUserHasPageWriteAccess;
-        var permissions:Permissions.Permission[] = [];
-        var parsed = EDDData.parsedPermissions;
-        for (var i = 0, l = parsed.length; i < l; ++i) {
-            permissions[i] = Permissions.Permission.create("g" === parsed[i].type, parsed[i].id,
-                    parsed[i].access);
-            permissions[i].label = parsed[i].label; 
-        }
-        // Turn the Permissions text into a link that brings up the permissions popup.
-        $("#permissionsLink").css('cursor', 'pointer').click(function(e) {
-            var dlg = new Permissions.PermissionsDialog(readonly, this, permissions,
-                    that.verifyPermissionsChange.bind(that));
-        });
-    }
-
-
-    // This implements Permissions.VerifyPermissionsFunc and will verify a permissions change for
-    // this study with the server.
-    export function verifyPermissionsChange(newPermissions, onComplete) {
-        // TODO: Send to the server.
-    }
-
-
     // They want to select a different metabolic map.
     export function onClickedMetabolicMapName() {
         var callback = (err, metabolicMapID, metabolicMapName, finalBiomass:number) => {
@@ -2530,189 +2480,43 @@ class DataGridSpecLines extends DataGridSpecBase {
 
 
     findMetaDataIDsUsedInLines() {
-        var ids = this.getRecordIDs();
-        this.metaDataIDsUsedInLines = [];
         var seenHash:any = {};
-        for (var x = 0; x < ids.length; x++) {
-            var id = ids[x];
+        // loop lines
+        $.each(this.getRecordIDs(), (index, id) => {
             var line = EDDData.Lines[id];
-            if (!line.hasOwnProperty('md')) {    continue;    }
-            for (var mdID in line.md) {
-                seenHash[mdID] = 1;
+            if (line) {
+                $.each(line.meta || {}, (key) => seenHash[key] = true);
             }
-        }
-        ids = EDDData.MetaDataTypeIDs;    // This is in alphabetical order by name
-        for (var y = 0; y < ids.length; y++) {
-            var id = ids[y];
-            if (seenHash.hasOwnProperty(id)) {
-                this.metaDataIDsUsedInLines.push(id);
-            }
-        }
+        });
+        // store all metadata IDs seen
+        this.metaDataIDsUsedInLines = Object.keys(seenHash);
     }
 
 
     findGroupIDsAndNames() {
-        var pThis = this;
-        var ids = this.getRecordIDs();
-        var rowIDsByGroupID:any = {};
-        var groupIDs:number[] = [];
+        var rowGroups = {};
         // Gather all the row IDs under the group ID each belongs to.
-        for (var x = 0; x < ids.length; x++) {
-            var id = ids[x];
-            var groupID =  EDDData.Lines[id].rid;
-
-            if (!(groupID in rowIDsByGroupID)) {
-                rowIDsByGroupID[groupID] = [];
-                groupIDs.push(groupID);
+        $.each(this.getRecordIDs(), (index, id) => {
+            var line = EDDData.Lines[id], rep = line.replicate;
+            if (rep) {
+                // use parent replicate as a replicate group ID, push all matching line IDs
+                (rowGroups[rep] = rowGroups[rep] || [ rep ]).push(id);
             }
-            rowIDsByGroupID[groupID].push(id);
-        }
-        this.groupIDsToGroupNames = {};
-
-        // For each group ID, compose a name based on the complete set of row IDs.
-        for (var y = 0; y < groupIDs.length; y++) {
-            var groupID = groupIDs[y];
-            this.groupIDsToGroupNames[groupID] = this.generateGroupName(rowIDsByGroupID[groupID]);
-        }    
-
-        groupIDs.sort(function(a:any,b:any) {
-            a = pThis.groupIDsToGroupNames[a];
-            b = pThis.groupIDsToGroupNames[b];
-            return (<any>(a > b) - <any>(b > a));
         });
-        this.groupIDsInOrder = groupIDs;
-
+        this.groupIDsToGroupNames = {};
+        // For each group ID, just use parent replicate name
+        $.each(rowGroups, (group, lines) => {
+            this.groupIDsToGroupNames[group] = EDDData.Lines[group].name;
+        });
+        // alphanumeric sort of group IDs by name attached to those replicate groups
+        this.groupIDsInOrder = Object.keys(rowGroups).sort((a,b) => {
+            var u:string = this.groupIDsToGroupNames[a], v:string = this.groupIDsToGroupNames[b];
+            return u.localeCompare(v);
+        });
         // Now that they're sorted by name, create a hash for quickly resolving IDs to indexes in
         // the sorted array
         this.groupIDsToGroupIndexes = {};
-        for (var y = 0; y < groupIDs.length; y++) {
-            var groupID = groupIDs[y];
-            this.groupIDsToGroupIndexes[groupID] = y;
-        }
-    }
-
-
-    // Generate a name for a group based on a set of row IDs
-    generateGroupName(rowIDs):string {
-
-        if (rowIDs.length == 0) {
-            return "(no lines)";
-        }
-
-        // Get a list of all the line names in this group.
-        var lineNames = jQuery.map(rowIDs,
-            function(rowID) {return EDDData.Lines[rowID].n;} 
-        );
-
-        // Must have at least 2 line names.
-        if (lineNames.length == 1) {
-            return lineNames[0];
-        }
-
-        // Now find the longest common substring.
-        var test = this._longestCommonSubstring(lineNames);
-        if (test.length >= 2) {
-            // Add "..." at the front and back if this substring is in the middle.
-            var ret = test;
-            if (lineNames[0].indexOf(test) != 0)
-                ret = "... " + ret;
-            if (lineNames[0].indexOf(test) != (lineNames[0].length - test.length))
-                ret = ret + " ...";
-            return ret;
-        }
-
-        // The longest common substring was too short. 
-        var joinedName = "";
-        for (var i=0; i < lineNames.length; i++) {
-            var name = lineNames[i];
-            var numCharsToUse = ( name.length <= 12 ? name.length : 12 );
-
-            var subName = name.substring(0, numCharsToUse);
-            if (numCharsToUse != name.length)
-                subName += " ...";
-
-            // Add a comma between elements.
-            if (joinedName.length != 0)
-                subName = " / " + subName;
-
-            // Make sure we don't get too long.
-            if (joinedName.length + subName.length > 50)
-                break;
-
-            joinedName += subName;
-        }
-        return joinedName;
-    }
-
-
-    // Helper function for generateGroupName.
-    // Return the longest common substring given a bunch of strings.
-    // Note that there might be several longest common substrings,
-    // but we'll just return one of them.
-    private _longestCommonSubstring(names) {
-        if (names.length == 0)
-            return "";
-        else if (names.length == 1)
-            return names[0];
-
-        var curLongest = this._longestCommonSubstringBetweenTwo(names[0], names[1]);
-        for (var i=2; i < names.length; i++) {
-            curLongest = this._longestCommonSubstringBetweenTwo(curLongest, names[i]);
-        }
-
-        return curLongest;
-    }
-
-
-    // Helper function for generateGroupName.
-    // Return the longest common substring given two strings.
-    private _longestCommonSubstringBetweenTwo(str1, str2) {
-
-        // Prepare a 2-D grid of zeros
-        var x = str1.length;
-        var y = str2.length;
-        var table = new Array(x);
-        for (var i=0; i < x; i++) {
-            table[i] = new Array(y);
-            for (var j=0; j < y; j++) {
-                table[i][j] = 0;
-            }
-        }
-
-        var longestLength = 0;
-        var longestStrings = [];
-
-        // Walk through all possible contiguous substrings, finding the longest ones.
-        for (var i=0; i < str1.length; i++) {
-            for (var j=0; j < str2.length; j++) {
-                if (str1[i] == str2[j]) {
-
-                    // Update how long this common-substring run is.
-                    if (i == 0 || j == 0)
-                        table[0][0] = 1;
-                    else
-                        table[i][j] = table[i-1][j-1] + 1;
-
-                    // Get this substring.
-                    var testString = str1.substring(i-longestLength, i+1);
-
-                    if (table[i][j] > longestLength) {
-                        // This is longer than any previously-longest substring, so
-                        // reset our table of (previously) longest strings to be this.
-                        longestLength = table[i][j];
-                        longestStrings = [testString];
-                    } else if (table[i][j] == longestLength) {
-                        // This is at least as long as any other substring, so include it
-                        // in the list.
-                        longestStrings.push(testString);
-                    }
-                }
-            }
-        }
-
-        // Just return the first of the longest strings since we have no 
-        // criteria with which to pick one.
-        return (longestStrings.length > 0 ? longestStrings[0] : "");
+        $.each(this.groupIDsInOrder, (index, group) => this.groupIDsToGroupIndexes[group] = index);
     }
 
 
@@ -2725,17 +2529,17 @@ class DataGridSpecLines extends DataGridSpecBase {
     private loadLineName(index:any):string {
         var line;
         if ((line = EDDData.Lines[index])) {
-            return line.n.toUpperCase();
+            return line.name.toUpperCase();
         }
         return '';
     }
     
     
     private loadStrainName(index:any):string {
-        // ensure strain ID exists on line, ensure strain ID is known strain, uppercase name or ?
+        // ensure a strain ID exists on line, is a known strain, uppercase first found name or '?'
         var line, strain;
         if ((line = EDDData.Lines[index])) {
-            if ((strain = EDDData.Strains[line.s])) {
+            if (line.strain && line.strain.length && (strain = EDDData.Strains[line.strain[0]])) {
                 return strain.name.toUpperCase();
             }
         }
@@ -2744,9 +2548,12 @@ class DataGridSpecLines extends DataGridSpecBase {
     
     
     private loadMedia(index:any):string {
-        var line;
+        var line, media;
         if ((line = EDDData.Lines[index])) {
-            return line.m.toUpperCase();
+            // TODO: replace magic number to look up media value with better lookup
+            if ((media = line.meta[19])) {
+                return media.toUpperCase();
+            }
         }
         return '--';
     }
@@ -2755,12 +2562,10 @@ class DataGridSpecLines extends DataGridSpecBase {
     private loadFirstCarbonSource(index:number):any {
         // ensure carbon source ID(s) exist on line, ensure at least one source ID, ensure first ID
         // is known carbon source
-        var line = EDDData.Lines[index];
-        if (line) {
-            var sources = line.cs;
-            if (sources && sources.length) {
-                var firstSource = sources[0];
-                return EDDData.CSources[firstSource];
+        var line, source;
+        if ((line = EDDData.Lines[index])) {
+            if (line.carbon && line.carbon.length && (source = EDDData.CSources[line.carbon[0]])) {
+                return source;
             }
         }
         return undefined;
@@ -2787,10 +2592,9 @@ class DataGridSpecLines extends DataGridSpecBase {
     
     private loadExperimenterInitials(index:any):string {
         // ensure index ID exists, ensure experimenter user ID exists, uppercase initials or ?
-        var line = EDDData.Lines[index];
-        if (line) {
-            var experimenter = EDDData.Users[line.exp];
-            if (experimenter) {
+        var line, experimenter;
+        if ((line = EDDData.Lines[index])) {
+            if ((experimenter = EDDData.Users[line.exp])) {
                 return experimenter.initials.toUpperCase();
             }
         }
@@ -2799,7 +2603,11 @@ class DataGridSpecLines extends DataGridSpecBase {
     
     
     private loadLineModification(index:any):number {
-        return EDDData.Lines[index].mod;
+        var line;
+        if ((line = EDDData.Lines[index])) {
+            return line.modified.time;
+        }
+        return undefined;
     }
 
 
@@ -2865,8 +2673,8 @@ class DataGridSpecLines extends DataGridSpecBase {
     private makeMetaDataSortFunction(id) {
         return (i) => {
             var line = EDDData.Lines[i];
-            if (line && line.md && line.md.hasOwnProperty(id)) {
-                return line.md[id];
+            if (line && line.meta && line.meta.hasOwnProperty(id)) {
+                return line.meta[id];
             }
             return '';
         }
@@ -2877,7 +2685,7 @@ class DataGridSpecLines extends DataGridSpecBase {
     // is based on the number of carbon sources for the respective record.
     // Specifically, it's either the number of carbon sources, or 1, whichever is higher.
     private rowSpanForRecord(index) {
-        return (EDDData.Lines[index].cs || []).length || 1;
+        return (EDDData.Lines[index].carbon || []).length || 1;
     }
 
 
@@ -2901,66 +2709,60 @@ class DataGridSpecLines extends DataGridSpecBase {
 
 
     generateStrainNameCells(gridSpec:DataGridSpecLines, index:number):DataGridDataCell[] {
-        var contentStr = '--';
-        var lineRecord = EDDData.Lines[index];
-        if (lineRecord) {
-            var strainRecord = EDDData.Strains[lineRecord.s];
-            if (strainRecord) {
-                contentStr = strainRecord.name;
-            }
+        var line, content;
+        if ((line = EDDData.Lines[index])) {
+            content = line.strain.map((id) => {
+                var strain = EDDData.Strains[id];
+                return [ '<a href="', strain.registry_url, '">', strain.name, '</a>' ].join('');
+            });
         }
         return [
             new DataGridDataCell(gridSpec, index, {
                 'rowspan': gridSpec.rowSpanForRecord(index),
-                'contentString': contentStr
+                'contentString': content.join('; ') || '--'
                })
         ];
     }
 
 
     generateMediaCells(gridSpec:DataGridSpecLines, index:number):DataGridDataCell[] {
+        var line, content;
+        if ((line = EDDData.Lines[index])) {
+            // TODO: lookup media without magic number
+            content = line.meta[19];
+        }
         return [
             new DataGridDataCell(gridSpec, index, {
                 'rowspan': gridSpec.rowSpanForRecord(index),
-                'contentString': EDDData.Lines[index].m || ''
+                'contentString': content || ''
             })
         ];
     }
 
 
     generateCarbonSourceCells(gridSpec:DataGridSpecLines, index:number):DataGridDataCell[] {
-        var sources = (EDDData.Lines[index].cs || []);
-        var strings = ['--'];
-        if (sources.length) {
-            strings = sources.map((id, i) => {
-                var source = EDDData.CSources[id];
-                return source ? source.carbon : '--';
-            });
+        var line, strings = ['--'];
+        if ((line = EDDData.Lines[index])) {
+            if (line.carbon && line.carbon.length) {
+                strings = line.carbon.map((id) => { return EDDData.CSources[id].name; });
+            }
         }
-        var cells = strings.map((name, i) => {
-            return new DataGridDataCell(gridSpec, index, {
-                'contentString': name
-            })
+        return strings.map((name) => {
+            return new DataGridDataCell(gridSpec, index, { 'contentString': name })
         });
-        return cells;
     }
 
 
     generateCarbonSourceLabelingCells(gridSpec:DataGridSpecLines, index:number):DataGridDataCell[] {
-        var sources = (EDDData.Lines[index].cs || []);
-        var strings = ['--'];
-        if (sources.length) {
-            strings = sources.map((id, i) => {
-                var source = EDDData.CSources[id];
-                return source ? source.labeling : '--';
-            });
+        var line, strings = ['--'];
+        if ((line = EDDData.Lines[index])) {
+            if (line.carbon && line.carbon.length) {
+                strings = line.carbon.map((id) => { return EDDData.CSources[id].labeling; });
+            }
         }
-        var cells = strings.map((name, i) => {
-            return new DataGridDataCell(gridSpec, index, {
-                'contentString': name
-            })
+        return strings.map((labeling) => {
+            return new DataGridDataCell(gridSpec, index, { 'contentString': labeling })
         });
-        return cells;
     }
 
 
@@ -2975,18 +2777,16 @@ class DataGridSpecLines extends DataGridSpecBase {
 
 
     generateExperimenterInitialsCells(gridSpec:DataGridSpecLines, index:number):DataGridDataCell[] {
-        var contentStr = '?';
-        var lineRecord = EDDData.Lines[index];
-        if (lineRecord) {
-            var userRecord = EDDData.Users[lineRecord.exp];
-            if (userRecord) {
-                contentStr = userRecord.initials;
+        var line, exp, content;
+        if ((line = EDDData.Lines[index])) {
+            if (EDDData.Users && (exp = EDDData.Users[line.experimenter])) {
+                content = exp.initials;
             }
         }
         return [
             new DataGridDataCell(gridSpec, index, {
                 'rowspan': gridSpec.rowSpanForRecord(index),
-                'contentString': contentStr
+                'contentString': content || '?'
             })
         ];
     }
@@ -2996,7 +2796,7 @@ class DataGridSpecLines extends DataGridSpecBase {
         return [
             new DataGridDataCell(gridSpec, index, {
                 'rowspan': gridSpec.rowSpanForRecord(index),
-                'contentString': Utl.JS.timestampToTodayString(EDDData.Lines[index].mod)
+                'contentString': Utl.JS.timestampToTodayString(EDDData.Lines[index].modified.time)
             })
         ];
     }
@@ -3007,10 +2807,10 @@ class DataGridSpecLines extends DataGridSpecBase {
             var contentStr = '';
             var line = EDDData.Lines[index];
             var type = EDDData.MetaDataTypes[metaDataID];
-            if (line && line.md && line.md.hasOwnProperty(metaDataID) && type) {
+            if (line && line.meta && line.meta.hasOwnProperty(metaDataID) && type) {
                 contentStr = [
                         type.pre || '',
-                        line.md[metaDataID],
+                        line.meta[metaDataID],
                         type.postfix || '' ].join(' ').trim();
             }
             return [
@@ -3093,13 +2893,6 @@ class DataGridSpecLines extends DataGridSpecBase {
         }
 
         return rowGroupSpec;
-    }
-
-
-    // When passed a record ID, returns the row group that the record is a member of.
-    getRowGroupMembership(recordID:number):number {
-        var groupID = EDDData.Lines[recordID].rid;
-        return this.groupIDsToGroupIndexes[groupID];
     }
 
 
@@ -3416,9 +3209,7 @@ class DataGridAssays extends DataGrid {
             // Start a timer to wait before calling the routine that remakes a table. This breaks up
             // table recreation into separate events, so the browser can update UI.
             if (this.recordsCurrentlyInvalidated.length) {
-                setTimeout(
-                    () => this.triggerAssayRecordsRefresh(), 10
-                );
+                setTimeout(() => this.triggerAssayRecordsRefresh(), 10);
             }
         } else {
             $(table).addClass('off');

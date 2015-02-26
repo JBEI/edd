@@ -139,8 +139,6 @@ declare module StudyD {
     function initDescriptionEditFields(): void;
     function onChangedMetabolicMap(): void;
     function rebuildCarbonBalanceGraphs(columnIndex: number): void;
-    function setupPermissionsLink(): void;
-    function verifyPermissionsChange(newPermissions: any, onComplete: any): void;
     function onClickedMetabolicMapName(): void;
     function submitToStudy(action: any): void;
     function takeLinesAction(): void;
@@ -157,9 +155,6 @@ declare class DataGridSpecLines extends DataGridSpecBase {
     enableCarbonBalanceWidget(v: boolean): void;
     findMetaDataIDsUsedInLines(): void;
     findGroupIDsAndNames(): void;
-    generateGroupName(rowIDs: any): string;
-    private _longestCommonSubstring(names);
-    private _longestCommonSubstringBetweenTwo(str1, str2);
     defineTableSpec(): DataGridTableSpec;
     private loadLineName(index);
     private loadStrainName(index);
@@ -184,7 +179,6 @@ declare class DataGridSpecLines extends DataGridSpecBase {
     defineColumnSpec(): DataGridColumnSpec[];
     defineColumnGroupSpec(): DataGridColumnGroupSpec[];
     defineRowGroupSpec(): any;
-    getRowGroupMembership(recordID: number): number;
     getTableElement(): HTMLElement;
     getRecordIDs(): number[];
     createCustomHeaderWidgets(dataGrid: DataGrid): DataGridHeaderWidget[];

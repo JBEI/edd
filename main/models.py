@@ -42,6 +42,12 @@ class Update(models.Model):
             update = cls.objects.get(pk=request.update_key)
         return update
 
+    def to_json(self):
+        return {
+            "time": format_date(self.mod_time, 'U'),
+            "user": self.mod_by.pk,
+        }
+
 
 class Comment(models.Model):
     """
@@ -82,21 +88,27 @@ class MetadataType(models.Model):
     LINE = 'L'
     PROTOCOL = 'P'
     LINE_OR_PROTOCOL = 'LP'
+    ALL = 'LPS'
     CONTEXT_SET = (
         (STUDY, 'Study'),
         (LINE, 'Line'),
         (PROTOCOL, 'Protocol'),
         (LINE_OR_PROTOCOL, 'Line or Protocol'),
+        (ALL, 'All'),
     )
     class Meta:
         db_table = 'metadata_type'
     group = models.ForeignKey(MetadataGroup)
+    # TODO: should also have a type_i18n to reference an i18n key for names in other languages
     type_name = models.CharField(max_length=255)
     input_size = models.IntegerField(default=6)
     default_value = models.CharField(max_length=255, blank=True)
     prefix = models.CharField(max_length=255, blank=True)
     postfix = models.CharField(max_length=255, blank=True)
     for_context = models.CharField(max_length=8, choices=CONTEXT_SET)
+    # TODO: add a type_class field and utility method to take a Metadata.data_value and return
+    #   a model instance; e.g. type_class = 'CarbonSource' would do a
+    #   CarbonSource.objects.get(pk=Metadata.data_value)
     
     def for_line(self):
         return self.for_context == self.LINE or self.for_context == self.LINE_OR_PROTOCOL
@@ -122,7 +134,23 @@ class MetadataType(models.Model):
             "ll" : self.for_line(),
             "pl" : self.for_protocol(),
         }
-    
+
+
+class Metadata(models.Model):
+    """
+    Base form for line metadata tracks which line is referred to, type, and who/when.
+    """
+    class Meta:
+        db_table = 'metadata'
+    edd_object = models.ForeignKey('EDDObject', related_name='+')
+    data_type = models.ForeignKey(MetadataType)
+    data_value = models.TextField()
+    updated = models.ForeignKey(Update, related_name='+')
+
+    def to_json(self):
+        return dict([(data_type.pk, data_value)])
+
+
 class EDDObject(models.Model):
     """
     A first-class EDD object, with update trail, comments, attachments.
@@ -154,20 +182,22 @@ class EDDObject(models.Model):
     def get_comment_count(self):
         return self.comments.count()
 
+    def get_metadata_json(self):
+        meta_json = {}
+        # add all values to lists on keys
+        for meta in Metadata.objects.filter(edd_object=self):
+            if meta.data_type.pk not in meta_json:
+                meta_json[meta.data_type.pk] = [meta.data_value]
+            else:
+                meta_json[meta.data_type.pk].append(meta.data_value)
+        # unwrap single-item lists
+        for k, v in meta_json.iteritems():
+            if len(v) == 1:
+                meta_json[k] = v[0]
+        return meta_json
+
     def __str__(self):
         return self.name
-
-
-class Metadata(models.Model):
-    """
-    Base form for line metadata tracks which line is referred to, type, and who/when.
-    """
-    class Meta:
-        db_table = 'metadata'
-    edd_object = models.ForeignKey(EDDObject, related_name='+')
-    data_type = models.ForeignKey(MetadataType)
-    data_value = models.TextField()
-    updated = models.ForeignKey(Update, related_name='+')
 
 
 class Study(EDDObject):
@@ -256,6 +286,7 @@ class Study(EDDObject):
         for assay in self.get_assays() :
             assays_by_protocol[assay.protocol.id].append(assay.id)
         return assays_by_protocol
+
 
 class StudyPermission(models.Model):
     """
@@ -361,6 +392,7 @@ class Protocol(EDDObject):
             "disabled" : not self.active,
         }
 
+
 class Strain(EDDObject):
     """
     A link to a strain/part in the JBEI ICE Registry.
@@ -381,7 +413,9 @@ class Strain(EDDObject):
         return {
             "name" : self.name,
             "desc" : self.description,
+            "registry_url" : self.registry_url,
         }
+
 
 class CarbonSource(EDDObject):
     """
@@ -395,7 +429,7 @@ class CarbonSource(EDDObject):
 
     def to_json (self) :
         return {
-            "carbon" : None, # TODO
+            "carbon" : self.name,
             "labeling" : self.labeling,
             "initials" : None, # TODO
             "vol" : self.volume,
@@ -405,6 +439,7 @@ class CarbonSource(EDDObject):
             "userid" : None, # TODO
             "disabled" : not self.active,
         }
+
 
 class Line(EDDObject):
     """
@@ -435,8 +470,12 @@ class Line(EDDObject):
             'control': self.control,
             'replicate': self.replicate.pk if self.replicate else None,
             'contact': {},
-            'experimenter': {},
-            'meta': {},
+            'experimenter': self.experimenter.pk,
+            'meta': self.get_metadata_json(),
+            'strain': [s.pk for s in self.strains.all()],
+            'carbon': [c.pk for c in self.carbon_source.all()],
+            'modified': self.updated().to_json(),
+            'created': self.created().to_json(),
         }
 
 

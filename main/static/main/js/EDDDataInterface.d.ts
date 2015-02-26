@@ -1,15 +1,29 @@
+interface UpdateRecord {
+    time: number;
+    user: number;
+}
 interface LineRecord {
-    n: string;
-    s: number;
-    m: string;
-    md: any;
-    ctrl: boolean;
-    cs: number[];
+    id: number;
+    name: string;
+    description: string;
+    control: boolean;
+    replicate: any;
+    contact: any;
+    experimenter: number;
+    meta: any;
+    strain: number[];
+    carbon: number[];
     exp: number;
-    rid: number;
-    con: string;
-    dis: boolean;
-    mod: number;
+    modified: UpdateRecord;
+    created: UpdateRecord;
+    n: any;
+    m: any;
+    s: any;
+    cs: any;
+    md: any;
+    dis: any;
+    ctrl: any;
+    con: any;
 }
 interface AssayRecord {
     an: string;
