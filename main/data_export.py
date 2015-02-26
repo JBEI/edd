@@ -62,9 +62,9 @@ def select_objects_for_export (study, user, form) :
     and implicitly).  Returns a dict storing lists of each object type.
     """
     # FIXME permissions?  I think these are broken right now...
-    #if (not study.user_can_read(user)) :
-    #    raise RuntimeError("You do not have permissions to view data "+
-    #        "for this study.")
+    if (user is not None) and (not study.user_can_read(user)) :
+        raise RuntimeError("You do not have permissions to view data "+
+            "for this study.")
     assay_level = form.get("assaylevel", None) == "1"
     # these hold unique IDs from the form
     selected_line_ids = []
@@ -102,7 +102,6 @@ def select_objects_for_export (study, user, form) :
         else :
             selected_measurement_ids = extract_id_list_as_form_keys(form,
                 "measurement")
-        print selected_assay_ids
         selected_assays = Assay.objects.filter(line__study=study,
             id__in=selected_assay_ids)
         line_id_set = set()
@@ -380,7 +379,7 @@ def assemble_table (
     table = []
     # separate section for lines
     if (separate_lines) :
-        rows = [ line_headers ] + line_info
+        rows = [ line_headers ] + [ line_info[l.id] for l in lines ]
         table.extend(rows)
     def get_measurement_headers () :
         headers_ = []

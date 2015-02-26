@@ -584,6 +584,9 @@ class Metabolite(MeasurementType):
     molar_mass = models.DecimalField(max_digits=16, decimal_places=5)
     molecular_formula = models.TextField()
 
+    def is_metabolite (self) :
+        return True
+
     @property
     def charge_as_number (self) :
         if (self.charge is not None) :
