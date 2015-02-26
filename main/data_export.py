@@ -4,6 +4,7 @@ Functions for exporting tables of assay measurements from EDD.  Replaces most
 of the old StudyExport.cgi.
 """
 
+from main.models import Assay, Measurement
 from collections import defaultdict
 import re
 
@@ -17,6 +18,8 @@ column_param_names = [ "col" + "".join(l.split()) + "include"
                         for l in column_labels ]
 params_dict = { n:l for (n, l) in zip(column_param_names, column_labels) }
 labels_dict = { l:n for (n, l) in zip(column_param_names, column_labels) }
+column_info = [ { "label" : l, "name" : n}
+                for (n, l) in zip(column_param_names, column_labels) ]
 
 def extract_id_list (form, key) :
     """
@@ -44,17 +47,25 @@ def extract_id_list_as_form_keys (form, prefix) :
             ids.append(form[key])
     return ids
 
+def extract_column_flags (form) :
+    column_flags = {}
+    for column in column_param_names :
+        key = "col" + column + "include"
+        if (form.get("key", "0") != "1") :
+            column_flags[column] = True
+    return column_flags
+
 def select_objects_for_export (study, user, form) :
     """
     Given a set of form parameters from a GET or POST request, extract the
     assay, line, and measurement objects that are specified (both explicitly
     and implicitly).  Returns a dict storing lists of each object type.
     """
-    # TODO permissions?  I think these are broken right now...
+    # FIXME permissions?  I think these are broken right now...
     #if (not study.user_can_read(user)) :
     #    raise RuntimeError("You do not have permissions to view data "+
     #        "for this study.")
-    assay_level = form.get("assaylevel", None)
+    assay_level = form.get("assaylevel", None) == "1"
     # these hold unique IDs from the form
     selected_line_ids = []
     selected_assay_ids = []
@@ -91,6 +102,7 @@ def select_objects_for_export (study, user, form) :
         else :
             selected_measurement_ids = extract_id_list_as_form_keys(form,
                 "measurement")
+        print selected_assay_ids
         selected_assays = Assay.objects.filter(line__study=study,
             id__in=selected_assay_ids)
         line_id_set = set()
@@ -99,11 +111,12 @@ def select_objects_for_export (study, user, form) :
             if (not assay.line.id in line_id_set) :
                 selected_lines.append(assay.line)
                 line_id_set.add(assay.line.id)
-        selected_measurements = Measurement.objects.filter(
-            assay__line__study=study).filter(
-            id__in=selected_measurement_ids)
-    if (len(selected_measurements) == 0) :
-        raise RuntimeError("No measurements selected for export!")
+            if (len(selected_measurement_ids) == 0) :
+                selected_measurements.extend(list(assay.measurement_set.all()))
+        if (len(selected_measurement_ids) > 0) :
+            selected_measurements = Measurement.objects.filter(
+                assay__line__study=study).filter(
+                id__in=selected_measurement_ids)
     return {
         "lines" : selected_lines,
         "assays" : selected_assays,
@@ -127,7 +140,7 @@ class TableRow (list) :
             self.append(value)
 
 # XXX Should this be a method of models.Line instead?
-def extract_line_info_rows (lines, column_flags) :
+def extract_line_info_rows (lines, metadata_labels, column_flags) :
     """
     Generate re-usable partial row contents for a list of line objects, for
     later combination with (multiple) measurements.  The column_flags dict
@@ -141,15 +154,15 @@ def extract_line_info_rows (lines, column_flags) :
         row.add_item_if_not_flagged("Line", line.name)
         row.add_item_if_not_flagged("Control", "T" if line.control else "")
         row.add_item_if_not_flagged("Strain", line.strain_ids)
-        if (not column_flags.get("Media")) :
-            pass # TODO ???
-        row.add_item_if_not_flagged("CarbonSource", line.carbon_source_names)
+        row.add_item_if_not_flagged("CarbonSource", line.carbon_source_info)
         if (not column_flags.get("LineMetadata")) :
-            pass # TODO
+            metadata = line.get_metadata_dict()
+            for column_name in metadata_labels :
+                row.append(str(metadata.get(column_name, "")))
         row.add_item_if_not_flagged("LineExperimenter",
             line.experimenter.username)
-        row.add_item_if_not_flagged("LineContact", line.contact.username)
-        row.add_item_if_not_flagged("LineLastModified", str(line.updated()))
+        row.add_item_if_not_flagged("LineContact", line.contact.email)
+        row.add_item_if_not_flagged("LineLastModified", line.last_modified)
         rows[line.id] = row
     return rows
 
@@ -160,9 +173,9 @@ def get_unique_metadata_names (objects) :
         for item in metadata :
             if (not item.type_name in names) :
                 names.append(item.type_name)
-    return names
+    return sorted(names)
 
-def extract_line_column_headers (column_flags) :#, line_metadata) :
+def extract_line_column_headers (metadata_labels, column_flags) :
     row = TableRow(column_flags)
     row.add_header_if_not_flagged("Study ID")
     row.add_header_if_not_flagged("Line ID")
@@ -171,32 +184,34 @@ def extract_line_column_headers (column_flags) :#, line_metadata) :
     row.add_header_if_not_flagged("Strain")
     row.add_header_if_not_flagged("Carbon Source")
     if (not column_flags.get("LineMetadata")) :
-        pass
-        #for name in line_metadata :
-        #    row.append(name)
+        for label in metadata_labels :
+            row.append(label)
     row.add_header_if_not_flagged("Line Experimenter")
     row.add_header_if_not_flagged("Line Contact")
     row.add_header_if_not_flagged("Line Last Modified")
     return row
 
-def extract_assay_column_headers (column_flags) :
+def extract_assay_column_headers (metadata_labels, column_flags) :
     row = TableRow(column_flags)
     row.add_header_if_not_flagged("Protocol")
     row.add_header_if_not_flagged("Assay Suffix")
     row.add_header_if_not_flagged("Assay Experimenter")
     row.add_header_if_not_flagged("Assay Last Modified")
     if (not column_flags.get("AssayMetadata")) :
-        pass # TODO
+        for label in metadata_labels :
+            row.append(label)
     return row
 
-def extract_protocol_column_headers (column_flags) :
+def extract_protocol_column_headers (metadata_labels, column_flags) :
     row = TableRow(column_flags)
     row.add_header_if_not_flagged("Protocol")
     row.append("Assay Full Name")
     row.add_header_if_not_flagged("Assay Suffix")
     row.add_header_if_not_flagged("Assay Experimenter")
     row.add_header_if_not_flagged("Assay Last Modified")
-    # TODO AssayMetadata
+    if (not column_flags.get("AssayMetadata")) :
+        for label in metadata_labels :
+            row.append(label)
     return row
 
 def extract_protocol_assay_lookup (assays) :
@@ -226,10 +241,13 @@ def assemble_table (
     assert (mdata_format in ["all", "sum", "none"])
     assert (dlayout_type in ["dbya", "dbyl", "lbyd"])
     # Collect column headers and partial columns for lines
-    #line_metadata_labels = get_unique_metadata_names(lines)
-    line_headers = extract_line_column_headers(column_flags)
-        #line_metadata_labels)
-    line_info = extract_line_info_rows(lines, column_flags)
+    line_metadata_labels = get_unique_metadata_names(lines)
+    line_headers = extract_line_column_headers(line_metadata_labels,
+        column_flags)
+    line_info = extract_line_info_rows(
+        lines=lines,
+        metadata_labels=line_metadata_labels,
+        column_flags=column_flags)
     # Now the data generation process for Assays...
     # This is going to be a bit more complicated, because we may have to
     # produce distinct tables for each group of Assays, by Protocol.
@@ -259,12 +277,13 @@ def assemble_table (
     all_xvalues = sorted(list(set(all_xvalues)))
     # Now we get an array of all the Meta Data Types that have been used across
     # all Assays, for creating an all-inclusive segment of metadata.
-    # TODO metadata
+    assay_metadata_labels = get_unique_metadata_names(assays)
     # With that array collected, we can use it to help build a standard set of
     # headers for exporting Assay data.  Note that if we are dividing the data
     # across Protocols, we will use a custom set of headers for each Protocol,
     # which we will be constructing within the loop below.
-    assay_headers = extract_assay_column_headers(column_flags)
+    assay_headers = extract_assay_column_headers(assay_metadata_labels,
+        column_flags)
     protocol_headers = {}
     assay_export_rows = {}
     assay_protocol_export_rows = {}
@@ -282,7 +301,8 @@ def assemble_table (
             return None
     for protocol_name in used_protocols :
         protocol_headers[protocol_name] = extract_protocol_column_headers(
-            column_flags)
+            metadata_labels=assay_metadata_labels,
+            column_flags=column_flags)
         for assay in assays_by_protocol[protocol_name] :
             row = TableRow(column_flags)
             row.add_item_if_not_flagged("Protocol", protocol_name)
@@ -290,8 +310,10 @@ def assemble_table (
             row.add_item_if_not_flagged("AssayExperimenter",
                 assay.experimenter.username)
             row.add_item_if_not_flagged("AssayLastModified", assay.mod_epoch())
+            assay_metadata = assay.get_metadata_dict()
             if (not column_flags.get("AssayMetadata", False)) :
-                pass # TODO
+                for column_label in assay_metadata_labels :
+                    row.append(str(assay_metadata.get(column_label, "")))
             assay_export_rows[assay.id] = row
             # A second version of the row, customized for exporting within this
             # Assay's Protocol.
@@ -304,7 +326,9 @@ def assemble_table (
             protocol_row.add_item_if_not_flagged("AssayLastModified",
                 str(assay.updated()))
             if (not column_flags.get("AssayMetadata", False)) :
-                pass # TODO
+                for column_label in assay_metadata_labels :
+                    protocol_row.append(
+                        str(assay_metadata.get(column_label, "")))
             assay_protocol_export_rows[assay.id] = protocol_row
             # Now let's create both a summary blurb for all the selected
             # Measurements for the Line, as well as the full data strings for
@@ -391,7 +415,6 @@ def assemble_table (
             table.append(headers)
         protocol_assays = sorted(assays_by_protocol[protocol_name],
             lambda a,b: cmp(a.name, b.name))
-        print protocol_assays
         for assay in protocol_assays :
             common_values = []
             line_id = assay.line.id
@@ -422,7 +445,6 @@ def assemble_table (
                         row.append(measurement_export_rows[m.id][i])
                     table.append(row)
             def create_row_other (m, mt_compartment) :
-                print m
                 mt_name = m.measurement_type.short_name
                 row = list(common_values)
                 if (not column_flags.get("MeasurementCompartment", False)):
@@ -461,3 +483,19 @@ def assemble_table (
 
 def export_table (table, sep=",") :
     return "\n".join([ sep.join([ str(x) for x in row ]) for row in table ])
+
+def table_view (export_data, form) :
+    table_format = form.get("recordformat", "csv")
+    table = assemble_table(
+        assays=export_data['assays'],
+        lines=export_data['lines'],
+        measurements=export_data['measurements'],
+        column_flags=extract_column_flags(form),
+        dlayout_type=(form.get("dlayouttype", "dbyl")),
+        mdata_format=(form.get("mdataformat", "all")),
+        separate_lines=(form.get("separateLines", "0") == "1"),
+        separate_protocols=(form.get("separateProtocols", "0") == "1"))
+    sep = ","
+    if (table_format == "tab") :
+        sep = "\t"
+    return export_table(table, sep)

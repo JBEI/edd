@@ -12,6 +12,7 @@ from main.forms import CreateStudyForm
 from main.models import Study, Update, Protocol
 from main.solr import StudySearch
 from main.utilities import get_edddata_study, get_edddata_misc
+import main.data_export
 from io import BytesIO
 import json
 import csv
@@ -117,6 +118,60 @@ def study_import_table (request, study) :
             "post_contents" : "\n".join(post_contents), # XXX DEBUG
         },
         context_instance=RequestContext(request))
+
+def study_export_table (request, study) :
+    """
+    HTML view for exporting measurement data in table format (replaces
+    StudyExport.cgi).
+    """
+    model = Study.objects.get(pk=study)
+    form = None
+    if (request.method == "POST") :
+        form = request.POST
+    else :
+        form = request.GET
+    exports = main.data_export.select_objects_for_export(
+        study=model,
+        user=None, # FIXME
+        form=form)
+    error_message = None
+    formatted_table = None
+    if (len(exports['measurements']) == 0) :
+        error_message = "No measurements selected for export!"
+    else :
+        formatted_table = main.data_export.table_view(exports, form)
+    return render_to_response("main/export.html",
+        dictionary={
+            "study" : model,
+            "line_id_str" : ",".join([ str(l.id) for l in exports['lines'] ]),
+            "assay_id_str" : ",".join([ str(a.id) for a in exports['assays'] ]),
+            "measurement_id_str" : ",".join([ str(l.id) for m in
+                                              exports['measurements'] ]),
+            "column_info" : main.data_export.column_info,
+            "lines" : exports['lines'],
+            "n_meas" : len(exports['measurements']),
+            "n_assays" : len(exports['assays']),
+            "n_lines" : len(exports['lines']),
+            "error_message" : error_message,
+            "formatted_table" : formatted_table,
+        },
+        context_instance=RequestContext(request))
+
+def study_export_table_data (request, study) :
+    model = Study.objects.get(pk=study)
+    form = None
+    if (request.method == "POST") :
+        form = request.POST
+    else :
+        form = request.GET
+    exports = main.data_export.select_objects_for_export(
+        study=model,
+        user=None, # FIXME
+        form=form)
+    if (len(exports['measurements']) == 0) :
+        raise RuntimeError("No measurements selected for export!")
+    else :
+        return main.data_export.export_table(exports, form)
 
 # FIXME it would be much better to avoid csrf_exempt...
 @csrf_exempt

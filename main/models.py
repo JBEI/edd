@@ -148,6 +148,14 @@ class EDDObject(models.Model):
           return format_date(mod_date.mod_time, 'U')
         return None
 
+    @property
+    def last_modified (self) :
+        updated = self.updated()
+        if (updated is None) :
+            return "N/A"
+        else : # FIXME these are UTC...
+            return updated.mod_time.strftime("%b %d %Y, %I:%M%p")
+
     def get_attachment_count(self):
         return self.files.count()
 
@@ -156,6 +164,26 @@ class EDDObject(models.Model):
 
     def __str__(self):
         return self.name
+
+    # XXX not sure if this is or should be necessary - see comment above
+    def get_metadata (self, type_name=None) :
+        """
+        Retrieve the Metadata objects associated with this object.
+        """
+        return Metadata.objects.filter(edd_object=self)
+
+    def get_metadata_dict (self) :
+        """
+        Retrieve the Metadata objects associated with this object as a dict
+        keyed by MetadataType.type_name.
+        """
+        metadata_dict = {}
+        for metadata_type in self.metadata.all() :
+            metadata = Metadata.objects.filter(edd_object=self,
+                data_type=metadata_type)
+            if (len(metadata) > 0) :
+                metadata_dict[metadata_type.type_name] = metadata[0]
+        return metadata_dict
 
 class Metadata(models.Model):
     """
@@ -168,6 +196,8 @@ class Metadata(models.Model):
     data_value = models.TextField()
     updated = models.ForeignKey(Update, related_name='+')
 
+    def __str__ (self) :
+        return self.data_type.prefix + self.data_value + self.data_type.postfix
 
 class Study(EDDObject):
     """
@@ -438,14 +468,40 @@ class Line(EDDObject):
             'meta': {},
         }
 
+    # FIXME broken right now because line_strain table is empty
     @property
     def strain_ids (self) :
-        return ",".join([ s.id for s in self.strains.all() ])
+        """
+        String representation of associated strains; used in views.
+        """
+        return ",".join([ s.registry_id for s in self.strains.all() ])
 
     @property
-    def carbon_source_names (self) :
+    def carbon_source_info (self) :
+        """
+        String representation of carbon source(s) with labeling included;
+        used in views.
+        """
         return ",".join([ "%s (%s)" % (cs.name, cs.labeling)
                           for cs in self.carbon_source.all() ])
+
+    @property
+    def carbon_source_name (self) :
+        """
+        String representation of carbon source(s); used in views.
+        """
+        return ",".join([ cs.name for cs in self.carbon_source.all() ])
+
+    @property
+    def carbon_source_labeling (self) :
+        """
+        String representation of labeling (if any); used in views.
+        """
+        return ",".join([str(cs.labeling) for cs in self.carbon_source.all()])
+
+    @property
+    def media (self) :
+        return self.get_metadata_dict().get("Media", None)
 
 class MeasurementGroup(object):
     """
