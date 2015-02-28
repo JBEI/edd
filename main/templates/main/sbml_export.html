@@ -1,0 +1,1009 @@
+{% extends "edd_base.html" %}
+{% load staticfiles %}
+
+{% block js_css %}
+  {{ block.super }}
+  <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.js' %}"></script>
+<script type="text/javascript" src="{% static 'main/js/Disclosure.js' %}"></script>
+<script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
+<script type="text/javascript" src="{% static 'main/js/EDDEditing.js' %}"></script>
+
+<!-- Declare JS objects for later (will be fetched via AJAX) -->
+<script type="text/javascript">
+EDDData = { }; // Declaring the object for later use
+
+EDDData.currentUserID = {{ user.pk }};
+
+EDDData.SpeciesIDs = [];
+EDDData.Species = {"602":{"spn":"M_D_Mannose_1_phosphate_C6H11O9P","cp":"man1p","sid":"M_man1p_c"},"715":{"spn":"M_Inorganic_triphosphate_HO10P3","cp":"pppi","sid":"M_pppi_c"}};
+
+EDDData.ExchangeIDs = [];
+EDDData.Exchanges = {"180":{"exn":"R_L_Valine_exchange","exid":"R_EX_val_L_e_","rid":"M_val_L_e","cp":""},"133":{"exn":"R_D_Mannose_6_phosphate_exchange","rid":"M_man6p_e","exid":"R_EX_man6p_e_","cp":"man6p"}};
+
+</script>
+<script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
+<script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
+<script type="text/javascript" src="{% static 'main/js/StudySBMLExport.js' %}"></script>
+<script type="text/javascript" src="{% static 'main/js/Autocomplete.js' %}"></script>
+
+{% endblock js_css %}
+
+{% block head_title %}
+  SBML Export For {{ study.name }}
+{% endblock head_title %}
+
+{% block body_title %}
+  SBML Export For {{ study.name }}
+{% endblock body_title %}
+
+{% block content %}
+
+{% if error_message %}
+<h3 style="color: #ff0000; font-weight: bold">{{ error_message }}</h3>
+
+{% else %}
+
+<!-- Line info section -->
+<div class="pageSection">
+  {% include "main/include_linetable.html" %}
+
+
+
+<form method="post" id="exportForm" action="/study/{{ study.id }}/sbml/export">
+
+<input type="hidden" name="selectedLineIDs" value="{{ selected_line_ids }}" />
+<input type="hidden" name="formSubmittedFromSBMLExport" value="1" />
+
+<!-- Export settings section -->
+<div class="pageSection" style="margin:10px;" id="allstatusmain">
+
+<div class="sectionHead">Export Settings:
+  <span class="neutral"> 1 Warning</span></div>
+
+<!-- Step 1 -->
+    <input type="hidden"
+      id="statusstep0show"
+      name="statusstep0show"
+      value="0"/>
+    <div class="sectionChapter" id="statusstep0hidden" style="cursor:pointer;"
+      onclick="Disclose.click(this);trackShown('statusstep0show', 1);"
+      hidethese="statusstep0hidden"
+      showthese="statusstep0shown,statusstep0main">
+    <span style="color:blue;">&#x25BA;</span> Step 1: Select the SBML template file to use for export<span class="good"></span>
+  </div>
+
+  <div class="sectionChapter off" id="statusstep0shown" style="cursor:pointer;"
+        onclick="Disclose.click(this);trackShown('statusstep0show', 0);"
+        hidethese="statusstep0shown,statusstep0main"
+        showthese="statusstep0hidden">
+      <span style="color:blue;">&#x25BC;</span> Step 1: Select the SBML template file to use for export<span class="good"></span>
+  </div>
+
+
+  <div class="sectionContent off" id="statusstep0main" style="font-size:12px;">
+    <table style="width:95%">
+      <tr>
+        <td>
+          SBML Template:
+        <select name="chosenmap" id="chosenmap" onchange="submitForRefresh();">
+          {% for template in data.template_info %}
+            {% if template.is_selected %}
+              <option value="{{ template.id }}" selected="selected">
+                {{ template.file_name }}</option>
+            {% else %}
+              <option value="{{ template.id }}">
+                {{ template.file_name }}</option>
+            {% endif %}
+          {% endfor %}
+        </select>
+        <span id="templateWaitBadge" class="waitbadge"></span>
+        </td>
+        <td style="text-align:right">
+          <!-- XXX actual URL TBD -->
+          <a href="/admin/templates">Manage Templates</a>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <input type="hidden"
+        id="statusstep1show"
+        name="statusstep1show"
+        value="0"/>
+  <div class="sectionChapter off" id="statusstep1hidden" style="cursor:pointer;"
+      onclick="Disclose.click(this);trackShown('statusstep1show', 1);"
+      hidethese="statusstep1hidden"
+      showthese="statusstep1shown,statusstep1main">
+    <span style="color:blue;">&#x25BA;</span> Step 2: Find OD Data:
+      <span class="neutral"> 1 Warning</span>
+  </div>
+  <div class="sectionChapter" id="statusstep1shown" style="cursor:pointer;"
+      onclick="Disclose.click(this);trackShown('statusstep1show', 0);"
+      hidethese="statusstep1shown,statusstep1main"
+      showthese="statusstep1hidden">
+    <span style="color:blue;">&#x25BC;</span> Step 2: Find OD Data:
+      <span class="neutral"> 1 Warning</span>
+  </div>
+  <div class="sectionContent" id="statusstep1main" style="font-size:12px;">
+    <div style="border:1px solid #888;
+          margin:3px 0px;
+          border-radius:4px;
+          -webkit-border-radius:4px;
+          -moz-border-radius:4px;">
+      <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
+        <tr>
+          <td>Assay</td>
+          <td colspan="2">Measurement</td>
+          <td></td>
+          <td colspan="2"></td>
+        </tr>
+        <tr>
+          <td class="nowrap">I-2-OD600-2</td>
+          <td class="nowrap popupcell">
+            <input type="checkbox"
+                name="measurement10166include"
+                id="measurement10166include"
+                checked="checked"
+                value="10166" />Optical Density
+          </td>
+          <td class="nowrap" style="text-align:right;"></td>
+          <td></td>
+          <td style="text-align:right;width:30px;">(9)</td>
+          <td style="padding:3px 2px 0px 2px;width:60%;">
+            <svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"
+              version="1.2" width="100%" height="10px" viewBox="0 0 470 10">
+          <style type="text/css"><![CDATA[
+            .cP { stroke:rgba(0,0,0,1); stroke-width:4px; stroke-linecap:round; }
+            .cV { stroke:rgba(0,0,230,1); stroke-width:4px; stroke-linecap:round; }
+            .cE { stroke:rgba(255,128,0,1); stroke-width:4px; stroke-linecap:round; }
+      ]]>
+          </style>
+            <path fill="rgba(0,0,0,0.0.05)"
+              stroke="rgba(0,0,0,0.05)"
+              d="M10,5h450"
+              style="stroke-width:2px;"
+              stroke-width="2"></path>
+            <path class="cP" d="M60,1v8"><title>2.932 at 8h</title></path>
+            <path class="cP" d="M122.5,1v8"><title>3.643 at 18h</title></path>
+            <path class="cP" d="M235,1v8"><title>3.365 at 36h</title></path>
+            <path class="cP" d="M460,1v8"><title>3.16 at 72h</title></path>
+            <path class="cP" d="M310,1v8"><title>3.365 at 48h</title></path>
+            <path class="cP" d="M160,1v8"><title>3.838 at 24h</title></path>
+            <path class="cP" d="M10,1v8"><title>0.612 at 0h</title></path>
+            <path class="cP" d="M35,1v8"><title>2.212 at 4h</title></path>
+            <path class="cP" d="M85,1v8"><title>3.492 at 12h</title></path>
+          </svg>
+          </td>
+        </tr>
+      </table>
+    </div>
+    <div class="neutral">OD600 measurements need a calibration factor to be
+      converted into gCDW/L.  You can add this as metadata, at the Assay or
+      Line level.  For now, the EDD is using the default gCDW/L/OD600 value
+      of <b>0.65</b> for 1 of your selected Measurements.</div>
+    <div>Located and consolidated useful Optical Data for 1 Lines.</div>
+  </div>
+
+<!--
+
+Step 3 (HPLC) 
+
+-->
+  <input type="hidden"
+      id="statusstep2show"
+      name="statusstep2show"
+      value="0"/>
+
+  <div class="sectionChapter" id="statusstep2hidden" style="cursor:pointer;"
+        onclick="Disclose.click(this);trackShown('statusstep2show', 1);"
+        hidethese="statusstep2hidden"
+        showthese="statusstep2shown,statusstep2main">
+      <span style="color:blue;">&#x25BA;</span>
+        Step 3: Select HPLC-like Measurements, and inputs
+      <span class="good"></span>
+    </div>
+    <div class="sectionChapter off" id="statusstep2shown" style="cursor:pointer;"
+        onclick="Disclose.click(this);trackShown('statusstep2show', 0);"
+        hidethese="statusstep2shown,statusstep2main"
+        showthese="statusstep2hidden">
+      <span style="color:blue;">&#x25BC;</span>
+        Step 3: Select HPLC-like Measurements, and inputs
+      <span class="good"></span>
+    </div>
+
+    <div class="sectionContent off" id="statusstep2main"
+      style="font-size:12px;">
+      <div>Protocol <b>HPLC</b></div><div style="border:1px solid #888;
+              margin:3px 0px;
+              border-radius:4px;
+              -webkit-border-radius:4px;
+              -moz-border-radius:4px;">
+          <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
+          <tr>
+            <td>Assay</td>
+            <td colspan="2">Measurement</td>
+            <td style="text-align:right;width:60px;">Is Input</td>
+            <td colspan="2"></td>
+          </tr><tr><td class="nowrap">I-2-HPLC-2</td>
+    <td class="nowrap popupcell">
+      <input type="checkbox"
+              name="measurement10086include"
+              id="measurement10086include"
+              checked="checked"
+              value="10086" />EC Acetate
+    </td>
+    <td class="nowrap" style="text-align:right;">Cmol/L</td><td style="text-align:right;">
+        <input type="checkbox"
+            name="measurement10086input"
+            id="measurement10086input"
+            
+            value="10086" />
+      </td><td style="text-align:right;width:30px;">(14)</td><td style="padding:3px 2px 0px 2px;width:60%;"><svg xmlns="http://www.w3.org/2000/svg"
+      version="1.2"
+      width="100%"
+      height="10px"
+      viewBox="0 0 470 10"
+      preserveAspectRatio="none">
+    <style type="text/css"><![CDATA[
+        .cP { stroke:rgba(0,0,0,1); stroke-width:4px; stroke-linecap:round; }
+        .cV { stroke:rgba(0,0,230,1); stroke-width:4px; stroke-linecap:round; }
+        .cE { stroke:rgba(255,128,0,1); stroke-width:4px; stroke-linecap:round; }
+      ]]></style>
+    <path fill="rgba(0,0,0,0.0.05)"
+        stroke="rgba(0,0,0,0.05)"
+        d="M10,5h450"
+        style="stroke-width:2px;"
+        stroke-width="2"></path><path class="cP" d="M10,1v8"><title>0.0107 at 0h</title></path><path class="cP" d="M47.5,1v8"><title>0.0277 at 6h</title></path><path class="cP" d="M310,1v8"><title>0.00897 at 48h</title></path><path class="cP" d="M160,1v8"><title>0.00498 at 24h</title></path><path class="cP" d="M85,1v8"><title>0.0136 at 12h</title></path><path class="cP" d="M35,1v8"><title>0.0285 at 4h</title></path><path class="cP" d="M235,1v8"><title>0.00769 at 36h</title></path><path class="cP" d="M60,1v8"><title>0.0255 at 8h</title></path><path class="cP" d="M122.5,1v8"><title>0.0042 at 18h</title></path><path class="cP" d="M22.5,1v8"><title>0.024 at 2h</title></path><path class="cP" d="M110,1v8"><title>0.0055 at 16h</title></path><path class="cP" d="M72.5,1v8"><title>0.0209 at 10h</title></path><path class="cP" d="M135,1v8"><title>0.00424 at 20h</title></path><path class="cP" d="M460,1v8"><title>0.00904 at 72h</title></path></svg>
+    </td></tr><tr><td class="nowrap"></td>
+    <td class="nowrap popupcell">
+      <input type="checkbox"
+              name="measurement10081include"
+              id="measurement10081include"
+              checked="checked"
+              value="10081" />EC D-Glucose
+    </td>
+    <td class="nowrap" style="text-align:right;">Cmol/L</td><td style="text-align:right;">
+        <input type="checkbox"
+            name="measurement10081input"
+            id="measurement10081input"
+            
+            value="10081" />
+      </td><td style="text-align:right;width:30px;">(14)</td><td style="padding:3px 2px 0px 2px;width:60%;"><svg xmlns="http://www.w3.org/2000/svg"
+      version="1.2"
+      width="100%"
+      height="10px"
+      viewBox="0 0 470 10"
+      preserveAspectRatio="none">
+    <style type="text/css"><![CDATA[
+        .cP { stroke:rgba(0,0,0,1); stroke-width:4px; stroke-linecap:round; }
+        .cV { stroke:rgba(0,0,230,1); stroke-width:4px; stroke-linecap:round; }
+        .cE { stroke:rgba(255,128,0,1); stroke-width:4px; stroke-linecap:round; }
+      ]]></style>
+    <path fill="rgba(0,0,0,0.0.05)"
+        stroke="rgba(0,0,0,0.05)"
+        d="M10,5h450"
+        style="stroke-width:2px;"
+        stroke-width="2"></path><path class="cP" d="M47.5,1v8"><title>0.290625999 at 6h</title></path><path class="cP" d="M10,1v8"><title>0.35768206 at 0h</title></path><path class="cP" d="M160,1v8"><title>0.067031417 at 24h</title></path><path class="cP" d="M310,1v8"><title>0 at 48h</title></path><path class="cP" d="M85,1v8"><title>0.194888099 at 12h</title></path><path class="cP" d="M35,1v8"><title>0.306718028 at 4h</title></path><path class="cP" d="M22.5,1v8"><title>0.338602687 at 2h</title></path><path class="cP" d="M235,1v8"><title>0.001640305 at 36h</title></path><path class="cP" d="M60,1v8"><title>0.256707149 at 8h</title></path><path class="cP" d="M122.5,1v8"><title>0.13029052 at 18h</title></path><path class="cP" d="M135,1v8"><title>0.098767873 at 20h</title></path><path class="cP" d="M72.5,1v8"><title>0.217559614 at 10h</title></path><path class="cP" d="M110,1v8"><title>0.155679951 at 16h</title></path><path class="cP" d="M460,1v8"><title>0 at 72h</title></path></svg>
+    </td></tr>
+
+    </table>
+  </div>
+</div>
+
+  <input type="hidden"
+        id="statusstep3show"
+        name="statusstep3show"
+        value="0"/>
+
+<!--
+
+Step 4 (LC-MS)
+
+-->
+
+  <div class="sectionChapter" id="statusstep3hidden" style="cursor:pointer;"
+        onclick="Disclose.click(this);trackShown('statusstep3show', 1);"
+        hidethese="statusstep3hidden"
+        showthese="statusstep3shown,statusstep3main">
+      <span style="color:blue;">&#x25BA;</span>
+        Step 4: Select LCMS-like Measurements, and inputs<span class="good"></span>
+    </div>
+    <div class="sectionChapter off" id="statusstep3shown" style="cursor:pointer;"
+        onclick="Disclose.click(this);trackShown('statusstep3show', 0);"
+        hidethese="statusstep3shown,statusstep3main"
+        showthese="statusstep3hidden">
+      <span style="color:blue;">&#x25BC;</span> Step 4: Select LCMS-like Measurements, and inputs<span class="good"></span>
+    </div>
+    <div class="sectionContent off" id="statusstep3main"
+      style="font-size:12px;">
+
+    <!-- Loop over individual protocols -->
+      <div>Protocol <b>GC-FID</b></div><div style="border:1px solid #888;
+              margin:3px 0px;
+              border-radius:4px;
+              -webkit-border-radius:4px;
+              -moz-border-radius:4px;">
+
+      <!-- Loop over assays and measurements -->
+          <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
+          <tr>
+            <td>Assay</td>
+            <td colspan="2">Measurement</td>
+            <td style="text-align:right;width:60px;">Is Input</td>
+            <td colspan="2"></td>
+          </tr><tr><td class="nowrap">I-2-GC-FID-2</td>
+    <td class="nowrap popupcell">
+      <input type="checkbox"
+              name="measurement10087include"
+              id="measurement10087include"
+              checked="checked"
+              value="10087" />EC Isopentenol
+    </td>
+    <td class="nowrap" style="text-align:right;">g/L</td><td style="text-align:right;">
+        <input type="checkbox"
+            name="measurement10087input"
+            id="measurement10087input"
+            
+            value="10087" />
+      </td><td style="text-align:right;width:30px;">(9)</td><td style="padding:3px 2px 0px 2px;width:60%;"><svg xmlns="http://www.w3.org/2000/svg"
+      version="1.2"
+      width="100%"
+      height="10px"
+      viewBox="0 0 470 10"
+      preserveAspectRatio="none">
+    <style type="text/css"><![CDATA[
+        .cP { stroke:rgba(0,0,0,1); stroke-width:4px; stroke-linecap:round; }
+        .cV { stroke:rgba(0,0,230,1); stroke-width:4px; stroke-linecap:round; }
+        .cE { stroke:rgba(255,128,0,1); stroke-width:4px; stroke-linecap:round; }
+      ]]></style>
+    <path fill="rgba(0,0,0,0.0.05)"
+        stroke="rgba(0,0,0,0.05)"
+        d="M10,5h450"
+        style="stroke-width:2px;"
+        stroke-width="2"></path><path class="cP" d="M85,1v8"><title>0.185 at 12h</title></path><path class="cP" d="M35,1v8"><title>0.0313 at 4h</title></path><path class="cP" d="M10,1v8"><title>0 at 0h</title></path><path class="cP" d="M160,1v8"><title>0.728 at 24h</title></path><path class="cP" d="M310,1v8"><title>1.12 at 48h</title></path><path class="cP" d="M460,1v8"><title>1.14 at 72h</title></path><path class="cP" d="M122.5,1v8"><title>0.474 at 18h</title></path><path class="cP" d="M235,1v8"><title>1.04 at 36h</title></path><path class="cP" d="M60,1v8"><title>0.101 at 8h</title></path></svg>
+    </td></tr>
+    </table>
+  </div>
+
+    <div>Protocol <b>LC-MS</b></div>
+      <div style="border:1px solid #888;
+              margin:3px 0px;
+              border-radius:4px;
+              -webkit-border-radius:4px;
+              -moz-border-radius:4px;">
+          <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
+          <tr>
+            <td>Assay</td>
+            <td colspan="2">Measurement</td>
+            <td style="text-align:right;width:60px;">Is Input</td>
+            <td colspan="2"></td>
+          </tr><tr><td class="nowrap">I-2-LC-MS-2</td>
+    <td class="nowrap popupcell">
+      <input type="checkbox"
+              name="measurement10112include"
+              id="measurement10112include"
+              checked="checked"
+              value="10112" />IC 1,cis-2,3-Propenetricarboxylic acid
+    </td>
+    <td class="nowrap" style="text-align:right;">mM</td><td style="text-align:right;">
+        <input type="checkbox"
+            name="measurement10112input"
+            id="measurement10112input"
+            
+            value="10112" />
+      </td><td style="text-align:right;width:30px;">(7)</td><td style="padding:3px 2px 0px 2px;width:60%;"><svg xmlns="http://www.w3.org/2000/svg"
+      version="1.2"
+      width="100%"
+      height="10px"
+      viewBox="0 0 470 10"
+      preserveAspectRatio="none">
+    <style type="text/css"><![CDATA[
+        .cP { stroke:rgba(0,0,0,1); stroke-width:4px; stroke-linecap:round; }
+        .cV { stroke:rgba(0,0,230,1); stroke-width:4px; stroke-linecap:round; }
+        .cE { stroke:rgba(255,128,0,1); stroke-width:4px; stroke-linecap:round; }
+      ]]></style>
+    <path fill="rgba(0,0,0,0.0.05)"
+        stroke="rgba(0,0,0,0.05)"
+        d="M10,5h450"
+        style="stroke-width:2px;"
+        stroke-width="2"></path><path class="cP" d="M160,1v8"><title>0.876671841 at 24h</title></path><path class="cP" d="M60,1v8"><title>0.51137445 at 8h</title></path><path class="cP" d="M310,1v8"><title>0.698165618 at 48h</title></path><path class="cP" d="M122.5,1v8"><title>0.608628493 at 18h</title></path><path class="cP" d="M10,1v8"><title>0.121168571 at 0h</title></path><path class="cP" d="M35,1v8"><title>0.394002737 at 4h</title></path><path class="cP" d="M85,1v8"><title>0.508703461 at 12h</title></path></svg>
+    </td></tr><tr><td class="nowrap"></td>
+    <td class="nowrap popupcell">
+      <input type="checkbox"
+              name="measurement10120include"
+              id="measurement10120include"
+              checked="checked"
+              value="10120" />IC 2-C-methyl-D-erythritol 2,4-cyclodiphosphate
+    </td>
+    <td class="nowrap" style="text-align:right;">mM</td><td style="text-align:right;">
+        <input type="checkbox"
+            name="measurement10120input"
+            id="measurement10120input"
+            
+            value="10120" />
+      </td><td style="text-align:right;width:30px;">(8)</td><td style="padding:3px 2px 0px 2px;width:60%;"><svg xmlns="http://www.w3.org/2000/svg"
+      version="1.2"
+      width="100%"
+      height="10px"
+      viewBox="0 0 470 10"
+      preserveAspectRatio="none">
+    <style type="text/css"><![CDATA[
+        .cP { stroke:rgba(0,0,0,1); stroke-width:4px; stroke-linecap:round; }
+        .cV { stroke:rgba(0,0,230,1); stroke-width:4px; stroke-linecap:round; }
+        .cE { stroke:rgba(255,128,0,1); stroke-width:4px; stroke-linecap:round; }
+      ]]></style>
+    <path fill="rgba(0,0,0,0.0.05)"
+        stroke="rgba(0,0,0,0.05)"
+        d="M10,5h450"
+        style="stroke-width:2px;"
+        stroke-width="2"></path><path class="cP" d="M35,1v8"><title>5.562698518 at 4h</title></path><path class="cP" d="M85,1v8"><title>20.76816221 at 12h</title></path><path class="cP" d="M160,1v8"><title>75.21809008 at 24h</title></path><path class="cP" d="M310,1v8"><title>62.93204752 at 48h</title></path><path class="cP" d="M10,1v8"><title>1.269805013 at 0h</title></path><path class="cP" d="M460,1v8"><title>49.07467011 at 72h</title></path><path class="cP" d="M122.5,1v8"><title>25.7485759 at 18h</title></path><path class="cP" d="M60,1v8"><title>6.221735189 at 8h</title></path></svg>
+    </td></tr>
+
+
+
+    </table>
+  </div>
+</div>
+
+
+<!--
+
+Step 5 (RAMOS O2/CO2)
+
+-->
+
+<input type="hidden"
+        id="statusstep4show"
+        name="statusstep4show"
+        value="0"/>
+
+<div class="sectionChapter" id="statusstep4hidden" style="cursor:pointer;"
+        onclick="Disclose.click(this);trackShown('statusstep4show', 1);"
+        hidethese="statusstep4hidden"
+        showthese="statusstep4shown,statusstep4main">
+  <span style="color:blue;">&#x25BA;</span>
+    Step 5: Select RAMOS O2/CO2 Measurements<span class="good"></span>
+</div>
+
+<div class="sectionChapter off" id="statusstep4shown" style="cursor:pointer;"
+        onclick="Disclose.click(this);trackShown('statusstep4show', 0);"
+        hidethese="statusstep4shown,statusstep4main"
+        showthese="statusstep4hidden">
+      <span style="color:blue;">&#x25BC;</span>
+    Step 5: Select RAMOS O2/CO2 Measurements<span class="good"></span>
+</div>
+
+<div class="sectionContent off" id="statusstep4main"
+      style="font-size:12px;">
+  {% if data.n_ramos_measurements %}
+  {% else %}
+    <div>No usable O2/CO2 (RAMOS-based) measurements are present.
+      To be usable, measurements must have a timestamp somewhere inside the
+      range of the OD measurements, and be in units of <b>mol/L/hr</b>.
+    </div>
+  {% endif %}
+</div>
+
+
+<!--
+
+Step 6: transcriptomics and proteomics
+
+-->
+
+<input type="hidden"
+        id="statusstep5show"
+        name="statusstep5show"
+        value="0"/>
+
+<div class="sectionChapter" id="statusstep5hidden" style="cursor:pointer;"
+      onclick="Disclose.click(this);trackShown('statusstep5show', 1);"
+      hidethese="statusstep5hidden"
+      showthese="statusstep5shown,statusstep5main">
+  <span style="color:blue;">&#x25BA;</span>
+    Step 5: Select Transcriptomics/Proteomics Measurements
+  <span class="good"></span>
+</div>
+<div class="sectionChapter off" id="statusstep5shown" style="cursor:pointer;"
+      onclick="Disclose.click(this);trackShown('statusstep5show', 0);"
+      hidethese="statusstep5shown,statusstep5main"
+      showthese="statusstep5hidden">
+  <span style="color:blue;">&#x25BC;</span>
+    Step 5: Select Transcriptomics/Proteomics Measurements
+    <span class="good"></span>
+</div>
+<div class="sectionContent off" id="statusstep5main" style="font-size:12px;">
+  {% if data.n_trans_prot_measurements %}
+  {% else %}
+  <div>No usable Transcriptomics- or Proteomics-based Protocols have usable data.</div>
+  {% endif %}
+</div>
+
+
+<!--
+
+Step 7: convert units and calculate flux values
+
+-->
+
+<input type="hidden"
+       id="statusstep6show"
+       name="statusstep6show"
+       value="0"/>
+<div class="sectionChapter" id="statusstep6hidden" style="cursor:pointer;"
+        onclick="Disclose.click(this);trackShown('statusstep6show', 1);"
+        hidethese="statusstep6hidden"
+        showthese="statusstep6shown,statusstep6main">
+  <span style="color:blue;">&#x25BA;</span>
+    Step 7: Convert units and calculate all selected flux values
+  <span class="good"></span>
+</div>
+<div class="sectionChapter off" id="statusstep6shown" style="cursor:pointer;"
+     onclick="Disclose.click(this);trackShown('statusstep6show', 0);"
+     hidethese="statusstep6shown,statusstep6main"
+     showthese="statusstep6hidden">
+  <span style="color:blue;">&#x25BC;</span>
+    Step 7: Convert units and calculate all selected flux values
+  <span class="good"></span>
+</div>
+
+<div class="sectionContent off" id="statusstep6main" style="font-size:12px;">
+
+  <!-- loop over metabolites -->
+  <div class="subSectionChapter" id="FCStep1hidden" style="cursor:pointer;"
+      onclick="Disclose.click(this);"
+      hidethese="FCStep1hidden"
+      showthese="FCStep1shown,FCStep1main">
+    <span style="color:blue;">&#x25BA;</span> Metabolite <b>2mecdp</b> for Assay <b>I-2-LC-MS-2</b>:
+  </div>
+  <div class="subSectionChapter off" id="FCStep1shown" style="cursor:pointer;"
+      onclick="Disclose.click(this);"
+      hidethese="FCStep1shown,FCStep1main"
+      showthese="FCStep1hidden">
+    <span style="color:blue;">&#x25BC;</span> Metabolite <b>2mecdp</b> for Assay <b>I-2-LC-MS-2</b>:
+  </div>
+  <div class="subSectionContent off" id="FCStep1main"
+    style="font-size:12px;">
+        <div>Time <b>0</b>h has a value of 1.269805013<b>mM</b>.</div>
+<div>Time <b>4</b>h has a value of 5.562698518<b>mM</b>.</div>
+<div>Time <b>8</b>h has a value of 6.221735189<b>mM</b>.</div>
+<div>Time <b>12</b>h has a value of 20.76816221<b>mM</b>.</div>
+<div>Time <b>18</b>h has a value of 25.7485759<b>mM</b>.</div>
+<div>Time <b>24</b>h has a value of 75.21809008<b>mM</b>.</div>
+<div>Time <b>36</b>h has a value of 69.0750688<b>mM</b>. <span class="neutral">(Interpolated.)</span></div>
+<div>Time <b>48</b>h has a value of 62.93204752<b>mM</b>.</div>
+<div>Time <b>72</b>h has a value of 49.07467011<b>mM</b>.</div>
+<div>Interval <b>0</b> to <b>4</b>
+              has delta of <b>4.292893505</b>mM.</div>
+<div>Calculated Flux:
+                  (4.292893505 / 4) / 0.3978 = <b>2.69789687342886</b></div>
+<div>Interval <b>4</b> to <b>8</b>
+              has delta of <b>0.659036671</b>mM.</div>
+<div>Calculated Flux:
+                  (0.659036671 / 4) / 1.4378 = <b>0.114591158540826</b></div>
+<div>Interval <b>8</b> to <b>12</b>
+              has delta of <b>14.546427021</b>mM.</div>
+<div>Calculated Flux:
+                  (14.546427021 / 4) / 1.9058 = <b>1.90817858917515</b></div>
+<div>Interval <b>12</b> to <b>18</b>
+              has delta of <b>4.98041369</b>mM.</div>
+<div>Calculated Flux:
+                  (4.98041369 / 6) / 2.2698 = <b>0.365701360619144</b></div>
+<div>Interval <b>18</b> to <b>24</b>
+              has delta of <b>49.46951418</b>mM.</div>
+<div>Calculated Flux:
+                  (49.46951418 / 6) / 2.36795 = <b>3.48188054224118</b></div>
+<div>Interval <b>24</b> to <b>36</b>
+              has delta of <b>-6.14302128</b>mM.</div>
+<div>Calculated Flux:
+                  (-6.14302128 / 12) / 2.4947 = <b>-0.205202405098809</b></div>
+<div>Interval <b>36</b> to <b>48</b>
+              has delta of <b>-6.14302128</b>mM. <span class="neutral">(Using interpolation.)</span></div>
+<div>Calculated Flux:
+                  (-6.14302128 / 12) / 2.18725 = <b>-0.234046606469311</b></div>
+<div>Interval <b>48</b> to <b>72</b>
+              has delta of <b>-13.85737741</b>mM.</div>
+<div>Calculated Flux:
+                  (-13.85737741 / 24) / 2.18725 = <b>-0.263980215072199</b></div>
+      </div>
+
+
+<!--
+
+Step 8
+
+-->
+    </div><input type="hidden"
+        id="statusstep7show"
+        name="statusstep7show"
+        value="0"
+      /><div class="sectionChapter" id="statusstep7hidden" style="cursor:pointer;"
+        onclick="Disclose.click(this);trackShown('statusstep7show', 1);"
+        hidethese="statusstep7hidden"
+        showthese="statusstep7shown,statusstep7main">
+      <span style="color:blue;">&#x25BA;</span> Step 8: Pre-parse SBML model and match exchanges and species to measurements<span class="good"></span>
+    </div>
+    <div class="sectionChapter off" id="statusstep7shown" style="cursor:pointer;"
+        onclick="Disclose.click(this);trackShown('statusstep7show', 0);"
+        hidethese="statusstep7shown,statusstep7main"
+        showthese="statusstep7hidden">
+      <span style="color:blue;">&#x25BC;</span> Step 8: Pre-parse SBML model and match exchanges and species to measurements<span class="good"></span>
+    </div>
+    <div class="sectionContent off" id="statusstep7main"
+      style="font-size:12px;">
+      <div class="subSectionChapter" id="SMBLSNParseStephidden" style="cursor:pointer;"
+        onclick="Disclose.click(this);"
+        hidethese="SMBLSNParseStephidden"
+        showthese="SMBLSNParseStepshown,SMBLSNParseStepmain">
+      <span style="color:blue;">&#x25BA;</span> Detected <b>906</b> species,
+    and parsed <b>0</b> species notes sections.
+    </div>
+    <div class="subSectionChapter off" id="SMBLSNParseStepshown" style="cursor:pointer;"
+        onclick="Disclose.click(this);"
+        hidethese="SMBLSNParseStepshown,SMBLSNParseStepmain"
+        showthese="SMBLSNParseStephidden">
+      <span style="color:blue;">&#x25BC;</span> Detected <b>906</b> species,
+    and parsed <b>0</b> species notes sections.
+    </div>
+    <div class="subSectionContent off" id="SMBLSNParseStepmain"
+      style="font-size:12px;">
+      <p>Parsing all species and species notes ... ... finished.</p><ul><b>Key:</b><li><span class="bad">D</span> There appears to be more than one species
+        declared with this ID!  Only the first encountered with valid notes will be used.</li>
+      <li><span class="good">#</span> Notes were found and # data sections were parsed in the notes.</li>
+    </ul>
+    </div><div class="subSectionChapter" id="SMBLRNParseStephidden" style="cursor:pointer;"
+        onclick="Disclose.click(this);"
+        hidethese="SMBLRNParseStephidden"
+        showthese="SMBLRNParseStepshown,SMBLRNParseStepmain">
+      <span style="color:blue;">&#x25BA;</span> Detected <b>1077</b> reactions,
+    and parsed <b>1077</b> reaction notes sections.
+    </div>
+    <div class="subSectionChapter off" id="SMBLRNParseStepshown" style="cursor:pointer;"
+        onclick="Disclose.click(this);"
+        hidethese="SMBLRNParseStepshown,SMBLRNParseStepmain"
+        showthese="SMBLRNParseStephidden">
+      <span style="color:blue;">&#x25BC;</span> Detected <b>1077</b> reactions,
+    and parsed <b>1077</b> reaction notes sections.
+    </div>
+    <div class="subSectionContent off" id="SMBLRNParseStepmain"
+      style="font-size:12px;">
+      <p>Parsing all reaction notes ...
+      <!-- Loop over reaction notes -->
+      {% for reaction_note in reaction_notes %}
+      <span class="popup">(<span class="{{ rn.status }}">{{ rn.species_id }}
+        </span>)<span class="popupinfo">{{ rn.entity }}</span></span>,
+      {% endfor %}
+      <!-- end loop -->
+      ... finished.</p>
+    <ul><b>Key:</b>
+      <li><span class="bad">D</span> There appears to be more than one reaction
+        declared with this ID!  Only the first encountered with valid notes
+        will be used.</li>
+      <li><span class="good">#</span> Notes were found and # data sections were parsed in the notes.</li>
+    </ul>
+    <p><b>Count of each note type detected:</b>
+      <ul>
+        <li>SUBSYSTEM : {{ data.n_subsystem_notes }}</li>
+        <li>PROTEIN_ASSOCIATION : {{ data.n_protein_notes }}</li>
+        <li>GENE_ASSOCIATION : {{ data.n_gene_notes }}</li>
+        <li>PROTEIN_CLASS : {{ data.n_protein_class_notes }}</li>
+      </ul>
+    </p>
+    </div>
+
+  <div class="subSectionChapter">Detected associations for
+    {{ data.n_gene_associations }} different genes,
+        from notes in {{ data.n_gene_assoc_reactions }} reactions.</div>
+  <div class="subSectionChapter">Detected associations for
+    {{ data.n_protein_associations }} different proteins,
+      from notes in {{ data.n_protein_assoc_reactions }} reactions.</div>
+  <div class="subSectionChapter" id="SMBLRParseStephidden" style="cursor:pointer;"
+        onclick="Disclose.click(this);"
+        hidethese="SMBLRParseStephidden"
+        showthese="SMBLRParseStepshown,SMBLRParseStepmain">
+      <span style="color:blue;">&#x25BA;</span> Number of exchanges detected in this model: <b>{{ data.n_exchanges }}</b>
+    </div>
+    <div class="subSectionChapter off" id="SMBLRParseStepshown" style="cursor:pointer;"
+        onclick="Disclose.click(this);"
+        hidethese="SMBLRParseStepshown,SMBLRParseStepmain"
+        showthese="SMBLRParseStephidden">
+      <span style="color:blue;">&#x25BC;</span> Number of exchanges detected in this model: <b>{{ data.n_exchanges }}</b>
+    </div>
+    <div class="subSectionContent off" id="SMBLRParseStepmain"
+      style="font-size:12px;">
+      <p>Testing all reactions ...
+      <!-- Loop over exchanges -->
+      {% for ex in data.exchanges %}
+        <span class="popup">(
+          <span class="{{ ex.status }}">LB:-999999</span>,
+          <span class="good">UB:999999</span>)
+          <span class="popupinfo">{{ ex.name }}</span>
+            R_S_Propane_1_2_diol_facilitated_transport</span>
+        </span>,
+      {% endfor %}
+      <span class="popup">(
+        <span class="bad">3Rs</span>)
+        <span class="popupinfo">R_2_dehydro_D_gluconate_reductase__NADH_</span>
+      </span>,
+      <span class="popup">(<span class="bad">3Rs</span>)
+        <span class="popupinfo">
+          R_2_dehydro_D_gluconate_reductase__NADPH_</span>
+      </span>,
+       ... finished.</p>
+
+
+
+    <ul><b>Key:</b>
+      <li><span class="bad">#Rs</span>
+        Wrong # of reactants detected - there must be exactly one.</li>
+      <li><span class="bad">#St</span>
+        Bad stoichiometry.  The single reactant must be exactly 1 unit of the
+        metabolite, not #.  (No fractional exchange allowed.)</li>
+      <li><span class="bad">!KN</span>
+        The reaction has no kinetic law declared inside it.</li>
+      <li><span class="bad">!LB</span>
+        The kinetic law has no LOWER_BOUND parameter declared.</li>
+      <li><span class="bad">!UB</span>
+        The kinetic law has no UPPER_BOUND parameter declared.</li>
+      <li><span class="bad">!LB#</span>
+        The LOWER_BOUND parameter has no default value declared.
+        (Possible structural issue with the SBML model.)</li>
+      <li><span class="bad">!UB#</span>
+        The UPPER_BOUND parameter has no default value declared.
+        (Possible structural issue with the SBML model.)</li>
+      <li><span class="bad">D:X</span>
+        There appears to be more than one exchange reaction declared for this
+        reactant!  Only the first encountered will be used.</li>
+      <li><span class="good">LB:#</span>
+        The exchange reaction has a valid LOWER_BOUND parameter set to #.</li>
+      <li><span class="good">UB:#</span>
+        The exchange reaction has a valid UPPER_BOUND parameter set to #.</li>
+    </ul>
+  </div>
+
+  <div class="subSectionChapter" id="SMBLResolveStephidden" style="cursor:pointer;"
+        onclick="Disclose.click(this);"
+        hidethese="SMBLResolveStephidden"
+        showthese="SMBLResolveStepshown,SMBLResolveStepmain">
+      <span style="color:blue;">&#x25BA;</span>
+        Of <b>{{ data.n_measurement_types }}</b> measurement types in the EDD,
+            <b>545</b> were resolved to species in this model and
+            <b>146</b> were not, and
+            <b>99</b> were resolved to exchanges in this model and
+            <b>592</b> were not.
+    </div>
+    <div class="subSectionChapter off" id="SMBLResolveStepshown" style="cursor:pointer;"
+        onclick="Disclose.click(this);"
+        hidethese="SMBLResolveStepshown,SMBLResolveStepmain"
+        showthese="SMBLResolveStephidden">
+      <span style="color:blue;">&#x25BC;</span> Of <b>691</b> measurement types in the EDD,
+            <b>545</b> were resolved to species in this model and
+            <b>146</b> were not, and
+            <b>99</b> were resolved to exchanges in this model and
+            <b>592</b> were not.
+    </div>
+    <div class="subSectionContent off" id="SMBLResolveStepmain"
+      style="font-size:12px;">
+
+      {% for mt_res in data.measurement_type_resolution %}
+        {% if not mt_res.species and not mt_res.exchange %}
+          <div class="bad">Name <b>{{ mt_res.name }}</b> does not appear to
+             have an associated species <b>or</b>exchange reaction.</div>
+        {% else %}
+          {% if mt_res.species %}
+            <div>Name <b>{{ mt_res.name }}</b> resolves to species
+              {{ mt_res.species }}.</div>
+          {% else %}
+            <div class="bad">Name <b>{{ mt_res.name }}</b> does not appear to
+              have an associated species.</div>
+          {% endif %}
+          {% if mt_res.exchange %}
+            <div>Name <b>{{ mt_res.name }}</b> resolves via
+              {{ mt_res.ex_resolving_name }} to exchange: {{ mt_res.exchange }}
+            </div>
+          {% else %}
+            <div class="bad">Name <b>{{ mt_res.name }}</b> does not appear to
+              have an associated exchange reaction.</div>
+          {% endif %}
+        {% endif %}
+      {% endfor %}
+    </div>
+
+
+  <div class="subSectionChapter" id="SMBLReverseResolveStephidden" style="cursor:pointer;"
+        onclick="Disclose.click(this);"
+        hidethese="SMBLReverseResolveStephidden"
+        showthese="SMBLReverseResolveStepshown,SMBLReverseResolveStepmain">
+      <span style="color:blue;">&#x25BA;</span>
+        Of <b>{{ data.n_exchanges }}</b> total detected exchanges in this model,
+            <b>{{ data.n_exchanges_resolved }}</b> were resolved and
+            <b>{{ data.n_exchanges_not_resolved }}</b> were not.
+    </div>
+    <div class="subSectionChapter off" id="SMBLReverseResolveStepshown" style="cursor:pointer;"
+        onclick="Disclose.click(this);"
+        hidethese="SMBLReverseResolveStepshown,SMBLReverseResolveStepmain"
+        showthese="SMBLReverseResolveStephidden">
+      <span style="color:blue;">&#x25BC;</span>
+        Of <b>{{ data.n_exchanges }}</b> total detected exchanges in this model,
+            <b>{{ data.n_exchanges_resolved }}</b> were resolved and
+            <b>{{ data.n_exchanges_not_resolved }}</b> were not.
+    </div>
+    <div class="subSectionContent off" id="SMBLReverseResolveStepmain"
+      style="font-size:12px;">
+      {% for rex in data.unresolved_exchanges %}
+      <div class="neutral">Reactant <b>{{ rex.reactant }}</b>
+                  / exchange <b>{{ rex.exchange }}</b>
+                  was not successfully used for resolving.</div>
+      {% endfor %}
+    </div>
+
+<input  class="off" type="text" size="5" name="fordebugpurposes" id="fordebugpurposes" value="" />
+
+<p><b>Metabolomics:</b>
+  Matching available metabolite measurements to species defined in the SBML model...</p>
+
+    <div style="display:inline-block;
+              border:1px solid #888;
+              margin:3px 4px;
+              padding:0px 1px 2px 1px;
+              border-radius:4px;
+              -webkit-border-radius:4px;
+              -moz-border-radius:4px;">
+          <table class="dataTable" cellspacing="0">
+            <tr>
+              <td>Metabolite Type</td>
+              <td>Species in model</td>
+            </tr>
+          {% for sp in data.metabolite_species %}
+          <tr>
+            <td>
+              <p>
+                <span class="popup">{{ sp.name }}
+                  <span class="popupinfo">{{ sp.name }}
+                  </span>:
+                </span>
+              </p>
+            </td>
+            <td> 
+              <input  type="text"
+                  class="autocomplete"
+                  autocompletetype="species"
+                  autocomplete="off"
+                  size="45"
+                  name="spmatch{{ sp.id }}"
+                  id="spmatch{{ sp.id }}"
+                  value="{{ sp.species }}"/>
+            </td>
+          </tr>
+          {% endfor %}
+        </table>
+
+
+        <input type="hidden" name="speciesmatchelements" value="{{ species_match_elements }}"/>
+      </div>
+
+  <p><b>Fluxomics:</b> Matching available fluxes to reactants/exchanges defined in the SBML model...</p><div style="display:inline-block;
+              border:1px solid #888;
+              margin:3px 4px;
+              padding:0px 1px 2px 1px;
+              border-radius:4px;
+              -webkit-border-radius:4px;
+              -moz-border-radius:4px;">
+          <table class="dataTable" cellspacing="0">
+            <tr>
+              <td>Metabolite Type</td>
+              <td>Reactant / Exchange in model</td>
+            </tr>
+            <!-- Loop over metabolite fluxomics -->
+            {% for fl in data.metabolite_fluxes %}
+            <tr>
+              <td>
+                <p>
+                  <span class="popup">{{ fl.name }}
+                    <span class="popupinfo">{{ fl.short_name }}</span>:
+                  </span>
+                </p>
+              </td>
+              <td> 
+                <input  type="text"
+                    class="autocomplete"
+                    autocompletetype="exchange"
+                    autocomplete="off"
+                    size="55"
+                    name="exmatch{{ fl.id }}"
+                    id="exmatch{{ fl.id }}"
+                    value="{{ fl.rex }}"/>
+              </td>
+            </tr>
+            {% endfor %}
+          </table>
+        <input type="hidden" name="fluxmatchelements" value="{{
+          data.flux_match_elements }}"/>
+      </div>
+    </div>
+  </div>
+
+<!--
+
+END OF EXPORT SETTINGS
+
+-->
+<div style="width:100%;font-size:13px;vertical-align:bottom;text-align:right;" id="updateSettingsTable"><input style="margin:10px 1em 1em 0;" type="submit" name="action" value="Update Settings" />
+  </div>
+
+
+<!--
+
+Downloads section
+
+-->
+<div class="pageSection" style="width:90%;">
+  <div class="sectionHead">SBML Data Downloads</div>
+
+  <div class="sectionContent" style="font-size:12px;">The following table
+    provides links to SBML files prepared for Flux Balance Analysis,
+    one file for each usable timestamp.  The numbers in the table indicate
+    the number of usable items that are embedded in each file.
+    Hover the mouse over any number to display a summary of embedded items,
+    and click any number to download the SBML file.
+  </div>
+
+  <table cellpadding="0" cellspacing="0"
+      class="dataTable sortable"
+      id="linesTable">
+
+    <tr class="columnLabels">
+      {% for sf in data.sbml_files %}
+      <th class="sortheader" style="text-align:right;font-size:0.8em;">
+        {{ sf.timestamp }}h
+      </th>
+      {% endfor %}}
+    </tr>
+
+    <tr>
+      <!-- loop over SBML files -->
+      {% for sf in data.sbml_files %}
+      <td class="popupcell">
+        <div class="p">
+          <div class="q">
+            <div class="r nowrap" style="text-align:right;padding-right:5px;">
+              <a name="sbmldatafiles" href="#sbmldatafiles"
+                onclick="submitForSBMLDownload({{ sf.timestamp }});">
+                {{ sf.usable_items }}
+              </a>
+            </div>
+            <div class="s">
+              <div class="t">
+                <div style="font-weight:bold;">Metabolomics:</div>
+                <ul style="margin:2px 2px 4px 2px;padding:0px;">
+                  {% for mt in sf.metabolites %}
+                    {% if mt.interpolated %}
+                      <li>{{ mt.name }}<span class="neutral">*</span></li>
+                    {% else %}
+                      <li>{{ mt.name }}</li>
+                    {% endif %}
+                  {% endfor %}
+                </ul>
+                <div style="font-weight:bold;">Fluxomics:</div>
+                <ul style="margin:2px 2px 4px 2px;padding:0px;">
+                  {% for fl in sf.fluxes %}
+                    {% if fl.interpolated %}
+                      <li>{{ fl.name }}<span class="neutral">*</span></li>
+                    {% else %}
+                      <li>{{ fl.name }}</li>
+                    {% endif %}
+                  {% endfor %}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </td>
+      {% endfor %}
+    </tr>
+  </table>
+
+  <input type="hidden" name="download" id="downloadflag" value="" />
+  <input type="hidden" name="timestamp" id="downloadtimestamp" value="" />
+</div>
+</form>
