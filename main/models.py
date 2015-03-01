@@ -6,7 +6,7 @@ from django_extensions.db.fields import PostgreSQLUUIDField
 from django.utils.dateformat import format as format_date
 from itertools import chain
 import arrow
-
+import re
 
 class Update(models.Model):
     """
@@ -62,6 +62,18 @@ class Attachment(models.Model):
     file = models.FileField(max_length=255)
     filename = models.CharField(max_length=255)
     created = models.ForeignKey(Update, related_name='+')
+
+class MetabolicMap (models.Model) :
+    """
+    Container for information used in SBML export.
+    """
+    class Meta:
+        db_table = "metabolic_map"
+    attachment = models.ForeignKey(Attachment)
+    biomass_calculation = models.DecimalField(default=-1, decimal_places=5,
+        max_digits=16) # XXX check that these parameters make sense!
+    biomass_calculation_info = models.TextField()
+    biomass_exchange_name = models.TextField()
 
 
 class MetadataGroup(models.Model):
@@ -389,6 +401,30 @@ class Protocol(EDDObject):
             "name" : self.name,
             "disabled" : not self.active,
         }
+
+    @property
+    def categorization (self) :
+        """
+        The 'categorization' determines what broad category the Protocol falls
+        into with respect to how its Metabolite data should be processed
+        internally.  The categorizations used so far are the strings
+        'OD', 'HPLC', 'LCMS', and 'RAMOS', and the catch-all 'Unknown'.
+        """
+        # FIXME This is not the best way of doing it, depending as it does
+        # on the arbitrary naming conventions used by scientists creating new
+        # Protocols, so it will probably need replacing later on.
+        c = "Unknown"
+        if (self.name == "OD600") :
+            return "OD"
+        elif ("HPLC" in self.name) :
+            return "HPLC"
+        elif (re.match("^LC[\-\/]?", self.name) or 
+              re.match("^GC[\-\/]?", self.name)) :
+            return "LCMS"
+        elif re.match("O2\W+CO2", self.name) :
+            return "RAMOS"
+        else :
+            return "Unknown"
 
 class Strain(EDDObject):
     """
