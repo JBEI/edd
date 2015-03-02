@@ -12,6 +12,7 @@ class sbml_data (object) :
     self.study = study
     self.lines = lines
     self.form = form
+    self.submitted_from_export_page = form.get("formSubmittedFromSBMLExport",0)
     self.assays = []
     for line in lines :
       self.assays.extend(list(line.assay_set.all()))
@@ -23,7 +24,7 @@ class sbml_data (object) :
     self.metabolic_maps = list(MetabolicMap.objects.all())
     # Get a master set of all timestamps that contain data, separated according
     # to Line ID.
-    self.odtimes_by_line = {}
+    self.od_times_by_line = defaultdict(dict)
     # This is where we'll accumulate our processed flux data.
     # A multi-level hash, creating a hierarchy from Timestamps to Metabolites
     # to flux values.  When it comes time to embed this in the SBML, we'll
@@ -48,22 +49,25 @@ class sbml_data (object) :
     # We will eventually use this 'checked' hash as a filter for all the
     # Measurements we intend to process and embed
     self.metabolites_checked = {}
+    self.transcriptions_checked = {}
+    self.proteins_checked = {}
     self.metabolite_is_input = {}
+    self.metabolite_stats = {}
     # This is a hash by Assay number, since all Transcriptomics measurements in
     # an Assay are grouped
-    self.transcriptions_checked = {}
     self.have_transcriptomics_to_embed = False
     self.consolidated_transcription_ms = {}
     # This is also a hash by Assay number, since all Proteomics measurements in
     # an Assay are grouped
-    self.proteins_checked = {}
     self.have_proteomics_to_embed = False
     self.consolidated_protein_ms = {}
     self.comprehensive_valid_OD_mtimes = {}
-    self.metabolite_stats = {}
     # Initializing these for use later
-    self.metabolic_maps = 
+    self.assay_measurements = defaultdict(list)
+    self.metabolic_maps = []
     self.chosen_map = None
+    self.od_measurements = []
+    self.measurement_ranges = {}
 
   def get_protocol_by_category (self, category_name) :
     protocols = []
@@ -96,6 +100,194 @@ class sbml_data (object) :
         "Biomass measurements are essential for FBA.")
     # Sort the Assays alphabetically by Line/Assay and take the first from the
     # list as the default.
+    od_assays.sort(lambda a,b: cmp(a.name, b.name))
+    od_assays.sort(lambda a,b: cmp(a.line.name, b.line.name))
+    self.od_measurements = []
+    for assay in od_assays :
+      assay_meas = list(assay.measurement_set.filter(
+        measurement_type__id=mt_meas_type.id))
+      self.od_measurements.extend(assay_meas)
+    if (len(od_measurements) == 0) :
+      raise RuntimeError("Assay selection has no Optical Data measurements "+
+        "entered.  Biomass measurements are essential for FBA.")
+    # Use all OD Measurements we can by default
+    selected_od_meas = self.od_measurements
+    if self.submitted_from_export_page :
+      selected_od_meas = []
+      for m in od_measurements :
+        form_key = "measurement%dinclude" % m.id
+        if (form_key in self.form) :
+          selected_od_meas.append(m)
+    for od_meas in selected_od_meas :
+      self.metabolites_checked[od_meas.id] = True
+    # get X-value limits now and store for later
+    min_od_x, max_od_x = find_min_max_x_in_measurements(self.od_measurements,
+      defined_only=True)
+    self.measurement_ranges["OD"] = (min_od_x, max_od_x)
+    if (len(selected_od_meas) == 0) :
+      raise RuntimeError("No Optical Data measurements were selected. "+
+        "Biomass measurements are essential for FBA.")
+    # We should only spew information about the utilization of GCDW calibration
+    # metadata once, per occurrence of the metadata at the Line/Assay level, or
+    # per lack of it at the Line level.
+    logged_about_GCDW_in_assay = {}
+    logged_about_GCDW_in_line = {}
+    self.used_generic_GCDW_in_assays = len(selected_od_meas) #XXX should be 0
+    gcdw_calibrations = { a.id : 0.65 for a in od_assays } #XXX should be empty
+    # Here we verify that there is a GCDW calibration factor set for every
+    # Assay, appropriating it from the enclosing Line, or choosing the default,
+    # as necessary.
+    # TODO
+    # The next set of calculations is a bit difficult.  When we're trying to
+    # compute reasonable intermediate values for sets of data that may not have     # the same number of measurements in the same places, we need to be careful.
+    # Consider two sets of OD Measurements: one with timestamps of 1h, 2h, 6h,
+    # and 8h, and the other with timestamps of 2h, 4h, 8h, and 16h.
+    # You could merge these two sets at the 2h mark rather easily, since both
+    # contain values for 2h.  But what about at the 4h mark?  You have a
+    # measurement at exactly 4h for one set, but you'll have to come up with an
+    # intermediate guess for the 4h mark in the other set - the average between
+    # 2h and 6h for example.  Only then can you merge those values, to get a
+    # sensible average at the 4h mark.
+    # One way to do this is by converting each set into a polynomial function,
+    # giving a certain measurement y for time values of x, and then doing some
+    # computation to merge each y.  This would "smooth out" the curves, but it
+    # would also introduce difficult-to-predict variations of the hard data,
+    # especially on the outside edges of the data sets.  So we're going to take
+    # a stiffer approach.
+    # We're going to collect together a master set of all the timestamps in all
+    # sets that we have any valid data for,
+    # then run through each set of measurements and "fill in" all the
+    # timestamps using intermediates calculated from only that set.  When we're
+    # done, only then will we merge all those intermediates into averages at
+    # each timestamp, for a master set of Measurements.  This has three
+    # effects:
+    # 1. Estimates in any one set are based entirely on the two closest
+    # enclosing hard data points, and none of the others.
+    # 2. The data points on the END of a set only affect averaging up to the
+    # next nearest hard data point for ANY set. (As a consequence, they don't
+    # drag up or down on values well outside their range.)
+    # Want better averages?  Make more hard measurements!  Meanwhile, if you
+    # see abrupt cliffs, that's because your data is actually questionable
+    # and the system is making no effort to hide it.
+    od_measurements_by_line = defaultdict(list)
+    for m in selected_od_meas :
+      od_measurements_by_line[m.assay.line.id].append(m)
+    # Time to work on self.od_times_by_line, the set of all timestamps that
+    # contain data
+    for m in selected_od_meas :
+      xvalues = m.extract_data_xvalues(defined_only=True)
+      for h in xvalues :
+        self.od_times_by_line[m.assay.line.id][h] = 1
+    # For each Line, we take the full set of valid timstamps,
+    # then walk through each set of OD Measurements and attempt to find a value
+    # for that timestamp based on the data in that Measurement.
+    # If we don't find an exact value, we calculate one based on a weighted
+    # average of nearest neighbors.  [No curve fitting or anything fancy here,
+    # just numpy.interp(...)]  Then we apply the calibration factor to our
+    # result, and store it in a list.  Finally, we average everything on each
+    # list, and declare that value to be the official calibrated OD at that
+    # timestamp for that Line.
+    for line_id in in self.od_times_by_line.keys() :
+      all_times = self.od_times_by_line[line_id].keys()
+      for t in all_times :
+        y_values = []
+        for odm in od_measurements_by_line[line_id] :
+          gcdw_cal = gcdw_calibrations[odm.assay.id]
+          md = list(odm.measurementdatum_set.filter(x=t))
+          # If a value is already defined at this timestamp for this
+          # measurement, no need to attempt to calculate an average.
+          if (len(md) > 0) :
+            assert (len(md) == 1)
+            y_values.append(md.y * gcdw_cal)
+            continue
+          y_interp = odm.interpolate_at(t)
+          if (y_interp is not None) :
+            y_values.append(y_interp * gcdw_cal)
+        assert (len(y_values) > 0)
+        self.od_times_by_line[line_id][t] = sum(y_values) / len(y_values)
+      # We have now created a master set of calibrated OD values for each Line,
+      # using every available hard data point in the available Assays.  At this
+      # point, self.od_times_by_line contains timestamps that cover all of the
+      # points for which I want to generate fluxes.
+    # Make a list of all the Line IDs that have at least two points of OD
+    # data to work with.
+    lines_with_useful_od = [ line_id for line_id in self.od_times_by_line if
+      len(self.od_times_by_line[line_id]) > 1 ]
+    if (len(lines_with_useful_id) == 0) :
+      raise RuntimeError("Selected Optical Data contains less than two " +
+        "defined data points!  Biomass measurements are essential for FBA, " +
+        "and we need at least two to define a growth rate.")
+
+  def step_3_get_hplc_data (self) :
+    """
+    Step 3: Select HPLC-like Measurements and mark the ones that are inputs
+    """
+    hplc_protocols = self.get_protocol_by_category("HPLC")
+    # TODO warn somehow
+    self.usable_hplc_protocols = []
+    self.usable_hplc_assays = defaultdict(list)
+    self.usable_hplc_measurements = []
+    self.usable_metabolites_by_assay = defaultdict(list)
+    for protocol in hplc_protocols :
+      hplc_assays = self.protocol_assays.get(protocol.name, [])
+      if (len(hplc_assays) == 0) :
+        continue
+      # Sort by the Assay name, then re-sort by the Line name.
+      hplc_assays.sort(lambda a,b: cmp(a.name, b.name))
+      hplc_assays.sort(lambda a,b: cmp(a.line.name, b.line.name))
+      for assay in hplc_assays :
+        metabolites = list(assay.get_metabolite_measurements())
+        metabolites.sort(lambda a,b: cmp(a.measurement_type.type_name,
+                                          b.measurement_type.type_name))
+        assay_has_usable_data = False
+        for m in metabolites :
+          m_units = m.y_axis_units_name()
+          if (not m_units in ["mg/L", "g/L", "mol/L", "mM", "uM", "Cmol/L"]) :
+            continue
+          m_selected = self.form.get("measurement%dinclude" % m.id, None)
+          m_is_input = self.form.get("measurement%dinput" % m.id, None)
+          if (not self.submitted_from_export_page) :
+            m_selected = True
+            m_is_input = False
+          self.metabolites_checked[m.id] = m_selected
+          self.metabolite_is_input[m.id] = m_is_input
+          self.usable_hplc_measurements.append(m)
+          self.usable_metabolites_by_assay[assay.id].append(m)
+          self.assay_measurements[assay.id].append(m)
+          assay_has_usable_data = True
+        # All transcription data are usable - there are no units restrictions
+        transcriptions = list(assay.get_gene_measurements())
+        if (len(transcriptions) > 0) :
+          transcription_selected = self.form.get("transcriptions%dinclude" %
+            assay.id, None)
+          if (not self.submitted_from_export_page) :
+            transcription_selected = True
+          if transcription_selected :
+            self.have_transcriptomics_to_embed = True
+          self.transcriptions_checked[assay.id] = transcription_selected
+          self.usable_hplc_measurements.extend(transcriptions)
+          assay_has_usable_data = True
+        # same with proteomics data
+        proteomics = list(assay.get_protein_measurements())
+        if (len(proteomics) > 0) :
+          proteomics_selected = self.form.get("proteins%dinclude" % assay.id,
+            None)
+          if (not self.submitted_from_export_page) :
+            proteomics_selected = True
+          if proteomics_selected :
+            self.have_proteomics_to_embed = True
+          self.proteins_checked[assay.id] = proteomics_selected
+          self.usable_hplc_measurements.extend(proteomics)
+          assay_has_usable_data = True
+        # If the Assay has any usable Measurements, add it to a hash sorted
+        # by Protocol
+        if assay_has_usable_data :
+          self.usable_hplc_assays[protocol.name].append(assay)
+      if (len(self.usable_hplc_assays[protocol.name]) > 0) :
+        self.usable_hplc_protocols.append(protocol)
+    min_x, max_x = find_min_max_x_in_measurements(usable_hplc_measurements,
+      True)
+    self.measurement_ranges["HPLC"] = (min_x, max_x)
 
   def template_info (self) :
     """
@@ -106,6 +298,10 @@ class sbml_data (object) :
       "id" : m.id,
       "is_selected" : m is self.chosen_map,
     } for m in self.metabolic_maps ]
+
+  @property
+  def n_usable_hplc_protocols (self) :
+    return len(self.usable_hplc_protocols)
 
   @property
   def n_ramos_measurements (self) :
@@ -228,3 +424,13 @@ class sbml_data (object) :
 
   def sbml_files (self) :
     raise NotImplementedError()
+
+def find_min_max_x_in_measurements (measurements, defined_only=None) :
+  """
+  Find the minimum and maximum X values across all data in all given
+  Measurement IDs.  If definedOnly is set, filter out all the data points that
+  have unset Y values before determining range.
+  """
+  for m in measurements :
+    xvalues.extend(m.extract_data_xvalues(defined_only=defined_only))
+  return min(xvalues), max(xvalues)

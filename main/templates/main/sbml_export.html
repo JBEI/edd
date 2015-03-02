@@ -58,25 +58,30 @@ EDDData.Exchanges = {"180":{"exn":"R_L_Valine_exchange","exid":"R_EX_val_L_e_","
 <div class="pageSection" style="margin:10px;" id="allstatusmain">
 
 <div class="sectionHead">Export Settings:
-  <span class="neutral"> 1 Warning</span></div>
+  <span class="neutral"> 1 Warning</span>
+</div>
 
 <!-- Step 1 -->
-    <input type="hidden"
-      id="statusstep0show"
-      name="statusstep0show"
-      value="0"/>
-    <div class="sectionChapter" id="statusstep0hidden" style="cursor:pointer;"
-      onclick="Disclose.click(this);trackShown('statusstep0show', 1);"
-      hidethese="statusstep0hidden"
-      showthese="statusstep0shown,statusstep0main">
-    <span style="color:blue;">&#x25BA;</span> Step 1: Select the SBML template file to use for export<span class="good"></span>
+  <input type="hidden"
+    id="statusstep0show"
+    name="statusstep0show"
+    value="0"/>
+  <div class="sectionChapter" id="statusstep0hidden" style="cursor:pointer;"
+    onclick="Disclose.click(this);trackShown('statusstep0show', 1);"
+    hidethese="statusstep0hidden"
+    showthese="statusstep0shown,statusstep0main">
+    <span style="color:blue;">&#x25BA;</span>
+      Step 1: Select the SBML template file to use for export
+      <span class="good"></span>
   </div>
 
   <div class="sectionChapter off" id="statusstep0shown" style="cursor:pointer;"
-        onclick="Disclose.click(this);trackShown('statusstep0show', 0);"
-        hidethese="statusstep0shown,statusstep0main"
-        showthese="statusstep0hidden">
-      <span style="color:blue;">&#x25BC;</span> Step 1: Select the SBML template file to use for export<span class="good"></span>
+      onclick="Disclose.click(this);trackShown('statusstep0show', 0);"
+      hidethese="statusstep0shown,statusstep0main"
+      showthese="statusstep0hidden">
+    <span style="color:blue;">&#x25BC;</span>
+      Step 1: Select the SBML template file to use for export
+      <span class="good"></span>
   </div>
 
 
@@ -106,6 +111,7 @@ EDDData.Exchanges = {"180":{"exn":"R_L_Valine_exchange","exid":"R_EX_val_L_e_","
     </table>
   </div>
 
+  <!-- Step 2 -->
   <input type="hidden"
         id="statusstep1show"
         name="statusstep1show"
@@ -177,10 +183,13 @@ EDDData.Exchanges = {"180":{"exn":"R_L_Valine_exchange","exid":"R_EX_val_L_e_","
         </tr>
       </table>
     </div>
-    <div class="neutral">OD600 measurements need a calibration factor to be
-      converted into gCDW/L.  You can add this as metadata, at the Assay or
-      Line level.  For now, the EDD is using the default gCDW/L/OD600 value
-      of <b>0.65</b> for 1 of your selected Measurements.</div>
+    {% if data.used_generic_GCDW_in_assays %}
+      <div class="neutral">OD600 measurements need a calibration factor to be
+        converted into gCDW/L.  You can add this as metadata, at the Assay or
+        Line level.  For now, the EDD is using the default gCDW/L/OD600 value
+        of <b>0.65</b> for {{ data.used_generic_GCDW_in_assays }} of your
+        selected Measurements.</div>
+    {% endif %}
     <div>Located and consolidated useful Optical Data for 1 Lines.</div>
   </div>
 
@@ -210,6 +219,15 @@ Step 3 (HPLC)
         Step 3: Select HPLC-like Measurements, and inputs
       <span class="good"></span>
     </div>
+
+    {% if not data.n_usable_hplc_measurements %}
+      <div>No usable HPLC-based measurements are present.
+      To be usable, measurements must have a timestamp somewhere inside the
+      range of the OD measurements.  Metabolite measurements must be in any
+      of the following units:<b>mg/L</b>, <b>g/L</b>, <b>mol/L</b>,
+      <b>mM</b>, <b>uM</b>, or <b>Cmol/L</b>.
+      </div>
+    {% endif %}
 
     <div class="sectionContent off" id="statusstep2main"
       style="font-size:12px;">
