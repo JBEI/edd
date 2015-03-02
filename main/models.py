@@ -761,8 +761,28 @@ class Measurement(models.Model):
     def __str__(self):
         return 'Measurement{%d}{%s}' % (self.assay.id, self.measurement_type)
 
-    def extract_data_xvalues (self) :
-        return [ float(m.x) for m in self.measurementdatum_set.all() ]
+    # TODO also handle vectors
+    def extract_data_xvalues (self, defined_only=False) :
+        if defined_only :
+            return [ float(m.x) for m in self.measurementdatum_set.filter(
+                y__isnull=False) ]
+        else :
+            return [ float(m.x) for m in self.measurementdatum_set.all() ]
+
+    # TODO also handle vectors
+    def interpolate_at (self, x) :
+        """
+        Given an X-value without a measurement, use linear interpolation to
+        compute an approximate Y-value based on adjacent measurements (if any).
+        """
+        import numpy
+        data = sorted(list(self.measurementdatum_set.filter(y__isnull=False)),
+            lambda a,b: cmp(a.x, b.x))
+        xp = numpy.array([ float(d.x) for d in data ])
+        if (not (xp[0] <= x <= xp[-1])) :
+            return None
+        fp = numpy.array([ float(d.y) for d in data ])
+        return numpy.interp(float(x), xp, fp)
 
 class MeasurementDatum(models.Model):
     """

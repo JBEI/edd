@@ -114,6 +114,48 @@ class SolrTests(TestCase):
         self.assertEqual(pre_add['response']['numFound'], 0, "Study in index before it was added")
         self.assertEqual(post_add['response']['numFound'], 1, "Added study was not found in query")
 
+class MeasurementTests(TestCase) :
+    def setUp (self) :
+        TestCase.setUp(self)
+        user1 = User.objects.create_user(username="admin",
+            email="nechols@lbl.gov", password='12345')
+        study1 = Study.objects.create(name='Test Study 1', description='')
+        line1 = study1.line_set.create(name="Line 1", description="",
+            experimenter=user1, contact=user1)
+        protocol1 = Protocol.objects.create(name="GC-MS", owned_by=user1)
+        mt1 = Metabolite.objects.create(type_name="Mevalonate",
+            short_name="mev", type_group="m", charge=-1, carbon_count=6,
+            molecular_formula="C6H11O4", molar_mass=148.16)
+        assay1 = line1.assay_set.create(name="Assay 1",
+            protocol=protocol1, description="GC-MS assay", experimenter=user1)
+        up1 = Update.objects.create(mod_by=user1)
+        meas1 = assay1.measurement_set.create(experimenter=user1,
+            measurement_type=mt1, compartment="1", update_ref=up1)
+        mu1 = MeasurementUnit.objects.create(unit_name="hours")
+        mu2 = MeasurementUnit.objects.create(unit_name="mM")
+        x1 = [ 0, 4, 8, 12, 18, 24 ]
+        y1 = [ 0.0, 0.1, 0.2, 0.4, 0.8, 1.6 ]
+        for x, y in zip(x1, y1) :
+            md = meas1.measurementdatum_set.create(updated=up1,
+                x_units=mu1, y_units=mu2, x=x, y=y)
+        meas1.measurementdatum_set.create(updated=up1,
+            x_units=mu1, y_units=mu2, x=32, y=None)
+
+    def test_extract (self) :
+        assay = Assay.objects.get(name="Assay 1")
+        meas1 = assay.measurement_set.all()[0]
+        xval = meas1.extract_data_xvalues()
+        assert (xval == [0.0, 4.0, 8.0, 12.0, 18.0, 24.0, 32.0])
+        xval2 = meas1.extract_data_xvalues(defined_only=True)
+        assert (xval2 == [0.0, 4.0, 8.0, 12.0, 18.0, 24.0])
+
+    def test_interpolate (self) :
+        assay = Assay.objects.get(name="Assay 1")
+        meas1 = assay.measurement_set.all()[0]
+        y_interp = meas1.interpolate_at(21)
+        assert (y_interp == 1.2)
+        y_interp2 = meas1.interpolate_at(25)
+        assert (y_interp2 is None)
 
 class ExportTests(TestCase) :
     """
