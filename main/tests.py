@@ -114,7 +114,9 @@ class SolrTests(TestCase):
         self.assertEqual(pre_add['response']['numFound'], 0, "Study in index before it was added")
         self.assertEqual(post_add['response']['numFound'], 1, "Added study was not found in query")
 
+
 class MeasurementTests(TestCase) :
+
     def setUp (self) :
         TestCase.setUp(self)
         user1 = User.objects.create_user(username="admin",
@@ -153,9 +155,15 @@ class MeasurementTests(TestCase) :
         assay = Assay.objects.get(name="Assay 1")
         meas1 = assay.measurement_set.all()[0]
         y_interp = meas1.interpolate_at(21)
-        assert (y_interp == 1.2)
+        # XXX I hate floating-point math
+        assert (str(y_interp) == "1.2"), y_interp
         y_interp2 = meas1.interpolate_at(25)
         assert (y_interp2 is None)
+
+    def test_misc (self) :
+        assay = Assay.objects.get(name="Assay 1")
+        meas1 = assay.measurement_set.all()[0]
+        assert (meas1.y_axis_units_name() == "mM")
 
 class ExportTests(TestCase) :
     """

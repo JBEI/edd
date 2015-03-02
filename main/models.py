@@ -784,6 +784,19 @@ class Measurement(models.Model):
         fp = numpy.array([ float(d.y) for d in data ])
         return numpy.interp(float(x), xp, fp)
 
+    def y_axis_units_name (self) :
+        names = set()
+        for md in self.measurementdatum_set.all() :
+            names.add(md.y_units.unit_name)
+        names = list(names)
+        if (len(names) == 1) :
+            return names[0]
+        elif (len(names) == 0) :
+            return None
+        else :
+            raise RuntimeError("Multiple measurement units for ID %d: %s " %
+                (self.id, "; ".join(names)))
+
 class MeasurementDatum(models.Model):
     """
     A pair of scalars (x,y) as part of a Measurement.
