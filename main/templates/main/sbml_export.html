@@ -26,6 +26,14 @@ EDDData.Exchanges = {"180":{"exn":"R_L_Valine_exchange","exid":"R_EX_val_L_e_","
 <script type="text/javascript" src="{% static 'main/js/StudySBMLExport.js' %}"></script>
 <script type="text/javascript" src="{% static 'main/js/Autocomplete.js' %}"></script>
 
+<!-- style for SVG graphics -->
+<style type="text/css">
+  .cP { stroke:rgba(0,0,0,1); stroke-width:4px; stroke-linecap:round; }
+  .cV { stroke:rgba(0,0,230,1); stroke-width:4px; stroke-linecap:round; }
+  .cE { stroke:rgba(255,128,0,1); stroke-width:4px; stroke-linecap:round; }
+  .cT { stroke:rgba(0,0,0,1); stroke-width:4px; stroke-linecap:round; }
+</style>
+
 {% endblock js_css %}
 
 {% block head_title %}
@@ -62,405 +70,365 @@ EDDData.Exchanges = {"180":{"exn":"R_L_Valine_exchange","exid":"R_EX_val_L_e_","
 </div>
 
 <!-- Step 1 -->
-  <input type="hidden"
-    id="statusstep0show"
-    name="statusstep0show"
-    value="0"/>
-  <div class="sectionChapter" id="statusstep0hidden" style="cursor:pointer;"
-    onclick="Disclose.click(this);trackShown('statusstep0show', 1);"
-    hidethese="statusstep0hidden"
-    showthese="statusstep0shown,statusstep0main">
-    <span style="color:blue;">&#x25BA;</span>
-      Step 1: Select the SBML template file to use for export
-      <span class="good"></span>
-  </div>
+<input type="hidden"
+  id="statusstep0show"
+  name="statusstep0show"
+  value="0"/>
+<div class="sectionChapter" id="statusstep0hidden" style="cursor:pointer;"
+  onclick="Disclose.click(this);trackShown('statusstep0show', 1);"
+  hidethese="statusstep0hidden"
+  showthese="statusstep0shown,statusstep0main">
+  <span style="color:blue;">&#x25BA;</span>
+    Step 1: Select the SBML template file to use for export
+    <span class="good"></span>
+</div>
 
-  <div class="sectionChapter off" id="statusstep0shown" style="cursor:pointer;"
-      onclick="Disclose.click(this);trackShown('statusstep0show', 0);"
-      hidethese="statusstep0shown,statusstep0main"
-      showthese="statusstep0hidden">
-    <span style="color:blue;">&#x25BC;</span>
-      Step 1: Select the SBML template file to use for export
-      <span class="good"></span>
-  </div>
+<div class="sectionChapter off" id="statusstep0shown" style="cursor:pointer;"
+    onclick="Disclose.click(this);trackShown('statusstep0show', 0);"
+    hidethese="statusstep0shown,statusstep0main"
+    showthese="statusstep0hidden">
+  <span style="color:blue;">&#x25BC;</span>
+    Step 1: Select the SBML template file to use for export
+    <span class="good"></span>
+</div>
 
 
-  <div class="sectionContent off" id="statusstep0main" style="font-size:12px;">
-    <table style="width:95%">
+<div class="sectionContent off" id="statusstep0main" style="font-size:12px;">
+  <table style="width:95%">
+    <tr>
+      <td>
+        SBML Template:
+      <select name="chosenmap" id="chosenmap" onchange="submitForRefresh();">
+        {% for template in data.template_info %}
+          {% if template.is_selected %}
+            <option value="{{ template.id }}" selected="selected">
+              {{ template.file_name }}</option>
+          {% else %}
+            <option value="{{ template.id }}">
+              {{ template.file_name }}</option>
+          {% endif %}
+        {% endfor %}
+      </select>
+      <span id="templateWaitBadge" class="waitbadge"></span>
+      </td>
+      <td style="text-align:right">
+        <!-- XXX actual URL TBD -->
+        <a href="/admin/templates">Manage Templates</a>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<!-- Step 2 -->
+<input type="hidden"
+      id="statusstep1show"
+      name="statusstep1show"
+      value="0"/>
+<div class="sectionChapter off" id="statusstep1hidden" style="cursor:pointer;"
+    onclick="Disclose.click(this);trackShown('statusstep1show', 1);"
+    hidethese="statusstep1hidden"
+    showthese="statusstep1shown,statusstep1main">
+  <span style="color:blue;">&#x25BA;</span> Step 2: Find OD Data:
+    <span class="neutral"> 1 Warning</span>
+</div>
+<div class="sectionChapter" id="statusstep1shown" style="cursor:pointer;"
+    onclick="Disclose.click(this);trackShown('statusstep1show', 0);"
+    hidethese="statusstep1shown,statusstep1main"
+    showthese="statusstep1hidden">
+  <span style="color:blue;">&#x25BC;</span> Step 2: Find OD Data:
+    <span class="neutral"> 1 Warning</span>
+</div>
+<div class="sectionContent" id="statusstep1main" style="font-size:12px;">
+  <div style="border:1px solid #888;
+        margin:3px 0px;
+        border-radius:4px;
+        -webkit-border-radius:4px;
+        -moz-border-radius:4px;">
+    <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
       <tr>
-        <td>
-          SBML Template:
-        <select name="chosenmap" id="chosenmap" onchange="submitForRefresh();">
-          {% for template in data.template_info %}
-            {% if template.is_selected %}
-              <option value="{{ template.id }}" selected="selected">
-                {{ template.file_name }}</option>
-            {% else %}
-              <option value="{{ template.id }}">
-                {{ template.file_name }}</option>
-            {% endif %}
-          {% endfor %}
-        </select>
-        <span id="templateWaitBadge" class="waitbadge"></span>
-        </td>
-        <td style="text-align:right">
-          <!-- XXX actual URL TBD -->
-          <a href="/admin/templates">Manage Templates</a>
-        </td>
+        <td>Assay</td>
+        <td colspan="2">Measurement</td>
+        <td></td>
+        <td colspan="2"></td>
       </tr>
-    </table>
-  </div>
-
-  <!-- Step 2 -->
-  <input type="hidden"
-        id="statusstep1show"
-        name="statusstep1show"
-        value="0"/>
-  <div class="sectionChapter off" id="statusstep1hidden" style="cursor:pointer;"
-      onclick="Disclose.click(this);trackShown('statusstep1show', 1);"
-      hidethese="statusstep1hidden"
-      showthese="statusstep1shown,statusstep1main">
-    <span style="color:blue;">&#x25BA;</span> Step 2: Find OD Data:
-      <span class="neutral"> 1 Warning</span>
-  </div>
-  <div class="sectionChapter" id="statusstep1shown" style="cursor:pointer;"
-      onclick="Disclose.click(this);trackShown('statusstep1show', 0);"
-      hidethese="statusstep1shown,statusstep1main"
-      showthese="statusstep1hidden">
-    <span style="color:blue;">&#x25BC;</span> Step 2: Find OD Data:
-      <span class="neutral"> 1 Warning</span>
-  </div>
-  <div class="sectionContent" id="statusstep1main" style="font-size:12px;">
-    <div style="border:1px solid #888;
-          margin:3px 0px;
-          border-radius:4px;
-          -webkit-border-radius:4px;
-          -moz-border-radius:4px;">
-      <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
-        <tr>
-          <td>Assay</td>
-          <td colspan="2">Measurement</td>
-          <td></td>
-          <td colspan="2"></td>
-        </tr>
-        <tr>
-          <td class="nowrap">I-2-OD600-2</td>
-          <td class="nowrap popupcell">
-            <input type="checkbox"
-                name="measurement10166include"
-                id="measurement10166include"
-                checked="checked"
-                value="10166" />Optical Density
-          </td>
-          <td class="nowrap" style="text-align:right;"></td>
-          <td></td>
-          <td style="text-align:right;width:30px;">(9)</td>
-          <td style="padding:3px 2px 0px 2px;width:60%;">
-            <svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"
+      {% for assay in data.export_od_measurements %}
+        {% for measurement in assay.measurements %}
+      <tr>
+        <td class="nowrap">{{ assay.name }}</td>
+        <td class="nowrap popupcell">
+          <input type="checkbox"
+              name="measurement{{ measurement.id }}include"
+              id="measurement{{ measurement.id }}include"
+              checked="checked"
+              value="{{ measurement.id }}"/>Optical Density
+        </td>
+        <td class="nowrap" style="text-align:right;"></td>
+        <td></td>
+        <td style="text-align:right;width:30px;">
+          {{ measurement.n_points }}
+        </td>
+        <td style="padding:3px 2px 0px 2px;width:60%;">
+          <svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"
               version="1.2" width="100%" height="10px" viewBox="0 0 470 10">
-          <style type="text/css"><![CDATA[
-            .cP { stroke:rgba(0,0,0,1); stroke-width:4px; stroke-linecap:round; }
-            .cV { stroke:rgba(0,0,230,1); stroke-width:4px; stroke-linecap:round; }
-            .cE { stroke:rgba(255,128,0,1); stroke-width:4px; stroke-linecap:round; }
-      ]]>
-          </style>
             <path fill="rgba(0,0,0,0.0.05)"
               stroke="rgba(0,0,0,0.05)"
               d="M10,5h450"
               style="stroke-width:2px;"
               stroke-width="2"></path>
-            <path class="cP" d="M60,1v8"><title>2.932 at 8h</title></path>
-            <path class="cP" d="M122.5,1v8"><title>3.643 at 18h</title></path>
-            <path class="cP" d="M235,1v8"><title>3.365 at 36h</title></path>
-            <path class="cP" d="M460,1v8"><title>3.16 at 72h</title></path>
-            <path class="cP" d="M310,1v8"><title>3.365 at 48h</title></path>
-            <path class="cP" d="M160,1v8"><title>3.838 at 24h</title></path>
-            <path class="cP" d="M10,1v8"><title>0.612 at 0h</title></path>
-            <path class="cP" d="M35,1v8"><title>2.212 at 4h</title></path>
-            <path class="cP" d="M85,1v8"><title>3.492 at 12h</title></path>
+          {% for md in measurement.data_points %}
+            <path class="cP" d="M{{ md.rx }},1v8">
+              <title>{{ md.title }}</title>
+            </path>
+          {% endfor %}
           </svg>
-          </td>
-        </tr>
-      </table>
-    </div>
-    {% if data.used_generic_GCDW_in_assays %}
-      <div class="neutral">OD600 measurements need a calibration factor to be
-        converted into gCDW/L.  You can add this as metadata, at the Assay or
-        Line level.  For now, the EDD is using the default gCDW/L/OD600 value
-        of <b>0.65</b> for {{ data.used_generic_GCDW_in_assays }} of your
-        selected Measurements.</div>
-    {% endif %}
-    <div>Located and consolidated useful Optical Data for 1 Lines.</div>
+        </td>
+      </tr>
+      {% endfor %}<!-- measurements -->
+      {% endfor %}<!-- assays -->
+    </table>
   </div>
+  {% if data.used_generic_GCDW_in_assays %}
+    <div class="neutral">OD600 measurements need a calibration factor to be
+      converted into gCDW/L.  You can add this as metadata, at the Assay or
+      Line level.  For now, the EDD is using the default gCDW/L/OD600 value
+      of <b>0.65</b> for {{ data.used_generic_GCDW_in_assays }} of your
+      selected Measurements.</div>
+  {% endif %}
+  <div>Located and consolidated useful Optical Data for 1 Lines.</div>
+</div>
 
 <!--
 
 Step 3 (HPLC) 
 
+This is more complicated than the previous section, because it is designed to
+handle multiple protocols, and there is an additional "input" checkbox for
+each measurement.
+
 -->
-  <input type="hidden"
-      id="statusstep2show"
-      name="statusstep2show"
-      value="0"/>
+<input type="hidden"
+    id="statusstep2show"
+    name="statusstep2show"
+    value="0"/>
 
-  <div class="sectionChapter" id="statusstep2hidden" style="cursor:pointer;"
-        onclick="Disclose.click(this);trackShown('statusstep2show', 1);"
-        hidethese="statusstep2hidden"
-        showthese="statusstep2shown,statusstep2main">
-      <span style="color:blue;">&#x25BA;</span>
-        Step 3: Select HPLC-like Measurements, and inputs
-      <span class="good"></span>
-    </div>
-    <div class="sectionChapter off" id="statusstep2shown" style="cursor:pointer;"
-        onclick="Disclose.click(this);trackShown('statusstep2show', 0);"
-        hidethese="statusstep2shown,statusstep2main"
-        showthese="statusstep2hidden">
-      <span style="color:blue;">&#x25BC;</span>
-        Step 3: Select HPLC-like Measurements, and inputs
-      <span class="good"></span>
-    </div>
-
-    {% if not data.n_usable_hplc_measurements %}
-      <div>No usable HPLC-based measurements are present.
-      To be usable, measurements must have a timestamp somewhere inside the
-      range of the OD measurements.  Metabolite measurements must be in any
-      of the following units:<b>mg/L</b>, <b>g/L</b>, <b>mol/L</b>,
-      <b>mM</b>, <b>uM</b>, or <b>Cmol/L</b>.
-      </div>
-    {% endif %}
-
-    <div class="sectionContent off" id="statusstep2main"
-      style="font-size:12px;">
-      <div>Protocol <b>HPLC</b></div><div style="border:1px solid #888;
-              margin:3px 0px;
-              border-radius:4px;
-              -webkit-border-radius:4px;
-              -moz-border-radius:4px;">
-          <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
-          <tr>
-            <td>Assay</td>
-            <td colspan="2">Measurement</td>
-            <td style="text-align:right;width:60px;">Is Input</td>
-            <td colspan="2"></td>
-          </tr><tr><td class="nowrap">I-2-HPLC-2</td>
-    <td class="nowrap popupcell">
-      <input type="checkbox"
-              name="measurement10086include"
-              id="measurement10086include"
-              checked="checked"
-              value="10086" />EC Acetate
-    </td>
-    <td class="nowrap" style="text-align:right;">Cmol/L</td><td style="text-align:right;">
-        <input type="checkbox"
-            name="measurement10086input"
-            id="measurement10086input"
-            
-            value="10086" />
-      </td><td style="text-align:right;width:30px;">(14)</td><td style="padding:3px 2px 0px 2px;width:60%;"><svg xmlns="http://www.w3.org/2000/svg"
-      version="1.2"
-      width="100%"
-      height="10px"
-      viewBox="0 0 470 10"
-      preserveAspectRatio="none">
-    <style type="text/css"><![CDATA[
-        .cP { stroke:rgba(0,0,0,1); stroke-width:4px; stroke-linecap:round; }
-        .cV { stroke:rgba(0,0,230,1); stroke-width:4px; stroke-linecap:round; }
-        .cE { stroke:rgba(255,128,0,1); stroke-width:4px; stroke-linecap:round; }
-      ]]></style>
-    <path fill="rgba(0,0,0,0.0.05)"
-        stroke="rgba(0,0,0,0.05)"
-        d="M10,5h450"
-        style="stroke-width:2px;"
-        stroke-width="2"></path><path class="cP" d="M10,1v8"><title>0.0107 at 0h</title></path><path class="cP" d="M47.5,1v8"><title>0.0277 at 6h</title></path><path class="cP" d="M310,1v8"><title>0.00897 at 48h</title></path><path class="cP" d="M160,1v8"><title>0.00498 at 24h</title></path><path class="cP" d="M85,1v8"><title>0.0136 at 12h</title></path><path class="cP" d="M35,1v8"><title>0.0285 at 4h</title></path><path class="cP" d="M235,1v8"><title>0.00769 at 36h</title></path><path class="cP" d="M60,1v8"><title>0.0255 at 8h</title></path><path class="cP" d="M122.5,1v8"><title>0.0042 at 18h</title></path><path class="cP" d="M22.5,1v8"><title>0.024 at 2h</title></path><path class="cP" d="M110,1v8"><title>0.0055 at 16h</title></path><path class="cP" d="M72.5,1v8"><title>0.0209 at 10h</title></path><path class="cP" d="M135,1v8"><title>0.00424 at 20h</title></path><path class="cP" d="M460,1v8"><title>0.00904 at 72h</title></path></svg>
-    </td></tr><tr><td class="nowrap"></td>
-    <td class="nowrap popupcell">
-      <input type="checkbox"
-              name="measurement10081include"
-              id="measurement10081include"
-              checked="checked"
-              value="10081" />EC D-Glucose
-    </td>
-    <td class="nowrap" style="text-align:right;">Cmol/L</td><td style="text-align:right;">
-        <input type="checkbox"
-            name="measurement10081input"
-            id="measurement10081input"
-            
-            value="10081" />
-      </td><td style="text-align:right;width:30px;">(14)</td><td style="padding:3px 2px 0px 2px;width:60%;"><svg xmlns="http://www.w3.org/2000/svg"
-      version="1.2"
-      width="100%"
-      height="10px"
-      viewBox="0 0 470 10"
-      preserveAspectRatio="none">
-    <style type="text/css"><![CDATA[
-        .cP { stroke:rgba(0,0,0,1); stroke-width:4px; stroke-linecap:round; }
-        .cV { stroke:rgba(0,0,230,1); stroke-width:4px; stroke-linecap:round; }
-        .cE { stroke:rgba(255,128,0,1); stroke-width:4px; stroke-linecap:round; }
-      ]]></style>
-    <path fill="rgba(0,0,0,0.0.05)"
-        stroke="rgba(0,0,0,0.05)"
-        d="M10,5h450"
-        style="stroke-width:2px;"
-        stroke-width="2"></path><path class="cP" d="M47.5,1v8"><title>0.290625999 at 6h</title></path><path class="cP" d="M10,1v8"><title>0.35768206 at 0h</title></path><path class="cP" d="M160,1v8"><title>0.067031417 at 24h</title></path><path class="cP" d="M310,1v8"><title>0 at 48h</title></path><path class="cP" d="M85,1v8"><title>0.194888099 at 12h</title></path><path class="cP" d="M35,1v8"><title>0.306718028 at 4h</title></path><path class="cP" d="M22.5,1v8"><title>0.338602687 at 2h</title></path><path class="cP" d="M235,1v8"><title>0.001640305 at 36h</title></path><path class="cP" d="M60,1v8"><title>0.256707149 at 8h</title></path><path class="cP" d="M122.5,1v8"><title>0.13029052 at 18h</title></path><path class="cP" d="M135,1v8"><title>0.098767873 at 20h</title></path><path class="cP" d="M72.5,1v8"><title>0.217559614 at 10h</title></path><path class="cP" d="M110,1v8"><title>0.155679951 at 16h</title></path><path class="cP" d="M460,1v8"><title>0 at 72h</title></path></svg>
-    </td></tr>
-
-    </table>
-  </div>
+<div class="sectionChapter" id="statusstep2hidden" style="cursor:pointer;"
+      onclick="Disclose.click(this);trackShown('statusstep2show', 1);"
+      hidethese="statusstep2hidden"
+      showthese="statusstep2shown,statusstep2main">
+    <span style="color:blue;">&#x25BA;</span>
+      Step 3: Select HPLC-like Measurements, and inputs
+    <span class="good"></span>
+</div>
+<div class="sectionChapter off" id="statusstep2shown" style="cursor:pointer;"
+    onclick="Disclose.click(this);trackShown('statusstep2show', 0);"
+    hidethese="statusstep2shown,statusstep2main"
+    showthese="statusstep2hidden">
+  <span style="color:blue;">&#x25BC;</span>
+    Step 3: Select HPLC-like Measurements, and inputs
+  <span class="good"></span>
 </div>
 
-  <input type="hidden"
-        id="statusstep3show"
-        name="statusstep3show"
-        value="0"/>
+<div class="sectionContent off" id="statusstep2main" style="font-size:12px;">
+{% if data.n_hplc_measurements %}
+  {% for protocol in data.export_hplc_measurements %}
+  <div>Protocol <b>{{ protocol.name }}</b></div>
+  <div style="border:1px solid #888;
+          margin:3px 0px;
+          border-radius:4px;
+          -webkit-border-radius:4px;
+          -moz-border-radius:4px;">
+    <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
+      <tr>
+        <td>Assay</td>
+        <td colspan="2">Measurement</td>
+        <td style="text-align:right;width:60px;">Is Input</td>
+        <td colspan="2"></td>
+      </tr>
+      {% for assay in protocol.assays %}
+        {% for measurement in assay.measurements %}
+      <tr>
+        <td class="nowrap">
+          {% if forloop.counter == 1 %}
+            {{ assay.name }}
+          {% endif %}
+        </td>
+        <td class="nowrap popupcell">
+          <input type="checkbox"
+            name="measurement{{ measurement.id }}include"
+            id="measurement{{ measurement.id }}include"
+            {% if measurement.include %}
+              checked="checked"
+            {% endif %}
+            value="{{ measurement.id }}"/>{{ measurement.name }}
+        </td>
+        <td class="nowrap" style="text-align:right;">{{ measurement.units }}
+        </td>
+        <td style="text-align:right;">
+          <input type="checkbox"
+            name="measurement{{ measurement.id }}input"
+            id="measurement{{ measurement.id }}input"
+            value="{{ measurement.id }}"/>
+        </td>
+        <td style="text-align:right;width:30px;">
+          ({{ measurement.n_points }})
+        </td>
+        <td style="padding:3px 2px 0px 2px;width:60%;">
+          <svg xmlns="http://www.w3.org/2000/svg"
+              version="1.2"
+              width="100%"
+              height="10px"
+              viewBox="0 0 470 10"
+              preserveAspectRatio="none">
+            <path fill="rgba(0,0,0,0.0.05)"
+              stroke="rgba(0,0,0,0.05)"
+              d="M10,5h450"
+              style="stroke-width:2px;"
+              stroke-width="2"></path>
+            {% for md in measurement.data_points %}
+              {% if measurement.format == 0 %}
+                <path class="cP" d="M{{ md.rx }},1v8">
+              {% else %}
+                <path class="cV" d="M{{ md.rx }},1v8">
+              {% endif %}
+                  <title>{{ md.title }}</title>
+                </path>
+            {% endfor %}
+          </svg>
+        </td>
+      </tr>
+      {% endfor %}<!-- assay.measurements -->
+      {% endfor %}<!-- protocol.assays -->
+    </table>
+  </div>
+  {% endfor %}<!-- protocols -->
+
+{% else %}
+  <div class="neutral">
+    No usable HPLC-based measurements are present.
+    To be usable, measurements must have a timestamp somewhere inside the
+    range of the OD measurements.  Metabolite measurements must be in any
+    of the following units:<b>mg/L</b>, <b>g/L</b>, <b>mol/L</b>,
+    <b>mM</b>, <b>uM</b>, or <b>Cmol/L</b>.
+  </div>
+{% endif %}<!-- if data.n_usable_hplc_protocols -->
+
+</div><!-- statusstep2main -->
+
 
 <!--
 
 Step 4 (LC-MS)
 
+(This is almost identical to the previous section for HPLC protocols)
+
 -->
 
-  <div class="sectionChapter" id="statusstep3hidden" style="cursor:pointer;"
-        onclick="Disclose.click(this);trackShown('statusstep3show', 1);"
-        hidethese="statusstep3hidden"
-        showthese="statusstep3shown,statusstep3main">
-      <span style="color:blue;">&#x25BA;</span>
-        Step 4: Select LCMS-like Measurements, and inputs<span class="good"></span>
-    </div>
-    <div class="sectionChapter off" id="statusstep3shown" style="cursor:pointer;"
-        onclick="Disclose.click(this);trackShown('statusstep3show', 0);"
-        hidethese="statusstep3shown,statusstep3main"
-        showthese="statusstep3hidden">
-      <span style="color:blue;">&#x25BC;</span> Step 4: Select LCMS-like Measurements, and inputs<span class="good"></span>
-    </div>
-    <div class="sectionContent off" id="statusstep3main"
-      style="font-size:12px;">
+<input type="hidden"
+      id="statusstep3show"
+      name="statusstep3show"
+      value="0"/>
 
-    <!-- Loop over individual protocols -->
-      <div>Protocol <b>GC-FID</b></div><div style="border:1px solid #888;
-              margin:3px 0px;
-              border-radius:4px;
-              -webkit-border-radius:4px;
-              -moz-border-radius:4px;">
+<div class="sectionChapter" id="statusstep3hidden" style="cursor:pointer;"
+      onclick="Disclose.click(this);trackShown('statusstep3show', 1);"
+      hidethese="statusstep3hidden"
+      showthese="statusstep3shown,statusstep3main">
+  <span style="color:blue;">&#x25BA;</span>
+  Step 4: Select LCMS-like Measurements, and inputs
+  <span class="good"></span>
+</div>
+<div class="sectionChapter off" id="statusstep3shown" style="cursor:pointer;"
+      onclick="Disclose.click(this);trackShown('statusstep3show', 0);"
+      hidethese="statusstep3shown,statusstep3main"
+      showthese="statusstep3hidden">
+  <span style="color:blue;">&#x25BC;</span>
+    Step 4: Select LCMS-like Measurements, and inputs
+  <span class="good"></span>
+</div>
 
-      <!-- Loop over assays and measurements -->
-          <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
-          <tr>
-            <td>Assay</td>
-            <td colspan="2">Measurement</td>
-            <td style="text-align:right;width:60px;">Is Input</td>
-            <td colspan="2"></td>
-          </tr><tr><td class="nowrap">I-2-GC-FID-2</td>
-    <td class="nowrap popupcell">
-      <input type="checkbox"
-              name="measurement10087include"
-              id="measurement10087include"
+<div class="sectionContent off" id="statusstep3main" style="font-size:12px;">
+{% if data.n_lcms_measurements %}
+  {% for protocol in data.export_lcms_measurements %}
+  <div>Protocol <b>{{ protocol.name }}</b></div>
+  <div style="border:1px solid #888;
+          margin:3px 0px;
+          border-radius:4px;
+          -webkit-border-radius:4px;
+          -moz-border-radius:4px;">
+    <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
+      <tr>
+        <td>Assay</td>
+        <td colspan="2">Measurement</td>
+        <td style="text-align:right;width:60px;">Is Input</td>
+        <td colspan="2"></td>
+      </tr>
+      {% for assay in protocol.assays %}
+        {% for measurement in assay.measurements %}
+      <tr>
+        <td class="nowrap">
+          {% if forloop.counter == 1 %}
+            {{ assay.name }}
+          {% endif %}
+        </td>
+        <td class="nowrap popupcell">
+          <input type="checkbox"
+            name="measurement{{ measurement.id }}include"
+            id="measurement{{ measurement.id }}include"
+            {% if measurement.is_checked %}
               checked="checked"
-              value="10087" />EC Isopentenol
-    </td>
-    <td class="nowrap" style="text-align:right;">g/L</td><td style="text-align:right;">
-        <input type="checkbox"
-            name="measurement10087input"
-            id="measurement10087input"
-            
-            value="10087" />
-      </td><td style="text-align:right;width:30px;">(9)</td><td style="padding:3px 2px 0px 2px;width:60%;"><svg xmlns="http://www.w3.org/2000/svg"
-      version="1.2"
-      width="100%"
-      height="10px"
-      viewBox="0 0 470 10"
-      preserveAspectRatio="none">
-    <style type="text/css"><![CDATA[
-        .cP { stroke:rgba(0,0,0,1); stroke-width:4px; stroke-linecap:round; }
-        .cV { stroke:rgba(0,0,230,1); stroke-width:4px; stroke-linecap:round; }
-        .cE { stroke:rgba(255,128,0,1); stroke-width:4px; stroke-linecap:round; }
-      ]]></style>
-    <path fill="rgba(0,0,0,0.0.05)"
-        stroke="rgba(0,0,0,0.05)"
-        d="M10,5h450"
-        style="stroke-width:2px;"
-        stroke-width="2"></path><path class="cP" d="M85,1v8"><title>0.185 at 12h</title></path><path class="cP" d="M35,1v8"><title>0.0313 at 4h</title></path><path class="cP" d="M10,1v8"><title>0 at 0h</title></path><path class="cP" d="M160,1v8"><title>0.728 at 24h</title></path><path class="cP" d="M310,1v8"><title>1.12 at 48h</title></path><path class="cP" d="M460,1v8"><title>1.14 at 72h</title></path><path class="cP" d="M122.5,1v8"><title>0.474 at 18h</title></path><path class="cP" d="M235,1v8"><title>1.04 at 36h</title></path><path class="cP" d="M60,1v8"><title>0.101 at 8h</title></path></svg>
-    </td></tr>
+            {% endif %}
+            value="{{ measurement.id }}"/>{{ measurement.name }}
+        </td>
+        <td class="nowrap" style="text-align:right;">{{ measurement.units }}
+        </td>
+        <td style="text-align:right;">
+          <input type="checkbox"
+            name="measurement{{ measurement.id }}input"
+            id="measurement{{ measurement.id }}input"
+            value="{{ measurement.id }}"/>
+        </td>
+        <td style="text-align:right;width:30px;">
+          {{ measurement.n_points }}
+        </td>
+        <td style="padding:3px 2px 0px 2px;width:60%;">
+          <svg xmlns="http://www.w3.org/2000/svg"
+              version="1.2"
+              width="100%"
+              height="10px"
+              viewBox="0 0 470 10"
+              preserveAspectRatio="none">
+            <path fill="rgba(0,0,0,0.0.05)"
+              stroke="rgba(0,0,0,0.05)"
+              d="M10,5h450"
+              style="stroke-width:2px;"
+              stroke-width="2"></path>
+            {% for md in measurement.data_points %}
+              {% if measurement.format == 0 %}
+                <path class="cP" d="M{{ md.rx }},1v8">
+              {% else %}
+                <path class="cV" d="M{{ md.rx }},1v8">
+              {% endif %}
+                  <title>{{ md.title }}</title>
+                </path>
+            {% endfor %}
+          </svg>
+        </td>
+      </tr>
+      {% endfor %}<!-- measurements -->
+      {% endfor %}<!-- assays -->
     </table>
   </div>
+  {% endfor %}<!-- protocols -->
 
-    <div>Protocol <b>LC-MS</b></div>
-      <div style="border:1px solid #888;
-              margin:3px 0px;
-              border-radius:4px;
-              -webkit-border-radius:4px;
-              -moz-border-radius:4px;">
-          <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
-          <tr>
-            <td>Assay</td>
-            <td colspan="2">Measurement</td>
-            <td style="text-align:right;width:60px;">Is Input</td>
-            <td colspan="2"></td>
-          </tr><tr><td class="nowrap">I-2-LC-MS-2</td>
-    <td class="nowrap popupcell">
-      <input type="checkbox"
-              name="measurement10112include"
-              id="measurement10112include"
-              checked="checked"
-              value="10112" />IC 1,cis-2,3-Propenetricarboxylic acid
-    </td>
-    <td class="nowrap" style="text-align:right;">mM</td><td style="text-align:right;">
-        <input type="checkbox"
-            name="measurement10112input"
-            id="measurement10112input"
-            
-            value="10112" />
-      </td><td style="text-align:right;width:30px;">(7)</td><td style="padding:3px 2px 0px 2px;width:60%;"><svg xmlns="http://www.w3.org/2000/svg"
-      version="1.2"
-      width="100%"
-      height="10px"
-      viewBox="0 0 470 10"
-      preserveAspectRatio="none">
-    <style type="text/css"><![CDATA[
-        .cP { stroke:rgba(0,0,0,1); stroke-width:4px; stroke-linecap:round; }
-        .cV { stroke:rgba(0,0,230,1); stroke-width:4px; stroke-linecap:round; }
-        .cE { stroke:rgba(255,128,0,1); stroke-width:4px; stroke-linecap:round; }
-      ]]></style>
-    <path fill="rgba(0,0,0,0.0.05)"
-        stroke="rgba(0,0,0,0.05)"
-        d="M10,5h450"
-        style="stroke-width:2px;"
-        stroke-width="2"></path><path class="cP" d="M160,1v8"><title>0.876671841 at 24h</title></path><path class="cP" d="M60,1v8"><title>0.51137445 at 8h</title></path><path class="cP" d="M310,1v8"><title>0.698165618 at 48h</title></path><path class="cP" d="M122.5,1v8"><title>0.608628493 at 18h</title></path><path class="cP" d="M10,1v8"><title>0.121168571 at 0h</title></path><path class="cP" d="M35,1v8"><title>0.394002737 at 4h</title></path><path class="cP" d="M85,1v8"><title>0.508703461 at 12h</title></path></svg>
-    </td></tr><tr><td class="nowrap"></td>
-    <td class="nowrap popupcell">
-      <input type="checkbox"
-              name="measurement10120include"
-              id="measurement10120include"
-              checked="checked"
-              value="10120" />IC 2-C-methyl-D-erythritol 2,4-cyclodiphosphate
-    </td>
-    <td class="nowrap" style="text-align:right;">mM</td><td style="text-align:right;">
-        <input type="checkbox"
-            name="measurement10120input"
-            id="measurement10120input"
-            
-            value="10120" />
-      </td><td style="text-align:right;width:30px;">(8)</td><td style="padding:3px 2px 0px 2px;width:60%;"><svg xmlns="http://www.w3.org/2000/svg"
-      version="1.2"
-      width="100%"
-      height="10px"
-      viewBox="0 0 470 10"
-      preserveAspectRatio="none">
-    <style type="text/css"><![CDATA[
-        .cP { stroke:rgba(0,0,0,1); stroke-width:4px; stroke-linecap:round; }
-        .cV { stroke:rgba(0,0,230,1); stroke-width:4px; stroke-linecap:round; }
-        .cE { stroke:rgba(255,128,0,1); stroke-width:4px; stroke-linecap:round; }
-      ]]></style>
-    <path fill="rgba(0,0,0,0.0.05)"
-        stroke="rgba(0,0,0,0.05)"
-        d="M10,5h450"
-        style="stroke-width:2px;"
-        stroke-width="2"></path><path class="cP" d="M35,1v8"><title>5.562698518 at 4h</title></path><path class="cP" d="M85,1v8"><title>20.76816221 at 12h</title></path><path class="cP" d="M160,1v8"><title>75.21809008 at 24h</title></path><path class="cP" d="M310,1v8"><title>62.93204752 at 48h</title></path><path class="cP" d="M10,1v8"><title>1.269805013 at 0h</title></path><path class="cP" d="M460,1v8"><title>49.07467011 at 72h</title></path><path class="cP" d="M122.5,1v8"><title>25.7485759 at 18h</title></path><path class="cP" d="M60,1v8"><title>6.221735189 at 8h</title></path></svg>
-    </td></tr>
-
-
-
-    </table>
+{% else %}
+  <div>
+    No usable LC-MS-based measurements are present.
+    To be usable, measurements must have a timestamp somewhere inside the
+    range of the OD measurements, and either be carbon ratios, or a single
+    number in any of the following units: <b>mg/L</b>, <b>g/L</b>,
+    <b>mol/L</b>, <b>mM</b>, <b>uM</b>, or <b>Cmol/L</b>.
   </div>
+{% endif %}<!-- data.n_usable_lcms_measurements -->
+
 </div>
 
 

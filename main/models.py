@@ -72,7 +72,7 @@ class MetabolicMap (models.Model) :
     attachment = models.ForeignKey(Attachment)
     biomass_calculation = models.DecimalField(default=-1, decimal_places=5,
         max_digits=16) # XXX check that these parameters make sense!
-    biomass_calculation_info = models.TextField()
+    biomass_calculation_info = models.TextField(default='')
     biomass_exchange_name = models.TextField()
 
 
@@ -761,6 +761,17 @@ class Measurement(models.Model):
     def __str__(self):
         return 'Measurement{%d}{%s}' % (self.assay.id, self.measurement_type)
 
+    def is_gene_measurement (self) :
+      return self.measurement_type.type_group == MeasurementGroup.GENEID
+
+    def is_protein_measurement (self) :
+      return self.measurement_type.type_group == MeasurementGroup.PROTEINID
+
+    @property
+    def name (self) :
+        """alias for self.measurement_type.type_name"""
+        return self.measurement_type.type_name
+
     # TODO also handle vectors
     def extract_data_xvalues (self, defined_only=False) :
         if defined_only :
@@ -769,7 +780,7 @@ class Measurement(models.Model):
         else :
             return [ float(m.x) for m in self.measurementdatum_set.all() ]
 
-    # TODO also handle vectors
+    # XXX this shouldn't need to handle vectors (?)
     def interpolate_at (self, x) :
         """
         Given an X-value without a measurement, use linear interpolation to
@@ -785,6 +796,10 @@ class Measurement(models.Model):
         return numpy.interp(float(x), xp, fp)
 
     def y_axis_units_name (self) :
+        """
+        Retrieve the label for units on the Y-axis across all data.  If the
+        y_units field is not consistent, an error will be raised.
+        """
         names = set()
         for md in self.measurementdatum_set.all() :
             names.add(md.y_units.unit_name)
@@ -812,7 +827,6 @@ class MeasurementDatum(models.Model):
 
     def __str__(self):
         return '(%f,%f)' % (self.x, self.y)
-
 
 class MeasurementVector(models.Model):
     """
