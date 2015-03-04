@@ -1,13 +1,13 @@
 
 # local imports
-from main.models import Protocol, Assay, MeasurementType, GeneIdentifier, \
-    MeasurementUnit
+from main.models import Assay, GeneIdentifier, Line, Measurement, \
+    MeasurementDatum, MeasurementType, MeasurementUnit, Protocol, Update
 # global imports
 from django.core.exceptions import ObjectDoesNotExist
 import warnings
 import json
 
-def import_assay_table_data (study, user, post_data) :
+def import_assay_table_data (study, user, post_data, update) :
     """
     Process the query POSTed by the /study/ID/import view and add measurements
     to the database.  Ported from AssayTableData.cgi in Perl EDD.  This is
@@ -17,17 +17,16 @@ def import_assay_table_data (study, user, post_data) :
     be interpreted meaningfully; these will be caught in the view and
     propagated to the client.
     """
-    #assert study.user_can_write(user) # FIXME
-    json_data = post_data.get("jsonoutput")
+    assert study.user_can_write(user)
+    assert (user.id == update.mod_by.id)
+    json_data = post_data["jsonoutput"]
     data_series = json.loads(json_data)
     data_layout = post_data['datalayout']
     master_protocol = post_data['masterProtocol']
     protocol = Protocol.objects.get(pk=master_protocol)
     replace = (post_data['writemode'] == "r")
     n_added = 0
-    unique_new_assay_index = 1
     found_usable_index = 0
-    # TODO determine assay index???
     master_compartment_id = post_data['masterMCompValue']
     master_meas_type_id = post_data['masterMTypeValue']
     master_meas_units_id = post_data['masterMUnitsValue']
@@ -64,7 +63,7 @@ def import_assay_table_data (study, user, post_data) :
         use_master_assay = False
         # If this set has no data or metadata to import, don't bother creating
         # any Assays or Lines for it.
-        if n.get("nothing_to_import") :
+        if u.get("nothing_to_import") :
             continue
         if (assay_id != "new") :
             try :
@@ -91,7 +90,7 @@ def import_assay_table_data (study, user, post_data) :
         if (line_id == "new") :
             new_line_name = u.get("assayName")
             if (not new_line_name) :
-                new_line_name = str(unique_new_assay_index)
+                new_line_name = str(len(study.line_set.all()) + 1)
             line = study.line_set.create(
                 study=study,
                 name=new_line_name,
@@ -104,9 +103,10 @@ def import_assay_table_data (study, user, post_data) :
             # If we didn't change $lID to a valid record, we failed to create a
             # Line, so we can't create an Assay.
             continue
+        line_assays
         new_assay_name = u.get("assayName", None)
         if (not new_assay_name) :
-            new_assay_name = unique_new_assay_index
+            new_assay_name = line.name + "-" + str(len(line.assay_set.all())+1)
         assay = line.assay_set.create(
             name=new_assay_name,
             protocol=master_protocol,
@@ -124,16 +124,18 @@ def import_assay_table_data (study, user, post_data) :
             line = None
             if (not master_line_id) :
                 raise UserWarning("Did you forget to specify a master line?")
-            elif (master_line == "new") :
+            elif (master_line_id == "new") :
                 line = study.line_set.create(
                     study=study,
-                    name=str(unique_new_assay_index),
+                    name=str(len(study.line_set.all()) + 1),
                     experimenter=user)
             else :
                 line = Line.objects.get(pk=master_line_id)
             master_assay = line.assay_set.create(
                 line=line,
-                protocol=protocol
+                name=line.name + "-" + str(len(line.assay_set.all()) + 1),
+                protocol=protocol,
+                experimenter=user)
         else :
             try :
                 master_assay = Assay.objects.get(pk=master_assay_id)
@@ -158,7 +160,7 @@ def import_assay_table_data (study, user, post_data) :
     # to replace the old data WITH.)
     all_seen_metadata_types = {}
     for u in data_series :
-        md = u['metadata']
+        metadata = u['metadata']
         for md_label in metadata :
             meta_type_id = post_data.get("disamMetaHidden" + md_label, None)
             if meta_type_id :
@@ -169,6 +171,7 @@ def import_assay_table_data (study, user, post_data) :
     # This is used to display a number in the log, for each data set being
     # imported
     # XXX INPUTROW block in AssayTableData.cgi
+    mu_t = MeasurementUnit.objects.get(unit_name="hours")
     fake_index = 1
     for u in data_series :
         name = u['name']
@@ -291,6 +294,7 @@ def import_assay_table_data (study, user, post_data) :
         if (meas_record is None) :
             meas_record = Measurement(
                 assay=assay,
+                update_ref=update,
                 measurement_type=meas_type,
                 compartment=str(compartment_id),
                 experimenter=user)
@@ -303,9 +307,8 @@ def import_assay_table_data (study, user, post_data) :
                     datum = meas_record.measurementdatum_set.get(x=x)
                 except MeasurementDatum.DoesNotExist as e :
                     datum = meas_record.measurementdatum_set.create(
-                        y_units=meas_units,
-                        x=x,
-                        y=y)
+                        x_units=mu_t, y_units=meas_units, x=x, y=y,
+                        updated=update)
                 else :
                     datum.y = y
                     datum.save()
@@ -316,9 +319,8 @@ def import_assay_table_data (study, user, post_data) :
                     mdata = meas_record.measurementvector_set.get(x=x)
                 except MeasurementVector.DoesNotExist as e :
                     mdata = meas_record.measurementvector_set.create(
-                        y_units=meas_units,
-                        x=x,
-                        y=y) # XXX check y type?
+                        x_units=mu_t, y_units=meas_units, x=x, y=y,
+                        updated=update) # XXX check y type?
                 else :
                     mdata.y = y
                     mdata.save()

@@ -214,7 +214,7 @@ class sbml_data (object) :
           # measurement, no need to attempt to calculate an average.
           if (len(md) > 0) :
             assert (len(md) == 1)
-            y_values.append(float(md[0].y) * gcdw_cal)
+            y_values.append(md[0].fy * gcdw_cal)
             continue
           y_interp = odm.interpolate_at(t)
           if (y_interp is not None) :
@@ -361,8 +361,8 @@ class sbml_data (object) :
           # TODO different format for transcription and protein
           for md in m.measurementdatum_set.all() :
             data_points.append({
-              "rx" : ((float(md.x) / max_x) * 450) + 10,
-              "title" : "%g at %gh" % (float(md.y), float(md.x))
+              "rx" : ((md.fx / max_x) * 450) + 10,
+              "title" : "%g at %gh" % (md.fy, md.fx)
             })
           measurement_data = {
             "name" : m.name,

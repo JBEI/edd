@@ -293,11 +293,6 @@ def assemble_table (
     def sorted_by_measurement_type_name (m) :
         return sorted(m, lambda a,b: cmp(a.measurement_type.type_name,
                                          b.measurement_type.type_name))
-    def as_float (n) :
-        try :
-            return float(n)
-        except ValueError :
-            return None
     for protocol_name in used_protocols :
         protocol_headers[protocol_name] = extract_protocol_column_headers(
             metadata_labels=assay_metadata_labels,
@@ -349,14 +344,14 @@ def assemble_table (
                     k = 0
                     for x in all_xvalues :
                         if (k < len(mdata)) and (x == mdata[k].x) :
-                            ydata.append(as_float(mdata[k].y))
+                            ydata.append(mdata[k].fy)
                             k += 1
                         else :
                             ydata.append("")
                     k = 0
                     for x in xvalues_by_protocol[protocol_name] :
                         if (k < len(mdata)) and (x == mdata[k].x) :
-                            ydata_for_protocol.append(as_float(mdata[k].y))
+                            ydata_for_protocol.append(mdata[k].fy)
                             k += 1
                         else :
                             ydata_for_protocol.append("")

@@ -3,6 +3,7 @@ from django.test import TestCase
 from main.models import * #Study, Update, UserPermission, GroupPermission
 from main.solr import StudySearch
 import main.data_export
+import main.data_import
 import main.sbml_export
 
 class StudyTests(TestCase):
@@ -166,6 +167,122 @@ class MeasurementTests(TestCase) :
         meas1 = assay.measurement_set.all()[0]
         assert (meas1.y_axis_units_name() == "mM")
         assert (meas1.name == "Mevalonate")
+        mdata = list(meas1.measurementdatum_set.all())
+        self.assertTrue(str(mdata[0].fx) == "0.0")
+        self.assertTrue(str(mdata[0].fy) == "0.0")
+        self.assertTrue(str(mdata[-1].fx) == "32.0")
+        self.assertTrue(mdata[-1].fy is None)
+
+
+class ImportTests(TestCase) :
+    """
+    Test import of assay measurement data.
+    """
+    def setUp (self) :
+        TestCase.setUp(self)
+        user1 = User.objects.create_user(username="admin",
+            email="nechols@lbl.gov", password='12345')
+        user2 = User.objects.create_user(username="postdoc",
+            email="nechols@lbl.gov", password='12345')
+        study1 = Study.objects.create(name='Test Study 1', description='')
+        UserPermission.objects.create(study=study1, permission_type='R',
+            user=user1)
+        UserPermission.objects.create(study=study1, permission_type='W',
+            user=user1)
+        UserPermission.objects.create(study=study1, permission_type='R',
+            user=user2)
+        line1 = study1.line_set.create(name="Line 1", description="",
+            experimenter=user1, contact=user1)
+        protocol1 = Protocol.objects.create(name="GC-MS", owned_by=user1)
+        mt1 = Metabolite.objects.create(type_name="Acetate",
+            short_name="ac", type_group="m", charge=-1, carbon_count=2,
+            molecular_formula="C2H3O2", molar_mass=60.05)
+        mt2 = Metabolite.objects.create(type_name="D-Glucose",
+            short_name="glc-D", type_group="m", charge=0, carbon_count=6,
+            molecular_formula="C6H12O6", molar_mass=180.16)
+        mu1 = MeasurementUnit.objects.create(unit_name="mM")
+        mu2 = MeasurementUnit.objects.create(unit_name="hours")
+
+    def get_form (self) :
+        mu = MeasurementUnit.objects.get(unit_name="mM")
+        # XXX not proud of this, but we need actual IDs in here
+        return {
+            'action' : "Submit Data",
+            'datalayout' : "std",
+            'disamMComp1' : "IC",
+            'disamMComp2' : "IC",
+            'disamMCompHidden1' : 1,
+            'disamMCompHidden2' : 1,
+            'disamMType1' : "ac / Acetate",
+            'disamMType2' : "glc-D / D-Glucose",
+            'disamMTypeHidden1':Metabolite.objects.get(short_name="ac").pk,
+            'disamMTypeHidden2':Metabolite.objects.get(short_name="glc-D").pk,
+            'disamMUnits1' : "mM",
+            'disamMUnits2' : "mM",
+            'disamMUnitsHidden1' : mu.pk,
+            'disamMUnitsHidden2' : mu.pk,
+            'enableColumn0' : 1,
+            'enableColumn1' : 2,
+            'enableRow0' : 1,
+            'enableRow1' : 2,
+            'enableRow2' : 3,
+            'enableRow3' : 4,
+            'enableRow4' : 5,
+            'enableRow5' : 6,
+            'jsonoutput' : """[{"label":"Column 0","name":"Column 0","units":"units","parsingIndex":0,"assay":null,"assayName":null,"measurementType":1,"metadata":{},"singleData":null,"color":"rgb(10, 136, 109)","data":[[0,"0.1"],[1,"0.2"],[2,"0.4"],[4,"1.7"],[8,"5.9"]]},{"label":"Column 1","name":"Column 1","units":"units","parsingIndex":1,"assay":null,"assayName":null,"measurementType":2,"metadata":{},"singleData":null,"color":"rgb(136, 14, 43)","data":[[0,"0.2"],[1,"0.4"],[2,"0.6"],[4,"0.8"],[8,"1.2"]]}]""",
+            'masterAssay' : "new",
+            'masterLine' : Line.objects.get(name="Line 1").pk,
+            'masterMComp' : '',
+            'masterMCompValue' : 0,
+            'masterMType' : '',
+            'masterMTypeValue' : 0,
+            'masterMUnits' : '',
+            'masterMUnitsValue' : 0,
+            'masterProtocol' : Protocol.objects.get(name="GC-MS").pk,
+            'masterTimestamp' : '',
+            'rawdataformat' : "csv",
+            'row0type' : 2,
+            'row1type' : 3,
+            'row2type' : 3,
+            'row3type' : 3,
+            'row4type' : 3,
+            'row5type' : 3,
+            'studyID' : Study.objects.get(name="Test Study 1").pk,
+            'writemode' : "m",
+        }
+
+    def test_import_gc_ms_metabolites (self) :
+        update = Update.objects.create(
+            mod_time=timezone.now(),
+            mod_by=User.objects.get(username="admin"))
+        main.data_import.import_assay_table_data(
+            study=Study.objects.get(name="Test Study 1"),
+            user=User.objects.get(username="admin"),
+            post_data=self.get_form(),
+            update=update)
+        assays = Line.objects.get(name="Line 1").assay_set.all()
+        self.assertTrue(len(assays) == 1)
+        meas = assays[0].measurement_set.all()
+        self.assertTrue(len(meas) == 2)
+        data = []
+        for m in meas :
+            data.append([(d.fx,d.fy) for d in m.measurementdatum_set.all()])
+        self.assertTrue(str(data) == """[[(0.0, 0.1), (1.0, 0.2), (2.0, 0.4), (4.0, 1.7), (8.0, 5.9)], [(0.0, 0.2), (1.0, 0.4), (2.0, 0.6), (4.0, 0.8), (8.0, 1.2)]]""")
+
+    def test_error (self) :
+        update = Update.objects.create(
+            mod_time=timezone.now(),
+            mod_by=User.objects.get(username="admin"))
+        try : # failed user permissions check
+            main.data_import.import_assay_table_data(
+                study=Study.objects.get(name="Test Study 1"),
+                user=User.objects.get(username="postdoc"),
+                post_data=self.get_form(),
+                update=update)
+        except AssertionError as e :
+            pass
+        else :
+            raise Exception("Expected an AssertionError here")
 
 
 class ExportTests(TestCase) :

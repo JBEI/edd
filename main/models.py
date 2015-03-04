@@ -775,10 +775,10 @@ class Measurement(models.Model):
     # TODO also handle vectors
     def extract_data_xvalues (self, defined_only=False) :
         if defined_only :
-            return [ float(m.x) for m in self.measurementdatum_set.filter(
+            return [ m.fx for m in self.measurementdatum_set.filter(
                 y__isnull=False) ]
         else :
-            return [ float(m.x) for m in self.measurementdatum_set.all() ]
+            return [ m.fx for m in self.measurementdatum_set.all() ]
 
     # XXX this shouldn't need to handle vectors (?)
     def interpolate_at (self, x) :
@@ -789,10 +789,10 @@ class Measurement(models.Model):
         import numpy
         data = sorted(list(self.measurementdatum_set.filter(y__isnull=False)),
             lambda a,b: cmp(a.x, b.x))
-        xp = numpy.array([ float(d.x) for d in data ])
+        xp = numpy.array([ d.fx for d in data ])
         if (not (xp[0] <= x <= xp[-1])) :
             return None
-        fp = numpy.array([ float(d.y) for d in data ])
+        fp = numpy.array([ d.fy for d in data ])
         return numpy.interp(float(x), xp, fp)
 
     def y_axis_units_name (self) :
@@ -827,6 +827,18 @@ class MeasurementDatum(models.Model):
 
     def __str__(self):
         return '(%f,%f)' % (self.x, self.y)
+
+    @property
+    def fx (self) :
+        """Returns self.x as a Python float"""
+        return float(self.x)
+
+    @property
+    def fy (self) :
+        """Returns self.y as a Python float OR None if undefined"""
+        if (self.y is not None) :
+            return float(self.y)
+        return None
 
 class MeasurementVector(models.Model):
     """
