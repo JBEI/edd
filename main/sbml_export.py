@@ -13,6 +13,7 @@ class sbml_data (object) :
   organizing it for presentation as an HTML form.  This object will be passed
   to the export page view.
   """
+
   def __init__ (self, study, lines, form, test_mode=False) :
     self.study = study
     self.lines = lines
@@ -24,6 +25,7 @@ class sbml_data (object) :
       self.assays.extend(list(line.assay_set.all()))
     self.protocol_assays = defaultdict(list)
     self.protocols = Protocol.objects.all()
+    self._protocols_by_category = {}
     for assay in self.assays :
       self.protocol_assays[assay.protocol.name].append(assay)
     self.primary_line_name = lines[0].name
@@ -59,6 +61,12 @@ class sbml_data (object) :
     self.proteins_checked = {}
     self.metabolite_is_input = {}
     self.metabolite_stats = {}
+    self.usable_metabolites_by_assay = defaultdict(list)
+    self.proteomics_by_assay = defaultdict(list)
+    self.transcription_by_assay = defaultdict(list)
+    self.assay_measurements = defaultdict(list)
+    self.od_measurements = []
+    self.measurement_ranges = {}
     # This is a hash by Assay number, since all Transcriptomics measurements in
     # an Assay are grouped
     self.have_transcriptomics_to_embed = False
@@ -69,11 +77,8 @@ class sbml_data (object) :
     self.consolidated_protein_ms = {}
     self.comprehensive_valid_OD_mtimes = {}
     # Initializing these for use later
-    self.assay_measurements = defaultdict(list)
     self.metabolic_maps = []
     self.chosen_map = None
-    self.od_measurements = []
-    self.measurement_ranges = {}
     # Okay, ready to extract data!
     self.step_1_select_template_file(test_mode=test_mode)
     self.step_2_get_od_data()
@@ -85,6 +90,7 @@ class sbml_data (object) :
     for p in self.protocols :
       if (p.categorization == category_name) :
         protocols.append(p)
+    self._protocols_by_category[category_name] = protocols
     return protocols
 
   def step_1_select_template_file (self, test_mode=False) :
@@ -243,7 +249,6 @@ class sbml_data (object) :
     self.usable_hplc_protocols = []
     self.usable_hplc_assays = defaultdict(list)
     self.usable_hplc_measurements = []
-    self.usable_metabolites_by_assay = defaultdict(list)
     for protocol in hplc_protocols :
       hplc_assays = self.protocol_assays.get(protocol.name, [])
       if (len(hplc_assays) == 0) :
@@ -257,45 +262,22 @@ class sbml_data (object) :
                                           b.measurement_type.type_name))
         assay_has_usable_data = False
         for m in metabolites :
-          m_units = m.y_axis_units_name()
-          if (not m_units in ["mg/L", "g/L", "mol/L", "mM", "uM", "Cmol/L"]) :
-            continue
-          m_selected = self.form.get("measurement%dinclude" % m.id, None)
-          m_is_input = self.form.get("measurement%dinput" % m.id, None)
-          if (not self.submitted_from_export_page) :
-            m_selected = True
-            m_is_input = False
-          self.metabolites_checked[m.id] = m_selected
-          self.metabolite_is_input[m.id] = m_is_input
-          self.usable_hplc_measurements.append(m)
-          self.usable_metabolites_by_assay[assay.id].append(m)
-          self.assay_measurements[assay.id].append(m)
-          assay_has_usable_data = True
+          if self._process_metabolite_measurement(m) :
+            self.usable_hplc_measurements.append(m)
+            self.usable_metabolites_by_assay[assay.id].append(m)
+            self.assay_measurements[assay.id].append(m)
+            assay_has_usable_data = True
         # All transcription data are usable - there are no units restrictions
-        transcriptions = list(assay.get_gene_measurements())
-        if (len(transcriptions) > 0) :
-          transcription_selected = self.form.get("transcriptions%dinclude" %
-            assay.id, None)
-          if (not self.submitted_from_export_page) :
-            transcription_selected = True
-          if transcription_selected :
-            self.have_transcriptomics_to_embed = True
-          self.transcriptions_checked[assay.id] = transcription_selected
+        transcriptions = self._process_transcription_measurements(assay)
+        if (transcriptions is not None) :
           self.usable_hplc_measurements.extend(transcriptions)
-          self.assay_measurements[assay.id].extend(transcriptions)
+          self.transcription_by_assay[assay.id].extend(transcriptions)
           assay_has_usable_data = True
         # same with proteomics data
-        proteomics = list(assay.get_protein_measurements())
-        if (len(proteomics) > 0) :
-          proteomics_selected = self.form.get("proteins%dinclude" % assay.id,
-            None)
-          if (not self.submitted_from_export_page) :
-            proteomics_selected = True
-          if proteomics_selected :
-            self.have_proteomics_to_embed = True
-          self.proteins_checked[assay.id] = proteomics_selected
+        proteomics = self._process_proteomics_measurements(assay)
+        if (proteomics is not None) :
           self.usable_hplc_measurements.extend(proteomics)
-          self.assay_measurements[assay.id].extend(proteomics)
+          self.proteomics_by_assay[assay.id].extend(proteomics)
           assay_has_usable_data = True
         # If the Assay has any usable Measurements, add it to a hash sorted
         # by Protocol
@@ -307,9 +289,52 @@ class sbml_data (object) :
       True)
     self.measurement_ranges["HPLC"] = (min_x, max_x)
 
+  def _process_metabolite_measurement (self, m) :
+    if (not m.is_concentration_measurement()) :
+      return False
+    m_selected = self.form.get("measurement%dinclude" % m.id, None)
+    m_is_input = self.form.get("measurement%dinput" % m.id, None)
+    if (not self.submitted_from_export_page) :
+      m_selected = True
+      m_is_input = False
+    self.metabolites_checked[m.id] = m_selected
+    self.metabolite_is_input[m.id] = m_is_input
+    self.assay_measurements[m.assay.id].append(m)
+    return True
+
+  def _process_transcription_measurements (self, assay) :
+    transcriptions = list(assay.get_gene_measurements())
+    if (len(transcriptions) > 0) :
+      transcription_selected = self.form.get("transcriptions%dinclude" %
+        assay.id, None)
+      if (not self.submitted_from_export_page) :
+        transcription_selected = True
+      if transcription_selected :
+        self.have_transcriptomics_to_embed = True
+      self.transcriptions_checked[assay.id] = transcription_selected
+      self.assay_measurements[assay.id].extend(transcriptions)
+      return transcriptions
+    return None
+
+  def _process_proteomics_measurements (self, assay) :
+    proteomics = list(assay.get_protein_measurements())
+    if (len(proteomics) > 0) :
+      proteomics_selected = self.form.get("proteins%dinclude" % assay.id,
+        None)
+      if (not self.submitted_from_export_page) :
+        proteomics_selected = True
+      if proteomics_selected :
+        self.have_proteomics_to_embed = True
+      self.proteins_checked[assay.id] = proteomics_selected
+      self.assay_measurements[assay.id].extend(proteomics)
+      return proteomics
+    return None
+
   def step_4_get_lcms_data (self) :
     """
-    Step 4: select LCMS-like measurements
+    Step 4: select LCMS-like measurements - this is very similar to the
+    handling of HPLC measurements, but with added support for carbon ratio
+    measurements.
     """
     lcms_protocols = self.get_protocol_by_category("LCMS")
     if (len(lcms_protocols) == 0) :
@@ -317,7 +342,8 @@ class sbml_data (object) :
     self.usable_lcms_protocols = []
     self.usable_lcms_assays = defaultdict(list)
     self.usable_lcms_measurements = []
-    self.usable_metabolites_by_assay = defaultdict(list)
+    # Carbon Ratio measurements are tracked for collision
+    seen_lcms_cr_measurement_types = set()
     for protocol in lcms_protocols :
       assays = self.protocol_assays.get(protocol.name, [])
       if (len(assays) == 0) :
@@ -328,7 +354,51 @@ class sbml_data (object) :
         metabolites = list(assay.get_metabolite_measurements())
         metabolites.sort(lambda a,b: cmp(a.measurement_type.type_name,
                                           b.measurement_type.type_name))
-    
+        # Separate any carbon ratio measurements into a separate array
+        cr_meas = [ m for m in metabolites if m.is_carbon_ratio() ]
+        # Drop any carbon ratio measurements from the original array
+        metabolites = [ m for m in metabolites if not m.is_carbon_ratio() ]
+        assay_has_usable_data = False
+        for m in metabolites :
+          if self._process_metabolite_measurement(m) :
+            self.usable_lcms_measurements.append(m)
+            self.usable_metabolites_by_assay[assay.id].append(m)
+            assay_has_usable_data = True
+        transcriptions = self._process_transcription_measurements(assay)
+        if (transcriptions is not None) :
+          self.usable_lcms_measurements.extend(transcriptions)
+          self.transcription_by_assay[assay.id].extend(transcriptions)
+          assay_has_usable_data = True
+        proteomics = self._process_proteomics_measurements(assay)
+        if (proteomics is not None) :
+          self.usable_lcms_measurements.extend(proteomics)
+          self.proteomics_by_assay[assay.id].extend(proteomics)
+          assay_has_usable_data = True
+        # Carbon Ratio data is handled in a simpler manner.
+        # It is a unitless construct, so we don't verify units, and there is
+        # no notion of an 'input' versus an 'output', so we skip checking that.
+        for m in cr_meas :
+          m_selected = self.form.get("measurement%dinclude" % m.id, None)
+          if (not self.submitted_from_export_page) :
+            m_selected = False
+            # By default, if there is more than one set of measurement data
+            # for a given type, we only select the first one.
+            meas_type = m.measurement_type
+            if (not meas_type.id in seen_lcms_cr_measurement_types) :
+              m_selected = True
+              seen_lcms_cr_measurement_types.add(meas_type.id)
+          self.metabolites_checked[m.id] = m_selected
+          self.assay_measurements[assay.id].append(m)
+          self.usable_lcms_measurements.append(m)
+          self.usable_metabolites_by_assay[assay.id].append(m)
+          assay_has_usable_data = True
+        if assay_has_usable_data :
+          self.usable_lcms_assays[protocol.name].append(assay)
+      if (len(self.usable_lcms_assays[protocol.name]) > 0) :
+        self.usable_lcms_protocols.append(protocol)
+    min_x, max_x = find_min_max_x_in_measurements(self.usable_lcms_measurements,
+      True)
+    self.measurement_ranges["LCMS"] = (min_x, max_x)
 
   def template_info (self) :
     """
@@ -341,56 +411,84 @@ class sbml_data (object) :
     } for m in self.metabolic_maps ]
 
   @property
+  def n_hplc_protocols (self) :
+    return len(self._protocols_by_category.get("HPLC", []))
+
+  @property
   def n_hplc_measurements (self) :
     return len(self.usable_hplc_measurements)
+
+  def _export_assay_measurements (self, assays, max_x) :
+    assay_list = []
+    for assay in assays :
+      measurements = []
+      # TODO proteomics, transcriptomics
+      for m in self.usable_metabolites_by_assay[assay.id] :
+        meas_type = m.measurement_type.type_group
+        is_checked = self.metabolites_checked[m.id]
+        data_points = []
+        for md in m.measurementdatum_set.all() :
+          data_points.append({
+            "rx" : ((md.fx / max_x) * 450) + 10,
+            "title" : "%g at %gh" % (md.fy, md.fx)
+          })
+        measurement_data = {
+          "name" : m.name,
+          "units" : m.y_axis_units_name,
+          "id" : m.id,
+          "proteomics" : False,
+          "transcription" : False,
+          "format" : m.measurement_format,
+          "data_points" : data_points,
+          "n_points" : len(data_points),
+          "include" : is_checked,
+          # XXX this is irrelevant for carbon ratio measurements
+          "input" : self.metabolite_is_input.get(m.id, False),
+        }
+        measurements.append(measurement_data)
+      assay_data = {
+        "name" : assay.name,
+        "measurements" : measurements,
+      }
+      assay_list.append(assay_data)
+    return assay_list
 
   def export_hplc_measurements (self) :
     data = []
     min_x, max_x = self.measurement_ranges["HPLC"]
     for protocol in self.usable_hplc_protocols :
-      assays = []
-      for assay in self.usable_hplc_assays[protocol.name] :
-        measurements = []
-        for m in self.assay_measurements[assay.id] :
-          meas_type = m.measurement_type.type_group
-          is_checked = self.metabolites_checked.get(m.id, False) # FIXME
-          units = None
-          if (meas_type in ["_", "m"]) :
-            units = m.y_axis_units_name()
-          data_points = []
-          # TODO different format for transcription and protein
-          for md in m.measurementdatum_set.all() :
-            data_points.append({
-              "rx" : ((md.fx / max_x) * 450) + 10,
-              "title" : "%g at %gh" % (md.fy, md.fx)
-            })
-          measurement_data = {
-            "name" : m.name,
-            "units" : units,
-            "id" : m.id,
-            "type" : meas_type,
-            "format" : 0, # TODO what about carbon ratios (format=1)?
-            "data_points" : data_points,
-            "n_points" : len(data_points),
-            "include" : is_checked,
-            "input" : False, # TODO
-          }
-          measurements.append(measurement_data)
-        assay_data = {
-          "name" : assay.name,
-          "measurements" : measurements,
-        }
-        assays.append(assay_data)
+      assay_list = self._export_assay_measurements(
+        assays=self.usable_hplc_assays[protocol.name],
+        max_x=max_x)
       protocol_data = {
         "name" : protocol.name,
-        "assays" : assays,
+        "assays" : assay_list,
       }
       data.append(protocol_data)
     return data
 
   @property
+  def n_lcms_protocols (self) :
+    return len(self._protocols_by_category.get("LCMS", []))
+
+  @property
   def n_lcms_measurements (self) :
     return len(self.usable_lcms_measurements)
+
+  def export_lcms_measurements (self) :
+    data = []
+    min_x, max_x = self.measurement_ranges["LCMS"]
+    for protocol in self.usable_lcms_protocols :
+      assays = []
+      assay_list = self._export_assay_measurements(
+        assays=self.usable_lcms_assays[protocol.name],
+        max_x=max_x)
+      protocol_data = {
+        "name" : protocol.name,
+        "assays" : assay_list,
+      }
+      data.append(protocol_data)
+    return data
 
   @property
   def n_ramos_measurements (self) :

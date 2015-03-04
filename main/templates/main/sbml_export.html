@@ -119,7 +119,11 @@ EDDData.Exchanges = {"180":{"exn":"R_L_Valine_exchange","exid":"R_EX_val_L_e_","
   </table>
 </div>
 
-<!-- Step 2 -->
+<!--
+
+Step 2: Optical Density (OD600)
+
+-->
 <input type="hidden"
       id="statusstep1show"
       name="statusstep1show"
@@ -264,10 +268,15 @@ each measurement.
         <td class="nowrap" style="text-align:right;">{{ measurement.units }}
         </td>
         <td style="text-align:right;">
+          {% if measurement.format == 0 %}<!-- not a carbon ratio -->
           <input type="checkbox"
             name="measurement{{ measurement.id }}input"
             id="measurement{{ measurement.id }}input"
+            {% if measurement.input %}
+              checked="checked"
+            {% endif %}
             value="{{ measurement.id }}"/>
+          {% endif %}
         </td>
         <td style="text-align:right;width:30px;">
           ({{ measurement.n_points }})
@@ -302,7 +311,7 @@ each measurement.
   </div>
   {% endfor %}<!-- protocols -->
 
-{% else %}
+{% elif data.n_hplc_protocols %}
   <div class="neutral">
     No usable HPLC-based measurements are present.
     To be usable, measurements must have a timestamp somewhere inside the
@@ -310,6 +319,8 @@ each measurement.
     of the following units:<b>mg/L</b>, <b>g/L</b>, <b>mol/L</b>,
     <b>mM</b>, <b>uM</b>, or <b>Cmol/L</b>.
   </div>
+{% else %}
+  <div class="neutral">Cannot find any Protocols with "HPLC" in the name!</div>
 {% endif %}<!-- if data.n_usable_hplc_protocols -->
 
 </div><!-- statusstep2main -->
@@ -378,13 +389,19 @@ Step 4 (LC-MS)
             {% endif %}
             value="{{ measurement.id }}"/>{{ measurement.name }}
         </td>
-        <td class="nowrap" style="text-align:right;">{{ measurement.units }}
+        <td class="nowrap" style="text-align:right;">
+          {{ measurement.units }}
         </td>
         <td style="text-align:right;">
+          {% if measurement.format == 0 %}<!-- not a carbon ratio -->
           <input type="checkbox"
             name="measurement{{ measurement.id }}input"
             id="measurement{{ measurement.id }}input"
+            {% if measurement.input %}
+              checked="checked"
+            {% endif %}
             value="{{ measurement.id }}"/>
+          {% endif %}
         </td>
         <td style="text-align:right;width:30px;">
           {{ measurement.n_points }}
@@ -419,13 +436,18 @@ Step 4 (LC-MS)
   </div>
   {% endfor %}<!-- protocols -->
 
-{% else %}
+{% elif data.n_lcms_protocols %}
   <div>
     No usable LC-MS-based measurements are present.
     To be usable, measurements must have a timestamp somewhere inside the
     range of the OD measurements, and either be carbon ratios, or a single
     number in any of the following units: <b>mg/L</b>, <b>g/L</b>,
     <b>mol/L</b>, <b>mM</b>, <b>uM</b>, or <b>Cmol/L</b>.
+  </div>
+{% else %}
+  <div class="neutral">
+    Cannot find any Protocols with "GCMS", "LCMS", or variants like "LC-MS" or
+    "LC/MS" in the name!
   </div>
 {% endif %}<!-- data.n_usable_lcms_measurements -->
 

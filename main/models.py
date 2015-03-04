@@ -757,6 +757,7 @@ class Measurement(models.Model):
     compartment = models.CharField(max_length=1,
                                    choices=MeasurementCompartment.GROUP_CHOICE,
                                    default=MeasurementCompartment.UNKNOWN)
+    measurement_format = models.IntegerField(default=0)
 
     def __str__(self):
         return 'Measurement{%d}{%s}' % (self.assay.id, self.measurement_type)
@@ -766,6 +767,9 @@ class Measurement(models.Model):
 
     def is_protein_measurement (self) :
       return self.measurement_type.type_group == MeasurementGroup.PROTEINID
+
+    def is_carbon_ratio (self) :
+      return (self.measurement_format == 1)
 
     @property
     def name (self) :
@@ -795,6 +799,7 @@ class Measurement(models.Model):
         fp = numpy.array([ d.fy for d in data ])
         return numpy.interp(float(x), xp, fp)
 
+    @property
     def y_axis_units_name (self) :
         """
         Retrieve the label for units on the Y-axis across all data.  If the
@@ -811,6 +816,10 @@ class Measurement(models.Model):
         else :
             raise RuntimeError("Multiple measurement units for ID %d: %s " %
                 (self.id, "; ".join(names)))
+
+    def is_concentration_measurement (self) :
+        return (self.y_axis_units_name in
+                ["mg/L", "g/L", "mol/L", "mM", "uM", "Cmol/L"])
 
 class MeasurementDatum(models.Model):
     """

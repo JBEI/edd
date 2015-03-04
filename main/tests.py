@@ -165,7 +165,7 @@ class MeasurementTests(TestCase) :
     def test_misc (self) :
         assay = Assay.objects.get(name="Assay 1")
         meas1 = assay.measurement_set.all()[0]
-        assert (meas1.y_axis_units_name() == "mM")
+        assert (meas1.y_axis_units_name == "mM")
         assert (meas1.name == "Mevalonate")
         mdata = list(meas1.measurementdatum_set.all())
         self.assertTrue(str(mdata[0].fx) == "0.0")
@@ -436,7 +436,7 @@ class ExportTests(TestCase) :
         hplc_data = data.export_hplc_measurements()
         self.assertTrue(hplc_data[0]['assays'][0]['measurements'][0]['name'] ==
             "Acetate")
-        #self.assertTrue(data.n_lcms_measurements == 2)
+        self.assertTrue(data.n_lcms_measurements == 2)
         # now start removing data (testing for deliberate failure)
         od = Assay.objects.get(name="OD measurement")
         odm = od.measurement_set.all()[0]

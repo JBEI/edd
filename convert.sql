@@ -436,10 +436,10 @@ SELECT setval('public.measurement_unit_id_seq', max(id))
 --
 INSERT INTO public.measurement(
         id, assay_id, measurement_type_id, experimenter_id, active,
-        update_ref_id
+        update_ref_id, measurement_format
     ) SELECT a.id, ao.id, a.measurement_type_id,
         CASE WHEN a.experimenter = 0 THEN NULL ELSE a.experimenter END,
-        NOT a.disabled, m.id
+        NOT a.disabled, m.id, a.measurement_type_format
     FROM old_edd.assay_measurements a
     INNER JOIN public.edd_object ao ON ao.assay_id = a.assay_id
     LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
