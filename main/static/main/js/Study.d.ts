@@ -35,8 +35,8 @@ declare module StudyD {
         configure(): void;
         createContainerObjects(): void;
         inputFocusInHandler(e: any): void;
-        processFilteringData(ids: any): void;
-        buildUniqueValuesHash(ids: any): any;
+        processFilteringData(ids: any[]): void;
+        buildUniqueValuesHash(ids: any[]): any;
         isFilterUseful(): boolean;
         addToParent(parentDiv: any): void;
         applyBackgroundStyle(darker: number): void;
@@ -46,11 +46,11 @@ declare module StudyD {
     }
     class StrainFilterSection extends GenericFilterSection {
         configure(): void;
-        buildUniqueValuesHash(ids: any): any;
+        buildUniqueValuesHash(ids: any[]): any;
     }
     class MediaFilterSection extends GenericFilterSection {
         configure(): void;
-        buildUniqueValuesHash(ids: any): any;
+        buildUniqueValuesHash(ids: any[]): any;
     }
     class CarbonSourceFilterSection extends GenericFilterSection {
         configure(): void;
@@ -62,7 +62,7 @@ declare module StudyD {
     }
     class LineNameFilterSection extends GenericFilterSection {
         configure(): void;
-        buildUniqueValuesHash(ids: any): any;
+        buildUniqueValuesHash(ids: any[]): any;
     }
     class ProtocolFilterSection extends GenericFilterSection {
         configure(): void;

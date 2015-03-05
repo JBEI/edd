@@ -196,6 +196,9 @@ class EDDObject(models.Model):
                 meta_json[k] = v[0]
         return meta_json
 
+    def get_metadata_types(self):
+        return list(MetadataType.objects.filter(metadata__edd_object=self).distinct())
+
     def __str__(self):
         return self.name
 
@@ -266,7 +269,8 @@ class Study(EDDObject):
         return self.contact.email
 
     def get_line_metadata_types(self):
-        return list(MetadataType.objects.filter(linemetadata__line__study=self).distinct())
+        # TODO: add in strain, carbon source here? IFF exists a line with at least one
+        return list(MetadataType.objects.filter(metadata__edd_object=self.line_set.all()).distinct())
 
     def get_metabolite_types_used(self):
         return list(Metabolite.objects.filter(measurement__assay__line__study=self).distinct())
@@ -464,12 +468,10 @@ class Line(EDDObject):
         return {
             'id': self.pk,
             'name': self.name,
-            'n' : self.name, # XXX used by ArrayTableData.ts
             'description': self.description,
-            'study': self.study.pk,
             'control': self.control,
             'replicate': self.replicate.pk if self.replicate else None,
-            'contact': {},
+            'contact': { 'user_id': self.contact.pk, 'text': self.contact_extra },
             'experimenter': self.experimenter.pk,
             'meta': self.get_metadata_json(),
             'strain': [s.pk for s in self.strains.all()],
@@ -555,6 +557,7 @@ class Metabolite(MeasurementType):
             "chgn" : self.charge_as_number,
         }
 
+
 class GeneIdentifier(MeasurementType):
     """
     Defines additional metadata on gene identifier transcription measurement type.
@@ -592,6 +595,7 @@ class MeasurementUnit(models.Model):
 
     def to_json (self) :
         return { "name" : self.unit_name }
+
 
 class Assay(EDDObject):
     """
@@ -636,6 +640,7 @@ class Assay(EDDObject):
             "exp" : self.experimenter.id,
         }
 
+
 class Measurement(models.Model):
     """
     A plot of data points for an (assay, measurement type) pair. Points can either be single (x,y)
@@ -649,6 +654,14 @@ class Measurement(models.Model):
     measurement_type = models.ForeignKey(MeasurementType)
     update_ref = models.ForeignKey(Update, related_name='+')
     active = models.BooleanField(default=True)
+
+    def to_json(self):
+        points = chain(self.measurementdatum_set.all(), self.measurementvector_set.all())
+        return {
+            "assay": self.assay.pk,
+            "type": self.measurement_type.pk,
+            "values": map(lambda p: p.to_json(), points),
+        }
 
     def __str__(self):
         return 'Measurement{%d}{%s}' % (self.assay.id, self.measurement_type)
@@ -667,6 +680,14 @@ class MeasurementDatum(models.Model):
     y = models.DecimalField(max_digits=16, decimal_places=5, blank=True, null=True)
     updated = models.ForeignKey(Update, related_name='+')
 
+    def to_json(self):
+        return {
+            "x": self.x,
+            "x_units": self.x_units.pk,
+            "y": self.y,
+            "y_units": self.y_units.pk,
+        }
+
     def __str__(self):
         return '(%f,%f)' % (self.x, self.y)
 
@@ -683,6 +704,14 @@ class MeasurementVector(models.Model):
     x = models.DecimalField(max_digits=16, decimal_places=5)
     y = models.TextField()
     updated = models.ForeignKey(Update, related_name='+')
+
+    def to_json(self):
+        return {
+            "x": self.x,
+            "x_units": self.x_units.pk,
+            "y": self.y,
+            "y_units": self.y_units.pk,
+        }
 
     def __str__(self):
         return '(%f,%f)' % (self.x, self.y)

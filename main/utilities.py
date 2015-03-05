@@ -1,6 +1,16 @@
 
 from main.models import Study, Update, MetadataType, MeasurementUnit, \
   Metabolite, Protocol, CarbonSource
+from decimal import Decimal
+import json
+
+
+class JSONDecimalEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, Decimal):
+            return float(o)
+        return super(JSONDecimalEncoder, self).default(o)
+
 
 def get_edddata_study (study) :
     """

@@ -110,9 +110,9 @@ var StudyD;
             }
             // Alphabetically sort an array of the keys according to values
             crSet.sort(function (a, b) {
-                a = cHash[a].toLowerCase();
-                b = cHash[b].toLowerCase();
-                return ((a > b) - (b > a));
+                var _a = cHash[a].toLowerCase();
+                var _b = cHash[b].toLowerCase();
+                return _a < _b ? -1 : _a > _b ? 1 : 0;
             });
             this.uniqueValues = cHash;
             this.uniqueValuesOrder = crSet;
@@ -337,25 +337,28 @@ var StudyD;
             this.sectionShortLabel = 'st';
         };
         StrainFilterSection.prototype.buildUniqueValuesHash = function (ids) {
+            var _this = this;
             var usedValues = {};
             var usedValuesCount = 0;
             this.filterHash = {};
-            for (var i = 0; i < ids.length; i++) {
-                var assayID = ids[i];
-                var assayRecord = EDDData.Assays[assayID];
-                var lineID = assayRecord.lid;
-                var lineRecord = EDDData.Lines[lineID];
-                var sn = '?';
-                if (lineRecord.s) {
-                    if (EDDData.Strains[lineRecord.s]) {
-                        sn = EDDData.Strains[lineRecord.s].name; // Strain name
-                    }
+            ids.forEach(function (assay_id) {
+                var assay, line;
+                if (assay = EDDData.Assays[assay_id]) {
+                    line = EDDData.Lines[assay.lid];
+                    _this.filterHash[assay_id] = _this.filterHash[assay_id] || [];
                 }
-                if (!usedValues.hasOwnProperty(sn)) {
-                    usedValues[sn] = ++usedValuesCount;
+                if (line) {
+                    (line.strain || []).forEach(function (strain_id) {
+                        var strain = EDDData.Strains[strain_id];
+                        if (strain && strain.name) {
+                            if (!usedValues.hasOwnProperty(strain.name)) {
+                                usedValues[strain.name] = ++usedValuesCount;
+                            }
+                            _this.filterHash[assay_id].push(usedValues[strain.name]);
+                        }
+                    });
                 }
-                this.filterHash[assayID] = usedValues[sn];
-            }
+            });
             return usedValues;
         };
         return StrainFilterSection;
@@ -371,9 +374,19 @@ var StudyD;
             this.sectionShortLabel = 'm';
         };
         MediaFilterSection.prototype.buildUniqueValuesHash = function (ids) {
+            var _this = this;
             var usedValues = {};
             var usedValuesCount = 0;
             this.filterHash = {};
+            ids.forEach(function (assay_id) {
+                var assay, line;
+                if (assay = EDDData.Assays[assay_id]) {
+                    line = EDDData.Lines[assay.lid];
+                    _this.filterHash[assay_id] = _this.filterHash[assay_id] || [];
+                }
+                if (line) {
+                }
+            });
             for (var i = 0; i < ids.length; i++) {
                 var assayID = ids[i];
                 var assayRecord = EDDData.Assays[assayID];
@@ -486,20 +499,19 @@ var StudyD;
             this.sectionShortLabel = 'ln';
         };
         LineNameFilterSection.prototype.buildUniqueValuesHash = function (ids) {
+            var _this = this;
+            // ids is array of Assay IDs
             var usedValues = {};
             var usedValuesCount = 0;
             this.filterHash = {};
-            for (var i = 0; i < ids.length; i++) {
-                var assayID = ids[i];
-                var assayRecord = EDDData.Assays[assayID];
-                var lineID = assayRecord.lid;
-                var lineRecord = EDDData.Lines[lineID];
-                var name = lineRecord.n; // Name
-                if (!usedValues.hasOwnProperty(name)) {
-                    usedValues[name] = ++usedValuesCount;
+            ids.forEach(function (id) {
+                var assay = EDDData.Assays[id], line = EDDData.Lines[assay.lid];
+                // assign unique number to every name
+                if (!usedValues.hasOwnProperty(line.name)) {
+                    usedValues[line.name] = ++usedValuesCount;
                 }
-                this.filterHash[assayID] = usedValues[name];
-            }
+                _this.filterHash[id] = usedValues[line.name];
+            });
             return usedValues;
         };
         return LineNameFilterSection;
@@ -1114,14 +1126,8 @@ var StudyD;
     }
     StudyD.prepareAfterLinesTable = prepareAfterLinesTable;
     function requestAllMetaboliteData() {
+        var _this = this;
         var myThis = this;
-        var success = function (response) {
-            if (response.type !== 'Success') {
-                console.log('Failed to fetch metabolite data!');
-                return;
-            }
-            myThis.processNewMetaboliteData.call(myThis, response.data.data);
-        };
         var requestDone = function () {
             // The instant we're finished with this operation, fetch the next wave of data
             myThis.requestAllProteinData();
@@ -1131,16 +1137,13 @@ var StudyD;
             console.log(status);
         };
         $.ajax({
-            url: 'FormAjaxResp.cgi',
+            url: 'measurements',
             type: 'POST',
             dataType: "json",
-            data: {
-                action: 'requestMeasurementData',
-                dataType: 'metabolite',
-                studyID: EDDData.currentStudyID
-            },
             error: error,
-            success: success,
+            success: function (data) {
+                _this.processNewMetaboliteData(data);
+            },
             complete: requestDone
         });
     }
@@ -1430,20 +1433,6 @@ var StudyD;
             return;
         }
         $('#linesSelectedCell').empty().text(checkedLen + ' selected');
-        // TODO: I think this code is toggling display of singular/plural versions of buttons; just
-        // update the text instead of bothering with hide/show
-        var editOneLineButton = $('#editOneLineButton').removeClass('off');
-        var editMultipleLinesButton = $('#editMultipleLinesButton').removeClass('off');
-        var cloneOneLineButton = $('#cloneOneLineButton').removeClass('off');
-        var cloneMultipleLinesButton = $('#cloneMultipleLinesButton').removeClass('off');
-        if (checkedLen < 2) {
-            editMultipleLinesButton.addClass('off');
-            cloneMultipleLinesButton.addClass('off');
-        }
-        else {
-            editOneLineButton.addClass('off');
-            cloneOneLineButton.addClass('off');
-        }
     }
     StudyD.linesActionPanelShow = linesActionPanelShow;
     function queueAssaysActionPanelShow() {
@@ -1639,7 +1628,7 @@ var StudyD;
             var lineID = assayRecord.lid;
             var lineRecord = EDDData.Lines[lineID];
             var pid = assayRecord.pid;
-            var fn = [lineRecord.n, EDDData.Protocols[pid].name, assayRecord.an].join('-');
+            var fn = [lineRecord.name, EDDData.Protocols[pid].name, assayRecord.an].join('-');
             var mName = Utl.EDD.resolveMeasurementRecordToName(measurementRecord);
             var mUnits = Utl.EDD.resolveMeasurementRecordToUnits(measurementRecord);
             var newSet = {
@@ -1821,7 +1810,7 @@ var StudyD;
         // Create a mapping from the JSON record to the form elements
         var formInfo = {
             lineidtoedit: index,
-            linename: record.n,
+            linename: record.name,
             lineiscontrol: record.ctrl,
             linestrainvalue: record.s,
             linemedia: record.m,
@@ -2170,7 +2159,7 @@ var DataGridSpecLines = (function (_super) {
         // alphanumeric sort of group IDs by name attached to those replicate groups
         this.groupIDsInOrder = Object.keys(rowGroups).sort(function (a, b) {
             var u = _this.groupIDsToGroupNames[a], v = _this.groupIDsToGroupNames[b];
-            return u.localeCompare(v);
+            return u < v ? -1 : u > v ? 1 : 0;
         });
         // Now that they're sorted by name, create a hash for quickly resolving IDs to indexes in
         // the sorted array
@@ -2344,7 +2333,7 @@ var DataGridSpecLines = (function (_super) {
                 'hoverEffect': true,
                 'nowrap': true,
                 'rowspan': gridSpec.rowSpanForRecord(index),
-                'contentString': line.n + (line.ctrl ? '<b class="iscontroldata">C</b>' : '')
+                'contentString': line.name + (line.ctrl ? '<b class="iscontroldata">C</b>' : '')
             })
         ];
     };
@@ -2814,7 +2803,7 @@ var DataGridAssays = (function (_super) {
             var lineID = assayRecord.lid;
             var lineRecord = EDDData.Lines[lineID];
             var pid = assayRecord.pid;
-            var fn = [lineRecord.n, EDDData.Protocols[pid].name, assayRecord.an].join('-');
+            var fn = [lineRecord.name, EDDData.Protocols[pid].name, assayRecord.an].join('-');
             var mIDs = (assayRecord.metabolites || []);
             mIDs = mIDs.concat(assayRecord.transcriptions || [], assayRecord.proteins || []);
             for (var i = 0; i < mIDs.length; i++) {
@@ -3076,7 +3065,7 @@ var DataGridSpecAssays = (function (_super) {
                 'rowspan': gridSpec.rowSpanForRecord(index),
                 // In a typical EDDData.Assays record this string is currently pre-assembled and
                 // stored in 'fn'. But we're not relying on that for now.
-                'contentString': [line.n, gridSpec.protocolName, record.an].join('-')
+                'contentString': [line.name, gridSpec.protocolName, record.an].join('-')
             })
         ];
     };

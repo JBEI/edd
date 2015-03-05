@@ -166,20 +166,20 @@ module StudyD {
         }
 
 
-        processFilteringData(ids:any):void {
-            var usedValues:any = this.buildUniqueValuesHash(ids);
-            var crSet = [];
-            var cHash = {};
+        processFilteringData(ids:any[]):void {
+            var usedValues:{[index:string]:number} = this.buildUniqueValuesHash(ids);
+            var crSet:number[] = [];
+            var cHash:{[index:number]:string} = {};
             // Create a reversed hash so keys = values and vice versa
             for (var key in usedValues) {
                 cHash[usedValues[key]] = key;
                 crSet.push(usedValues[key]);
             }
             // Alphabetically sort an array of the keys according to values
-            crSet.sort(function(a:any,b:any) {
-                a = cHash[a].toLowerCase();
-                b = cHash[b].toLowerCase();
-                return (<any>(a > b) - <any>(b > a));
+            crSet.sort(function(a:number, b:number) {
+                var _a:string = cHash[a].toLowerCase();
+                var _b:string = cHash[b].toLowerCase();
+                return _a < _b ? -1 : _a > _b ? 1 : 0;
             });
             this.uniqueValues = cHash;
             this.uniqueValuesOrder = crSet;
@@ -192,7 +192,7 @@ module StudyD {
         // unique value with an integer UID, and construct a hash resolving each record to one (or
         // possibly more) of those integer UIDs.  This prepares us for quick filtering later on.
         // (This generic filter does nothing, so we leave these structures blank.)
-        buildUniqueValuesHash(ids:any):any {
+        buildUniqueValuesHash(ids:any[]):any {
             return this.filterHash = {};
         }
 
@@ -430,28 +430,29 @@ module StudyD {
         }
 
 
-        buildUniqueValuesHash(ids:any):any {
+        buildUniqueValuesHash(ids:any[]):any {
             var usedValues:any = {};
             var usedValuesCount:number = 0;
 
             this.filterHash = {};
-            for (var i=0; i<ids.length; i++) {
-                var assayID = ids[i];
-                var assayRecord = EDDData.Assays[assayID];
-                var lineID = assayRecord.lid;
-                var lineRecord = EDDData.Lines[lineID];
-
-                var sn = '?';
-                if (lineRecord.s) {
-                    if (EDDData.Strains[lineRecord.s]) {
-                        sn = EDDData.Strains[lineRecord.s].name;    // Strain name
-                    }
+            ids.forEach((assay_id) => {
+                var assay, line;
+                if (assay = EDDData.Assays[assay_id]) {
+                    line = EDDData.Lines[assay.lid];
+                    this.filterHash[assay_id] = this.filterHash[assay_id] || [];
                 }
-                if (!usedValues.hasOwnProperty(sn)) {
-                    usedValues[sn] = ++usedValuesCount;
+                if (line) {
+                    (line.strain || []).forEach((strain_id) => {
+                        var strain = EDDData.Strains[strain_id];
+                        if (strain && strain.name) {
+                            if (!usedValues.hasOwnProperty(strain.name)) {
+                                usedValues[strain.name] = ++usedValuesCount;
+                            }
+                            this.filterHash[assay_id].push(usedValues[strain.name]);
+                        }
+                    });
                 }
-                this.filterHash[assayID] = usedValues[sn];
-            }
+            });
             return usedValues;
         }
     }
@@ -465,11 +466,21 @@ module StudyD {
         }
 
 
-        buildUniqueValuesHash(ids:any):any {
+        buildUniqueValuesHash(ids:any[]):any {
             var usedValues:any = {};
             var usedValuesCount:number = 0;
 
             this.filterHash = {};
+            ids.forEach((assay_id) => {
+                var assay, line;
+                if (assay = EDDData.Assays[assay_id]) {
+                    line = EDDData.Lines[assay.lid];
+                    this.filterHash[assay_id] = this.filterHash[assay_id] || [];
+                }
+                if (line) {
+
+                }
+            });
             for (var i=0; i<ids.length; i++) {
                 var assayID = ids[i];
                 var assayRecord = EDDData.Assays[assayID];
@@ -582,23 +593,20 @@ module StudyD {
         }
 
 
-        buildUniqueValuesHash(ids:any):any {
+        buildUniqueValuesHash(ids:any[]):any {
+            // ids is array of Assay IDs
             var usedValues:any = {};
             var usedValuesCount:number = 0;
 
             this.filterHash = {};
-            for (var i=0; i<ids.length; i++) {
-                var assayID = ids[i];
-                var assayRecord = EDDData.Assays[assayID];
-                var lineID = assayRecord.lid;
-                var lineRecord = EDDData.Lines[lineID];
-
-                var name = lineRecord.n;            // Name
-                if (!usedValues.hasOwnProperty(name)) {
-                    usedValues[name] = ++usedValuesCount;
+            ids.forEach((id) => {
+                var assay = EDDData.Assays[id], line = EDDData.Lines[assay.lid];
+                // assign unique number to every name
+                if (!usedValues.hasOwnProperty(line.name)) {
+                    usedValues[line.name] = ++usedValuesCount;
                 }
-                this.filterHash[assayID] = usedValues[name];
-            }
+                this.filterHash[id] = usedValues[line.name];
+            });
             return usedValues;
         }
     }
@@ -1301,13 +1309,6 @@ module StudyD {
     export function requestAllMetaboliteData() {
 
         var myThis = this;
-        var success = (response) => {
-            if (response.type !== 'Success') {
-                console.log('Failed to fetch metabolite data!');
-                return;
-            }
-            myThis.processNewMetaboliteData.call(myThis, response.data.data);
-        };
         var requestDone = () => {
             // The instant we're finished with this operation, fetch the next wave of data
             myThis.requestAllProteinData();
@@ -1318,16 +1319,11 @@ module StudyD {
         };
 
         $.ajax({
-            url: 'FormAjaxResp.cgi',
+            url: 'measurements',
             type: 'POST',
             dataType: "json",
-            data: { 
-                action: 'requestMeasurementData',
-                dataType: 'metabolite',
-                studyID: EDDData.currentStudyID,
-            },
             error: error,
-            success: success,
+            success: (data) => { this.processNewMetaboliteData(data); },
             complete: requestDone
         });
     }
@@ -1877,7 +1873,7 @@ module StudyD {
             var lineRecord = EDDData.Lines[lineID];
 
             var pid = assayRecord.pid;
-            var fn = [lineRecord.n, EDDData.Protocols[pid].name, assayRecord.an].join('-');
+            var fn = [lineRecord.name, EDDData.Protocols[pid].name, assayRecord.an].join('-');
 
             var mName = Utl.EDD.resolveMeasurementRecordToName(measurementRecord);
             var mUnits = Utl.EDD.resolveMeasurementRecordToUnits(measurementRecord);
@@ -2094,7 +2090,7 @@ module StudyD {
         // Create a mapping from the JSON record to the form elements
         var formInfo = {
             lineidtoedit: index,
-            linename: record.n,
+            linename: record.name,
             lineiscontrol: record.ctrl,
             linestrainvalue: record.s,
             linemedia: record.m,
@@ -2511,7 +2507,7 @@ class DataGridSpecLines extends DataGridSpecBase {
         // alphanumeric sort of group IDs by name attached to those replicate groups
         this.groupIDsInOrder = Object.keys(rowGroups).sort((a,b) => {
             var u:string = this.groupIDsToGroupNames[a], v:string = this.groupIDsToGroupNames[b];
-            return u.localeCompare(v);
+            return u < v ? -1 : u > v ? 1 : 0;
         });
         // Now that they're sorted by name, create a hash for quickly resolving IDs to indexes in
         // the sorted array
@@ -2702,7 +2698,7 @@ class DataGridSpecLines extends DataGridSpecBase {
                 'hoverEffect': true,
                 'nowrap': true,
                 'rowspan': gridSpec.rowSpanForRecord(index),
-                'contentString': line.n + (line.ctrl ? '<b class="iscontroldata">C</b>' : '')
+                'contentString': line.name + (line.ctrl ? '<b class="iscontroldata">C</b>' : '')
             })
         ];
     }
@@ -3261,7 +3257,7 @@ class DataGridAssays extends DataGrid {
             var lineID = assayRecord.lid;
             var lineRecord = EDDData.Lines[lineID];
             var pid = assayRecord.pid;
-            var fn = [lineRecord.n, EDDData.Protocols[pid].name, assayRecord.an].join('-');
+            var fn = [lineRecord.name, EDDData.Protocols[pid].name, assayRecord.an].join('-');
 
             var mIDs = (assayRecord.metabolites || []);
             mIDs = mIDs.concat(assayRecord.transcriptions || [], assayRecord.proteins || []);
@@ -3601,7 +3597,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
                 'rowspan': gridSpec.rowSpanForRecord(index),
                 // In a typical EDDData.Assays record this string is currently pre-assembled and
                 // stored in 'fn'. But we're not relying on that for now.
-                'contentString': [line.n, gridSpec.protocolName, record.an].join('-')
+                'contentString': [line.name, gridSpec.protocolName, record.an].join('-')
             })
         ];
     }

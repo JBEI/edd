@@ -126,7 +126,27 @@
     </div>
     <div class="pageSection">
         <table id="studyLinesTable"></table>
-        {# Table is populated via Typescript code #}
+        {# Above table is populated via Typescript code; below is try at static rendering #}
+        {% comment %}
+        <table id="testLinesTable">
+            <tr>
+                <th>{# checkbox column #}</th>
+                <th>Line Name</th>
+                {% for meta in line_meta %}
+                <th>{{ meta.type_name }}</th>
+                {% endfor %}
+            </tr>
+            {% for line in lines %}
+            <tr>
+                <td>{# checkbox column #}</td>
+                <td>{{ line.name }} {% if line.control %}<span>c</span>{% endif %}</td>
+                {% for meta in line_meta %}
+                <td>{{ line.get_metadata_json|lookup:meta.pk }}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </table>
+        {% endcomment %}
         <div id="linesActionPanel" class="sectionActions off">
             <span id="linesSelectedCell">0 selected</span>
             <button id="cloneLineButton">Clone Line</button>

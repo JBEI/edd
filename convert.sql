@@ -462,7 +462,7 @@ INSERT INTO public.measurement_datum(
     LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
         date_trunc('second', am.modification_time)
         AND m.mod_by_id = am.modified_by
-    WHERE a.measurement_type_compartment = 0
+    WHERE am.y IS NOT NULL
     ORDER BY a.id;
 INSERT INTO public.measurement_vector(
         measurement_id, x, y, x_units_id, y_units_id, updated_id
@@ -475,7 +475,7 @@ INSERT INTO public.measurement_vector(
     LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
         date_trunc('second', am.modification_time)
         AND m.mod_by_id = am.modified_by
-    WHERE a.measurement_type_compartment = 1
+    WHERE am.y IS NULL
     ORDER BY a.id;
 
 
