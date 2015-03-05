@@ -435,8 +435,9 @@ class ExportTests(TestCase) :
         self.assertTrue(data.n_hplc_measurements == 2)
         hplc_data = data.export_hplc_measurements()
         self.assertTrue(hplc_data[0]['assays'][0]['measurements'][0]['name'] ==
-            "Acetate")
+            "EC Acetate")
         self.assertTrue(data.n_lcms_measurements == 2)
+        self.assertTrue(data.n_ramos_measurements == 0)
         # now start removing data (testing for deliberate failure)
         od = Assay.objects.get(name="OD measurement")
         odm = od.measurement_set.all()[0]

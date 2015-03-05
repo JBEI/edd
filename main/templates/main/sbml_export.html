@@ -241,6 +241,7 @@ each measurement.
           border-radius:4px;
           -webkit-border-radius:4px;
           -moz-border-radius:4px;">
+    <!-- TODO make as much of this as possible more modular, and/or use JS -->
     <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
       <tr>
         <td>Assay</td>
@@ -258,8 +259,8 @@ each measurement.
         </td>
         <td class="nowrap popupcell">
           <input type="checkbox"
-            name="measurement{{ measurement.id }}include"
-            id="measurement{{ measurement.id }}include"
+            name="{{ measurement.type }}{{ measurement.id }}include"
+            id="{{ measurement.type }}{{ measurement.id }}include"
             {% if measurement.include %}
               checked="checked"
             {% endif %}
@@ -268,14 +269,16 @@ each measurement.
         <td class="nowrap" style="text-align:right;">{{ measurement.units }}
         </td>
         <td style="text-align:right;">
-          {% if measurement.format == 0 %}<!-- not a carbon ratio -->
-          <input type="checkbox"
-            name="measurement{{ measurement.id }}input"
-            id="measurement{{ measurement.id }}input"
-            {% if measurement.input %}
-              checked="checked"
+          {% if measurement.type == "measurement" %}
+            {% if measurement.format == 0 %}<!-- not a carbon ratio -->
+            <input type="checkbox"
+              name="measurement{{ measurement.id }}input"
+              id="measurement{{ measurement.id }}input"
+              {% if measurement.input %}
+                checked="checked"
+              {% endif %}
+              value="{{ measurement.id }}"/>
             {% endif %}
-            value="{{ measurement.id }}"/>
           {% endif %}
         </td>
         <td style="text-align:right;width:30px;">
@@ -294,7 +297,11 @@ each measurement.
               style="stroke-width:2px;"
               stroke-width="2"></path>
             {% for md in measurement.data_points %}
-              {% if measurement.format == 0 %}
+              {% if measurement.type != "measurement" %}
+                <path class="cT" d="M{{ md.rx }},1v8">
+              {% elif measurement.ay == None %}
+                <path class="cE" d="M{{ md.rx }},1v8">
+              {% elif measurement.format == 0 %}
                 <path class="cP" d="M{{ md.rx }},1v8">
               {% else %}
                 <path class="cV" d="M{{ md.rx }},1v8">
@@ -365,6 +372,7 @@ Step 4 (LC-MS)
           border-radius:4px;
           -webkit-border-radius:4px;
           -moz-border-radius:4px;">
+    <!-- TODO make as much of this as possible more modular, and/or use JS -->
     <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
       <tr>
         <td>Assay</td>
@@ -382,9 +390,9 @@ Step 4 (LC-MS)
         </td>
         <td class="nowrap popupcell">
           <input type="checkbox"
-            name="measurement{{ measurement.id }}include"
-            id="measurement{{ measurement.id }}include"
-            {% if measurement.is_checked %}
+            name="{{ measurement.type }}{{ measurement.id }}include"
+            id="{{ measurement.type }}{{ measurement.id }}include"
+            {% if measurement.include %}
               checked="checked"
             {% endif %}
             value="{{ measurement.id }}"/>{{ measurement.name }}
@@ -393,14 +401,16 @@ Step 4 (LC-MS)
           {{ measurement.units }}
         </td>
         <td style="text-align:right;">
-          {% if measurement.format == 0 %}<!-- not a carbon ratio -->
+          {% if measurement.type == "measurement" %}
+            {% if measurement.format == 0 %}<!-- not a carbon ratio -->
           <input type="checkbox"
             name="measurement{{ measurement.id }}input"
             id="measurement{{ measurement.id }}input"
-            {% if measurement.input %}
+              {% if measurement.input %}
               checked="checked"
-            {% endif %}
+              {% endif %}
             value="{{ measurement.id }}"/>
+            {% endif %}
           {% endif %}
         </td>
         <td style="text-align:right;width:30px;">
@@ -419,7 +429,11 @@ Step 4 (LC-MS)
               style="stroke-width:2px;"
               stroke-width="2"></path>
             {% for md in measurement.data_points %}
-              {% if measurement.format == 0 %}
+              {% if measurement.type != "measurement" %}
+                <path class="cT" d="M{{ md.rx }},1v8">
+              {% elif measurement.ay == None %}
+                <path class="cE" d="M{{ md.rx }},1v8">
+              {% elif measurement.format == 0 %}
                 <path class="cP" d="M{{ md.rx }},1v8">
               {% else %}
                 <path class="cV" d="M{{ md.rx }},1v8">
@@ -484,10 +498,101 @@ Step 5 (RAMOS O2/CO2)
 <div class="sectionContent off" id="statusstep4main"
       style="font-size:12px;">
   {% if data.n_ramos_measurements %}
-  {% else %}
+    {% if data.need_ramos_units_warning %}
+  <div class="neutral">
+    RAMOS measurements must be supplied in units of <b>mol/L/hr</b>,
+    but some of your data has no units labels assigned at all.
+    Since the RAMOS equipment generates measurements in units of
+    <b>mol/L/hr</b> by default, we will assume your data is in the correct
+    units.  This is dangerous, and at some point you should probably add unit
+    labels to your data.
+  </div>
+    {% endif %}
+    {% for protocol in data.export_ramos_measurements %}
+  <div style="border:1px solid #888;
+              margin:3px 0px;
+              border-radius:4px;
+              -webkit-border-radius:4px;
+              -moz-border-radius:4px;">
+    <!-- TODO make as much of this as possible more modular, and/or use JS -->
+    <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
+      <tr>
+        <td>Assay</td>
+        <td colspan="2">Measurement</td>
+        <td style="text-align:right;width:60px;">Is Input</td>
+        <td colspan="2"></td>
+      </tr>
+      {% for assay in protocol.assays %}
+        {% for measurement in assay.measurements %}
+      <tr>
+        <td class="nowrap">
+          {% if forloop.counter == 1 %}
+            {{ assay.name }}
+          {% endif %}
+        </td>
+        <td class="nowrap popupcell">
+          <input type="checkbox"
+            name="{{ measurement.type }}{{ measurement.id }}include"
+            id="{{ measurement.type }}{{ measurement.id }}include"
+            {% if measurement.include %}
+            checked="checked"
+            {% endif %}
+            value="{{ measurement.id }}"/>{{ measurement.name }}
+        </td>
+        <td class="nowrap" style="text-align:right;">
+          {{ measurement.units }}
+        </td>
+        <td style="text-align:right;">
+          {% if measurement.type == "measurement" %}
+          <input type="checkbox"
+            name="measurement{{ measurement.id }}input"
+            id="measurement{{ measurement.id }}input"
+            {% if measurement.input %}
+            checked="checked"
+            {% endif %}
+            value="{{ measurement.id }}"/>
+          {% endif %}
+        </td>
+        <td style="text-align:right;width:30px;">
+          {{ measurement.n_points }}
+        </td>
+        <td style="padding:3px 2px 0px 2px;width:60%;">
+          <svg xmlns="http://www.w3.org/2000/svg"
+              version="1.2"
+              width="100%"
+              height="10px"
+              viewBox="0 0 470 10"
+              preserveAspectRatio="none">
+            <path fill="rgba(0,0,0,0.0.05)"
+              stroke="rgba(0,0,0,0.05)"
+              d="M10,5h450"
+              style="stroke-width:2px;"
+              stroke-width="2"></path>
+            {% for md in measurement.data_points %}
+              {% if measurement.ay == None %}
+                <path class="cE" d="M{{ md.rx }},1v8">
+              {% elif measurement.format == 0 %}
+                <path class="cP" d="M{{ md.rx }},1v8">
+              {% endif %}
+                  <title>{{ md.title }}</title>
+                </path>
+            {% endfor %}
+          </svg>
+        </td>
+      </tr>
+
+    </table>
+  </div>
+  {% endfor %}<!-- data.export_ramos_measurements -->
+
+  {% elif data.n_ramos_protocols %}
     <div>No usable O2/CO2 (RAMOS-based) measurements are present.
       To be usable, measurements must have a timestamp somewhere inside the
       range of the OD measurements, and be in units of <b>mol/L/hr</b>.
+    </div>
+  {% else %}
+    <div class="neutral">
+      Cannot find any Protocols with "O2" and "CO2" in the name!
     </div>
   {% endif %}
 </div>

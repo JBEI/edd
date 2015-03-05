@@ -414,6 +414,7 @@ class Protocol(EDDObject):
         # on the arbitrary naming conventions used by scientists creating new
         # Protocols, so it will probably need replacing later on.
         c = "Unknown"
+        name = self.name.upper()
         if (self.name == "OD600") :
             return "OD"
         elif ("HPLC" in self.name) :
@@ -423,6 +424,8 @@ class Protocol(EDDObject):
             return "LCMS"
         elif re.match("O2\W+CO2", self.name) :
             return "RAMOS"
+        elif ("TRANSCRIPTOMICS" in name) or ("PROTEOMICS" in name) :
+            return "TPOMICS"
         else :
             return "Unknown"
 
@@ -775,6 +778,12 @@ class Measurement(models.Model):
     def name (self) :
         """alias for self.measurement_type.type_name"""
         return self.measurement_type.type_name
+
+    @property
+    def full_name (self) :
+        """measurement compartment plus measurement_type.type_name"""
+        return ({"0":"","1":"IC","2":"EC"}.get(self.compartment) +
+                " " + self.name).strip()
 
     # TODO also handle vectors
     def extract_data_xvalues (self, defined_only=False) :
