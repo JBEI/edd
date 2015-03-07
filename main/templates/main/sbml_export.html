@@ -143,6 +143,12 @@ Step 2: Optical Density (OD600)
     <span class="neutral"> 1 Warning</span>
 </div>
 <div class="sectionContent" id="statusstep1main" style="font-size:12px;">
+  {% if not data.have_gcdw_metadata %}
+  <div class="neutral">
+    Cannot find the gCDW/L/OD600 metadata type by name!
+    You should probably create one.
+  </div>
+  {% endif %}
   <div style="border:1px solid #888;
         margin:3px 0px;
         border-radius:4px;
@@ -155,10 +161,11 @@ Step 2: Optical Density (OD600)
         <td></td>
         <td colspan="2"></td>
       </tr>
-      {% for assay in data.export_od_measurements %}
-        {% for measurement in assay.measurements %}
+      {% for measurement in data.export_od_measurements %}
       <tr>
-        <td class="nowrap">{{ assay.name }}</td>
+        <td class="nowrap">
+          {{ measurement.assay_name }}
+        </td>
         <td class="nowrap popupcell">
           <input type="checkbox"
               name="measurement{{ measurement.id }}include"
@@ -166,7 +173,8 @@ Step 2: Optical Density (OD600)
               checked="checked"
               value="{{ measurement.id }}"/>Optical Density
         </td>
-        <td class="nowrap" style="text-align:right;"></td>
+        <td class="nowrap" style="text-align:right;">
+        </td>
         <td></td>
         <td style="text-align:right;width:30px;">
           {{ measurement.n_points }}
@@ -188,7 +196,6 @@ Step 2: Optical Density (OD600)
         </td>
       </tr>
       {% endfor %}<!-- measurements -->
-      {% endfor %}<!-- assays -->
     </table>
   </div>
   {% if data.used_generic_GCDW_in_assays %}
@@ -198,7 +205,8 @@ Step 2: Optical Density (OD600)
       of <b>0.65</b> for {{ data.used_generic_GCDW_in_assays }} of your
       selected Measurements.</div>
   {% endif %}
-  <div>Located and consolidated useful Optical Data for 1 Lines.</div>
+  <div>Located and consolidated useful Optical Data for
+    {{ data.n_lines_with_useful_od }} Lines.</div>
 </div>
 
 <!--
@@ -626,10 +634,103 @@ Step 6: transcriptomics and proteomics
     <span class="good"></span>
 </div>
 <div class="sectionContent off" id="statusstep5main" style="font-size:12px;">
+{% if data.n_trans_prot_protocols %}
   {% if data.n_trans_prot_measurements %}
+    {% for protocol in data.export_trans_prot_measurements %}
+  <div>Protocol <b>{{ protocol.name }}</b></div>
+  <div style="border:1px solid #888;
+          margin:3px 0px;
+          border-radius:4px;
+          -webkit-border-radius:4px;
+          -moz-border-radius:4px;">
+    <!-- TODO make as much of this as possible more modular, and/or use JS -->
+    <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
+      <tr>
+        <td>Assay</td>
+        <td colspan="2">Measurement</td>
+        <td style="text-align:right;width:60px;">Is Input</td>
+        <td colspan="2"></td>
+      </tr>
+      {% for assay in protocol.assays %}
+        {% for measurement in assay.measurements %}
+      <tr>
+        <td class="nowrap">
+          {% if forloop.counter == 1 %}
+            {{ assay.name }}
+          {% endif %}
+        </td>
+        <td class="nowrap popupcell">
+          <input type="checkbox"
+            name="{{ measurement.type }}{{ measurement.id }}include"
+            id="{{ measurement.type }}{{ measurement.id }}include"
+            {% if measurement.include %}
+              checked="checked"
+            {% endif %}
+            value="{{ measurement.id }}"/>{{ measurement.name }}
+        </td>
+        <td class="nowrap" style="text-align:right;">
+          {{ measurement.units }}
+        </td>
+        <td style="text-align:right;">
+          {% if measurement.type == "measurement" %}
+            {% if measurement.format == 0 %}<!-- not a carbon ratio -->
+          <input type="checkbox"
+            name="measurement{{ measurement.id }}input"
+            id="measurement{{ measurement.id }}input"
+              {% if measurement.input %}
+              checked="checked"
+              {% endif %}
+            value="{{ measurement.id }}"/>
+            {% endif %}
+          {% endif %}
+        </td>
+        <td style="text-align:right;width:30px;">
+          {{ measurement.n_points }}
+        </td>
+        <td style="padding:3px 2px 0px 2px;width:60%;">
+          <svg xmlns="http://www.w3.org/2000/svg"
+              version="1.2"
+              width="100%"
+              height="10px"
+              viewBox="0 0 470 10"
+              preserveAspectRatio="none">
+            <path fill="rgba(0,0,0,0.0.05)"
+              stroke="rgba(0,0,0,0.05)"
+              d="M10,5h450"
+              style="stroke-width:2px;"
+              stroke-width="2"></path>
+            {% for md in measurement.data_points %}
+              {% if measurement.type != "measurement" %}
+                <path class="cT" d="M{{ md.rx }},1v8">
+              {% elif measurement.ay == None %}
+                <path class="cE" d="M{{ md.rx }},1v8">
+              {% elif measurement.format == 0 %}
+                <path class="cP" d="M{{ md.rx }},1v8">
+              {% else %}
+                <path class="cV" d="M{{ md.rx }},1v8">
+              {% endif %}
+                  <title>{{ md.title }}</title>
+                </path>
+            {% endfor %}
+          </svg>
+        </td>
+      </tr>
+      {% endfor %}<!-- measurements -->
+      {% endfor %}<!-- assays -->
+    </table>
+  </div>
+    {% endfor %}
   {% else %}
-  <div>No usable Transcriptomics- or Proteomics-based Protocols have usable data.</div>
+  <div class="neutral">
+    No usable Transcriptomics- or Proteomics-based Protocols have usable data.
+  </div>
   {% endif %}
+{% else %}
+  <div class="neutral">
+    Cannot find any Protocols with "Proteomics" or "Transcriptomics" in the
+    name!
+  </div>
+{% endif %}
 </div>
 
 
@@ -662,63 +763,50 @@ Step 7: convert units and calculate flux values
 
 <div class="sectionContent off" id="statusstep6main" style="font-size:12px;">
 
-  <!-- loop over metabolites -->
+<!-- loop over metabolites -->
+{% for measurement in data.all_checked_measurements %}
   <div class="subSectionChapter" id="FCStep1hidden" style="cursor:pointer;"
       onclick="Disclose.click(this);"
       hidethese="FCStep1hidden"
       showthese="FCStep1shown,FCStep1main">
-    <span style="color:blue;">&#x25BA;</span> Metabolite <b>2mecdp</b> for Assay <b>I-2-LC-MS-2</b>:
+    <span style="color:blue;">&#x25BA;</span>
+      Metabolite <b>{{ measurement.metabolite_name }}</b> for Assay
+        <b>{{ measurement.assay }}</b>:
   </div>
   <div class="subSectionChapter off" id="FCStep1shown" style="cursor:pointer;"
       onclick="Disclose.click(this);"
       hidethese="FCStep1shown,FCStep1main"
       showthese="FCStep1hidden">
-    <span style="color:blue;">&#x25BC;</span> Metabolite <b>2mecdp</b> for Assay <b>I-2-LC-MS-2</b>:
+    <span style="color:blue;">&#x25BC;</span>
+      Metabolite <b>{{ measurement.metabolite_name }}</b> for Assay
+        <b>{{ measurement.assay }}</b>:
   </div>
-  <div class="subSectionContent off" id="FCStep1main"
-    style="font-size:12px;">
-        <div>Time <b>0</b>h has a value of 1.269805013<b>mM</b>.</div>
-<div>Time <b>4</b>h has a value of 5.562698518<b>mM</b>.</div>
-<div>Time <b>8</b>h has a value of 6.221735189<b>mM</b>.</div>
-<div>Time <b>12</b>h has a value of 20.76816221<b>mM</b>.</div>
-<div>Time <b>18</b>h has a value of 25.7485759<b>mM</b>.</div>
-<div>Time <b>24</b>h has a value of 75.21809008<b>mM</b>.</div>
-<div>Time <b>36</b>h has a value of 69.0750688<b>mM</b>. <span class="neutral">(Interpolated.)</span></div>
-<div>Time <b>48</b>h has a value of 62.93204752<b>mM</b>.</div>
-<div>Time <b>72</b>h has a value of 49.07467011<b>mM</b>.</div>
-<div>Interval <b>0</b> to <b>4</b>
-              has delta of <b>4.292893505</b>mM.</div>
-<div>Calculated Flux:
-                  (4.292893505 / 4) / 0.3978 = <b>2.69789687342886</b></div>
-<div>Interval <b>4</b> to <b>8</b>
-              has delta of <b>0.659036671</b>mM.</div>
-<div>Calculated Flux:
-                  (0.659036671 / 4) / 1.4378 = <b>0.114591158540826</b></div>
-<div>Interval <b>8</b> to <b>12</b>
-              has delta of <b>14.546427021</b>mM.</div>
-<div>Calculated Flux:
-                  (14.546427021 / 4) / 1.9058 = <b>1.90817858917515</b></div>
-<div>Interval <b>12</b> to <b>18</b>
-              has delta of <b>4.98041369</b>mM.</div>
-<div>Calculated Flux:
-                  (4.98041369 / 6) / 2.2698 = <b>0.365701360619144</b></div>
-<div>Interval <b>18</b> to <b>24</b>
-              has delta of <b>49.46951418</b>mM.</div>
-<div>Calculated Flux:
-                  (49.46951418 / 6) / 2.36795 = <b>3.48188054224118</b></div>
-<div>Interval <b>24</b> to <b>36</b>
-              has delta of <b>-6.14302128</b>mM.</div>
-<div>Calculated Flux:
-                  (-6.14302128 / 12) / 2.4947 = <b>-0.205202405098809</b></div>
-<div>Interval <b>36</b> to <b>48</b>
-              has delta of <b>-6.14302128</b>mM. <span class="neutral">(Using interpolation.)</span></div>
-<div>Calculated Flux:
-                  (-6.14302128 / 12) / 2.18725 = <b>-0.234046606469311</b></div>
-<div>Interval <b>48</b> to <b>72</b>
-              has delta of <b>-13.85737741</b>mM.</div>
-<div>Calculated Flux:
-                  (-13.85737741 / 24) / 2.18725 = <b>-0.263980215072199</b></div>
-      </div>
+  <div class="subSectionContent off" id="FCStep1main" style="font-size:12px;">
+  {% for md in measurement.data %}
+    <div>
+      Time <b>{{ md.time }}</b>h has a value of {{ md.value }}<b>
+        {{ md.units }}</b>.
+    {% if md.interpolated %}
+        <span class="neutral">(Interpolated.)</span>
+    {% endif %}
+    </div>
+  {% endfor %}<!-- measurement.data -->
+  {% for interval in measurement.intervals %}
+    <div>Interval <b>{{ interval.start }}</b> to <b>{{ interval.end }}</b>
+          has delta of <b>{{ interval.delta }}</b>{{ interval.units }}.
+    </div>
+    <div>
+      Calculated Flux: {{ interval.flux_eqn }} = <b>{{ interval.flux }}</b>
+    {% if interval.interpolated %}
+      <span class="neutral">(Interpolated.)</span>
+    {% endif %}
+    </div>
+    <!-- TODO error handling output -->
+  {% endfor %}<!-- measurement.intervals -->
+  </div>
+
+{% endfor %}<!-- data.all_checked_measurements -->
+</div>
 
 
 <!--

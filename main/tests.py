@@ -117,7 +117,12 @@ class SolrTests(TestCase):
         self.assertEqual(post_add['response']['numFound'], 1, "Added study was not found in query")
 
 
-class MeasurementTests(TestCase) :
+# XXX because there's so much overlap in functionality and the necessary setup
+# is somewhat involved, this set of tests includes multiple models, focused
+# on assay data and associated objects.
+#
+# TODO also test MeasurementVector
+class AssayDataTests(TestCase) :
 
     def setUp (self) :
         TestCase.setUp(self)
@@ -126,15 +131,28 @@ class MeasurementTests(TestCase) :
         study1 = Study.objects.create(name='Test Study 1', description='')
         line1 = study1.line_set.create(name="Line 1", description="",
             experimenter=user1, contact=user1)
-        protocol1 = Protocol.objects.create(name="GC-MS", owned_by=user1)
+        protocol1 = Protocol.objects.create(name="gc-ms", owned_by=user1)
+        protocol2 = Protocol.objects.create(name="OD600", owned_by=user1)
+        protocol3 = Protocol.objects.create(name="New protocol",
+            owned_by=user1, active=False)
         mt1 = Metabolite.objects.create(type_name="Mevalonate",
             short_name="mev", type_group="m", charge=-1, carbon_count=6,
             molecular_formula="C6H11O4", molar_mass=148.16)
+        mt2 = GeneIdentifier.objects.create(type_name="Gene name 1",
+            short_name="gen1", type_group="g")
+        mt3 = MeasurementType.create_protein(type_name="Protein name 2",
+            short_name="prot2")
+        mt4 = MeasurementType.create_protein(type_name="Protein name 1",
+            short_name="prot1")
         assay1 = line1.assay_set.create(name="Assay 1",
             protocol=protocol1, description="GC-MS assay", experimenter=user1)
         up1 = Update.objects.create(mod_by=user1)
         meas1 = assay1.measurement_set.create(experimenter=user1,
             measurement_type=mt1, compartment="1", update_ref=up1)
+        meas2 = assay1.measurement_set.create(experimenter=user1,
+            measurement_type=mt2, compartment="1", update_ref=up1)
+        meas3 = assay1.measurement_set.create(experimenter=user1,
+            measurement_type=mt3, compartment="1", update_ref=up1)
         mu1 = MeasurementUnit.objects.create(unit_name="hours")
         mu2 = MeasurementUnit.objects.create(unit_name="mM")
         x1 = [ 0, 4, 8, 12, 18, 24 ]
@@ -145,33 +163,88 @@ class MeasurementTests(TestCase) :
         meas1.measurementdatum_set.create(updated=up1,
             x_units=mu1, y_units=mu2, x=32, y=None)
 
-    def test_extract (self) :
-        assay = Assay.objects.get(name="Assay 1")
-        meas1 = assay.measurement_set.all()[0]
-        xval = meas1.extract_data_xvalues()
-        assert (xval == [0.0, 4.0, 8.0, 12.0, 18.0, 24.0, 32.0])
-        xval2 = meas1.extract_data_xvalues(defined_only=True)
-        assert (xval2 == [0.0, 4.0, 8.0, 12.0, 18.0, 24.0])
+    def test_protocol (self) :
+        p1 = Assay.objects.get(name="Assay 1").protocol
+        p2 = Protocol.objects.get(name="OD600")
+        p3 = Protocol.objects.filter(active=False)[0]
+        self.assertTrue(str(p1) == "gc-ms")
+        self.assertTrue(p1.categorization == "LCMS")
+        self.assertTrue(p2.categorization == "OD")
+        self.assertTrue(p3.categorization == "Unknown")
+        self.assertTrue(p1.to_json() == {'disabled': False, 'name': u'gc-ms'})
+        self.assertTrue(p3.to_json()=={'disabled':True,'name':u'New protocol'})
 
-    def test_interpolate (self) :
+    def test_assay (self) :
         assay = Assay.objects.get(name="Assay 1")
-        meas1 = assay.measurement_set.all()[0]
-        y_interp = meas1.interpolate_at(21)
-        # XXX I hate floating-point math
-        assert (str(y_interp) == "1.2"), y_interp
-        y_interp2 = meas1.interpolate_at(25)
-        assert (y_interp2 is None)
+        self.assertTrue(len(assay.get_metabolite_measurements()) == 1)
+        self.assertTrue(len(assay.get_gene_measurements()) == 1)
+        self.assertTrue(len(assay.get_protein_measurements()))
+        json_dict = assay.to_json()
+        self.assertTrue(json_dict['ln'] == "Line 1")
+        self.assertTrue(json_dict['mea_c'] == 3)
 
-    def test_misc (self) :
+    def test_measurement_type (self) :
+        proteins = MeasurementType.proteins()
+        self.assertTrue(len(proteins) == 2)
+        self.assertTrue(proteins[0].is_protein())
+        proteins_by_name = MeasurementType.proteins_by_name()
         assay = Assay.objects.get(name="Assay 1")
-        meas1 = assay.measurement_set.all()[0]
-        assert (meas1.y_axis_units_name == "mM")
-        assert (meas1.name == "Mevalonate")
+        meas1 = assay.measurement_set.filter(
+            measurement_type__short_name="mev")[0]
+        mt1 = meas1.measurement_type
+        self.assertTrue(mt1.is_metabolite() and not mt1.is_protein()
+                        and not mt1.is_gene())
+        met = Metabolite.objects.get(short_name="mev")
+        self.assertTrue(met.id == mt1.id)
+        self.assertTrue(met.to_json() == {'cc': 6, 'name': u'Mevalonate',
+            'chgn': -1, 'ans': '', 'mm': 148.16, 'f': u'C6H11O4', 'chg': -1,
+            'sn': u'mev'})
+
+    def test_measurement (self) :
+        assay = Assay.objects.get(name="Assay 1")
+        metabolites = list(assay.get_metabolite_measurements())
+        self.assertTrue(len(metabolites) == 1)
+        meas1 = metabolites[0]
+        meas2 = list(assay.get_gene_measurements())[0]
+        self.assertTrue(meas1.y_axis_units_name == "mM")
+        self.assertTrue(meas1.name == "Mevalonate")
+        self.assertTrue(meas1.short_name == "mev")
+        self.assertTrue(meas1.full_name == "IC Mevalonate")
+        self.assertTrue(meas1.is_concentration_measurement())
+        self.assertTrue(not meas1.is_carbon_ratio())
+        self.assertTrue(meas2.is_gene_measurement())
         mdata = list(meas1.measurementdatum_set.all())
         self.assertTrue(str(mdata[0].fx) == "0.0")
         self.assertTrue(str(mdata[0].fy) == "0.0")
         self.assertTrue(str(mdata[-1].fx) == "32.0")
         self.assertTrue(mdata[-1].fy is None)
+
+    def test_measurement_extract (self) :
+        assay = Assay.objects.get(name="Assay 1")
+        meas1 = list(assay.get_metabolite_measurements())[0]
+        meas2 = list(assay.get_gene_measurements())[0]
+        xval = meas1.extract_data_xvalues()
+        self.assertTrue(xval == [0.0, 4.0, 8.0, 12.0, 18.0, 24.0, 32.0])
+        xval2 = meas1.extract_data_xvalues(defined_only=True)
+        self.assertTrue(xval2 == [0.0, 4.0, 8.0, 12.0, 18.0, 24.0])
+        xval3 = meas2.extract_data_xvalues()
+        self.assertTrue(len(xval3) == 0)
+
+    def test_measurement_interpolate (self) :
+        assay = Assay.objects.get(name="Assay 1")
+        meas1 = list(assay.get_metabolite_measurements())[0]
+        meas2 = list(assay.get_gene_measurements())[0]
+        y_interp = meas1.interpolate_at(21)
+        # XXX I hate floating-point math
+        self.assertTrue(str(y_interp) == "1.2")
+        y_interp2 = meas1.interpolate_at(25)
+        self.assertTrue(y_interp2 is None)
+        try :
+            y = meas2.interpolate_at(20)
+        except ValueError :
+            pass
+        else :
+            raise Exception("Should have caught an exception here")
 
 
 class ImportTests(TestCase) :
@@ -352,12 +425,12 @@ class ExportTests(TestCase) :
             md = meas1.measurementdatum_set.create(updated=up1, # GC-MS
                 x_units=mu1, y_units=mu2, x=x, y=y)
             md2 = meas6.measurementdatum_set.create(updated=up1, # HPLC
-                x_units=mu1, y_units=mu4, x=x, y=y)
+                x_units=mu1, y_units=mu4, x=x, y=y*1.1)
         for x, y in zip(x1, y2) : # glucose
             md = meas2.measurementdatum_set.create(updated=up1, # GC-MS
                 x_units=mu1, y_units=mu2, x=x, y=y)
             md2 = meas7.measurementdatum_set.create(updated=up1, # HPLC
-                x_units=mu1, y_units=mu4, x=x, y=y)
+                x_units=mu1, y_units=mu4, x=x, y=y*1.1)
         for x, y in zip(x1, y3) :
             md = meas3.measurementdatum_set.create(updated=up1,
                 x_units=mu1, y_units=mu2, x=x, y=y)
@@ -432,12 +505,22 @@ class ExportTests(TestCase) :
             lines=[ Line.objects.get(name="Line 1") ],
             form={},
             test_mode=True)
+        od_data = data.export_od_measurements()
+        self.assertTrue(od_data[0]['data_points'][-1]['title'] == "0.59 at 24h")
         self.assertTrue(data.n_hplc_measurements == 2)
         hplc_data = data.export_hplc_measurements()
         self.assertTrue(hplc_data[0]['assays'][0]['measurements'][0]['name'] ==
             "EC Acetate")
+        self.assertTrue(
+            hplc_data[0]['assays'][0]['measurements'][0]['n_points'] == 6)
+        dp = hplc_data[0]['assays'][0]['measurements'][0]['data_points'][2]
+        self.assertTrue(dp['title'] == "0.22 at 8h")
         self.assertTrue(data.n_lcms_measurements == 2)
+        lcms_data = data.export_lcms_measurements()
+        dp = lcms_data[0]['assays'][0]['measurements'][0]['data_points'][2]
+        self.assertTrue(dp['title'] == "0.2 at 8h")
         self.assertTrue(data.n_ramos_measurements == 0)
+        # TODO test interpolation of measurements
         # now start removing data (testing for deliberate failure)
         od = Assay.objects.get(name="OD measurement")
         odm = od.measurement_set.all()[0]
@@ -448,7 +531,7 @@ class ExportTests(TestCase) :
                 lines=[ Line.objects.get(name="Line 1") ],
                 form={},
                 test_mode=True)
-        except RuntimeError as e :
+        except ValueError as e :
             self.assertTrue("Selected Optical Data contains less than two defined data points!" in str(e))
         else :
             raise Exception("Should have caught an exception here!")
@@ -460,7 +543,7 @@ class ExportTests(TestCase) :
                 lines=[ Line.objects.get(name="Line 1") ],
                 form={},
                 test_mode=True)
-        except RuntimeError as e :
+        except ValueError as e :
             self.assertTrue("Line selection does not contain any OD600 Assays"
                             in str(e))
         else :

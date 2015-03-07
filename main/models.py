@@ -394,7 +394,7 @@ class Protocol(EDDObject):
         return '%(id)s@%(name)s' % {'id':self.pk, 'name':self.name}
 
     def __str__(self):
-        return self.protocol_name
+        return self.name
 
     def to_json (self) :
         return {
@@ -415,14 +415,13 @@ class Protocol(EDDObject):
         # Protocols, so it will probably need replacing later on.
         c = "Unknown"
         name = self.name.upper()
-        if (self.name == "OD600") :
+        if (name == "OD600") :
             return "OD"
-        elif ("HPLC" in self.name) :
+        elif ("HPLC" in name) :
             return "HPLC"
-        elif (re.match("^LC[\-\/]?", self.name) or 
-              re.match("^GC[\-\/]?", self.name)) :
+        elif (re.match("^LC[\-\/]?", name) or  re.match("^GC[\-\/]?", name)) :
             return "LCMS"
-        elif re.match("O2\W+CO2", self.name) :
+        elif re.match("O2\W+CO2", name) :
             return "RAMOS"
         elif ("TRANSCRIPTOMICS" in name) or ("PROTEOMICS" in name) :
             return "TPOMICS"
@@ -602,8 +601,8 @@ class MeasurementType(models.Model):
         return {p.type_name : p for p in cls.proteins().order_by("type_name")}
 
     @classmethod
-    def create_protein (self, type_name, short_name=None) :
-        return cls(
+    def create_protein (cls, type_name, short_name=None) :
+        return cls.objects.create(
             type_name=type_name,
             short_name=short_name,
             type_group=MeasurementGroup.PROTEINID)
@@ -626,28 +625,16 @@ class Metabolite(MeasurementType):
     def is_metabolite (self) :
         return True
 
-    @property
-    def charge_as_number (self) :
-        if (self.charge is not None) :
-            return self.charge
-        return 0
-
-    @property
-    def carbon_count_as_number (self) :
-        if (self.carbon_count is not None) :
-            return self.carbon_count
-        return 0
-
     def to_json (self) :
         return {
             "name" : self.type_name,
             "sn" : self.short_name,
             "ans" : "", # TODO alternate_names
             "f" : self.molecular_formula,
-            "mm" : self.molar_mass,
-            "cc" : self.carbon_count_as_number,
+            "mm" : float(self.molar_mass),
+            "cc" : self.carbon_count,
             "chg" : self.charge,
-            "chgn" : self.charge_as_number,
+            "chgn" : self.charge,
         }
 
 class GeneIdentifier(MeasurementType):
@@ -766,18 +753,26 @@ class Measurement(models.Model):
         return 'Measurement{%d}{%s}' % (self.assay.id, self.measurement_type)
 
     def is_gene_measurement (self) :
-      return self.measurement_type.type_group == MeasurementGroup.GENEID
+        return self.measurement_type.type_group == MeasurementGroup.GENEID
 
     def is_protein_measurement (self) :
-      return self.measurement_type.type_group == MeasurementGroup.PROTEINID
+        return self.measurement_type.type_group == MeasurementGroup.PROTEINID
 
     def is_carbon_ratio (self) :
-      return (self.measurement_format == 1)
+        return (self.measurement_format == 1)
+
+    def valid_data (self) :
+        return self.measurementdatum_set.filter(y__isnull=False)
 
     @property
     def name (self) :
         """alias for self.measurement_type.type_name"""
         return self.measurement_type.type_name
+
+    @property
+    def short_name (self) :
+        """alias for self.measurement_type.short_name"""
+        return self.measurement_type.short_name
 
     @property
     def full_name (self) :
@@ -802,6 +797,9 @@ class Measurement(models.Model):
         import numpy
         data = sorted(list(self.measurementdatum_set.filter(y__isnull=False)),
             lambda a,b: cmp(a.x, b.x))
+        if (len(data) == 0) :
+            raise ValueError("Can't interpolate because no valid "+
+              "measurement data are present.")
         xp = numpy.array([ d.fx for d in data ])
         if (not (xp[0] <= x <= xp[-1])) :
             return None

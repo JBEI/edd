@@ -1,0 +1,26 @@
+<!--
+
+Generic page for displaying user errors (as opposed to logic errors).
+
+-->
+{% extends "edd_base.html" %}
+{% load staticfiles %}
+
+{% block head_title %}
+  EDD error
+{% endblock head_title %}
+
+{% block body_title %}
+
+Error in {{ error_source }}
+
+{% endblock body_title %}
+
+{% block content %}
+
+<h2 class="bad">{{ error_message }}</h2>
+
+<p>(If you are unsure how to interpret this error message or believe it may
+be a bug, please email the informatics staff at help@jbei.org.)</p>
+
+{% endblock content %}
