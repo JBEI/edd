@@ -73,11 +73,12 @@ class sbml_data (object) :
     # to flux values.  When it comes time to embed this in the SBML, we'll
     # aggregate all the fluxes for each metabolite/timestamp and produce an
     # upper and lower bound with a sensible margin of error.
-    self.flux_data_by_metabolite = {}
+    self.processed_metabolite_data = []
+    self.flux_data_by_metabolite = defaultdict(dict)
     self.flux_data_types_available = {}
     # Here's where we accumulate values to embed in "species" (generally
     # metabolites) in the SBML
-    self.species_data_by_metabolite = {}
+    self.species_data_by_metabolite = defaultdict(dict)
     self.species_data_types_available = {}
     # This is a hash where each key is the short_name of a Metabolite Type, and
     # the value is 1, indicating that the type has data available somewhere
@@ -214,7 +215,7 @@ class sbml_data (object) :
     for m in selected_od_meas :
       xvalues = m.extract_data_xvalues(defined_only=True)
       for h in xvalues :
-        self.od_times_by_line[m.assay.line.id][h] = 1
+        self.od_times_by_line[m.assay.line.id][h] = 0
     # For each Line, we take the full set of valid timstamps,
     # then walk through each set of OD Measurements and attempt to find a value
     # for that timestamp based on the data in that Measurement.
@@ -440,14 +441,15 @@ class sbml_data (object) :
       for m in measurements :
         if self.metabolites_checked[m.id] :
           all_checked_measurements.append(m)
+    od_mtype = MeasurementType.objects.get(short_name="OD")
     all_checked_measurements.sort(lambda a,b: cmp(a.short_name, b.short_name))
     for m in all_checked_measurements :
+      mtype = m.measurement_type
       assay = m.assay
       protocol = assay.protocol
       protocol_category = protocol.categorization
       line = assay.line
       mdata_times = m.extract_data_xvalues(defined_only=True)
-      od_times = self.od_times_by_line[line.id]
       use_interpolation = True # always on for now
       # Right now we are allowing linear interpolation between two measurement
       # values, but only if there is a valid OD measurement at that exact spot.
@@ -461,95 +463,11 @@ class sbml_data (object) :
       # * Have at LEAST two measurement values for this measurement
       if (use_interpolation and (protocol_category != "OD") and
           (not m.is_carbon_ratio()) and (len(mdata_times) > 1)) :
-        # Find all the timestamps with defined measurements.
-        # Note that we're doing this outside the interpolation loops below,
-        # so we don't pollute that set with values created via interpolation.
-        # Also note that we will have to remake this array after attempting
-        # interpolation.
-        valid_mdata = list(m.valid_data())
-        valid_mdata.sort(lambda a,b: cmp(a.x, b.x))
-        mdata_tuples = [ (md.fx, md.fx) for md in valid_mdata ]
-        valid_mtimes = set([ md.fx for md in valid_mdata ])
-        # Get the set of all OD measurement timestamps that do NOT have a
-        # defined value in this measurement's data.  These are the candidate
-        # spots for interpolation.
-        for t in od_times :
-          if (not t in valid_mtimes) :
-            y = m.interpolate_at(t)
-            if (y is not None) :
-              mdata_tuples.append((t, y))
-              self.interpolated_measurement_timestamps[m.id].add(t)
-        mdata_tuples.sort(lambda a,b: cmp(a[0], b[0]))
-        is_input = self.metabolite_is_input[m.id]
-        skipped_due_to_lack_of_od = []
-        def process_md () :
-          if m.is_carbon_ratio() : # TODO
-            return
-          met = Metabolite.objects.get(id=m.measurement_type.id)
-          mdata_converted = []
-          # attempt unit conversions.  for convenience we use a simple class
-          # with 'x' and 'y' attributes, capable of handling any measurement
-          # type.
-          for (x, y) in mdata_tuples :
-            md = measurement_datum_converted_units(x=x, y=y,
-              units=m.y_axis_units_name,
-              metabolite=met,
-              is_ramos_protocol=(protocol_category=="RAMOS"))
-            mdata_converted.append(md)
-          # Now that we've done our unit conversions (or attempted them),
-          # we're going to calculate some statistics.
-          hi = max([ md.y for md in mdata_converted ])
-          lo = min([ md.y for md in mdata_converted ])
-          met_lo, met_hi = self.metabolite_stats.get(met.id, (None, None))
-          if (met_hi is None) or (met_hi < hi) : met_hi = hi
-          if (met_lo is None) or (met_lo > lo) : met_lo = low
-          self.metabolite_stats[met.id] = (met_lo, met_hi)
-          # Now, finally, we calculate fluxes and other embeddable values
-          for i_time, md in enumerate(mdata_converted) :
-            t, y = md.x, md.y
-            interpolated = t in self.interpolated_measurement_timestamps[m.id]
-            od = self.od_times_by_line[line.id].get(t, None)
-            # Got to have an OD measurements at exactly the start, currently.
-            # It's certainly possible to do fancier stuff, but we'll implement
-            # that later.
-            if (od is None) :
-              skipped_due_to_lack_of_od.append(t)
-            elif (od == 0) :
-              # TODO error message?
-              continue
-            # At this point we know we have valid OD and valid Measurements for
-            # the interval.  (Remember, we pre-filtered valid meas. times.)
-            # We'll note the time as one of the columns we will want to offer
-            # in the comprehensive export table on the webpage, even if we
-            # subsequently reject this Measurement based on problems with
-            # unit conversion or lack of an exchange element in the SBML
-            # document. (The zero in the table will be informative to the user.)
-            self.comprehensive_valid_od_mtimes[t] = 1
-            # At this point, the next higher timestamp in the list becomes
-            # necessary.  If there isn't one, we're at the end of the loop, so
-            # we silently move on.
-            if ((i_time + 1) == len(mdata_converted)) :
-              continue
-            md_next = mdata_converted[i_time+1]
-            t_next = md_next.x
-            delta_t = t_next - t
-            # This is kind of logically impossible, but, we ARE just drawing
-            # from an array, so...
-            if (delta_t == 0) :
-              continue # TODO error logging
-            # Get the OD and Measurement value for this next timestamp
-            od_next = self.od_times_by_line[line.id].get(t_next, None)
-            y_next = mdata_converted[i_time+1].y
-            units = md.units
-            # We know it's not a carbon ratio at this point, so a delta is a
-            # meaningful value to calculate.
-            # TODO
-            if (protocol_category == "OD") :
-              pass
-            elif (protocol_category in ["HPLC","LCMS","TPOMICS"]) :
-              pass
-            elif (protocol_category == "RAMOS") :
-              pass 
+        result = processed_measurement(
+          measurement=m,
+          line_od_values=self.od_times_by_line[line.id],
+          is_input=self.metabolite_is_input[m.id])
+        self.processed_metabolite_data.append(result)
 
   def _step_8_pre_parse_and_match (self) :
     """private method"""
@@ -873,29 +791,21 @@ class sbml_data (object) :
     raise NotImplementedError()
 
 #-----------------------------------------------------------------------
-# Utility functions
-def find_min_max_x_in_measurements (measurements, defined_only=None) :
-  """
-  Find the minimum and maximum X values across all data in all given
-  Measurement IDs.  If definedOnly is set, filter out all the data points that
-  have unset Y values before determining range.
-  """
-  xvalues = []
-  for m in measurements :
-    xvalues.extend(m.extract_data_xvalues(defined_only=defined_only))
-  return min(xvalues), max(xvalues)
-
+# Data container classes
+#
 class measurement_datum_converted_units (object) :
   """
   Wrapper class for measurement unit conversions.  This structure facilitates
   tracking information about what conversions were performed without adding
   even more dictionary structures to the sbml_data class.
   """
-  def __init__ (self, x, y, units, metabolite, is_ramos_measurement=False) :
+  def __init__ (self, x, y, units, metabolite, interpolated,
+      is_ramos_measurement=False) :
     self.x = x
     self.initial_value = y
     self.y = y
     self.initial_units = units
+    self.interpolated = interpolated
     if is_ramos_measurement :
       if (units == "") :
         units = "mol/L/hr"
@@ -942,3 +852,223 @@ class measurement_datum_converted_units (object) :
 
   def show_conversion (self) :
     pass
+
+  @property
+  def time (self) :
+    return self.x
+
+  @property
+  def value (self) :
+    return self.y
+
+class flux_calculation (object) :
+  """
+  Container for a computed metabolite flux at a given time interval.
+  """
+  def __init__ (self, start, end, y, delta, units, flux, interpolated) :
+    self.start = start
+    self.end = end
+    self.y = y
+    self.delta = delta
+    self.units = units
+    self.flux = flux
+    self.interpolated = interpolated
+
+  def __float__ (self) :
+    return self.flux
+
+class metabolite_data (object) :
+  """
+  Container for a set of measurements for a specific metabolite at a specific
+  time point.
+  """
+  def __init__ (self, t, metabolite_id, is_interpolated) :
+    self.t = t
+    self.id = metabolite_id
+    self.interpolated = is_inteprolated
+    self.values = []
+
+  def append (self, n) :
+    self.values.append(n)
+
+class processed_measurement (object) :
+  def __init__ (self,
+      measurement,
+      line_od_values,
+      is_input) :
+    m = measurement
+    self.measurement_id = m.id
+    self.metabolite_id = m.measurement_type.id
+    self.metabolite_name = m.measurement_type.short_name
+    self.assay_name = m.assay.name
+    self.interpolated_measurement_timestamps = set()
+    self.skipped_due_to_lack_of_od = []
+    self.data = []
+    self.intervals = []
+    self.flux_data = {}
+    # Find all the timestamps with defined measurements.
+    # Note that we're doing this outside the interpolation loops below,
+    # so we don't pollute that set with values created via interpolation.
+    # Also note that we will have to remake this array after attempting
+    # interpolation.
+    valid_mdata = list(m.valid_data())
+    valid_mdata.sort(lambda a,b: cmp(a.x, b.x))
+    mdata_tuples = [ (md.fx, md.fx) for md in valid_mdata ]
+    valid_mtimes = set([ md.fx for md in valid_mdata ])
+    # Get the set of all OD measurement timestamps that do NOT have a
+    # defined value in this measurement's data.  These are the candidate
+    # spots for interpolation.
+    od_times = sorted(line_od_values.keys())
+    for t in od_times :
+      if (not t in valid_mtimes) :
+        y = m.interpolate_at(t)
+        if (y is not None) :
+          mdata_tuples.append((t, y))
+          self.interpolated_measurement_timestamps.add(t)
+    mdata_tuples.sort(lambda a,b: cmp(a[0], b[0]))
+    def process_md () :
+      if m.is_carbon_ratio() : # TODO
+        return
+      met = Metabolite.objects.get(id=m.measurement_type.id)
+      mdata_converted = []
+      # attempt unit conversions.  for convenience we use a simple class
+      # with 'x' and 'y' attributes, capable of handling any measurement
+      # type.
+      for (x, y) in mdata_tuples :
+        md = measurement_datum_converted_units(x=x, y=y,
+          units=m.y_axis_units_name,
+          metabolite=met,
+          is_ramos_protocol=(protocol_category=="RAMOS"))
+        self.data.append(md)
+      # Now, finally, we calculate fluxes and other embeddable values
+      for i_time, md in enumerate(self.data[:-1]) :
+        t, y = md.x, md.y
+        interpolated = t in self.interpolated_measurement_timestamps[m.id]
+        od = self.od_times_by_line[line.id].get(t, None)
+        # Got to have an OD measurements at exactly the start, currently.
+        # It's certainly possible to do fancier stuff, but we'll implement
+        # that later.
+        if (od is None) :
+          self.skipped_due_to_lack_of_od.append(t)
+          continue
+        elif (od == 0) :
+          # TODO error message?
+          continue
+        # At this point we know we have valid OD and valid Measurements for
+        # the interval.  (Remember, we pre-filtered valid meas. times.)
+        # We'll note the time as one of the columns we will want to offer
+        # in the comprehensive export table on the webpage, even if we
+        # subsequently reject this Measurement based on problems with
+        # unit conversion or lack of an exchange element in the SBML
+        # document. (The zero in the table will be informative to the user.)
+        self.comprehensive_valid_od_mtimes[t] = 1
+        # At this point, the next higher timestamp in the list becomes
+        # necessary.  (The loop will only iterate up to the second-to-last.)
+        md_next = self.data[i_time+1]
+        t_end = md_next.x
+        delta_t = t_end - t
+        # This is kind of logically impossible, but, we ARE just drawing
+        # from an array, so...
+        if (delta_t == 0) :
+          continue # TODO error logging
+        # Get the OD and Measurement value for this next timestamp
+        od_next = self.od_times_by_line[line.id].get(t_end, None)
+        y_next = self.data[i_time+1].y
+        units = md.units
+        # We know it's not a carbon ratio at this point, so a delta is a
+        # meaningful value to calculate.
+        # TODO
+        delta_y = md_next.y - md.y
+        def create_flux_data_if_necessary () :
+          if (not self.flux_data.get(t)) :
+            self.flux_data[t] = metabolite_data(
+              t=md.x,
+              id=od_mtype.id,
+              is_interpolated=interpolated)
+        if (protocol_category == "OD") :
+          if (od_next is None) :
+            continue # TODO error logging
+          # Here we're going to ignore the values we've pulled via the
+          # Measurement, and use the values we already prepared in the OD
+          # dict
+          if (mtype.id == od_mtype.id) :
+            # OD is converted into exponential growth rate (units
+            # gCDW/gCDW/hr or 1/hr) by placing successive growth
+            # observations within the exponential growth formula,
+            # A1 = A0 * exp(mu * delta-t) where delta-t is the difference
+            # in time between the growth observations, A0 is the earlier
+            # OD600, and A1 is the later OD600.
+            # Rearranged, the formula looks like this:
+            exp_growth_rate = math.log(od_next / od) / delta_t
+            create_flux_data_if_necessary()
+            self.flux_data[t].append(
+              flux_calculation(
+                start=t,
+                end=t_end,
+                delta=delta_y,
+                units="OD",
+                flux=exp_growth_rate,
+                interpolated=interpolated))
+            continue
+        elif (protocol_category in ["HPLC","LCMS","TPOMICS"]) :
+          # We can assume it's in the right units by now, because if it
+          # isn't, this code would have been skipped.
+          if is_input :
+            delta_y = 0 - delta_y
+          # This math was signed off by Dan Weaver, but I'm still not
+          # entirely sure I'm doing all the other steps right
+          create_flux_data_if_necessary()
+          self.flux_data[t].append(
+            flux_calculation(
+              start=t,
+              end=t_end,
+              delta=delta_y,
+              units=md.units,
+              flux=(delta_y / delta_t) / od,
+              interpolated=interpolated))
+          continue
+        elif (protocol_category == "RAMOS") :
+          # This is already a delta, so we're not using delta_y
+          if is_input :
+            md.y = 0 - md.y
+          # This is a hack to adapt two specific metabolites from their
+          # "-produced" and "-consumed" variants to their ordinary names.
+          # It's needed here because the original variants are considered
+          # "rates", while the metabolites we're matching to are not.
+          # TODO
+          create_flux_data_if_necessary()
+          self.flux_data[t].append(
+            flux_calculation(
+              start=t,
+              end=t_end,
+              y=md.y,
+              delta=md.y,
+              units=md.units,
+              flux=md.y / od,
+              interpolated=interpolated))
+          continue
+
+  def min_max (self) :
+    hi = max([ md.y for md in self.data ])
+    lo = min([ md.y for md in self.data ])
+    return lo, hi
+
+  @property
+  def n_skipped_measurements (self) :
+    return len(self.skipped_due_to_lack_of_od)
+
+  def skipped_measurements (self) :
+    return ",".join(sorted(self.skipped_due_to_lack_of_od))
+
+#-----------------------------------------------------------------------
+# Utility functions
+def find_min_max_x_in_measurements (measurements, defined_only=None) :
+  """
+  Find the minimum and maximum X values across all data in all given
+  Measurement IDs.  If definedOnly is set, filter out all the data points that
+  have unset Y values before determining range.
+  """
+  xvalues = []
+  for m in measurements :
+    xvalues.extend(m.extract_data_xvalues(defined_only=defined_only))
+  return min(xvalues), max(xvalues)

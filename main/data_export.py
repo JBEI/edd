@@ -4,7 +4,7 @@ Functions for exporting tables of assay measurements from EDD.  Replaces most
 of the old StudyExport.cgi.
 """
 
-from main.models import Assay, Measurement
+from main.models import Assay, Line, Measurement
 from collections import defaultdict
 import re
 
@@ -104,14 +104,11 @@ def select_objects_for_export (study, user, form) :
                 "measurement")
         selected_assays = Assay.objects.filter(line__study=study,
             id__in=selected_assay_ids)
-        line_id_set = set()
-        # XXX is there a simpler way to do this?
-        for assay in selected_assays :
-            if (not assay.line.id in line_id_set) :
-                selected_lines.append(assay.line)
-                line_id_set.add(assay.line.id)
-            if (len(selected_measurement_ids) == 0) :
-                selected_measurements.extend(list(assay.measurement_set.all()))
+        selected_lines = Line.objects.filter(
+          assay__in=selected_assays).distinct()
+        if (len(selected_measurement_ids) == 0) :
+            selected_measurements = Measurement.objects.filter(
+                assay__in=selected_assays)
         if (len(selected_measurement_ids) > 0) :
             selected_measurements = Measurement.objects.filter(
                 assay__line__study=study).filter(

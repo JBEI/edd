@@ -3,7 +3,8 @@
 
 {% block js_css %}
   {{ block.super }}
-  <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.js' %}"></script>
+
+<script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.js' %}"></script>
 <script type="text/javascript" src="{% static 'main/js/Disclosure.js' %}"></script>
 <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
 <script type="text/javascript" src="{% static 'main/js/EDDEditing.js' %}"></script>
@@ -54,7 +55,7 @@ EDDData.Exchanges = {"180":{"exn":"R_L_Valine_exchange","exid":"R_EX_val_L_e_","
 <!-- Line info section -->
 <div class="pageSection">
   {% include "main/include_linetable.html" %}
-
+</div>
 
 
 <form method="post" id="exportForm" action="/study/{{ study.id }}/sbml/export">
@@ -93,7 +94,7 @@ EDDData.Exchanges = {"180":{"exn":"R_L_Valine_exchange","exid":"R_EX_val_L_e_","
 </div>
 
 
-<div class="sectionContent off" id="statusstep0main" style="font-size:12px;">
+<div class="sectionContent off" id="statusstep0main">
   <table style="width:95%">
     <tr>
       <td>
@@ -142,18 +143,14 @@ Step 2: Optical Density (OD600)
   <span style="color:blue;">&#x25BC;</span> Step 2: Find OD Data:
     <span class="neutral"> 1 Warning</span>
 </div>
-<div class="sectionContent" id="statusstep1main" style="font-size:12px;">
+<div class="sectionContent" id="statusstep1main">
   {% if not data.have_gcdw_metadata %}
   <div class="neutral">
     Cannot find the gCDW/L/OD600 metadata type by name!
     You should probably create one.
   </div>
   {% endif %}
-  <div style="border:1px solid #888;
-        margin:3px 0px;
-        border-radius:4px;
-        -webkit-border-radius:4px;
-        -moz-border-radius:4px;">
+  <div class="rounded-border">
     <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
       <tr>
         <td>Assay</td>
@@ -240,15 +237,11 @@ each measurement.
   <span class="good"></span>
 </div>
 
-<div class="sectionContent off" id="statusstep2main" style="font-size:12px;">
+<div class="sectionContent off" id="statusstep2main">
 {% if data.n_hplc_measurements %}
   {% for protocol in data.export_hplc_measurements %}
   <div>Protocol <b>{{ protocol.name }}</b></div>
-  <div style="border:1px solid #888;
-          margin:3px 0px;
-          border-radius:4px;
-          -webkit-border-radius:4px;
-          -moz-border-radius:4px;">
+  <div class="rounded-border">
     <!-- TODO make as much of this as possible more modular, and/or use JS -->
     <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
       <tr>
@@ -371,15 +364,11 @@ Step 4 (LC-MS)
   <span class="good"></span>
 </div>
 
-<div class="sectionContent off" id="statusstep3main" style="font-size:12px;">
+<div class="sectionContent off" id="statusstep3main">
 {% if data.n_lcms_measurements %}
   {% for protocol in data.export_lcms_measurements %}
   <div>Protocol <b>{{ protocol.name }}</b></div>
-  <div style="border:1px solid #888;
-          margin:3px 0px;
-          border-radius:4px;
-          -webkit-border-radius:4px;
-          -moz-border-radius:4px;">
+  <div class="rounded-border">
     <!-- TODO make as much of this as possible more modular, and/or use JS -->
     <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
       <tr>
@@ -503,8 +492,7 @@ Step 5 (RAMOS O2/CO2)
     Step 5: Select RAMOS O2/CO2 Measurements<span class="good"></span>
 </div>
 
-<div class="sectionContent off" id="statusstep4main"
-      style="font-size:12px;">
+<div class="sectionContent off" id="statusstep4main">
   {% if data.n_ramos_measurements %}
     {% if data.need_ramos_units_warning %}
   <div class="neutral">
@@ -517,11 +505,7 @@ Step 5 (RAMOS O2/CO2)
   </div>
     {% endif %}
     {% for protocol in data.export_ramos_measurements %}
-  <div style="border:1px solid #888;
-              margin:3px 0px;
-              border-radius:4px;
-              -webkit-border-radius:4px;
-              -moz-border-radius:4px;">
+  <div class="rounded-border">
     <!-- TODO make as much of this as possible more modular, and/or use JS -->
     <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
       <tr>
@@ -633,16 +617,12 @@ Step 6: transcriptomics and proteomics
     Step 5: Select Transcriptomics/Proteomics Measurements
     <span class="good"></span>
 </div>
-<div class="sectionContent off" id="statusstep5main" style="font-size:12px;">
+<div class="sectionContent off" id="statusstep5main">
 {% if data.n_trans_prot_protocols %}
   {% if data.n_trans_prot_measurements %}
     {% for protocol in data.export_trans_prot_measurements %}
   <div>Protocol <b>{{ protocol.name }}</b></div>
-  <div style="border:1px solid #888;
-          margin:3px 0px;
-          border-radius:4px;
-          -webkit-border-radius:4px;
-          -moz-border-radius:4px;">
+  <div class="rounded-border">
     <!-- TODO make as much of this as possible more modular, and/or use JS -->
     <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
       <tr>
@@ -761,27 +741,27 @@ Step 7: convert units and calculate flux values
   <span class="good"></span>
 </div>
 
-<div class="sectionContent off" id="statusstep6main" style="font-size:12px;">
+<div class="sectionContent off" id="statusstep6main">
 
 <!-- loop over metabolites -->
 {% for measurement in data.all_checked_measurements %}
-  <div class="subSectionChapter" id="FCStep1hidden" style="cursor:pointer;"
+  <div class="subSectionChapter" id="FCStep{{ forloop.counter }}hidden" style="cursor:pointer;"
       onclick="Disclose.click(this);"
-      hidethese="FCStep1hidden"
-      showthese="FCStep1shown,FCStep1main">
+      hidethese="FCStep{{ forloop.counter }}hidden"
+      showthese="FCStep{{ forloop.counter }}shown,FCStep{{ forloop.counter}} main">
     <span style="color:blue;">&#x25BA;</span>
       Metabolite <b>{{ measurement.metabolite_name }}</b> for Assay
         <b>{{ measurement.assay }}</b>:
   </div>
-  <div class="subSectionChapter off" id="FCStep1shown" style="cursor:pointer;"
+  <div class="subSectionChapter off" id="FCStep{{ forloop.counter }}shown" style="cursor:pointer;"
       onclick="Disclose.click(this);"
-      hidethese="FCStep1shown,FCStep1main"
-      showthese="FCStep1hidden">
+      hidethese="FCStep{{ forloop.counter }}shown,FCStep{{ forloop.counter}}main"
+      showthese="FCStep{{ forloop.counter }}hidden">
     <span style="color:blue;">&#x25BC;</span>
       Metabolite <b>{{ measurement.metabolite_name }}</b> for Assay
         <b>{{ measurement.assay }}</b>:
   </div>
-  <div class="subSectionContent off" id="FCStep1main" style="font-size:12px;">
+  <div class="subSectionContent off" id="FCStep{{ forloop.counter }}main">
   {% for md in measurement.data %}
     <div>
       Time <b>{{ md.time }}</b>h has a value of {{ md.value }}<b>
@@ -803,10 +783,15 @@ Step 7: convert units and calculate flux values
     </div>
     <!-- TODO error handling output -->
   {% endfor %}<!-- measurement.intervals -->
+  {% if measurement.n_skipped_measurements %}
+    Skipped measurements at times <b>{{ measurement.skipped_measurements }}</b>
+    due to lack of a corresponding OD value. If you want a good flux map at
+    time <b>t</b>, you need OD measurements for time <b>t</b>!
+  {% endif %}
   </div>
 
 {% endfor %}<!-- data.all_checked_measurements -->
-</div>
+</div><!-- statusstep6main -->
 
 
 <!--
@@ -814,25 +799,30 @@ Step 7: convert units and calculate flux values
 Step 8
 
 -->
-    </div><input type="hidden"
-        id="statusstep7show"
-        name="statusstep7show"
-        value="0"
-      /><div class="sectionChapter" id="statusstep7hidden" style="cursor:pointer;"
+<input type="hidden"
+    id="statusstep7show"
+    name="statusstep7show"
+    value="0"/>
+
+<div class="sectionChapter" id="statusstep7hidden" style="cursor:pointer;"
         onclick="Disclose.click(this);trackShown('statusstep7show', 1);"
         hidethese="statusstep7hidden"
         showthese="statusstep7shown,statusstep7main">
-      <span style="color:blue;">&#x25BA;</span> Step 8: Pre-parse SBML model and match exchanges and species to measurements<span class="good"></span>
-    </div>
-    <div class="sectionChapter off" id="statusstep7shown" style="cursor:pointer;"
+  <span style="color:blue;">&#x25BA;</span>
+    Step 8: Pre-parse SBML model and match exchanges and species to
+    measurements<span class="good"></span>
+</div>
+<div class="sectionChapter off" id="statusstep7shown" style="cursor:pointer;"
         onclick="Disclose.click(this);trackShown('statusstep7show', 0);"
         hidethese="statusstep7shown,statusstep7main"
         showthese="statusstep7hidden">
-      <span style="color:blue;">&#x25BC;</span> Step 8: Pre-parse SBML model and match exchanges and species to measurements<span class="good"></span>
-    </div>
-    <div class="sectionContent off" id="statusstep7main"
-      style="font-size:12px;">
-      <div class="subSectionChapter" id="SMBLSNParseStephidden" style="cursor:pointer;"
+  <span style="color:blue;">&#x25BC;</span>
+    Step 8: Pre-parse SBML model and match exchanges and species to measurements
+    <span class="good"></span>
+</div>
+
+<div class="sectionContent off" id="statusstep7main">
+  <div class="subSectionChapter" id="SMBLSNParseStephidden" style="cursor:pointer;"
         onclick="Disclose.click(this);"
         hidethese="SMBLSNParseStephidden"
         showthese="SMBLSNParseStepshown,SMBLSNParseStepmain">
@@ -846,8 +836,7 @@ Step 8
       <span style="color:blue;">&#x25BC;</span> Detected <b>906</b> species,
     and parsed <b>0</b> species notes sections.
     </div>
-    <div class="subSectionContent off" id="SMBLSNParseStepmain"
-      style="font-size:12px;">
+    <div class="subSectionContent off" id="SMBLSNParseStepmain">
       <p>Parsing all species and species notes ... ... finished.</p><ul><b>Key:</b><li><span class="bad">D</span> There appears to be more than one species
         declared with this ID!  Only the first encountered with valid notes will be used.</li>
       <li><span class="good">#</span> Notes were found and # data sections were parsed in the notes.</li>
@@ -866,8 +855,7 @@ Step 8
       <span style="color:blue;">&#x25BC;</span> Detected <b>1077</b> reactions,
     and parsed <b>1077</b> reaction notes sections.
     </div>
-    <div class="subSectionContent off" id="SMBLRNParseStepmain"
-      style="font-size:12px;">
+    <div class="subSectionContent off" id="SMBLRNParseStepmain">
       <p>Parsing all reaction notes ...
       <!-- Loop over reaction notes -->
       {% for reaction_note in reaction_notes %}
@@ -910,8 +898,7 @@ Step 8
         showthese="SMBLRParseStephidden">
       <span style="color:blue;">&#x25BC;</span> Number of exchanges detected in this model: <b>{{ data.n_exchanges }}</b>
     </div>
-    <div class="subSectionContent off" id="SMBLRParseStepmain"
-      style="font-size:12px;">
+    <div class="subSectionContent off" id="SMBLRParseStepmain">
       <p>Testing all reactions ...
       <!-- Loop over exchanges -->
       {% for ex in data.exchanges %}
@@ -983,8 +970,7 @@ Step 8
             <b>99</b> were resolved to exchanges in this model and
             <b>592</b> were not.
     </div>
-    <div class="subSectionContent off" id="SMBLResolveStepmain"
-      style="font-size:12px;">
+    <div class="subSectionContent off" id="SMBLResolveStepmain">
 
       {% for mt_res in data.measurement_type_resolution %}
         {% if not mt_res.species and not mt_res.exchange %}
@@ -1029,8 +1015,7 @@ Step 8
             <b>{{ data.n_exchanges_resolved }}</b> were resolved and
             <b>{{ data.n_exchanges_not_resolved }}</b> were not.
     </div>
-    <div class="subSectionContent off" id="SMBLReverseResolveStepmain"
-      style="font-size:12px;">
+    <div class="subSectionContent off" id="SMBLReverseResolveStepmain">
       {% for rex in data.unresolved_exchanges %}
       <div class="neutral">Reactant <b>{{ rex.reactant }}</b>
                   / exchange <b>{{ rex.exchange }}</b>
@@ -1043,13 +1028,7 @@ Step 8
 <p><b>Metabolomics:</b>
   Matching available metabolite measurements to species defined in the SBML model...</p>
 
-    <div style="display:inline-block;
-              border:1px solid #888;
-              margin:3px 4px;
-              padding:0px 1px 2px 1px;
-              border-radius:4px;
-              -webkit-border-radius:4px;
-              -moz-border-radius:4px;">
+    <div class="rounded-border" style="display:inline-block;"><!-- margin? -->
           <table class="dataTable" cellspacing="0">
             <tr>
               <td>Metabolite Type</td>
@@ -1083,13 +1062,11 @@ Step 8
         <input type="hidden" name="speciesmatchelements" value="{{ species_match_elements }}"/>
       </div>
 
-  <p><b>Fluxomics:</b> Matching available fluxes to reactants/exchanges defined in the SBML model...</p><div style="display:inline-block;
-              border:1px solid #888;
-              margin:3px 4px;
-              padding:0px 1px 2px 1px;
-              border-radius:4px;
-              -webkit-border-radius:4px;
-              -moz-border-radius:4px;">
+  <p>
+    <b>Fluxomics:</b> Matching available fluxes to reactants/exchanges
+      defined in the SBML model...
+  </p>
+  <div class="rounded-border" style="display:inline-block;">
           <table class="dataTable" cellspacing="0">
             <tr>
               <td>Metabolite Type</td>
@@ -1141,7 +1118,7 @@ Downloads section
 <div class="pageSection" style="width:90%;">
   <div class="sectionHead">SBML Data Downloads</div>
 
-  <div class="sectionContent" style="font-size:12px;">The following table
+  <div class="sectionContent">The following table
     provides links to SBML files prepared for Flux Balance Analysis,
     one file for each usable timestamp.  The numbers in the table indicate
     the number of usable items that are embedded in each file.

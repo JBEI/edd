@@ -298,6 +298,9 @@ div.pageSection div.sectionContent div.subSectionContent {
 	margin:0px 0px 0px 4px;
 	padding:0px 8px 3px 16px;
 }
+div.subSectionContent {
+  font-size: 12px;
+}
 /* A section meant for the bottom of page sections,
    with form elements representing actions you can take on content in above sections */
 div.pageSection div.sectionActions {
@@ -1347,6 +1350,14 @@ dl.infolist > dt {
 }
 dl.infolist > dd {
     margin: 0.5em 0;
+}
+
+.rounded-border {
+  border:1px solid #888;
+  margin:3px 0px;
+  border-radius:4px;
+  -webkit-border-radius:4px;
+  -moz-border-radius:4px;
 }
 
 /* End of common styles */
