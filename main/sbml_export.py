@@ -3,7 +3,7 @@
 Backend for exporting SBML files.
 """
 
-from main.models import MetabolicMap, Protocol, MeasurementType
+from main.models import MetabolicMap, Protocol, MeasurementType, Metabolite
 from collections import defaultdict
 import sys
 
@@ -73,7 +73,7 @@ class sbml_data (object) :
     # to flux values.  When it comes time to embed this in the SBML, we'll
     # aggregate all the fluxes for each metabolite/timestamp and produce an
     # upper and lower bound with a sensible margin of error.
-    self.processed_metabolite_data = []
+    self._processed_metabolite_data = []
     self.flux_data_by_metabolite = defaultdict(dict)
     self.flux_data_types_available = {}
     # Here's where we accumulate values to embed in "species" (generally
@@ -441,13 +441,11 @@ class sbml_data (object) :
       for m in measurements :
         if self.metabolites_checked[m.id] :
           all_checked_measurements.append(m)
-    od_mtype = MeasurementType.objects.get(short_name="OD")
     all_checked_measurements.sort(lambda a,b: cmp(a.short_name, b.short_name))
     for m in all_checked_measurements :
       mtype = m.measurement_type
       assay = m.assay
-      protocol = assay.protocol
-      protocol_category = protocol.categorization
+      protocol_category = assay.protocol.categorization
       line = assay.line
       mdata_times = m.extract_data_xvalues(defined_only=True)
       use_interpolation = True # always on for now
@@ -465,9 +463,10 @@ class sbml_data (object) :
           (not m.is_carbon_ratio()) and (len(mdata_times) > 1)) :
         result = processed_measurement(
           measurement=m,
+          protocol_category=protocol_category,
           line_od_values=self.od_times_by_line[line.id],
           is_input=self.metabolite_is_input[m.id])
-        self.processed_metabolite_data.append(result)
+        self._processed_metabolite_data.append(result)
 
   def _step_8_pre_parse_and_match (self) :
     """private method"""
@@ -673,8 +672,15 @@ class sbml_data (object) :
   def export_trans_prot_measurements (self) :
     return self._export_protocol_measurements("TPOMICS")
 
-  def all_checked_measurements (self) :
-    return []
+  def n_conversion_warnings (self) :
+    n = 0
+    for m in self._processed_metabolite_data :
+      if m.n_errors :
+        n += 1
+    return n
+
+  def processed_measurements (self) :
+    return self._processed_metabolite_data
 
   def reaction_notes (self) :
     """
@@ -800,13 +806,13 @@ class measurement_datum_converted_units (object) :
   even more dictionary structures to the sbml_data class.
   """
   def __init__ (self, x, y, units, metabolite, interpolated,
-      is_ramos_measurement=False) :
+      protocol_category):
     self.x = x
     self.initial_value = y
     self.y = y
     self.initial_units = units
     self.interpolated = interpolated
-    if is_ramos_measurement :
+    if (protocol_category == "RAMOS") :
       if (units == "") :
         units = "mol/L/hr"
       if (units != "mol/L/hr") :
@@ -885,7 +891,7 @@ class metabolite_data (object) :
   def __init__ (self, t, metabolite_id, is_interpolated) :
     self.t = t
     self.id = metabolite_id
-    self.interpolated = is_inteprolated
+    self.interpolated = is_interpolated
     self.values = []
 
   def append (self, n) :
@@ -894,9 +900,11 @@ class metabolite_data (object) :
 class processed_measurement (object) :
   def __init__ (self,
       measurement,
+      protocol_category,
       line_od_values,
       is_input) :
     m = measurement
+    self.protocol_category = protocol_category
     self.measurement_id = m.id
     self.metabolite_id = m.measurement_type.id
     self.metabolite_name = m.measurement_type.short_name
@@ -906,6 +914,9 @@ class processed_measurement (object) :
     self.data = []
     self.intervals = []
     self.flux_data = {}
+    self.errors = []
+    self.warnings = []
+    self.valid_od_mtimes = set()
     # Find all the timestamps with defined measurements.
     # Note that we're doing this outside the interpolation loops below,
     # so we don't pollute that set with values created via interpolation.
@@ -926,6 +937,7 @@ class processed_measurement (object) :
           mdata_tuples.append((t, y))
           self.interpolated_measurement_timestamps.add(t)
     mdata_tuples.sort(lambda a,b: cmp(a[0], b[0]))
+    od_mtype = MeasurementType.objects.get(short_name="OD")
     def process_md () :
       if m.is_carbon_ratio() : # TODO
         return
@@ -938,13 +950,13 @@ class processed_measurement (object) :
         md = measurement_datum_converted_units(x=x, y=y,
           units=m.y_axis_units_name,
           metabolite=met,
-          is_ramos_protocol=(protocol_category=="RAMOS"))
+          interpolated=(x in self.interpolated_measurement_timestamps),
+          protocol_category=protocol_category)
         self.data.append(md)
       # Now, finally, we calculate fluxes and other embeddable values
       for i_time, md in enumerate(self.data[:-1]) :
         t, y = md.x, md.y
-        interpolated = t in self.interpolated_measurement_timestamps[m.id]
-        od = self.od_times_by_line[line.id].get(t, None)
+        od = line_od_values.get(t, None)
         # Got to have an OD measurements at exactly the start, currently.
         # It's certainly possible to do fancier stuff, but we'll implement
         # that later.
@@ -953,6 +965,8 @@ class processed_measurement (object) :
           continue
         elif (od == 0) :
           # TODO error message?
+          self.warnings.append("Start OD of 0 means nothing physically "+
+            "present  (and a potential division-by-zero error).  Skipping...")
           continue
         # At this point we know we have valid OD and valid Measurements for
         # the interval.  (Remember, we pre-filtered valid meas. times.)
@@ -961,7 +975,7 @@ class processed_measurement (object) :
         # subsequently reject this Measurement based on problems with
         # unit conversion or lack of an exchange element in the SBML
         # document. (The zero in the table will be informative to the user.)
-        self.comprehensive_valid_od_mtimes[t] = 1
+        self.valid_od_mtimes.add(t)
         # At this point, the next higher timestamp in the list becomes
         # necessary.  (The loop will only iterate up to the second-to-last.)
         md_next = self.data[i_time+1]
@@ -970,9 +984,11 @@ class processed_measurement (object) :
         # This is kind of logically impossible, but, we ARE just drawing
         # from an array, so...
         if (delta_t == 0) :
-          continue # TODO error logging
+          self.warnings.append("No zero-width intervals due to duplicate "+
+            "measurements, please!  Skipping...")
+          continue
         # Get the OD and Measurement value for this next timestamp
-        od_next = self.od_times_by_line[line.id].get(t_end, None)
+        od_next = line_od_values.get(t_end, None)
         y_next = self.data[i_time+1].y
         units = md.units
         # We know it's not a carbon ratio at this point, so a delta is a
@@ -983,11 +999,14 @@ class processed_measurement (object) :
           if (not self.flux_data.get(t)) :
             self.flux_data[t] = metabolite_data(
               t=md.x,
-              id=od_mtype.id,
-              is_interpolated=interpolated)
+              metabolite_id=od_mtype.id,
+              is_interpolated=md.interpolated)
         if (protocol_category == "OD") :
           if (od_next is None) :
-            continue # TODO error logging
+            self.warnings.append(("No OD measurement was found at the next "+
+              "interval, timestamp <b>%g</b>.  Can\'t calculate a growth "+
+              "rate at time <b>%g</b>!") % (t_end, t))
+            continue
           # Here we're going to ignore the values we've pulled via the
           # Measurement, and use the values we already prepared in the OD
           # dict
@@ -1005,10 +1024,11 @@ class processed_measurement (object) :
               flux_calculation(
                 start=t,
                 end=t_end,
+                y=md.y,
                 delta=delta_y,
                 units="OD",
                 flux=exp_growth_rate,
-                interpolated=interpolated))
+                interpolated=md.interpolated))
             continue
         elif (protocol_category in ["HPLC","LCMS","TPOMICS"]) :
           # We can assume it's in the right units by now, because if it
@@ -1022,10 +1042,11 @@ class processed_measurement (object) :
             flux_calculation(
               start=t,
               end=t_end,
+              y=md.y,
               delta=delta_y,
               units=md.units,
               flux=(delta_y / delta_t) / od,
-              interpolated=interpolated))
+              interpolated=md.interpolated))
           continue
         elif (protocol_category == "RAMOS") :
           # This is already a delta, so we're not using delta_y
@@ -1045,8 +1066,20 @@ class processed_measurement (object) :
               delta=md.y,
               units=md.units,
               flux=md.y / od,
-              interpolated=interpolated))
+              interpolated=md.interpolated))
           continue
+    try :
+      process_md()
+    except ValueError as e :
+      self.errors.append(str(e))
+
+  @property
+  def n_errors (self) :
+    return len(self.errors)
+
+  @property
+  def n_warnings (self) :
+    return len(self.warnings)
 
   def min_max (self) :
     hi = max([ md.y for md in self.data ])

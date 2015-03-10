@@ -126,7 +126,9 @@ a:hover {
     color:blue;
     content: '▼';
 }
-
+.discloseLink {
+    cursor:pointer;
+}
 
 /* Top banner styling */
 div.topBanner {

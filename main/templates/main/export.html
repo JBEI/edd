@@ -3,8 +3,7 @@
 
 {% block js_css %}
   {{ block.super }}
-  <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.js' %}"></script>
-<script type="text/javascript" src="{% static 'main/js/Disclosure.js' %}"></script>
+<script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.js' %}"></script>
 <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
 <script type="text/javascript" src="{% static 'main/js/EDDEditing.js' %}"></script>
 <script type="text/javascript">
@@ -12,6 +11,14 @@
 EDDData = { }; // Declaring the object for later use
 
 EDDData.currentUserID = {{ user.pk }};
+
+function disclose() {
+  $(this).closest('.disclose').toggleClass('discloseHide');
+  return false;
+}
+$(document).ready(function () {
+  $('.disclose').find('a.discloseLink').on('click', disclose);
+});
 
 //]]>
 </script>
@@ -33,26 +40,16 @@ EDDData.currentUserID = {{ user.pk }};
 <h3 style="color: #ff0000; font-weight: bold">{{ error_message }}</h3>
 
 {% else %}
-<p style="font-size:10pt;cursor:pointer;color:#44D;padding:0px;margin:6px 4px 4px 6px;font-weight:bold;"
-   id="existinglineshide"
-   onclick="Disclose.click(this);"
-   hidethese="existinglineshide"
-   showthese="existinglinesshow,existingLinesSection">
-  <span style="color:blue;">&#x25BA;</span>
-    {{ n_meas }} Measurements in {{ n_assays }} Assays in {{ n_lines }} Lines Selected
-  </p>
-  <p style="font-size:10pt;cursor:pointer;color:#44D;padding:0px;margin:6px 4px 4px 6px;font-weight:bold;"
-     class="off"
-     id="existinglinesshow"
-     onclick="Disclose.click(this);"
-     hidethese="existinglinesshow,existingLinesSection"
-     showthese="existinglineshide">
-    <span style="color:blue;">&#x25BC;</span>
-    {{ n_meas }} Measurements in {{ n_assays }} Assays in {{ n_lines }} Lines Selected
-  </p>
-  <div id="existingLinesSection" class="pageSection off" style="border-width:1px;margin:10px;">  
+<div class="disclose discloseHide" id="existinglineshide">
+  <div style="margin:10px">
+    <a href="#" class="discloseLink">
+      {{ n_meas }} Measurements in {{ n_assays }} Assays in {{ n_lines }} Lines Selected
+    </a>
+  </div>
+  <div id="existingLinesSection" class="pageSection discloseBody" style="border-width:1px;margin:10px;">  
     {% include "main/include_linetable.html" %}
   </div>
+</div>
 
 
 <!-- start of main form -->
@@ -65,33 +62,29 @@ EDDData.currentUserID = {{ user.pk }};
 
 <ul style="font-size:13px;list-style-type:none;">
 <li>
+  <div class="disclose discloseHide" id="exampleHide">
   A table of <b>metadata and Lines</b>, with
   <select name="dlayouttype" id="dlayoutp">
-    <option value="dbyl" >columns of metadata types, and rows of Line names</option>
-        <option value="dbya" >columns of metadata types, and rows of single measurements</option>
-    <option value="lbyd" >columns of Line names, and rows of metadata types</option>
+    <option value="dbyl" >
+      columns of metadata types, and rows of Line names
+    </option>
+    <option value="dbya" >
+      columns of metadata types, and rows of single measurements
+    </option>
+    <option value="lbyd" >
+      columns of Line names, and rows of metadata types
+    </option>
   </select>
-  <span style="font-size:12px;"
-     id="dlayoutpexamplehide"
-     onclick="Disclose.click(this);"
-     hidethese="dlayoutpexamplehide"
-     showthese="dlayoutpexampleshow,dlayoutexample">
-    <a href="#"><span style="color:blue;">&#x25BA;</span> Example</a>
-  </span>
-  <span style="font-size:12px;"
-     class="off"
-     id="dlayoutpexampleshow"
-     onclick="Disclose.click(this);"
-     hidethese="dlayoutpexampleshow,dlayoutexample"
-     showthese="dlayoutpexamplehide">
-    <a href="#"><span style="color:blue;">&#x25BC;</span> Example</a>
-  </span>
-  <div class="off" id="dlayoutexample" style="color:#44D;font-size:12px;">
-    <p>Example:</p>
-    <IMG SRC="{% static 'main/images/excel_example-d.png' %}" style="border:2px solid #44D;padding:5px;">
-    <p>The data will be for multiple Lines, providing values for multiple kinds of metadata.
-      Depending on the options you choose, the first row will become a set of metadata types,
-      and the first column will become a set of Line names, or vice-versa.</P>
+    <a href="#" class="discloseLink">Example</a>
+    <div class="discloseBody" style="color:#44D;font-size:12px;">
+      <img SRC="{% static 'main/images/excel_example-d.png' %}" style="border:2px solid #44D;padding:5px;">
+      <p>
+        The data will be for multiple Lines, providing values for multiple
+        kinds of metadata.  Depending on the options you choose, the first row
+        will become a set of metadata types, and the first column will become a
+        set of Line names, or vice-versa.
+      </p>
+    </div>
   </div>
 </li>
 </ul>

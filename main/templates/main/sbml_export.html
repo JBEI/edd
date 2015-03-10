@@ -5,7 +5,6 @@
   {{ block.super }}
 
 <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.js' %}"></script>
-<script type="text/javascript" src="{% static 'main/js/Disclosure.js' %}"></script>
 <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
 <script type="text/javascript" src="{% static 'main/js/EDDEditing.js' %}"></script>
 
@@ -20,6 +19,14 @@ EDDData.Species = {"602":{"spn":"M_D_Mannose_1_phosphate_C6H11O9P","cp":"man1p",
 
 EDDData.ExchangeIDs = [];
 EDDData.Exchanges = {"180":{"exn":"R_L_Valine_exchange","exid":"R_EX_val_L_e_","rid":"M_val_L_e","cp":""},"133":{"exn":"R_D_Mannose_6_phosphate_exchange","rid":"M_man6p_e","exid":"R_EX_man6p_e_","cp":"man6p"}};
+
+function disclose() {
+  $(this).closest('.disclose').toggleClass('discloseHide');
+  return false;
+}
+$(window).load(function () {
+  $('.disclose').find('a.discloseLink').on('click', disclose);
+});
 
 </script>
 <script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
@@ -75,26 +82,14 @@ EDDData.Exchanges = {"180":{"exn":"R_L_Valine_exchange","exid":"R_EX_val_L_e_","
   id="statusstep0show"
   name="statusstep0show"
   value="0"/>
-<div class="sectionChapter" id="statusstep0hidden" style="cursor:pointer;"
-  onclick="Disclose.click(this);trackShown('statusstep0show', 1);"
-  hidethese="statusstep0hidden"
-  showthese="statusstep0shown,statusstep0main">
-  <span style="color:blue;">&#x25BA;</span>
-    Step 1: Select the SBML template file to use for export
-    <span class="good"></span>
-</div>
+<div class="disclose discloseHide" id="step0">
+  <div class="sectionChapter">
+    <a href="#" class="discloseLink">
+      Step 1: Select the SBML template file to use for export
+    </a>
+  </div>
 
-<div class="sectionChapter off" id="statusstep0shown" style="cursor:pointer;"
-    onclick="Disclose.click(this);trackShown('statusstep0show', 0);"
-    hidethese="statusstep0shown,statusstep0main"
-    showthese="statusstep0hidden">
-  <span style="color:blue;">&#x25BC;</span>
-    Step 1: Select the SBML template file to use for export
-    <span class="good"></span>
-</div>
-
-
-<div class="sectionContent off" id="statusstep0main">
+<div class="sectionContent discloseBody" id="statusstep0main">
   <table style="width:95%">
     <tr>
       <td>
@@ -119,6 +114,7 @@ EDDData.Exchanges = {"180":{"exn":"R_L_Valine_exchange","exid":"R_EX_val_L_e_","
     </tr>
   </table>
 </div>
+</div><!-- #step0 -->
 
 <!--
 
@@ -129,82 +125,79 @@ Step 2: Optical Density (OD600)
       id="statusstep1show"
       name="statusstep1show"
       value="0"/>
-<div class="sectionChapter off" id="statusstep1hidden" style="cursor:pointer;"
-    onclick="Disclose.click(this);trackShown('statusstep1show', 1);"
-    hidethese="statusstep1hidden"
-    showthese="statusstep1shown,statusstep1main">
-  <span style="color:blue;">&#x25BA;</span> Step 2: Find OD Data:
+<div class="disclose discloseHide" id="step1">
+  <div class="sectionChapter">
+    <span class="discloseLink">
+      <a href="#">Step 2: Find OD Data:</a>
+    </span>
+    <!-- TODO warnings
     <span class="neutral"> 1 Warning</span>
-</div>
-<div class="sectionChapter" id="statusstep1shown" style="cursor:pointer;"
-    onclick="Disclose.click(this);trackShown('statusstep1show', 0);"
-    hidethese="statusstep1shown,statusstep1main"
-    showthese="statusstep1hidden">
-  <span style="color:blue;">&#x25BC;</span> Step 2: Find OD Data:
-    <span class="neutral"> 1 Warning</span>
-</div>
-<div class="sectionContent" id="statusstep1main">
+    -->
+  </div>
+
+<div class="sectionContent discloseBody" id="statusstep1main">
   {% if not data.have_gcdw_metadata %}
-  <div class="neutral">
-    Cannot find the gCDW/L/OD600 metadata type by name!
-    You should probably create one.
-  </div>
+    <div class="neutral">
+      Cannot find the gCDW/L/OD600 metadata type by name!
+      You should probably create one.
+    </div>
   {% endif %}
-  <div class="rounded-border">
-    <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
-      <tr>
-        <td>Assay</td>
-        <td colspan="2">Measurement</td>
-        <td></td>
-        <td colspan="2"></td>
-      </tr>
-      {% for measurement in data.export_od_measurements %}
-      <tr>
-        <td class="nowrap">
-          {{ measurement.assay_name }}
-        </td>
-        <td class="nowrap popupcell">
-          <input type="checkbox"
-              name="measurement{{ measurement.id }}include"
-              id="measurement{{ measurement.id }}include"
-              checked="checked"
-              value="{{ measurement.id }}"/>Optical Density
-        </td>
-        <td class="nowrap" style="text-align:right;">
-        </td>
-        <td></td>
-        <td style="text-align:right;width:30px;">
-          {{ measurement.n_points }}
-        </td>
-        <td style="padding:3px 2px 0px 2px;width:60%;">
-          <svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"
-              version="1.2" width="100%" height="10px" viewBox="0 0 470 10">
-            <path fill="rgba(0,0,0,0.0.05)"
-              stroke="rgba(0,0,0,0.05)"
-              d="M10,5h450"
-              style="stroke-width:2px;"
-              stroke-width="2"></path>
-          {% for md in measurement.data_points %}
-            <path class="cP" d="M{{ md.rx }},1v8">
-              <title>{{ md.title }}</title>
-            </path>
-          {% endfor %}
-          </svg>
-        </td>
-      </tr>
-      {% endfor %}<!-- measurements -->
-    </table>
-  </div>
+    <div class="rounded-border">
+      <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
+        <tr>
+          <td>Assay</td>
+          <td colspan="2">Measurement</td>
+          <td></td>
+          <td colspan="2"></td>
+        </tr>
+    {% for measurement in data.export_od_measurements %}
+        <tr>
+          <td class="nowrap">
+            {{ measurement.assay_name }}
+          </td>
+          <td class="nowrap popupcell">
+            <input type="checkbox"
+                name="measurement{{ measurement.id }}include"
+                id="measurement{{ measurement.id }}include"
+                checked="checked"
+                value="{{ measurement.id }}"/>Optical Density
+          </td>
+          <td class="nowrap" style="text-align:right;">
+          </td>
+          <td></td>
+          <td style="text-align:right;width:30px;">
+            {{ measurement.n_points }}
+          </td>
+          <td style="padding:3px 2px 0px 2px;width:60%;">
+            <svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"
+                version="1.2" width="100%" height="10px" viewBox="0 0 470 10">
+              <path fill="rgba(0,0,0,0.0.05)"
+                stroke="rgba(0,0,0,0.05)"
+                d="M10,5h450"
+                style="stroke-width:2px;"
+                stroke-width="2"></path>
+        {% for md in measurement.data_points %}
+              <path class="cP" d="M{{ md.rx }},1v8">
+                <title>{{ md.title }}</title>
+              </path>
+        {% endfor %}
+            </svg>
+          </td>
+        </tr>
+    {% endfor %}<!-- measurements -->
+      </table>
+    </div>
   {% if data.used_generic_GCDW_in_assays %}
     <div class="neutral">OD600 measurements need a calibration factor to be
-      converted into gCDW/L.  You can add this as metadata, at the Assay or
-      Line level.  For now, the EDD is using the default gCDW/L/OD600 value
-      of <b>0.65</b> for {{ data.used_generic_GCDW_in_assays }} of your
-      selected Measurements.</div>
+        converted into gCDW/L.  You can add this as metadata, at the Assay or
+        Line level.  For now, the EDD is using the default gCDW/L/OD600 value
+        of <b>0.65</b> for {{ data.used_generic_GCDW_in_assays }} of your
+        selected Measurements.</div>
   {% endif %}
-  <div>Located and consolidated useful Optical Data for
-    {{ data.n_lines_with_useful_od }} Lines.</div>
-</div>
+    <div>Located and consolidated useful Optical Data for
+      {{ data.n_lines_with_useful_od }} Lines.</div>
+  </div>
+</div><!-- #step1 -->
 
 <!--
 
@@ -220,24 +213,17 @@ each measurement.
     name="statusstep2show"
     value="0"/>
 
-<div class="sectionChapter" id="statusstep2hidden" style="cursor:pointer;"
-      onclick="Disclose.click(this);trackShown('statusstep2show', 1);"
-      hidethese="statusstep2hidden"
-      showthese="statusstep2shown,statusstep2main">
-    <span style="color:blue;">&#x25BA;</span>
-      Step 3: Select HPLC-like Measurements, and inputs
-    <span class="good"></span>
-</div>
-<div class="sectionChapter off" id="statusstep2shown" style="cursor:pointer;"
-    onclick="Disclose.click(this);trackShown('statusstep2show', 0);"
-    hidethese="statusstep2shown,statusstep2main"
-    showthese="statusstep2hidden">
-  <span style="color:blue;">&#x25BC;</span>
-    Step 3: Select HPLC-like Measurements, and inputs
-  <span class="good"></span>
-</div>
+<div class="disclose discloseHide" id="step2">
+  <div class="sectionChapter">
+    <span class="discloseLink">
+      <a href="#">
+        Step 3: Select HPLC-like Measurements, and inputs
+      </a>
+    </span>
+    <!-- TODO warnings -->
+  </div>
 
-<div class="sectionContent off" id="statusstep2main">
+<div class="sectionContent discloseBody" id="statusstep2main">
 {% if data.n_hplc_measurements %}
   {% for protocol in data.export_hplc_measurements %}
   <div>Protocol <b>{{ protocol.name }}</b></div>
@@ -331,8 +317,8 @@ each measurement.
   <div class="neutral">Cannot find any Protocols with "HPLC" in the name!</div>
 {% endif %}<!-- if data.n_usable_hplc_protocols -->
 
-</div><!-- statusstep2main -->
-
+</div><!-- #statusstep2main -->
+</div><!-- #step3 -->
 
 <!--
 
@@ -347,24 +333,17 @@ Step 4 (LC-MS)
       name="statusstep3show"
       value="0"/>
 
-<div class="sectionChapter" id="statusstep3hidden" style="cursor:pointer;"
-      onclick="Disclose.click(this);trackShown('statusstep3show', 1);"
-      hidethese="statusstep3hidden"
-      showthese="statusstep3shown,statusstep3main">
-  <span style="color:blue;">&#x25BA;</span>
+<div class="disclose discloseHide" id="step3">
+  <div class="sectionChapter">
+    <span class="discloseLink">
+      <a href="#">
   Step 4: Select LCMS-like Measurements, and inputs
-  <span class="good"></span>
-</div>
-<div class="sectionChapter off" id="statusstep3shown" style="cursor:pointer;"
-      onclick="Disclose.click(this);trackShown('statusstep3show', 0);"
-      hidethese="statusstep3shown,statusstep3main"
-      showthese="statusstep3hidden">
-  <span style="color:blue;">&#x25BC;</span>
-    Step 4: Select LCMS-like Measurements, and inputs
-  <span class="good"></span>
-</div>
+      </a>
+    </span>
+    <!-- TODO warnings -->
+  </div>
 
-<div class="sectionContent off" id="statusstep3main">
+<div class="sectionContent discloseBody" id="statusstep3main">
 {% if data.n_lcms_measurements %}
   {% for protocol in data.export_lcms_measurements %}
   <div>Protocol <b>{{ protocol.name }}</b></div>
@@ -463,7 +442,7 @@ Step 4 (LC-MS)
 {% endif %}<!-- data.n_usable_lcms_measurements -->
 
 </div>
-
+</div><!-- #step3 -->
 
 <!--
 
@@ -476,23 +455,17 @@ Step 5 (RAMOS O2/CO2)
         name="statusstep4show"
         value="0"/>
 
-<div class="sectionChapter" id="statusstep4hidden" style="cursor:pointer;"
-        onclick="Disclose.click(this);trackShown('statusstep4show', 1);"
-        hidethese="statusstep4hidden"
-        showthese="statusstep4shown,statusstep4main">
-  <span style="color:blue;">&#x25BA;</span>
-    Step 5: Select RAMOS O2/CO2 Measurements<span class="good"></span>
-</div>
+<div class="disclose discloseHide" id="step4">
+  <div class="sectionChapter">
+    <span class="discloseLink">
+      <a href="#">
+        Step 5: Select RAMOS O2/CO2 Measurements
+      </a>
+    </span>
+    <!-- TODO warnings -->
+  </div>
 
-<div class="sectionChapter off" id="statusstep4shown" style="cursor:pointer;"
-        onclick="Disclose.click(this);trackShown('statusstep4show', 0);"
-        hidethese="statusstep4shown,statusstep4main"
-        showthese="statusstep4hidden">
-      <span style="color:blue;">&#x25BC;</span>
-    Step 5: Select RAMOS O2/CO2 Measurements<span class="good"></span>
-</div>
-
-<div class="sectionContent off" id="statusstep4main">
+<div class="sectionContent discloseBody" id="statusstep4main">
   {% if data.n_ramos_measurements %}
     {% if data.need_ramos_units_warning %}
   <div class="neutral">
@@ -588,7 +561,7 @@ Step 5 (RAMOS O2/CO2)
     </div>
   {% endif %}
 </div>
-
+</div><!-- #step4 -->
 
 <!--
 
@@ -601,23 +574,17 @@ Step 6: transcriptomics and proteomics
         name="statusstep5show"
         value="0"/>
 
-<div class="sectionChapter" id="statusstep5hidden" style="cursor:pointer;"
-      onclick="Disclose.click(this);trackShown('statusstep5show', 1);"
-      hidethese="statusstep5hidden"
-      showthese="statusstep5shown,statusstep5main">
-  <span style="color:blue;">&#x25BA;</span>
-    Step 5: Select Transcriptomics/Proteomics Measurements
-  <span class="good"></span>
-</div>
-<div class="sectionChapter off" id="statusstep5shown" style="cursor:pointer;"
-      onclick="Disclose.click(this);trackShown('statusstep5show', 0);"
-      hidethese="statusstep5shown,statusstep5main"
-      showthese="statusstep5hidden">
-  <span style="color:blue;">&#x25BC;</span>
-    Step 5: Select Transcriptomics/Proteomics Measurements
-    <span class="good"></span>
-</div>
-<div class="sectionContent off" id="statusstep5main">
+<div class="disclose discloseHide" id="step5">
+  <div class="sectionChapter">
+    <span class="discloseLink">
+      <a href="#">
+        Step 5: Select Transcriptomics/Proteomics Measurements
+      </a>
+    </span>
+    <!-- TODO warnings -->
+  </div>
+
+<div class="sectionContent discloseBody" id="statusstep5main">
 {% if data.n_trans_prot_protocols %}
   {% if data.n_trans_prot_measurements %}
     {% for protocol in data.export_trans_prot_measurements %}
@@ -712,7 +679,7 @@ Step 6: transcriptomics and proteomics
   </div>
 {% endif %}
 </div>
-
+</div><!-- #step5 -->
 
 <!--
 
@@ -724,75 +691,76 @@ Step 7: convert units and calculate flux values
        id="statusstep6show"
        name="statusstep6show"
        value="0"/>
-<div class="sectionChapter" id="statusstep6hidden" style="cursor:pointer;"
-        onclick="Disclose.click(this);trackShown('statusstep6show', 1);"
-        hidethese="statusstep6hidden"
-        showthese="statusstep6shown,statusstep6main">
-  <span style="color:blue;">&#x25BA;</span>
-    Step 7: Convert units and calculate all selected flux values
-  <span class="good"></span>
-</div>
-<div class="sectionChapter off" id="statusstep6shown" style="cursor:pointer;"
-     onclick="Disclose.click(this);trackShown('statusstep6show', 0);"
-     hidethese="statusstep6shown,statusstep6main"
-     showthese="statusstep6hidden">
-  <span style="color:blue;">&#x25BC;</span>
-    Step 7: Convert units and calculate all selected flux values
-  <span class="good"></span>
-</div>
 
-<div class="sectionContent off" id="statusstep6main">
+<div class="disclose discloseHide" id="step6">
+  <div class="sectionChapter">
+    <span class="discloseLink">
+      <a href="#">
+        Step 7: Convert units and calculate all selected flux values
+      </a>
+    </span>
+{% with n_warnings = data.n_conversion_warnings %}
+  {% if n_warnings > 1 %}
+    <span class="neutral">{{ n_warnings }} warnings</span>
+  {% elif n_warnings == 1 %}
+    <span class="neutral">{{ n_warnings }} warning</span>
+  {% endif %}
+{% endwith %}
+  </div>
+
+<div class="sectionContent discloseBody" id="statusstep6main">
 
 <!-- loop over metabolites -->
 {% for measurement in data.all_checked_measurements %}
-  <div class="subSectionChapter" id="FCStep{{ forloop.counter }}hidden" style="cursor:pointer;"
-      onclick="Disclose.click(this);"
-      hidethese="FCStep{{ forloop.counter }}hidden"
-      showthese="FCStep{{ forloop.counter }}shown,FCStep{{ forloop.counter}} main">
-    <span style="color:blue;">&#x25BA;</span>
-      Metabolite <b>{{ measurement.metabolite_name }}</b> for Assay
-        <b>{{ measurement.assay }}</b>:
-  </div>
-  <div class="subSectionChapter off" id="FCStep{{ forloop.counter }}shown" style="cursor:pointer;"
-      onclick="Disclose.click(this);"
-      hidethese="FCStep{{ forloop.counter }}shown,FCStep{{ forloop.counter}}main"
-      showthese="FCStep{{ forloop.counter }}hidden">
-    <span style="color:blue;">&#x25BC;</span>
-      Metabolite <b>{{ measurement.metabolite_name }}</b> for Assay
-        <b>{{ measurement.assay }}</b>:
-  </div>
-  <div class="subSectionContent off" id="FCStep{{ forloop.counter }}main">
-  {% for md in measurement.data %}
-    <div>
-      Time <b>{{ md.time }}</b>h has a value of {{ md.value }}<b>
-        {{ md.units }}</b>.
-    {% if md.interpolated %}
+  <div class="disclose discloseHide" id="FCStep{{ forloop.counter }}">
+    <div class="sectionChapter">
+      <span class="discloseLink">
+        <a href="#">
+        Metabolite <b>{{ measurement.metabolite_name }}</b> for Assay
+          <b>{{ measurement.assay }}</b>:
+        </a>
+      </span>
+    </div>
+  {% if measurement.n_errors %}
+    {% for msg in measurement.errors %}
+    <span class="neutral">{{ msg }}</span>
+    {% endfor %}
+  {% else %}
+    <div class="subSectionContent discloseBody"
+         id="FCStep{{ forloop.counter }}main">
+    {% for md in measurement.data %}
+      <div>
+        Time <b>{{ md.time }}</b>h has a value of {{ md.value }}<b>
+          {{ md.units }}</b>.
+      {% if md.interpolated %}
+          <span class="neutral">(Interpolated.)</span>
+      {% endif %}
+      </div>
+    {% endfor %}<!-- measurement.data -->
+    {% for interval in measurement.flux_data %}
+      <div>Interval <b>{{ interval.start }}</b> to <b>{{ interval.end }}</b>
+            has delta of <b>{{ interval.delta }}</b>{{ interval.units }}.
+      </div>
+      <div>
+        Calculated Flux: {{ interval.flux_eqn }} = <b>{{ interval.flux }}</b>
+      {% if interval.interpolated %}
         <span class="neutral">(Interpolated.)</span>
+      {% endif %}
+      </div>
+      <!-- TODO error handling output -->
+    {% endfor %}<!-- measurement.intervals -->
+    {% if measurement.n_skipped_measurements %}
+      Skipped measurements at times <b>{{ measurement.skipped_measurements }}
+      </b>due to lack of a corresponding OD value. If you want a good flux
+      map at time <b>t</b>, you need OD measurements for time <b>t</b>!
     {% endif %}
     </div>
-  {% endfor %}<!-- measurement.data -->
-  {% for interval in measurement.intervals %}
-    <div>Interval <b>{{ interval.start }}</b> to <b>{{ interval.end }}</b>
-          has delta of <b>{{ interval.delta }}</b>{{ interval.units }}.
-    </div>
-    <div>
-      Calculated Flux: {{ interval.flux_eqn }} = <b>{{ interval.flux }}</b>
-    {% if interval.interpolated %}
-      <span class="neutral">(Interpolated.)</span>
-    {% endif %}
-    </div>
-    <!-- TODO error handling output -->
-  {% endfor %}<!-- measurement.intervals -->
-  {% if measurement.n_skipped_measurements %}
-    Skipped measurements at times <b>{{ measurement.skipped_measurements }}</b>
-    due to lack of a corresponding OD value. If you want a good flux map at
-    time <b>t</b>, you need OD measurements for time <b>t</b>!
-  {% endif %}
-  </div>
+  </div><!-- #FCStepX -->
+  {% endif %}<!-- measurement.n_errors -->
 
 {% endfor %}<!-- data.all_checked_measurements -->
-</div><!-- statusstep6main -->
-
+</div><!-- #statusstep6main -->
+</div><!-- #step6 -->
 
 <!--
 
@@ -804,58 +772,45 @@ Step 8
     name="statusstep7show"
     value="0"/>
 
-<div class="sectionChapter" id="statusstep7hidden" style="cursor:pointer;"
-        onclick="Disclose.click(this);trackShown('statusstep7show', 1);"
-        hidethese="statusstep7hidden"
-        showthese="statusstep7shown,statusstep7main">
-  <span style="color:blue;">&#x25BA;</span>
-    Step 8: Pre-parse SBML model and match exchanges and species to
-    measurements<span class="good"></span>
-</div>
-<div class="sectionChapter off" id="statusstep7shown" style="cursor:pointer;"
-        onclick="Disclose.click(this);trackShown('statusstep7show', 0);"
-        hidethese="statusstep7shown,statusstep7main"
-        showthese="statusstep7hidden">
-  <span style="color:blue;">&#x25BC;</span>
-    Step 8: Pre-parse SBML model and match exchanges and species to measurements
-    <span class="good"></span>
-</div>
+<div class="disclose discloseHide" id="step7">
+  <div class="sectionChapter">
+    <span class="discloseLink">
+      <a href="#">
+        Step 8: Pre-parse SBML model and match exchanges and species to
+        measurements
+      </a>
+    </span>
+    <!-- TODO warnings -->
+  </div>
 
-<div class="sectionContent off" id="statusstep7main">
-  <div class="subSectionChapter" id="SMBLSNParseStephidden" style="cursor:pointer;"
-        onclick="Disclose.click(this);"
-        hidethese="SMBLSNParseStephidden"
-        showthese="SMBLSNParseStepshown,SMBLSNParseStepmain">
-      <span style="color:blue;">&#x25BA;</span> Detected <b>906</b> species,
-    and parsed <b>0</b> species notes sections.
+<div class="sectionContent discloseBody" id="statusstep7main">
+
+  <div class="disclose discloseHide" id="SMBLSNParseStephidden">
+    <div class="subSectionChapter">
+      <span class="discloseLink"><a href="#">
+        Detected <b>906</b> species, and parsed <b>0</b> species notes sections.
+      </a></span>
     </div>
-    <div class="subSectionChapter off" id="SMBLSNParseStepshown" style="cursor:pointer;"
-        onclick="Disclose.click(this);"
-        hidethese="SMBLSNParseStepshown,SMBLSNParseStepmain"
-        showthese="SMBLSNParseStephidden">
-      <span style="color:blue;">&#x25BC;</span> Detected <b>906</b> species,
-    and parsed <b>0</b> species notes sections.
+    <div class="subSectionContent discloseBody" id="SMBLSNParseStepmain">
+      <p>Parsing all species and species notes ... ... finished.</p>
+      <ul>
+        <b>Key:</b>
+        <li><span class="bad">D</span> There appears to be more than one
+          species declared with this ID!  Only the first encountered with
+          valid notes will be used.</li>
+        <li><span class="good">#</span> Notes were found and # data sections
+          were parsed in the notes.</li>
+      </ul>
     </div>
-    <div class="subSectionContent off" id="SMBLSNParseStepmain">
-      <p>Parsing all species and species notes ... ... finished.</p><ul><b>Key:</b><li><span class="bad">D</span> There appears to be more than one species
-        declared with this ID!  Only the first encountered with valid notes will be used.</li>
-      <li><span class="good">#</span> Notes were found and # data sections were parsed in the notes.</li>
-    </ul>
-    </div><div class="subSectionChapter" id="SMBLRNParseStephidden" style="cursor:pointer;"
-        onclick="Disclose.click(this);"
-        hidethese="SMBLRNParseStephidden"
-        showthese="SMBLRNParseStepshown,SMBLRNParseStepmain">
-      <span style="color:blue;">&#x25BA;</span> Detected <b>1077</b> reactions,
-    and parsed <b>1077</b> reaction notes sections.
+  </div>
+  <div class="disclose discloseHide" id="SMBLRNParseStephidden">
+    <div class="subSectionChapter">
+      <span class="discloseLink"><a href="#">
+        Detected <b>1077</b> reactions, and parsed <b>1077</b> reaction notes
+        sections.
+      </a></span>
     </div>
-    <div class="subSectionChapter off" id="SMBLRNParseStepshown" style="cursor:pointer;"
-        onclick="Disclose.click(this);"
-        hidethese="SMBLRNParseStepshown,SMBLRNParseStepmain"
-        showthese="SMBLRNParseStephidden">
-      <span style="color:blue;">&#x25BC;</span> Detected <b>1077</b> reactions,
-    and parsed <b>1077</b> reaction notes sections.
-    </div>
-    <div class="subSectionContent off" id="SMBLRNParseStepmain">
+    <div class="subSectionContent discloseBody" id="SMBLRNParseStepmain">
       <p>Parsing all reaction notes ...
       <!-- Loop over reaction notes -->
       {% for reaction_note in reaction_notes %}
@@ -864,21 +819,23 @@ Step 8
       {% endfor %}
       <!-- end loop -->
       ... finished.</p>
-    <ul><b>Key:</b>
-      <li><span class="bad">D</span> There appears to be more than one reaction
-        declared with this ID!  Only the first encountered with valid notes
-        will be used.</li>
-      <li><span class="good">#</span> Notes were found and # data sections were parsed in the notes.</li>
-    </ul>
-    <p><b>Count of each note type detected:</b>
-      <ul>
-        <li>SUBSYSTEM : {{ data.n_subsystem_notes }}</li>
-        <li>PROTEIN_ASSOCIATION : {{ data.n_protein_notes }}</li>
-        <li>GENE_ASSOCIATION : {{ data.n_gene_notes }}</li>
-        <li>PROTEIN_CLASS : {{ data.n_protein_class_notes }}</li>
+      <ul><b>Key:</b>
+        <li><span class="bad">D</span> There appears to be more than one
+          reaction declared with this ID!  Only the first encountered with
+          valid notes will be used.</li>
+        <li><span class="good">#</span> Notes were found and # data sections
+          were parsed in the notes.</li>
       </ul>
-    </p>
+      <p><b>Count of each note type detected:</b>
+        <ul>
+          <li>SUBSYSTEM : {{ data.n_subsystem_notes }}</li>
+          <li>PROTEIN_ASSOCIATION : {{ data.n_protein_notes }}</li>
+          <li>GENE_ASSOCIATION : {{ data.n_gene_notes }}</li>
+          <li>PROTEIN_CLASS : {{ data.n_protein_class_notes }}</li>
+        </ul>
+      </p>
     </div>
+  </div>
 
   <div class="subSectionChapter">Detected associations for
     {{ data.n_gene_associations }} different genes,
@@ -886,19 +843,15 @@ Step 8
   <div class="subSectionChapter">Detected associations for
     {{ data.n_protein_associations }} different proteins,
       from notes in {{ data.n_protein_assoc_reactions }} reactions.</div>
-  <div class="subSectionChapter" id="SMBLRParseStephidden" style="cursor:pointer;"
-        onclick="Disclose.click(this);"
-        hidethese="SMBLRParseStephidden"
-        showthese="SMBLRParseStepshown,SMBLRParseStepmain">
-      <span style="color:blue;">&#x25BA;</span> Number of exchanges detected in this model: <b>{{ data.n_exchanges }}</b>
+
+  <div class="disclose discloseHide" id="SMBLRParseStep">
+    <div class="subSectionChapter">
+      <span class="discloseLink"><a href="#">
+        Number of exchanges detected in this model: <b>
+        {{ data.n_exchanges }}</b>
+      </a></span>
     </div>
-    <div class="subSectionChapter off" id="SMBLRParseStepshown" style="cursor:pointer;"
-        onclick="Disclose.click(this);"
-        hidethese="SMBLRParseStepshown,SMBLRParseStepmain"
-        showthese="SMBLRParseStephidden">
-      <span style="color:blue;">&#x25BC;</span> Number of exchanges detected in this model: <b>{{ data.n_exchanges }}</b>
-    </div>
-    <div class="subSectionContent off" id="SMBLRParseStepmain">
+    <div class="subSectionContent discloseBody" id="SMBLRParseStepmain">
       <p>Testing all reactions ...
       <!-- Loop over exchanges -->
       {% for ex in data.exchanges %}
@@ -920,57 +873,46 @@ Step 8
        ... finished.</p>
 
 
-
-    <ul><b>Key:</b>
-      <li><span class="bad">#Rs</span>
-        Wrong # of reactants detected - there must be exactly one.</li>
-      <li><span class="bad">#St</span>
-        Bad stoichiometry.  The single reactant must be exactly 1 unit of the
-        metabolite, not #.  (No fractional exchange allowed.)</li>
-      <li><span class="bad">!KN</span>
-        The reaction has no kinetic law declared inside it.</li>
-      <li><span class="bad">!LB</span>
-        The kinetic law has no LOWER_BOUND parameter declared.</li>
-      <li><span class="bad">!UB</span>
-        The kinetic law has no UPPER_BOUND parameter declared.</li>
-      <li><span class="bad">!LB#</span>
-        The LOWER_BOUND parameter has no default value declared.
-        (Possible structural issue with the SBML model.)</li>
-      <li><span class="bad">!UB#</span>
-        The UPPER_BOUND parameter has no default value declared.
-        (Possible structural issue with the SBML model.)</li>
-      <li><span class="bad">D:X</span>
-        There appears to be more than one exchange reaction declared for this
-        reactant!  Only the first encountered will be used.</li>
-      <li><span class="good">LB:#</span>
-        The exchange reaction has a valid LOWER_BOUND parameter set to #.</li>
-      <li><span class="good">UB:#</span>
-        The exchange reaction has a valid UPPER_BOUND parameter set to #.</li>
-    </ul>
+      <ul><b>Key:</b>
+        <li><span class="bad">#Rs</span>
+          Wrong # of reactants detected - there must be exactly one.</li>
+        <li><span class="bad">#St</span>
+          Bad stoichiometry.  The single reactant must be exactly 1 unit of the
+          metabolite, not #.  (No fractional exchange allowed.)</li>
+        <li><span class="bad">!KN</span>
+          The reaction has no kinetic law declared inside it.</li>
+        <li><span class="bad">!LB</span>
+          The kinetic law has no LOWER_BOUND parameter declared.</li>
+        <li><span class="bad">!UB</span>
+          The kinetic law has no UPPER_BOUND parameter declared.</li>
+        <li><span class="bad">!LB#</span>
+          The LOWER_BOUND parameter has no default value declared.
+          (Possible structural issue with the SBML model.)</li>
+        <li><span class="bad">!UB#</span>
+          The UPPER_BOUND parameter has no default value declared.
+          (Possible structural issue with the SBML model.)</li>
+        <li><span class="bad">D:X</span>
+          There appears to be more than one exchange reaction declared for this
+          reactant!  Only the first encountered will be used.</li>
+        <li><span class="good">LB:#</span>
+          The exchange reaction has a valid LOWER_BOUND parameter set to #.</li>
+        <li><span class="good">UB:#</span>
+          The exchange reaction has a valid UPPER_BOUND parameter set to #.</li>
+      </ul>
+    </div>
   </div>
 
-  <div class="subSectionChapter" id="SMBLResolveStephidden" style="cursor:pointer;"
-        onclick="Disclose.click(this);"
-        hidethese="SMBLResolveStephidden"
-        showthese="SMBLResolveStepshown,SMBLResolveStepmain">
-      <span style="color:blue;">&#x25BA;</span>
+  <div class="disclose discloseHide" id="SMBLResolveStep">
+    <div class="subSectionChapter">
+      <span class="discloseLink"><a href="#">
         Of <b>{{ data.n_measurement_types }}</b> measurement types in the EDD,
             <b>545</b> were resolved to species in this model and
             <b>146</b> were not, and
             <b>99</b> were resolved to exchanges in this model and
             <b>592</b> were not.
-    </div>
-    <div class="subSectionChapter off" id="SMBLResolveStepshown" style="cursor:pointer;"
-        onclick="Disclose.click(this);"
-        hidethese="SMBLResolveStepshown,SMBLResolveStepmain"
-        showthese="SMBLResolveStephidden">
-      <span style="color:blue;">&#x25BC;</span> Of <b>691</b> measurement types in the EDD,
-            <b>545</b> were resolved to species in this model and
-            <b>146</b> were not, and
-            <b>99</b> were resolved to exchanges in this model and
-            <b>592</b> were not.
-    </div>
-    <div class="subSectionContent off" id="SMBLResolveStepmain">
+        </a></span>
+      </div>
+    <div class="subSectionContent discloseBody" id="SMBLResolveStepmain">
 
       {% for mt_res in data.measurement_type_resolution %}
         {% if not mt_res.species and not mt_res.exchange %}
@@ -995,35 +937,26 @@ Step 8
         {% endif %}
       {% endfor %}
     </div>
+  </div>
 
-
-  <div class="subSectionChapter" id="SMBLReverseResolveStephidden" style="cursor:pointer;"
-        onclick="Disclose.click(this);"
-        hidethese="SMBLReverseResolveStephidden"
-        showthese="SMBLReverseResolveStepshown,SMBLReverseResolveStepmain">
-      <span style="color:blue;">&#x25BA;</span>
+  <div class="disclose discloseHide" id="SMBLResolveStep">
+    <div class="subSectionChapter">
+      <span class="discloseLink"><a href="#">
         Of <b>{{ data.n_exchanges }}</b> total detected exchanges in this model,
             <b>{{ data.n_exchanges_resolved }}</b> were resolved and
             <b>{{ data.n_exchanges_not_resolved }}</b> were not.
+      </a></span>
     </div>
-    <div class="subSectionChapter off" id="SMBLReverseResolveStepshown" style="cursor:pointer;"
-        onclick="Disclose.click(this);"
-        hidethese="SMBLReverseResolveStepshown,SMBLReverseResolveStepmain"
-        showthese="SMBLReverseResolveStephidden">
-      <span style="color:blue;">&#x25BC;</span>
-        Of <b>{{ data.n_exchanges }}</b> total detected exchanges in this model,
-            <b>{{ data.n_exchanges_resolved }}</b> were resolved and
-            <b>{{ data.n_exchanges_not_resolved }}</b> were not.
-    </div>
-    <div class="subSectionContent off" id="SMBLReverseResolveStepmain">
+    <div class="subSectionContent discloseBody" id="SMBLReverseResolveStepmain">
       {% for rex in data.unresolved_exchanges %}
       <div class="neutral">Reactant <b>{{ rex.reactant }}</b>
                   / exchange <b>{{ rex.exchange }}</b>
                   was not successfully used for resolving.</div>
       {% endfor %}
     </div>
+  </div>
 
-<input  class="off" type="text" size="5" name="fordebugpurposes" id="fordebugpurposes" value="" />
+<input class="off" type="text" size="5" name="fordebugpurposes" id="fordebugpurposes" value="" />
 
 <p><b>Metabolomics:</b>
   Matching available metabolite measurements to species defined in the SBML model...</p>
@@ -1185,3 +1118,5 @@ Downloads section
   <input type="hidden" name="timestamp" id="downloadtimestamp" value="" />
 </div>
 </form>
+
+{% endblock content %}

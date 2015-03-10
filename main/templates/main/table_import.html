@@ -17,7 +17,6 @@ POSTed query:
     {{ block.super }}
   <link rel="stylesheet" type="text/css" href="{% static 'main/import.css' %}" />
     <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/Disclosure.js' %}"></script>
 
     <script type="text/javascript" src="{% static 'main/js/EDDEditing.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
@@ -39,8 +38,14 @@ var EDDData = { }; // this needs to be declared before loading Autocomplete.js!
 EDDData.currentUserID = {{ user.pk }};
 var atdata_url = "/study/{{ study.id }}/assaydata";
 
+function disclose() {
+  $(this).closest('.disclose').toggleClass('discloseHide');
+  return false;
+}
+
 // Populate ATData and EDDData objects via AJAX calls
 $(window).load(function () {
+    $('.disclose').find('a.discloseLink').on('click', disclose);
     jQuery.ajax(atdata_url, {
         "success" : function (data, textStatus, response) {
             ATData = data.ATData;
@@ -96,127 +101,105 @@ $(window).load(function () {
 <div class="sectionHead">Step 1 : Specify the kind of data you wish to import.</div>
 
 <div class="sectionContent" style="padding:0em 0em 3px 0em;">
-<ul style="font-size:13px;list-style-type:none;">
-<li>
-  <input type="radio" name="datalayout" value="std" id="stdlayout" checked="checked" />
-  <label for="stdlayout">
-    A <b>table of data</b>, with Lines, Assays, measurements, and/or metadata.
-  </label>
-  <span style="font-size:12px;"
-     id="stdlayoutpexamplehide"
-     onclick="Disclose.click(this);"
-     hidethese="stdlayoutpexamplehide"
-     showthese="stdlayoutpexampleshow,stdlayoutexample">
-    <a href="#"><span style="color:blue;">&#x25BA;</span> Examples</a>
-  </span>
-  <span style="font-size:12px;"
-     class="off"
-     id="stdlayoutpexampleshow"
-     onclick="Disclose.click(this);"
-     hidethese="stdlayoutpexampleshow,stdlayoutexample"
-     showthese="stdlayoutpexamplehide">
-    <a href="#"><span style="color:blue;">&#x25BC;</span> Examples</a>
-  </span>
-  <div class="off" id="stdlayoutexample" style="color:#44D;font-size:12px;margin-left:1.2em;">
-    <p>Example 1:</p>
-    <img src="{% static 'main/images/excel_example-a.png' %}" style="border:none;padding:5px;">
-    <p>Here is a sequence of metabolites measured at different times.
-      To import this, you would paste it into the Step 2 box.  The EDD automatically flips
-      the axes and detects the presence of a time sequence and measurement names,
-      and sets the pulldowns in Step 3 like so:</p>
-    <img src="{% static 'main/images/excel_example-a-settings.png' %}" style="border:none;padding:5px;">
-      <p>Then in Step 4, you would select the Line and Assay where the data will be imported.</p>
-    <p>Example 2:</p>
-    <img src="{% static 'main/images/excel_example-b.png' %}" style="border:none;padding:5px;">
-    <p>Here is a sequence of measurements for multiple metabolites across different Lines.
-      The EDD will recognize the metabolites, but might not recognize the top row as Line names,
-      in which case the pulldowns will start out looking like this:</p>
-    <img src="{% static 'main/images/excel_example-b-settings.png' %}" style="border:none;padding:5px;">
-    <p>If you set the first pulldown to "Assay/Line Names", you can proceed to link the items with existing Lines or Assays in
-      Step 4 before submitting the data.</p>
-  </div>
-</li>
-<li>
-  <input type="radio" name="datalayout" value="tr" id="trlayout" />
-  <label for="trlayout">
-    <b>Gene transcription</b> data, as a table of RPKM values.
-  </label>
-  <span style="font-size:12px;"
-     id="trlayoutpexamplehide"
-     onclick="Disclose.click(this);"
-     hidethese="trlayoutpexamplehide"
-     showthese="trlayoutpexampleshow,trlayoutexample">
-    <a href="#"><span style="color:blue;">&#x25BA;</span> Example</a>
-  </span>
-  <span style="font-size:12px;"
-     class="off"
-     id="trlayoutpexampleshow"
-     onclick="Disclose.click(this);"
-     hidethese="trlayoutpexampleshow,trlayoutexample"
-     showthese="trlayoutpexamplehide">
-    <a href="#"><span style="color:blue;">&#x25BC;</span> Example</a>
-  </span>
-  <div class="off" id="trlayoutexample" style="color:#44D;font-size:12px;margin-left:1.2em;">
-    <img src="{% static 'main/images/transcription_example.png' %}" style="border:none;padding:5px;">
-    <p>In this typical example of gene transcription data, the only two columns that the EDD
-      actually cares about are the gene name, and the RPKM value, highlighted in green.</p>
-    <p>After you paste your document in, you'll need to tell the EDD where to find these columns.</p>
-  </div>
-</li>
-<li>
-  <input type="radio" name="datalayout" value="pr" id="prlayout" />
-  <label for="prlayout">
-    <b>Proteomics</b> data, as a table of protein names and measurements.
-  </label>
-  <span style="font-size:12px;"
-     id="prlayoutpexamplehide"
-     onclick="Disclose.click(this);"
-     hidethese="prlayoutpexamplehide"
-     showthese="prlayoutpexampleshow,prlayoutexample">
-    <a href="#"><span style="color:blue;">&#x25BA;</span> Example</a>
-  </span>
-  <span style="font-size:12px;"
-     class="off"
-     id="prlayoutpexampleshow"
-     onclick="Disclose.click(this);"
-     hidethese="prlayoutpexampleshow,prlayoutexample"
-     showthese="prlayoutpexamplehide">
-    <a href="#"><span style="color:blue;">&#x25BC;</span> Example</a>
-  </span>
-  <div class="off" id="prlayoutexample" style="color:#44D;font-size:12px;margin-left:1.2em;">
-    <img src="{% static 'main/images/proteomics_example.png' %}" style="border:none;padding:5px;">
-    <p>In this example of proteomics data, the columns represent protein names,
-      and the rows represent Line or Assay names.</p>
-  </div>
-</li>
-<li>
-  <input type="radio" name="datalayout" value="mdv" id="mdvlayout" />
-  <label for="mdvlayout">
-    A JBEI <b>Mass Distribution Vector</b> document
-  </label>
-  <span style="font-size:12px;"
-     id="mdvlayoutpexamplehide"
-     onclick="Disclose.click(this);"
-     hidethese="mdvlayoutpexamplehide"
-     showthese="mdvlayoutpexampleshow,mdvlayoutexample">
-    <a href="#"><span style="color:blue;">&#x25BA;</span> Example</a>
-  </span>
-  <span style="font-size:12px;"
-     class="off"
-     id="mdvlayoutpexampleshow"
-     onclick="Disclose.click(this);"
-     hidethese="mdvlayoutpexampleshow,mdvlayoutexample"
-     showthese="mdvlayoutpexamplehide">
-    <a href="#"><span style="color:blue;">&#x25BC;</span> Example</a>
-  </span>
-  <div class="off" id="mdvlayoutexample" style="color:#44D;font-size:12px;margin-left:1.2em;">
-    <p>Example:</p>
-    <img src="{% static 'main/images/excel_example-jbei_mdv.png' %}" style="border:none;padding:5px;">
-    <p>The data will be for a single Line.  Multiple Assays will be created automatically in the selected Protocol,
-      with each Assay holding the carbon ratio data from a different column of the document.</p>
-    <p>Make sure you select the whole table, including the headers along the top, when you copy your data to the clipboard.</p>
-  </div>
-</li>
+  <ul style="font-size:13px;list-style-type:none;">
+    <li>
+      <div class="disclose discloseHide">
+        <input type="radio" name="datalayout" value="std" id="stdlayout"
+             checked="checked" />
+        <label for="stdlayout">
+          A <b>table of data</b>, with Lines, Assays, measurements,
+          and/or metadata.
+        </label>
+        <a class="discloseLink" href="#">Examples</a>
+        <div class="discloseBody" id="stdlayoutexample"
+          style="color:#44D;font-size:12px;margin-left:1.2em;">
+          <p>Example 1:</p>
+          <img src="{% static 'main/images/excel_example-a.png' %}"
+               style="border:none;padding:5px;"/>
+          <p>Here is a sequence of metabolites measured at different times.
+            To import this, you would paste it into the Step 2 box.  The EDD
+            automatically flips the axes and detects the presence of a time
+            sequence and measurement names,
+            and sets the pulldowns in Step 3 like so:</p>
+          <img src="{% static 'main/images/excel_example-a-settings.png' %}"
+               style="border:none;padding:5px;"/>
+          <p>Then in Step 4, you would select the Line and Assay where the
+            data will be imported.</p>
+          <p>Example 2:</p>
+          <img src="{% static 'main/images/excel_example-b.png' %}"
+               style="border:none;padding:5px;"/>
+          <p>Here is a sequence of measurements for multiple metabolites across
+            different Lines.  The EDD will recognize the metabolites, but
+            might not recognize the top row as Line names,
+            in which case the pulldowns will start out looking like this:</p>
+          <img src="{% static 'main/images/excel_example-b-settings.png' %}"
+               style="border:none;padding:5px;">
+          <p>If you set the first pulldown to "Assay/Line Names", you can
+            proceed to link the items with existing Lines or Assays in
+            Step 4 before submitting the data.</p>
+        </div>
+      </div>
+    </li>
+
+    <li>
+      <div class="disclose discloseHide">
+        <input type="radio" name="datalayout" value="tr" id="trlayout" />
+        <label for="trlayout">
+          <b>Gene transcription</b> data, as a table of RPKM values.
+        </label>
+        <span><a class="discloseLink" href="#">Example</a></span>
+        <div class="discloseBody" id="trlayoutexample"
+             style="color:#44D;font-size:12px;margin-left:1.2em;">
+          <img src="{% static 'main/images/transcription_example.png' %}"
+               style="border:none;padding:5px;">
+          <p>In this typical example of gene transcription data, the only two
+            columns that the EDD actually cares about are the gene name, and
+            the RPKM value, highlighted in green.</p>
+          <p>After you paste your document in, you'll need to tell the EDD
+            where to find these columns.</p>
+        </div><!-- .discloseBody -->
+      </div><!-- .disclose -->
+    </li>
+
+    <li>
+      <div class="disclose discloseHide">
+        <input type="radio" name="datalayout" value="pr" id="prlayout" />
+        <label for="prlayout">
+          <b>Proteomics</b> data, as a table of protein names and measurements.
+        </label>
+        <span><a class="discloseLink" href="#">Example</a></span>
+        <div class="discloseBody" id="prlayoutexample"
+             style="color:#44D;font-size:12px;margin-left:1.2em;">
+          <img src="{% static 'main/images/proteomics_example.png' %}"
+               style="border:none;padding:5px;">
+          <p>In this example of proteomics data, the columns represent
+              protein names, and the rows represent Line or Assay names.</p>
+        </div>
+      </div>
+    </li>
+
+    <li>
+      <div class="disclose discloseHide">
+        <input type="radio" name="datalayout" value="mdv" id="mdvlayout" />
+        <label for="mdvlayout">
+          A JBEI <b>Mass Distribution Vector</b> document
+        </label>
+        <span><a class="discloseLink" href="#">Example</a></span>
+        <div class="discloseBody" id="mdvlayoutexample"
+             style="color:#44D;font-size:12px;margin-left:1.2em;">
+          <p>Example:</p>
+          <img src="{% static 'main/images/excel_example-jbei_mdv.png' %}"
+               style="border:none;padding:5px;">
+          <p>The data will be for a single Line.  Multiple Assays will be
+              created automatically in the selected Protocol,
+              with each Assay holding the carbon ratio data from a different
+              column of the document.</p>
+          <p>Make sure you select the whole table, including the headers
+              along the top, when you copy your data to the clipboard.</p>
+        </div>
+      </div>
+    </li>
+
 </ul>
 </div>
 
