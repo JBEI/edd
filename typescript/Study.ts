@@ -1003,6 +1003,7 @@ module StudyD {
 
         this.assaysDataGridSpecs = {};
         this.assaysDataGrids = {};
+        console.log("Initialized assaysDataGrids to empty object");
 
         $('.disclose').find('.discloseLink').on('click', (e) => {
             $(e.target).closest('.disclose').toggleClass('discloseHide');
@@ -1017,42 +1018,26 @@ module StudyD {
             },
             'success': (data) => {
                 EDDData = $.extend(EDDData || {}, data);
-                
-                //// Moved following into callback
-                
-                StudyD.prepareFilteringSection();
-        
+                this.prepareFilteringSection();
                 // Instantiate a table specification for the Lines table
                 this.linesDataGridSpec = new DataGridSpecLines();
                 // Instantiate the table itself with the spec
                 this.linesDataGrid = new DataGrid(this.linesDataGridSpec);
-        
                 // Find out which protocols have assays with measurements - disabled or no
                 var protocolsWithMeasurements:any = {};
-                for (var assayID in EDDData.Assays) {
-                    var assayRecord = EDDData.Assays[assayID];
-                    var lineRecord = EDDData.Lines[assayRecord.lid];
-                    if (lineRecord.dis) {       // Skip any Assays in disabled Lines
-                        continue;
-                    }
-                    if (!assayRecord.mea_c) {
-                        continue;
-                    }
-                    var protocolID = assayRecord.pid;
-                    protocolsWithMeasurements[protocolID] = true;
-                }
-        
+                $.each(EDDData.Assays, (assayId, assay) => {
+                    var line = EDDData.Lines[assay.lid];
+                    if (!line || line.dis) return;
+                    protocolsWithMeasurements[assay.pid] = true;
+                });
                 // For each protocol with measurements, create a DataGridAssays object.
-                for (var i = 0; i < EDDData.ProtocolIDs.length; i++) {
-                    var pID = EDDData.ProtocolIDs[i];
-                    if (!protocolsWithMeasurements[pID]) {
-                        continue;
+                $.each(EDDData.Protocols, (id, protocol) => {
+                    var spec;
+                    if (protocolsWithMeasurements[id]) {
+                        this.assaysDataGridSpecs[id] = spec = new DataGridSpecAssays(id);
+                        this.assaysDataGrids[id] = new DataGridAssays(spec);
                     }
-        
-                    // Instantiate an Assays table specification, and table, for the Protocol
-                    this.assaysDataGridSpecs[pID] = new DataGridSpecAssays(pID);
-                    this.assaysDataGrids[pID] = new DataGridAssays(this.assaysDataGridSpecs[pID]);
-                }
+                });
             }
         });
     }
@@ -1203,16 +1188,13 @@ module StudyD {
         this.carbonBalanceData = new CarbonBalance.Display();
         var highlightCarbonBalanceWidget = false;
         if ( this.biomassCalculation > -1 ) {
-        
             this.carbonBalanceData.calculateCarbonBalances(this.metabolicMapID,
                     this.biomassCalculation);
-
             // Highlight the "Show Carbon Balance" checkbox in red if there are CB issues.
             if (this.carbonBalanceData.getNumberOfImbalances() > 0) {
                 highlightCarbonBalanceWidget = true;
             }
         } else {
-
             // Highlight the carbon balance in red to indicate that we can't calculate
             // carbon balances yet. When they click the checkbox, we'll get them to
             // specify which SBML file to use for biomass.
@@ -1225,13 +1207,10 @@ module StudyD {
     export function filterTableKeyDown(e) {
         switch (e.keyCode) {
             case 38: // up
-                break;
             case 40: // down
-                break;
             case 9:  // tab
-                break;
             case 13: // return
-                break;
+                return;
             default:
                 // ignore if the following keys are pressed: [shift] [capslock]
                 if (e.keyCode > 8 && e.keyCode < 32) {
@@ -1308,11 +1287,6 @@ module StudyD {
 
     export function requestAllMetaboliteData() {
 
-        var myThis = this;
-        var requestDone = () => {
-            // The instant we're finished with this operation, fetch the next wave of data
-            myThis.requestAllProteinData();
-        };
         var error = (xhr, status, e) => {
             console.log('Failed to fetch metabolite data!');
             console.log(status);
@@ -1320,11 +1294,11 @@ module StudyD {
 
         $.ajax({
             url: 'measurements',
-            type: 'POST',
+            type: 'GET',
             dataType: "json",
             error: error,
             success: (data) => { this.processNewMetaboliteData(data); },
-            complete: requestDone
+            complete: () => { this.requestAllProteinData(); }
         });
     }
 
@@ -1401,66 +1375,40 @@ module StudyD {
 
         // Currently, all Metabolite data arrives at once, for all Assays.
         // This may change in the future.
-        for (var assayID in EDDData.Assays) {
-            var assayRecord = EDDData.Assays[assayID];
-            assayRecord.metabolites = [];
-            assayRecord.met_c = 0;
-        }
-        if (!EDDData.hasOwnProperty('AssayMeasurements')) {
-            EDDData.AssayMeasurements = {};
-        }
+        EDDData.AssayMeasurements = EDDData.AssayMeasurements || {};
         var assaysEncountered = {};
         var mIDsToUseInFilteringSection = [];
-        for (var mID in data) {
-            var mRecord = data[mID];
-            var assayID = mRecord.aid;
-            var assayRecord = EDDData.Assays[assayID];
-            var lineID = assayRecord.lid;
-            var lineRecord = EDDData.Lines[lineID];
-            // Skip any Measurements that belong to disabled Lines.
-            // Don't even add them to the data set, or link them to their Assays.
-            if (lineRecord.dis) { continue; }
-
-            EDDData.AssayMeasurements[mID] = mRecord;
-            assayRecord.metabolites.push(mID);
-            assaysEncountered[assayID] = true;
-
-            // Skip any Assays that are disabled, when showing the filtering section
-            if (assayRecord.dis) { continue; }
-            mIDsToUseInFilteringSection.push(mID);
-        }
-        var invalidatedAssaysPerProtocol = {};
-        for (var assayID in assaysEncountered) {
-            var assayRecord = EDDData.Assays[assayID];
-            // Remake the total
-            assayRecord.met_c = assayRecord.metabolites.length;
-            assayRecord.mea_c = (assayRecord.met_c || 0) +
-                    (assayRecord.tra_c || 0) +
-                    (assayRecord.pro_c || 0);
-
-            var pID = assayRecord.pid;
-            if (typeof invalidatedAssaysPerProtocol[pID] === "undefined") {
-                invalidatedAssaysPerProtocol[pID] = {};
-            }
-            invalidatedAssaysPerProtocol[pID][assayID] = true;
-        }
-        EDDData.AssayMeasurementIDs = <any[]>Object.keys(EDDData.AssayMeasurements);
-
+        $.each(data, (index, measurement) => {
+            var assay, line;
+            assay = EDDData.Assays[measurement.assay];
+            if (!assay || assay.dis) return;
+            line = EDDData.Lines[assay.lid];
+            if (!line || line.dis) return;
+            EDDData.AssayMeasurements[measurement.id] = measurement.values;
+            assaysEncountered[measurement.assay] = true;
+            (assay.metabolites = assay.metabolites || []).push(measurement.type);
+            mIDsToUseInFilteringSection.push(measurement.id);
+        });
+        var assayByProtocol = {}; // used as a mapping of protocol to set of assay IDs
+        $.each(assaysEncountered, (assayId) => {
+            var assay = EDDData.Assays[assayId];
+            // TODO met_c and mea_c on assay should just look at existing properties
+            assayByProtocol[assay.pid] = assayByProtocol[assay.pid] || {};
+            assayByProtocol[assay.pid][assayId] = true;
+        });
         // Initialize, or re-initialize, all the Metabolite-related filters
-        for (var i = 0; i < this.metaboliteFilteringWidgets.length; i++) {
-            var widget = this.metaboliteFilteringWidgets[i];
+        $.each(this.metaboliteFilteringWidgets, (i, widget) => {
             widget.processFilteringData(mIDsToUseInFilteringSection);
             widget.populateTable();
-        }
+        });
         this.repopulateFilteringSection();
         this.metaboliteDataProcessed = true;
 
-        for (var pKey in this.assaysDataGrids) {
-            if (!(typeof invalidatedAssaysPerProtocol[pKey] === "undefined")) {
-                var invalidRec = Object.keys(invalidatedAssaysPerProtocol[pKey]);
-                this.assaysDataGrids[pKey].invalidateAssayRecords(invalidRec);
-            }
-        }
+        // invalidate assays on all DataGrids; I think this means they are initially hidden?
+        console.log("About to loop over all defined assaysDataGrids");
+        $.each(this.assaysDataGrids, (protocolId, dataGrid) => {
+            dataGrid.invalidateAssayRecords(Object.keys(assayByProtocol[protocolId] || []));
+        });
 
         // This is only meaningful to run after we've got some metabolite data
         this.linesDataGridSpec.enableCarbonBalanceWidget(true);
@@ -1738,27 +1686,19 @@ module StudyD {
     export function remakeMainGraphArea(force?:boolean) {
         this.mainGraphRefreshTimerID = 0;
 
-        if (!StudyDGraphing) {
-            return;
-        }
-
-        if (!this.mainGraphObject) {
+        if (!StudyDGraphing || !this.mainGraphObject) {
             return;
         } 
-
         var graphObj = this.mainGraphObject;
-
         var redrawRequired = force ? true : false;
-
         if (!redrawRequired) {
             // Redraw if the "separate axes" checkbox has changed
-            var filterAxesCB = <any>document.getElementById("separateAxesCheckbox");
-            if (filterAxesCB) {
-                if (filterAxesCB.checked != this.oldSeparateAxesValue) {
-                    redrawRequired = true;
-                }
-                this.oldSeparateAxesValue = filterAxesCB.checked;
+            // TODO this should really be an event handler on the checkbox
+            var filterAxesCB = $("#separateAxesCheckbox");
+            if (filterAxesCB.prop('checked') != this.oldSeparateAxesValue) {
+                redrawRequired = true;
             }
+            this.oldSeparateAxesValue = filterAxesCB.prop('checked');
         }
 
         // Walk down the filter widget list.  If we encounter one whose collective checkbox state
@@ -1766,12 +1706,12 @@ module StudyD {
         // not skip this loop, even if we already know a redraw is required, since the call to
         // anyCheckboxesChangedSinceLastInquiry sets internal state in the filter widgets that we
         // will use next time around.
-        for (var i=0; i < this.allFilteringWidgets.length; i++) {
-            var filter = this.allFilteringWidgets[i];
+        // TODO this should also be an event handler
+        $.each(this.allFilteringWidgets, (i, filter) => {
             if (filter.anyCheckboxesChangedSinceLastInquiry()) {
                 redrawRequired = true;
             }
-        }
+        });
 
         // All the code above is just comparing old state to new and determining whether we really
         // need to redraw.  If we don't, we bail out of the subroutine.
@@ -1789,35 +1729,28 @@ module StudyD {
         // will just use the set and return it unaltered.
         var previousIDSet = [];
 
-        for (var assayID in EDDData.Assays) {
-            var assayRecord = EDDData.Assays[assayID];
-            if (assayRecord.dis) { continue; }     // Skip any Assays that are disabled
-            var lineRecord = EDDData.Lines[assayRecord.lid];
-            if (lineRecord.dis) { continue; }      // Skip any Assays that belong to disabled lines
-            previousIDSet.push(assayID);
-        }
+        $.each(EDDData.Assays, (assayId, assay) => {
+            var line = EDDData.Lines[assay.lid];
+            if (assay.dis || line.dis) return;
+            previousIDSet.push(assayId);
 
-        for (var i=0; i < this.assayFilteringWidgets.length; i++) {
-            var filter = this.assayFilteringWidgets[i];
+        });
+
+        $.each(this.assayFilteringWidgets, (i, filter) => {
             previousIDSet = filter.applyProgressiveFiltering(previousIDSet);
-        }
+        });
 
         // Only if we have processed metabolite data should we attempt to update the metabolite
         // filter sections.  (If doesn't matter if the data is old, just that we have some.)
         var metaboliteMeasurementsUsed = [];
         if (this.metaboliteDataProcessed) {
-            for (var i=0; i < previousIDSet.length; i++) {
-                var assayID = previousIDSet[i];
-                var assayRecord = EDDData.Assays[assayID];
-                if (assayRecord.met_c) {
-                    $.merge(metaboliteMeasurementsUsed, assayRecord.metabolites);
-                }
-            }
-            for (var i=0; i < this.metaboliteFilteringWidgets.length; i++) {
-                var filter = this.metaboliteFilteringWidgets[i];
+            $.each(previousIDSet, (i, assayId) => {
+                $.merge(metaboliteMeasurementsUsed, EDDData.Assays[assayId].metabolites || []);
+            });
+            $.each(this.metaboliteFilteringWidgets, (i, filter) => {
                 metaboliteMeasurementsUsed = filter.applyProgressiveFiltering(
                         metaboliteMeasurementsUsed);
-            }
+            });
         }
 
         var proteinMeasurementsUsed = [];
@@ -4202,5 +4135,5 @@ class DGAssaysSearchWidget extends DGSearchWidget {
 
 
 // use JQuery ready event shortcut to call prepareIt when page is ready
-$(StudyD.prepareIt);
+$(() => StudyD.prepareIt());
 

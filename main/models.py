@@ -658,6 +658,7 @@ class Measurement(models.Model):
     def to_json(self):
         points = chain(self.measurementdatum_set.all(), self.measurementvector_set.all())
         return {
+            "id": self.pk,
             "assay": self.assay.pk,
             "type": self.measurement_type.pk,
             "values": map(lambda p: p.to_json(), points),
@@ -682,6 +683,7 @@ class MeasurementDatum(models.Model):
 
     def to_json(self):
         return {
+            "id": self.pk,
             "x": self.x,
             "x_units": self.x_units.pk,
             "y": self.y,
@@ -707,6 +709,7 @@ class MeasurementVector(models.Model):
 
     def to_json(self):
         return {
+            "id": self.pk,
             "x": self.x,
             "x_units": self.x_units.pk,
             "y": self.y,

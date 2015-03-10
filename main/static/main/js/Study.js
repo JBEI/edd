@@ -871,6 +871,7 @@ var StudyD;
         this.assaysActionPanelRefreshTimer = null;
         this.assaysDataGridSpecs = {};
         this.assaysDataGrids = {};
+        console.log("Initialized assaysDataGrids to empty object");
         $('.disclose').find('.discloseLink').on('click', function (e) {
             $(e.target).closest('.disclose').toggleClass('discloseHide');
             return false;
@@ -883,35 +884,27 @@ var StudyD;
             },
             'success': function (data) {
                 EDDData = $.extend(EDDData || {}, data);
-                //// Moved following into callback
-                StudyD.prepareFilteringSection();
+                _this.prepareFilteringSection();
                 // Instantiate a table specification for the Lines table
                 _this.linesDataGridSpec = new DataGridSpecLines();
                 // Instantiate the table itself with the spec
                 _this.linesDataGrid = new DataGrid(_this.linesDataGridSpec);
                 // Find out which protocols have assays with measurements - disabled or no
                 var protocolsWithMeasurements = {};
-                for (var assayID in EDDData.Assays) {
-                    var assayRecord = EDDData.Assays[assayID];
-                    var lineRecord = EDDData.Lines[assayRecord.lid];
-                    if (lineRecord.dis) {
-                        continue;
+                $.each(EDDData.Assays, function (assayId, assay) {
+                    var line = EDDData.Lines[assay.lid];
+                    if (!line || line.dis)
+                        return;
+                    protocolsWithMeasurements[assay.pid] = true;
+                });
+                // For each protocol with measurements, create a DataGridAssays object.
+                $.each(EDDData.Protocols, function (id, protocol) {
+                    var spec;
+                    if (protocolsWithMeasurements[id]) {
+                        _this.assaysDataGridSpecs[id] = spec = new DataGridSpecAssays(id);
+                        _this.assaysDataGrids[id] = new DataGridAssays(spec);
                     }
-                    if (!assayRecord.mea_c) {
-                        continue;
-                    }
-                    var protocolID = assayRecord.pid;
-                    protocolsWithMeasurements[protocolID] = true;
-                }
-                for (var i = 0; i < EDDData.ProtocolIDs.length; i++) {
-                    var pID = EDDData.ProtocolIDs[i];
-                    if (!protocolsWithMeasurements[pID]) {
-                        continue;
-                    }
-                    // Instantiate an Assays table specification, and table, for the Protocol
-                    _this.assaysDataGridSpecs[pID] = new DataGridSpecAssays(pID);
-                    _this.assaysDataGrids[pID] = new DataGridAssays(_this.assaysDataGridSpecs[pID]);
-                }
+                });
             }
         });
     }
@@ -1056,13 +1049,10 @@ var StudyD;
     function filterTableKeyDown(e) {
         switch (e.keyCode) {
             case 38:
-                break;
             case 40:
-                break;
             case 9:
-                break;
             case 13:
-                break;
+                return;
             default:
                 // ignore if the following keys are pressed: [shift] [capslock]
                 if (e.keyCode > 8 && e.keyCode < 32) {
@@ -1127,24 +1117,21 @@ var StudyD;
     StudyD.prepareAfterLinesTable = prepareAfterLinesTable;
     function requestAllMetaboliteData() {
         var _this = this;
-        var myThis = this;
-        var requestDone = function () {
-            // The instant we're finished with this operation, fetch the next wave of data
-            myThis.requestAllProteinData();
-        };
         var error = function (xhr, status, e) {
             console.log('Failed to fetch metabolite data!');
             console.log(status);
         };
         $.ajax({
             url: 'measurements',
-            type: 'POST',
+            type: 'GET',
             dataType: "json",
             error: error,
             success: function (data) {
                 _this.processNewMetaboliteData(data);
             },
-            complete: requestDone
+            complete: function () {
+                _this.requestAllProteinData();
+            }
         });
     }
     StudyD.requestAllMetaboliteData = requestAllMetaboliteData;
@@ -1212,62 +1199,43 @@ var StudyD;
     // Called after metabolomics data has been fetched from the server. Note: The functions to
     // process newly arriving data of different types are not designed to be called in parallel.
     function processNewMetaboliteData(data) {
-        for (var assayID in EDDData.Assays) {
-            var assayRecord = EDDData.Assays[assayID];
-            assayRecord.metabolites = [];
-            assayRecord.met_c = 0;
-        }
-        if (!EDDData.hasOwnProperty('AssayMeasurements')) {
-            EDDData.AssayMeasurements = {};
-        }
+        // Currently, all Metabolite data arrives at once, for all Assays.
+        // This may change in the future.
+        EDDData.AssayMeasurements = EDDData.AssayMeasurements || {};
         var assaysEncountered = {};
         var mIDsToUseInFilteringSection = [];
-        for (var mID in data) {
-            var mRecord = data[mID];
-            var assayID = mRecord.aid;
-            var assayRecord = EDDData.Assays[assayID];
-            var lineID = assayRecord.lid;
-            var lineRecord = EDDData.Lines[lineID];
-            // Skip any Measurements that belong to disabled Lines.
-            // Don't even add them to the data set, or link them to their Assays.
-            if (lineRecord.dis) {
-                continue;
-            }
-            EDDData.AssayMeasurements[mID] = mRecord;
-            assayRecord.metabolites.push(mID);
-            assaysEncountered[assayID] = true;
-            // Skip any Assays that are disabled, when showing the filtering section
-            if (assayRecord.dis) {
-                continue;
-            }
-            mIDsToUseInFilteringSection.push(mID);
-        }
-        var invalidatedAssaysPerProtocol = {};
-        for (var assayID in assaysEncountered) {
-            var assayRecord = EDDData.Assays[assayID];
-            // Remake the total
-            assayRecord.met_c = assayRecord.metabolites.length;
-            assayRecord.mea_c = (assayRecord.met_c || 0) + (assayRecord.tra_c || 0) + (assayRecord.pro_c || 0);
-            var pID = assayRecord.pid;
-            if (typeof invalidatedAssaysPerProtocol[pID] === "undefined") {
-                invalidatedAssaysPerProtocol[pID] = {};
-            }
-            invalidatedAssaysPerProtocol[pID][assayID] = true;
-        }
-        EDDData.AssayMeasurementIDs = Object.keys(EDDData.AssayMeasurements);
-        for (var i = 0; i < this.metaboliteFilteringWidgets.length; i++) {
-            var widget = this.metaboliteFilteringWidgets[i];
+        $.each(data, function (index, measurement) {
+            var assay, line;
+            assay = EDDData.Assays[measurement.assay];
+            if (!assay || assay.dis)
+                return;
+            line = EDDData.Lines[assay.lid];
+            if (!line || line.dis)
+                return;
+            EDDData.AssayMeasurements[measurement.id] = measurement.values;
+            assaysEncountered[measurement.assay] = true;
+            (assay.metabolites = assay.metabolites || []).push(measurement.type);
+            mIDsToUseInFilteringSection.push(measurement.id);
+        });
+        var assayByProtocol = {}; // used as a mapping of protocol to set of assay IDs
+        $.each(assaysEncountered, function (assayId) {
+            var assay = EDDData.Assays[assayId];
+            // TODO met_c and mea_c on assay should just look at existing properties
+            assayByProtocol[assay.pid] = assayByProtocol[assay.pid] || {};
+            assayByProtocol[assay.pid][assayId] = true;
+        });
+        // Initialize, or re-initialize, all the Metabolite-related filters
+        $.each(this.metaboliteFilteringWidgets, function (i, widget) {
             widget.processFilteringData(mIDsToUseInFilteringSection);
             widget.populateTable();
-        }
+        });
         this.repopulateFilteringSection();
         this.metaboliteDataProcessed = true;
-        for (var pKey in this.assaysDataGrids) {
-            if (!(typeof invalidatedAssaysPerProtocol[pKey] === "undefined")) {
-                var invalidRec = Object.keys(invalidatedAssaysPerProtocol[pKey]);
-                this.assaysDataGrids[pKey].invalidateAssayRecords(invalidRec);
-            }
-        }
+        // invalidate assays on all DataGrids; I think this means they are initially hidden?
+        console.log("About to loop over all defined assaysDataGrids");
+        $.each(this.assaysDataGrids, function (protocolId, dataGrid) {
+            dataGrid.invalidateAssayRecords(Object.keys(assayByProtocol[protocolId] || []));
+        });
         // This is only meaningful to run after we've got some metabolite data
         this.linesDataGridSpec.enableCarbonBalanceWidget(true);
         this.processCarbonBalanceData();
@@ -3589,5 +3557,5 @@ var DGAssaysSearchWidget = (function (_super) {
     return DGAssaysSearchWidget;
 })(DGSearchWidget);
 // use JQuery ready event shortcut to call prepareIt when page is ready
-$(StudyD.prepareIt);
+$(function () { return StudyD.prepareIt(); });
 //# sourceMappingURL=Study.js.map
