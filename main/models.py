@@ -62,19 +62,9 @@ class Attachment(models.Model):
     file = models.FileField(max_length=255)
     filename = models.CharField(max_length=255)
     created = models.ForeignKey(Update, related_name='+')
-
-class MetabolicMap (models.Model) :
-    """
-    Container for information used in SBML export.
-    """
-    class Meta:
-        db_table = "metabolic_map"
-    attachment = models.ForeignKey(Attachment)
-    biomass_calculation = models.DecimalField(default=-1, decimal_places=5,
-        max_digits=16) # XXX check that these parameters make sense!
-    biomass_calculation_info = models.TextField(default='')
-    biomass_exchange_name = models.TextField()
-
+    description = models.TextField(blank=True, null=False)
+    mime_type = models.CharField(max_length=255, null=True)
+    file_size = models.IntegerField(default=0)
 
 class MetadataGroup(models.Model):
     """
@@ -196,6 +186,29 @@ class EDDObject(models.Model):
             if (len(metadata) > 0) :
                 metadata_dict[metadata_type.type_name] = metadata[0]
         return metadata_dict
+
+class MetabolicMap (EDDObject) :
+    """
+    Container for information used in SBML export.
+    """
+    class Meta:
+        db_table = "metabolic_map"
+    object_ref = models.OneToOneField(EDDObject, parent_link=True)
+    biomass_calculation = models.DecimalField(default=-1, decimal_places=5,
+        max_digits=16) # XXX check that these parameters make sense!
+    biomass_calculation_info = models.TextField(default='')
+    biomass_exchange_name = models.TextField()
+
+    @property
+    def xml_file (self) :
+        files = self.files.all()
+        if (len(files) == 0) :
+            raise RuntimeError("No attachments found for metabolic map %s!" %
+                self.name)
+        elif (len(files) > 1) :
+            raise RuntimeError("Multiple attachments found for metabolic map "+
+              "%s!" % self.name)
+        return files[0]
 
 class Metadata(models.Model):
     """

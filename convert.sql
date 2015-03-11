@@ -111,6 +111,10 @@ INSERT INTO public.update_info(mod_time, mod_by_id)
         modified_by AS update_user
     FROM old_edd.carbon_sources
     WHERE modified_by > 0
+    UNION
+    SELECT date_trunc('second', creation_time) AS update_time,
+        created_by AS update_user
+    FROM old_edd.attachments
     ORDER BY update_time;
 
 
@@ -436,10 +440,11 @@ SELECT setval('public.measurement_unit_id_seq', max(id))
 --
 INSERT INTO public.measurement(
         id, assay_id, measurement_type_id, experimenter_id, active,
-        update_ref_id, measurement_format
+        update_ref_id, measurement_format, compartment
     ) SELECT a.id, ao.id, a.measurement_type_id,
         CASE WHEN a.experimenter = 0 THEN NULL ELSE a.experimenter END,
-        NOT a.disabled, m.id, a.measurement_type_format
+        NOT a.disabled, m.id, a.measurement_type_format,
+        a.measurement_type_compartment
     FROM old_edd.assay_measurements a
     INNER JOIN public.edd_object ao ON ao.assay_id = a.assay_id
     LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
@@ -462,7 +467,7 @@ INSERT INTO public.measurement_datum(
     LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
         date_trunc('second', am.modification_time)
         AND m.mod_by_id = am.modified_by
-    WHERE a.measurement_type_compartment = 0
+    WHERE am.y IS NOT NULL
     ORDER BY a.id;
 INSERT INTO public.measurement_vector(
         measurement_id, x, y, x_units_id, y_units_id, updated_id
@@ -475,9 +480,87 @@ INSERT INTO public.measurement_vector(
     LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
         date_trunc('second', am.modification_time)
         AND m.mod_by_id = am.modified_by
-    WHERE a.measurement_type_compartment = 1
+    WHERE am.yvector IS NOT NULL
     ORDER BY a.id;
 
+--
+-- copy over metabolic maps
+--
+ALTER TABLE public.edd_object ADD COLUMN metabolic_map_id integer UNIQUE DEFAULT NULL;
+INSERT INTO public.edd_object(metabolic_map_id, name)
+    SELECT id, biomass_exchange_name FROM old_edd.metabolic_maps ORDER BY id;
+INSERT INTO public.metabolic_map(
+        biomass_exchange_name, biomass_calculation, biomass_calculation_info,
+        object_ref_id
+    ) SELECT mm.biomass_exchange_name, mm.biomass_calculation,
+        mm.biomass_calculation_info, o.id
+    FROM old_edd.metabolic_maps mm
+    INNER JOIN public.edd_object o ON o.metabolic_map_id = mm.id
+    ORDER BY mm.id;
+
+--
+-- copy over attachments
+--
+INSERT INTO public.attachment(
+      id, object_ref_id, filename, file, description, created_id, mime_type,
+      file_size
+    ) SELECT a.id, so.id, a.filename, a.filename, a.description, m.id,
+        a.mime_type, a.file_size
+    FROM old_edd.attachments a
+    INNER JOIN public.edd_object so ON so.study_id = a.study_id
+    LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
+        date_trunc('second', a.creation_time)
+        AND m.mod_by_id = a.created_by
+    WHERE a.study_id != 0
+    ORDER BY a.id;
+INSERT INTO public.attachment(
+      id, object_ref_id, filename, file, description, created_id, mime_type,
+      file_size
+    ) SELECT a.id, lo.id, a.filename, a.filename, a.description, m.id,
+        a.mime_type, a.file_size
+    FROM old_edd.attachments a
+    INNER JOIN public.edd_object lo ON lo.line_id = a.line_id
+    LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
+        date_trunc('second', a.creation_time)
+        AND m.mod_by_id = a.created_by
+    WHERE a.line_id != 0
+    ORDER BY a.id;
+INSERT INTO public.attachment(
+      id, object_ref_id, filename, file, description, created_id, mime_type,
+      file_size
+    ) SELECT a.id, ao.id, a.filename, a.filename, a.description, m.id,
+        a.mime_type, a.file_size
+    FROM old_edd.attachments a
+    INNER JOIN public.edd_object ao ON ao.assay_id = a.assay_id
+    LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
+        date_trunc('second', a.creation_time)
+        AND m.mod_by_id = a.created_by
+    WHERE a.assay_id != 0
+    ORDER BY a.id;
+INSERT INTO public.attachment(
+      id, object_ref_id, filename, file, description, created_id, mime_type,
+      file_size
+    ) SELECT a.id, po.id, a.filename, a.filename, a.description, m.id,
+        a.mime_type, a.file_size
+    FROM old_edd.attachments a
+    INNER JOIN public.edd_object po ON po.protocol_id = a.protocol_id
+    LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
+        date_trunc('second', a.creation_time)
+        AND m.mod_by_id = a.created_by
+    WHERE a.assay_id != 0
+    ORDER BY a.id;
+INSERT INTO public.attachment(
+      id, object_ref_id, filename, file, description, created_id, mime_type,
+      file_size
+    ) SELECT a.id, mo.id, a.filename, a.filename, a.description, m.id,
+        a.mime_type, a.file_size
+    FROM old_edd.attachments a
+    INNER JOIN public.edd_object mo ON mo.metabolic_map_id = a.metabolic_map_id
+    LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
+        date_trunc('second', a.creation_time)
+        AND m.mod_by_id = a.created_by
+    WHERE a.metabolic_map_id != 0
+    ORDER BY a.id;
 
 -- drop temp columns
 ALTER TABLE public.edd_object DROP COLUMN study_id;
@@ -485,3 +568,4 @@ ALTER TABLE public.edd_object DROP COLUMN strain_id;
 ALTER TABLE public.edd_object DROP COLUMN line_id;
 ALTER TABLE public.edd_object DROP COLUMN protocol_id;
 ALTER TABLE public.edd_object DROP COLUMN assay_id;
+ALTER TABLE public.edd_object DROP COLUMN metabolic_map_id;

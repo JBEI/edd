@@ -148,3 +148,6 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.7/howto/static-files/
 STATIC_ROOT = '/Users/wcmorrell/django/static/'
 STATIC_URL = '/static/'
+
+# File upload location
+MEDIA_ROOT = '/var/www/uploads'
