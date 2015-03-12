@@ -259,21 +259,6 @@ class MetabolicMap (EDDObject) :
         return files[0]
 
 
-class Metadata(models.Model):
-    """
-    Base form for line metadata tracks which line is referred to, type, and who/when.
-    """
-    class Meta:
-        db_table = 'metadata'
-    edd_object = models.ForeignKey(EDDObject, related_name='+')
-    data_type = models.ForeignKey(MetadataType)
-    data_value = models.TextField()
-    updated = models.ForeignKey(Update, related_name='+')
-
-    def __str__ (self) :
-        return self.data_type.prefix + self.data_value + self.data_type.postfix
-
-
 class Study(EDDObject):
     """
     A collection of items to be studied.
