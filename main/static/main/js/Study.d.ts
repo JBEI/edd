@@ -116,6 +116,7 @@ declare module StudyD {
     function requestAllMetaboliteData(): void;
     function requestAllProteinData(): void;
     function requestAllGeneData(): void;
+    function processMeasurementData(data: any): void;
     function processNewMetaboliteData(data: any): void;
     function processNewProteinData(data: any): void;
     function processNewGeneData(data: any): void;
@@ -124,7 +125,7 @@ declare module StudyD {
     function linesActionPanelShow(): void;
     function queueAssaysActionPanelShow(): void;
     function assaysActionPanelShow(): void;
-    function queueMainGraphRemake(): void;
+    function queueMainGraphRemake(force?: boolean): void;
     function remakeMainGraphArea(force?: boolean): void;
     function addCarbonSourceRow(v: any): void;
     function removeCarbonSourceRow(order: any): void;

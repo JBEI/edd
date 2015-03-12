@@ -26,6 +26,7 @@ interface LineRecord {
     con: any;
 }
 interface AssayRecord {
+    id: any;
     an: string;
     des: string;
     dis: boolean;

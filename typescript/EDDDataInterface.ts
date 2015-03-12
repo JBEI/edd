@@ -37,6 +37,7 @@ interface LineRecord {
 
 // This is what we expect in EDDData.Assays
 interface AssayRecord {
+    id:any;         // Assay ID
 	an:string;		// Assay Name
 	des:string;		// Description
 	dis:boolean;	// Disabled

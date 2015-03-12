@@ -23,7 +23,6 @@ var StudyD;
     var geneFilteringWidgets;
     var geneDataProcessed;
     var mainGraphRefreshTimerID;
-    var oldSeparateAxesValue;
     var linesActionPanelRefreshTimer;
     var assaysActionPanelRefreshTimer;
     var attachmentIDs;
@@ -856,7 +855,6 @@ var StudyD;
         this.carbonBalanceData = null;
         this.carbonBalanceDisplayIsFresh = false;
         this.mainGraphRefreshTimerID = null;
-        this.oldSeparateAxesValue = 0;
         this.attachmentIDs = null;
         this.attachmentsByID = null;
         this.prevDescriptionEditElement = null;
@@ -871,7 +869,6 @@ var StudyD;
         this.assaysActionPanelRefreshTimer = null;
         this.assaysDataGridSpecs = {};
         this.assaysDataGrids = {};
-        console.log("Initialized assaysDataGrids to empty object");
         $('.disclose').find('.discloseLink').on('click', function (e) {
             $(e.target).closest('.disclose').toggleClass('discloseHide');
             return false;
@@ -921,72 +918,53 @@ var StudyD;
         var haveTranscriptomics = false;
         var haveProteomics = false;
         var aIDsToUse = [];
-        for (var assayID in EDDData.Assays) {
-            var assayRecord = EDDData.Assays[assayID];
-            if (assayRecord.dis) {
-                continue;
-            }
-            if (!assayRecord.mea_c) {
-                continue;
-            }
-            var lineID = assayRecord.lid; // Line ID
-            var lineRecord = EDDData.Lines[lineID];
-            if (lineRecord.dis) {
-                continue;
-            }
-            aIDsToUse.push(assayID);
-            if (assayRecord.met_c) {
+        // First do some basic sanity filtering on the list
+        $.each(EDDData.Assays, function (assayId, assay) {
+            var line = EDDData.Lines[assay.lid];
+            if (assay.dis || line.dis)
+                return;
+            aIDsToUse.push(assayId);
+            if (assay.metabolites && assay.metabolites.length)
                 haveMetabolomics = true;
-            }
-            if (assayRecord.tra_c) {
+            if (assay.transcriptions && assay.transcriptions.length)
                 haveTranscriptomics = true;
-            }
-            if (assayRecord.pro_c) {
+            if (assay.proteins && assay.proteins.length)
                 haveProteomics = true;
-            }
-            if (assayRecord.hasOwnProperty('md')) {
-                for (var mdID in assayRecord.md) {
-                    seenInAssaysHash[mdID] = 1;
-                }
-            }
-            if (lineRecord.hasOwnProperty('md')) {
-                for (var mdID in lineRecord.md) {
-                    seenInLinesHash[mdID] = 1;
-                }
-            }
-        }
-        for (var i = 0; i < EDDData.MetaDataTypeIDs.length; i++) {
-            // This is in alphabetical order by name
-            var id = EDDData.MetaDataTypeIDs[i];
-            if (seenInLinesHash.hasOwnProperty(id)) {
-                MetaDataTypesRelevantForLines.push(id);
-            }
-            if (seenInAssaysHash.hasOwnProperty(id)) {
-                MetaDataTypesRelevantForAssays.push(id);
-            }
-        }
+            $.each(assay.md || [], function (metadataId) {
+                seenInAssaysHash[metadataId] = 1;
+            });
+            $.each(line.md || [], function (metadataId) {
+                seenInLinesHash[metadataId] = 1;
+            });
+        });
+        // MetaDataTypeIDs should come alpha-sorted by name, store used IDs in same order
+        $.each(EDDData.MetaDataTypeIDs, function (i, metadataId) {
+            if (seenInLinesHash[metadataId])
+                MetaDataTypesRelevantForLines.push(metadataId);
+            if (seenInAssaysHash[metadataId])
+                MetaDataTypesRelevantForAssays.push(metadataId);
+        });
+        // Create filters on assay tables
+        // TODO media is now a metadata type, strain and carbon source should be too
         var assayFilters = [];
         assayFilters.push(new StrainFilterSection());
         assayFilters.push(new MediaFilterSection());
         assayFilters.push(new CarbonSourceFilterSection());
         assayFilters.push(new CarbonLabelingFilterSection());
-        for (var i = 0; i < MetaDataTypesRelevantForLines.length; i++) {
-            var mdtID = MetaDataTypesRelevantForLines[i];
-            assayFilters.push(new LineMetaDataFilterSection(mdtID));
-        }
+        $.each(MetaDataTypesRelevantForLines, function (i, typeId) {
+            assayFilters.push(new LineMetaDataFilterSection(typeId));
+        });
         assayFilters.push(new LineNameFilterSection());
         assayFilters.push(new ProtocolFilterSection());
         assayFilters.push(new AssaySuffixFilterSection());
-        for (var i = 0; i < MetaDataTypesRelevantForAssays.length; i++) {
-            var mdtID = MetaDataTypesRelevantForAssays[i];
-            assayFilters.push(new AssayMetaDataFilterSection(mdtID));
-        }
-        for (var i = 0; i < assayFilters.length; i++) {
-            var widget = assayFilters[i];
-            widget.processFilteringData(aIDsToUse);
-            widget.populateTable();
-        }
-        this.assayFilteringWidgets = assayFilters;
+        $.each(MetaDataTypesRelevantForAssays, function (i, typeId) {
+            assayFilters.push(new AssayMetaDataFilterSection(typeId));
+        });
+        // We can initialize all the Assay- and Line-level filters immediately
+        this.assayFilteringWidgets = $.each(assayFilters, function (i, filter) {
+            filter.processFilteringData(aIDsToUse);
+            filter.populateTable();
+        });
         this.metaboliteFilteringWidgets = [];
         // Only create these filters if we have a nonzero count for metabolics measurements
         if (haveMetabolomics) {
@@ -994,7 +972,7 @@ var StudyD;
             this.metaboliteFilteringWidgets.push(new MetaboliteFilterSection());
         }
         this.proteinFilteringWidgets = [];
-        if (haveMetabolomics) {
+        if (haveProteomics) {
             this.proteinFilteringWidgets.push(new ProteinFilterSection());
         }
         this.geneFilteringWidgets = [];
@@ -1008,22 +986,15 @@ var StudyD;
     // Clear out any old fitlers in the filtering section, and add in the ones that
     // claim to be "useful".
     function repopulateFilteringSection() {
-        var filterTable = document.getElementById("mainFilterSection");
-        while (filterTable.firstChild) {
-            filterTable.removeChild(filterTable.firstChild);
-        }
-        var fDiv = document.createElement("div");
-        fDiv.className = 'filterTable';
-        filterTable.appendChild(fDiv);
-        var stripingFlipFlop = 0;
-        for (var i = 0; i < this.allFilteringWidgets.length; i++) {
-            var widget = this.allFilteringWidgets[i];
+        // Clear out the old filtering UI
+        var mainFilter = $('#mainFilterSection').empty();
+        var table = $('<div>').addClass('filterTable').appendTo(mainFilter);
+        $.each(this.allFilteringWidgets, function (i, widget) {
             if (widget.isFilterUseful()) {
-                widget.addToParent(fDiv);
-                widget.applyBackgroundStyle(stripingFlipFlop);
-                stripingFlipFlop = 1 - stripingFlipFlop;
+                widget.addToParent(table[0]);
+                widget.applyBackgroundStyle(i % 2 === 1);
             }
-        }
+        });
     }
     StudyD.repopulateFilteringSection = repopulateFilteringSection;
     function processCarbonBalanceData() {
@@ -1058,54 +1029,31 @@ var StudyD;
                 if (e.keyCode > 8 && e.keyCode < 32) {
                     return;
                 }
-                StudyD.queueMainGraphRemake();
+                this.queueMainGraphRemake();
         }
     }
     StudyD.filterTableKeyDown = filterTableKeyDown;
     // Called by DataGrid after the Lines table is rendered
     function prepareAfterLinesTable() {
-        // Prepare the main data overview graph at the top of the page
         var _this = this;
-        this.mainGraphObject = null;
-        var checkForDiv = document.getElementById("maingraph");
-        if (checkForDiv) {
-            var newGraph = Object.create(StudyDGraphing);
-            newGraph.Setup("maingraph");
-            this.mainGraphObject = newGraph;
+        // Prepare the main data overview graph at the top of the page
+        if (this.mainGraphObject === null && $('#maingraph').size() === 1) {
+            this.mainGraphObject = Object.create(StudyDGraphing);
+            this.mainGraphObject.Setup('maingraph');
         }
-        var filterTable = document.getElementById("mainFilterSection");
-        if (filterTable) {
-            filterTable.addEventListener('mouseover', StudyD.queueMainGraphRemake, false);
-            filterTable.addEventListener('mousedown', StudyD.queueMainGraphRemake, false);
-            filterTable.addEventListener('mouseup', StudyD.queueMainGraphRemake, false);
-            filterTable.addEventListener('keydown', StudyD.filterTableKeyDown, false);
-        }
-        var filterAxesCB = document.getElementById("separateAxesCheckbox");
-        if (filterAxesCB) {
-            filterAxesCB.addEventListener('click', StudyD.queueMainGraphRemake, false);
-        }
-        var assaysSection = document.getElementById("assaysSection");
-        if (assaysSection) {
-            assaysSection.addEventListener('mouseover', StudyD.queueAssaysActionPanelShow, false);
-            assaysSection.addEventListener('mousedown', StudyD.queueAssaysActionPanelShow, false);
-            assaysSection.addEventListener('mouseup', StudyD.queueAssaysActionPanelShow, false);
-        }
+        $('#mainFilterSection').on('mouseover mousedown mouseup', function () { return _this.queueMainGraphRemake(); }).on('keydown', function () { return _this.filterTableKeyDown(); });
+        $('#separateAxesCheckbox').on('change', function () { return _this.queueMainGraphRemake(true); });
+        $('#assaysSection').on('mouseover mousedown mouseup', function () { return _this.queueAssaysActionPanelShow(); });
         // Read in the initial set of Carbon Source selections, if any, and create the proper
         // number of table row elements.
         this.cSourceEntries = [];
         var csIDs = [0];
-        var iCSourcesEl = document.getElementById("initialcarbonsources");
-        if (iCSourcesEl) {
-            var csIDV = iCSourcesEl.value;
-            if (csIDV.length > 0) {
-                csIDs = iCSourcesEl.value.split(',');
-            }
-        }
-        if (csIDs) {
-            for (var i = 0; i < csIDs.length; i++) {
-                this.addCarbonSourceRow(csIDs[i]);
-            }
-        }
+        $('#initialcarbonsources').each(function (i, element) {
+            var v = $(element).val();
+            if (v.length)
+                csIDs = v.split(',');
+        });
+        $.each(csIDs, function (i, sourceId) { return _this.addCarbonSourceRow(sourceId); });
         this.mTypeEntries = [];
         this.addMetaboliteRow();
         // Initialize the description edit fields.
@@ -1117,15 +1065,14 @@ var StudyD;
     StudyD.prepareAfterLinesTable = prepareAfterLinesTable;
     function requestAllMetaboliteData() {
         var _this = this;
-        var error = function (xhr, status, e) {
-            console.log('Failed to fetch metabolite data!');
-            console.log(status);
-        };
         $.ajax({
             url: 'measurements',
             type: 'GET',
             dataType: "json",
-            error: error,
+            error: function (xhr, status) {
+                console.log('Failed to fetch measurement data!');
+                console.log(status);
+            },
             success: function (data) {
                 _this.processNewMetaboliteData(data);
             },
@@ -1196,6 +1143,22 @@ var StudyD;
         });
     }
     StudyD.requestAllGeneData = requestAllGeneData;
+    // TODO this will be a refactored method to handle the following three functions
+    function processMeasurementData(data) {
+        var assaySeen = {}, filteringMeasurementIds = [];
+        EDDData.AssayMeasurements = EDDData.AssayMeasurements || {};
+        $.each(data, function (index, measurement) {
+            var assay = EDDData.Assays[measurement.assay], line;
+            if (!assay || assay.dis)
+                return;
+            line = EDDData.Lines[assay.lid];
+            if (!line || line.dis)
+                return;
+            EDDData.AssayMeasurements[measurement.id] = measurement;
+            assaySeen[assay.id] = true;
+        });
+    }
+    StudyD.processMeasurementData = processMeasurementData;
     // Called after metabolomics data has been fetched from the server. Note: The functions to
     // process newly arriving data of different types are not designed to be called in parallel.
     function processNewMetaboliteData(data) {
@@ -1212,8 +1175,8 @@ var StudyD;
             line = EDDData.Lines[assay.lid];
             if (!line || line.dis)
                 return;
-            EDDData.AssayMeasurements[measurement.id] = measurement.values;
-            assaysEncountered[measurement.assay] = true;
+            EDDData.AssayMeasurements[measurement.id] = measurement;
+            assaysEncountered[assay.id] = true;
             (assay.metabolites = assay.metabolites || []).push(measurement.type);
             mIDsToUseInFilteringSection.push(measurement.id);
         });
@@ -1231,7 +1194,6 @@ var StudyD;
         this.repopulateFilteringSection();
         this.metaboliteDataProcessed = true;
         // invalidate assays on all DataGrids; I think this means they are initially hidden?
-        console.log("About to loop over all defined assaysDataGrids");
         $.each(this.assaysDataGrids, function (protocolId, dataGrid) {
             dataGrid.invalidateAssayRecords(Object.keys(assayByProtocol[protocolId] || []));
         });
@@ -1245,63 +1207,44 @@ var StudyD;
     // Called after proteomics (protein) data has been fetched from the server Note: The functions
     // to process newly arriving data of different types are not designed to be called in parallel.
     function processNewProteinData(data) {
-        if (!EDDData.hasOwnProperty('AssayMeasurements')) {
-            EDDData.AssayMeasurements = {};
-        }
+        EDDData.AssayMeasurements = EDDData.AssayMeasurements || {};
         // We will organize the incoming record IDs into arrays broken out by Assay, then swap the
         // arrays in for the old ones in the affected Assay records at the end. This way we don't
         // need to know in advance what arrays need to be emptied and which left intact.
         var proteinsByAssay = {};
         var mIDsToUseInFilteringSection = [];
-        for (var mID in data) {
-            var mRecord = data[mID];
-            var assayID = mRecord.aid;
-            var assayRecord = EDDData.Assays[assayID];
-            var lineID = assayRecord.lid;
-            var lineRecord = EDDData.Lines[lineID];
-            // Skip any Measurements that belong to disabled Lines
-            if (lineRecord.dis) {
-                continue;
-            }
-            EDDData.AssayMeasurements[mID] = mRecord;
-            if (typeof proteinsByAssay[assayID] === "undefined") {
-                proteinsByAssay[assayID] = [];
-            }
-            proteinsByAssay[assayID].push(mID);
-            // Skip any Assays that are disabled, when showing the filtering section
-            if (assayRecord.dis) {
-                continue;
-            }
-            mIDsToUseInFilteringSection.push(mID);
-        }
+        $.each(data, function (index, measurement) {
+            var assay, line;
+            assay = EDDData.Assays[measurement.assay];
+            if (!assay || assay.dis)
+                return;
+            line = EDDData.Lines[assay.lid];
+            if (!line || line.dis)
+                return;
+            EDDData.AssayMeasurements[measurement.id] = measurement;
+            (proteinsByAssay[assay.id] = proteinsByAssay[assay.id] || []).push(measurement.id);
+            if (assay.dis)
+                return;
+            mIDsToUseInFilteringSection.push(measurement.id);
+        });
         // Replace the old arrays with the new arrays all at once
-        var invalidatedAssaysPerProtocol = {};
-        for (var assayID in proteinsByAssay) {
-            var assayRecord = EDDData.Assays[assayID];
-            assayRecord.pro_c = proteinsByAssay[assayID].length;
-            assayRecord.proteins = proteinsByAssay[assayID];
-            // Remake the total
-            assayRecord.mea_c = (assayRecord.met_c || 0) + (assayRecord.tra_c || 0) + (assayRecord.pro_c || 0);
-            var pID = assayRecord.pid;
-            if (typeof invalidatedAssaysPerProtocol[pID] === "undefined") {
-                invalidatedAssaysPerProtocol[pID] = {};
-            }
-            invalidatedAssaysPerProtocol[pID][assayID] = true;
-        }
-        EDDData.AssayMeasurementIDs = Object.keys(EDDData.AssayMeasurements);
-        for (var i = 0; i < this.proteinFilteringWidgets.length; i++) {
-            var widget = this.proteinFilteringWidgets[i];
+        var assayByProtocol = {};
+        $.each(proteinsByAssay, function (assayId, proteinIds) {
+            var assay = EDDData.Assays[assayId];
+            assay.proteins = proteinIds;
+            assayByProtocol[assay.pid] = assayByProtocol[assay.pid] || {};
+            assayByProtocol[assay.pid][assayId] = true;
+        });
+        // Initialize, or re-initialize, all the Protein-related filters
+        $.each(this.proteinFilteringWidgets, function (i, widget) {
             widget.processFilteringData(mIDsToUseInFilteringSection);
             widget.populateTable();
-        }
+        });
         this.repopulateFilteringSection();
         this.proteinDataProcessed = true;
-        for (var pKey in this.assaysDataGrids) {
-            if (!(typeof invalidatedAssaysPerProtocol[pKey] === "undefined")) {
-                var invalidRec = Object.keys(invalidatedAssaysPerProtocol[pKey]);
-                this.assaysDataGrids[pKey].invalidateAssayRecords(invalidRec);
-            }
-        }
+        $.each(this.assaysDataGrids, function (protocolId, dataGrid) {
+            dataGrid.invalidateAssayRecords(Object.keys(assayByProtocol[protocolId] || []));
+        });
         this.queueMainGraphRemake();
     }
     StudyD.processNewProteinData = processNewProteinData;
@@ -1470,38 +1413,31 @@ var StudyD;
     StudyD.assaysActionPanelShow = assaysActionPanelShow;
     // Start a timer to wait before calling the routine that remakes a graph. This way we're not
     // bothering the user with the long redraw process when they are making fast edits.
-    function queueMainGraphRemake() {
+    function queueMainGraphRemake(force) {
         var _this = this;
         if (this.mainGraphRefreshTimerID) {
             clearTimeout(this.mainGraphRefreshTimerID);
         }
-        this.mainGraphRefreshTimerID = setTimeout(function () { return _this.remakeMainGraphArea(); }, 200);
+        this.mainGraphRefreshTimerID = setTimeout(function () { return _this.remakeMainGraphArea(force); }, 200);
     }
     StudyD.queueMainGraphRemake = queueMainGraphRemake;
     function checkRedrawRequired(force) {
         var redraw = false;
-        // Redraw if the "separate axes" checkbox has changed
-        // TODO this should really be an event handler on the checkbox
-        var filterAxesCB = $("#separateAxesCheckbox");
         // do not redraw if graph is not initialized yet
         if (StudyDGraphing && this.mainGraphObject) {
             redraw = !!force;
-            if (filterAxesCB.prop('checked') != this.oldSeparateAxesValue) {
-                redraw = true;
-            }
-            this.oldSeparateAxesValue = filterAxesCB.prop('checked');
+            // Walk down the filter widget list.  If we encounter one whose collective checkbox
+            // state has changed since we last made this walk, then a redraw is required. Note that
+            // we should not skip this loop, even if we already know a redraw is required, since the
+            // call to anyCheckboxesChangedSinceLastInquiry sets internal state in the filter
+            // widgets that we will use next time around.
+            // TODO this should be an event handler
+            $.each(this.allFilteringWidgets, function (i, filter) {
+                if (filter.anyCheckboxesChangedSinceLastInquiry()) {
+                    redraw = true;
+                }
+            });
         }
-        // Walk down the filter widget list.  If we encounter one whose collective checkbox state
-        // has changed since we last made this walk, then a redraw is required. Note that we should
-        // not skip this loop, even if we already know a redraw is required, since the call to
-        // anyCheckboxesChangedSinceLastInquiry sets internal state in the filter widgets that we
-        // will use next time around.
-        // TODO this should also be an event handler
-        $.each(this.allFilteringWidgets, function (i, filter) {
-            if (filter.anyCheckboxesChangedSinceLastInquiry()) {
-                redraw = true;
-            }
-        });
         return redraw;
     }
     function buildGraphAssayIDSet() {

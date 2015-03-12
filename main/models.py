@@ -514,6 +514,14 @@ class MeasurementType(models.Model):
     def to_solr_value(self):
         return '%(id)s@%(name)s' % {'id':self.pk, 'name':self.type_name}
 
+    def to_json(self):
+        return {
+            "id": self.pk,
+            "name": self.type_name,
+            "sn": self.short_name,
+            "family": self.type_group,
+        }
+
     def __str__(self):
         return self.type_name
 
@@ -545,17 +553,15 @@ class Metabolite(MeasurementType):
             return self.carbon_count
         return 0
 
-    def to_json (self) :
-        return {
-            "name" : self.type_name,
-            "sn" : self.short_name,
+    def to_json(self):
+        return dict(super(Metabolite, self).to_json(), **{
             "ans" : "", # TODO alternate_names
             "f" : self.molecular_formula,
             "mm" : self.molar_mass,
             "cc" : self.carbon_count_as_number,
             "chg" : self.charge,
             "chgn" : self.charge_as_number,
-        }
+        })
 
 
 class GeneIdentifier(MeasurementType):

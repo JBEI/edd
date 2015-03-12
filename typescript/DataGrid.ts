@@ -2156,11 +2156,11 @@ class DataGridSpecBase {
 		var widgetSet:DataGridOptionWidget[] = [];
 
 		// Create a single widget for showing only the Studies that belong to the current user
-//		var onlyMyStudiesWidget = new DGOnlyMyStudiesWidget(dataGrid, this);
-//		widgetSet.push(onlyMyStudiesWidget);
+        //		var onlyMyStudiesWidget = new DGOnlyMyStudiesWidget(dataGrid, this);
+        //		widgetSet.push(onlyMyStudiesWidget);
 		// Create a single widget for showing disabled Studies
-//		var disabledStudiesWidget = new DGDisabledStudiesWidget(dataGrid, this);
-//		widgetSet.push(disabledStudiesWidget);
+        //		var disabledStudiesWidget = new DGDisabledStudiesWidget(dataGrid, this);
+        //		widgetSet.push(disabledStudiesWidget);
 		return widgetSet;
 	}
 
