@@ -5,6 +5,7 @@ Backend for exporting SBML files.
 
 from main.models import MetabolicMap, Protocol, MeasurementType, Metabolite
 from collections import defaultdict
+import math
 import sys
 
 class sbml_data (object) :
@@ -145,6 +146,7 @@ class sbml_data (object) :
       assay_meas = list(assay.measurement_set.filter(
         measurement_type__id=mt_meas_type.id))
       self.od_measurements.extend(assay_meas)
+      self.assay_measurements[assay.id] = assay_meas
     if (len(self.od_measurements) == 0) :
       raise ValueError("Assay selection has no Optical Data measurements "+
         "entered.  Biomass measurements are essential for FBA.")
@@ -294,7 +296,6 @@ class sbml_data (object) :
           if self._process_metabolite_measurement(m) :
             self.usable_measurements[protocol_category].append(m)
             self.usable_metabolites_by_assay[assay.id].append(m)
-            self.assay_measurements[assay.id].append(m)
             assay_has_usable_data = True
         # All transcription data are usable - there are no units restrictions
         transcriptions = self._process_transcription_measurements(assay)
@@ -448,7 +449,7 @@ class sbml_data (object) :
       protocol_category = assay.protocol.categorization
       line = assay.line
       mdata_times = m.extract_data_xvalues(defined_only=True)
-      use_interpolation = True # always on for now
+      use_interpolation = False # usually turned on below
       # Right now we are allowing linear interpolation between two measurement
       # values, but only if there is a valid OD measurement at that exact spot.
       # So, the current implementation essentially just creates extra
@@ -459,14 +460,18 @@ class sbml_data (object) :
       # * Be working with a measurement type format that is just a single
       #   floating point number
       # * Have at LEAST two measurement values for this measurement
-      if (use_interpolation and (protocol_category != "OD") and
+      
+      if (True and (protocol_category != "OD") and
           (not m.is_carbon_ratio()) and (len(mdata_times) > 1)) :
-        result = processed_measurement(
-          measurement=m,
-          protocol_category=protocol_category,
-          line_od_values=self.od_times_by_line[line.id],
-          is_input=self.metabolite_is_input[m.id])
-        self._processed_metabolite_data.append(result)
+        use_interpolation = True
+
+      result = processed_measurement(
+        measurement=m,
+        protocol_category=protocol_category,
+        line_od_values=self.od_times_by_line[line.id],
+        is_input=self.metabolite_is_input.get(m.id, False),
+        use_interpolation=use_interpolation)
+      self._processed_metabolite_data.append(result)
 
   def _step_8_pre_parse_and_match (self) :
     """private method"""
@@ -867,6 +872,14 @@ class measurement_datum_converted_units (object) :
   def value (self) :
     return self.y
 
+  def __str__ (self) :
+    fields = ["%g %s" % (self.value, self.units)]
+    if (self.initial_units != self.units) :
+      fields += ["(was: %g %s)" % (self.initial_value, self.initial_units)]
+    if (self.interpolated) :
+      fields += ["[interpolated]"]
+    return " ".join(fields)
+
 class flux_calculation (object) :
   """
   Container for a computed metabolite flux at a given time interval.
@@ -882,6 +895,13 @@ class flux_calculation (object) :
 
   def __float__ (self) :
     return self.flux
+
+  def __str__ (self) :
+    base = "time: %8g - %8gh; delta = %8g, flux = %8g" % (self.start, self.end,
+      self.delta, self.flux)
+    if (self.interpolated) :
+      return base + " [interpolated]"
+    return base
 
 class metabolite_data (object) :
   """
@@ -902,7 +922,8 @@ class processed_measurement (object) :
       measurement,
       protocol_category,
       line_od_values,
-      is_input) :
+      is_input,
+      use_interpolation) :
     m = measurement
     self.protocol_category = protocol_category
     self.measurement_id = m.id
@@ -913,7 +934,7 @@ class processed_measurement (object) :
     self.skipped_due_to_lack_of_od = []
     self.data = []
     self.intervals = []
-    self.flux_data = {}
+    self._flux_data = []
     self.errors = []
     self.warnings = []
     self.valid_od_mtimes = set()
@@ -931,7 +952,7 @@ class processed_measurement (object) :
     # spots for interpolation.
     od_times = sorted(line_od_values.keys())
     for t in od_times :
-      if (not t in valid_mtimes) :
+      if (not t in valid_mtimes) and use_interpolation :
         y = m.interpolate_at(t)
         if (y is not None) :
           mdata_tuples.append((t, y))
@@ -995,12 +1016,6 @@ class processed_measurement (object) :
         # meaningful value to calculate.
         # TODO
         delta_y = md_next.y - md.y
-        def create_flux_data_if_necessary () :
-          if (not self.flux_data.get(t)) :
-            self.flux_data[t] = metabolite_data(
-              t=md.x,
-              metabolite_id=od_mtype.id,
-              is_interpolated=md.interpolated)
         if (protocol_category == "OD") :
           if (od_next is None) :
             self.warnings.append(("No OD measurement was found at the next "+
@@ -1010,7 +1025,7 @@ class processed_measurement (object) :
           # Here we're going to ignore the values we've pulled via the
           # Measurement, and use the values we already prepared in the OD
           # dict
-          if (mtype.id == od_mtype.id) :
+          if (self.metabolite_id == od_mtype.id) :
             # OD is converted into exponential growth rate (units
             # gCDW/gCDW/hr or 1/hr) by placing successive growth
             # observations within the exponential growth formula,
@@ -1019,8 +1034,7 @@ class processed_measurement (object) :
             # OD600, and A1 is the later OD600.
             # Rearranged, the formula looks like this:
             exp_growth_rate = math.log(od_next / od) / delta_t
-            create_flux_data_if_necessary()
-            self.flux_data[t].append(
+            self._flux_data.append(
               flux_calculation(
                 start=t,
                 end=t_end,
@@ -1037,8 +1051,7 @@ class processed_measurement (object) :
             delta_y = 0 - delta_y
           # This math was signed off by Dan Weaver, but I'm still not
           # entirely sure I'm doing all the other steps right
-          create_flux_data_if_necessary()
-          self.flux_data[t].append(
+          self._flux_data.append(
             flux_calculation(
               start=t,
               end=t_end,
@@ -1057,8 +1070,7 @@ class processed_measurement (object) :
           # It's needed here because the original variants are considered
           # "rates", while the metabolites we're matching to are not.
           # TODO
-          create_flux_data_if_necessary()
-          self.flux_data[t].append(
+          self._flux_data.append(
             flux_calculation(
               start=t,
               end=t_end,
@@ -1092,6 +1104,10 @@ class processed_measurement (object) :
 
   def skipped_measurements (self) :
     return ",".join(sorted(self.skipped_due_to_lack_of_od))
+
+  @property
+  def flux_data (self) :
+    return self._flux_data
 
 #-----------------------------------------------------------------------
 # Utility functions

@@ -384,8 +384,9 @@ class ExportTests(TestCase) :
         mt2 = Metabolite.objects.create(type_name="D-Glucose",
             short_name="glc-D", type_group="m", charge=0, carbon_count=6,
             molecular_formula="C6H12O6", molar_mass=180.16)
-        mt3 = MeasurementType.objects.create(type_name="Optical Density",
-            short_name="OD", type_group="m")
+        mt3 = Metabolite.objects.create(type_name="Optical Density",
+            short_name="OD", type_group="m", charge=0, carbon_count=0,
+            molecular_formula="", molar_mass=0)
         assay1 = line1.assay_set.create(name="Assay 1",
             protocol=protocol1, description="GC-MS assay", experimenter=user1)
         assay2 = line2.assay_set.create(name="Assay 2",
@@ -448,7 +449,8 @@ class ExportTests(TestCase) :
         study = Study.objects.get(name="Test Study 1")
         lines = study.line_set.all()
         assays = []
-        for line in lines : assays.extend(list(line.assay_set.all()))
+        for line in lines :
+          assays.extend(list(line.assay_set.all()))
         form = {
             "selectedLineIDs" : ",".join([ str(l.id) for l in lines ]),
             "selectedAssayIDs" : ",".join([ str(a.id) for a in assays ]),
@@ -520,6 +522,16 @@ class ExportTests(TestCase) :
         dp = lcms_data[0]['assays'][0]['measurements'][0]['data_points'][2]
         self.assertTrue(dp['title'] == "0.2 at 8h")
         self.assertTrue(data.n_ramos_measurements == 0)
+        all_meas = data.processed_measurements()
+        self.assertTrue(len(all_meas) == 5)
+        meas = all_meas[0]
+        self.assertTrue(meas.n_errors == 0)
+        self.assertTrue(meas.n_warnings == 1)
+        self.assertTrue(meas.warnings[0] == 'Start OD of 0 means nothing physically present  (and a potential division-by-zero error).  Skipping...')
+        #for md in meas.data :
+        #  print md
+        #for fd in meas.flux_data :
+        #  print fd
         # TODO test interpolation of measurements
         # now start removing data (testing for deliberate failure)
         od = Assay.objects.get(name="OD measurement")

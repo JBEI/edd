@@ -737,7 +737,7 @@ Step 7: convert units and calculate flux values
       {% endif %}
       </div>
     {% endfor %}<!-- measurement.data -->
-    {% for interval in measurement.flux_data %}
+    {% for interval in measurement.flux_data_list %}
       <div>Interval <b>{{ interval.start }}</b> to <b>{{ interval.end }}</b>
             has delta of <b>{{ interval.delta }}</b>{{ interval.units }}.
       </div>
