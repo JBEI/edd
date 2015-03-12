@@ -1,9 +1,19 @@
 
 from main.models import Study, Update, MetadataType, MeasurementUnit, \
   Metabolite, Protocol, CarbonSource, Attachment
-import calendar
 from datetime import datetime, timedelta
+from decimal import Decimal
+import calendar
+import json
 import os.path
+
+
+class JSONDecimalEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, Decimal):
+            return float(o)
+        return super(JSONDecimalEncoder, self).default(o)
+
 
 def get_edddata_study (study) :
     """

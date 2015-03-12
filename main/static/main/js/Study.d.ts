@@ -35,8 +35,8 @@ declare module StudyD {
         configure(): void;
         createContainerObjects(): void;
         inputFocusInHandler(e: any): void;
-        processFilteringData(ids: any): void;
-        buildUniqueValuesHash(ids: any): any;
+        processFilteringData(ids: any[]): void;
+        buildUniqueValuesHash(ids: any[]): any;
         isFilterUseful(): boolean;
         addToParent(parentDiv: any): void;
         applyBackgroundStyle(darker: number): void;
@@ -46,11 +46,11 @@ declare module StudyD {
     }
     class StrainFilterSection extends GenericFilterSection {
         configure(): void;
-        buildUniqueValuesHash(ids: any): any;
+        buildUniqueValuesHash(ids: any[]): any;
     }
     class MediaFilterSection extends GenericFilterSection {
         configure(): void;
-        buildUniqueValuesHash(ids: any): any;
+        buildUniqueValuesHash(ids: any[]): any;
     }
     class CarbonSourceFilterSection extends GenericFilterSection {
         configure(): void;
@@ -62,7 +62,7 @@ declare module StudyD {
     }
     class LineNameFilterSection extends GenericFilterSection {
         configure(): void;
-        buildUniqueValuesHash(ids: any): any;
+        buildUniqueValuesHash(ids: any[]): any;
     }
     class ProtocolFilterSection extends GenericFilterSection {
         configure(): void;
@@ -116,6 +116,7 @@ declare module StudyD {
     function requestAllMetaboliteData(): void;
     function requestAllProteinData(): void;
     function requestAllGeneData(): void;
+    function processMeasurementData(data: any): void;
     function processNewMetaboliteData(data: any): void;
     function processNewProteinData(data: any): void;
     function processNewGeneData(data: any): void;
@@ -124,7 +125,7 @@ declare module StudyD {
     function linesActionPanelShow(): void;
     function queueAssaysActionPanelShow(): void;
     function assaysActionPanelShow(): void;
-    function queueMainGraphRemake(): void;
+    function queueMainGraphRemake(force?: boolean): void;
     function remakeMainGraphArea(force?: boolean): void;
     function addCarbonSourceRow(v: any): void;
     function removeCarbonSourceRow(order: any): void;
@@ -139,8 +140,6 @@ declare module StudyD {
     function initDescriptionEditFields(): void;
     function onChangedMetabolicMap(): void;
     function rebuildCarbonBalanceGraphs(columnIndex: number): void;
-    function setupPermissionsLink(): void;
-    function verifyPermissionsChange(newPermissions: any, onComplete: any): void;
     function onClickedMetabolicMapName(): void;
     function submitToStudy(action: any): void;
     function takeLinesAction(): void;
@@ -157,13 +156,11 @@ declare class DataGridSpecLines extends DataGridSpecBase {
     enableCarbonBalanceWidget(v: boolean): void;
     findMetaDataIDsUsedInLines(): void;
     findGroupIDsAndNames(): void;
-    generateGroupName(rowIDs: any): string;
-    private _longestCommonSubstring(names);
-    private _longestCommonSubstringBetweenTwo(str1, str2);
     defineTableSpec(): DataGridTableSpec;
     private loadLineName(index);
     private loadStrainName(index);
     private loadMedia(index);
+    private loadFirstCarbonSource(index);
     private loadCarbonSource(index);
     private loadCarbonSourceLabeling(index);
     private loadExperimenterInitials(index);
@@ -183,7 +180,6 @@ declare class DataGridSpecLines extends DataGridSpecBase {
     defineColumnSpec(): DataGridColumnSpec[];
     defineColumnGroupSpec(): DataGridColumnGroupSpec[];
     defineRowGroupSpec(): any;
-    getRowGroupMembership(recordID: number): number;
     getTableElement(): HTMLElement;
     getRecordIDs(): number[];
     createCustomHeaderWidgets(dataGrid: DataGrid): DataGridHeaderWidget[];

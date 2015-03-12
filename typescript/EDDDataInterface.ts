@@ -1,25 +1,43 @@
 // This file is nothing but Typescript declarations, and doesn't technically need to be passed to client browsers.
 
 
+interface UpdateRecord {
+    time:number;    // update timestamp
+    user:number;    // User ID
+}
+
+
 // This is what we expect in EDDData.Lines
 interface LineRecord {
-	n:string;		// Name
-	s:number;		// Strain ID
-	m:string;		// Media Type
-	md:any;			// Metadata structure
-	ctrl:boolean;	// Is Control
-	cs:number[];	// Carbon Sources
-	exp:number;		// Experimenter ID
-	rid:number;		// Replicate ID
-	con:string;		// Contact
-	dis:boolean;	// Disabled
-	mod:number;		// Modification epoch
+    id:number;          // Line ID
+	name:string;        // Name
+    description:string; // Description
+    control:boolean;    // Is Control
+    replicate:any;      // Line ID of replicate parent Line, or undefined/null
+    contact:any;        // Contact Info structure (user_id, text)
+    experimenter:number;// Experimenter user ID
+	meta:any;      	    // Metadata structure
+    strain:number[];    // Strain ID array
+	carbon:number[];    // Carbon Sources ID array
+	exp:number;		    // Experimenter ID
+    modified:UpdateRecord;
+    created:UpdateRecord;
+    /////// BELOW ARE DEPRECATED ////////
+    n:any;
+    m:any;
+    s:any;
+    cs:any;
+    md:any;
+    dis:any;
+    ctrl:any;
+    con:any;
 }
 
 
 
 // This is what we expect in EDDData.Assays
 interface AssayRecord {
+    id:any;         // Assay ID
 	an:string;		// Assay Name
 	des:string;		// Description
 	dis:boolean;	// Disabled

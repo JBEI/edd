@@ -1007,6 +1007,9 @@ table.autocompleteResults.autocompleteResults tr > td {
 }
 
 
+div.graphContainer {
+    min-height: 100px;
+}
 div.graphToolTip {
 	font-family: arial;
 	font-size: 12px;
