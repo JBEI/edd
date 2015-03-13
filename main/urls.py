@@ -14,5 +14,6 @@ urlpatterns = patterns('',
     url(r'^study/(?P<study>\d+)/import$', login_required(views.study_import_table)),
     url(r'^study/(?P<study>\d+)/export$', login_required(views.study_export_table)),
     url(r'^study/(?P<study>\d+)/export/data$', login_required(views.study_export_table_data)),
+    url(r'^study/(?P<study>\d+)/sbml$', login_required(views.study_export_sbml)),
     url(r'^utilities/parsefile$', login_required(views.utilities_parse_table)),
 )

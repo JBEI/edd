@@ -54,11 +54,6 @@ $(window).load(function () {
 
 {% block content %}
 
-{% if error_message %}
-<h3 style="color: #ff0000; font-weight: bold">{{ error_message }}</h3>
-
-{% else %}
-
 <!-- Line info section -->
 <div class="pageSection">
   {% include "main/include_linetable.html" %}
@@ -84,9 +79,9 @@ $(window).load(function () {
   value="0"/>
 <div class="disclose discloseHide" id="step0">
   <div class="sectionChapter">
-    <a href="#" class="discloseLink">
+    <span><a href="#" class="discloseLink">
       Step 1: Select the SBML template file to use for export
-    </a>
+    </a></span>
   </div>
 
 <div class="sectionContent discloseBody" id="statusstep0main">
@@ -127,8 +122,8 @@ Step 2: Optical Density (OD600)
       value="0"/>
 <div class="disclose discloseHide" id="step1">
   <div class="sectionChapter">
-    <span class="discloseLink">
-      <a href="#">Step 2: Find OD Data:</a>
+    <span>
+      <a href="#" class="discloseLink">Step 2: Find OD Data:</a>
     </span>
     <!-- TODO warnings
     <span class="neutral"> 1 Warning</span>
@@ -215,8 +210,8 @@ each measurement.
 
 <div class="disclose discloseHide" id="step2">
   <div class="sectionChapter">
-    <span class="discloseLink">
-      <a href="#">
+    <span>
+      <a href="#" class="discloseLink">
         Step 3: Select HPLC-like Measurements, and inputs
       </a>
     </span>
@@ -335,8 +330,8 @@ Step 4 (LC-MS)
 
 <div class="disclose discloseHide" id="step3">
   <div class="sectionChapter">
-    <span class="discloseLink">
-      <a href="#">
+    <span>
+      <a href="#" class="discloseLink">
   Step 4: Select LCMS-like Measurements, and inputs
       </a>
     </span>
@@ -457,8 +452,8 @@ Step 5 (RAMOS O2/CO2)
 
 <div class="disclose discloseHide" id="step4">
   <div class="sectionChapter">
-    <span class="discloseLink">
-      <a href="#">
+    <span>
+      <a href="#" class="discloseLink">
         Step 5: Select RAMOS O2/CO2 Measurements
       </a>
     </span>
@@ -545,7 +540,8 @@ Step 5 (RAMOS O2/CO2)
           </svg>
         </td>
       </tr>
-
+      {% endfor %}
+      {% endfor %}
     </table>
   </div>
   {% endfor %}<!-- data.export_ramos_measurements -->
@@ -576,9 +572,9 @@ Step 6: transcriptomics and proteomics
 
 <div class="disclose discloseHide" id="step5">
   <div class="sectionChapter">
-    <span class="discloseLink">
-      <a href="#">
-        Step 5: Select Transcriptomics/Proteomics Measurements
+    <span>
+      <a href="#" class="discloseLink">
+         Step 6: Select Transcriptomics/Proteomics Measurements
       </a>
     </span>
     <!-- TODO warnings -->
@@ -694,12 +690,12 @@ Step 7: convert units and calculate flux values
 
 <div class="disclose discloseHide" id="step6">
   <div class="sectionChapter">
-    <span class="discloseLink">
-      <a href="#">
+    <span>
+      <a href="#" class="discloseLink">
         Step 7: Convert units and calculate all selected flux values
       </a>
     </span>
-{% with n_warnings = data.n_conversion_warnings %}
+{% with data.n_conversion_warnings as n_warnings %}
   {% if n_warnings > 1 %}
     <span class="neutral">{{ n_warnings }} warnings</span>
   {% elif n_warnings == 1 %}
@@ -714,8 +710,8 @@ Step 7: convert units and calculate flux values
 {% for measurement in data.all_checked_measurements %}
   <div class="disclose discloseHide" id="FCStep{{ forloop.counter }}">
     <div class="sectionChapter">
-      <span class="discloseLink">
-        <a href="#">
+      <span>
+        <a href="#" class="discloseLink">
         Metabolite <b>{{ measurement.metabolite_name }}</b> for Assay
           <b>{{ measurement.assay }}</b>:
         </a>
@@ -754,7 +750,7 @@ Step 7: convert units and calculate flux values
       </b>due to lack of a corresponding OD value. If you want a good flux
       map at time <b>t</b>, you need OD measurements for time <b>t</b>!
     {% endif %}
-    </div>
+    </div><!-- #FCStepXmain -->
   </div><!-- #FCStepX -->
   {% endif %}<!-- measurement.n_errors -->
 
@@ -766,7 +762,7 @@ Step 7: convert units and calculate flux values
 
 Step 8
 
--->
+--><!--
 <input type="hidden"
     id="statusstep7show"
     name="statusstep7show"
@@ -774,8 +770,8 @@ Step 8
 
 <div class="disclose discloseHide" id="step7">
   <div class="sectionChapter">
-    <span class="discloseLink">
-      <a href="#">
+    <span>
+      <a href="#" class="discloseLink">
         Step 8: Pre-parse SBML model and match exchanges and species to
         measurements
       </a>
@@ -787,7 +783,7 @@ Step 8
 
   <div class="disclose discloseHide" id="SMBLSNParseStephidden">
     <div class="subSectionChapter">
-      <span class="discloseLink"><a href="#">
+      <span><a href="#" class="discloseLink">
         Detected <b>906</b> species, and parsed <b>0</b> species notes sections.
       </a></span>
     </div>
@@ -805,7 +801,7 @@ Step 8
   </div>
   <div class="disclose discloseHide" id="SMBLRNParseStephidden">
     <div class="subSectionChapter">
-      <span class="discloseLink"><a href="#">
+      <span><a href="#" class="discloseLink">
         Detected <b>1077</b> reactions, and parsed <b>1077</b> reaction notes
         sections.
       </a></span>
@@ -846,7 +842,7 @@ Step 8
 
   <div class="disclose discloseHide" id="SMBLRParseStep">
     <div class="subSectionChapter">
-      <span class="discloseLink"><a href="#">
+      <span><a href="#" class="discloseLink">
         Number of exchanges detected in this model: <b>
         {{ data.n_exchanges }}</b>
       </a></span>
@@ -904,7 +900,7 @@ Step 8
 
   <div class="disclose discloseHide" id="SMBLResolveStep">
     <div class="subSectionChapter">
-      <span class="discloseLink"><a href="#">
+      <span><a href="#" class="discloseLink">
         Of <b>{{ data.n_measurement_types }}</b> measurement types in the EDD,
             <b>545</b> were resolved to species in this model and
             <b>146</b> were not, and
@@ -941,7 +937,7 @@ Step 8
 
   <div class="disclose discloseHide" id="SMBLResolveStep">
     <div class="subSectionChapter">
-      <span class="discloseLink"><a href="#">
+      <span><a href="#" class="discloseLink">
         Of <b>{{ data.n_exchanges }}</b> total detected exchanges in this model,
             <b>{{ data.n_exchanges_resolved }}</b> were resolved and
             <b>{{ data.n_exchanges_not_resolved }}</b> were not.
@@ -1118,5 +1114,6 @@ Downloads section
   <input type="hidden" name="timestamp" id="downloadtimestamp" value="" />
 </div>
 </form>
+-->
 
 {% endblock content %}

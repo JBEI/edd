@@ -775,7 +775,8 @@ class Measurement(models.Model):
         return (self.measurement_format == 1)
 
     def valid_data (self) :
-        return self.measurementdatum_set.filter(y__isnull=False)
+        mdata = list(self.measurementdatum_set.all())
+        return [ md for md in mdata if md.fy is not None ]
 
     @property
     def name (self) :
@@ -795,11 +796,11 @@ class Measurement(models.Model):
 
     # TODO also handle vectors
     def extract_data_xvalues (self, defined_only=False) :
+        mdata = list(self.measurementdatum_set.all())
         if defined_only :
-            return [ m.fx for m in self.measurementdatum_set.filter(
-                y__isnull=False) ]
+            return [ m.fx for m in mdata if m.fy is not None ]
         else :
-            return [ m.fx for m in self.measurementdatum_set.all() ]
+            return [ m.fx for m in mdata ]
 
     # XXX this shouldn't need to handle vectors (?)
     def interpolate_at (self, x) :
@@ -808,8 +809,8 @@ class Measurement(models.Model):
         compute an approximate Y-value based on adjacent measurements (if any).
         """
         import numpy
-        data = sorted(list(self.measurementdatum_set.filter(y__isnull=False)),
-            lambda a,b: cmp(a.x, b.x))
+        data = self.valid_data()
+        data.sort(lambda a,b: cmp(a.x, b.x))
         if (len(data) == 0) :
             raise ValueError("Can't interpolate because no valid "+
               "measurement data are present.")

@@ -3,10 +3,24 @@
 Backend for exporting SBML files.
 """
 
-from main.models import MetabolicMap, Protocol, MeasurementType, Metabolite
+from main.models import MetabolicMap, Protocol, MeasurementType, Metabolite, \
+  MeasurementDatum, Measurement, Assay, MeasurementUnit, MeasurementGroup
+from main.data_export import extract_id_list, extract_id_list_as_form_keys
 from collections import defaultdict
 import math
 import sys
+
+def get_selected_line_ids (form, study) :
+  selected_line_ids = []
+  if ("selectedLineIDs" in form) :
+    line_id_param = form['selectedLineIDs']
+    selected_line_ids = extract_id_list(form, "selectedLineIDs")
+  else :
+    selected_line_ids = extract_id_list_as_form_keys(form, "line")
+  if (len(selected_line_ids) == 0) :
+    return list(study.line_set.all())
+  else :
+    return study.line_set.filter(id__in=selected_line_ids)
 
 class sbml_data (object) :
   """
@@ -16,11 +30,12 @@ class sbml_data (object) :
   a ValueError will be raised (and displayed in the browser).
   """
 
-  def __init__ (self, study, lines, form, test_mode=False) :
+  def __init__ (self, study, lines, form, test_mode=False, debug=False) :
     self.study = study
     self.lines = lines
     assert (len(lines) > 0)
     self.form = form
+    self.debug = debug
     self.submitted_from_export_page = form.get("formSubmittedFromSBMLExport",0)
     self.assays = []
     for line in lines :
@@ -33,6 +48,11 @@ class sbml_data (object) :
     self.primary_line_name = lines[0].name
     self.metabolic_maps = list(MetabolicMap.objects.all())
     self.chosen_map = None
+    # various caches
+    self._measurements = defaultdict(list)
+    self._measurement_data = defaultdict(list)
+    self._measurement_units = {}
+    self._measurement_types = {}
     # Initializing these for use later
     # Get a master set of all timestamps that contain data, separated according
     # to Line ID.
@@ -93,6 +113,7 @@ class sbml_data (object) :
     self.carbon_data_by_metabolite = {}
     self.metabolite_errors = {}
     # Okay, ready to extract data!
+    self._step_0_pre_fetch_data()
     self._step_1_select_template_file(test_mode=test_mode)
     self._step_2_get_od_data()
     self._step_3_get_hplc_data()
@@ -110,13 +131,91 @@ class sbml_data (object) :
     self._protocols_by_category[category_name] = protocols
     return protocols
 
+  # XXX the 
+  def _step_0_pre_fetch_data (self) :
+    if self.debug: print "STEP 0: pre-fetching measurement data"
+    assays = Assay.objects.filter(line__in=self.lines)
+    #assays.prefetch_related("measurement_set")
+    measurements = Measurement.objects.filter(assay__in=assays)
+    measurements.prefetch_related("assay")
+    #measurements.prefetch_related("meaurement_type")
+    #measurements.prefetch_related("meaurementdatum_set")
+    measurement_types = MeasurementType.objects.filter(
+      id__in=list(set([ m.measurement_type_id for m in measurements ])))
+    mtypes_dict = { mt.id : mt for mt in measurement_types }
+    measurement_data = MeasurementDatum.objects.filter(
+      measurement__in=measurements)
+    measurement_data.prefetch_related("measurement")
+    y_units = MeasurementUnit.objects.filter(
+      id__in=list(set([ md.y_units_id for md in measurement_data ])))
+    y_units_dict = { yu.id : yu for yu in y_units }
+    #measurement_data.prefetch_related("y_units")
+    for m in measurements :
+      self._measurements[m.assay_id].append(m)
+      self._measurement_types[m.id] = mtypes_dict[m.measurement_type_id]
+    for md in measurement_data :
+      meas_id = md.measurement_id
+      self._measurement_data[meas_id].append(md)
+      if (not meas_id in self._measurement_units) :
+        self._measurement_units[meas_id] = y_units_dict[md.y_units_id]
+
+  def _get_measurements (self, assay_id) :
+    return self._measurements.get(assay_id, [])
+
+  def _get_measurement_data (self, measurement_id) :
+    return self._measurement_data.get(measurement_id, [])
+
+  def _get_measurement_type (self, measurement_id) :
+    return self._measurement_types[measurement_id]
+
+  def _get_y_axis_units_name (self, measurementdatum_id) :
+    return self._measurement_units.get(measurementdatum_id, None)
+
+  def _get_measurements_by_type_group (self, assay_id, group_flag,
+      sort_by_name=None) :
+    metabolites = []
+    for m in self._get_measurements(assay_id) :
+      mtype_group = self._get_measurement_type(m.id).type_group
+      if (mtype_group == group_flag) :
+        metabolites.append(m)
+    if sort_by_name :
+      m2 = [ (m, self._get_measurement_type(m.id)) for m in metabolites ]
+      m2.sort(lambda a,b: cmp(a[1].type_name, b[1].type_name))
+      metabolites = [ mm[0] for mm in m2 ]
+    return metabolites
+
+  def _get_metabolite_measurements (self, assay_id, sort_by_name=False) :
+    return self._get_measurements_by_type_group(assay_id,
+      group_flag=MeasurementGroup.METABOLITE,
+      sort_by_name=sort_by_name)
+
+  def _find_min_max_x_in_measurements (self, measurements, defined_only=None) :
+    """
+    Find the minimum and maximum X values across all data in all given
+    Measurement IDs.  If definedOnly is set, filter out all the data points
+    that have unset Y values before determining range.
+    """
+    xvalues = set()
+    for m in measurements :
+      mdata = self._get_measurement_data(m.id)
+      for md in mdata :
+        if (md.fy is not None) :
+          xvalues.add(md.fx)
+    xvalues = list(xvalues)
+    return min(xvalues), max(xvalues)
+
+  def _is_concentration_measurement (self, measurement) :
+    units = self._get_y_axis_units_name(measurement.id).unit_name
+    return (units in ["mg/L", "g/L", "mol/L", "mM", "uM", "Cmol/L"])
+
   # Step 1: Select the SBML template file to use for export
   def _step_1_select_template_file (self, test_mode=False) :
     """
     Private method
     """
-    # TODO these aren't in the database yet
+    if self.debug : print "STEP 1: get template files"
     # TODO figure out something sensible for unit testing
+    self.metabolic_maps = MetabolicMap.objects.all()
     if (len(self.metabolic_maps) == 0) :
       if (not test_mode) :
         raise ValueError("No SBML templates have been uploaded!")
@@ -128,11 +227,14 @@ class sbml_data (object) :
     """
     Step 2: Find and filter OD Data
     """
+    if self.debug : print "STEP 2: filter OD data"
     od_protocols = self._get_protocols_by_category("OD")
     if (len(od_protocols) == 0) :
       raise ValueError("Cannot find the OD600 protocol by name!")
     mt_meas_type = MeasurementType.objects.get(short_name="OD")
     # TODO look for gCDW/L/OD600 metadata
+    self.usable_protocols["OD"] = od_protocols
+    self.usable_assays["OD"] = defaultdict(list)
     od_assays = self.protocol_assays.get(od_protocols[0].name, [])
     # XXX do we still need to cross-reference with selected lines? I think not
     if (len(od_assays) == 0) :
@@ -146,7 +248,9 @@ class sbml_data (object) :
       assay_meas = list(assay.measurement_set.filter(
         measurement_type__id=mt_meas_type.id))
       self.od_measurements.extend(assay_meas)
-      self.assay_measurements[assay.id] = assay_meas
+      if (len(assay_meas) > 0) :
+        self.usable_assays["OD"][od_protocols[0].name].append(assay)
+      #self.assay_measurements[assay.id] = assay_meas
     if (len(self.od_measurements) == 0) :
       raise ValueError("Assay selection has no Optical Data measurements "+
         "entered.  Biomass measurements are essential for FBA.")
@@ -161,7 +265,8 @@ class sbml_data (object) :
     for od_meas in selected_od_meas :
       self.metabolites_checked[od_meas.id] = True
     # get X-value limits now and store for later
-    min_od_x, max_od_x = find_min_max_x_in_measurements(self.od_measurements,
+    min_od_x, max_od_x = self._find_min_max_x_in_measurements(
+      self.od_measurements,
       defined_only=True)
     self.measurement_ranges["OD"] = (min_od_x, max_od_x)
     if (len(selected_od_meas) == 0) :
@@ -261,6 +366,7 @@ class sbml_data (object) :
   # Step 3: Select HPLC-like Measurements and mark the ones that are inputs
   def _step_3_get_hplc_data (self) :
     """private method"""
+    if self.debug : print "STEP 3: get HPLC data"
     self._process_multi_purpose_protocol("HPLC")
 
   # this function is used to extract data for HPLC, LC-MS, and transcriptomics
@@ -283,8 +389,8 @@ class sbml_data (object) :
       assays.sort(lambda a,b: cmp(a.name, b.name))
       assays.sort(lambda a,b: cmp(a.line.name, b.line.name))
       for assay in assays :
-        metabolites = list(assay.get_metabolite_measurements())
-        metabolites.sort(lambda a,b: cmp(a.name, b.name))
+        metabolites = self._get_metabolite_measurements(assay.id,
+          sort_by_name=True)
         cr_meas = []
         if process_carbon_ratios_separately :
           # Separate any carbon ratio measurements into a separate array
@@ -318,12 +424,12 @@ class sbml_data (object) :
             m_selected = False
             # By default, if there is more than one set of measurement data
             # for a given type, we only select the first one.
-            meas_type = m.measurement_type
+            meas_type = self._get_measurement_type(m.id)
             if (not meas_type.id in seen_cr_measurement_types) :
               m_selected = True
               seen_cr_measurement_types.add(meas_type.id)
           self.metabolites_checked[m.id] = m_selected
-          self.assay_measurements[assay.id].append(m)
+          #self.assay_measurements[assay.id].append(m)
           self.usable_measurements["LCMS"].append(m)
           self.usable_metabolites_by_assay[assay.id].append(m)
           assay_has_usable_data = True
@@ -334,14 +440,23 @@ class sbml_data (object) :
       usable_assays = self.usable_assays[protocol_category][protocol.name]
       if (len(usable_assays) > 0) :
         self.usable_protocols[protocol_category].append(protocol)
-    min_x, max_x = find_min_max_x_in_measurements(
-      self.usable_measurements[protocol_category], True)
-    self.measurement_ranges[protocol_category] = (min_x, max_x)
+    if (len(self.usable_protocols.get(protocol_category, [])) > 0) :
+      min_x, max_x = self._find_min_max_x_in_measurements(
+        self.usable_measurements[protocol_category], True)
+      self.measurement_ranges[protocol_category] = (min_x, max_x)
+    else :
+      self.measurement_ranges[protocol_category] = (None, None)
 
   def _process_metabolite_measurement (self, m) :
     """private method"""
-    if (not m.is_concentration_measurement()) :
+    if (not self._is_concentration_measurement(m)) :
       return False
+    mdata = self._get_measurement_data(m.id)
+    #for md in mdata :
+    #  if (md.fy is not None) :
+    #    break
+    #else :
+    #  return False
     m_selected = self.form.get("measurement%dinclude" % m.id, None)
     m_is_input = self.form.get("measurement%dinput" % m.id, None)
     if (not self.submitted_from_export_page) :
@@ -349,7 +464,7 @@ class sbml_data (object) :
       m_is_input = False
     self.metabolites_checked[m.id] = m_selected
     self.metabolite_is_input[m.id] = m_is_input
-    self.assay_measurements[m.assay.id].append(m)
+    #self.assay_measurements[m.assay.id].append(m)
     return True
 
   def _process_transcription_measurements (self, assay) :
@@ -363,7 +478,7 @@ class sbml_data (object) :
       if transcription_selected :
         self.have_transcriptomics_to_embed = True
       self.transcriptions_checked[assay.id] = transcription_selected
-      self.assay_measurements[assay.id].extend(transcriptions)
+      #self.assay_measurements[assay.id].extend(transcriptions)
       return transcriptions
     return None
 
@@ -378,7 +493,7 @@ class sbml_data (object) :
       if proteomics_selected :
         self.have_proteomics_to_embed = True
       self.proteins_checked[assay.id] = proteomics_selected
-      self.assay_measurements[assay.id].extend(proteomics)
+      #self.assay_measurements[assay.id].extend(proteomics)
       return proteomics
     return None
 
@@ -387,11 +502,13 @@ class sbml_data (object) :
   # measurements.
   def _step_4_get_lcms_data (self) :
     """private method"""
+    if self.debug : print "STEP 4: get LCMS data"
     self._process_multi_purpose_protocol("LCMS",
       process_carbon_ratios_separately=True)
 
   def _step_5_get_ramos_data (self) :
     """private method"""
+    if self.debug : print "STEP 5: get RAMOS data"
     ramos_protocols = self._get_protocols_by_category("RAMOS")
     if (len(ramos_protocols) == 0) :
       return
@@ -403,10 +520,10 @@ class sbml_data (object) :
       assays.sort(lambda a,b: cmp(a.name, b.name))
       assays.sort(lambda a,b: cmp(a.line.name, b.line.name))
       for assay in assays :
-        metabolites = list(assay.get_metabolite_measurements())
+        metabolites = self._get_metabolite_measurements(assay.id)
         metabolites.sort(lambda a,b: cmp(a.name, b.name))
         for m in metabolites :
-          units = m.y_axis_units_name
+          units = self._get_y_axis_units_name(m.id)
           if (units is None) or (units == "") :
             self.need_ramos_units_warning = True
           elif (units != "mol/L/hr") :
@@ -420,29 +537,38 @@ class sbml_data (object) :
               is_input = True
           self.metabolites_checked[m.id] = is_selected
           self.metabolite_is_input[m.id] = is_input
-          self.assay_measurements[assay.id].append(m)
+          #self.assay_measurements[assay.id].append(m)
           self.usable_metabolites_by_assay[assay.id].append(m)
           self.usable_measurements["RAMOS"].append(m)
         if (len(self.assay_measurements[assay.id]) > 0) :
           self.usable_assays["RAMOS"][protocol.name].append(assay)
       if (len(self.usable_assays["RAMOS"].get(protocol.name, [])) > 0) :
         self.usable_protocols["RAMOS"].append(protocol)
-    min_x, max_x = find_min_max_x_in_measurements(
-      self.usable_measurements["RAMOS"], True)
-    self.measurement_ranges["RAMOS"] = (min_x, max_x)
+    if (self.n_ramos_measurements > 0) :
+      min_x, max_x = self._find_min_max_x_in_measurements(
+        self.usable_measurements["RAMOS"], True)
+      self.measurement_ranges["RAMOS"] = (min_x, max_x)
+    else :
+      self.measurement_ranges["RAMOS"] = (None, None)
 
   def _step_6_get_transcriptomics_proteomics (self) :
     """private method"""
+    if self.debug : print "STEP 6: get transcriptomics/proteomics data"
     self._process_multi_purpose_protocol("TPOMICS")
 
   def _step_7_calculate_fluxes (self) :
     """private method"""
+    if self.debug : print "STEP 7: calculate fluxes"
     all_checked_measurements = []
-    for assay_id, measurements in self.assay_measurements.iteritems() :
-      for m in measurements :
-        if self.metabolites_checked[m.id] :
-          all_checked_measurements.append(m)
+    measurement_ids = []
+    for category in self.usable_protocols :
+      for protocol in self.usable_protocols[category] :
+        for assay in self.usable_assays[category][protocol.name] :
+          for m in self._get_measurements(assay.id) :
+            if self.metabolites_checked[m.id] :
+              all_checked_measurements.append(m)
     all_checked_measurements.sort(lambda a,b: cmp(a.short_name, b.short_name))
+    if self.debug : print "  data fetched"
     for m in all_checked_measurements :
       mtype = m.measurement_type
       assay = m.assay
@@ -464,9 +590,10 @@ class sbml_data (object) :
       if (True and (protocol_category != "OD") and
           (not m.is_carbon_ratio()) and (len(mdata_times) > 1)) :
         use_interpolation = True
-
       result = processed_measurement(
         measurement=m,
+        measurement_data=self._measurement_data[m.id],
+        y_units=self._measurement_units[m.id].unit_name,
         protocol_category=protocol_category,
         line_od_values=self.od_times_by_line[line.id],
         is_input=self.metabolite_is_input.get(m.id, False),
@@ -475,7 +602,7 @@ class sbml_data (object) :
 
   def _step_8_pre_parse_and_match (self) :
     """private method"""
-    pass
+    if self.debug : print "STEP 8: match to species in SBML file"
 
   # Used for extracting HPLC/LCMS/RAMOS assays for display.  Metabolites are
   # listed individually, proteomics and transcriptomics measurements are
@@ -491,7 +618,7 @@ class sbml_data (object) :
         gene_xvalue_counts = defaultdict(int)
         n_points = 0
         for t in transcriptions :
-          for md in t.measurementdatum_set.all() :
+          for md in self._get_measurement_data(t.id) :
             gene_xvalue_counts[md.fx] += 1
             n_points += 1
         gene_xvalues = sorted(gene_xvalue_counts.keys())
@@ -521,7 +648,7 @@ class sbml_data (object) :
         protein_xvalue_counts = {}
         n_points = 0
         for p in proteomics :
-          for md in p.measurementdatum_set.all() :
+          for md in self._get_measurement_data(p.id) :
             protein_xvalue_counts[md.fx] += 1
             n_points += 1
         protein_xvalues = sorted(protein_xvalue_counts.keys())
@@ -549,7 +676,7 @@ class sbml_data (object) :
         meas_type = m.measurement_type.type_group
         is_checked = self.metabolites_checked[m.id]
         data_points = []
-        for md in m.measurementdatum_set.all() :
+        for md in self._get_measurement_data(m.id) :
           x = md.fx
           if (x > max_x) : continue
           data_points.append({
@@ -559,7 +686,7 @@ class sbml_data (object) :
           })
         measurements.append({
           "name" : m.full_name,
-          "units" : m.y_axis_units_name,
+          "units" : self._get_y_axis_units_name(m.id),
           "id" : m.id,
           "type" : "measurement",
           "format" : m.measurement_format,
@@ -599,7 +726,7 @@ class sbml_data (object) :
     Returns a list of SBML template files and associated info as dicts.
     """
     return [ {
-      "file_name" : m.attachment.filename,
+      "file_name" : m.xml_file.filename,
       "id" : m.id,
       "is_selected" : m is self.chosen_map,
     } for m in self.metabolic_maps ]
@@ -734,7 +861,7 @@ class sbml_data (object) :
     return 0
 
   def exchanges (self) :
-    raise NotImplementedError()
+    return []
 
   @property
   def n_measurement_types (self) :
@@ -749,7 +876,7 @@ class sbml_data (object) :
       'ex_resolving_name' : str,
     }
     """
-    raise NotImplementedError()
+    return []
 
   @property
   def n_exchanges_resolved (self) :
@@ -766,7 +893,7 @@ class sbml_data (object) :
       'exchange' : str,
     }
     """
-    raise NotImplementedError()
+    return []
 
   def metabolite_species (self) :
     """
@@ -777,7 +904,7 @@ class sbml_data (object) :
       'species' : str,
     }
     """
-    raise NotImplementedError()
+    return []
 
   def metabolite_fluxes (self) :
     """
@@ -788,18 +915,18 @@ class sbml_data (object) :
       'rex' : str,
     }
     """
-    raise NotImplementedError()
+    return []
 
   def flux_match_elements (self) :
     """
     Returns a comma-separated list of IDs that becomes the value of the
     'fluxmatchelements' form parameter.
     """
-    raise NotImplementedError()
-    return ",".join([ str(fme_id) for fme_id in match_elements ])
+    return []
+    #return ",".join([ str(fme_id) for fme_id in match_elements ])
 
   def sbml_files (self) :
-    raise NotImplementedError()
+    return []
 
 #-----------------------------------------------------------------------
 # Data container classes
@@ -812,6 +939,7 @@ class measurement_datum_converted_units (object) :
   """
   def __init__ (self, x, y, units, metabolite, interpolated,
       protocol_category):
+    y = float(y)
     self.x = x
     self.initial_value = y
     self.y = y
@@ -831,17 +959,19 @@ class measurement_datum_converted_units (object) :
         raise ValueError("Cannot convert units from <b>mg/L<b> without "+
           "knowing the molar mass of this metabolite.  Skipping all "+
           "intervals.")
+      mm = float(metabolite.molar_mass)
       if (units == "g/L") :
-        self.y = 1000 * value / metabolite.molar_mass
+        self.y = 1000 * y / mm
       else :
-        self.y = value / metabolite.molar_mass
+        self.y = y / mm
         self.units = "mM"
     elif (units == "Cmol/L") :
       if (metabolite.carbon_count == 0) :
         raise ValueError("Cannot convert units from <b>Cmol/L</b> without "+
           "knowing the carbon count of this metabolite.  Skipping all "+
           "intervals.")
-      self.y = 1000 * y / metabolite.carbon_count
+      cc = float(metabolite.carbon_count)
+      self.y = 1000 * y / cc
     elif (units == "mol/L") :
       self.y = y * 1000
       self.units = "mM"
@@ -920,6 +1050,8 @@ class metabolite_data (object) :
 class processed_measurement (object) :
   def __init__ (self,
       measurement,
+      measurement_data,
+      y_units,
       protocol_category,
       line_od_values,
       is_input,
@@ -943,7 +1075,7 @@ class processed_measurement (object) :
     # so we don't pollute that set with values created via interpolation.
     # Also note that we will have to remake this array after attempting
     # interpolation.
-    valid_mdata = list(m.valid_data())
+    valid_mdata = [ md for md in measurement_data if md.y is not None ]
     valid_mdata.sort(lambda a,b: cmp(a.x, b.x))
     mdata_tuples = [ (md.fx, md.fx) for md in valid_mdata ]
     valid_mtimes = set([ md.fx for md in valid_mdata ])
@@ -969,7 +1101,7 @@ class processed_measurement (object) :
       # type.
       for (x, y) in mdata_tuples :
         md = measurement_datum_converted_units(x=x, y=y,
-          units=m.y_axis_units_name,
+          units=y_units,
           metabolite=met,
           interpolated=(x in self.interpolated_measurement_timestamps),
           protocol_category=protocol_category)
@@ -1108,16 +1240,3 @@ class processed_measurement (object) :
   @property
   def flux_data (self) :
     return self._flux_data
-
-#-----------------------------------------------------------------------
-# Utility functions
-def find_min_max_x_in_measurements (measurements, defined_only=None) :
-  """
-  Find the minimum and maximum X values across all data in all given
-  Measurement IDs.  If definedOnly is set, filter out all the data points that
-  have unset Y values before determining range.
-  """
-  xvalues = []
-  for m in measurements :
-    xvalues.extend(m.extract_data_xvalues(defined_only=defined_only))
-  return min(xvalues), max(xvalues)
