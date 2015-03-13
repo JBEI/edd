@@ -516,11 +516,11 @@ class ExportTests(TestCase) :
         self.assertTrue(
             hplc_data[0]['assays'][0]['measurements'][0]['n_points'] == 6)
         dp = hplc_data[0]['assays'][0]['measurements'][0]['data_points'][2]
-        self.assertTrue(dp['title'] == "0.22 at 8h")
+        self.assertTrue(dp['title'] == "0.22000 at 8h")
         self.assertTrue(data.n_lcms_measurements == 2)
         lcms_data = data.export_lcms_measurements()
         dp = lcms_data[0]['assays'][0]['measurements'][0]['data_points'][2]
-        self.assertTrue(dp['title'] == "0.2 at 8h")
+        self.assertTrue(dp['title'] == "0.20000 at 8h")
         self.assertTrue(data.n_ramos_measurements == 0)
         all_meas = data.processed_measurements()
         self.assertTrue(len(all_meas) == 5)

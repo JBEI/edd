@@ -281,7 +281,7 @@ each measurement.
             {% for md in measurement.data_points %}
               {% if measurement.type != "measurement" %}
                 <path class="cT" d="M{{ md.rx }},1v8">
-              {% elif measurement.ay == None %}
+              {% elif md.y == None %}
                 <path class="cE" d="M{{ md.rx }},1v8">
               {% elif measurement.format == 0 %}
                 <path class="cP" d="M{{ md.rx }},1v8">
@@ -402,7 +402,7 @@ Step 4 (LC-MS)
             {% for md in measurement.data_points %}
               {% if measurement.type != "measurement" %}
                 <path class="cT" d="M{{ md.rx }},1v8">
-              {% elif measurement.ay == None %}
+              {% elif md.y == None %}
                 <path class="cE" d="M{{ md.rx }},1v8">
               {% elif measurement.format == 0 %}
                 <path class="cP" d="M{{ md.rx }},1v8">
@@ -529,7 +529,7 @@ Step 5 (RAMOS O2/CO2)
               style="stroke-width:2px;"
               stroke-width="2"></path>
             {% for md in measurement.data_points %}
-              {% if measurement.ay == None %}
+              {% if md.y == None %}
                 <path class="cE" d="M{{ md.rx }},1v8">
               {% elif measurement.format == 0 %}
                 <path class="cP" d="M{{ md.rx }},1v8">
@@ -724,32 +724,39 @@ Step 7: convert units and calculate flux values
   {% else %}
     <div class="subSectionContent discloseBody"
          id="FCStep{{ forloop.counter }}main">
-    {% for md in measurement.data %}
-      <div>
-        Time <b>{{ md.time }}</b>h has a value of {{ md.value }}<b>
-          {{ md.units }}</b>.
-      {% if md.interpolated %}
+    {% if measurement.is_carbon_ratio %}
+      {% for md in measurement.cr_data %}
+        <!-- TODO handle skipped measurements -->
+        <div>Using carbon ratios of <b>{{ md.y }}</b>.</div>
+      {% endfor %}
+    {% else %}
+      {% for md in measurement.data %}
+        <div>
+          Time <b>{{ md.time }}</b>h has a value of {{ md.value }}<b>
+            {{ md.units }}</b>.
+        {% if md.interpolated %}
+            <span class="neutral">(Interpolated.)</span>
+        {% endif %}
+        </div>
+      {% endfor %}<!-- measurement.data -->
+      {% for interval in measurement.flux_data_list %}
+        <div>Interval <b>{{ interval.start }}</b> to <b>{{ interval.end }}</b>
+              has delta of <b>{{ interval.delta }}</b>{{ interval.units }}.
+        </div>
+        <div>
+          Calculated Flux: {{ interval.flux_eqn }} = <b>{{ interval.flux }}</b>
+        {% if interval.interpolated %}
           <span class="neutral">(Interpolated.)</span>
+        {% endif %}
+        </div>
+        <!-- TODO error handling output -->
+      {% endfor %}<!-- measurement.intervals -->
+      {% if measurement.n_skipped_measurements %}
+        Skipped measurements at times <b>{{ measurement.skipped_measurements }}
+        </b>due to lack of a corresponding OD value. If you want a good flux
+        map at time <b>t</b>, you need OD measurements for time <b>t</b>!
       {% endif %}
-      </div>
-    {% endfor %}<!-- measurement.data -->
-    {% for interval in measurement.flux_data_list %}
-      <div>Interval <b>{{ interval.start }}</b> to <b>{{ interval.end }}</b>
-            has delta of <b>{{ interval.delta }}</b>{{ interval.units }}.
-      </div>
-      <div>
-        Calculated Flux: {{ interval.flux_eqn }} = <b>{{ interval.flux }}</b>
-      {% if interval.interpolated %}
-        <span class="neutral">(Interpolated.)</span>
-      {% endif %}
-      </div>
-      <!-- TODO error handling output -->
-    {% endfor %}<!-- measurement.intervals -->
-    {% if measurement.n_skipped_measurements %}
-      Skipped measurements at times <b>{{ measurement.skipped_measurements }}
-      </b>due to lack of a corresponding OD value. If you want a good flux
-      map at time <b>t</b>, you need OD measurements for time <b>t</b>!
-    {% endif %}
+    {% endif %}<!-- measurement.is_carbon_ratio -->
     </div><!-- #FCStepXmain -->
   </div><!-- #FCStepX -->
   {% endif %}<!-- measurement.n_errors -->

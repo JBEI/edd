@@ -886,3 +886,6 @@ class MeasurementVector(models.Model):
     def __str__(self):
         return '(%f,%f)' % (self.x, self.y)
 
+    @property
+    def fx (self) :
+        return float(self.x)

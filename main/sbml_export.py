@@ -3,8 +3,7 @@
 Backend for exporting SBML files.
 """
 
-from main.models import MetabolicMap, Protocol, MeasurementType, Metabolite, \
-  MeasurementDatum, Measurement, Assay, MeasurementUnit, MeasurementGroup
+from main.models import * # XXX sorry, we need most of the models
 from main.data_export import extract_id_list, extract_id_list_as_form_keys
 from collections import defaultdict
 import math
@@ -131,7 +130,15 @@ class sbml_data (object) :
     self._protocols_by_category[category_name] = protocols
     return protocols
 
-  # XXX the 
+  # XXX CACHING STUFF
+  # the Django models allow us to traverse a tree-like structure of objects
+  # starting from the Study down to individual measurement data, which allows
+  # many subroutines to be implemented as methods of the appropriate model
+  # classes.  this results in relatively clean, object-oriented code -
+  # unfortunately, it also results in tens of thousands of database queries
+  # for a large dataset, which pre-fetching cannot entirely mitigate.
+  # therefore we pull as many of the required objects out of the database in
+  # advance as possible in a handful of queries, and track them in hash tables.
   def _step_0_pre_fetch_data (self) :
     if self.debug: print "STEP 0: pre-fetching measurement data"
     assays = Assay.objects.filter(line__in=self.lines)
@@ -146,6 +153,9 @@ class sbml_data (object) :
     measurement_data = MeasurementDatum.objects.filter(
       measurement__in=measurements)
     measurement_data.prefetch_related("measurement")
+    measurement_vectors = MeasurementVector.objects.filter(
+      measurement__in=measurements)
+    measurement_vectors.prefetch_related("measurement")
     y_units = MeasurementUnit.objects.filter(
       id__in=list(set([ md.y_units_id for md in measurement_data ])))
     y_units_dict = { yu.id : yu for yu in y_units }
@@ -158,6 +168,10 @@ class sbml_data (object) :
       self._measurement_data[meas_id].append(md)
       if (not meas_id in self._measurement_units) :
         self._measurement_units[meas_id] = y_units_dict[md.y_units_id]
+    for mv in measurement_vectors :
+      meas_id = mv.measurement_id
+      self._measurement_data[meas_id].append(mv)
+      self._measurement_units[meas_id] = None
 
   def _get_measurements (self, assay_id) :
     return self._measurements.get(assay_id, [])
@@ -169,7 +183,10 @@ class sbml_data (object) :
     return self._measurement_types[measurement_id]
 
   def _get_y_axis_units_name (self, measurementdatum_id) :
-    return self._measurement_units.get(measurementdatum_id, None)
+    units = self._measurement_units.get(measurementdatum_id, None)
+    if (units is not None) :
+      return units.unit_name
+    return None
 
   def _get_measurements_by_type_group (self, assay_id, group_flag,
       sort_by_name=None) :
@@ -199,13 +216,13 @@ class sbml_data (object) :
     for m in measurements :
       mdata = self._get_measurement_data(m.id)
       for md in mdata :
-        if (md.fy is not None) :
+        if (md.y is not None) :
           xvalues.add(md.fx)
     xvalues = list(xvalues)
     return min(xvalues), max(xvalues)
 
   def _is_concentration_measurement (self, measurement) :
-    units = self._get_y_axis_units_name(measurement.id).unit_name
+    units = self._get_y_axis_units_name(measurement.id)
     return (units in ["mg/L", "g/L", "mol/L", "mM", "uM", "Cmol/L"])
 
   # Step 1: Select the SBML template file to use for export
@@ -522,6 +539,7 @@ class sbml_data (object) :
       for assay in assays :
         metabolites = self._get_metabolite_measurements(assay.id)
         metabolites.sort(lambda a,b: cmp(a.name, b.name))
+        assay_has_usable_data = False
         for m in metabolites :
           units = self._get_y_axis_units_name(m.id)
           if (units is None) or (units == "") :
@@ -540,7 +558,10 @@ class sbml_data (object) :
           #self.assay_measurements[assay.id].append(m)
           self.usable_metabolites_by_assay[assay.id].append(m)
           self.usable_measurements["RAMOS"].append(m)
-        if (len(self.assay_measurements[assay.id]) > 0) :
+          assay_has_usable_data = True
+        # If the Assay has any usable Measurements, add it to a hash sorted
+        # by Protocol
+        if assay_has_usable_data :
           self.usable_assays["RAMOS"][protocol.name].append(assay)
       if (len(self.usable_assays["RAMOS"].get(protocol.name, [])) > 0) :
         self.usable_protocols["RAMOS"].append(protocol)
@@ -562,11 +583,17 @@ class sbml_data (object) :
     all_checked_measurements = []
     measurement_ids = []
     for category in self.usable_protocols :
+      if (category == "TPOMICS") :
+        continue
       for protocol in self.usable_protocols[category] :
         for assay in self.usable_assays[category][protocol.name] :
           for m in self._get_measurements(assay.id) :
-            if self.metabolites_checked[m.id] :
+            is_checked = self.metabolites_checked.get(m.id, None)
+            if is_checked :
               all_checked_measurements.append(m)
+            elif (is_checked is None) and self.debug :
+              print "  warning: skipping measurement %d for assay '%s'" % \
+                (m.id, m.assay.name)
     all_checked_measurements.sort(lambda a,b: cmp(a.short_name, b.short_name))
     if self.debug : print "  data fetched"
     for m in all_checked_measurements :
@@ -574,8 +601,6 @@ class sbml_data (object) :
       assay = m.assay
       protocol_category = assay.protocol.categorization
       line = assay.line
-      mdata_times = m.extract_data_xvalues(defined_only=True)
-      use_interpolation = False # usually turned on below
       # Right now we are allowing linear interpolation between two measurement
       # values, but only if there is a valid OD measurement at that exact spot.
       # So, the current implementation essentially just creates extra
@@ -586,18 +611,21 @@ class sbml_data (object) :
       # * Be working with a measurement type format that is just a single
       #   floating point number
       # * Have at LEAST two measurement values for this measurement
-      
-      if (True and (protocol_category != "OD") and
-          (not m.is_carbon_ratio()) and (len(mdata_times) > 1)) :
-        use_interpolation = True
-      result = processed_measurement(
-        measurement=m,
-        measurement_data=self._measurement_data[m.id],
-        y_units=self._measurement_units[m.id].unit_name,
-        protocol_category=protocol_category,
-        line_od_values=self.od_times_by_line[line.id],
-        is_input=self.metabolite_is_input.get(m.id, False),
-        use_interpolation=use_interpolation)
+      result = None
+      if m.is_carbon_ratio() :
+        result = carbon_ratio_measurement(
+          measurement=m,
+          measurement_data=self._measurement_data[m.id])
+        # TODO track whether a duplicate measurement gets skipped
+      else :
+        result = processed_measurement(
+          measurement=m,
+          measurement_data=self._measurement_data[m.id],
+          y_units=self._get_y_axis_units_name(m.id),
+          protocol_category=protocol_category,
+          line_od_values=self.od_times_by_line[line.id],
+          is_input=self.metabolite_is_input.get(m.id, False),
+          use_interpolation=(protocol_category != "OD"))
       self._processed_metabolite_data.append(result)
 
   def _step_8_pre_parse_and_match (self) :
@@ -645,7 +673,7 @@ class sbml_data (object) :
       # FIXME some unnecessary duplication here
       proteomics = self.proteomics_by_assay.get(assay.id, ())
       if (len(proteomics) > 0) :
-        protein_xvalue_counts = {}
+        protein_xvalue_counts = defaultdict(int)
         n_points = 0
         for p in proteomics :
           for md in self._get_measurement_data(p.id) :
@@ -669,7 +697,7 @@ class sbml_data (object) :
           "format" : 2,
           "data_points" : data_points,
           "n_points" : n_points,
-          "include" : self.proteomics_checked[assay.id],
+          "include" : self.proteins_checked[assay.id],
           "input" : None,
         })
       for m in self.usable_metabolites_by_assay.get(assay.id, ()) :
@@ -681,8 +709,8 @@ class sbml_data (object) :
           if (x > max_x) : continue
           data_points.append({
             "rx" : ((x / max_x) * 450) + 10,
-            "ay" : md.fy,
-            "title" : "%g at %gh" % (md.fy, x)
+            "ay" : md.y,
+            "title" : "%s at %gh" % (md.y, x)
           })
         measurements.append({
           "name" : m.full_name,
@@ -1048,6 +1076,7 @@ class metabolite_data (object) :
     self.values.append(n)
 
 class processed_measurement (object) :
+  is_carbon_ratio = False
   def __init__ (self,
       measurement,
       measurement_data,
@@ -1057,6 +1086,7 @@ class processed_measurement (object) :
       is_input,
       use_interpolation) :
     m = measurement
+    assert (not m.is_carbon_ratio())
     self.protocol_category = protocol_category
     self.measurement_id = m.id
     self.metabolite_id = m.measurement_type.id
@@ -1240,3 +1270,18 @@ class processed_measurement (object) :
   @property
   def flux_data (self) :
     return self._flux_data
+
+class carbon_ratio_measurement (object) :
+  is_carbon_ratio = True
+  def __init__ (self, measurement, measurement_data) :
+    self.measurement_id = measurement
+    self.assay_name = measurement.assay.name
+    self.metabolite_name = measurement.measurement_type.short_name
+    self._cr_data = []
+    for mv in measurement_data :
+      self._cr_data.append(mv)
+    self._cr_data.sort(lambda a,b: cmp(a.fx, b.fx))
+    self.n_errors = 0
+
+  def cr_data (self) :
+    return self._cr_data
