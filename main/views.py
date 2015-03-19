@@ -181,7 +181,7 @@ def study_export_sbml (request, study) :
     else :
         form = request.GET
     lines = []
-    lines = main.sbml_export.get_selected_line_ids(form, model)
+    lines = main.sbml_export.get_selected_lines(form, model)
     try :
         if (len(lines) == 0) :
             raise ValueError("No lines found for export.")
@@ -200,6 +200,7 @@ def study_export_sbml (request, study) :
             dictionary={
                 "data" : exports,
                 "study" : model,
+                "lines" : lines,
             },
             context_instance=RequestContext(request))
 

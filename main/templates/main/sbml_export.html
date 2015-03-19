@@ -1,3 +1,10 @@
+
+<!--
+
+FIXME this is really slow
+
+-->
+
 {% extends "edd_base.html" %}
 {% load staticfiles %}
 
@@ -69,7 +76,7 @@ $(window).load(function () {
 <div class="pageSection" style="margin:10px;" id="allstatusmain">
 
 <div class="sectionHead">Export Settings:
-  <span class="neutral"> 1 Warning</span>
+  <span class="warn2"> 1 Warning</span>
 </div>
 
 <!-- Step 1 -->
@@ -123,16 +130,18 @@ Step 2: Optical Density (OD600)
 <div class="disclose discloseHide" id="step1">
   <div class="sectionChapter">
     <span>
-      <a href="#" class="discloseLink">Step 2: Find OD Data:</a>
+      <a href="#" class="discloseLink">
+        Step 2: Find OD Data:
+      </a>
     </span>
     <!-- TODO warnings
-    <span class="neutral"> 1 Warning</span>
+    <span class="warn2"> 1 Warning</span>
     -->
   </div>
 
 <div class="sectionContent discloseBody" id="statusstep1main">
   {% if not data.have_gcdw_metadata %}
-    <div class="neutral">
+    <div class="warn2">
       Cannot find the gCDW/L/OD600 metadata type by name!
       You should probably create one.
     </div>
@@ -183,7 +192,7 @@ Step 2: Optical Density (OD600)
       </table>
     </div>
   {% if data.used_generic_GCDW_in_assays %}
-    <div class="neutral">OD600 measurements need a calibration factor to be
+    <div class="warn2">OD600 measurements need a calibration factor to be
         converted into gCDW/L.  You can add this as metadata, at the Assay or
         Line level.  For now, the EDD is using the default gCDW/L/OD600 value
         of <b>0.65</b> for {{ data.used_generic_GCDW_in_assays }} of your
@@ -301,7 +310,7 @@ each measurement.
   {% endfor %}<!-- protocols -->
 
 {% elif data.n_hplc_protocols %}
-  <div class="neutral">
+  <div class="warn2">
     No usable HPLC-based measurements are present.
     To be usable, measurements must have a timestamp somewhere inside the
     range of the OD measurements.  Metabolite measurements must be in any
@@ -309,7 +318,7 @@ each measurement.
     <b>mM</b>, <b>uM</b>, or <b>Cmol/L</b>.
   </div>
 {% else %}
-  <div class="neutral">Cannot find any Protocols with "HPLC" in the name!</div>
+  <div class="warn2">Cannot find any Protocols with "HPLC" in the name!</div>
 {% endif %}<!-- if data.n_usable_hplc_protocols -->
 
 </div><!-- #statusstep2main -->
@@ -430,7 +439,7 @@ Step 4 (LC-MS)
     <b>mol/L</b>, <b>mM</b>, <b>uM</b>, or <b>Cmol/L</b>.
   </div>
 {% else %}
-  <div class="neutral">
+  <div class="warn2">
     Cannot find any Protocols with "GCMS", "LCMS", or variants like "LC-MS" or
     "LC/MS" in the name!
   </div>
@@ -463,7 +472,7 @@ Step 5 (RAMOS O2/CO2)
 <div class="sectionContent discloseBody" id="statusstep4main">
   {% if data.n_ramos_measurements %}
     {% if data.need_ramos_units_warning %}
-  <div class="neutral">
+  <div class="warn2">
     RAMOS measurements must be supplied in units of <b>mol/L/hr</b>,
     but some of your data has no units labels assigned at all.
     Since the RAMOS equipment generates measurements in units of
@@ -552,7 +561,7 @@ Step 5 (RAMOS O2/CO2)
       range of the OD measurements, and be in units of <b>mol/L/hr</b>.
     </div>
   {% else %}
-    <div class="neutral">
+    <div class="warn2">
       Cannot find any Protocols with "O2" and "CO2" in the name!
     </div>
   {% endif %}
@@ -664,12 +673,12 @@ Step 6: transcriptomics and proteomics
   </div>
     {% endfor %}
   {% else %}
-  <div class="neutral">
+  <div class="warn2">
     No usable Transcriptomics- or Proteomics-based Protocols have usable data.
   </div>
   {% endif %}
 {% else %}
-  <div class="neutral">
+  <div class="warn2">
     Cannot find any Protocols with "Proteomics" or "Transcriptomics" in the
     name!
   </div>
@@ -697,9 +706,9 @@ Step 7: convert units and calculate flux values
     </span>
 {% with data.n_conversion_warnings as n_warnings %}
   {% if n_warnings > 1 %}
-    <span class="neutral">{{ n_warnings }} warnings</span>
+    <span class="warn2">{{ n_warnings }} warnings</span>
   {% elif n_warnings == 1 %}
-    <span class="neutral">{{ n_warnings }} warning</span>
+    <span class="warn2">{{ n_warnings }} warning</span>
   {% endif %}
 {% endwith %}
   </div>
@@ -707,9 +716,9 @@ Step 7: convert units and calculate flux values
 <div class="sectionContent discloseBody" id="statusstep6main">
 
 <!-- loop over metabolites -->
-{% for measurement in data.all_checked_measurements %}
+{% for measurement in data.processed_measurements %}
   <div class="disclose discloseHide" id="FCStep{{ forloop.counter }}">
-    <div class="sectionChapter">
+    <div class="subSectionChapter">
       <span>
         <a href="#" class="discloseLink">
         Metabolite <b>{{ measurement.metabolite_name }}</b> for Assay
@@ -719,7 +728,7 @@ Step 7: convert units and calculate flux values
     </div>
   {% if measurement.n_errors %}
     {% for msg in measurement.errors %}
-    <span class="neutral">{{ msg }}</span>
+    <span class="warn2">{{ msg }}</span>
     {% endfor %}
   {% else %}
     <div class="subSectionContent discloseBody"
@@ -735,7 +744,7 @@ Step 7: convert units and calculate flux values
           Time <b>{{ md.time }}</b>h has a value of {{ md.value }}<b>
             {{ md.units }}</b>.
         {% if md.interpolated %}
-            <span class="neutral">(Interpolated.)</span>
+            <span class="warn2">(Interpolated.)</span>
         {% endif %}
         </div>
       {% endfor %}<!-- measurement.data -->
@@ -746,7 +755,7 @@ Step 7: convert units and calculate flux values
         <div>
           Calculated Flux: {{ interval.flux_eqn }} = <b>{{ interval.flux }}</b>
         {% if interval.interpolated %}
-          <span class="neutral">(Interpolated.)</span>
+          <span class="warn2">(Interpolated.)</span>
         {% endif %}
         </div>
         <!-- TODO error handling output -->
@@ -758,10 +767,10 @@ Step 7: convert units and calculate flux values
       {% endif %}
     {% endif %}<!-- measurement.is_carbon_ratio -->
     </div><!-- #FCStepXmain -->
-  </div><!-- #FCStepX -->
   {% endif %}<!-- measurement.n_errors -->
+  </div><!-- #FCStepX -->
 
-{% endfor %}<!-- data.all_checked_measurements -->
+{% endfor %}<!-- data.processed_measurements -->
 </div><!-- #statusstep6main -->
 </div><!-- #step6 -->
 
@@ -769,7 +778,7 @@ Step 7: convert units and calculate flux values
 
 Step 8
 
---><!--
+-->
 <input type="hidden"
     id="statusstep7show"
     name="statusstep7show"
@@ -952,7 +961,7 @@ Step 8
     </div>
     <div class="subSectionContent discloseBody" id="SMBLReverseResolveStepmain">
       {% for rex in data.unresolved_exchanges %}
-      <div class="neutral">Reactant <b>{{ rex.reactant }}</b>
+      <div class="warn2">Reactant <b>{{ rex.reactant }}</b>
                   / exchange <b>{{ rex.exchange }}</b>
                   was not successfully used for resolving.</div>
       {% endfor %}
@@ -1031,11 +1040,12 @@ Step 8
             </tr>
             {% endfor %}
           </table>
-        <input type="hidden" name="fluxmatchelements" value="{{
-          data.flux_match_elements }}"/>
+        <input type="hidden" name="fluxmatchelements"
+          value="{{ data.flux_match_elements }}"/>
       </div>
     </div>
   </div>
+</div>
 
 <!--
 
@@ -1052,9 +1062,12 @@ Downloads section
 
 -->
 <div class="pageSection" style="width:90%;">
-  <div class="sectionHead">SBML Data Downloads</div>
+  <div class="sectionHead">
+    SBML Data Downloads
+  </div>
 
-  <div class="sectionContent">The following table
+  <div class="sectionContent">
+    The following table
     provides links to SBML files prepared for Flux Balance Analysis,
     one file for each usable timestamp.  The numbers in the table indicate
     the number of usable items that are embedded in each file.
@@ -1071,7 +1084,7 @@ Downloads section
       <th class="sortheader" style="text-align:right;font-size:0.8em;">
         {{ sf.timestamp }}h
       </th>
-      {% endfor %}}
+      {% endfor %}
     </tr>
 
     <tr>
@@ -1090,23 +1103,23 @@ Downloads section
               <div class="t">
                 <div style="font-weight:bold;">Metabolomics:</div>
                 <ul style="margin:2px 2px 4px 2px;padding:0px;">
-                  {% for mt in sf.metabolites %}
-                    {% if mt.interpolated %}
-                      <li>{{ mt.name }}<span class="neutral">*</span></li>
-                    {% else %}
-                      <li>{{ mt.name }}</li>
-                    {% endif %}
-                  {% endfor %}
+              {% for mt in sf.metabolites %}
+                {% if mt.interpolated %}
+                  <li>{{ mt.name }}<span class="warn2">*</span></li>
+                {% else %}
+                  <li>{{ mt.name }}</li>
+                {% endif %}
+              {% endfor %}
                 </ul>
                 <div style="font-weight:bold;">Fluxomics:</div>
                 <ul style="margin:2px 2px 4px 2px;padding:0px;">
-                  {% for fl in sf.fluxes %}
-                    {% if fl.interpolated %}
-                      <li>{{ fl.name }}<span class="neutral">*</span></li>
-                    {% else %}
-                      <li>{{ fl.name }}</li>
-                    {% endif %}
-                  {% endfor %}
+              {% for fl in sf.fluxes %}
+                {% if fl.interpolated %}
+                  <li>{{ fl.name }}<span class="warn2">*</span></li>
+                {% else %}
+                  <li>{{ fl.name }}</li>
+                {% endif %}
+              {% endfor %}
                 </ul>
               </div>
             </div>
@@ -1121,6 +1134,5 @@ Downloads section
   <input type="hidden" name="timestamp" id="downloadtimestamp" value="" />
 </div>
 </form>
--->
 
 {% endblock content %}

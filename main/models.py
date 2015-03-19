@@ -804,21 +804,8 @@ class Measurement(models.Model):
 
     # XXX this shouldn't need to handle vectors (?)
     def interpolate_at (self, x) :
-        """
-        Given an X-value without a measurement, use linear interpolation to
-        compute an approximate Y-value based on adjacent measurements (if any).
-        """
-        import numpy
-        data = self.valid_data()
-        data.sort(lambda a,b: cmp(a.x, b.x))
-        if (len(data) == 0) :
-            raise ValueError("Can't interpolate because no valid "+
-              "measurement data are present.")
-        xp = numpy.array([ d.fx for d in data ])
-        if (not (xp[0] <= x <= xp[-1])) :
-            return None
-        fp = numpy.array([ d.fy for d in data ])
-        return numpy.interp(float(x), xp, fp)
+        from main.utilities import interpolate_at
+        return interpolate_at(self.valid_data(), x)
 
     @property
     def y_axis_units_name (self) :

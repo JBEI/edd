@@ -4,12 +4,14 @@ Backend for exporting SBML files.
 """
 
 from main.models import * # XXX sorry, we need most of the models
+from main.utilities import interpolate_at, line_export_base
 from main.data_export import extract_id_list, extract_id_list_as_form_keys
 from collections import defaultdict
+import time
 import math
 import sys
 
-def get_selected_line_ids (form, study) :
+def get_selected_lines (form, study) :
   selected_line_ids = []
   if ("selectedLineIDs" in form) :
     line_id_param = form['selectedLineIDs']
@@ -21,7 +23,7 @@ def get_selected_line_ids (form, study) :
   else :
     return study.line_set.filter(id__in=selected_line_ids)
 
-class sbml_data (object) :
+class sbml_data (line_export_base) :
   """
   'Manager' class for extracting data for export into SBML format and
   organizing it for presentation as an HTML form.  This object will be passed
@@ -30,28 +32,15 @@ class sbml_data (object) :
   """
 
   def __init__ (self, study, lines, form, test_mode=False, debug=False) :
-    self.study = study
-    self.lines = lines
-    assert (len(lines) > 0)
+    line_export_base.__init__(self, study, lines)
     self.form = form
     self.debug = debug
     self.submitted_from_export_page = form.get("formSubmittedFromSBMLExport",0)
-    self.assays = []
-    for line in lines :
-      self.assays.extend(list(line.assay_set.all()))
-    self.protocol_assays = defaultdict(list)
     self.protocols = Protocol.objects.all()
     self._protocols_by_category = {}
-    for assay in self.assays :
-      self.protocol_assays[assay.protocol.name].append(assay)
     self.primary_line_name = lines[0].name
     self.metabolic_maps = list(MetabolicMap.objects.all())
     self.chosen_map = None
-    # various caches
-    self._measurements = defaultdict(list)
-    self._measurement_data = defaultdict(list)
-    self._measurement_units = {}
-    self._measurement_types = {}
     # Initializing these for use later
     # Get a master set of all timestamps that contain data, separated according
     # to Line ID.
@@ -68,7 +57,6 @@ class sbml_data (object) :
     self.usable_metabolites_by_assay = defaultdict(list)
     self.proteomics_by_assay = defaultdict(list)
     self.transcription_by_assay = defaultdict(list)
-    self.assay_measurements = defaultdict(list)
     self.measurement_ranges = {}
     self.usable_protocols = defaultdict(list) # keyed by protocol category
     self.usable_assays = defaultdict(dict) # keyed by P.category, P.name
@@ -112,7 +100,9 @@ class sbml_data (object) :
     self.carbon_data_by_metabolite = {}
     self.metabolite_errors = {}
     # Okay, ready to extract data!
+    t1 = time.time()
     self._step_0_pre_fetch_data()
+    t2 = time.time()
     self._step_1_select_template_file(test_mode=test_mode)
     self._step_2_get_od_data()
     self._step_3_get_hplc_data()
@@ -121,6 +111,9 @@ class sbml_data (object) :
     self._step_6_get_transcriptomics_proteomics()
     self._step_7_calculate_fluxes()
     self._step_8_pre_parse_and_match()
+    t3 = time.time()
+    self._fetch_time = (t2 - t1)
+    self._setup_time = (t3 - t1)
 
   def _get_protocols_by_category (self, category_name) :
     protocols = []
@@ -130,86 +123,14 @@ class sbml_data (object) :
     self._protocols_by_category[category_name] = protocols
     return protocols
 
-  # XXX CACHING STUFF
-  # the Django models allow us to traverse a tree-like structure of objects
-  # starting from the Study down to individual measurement data, which allows
-  # many subroutines to be implemented as methods of the appropriate model
-  # classes.  this results in relatively clean, object-oriented code -
-  # unfortunately, it also results in tens of thousands of database queries
-  # for a large dataset, which pre-fetching cannot entirely mitigate.
-  # therefore we pull as many of the required objects out of the database in
-  # advance as possible in a handful of queries, and track them in hash tables.
+  # XXX CACHING STUFF (see utilities.py)
   def _step_0_pre_fetch_data (self) :
     if self.debug: print "STEP 0: pre-fetching measurement data"
-    assays = Assay.objects.filter(line__in=self.lines)
-    #assays.prefetch_related("measurement_set")
-    measurements = Measurement.objects.filter(assay__in=assays)
-    measurements.prefetch_related("assay")
-    #measurements.prefetch_related("meaurement_type")
-    #measurements.prefetch_related("meaurementdatum_set")
-    measurement_types = MeasurementType.objects.filter(
-      id__in=list(set([ m.measurement_type_id for m in measurements ])))
-    mtypes_dict = { mt.id : mt for mt in measurement_types }
-    measurement_data = MeasurementDatum.objects.filter(
-      measurement__in=measurements)
-    measurement_data.prefetch_related("measurement")
-    measurement_vectors = MeasurementVector.objects.filter(
-      measurement__in=measurements)
-    measurement_vectors.prefetch_related("measurement")
-    y_units = MeasurementUnit.objects.filter(
-      id__in=list(set([ md.y_units_id for md in measurement_data ])))
-    y_units_dict = { yu.id : yu for yu in y_units }
-    #measurement_data.prefetch_related("y_units")
-    for m in measurements :
-      self._measurements[m.assay_id].append(m)
-      self._measurement_types[m.id] = mtypes_dict[m.measurement_type_id]
-    for md in measurement_data :
-      meas_id = md.measurement_id
-      self._measurement_data[meas_id].append(md)
-      if (not meas_id in self._measurement_units) :
-        self._measurement_units[meas_id] = y_units_dict[md.y_units_id]
-    for mv in measurement_vectors :
-      meas_id = mv.measurement_id
-      self._measurement_data[meas_id].append(mv)
-      self._measurement_units[meas_id] = None
-
-  def _get_measurements (self, assay_id) :
-    return self._measurements.get(assay_id, [])
-
-  def _get_measurement_data (self, measurement_id) :
-    return self._measurement_data.get(measurement_id, [])
-
-  def _get_measurement_type (self, measurement_id) :
-    return self._measurement_types[measurement_id]
-
-  def _get_y_axis_units_name (self, measurementdatum_id) :
-    units = self._measurement_units.get(measurementdatum_id, None)
-    if (units is not None) :
-      return units.unit_name
-    return None
-
-  def _get_measurements_by_type_group (self, assay_id, group_flag,
-      sort_by_name=None) :
-    metabolites = []
-    for m in self._get_measurements(assay_id) :
-      mtype_group = self._get_measurement_type(m.id).type_group
-      if (mtype_group == group_flag) :
-        metabolites.append(m)
-    if sort_by_name :
-      m2 = [ (m, self._get_measurement_type(m.id)) for m in metabolites ]
-      m2.sort(lambda a,b: cmp(a[1].type_name, b[1].type_name))
-      metabolites = [ mm[0] for mm in m2 ]
-    return metabolites
-
-  def _get_metabolite_measurements (self, assay_id, sort_by_name=False) :
-    return self._get_measurements_by_type_group(assay_id,
-      group_flag=MeasurementGroup.METABOLITE,
-      sort_by_name=sort_by_name)
+    self._fetch_cache_data()
 
   def _find_min_max_x_in_measurements (self, measurements, defined_only=None) :
     """
     Find the minimum and maximum X values across all data in all given
-    Measurement IDs.  If definedOnly is set, filter out all the data points
     that have unset Y values before determining range.
     """
     xvalues = set()
@@ -232,7 +153,6 @@ class sbml_data (object) :
     """
     if self.debug : print "STEP 1: get template files"
     # TODO figure out something sensible for unit testing
-    self.metabolic_maps = MetabolicMap.objects.all()
     if (len(self.metabolic_maps) == 0) :
       if (not test_mode) :
         raise ValueError("No SBML templates have been uploaded!")
@@ -252,7 +172,7 @@ class sbml_data (object) :
     # TODO look for gCDW/L/OD600 metadata
     self.usable_protocols["OD"] = od_protocols
     self.usable_assays["OD"] = defaultdict(list)
-    od_assays = self.protocol_assays.get(od_protocols[0].name, [])
+    od_assays = self._assays.get(od_protocols[0].id, [])
     # XXX do we still need to cross-reference with selected lines? I think not
     if (len(od_assays) == 0) :
       raise ValueError("Line selection does not contain any OD600 Assays. "+
@@ -262,12 +182,12 @@ class sbml_data (object) :
     od_assays.sort(lambda a,b: cmp(a.name, b.name))
     od_assays.sort(lambda a,b: cmp(a.line.name, b.line.name))
     for assay in od_assays :
-      assay_meas = list(assay.measurement_set.filter(
-        measurement_type__id=mt_meas_type.id))
+      all_meas = self._get_metabolite_measurements(assay.id)
+      assay_meas = [ m for m in all_meas if
+                     (m.measurement_type_id == mt_meas_type.id) ]
       self.od_measurements.extend(assay_meas)
       if (len(assay_meas) > 0) :
         self.usable_assays["OD"][od_protocols[0].name].append(assay)
-      #self.assay_measurements[assay.id] = assay_meas
     if (len(self.od_measurements) == 0) :
       raise ValueError("Assay selection has no Optical Data measurements "+
         "entered.  Biomass measurements are essential for FBA.")
@@ -333,13 +253,14 @@ class sbml_data (object) :
     # and the system is making no effort to hide it.
     od_measurements_by_line = defaultdict(list)
     for m in selected_od_meas :
-      od_measurements_by_line[m.assay.line.id].append(m)
+      od_measurements_by_line[m.assay.line_id].append(m)
     # Time to work on self.od_times_by_line, the set of all timestamps that
     # contain data
     for m in selected_od_meas :
-      xvalues = m.extract_data_xvalues(defined_only=True)
+      mdata = self._get_measurement_data(m.id)
+      xvalues = [ md.fx for md in mdata if md.fy is not None ]
       for h in xvalues :
-        self.od_times_by_line[m.assay.line.id][h] = 0
+        self.od_times_by_line[m.assay.line_id][h] = 0
     # For each Line, we take the full set of valid timstamps,
     # then walk through each set of OD Measurements and attempt to find a value
     # for that timestamp based on the data in that Measurement.
@@ -354,15 +275,16 @@ class sbml_data (object) :
       for t in all_times :
         y_values = []
         for odm in od_measurements_by_line[line_id] :
-          gcdw_cal = gcdw_calibrations[odm.assay.id]
-          md = list(odm.measurementdatum_set.filter(x=t))
+          gcdw_cal = gcdw_calibrations[odm.assay_id]
+          md = [ md for md in self._get_measurement_data(odm.id)
+                 if (md.fx == t) ]
           # If a value is already defined at this timestamp for this
           # measurement, no need to attempt to calculate an average.
           if (len(md) > 0) :
             assert (len(md) == 1)
             y_values.append(md[0].fy * gcdw_cal)
             continue
-          y_interp = odm.interpolate_at(t)
+          y_interp = interpolate_at(md, t)
           if (y_interp is not None) :
             y_values.append(y_interp * gcdw_cal)
         assert (len(y_values) > 0)
@@ -398,7 +320,7 @@ class sbml_data (object) :
       return
     seen_cr_measurement_types = set()
     for protocol in protocols :
-      assays = self.protocol_assays.get(protocol.name, [])
+      assays = self._assays.get(protocol.id, [])
       if (len(assays) == 0) :
         continue
       self.usable_assays[protocol_category] = defaultdict(list)
@@ -446,7 +368,6 @@ class sbml_data (object) :
               m_selected = True
               seen_cr_measurement_types.add(meas_type.id)
           self.metabolites_checked[m.id] = m_selected
-          #self.assay_measurements[assay.id].append(m)
           self.usable_measurements["LCMS"].append(m)
           self.usable_metabolites_by_assay[assay.id].append(m)
           assay_has_usable_data = True
@@ -481,12 +402,11 @@ class sbml_data (object) :
       m_is_input = False
     self.metabolites_checked[m.id] = m_selected
     self.metabolite_is_input[m.id] = m_is_input
-    #self.assay_measurements[m.assay.id].append(m)
     return True
 
   def _process_transcription_measurements (self, assay) :
     """private method"""
-    transcriptions = list(assay.get_gene_measurements())
+    transcriptions = self._get_gene_measurements(assay.id)
     if (len(transcriptions) > 0) :
       transcription_selected = self.form.get("transcriptions%dinclude" %
         assay.id, None)
@@ -495,13 +415,12 @@ class sbml_data (object) :
       if transcription_selected :
         self.have_transcriptomics_to_embed = True
       self.transcriptions_checked[assay.id] = transcription_selected
-      #self.assay_measurements[assay.id].extend(transcriptions)
       return transcriptions
     return None
 
   def _process_proteomics_measurements (self, assay) :
     """private method"""
-    proteomics = list(assay.get_protein_measurements())
+    proteomics = self._get_protein_measurements(assay.id)
     if (len(proteomics) > 0) :
       proteomics_selected = self.form.get("proteins%dinclude" % assay.id,
         None)
@@ -510,7 +429,6 @@ class sbml_data (object) :
       if proteomics_selected :
         self.have_proteomics_to_embed = True
       self.proteins_checked[assay.id] = proteomics_selected
-      #self.assay_measurements[assay.id].extend(proteomics)
       return proteomics
     return None
 
@@ -530,7 +448,7 @@ class sbml_data (object) :
     if (len(ramos_protocols) == 0) :
       return
     for protocol in ramos_protocols :
-      assays = self.protocol_assays.get(protocol.name, [])
+      assays = self._assays.get(protocol.id, [])
       if (len(assays) == 0) :
         continue
       self.usable_assays["RAMOS"] = defaultdict(list)
@@ -555,7 +473,6 @@ class sbml_data (object) :
               is_input = True
           self.metabolites_checked[m.id] = is_selected
           self.metabolite_is_input[m.id] = is_input
-          #self.assay_measurements[assay.id].append(m)
           self.usable_metabolites_by_assay[assay.id].append(m)
           self.usable_measurements["RAMOS"].append(m)
           assay_has_usable_data = True
@@ -582,6 +499,8 @@ class sbml_data (object) :
     if self.debug : print "STEP 7: calculate fluxes"
     all_checked_measurements = []
     measurement_ids = []
+    measurement_protocol_categories = {}
+    measurement_assays = {}
     for category in self.usable_protocols :
       if (category == "TPOMICS") :
         continue
@@ -591,16 +510,19 @@ class sbml_data (object) :
             is_checked = self.metabolites_checked.get(m.id, None)
             if is_checked :
               all_checked_measurements.append(m)
+              measurement_protocol_categories[m.id] = category
+              measurement_assays[m.id] = assay
             elif (is_checked is None) and self.debug :
               print "  warning: skipping measurement %d for assay '%s'" % \
                 (m.id, m.assay.name)
     all_checked_measurements.sort(lambda a,b: cmp(a.short_name, b.short_name))
     if self.debug : print "  data fetched"
+    od_mtype = MeasurementType.objects.get(short_name="OD")
     for m in all_checked_measurements :
       mtype = m.measurement_type
-      assay = m.assay
-      protocol_category = assay.protocol.categorization
-      line = assay.line
+      assay = measurement_assays[m.id]
+      protocol_category = measurement_protocol_categories[m.id]
+      line_id = assay.line_id
       # Right now we are allowing linear interpolation between two measurement
       # values, but only if there is a valid OD measurement at that exact spot.
       # So, the current implementation essentially just creates extra
@@ -615,16 +537,20 @@ class sbml_data (object) :
       if m.is_carbon_ratio() :
         result = carbon_ratio_measurement(
           measurement=m,
-          measurement_data=self._measurement_data[m.id])
+          measurement_data=self._measurement_data[m.id],
+          measurement_type=self._measurement_types[m.id])
         # TODO track whether a duplicate measurement gets skipped
       else :
         result = processed_measurement(
           measurement=m,
           measurement_data=self._measurement_data[m.id],
+          measurement_type=self._measurement_types[m.id],
+          metabolite=self._metabolites[m.id],
           y_units=self._get_y_axis_units_name(m.id),
           protocol_category=protocol_category,
-          line_od_values=self.od_times_by_line[line.id],
+          line_od_values=self.od_times_by_line[line_id],
           is_input=self.metabolite_is_input.get(m.id, False),
+          is_od_measurement=(m.measurement_type_id == od_mtype.id),
           use_interpolation=(protocol_category != "OD"))
       self._processed_metabolite_data.append(result)
 
@@ -701,7 +627,7 @@ class sbml_data (object) :
           "input" : None,
         })
       for m in self.usable_metabolites_by_assay.get(assay.id, ()) :
-        meas_type = m.measurement_type.type_group
+        meas_type = self._get_measurement_type(m.id).type_group
         is_checked = self.metabolites_checked[m.id]
         data_points = []
         for md in self._get_measurement_data(m.id) :
@@ -767,7 +693,7 @@ class sbml_data (object) :
     min_x, max_x = self.measurement_ranges["OD"]
     for m in self.od_measurements :
       data_points = []
-      for md in m.measurementdatum_set.all() :
+      for md in self._get_measurement_data(m.id) :
         x = md.fx
         if (x > max_x) : continue
         data_points.append({
@@ -1080,20 +1006,24 @@ class processed_measurement (object) :
   def __init__ (self,
       measurement,
       measurement_data,
+      measurement_type,
+      metabolite,
       y_units,
       protocol_category,
       line_od_values,
       is_input,
+      is_od_measurement,
       use_interpolation) :
     m = measurement
     assert (not m.is_carbon_ratio())
     self.protocol_category = protocol_category
     self.measurement_id = m.id
-    self.metabolite_id = m.measurement_type.id
-    self.metabolite_name = m.measurement_type.short_name
+    self.metabolite_id = measurement_type.id
+    self.metabolite_name = measurement_type.short_name
     self.assay_name = m.assay.name
     self.interpolated_measurement_timestamps = set()
     self.skipped_due_to_lack_of_od = []
+    self.is_od_measurement = is_od_measurement
     self.data = []
     self.intervals = []
     self._flux_data = []
@@ -1115,16 +1045,14 @@ class processed_measurement (object) :
     od_times = sorted(line_od_values.keys())
     for t in od_times :
       if (not t in valid_mtimes) and use_interpolation :
-        y = m.interpolate_at(t)
+        y = interpolate_at(valid_mdata, t)
         if (y is not None) :
           mdata_tuples.append((t, y))
           self.interpolated_measurement_timestamps.add(t)
     mdata_tuples.sort(lambda a,b: cmp(a[0], b[0]))
-    od_mtype = MeasurementType.objects.get(short_name="OD")
     def process_md () :
       if m.is_carbon_ratio() : # TODO
         return
-      met = Metabolite.objects.get(id=m.measurement_type.id)
       mdata_converted = []
       # attempt unit conversions.  for convenience we use a simple class
       # with 'x' and 'y' attributes, capable of handling any measurement
@@ -1132,7 +1060,7 @@ class processed_measurement (object) :
       for (x, y) in mdata_tuples :
         md = measurement_datum_converted_units(x=x, y=y,
           units=y_units,
-          metabolite=met,
+          metabolite=metabolite,
           interpolated=(x in self.interpolated_measurement_timestamps),
           protocol_category=protocol_category)
         self.data.append(md)
@@ -1187,7 +1115,7 @@ class processed_measurement (object) :
           # Here we're going to ignore the values we've pulled via the
           # Measurement, and use the values we already prepared in the OD
           # dict
-          if (self.metabolite_id == od_mtype.id) :
+          if self.is_od_measurement :
             # OD is converted into exponential growth rate (units
             # gCDW/gCDW/hr or 1/hr) by placing successive growth
             # observations within the exponential growth formula,
@@ -1265,7 +1193,7 @@ class processed_measurement (object) :
     return len(self.skipped_due_to_lack_of_od)
 
   def skipped_measurements (self) :
-    return ",".join(sorted(self.skipped_due_to_lack_of_od))
+    return ",".join([ str(t) for t in sorted(self.skipped_due_to_lack_of_od)])
 
   @property
   def flux_data (self) :
@@ -1273,10 +1201,10 @@ class processed_measurement (object) :
 
 class carbon_ratio_measurement (object) :
   is_carbon_ratio = True
-  def __init__ (self, measurement, measurement_data) :
+  def __init__ (self, measurement, measurement_data, measurement_type) :
     self.measurement_id = measurement
     self.assay_name = measurement.assay.name
-    self.metabolite_name = measurement.measurement_type.short_name
+    self.metabolite_name = measurement_type.short_name
     self._cr_data = []
     for mv in measurement_data :
       self._cr_data.append(mv)
