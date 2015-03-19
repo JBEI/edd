@@ -133,14 +133,10 @@ class StudySearch(object):
         if response.status_code == requests.codes.ok:
             # if the add worked, still need to send commit command
             add_json = response.json()
-            print 'Added the studies to index: %s' % add_json
             response = requests.post(url, data='{"commit":{}}', headers=headers)
-            print 'Trying to commit'
             if response.status_code == requests.codes.ok:
-                print 'Succeeded commit: %s' % response.json()
                 return add_json
             else:
                 raise Exception('Commit to Solr failed')
         else:
-            print response.text
             raise Exception('Adding studies to Solr failed: %s' % response.json()['error']['msg'])

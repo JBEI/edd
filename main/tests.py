@@ -195,10 +195,9 @@ class AssayDataTests(TestCase) :
         self.assertTrue(mt1.is_metabolite() and not mt1.is_protein()
                         and not mt1.is_gene())
         met = Metabolite.objects.get(short_name="mev")
-        self.assertTrue(met.id == mt1.id)
-        self.assertTrue(met.to_json() == {'cc': 6, 'name': u'Mevalonate',
-            'chgn': -1, 'ans': '', 'mm': 148.16, 'f': u'C6H11O4', 'chg': -1,
-            'sn': u'mev'})
+        self.assertTrue(met.to_json() == { 'id': mt1.id, 'cc': 6, 'name': u'Mevalonate',
+            'chgn': -1, 'ans': '', 'mm': 148.16, 'f': u'C6H11O4', 'chg': -1, 'sn': u'mev',
+            'family': mt1.type_group,})
 
     def test_measurement (self) :
         assay = Assay.objects.get(name="Assay 1")

@@ -664,7 +664,7 @@ class Metabolite(MeasurementType):
             "mm" : float(self.molar_mass),
             "cc" : self.carbon_count,
             "chg" : self.charge,
-            "chgn" : self.charge_as_number,
+            "chgn" : self.charge, # TODO find anywhere in typescript using this and fix it
         })
 
 
