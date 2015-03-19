@@ -2,8 +2,9 @@ from django.conf import settings
 from django.contrib.auth.models import Group
 from django.db import models
 from django.utils import timezone
-from django_extensions.db.fields import PostgreSQLUUIDField
 from django.utils.dateformat import format as format_date
+from django_extensions.db.fields import PostgreSQLUUIDField
+from django_hstore import hstore
 from itertools import chain
 import arrow
 import re
@@ -103,8 +104,8 @@ class MetadataType(models.Model):
     class Meta:
         db_table = 'metadata_type'
     group = models.ForeignKey(MetadataGroup)
-    # TODO: should also have a type_i18n to reference an i18n key for names in other languages
     type_name = models.CharField(max_length=255)
+    type_i18n = models.CharField(max_length=255, blank=True, null=True)
     input_size = models.IntegerField(default=6)
     default_value = models.CharField(max_length=255, blank=True)
     prefix = models.CharField(max_length=255, blank=True)
@@ -112,16 +113,22 @@ class MetadataType(models.Model):
     for_context = models.CharField(max_length=8, choices=CONTEXT_SET)
     # TODO: add a type_class field and utility method to take a Metadata.data_value and return
     #   a model instance; e.g. type_class = 'CarbonSource' would do a
-    #   CarbonSource.objects.get(pk=Metadata.data_value)
+    #   CarbonSource.objects.get(pk=value)
+    type_class = models.CharField(max_length=255, blank=True, null=True)
     
     def for_line(self):
-        return self.for_context == self.LINE or self.for_context == self.LINE_OR_PROTOCOL
+        return (self.for_context == self.LINE or
+            self.for_context == self.LINE_OR_PROTOCOL or
+            self.for_context == self.ALL)
     
     def for_protocol(self):
-        return self.for_context == self.PROTOCOL or self.for_context == self.LINE_OR_PROTOCOL
+        return (self.for_context == self.PROTOCOL or
+            self.for_context == self.LINE_OR_PROTOCOL or
+            self.for_context == self.ALL)
     
     def for_study(self):
-        return self.for_context == self.STUDY
+        return (self.for_context == self.STUDY or
+            self.for_context == self.ALL)
 
     def __str__(self):
         return self.type_name
@@ -140,21 +147,6 @@ class MetadataType(models.Model):
         }
 
 
-class Metadata(models.Model):
-    """
-    Base form for line metadata tracks which line is referred to, type, and who/when.
-    """
-    class Meta:
-        db_table = 'metadata'
-    edd_object = models.ForeignKey('EDDObject', related_name='+')
-    data_type = models.ForeignKey(MetadataType)
-    data_value = models.TextField()
-    updated = models.ForeignKey(Update, related_name='+')
-
-    def to_json(self):
-        return dict([(data_type.pk, data_value)])
-
-
 class EDDObject(models.Model):
     """
     A first-class EDD object, with update trail, comments, attachments.
@@ -164,7 +156,10 @@ class EDDObject(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     updates = models.ManyToManyField(Update, db_table='edd_object_update', related_name='+')
-    metadata = models.ManyToManyField(MetadataType, through='Metadata')
+    meta_store = hstore.DictionaryField(blank=True, default=dict)
+
+    # Use custom hstore manager to enable queries on hstore data
+    objects = hstore.HStoreManager()
     
     def created(self):
         created = self.updates.order_by('mod_time')[:1] 
@@ -195,44 +190,13 @@ class EDDObject(models.Model):
         return self.comments.count()
 
     def get_metadata_json(self):
-        meta_json = {}
-        # add all values to lists on keys
-        for meta in Metadata.objects.filter(edd_object=self):
-            if meta.data_type.pk not in meta_json:
-                meta_json[meta.data_type.pk] = [meta.data_value]
-            else:
-                meta_json[meta.data_type.pk].append(meta.data_value)
-        # unwrap single-item lists
-        for k, v in meta_json.iteritems():
-            if len(v) == 1:
-                meta_json[k] = v[0]
-        return meta_json
+        return self.meta_store
 
     def get_metadata_types(self):
-        return list(MetadataType.objects.filter(metadata__edd_object=self).distinct())
+        return list(MetadataType.objects.filter(pk__in=self.meta_store.keys()))
 
     def __str__(self):
         return self.name
-
-    # XXX not sure if this is or should be necessary - see comment above
-    def get_metadata (self, type_name=None) :
-        """
-        Retrieve the Metadata objects associated with this object.
-        """
-        return Metadata.objects.filter(edd_object=self)
-
-    def get_metadata_dict (self) :
-        """
-        Retrieve the Metadata objects associated with this object as a dict
-        keyed by MetadataType.type_name.
-        """
-        metadata_dict = {}
-        for metadata_type in self.metadata.all() :
-            metadata = Metadata.objects.filter(edd_object=self,
-                data_type=metadata_type)
-            if (len(metadata) > 0) :
-                metadata_dict[metadata_type.type_name] = metadata[0]
-        return metadata_dict
 
 
 class MetabolicMap (EDDObject) :
@@ -326,7 +290,8 @@ class Study(EDDObject):
 
     def get_line_metadata_types(self):
         # TODO: add in strain, carbon source here? IFF exists a line with at least one
-        return list(MetadataType.objects.filter(metadata__edd_object=self.line_set.all()).distinct())
+        # TODO: cannot go through non-existant Metadata object mapping now
+        return list()
 
     def get_metabolite_types_used(self):
         return list(Metabolite.objects.filter(measurement__assay__line__study=self).distinct())
@@ -509,7 +474,9 @@ class CarbonSource(EDDObject):
     """
     class Meta:
         db_table = 'carbon_source'
-    labeling = models.CharField(max_length=255)
+    object_ref = models.OneToOneField(EDDObject, parent_link=True)
+    # Labeling is description of isotope labeling used in carbon source
+    labeling = models.TextField()
     volume = models.DecimalField(max_digits=16, decimal_places=5)
     active = models.BooleanField(default=True)
 
@@ -670,6 +637,7 @@ class MeasurementType(models.Model):
             type_name=type_name,
             short_name=short_name,
             type_group=MeasurementGroup.PROTEINID)
+
 
 class Metabolite(MeasurementType):
     """

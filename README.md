@@ -23,6 +23,8 @@
     * Following PostgreSQL steps are optional if using external database server
     * Instructions on startup can be found with `brew info postgresql`
         * Manually start with `postgres -D /usr/local/var/postgres`
+    * Enable the hstore extension on all new databases:
+        * `psql -d template1 -c 'create extension hstore;'`
     * `createdb edd`
     * `psql edd` and
 
@@ -55,14 +57,39 @@
     * Access admin interface via <http://localhost:8080/solr>
 
  * Install python packages (these can be combined into one `sudo pip install`)
-    * Arrow `sudo pip install arrow`
-    * Django `sudo pip install Django`
-    * django-auth-ldap `sudo pip install django-auth-ldap`
-    * django-extensions `sudo pip install django-extensions`
-    * django-registration `sudo pip install django-registration-redux`
-    * requests `sudo pip install requests`
-    * psycopg2 `sudo pip install psycopg2`
-    * python-ldap `sudo pip install python-ldap`
+    * [Arrow](http://crsmithdev.com/arrow/)
+        * "Arrow is a Python library that offers a sensible, human-friendly approach to creating,
+          manipulating, formatting and converting dates, times, and timestamps."
+        * `sudo pip install arrow`
+    * [Django](https://www.djangoproject.com/)
+        * MVC web framework used to develop EDD.
+        * `sudo pip install Django`
+    * [django-auth-ldap](https://pythonhosted.org/django-auth-ldap/index.html)
+        * A Django application providing authentication with an LDAP backend.
+        * `sudo pip install django-auth-ldap`
+    * [django-extensions](https://django-extensions.readthedocs.org/en/latest/)
+        * Adds additional management extensions to the Django management script.
+        * `sudo pip install django-extensions`
+    * [django-hstore](https://github.com/djangonauts/django-hstore)
+        * Supports the PostgreSQL HStore extension for key-value store columns.
+        * `sudo pip install django-hstore`
+        * Ensure that the hstore extension is enabled on the PostgreSQL template1 database before
+          use; details in django-hstore documentation, and command provided in PostgreSQL setup
+          above.
+        * Requires running `python manage.py collectstatic` to copy static files in all apps to a
+          common location; this may need to be run every deploy.
+    * [django-registration](http://django-registration-redux.readthedocs.org/en/latest/index.html)
+        * A Django application allowing for local-account registration and creation.
+        * `sudo pip install django-registration-redux`
+    * [requests](http://docs.python-requests.org/en/latest/)
+        * "Requests is an Apache2 Licensed HTTP library, written in Python, for human beings."
+        * `sudo pip install requests`
+    * [psycopg2](http://initd.org/psycopg/)
+        * Database driver/adapter for PostgreSQL in Python.
+        * `sudo pip install psycopg2`
+    * [python-ldap](http://www.python-ldap.org/)
+        * Object-oriented client API for accessing LDAP directories.
+        * `sudo pip install python-ldap`
 
  * Use `server.cfg-example` as a template to create a `server.cfg` file
     * Need to put in appropriate values for `site.secret`, `db.pass`, and `ldap.pass`

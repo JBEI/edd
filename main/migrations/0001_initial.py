@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 from django.db import models, migrations
+import django_hstore.fields
 from django.conf import settings
 import django_extensions.db.fields
 
@@ -46,6 +47,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('name', models.CharField(max_length=255)),
                 ('description', models.TextField(null=True, blank=True)),
+                ('meta_store', django_hstore.fields.DictionaryField(default=dict, blank=True)),
             ],
             options={
                 'db_table': 'edd_object',
@@ -55,8 +57,8 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='CarbonSource',
             fields=[
-                ('eddobject_ptr', models.OneToOneField(parent_link=True, auto_created=True, primary_key=True, serialize=False, to='main.EDDObject')),
-                ('labeling', models.CharField(max_length=255)),
+                ('object_ref', models.OneToOneField(parent_link=True, primary_key=True, serialize=False, to='main.EDDObject')),
+                ('labeling', models.TextField()),
                 ('volume', models.DecimalField(max_digits=16, decimal_places=5)),
                 ('active', models.BooleanField(default=True)),
             ],
@@ -215,17 +217,6 @@ class Migration(migrations.Migration):
             bases=('main.measurementtype',),
         ),
         migrations.CreateModel(
-            name='Metadata',
-            fields=[
-                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('data_value', models.TextField()),
-            ],
-            options={
-                'db_table': 'metadata',
-            },
-            bases=(models.Model,),
-        ),
-        migrations.CreateModel(
             name='MetadataGroup',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
@@ -241,11 +232,13 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('type_name', models.CharField(max_length=255)),
+                ('type_i18n', models.CharField(max_length=255, null=True, blank=True)),
                 ('input_size', models.IntegerField(default=6)),
                 ('default_value', models.CharField(max_length=255, blank=True)),
                 ('prefix', models.CharField(max_length=255, blank=True)),
                 ('postfix', models.CharField(max_length=255, blank=True)),
                 ('for_context', models.CharField(max_length=8, choices=[(b'S', b'Study'), (b'L', b'Line'), (b'P', b'Protocol'), (b'LP', b'Line or Protocol'), (b'LPS', b'All')])),
+                ('type_class', models.CharField(max_length=255, null=True, blank=True)),
                 ('group', models.ForeignKey(to='main.MetadataGroup')),
             ],
             options={
@@ -318,24 +311,6 @@ class Migration(migrations.Migration):
                 'db_table': 'study_user_permission',
             },
             bases=(models.Model,),
-        ),
-        migrations.AddField(
-            model_name='metadata',
-            name='data_type',
-            field=models.ForeignKey(to='main.MetadataType'),
-            preserve_default=True,
-        ),
-        migrations.AddField(
-            model_name='metadata',
-            name='edd_object',
-            field=models.ForeignKey(related_name='+', to='main.EDDObject'),
-            preserve_default=True,
-        ),
-        migrations.AddField(
-            model_name='metadata',
-            name='updated',
-            field=models.ForeignKey(related_name='+', to='main.Update'),
-            preserve_default=True,
         ),
         migrations.AddField(
             model_name='measurementvector',
@@ -413,12 +388,6 @@ class Migration(migrations.Migration):
             model_name='grouppermission',
             name='study',
             field=models.ForeignKey(to='main.Study'),
-            preserve_default=True,
-        ),
-        migrations.AddField(
-            model_name='eddobject',
-            name='metadata',
-            field=models.ManyToManyField(to='main.MetadataType', through='main.Metadata'),
             preserve_default=True,
         ),
         migrations.AddField(

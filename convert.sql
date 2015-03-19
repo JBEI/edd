@@ -123,6 +123,9 @@ INSERT INTO public.update_info(mod_time, mod_by_id)
 --
 -- edd_object entries won't exist yet, make a temp column to track
 ALTER TABLE public.edd_object ADD COLUMN study_id integer UNIQUE DEFAULT NULL;
+-- ugh, django default kwarg does not result in a DEFAULT clause in SQL
+-- TODO put this raw SQL in a migration
+ALTER TABLE public.edd_object ALTER COLUMN meta_store SET DEFAULT ''::hstore;
 INSERT INTO public.edd_object(study_id, name, description)
     SELECT id, study_name, additional_info FROM old_edd.studies ORDER BY id;
 INSERT INTO public.study(
@@ -208,7 +211,33 @@ INSERT INTO public.edd_object_update(eddobject_id, update_id)
 --
 -- copy over carbon sources
 --
------- TODO
+ALTER TABLE public.edd_object ADD COLUMN carbon_id integer UNIQUE DEFAULT NULL;
+INSERT INTO public.edd_object(carbon_id, name, description)
+    SELECT c.id, c.carbon_source, c.additional_info
+    FROM old_edd.carbon_sources c
+    ORDER BY id;
+INSERT INTO public.carbon_source(
+        labeling, volume, active, object_ref_id
+    ) SELECT c.labeling, c.volume, NOT c.disabled, o.id
+    FROM old_edd.carbon_sources c
+    INNER JOIN public.edd_object o ON o.carbon_id = c.id
+    ORDER BY c.id;
+-- add create/update to edd_object
+INSERT INTO public.edd_object_update(eddobject_id, update_id)
+    SELECT o.id, c.id
+    FROM public.edd_object o
+    INNER JOIN old_edd.carbon_sources s ON s.id = o.carbon_id
+    LEFT JOIN public.update_info c ON date_trunc('second', c.mod_time) =
+        date_trunc('second', s.creation_time)
+        AND c.mod_by_id = s.created_by
+    UNION
+    SELECT o.id, m.id
+    FROM public.edd_object o
+    INNER JOIN old_edd.carbon_sources s ON s.id = o.carbon_id
+    LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
+        date_trunc('second', s.modification_time)
+        AND m.mod_by_id = s.modified_by
+    WHERE s.modified_by > 0;
 
 
 --
@@ -257,7 +286,7 @@ INSERT INTO public.line(
     INNER JOIN public.edd_object os ON os.study_id = l.study_id
     LEFT JOIN public.auth_user u ON lower(u.email) = lower(l.contact)
     ORDER BY l.id;
--- add create/update to edd_object
+-- add create/update to edd_object, plus any metadata timestamps
 INSERT INTO public.edd_object_update(eddobject_id, update_id)
     SELECT o.id, c.id
     FROM public.edd_object o
@@ -272,7 +301,14 @@ INSERT INTO public.edd_object_update(eddobject_id, update_id)
     LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
         date_trunc('second', l.modification_time)
         AND m.mod_by_id = l.modified_by
-    WHERE l.modified_by > 0;
+    WHERE l.modified_by > 0
+    UNION
+    SELECT o.id, u.id
+    FROM public.edd_object o
+    INNER JOIN old_edd.metadata_values m ON m.line_id = o.line_id AND m.assay_id = 0
+    LEFT JOIN public.update_info u ON date_trunc('second', u.mod_time) =
+        date_trunc('second', m.modification_time)
+        AND u.mod_by_id = m.modified_by;
 -- handle replicate IDs
 CREATE TEMP TABLE replicate(
     line_id integer PRIMARY KEY,
@@ -289,28 +325,6 @@ UPDATE public.line l SET replicate_id = r.replicate_id
     FROM replicate r
     WHERE r.line_id = l.object_ref_id;
 DROP TABLE replicate;
--- and metadata
-INSERT INTO public.metadata(
-        data_value, data_type_id, edd_object_id, updated_id
-    ) SELECT m.data_value, m.metadata_type_id, o.id, u.id
-    FROM old_edd.metadata_values m
-    INNER JOIN public.edd_object o ON o.line_id = m.line_id
-    LEFT JOIN public.update_info u ON date_trunc('second', u.mod_time) =
-        date_trunc('second', m.modification_time)
-        AND u.mod_by_id = m.modified_by
-    ORDER BY m.id;
--- media_type column converting to metadata value
-INSERT INTO public.metadata(
-        data_value, data_type_id, edd_object_id, updated_id
-    ) SELECT l.media_type, t.id, o.id, u.id
-    FROM old_edd.lines l
-    INNER JOIN public.metadata_type t ON t.type_name = 'Media'
-    INNER JOIN public.edd_object o ON o.line_id = l.id
-    INNER JOIN public.update_info u ON date_trunc('second', u.mod_time) =
-        date_trunc('second', l.modification_time)
-        AND u.mod_by_id = l.modified_by
-    WHERE l.media_type <> '' AND l.media_type <> '--'
-    ORDER BY l.id;
 
 
 --
@@ -370,17 +384,46 @@ INSERT INTO public.edd_object_update(eddobject_id, update_id)
     LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
         date_trunc('second', a.modification_time)
         AND m.mod_by_id = a.modified_by
-    WHERE a.modified_by > 0;
--- and metadata
-INSERT INTO public.metadata(
-        data_value, data_type_id, edd_object_id, updated_id
-    ) SELECT m.data_value, m.metadata_type_id, o.id, u.id
-    FROM old_edd.metadata_values m
-    INNER JOIN public.edd_object o ON o.assay_id = m.assay_id
+    WHERE a.modified_by > 0
+    UNION
+    SELECT o.id, u.id
+    FROM public.edd_object o
+    INNER JOIN old_edd.metadata_values m ON m.assay_id = o.assay_id
     LEFT JOIN public.update_info u ON date_trunc('second', u.mod_time) =
         date_trunc('second', m.modification_time)
-        AND u.mod_by_id = m.modified_by
-    ORDER BY m.id;
+        AND u.mod_by_id = m.modified_by;
+
+
+--
+-- copy metadata into hstore
+--
+WITH meta AS (
+    SELECT m.line_id, hstore(array_agg(m.metadata_type_id::text), array_agg(m.data_value)) AS data
+    FROM old_edd.metadata_values m
+    WHERE m.assay_id = 0
+    GROUP BY m.line_id
+) UPDATE public.edd_object o
+    SET meta_store = o.meta_store || meta.data
+    FROM meta
+    WHERE o.line_id = meta.line_id;
+WITH meta AS (
+    SELECT m.assay_id, hstore(array_agg(m.metadata_type_id::text), array_agg(m.data_value)) AS data
+    FROM old_edd.metadata_values m
+    WHERE m.assay_id > 0
+    GROUP BY m.assay_id
+) UPDATE public.edd_object o
+    SET meta_store = o.meta_store || meta.data
+    FROM meta
+    WHERE o.assay_id = meta.assay_id;
+-- media_type column converting to metadata value
+WITH media_type AS (
+    SELECT t.id FROM public.metadata_type t WHERE t.type_name = 'Media'
+), line_media AS (
+    SELECT l.id, l.media_type AS val FROM old_edd.lines l WHERE l.media_type NOT IN ('', '--')
+) UPDATE public.edd_object o
+    SET meta_store = o.meta_store || hstore(media_type.id::text, line_media.val)
+    FROM media_type, line_media
+    WHERE o.line_id = line_media.id;
 
 
 --
@@ -483,6 +526,7 @@ INSERT INTO public.measurement_vector(
     WHERE am.yvector IS NOT NULL
     ORDER BY a.id;
 
+
 --
 -- copy over metabolic maps
 --
@@ -498,73 +542,31 @@ INSERT INTO public.metabolic_map(
     INNER JOIN public.edd_object o ON o.metabolic_map_id = mm.id
     ORDER BY mm.id;
 
+
 --
 -- copy over attachments
 --
 INSERT INTO public.attachment(
       id, object_ref_id, filename, file, description, created_id, mime_type,
       file_size
-    ) SELECT a.id, so.id, a.filename, a.filename, a.description, m.id,
+    ) SELECT a.id, o.id, a.filename, a.filename, a.description, m.id,
         a.mime_type, a.file_size
     FROM old_edd.attachments a
-    INNER JOIN public.edd_object so ON so.study_id = a.study_id
+    INNER JOIN public.edd_object o ON o.study_id = a.study_id
+        OR o.line_id = a.line_id
+        OR o.assay_id = a.assay_id
+        OR o.protocol_id = a.protocol_id
+        OR o.metabolic_map_id = a.metabolic_map_id
     LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
         date_trunc('second', a.creation_time)
         AND m.mod_by_id = a.created_by
-    WHERE a.study_id != 0
     ORDER BY a.id;
-INSERT INTO public.attachment(
-      id, object_ref_id, filename, file, description, created_id, mime_type,
-      file_size
-    ) SELECT a.id, lo.id, a.filename, a.filename, a.description, m.id,
-        a.mime_type, a.file_size
-    FROM old_edd.attachments a
-    INNER JOIN public.edd_object lo ON lo.line_id = a.line_id
-    LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
-        date_trunc('second', a.creation_time)
-        AND m.mod_by_id = a.created_by
-    WHERE a.line_id != 0
-    ORDER BY a.id;
-INSERT INTO public.attachment(
-      id, object_ref_id, filename, file, description, created_id, mime_type,
-      file_size
-    ) SELECT a.id, ao.id, a.filename, a.filename, a.description, m.id,
-        a.mime_type, a.file_size
-    FROM old_edd.attachments a
-    INNER JOIN public.edd_object ao ON ao.assay_id = a.assay_id
-    LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
-        date_trunc('second', a.creation_time)
-        AND m.mod_by_id = a.created_by
-    WHERE a.assay_id != 0
-    ORDER BY a.id;
-INSERT INTO public.attachment(
-      id, object_ref_id, filename, file, description, created_id, mime_type,
-      file_size
-    ) SELECT a.id, po.id, a.filename, a.filename, a.description, m.id,
-        a.mime_type, a.file_size
-    FROM old_edd.attachments a
-    INNER JOIN public.edd_object po ON po.protocol_id = a.protocol_id
-    LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
-        date_trunc('second', a.creation_time)
-        AND m.mod_by_id = a.created_by
-    WHERE a.assay_id != 0
-    ORDER BY a.id;
-INSERT INTO public.attachment(
-      id, object_ref_id, filename, file, description, created_id, mime_type,
-      file_size
-    ) SELECT a.id, mo.id, a.filename, a.filename, a.description, m.id,
-        a.mime_type, a.file_size
-    FROM old_edd.attachments a
-    INNER JOIN public.edd_object mo ON mo.metabolic_map_id = a.metabolic_map_id
-    LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
-        date_trunc('second', a.creation_time)
-        AND m.mod_by_id = a.created_by
-    WHERE a.metabolic_map_id != 0
-    ORDER BY a.id;
+
 
 -- drop temp columns
 ALTER TABLE public.edd_object DROP COLUMN study_id;
 ALTER TABLE public.edd_object DROP COLUMN strain_id;
+ALTER TABLE public.edd_object DROP COLUMN carbon_id;
 ALTER TABLE public.edd_object DROP COLUMN line_id;
 ALTER TABLE public.edd_object DROP COLUMN protocol_id;
 ALTER TABLE public.edd_object DROP COLUMN assay_id;
