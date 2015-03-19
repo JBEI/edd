@@ -1,5 +1,7 @@
 from django.conf.urls import patterns, url
 from django.contrib.auth.decorators import login_required
+from django.contrib.staticfiles.storage import staticfiles_storage
+from django.views.generic.base import RedirectView
 from main import views
 
 
@@ -16,4 +18,7 @@ urlpatterns = patterns('',
     url(r'^study/(?P<study>\d+)/export$', login_required(views.study_export_table)),
     url(r'^study/(?P<study>\d+)/export/data$', login_required(views.study_export_table_data)),
     url(r'^utilities/parsefile$', login_required(views.utilities_parse_table)),
+    url(r'^favicon\.ico$', RedirectView.as_view(
+        url=staticfiles_storage.url('favicon.ico'),
+        permanent=False), name='favicon'),
 )
