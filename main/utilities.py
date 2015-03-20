@@ -136,6 +136,7 @@ class line_export_base (object) :
     assert (len(lines) > 0)
     # various caches
     self._assays = defaultdict(list) # keyed by protocol.id
+    self._assay_names = {}
     self._measurements = defaultdict(list) # keyed by assay.id
     self._measurement_data = defaultdict(list) # keyed by measurement.id
     self._measurement_units = {} # keyed by measurement.id
@@ -147,6 +148,8 @@ class line_export_base (object) :
       "measurement_set").select_related("protocol").select_related("line"))
     for assay in assays :
       self._assays[assay.protocol_id].append(assay)
+      self._assay_names[assay.id] = "%s-%s-%s" % (assay.line.name,
+        assay.protocol.name, assay.name)
     measurements = list(Measurement.objects.filter(
       assay_id__in=[ a.id for a in assays ]).select_related(
         "assay").select_related("measurement_type"))

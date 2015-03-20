@@ -538,7 +538,8 @@ class sbml_data (line_export_base) :
         result = carbon_ratio_measurement(
           measurement=m,
           measurement_data=self._measurement_data[m.id],
-          measurement_type=self._measurement_types[m.id])
+          measurement_type=self._measurement_types[m.id],
+          assay_name=self._assay_names[assay.id])
         # TODO track whether a duplicate measurement gets skipped
       else :
         result = processed_measurement(
@@ -546,6 +547,7 @@ class sbml_data (line_export_base) :
           measurement_data=self._measurement_data[m.id],
           measurement_type=self._measurement_types[m.id],
           metabolite=self._metabolites[m.id],
+          assay_name=self._assay_names[assay.id],
           y_units=self._get_y_axis_units_name(m.id),
           protocol_category=protocol_category,
           line_od_values=self.od_times_by_line[line_id],
@@ -581,7 +583,7 @@ class sbml_data (line_export_base) :
           if (x > max_x) : continue
           data_points.append({
             "rx" : ((x / max_x) * 450) + 10,
-            "ay" : gene_xvalue_counts[x],
+            "y" : gene_xvalue_counts[x],
             "title" : "%d transcription counts at %gh" % (gene_xvalue_counts[x],
               x),
           })
@@ -611,7 +613,7 @@ class sbml_data (line_export_base) :
           if (x > max_x) : continue
           data_points.append({
             "rx" : ((x / max_x) * 450) + 10,
-            "ay" : protein_xvalue_counts[x],
+            "y" : protein_xvalue_counts[x],
             "title" : "%d protein measurements at %gh" %
               (protein_xvalue_counts[x], x),
           })
@@ -635,7 +637,7 @@ class sbml_data (line_export_base) :
           if (x > max_x) : continue
           data_points.append({
             "rx" : ((x / max_x) * 450) + 10,
-            "ay" : md.y,
+            "y" : md.y,
             "title" : "%s at %gh" % (md.y, x)
           })
         measurements.append({
@@ -651,7 +653,7 @@ class sbml_data (line_export_base) :
           "input" : self.metabolite_is_input.get(m.id, False),
         })
       assay_list.append({
-        "name" : assay.name,
+        "name" : self._assay_names[assay.id],
         "measurements" : measurements,
       })
     return assay_list
@@ -698,7 +700,7 @@ class sbml_data (line_export_base) :
         if (x > max_x) : continue
         data_points.append({
           "rx" : ((x / max_x) * 450) + 10,
-          "ay" : md.fy,
+          "y" : md.fy,
           "title" : "%g at %gh" % (md.fy, x)
         })
       meas_list.append({
@@ -1008,6 +1010,7 @@ class processed_measurement (object) :
       measurement_data,
       measurement_type,
       metabolite,
+      assay_name,
       y_units,
       protocol_category,
       line_od_values,
@@ -1020,7 +1023,7 @@ class processed_measurement (object) :
     self.measurement_id = m.id
     self.metabolite_id = measurement_type.id
     self.metabolite_name = measurement_type.short_name
-    self.assay_name = m.assay.name
+    self.assay_name = assay_name
     self.interpolated_measurement_timestamps = set()
     self.skipped_due_to_lack_of_od = []
     self.is_od_measurement = is_od_measurement
@@ -1201,9 +1204,10 @@ class processed_measurement (object) :
 
 class carbon_ratio_measurement (object) :
   is_carbon_ratio = True
-  def __init__ (self, measurement, measurement_data, measurement_type) :
+  def __init__ (self, measurement, measurement_data, measurement_type,
+      assay_name) :
     self.measurement_id = measurement
-    self.assay_name = measurement.assay.name
+    self.assay_name = assay_name
     self.metabolite_name = measurement_type.short_name
     self._cr_data = []
     for mv in measurement_data :
