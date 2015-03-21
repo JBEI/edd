@@ -5,25 +5,309 @@ Backend for exporting SBML files.
 
 from main.models import * # XXX sorry, we need most of the models
 from main.utilities import interpolate_at, line_export_base
-from main.data_export import extract_id_list, extract_id_list_as_form_keys
 from collections import defaultdict
 import time
 import math
+import re
 import sys
 
-def get_selected_lines (form, study) :
-  selected_line_ids = []
-  if ("selectedLineIDs" in form) :
-    line_id_param = form['selectedLineIDs']
-    selected_line_ids = extract_id_list(form, "selectedLineIDs")
-  else :
-    selected_line_ids = extract_id_list_as_form_keys(form, "line")
-  if (len(selected_line_ids) == 0) :
-    return list(study.line_set.all())
-  else :
-    return study.line_set.filter(id__in=selected_line_ids)
+def parse_sbml_notes_to_dict (notes) :
+  notes_dict = defaultdict(list)
+  # Properly formated notes sections contain a body element.  If one exists,
+  # we will descend into it.  Otherwise we will pretend we are already in one,
+  # and proceed.
+  notes_body = notes
+  if notes_body.hasChild("body") :
+    notes_body = notes_body.getChild(0)
+  for i in range(notes_body.getNumChildren()) :
+    # The body element should contain a sequence of direct children, of
+    # arbitrary type (<p>, <div>, <span>, etc) (<p> is the official standard.)
+    node = notes_body.getChild(i)
+    # If it contains no text, or is itself a text node, it will have no
+    # children.  We should skip it in either case.
+    if (node.getNumChildren() == 0) :
+      continue
+    as_str = node.getChild(0).toXMLString()
+    # Each line of the notes is text in the format "NAME:content",
+    # or possibly a name followed by arbitrary XML under one child:
+    # "NAME:<ul><li>Thing1</li><li>stuff3</li></ul>"
+    key, content = as_str.split(":")
+    key = re.sub("^\s+|\s+$", "", key)
+    if (key == "") : continue
+    if (node.getNumChildren() > 1) :
+      content = node.getChild(1)
+    else :
+      content = re.sub("^\s+|\s+$", "", content)
+    notes_dict[key].append(content)
+  return notes_dict
 
-class sbml_data (line_export_base) :
+# TODO it would be much better to use a proper lexer capable of handling
+# arbitrary nesting
+def parse_note_string_boolean_logic (note) :
+  """
+  This code is designed to parse various ugly badly-formed strings that contain
+  boolean logic,  returning the detected entities in an array-of-arrays
+  structure that mirrors the logic and order observed.
+
+  For example, each of the following lines:
+    ( ( CysA  and  CysU  and  CysW  and  b3917 )  or  ( b2422  and  CysP  and  CysU  and  b2423 ) )
+    (CysA and CysU and CysW and b3917) or (b2422 and CysP and CysU and b2423)
+  Will become:
+    [['CysA', 'CysU', 'CysW', 'b3917'], ['b2422', 'CysP', 'CysU', 'b2423']]
+
+  And, each of the following lines:
+    <p>: (b2221 and b2222)</p>
+    (b2221  and  b2222)
+    b2221 and b2222
+  Will become:
+    [['b2221', 'b2222']]
+
+  Furthermore, each of the following strings, regardless of whitespace:
+    None
+    N.A.
+  Will become:
+    []
+  """
+  aa = []
+  # If this is a reference to an object, then the following command will return
+  # an integer address of the object referenced.  If it's a scalar, the command
+  # will return undefined.  We're using this fact as a boolean test for whether
+  # we should treat this item as a scalar or as a LibSBML::XMLNode object that
+  # needs traversing.
+  if (not isinstance(note, basestring)) :
+    if note.getNumChildren() :
+      note = note.getChild(0)
+    note = note.toXMLString()
+  # Why did we do the above? Because sometimes Hector's code lists gene
+  # associations like so:
+  # <html:p> GENE_ASSOCIATION :<p>: (b2221 and b2222)</p></html:p>
+  # I have no idea why.
+  # Hector's code sometimes prepends a spurious colon for no reason
+  note = re.sub("^[\s]*:[\s]*", "", note)
+  if (note == "") : # Sometimes Hector's code embeds ": " followed by NOTHING.
+    return aa
+  # We don't (yet) care about the logic embedded in the association of genes,
+  # so we split it without regard to nesting parentheses.
+  for major_part in note.split(" or ") :
+    a = []
+    for name in major_part.split(" and ") :
+      name = re.sub("[\(\)\s]", "", name) # Remove all parenthesis and spaces
+      # Hector's code embeds this about 1/10th of the time.  Dunno why
+      if (name == "None") or (name == "N.A.") :
+        continue
+      a.append(name)
+    if (len(a) > 0) :
+      aa.append(a)
+  return aa
+
+class sbml_info (object) :
+  """
+  Base class for processing a metabolic map (in SBML format) and extracting
+  information for display in a view and/or further processing w.r.t. assay
+  data.
+  """
+  def __init__ (self) :
+    self._metabolic_maps = list(MetabolicMap.objects.all())
+    self._chosen_map = None
+    self._sbml_species = []
+    self._sbml_reactions = []
+    self._species_objects = {} # indexed by species_id
+    self._reaction_objects = {}
+    self._detected_species_notes_entities = defaultdict(int) # indexed by label
+    self._detected_rxn_notes_entities = defaultdict(int) # indexed by label
+    self._gene_reactions = defaultdict(list) # indexed by gene ID
+    self._protein_reactions = defaultdict(list) # indexed by protein ID
+
+  def _select_map (self, i_map) :
+    self._chosen_map = self._metabolic_maps[i_map]
+
+  def _process_sbml (self) :
+    if (self._chosen_map is None) :
+      raise RuntimeError("You must call self._select_map(i) before "+
+        "self._process_sbml()!")
+    sbml = self._chosen_map.parseSBML()
+    model = sbml.getModel()
+    class SpeciesInfo (object) :
+      def __init__ (O, species) :
+        O.species = species
+        O.id = species.getId()
+        O.is_duplicate = False
+        O.notes = {}
+        if (O.id in self._species_objects) :
+          O.is_duplicate = True
+        else :
+          self._species_objects[O.id] = O
+          if (species.isSetNotes()) :
+            O.notes = parse_sbml_notes_to_dict(species.getNotes())
+      @property
+      def n_notes (O) :
+        return len(O.notes)
+    class ReactionInfo (object) :
+      def __init__ (O, reaction) :
+        O.reaction = reaction
+        O.id = reaction.getId()
+        O.is_duplicate = False
+        O.notes = {}
+        O.gene_ids = []
+        O.protein_ids = []
+        if (O.id in self._reaction_objects) :
+          O.is_duplicate = True
+        else :
+          self._reaction_objects[O.id] = O
+          if (reaction.isSetNotes()) :
+            O.notes = parse_sbml_notes_to_dict(reaction.getNotes())
+            for assoc_string in O.notes.get("GENE_ASSOCIATION", []) :
+              for genes in parse_note_string_boolean_logic(assoc_string) :
+                for gene in genes :
+                  O.gene_ids.append(gene)
+                  self._gene_reactions[gene].append(O)
+                  # NOTE,TODO: We are currently treating an association with a
+                  # gene name as an additional association with a protein of the
+                  # same name, and vice-versa.  This is not necessarily correct,
+                  # but it helps us deal with naming scheme conflicts.
+                  O.protein_ids.append(gene)
+                  self._protein_reactions[gene].append(O)
+            for assoc_string in O.notes.get("PROTEIN_ASSOCIATION", []) :
+              for proteins in parse_note_string_boolean_logic(assoc_string) :
+                for protein in proteins :
+                  O.protein_ids.append(protein)
+                  self._protein_Reactions[protein].append(O)
+                  # XXX see note above
+                  O.gene_ids.append(protein)
+                  self._gene_reactions[protein].append(O)
+      @property
+      def n_notes (O) :
+        return len(O.notes)
+    for species in model.getListOfSpecies() :
+      self._sbml_species.append(SpeciesInfo(species))
+    for reaction in model.getListOfReactions() :
+      self._sbml_reactions.append(ReactionInfo(reaction))
+
+  #---------------------------------------------------------------------
+  # "public" methods
+  def template_info (self) :
+    """
+    Returns a list of SBML template files and associated info as dicts.
+    """
+    return [ {
+      "file_name" : m.xml_file.filename,
+      "id" : m.id,
+      "is_selected" : m is self._chosen_map,
+    } for m in self._metabolic_maps ]
+
+  # SPECIES
+  @property
+  def n_sbml_species (self) :
+    return len([ s for s in self._sbml_species if not s.is_duplicate ])
+
+  @property
+  def n_sbml_species_notes (self) :
+    return len([ s for s in self._sbml_species if s.n_notes > 0 ])
+
+  def sbml_species (self) :
+    return self._sbml_species
+
+  def species_note_counts (self) :
+    detected_notes = defaultdict(int)
+    for sp in self._sbml_species :
+      for key in sp.notes.keys() :
+        detected_notes[key] += 1
+    return [ {"key": k, "count": v} for k,v in detected_notes.iteritems() ]
+
+  # REACTIONS
+  @property
+  def n_sbml_reactions (self) :
+    return len([ r for r in self._sbml_reactions if not r.is_duplicate ])
+
+  @property
+  def n_sbml_reaction_notes (self) :
+    return len([ r for r in self._sbml_reactions if r.n_notes > 0 ])
+
+  def sbml_reactions (self) :
+    return self._sbml_reactions
+
+  def reaction_note_counts (self) :
+    detected_notes = defaultdict(int)
+    for rxn in self._sbml_reactions :
+      for key in rxn.notes.keys() :
+        detected_notes[key] += 1
+    return [ {"key": k, "count": v} for k,v in detected_notes.iteritems() ]
+
+  #
+  @property
+  def n_gene_associations (self) :
+    return -1
+
+  @property
+  def n_gene_assoc_reactions (self) :
+    return -1
+
+  @property
+  def n_protein_associations (self) :
+    return -1
+
+  @property
+  def n_protein_assoc_reactions (self) :
+    return -1
+
+  @property
+  def n_exchanges (self) :
+    return -1
+
+  def exchanges (self) :
+    return []
+
+  @property
+  def n_meas_types_resolved_to_species (self) :
+    return -1
+
+  @property
+  def n_meas_types_unresolved_to_species (self) :
+    return -1
+
+  @property
+  def n_meas_types_resolved_to_exchanges (self) :
+    return -1
+
+  @property
+  def n_meas_types_unresolved_to_exchanges (self) :
+    return -1
+
+  @property
+  def n_measurement_types (self) :
+    return -1
+
+  def measurement_type_resolution (self) :
+    """
+    {
+      'name' : str,
+      'species' : str,
+      'exchange' : str,
+      'ex_resolving_name' : str,
+    }
+    """
+    return []
+
+  @property
+  def n_exchanges_resolved (self) :
+    return -1
+
+  @property
+  def n_exchanges_not_resolved (self) :
+    return -1
+
+  def unresolved_exchanges (self) :
+    """
+    {
+      'reactant' : str,
+      'exchange' : str,
+    }
+    """
+    return []
+
+########################################################################
+
+class line_sbml_data (line_export_base, sbml_info) :
   """
   'Manager' class for extracting data for export into SBML format and
   organizing it for presentation as an HTML form.  This object will be passed
@@ -33,14 +317,13 @@ class sbml_data (line_export_base) :
 
   def __init__ (self, study, lines, form, test_mode=False, debug=False) :
     line_export_base.__init__(self, study, lines)
+    sbml_info.__init__(self)
     self.form = form
     self.debug = debug
     self.submitted_from_export_page = form.get("formSubmittedFromSBMLExport",0)
     self.protocols = Protocol.objects.all()
     self._protocols_by_category = {}
     self.primary_line_name = lines[0].name
-    self.metabolic_maps = list(MetabolicMap.objects.all())
-    self.chosen_map = None
     # Initializing these for use later
     # Get a master set of all timestamps that contain data, separated according
     # to Line ID.
@@ -110,7 +393,8 @@ class sbml_data (line_export_base) :
     self._step_5_get_ramos_data()
     self._step_6_get_transcriptomics_proteomics()
     self._step_7_calculate_fluxes()
-    self._step_8_pre_parse_and_match()
+    if (not test_mode) : # TODO something smart
+      self._step_8_pre_parse_and_match()
     t3 = time.time()
     self._fetch_time = (t2 - t1)
     self._setup_time = (t3 - t1)
@@ -153,12 +437,11 @@ class sbml_data (line_export_base) :
     """
     if self.debug : print "STEP 1: get template files"
     # TODO figure out something sensible for unit testing
-    if (len(self.metabolic_maps) == 0) :
+    if (len(self._metabolic_maps) == 0) :
       if (not test_mode) :
         raise ValueError("No SBML templates have been uploaded!")
-      self.chosen_map = None
     else :
-      self.chosen_map = self.metabolic_maps[int(self.form.get("chosenmap", 0))]
+      self._select_map(int(self.form.get("chosenmap",0)))
 
   def _step_2_get_od_data (self) :
     """
@@ -515,7 +798,8 @@ class sbml_data (line_export_base) :
             elif (is_checked is None) and self.debug :
               print "  warning: skipping measurement %d for assay '%s'" % \
                 (m.id, m.assay.name)
-    all_checked_measurements.sort(lambda a,b: cmp(a.short_name, b.short_name))
+    all_checked_measurements.sort(lambda a,b:
+      cmp(a.short_name.lower(), b.short_name.lower()))
     if self.debug : print "  data fetched"
     od_mtype = MeasurementType.objects.get(short_name="OD")
     for m in all_checked_measurements :
@@ -559,6 +843,9 @@ class sbml_data (line_export_base) :
   def _step_8_pre_parse_and_match (self) :
     """private method"""
     if self.debug : print "STEP 8: match to species in SBML file"
+    known_exchanges = MetaboliteExchange.objects.all()
+    known_species = MetaboliteSpecies.objects.all()
+    self._process_sbml()
 
   # Used for extracting HPLC/LCMS/RAMOS assays for display.  Metabolites are
   # listed individually, proteomics and transcriptomics measurements are
@@ -677,16 +964,6 @@ class sbml_data (line_export_base) :
   #---------------------------------------------------------------------
   # "public" methods - referenced by HTML template (and unit tests)
   #
-  def template_info (self) :
-    """
-    Returns a list of SBML template files and associated info as dicts.
-    """
-    return [ {
-      "file_name" : m.xml_file.filename,
-      "id" : m.id,
-      "is_selected" : m is self.chosen_map,
-    } for m in self.metabolic_maps ]
-
   def export_od_measurements (self) :
     """
     Provide data structure for display of OD600 measurements in HTML template.
@@ -770,87 +1047,6 @@ class sbml_data (line_export_base) :
   def processed_measurements (self) :
     return self._processed_metabolite_data
 
-  def reaction_notes (self) :
-    """
-    {
-      'status' : "good" or "bad",
-      'species_id' : ???,
-      'entity' : str,
-    }
-    """
-    raise NotImplementedError()
-
-  @property
-  def n_subsystem_notes (self) :
-    return 0
-
-  @property
-  def n_protein_notes (self) :
-    return 0
-
-  @property
-  def n_gene_notes (self) :
-    return 0
-
-  @property
-  def n_protein_class_notes (self) :
-    return 0
-
-  @property
-  def n_gene_associations (self) :
-    return 0
-
-  @property
-  def n_gene_assoc_reactions (self) :
-    return 0
-
-  @property
-  def n_protein_associations (self) :
-    return 0
-
-  @property
-  def n_protein_assoc_reactions (self) :
-    return 0
-
-  @property
-  def n_exchanges (self) :
-    return 0
-
-  def exchanges (self) :
-    return []
-
-  @property
-  def n_measurement_types (self) :
-    return 0
-
-  def measurement_type_resolution (self) :
-    """
-    {
-      'name' : str,
-      'species' : str,
-      'exchange' : str,
-      'ex_resolving_name' : str,
-    }
-    """
-    return []
-
-  @property
-  def n_exchanges_resolved (self) :
-    return 0
-
-  @property
-  def n_exchanges_not_resolved (self) :
-    return 0
-
-  def unresolved_exchanges (self) :
-    """
-    {
-      'reactant' : str,
-      'exchange' : str,
-    }
-    """
-    return []
-
   def metabolite_species (self) :
     """
     {
@@ -901,6 +1097,7 @@ class measurement_datum_converted_units (object) :
     self.y = y
     self.initial_units = units
     self.interpolated = interpolated
+    self.conversion_equation = None
     if (protocol_category == "RAMOS") :
       if (units == "") :
         units = "mol/L/hr"
@@ -918,9 +1115,12 @@ class measurement_datum_converted_units (object) :
       mm = float(metabolite.molar_mass)
       if (units == "g/L") :
         self.y = 1000 * y / mm
+        self.units = "mM"
+        self.conversion_equation = "(%g * 1000) / %g" % (self.initial_value,mm)
       else :
         self.y = y / mm
         self.units = "mM"
+        self.conversion_equation = "%g / %g" % (self.initial_value, mm)
     elif (units == "Cmol/L") :
       if (metabolite.carbon_count == 0) :
         raise ValueError("Cannot convert units from <b>Cmol/L</b> without "+
@@ -928,15 +1128,19 @@ class measurement_datum_converted_units (object) :
           "intervals.")
       cc = float(metabolite.carbon_count)
       self.y = 1000 * y / cc
+      self.conversion_equation = "(%g * 1000) / %g " % (self.initial_value, cc)
     elif (units == "mol/L") :
       self.y = y * 1000
       self.units = "mM"
+      self.conversion_equation = "%g * 1000" % self.initial_value
     elif (units == "uM") :
       self.y = y / 1000
       self.units = "mM"
+      self.conversion_equation = "%g / 1000" % self.initial_value
     elif (units == "mol/L/hr") : # RAMOS only
       self.y = 1000 * y
       self.units = "mM/hr"
+      self.conversion_equation = "%g * 1000" % self.initial_value
     elif (units != "mM") :
       raise ValueError("Units '%s' can't be converted to mM.  Skipping..." %
         units)
@@ -946,9 +1150,6 @@ class measurement_datum_converted_units (object) :
 
   def __float__ (self) :
     return self.y
-
-  def show_conversion (self) :
-    pass
 
   @property
   def time (self) :
@@ -979,8 +1180,16 @@ class flux_calculation (object) :
     self.flux = flux
     self.interpolated = interpolated
 
+  @property
+  def elapsed (self) :
+    return self.end - self.start
+
   def __float__ (self) :
     return self.flux
+
+  @property
+  def y_start (self) :
+    return self.y - self.delta
 
   def __str__ (self) :
     base = "time: %8g - %8gh; delta = %8g, flux = %8g" % (self.start, self.end,
@@ -988,20 +1197,6 @@ class flux_calculation (object) :
     if (self.interpolated) :
       return base + " [interpolated]"
     return base
-
-class metabolite_data (object) :
-  """
-  Container for a set of measurements for a specific metabolite at a specific
-  time point.
-  """
-  def __init__ (self, t, metabolite_id, is_interpolated) :
-    self.t = t
-    self.id = metabolite_id
-    self.interpolated = is_interpolated
-    self.values = []
-
-  def append (self, n) :
-    self.values.append(n)
 
 class processed_measurement (object) :
   is_carbon_ratio = False
@@ -1040,7 +1235,7 @@ class processed_measurement (object) :
     # interpolation.
     valid_mdata = [ md for md in measurement_data if md.y is not None ]
     valid_mdata.sort(lambda a,b: cmp(a.x, b.x))
-    mdata_tuples = [ (md.fx, md.fx) for md in valid_mdata ]
+    mdata_tuples = [ (md.fx, md.fy) for md in valid_mdata ]
     valid_mtimes = set([ md.fx for md in valid_mdata ])
     # Get the set of all OD measurement timestamps that do NOT have a
     # defined value in this measurement's data.  These are the candidate

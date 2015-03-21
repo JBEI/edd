@@ -502,7 +502,7 @@ class ExportTests(TestCase) :
     # messy enough module that I'm writing tests as I go
     def test_sbml_export (self) :
         study = Study.objects.get(name="Test Study 1")
-        data = main.sbml_export.sbml_data(
+        data = main.sbml_export.line_sbml_data(
             study=study,
             lines=[ Line.objects.get(name="Line 1") ],
             form={},
@@ -538,7 +538,7 @@ class ExportTests(TestCase) :
         odm = od.measurement_set.all()[0]
         odm.measurementdatum_set.filter(x__gt=0).delete()
         try :
-            data = main.sbml_export.sbml_data(
+            data = main.sbml_export.line_sbml_data(
                 study=study,
                 lines=[ Line.objects.get(name="Line 1") ],
                 form={},
@@ -550,7 +550,7 @@ class ExportTests(TestCase) :
         # now delete the assay altogether
         od.delete()
         try :
-            data = main.sbml_export.sbml_data(
+            data = main.sbml_export.line_sbml_data(
                 study=study,
                 lines=[ Line.objects.get(name="Line 1") ],
                 form={},

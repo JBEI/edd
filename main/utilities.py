@@ -119,6 +119,43 @@ def interpolate_at (measurement_data, x) :
   fp = numpy.array([ d.fy for d in data ])
   return numpy.interp(float(x), xp, fp)
 
+def extract_id_list (form, key) :
+    """
+    Given a form parameter, extract the list of unique IDs that it specifies.
+    Both multiple key-value pairs (someIDs=1&someIDs=2) and comma-separated
+    lists (someIDs=1,2) are supported.
+    """
+    param = form[key]
+    if isinstance(param, basestring) :
+        return param.split(",")
+    else :
+        ids = []
+        for item in param :
+            ids.extend(item.split(","))
+        return ids
+
+def extract_id_list_as_form_keys (form, prefix) :
+    """
+    Extract unique IDs embedded in parameter keys, e.g. "prefix123include=1".
+    """
+    re_str = "^%s([0-9]+)include$" % prefix
+    ids = []
+    for key in form :
+        if re.match(re_str, key) and (not form.get(key, "0") in ["0", ""]) :
+            ids.append(form[key])
+    return ids
+
+def get_selected_lines (form, study) :
+    selected_line_ids = []
+    if ("selectedLineIDs" in form) :
+        line_id_param = form['selectedLineIDs']
+        selected_line_ids = extract_id_list(form, "selectedLineIDs")
+    else :
+        selected_line_ids = extract_id_list_as_form_keys(form, "line")
+    if (len(selected_line_ids) == 0) :
+        return list(study.line_set.all())
+    else :
+        return study.line_set.filter(id__in=selected_line_ids)
 
 class line_export_base (object) :
   """

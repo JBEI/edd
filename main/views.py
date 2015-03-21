@@ -5,13 +5,14 @@ from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.http.response import HttpResponseForbidden
 from django.shortcuts import render, get_object_or_404, redirect, \
-  render_to_response
+    render_to_response
 from django.template import RequestContext
 from django.views import generic
 from main.forms import CreateStudyForm
 from main.models import Study, Update, Protocol
 from main.solr import StudySearch
-from main.utilities import get_edddata_study, get_edddata_misc
+from main.utilities import get_edddata_study, get_edddata_misc, \
+    get_selected_lines
 import main.sbml_export
 import main.data_export
 from io import BytesIO
@@ -181,11 +182,11 @@ def study_export_sbml (request, study) :
     else :
         form = request.GET
     lines = []
-    lines = main.sbml_export.get_selected_lines(form, model)
+    lines = get_selected_lines(form, model)
     try :
         if (len(lines) == 0) :
             raise ValueError("No lines found for export.")
-        exports = main.sbml_export.sbml_data(
+        exports = main.sbml_export.line_sbml_data(
             study=model,
             lines=lines,
             form=form,

@@ -187,29 +187,6 @@ class EDDObject(models.Model):
                 metadata_dict[metadata_type.type_name] = metadata[0]
         return metadata_dict
 
-class MetabolicMap (EDDObject) :
-    """
-    Container for information used in SBML export.
-    """
-    class Meta:
-        db_table = "metabolic_map"
-    object_ref = models.OneToOneField(EDDObject, parent_link=True)
-    biomass_calculation = models.DecimalField(default=-1, decimal_places=5,
-        max_digits=16) # XXX check that these parameters make sense!
-    biomass_calculation_info = models.TextField(default='')
-    biomass_exchange_name = models.TextField()
-
-    @property
-    def xml_file (self) :
-        files = self.files.all()
-        if (len(files) == 0) :
-            raise RuntimeError("No attachments found for metabolic map %s!" %
-                self.name)
-        elif (len(files) > 1) :
-            raise RuntimeError("Multiple attachments found for metabolic map "+
-              "%s!" % self.name)
-        return files[0]
-
 class Metadata(models.Model):
     """
     Base form for line metadata tracks which line is referred to, type, and who/when.
@@ -876,3 +853,55 @@ class MeasurementVector(models.Model):
     @property
     def fx (self) :
         return float(self.x)
+
+
+class MetabolicMap (EDDObject) :
+    """
+    Container for information used in SBML export.
+    """
+    class Meta:
+        db_table = "metabolic_map"
+    object_ref = models.OneToOneField(EDDObject, parent_link=True)
+    biomass_calculation = models.DecimalField(default=-1, decimal_places=5,
+        max_digits=16) # XXX check that these parameters make sense!
+    biomass_calculation_info = models.TextField(default='')
+    biomass_exchange_name = models.TextField()
+
+    @property
+    def xml_file (self) :
+        files = self.files.all()
+        if (len(files) == 0) :
+            raise RuntimeError("No attachments found for metabolic map %s!" %
+                self.name)
+        elif (len(files) > 1) :
+            raise RuntimeError("Multiple attachments found for metabolic map "+
+              "%s!" % self.name)
+        return files[0]
+
+    def parseSBML (self) :
+        import libsbml
+        print self.xml_file.file.path
+        return libsbml.readSBML(str(self.xml_file.file.path))
+
+class MetaboliteExchange (models.Model) :
+    """
+    Mapping for a metabolite to an exchange defined by a metabolic map.
+    """
+    class Meta:
+        db_table = "measurement_type_to_exchange"
+        unique_together = ( ("metabolic_map", "measurement_type"), )
+    metabolic_map = models.ForeignKey(MetabolicMap)
+    measurement_type = models.ForeignKey(MeasurementType)
+    reactant_name = models.CharField(max_length=255)
+    exchange_name = models.CharField(max_length=255)
+
+class MetaboliteSpecies (models.Model) :
+    """
+    Mapping for a metabolite to an species defined by a metabolic map.
+    """
+    class Meta:
+        db_table = "measurement_type_to_species"
+        unique_together = ( ("metabolic_map", "measurement_type"), )
+    metabolic_map = models.ForeignKey(MetabolicMap)
+    measurement_type = models.ForeignKey(MeasurementType)
+    species = models.TextField()
