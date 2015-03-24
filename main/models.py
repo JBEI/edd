@@ -518,6 +518,7 @@ class Line(EDDObject):
             'id': self.pk,
             'name': self.name,
             'description': self.description,
+            'active': self.active,
             'control': self.control,
             'replicate': self.replicate.pk if self.replicate else None,
             'contact': { 'user_id': self.contact.pk, 'text': self.contact_extra },
@@ -743,6 +744,7 @@ class Assay(EDDObject):
 
     def to_json (self) :
         return {
+            "id": self.pk,
             "fn" : self.name,
             "ln" : self.line.name,
             "an" : self.name,

@@ -11,7 +11,7 @@ from django.template import RequestContext
 from django.template.defaulttags import register
 from django.views import generic
 from main.forms import CreateStudyForm
-from main.models import Study, Update, Protocol, Measurement
+from main.models import Study, Update, Protocol, Measurement, MeasurementType
 from main.solr import StudySearch
 from main.utilities import get_edddata_study, get_edddata_misc, JSONDecimalEncoder
 import main.data_export
@@ -84,8 +84,13 @@ def study_measurements(request, study):
     Request measurement data in a study.
     """
     model = Study.objects.get(pk=study)
+    measure_types = MeasurementType.objects.filter(measurement__assay__line__study=model).distinct()
     measurements = Measurement.objects.filter(assay__line__study=model, active=True)
-    measure_json = json.dumps(map(lambda m: m.to_json(), measurements), cls=JSONDecimalEncoder)
+    payload = {
+        'types': { t.pk: t.to_json() for t in measure_types },
+        'data': map(lambda m: m.to_json(), measurements),
+    }
+    measure_json = json.dumps(payload, cls=JSONDecimalEncoder)
     return HttpResponse(measure_json, content_type='application/json; charset=utf-8')
 
 

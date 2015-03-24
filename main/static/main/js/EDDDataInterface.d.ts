@@ -6,6 +6,7 @@ interface LineRecord {
     id: number;
     name: string;
     description: string;
+    active: boolean;
     control: boolean;
     replicate: any;
     contact: any;

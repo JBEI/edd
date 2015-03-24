@@ -849,18 +849,24 @@ var DataGridRecord = (function () {
                     continue;
                 }
                 var colCells = cellsForColumns[addingForColumn];
-                var c = colCells.shift();
-                // If there are still cells left to use, in any column, after drawing off the one
-                // we're dealing with, then we should run through this loop again.
                 if (colCells.length) {
-                    moreToAdd = true;
+                    var c = colCells.shift();
+                    // If there are still cells left to use, in any column, after drawing off the one
+                    // we're dealing with, then we should run through this loop again.
+                    if (colCells.length) {
+                        moreToAdd = true;
+                    }
+                    var nextOpenColumn = addingForColumn + c.colspan;
+                    while (addingForColumn < nextOpenColumn) {
+                        currentRowHeightsForColumns[addingForColumn] = addingForRow + c.rowspan;
+                        addingForColumn++;
+                    }
+                    cells.push(c);
                 }
-                var nextOpenColumn = addingForColumn + c.colspan;
-                while (addingForColumn < nextOpenColumn) {
-                    currentRowHeightsForColumns[addingForColumn] = addingForRow + c.rowspan;
-                    addingForColumn++;
+                else {
+                    // nothing in the current column, skip ahead to next one
+                    ++addingForColumn;
                 }
-                cells.push(c);
             }
             var r = new DataGridDataRow(this.recordID, cells);
             this.dataGridDataRows.push(r);

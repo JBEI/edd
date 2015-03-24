@@ -12,6 +12,7 @@ interface LineRecord {
     id:number;          // Line ID
 	name:string;        // Name
     description:string; // Description
+    active:boolean;     // Active line
     control:boolean;    // Is Control
     replicate:any;      // Line ID of replicate parent Line, or undefined/null
     contact:any;        // Contact Info structure (user_id, text)

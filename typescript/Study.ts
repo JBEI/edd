@@ -133,10 +133,8 @@ module StudyD {
                            'name': sBoxID,
                            'placeholder': this.sectionTitle,
                            'size': 14})
-                .addClass('searchBox')
-                .focusin((e) => this.inputFocusInHandler(e));
+                .addClass('searchBox');
             sBox.setAttribute('type', 'text'); // JQuery .attr() cannot set this
-            sBox.setAttribute('value', this.sectionTitle);
             this.searchBoxElement = sBox;
 
             var scrollDiv = document.createElement("div");
@@ -155,25 +153,15 @@ module StudyD {
         }
 
 
-        // The first time the element gets focus - and only the first time - we clear the value,
-        // since we are using that as the visual label for the section.
-        inputFocusInHandler(e) {
-            if (!this.gotFirstFocus) {
-                this.searchBoxElement.setAttribute('value', '');
-                this.gotFirstFocus = true;    
-            }
-        }
-
-
         processFilteringData(ids:any[]):void {
             var usedValues:{[index:string]:number} = this.buildUniqueValuesHash(ids);
             var crSet:number[] = [];
             var cHash:{[index:number]:string} = {};
             // Create a reversed hash so keys = values and vice versa
-            for (var key in usedValues) {
-                cHash[usedValues[key]] = key;
-                crSet.push(usedValues[key]);
-            }
+            $.each(usedValues, (key, value) => {
+                cHash[value] = key;
+                crSet.push(value);
+            });
             // Alphabetically sort an array of the keys according to values
             crSet.sort(function(a:number, b:number) {
                 var _a:string = cHash[a].toLowerCase();
@@ -452,45 +440,6 @@ module StudyD {
                     });
                 }
             });
-            return usedValues;
-        }
-    }
-
-
-
-    export class MediaFilterSection extends GenericFilterSection {
-        configure():void {
-            this.sectionTitle = 'Media';
-            this.sectionShortLabel = 'm';
-        }
-
-
-        buildUniqueValuesHash(ids:any[]):any {
-            var usedValues:any = {};
-            var usedValuesCount:number = 0;
-
-            this.filterHash = {};
-            ids.forEach((assay_id) => {
-                var assay, line;
-                if (assay = EDDData.Assays[assay_id]) {
-                    line = EDDData.Lines[assay.lid];
-                    this.filterHash[assay_id] = this.filterHash[assay_id] || [];
-                }
-                if (line) {
-
-                }
-            });
-            for (var i=0; i<ids.length; i++) {
-                var assayID = ids[i];
-                var assayRecord = EDDData.Assays[assayID];
-                var lineID = assayRecord.lid;
-                var lineRecord = EDDData.Lines[lineID];
-                var media = lineRecord.m;            // Media type
-                if (!usedValues.hasOwnProperty(media)) {
-                    usedValues[media] = ++usedValuesCount;
-                }
-                this.filterHash[assayID] = usedValues[media];
-            }
             return usedValues;
         }
     }
@@ -1002,11 +951,12 @@ module StudyD {
         this.assaysDataGridSpecs = {};
         this.assaysDataGrids = {};
 
-        $('.disclose').find('.discloseLink').on('click', (e) => {
+        // put the click handler at the document level, then filter to any link inside a .disclose
+        $(document).on('click', '.disclose .discloseLink', (e) => {
             $(e.target).closest('.disclose').toggleClass('discloseHide');
             return false;
         });
-        
+
         $.ajax({
             'url': 'edddata',
             'type': 'GET',
@@ -1024,7 +974,7 @@ module StudyD {
                 var protocolsWithMeasurements:any = {};
                 $.each(EDDData.Assays, (assayId, assay) => {
                     var line = EDDData.Lines[assay.lid];
-                    if (!line || line.dis) return;
+                    if (!line || !line.active) return;
                     protocolsWithMeasurements[assay.pid] = true;
                 });
                 // For each protocol with measurements, create a DataGridAssays object.
@@ -1059,7 +1009,7 @@ module StudyD {
         // First do some basic sanity filtering on the list
         $.each(EDDData.Assays, (assayId, assay) => {
             var line = EDDData.Lines[assay.lid];
-            if (assay.dis || line.dis) return;
+            if (assay.dis || !line || !line.active) return;
             aIDsToUse.push(assayId);
             if (assay.metabolites && assay.metabolites.length) haveMetabolomics = true;
             if (assay.transcriptions && assay.transcriptions.length) haveTranscriptomics = true;
@@ -1076,7 +1026,6 @@ module StudyD {
         // TODO media is now a metadata type, strain and carbon source should be too
         var assayFilters = [];
         assayFilters.push(new StrainFilterSection());
-        assayFilters.push(new MediaFilterSection());
         assayFilters.push(new CarbonSourceFilterSection());
         assayFilters.push(new CarbonLabelingFilterSection());
         $.each(MetaDataTypesRelevantForLines, (i, typeId) => {
@@ -1222,251 +1171,61 @@ module StudyD {
                 console.log('Failed to fetch measurement data!');
                 console.log(status);
             },
-            success: (data) => { this.processNewMetaboliteData(data); },
-            complete: () => { this.requestAllProteinData(); }
+            success: (data) => { this.processMeasurementData(data); }
         });
     }
 
 
-    export function requestAllProteinData() {
-
-        var myThis = this;
-        var success = (response) => {
-            if (response.type !== 'Success') {
-                console.log('Failed to fetch protein data!');
-                return;
-            }
-            myThis.processNewProteinData.call(myThis, response.data.data);
-        };
-        var requestDone = () => {
-            myThis.requestAllGeneData();
-        };
-        var error = (xhr, status, e) => {
-            console.log('Failed to fetch protein data!');
-            console.log(status);
-        };
-
-        $.ajax({
-            url: 'FormAjaxResp.cgi',
-            type: 'POST',
-            dataType: "json",
-            data: { 
-                action: 'requestMeasurementData',
-                dataType: 'protein',
-                studyID: EDDData.currentStudyID,
-            },
-            error: error,
-            success: success,
-            complete: requestDone
-        });
-    }
-
-
-    export function requestAllGeneData() {
-
-        var myThis = this;
-        var success = (response) => {
-            if (response.type !== 'Success') {
-                console.log('Failed to fetch gene data!');
-                return;
-            }
-            myThis.processNewGeneData.call(myThis, response.data.data);
-        };
-        var requestDone = () => {};
-        var error = (xhr, status, e) => {
-            console.log('Failed to fetch gene data!');
-            console.log(status);
-        };
-
-        $.ajax({
-            url: 'FormAjaxResp.cgi',
-            type: 'POST',
-            dataType: "json",
-            data: { 
-                action: 'requestMeasurementData',
-                dataType: 'gene',
-                studyID: EDDData.currentStudyID,
-            },
-            error: error,
-            success: success,
-            complete: requestDone
-        });
-    }
-
-    // TODO this will be a refactored method to handle the following three functions
     export function processMeasurementData(data) {
-        var assaySeen = {}, filteringMeasurementIds = [];
+        var assaySeen = {}, filterIds = { 'm': [], 'p': [], 'g': [] }, protocolToAssay = {};
         EDDData.AssayMeasurements = EDDData.AssayMeasurements || {};
-        $.each(data, (index, measurement) => {
-            var assay = EDDData.Assays[measurement.assay], line;
+        // loop over all downloaded measurements
+        $.each(data.data, (index, measurement) => {
+            var assay = EDDData.Assays[measurement.assay], line, mtype;
             if (!assay || assay.dis) return;
             line = EDDData.Lines[assay.lid];
-            if (!line || line.dis) return;
+            if (!line || !line.active) return;
+            // store the measurements
             EDDData.AssayMeasurements[measurement.id] = measurement;
+            // track which assays received updated measurements
             assaySeen[assay.id] = true;
+            protocolToAssay[assay.pid] = protocolToAssay[assay.pid] || {};
+            protocolToAssay[assay.pid][assay.id] = true;
+            // handle measurement data based on type
+            mtype = data.types[measurement.type] || {};
+            if (mtype.family === 'm') { // measurement is of metabolite
+                (assay.metabolites = assay.metabolites || []).push(measurement.id);
+                filterIds.m.push(measurement.id);
+            } else if (mtype.family === 'p') { // measurement is of protein
+                (assay.proteins = assay.proteins || []).push(measurement.id);
+                filterIds.p.push(measurement.id);
+            } else if (mtype.family === 'g') { // measurement is of gene / transcript
+                (assay.transcriptions = assay.transcriptions || []).push(measurement.id);
+                filterIds.g.push(measurement.id);
+            }
         });
-    }
-
-
-    // Called after metabolomics data has been fetched from the server. Note: The functions to
-    // process newly arriving data of different types are not designed to be called in parallel.
-    export function processNewMetaboliteData(data) {
-
-        // Currently, all Metabolite data arrives at once, for all Assays.
-        // This may change in the future.
-        EDDData.AssayMeasurements = EDDData.AssayMeasurements || {};
-        var assaysEncountered = {};
-        var mIDsToUseInFilteringSection = [];
-        $.each(data, (index, measurement) => {
-            var assay, line;
-            assay = EDDData.Assays[measurement.assay];
-            if (!assay || assay.dis) return;
-            line = EDDData.Lines[assay.lid];
-            if (!line || line.dis) return;
-            EDDData.AssayMeasurements[measurement.id] = measurement;
-            assaysEncountered[assay.id] = true;
-            (assay.metabolites = assay.metabolites || []).push(measurement.type);
-            mIDsToUseInFilteringSection.push(measurement.id);
-        });
-        var assayByProtocol = {}; // used as a mapping of protocol to set of assay IDs
-        $.each(assaysEncountered, (assayId) => {
-            var assay = EDDData.Assays[assayId];
-            assayByProtocol[assay.pid] = assayByProtocol[assay.pid] || {};
-            assayByProtocol[assay.pid][assayId] = true;
-        });
-        // Initialize, or re-initialize, all the Metabolite-related filters
         $.each(this.metaboliteFilteringWidgets, (i, widget) => {
-            widget.processFilteringData(mIDsToUseInFilteringSection);
+            widget.processFilteringData(filterIds.m);
+            widget.populateTable();
+        });
+        $.each(this.proteinFilteringWidgets, (i, widget) => {
+            widget.processFilteringData(filterIds.p);
+            widget.populateTable();
+        });
+        $.each(this.geneFilteringWidgets, (i, widget) => {
+            widget.processFilteringData(filterIds.g);
             widget.populateTable();
         });
         this.repopulateFilteringSection();
         this.metaboliteDataProcessed = true;
-
+        this.proteinDataProcessed = true;
+        this.geneDataProcessed = true;
         // invalidate assays on all DataGrids; I think this means they are initially hidden?
         $.each(this.assaysDataGrids, (protocolId, dataGrid) => {
-            dataGrid.invalidateAssayRecords(Object.keys(assayByProtocol[protocolId] || []));
+            dataGrid.invalidateAssayRecords(Object.keys(protocolToAssay[protocolId] || {}));
         });
-
-        // This is only meaningful to run after we've got some metabolite data
         this.linesDataGridSpec.enableCarbonBalanceWidget(true);
         this.processCarbonBalanceData();
-
-        this.queueMainGraphRemake();
-    }
-
-
-    // TODO: nearly identical to processNewMetaboliteData; refactor these functions
-    // Called after proteomics (protein) data has been fetched from the server Note: The functions
-    // to process newly arriving data of different types are not designed to be called in parallel.
-    export function processNewProteinData(data) {
-
-        EDDData.AssayMeasurements = EDDData.AssayMeasurements || {};
-        // We will organize the incoming record IDs into arrays broken out by Assay, then swap the
-        // arrays in for the old ones in the affected Assay records at the end. This way we don't
-        // need to know in advance what arrays need to be emptied and which left intact.
-        var proteinsByAssay = {};
-        var mIDsToUseInFilteringSection = [];
-        $.each(data, (index, measurement) => {
-            var assay, line;
-            assay = EDDData.Assays[measurement.assay];
-            if (!assay || assay.dis) return;
-            line = EDDData.Lines[assay.lid];
-            if (!line || line.dis) return;
-            EDDData.AssayMeasurements[measurement.id] = measurement;
-            (proteinsByAssay[assay.id] = proteinsByAssay[assay.id] || []).push(measurement.id);
-            if (assay.dis) return;
-            mIDsToUseInFilteringSection.push(measurement.id);
-        });
-        // Replace the old arrays with the new arrays all at once
-        var assayByProtocol = {};
-        $.each(proteinsByAssay, (assayId, proteinIds) => {
-            var assay = EDDData.Assays[assayId];
-            assay.proteins = proteinIds;
-            assayByProtocol[assay.pid] = assayByProtocol[assay.pid] || {};
-            assayByProtocol[assay.pid][assayId] = true;
-        });
-        // Initialize, or re-initialize, all the Protein-related filters
-        $.each(this.proteinFilteringWidgets, (i, widget) => {
-            widget.processFilteringData(mIDsToUseInFilteringSection);
-            widget.populateTable();
-        });
-        this.repopulateFilteringSection();
-        this.proteinDataProcessed = true;
-
-        $.each(this.assaysDataGrids, (protocolId, dataGrid) => {
-            dataGrid.invalidateAssayRecords(Object.keys(assayByProtocol[protocolId] || []));
-        });
-
-        this.queueMainGraphRemake();
-    }
-
-
-    // TODO: nearly identical to processNewMetaboliteData; refactor these functions
-    // Called after transcriptomics (gene) data has been fetched from the server Note: The functions
-    // to process newly arriving data of different types are not designed to be called in parallel.
-    export function processNewGeneData(data) {
-
-        if (!EDDData.hasOwnProperty('AssayMeasurements')) {
-            EDDData.AssayMeasurements = {};
-        }
-        // We will organize the incoming record IDs into arrays broken out by Assay, then swap the
-        // arrays in for the old ones in the affected Assay records at the end. This way we don't
-        // need to know in advance what arrays need to be emptied and which left intact.
-        var genesByAssay = {};
-        var mIDsToUseInFilteringSection = [];
-        for (var mID in data) {
-            var mRecord = data[mID];
-            var assayID = mRecord.aid;
-            var assayRecord = EDDData.Assays[assayID];
-            var lineID = assayRecord.lid;
-            var lineRecord = EDDData.Lines[lineID];
-            // Skip any Measurements that belong to disabled Lines
-            if (lineRecord.dis) { continue; }
-
-            EDDData.AssayMeasurements[mID] = mRecord;
-            if (typeof genesByAssay[assayID] === "undefined") {
-                genesByAssay[assayID] = [];
-            }
-            genesByAssay[assayID].push(mID);
-
-            // Skip any Assays that are disabled, when showing the filtering section
-            if (assayRecord.dis) { continue; }
-            mIDsToUseInFilteringSection.push(mID);
-        }
-        // Replace the old arrays with the new arrays all at once
-        var invalidatedAssaysPerProtocol = {};
-        for (var assayID in genesByAssay) {
-            var assayRecord = EDDData.Assays[assayID];
-            assayRecord.tra_c = genesByAssay[assayID].length;
-            assayRecord.transcriptions = genesByAssay[assayID];
-            // Remake the total
-            assayRecord.mea_c = (assayRecord.met_c || 0) +
-                    (assayRecord.pro_c || 0) +
-                    (assayRecord.tra_c || 0);
-
-            var pID = assayRecord.pid;
-            if (typeof invalidatedAssaysPerProtocol[pID] === "undefined") {
-                invalidatedAssaysPerProtocol[pID] = {};
-            }
-            invalidatedAssaysPerProtocol[pID][assayID] = true;
-        }
-        EDDData.AssayMeasurementIDs = <any[]>Object.keys(EDDData.AssayMeasurements);
-
-        // Initialize, or re-initialize, all the Fene-related filters
-        for (var i = 0; i < this.geneFilteringWidgets.length; i++) {
-            var widget = this.geneFilteringWidgets[i];
-            widget.processFilteringData(mIDsToUseInFilteringSection);
-            widget.populateTable();
-        }
-        this.repopulateFilteringSection();
-        this.geneDataProcessed = true;
-
-        for (var pKey in this.assaysDataGrids) {
-            if (!(typeof invalidatedAssaysPerProtocol[pKey] === "undefined")) {
-                var invalidRec = Object.keys(invalidatedAssaysPerProtocol[pKey]);
-                this.assaysDataGrids[pKey].invalidateAssayRecords(invalidRec);
-            }
-        }
         this.queueMainGraphRemake();
     }
 
@@ -1626,7 +1385,7 @@ module StudyD {
         // will just use the set and return it unaltered.
         $.each(EDDData.Assays, (assayId, assay) => {
             var line = EDDData.Lines[assay.lid];
-            if (assay.dis || line.dis) return;
+            if (assay.dis || !line || !line.active) return;
             previousIDSet.push(assayId);
 
         });
@@ -1893,11 +1652,10 @@ module StudyD {
         var formInfo = {
             lineidtoedit: index,
             linename: record.name,
-            lineiscontrol: record.ctrl,
-            linestrainvalue: record.s,
-            linemedia: record.m,
-            lineexperimentervalue: record.exp,
-            linecontact: record.con
+            lineiscontrol: record.control,
+            linestrainvalue: record.strain,
+            lineexperimentervalue: record.experimenter,
+            linecontact: record.contact
         };
 
         // Run through the collection of metadata, and add a form element entry for each
@@ -2265,13 +2023,11 @@ class DataGridSpecLines extends DataGridSpecBase {
     }
 
 
-    // TODO: Move this functionality to a Lines-specific subclass of DataGrid
     highlightCarbonBalanceWidget(v:boolean):void {
         this.carbonBalanceWidget.highlight(v);
     }
 
 
-    // TODO: Move this functionality to a Lines-specific subclass of DataGrid
     enableCarbonBalanceWidget(v:boolean):void {
         this.carbonBalanceWidget.enable(v);
     }
@@ -2343,18 +2099,6 @@ class DataGridSpecLines extends DataGridSpecBase {
         }
         return '?';
     }
-    
-    
-    private loadMedia(index:any):string {
-        var line, media;
-        if ((line = EDDData.Lines[index])) {
-            // TODO: replace magic number to look up media value with better lookup
-            if ((media = line.meta[19])) {
-                return media.toUpperCase();
-            }
-        }
-        return '--';
-    }
 
 
     private loadFirstCarbonSource(index:number):any {
@@ -2392,7 +2136,7 @@ class DataGridSpecLines extends DataGridSpecBase {
         // ensure index ID exists, ensure experimenter user ID exists, uppercase initials or ?
         var line, experimenter;
         if ((line = EDDData.Lines[index])) {
-            if ((experimenter = EDDData.Users[line.exp])) {
+            if ((experimenter = EDDData.Users[line.experimenter])) {
                 return experimenter.initials.toUpperCase();
             }
         }
@@ -2419,23 +2163,17 @@ class DataGridSpecLines extends DataGridSpecBase {
                 'name': 'Strain',
                 'sortBy': this.loadStrainName,
                 'sortAfter': 0 }),
-            new DataGridHeaderSpec(3, 'hLinesMedia', {
-                'name': 'Media',
-                'size': 's',
-                'nowrap': true,
-                'sortBy': this.loadMedia,
-                'sortAfter': 0 }),
-            new DataGridHeaderSpec(4, 'hLinesCarbon', {
+            new DataGridHeaderSpec(3, 'hLinesCarbon', {
                 'name': 'Carbon Source(s)',
                 'size': 's',
                 'sortBy': this.loadCarbonSource,
                 'sortAfter': 0 }),
-            new DataGridHeaderSpec(5, 'hLinesLabeling', {
+            new DataGridHeaderSpec(4, 'hLinesLabeling', {
                 'name': 'Labeling',
                 'size': 's',
                 'sortBy': this.loadCarbonSourceLabeling,
                 'sortAfter': 0 }),
-            new DataGridHeaderSpec(6, 'hLinesCarbonBalance', {
+            new DataGridHeaderSpec(5, 'hLinesCarbonBalance', {
                 'name': 'Carbon Balance',
                 'size': 's',
                 'sortBy': this.loadLineName })
@@ -2444,7 +2182,7 @@ class DataGridSpecLines extends DataGridSpecBase {
         // map all metadata IDs to HeaderSpec objects
         var metaDataHeaders:DataGridHeaderSpec[] = this.metaDataIDsUsedInLines.map((id, index) => {
             var mdType = EDDData.MetaDataTypes[id];
-            return new DataGridHeaderSpec(7 + index, 'hLinesMeta' + id, {
+            return new DataGridHeaderSpec(6 + index, 'hLinesMeta' + id, {
                 'name': mdType.name,
                 'size': 's',
                 'sortBy': this.makeMetaDataSortFunction(id),
@@ -2452,12 +2190,12 @@ class DataGridSpecLines extends DataGridSpecBase {
         });
 
         var rightSide = [
-            new DataGridHeaderSpec(7 + metaDataHeaders.length, 'hLinesExperimenter', {
+            new DataGridHeaderSpec(6 + metaDataHeaders.length, 'hLinesExperimenter', {
                 'name': 'Experimenter',
                 'size': 's',
                 'sortBy': this.loadExperimenterInitials,
                 'sortAfter': 0 }),
-            new DataGridHeaderSpec(8 + metaDataHeaders.length, 'hLinesModified', {
+            new DataGridHeaderSpec(7 + metaDataHeaders.length, 'hLinesModified', {
                 'name': 'Last Modified',
                 'size': 's',
                 'sortBy': this.loadLineModification,
@@ -2471,8 +2209,8 @@ class DataGridSpecLines extends DataGridSpecBase {
     private makeMetaDataSortFunction(id) {
         return (i) => {
             var line = EDDData.Lines[i];
-            if (line && line.meta && line.meta.hasOwnProperty(id)) {
-                return line.meta[id];
+            if (line && line.meta) {
+                return line.meta[id] || '';
             }
             return '';
         }
@@ -2507,7 +2245,7 @@ class DataGridSpecLines extends DataGridSpecBase {
 
 
     generateStrainNameCells(gridSpec:DataGridSpecLines, index:number):DataGridDataCell[] {
-        var line, content;
+        var line, content = [];
         if ((line = EDDData.Lines[index])) {
             content = line.strain.map((id) => {
                 var strain = EDDData.Strains[id];
@@ -2519,21 +2257,6 @@ class DataGridSpecLines extends DataGridSpecBase {
                 'rowspan': gridSpec.rowSpanForRecord(index),
                 'contentString': content.join('; ') || '--'
                })
-        ];
-    }
-
-
-    generateMediaCells(gridSpec:DataGridSpecLines, index:number):DataGridDataCell[] {
-        var line, content;
-        if ((line = EDDData.Lines[index])) {
-            // TODO: lookup media without magic number
-            content = line.meta[19];
-        }
-        return [
-            new DataGridDataCell(gridSpec, index, {
-                'rowspan': gridSpec.rowSpanForRecord(index),
-                'contentString': content || ''
-            })
         ];
     }
 
@@ -2600,16 +2323,11 @@ class DataGridSpecLines extends DataGridSpecBase {
     }
 
 
-    makeMetaDataCellsGeneratorFunction(metaDataID) {
+    makeMetaDataCellsGeneratorFunction(id) {
         return (gridSpec:DataGridSpecLines, index:number):DataGridDataCell[] => {
-            var contentStr = '';
-            var line = EDDData.Lines[index];
-            var type = EDDData.MetaDataTypes[metaDataID];
-            if (line && line.meta && line.meta.hasOwnProperty(metaDataID) && type) {
-                contentStr = [
-                        type.pre || '',
-                        line.meta[metaDataID],
-                        type.postfix || '' ].join(' ').trim();
+            var contentStr = '', line = EDDData.Lines[index], type = EDDData.MetaDataTypes[id];
+            if (line && type && line.meta && (contentStr = line.meta[id] || '')) {
+                contentStr = [ type.pre || '', contentStr, type.postfix || '' ].join(' ').trim();
             }
             return [
                 new DataGridDataCell(gridSpec, index, {
@@ -2626,21 +2344,19 @@ class DataGridSpecLines extends DataGridSpecBase {
         var leftSide:DataGridColumnSpec[] = [
             new DataGridColumnSpec(1, this.generateLineNameCells),
             new DataGridColumnSpec(2, this.generateStrainNameCells),
-            new DataGridColumnSpec(3, this.generateMediaCells),
-            new DataGridColumnSpec(4, this.generateCarbonSourceCells),
-            new DataGridColumnSpec(5, this.generateCarbonSourceLabelingCells),
+            new DataGridColumnSpec(3, this.generateCarbonSourceCells),
+            new DataGridColumnSpec(4, this.generateCarbonSourceLabelingCells),
             // The Carbon Balance cells are populated by a callback, triggered when first displayed
-            new DataGridColumnSpec(6, this.generateCarbonBalanceBlankCells)
+            new DataGridColumnSpec(5, this.generateCarbonBalanceBlankCells)
         ];
 
         var metaDataCols:DataGridColumnSpec[] = this.metaDataIDsUsedInLines.map((id, index) => {
-            var mdType = EDDData.MetaDataTypes[id];
-            return new DataGridColumnSpec(7 + index, this.makeMetaDataCellsGeneratorFunction(id));
+            return new DataGridColumnSpec(6 + index, this.makeMetaDataCellsGeneratorFunction(id));
         });
 
         var rightSide:DataGridColumnSpec[] = [
-            new DataGridColumnSpec(7 + metaDataCols.length, this.generateExperimenterInitialsCells),
-            new DataGridColumnSpec(8 + metaDataCols.length, this.generateModificationDateCells)
+            new DataGridColumnSpec(6 + metaDataCols.length, this.generateExperimenterInitialsCells),
+            new DataGridColumnSpec(7 + metaDataCols.length, this.generateModificationDateCells)
         ];
 
         return leftSide.concat(metaDataCols, rightSide);
@@ -2652,7 +2368,6 @@ class DataGridSpecLines extends DataGridSpecBase {
         var topSection:DataGridColumnGroupSpec[] = [
             new DataGridColumnGroupSpec('Line Name', { 'showInVisibilityList': false }),
             new DataGridColumnGroupSpec('Strain'),
-            new DataGridColumnGroupSpec('Media'),
             new DataGridColumnGroupSpec('Carbon Source(s)'),
             new DataGridColumnGroupSpec('Labeling'),
             new DataGridColumnGroupSpec('Carbon Balance', {
@@ -2796,7 +2511,7 @@ class DGDisabledLinesWidget extends DataGridOptionWidget {
             var id = rowIDs[r];
             // Here is the condition that determines whether the rows associated with this ID are
             // shown or hidden.
-            if (!EDDData.Lines[id].dis) {
+            if (EDDData.Lines[id].active) {
                 filteredIDs.push(id);            
             }
         }
@@ -2805,7 +2520,7 @@ class DGDisabledLinesWidget extends DataGridOptionWidget {
 
 
     initialFormatRowElementsForID(dataRowObjects:any, rowID:any):any {
-        if (EDDData.Lines[rowID].dis) {
+        if (!EDDData.Lines[rowID].active) {
             for (var r = 0; r < dataRowObjects.length; r++) {
                 var rowElement = dataRowObjects[r].getElement();
                 rowElement.style.backgroundColor = "#FFC0C0";
@@ -2998,31 +2713,26 @@ class DataGridAssays extends DataGrid {
         var div = spec.undisclosedSectionDiv;
         if (!div || !table) { return; }
         if (disclose) {
-            table.style.visibility = 'visible';
-            $(table).removeClass('off');
-            $(div).addClass('off');
-            div.style.visibility = 'hidden';
             this.sectionCurrentlyDisclosed = true;
-
             // Start a timer to wait before calling the routine that remakes a table. This breaks up
             // table recreation into separate events, so the browser can update UI.
             if (this.recordsCurrentlyInvalidated.length) {
                 setTimeout(() => this.triggerAssayRecordsRefresh(), 10);
             }
         } else {
-            $(table).addClass('off');
-            table.style.visibility = 'hidden';
-            div.style.visibility = 'visible';
-            $(div).removeClass('off');
             this.sectionCurrentlyDisclosed = false;
         }
     }
 
 
     triggerAssayRecordsRefresh():void {
-        this.triggerDataReset();
-        this.recordsCurrentlyInvalidated = [];
-        this.queueGraphRemake();
+        try {
+            this.triggerDataReset();
+            this.recordsCurrentlyInvalidated = [];
+            this.queueGraphRemake();
+        } catch (e) {
+            console.log('Failed to execute records refresh: ' + e);
+        }
     }
 
 
@@ -3116,7 +2826,7 @@ class DataGridAssays extends DataGrid {
 
 
 // The spec object that will be passed to DataGrid to create the Assays table(s)
-class DataGridSpecAssays extends DataGridSpecBase {    
+class DataGridSpecAssays extends DataGridSpecBase {
 
     protocolID:any;
     protocolName:string;
@@ -3148,22 +2858,16 @@ class DataGridSpecAssays extends DataGridSpecBase {
     refreshIDList() {
         // Find out which protocols have assays with measurements - disabled or no
         this.assayIDsInProtocol = [];
-        for (var assayID in EDDData.Assays) {
-            var assayRecord = EDDData.Assays[assayID];
-            if (this.protocolID != assayRecord.pid) {
-                continue;
+        $.each(EDDData.Assays, (assayId, assay) => {
+            var line;
+            if (this.protocolID != assay.pid) {
+                // skip assays for other protocols
+            } else if (!(line = EDDData.Lines[assay.lid]) || !line.active) {
+                // skip assays without a valid line or with a disabled line
+            } else {
+                this.assayIDsInProtocol.push(assayId);
             }
-            var lineRecord = EDDData.Lines[assayRecord.lid];
-            // Skip any Assays in disabled Lines
-            if (lineRecord.dis) {
-                continue;
-            }
-            // No measurements of any kind?
-            if (!assayRecord.mea_c) {
-                continue;
-            }
-            this.assayIDsInProtocol.push(assayID);
-        }
+        });
     }
 
 
@@ -3187,25 +2891,24 @@ class DataGridSpecAssays extends DataGridSpecBase {
     // The table element on the page that will be turned into the DataGrid.  Any preexisting table
     // content will be removed.
     getTableElement() {
-        var p = this.protocolID;
-        var tableID:string = 'pro' + p + 'assaystable';
+        var section, protocolDiv, titleDiv, titleLink, table,
+            p = this.protocolID,
+            tableID:string = 'pro' + p + 'assaystable';
         // If we can't find a table, we insert a click-to-disclose div, and then a table directly
         // after it.
         if ($('#' + tableID).size() === 0) {
-            var sec = $('#assaysSection');
-
-            // TODO: convert DOM to newer disclose code
-            var div = $(document.createElement("div"))
-                    .addClass('sectionChapter')
+            section = $('#assaysSection');
+            protocolDiv = $('<div>').addClass('disclose discloseHide').appendTo(section);
+            this.undisclosedSectionDiv = protocolDiv[0];
+            titleDiv = $('<div>').addClass('sectionChapter').appendTo(protocolDiv);
+            titleLink = $('<span>').addClass('discloseLink')
                     .text(this.protocolName + ' Assays')
-                    .appendTo(sec);
-            this.undisclosedSectionDiv = div[0];
-
-            var table = $(document.createElement("table"))
-                    .attr('id', tableID).addClass('off').appendTo(sec);
-
+                    .appendTo(titleDiv);
+            table = $(document.createElement("table"))
+                    .attr('id', tableID).addClass('discloseBody')
+                    .appendTo(protocolDiv);
             // Make sure the actions panel remains at the bottom.
-            $('#assaysActionPanel').appendTo(sec);
+            $('#assaysActionPanel').appendTo(section);
         }
         return document.getElementById(tableID);
     }
@@ -3214,54 +2917,43 @@ class DataGridSpecAssays extends DataGridSpecBase {
     // Specification for the table as a whole
     defineTableSpec():DataGridTableSpec {
         return new DataGridTableSpec('assays'+this.protocolID, {
-            'name': ' ' + this.protocolName + ' Assays',
             'defaultSort': 1
         });
     }
 
 
     findMetaDataIDsUsedInAssays() {
-        var ids = this.getRecordIDs();
-        this.metaDataIDsUsedInAssays = [];
         var seenHash:any = {};
-        for (var x = 0; x < ids.length; x++) {
-            var id = ids[x];
-            var record = EDDData.Assays[id];
-            if (!record.hasOwnProperty('md')) {
-                continue;
-            }
-            for (var mdID in record.md) {
-                seenHash[mdID] = 1;
-            }
-        }
-        ids = EDDData.MetaDataTypeIDs;    // This is in alphabetical order by name
-        for (var y = 0; y < ids.length; y++) {
-            var id = ids[y];
-            if (seenHash.hasOwnProperty(id)) {
-                this.metaDataIDsUsedInAssays.push(id);
-            }
-        }
+        this.metaDataIDsUsedInAssays = [];
+        $.each(this.getRecordIDs(), (x, assayId) => {
+            var assay = EDDData.Assays[assayId];
+            $.each(assay.md || {}, (metaId) => { seenHash[metaId] = true; });
+        });
+        // MetaDataTypeIDs is in alpha-order by name
+        $.each(EDDData.MetaDataTypeIDs, (i, metaId) => {
+            if (seenHash[metaId]) { this.metaDataIDsUsedInAssays.push(metaId); }
+        });
     }
 
 
     findMaximumXValueInData():void {
         var maxForAll:number = 0;
-        var ids = this.getRecordIDs();
-        for (var x = 0; x < ids.length; x++) {
-            var id = ids[x];
-            var aRecord = EDDData.Assays[id];
-            var mIDs = (aRecord.metabolites || []);
-            mIDs = mIDs.concat(aRecord.transcriptions || [], aRecord.proteins || []);
-            var maxForAssay = mIDs.reduce((prev:number, mID) => {
-                var amRecord = EDDData.AssayMeasurements[mID];
-                var data = (amRecord.d || []);
-                var maxForMeasurement = data.reduce((prev:number, point) => {
+        // reduce to find highest value across all records
+        maxForAll = this.getRecordIDs().reduce((prev:number, assayId) => {
+            var assay = EDDData.Assays[assayId], measures, maxForRecord;
+            measures = [].concat(assay.metabolites || [], assay.transcriptions || [],
+                    assay.proteins || []);
+            // reduce to find highest value across all measures
+            maxForRecord = measures.reduce((prev:number, measureId) => {
+                var measure = EDDData.AssayMeasurements[measureId], maxForMeasure;
+                // reduce to find highest value across all data in measurement
+                maxForMeasure = (measure.d || []).reduce((prev:number, point) => {
                     return Math.max(prev, parseFloat(point[0]));
                 }, 0);
-                return Math.max(prev, maxForMeasurement);
+                return Math.max(prev, maxForMeasure);
             }, 0);
-            maxForAll = Math.max(maxForAll, maxForAssay);
-        }
+            return Math.max(prev, maxForRecord);
+        }, 0);
         // Anything above 0 is acceptable, but 0 will default instead to 1.
         this.maximumXValueInData = maxForAll || 1;
     }
@@ -3362,8 +3054,8 @@ class DataGridSpecAssays extends DataGridSpecBase {
     private makeMetaDataSortFunction(id) {
         return (i) => {
             var record = EDDData.Assays[i];
-            if (record && record.md && record.md.hasOwnProperty(id)) {
-                return record.md[id];
+            if (record && record.md) {
+                return record.md[id] || '';
             }
             return '';
         }
@@ -3407,11 +3099,9 @@ class DataGridSpecAssays extends DataGridSpecBase {
 
     makeMetaDataCellsGeneratorFunction(id) {
         return (gridSpec:DataGridSpecAssays, index:number):DataGridDataCell[] => {
-            var contentStr = '';
-            var line = EDDData.Assays[index];
-            var type = EDDData.MetaDataTypes[id];
-            if (line && line.md && line.md.hasOwnProperty(id) && type) {
-                contentStr = [ type.pre || '', line.md[id], type.postfix || '' ].join(' ').trim();
+            var contentStr = '', assay = EDDData.Assays[index], type = EDDData.MetaDataTypes[id];
+            if (assay && type && assay.md && (contentStr = assay.md[id] || '')) {
+                contentStr = [ type.pre || '', contentStr, type.postfix || '' ].join(' ').trim();
             }
             return [
                 new DataGridDataCell(gridSpec, index, {
@@ -3901,20 +3591,6 @@ class DataGridSpecAssays extends DataGridSpecBase {
                 this.graphObject = Object.create(StudyDGraphing);
                 this.graphObject.Setup(graphid);
             }
-        }
-
-        var s = dataGrid.tableTitleSpan;
-        if (s) {
-            s.style.cursor = "pointer";
-            $(s).click(() => dataGrid.clickedDisclose(false));
-
-            var t:HTMLSpanElement = document.createElement("span");
-            t.style.cursor = "pointer";
-            t.style.color = "blue";
-            t.innerHTML = "\u25BC";
-            $(t).click(() => dataGrid.clickedDisclose(false));
-
-            s.parentNode.insertBefore(t, s);
         }
         // Run it once in case the page was generated with checked Assays
         StudyD.queueAssaysActionPanelShow();

@@ -34,7 +34,6 @@ declare module StudyD {
         constructor();
         configure(): void;
         createContainerObjects(): void;
-        inputFocusInHandler(e: any): void;
         processFilteringData(ids: any[]): void;
         buildUniqueValuesHash(ids: any[]): any;
         isFilterUseful(): boolean;
@@ -45,10 +44,6 @@ declare module StudyD {
         applyProgressiveFiltering(ids: any): any;
     }
     class StrainFilterSection extends GenericFilterSection {
-        configure(): void;
-        buildUniqueValuesHash(ids: any[]): any;
-    }
-    class MediaFilterSection extends GenericFilterSection {
         configure(): void;
         buildUniqueValuesHash(ids: any[]): any;
     }
@@ -114,12 +109,7 @@ declare module StudyD {
     function filterTableKeyDown(e: any): void;
     function prepareAfterLinesTable(): void;
     function requestAllMetaboliteData(): void;
-    function requestAllProteinData(): void;
-    function requestAllGeneData(): void;
     function processMeasurementData(data: any): void;
-    function processNewMetaboliteData(data: any): void;
-    function processNewProteinData(data: any): void;
-    function processNewGeneData(data: any): void;
     function carbonBalanceColumnRevealedCallback(index: any, spec: DataGridSpecLines, dataGridObj: DataGrid): void;
     function queueLinesActionPanelShow(): void;
     function linesActionPanelShow(): void;
@@ -159,7 +149,6 @@ declare class DataGridSpecLines extends DataGridSpecBase {
     defineTableSpec(): DataGridTableSpec;
     private loadLineName(index);
     private loadStrainName(index);
-    private loadMedia(index);
     private loadFirstCarbonSource(index);
     private loadCarbonSource(index);
     private loadCarbonSourceLabeling(index);
@@ -170,13 +159,12 @@ declare class DataGridSpecLines extends DataGridSpecBase {
     private rowSpanForRecord(index);
     generateLineNameCells(gridSpec: DataGridSpecLines, index: number): DataGridDataCell[];
     generateStrainNameCells(gridSpec: DataGridSpecLines, index: number): DataGridDataCell[];
-    generateMediaCells(gridSpec: DataGridSpecLines, index: number): DataGridDataCell[];
     generateCarbonSourceCells(gridSpec: DataGridSpecLines, index: number): DataGridDataCell[];
     generateCarbonSourceLabelingCells(gridSpec: DataGridSpecLines, index: number): DataGridDataCell[];
     generateCarbonBalanceBlankCells(gridSpec: DataGridSpecLines, index: number): DataGridDataCell[];
     generateExperimenterInitialsCells(gridSpec: DataGridSpecLines, index: number): DataGridDataCell[];
     generateModificationDateCells(gridSpec: DataGridSpecLines, index: number): DataGridDataCell[];
-    makeMetaDataCellsGeneratorFunction(metaDataID: any): (gridSpec: DataGridSpecLines, index: number) => DataGridDataCell[];
+    makeMetaDataCellsGeneratorFunction(id: any): (gridSpec: DataGridSpecLines, index: number) => DataGridDataCell[];
     defineColumnSpec(): DataGridColumnSpec[];
     defineColumnGroupSpec(): DataGridColumnGroupSpec[];
     defineRowGroupSpec(): any;
