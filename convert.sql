@@ -574,6 +574,10 @@ INSERT INTO public.attachment(
     WHERE a.metabolic_map_id != 0
     ORDER BY a.id;
 
+-- add permissions needed for migrating attachments
+GRANT USAGE ON SCHEMA old_edd TO edduser;
+GRANT SELECT ON old_edd.attachments TO edduser;
+
 -- drop temp columns
 ALTER TABLE public.edd_object DROP COLUMN study_id;
 ALTER TABLE public.edd_object DROP COLUMN strain_id;

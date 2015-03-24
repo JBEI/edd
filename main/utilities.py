@@ -86,22 +86,6 @@ def get_edddata_misc () :
       "Users" : {},
     }
 
-def migrate_attachment_files (force=False) :
-    """
-    Write out actual files populating the 'attachments' table in the old EDD
-    schema.  This should be done after running convert.sql to populate the new
-    database (which only stores the filenames and metadata, not the contents).
-    """
-    attachments = Attachment.objects.all()
-    for a in attachments :
-        file_path = a.file.path
-        if (not os.path.exists(file_path)) or force :
-            raw = Attachment.objects.raw("SELECT * FROM old_edd.attachments WHERE filename = '%s'" % a.filename)
-            print "Writing to %s" % file_path
-            f = open(file_path, "wb")
-            f.write(raw[0].file_data)
-            f.close()
-
 def interpolate_at (measurement_data, x) :
   """
   Given an X-value without a measurement, use linear interpolation to
