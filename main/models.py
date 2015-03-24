@@ -880,7 +880,6 @@ class MetabolicMap (EDDObject) :
 
     def parseSBML (self) :
         import libsbml
-        print self.xml_file.file.path
         return libsbml.readSBML(str(self.xml_file.file.path))
 
 class MetaboliteExchange (models.Model) :

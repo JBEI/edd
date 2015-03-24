@@ -28,7 +28,7 @@ the views for SBML export and metabolic map administration.
         <span class="popupinfo">{{ sp.id }}</span></span>
         {% endfor %}<!-- data.sbml_species -->
       ... finished.</p>
-      <ul>
+      <ul style="margin-left: 20px;">
         <b>Key:</b>
         <li><span class="bad">D</span> There appears to be more than one
           species declared with this ID!  Only the first encountered with
@@ -72,7 +72,8 @@ the views for SBML export and metabolic map administration.
         {% endfor %}<!-- data.sbml_reactions -->
       <!-- end loop -->
       ... finished.</p>
-      <ul><b>Key:</b>
+      <ul style="margin-left: 20px;">
+      <b>Key:</b>
         <li><span class="bad">D</span> There appears to be more than one
           reaction declared with this ID!  Only the first encountered with
           valid notes will be used.</li>
@@ -128,24 +129,25 @@ the views for SBML export and metabolic map administration.
       <!-- Loop over exchanges -->
       {% for ex in data.exchanges %}
         <span class="popup">(
-          <span class="{{ ex.status }}">LB:-999999</span>,
-          <span class="good">UB:999999</span>)
-          <span class="popupinfo">{{ ex.name }}</span>
-            R_S_Propane_1_2_diol_facilitated_transport</span>
-        </span>,
+        {% with ex.bad_status_symbol as status_bad %}
+          {% if status_bad %}
+          <span class="bad">{{ status_bad }}</span>
+          {% else %}
+          <span class="good">LB:{{ ex.lower_bound }}</span>,
+          <span class="good">UB:{{ ex.upper_bound }}</span>
+          {% endif %}
+        {% endwith %}
+          <span class="popupinfo">
+            {{ ex.name }}
+          </span>
+        )</span>
       {% endfor %}
-      <span class="popup">(
-        <span class="bad">3Rs</span>)
-        <span class="popupinfo">R_2_dehydro_D_gluconate_reductase__NADH_</span>
-      </span>,
-      <span class="popup">(<span class="bad">3Rs</span>)
-        <span class="popupinfo">
-          R_2_dehydro_D_gluconate_reductase__NADPH_</span>
-      </span>,
-       ... finished.</p>
+       ... finished.
+      </p>
 
 
-      <ul><b>Key:</b>
+      <ul style="margin-left: 20px;">
+        <b>Key:</b>
         <li><span class="bad">#Rs</span>
           Wrong # of reactants detected - there must be exactly one.</li>
         <li><span class="bad">#St</span>
@@ -187,12 +189,12 @@ the views for SBML export and metabolic map administration.
             <b>{{ data.n_meas_types_unresolved_to_exchanges }}</b> were not.
         </a></span>
       </div>
-    <div class="subSectionContent discloseBody" id="SMBLResolveStepmain">
+      <div class="subSectionContent discloseBody" id="SMBLResolveStepmain">
 
       {% for mt_res in data.measurement_type_resolution %}
         {% if not mt_res.species and not mt_res.exchange %}
           <div class="bad">Name <b>{{ mt_res.name }}</b> does not appear to
-             have an associated species <b>or</b>exchange reaction.</div>
+             have an associated species <b>or</b> exchange reaction.</div>
         {% else %}
           {% if mt_res.species %}
             <div>Name <b>{{ mt_res.name }}</b> resolves to species
@@ -203,7 +205,7 @@ the views for SBML export and metabolic map administration.
           {% endif %}
           {% if mt_res.exchange %}
             <div>Name <b>{{ mt_res.name }}</b> resolves via
-              {{ mt_res.ex_resolving_name }} to exchange: {{ mt_res.exchange }}
+              {{ mt_res.exchange.re_id }} to exchange: {{ mt_res.exchange }}
             </div>
           {% else %}
             <div class="bad">Name <b>{{ mt_res.name }}</b> does not appear to
@@ -230,3 +232,27 @@ the views for SBML export and metabolic map administration.
       {% endfor %}
     </div>
   </div>
+
+  {% if data.biomass_exchange %}
+    {% if not data.biomass_exchange.kin_law %}
+      <div class="bad">
+        Could not resolve BIOMASS reaction ID <b>{{ data.biomass_reaction_id }}
+        </b> to a kinetic law
+      </div>
+    {% elif not data.biomass_exchange.lower_bound %}
+      <div class="bad">
+        Could not find a LOWER_BOUND parameter for BIOMASS reaction ID <b>
+        {{ data.biomass_reaction_id }}</b>
+      </div>
+    {% elif not data.biomass_exchange.upper_bound %}
+      <div class="bad">
+        Could not find an UPPER_BOUND parameter for BIOMASS reaction ID <b>
+        {{ data.biomass_reaction_id }}</b>
+      </div>
+    {% endif %}
+  {% else %}
+    <div class="bad">
+      Could not resolve BIOMASS reaction ID <b>{{ data.biomass_reaction_id }}
+        </b> to a reaction
+    </div>
+  {% endif %}

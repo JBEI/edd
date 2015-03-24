@@ -49,6 +49,10 @@ $(window).load(function () {
   .cT { stroke:rgba(0,0,0,1); stroke-width:4px; stroke-linecap:round; }
 </style>
 
+<style type="text/css">
+  .bad { color: red; background-color: transparent; }
+</style>
+
 {% endblock js_css %}
 
 {% block head_title %}
@@ -818,8 +822,11 @@ Step 8
 
 <input class="off" type="text" size="5" name="fordebugpurposes" id="fordebugpurposes" value="" />
 
-<p><b>Metabolomics:</b>
-  Matching available metabolite measurements to species defined in the SBML model...</p>
+<p>
+  <b>Metabolomics:</b>
+  Matching available metabolite measurements to species defined in the SBML
+  model...
+</p>
 
     <div class="rounded-border" style="display:inline-block;"><!-- margin? -->
           <table class="dataTable" cellspacing="0">
