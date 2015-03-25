@@ -28,22 +28,26 @@ interface LineRecord {
 }
 interface AssayRecord {
     id: any;
-    an: string;
-    des: string;
-    dis: boolean;
-    md: any;
+    name: string;
+    description: string;
+    active: boolean;
+    meta: any;
     lid: number;
     pid: number;
-    met_c: number;
-    tra_c: number;
-    pro_c: number;
-    mea_c: number;
     mod: number;
     exp: number;
     measurements: number[];
     metabolites: number[];
     transcriptions: number[];
     proteins: number[];
+    an: string;
+    des: string;
+    dis: boolean;
+    md: any;
+    met_c: number;
+    tra_c: number;
+    pro_c: number;
+    mea_c: number;
 }
 interface AssayMeasurementRecord {
     aid: number;

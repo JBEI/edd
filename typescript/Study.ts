@@ -50,6 +50,11 @@ module StudyD {
     var assaysDataGrids;
 
 
+    // Utility interface used by GenericFilterSection#buildUniqueValuesHash
+    interface ValueToUniqueID {
+        [index:string]:number;
+    }
+
     export class GenericFilterSection  {
 
         // A dictionary of the unique values found for filtering against.
@@ -406,6 +411,21 @@ module StudyD {
             }
             return idsPostFiltering;
         }
+
+
+        _assayIdToAssay(assayId:string) {
+            return EDDData.Assays[assayId];
+        }
+        _assayIdToLine(assayId:string) {
+            var assay = this._assayIdToAssay(assayId);
+            if (assay) return EDDData.Lines[assay.lid];
+            return undefined;
+        }
+        _assayIdToProtocol(assayId:string) {
+            var assay = this._assayIdToAssay(assayId);
+            if (assay) return EDDData.Protocols[assay.pid];
+            return undefined;
+        }
     }
 
 
@@ -418,29 +438,21 @@ module StudyD {
 
 
         buildUniqueValuesHash(ids:any[]):any {
-            var usedValues:any = {};
-            var usedValuesCount:number = 0;
-
+            var uniqueNamesId:ValueToUniqueID = {}, unique = 0;
             this.filterHash = {};
-            ids.forEach((assay_id) => {
-                var assay, line;
-                if (assay = EDDData.Assays[assay_id]) {
-                    line = EDDData.Lines[assay.lid];
-                    this.filterHash[assay_id] = this.filterHash[assay_id] || [];
-                }
-                if (line) {
-                    (line.strain || []).forEach((strain_id) => {
-                        var strain = EDDData.Strains[strain_id];
-                        if (strain && strain.name) {
-                            if (!usedValues.hasOwnProperty(strain.name)) {
-                                usedValues[strain.name] = ++usedValuesCount;
-                            }
-                            this.filterHash[assay_id].push(usedValues[strain.name]);
-                        }
-                    });
-                }
+            ids.forEach((assayId:string) => {
+                var line:any = this._assayIdToLine(assayId) || {};
+                this.filterHash[assayId] = this.filterHash[assayId] || [];
+                // assign unique ID to every encountered strain name
+                (line.strain || []).forEach((strainId:string) => {
+                    var strain = EDDData.Strains[strainId];
+                    if (strain && strain.name) {
+                        uniqueNamesId[strain.name] = uniqueNamesId[strain.name] || ++unique;
+                        this.filterHash[assayId].push(uniqueNamesId[strain.name]);
+                    }
+                });
             });
-            return usedValues;
+            return uniqueNamesId;
         }
     }
 
@@ -453,38 +465,21 @@ module StudyD {
         }
 
 
-        buildUniqueValuesHash(ids:any):any {
-            var usedValues:any = {};
-            var usedValuesCount:number = 0;
-
+        buildUniqueValuesHash(ids:any[]):any {
+            var uniqueNamesId:ValueToUniqueID = {}, unique = 0;
             this.filterHash = {};
-            for (var i=0; i<ids.length; i++) {
-                var assayID = ids[i];
-                var assayRecord = EDDData.Assays[assayID];
-                var lineID = assayRecord.lid;
-                var lineRecord = EDDData.Lines[lineID];
-
-                var cs = lineRecord.cs || [];   // Carbon Sources (array of IDs)
-                var csns = [];                  // Carbon Source names
-                if (cs.length > 0) {
-                    for (var j=0; j<cs.length; j++) {
-                        csns.push(EDDData.CSources[cs[j]].carbon || '(None)');
+            ids.forEach((assayId:string) => {
+                var line:any = this._assayIdToLine(assayId) || {};
+                // assign unique ID to every encountered carbon source name
+                (line.carbon || []).forEach((carbonId:string) => {
+                    var src = EDDData.CSources[carbonId];
+                    if (src && src.carbon) {
+                        uniqueNamesId[src.carbon] = uniqueNamesId[src.carbon] || ++unique;
+                        this.filterHash[assayId].push(uniqueNamesId[src.carbon]);
                     }
-                } else {
-                    csns = ['(Empty)'];
-                }
-
-                // A bit more complicated - we have a set of criteria, instead of just one.            
-                var csnVs = [];
-                for (var j=0; j<csns.length; j++) {
-                    if (!usedValues.hasOwnProperty(csns[j])) {
-                        usedValues[csns[j]] = ++usedValuesCount;
-                    }
-                    csnVs.push(usedValues[csns[j]]);
-                }
-                this.filterHash[assayID] = csnVs;
-            }
-            return usedValues;
+                });
+            });
+            return uniqueNamesId;
         }
     }
 
@@ -497,38 +492,21 @@ module StudyD {
         }
 
 
-        buildUniqueValuesHash(ids:any):any {
-            var usedValues:any = {};
-            var usedValuesCount:number = 0;
-
+        buildUniqueValuesHash(ids:any[]):any {
+            var uniqueNamesId:ValueToUniqueID = {}, unique = 0;
             this.filterHash = {};
-            for (var i=0; i<ids.length; i++) {
-                var assayID = ids[i];
-                var assayRecord = EDDData.Assays[assayID];
-                var lineID = assayRecord.lid;
-                var lineRecord = EDDData.Lines[lineID];
-
-                var cs = lineRecord.cs || [];   // Carbon Sources (array of IDs)
-                var labns = [];                 // Carbon Source labeling names
-                if (cs.length > 0) {
-                    for (var j=0; j<cs.length; j++) {
-                        labns.push(EDDData.CSources[cs[j]].labeling || '(None)');
+            ids.forEach((assayId:string) => {
+                var line:any = this._assayIdToLine(assayId) || {};
+                // assign unique ID to every encountered carbon source labeling description
+                (line.carbon || []).forEach((carbonId:string) => {
+                    var src = EDDData.CSources[carbonId];
+                    if (src && src.labeling) {
+                        uniqueNamesId[src.labeling] = uniqueNamesId[src.labeling] || ++unique;
+                        this.filterHash[assayId].push(uniqueNamesId[src.labeling]);
                     }
-                } else {
-                    labns = ['(Empty)'];
-                }
-
-                // A bit more complicated - we have a set of criteria, instead of just one.            
-                var labnVs = [];
-                for (var j=0; j<labns.length; j++) {
-                    if (!usedValues.hasOwnProperty(labns[j])) {
-                        usedValues[labns[j]] = ++usedValuesCount;
-                    }
-                    labnVs.push(usedValues[labns[j]]);
-                }
-                this.filterHash[assayID] = labnVs;
-            }
-            return usedValues;
+                });
+            });
+            return uniqueNamesId;
         }
     }
 
@@ -542,20 +520,16 @@ module StudyD {
 
 
         buildUniqueValuesHash(ids:any[]):any {
-            // ids is array of Assay IDs
-            var usedValues:any = {};
-            var usedValuesCount:number = 0;
-
+            var uniqueNamesId:ValueToUniqueID = {}, unique = 0;
             this.filterHash = {};
-            ids.forEach((id) => {
-                var assay = EDDData.Assays[id], line = EDDData.Lines[assay.lid];
-                // assign unique number to every name
-                if (!usedValues.hasOwnProperty(line.name)) {
-                    usedValues[line.name] = ++usedValuesCount;
+            ids.forEach((assayId:string) => {
+                var line:any = this._assayIdToLine(assayId) || {};
+                if (line.name) {
+                    uniqueNamesId[line.name] = uniqueNamesId[line.name] || ++unique;
+                    this.filterHash[assayId] = uniqueNamesId[line.name];
                 }
-                this.filterHash[id] = usedValues[line.name];
             });
-            return usedValues;
+            return uniqueNamesId;
         }
     }
 
@@ -568,24 +542,17 @@ module StudyD {
         }
 
 
-        buildUniqueValuesHash(ids:any):any {
-            var usedValues:any = {};
-            var usedValuesCount:number = 0;
-
+        buildUniqueValuesHash(ids:any[]):any {
+            var uniqueNamesId:ValueToUniqueID = {}, unique = 0;
             this.filterHash = {};
-            for (var i=0; i<ids.length; i++) {
-                var assayID = ids[i];
-                var assayRecord = EDDData.Assays[assayID];
-                var protocolID = assayRecord.pid;
-                var protocolRecord = EDDData.Protocols[protocolID];
-                var protocolName = protocolRecord.name;    
-
-                if (!usedValues.hasOwnProperty(protocolName)) {
-                    usedValues[protocolName] = ++usedValuesCount;
+            ids.forEach((assayId:string) => {
+                var protocol = this._assayIdToProtocol(assayId) || {};
+                if (protocol.name) {
+                    uniqueNamesId[protocol.name] = uniqueNamesId[protocol.name] || ++unique;
+                    this.filterHash[assayId] = uniqueNamesId[protocol.name];
                 }
-                this.filterHash[assayID] = usedValues[protocolName];
-            }
-            return usedValues;
+            });
+            return uniqueNamesId;
         }
     }
 
@@ -598,22 +565,17 @@ module StudyD {
         }
 
 
-        buildUniqueValuesHash(ids:any):any {
-            var usedValues:any = {};
-            var usedValuesCount:number = 0;
-
+        buildUniqueValuesHash(ids:any[]):any {
+            var uniqueNamesId:ValueToUniqueID = {}, unique = 0;
             this.filterHash = {};
-            for (var i=0; i<ids.length; i++) {
-                var assayID = ids[i];
-                var assayRecord = EDDData.Assays[assayID];
-
-                var name = assayRecord.an;            // Name (not "full name")
-                if (!usedValues.hasOwnProperty(name)) {
-                    usedValues[name] = ++usedValuesCount;
+            ids.forEach((assayId:string) => {
+                var assay = this._assayIdToAssay(assayId) || {};
+                if (assay.an) {
+                    uniqueNamesId[assay.an] = uniqueNamesId[assay.an] || ++unique;
+                    this.filterHash[assayId] = uniqueNamesId[assay.an];
                 }
-                this.filterHash[assayID] = usedValues[name];
-            }
-            return usedValues;
+            });
+            return uniqueNamesId;
         }
     }
 
@@ -621,26 +583,15 @@ module StudyD {
 
     export class MetaDataFilterSection extends GenericFilterSection {
 
-        metaDataID:any;
+        metaDataID:string;
         pre:string;
         post:string;
 
-        constructor(metaDataID:any) {
-            this.metaDataID = metaDataID;
+        constructor(metaDataID:string) {
             var MDT = EDDData.MetaDataTypes[metaDataID];
-            this.pre = '';
-            this.post = '';
-            if (MDT.hasOwnProperty('pre')) {
-                if (MDT.pre != '') {
-                    this.pre = MDT.pre + ' ';
-                }
-            }
-            var post = '';
-            if (MDT.hasOwnProperty('postfix')) {
-                if (MDT.postfix != '') {
-                    this.post = ' ' + MDT.postfix;
-                }
-            }
+            this.metaDataID = metaDataID;
+            this.pre = MDT.pre || '';
+            this.post = MDT.post || '';
             super();
         }
 
@@ -655,33 +606,18 @@ module StudyD {
 
     export class LineMetaDataFilterSection extends MetaDataFilterSection {
 
-        buildUniqueValuesHash(ids:any):any {
-            var usedValues:any = {};
-            var usedValuesCount:number = 0;
-
+        buildUniqueValuesHash(ids:any[]):any {
+            var uniqueNamesId:ValueToUniqueID = {}, unique = 0;
             this.filterHash = {};
-            for (var i=0; i<ids.length; i++) {
-                var assayID = ids[i];
-                var assayRecord = EDDData.Assays[assayID];
-                var lineID = assayRecord.lid;
-                var lineRecord = EDDData.Lines[lineID];
-
-                var mdtID = this.metaDataID;
-                // We need a catch-all for all the Lines that have an empty or unspecified value.
-                // Just not displaying them would be inconsistent.
-                var mdtVal = '(Empty)';
-                if (lineRecord.md.hasOwnProperty(mdtID)) {
-                    if (lineRecord.md[mdtID] != '') {
-                        mdtVal = this.pre + lineRecord.md[mdtID] + this.post;
-                    }
+            ids.forEach((assayId:string) => {
+                var line:any = this._assayIdToLine(assayId) || {}, value = '(Empty)';
+                if (line.meta && line.meta[this.metaDataID]) {
+                    value = [ this.pre, line.meta[this.metaDataID], this.post ].join(' ').trim();
+                    uniqueNamesId[value] = uniqueNamesId[value] || ++unique;
+                    this.filterHash[assayId] = uniqueNamesId[value];
                 }
-
-                if (!usedValues.hasOwnProperty(mdtVal)) {
-                    usedValues[mdtVal] = ++usedValuesCount;
-                }
-                this.filterHash[assayID] = usedValues[mdtVal];
-            }
-            return usedValues;
+            });
+            return uniqueNamesId;
         }
     }
 
@@ -690,30 +626,17 @@ module StudyD {
     export class AssayMetaDataFilterSection extends MetaDataFilterSection {
 
         buildUniqueValuesHash(ids:any):any {
-            var usedValues:any = {};
-            var usedValuesCount:number = 0;
-
+            var uniqueNamesId:ValueToUniqueID = {}, unique = 0;
             this.filterHash = {};
-            for (var i=0; i<ids.length; i++) {
-                var assayID = ids[i];
-                var assayRecord = EDDData.Assays[assayID];
-
-                var mdtID = this.metaDataID;
-                // We need a catch-all for all the Assays that have an empty or unspecified value.
-                // Just not displaying them would be inconsistent.
-                var mdtVal = '(Empty)';
-                if (assayRecord.md.hasOwnProperty(mdtID)) {
-                    if (assayRecord.md[mdtID] != '') {
-                        mdtVal = this.pre + assayRecord.md[mdtID] + this.post;
-                    }
+            ids.forEach((assayId:string) => {
+                var assay:any = this._assayIdToAssay(assayId) || {}, value = '(Empty)';
+                if (assay.meta && assay.meta[this.metaDataID]) {
+                    value = [ this.pre, assay.meta[this.metaDataID], this.post ].join(' ').trim();
+                    uniqueNamesId[value] = uniqueNamesId[value] || ++unique;
+                    this.filterHash[assayId] = uniqueNamesId[value];
                 }
-
-                if (!usedValues.hasOwnProperty(mdtVal)) {
-                    usedValues[mdtVal] = ++usedValuesCount;
-                }
-                this.filterHash[assayID] = usedValues[mdtVal];
-            }
-            return usedValues;
+            });
+            return uniqueNamesId;
         }
     }
 

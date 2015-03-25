@@ -752,6 +752,7 @@ class Assay(EDDObject):
             "dis" : not self.active,
             "lid" : self.line.pk,
             "pid" : self.protocol.pk,
+            'meta': self.get_metadata_json(),
             "mea_c" : len(self.measurement_set.all()),
             "met_c" : len(self.get_metabolite_measurements()),
             "tra_c" : len(self.get_protein_measurements()),

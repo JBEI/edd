@@ -42,6 +42,9 @@ declare module StudyD {
         populateTable(): void;
         anyCheckboxesChangedSinceLastInquiry(): boolean;
         applyProgressiveFiltering(ids: any): any;
+        _assayIdToAssay(assayId: string): any;
+        _assayIdToLine(assayId: string): LineRecord;
+        _assayIdToProtocol(assayId: string): any;
     }
     class StrainFilterSection extends GenericFilterSection {
         configure(): void;
@@ -49,11 +52,11 @@ declare module StudyD {
     }
     class CarbonSourceFilterSection extends GenericFilterSection {
         configure(): void;
-        buildUniqueValuesHash(ids: any): any;
+        buildUniqueValuesHash(ids: any[]): any;
     }
     class CarbonLabelingFilterSection extends GenericFilterSection {
         configure(): void;
-        buildUniqueValuesHash(ids: any): any;
+        buildUniqueValuesHash(ids: any[]): any;
     }
     class LineNameFilterSection extends GenericFilterSection {
         configure(): void;
@@ -61,21 +64,21 @@ declare module StudyD {
     }
     class ProtocolFilterSection extends GenericFilterSection {
         configure(): void;
-        buildUniqueValuesHash(ids: any): any;
+        buildUniqueValuesHash(ids: any[]): any;
     }
     class AssaySuffixFilterSection extends GenericFilterSection {
         configure(): void;
-        buildUniqueValuesHash(ids: any): any;
+        buildUniqueValuesHash(ids: any[]): any;
     }
     class MetaDataFilterSection extends GenericFilterSection {
-        metaDataID: any;
+        metaDataID: string;
         pre: string;
         post: string;
-        constructor(metaDataID: any);
+        constructor(metaDataID: string);
         configure(): void;
     }
     class LineMetaDataFilterSection extends MetaDataFilterSection {
-        buildUniqueValuesHash(ids: any): any;
+        buildUniqueValuesHash(ids: any[]): any;
     }
     class AssayMetaDataFilterSection extends MetaDataFilterSection {
         buildUniqueValuesHash(ids: any): any;

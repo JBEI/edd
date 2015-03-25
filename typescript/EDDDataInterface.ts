@@ -38,23 +38,28 @@ interface LineRecord {
 
 // This is what we expect in EDDData.Assays
 interface AssayRecord {
-    id:any;         // Assay ID
-	an:string;		// Assay Name
-	des:string;		// Description
-	dis:boolean;	// Disabled
-	md:any;			// Metadata structure
-	lid:number;		// Line ID
-	pid:number;		// Protocol ID
-	met_c:number;	// Metabolites Count
-	tra_c:number;	// Transcriptions Count
-	pro_c:number;	// Proteins Count
-	mea_c:number;	// Measurements Count (sum of all measurement type counts above)
-	mod:number;		// Modification epoch
-	exp:number;		// Experimenter ID
+    id:any;             // Assay ID
+    name:string;        // Name
+    description:string; // Description
+    active:boolean;     // Active line
+	meta:any;		    // Metadata structure
+	lid:number;         // Line ID
+	pid:number;         // Protocol ID
+	mod:number;         // Modification epoch
+	exp:number;         // Experimenter ID
 	measurements:number[];		// All collected measurements associated with Assay
 	metabolites:number[];		// Metabolite measurements associated with Assay
 	transcriptions:number[];	// Transcription measurements associated with Assay
 	proteins:number[];			// Proteins measurements associated with Assay
+    /////// BELOW ARE DEPRECATED ////////
+    an:string;      // Assay Name
+    des:string;     // Description
+    dis:boolean;    // Disabled
+    md:any;         // Metadata structure
+    met_c:number;   // Metabolites Count
+    tra_c:number;   // Transcriptions Count
+    pro_c:number;   // Proteins Count
+    mea_c:number;   // Measurements Count (sum of all measurement type counts above)
 }
 
 
