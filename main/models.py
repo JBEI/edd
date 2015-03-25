@@ -793,6 +793,7 @@ class Measurement(models.Model):
             "id": self.pk,
             "assay": self.assay.pk,
             "type": self.measurement_type.pk,
+            "compartment": self.compartment,
             "values": map(lambda p: p.to_json(), points),
         }
 

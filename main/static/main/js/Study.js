@@ -12,6 +12,7 @@ var __extends = this.__extends || function (d, b) {
 };
 var StudyD;
 (function (StudyD) {
+    'use strict';
     var mainGraphObject;
     // For the filtering section on the main graph
     var allFilteringWidgets;
@@ -560,30 +561,24 @@ var StudyD;
         function MetaboliteCompartmentFilterSection() {
             _super.apply(this, arguments);
         }
+        // NOTE: this filter class works with Measurement IDs rather than Assay IDs
         MetaboliteCompartmentFilterSection.prototype.configure = function () {
             this.sectionTitle = 'Compartment';
             this.sectionShortLabel = 'com';
         };
         MetaboliteCompartmentFilterSection.prototype.buildUniqueValuesHash = function (amIDs) {
-            var usedValues = {};
-            var usedValuesCount = 0;
+            var _this = this;
+            var uniqueNamesId = {}, unique = 0;
             this.filterHash = {};
-            for (var i = 0; i < amIDs.length; i++) {
-                var amID = amIDs[i];
-                var measurementRecord = EDDData.AssayMeasurements[amID];
-                var name = '(Unset)';
-                var compID = measurementRecord.mq;
-                if (parseInt(compID, 10)) {
-                    if (EDDData.MeasurementTypeCompartments[compID]) {
-                        name = EDDData.MeasurementTypeCompartments[compID].name;
-                    }
+            amIDs.forEach(function (measureId) {
+                var measure = EDDData.AssayMeasurements[measureId] || {}, value;
+                value = EDDData.MeasurementTypeCompartments[measure.compartment] || {};
+                if (value && value.name) {
+                    uniqueNamesId[value.name] = uniqueNamesId[value.name] || ++unique;
+                    _this.filterHash[measureId] = uniqueNamesId[value.name];
                 }
-                if (!usedValues.hasOwnProperty(name)) {
-                    usedValues[name] = ++usedValuesCount;
-                }
-                this.filterHash[amID] = usedValues[name];
-            }
-            return usedValues;
+            });
+            return uniqueNamesId;
         };
         return MetaboliteCompartmentFilterSection;
     })(GenericFilterSection);
@@ -600,38 +595,25 @@ var StudyD;
         };
         // Override: If the filter has a load pending, it's "useful", i.e. display it.
         MetaboliteFilterSection.prototype.isFilterUseful = function () {
-            if (this.loadPending) {
-                return true;
-            }
-            if (this.uniqueValuesOrder.length < 2) {
-                return false;
-            }
-            return true;
+            return this.loadPending || this.uniqueValuesOrder.length > 1;
         };
         MetaboliteFilterSection.prototype.buildUniqueValuesHash = function (amIDs) {
-            var usedValues = {};
-            var usedValuesCount = 0;
+            var _this = this;
+            var uniqueNamesId = {}, unique = 0;
             this.filterHash = {};
-            for (var i = 0; i < amIDs.length; i++) {
-                var amID = amIDs[i];
-                var measurementRecord = EDDData.AssayMeasurements[amID];
-                if (!measurementRecord) {
-                    continue;
+            amIDs.forEach(function (measureId) {
+                var measure = EDDData.AssayMeasurements[measureId] || {}, metabolite;
+                if (measure && measure.type) {
+                    metabolite = EDDData.MetaboliteTypes[measure.type] || {};
+                    if (metabolite && metabolite.name) {
+                        uniqueNamesId[metabolite.name] = uniqueNamesId[metabolite.name] || ++unique;
+                        _this.filterHash[measureId] = uniqueNamesId[metabolite.name];
+                    }
                 }
-                var metID = measurementRecord.mt;
-                var metaboliteRecord = EDDData.MetaboliteTypes[metID];
-                if (!metaboliteRecord) {
-                    continue;
-                }
-                var name = metaboliteRecord.name;
-                if (!usedValues.hasOwnProperty(name)) {
-                    usedValues[name] = ++usedValuesCount;
-                }
-                this.filterHash[amID] = usedValues[name];
-            }
+            });
             // If we've been called to build our hashes, assume there's no load pending
             this.loadPending = false;
-            return usedValues;
+            return uniqueNamesId;
         };
         return MetaboliteFilterSection;
     })(GenericFilterSection);
@@ -648,38 +630,25 @@ var StudyD;
         };
         // Override: If the filter has a load pending, it's "useful", i.e. display it.
         ProteinFilterSection.prototype.isFilterUseful = function () {
-            if (this.loadPending) {
-                return true;
-            }
-            if (this.uniqueValuesOrder.length < 2) {
-                return false;
-            }
-            return true;
+            return this.loadPending || this.uniqueValuesOrder.length > 1;
         };
         ProteinFilterSection.prototype.buildUniqueValuesHash = function (amIDs) {
-            var usedValues = {};
-            var usedValuesCount = 0;
+            var _this = this;
+            var uniqueNamesId = {}, unique = 0;
             this.filterHash = {};
-            for (var i = 0; i < amIDs.length; i++) {
-                var amID = amIDs[i];
-                var measurementRecord = EDDData.AssayMeasurements[amID];
-                if (!measurementRecord) {
-                    continue;
+            amIDs.forEach(function (measureId) {
+                var measure = EDDData.AssayMeasurements[measureId] || {}, protein;
+                if (measure && measure.type) {
+                    protein = EDDData.ProteinTypes[measure.type] || {};
+                    if (protein && protein.name) {
+                        uniqueNamesId[protein.name] = uniqueNamesId[protein.name] || ++unique;
+                        _this.filterHash[measureId] = uniqueNamesId[protein.name];
+                    }
                 }
-                var metID = measurementRecord.mt;
-                var proteinRecord = EDDData.ProteinTypes[metID];
-                if (!proteinRecord) {
-                    continue;
-                }
-                var name = proteinRecord.name;
-                if (!usedValues.hasOwnProperty(name)) {
-                    usedValues[name] = ++usedValuesCount;
-                }
-                this.filterHash[amID] = usedValues[name];
-            }
+            });
             // If we've been called to build our hashes, assume there's no load pending
             this.loadPending = false;
-            return usedValues;
+            return uniqueNamesId;
         };
         return ProteinFilterSection;
     })(GenericFilterSection);
@@ -696,38 +665,25 @@ var StudyD;
         };
         // Override: If the filter has a load pending, it's "useful", i.e. display it.
         GeneFilterSection.prototype.isFilterUseful = function () {
-            if (this.loadPending) {
-                return true;
-            }
-            if (this.uniqueValuesOrder.length < 2) {
-                return false;
-            }
-            return true;
+            return this.loadPending || this.uniqueValuesOrder.length > 1;
         };
         GeneFilterSection.prototype.buildUniqueValuesHash = function (amIDs) {
-            var usedValues = {};
-            var usedValuesCount = 0;
+            var _this = this;
+            var uniqueNamesId = {}, unique = 0;
             this.filterHash = {};
-            for (var i = 0; i < amIDs.length; i++) {
-                var amID = amIDs[i];
-                var measurementRecord = EDDData.AssayMeasurements[amID];
-                if (!measurementRecord) {
-                    continue;
+            amIDs.forEach(function (measureId) {
+                var measure = EDDData.AssayMeasurements[measureId] || {}, gene;
+                if (measure && measure.type) {
+                    gene = EDDData.GeneTypes[measure.type] || {};
+                    if (gene && gene.name) {
+                        uniqueNamesId[gene.name] = uniqueNamesId[gene.name] || ++unique;
+                        _this.filterHash[measureId] = uniqueNamesId[gene.name];
+                    }
                 }
-                var metID = measurementRecord.mt;
-                var geneRecord = EDDData.GeneTypes[metID];
-                if (!geneRecord) {
-                    continue;
-                }
-                var name = geneRecord.name;
-                if (!usedValues.hasOwnProperty(name)) {
-                    usedValues[name] = ++usedValuesCount;
-                }
-                this.filterHash[amID] = usedValues[name];
-            }
+            });
             // If we've been called to build our hashes, assume there's no load pending
             this.loadPending = false;
-            return usedValues;
+            return uniqueNamesId;
         };
         return GeneFilterSection;
     })(GenericFilterSection);

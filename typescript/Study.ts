@@ -8,6 +8,7 @@
 declare var EDDData:EDDData;
 
 module StudyD {
+    'use strict';
 
     var mainGraphObject:any;
 
@@ -643,40 +644,32 @@ module StudyD {
 
 
     export class MetaboliteCompartmentFilterSection extends GenericFilterSection {
+        // NOTE: this filter class works with Measurement IDs rather than Assay IDs
         configure():void {
             this.sectionTitle = 'Compartment';
             this.sectionShortLabel = 'com';
         }
 
 
-        buildUniqueValuesHash(amIDs:any):any {
-            var usedValues:any = {};
-            var usedValuesCount:number = 0;
-
+        buildUniqueValuesHash(amIDs:any[]):any {
+            var uniqueNamesId:ValueToUniqueID = {}, unique = 0;
             this.filterHash = {};
-            for (var i=0; i<amIDs.length; i++) {
-                var amID = amIDs[i];
-                var measurementRecord = EDDData.AssayMeasurements[amID];
-                var name = '(Unset)';
-                var compID = measurementRecord.mq;
-                if (parseInt(<any>compID, 10)) {
-                    if (EDDData.MeasurementTypeCompartments[compID]) {
-                        name = EDDData.MeasurementTypeCompartments[compID].name;
-                    }
+            amIDs.forEach((measureId:string) => {
+                var measure:any = EDDData.AssayMeasurements[measureId] || {}, value:any;
+                value = EDDData.MeasurementTypeCompartments[measure.compartment] || {};
+                if (value && value.name) {
+                    uniqueNamesId[value.name] = uniqueNamesId[value.name] || ++unique;
+                    this.filterHash[measureId] = uniqueNamesId[value.name];
                 }
-
-                if (!usedValues.hasOwnProperty(name)) {
-                    usedValues[name] = ++usedValuesCount;
-                }
-                this.filterHash[amID] = usedValues[name];
-            }
-            return usedValues;
+            });
+            return uniqueNamesId;
         }
     }
 
 
 
     export class MetaboliteFilterSection extends GenericFilterSection {
+        // NOTE: this filter class works with Measurement IDs rather than Assay IDs
         loadPending:boolean;
 
         configure():void {
@@ -688,48 +681,33 @@ module StudyD {
 
         // Override: If the filter has a load pending, it's "useful", i.e. display it.
         isFilterUseful():boolean {
-            if (this.loadPending) {
-                return true;
-            }
-            if (this.uniqueValuesOrder.length < 2) {
-                return false;
-            }
-            return true;
+            return this.loadPending || this.uniqueValuesOrder.length > 1;
         }
 
 
-        buildUniqueValuesHash(amIDs:any):any {
-            var usedValues:any = {};
-            var usedValuesCount:number = 0;
-
+        buildUniqueValuesHash(amIDs:any[]):any {
+            var uniqueNamesId:ValueToUniqueID = {}, unique = 0;
             this.filterHash = {};
-            for (var i=0; i<amIDs.length; i++) {
-                var amID = amIDs[i];
-                var measurementRecord = EDDData.AssayMeasurements[amID];
-                if (!measurementRecord) {
-                    continue;
+            amIDs.forEach((measureId:string) => {
+                var measure:any = EDDData.AssayMeasurements[measureId] || {}, metabolite:any;
+                if (measure && measure.type) {
+                    metabolite = EDDData.MetaboliteTypes[measure.type] || {};
+                    if (metabolite && metabolite.name) {
+                        uniqueNamesId[metabolite.name] = uniqueNamesId[metabolite.name] || ++unique;
+                        this.filterHash[measureId] = uniqueNamesId[metabolite.name];
+                    }
                 }
-                var metID = measurementRecord.mt;
-                var metaboliteRecord = EDDData.MetaboliteTypes[metID];
-                if (!metaboliteRecord) {
-                    continue;
-                }
-
-                var name = metaboliteRecord.name;
-                if (!usedValues.hasOwnProperty(name)) {
-                    usedValues[name] = ++usedValuesCount;
-                }
-                this.filterHash[amID] = usedValues[name];
-            }
+            });
             // If we've been called to build our hashes, assume there's no load pending
             this.loadPending = false;
-            return usedValues;
+            return uniqueNamesId;
         }
     }
 
 
 
     export class ProteinFilterSection extends GenericFilterSection {
+        // NOTE: this filter class works with Measurement IDs rather than Assay IDs
         loadPending:boolean;
 
         configure():void {
@@ -741,48 +719,33 @@ module StudyD {
 
         // Override: If the filter has a load pending, it's "useful", i.e. display it.
         isFilterUseful():boolean {
-            if (this.loadPending) {
-                return true;
-            }
-            if (this.uniqueValuesOrder.length < 2) {
-                return false;
-            }
-            return true;
+            return this.loadPending || this.uniqueValuesOrder.length > 1;
         }
 
 
-        buildUniqueValuesHash(amIDs:any):any {
-            var usedValues:any = {};
-            var usedValuesCount:number = 0;
-
+        buildUniqueValuesHash(amIDs:any[]):any {
+            var uniqueNamesId:ValueToUniqueID = {}, unique = 0;
             this.filterHash = {};
-            for (var i=0; i<amIDs.length; i++) {
-                var amID = amIDs[i];
-                var measurementRecord = EDDData.AssayMeasurements[amID];
-                if (!measurementRecord) {
-                    continue;
+            amIDs.forEach((measureId:string) => {
+                var measure:any = EDDData.AssayMeasurements[measureId] || {}, protein:any;
+                if (measure && measure.type) {
+                    protein = EDDData.ProteinTypes[measure.type] || {};
+                    if (protein && protein.name) {
+                        uniqueNamesId[protein.name] = uniqueNamesId[protein.name] || ++unique;
+                        this.filterHash[measureId] = uniqueNamesId[protein.name];
+                    }
                 }
-                var metID = measurementRecord.mt;
-                var proteinRecord = EDDData.ProteinTypes[metID];
-                if (!proteinRecord) {
-                    continue;
-                }
-
-                var name = proteinRecord.name;
-                if (!usedValues.hasOwnProperty(name)) {
-                    usedValues[name] = ++usedValuesCount;
-                }
-                this.filterHash[amID] = usedValues[name];
-            }
+            });
             // If we've been called to build our hashes, assume there's no load pending
             this.loadPending = false;
-            return usedValues;
+            return uniqueNamesId;
         }
     }
 
 
 
     export class GeneFilterSection extends GenericFilterSection {
+        // NOTE: this filter class works with Measurement IDs rather than Assay IDs
         loadPending:boolean;
 
         configure():void {
@@ -794,42 +757,26 @@ module StudyD {
 
         // Override: If the filter has a load pending, it's "useful", i.e. display it.
         isFilterUseful():boolean {
-            if (this.loadPending) {
-                return true;
-            }
-            if (this.uniqueValuesOrder.length < 2) {
-                return false;
-            }
-            return true;
+            return this.loadPending || this.uniqueValuesOrder.length > 1;
         }
 
 
-        buildUniqueValuesHash(amIDs:any):any {
-            var usedValues:any = {};
-            var usedValuesCount:number = 0;
-
+        buildUniqueValuesHash(amIDs:any[]):any {
+            var uniqueNamesId:ValueToUniqueID = {}, unique = 0;
             this.filterHash = {};
-            for (var i=0; i<amIDs.length; i++) {
-                var amID = amIDs[i];
-                var measurementRecord = EDDData.AssayMeasurements[amID];
-                if (!measurementRecord) {
-                    continue;
+            amIDs.forEach((measureId:string) => {
+                var measure:any = EDDData.AssayMeasurements[measureId] || {}, gene:any;
+                if (measure && measure.type) {
+                    gene = EDDData.GeneTypes[measure.type] || {};
+                    if (gene && gene.name) {
+                        uniqueNamesId[gene.name] = uniqueNamesId[gene.name] || ++unique;
+                        this.filterHash[measureId] = uniqueNamesId[gene.name];
+                    }
                 }
-                var metID = measurementRecord.mt;
-                var geneRecord = EDDData.GeneTypes[metID];
-                if (!geneRecord) {
-                    continue;
-                }
-
-                var name = geneRecord.name;
-                if (!usedValues.hasOwnProperty(name)) {
-                    usedValues[name] = ++usedValuesCount;
-                }
-                this.filterHash[amID] = usedValues[name];
-            }
+            });
             // If we've been called to build our hashes, assume there's no load pending
             this.loadPending = false;
-            return usedValues;
+            return uniqueNamesId;
         }
     }
 

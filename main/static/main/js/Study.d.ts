@@ -85,25 +85,25 @@ declare module StudyD {
     }
     class MetaboliteCompartmentFilterSection extends GenericFilterSection {
         configure(): void;
-        buildUniqueValuesHash(amIDs: any): any;
+        buildUniqueValuesHash(amIDs: any[]): any;
     }
     class MetaboliteFilterSection extends GenericFilterSection {
         loadPending: boolean;
         configure(): void;
         isFilterUseful(): boolean;
-        buildUniqueValuesHash(amIDs: any): any;
+        buildUniqueValuesHash(amIDs: any[]): any;
     }
     class ProteinFilterSection extends GenericFilterSection {
         loadPending: boolean;
         configure(): void;
         isFilterUseful(): boolean;
-        buildUniqueValuesHash(amIDs: any): any;
+        buildUniqueValuesHash(amIDs: any[]): any;
     }
     class GeneFilterSection extends GenericFilterSection {
         loadPending: boolean;
         configure(): void;
         isFilterUseful(): boolean;
-        buildUniqueValuesHash(amIDs: any): any;
+        buildUniqueValuesHash(amIDs: any[]): any;
     }
     function prepareIt(): void;
     function prepareFilteringSection(): void;
