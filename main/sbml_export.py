@@ -136,8 +136,10 @@ class sbml_info (object) :
     self._sbml_species = []
     self._sbml_reactions = []
     self._sbml_exchanges = []
-    self._species_objects = {} # indexed by species_id
-    self._reaction_objects = {}
+    self._species_by_id = {} # indexed by species_id
+    self._reactions_by_id = {}
+    self._exchanges_by_id = {}
+    self._species_to_metabolites = {}
     self._gene_reactions = defaultdict(list) # indexed by gene ID
     self._protein_reactions = defaultdict(list) # indexed by protein ID
     self._resolved_species = OrderedDict()
@@ -167,10 +169,10 @@ class sbml_info (object) :
         O.id = species.getId()
         O.is_duplicate = False
         O.notes = {}
-        if (O.id in self._species_objects) :
+        if (O.id in self._species_by_id) :
           O.is_duplicate = True
         else :
-          self._species_objects[O.id] = O
+          self._species_by_id[O.id] = O
           if (species.isSetNotes()) :
             O.notes = parse_sbml_notes_to_dict(species.getNotes())
       @property
@@ -186,10 +188,10 @@ class sbml_info (object) :
         O.notes = {}
         O.gene_ids = []
         O.protein_ids = []
-        if (O.id in self._reaction_objects) :
+        if (O.id in self._reactions_by_id) :
           O.is_duplicate = True
         else :
-          self._reaction_objects[O.id] = O
+          self._reactions_by_id[O.id] = O
           if (reaction.isSetNotes()) :
             O.notes = parse_sbml_notes_to_dict(reaction.getNotes())
             for assoc_string in O.notes.get("GENE_ASSOCIATION", []) :
@@ -254,6 +256,7 @@ class sbml_info (object) :
             if (O.lb_param is not None) and (O.lb_param.isSetValue()) :
               O.lb_value = O.lb_param.getValue()
             O.reject = False
+            self._exchanges_by_id[O.ex_id] = O
       def upper_bound (O) :  return str(O.ub_value)
       def lower_bound (O) :  return str(O.lb_value)
       def bad_status_symbol (O) :
@@ -267,23 +270,17 @@ class sbml_info (object) :
         return None
       def __str__ (O) :
         return O.reaction_desc
-    species_by_id = {}
     for species in model.getListOfSpecies() :
-      s = SpeciesInfo(species)
-      self._sbml_species.append(s)
-      if (not s.is_duplicate) :
-        species_by_id[s.id ] = s
+      self._sbml_species.append(SpeciesInfo(species))
     for reaction in model.getListOfReactions() :
       self._sbml_reactions.append(ReactionInfo(reaction))
     reactant_to_exchange = defaultdict(list)
-    exchanges_by_id = {}
     for reaction in model.getListOfReactions() :
       e = ExchangeInfo(reaction)
       self._sbml_exchanges.append(e)
       if (not e.reject) :
         # only store this if it passes all criteria
         reactant_to_exchange[e.re_id].append(e)
-        exchanges_by_id[e.ex_id] = e
     # In this loop we're attempting to munge the name of a metabolite type so
     # that it matches the name of any one species, and any one reactant in the
     #$ detected exchanges
@@ -292,11 +289,12 @@ class sbml_info (object) :
     known_species = MetaboliteSpecies.objects.filter(
       metabolic_map_id=self._chosen_map.id)
     exchanges_by_metab_id = {
-      e.measurement_type_id:exchanges_by_id[e.exchange_name]
+      e.measurement_type_id:self._exchanges_by_id[e.exchange_name]
       for e in known_exchanges
     }
     species_by_metab_id = {
-      s.measurement_type_id:species_by_id[s.species] for s in known_species
+      s.measurement_type_id:self._species_by_id[s.species]
+      for s in known_species
     }
     for met in self._all_metabolites :
       mname = met.short_name # first we grab the unaltered name
@@ -327,10 +325,12 @@ class sbml_info (object) :
       if (sp_resolved is None) :
         names = generate_species_name_guesses_from_metabolite_name(mname)
         for name in names :
-          sp_resolved = species_by_id.get(name, None)
+          sp_resolved = self._species_by_id.get(name, None)
           if (sp_resolved is not None) :
             break
       self._resolved_species[met.id] = sp_resolved
+      if (sp_resolved is not None) :
+        self._species_to_metabolites[sp_resolved.id] = met
     # finally, biomass reaction
     biomass_metab = Metabolite.objects.get(short_name="OD")
     try :
@@ -343,6 +343,63 @@ class sbml_info (object) :
   def _unique_resolved_exchanges (self) :
     return set([ ex.ex_id for ex in self._resolved_exchanges.values()
                   if ex is not None ])
+
+  # This subroutine is passed a Metabolite Type ID and a species ID (likely
+  # drawn from a form element).  It checks to see if the type matches a species
+  # parsed from the current SBML model.  If it does, the Metabolite Type is
+  # reassigned to the species and the species ID is returned.  If it doesn't,
+  # the function returns the species that is currently assigned, or an empty
+  # string if none.
+  def _reassign_metabolite_to_species (self, metabolite, species_id) :
+    species_id = str(species_id)
+    if (species_id is not None) :
+      # If the value is defined as an empty string, we should take that as a
+      # signal to delete any 'custom' connections between the given measurement
+      # and any reactant, and then return the default.
+      if (species_id == "") :
+        record = MetaboliteSpecies.objects.get(
+          metabolic_map_id=self._chosen_map.id,
+          measurement_type_id=metabolite.id)
+        print "DELETING RECORD"
+        #record.delete()
+    else :
+      species_id = ""
+    # If the given species ID doesn't resolve to anything, it's got to be an
+    # erroneous value entered by a user, and we should return the current
+    # association with the measurement type if there is one.
+    if (self._species_by_id.get(species_id, None) is None) :
+      sp = self._resolved_species.get(metabolite.id, None)
+      if (sp is None) :
+        return ""
+      return sp.id
+    # If the pairing is the same as the current one, return the given ID with
+    # no effect.
+    old_met = self._species_to_metabolites.get(species_id, None)
+    if (old_met is not None) and (old_met.id == metabolite.id) :
+      return species_id
+    # Since the pairing is different, or doesn't exist, we need to
+    # update/create it.  (We know the species ID is valid by now.)
+    # First, clear out the old record:
+    try :
+      record = MetaboliteSpecies.objects.get(
+          metabolic_map_id=self._chosen_map.id,
+          measurement_type_id=metabolite.id)
+      #record.delete()
+      print "DELETING RECORD 2"
+    except Exception as e :
+      print e
+    # insert the new record
+    #record = MetaboliteSpecies.objects.create(
+    #  metabolic_map=self._chosen_map,
+    #  measurement_type=metabolite,
+    #  species=species_id)
+    print "CREATING RECORD"
+    # Alter the internal hashes to reflect the change
+    self._resolved_species[metabolite.id] = self._species_by_id[species_id]
+    self._species_to_metabolites[species_id] = metabolite
+
+  def _reassign_metabolite_to_reactant (self, metabolite, exchange_id) :
+    pass
 
   #---------------------------------------------------------------------
   # "public" methods
@@ -546,7 +603,9 @@ class line_sbml_data (line_export_base, sbml_info) :
     # Here's where we accumulate values to embed in "species" (generally
     # metabolites) in the SBML
     self.species_data_by_metabolite = defaultdict(dict)
-    self.species_data_types_available = {}
+    self._species_data_types_available = set()
+    self._flux_data_types_available = set()
+    self._species_match_elements = []
     # This is a hash where each key is the short_name of a Metabolite Type, and
     # the value is 1, indicating that the type has data available somewhere
     # along the full range of timestamps, and has been successfully paired with
@@ -1019,13 +1078,46 @@ class line_sbml_data (line_export_base, sbml_info) :
           is_od_measurement=(m.measurement_type_id == od_mtype.id),
           use_interpolation=(protocol_category != "OD"))
       self._processed_metabolite_data.append(result)
+      if (result.n_errors == 0) and (protocol_category != "OD") :
+        self._species_data_types_available.add(result.metabolite_name)
+        self._flux_data_types_available.add(result.metabolite_name)
 
   def _step_8_pre_parse_and_match (self) :
     """private method"""
     if self.debug : print "STEP 8: match to species in SBML file"
-    known_exchanges = MetaboliteExchange.objects.all()
-    known_species = MetaboliteSpecies.objects.all()
     self._process_sbml()
+    metabolites_by_sname = { m.short_name : m for m in self._all_metabolites }
+    if (len(self._species_data_types_available) > 0) :
+      # First we attempt to locate the form element that describes the set of
+      # exmatch# elements that were submitted with the last page.
+      # We need to use an element like this because the standard behavior of a
+      # browser doing a form submission is to drop elements whose value was
+      # unset or set to the empty string.  Eventually we may avoid this problem       # by doing our own AJAX/JSON-RPC call instead.
+      elements = self.form.get("fluxmatchelements", "").split(",")
+      # Then we'll convert it into a hash, one key for each element that
+      # exists, so we can check for the presence of individual elements easily.
+      # We set the value of each key to the value of the form element, or an
+      # empty string if no element was passed.
+      species_matches = {sp_id:self.form.get(sp_id, "") for sp_id in elements}
+      # This way we can use the reassignMetaboliteToSpecies subroutine,
+      # by passing a defined value, even if just an empty string, instead of
+      # 'undef', for any spmatch# element that was on the previous incarnation
+      # of the page.
+      for species in sorted(list(self._species_data_types_available)) :
+        metabolite = metabolites_by_sname[species]
+        form_element_id = "spmatch" + str(metabolite.id)
+        species_match = self._reassign_metabolite_to_species(
+          metabolite=metabolite,
+          species_id=species_matches.get(form_element_id, None))
+        # We pass in the contents of the relevant form element here,
+        # and the code in UtilitiesSBML checks to see if it matches a known
+        # species.   If it does, the measurement type is reassigned to the
+        # species and the species ID is returned.  If it doesn't, the function
+        # returns the species that is currently assigned.  If an empty string
+        # is submitted, we assume that the user intends to erase a previously
+        # customized pairing.
+        self._species_match_elements.append((metabolite, species_match))
+        
 
   # Used for extracting HPLC/LCMS/RAMOS assays for display.  Metabolites are
   # listed individually, proteomics and transcriptomics measurements are
