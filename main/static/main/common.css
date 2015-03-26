@@ -191,6 +191,10 @@ div.errorMessage {
     background-color: #FFFDF6;
     border-color: #FFEAAE;
 }
+/* used in sbml export */
+.warn2 {
+  color:rgb(200, 130, 0);
+}
 .bad {
     background-color: #FFCCCC;
     border-color: red;

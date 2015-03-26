@@ -6,14 +6,16 @@ from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.http.response import HttpResponseForbidden
 from django.shortcuts import render, get_object_or_404, redirect, \
-  render_to_response
+    render_to_response
 from django.template import RequestContext
 from django.template.defaulttags import register
 from django.views import generic
 from main.forms import CreateStudyForm
 from main.models import Study, Update, Protocol, Measurement, MeasurementType
 from main.solr import StudySearch
-from main.utilities import get_edddata_study, get_edddata_misc, JSONDecimalEncoder
+from main.utilities import get_edddata_study, get_edddata_misc, \
+    get_selected_lines, JSONDecimalEncoder
+import main.sbml_export
 import main.data_export
 from io import BytesIO
 import json
@@ -215,6 +217,36 @@ def study_export_table_data (request, study) :
         raise RuntimeError("No measurements selected for export!")
     else :
         return main.data_export.export_table(exports, form)
+
+def study_export_sbml (request, study) :
+    model = Study.objects.get(pk=study)
+    if (request.method == "POST") :
+        form = request.POST
+    else :
+        form = request.GET
+    lines = []
+    lines = get_selected_lines(form, model)
+    try :
+        if (len(lines) == 0) :
+            raise ValueError("No lines found for export.")
+        exports = main.sbml_export.line_sbml_data(
+            study=model,
+            lines=lines,
+            form=form,
+            debug=True)
+    except ValueError as e :
+        return render(request, "main/error.html", {
+          "error_source" : "SBML export for %s" % model.name,
+          "error_message" : str(e),
+        })
+    else :
+        return render_to_response("main/sbml_export.html",
+            dictionary={
+                "data" : exports,
+                "study" : model,
+                "lines" : lines,
+            },
+            context_instance=RequestContext(request))
 
 # FIXME it would be much better to avoid csrf_exempt...
 @csrf_exempt

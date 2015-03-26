@@ -199,30 +199,6 @@ class EDDObject(models.Model):
         return self.name
 
 
-class MetabolicMap (EDDObject) :
-    """
-    Container for information used in SBML export.
-    """
-    class Meta:
-        db_table = "metabolic_map"
-    object_ref = models.OneToOneField(EDDObject, parent_link=True)
-    biomass_calculation = models.DecimalField(default=-1, decimal_places=5,
-        max_digits=16) # XXX check that these parameters make sense!
-    biomass_calculation_info = models.TextField(default='')
-    biomass_exchange_name = models.TextField()
-
-    @property
-    def xml_file (self) :
-        files = self.files.all()
-        if (len(files) == 0) :
-            raise RuntimeError("No attachments found for metabolic map %s!" %
-                self.name)
-        elif (len(files) > 1) :
-            raise RuntimeError("Multiple attachments found for metabolic map "+
-              "%s!" % self.name)
-        return files[0]
-
-
 class Study(EDDObject):
     """
     A collection of items to be studied.
@@ -810,7 +786,8 @@ class Measurement(models.Model):
         return (self.measurement_format == 1)
 
     def valid_data (self) :
-        return self.measurementdatum_set.filter(y__isnull=False)
+        mdata = list(self.measurementdatum_set.all())
+        return [ md for md in mdata if md.fy is not None ]
 
     @property
     def name (self) :
@@ -830,29 +807,16 @@ class Measurement(models.Model):
 
     # TODO also handle vectors
     def extract_data_xvalues (self, defined_only=False) :
+        mdata = list(self.measurementdatum_set.all())
         if defined_only :
-            return [ m.fx for m in self.measurementdatum_set.filter(
-                y__isnull=False) ]
+            return [ m.fx for m in mdata if m.fy is not None ]
         else :
-            return [ m.fx for m in self.measurementdatum_set.all() ]
+            return [ m.fx for m in mdata ]
 
     # XXX this shouldn't need to handle vectors (?)
     def interpolate_at (self, x) :
-        """
-        Given an X-value without a measurement, use linear interpolation to
-        compute an approximate Y-value based on adjacent measurements (if any).
-        """
-        import numpy
-        data = sorted(list(self.measurementdatum_set.filter(y__isnull=False)),
-            lambda a,b: cmp(a.x, b.x))
-        if (len(data) == 0) :
-            raise ValueError("Can't interpolate because no valid "+
-              "measurement data are present.")
-        xp = numpy.array([ d.fx for d in data ])
-        if (not (xp[0] <= x <= xp[-1])) :
-            return None
-        fp = numpy.array([ d.fy for d in data ])
-        return numpy.interp(float(x), xp, fp)
+        from main.utilities import interpolate_at
+        return interpolate_at(self.valid_data(), x)
 
     @property
     def y_axis_units_name (self) :
@@ -940,3 +904,57 @@ class MeasurementVector(models.Model):
     def __str__(self):
         return '(%f,%f)' % (self.x, self.y)
 
+    @property
+    def fx (self) :
+        return float(self.x)
+
+
+class MetabolicMap (EDDObject) :
+    """
+    Container for information used in SBML export.
+    """
+    class Meta:
+        db_table = "metabolic_map"
+    object_ref = models.OneToOneField(EDDObject, parent_link=True)
+    biomass_calculation = models.DecimalField(default=-1, decimal_places=5,
+        max_digits=16) # XXX check that these parameters make sense!
+    biomass_calculation_info = models.TextField(default='')
+    biomass_exchange_name = models.TextField()
+
+    @property
+    def xml_file (self) :
+        files = self.files.all()
+        if (len(files) == 0) :
+            raise RuntimeError("No attachments found for metabolic map %s!" %
+                self.name)
+        elif (len(files) > 1) :
+            raise RuntimeError("Multiple attachments found for metabolic map "+
+              "%s!" % self.name)
+        return files[0]
+
+    def parseSBML (self) :
+        import libsbml
+        return libsbml.readSBML(str(self.xml_file.file.path))
+
+class MetaboliteExchange (models.Model) :
+    """
+    Mapping for a metabolite to an exchange defined by a metabolic map.
+    """
+    class Meta:
+        db_table = "measurement_type_to_exchange"
+        unique_together = ( ("metabolic_map", "measurement_type"), )
+    metabolic_map = models.ForeignKey(MetabolicMap)
+    measurement_type = models.ForeignKey(MeasurementType)
+    reactant_name = models.CharField(max_length=255)
+    exchange_name = models.CharField(max_length=255)
+
+class MetaboliteSpecies (models.Model) :
+    """
+    Mapping for a metabolite to an species defined by a metabolic map.
+    """
+    class Meta:
+        db_table = "measurement_type_to_species"
+        unique_together = ( ("metabolic_map", "measurement_type"), )
+    metabolic_map = models.ForeignKey(MetabolicMap)
+    measurement_type = models.ForeignKey(MeasurementType)
+    species = models.TextField()

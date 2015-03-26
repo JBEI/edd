@@ -1,0 +1,258 @@
+
+<!--
+
+Partial template for displaying information about a metabolic map.  Used in
+the views for SBML export and metabolic map administration.
+
+-->
+
+  <!-- SPECIES -->
+  <div class="disclose discloseHide" id="SMBLSNParseStephidden">
+    {% with data.n_sbml_species_notes as n_notes %}
+    <div class="subSectionChapter">
+      <span><a href="#" class="discloseLink">
+        Detected <b>{{ data.n_sbml_species }}</b> species, and parsed
+        <b> {{ n_notes }}</b> species notes sections.
+      </a></span>
+    </div>
+      {% if n_notes %}
+    <div class="subSectionContent discloseBody" id="SMBLSNParseStepmain">
+      <p>Parsing all species and species notes ...
+        {% for sp in data.sbml_species %}
+        <span class="popup">
+          {% if sp.is_duplicate %}
+          (<span class="bad">D</span>)
+          {% else %}
+          (<span class="good">{{ sp.n_notes }}</span>)
+          {% endif %}
+        <span class="popupinfo">{{ sp.id }}</span></span>
+        {% endfor %}<!-- data.sbml_species -->
+      ... finished.</p>
+      <ul style="margin-left: 20px;">
+        <b>Key:</b>
+        <li><span class="bad">D</span> There appears to be more than one
+          species declared with this ID!  Only the first encountered with
+          valid notes will be used.</li>
+        <li><span class="good">#</span> Notes were found and # data sections
+          were parsed in the notes.</li>
+      </ul>
+      <p><b>Count of each note type detected:</b>
+        <ul>
+        {% for note_count in data.species_note_counts %}
+          <li>{{ note_count.key }} : {{ note_count.count }}</li>
+        {% endfor %}
+        </ul>
+      </p>
+    </div>
+      {% endif %}
+    {% endwith %}
+  </div>
+
+  <!-- REACTION -->
+  <div class="disclose discloseHide" id="SMBLRNParseStephidden">
+    {% with data.n_sbml_reaction_notes as n_notes %}
+    <div class="subSectionChapter">
+      <span><a href="#" class="discloseLink">
+        Detected <b>{{ data.n_sbml_reactions }}</b> reactions, and parsed
+        <b>{{ n_notes }}</b> reaction notes sections.
+      </a></span>
+    </div>
+      {% if n_notes %}
+    <div class="subSectionContent discloseBody" id="SMBLRNParseStepmain">
+      <p>Parsing all reaction notes ...
+      <!-- Loop over reaction notes -->
+        {% for rn in data.sbml_reactions %}
+        <span class="popup">
+          {% if rn.is_duplicate %}
+          (<span class="bad">D</span>)
+          {% else %}
+          (<span class="good">{{ rn.n_notes }}</span>)
+          {% endif %}
+        <span class="popupinfo">{{ rn.id }}</span></span>
+        {% endfor %}<!-- data.sbml_reactions -->
+      <!-- end loop -->
+      ... finished.</p>
+      <ul style="margin-left: 20px;">
+      <b>Key:</b>
+        <li><span class="bad">D</span> There appears to be more than one
+          reaction declared with this ID!  Only the first encountered with
+          valid notes will be used.</li>
+        <li><span class="good">#</span> Notes were found and # data sections
+          were parsed in the notes.</li>
+      </ul>
+      <p><b>Count of each note type detected:</b>
+        <ul>
+        {% for note_count in data.reaction_note_counts %}
+          <li>{{ note_count.key }} : {{ note_count.count }}</li>
+        {% endfor %}
+        </ul>
+      </p>
+    </div>
+      {% endif %}
+    {% endwith %}
+  </div>
+
+  <!-- GENES -->
+  {% with data.n_gene_associations as n_gene_associations %}
+  <div class="subSectionChapter">
+    {% if n_gene_associations %}
+    Detected associations for {{ n_gene_associations }} different genes,
+        from notes in {{ data.n_gene_assoc_reactions }} reactions.
+    {% else %}
+    Did not detect any gene associations in reaction notes.
+    {% endif %}
+  </div>
+  {% endwith %}
+
+  <!-- PROTEINS -->
+  {% with data.n_protein_associations as n_protein_associations %}
+  <div class="subSectionChapter">
+    {% if n_protein_associations %}
+    Detected associations for {{ n_protein_associations }} different proteins,
+      from notes in {{ data.n_protein_assoc_reactions }} reactions.
+    {% else %}
+    Did not detect any protein associations in reaction notes.
+    {% endif %}
+  </div>
+  {% endwith %}
+
+  <!-- EXCHANGES -->
+  <div class="disclose discloseHide" id="SMBLRParseStep">
+    <div class="subSectionChapter">
+      <span><a href="#" class="discloseLink">
+        Number of exchanges detected in this model: <b>
+        {{ data.n_exchanges }}</b>
+      </a></span>
+    </div>
+    <div class="subSectionContent discloseBody" id="SMBLRParseStepmain">
+      <p>Testing all reactions ...
+      <!-- Loop over exchanges -->
+      {% for ex in data.exchanges %}
+        <span class="popup">(
+        {% with ex.bad_status_symbol as status_bad %}
+          {% if status_bad %}
+          <span class="bad">{{ status_bad }}</span>
+          {% else %}
+          <span class="good">LB:{{ ex.lower_bound }}</span>,
+          <span class="good">UB:{{ ex.upper_bound }}</span>
+          {% endif %}
+        {% endwith %}
+          <span class="popupinfo">
+            {{ ex.name }}
+          </span>
+        )</span>
+      {% endfor %}
+       ... finished.
+      </p>
+
+
+      <ul style="margin-left: 20px;">
+        <b>Key:</b>
+        <li><span class="bad">#Rs</span>
+          Wrong # of reactants detected - there must be exactly one.</li>
+        <li><span class="bad">#St</span>
+          Bad stoichiometry.  The single reactant must be exactly 1 unit of the
+          metabolite, not #.  (No fractional exchange allowed.)</li>
+        <li><span class="bad">!KN</span>
+          The reaction has no kinetic law declared inside it.</li>
+        <li><span class="bad">!LB</span>
+          The kinetic law has no LOWER_BOUND parameter declared.</li>
+        <li><span class="bad">!UB</span>
+          The kinetic law has no UPPER_BOUND parameter declared.</li>
+        <li><span class="bad">!LB#</span>
+          The LOWER_BOUND parameter has no default value declared.
+          (Possible structural issue with the SBML model.)</li>
+        <li><span class="bad">!UB#</span>
+          The UPPER_BOUND parameter has no default value declared.
+          (Possible structural issue with the SBML model.)</li>
+        <li><span class="bad">D:X</span>
+          There appears to be more than one exchange reaction declared for this
+          reactant!  Only the first encountered will be used.</li>
+        <li><span class="good">LB:#</span>
+          The exchange reaction has a valid LOWER_BOUND parameter set to #.</li>
+        <li><span class="good">UB:#</span>
+          The exchange reaction has a valid UPPER_BOUND parameter set to #.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- MEASUREMENT TYPE RESOLUTION -->
+  <div class="disclose discloseHide" id="SMBLResolveStep">
+    <div class="subSectionChapter">
+      <span><a href="#" class="discloseLink">
+        Of <b>{{ data.n_measurement_types }}</b> measurement types in the EDD,
+            <b>{{ data.n_meas_types_resolved_to_species }}</b> were resolved
+            to species in this model and
+            <b>{{ data.n_meas_types_unresolved_to_species }}</b> were not, and
+            <b>{{ data.n_meas_types_resolved_to_exchanges }}</b> were resolved
+            to exchanges in this model and
+            <b>{{ data.n_meas_types_unresolved_to_exchanges }}</b> were not.
+        </a></span>
+      </div>
+      <div class="subSectionContent discloseBody" id="SMBLResolveStepmain">
+
+      {% for mt_res in data.measurement_type_resolution %}
+        {% if not mt_res.species and not mt_res.exchange %}
+          <div class="bad">Name <b>{{ mt_res.name }}</b> does not appear to
+             have an associated species <b>or</b> exchange reaction.</div>
+        {% else %}
+          {% if mt_res.species %}
+            <div>Name <b>{{ mt_res.name }}</b> resolves to species
+              {{ mt_res.species }}.</div>
+          {% else %}
+            <div class="bad">Name <b>{{ mt_res.name }}</b> does not appear to
+              have an associated species.</div>
+          {% endif %}
+          {% if mt_res.exchange %}
+            <div>Name <b>{{ mt_res.name }}</b> resolves via
+              {{ mt_res.exchange.re_id }} to exchange: {{ mt_res.exchange }}
+            </div>
+          {% else %}
+            <div class="bad">Name <b>{{ mt_res.name }}</b> does not appear to
+              have an associated exchange reaction.</div>
+          {% endif %}
+        {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="disclose discloseHide" id="SMBLResolveStep">
+    <div class="subSectionChapter">
+      <span><a href="#" class="discloseLink">
+        Of <b>{{ data.n_exchanges }}</b> total detected exchanges in this model,
+            <b>{{ data.n_exchanges_resolved }}</b> were resolved and
+            <b>{{ data.n_exchanges_not_resolved }}</b> were not.
+      </a></span>
+    </div>
+    <div class="subSectionContent discloseBody" id="SMBLReverseResolveStepmain">
+      {% for rex in data.unresolved_exchanges %}
+      <div class="warn2">Reactant <b>{{ rex.reactant }}</b>
+                  / exchange <b>{{ rex.exchange }}</b>
+                  was not successfully used for resolving.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  {% if data.biomass_exchange %}
+    {% if not data.biomass_exchange.kin_law %}
+      <div class="bad">
+        Could not resolve BIOMASS reaction ID <b>{{ data.biomass_reaction_id }}
+        </b> to a kinetic law
+      </div>
+    {% elif not data.biomass_exchange.lower_bound %}
+      <div class="bad">
+        Could not find a LOWER_BOUND parameter for BIOMASS reaction ID <b>
+        {{ data.biomass_reaction_id }}</b>
+      </div>
+    {% elif not data.biomass_exchange.upper_bound %}
+      <div class="bad">
+        Could not find an UPPER_BOUND parameter for BIOMASS reaction ID <b>
+        {{ data.biomass_reaction_id }}</b>
+      </div>
+    {% endif %}
+  {% else %}
+    <div class="bad">
+      Could not resolve BIOMASS reaction ID <b>{{ data.biomass_reaction_id }}
+        </b> to a reaction
+    </div>
+  {% endif %}

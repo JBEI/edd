@@ -541,6 +541,18 @@ INSERT INTO public.metabolic_map(
     FROM old_edd.metabolic_maps mm
     INNER JOIN public.edd_object o ON o.metabolic_map_id = mm.id
     ORDER BY mm.id;
+INSERT INTO public.measurement_type_to_exchange(
+        metabolic_map_id, measurement_type_id, reactant_name, exchange_name
+    ) SELECT o.id, me.measurement_type_id, me.reactant_name, me.exchange_name
+    FROM old_edd.measurement_types_to_exchanges me
+    INNER JOIN public.edd_object o ON o.metabolic_map_id = me.metabolic_map_id
+    ORDER BY me.metabolic_map_id;
+INSERT INTO public.measurement_type_to_species(
+        metabolic_map_id, measurement_type_id, species
+    ) SELECT o.id, ms.measurement_type_id, ms.species_id
+    FROM old_edd.measurement_types_to_species ms
+    INNER JOIN public.edd_object o ON o.metabolic_map_id = ms.metabolic_map_id
+    ORDER BY ms.id;
 
 
 --
@@ -561,6 +573,11 @@ INSERT INTO public.attachment(
         date_trunc('second', a.creation_time)
         AND m.mod_by_id = a.created_by
     ORDER BY a.id;
+
+
+-- add permissions needed for migrating attachments
+GRANT USAGE ON SCHEMA old_edd TO edduser;
+GRANT SELECT ON old_edd.attachments TO edduser;
 
 
 -- drop temp columns

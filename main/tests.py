@@ -501,7 +501,7 @@ class ExportTests(TestCase) :
     # messy enough module that I'm writing tests as I go
     def test_sbml_export (self) :
         study = Study.objects.get(name="Test Study 1")
-        data = main.sbml_export.sbml_data(
+        data = main.sbml_export.line_sbml_data(
             study=study,
             lines=[ Line.objects.get(name="Line 1") ],
             form={},
@@ -515,11 +515,11 @@ class ExportTests(TestCase) :
         self.assertTrue(
             hplc_data[0]['assays'][0]['measurements'][0]['n_points'] == 6)
         dp = hplc_data[0]['assays'][0]['measurements'][0]['data_points'][2]
-        self.assertTrue(dp['title'] == "0.22 at 8h")
+        self.assertTrue(dp['title'] == "0.22000 at 8h")
         self.assertTrue(data.n_lcms_measurements == 2)
         lcms_data = data.export_lcms_measurements()
         dp = lcms_data[0]['assays'][0]['measurements'][0]['data_points'][2]
-        self.assertTrue(dp['title'] == "0.2 at 8h")
+        self.assertTrue(dp['title'] == "0.20000 at 8h")
         self.assertTrue(data.n_ramos_measurements == 0)
         all_meas = data.processed_measurements()
         self.assertTrue(len(all_meas) == 5)
@@ -537,7 +537,7 @@ class ExportTests(TestCase) :
         odm = od.measurement_set.all()[0]
         odm.measurementdatum_set.filter(x__gt=0).delete()
         try :
-            data = main.sbml_export.sbml_data(
+            data = main.sbml_export.line_sbml_data(
                 study=study,
                 lines=[ Line.objects.get(name="Line 1") ],
                 form={},
@@ -549,7 +549,7 @@ class ExportTests(TestCase) :
         # now delete the assay altogether
         od.delete()
         try :
-            data = main.sbml_export.sbml_data(
+            data = main.sbml_export.line_sbml_data(
                 study=study,
                 lines=[ Line.objects.get(name="Line 1") ],
                 form={},
