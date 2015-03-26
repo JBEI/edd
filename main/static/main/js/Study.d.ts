@@ -109,17 +109,11 @@ declare module StudyD {
     function prepareFilteringSection(): void;
     function repopulateFilteringSection(): void;
     function processCarbonBalanceData(): void;
-    function filterTableKeyDown(e: any): void;
     function prepareAfterLinesTable(): void;
-    function requestAllMetaboliteData(): void;
-    function processMeasurementData(data: any): void;
     function carbonBalanceColumnRevealedCallback(index: any, spec: DataGridSpecLines, dataGridObj: DataGrid): void;
     function queueLinesActionPanelShow(): void;
-    function linesActionPanelShow(): void;
     function queueAssaysActionPanelShow(): void;
-    function assaysActionPanelShow(): void;
     function queueMainGraphRemake(force?: boolean): void;
-    function remakeMainGraphArea(force?: boolean): void;
     function addCarbonSourceRow(v: any): void;
     function removeCarbonSourceRow(order: any): void;
     function disableAllButFirstCarbonSourceRow(): void;

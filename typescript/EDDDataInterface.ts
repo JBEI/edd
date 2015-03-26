@@ -66,6 +66,12 @@ interface AssayRecord {
 
 // This is what we expect in EDDData.AssayMeasurements
 interface AssayMeasurementRecord {
+    id:number;      // Measurement ID
+    assay:number;   // Assay ID
+    type:number;    // MeasurementTypeRecord ID
+    compartment:string;
+    values:any[];   // array of data values
+    /////// BELOW ARE DEPRECATED ////////
 	aid:number;		// Assay ID
 	dis:boolean;	// Disabled
 	lid:number;		// Line ID
@@ -80,10 +86,15 @@ interface AssayMeasurementRecord {
 
 
 
+interface MeasurementTypeRecord {
+    id:number;      // Type ID
+    name:string;    // Type name
+    sn:string;      // Short-form name
+    family:string;  // 'm', 'g', 'p' for metabolite, gene, protien
+}
+
 // This is what we expect in EDDData.MetaboliteTypes
-interface MetaboliteTypeRecord {
-	name:string;	// Long Name
-	sn:string;		// Short Name
+interface MetaboliteTypeRecord extends MeasurementTypeRecord {
 	ans:string[];	// Altername Names
 	f:string;		// Molecular Formula
 	mm:number;		// Molar Mass As Number
@@ -99,15 +110,13 @@ interface MetaboliteTypeRecord {
 
 
 // This is what we expect in EDDData.ProteinTypes
-interface ProteinTypeRecord {
-	name:string;	// Name
+interface ProteinTypeRecord extends MeasurementTypeRecord {
 }
 
 
 
 // This is what we expect in EDDData.GeneTypes
-interface GeneTypeRecord {
-	name:string;	// Name
+interface GeneTypeRecord extends MeasurementTypeRecord {
 }
 
 
@@ -128,6 +137,7 @@ interface EDDData {
 	EnabledProtocolIDs:number[];
 	Protocols:{[id:number]:any};
 
+    MeasurementTypes:{[id:number]:MeasurementTypeRecord};
     MetaboliteTypeIDs:number[];
     MetaboliteTypes:{[id:number]:MetaboliteTypeRecord};
     ProteinTypeIDs:number[];

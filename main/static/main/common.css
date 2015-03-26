@@ -877,8 +877,15 @@ table.formTable tr > td span {
 	padding:3px 3px 0px 0px;
 }
 table.formTable tr > td p {
-	margin:3px 3px 0px 0px;
-	padding:0px;
+    margin:3px 3px 0px 0px;
+    padding:0px;
+}
+#assaysMeasSelectedTD {
+    border-right: 1px solid #6CA5E9
+    vertical-align: top;
+}
+#assaysMeasSelectedTD p {
+    padding:5px 8px 0px 9px;
 }
 table.formTable tr > td textarea {
 	vertical-align:top;

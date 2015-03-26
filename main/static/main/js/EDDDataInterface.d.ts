@@ -50,6 +50,11 @@ interface AssayRecord {
     mea_c: number;
 }
 interface AssayMeasurementRecord {
+    id: number;
+    assay: number;
+    type: number;
+    compartment: string;
+    values: any[];
     aid: number;
     dis: boolean;
     lid: number;
@@ -61,9 +66,13 @@ interface AssayMeasurementRecord {
     uid: number;
     d: any[];
 }
-interface MetaboliteTypeRecord {
+interface MeasurementTypeRecord {
+    id: number;
     name: string;
     sn: string;
+    family: string;
+}
+interface MetaboliteTypeRecord extends MeasurementTypeRecord {
     ans: string[];
     f: string;
     mm: number;
@@ -73,11 +82,9 @@ interface MetaboliteTypeRecord {
     _l: any;
     selectString: string;
 }
-interface ProteinTypeRecord {
-    name: string;
+interface ProteinTypeRecord extends MeasurementTypeRecord {
 }
-interface GeneTypeRecord {
-    name: string;
+interface GeneTypeRecord extends MeasurementTypeRecord {
 }
 interface EDDData {
     currentStudyID: number;
@@ -93,6 +100,9 @@ interface EDDData {
     EnabledProtocolIDs: number[];
     Protocols: {
         [x: number]: any;
+    };
+    MeasurementTypes: {
+        [x: number]: MeasurementTypeRecord;
     };
     MetaboliteTypeIDs: number[];
     MetaboliteTypes: {
