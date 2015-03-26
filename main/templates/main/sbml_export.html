@@ -816,91 +816,94 @@ Step 8
     <!-- TODO warnings -->
   </div>
 
-<div class="sectionContent discloseBody" id="statusstep7main">
+  <div class="sectionContent discloseBody" id="statusstep7main">
 
   {% include "main/include_sbml_info.html" %}
 
-<input class="off" type="text" size="5" name="fordebugpurposes" id="fordebugpurposes" value="" />
-
-<p>
-  <b>Metabolomics:</b>
-  Matching available metabolite measurements to species defined in the SBML
-  model...
-</p>
-
+    <input class="off" type="text" size="5" name="fordebugpurposes"
+      id="fordebugpurposes" value="" />
+  
+    <p>
+      <b>Metabolomics:</b>
+      Matching available metabolite measurements to species defined in the SBML
+      model...
+    </p>
+  
     <div class="rounded-border" style="display:inline-block;"><!-- margin? -->
-          <table class="dataTable" cellspacing="0">
-            <tr>
-              <td>Metabolite Type</td>
-              <td>Species in model</td>
-            </tr>
-          {% for sp in data.metabolite_species %}
-          <tr>
-            <td>
-              <p>
-                <span class="popup">{{ sp.name }}
-                  <span class="popupinfo">{{ sp.name }}
-                  </span>:
-                </span>
-              </p>
-            </td>
-            <td> 
-              <input  type="text"
-                  class="autocomplete"
-                  autocompletetype="species"
-                  autocomplete="off"
-                  size="45"
-                  name="spmatch{{ sp.id }}"
-                  id="spmatch{{ sp.id }}"
-                  value="{{ sp.species }}"/>
-            </td>
-          </tr>
-          {% endfor %}
-        </table>
-
-
-        <input type="hidden" name="speciesmatchelements" value="{{ species_match_elements }}"/>
-      </div>
-
-  <p>
-    <b>Fluxomics:</b> Matching available fluxes to reactants/exchanges
-      defined in the SBML model...
-  </p>
-  <div class="rounded-border" style="display:inline-block;">
-          <table class="dataTable" cellspacing="0">
-            <tr>
-              <td>Metabolite Type</td>
-              <td>Reactant / Exchange in model</td>
-            </tr>
-            <!-- Loop over metabolite fluxomics -->
-            {% for fl in data.metabolite_fluxes %}
-            <tr>
-              <td>
-                <p>
-                  <span class="popup">{{ fl.name }}
-                    <span class="popupinfo">{{ fl.short_name }}</span>:
-                  </span>
-                </p>
-              </td>
-              <td> 
-                <input  type="text"
-                    class="autocomplete"
-                    autocompletetype="exchange"
-                    autocomplete="off"
-                    size="55"
-                    name="exmatch{{ fl.id }}"
-                    id="exmatch{{ fl.id }}"
-                    value="{{ fl.rex }}"/>
-              </td>
-            </tr>
-            {% endfor %}
-          </table>
-        <input type="hidden" name="fluxmatchelements"
-          value="{{ data.flux_match_elements }}"/>
-      </div>
+      <table class="dataTable" cellspacing="0">
+        <tr>
+          <td>Metabolite Type</td>
+          <td>Species in model</td>
+        </tr>
+        {% for sp in data.species_match_elements %}
+        <tr>
+          <td>
+            <p>
+              <span class="popup">{{ sp.name }}
+                <span class="popupinfo">{{ sp.short_name }}
+                </span>:
+              </span>
+            </p>
+          </td>
+          <td> 
+            <input  type="text"
+                class="autocomplete"
+                autocompletetype="species"
+                autocomplete="off"
+                size="45"
+                name="spmatch{{ sp.id }}"
+                id="spmatch{{ sp.id }}"
+                value="{{ sp.species }}"/>
+          </td>
+        </tr>
+        {% endfor %}
+      </table>
+  
+  
+      <input type="hidden" name="speciesmatchelements"
+        value="{{ data.species_match_element_ids }}"/>
     </div>
-  </div>
-</div>
+  
+    <p>
+      <b>Fluxomics:</b> Matching available fluxes to reactants/exchanges
+        defined in the SBML model...
+    </p>
+    <div class="rounded-border" style="display:inline-block;">
+      <table class="dataTable" cellspacing="0">
+        <tr>
+          <td>Metabolite Type</td>
+          <td>Reactant / Exchange in model</td>
+        </tr>
+        <!-- Loop over metabolite fluxomics -->
+        {% for fl in data.flux_match_elements %}
+        <tr>
+          <td>
+            <p>
+              <span class="popup">{{ fl.name }}
+                <span class="popupinfo">{{ fl.short_name }}</span>:
+              </span>
+            </p>
+          </td>
+          <td> 
+            <input  type="text"
+                class="autocomplete"
+                autocompletetype="exchange"
+                autocomplete="off"
+                size="55"
+                name="exmatch{{ fl.id }}"
+                id="exmatch{{ fl.id }}"
+                value="{{ fl.exchange }}"/>
+          </td>
+        </tr>
+        {% endfor %}
+      </table>
+      <input type="hidden" name="fluxmatchelements"
+             value="{{ data.flux_match_element_ids }}"/>
+    </div>
+  </div><!-- #statusstep7main -->
+</div><!-- #step7 -->
+
+</div><!-- #allstatusmain -->
 
 <!--
 
@@ -916,7 +919,7 @@ END OF EXPORT SETTINGS
 Downloads section
 
 -->
-<div class="pageSection" style="width:90%;">
+<div class="pageSection" id="dataDownloads">
   <div class="sectionHead">
     SBML Data Downloads
   </div>
@@ -987,7 +990,8 @@ Downloads section
 
   <input type="hidden" name="download" id="downloadflag" value="" />
   <input type="hidden" name="timestamp" id="downloadtimestamp" value="" />
-</div>
-</form>
+</div><!-- #dataDownloads -->
+
+</form><!-- #exportForm -->
 
 {% endblock content %}

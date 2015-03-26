@@ -22,8 +22,8 @@ def exercise_sbml_setup () :
   assert (sd.n_protein_associations == 1367)
   assert (sd.n_exchanges == 853)
   assert (sd.n_measurement_types == 691)
-  assert (sd.n_meas_types_resolved_to_species == 586)
-  assert (sd.n_meas_types_unresolved_to_species == 104)
+  assert (sd.n_meas_types_resolved_to_species == 588)
+  assert (sd.n_meas_types_unresolved_to_species == 102)
   assert (sd.n_exchanges_resolved == 205)
   assert (sd.n_exchanges_not_resolved == 648)
   assert (sd.biomass_exchange.ex_id == "R_Ec_biomass_iJO1366_WT_53p95M")
@@ -36,6 +36,10 @@ def exercise_sbml_export () :
   assert (sd.n_lcms_measurements == 44)
   assert (sd.n_ramos_measurements == 2)
   assert (sd.n_conversion_warnings == 3)
+  assert (sd.species_match_element_ids == sd.flux_match_element_ids ==
+          "36,35,4,5,6,84,13,11")
+  assert (sorted(list(sd._comprehensive_valid_OD_times)) ==
+          [0.0, 7.5, 9.5, 11.0, 13.0, 15.0, 17.0])
   # TODO lots more
 
 class Command (BaseCommand) :
