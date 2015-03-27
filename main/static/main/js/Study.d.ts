@@ -41,7 +41,7 @@ declare module StudyD {
         applyBackgroundStyle(darker: number): void;
         populateTable(): void;
         anyCheckboxesChangedSinceLastInquiry(): boolean;
-        applyProgressiveFiltering(ids: any): any;
+        applyProgressiveFiltering(ids: any[]): any;
         _assayIdToAssay(assayId: string): any;
         _assayIdToLine(assayId: string): LineRecord;
         _assayIdToProtocol(assayId: string): any;
@@ -114,7 +114,7 @@ declare module StudyD {
     function queueLinesActionPanelShow(): void;
     function queueAssaysActionPanelShow(): void;
     function queueMainGraphRemake(force?: boolean): void;
-    function addCarbonSourceRow(v: any): void;
+    function addCarbonSourceRow(carbonId: any): void;
     function removeCarbonSourceRow(order: any): void;
     function disableAllButFirstCarbonSourceRow(): void;
     function redrawCarbonSourceRows(): void;

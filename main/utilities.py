@@ -79,7 +79,17 @@ def get_edddata_study (study) :
       "CSources" : { cs.id : cs.to_json() for cs in carbon_sources },
     }
 
+def User_to_json(self):
+    return {
+        "uid": self.username,
+        "email": self.email,
+        "initials": self.userprofile.initials,
+    }
+    
 def get_edddata_misc():
+    # Attach our own to_json() method to the User model
+    User = get_user_model()
+    User.to_json = User_to_json
     media_types = {
         '--' : '-- (No base media used)',
         'LB' : 'LB (Luria-Bertani Broth)',
@@ -94,7 +104,7 @@ def get_edddata_misc():
       # Users
       "UserIDs" : [ u.id for u in users ],
       "EnabledUserIDs" : [ u.id for u in users if u.is_active ],
-      "Users" : { u.id: u.__dict__ for u in users },
+      "Users" : { u.id: u.to_json() for u in users },
     }
 
 def interpolate_at (measurement_data, x) :

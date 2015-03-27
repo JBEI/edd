@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.db import models
 from django.utils import timezone
@@ -426,9 +427,10 @@ class Strain(EDDObject):
     """
     class Meta:
         db_table = 'strain'
+    object_ref = models.OneToOneField(EDDObject, parent_link=True)
     registry_id = PostgreSQLUUIDField(blank=True, null=True)
     registry_url = models.URLField(max_length=255, blank=True, null=True)
-    object_ref = models.OneToOneField(EDDObject, parent_link=True)
+    active = models.BooleanField(default=True)
 
     def to_solr_value(self):
         return '%(id)s@%(name)s' % {'id':self.registry_id, 'name':self.name}

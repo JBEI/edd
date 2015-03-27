@@ -342,6 +342,7 @@ var StudyD;
             this.filterHash = {};
             ids.forEach(function (assayId) {
                 var line = _this._assayIdToLine(assayId) || {};
+                _this.filterHash[assayId] = _this.filterHash[assayId] || [];
                 // assign unique ID to every encountered carbon source name
                 (line.carbon || []).forEach(function (carbonId) {
                     var src = EDDData.CSources[carbonId];
@@ -371,6 +372,7 @@ var StudyD;
             this.filterHash = {};
             ids.forEach(function (assayId) {
                 var line = _this._assayIdToLine(assayId) || {};
+                _this.filterHash[assayId] = _this.filterHash[assayId] || [];
                 // assign unique ID to every encountered carbon source labeling description
                 (line.carbon || []).forEach(function (carbonId) {
                     var src = EDDData.CSources[carbonId];
@@ -1131,7 +1133,7 @@ var StudyD;
         $('#pointsDisplayedSpan').empty().text(displayText);
         context.mainGraphObject.drawSets();
     }
-    function addCarbonSourceRow(v) {
+    function addCarbonSourceRow(carbonId) {
         // Search for an old row that's been disabled, and if we find one,
         // re-enable it and stick it on the end of the array.
         var turnedOffIndex = -1;
@@ -1144,8 +1146,8 @@ var StudyD;
         if (turnedOffIndex > -1) {
             var toAdd = this.cSourceEntries.splice(turnedOffIndex, 1);
             toAdd[0].disabled = false;
-            if (v) {
-                toAdd[0].hiddeninput.value = v;
+            if (carbonId) {
+                toAdd[0].hiddeninput.value = carbonId;
             }
             toAdd[0].input.autocompleter.setFromHiddenElement();
             this.cSourceEntries.push(toAdd[0]);
@@ -1191,7 +1193,7 @@ var StudyD;
             aCHI.setAttribute('type', "hidden");
             aCHI.setAttribute('id', "linecsvalue" + order);
             aCHI.setAttribute('name', "linecsvalue" + order);
-            aCHI.setAttribute('value', v);
+            aCHI.setAttribute('value', carbonId);
             rtd.appendChild(aCHI);
             rtd = document.createElement("td");
             rtr.appendChild(rtd);
@@ -1798,7 +1800,7 @@ var DataGridSpecLines = (function (_super) {
         if ((line = EDDData.Lines[index])) {
             if (line.carbon && line.carbon.length) {
                 strings = line.carbon.map(function (id) {
-                    return EDDData.CSources[id].name;
+                    return EDDData.CSources[id].carbon;
                 });
             }
         }
