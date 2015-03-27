@@ -965,6 +965,7 @@ var DataGridDataCell = (function () {
         this.recordID = id;
         this.hidden = false;
         this.createdElement = false;
+        opt = opt || {};
         this.contentFunction = opt['contentFunction'] || function (e, index) {
         };
         this.contentString = opt['contentString'] || '';
@@ -1115,6 +1116,15 @@ var DataGridDataCell = (function () {
     };
     return DataGridDataCell;
 })();
+// A placeholder cell when data is still loading
+var DataGridLoadingCell = (function (_super) {
+    __extends(DataGridLoadingCell, _super);
+    function DataGridLoadingCell(gridSpec, id, opt) {
+        _super.call(this, gridSpec, id, opt);
+        this.contentString = '<span class="loading">Loading...</span>';
+    }
+    return DataGridLoadingCell;
+})(DataGridDataCell);
 // A general class that acts as a common repository for utility functions for DataGrid widgets.
 // It is immediately subclassed into DataGridOptionWidget and DataGridHeaderWidget.
 var DataGridWidget = (function () {

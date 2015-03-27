@@ -959,7 +959,7 @@ module StudyD {
 
     // Called by DataGrid after the Lines table is rendered
     export function prepareAfterLinesTable() {
-
+        var csIDs;
         // Prepare the main data overview graph at the top of the page
         if (this.mainGraphObject === null && $('#maingraph').size() === 1) {
             this.mainGraphObject = Object.create(StudyDGraphing);
@@ -974,13 +974,9 @@ module StudyD {
 
         // Read in the initial set of Carbon Source selections, if any, and create the proper
         // number of table row elements.
-
         this.cSourceEntries = [];
-        var csIDs = [0];
-        $('#initialcarbonsources').each((i, element) => {
-            var v = $(element).val();
-            if (v.length) csIDs = v.split(',');
-        });
+        // try to load hidden field value, if empty use a string zero value forcing one row
+        csIDs = ($('#initialcarbonsources').val() || '0').split(',');
         $.each(csIDs, (i, sourceId) => this.addCarbonSourceRow(sourceId));
 
         this.mTypeEntries = [];
@@ -1271,6 +1267,7 @@ module StudyD {
     }
 
 
+    // TODO: this is gross, do it better
     export function addCarbonSourceRow(carbonId) {
 
         // Search for an old row that's been disabled, and if we find one,
@@ -2899,201 +2896,134 @@ class DataGridSpecAssays extends DataGridSpecBase {
     }
 
 
-    generateMeasurementNameCells(gridSpec:DataGridSpecAssays, index:number):DataGridDataCell[] {
-        var aRecord = EDDData.Assays[index];
-        var cells;
-        // If the number of IDs is different from the count, we most likely haven't fetched full
-        // measurement records yet.  So we should just declare a single row that is "waiting".
-        var mIDs = (aRecord.metabolites || []);
-        if (mIDs.length != aRecord.met_c) {
-            cells = [
-                new DataGridDataCell(gridSpec, index, {
-                    'contentString': '<span style="color:gray;">Loading...</span>'
-                })
-            ];
+    private generateMeasurementCells(gridSpec:DataGridSpecAssays, index:number,
+            opt:any):DataGridDataCell[] {
+        var record = EDDData.Assays[index], cells = [];
+        if (!record.met_c) {
+            // Do nothing if there is no metabolomics data
+        } else if (record.met_c !== (record.metabolites || []).length) {
+            cells.push(new DataGridLoadingCell(gridSpec, index));
         } else {
-            var resolvedNames = {};
-            mIDs.forEach((measureId) => {
-                var measure:any = EDDData.AssayMeasurements[measureId] || {},
-                    mtype:any = EDDData.MeasurementTypes[measure.type] || {};
-                resolvedNames[measureId] = mtype.name || '';
-            });
-            mIDs.sort(function(a:any,b:any) {
-                a = resolvedNames[a].toLowerCase();
-                b = resolvedNames[b].toLowerCase();
-                return (<any>(a > b) - <any>(b > a));
-            });
-            cells = mIDs.map((mID, i) => {
-                return new DataGridDataCell(gridSpec, index, {
-                    'hoverEffect': true,
-                    'checkboxWithID': (id) => { return 'measurement' + mID + 'include'; },
-                    'contentString': resolvedNames[mID]
-                });
-            });
+            // convert IDs to measurements, sort by name, then convert to cell objects
+            cells = record.metabolites.map(opt.metaboliteToValue)
+                    .sort(opt.metaboliteValueSort)
+                    .map(opt.metaboliteValueToCell);
         }
-        // Transcriptomics and proteomics each get single aggregate cells.
-        if (aRecord.tra_c) {
-            var tIDs = (aRecord.transcriptions || []);
-            if (!tIDs.length) {
-                cells.push(
-                    new DataGridDataCell(gridSpec, index, {
-                        'contentString': '<span style="color:gray;">Loading...</span>'
-                    })
-                );
-            } else {
-                cells.push(
-                    new DataGridDataCell(gridSpec, index, {
-                        'contentString': 'Transcriptomics Data'
-                    })
-                );
-            }
+        // generate only one cell if there is any transcriptomics data
+        if (!record.tra_c) {
+            // Do nothing if there is no transcription data
+        } else if (record.tra_c !== (record.transcriptions || []).length) {
+            cells.push(new DataGridLoadingCell(gridSpec, index));
+        } else {
+            cells.push(opt.transcriptToCell(record.transcriptions));
         }
-        if (aRecord.pro_c) {
-            var pIDs = (aRecord.proteins || []);
-            if (!pIDs.length) {
-                cells.push(
-                    new DataGridDataCell(gridSpec, index, {
-                        'contentString': '<span style="color:gray;">Loading...</span>'
-                    })
-                );
-            } else {
-                cells.push(
-                    new DataGridDataCell(gridSpec, index, {
-                        'contentString': 'Proteomics Data'
-                    })
-                );
-            }
+        // generate only one cell if there is any proteomics data
+        if (!record.pro_c) {
+            // Do nothing if there is no proteomics data
+        } else if (record.pro_c !== (record.proteins || []).length) {
+            cells.push(new DataGridLoadingCell(gridSpec, index));
+        } else {
+            cells.push(opt.proteinToCell(record.proteins));
         }
         return cells;
     }
 
 
-    // TODO: this looks very similar to previous function; refactor them
-    generateUnitsCells(gridSpec:DataGridSpecAssays, index:number):DataGridDataCell[] {
-        var aRecord = EDDData.Assays[index];
-        var mIDs = (aRecord.metabolites || []);
-        var cells;
-        // If the number of IDs is different from the count, we most likely haven't fetched full
-        // measurement records yet.  So we should just declare a single row that is "waiting".
-        if (mIDs.length != aRecord.met_c) {
-            cells = [
-                new DataGridDataCell(gridSpec, index, {})
-            ];
-        } else {
-            var resolvedNames = {};
-            mIDs.forEach((mID) => {
-                resolvedNames[mID] = Utl.EDD.resolveMeasurementRecordToName(
-                        EDDData.AssayMeasurements[mID]);
-            });
-            mIDs.sort(function(a:any,b:any) {
-                a = resolvedNames[a].toLowerCase();
-                b = resolvedNames[b].toLowerCase();
-                return (<any>(a > b) - <any>(b > a));
-            });
-            cells = mIDs.map((mID, i) => {
-                var amRecord = EDDData.AssayMeasurements[mID];
-                var uRecord = EDDData.UnitTypes[amRecord.uid];
-                var units = uRecord ? uRecord.name : '';
+    generateMeasurementNameCells(gridSpec:DataGridSpecAssays, index:number):DataGridDataCell[] {
+        return gridSpec.generateMeasurementCells(gridSpec, index, {
+            'metaboliteToValue': (measureId) => {
+                var measure:any = EDDData.AssayMeasurements[measureId] || {},
+                    mtype:any = EDDData.MeasurementTypes[measure.type] || {};
+                return { 'name': mtype.name || '', 'id': measureId };
+            },
+            'metaboliteValueSort': (a:any, b:any) => {
+                var y = a.name.toLowerCase(), z = b.name.toLowerCase();
+                return (<any>(y > z) - <any>(z > y));
+            },
+            'metaboliteValueToCell': (value) => {
                 return new DataGridDataCell(gridSpec, index, {
-                    'contentString': units
+                    'hoverEffect': true,
+                    'checkboxWithID': () => { return 'measurement' + value.id + 'include'; },
+                    'contentString': value.name
                 });
-            });
-        }
-        // Transcriptomics and proteomics each get single aggregate cells.
-        if (aRecord.tra_c) {
-            var tIDs = (aRecord.transcriptions || []);
-            if (!tIDs.length) {
-                cells.push(
-                    new DataGridDataCell(gridSpec, index, {})
-                );
-            } else {
-                cells.push(
-                    new DataGridDataCell(gridSpec, index, {
-                        'contentString': 'RPKM'
-                    })
-                );
+            },
+            'transcriptToCell': (ids:any[]) => {
+                return new DataGridDataCell(gridSpec, index, {
+                  'contentString': 'Transcriptomics Data'
+                });
+            },
+            'proteinToCell': (ids:any[]) => {
+                return new DataGridDataCell(gridSpec, index, {
+                  'contentString': 'Proteomics Data'
+                });
             }
-        }
-        if (aRecord.pro_c) {
-            var pIDs = (aRecord.proteins || []);
-            if (!pIDs.length) {
-                cells.push(
-                    new DataGridDataCell(gridSpec, index, {})
-                );
-            } else {
-                cells.push(
-                    new DataGridDataCell(gridSpec, index, {
-                        'contentString': ''    // TODO: What are the units for Proteomics anyway??
-                    })
-                );
+        });
+    }
+
+
+    generateUnitsCells(gridSpec:DataGridSpecAssays, index:number):DataGridDataCell[] {
+        return gridSpec.generateMeasurementCells(gridSpec, index, {
+            'metaboliteToValue': (measureId) => {
+                var measure:any = EDDData.AssayMeasurements[measureId] || {},
+                    mtype:any = EDDData.MeasurementTypes[measure.type] || {},
+                    unit:any = EDDData.UnitTypes[measure.y_units] || {};
+                return { 'name': mtype.name || '', 'id': measureId, 'unit': unit.name || '' };
+            },
+            'metaboliteValueSort': (a:any, b:any) => {
+                var y = a.name.toLowerCase(), z = b.name.toLowerCase();
+                return (<any>(y > z) - <any>(z > y));
+            },
+            'metaboliteValueToCell': (value) => {
+                return new DataGridDataCell(gridSpec, index, {
+                    'contentString': value.unit
+                });
+            },
+            'transcriptToCell': (ids:any[]) => {
+                return new DataGridDataCell(gridSpec, index, {
+                  'contentString': 'RPKM'
+                });
+            },
+            'proteinToCell': (ids:any[]) => {
+                return new DataGridDataCell(gridSpec, index, {
+                  'contentString': '' // TODO: what are proteomics measurement units?
+                });
             }
-        }
-        return cells;
+        });
     }
 
 
     generateCountCells(gridSpec:DataGridSpecAssays, index:number):DataGridDataCell[] {
-        var aRecord = EDDData.Assays[index];
-        var cells;
-        // If the number of IDs is different from the count, we most likely haven't fetched full
-        // measurement records yet.  So we should just declare a single row that is "waiting".
-        var mIDs = (aRecord.metabolites || []);
-        if (mIDs.length != aRecord.met_c) {
-            cells = [
-                new DataGridDataCell(gridSpec, index, {})
-            ];
-        } else {
-            var resolvedNames = {};
-            mIDs.forEach((mID) => {
-                resolvedNames[mID] = Utl.EDD.resolveMeasurementRecordToName(
-                        EDDData.AssayMeasurements[mID]);
-            });
-            mIDs.sort(function(a:any,b:any) {
-                a = resolvedNames[a].toLowerCase();
-                b = resolvedNames[b].toLowerCase();
-                return (<any>(a > b) - <any>(b > a));
-            });
-            cells = mIDs.map((mID, i) => {
-                var amRecord = EDDData.AssayMeasurements[mID];
+        // function to use in Array#reduce to count all the values in a set of measurements
+        var reduceCount = (prev:number, measureId) => {
+            var measure:any = EDDData.AssayMeasurements[measureId] || {};
+            return prev + (measure.values || []).length;
+        };
+        return gridSpec.generateMeasurementCells(gridSpec, index, {
+            'metaboliteToValue': (measureId) => {
+                var measure:any = EDDData.AssayMeasurements[measureId] || {},
+                    mtype:any = EDDData.MeasurementTypes[measure.type] || {};
+                return { 'name': mtype.name || '', 'id': measureId, 'measure': measure };
+            },
+            'metaboliteValueSort': (a:any, b:any) => {
+                var y = a.name.toLowerCase(), z = b.name.toLowerCase();
+                return (<any>(y > z) - <any>(z > y));
+            },
+            'metaboliteValueToCell': (value) => {
                 return new DataGridDataCell(gridSpec, index, {
-                    'contentString': '(' + (amRecord.d || []).length + ')'
+                    'contentString': [ '(', (value.measure.values || []).length, ')'].join('')
                 });
-            });
-        }
-        // Transcriptomics and proteomics each get single aggregate cells.
-        if (aRecord.tra_c) {
-            var countString:string = '';
-            var tIDs = (aRecord.transcriptions || []);
-            if (tIDs.length) {
-                var count:number = tIDs.reduce((prev:number, tID) => {
-                    var amRecord = EDDData.AssayMeasurements[tID];
-                    return prev + (amRecord.d ? amRecord.d.length : 0);
-                }, 0);
-                countString = '(' + count + ')';
+            },
+            'transcriptToCell': (ids:any[]) => {
+                return new DataGridDataCell(gridSpec, index, {
+                    'contentString': [ '(', ids.reduce(reduceCount, 0), ')'].join('')
+                });
+            },
+            'proteinToCell': (ids:any[]) => {
+                return new DataGridDataCell(gridSpec, index, {
+                    'contentString': [ '(', ids.reduce(reduceCount, 0), ')'].join('')
+                });
             }
-            cells.push(
-                new DataGridDataCell(gridSpec, index, {
-                    'contentString': countString
-                })
-            );
-        }
-        if (aRecord.pro_c) {
-            var countString:string = '';
-            var pIDs = (aRecord.proteins || []);
-            if (pIDs.length) {
-                var count = pIDs.reduce((prev:number, pID) => {
-                    var amRecord = EDDData.AssayMeasurements[pID];
-                    return prev + (amRecord.d ? amRecord.d.length : 0);
-                }, 0);
-                countString = '(' + count + ')';
-            }
-            cells.push(
-                new DataGridDataCell(gridSpec, index, {
-                    'contentString': countString
-                })
-            );
-        }
-        return cells;
+        });
     }
 
 

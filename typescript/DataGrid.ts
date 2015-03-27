@@ -1216,7 +1216,7 @@ class DataGridDataCell {
 		this.recordID = id;
 		this.hidden = false;
 		this.createdElement = false;
-
+        opt = opt || {};
         this.contentFunction = opt['contentFunction'] || function(e, index) {};
         this.contentString = opt['contentString'] || '';
         opt = $.extend({ 'align': 'left' }, opt);
@@ -1379,6 +1379,18 @@ class DataGridDataCell {
 			this.hidden = false;
 		}
 	}
+}
+
+
+
+// A placeholder cell when data is still loading
+class DataGridLoadingCell extends DataGridDataCell {
+
+    constructor(gridSpec:DataGridSpecBase, id:number, opt?:{[index:string]:any}) {
+        super(gridSpec, id, opt);
+        this.contentString = '<span class="loading">Loading...</span>';
+    }
+
 }
 
 

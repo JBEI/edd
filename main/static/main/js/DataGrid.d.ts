@@ -128,6 +128,11 @@ declare class DataGridDataCell {
     hide(): void;
     unhide(): void;
 }
+declare class DataGridLoadingCell extends DataGridDataCell {
+    constructor(gridSpec: DataGridSpecBase, id: number, opt?: {
+        [x: string]: any;
+    });
+}
 declare class DataGridWidget {
     dataGridSpec: DataGridSpecBase;
     dataGridOwnerObject: DataGrid;

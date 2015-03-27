@@ -234,6 +234,7 @@ declare class DataGridSpecAssays extends DataGridSpecBase {
     private rowSpanForRecord(index);
     generateAssayNameCells(gridSpec: DataGridSpecAssays, index: number): DataGridDataCell[];
     makeMetaDataCellsGeneratorFunction(id: any): (gridSpec: DataGridSpecAssays, index: number) => DataGridDataCell[];
+    private generateMeasurementCells(gridSpec, index, opt);
     generateMeasurementNameCells(gridSpec: DataGridSpecAssays, index: number): DataGridDataCell[];
     generateUnitsCells(gridSpec: DataGridSpecAssays, index: number): DataGridDataCell[];
     generateCountCells(gridSpec: DataGridSpecAssays, index: number): DataGridDataCell[];
