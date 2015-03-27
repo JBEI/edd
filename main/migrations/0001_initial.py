@@ -72,7 +72,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('object_ref', models.OneToOneField(parent_link=True, primary_key=True, serialize=False, to='main.EDDObject')),
                 ('active', models.BooleanField(default=True)),
-                ('experimenter', models.ForeignKey(related_name='+', blank=True, to=settings.AUTH_USER_MODEL, null=True)),
+                ('experimenter', models.ForeignKey(related_name='assay_experimenter_set', blank=True, to=settings.AUTH_USER_MODEL, null=True)),
             ],
             options={
                 'db_table': 'assay',
@@ -84,7 +84,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('permission_type', models.CharField(default=b'N', max_length=8, choices=[(b'N', b'None'), (b'R', b'Read'), (b'W', b'Write')])),
-                ('group', models.ForeignKey(related_name='+', to='auth.Group')),
+                ('group', models.ForeignKey(related_name='grouppermission_set', to='auth.Group')),
             ],
             options={
                 'db_table': 'study_group_permission',
@@ -99,8 +99,8 @@ class Migration(migrations.Migration):
                 ('contact_extra', models.TextField()),
                 ('active', models.BooleanField(default=True)),
                 ('carbon_source', models.ManyToManyField(to='main.CarbonSource', db_table=b'line_carbon_source')),
-                ('contact', models.ForeignKey(related_name='+', blank=True, to=settings.AUTH_USER_MODEL, null=True)),
-                ('experimenter', models.ForeignKey(related_name='+', blank=True, to=settings.AUTH_USER_MODEL, null=True)),
+                ('contact', models.ForeignKey(related_name='line_contact_set', blank=True, to=settings.AUTH_USER_MODEL, null=True)),
+                ('experimenter', models.ForeignKey(related_name='line_experimenter_set', blank=True, to=settings.AUTH_USER_MODEL, null=True)),
             ],
             options={
                 'db_table': 'line',
@@ -115,7 +115,7 @@ class Migration(migrations.Migration):
                 ('compartment', models.CharField(default=0, max_length=1, choices=[(b'0', b''), (b'1', b'Intracellular/Cytosol (Cy)'), (b'2', b'Extracellular')])),
                 ('measurement_format', models.IntegerField(default=0)),
                 ('assay', models.ForeignKey(to='main.Assay')),
-                ('experimenter', models.ForeignKey(related_name='+', blank=True, to=settings.AUTH_USER_MODEL, null=True)),
+                ('experimenter', models.ForeignKey(related_name='measurement_experimenter_set', blank=True, to=settings.AUTH_USER_MODEL, null=True)),
             ],
             options={
                 'db_table': 'measurement',
@@ -217,6 +217,33 @@ class Migration(migrations.Migration):
             bases=('main.measurementtype',),
         ),
         migrations.CreateModel(
+            name='MetaboliteExchange',
+            fields=[
+                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
+                ('reactant_name', models.CharField(max_length=255)),
+                ('exchange_name', models.CharField(max_length=255)),
+                ('measurement_type', models.ForeignKey(to='main.MeasurementType')),
+                ('metabolic_map', models.ForeignKey(to='main.MetabolicMap')),
+            ],
+            options={
+                'db_table': 'measurement_type_to_exchange',
+            },
+            bases=(models.Model,),
+        ),
+        migrations.CreateModel(
+            name='MetaboliteSpecies',
+            fields=[
+                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
+                ('species', models.TextField()),
+                ('measurement_type', models.ForeignKey(to='main.MeasurementType')),
+                ('metabolic_map', models.ForeignKey(to='main.MetabolicMap')),
+            ],
+            options={
+                'db_table': 'measurement_type_to_species',
+            },
+            bases=(models.Model,),
+        ),
+        migrations.CreateModel(
             name='MetadataGroup',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
@@ -251,7 +278,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('object_ref', models.OneToOneField(parent_link=True, primary_key=True, serialize=False, to='main.EDDObject')),
                 ('active', models.BooleanField(default=True)),
-                ('owned_by', models.ForeignKey(related_name='edd_protocol_set', to=settings.AUTH_USER_MODEL)),
+                ('owned_by', models.ForeignKey(related_name='protocol_set', to=settings.AUTH_USER_MODEL)),
                 ('variant_of', models.ForeignKey(related_name='derived_set', blank=True, to='main.Protocol', null=True)),
             ],
             options={
@@ -305,13 +332,21 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('permission_type', models.CharField(default=b'N', max_length=8, choices=[(b'N', b'None'), (b'R', b'Read'), (b'W', b'Write')])),
                 ('study', models.ForeignKey(to='main.Study')),
-                ('user', models.ForeignKey(related_name='+', to=settings.AUTH_USER_MODEL)),
+                ('user', models.ForeignKey(related_name='userpermission_set', to=settings.AUTH_USER_MODEL)),
             ],
             options={
                 'db_table': 'study_user_permission',
             },
             bases=(models.Model,),
         ),
+        migrations.AlterUniqueTogether(
+            name='metabolitespecies',
+            unique_together=set([('metabolic_map', 'measurement_type')]),
+        ),
+        migrations.AlterUniqueTogether(
+            name='metaboliteexchange',
+            unique_together=set([('metabolic_map', 'measurement_type')]),
+        ),
         migrations.AddField(
             model_name='measurementvector',
             name='updated',
@@ -319,33 +354,9 @@ class Migration(migrations.Migration):
             preserve_default=True,
         ),
         migrations.AddField(
-            model_name='measurementvector',
-            name='x_units',
-            field=models.ForeignKey(related_name='+', to='main.MeasurementUnit'),
-            preserve_default=True,
-        ),
-        migrations.AddField(
-            model_name='measurementvector',
-            name='y_units',
-            field=models.ForeignKey(related_name='+', to='main.MeasurementUnit'),
-            preserve_default=True,
-        ),
-        migrations.AddField(
             model_name='measurementdatum',
             name='updated',
             field=models.ForeignKey(related_name='+', to='main.Update'),
-            preserve_default=True,
-        ),
-        migrations.AddField(
-            model_name='measurementdatum',
-            name='x_units',
-            field=models.ForeignKey(related_name='+', to='main.MeasurementUnit'),
-            preserve_default=True,
-        ),
-        migrations.AddField(
-            model_name='measurementdatum',
-            name='y_units',
-            field=models.ForeignKey(related_name='+', to='main.MeasurementUnit'),
             preserve_default=True,
         ),
         migrations.AddField(
@@ -358,6 +369,18 @@ class Migration(migrations.Migration):
             model_name='measurement',
             name='update_ref',
             field=models.ForeignKey(related_name='+', to='main.Update'),
+            preserve_default=True,
+        ),
+        migrations.AddField(
+            model_name='measurement',
+            name='x_units',
+            field=models.ForeignKey(related_name='+', to='main.MeasurementUnit'),
+            preserve_default=True,
+        ),
+        migrations.AddField(
+            model_name='measurement',
+            name='y_units',
+            field=models.ForeignKey(related_name='+', to='main.MeasurementUnit'),
             preserve_default=True,
         ),
         migrations.AddField(

@@ -325,6 +325,18 @@ UPDATE public.line l SET replicate_id = r.replicate_id
     FROM replicate r
     WHERE r.line_id = l.object_ref_id;
 DROP TABLE replicate;
+-- copy strains used on lines
+INSERT INTO public.line_strain(line_id, strain_id)
+    SELECT ol.id, os.id
+    FROM old_edd.lines l
+    INNER JOIN public.edd_object ol ON ol.line_id = l.id
+    INNER JOIN public.edd_object os ON os.strain_id = l.strain_id;
+-- copy carbon sources used on lines
+INSERT INTO public.line_carbon_source(line_id, carbonsource_id)
+    SELECT ol.id, oc.id
+    FROM old_edd.carbon_sources_to_lines x
+    INNER JOIN public.edd_object ol ON ol.line_id = x.line_id
+    INNER JOIN public.edd_object oc ON oc.carbon_id = x.carbon_source_id;
 
 
 --
@@ -483,11 +495,13 @@ SELECT setval('public.measurement_unit_id_seq', max(id))
 --
 INSERT INTO public.measurement(
         id, assay_id, measurement_type_id, experimenter_id, active,
-        update_ref_id, measurement_format, compartment
+        update_ref_id, measurement_format, compartment, x_units_id, y_units_id
     ) SELECT a.id, ao.id, a.measurement_type_id,
         CASE WHEN a.experimenter = 0 THEN NULL ELSE a.experimenter END,
         NOT a.disabled, m.id, a.measurement_type_format,
-        a.measurement_type_compartment
+        a.measurement_type_compartment, 
+        CASE WHEN a.x_axis_units = 0 THEN 1 ELSE a.x_axis_units END,
+        CASE WHEN a.y_axis_units = 0 THEN 1 ELSE a.y_axis_units END
     FROM old_edd.assay_measurements a
     INNER JOIN public.edd_object ao ON ao.assay_id = a.assay_id
     LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
@@ -500,11 +514,8 @@ INSERT INTO public.measurement(
 SELECT setval('public.measurement_id_seq', max(id)) FROM public.measurement;
 -- copy data values
 INSERT INTO public.measurement_datum(
-        measurement_id, x, y, x_units_id, y_units_id, updated_id
-    ) SELECT a.id, am.x, am.y,
-        CASE WHEN a.x_axis_units = 0 THEN 1 ELSE a.x_axis_units END,
-        CASE WHEN a.y_axis_units = 0 THEN 1 ELSE a.y_axis_units END,
-        m.id
+        measurement_id, x, y, updated_id
+    ) SELECT a.id, am.x, am.y, m.id
     FROM old_edd.assay_measurements a
     INNER JOIN old_edd.assay_measurement_data am ON am.measurement_id = a.id
     LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
@@ -513,11 +524,8 @@ INSERT INTO public.measurement_datum(
     WHERE am.y IS NOT NULL
     ORDER BY a.id;
 INSERT INTO public.measurement_vector(
-        measurement_id, x, y, x_units_id, y_units_id, updated_id
-    ) SELECT a.id, am.x, coalesce(am.yvector, ''),
-        CASE WHEN a.x_axis_units = 0 THEN 1 ELSE a.x_axis_units END,
-        CASE WHEN a.y_axis_units = 0 THEN 1 ELSE a.y_axis_units END,
-        m.id
+        measurement_id, x, y, updated_id
+    ) SELECT a.id, am.x, coalesce(am.yvector, ''), m.id
     FROM old_edd.assay_measurements a
     INNER JOIN old_edd.assay_measurement_data am ON am.measurement_id = a.id
     LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =

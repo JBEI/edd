@@ -56,6 +56,7 @@ module StudyD {
         [index:string]:number;
     }
 
+
     export class GenericFilterSection  {
 
         // A dictionary of the unique values found for filtering against.
@@ -279,7 +280,7 @@ module StudyD {
         }
 
 
-        applyProgressiveFiltering(ids:any):any {
+        applyProgressiveFiltering(ids:any[]):any {
 
             // If the filter only contains one item, it's pointless to apply it.
             if (!this.isFilterUseful()) {

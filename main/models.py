@@ -340,7 +340,7 @@ class StudyPermission(models.Model):
 class UserPermission(StudyPermission):
     class Meta:
         db_table = 'study_user_permission'
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='+')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='userpermission_set')
     
     def applies_to_user(self, user):
         return self.user == user
@@ -352,7 +352,7 @@ class UserPermission(StudyPermission):
 class GroupPermission(StudyPermission):
     class Meta:
         db_table = 'study_group_permission'
-    group = models.ForeignKey('auth.Group', related_name='+')
+    group = models.ForeignKey('auth.Group', related_name='grouppermission_set')
     
     def applies_to_user(self, user):
         return user.groups.contains(user)
@@ -368,7 +368,7 @@ class Protocol(EDDObject):
     class Meta:
         db_table = 'protocol'
     object_ref = models.OneToOneField(EDDObject, parent_link=True)
-    owned_by = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='edd_protocol_set')
+    owned_by = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='protocol_set')
     active = models.BooleanField(default=True)
     variant_of = models.ForeignKey('self', blank=True, null=True, related_name='derived_set')
     
@@ -436,10 +436,12 @@ class Strain(EDDObject):
     def __str__(self):
         return self.name
 
-    def to_json (self) :
+    def to_json(self):
         return {
+            "id" : self.pk,
             "name" : self.name,
             "desc" : self.description,
+            "registry_id" : self.registry_id,
             "registry_url" : self.registry_url,
         }
 
@@ -480,10 +482,11 @@ class Line(EDDObject):
     control = models.BooleanField(default=False)
     replicate = models.ForeignKey('self', blank=True, null=True)
     object_ref = models.OneToOneField(EDDObject, parent_link=True)
-    contact = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True, related_name='+')
+    contact = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True,
+                                related_name='line_contact_set')
     contact_extra = models.TextField()
     experimenter = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True,
-                                     related_name='+')
+                                     related_name='line_experimenter_set')
     active = models.BooleanField(default=True)
     carbon_source = models.ManyToManyField(CarbonSource, db_table='line_carbon_source')
     protocols = models.ManyToManyField(Protocol, through='Assay')
@@ -702,7 +705,7 @@ class Assay(EDDObject):
     protocol = models.ForeignKey(Protocol)
     object_ref = models.OneToOneField(EDDObject, parent_link=True)
     experimenter = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True,
-                                     related_name='+')
+                                     related_name='assay_experimenter_set')
     active = models.BooleanField(default=True)
     measurement_types = models.ManyToManyField(MeasurementType, through='Measurement')
 
@@ -754,8 +757,10 @@ class Measurement(models.Model):
         db_table = 'measurement'
     assay = models.ForeignKey(Assay)
     experimenter = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True,
-                                     related_name='+')
+                                     related_name='measurement_experimenter_set')
     measurement_type = models.ForeignKey(MeasurementType)
+    x_units = models.ForeignKey(MeasurementUnit, related_name='+')
+    y_units = models.ForeignKey(MeasurementUnit, related_name='+')
     update_ref = models.ForeignKey(Update, related_name='+')
     active = models.BooleanField(default=True)
     compartment = models.CharField(max_length=1,
@@ -771,6 +776,8 @@ class Measurement(models.Model):
             "type": self.measurement_type.pk,
             "compartment": self.compartment,
             "values": map(lambda p: p.to_json(), points),
+            "x_units": self.x_units.pk,
+            "y_units": self.y_units.pk,
         }
 
     def __str__(self):
@@ -848,8 +855,6 @@ class MeasurementDatum(models.Model):
     class Meta:
         db_table = 'measurement_datum'
     measurement = models.ForeignKey(Measurement)
-    x_units = models.ForeignKey(MeasurementUnit, related_name='+')
-    y_units = models.ForeignKey(MeasurementUnit, related_name='+')
     x = models.DecimalField(max_digits=16, decimal_places=5)
     y = models.DecimalField(max_digits=16, decimal_places=5, blank=True, null=True)
     updated = models.ForeignKey(Update, related_name='+')
@@ -858,9 +863,7 @@ class MeasurementDatum(models.Model):
         return {
             "id": self.pk,
             "x": self.x,
-            "x_units": self.x_units.pk,
             "y": self.y,
-            "y_units": self.y_units.pk,
         }
 
     def __str__(self):
@@ -886,8 +889,6 @@ class MeasurementVector(models.Model):
     class Meta:
         db_table = 'measurement_vector'
     measurement = models.ForeignKey(Measurement)
-    x_units = models.ForeignKey(MeasurementUnit, related_name='+')
-    y_units = models.ForeignKey(MeasurementUnit, related_name='+')
     x = models.DecimalField(max_digits=16, decimal_places=5)
     y = models.TextField()
     updated = models.ForeignKey(Update, related_name='+')
@@ -896,9 +897,7 @@ class MeasurementVector(models.Model):
         return {
             "id": self.pk,
             "x": self.x,
-            "x_units": self.x_units.pk,
             "y": self.y,
-            "y_units": self.y_units.pk,
         }
 
     def __str__(self):
@@ -936,6 +935,7 @@ class MetabolicMap (EDDObject) :
         import libsbml
         return libsbml.readSBML(str(self.xml_file.file.path))
 
+
 class MetaboliteExchange (models.Model) :
     """
     Mapping for a metabolite to an exchange defined by a metabolic map.
@@ -947,6 +947,7 @@ class MetaboliteExchange (models.Model) :
     measurement_type = models.ForeignKey(MeasurementType)
     reactant_name = models.CharField(max_length=255)
     exchange_name = models.CharField(max_length=255)
+
 
 class MetaboliteSpecies (models.Model) :
     """

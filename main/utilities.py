@@ -2,6 +2,7 @@ from main.models import *
 from collections import defaultdict
 from datetime import datetime, timedelta
 from decimal import Decimal
+from django.contrib.auth import get_user_model
 import calendar
 import json
 import os.path
@@ -22,10 +23,10 @@ def get_edddata_study (study) :
     """
     mdtypes = MetadataType.objects.all()
     unit_types = MeasurementUnit.objects.all()
-    metab_types = Metabolite.objects.all()
-    protocols = Protocol.objects.all()
-    enabled_protocols = Protocol.objects.filter(active=True)
-    carbon_sources = CarbonSource.objects.all()
+    metab_types = Metabolite.objects.filter(assay__line__study=study).distinct()
+    protocols = Protocol.objects.filter(assay__line__study=study).distinct()
+    enabled_protocols = protocols.filter(active=True)
+    carbon_sources = CarbonSource.objects.filter(line__study=study).distinct()
     assays = study.get_assays()
     strains = study.get_strains_used()
     lines = study.line_set.all()
@@ -72,10 +73,13 @@ def get_edddata_study (study) :
       # Lines
       "LineIDs" : [ l.id for l in lines ],
       "Lines" : { l.id : l.to_json() for l in lines },
+      # Carbon sources
+      "CSourceIDs" : [ cs.id for cs in carbon_sources ],
+      "EnabledCSourceIDs" : [ cs.id for cs in carbon_sources if cs.active ],
+      "CSources" : { cs.id : cs.to_json() for cs in carbon_sources },
     }
 
-def get_edddata_misc () :
-    carbon_sources = CarbonSource.objects.all()
+def get_edddata_misc():
     media_types = {
         '--' : '-- (No base media used)',
         'LB' : 'LB (Luria-Bertani Broth)',
@@ -83,18 +87,14 @@ def get_edddata_misc () :
         'M9' : 'M9 (M9 salts minimal media)',
         'EZ' : 'EZ (EZ Rich)',
     }
-    users = [] # TODO
+    users = get_user_model().objects.all() # TODO find a way to filter this down a bit?
     return {
-      # Carbon sources
-      "CSourceIDs" : [ cs.id for cs in carbon_sources ],
-      "EnabledCSourceIDs" : [ cs.id for cs in carbon_sources if cs.active ],
-      "CSources" : { cs.id : cs.to_json() for cs in carbon_sources },
       # media types
       "MediaTypes" : media_types,
       # Users
       "UserIDs" : [ u.id for u in users ],
       "EnabledUserIDs" : [ u.id for u in users if u.is_active ],
-      "Users" : {},
+      "Users" : { u.id: u.__dict__ for u in users },
     }
 
 def interpolate_at (measurement_data, x) :
