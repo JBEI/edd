@@ -65,6 +65,12 @@ $(window).load(function () {
 
 {% block content %}
 
+{% if error_message %}
+
+<h3 class="bad">{{ error_message }}</h3>
+
+{% endif %}
+
 <!-- Line info section -->
 <div class="pageSection">
   {% include "main/include_linetable.html" %}

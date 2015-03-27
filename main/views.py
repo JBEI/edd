@@ -181,12 +181,9 @@ def study_export_sbml (request, study) :
         form = request.POST
     else :
         form = request.GET
-    lines = []
-    lines = get_selected_lines(form, model)
     try :
-        if (len(lines) == 0) :
-            raise ValueError("No lines found for export.")
-        exports = main.sbml_export.line_sbml_data(
+        lines = get_selected_lines(form, model)
+        manager = main.sbml_export.line_sbml_export(
             study=model,
             lines=lines,
             form=form,
@@ -197,11 +194,19 @@ def study_export_sbml (request, study) :
           "error_message" : str(e),
         })
     else :
+        # two levels of exception handling allow us to view whatever steps
+        # were completed successfully even if a later step fails
+        error_message = None
+        try :
+            manager.run()
+        except ValueError as e :
+            error_message = str(e)
         return render_to_response("main/sbml_export.html",
             dictionary={
-                "data" : exports,
+                "data" : manager,
                 "study" : model,
                 "lines" : lines,
+                "error_message" : error_message,
             },
             context_instance=RequestContext(request))
 

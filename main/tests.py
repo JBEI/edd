@@ -502,11 +502,11 @@ class ExportTests(TestCase) :
     # messy enough module that I'm writing tests as I go
     def test_sbml_export (self) :
         study = Study.objects.get(name="Test Study 1")
-        data = main.sbml_export.line_sbml_data(
+        data = main.sbml_export.line_sbml_export(
             study=study,
             lines=[ Line.objects.get(name="Line 1") ],
-            form={},
-            test_mode=True)
+            form={})
+        data.run(test_mode=True)
         od_data = data.export_od_measurements()
         self.assertTrue(od_data[0]['data_points'][-1]['title'] == "0.59 at 24h")
         self.assertTrue(data.n_hplc_measurements == 2)
@@ -538,11 +538,11 @@ class ExportTests(TestCase) :
         odm = od.measurement_set.all()[0]
         odm.measurementdatum_set.filter(x__gt=0).delete()
         try :
-            data = main.sbml_export.line_sbml_data(
+            data = main.sbml_export.line_sbml_export(
                 study=study,
                 lines=[ Line.objects.get(name="Line 1") ],
-                form={},
-                test_mode=True)
+                form={})
+            data.run(test_mode=True)
         except ValueError as e :
             self.assertTrue("Selected Optical Data contains less than two defined data points!" in str(e))
         else :
@@ -550,11 +550,11 @@ class ExportTests(TestCase) :
         # now delete the assay altogether
         od.delete()
         try :
-            data = main.sbml_export.line_sbml_data(
+            data = main.sbml_export.line_sbml_export(
                 study=study,
                 lines=[ Line.objects.get(name="Line 1") ],
-                form={},
-                test_mode=True)
+                form={})
+            data.run(test_mode=True)
         except ValueError as e :
             self.assertTrue("Line selection does not contain any OD600 Assays"
                             in str(e))

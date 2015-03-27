@@ -29,10 +29,10 @@ def exercise_sbml_setup () :
   assert (sd.biomass_exchange.ex_id == "R_Ec_biomass_iJO1366_WT_53p95M")
 
 def exercise_sbml_export () :
-  sd = sbml_export.line_sbml_data(
+  sd = sbml_export.line_sbml_export(
     study=Study.objects.get(id=34),
     lines=[ Line.objects.get(id=536) ], # XXX actual ID may change
-    form={"chosenmap": 0})
+    form={"chosenmap": 0}).run()
   assert (sd.n_lcms_measurements == 44)
   assert (sd.n_ramos_measurements == 2)
   assert (sd.n_conversion_warnings == 3)
