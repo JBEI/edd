@@ -1475,37 +1475,6 @@ class measurement_datum_converted_units (object) :
       fields += ["[interpolated]"]
     return " ".join(fields)
 
-class flux_calculation (object) :
-  """
-  Container for a computed metabolite flux at a given time interval.
-  """
-  def __init__ (self, start, end, y, delta, units, flux, interpolated) :
-    self.start = start
-    self.end = end
-    self.y = y
-    self.delta = delta
-    self.units = units
-    self.flux = flux
-    self.interpolated = interpolated
-
-  @property
-  def elapsed (self) :
-    return self.end - self.start
-
-  def __float__ (self) :
-    return self.flux
-
-  @property
-  def y_start (self) :
-    return self.y - self.delta
-
-  def __str__ (self) :
-    base = "time: %8g - %8gh; delta = %8g, flux = %8g" % (self.start, self.end,
-      self.delta, self.flux)
-    if (self.interpolated) :
-      return base + " [interpolated]"
-    return base
-
 class processed_measurement (object) :
   is_carbon_ratio = False
   def __init__ (self,
@@ -1556,6 +1525,30 @@ class processed_measurement (object) :
           mdata_tuples.append((t, y))
           self.interpolated_measurement_timestamps.add(t)
     mdata_tuples.sort(lambda a,b: cmp(a[0], b[0]))
+    # Container for a computed metabolite flux at a given time interval.
+    class flux_calculation (object) :
+      def __init__ (O, start, end, y, delta, units, flux, interpolated) :
+        O.start = start
+        O.end = end
+        O.y = y
+        O.delta = delta
+        O.units = units
+        O.flux = flux
+        O.interpolated = interpolated
+      @property
+      def elapsed (O) :
+        return O.end - O.start
+      def __float__ (O) :
+        return O.flux
+      @property
+      def y_start (O) :
+        return O.y - O.delta
+      def __str__ (O) :
+        base = "time: %8g - %8gh; delta = %8g, flux = %8g" % (O.start, O.end,
+          O.delta, O.flux)
+        if (O.interpolated) :
+          return base + " [interpolated]"
+        return base
     def process_md () :
       if m.is_carbon_ratio() : # TODO
         return
@@ -1688,6 +1681,18 @@ class processed_measurement (object) :
   @property
   def flux_data (self) :
     return self._flux_data
+
+  def flux_at_time_point (self, t) :
+    for fd in self._flux_data :
+      if (fd.start == t) :
+        return fd.flux
+    return None
+
+  def concentration_at_time_point (self, t) :
+    for fd in self._flux_data :
+      if (fd.start == t) :
+        return fd.y
+    return None
 
 class carbon_ratio_measurement (object) :
   is_carbon_ratio = True
@@ -1851,14 +1856,14 @@ class line_sbml_export (line_assay_data, sbml_info) :
           mdata_times = sorted([ md.fx for md in mdata ])
           # XXX is this check necessary?
           if (len(mdata_times) > 0) :
-            self._proteomics_in_sbml_model[gene_name] = False
-            if self._have_gene_in_model(gene_name) :
-              self._proteomics_in_sbml_model[gene_name] = True
+            self._proteomics_in_sbml_model[protein_name] = False
+            if self._have_gene_in_model(protein_name) :
+              self._proteomics_in_sbml_model[protein_name] = True
             for md in mdata :
               t = md.fx
-              if (not gene_name in self._consolidated_proteomics_ms[t]) :
-                self._consolidated_proteomics_ms[t][gene_name] = []
-              self._consolidated_proteomics_ms[t][gene_name].append(md.fy)
+              if (not protein_name in self._consolidated_proteomics_ms[t]) :
+                self._consolidated_proteomics_ms[t][protein_name] = []
+              self._consolidated_proteomics_ms[t][protein_name].append(md.fy)
 
   def as_sbml (self) :
     """
@@ -1912,3 +1917,19 @@ class line_sbml_export (line_assay_data, sbml_info) :
 
   def sbml_files (self) :
     return []
+
+  @property
+  def n_gene_names_resolved (self) :
+    return self._transcriptions_in_sbml_model.values().count(True)
+
+  @property
+  def n_gene_names_not_resolved (self) :
+    return self._transcriptions_in_sbml_model.values().count(False)
+
+  @property
+  def n_protein_names_resolved (self) :
+    return self._proteomics_in_sbml_model.values().count(True)
+
+  @property
+  def n_protein_names_resolved (self) :
+    return self._proteomics_in_sbml_model.values().count(False)
