@@ -281,6 +281,7 @@ def import_assay_table_data (study, user, post_data, update) :
             measurement_type=meas_type,
             compartment=str(compartment_id))
             # FIXME Missing: format (scalar or vector)
+        meas_units = MeasurementUnit.objects.get(id=meas_units_id)
         meas_record = None
         if (len(meas_records) > 0) : # can it be more than 1?
             if replace :
@@ -297,18 +298,18 @@ def import_assay_table_data (study, user, post_data, update) :
                 update_ref=update,
                 measurement_type=meas_type,
                 compartment=str(compartment_id),
-                experimenter=user)
+                experimenter=user,
+                x_units=mu_t,
+                y_units=meas_units)
             meas_record.save()
             # TODO update
-        meas_units = MeasurementUnit.objects.get(id=meas_units_id)
         for x,y in data :
             if (mtype_format == 0) :
                 try :
                     datum = meas_record.measurementdatum_set.get(x=x)
                 except MeasurementDatum.DoesNotExist as e :
                     datum = meas_record.measurementdatum_set.create(
-                        x_units=mu_t, y_units=meas_units, x=x, y=y,
-                        updated=update)
+                        x=x, y=y, updated=update)
                 else :
                     datum.y = y
                     datum.save()
@@ -319,8 +320,7 @@ def import_assay_table_data (study, user, post_data, update) :
                     mdata = meas_record.measurementvector_set.get(x=x)
                 except MeasurementVector.DoesNotExist as e :
                     mdata = meas_record.measurementvector_set.create(
-                        x_units=mu_t, y_units=meas_units, x=x, y=y,
-                        updated=update) # XXX check y type?
+                        x=x, y=y, updated=update) # XXX check y type?
                 else :
                     mdata.y = y
                     mdata.save()

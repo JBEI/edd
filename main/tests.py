@@ -147,21 +147,22 @@ class AssayDataTests(TestCase) :
         assay1 = line1.assay_set.create(name="Assay 1",
             protocol=protocol1, description="GC-MS assay", experimenter=user1)
         up1 = Update.objects.create(mod_by=user1)
-        meas1 = assay1.measurement_set.create(experimenter=user1,
-            measurement_type=mt1, compartment="1", update_ref=up1)
-        meas2 = assay1.measurement_set.create(experimenter=user1,
-            measurement_type=mt2, compartment="1", update_ref=up1)
-        meas3 = assay1.measurement_set.create(experimenter=user1,
-            measurement_type=mt3, compartment="1", update_ref=up1)
         mu1 = MeasurementUnit.objects.create(unit_name="hours")
         mu2 = MeasurementUnit.objects.create(unit_name="mM")
+        meas1 = assay1.measurement_set.create(experimenter=user1,
+            measurement_type=mt1, compartment="1", update_ref=up1,
+            x_units=mu1, y_units=mu2)
+        meas2 = assay1.measurement_set.create(experimenter=user1,
+            measurement_type=mt2, compartment="1", update_ref=up1,
+            x_units=mu1, y_units=mu2)
+        meas3 = assay1.measurement_set.create(experimenter=user1,
+            measurement_type=mt3, compartment="1", update_ref=up1,
+            x_units=mu1, y_units=mu2)
         x1 = [ 0, 4, 8, 12, 18, 24 ]
         y1 = [ 0.0, 0.1, 0.2, 0.4, 0.8, 1.6 ]
         for x, y in zip(x1, y1) :
-            md = meas1.measurementdatum_set.create(updated=up1,
-                x_units=mu1, y_units=mu2, x=x, y=y)
-        meas1.measurementdatum_set.create(updated=up1,
-            x_units=mu1, y_units=mu2, x=32, y=None)
+            md = meas1.measurementdatum_set.create(updated=up1, x=x, y=y)
+        meas1.measurementdatum_set.create(updated=up1, x=32, y=None)
 
     def test_protocol (self) :
         p1 = Assay.objects.get(name="Assay 1").protocol
@@ -395,26 +396,33 @@ class ExportTests(TestCase) :
             experimenter=user1)
         assay4 = line1.assay_set.create(name="HPLC assay", experimenter=user1,
             protocol=protocol3, description="HPLC measurement")
-        up1 = Update.objects.create(mod_by=user1)
-        meas1 = assay1.measurement_set.create(experimenter=user1,
-            measurement_type=mt1, compartment="1", update_ref=up1)
-        meas2 = assay1.measurement_set.create(experimenter=user1,
-            measurement_type=mt2, compartment="1", update_ref=up1)
-        meas3 = assay2.measurement_set.create(experimenter=user1,
-            measurement_type=mt1, compartment="1", update_ref=up1)
-        meas4 = assay2.measurement_set.create(experimenter=user1,
-            measurement_type=mt2, compartment="1", update_ref=up1)
-        meas5 = assay3.measurement_set.create(experimenter=user1, # OD
-            measurement_type=mt3, compartment="0", update_ref=up1)
-        meas6 = assay4.measurement_set.create(experimenter=user1, # HPLC
-            measurement_type=mt1, compartment="2", update_ref=up1)
-        meas7 = assay4.measurement_set.create(experimenter=user1, # HPLC
-            measurement_type=mt2, compartment="2", update_ref=up1)
         mu1 = MeasurementUnit.objects.create(unit_name="hours")
         mu1 = MeasurementUnit.objects.create(unit_name="hours")
         mu2 = MeasurementUnit.objects.create(unit_name="mM")
         mu3 = MeasurementUnit.objects.create(unit_name="n/a")
         mu4 = MeasurementUnit.objects.create(unit_name="Cmol/L")
+        up1 = Update.objects.create(mod_by=user1)
+        meas1 = assay1.measurement_set.create(experimenter=user1,
+            measurement_type=mt1, compartment="1", update_ref=up1,
+            x_units=mu1, y_units=mu2)
+        meas2 = assay1.measurement_set.create(experimenter=user1,
+            measurement_type=mt2, compartment="1", update_ref=up1,
+            x_units=mu1, y_units=mu2)
+        meas3 = assay2.measurement_set.create(experimenter=user1, # GC-MS
+            measurement_type=mt1, compartment="1", update_ref=up1,
+            x_units=mu1, y_units=mu2)
+        meas4 = assay2.measurement_set.create(experimenter=user1, # GC-MS
+            measurement_type=mt2, compartment="1", update_ref=up1,
+            x_units=mu1, y_units=mu2)
+        meas5 = assay3.measurement_set.create(experimenter=user1, # OD
+            measurement_type=mt3, compartment="0", update_ref=up1,
+            x_units=mu1, y_units=mu3)
+        meas6 = assay4.measurement_set.create(experimenter=user1, # HPLC
+            measurement_type=mt1, compartment="2", update_ref=up1,
+            x_units=mu1, y_units=mu4)
+        meas7 = assay4.measurement_set.create(experimenter=user1, # HPLC
+            measurement_type=mt2, compartment="2", update_ref=up1,
+            x_units=mu1, y_units=mu4)
         x1 = [ 0, 4, 8, 12, 18, 24 ]
         y1 = [ 0.0, 0.1, 0.2, 0.4, 0.8, 1.6 ]
         y2 = [ 0.0, 0.5, 0.6, 0.65, 0.675, 0.69 ]
@@ -422,24 +430,17 @@ class ExportTests(TestCase) :
         y4 = [ 0.0, 0.5, 1.1, 2.05, 4.09, 5.45 ]
         y5 = [ 0.0, 0.3, 0.5, 0.55, 0.57, 0.59 ] # OD
         for x, y in zip(x1, y1) : # acetate
-            md = meas1.measurementdatum_set.create(updated=up1, # GC-MS
-                x_units=mu1, y_units=mu2, x=x, y=y)
-            md2 = meas6.measurementdatum_set.create(updated=up1, # HPLC
-                x_units=mu1, y_units=mu4, x=x, y=y*1.1)
+            md = meas1.measurementdatum_set.create(updated=up1, x=x, y=y)
+            md2 = meas6.measurementdatum_set.create(updated=up1, x=x, y=y*1.1)
         for x, y in zip(x1, y2) : # glucose
-            md = meas2.measurementdatum_set.create(updated=up1, # GC-MS
-                x_units=mu1, y_units=mu2, x=x, y=y)
-            md2 = meas7.measurementdatum_set.create(updated=up1, # HPLC
-                x_units=mu1, y_units=mu4, x=x, y=y*1.1)
+            md = meas2.measurementdatum_set.create(updated=up1, x=x, y=y)
+            md2 = meas7.measurementdatum_set.create(updated=up1, x=x, y=y*1.1)
         for x, y in zip(x1, y3) :
-            md = meas3.measurementdatum_set.create(updated=up1,
-                x_units=mu1, y_units=mu2, x=x, y=y)
+            md = meas3.measurementdatum_set.create(updated=up1, x=x, y=y)
         for x, y in zip(x1, y4) :
-            md = meas4.measurementdatum_set.create(updated=up1,
-                x_units=mu1, y_units=mu2, x=x, y=y)
+            md = meas4.measurementdatum_set.create(updated=up1, x=x, y=y)
         for x, y in zip(x1, y5) : # OD
-           md = meas5.measurementdatum_set.create(updated=up1,
-                x_units=mu1, y_units=mu3, x=x, y=y)
+           md = meas5.measurementdatum_set.create(updated=up1, x=x, y=y)
 
     def tearDown(self):
         TestCase.tearDown(self)

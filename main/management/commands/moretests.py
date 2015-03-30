@@ -31,7 +31,7 @@ def exercise_sbml_setup () :
 def exercise_sbml_export () :
   sd = sbml_export.line_sbml_export(
     study=Study.objects.get(id=34),
-    lines=[ Line.objects.get(id=536) ], # XXX actual ID may change
+    lines=[ Line.objects.get(name="arcA-1L") ], # XXX unique ID may change
     form={"chosenmap": 0}).run()
   assert (sd.n_lcms_measurements == 44)
   assert (sd.n_ramos_measurements == 2)

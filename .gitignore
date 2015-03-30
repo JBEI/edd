@@ -1,5 +1,6 @@
 .DS_Store
 *.pyc
+*.swp
 .pydevproject
 
 # per-machine configuration file; contains secrets, DO NOT CHECK-IN

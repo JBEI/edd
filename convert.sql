@@ -184,8 +184,8 @@ INSERT INTO public.edd_object(strain_id, name)
     LEFT JOIN old_edd.strains_registry sr ON sr.id = s.registry_record_id
     ORDER BY id;
 INSERT INTO public.strain(
-        registry_id, registry_url, object_ref_id
-    ) SELECT s.registry_record_id, sr.url, o.id
+        registry_id, registry_url, object_ref_id, active
+    ) SELECT s.registry_record_id, sr.url, o.id, NOT s.disabled
     FROM old_edd.strains s
     INNER JOIN public.edd_object o ON o.strain_id = s.id
     LEFT JOIN old_edd.strains_registry sr ON sr.id = s.registry_record_id

@@ -194,7 +194,7 @@ class line_export_base (object) :
         assay.protocol.name, assay.name)
     measurements = list(Measurement.objects.filter(
       assay_id__in=[ a.id for a in assays ]).select_related(
-        "assay").select_related("measurement_type"))
+        "assay").select_related("measurement_type").select_related("y_units"))
     #measurements.select_related("assay")
     #measurements.prefetch_related("meaurement_type")
     #measurements.prefetch_related("meaurementdatum_set")
@@ -214,7 +214,7 @@ class line_export_base (object) :
     # study IDs directly in various other tables, and selects on these instead
     # of a huge list of measurements.
     y_units = MeasurementUnit.objects.filter(
-      id__in=list(set([ md.y_units_id for md in measurement_data ])))
+      id__in=list(set([ m.y_units_id for m in measurements ])))
     y_units_dict = { yu.id : yu for yu in y_units }
     #measurement_data.prefetch_related("y_units")
     for m in measurements :
@@ -222,11 +222,11 @@ class line_export_base (object) :
       self._measurement_types[m.id] = mtypes_dict[m.measurement_type_id]
       if (m.measurement_type_id in metabolites_dict) :
         self._metabolites[m.id] = metabolites_dict[m.measurement_type_id]
+      if (not m.id in self._measurement_units) :
+        self._measurement_units[m.id] = y_units_dict[m.y_units_id]
     for md in measurement_data :
       meas_id = md.measurement_id
       self._measurement_data[meas_id].append(md)
-      if (not meas_id in self._measurement_units) :
-        self._measurement_units[meas_id] = y_units_dict[md.y_units_id]
     for mv in measurement_vectors :
       meas_id = mv.measurement_id
       self._measurement_data[meas_id].append(mv)

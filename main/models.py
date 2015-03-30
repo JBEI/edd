@@ -829,21 +829,7 @@ class Measurement(models.Model):
 
     @property
     def y_axis_units_name (self) :
-        """
-        Retrieve the label for units on the Y-axis across all data.  If the
-        y_units field is not consistent, an error will be raised.
-        """
-        names = set()
-        for md in self.measurementdatum_set.all() :
-            names.add(md.y_units.unit_name)
-        names = list(names)
-        if (len(names) == 1) :
-            return names[0]
-        elif (len(names) == 0) :
-            return None
-        else :
-            raise RuntimeError("Multiple measurement units for ID %d: %s " %
-                (self.id, "; ".join(names)))
+        return self.y_units.unit_name
 
     def is_concentration_measurement (self) :
         return (self.y_axis_units_name in
