@@ -849,18 +849,24 @@ var DataGridRecord = (function () {
                     continue;
                 }
                 var colCells = cellsForColumns[addingForColumn];
-                var c = colCells.shift();
-                // If there are still cells left to use, in any column, after drawing off the one
-                // we're dealing with, then we should run through this loop again.
                 if (colCells.length) {
-                    moreToAdd = true;
+                    var c = colCells.shift();
+                    // If there are still cells left to use, in any column, after drawing off the one
+                    // we're dealing with, then we should run through this loop again.
+                    if (colCells.length) {
+                        moreToAdd = true;
+                    }
+                    var nextOpenColumn = addingForColumn + c.colspan;
+                    while (addingForColumn < nextOpenColumn) {
+                        currentRowHeightsForColumns[addingForColumn] = addingForRow + c.rowspan;
+                        addingForColumn++;
+                    }
+                    cells.push(c);
                 }
-                var nextOpenColumn = addingForColumn + c.colspan;
-                while (addingForColumn < nextOpenColumn) {
-                    currentRowHeightsForColumns[addingForColumn] = addingForRow + c.rowspan;
-                    addingForColumn++;
+                else {
+                    // nothing in the current column, skip ahead to next one
+                    ++addingForColumn;
                 }
-                cells.push(c);
             }
             var r = new DataGridDataRow(this.recordID, cells);
             this.dataGridDataRows.push(r);
@@ -959,6 +965,7 @@ var DataGridDataCell = (function () {
         this.recordID = id;
         this.hidden = false;
         this.createdElement = false;
+        opt = opt || {};
         this.contentFunction = opt['contentFunction'] || function (e, index) {
         };
         this.contentString = opt['contentString'] || '';
@@ -1109,6 +1116,15 @@ var DataGridDataCell = (function () {
     };
     return DataGridDataCell;
 })();
+// A placeholder cell when data is still loading
+var DataGridLoadingCell = (function (_super) {
+    __extends(DataGridLoadingCell, _super);
+    function DataGridLoadingCell(gridSpec, id, opt) {
+        _super.call(this, gridSpec, id, opt);
+        this.contentString = '<span class="loading">Loading...</span>';
+    }
+    return DataGridLoadingCell;
+})(DataGridDataCell);
 // A general class that acts as a common repository for utility functions for DataGrid widgets.
 // It is immediately subclassed into DataGridOptionWidget and DataGridHeaderWidget.
 var DataGridWidget = (function () {

@@ -1,47 +1,77 @@
 // This file is nothing but Typescript declarations, and doesn't technically need to be passed to client browsers.
 
 
+interface UpdateRecord {
+    time:number;    // update timestamp
+    user:number;    // User ID
+}
+
+
 // This is what we expect in EDDData.Lines
 interface LineRecord {
-	n:string;		// Name
-	s:number;		// Strain ID
-	m:string;		// Media Type
-	md:any;			// Metadata structure
-	ctrl:boolean;	// Is Control
-	cs:number[];	// Carbon Sources
-	exp:number;		// Experimenter ID
-	rid:number;		// Replicate ID
-	con:string;		// Contact
-	dis:boolean;	// Disabled
-	mod:number;		// Modification epoch
+    id:number;          // Line ID
+	name:string;        // Name
+    description:string; // Description
+    active:boolean;     // Active line
+    control:boolean;    // Is Control
+    replicate:any;      // Line ID of replicate parent Line, or undefined/null
+    contact:any;        // Contact Info structure (user_id, text)
+    experimenter:number;// Experimenter user ID
+	meta:any;      	    // Metadata structure
+    strain:number[];    // Strain ID array
+	carbon:number[];    // Carbon Sources ID array
+	exp:number;		    // Experimenter ID
+    modified:UpdateRecord;
+    created:UpdateRecord;
+    /////// BELOW ARE DEPRECATED ////////
+    n:any;
+    m:any;
+    s:any;
+    cs:any;
+    md:any;
+    dis:any;
+    ctrl:any;
+    con:any;
 }
 
 
 
 // This is what we expect in EDDData.Assays
 interface AssayRecord {
-	an:string;		// Assay Name
-	des:string;		// Description
-	dis:boolean;	// Disabled
-	md:any;			// Metadata structure
-	lid:number;		// Line ID
-	pid:number;		// Protocol ID
-	met_c:number;	// Metabolites Count
-	tra_c:number;	// Transcriptions Count
-	pro_c:number;	// Proteins Count
-	mea_c:number;	// Measurements Count (sum of all measurement type counts above)
-	mod:number;		// Modification epoch
-	exp:number;		// Experimenter ID
+    id:any;             // Assay ID
+    name:string;        // Name
+    description:string; // Description
+    active:boolean;     // Active line
+	meta:any;		    // Metadata structure
+	lid:number;         // Line ID
+	pid:number;         // Protocol ID
+	mod:number;         // Modification epoch
+	exp:number;         // Experimenter ID
 	measurements:number[];		// All collected measurements associated with Assay
 	metabolites:number[];		// Metabolite measurements associated with Assay
 	transcriptions:number[];	// Transcription measurements associated with Assay
 	proteins:number[];			// Proteins measurements associated with Assay
+    /////// BELOW ARE DEPRECATED ////////
+    an:string;      // Assay Name
+    des:string;     // Description
+    dis:boolean;    // Disabled
+    md:any;         // Metadata structure
+    met_c:number;   // Metabolites Count
+    tra_c:number;   // Transcriptions Count
+    pro_c:number;   // Proteins Count
+    mea_c:number;   // Measurements Count (sum of all measurement type counts above)
 }
 
 
 
 // This is what we expect in EDDData.AssayMeasurements
 interface AssayMeasurementRecord {
+    id:number;      // Measurement ID
+    assay:number;   // Assay ID
+    type:number;    // MeasurementTypeRecord ID
+    compartment:string;
+    values:any[];   // array of data values
+    /////// BELOW ARE DEPRECATED ////////
 	aid:number;		// Assay ID
 	dis:boolean;	// Disabled
 	lid:number;		// Line ID
@@ -56,10 +86,15 @@ interface AssayMeasurementRecord {
 
 
 
+interface MeasurementTypeRecord {
+    id:number;      // Type ID
+    name:string;    // Type name
+    sn:string;      // Short-form name
+    family:string;  // 'm', 'g', 'p' for metabolite, gene, protien
+}
+
 // This is what we expect in EDDData.MetaboliteTypes
-interface MetaboliteTypeRecord {
-	name:string;	// Long Name
-	sn:string;		// Short Name
+interface MetaboliteTypeRecord extends MeasurementTypeRecord {
 	ans:string[];	// Altername Names
 	f:string;		// Molecular Formula
 	mm:number;		// Molar Mass As Number
@@ -75,15 +110,13 @@ interface MetaboliteTypeRecord {
 
 
 // This is what we expect in EDDData.ProteinTypes
-interface ProteinTypeRecord {
-	name:string;	// Name
+interface ProteinTypeRecord extends MeasurementTypeRecord {
 }
 
 
 
 // This is what we expect in EDDData.GeneTypes
-interface GeneTypeRecord {
-	name:string;	// Name
+interface GeneTypeRecord extends MeasurementTypeRecord {
 }
 
 
@@ -104,6 +137,7 @@ interface EDDData {
 	EnabledProtocolIDs:number[];
 	Protocols:{[id:number]:any};
 
+    MeasurementTypes:{[id:number]:MeasurementTypeRecord};
     MetaboliteTypeIDs:number[];
     MetaboliteTypes:{[id:number]:MetaboliteTypeRecord};
     ProteinTypeIDs:number[];

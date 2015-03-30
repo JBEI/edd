@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.core import serializers
 from django.core.urlresolvers import reverse
 from django.db.models import Q
@@ -7,17 +8,33 @@ from django.http.response import HttpResponseForbidden
 from django.shortcuts import render, get_object_or_404, redirect, \
     render_to_response
 from django.template import RequestContext
+from django.template.defaulttags import register
 from django.views import generic
 from main.forms import CreateStudyForm
-from main.models import Study, Update, Protocol
+from main.models import Study, Update, Protocol, Measurement, MeasurementType
 from main.solr import StudySearch
 from main.utilities import get_edddata_study, get_edddata_misc, \
-    get_selected_lines
+    get_selected_lines, JSONDecimalEncoder
 import main.sbml_export
 import main.data_export
 from io import BytesIO
 import json
 import csv
+
+
+@register.filter(name='lookup')
+def lookup(dictionary, key):
+    """
+    Utility template filter, as Django forbids argument passing in templates. Used for filtering
+    out values, e.g. for metadata, of list has EDDObject items and type is a MetadataType:
+    {% for obj in list %}
+    {{ obj.metadata|lookup:type }}
+    {% endfor %}
+    """
+    try:
+        return dictionary[key]
+    except:
+        return settings.TEMPLATE_STRING_IF_INVALID
 
 
 class StudyCreateView(generic.edit.CreateView):
@@ -45,6 +62,14 @@ class StudyDetailView(generic.DetailView):
     """
     model = Study
     template_name = 'main/detail.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super(StudyDetailView, self).get_context_data(**kwargs)
+        context['lines'] = self.object.line_set.order_by('replicate', 'name').all()
+        context['line_meta'] = self.object.get_line_metadata_types()
+        context['strain'] = self.object.get_strains_used()
+        context['protocol'] = self.object.get_protocols_used()
+        return context
 
 
 def study_lines(request, study):
@@ -54,6 +79,21 @@ def study_lines(request, study):
     model = Study.objects.get(pk=study)
     lines = json.dumps(map(lambda l: l.to_json(), model.line_set.all()))
     return HttpResponse(lines, content_type='application/json; charset=utf-8')
+
+
+def study_measurements(request, study):
+    """
+    Request measurement data in a study.
+    """
+    model = Study.objects.get(pk=study)
+    measure_types = MeasurementType.objects.filter(measurement__assay__line__study=model).distinct()
+    measurements = Measurement.objects.filter(assay__line__study=model, active=True)
+    payload = {
+        'types': { t.pk: t.to_json() for t in measure_types },
+        'data': map(lambda m: m.to_json(), measurements),
+    }
+    measure_json = json.dumps(payload, cls=JSONDecimalEncoder)
+    return HttpResponse(measure_json, content_type='application/json; charset=utf-8')
 
 
 def study_search(request):
@@ -71,6 +111,7 @@ def study_search(request):
         doc['url'] = reverse('main:detail', kwargs={'pk':doc['id']})
     return HttpResponse(json.dumps(query_response), content_type='application/json; charset=utf-8')
 
+
 def study_edddata (request, study) :
     """
     Various information (both global and study-specific) that populates the
@@ -81,6 +122,7 @@ def study_edddata (request, study) :
     data_study = get_edddata_study(model)
     data_study.update(data_misc)
     return JsonResponse(data_study)
+
 
 def study_assay_table_data (request, study) :
     """
@@ -97,6 +139,7 @@ def study_assay_table_data (request, study) :
       },
       "EDDData" : get_edddata_study(model),
     })
+
 
 def study_import_table (request, study) :
     """

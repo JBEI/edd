@@ -1037,18 +1037,23 @@ class DataGridRecord {
 				}
 
 				var colCells = cellsForColumns[addingForColumn];
-				var c = colCells.shift();
-				// If there are still cells left to use, in any column, after drawing off the one
-				// we're dealing with, then we should run through this loop again.
-				if (colCells.length) {
-					moreToAdd = true;
-				}
-				var nextOpenColumn = addingForColumn + c.colspan;
-				while (addingForColumn < nextOpenColumn) {
-					currentRowHeightsForColumns[addingForColumn] = addingForRow + c.rowspan;
-					addingForColumn++;
-				}
-				cells.push(c);
+                if (colCells.length) {
+                    var c = colCells.shift();
+                    // If there are still cells left to use, in any column, after drawing off the one
+                    // we're dealing with, then we should run through this loop again.
+                    if (colCells.length) {
+                        moreToAdd = true;
+                    }
+                    var nextOpenColumn = addingForColumn + c.colspan;
+                    while (addingForColumn < nextOpenColumn) {
+                        currentRowHeightsForColumns[addingForColumn] = addingForRow + c.rowspan;
+                        addingForColumn++;
+                    }
+                    cells.push(c);
+                } else {
+                    // nothing in the current column, skip ahead to next one
+                    ++addingForColumn;
+                }
 			}
 
 
@@ -1211,7 +1216,7 @@ class DataGridDataCell {
 		this.recordID = id;
 		this.hidden = false;
 		this.createdElement = false;
-
+        opt = opt || {};
         this.contentFunction = opt['contentFunction'] || function(e, index) {};
         this.contentString = opt['contentString'] || '';
         opt = $.extend({ 'align': 'left' }, opt);
@@ -1374,6 +1379,18 @@ class DataGridDataCell {
 			this.hidden = false;
 		}
 	}
+}
+
+
+
+// A placeholder cell when data is still loading
+class DataGridLoadingCell extends DataGridDataCell {
+
+    constructor(gridSpec:DataGridSpecBase, id:number, opt?:{[index:string]:any}) {
+        super(gridSpec, id, opt);
+        this.contentString = '<span class="loading">Loading...</span>';
+    }
+
 }
 
 
@@ -2156,11 +2173,11 @@ class DataGridSpecBase {
 		var widgetSet:DataGridOptionWidget[] = [];
 
 		// Create a single widget for showing only the Studies that belong to the current user
-//		var onlyMyStudiesWidget = new DGOnlyMyStudiesWidget(dataGrid, this);
-//		widgetSet.push(onlyMyStudiesWidget);
+        //		var onlyMyStudiesWidget = new DGOnlyMyStudiesWidget(dataGrid, this);
+        //		widgetSet.push(onlyMyStudiesWidget);
 		// Create a single widget for showing disabled Studies
-//		var disabledStudiesWidget = new DGDisabledStudiesWidget(dataGrid, this);
-//		widgetSet.push(disabledStudiesWidget);
+        //		var disabledStudiesWidget = new DGDisabledStudiesWidget(dataGrid, this);
+        //		widgetSet.push(disabledStudiesWidget);
 		return widgetSet;
 	}
 

@@ -1,12 +1,15 @@
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.db import models
 from django.utils import timezone
-from django_extensions.db.fields import PostgreSQLUUIDField
 from django.utils.dateformat import format as format_date
+from django_extensions.db.fields import PostgreSQLUUIDField
+from django_hstore import hstore
 from itertools import chain
 import arrow
 import re
+
 
 class Update(models.Model):
     """
@@ -42,6 +45,12 @@ class Update(models.Model):
             update = cls.objects.get(pk=request.update_key)
         return update
 
+    def to_json(self):
+        return {
+            "time": format_date(self.mod_time, 'U'),
+            "user": self.mod_by.pk,
+        }
+
 
 class Comment(models.Model):
     """
@@ -66,6 +75,7 @@ class Attachment(models.Model):
     mime_type = models.CharField(max_length=255, null=True)
     file_size = models.IntegerField(default=0)
 
+
 class MetadataGroup(models.Model):
     """
     """
@@ -84,30 +94,42 @@ class MetadataType(models.Model):
     LINE = 'L'
     PROTOCOL = 'P'
     LINE_OR_PROTOCOL = 'LP'
+    ALL = 'LPS'
     CONTEXT_SET = (
         (STUDY, 'Study'),
         (LINE, 'Line'),
         (PROTOCOL, 'Protocol'),
         (LINE_OR_PROTOCOL, 'Line or Protocol'),
+        (ALL, 'All'),
     )
     class Meta:
         db_table = 'metadata_type'
     group = models.ForeignKey(MetadataGroup)
     type_name = models.CharField(max_length=255)
+    type_i18n = models.CharField(max_length=255, blank=True, null=True)
     input_size = models.IntegerField(default=6)
     default_value = models.CharField(max_length=255, blank=True)
     prefix = models.CharField(max_length=255, blank=True)
     postfix = models.CharField(max_length=255, blank=True)
     for_context = models.CharField(max_length=8, choices=CONTEXT_SET)
+    # TODO: add a type_class field and utility method to take a Metadata.data_value and return
+    #   a model instance; e.g. type_class = 'CarbonSource' would do a
+    #   CarbonSource.objects.get(pk=value)
+    type_class = models.CharField(max_length=255, blank=True, null=True)
     
     def for_line(self):
-        return self.for_context == self.LINE or self.for_context == self.LINE_OR_PROTOCOL
+        return (self.for_context == self.LINE or
+            self.for_context == self.LINE_OR_PROTOCOL or
+            self.for_context == self.ALL)
     
     def for_protocol(self):
-        return self.for_context == self.PROTOCOL or self.for_context == self.LINE_OR_PROTOCOL
+        return (self.for_context == self.PROTOCOL or
+            self.for_context == self.LINE_OR_PROTOCOL or
+            self.for_context == self.ALL)
     
     def for_study(self):
-        return self.for_context == self.STUDY
+        return (self.for_context == self.STUDY or
+            self.for_context == self.ALL)
 
     def __str__(self):
         return self.type_name
@@ -124,7 +146,8 @@ class MetadataType(models.Model):
             "ll" : self.for_line(),
             "pl" : self.for_protocol(),
         }
-    
+
+
 class EDDObject(models.Model):
     """
     A first-class EDD object, with update trail, comments, attachments.
@@ -134,7 +157,10 @@ class EDDObject(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     updates = models.ManyToManyField(Update, db_table='edd_object_update', related_name='+')
-    metadata = models.ManyToManyField(MetadataType, through='Metadata')
+    meta_store = hstore.DictionaryField(blank=True, default=dict)
+
+    # Use custom hstore manager to enable queries on hstore data
+    objects = hstore.HStoreManager()
     
     def created(self):
         created = self.updates.order_by('mod_time')[:1] 
@@ -164,42 +190,15 @@ class EDDObject(models.Model):
     def get_comment_count(self):
         return self.comments.count()
 
+    def get_metadata_json(self):
+        return self.meta_store
+
+    def get_metadata_types(self):
+        return list(MetadataType.objects.filter(pk__in=self.meta_store.keys()))
+
     def __str__(self):
         return self.name
 
-    # XXX not sure if this is or should be necessary - see comment above
-    def get_metadata (self, type_name=None) :
-        """
-        Retrieve the Metadata objects associated with this object.
-        """
-        return Metadata.objects.filter(edd_object=self)
-
-    def get_metadata_dict (self) :
-        """
-        Retrieve the Metadata objects associated with this object as a dict
-        keyed by MetadataType.type_name.
-        """
-        metadata_dict = {}
-        for metadata_type in self.metadata.all() :
-            metadata = Metadata.objects.filter(edd_object=self,
-                data_type=metadata_type)
-            if (len(metadata) > 0) :
-                metadata_dict[metadata_type.type_name] = metadata[0]
-        return metadata_dict
-
-class Metadata(models.Model):
-    """
-    Base form for line metadata tracks which line is referred to, type, and who/when.
-    """
-    class Meta:
-        db_table = 'metadata'
-    edd_object = models.ForeignKey(EDDObject, related_name='+')
-    data_type = models.ForeignKey(MetadataType)
-    data_value = models.TextField()
-    updated = models.ForeignKey(Update, related_name='+')
-
-    def __str__ (self) :
-        return self.data_type.prefix + self.data_value + self.data_type.postfix
 
 class Study(EDDObject):
     """
@@ -267,7 +266,9 @@ class Study(EDDObject):
         return self.contact.email
 
     def get_line_metadata_types(self):
-        return list(MetadataType.objects.filter(linemetadata__line__study=self).distinct())
+        # TODO: add in strain, carbon source here? IFF exists a line with at least one
+        # TODO: cannot go through non-existant Metadata object mapping now
+        return list()
 
     def get_metabolite_types_used(self):
         return list(Metabolite.objects.filter(measurement__assay__line__study=self).distinct())
@@ -287,6 +288,7 @@ class Study(EDDObject):
         for assay in self.get_assays() :
             assays_by_protocol[assay.protocol.id].append(assay.id)
         return assays_by_protocol
+
 
 class StudyPermission(models.Model):
     """
@@ -339,7 +341,7 @@ class StudyPermission(models.Model):
 class UserPermission(StudyPermission):
     class Meta:
         db_table = 'study_user_permission'
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='+')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='userpermission_set')
     
     def applies_to_user(self, user):
         return self.user == user
@@ -351,7 +353,7 @@ class UserPermission(StudyPermission):
 class GroupPermission(StudyPermission):
     class Meta:
         db_table = 'study_group_permission'
-    group = models.ForeignKey('auth.Group', related_name='+')
+    group = models.ForeignKey('auth.Group', related_name='grouppermission_set')
     
     def applies_to_user(self, user):
         return user.groups.contains(user)
@@ -367,7 +369,7 @@ class Protocol(EDDObject):
     class Meta:
         db_table = 'protocol'
     object_ref = models.OneToOneField(EDDObject, parent_link=True)
-    owned_by = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='edd_protocol_set')
+    owned_by = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='protocol_set')
     active = models.BooleanField(default=True)
     variant_of = models.ForeignKey('self', blank=True, null=True, related_name='derived_set')
     
@@ -418,15 +420,17 @@ class Protocol(EDDObject):
         else :
             return "Unknown"
 
+
 class Strain(EDDObject):
     """
     A link to a strain/part in the JBEI ICE Registry.
     """
     class Meta:
         db_table = 'strain'
+    object_ref = models.OneToOneField(EDDObject, parent_link=True)
     registry_id = PostgreSQLUUIDField(blank=True, null=True)
     registry_url = models.URLField(max_length=255, blank=True, null=True)
-    object_ref = models.OneToOneField(EDDObject, parent_link=True)
+    active = models.BooleanField(default=True)
 
     def to_solr_value(self):
         return '%(id)s@%(name)s' % {'id':self.registry_id, 'name':self.name}
@@ -434,11 +438,15 @@ class Strain(EDDObject):
     def __str__(self):
         return self.name
 
-    def to_json (self) :
+    def to_json(self):
         return {
+            "id" : self.pk,
             "name" : self.name,
             "desc" : self.description,
+            "registry_id" : self.registry_id,
+            "registry_url" : self.registry_url,
         }
+
 
 class CarbonSource(EDDObject):
     """
@@ -446,13 +454,15 @@ class CarbonSource(EDDObject):
     """
     class Meta:
         db_table = 'carbon_source'
-    labeling = models.CharField(max_length=255)
+    object_ref = models.OneToOneField(EDDObject, parent_link=True)
+    # Labeling is description of isotope labeling used in carbon source
+    labeling = models.TextField()
     volume = models.DecimalField(max_digits=16, decimal_places=5)
     active = models.BooleanField(default=True)
 
     def to_json (self) :
         return {
-            "carbon" : None, # TODO
+            "carbon" : self.name,
             "labeling" : self.labeling,
             "initials" : None, # TODO
             "vol" : self.volume,
@@ -462,6 +472,7 @@ class CarbonSource(EDDObject):
             "userid" : None, # TODO
             "disabled" : not self.active,
         }
+
 
 class Line(EDDObject):
     """
@@ -473,10 +484,11 @@ class Line(EDDObject):
     control = models.BooleanField(default=False)
     replicate = models.ForeignKey('self', blank=True, null=True)
     object_ref = models.OneToOneField(EDDObject, parent_link=True)
-    contact = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True, related_name='+')
+    contact = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True,
+                                related_name='line_contact_set')
     contact_extra = models.TextField()
     experimenter = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True,
-                                     related_name='+')
+                                     related_name='line_experimenter_set')
     active = models.BooleanField(default=True)
     carbon_source = models.ManyToManyField(CarbonSource, db_table='line_carbon_source')
     protocols = models.ManyToManyField(Protocol, through='Assay')
@@ -486,14 +498,17 @@ class Line(EDDObject):
         return {
             'id': self.pk,
             'name': self.name,
-            'n' : self.name, # XXX used by ArrayTableData.ts
             'description': self.description,
-            'study': self.study.pk,
+            'active': self.active,
             'control': self.control,
             'replicate': self.replicate.pk if self.replicate else None,
-            'contact': {},
-            'experimenter': {},
-            'meta': {},
+            'contact': { 'user_id': self.contact.pk, 'text': self.contact_extra },
+            'experimenter': self.experimenter.pk,
+            'meta': self.get_metadata_json(),
+            'strain': [s.pk for s in self.strains.all()],
+            'carbon': [c.pk for c in self.carbon_source.all()],
+            'modified': self.updated().to_json(),
+            'created': self.created().to_json(),
         }
 
     # FIXME broken right now because line_strain table is empty
@@ -564,6 +579,14 @@ class MeasurementType(models.Model):
     def to_solr_value(self):
         return '%(id)s@%(name)s' % {'id':self.pk, 'name':self.type_name}
 
+    def to_json(self):
+        return {
+            "id": self.pk,
+            "name": self.type_name,
+            "sn": self.short_name,
+            "family": self.type_group,
+        }
+
     def __str__(self):
         return self.type_name
 
@@ -597,6 +620,7 @@ class MeasurementType(models.Model):
             short_name=short_name,
             type_group=MeasurementGroup.PROTEINID)
 
+
 class Metabolite(MeasurementType):
     """
     Defines additional metadata on a metabolite measurement type; charge, carbon count, molar mass,
@@ -615,17 +639,16 @@ class Metabolite(MeasurementType):
     def is_metabolite (self) :
         return True
 
-    def to_json (self) :
-        return {
-            "name" : self.type_name,
-            "sn" : self.short_name,
+    def to_json(self):
+        return dict(super(Metabolite, self).to_json(), **{
             "ans" : "", # TODO alternate_names
             "f" : self.molecular_formula,
             "mm" : float(self.molar_mass),
             "cc" : self.carbon_count,
             "chg" : self.charge,
-            "chgn" : self.charge,
-        }
+            "chgn" : self.charge, # TODO find anywhere in typescript using this and fix it
+        })
+
 
 class GeneIdentifier(MeasurementType):
     """
@@ -646,6 +669,7 @@ class GeneIdentifier(MeasurementType):
         """
         genes = cls.objects.all().order_by("type_name")
         return { g.type_name : g for g in genes }
+
 
 # Commented out until there is more to ProteinIdentifier than what already is in MeasurementType
 # class ProteinIdentifier(MeasurementType):
@@ -672,6 +696,7 @@ class MeasurementUnit(models.Model):
     def to_json (self) :
         return { "name" : self.unit_name }
 
+
 class Assay(EDDObject):
     """
     An examination of a Line, containing the Protocol and set of Measurements.
@@ -682,7 +707,7 @@ class Assay(EDDObject):
     protocol = models.ForeignKey(Protocol)
     object_ref = models.OneToOneField(EDDObject, parent_link=True)
     experimenter = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True,
-                                     related_name='+')
+                                     related_name='assay_experimenter_set')
     active = models.BooleanField(default=True)
     measurement_types = models.ManyToManyField(MeasurementType, through='Measurement')
 
@@ -700,6 +725,7 @@ class Assay(EDDObject):
 
     def to_json (self) :
         return {
+            "id": self.pk,
             "fn" : self.name,
             "ln" : self.line.name,
             "an" : self.name,
@@ -707,6 +733,7 @@ class Assay(EDDObject):
             "dis" : not self.active,
             "lid" : self.line.pk,
             "pid" : self.protocol.pk,
+            "meta": self.get_metadata_json(),
             "mea_c" : len(self.measurement_set.all()),
             "met_c" : len(self.get_metabolite_measurements()),
             "tra_c" : len(self.get_protein_measurements()),
@@ -715,11 +742,13 @@ class Assay(EDDObject):
             "exp" : self.experimenter.id,
         }
 
+
 class MeasurementCompartment (object) :
     UNKNOWN, INTRACELLULAR, EXTRACELLULAR = range(3)
     short_names = ["", "IC", "EC"]
     names = ["", "Intracellular/Cytosol (Cy)", "Extracellular"]
     GROUP_CHOICE = ( (str(i), cn) for (i,cn) in enumerate(names) )
+
 
 class Measurement(models.Model):
     """
@@ -730,14 +759,28 @@ class Measurement(models.Model):
         db_table = 'measurement'
     assay = models.ForeignKey(Assay)
     experimenter = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True,
-                                     related_name='+')
+                                     related_name='measurement_experimenter_set')
     measurement_type = models.ForeignKey(MeasurementType)
+    x_units = models.ForeignKey(MeasurementUnit, related_name='+')
+    y_units = models.ForeignKey(MeasurementUnit, related_name='+')
     update_ref = models.ForeignKey(Update, related_name='+')
     active = models.BooleanField(default=True)
     compartment = models.CharField(max_length=1,
                                    choices=MeasurementCompartment.GROUP_CHOICE,
                                    default=MeasurementCompartment.UNKNOWN)
     measurement_format = models.IntegerField(default=0)
+
+    def to_json(self):
+        points = chain(self.measurementdatum_set.all(), self.measurementvector_set.all())
+        return {
+            "id": self.pk,
+            "assay": self.assay.pk,
+            "type": self.measurement_type.pk,
+            "compartment": self.compartment,
+            "values": map(lambda p: p.to_json(), points),
+            "x_units": self.x_units.pk,
+            "y_units": self.y_units.pk,
+        }
 
     def __str__(self):
         return 'Measurement{%d}{%s}' % (self.assay.id, self.measurement_type)
@@ -806,6 +849,7 @@ class Measurement(models.Model):
         return (self.y_axis_units_name in
                 ["mg/L", "g/L", "mol/L", "mM", "uM", "Cmol/L"])
 
+
 class MeasurementDatum(models.Model):
     """
     A pair of scalars (x,y) as part of a Measurement.
@@ -813,11 +857,16 @@ class MeasurementDatum(models.Model):
     class Meta:
         db_table = 'measurement_datum'
     measurement = models.ForeignKey(Measurement)
-    x_units = models.ForeignKey(MeasurementUnit, related_name='+')
-    y_units = models.ForeignKey(MeasurementUnit, related_name='+')
     x = models.DecimalField(max_digits=16, decimal_places=5)
     y = models.DecimalField(max_digits=16, decimal_places=5, blank=True, null=True)
     updated = models.ForeignKey(Update, related_name='+')
+
+    def to_json(self):
+        return {
+            "id": self.pk,
+            "x": self.x,
+            "y": self.y,
+        }
 
     def __str__(self):
         return '(%f,%f)' % (self.x, self.y)
@@ -834,6 +883,7 @@ class MeasurementDatum(models.Model):
             return float(self.y)
         return None
 
+
 class MeasurementVector(models.Model):
     """
     A scalar-vector pair (x, (y0, y1, ... , yn)) as part of a Measurement.
@@ -841,11 +891,16 @@ class MeasurementVector(models.Model):
     class Meta:
         db_table = 'measurement_vector'
     measurement = models.ForeignKey(Measurement)
-    x_units = models.ForeignKey(MeasurementUnit, related_name='+')
-    y_units = models.ForeignKey(MeasurementUnit, related_name='+')
     x = models.DecimalField(max_digits=16, decimal_places=5)
     y = models.TextField()
     updated = models.ForeignKey(Update, related_name='+')
+
+    def to_json(self):
+        return {
+            "id": self.pk,
+            "x": self.x,
+            "y": self.y,
+        }
 
     def __str__(self):
         return '(%f,%f)' % (self.x, self.y)
@@ -882,6 +937,7 @@ class MetabolicMap (EDDObject) :
         import libsbml
         return libsbml.readSBML(str(self.xml_file.file.path))
 
+
 class MetaboliteExchange (models.Model) :
     """
     Mapping for a metabolite to an exchange defined by a metabolic map.
@@ -893,6 +949,7 @@ class MetaboliteExchange (models.Model) :
     measurement_type = models.ForeignKey(MeasurementType)
     reactant_name = models.CharField(max_length=255)
     exchange_name = models.CharField(max_length=255)
+
 
 class MetaboliteSpecies (models.Model) :
     """

@@ -4,6 +4,7 @@ Functions for exporting tables of assay measurements from EDD.  Replaces most
 of the old StudyExport.cgi.
 """
 
+from main.models import Assay, Line, Measurement, MetadataType
 from main.models import Assay, Line, Measurement
 from main.utilities import extract_id_list, extract_id_list_as_form_keys
 from collections import defaultdict
@@ -127,7 +128,7 @@ def extract_line_info_rows (lines, metadata_labels, column_flags) :
         row.add_item_if_not_flagged("Strain", line.strain_ids)
         row.add_item_if_not_flagged("CarbonSource", line.carbon_source_info)
         if (not column_flags.get("LineMetadata")) :
-            metadata = line.get_metadata_dict()
+            metadata = line.meta_store
             for column_name in metadata_labels :
                 row.append(str(metadata.get(column_name, "")))
         row.add_item_if_not_flagged("LineExperimenter",
@@ -139,12 +140,10 @@ def extract_line_info_rows (lines, metadata_labels, column_flags) :
 
 def get_unique_metadata_names (objects) :
     names = []
+    type_ids = set()
     for obj in objects :
-        metadata = obj.metadata.all()
-        for item in metadata :
-            if (not item.type_name in names) :
-                names.append(item.type_name)
-    return sorted(names)
+        type_ids.update(obj.meta_store.keys())
+    return MetadataType.objects.filter(pk__in=type_ids).values('type_name').order_by('type_name')
 
 def extract_line_column_headers (metadata_labels, column_flags) :
     row = TableRow(column_flags)
@@ -276,7 +275,7 @@ def assemble_table (
             row.add_item_if_not_flagged("AssayExperimenter",
                 assay.experimenter.username)
             row.add_item_if_not_flagged("AssayLastModified", assay.mod_epoch())
-            assay_metadata = assay.get_metadata_dict()
+            assay_metadata = assay.meta_store
             if (not column_flags.get("AssayMetadata", False)) :
                 for column_label in assay_metadata_labels :
                     row.append(str(assay_metadata.get(column_label, "")))

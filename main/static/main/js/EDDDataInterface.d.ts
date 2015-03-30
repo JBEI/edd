@@ -1,35 +1,60 @@
+interface UpdateRecord {
+    time: number;
+    user: number;
+}
 interface LineRecord {
-    n: string;
-    s: number;
-    m: string;
-    md: any;
-    ctrl: boolean;
-    cs: number[];
+    id: number;
+    name: string;
+    description: string;
+    active: boolean;
+    control: boolean;
+    replicate: any;
+    contact: any;
+    experimenter: number;
+    meta: any;
+    strain: number[];
+    carbon: number[];
     exp: number;
-    rid: number;
-    con: string;
-    dis: boolean;
-    mod: number;
+    modified: UpdateRecord;
+    created: UpdateRecord;
+    n: any;
+    m: any;
+    s: any;
+    cs: any;
+    md: any;
+    dis: any;
+    ctrl: any;
+    con: any;
 }
 interface AssayRecord {
-    an: string;
-    des: string;
-    dis: boolean;
-    md: any;
+    id: any;
+    name: string;
+    description: string;
+    active: boolean;
+    meta: any;
     lid: number;
     pid: number;
-    met_c: number;
-    tra_c: number;
-    pro_c: number;
-    mea_c: number;
     mod: number;
     exp: number;
     measurements: number[];
     metabolites: number[];
     transcriptions: number[];
     proteins: number[];
+    an: string;
+    des: string;
+    dis: boolean;
+    md: any;
+    met_c: number;
+    tra_c: number;
+    pro_c: number;
+    mea_c: number;
 }
 interface AssayMeasurementRecord {
+    id: number;
+    assay: number;
+    type: number;
+    compartment: string;
+    values: any[];
     aid: number;
     dis: boolean;
     lid: number;
@@ -41,9 +66,13 @@ interface AssayMeasurementRecord {
     uid: number;
     d: any[];
 }
-interface MetaboliteTypeRecord {
+interface MeasurementTypeRecord {
+    id: number;
     name: string;
     sn: string;
+    family: string;
+}
+interface MetaboliteTypeRecord extends MeasurementTypeRecord {
     ans: string[];
     f: string;
     mm: number;
@@ -53,11 +82,9 @@ interface MetaboliteTypeRecord {
     _l: any;
     selectString: string;
 }
-interface ProteinTypeRecord {
-    name: string;
+interface ProteinTypeRecord extends MeasurementTypeRecord {
 }
-interface GeneTypeRecord {
-    name: string;
+interface GeneTypeRecord extends MeasurementTypeRecord {
 }
 interface EDDData {
     currentStudyID: number;
@@ -73,6 +100,9 @@ interface EDDData {
     EnabledProtocolIDs: number[];
     Protocols: {
         [x: number]: any;
+    };
+    MeasurementTypes: {
+        [x: number]: MeasurementTypeRecord;
     };
     MetaboliteTypeIDs: number[];
     MetaboliteTypes: {
