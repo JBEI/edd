@@ -5,6 +5,7 @@ from main.solr import StudySearch
 import main.data_export
 import main.data_import
 import main.sbml_export
+import warnings
 
 class StudyTests(TestCase):
     
@@ -358,6 +359,38 @@ class ImportTests(TestCase) :
             raise Exception("Expected an AssertionError here")
 
 
+class SBMLUtilTests (TestCase) :
+    """
+    Unit tests for various utilities used in SBML export
+    """
+    def setUp (self) :
+        pass
+
+    def test_metabolite_name (self) :
+        guesses = \
+          main.sbml_export.generate_species_name_guesses_from_metabolite_name(
+            "acetyl-CoA")
+        assert (guesses == ['acetyl-CoA', 'acetyl_DASH_CoA', 'M_acetyl-CoA_c',
+                            'M_acetyl_DASH_CoA_c', 'M_acetyl_DASH_CoA_c_'])
+
+    def test_sbml_notes (self) :
+        try :
+            import libsbml
+        except ImportError :
+            warnings.warn(str(e), ImportWarning)
+        else :
+            notes = main.sbml_export.create_sbml_notes_object({
+              "CONCENTRATION_CURRENT" : [ 0.5 ],
+              "CONCENTRATION_HIGHEST" : [ 1.0 ],
+              "CONCENTRATION_LOWEST"  : [ 0.01 ],
+            })
+            notes_dict = main.sbml_export.parse_sbml_notes_to_dict(notes)
+            assert (dict(notes_dict) == {
+              'CONCENTRATION_CURRENT': ['0.5'],
+              'CONCENTRATION_LOWEST': ['0.01'],
+              'CONCENTRATION_HIGHEST': ['1.0'] })
+
+
 class ExportTests(TestCase) :
     """
     Test export of assay measurement data, either as simple tables or SBML.
@@ -523,6 +556,7 @@ class ExportTests(TestCase) :
         self.assertTrue(dp['title'] == "0.20000 at 8h")
         self.assertTrue(data.n_ramos_measurements == 0)
         all_meas = data.processed_measurements()
+        print all_meas
         self.assertTrue(len(all_meas) == 5)
         meas = all_meas[0]
         self.assertTrue(meas.n_errors == 0)

@@ -1,4 +1,7 @@
 
+# TODO clean this up, get rid of unnecessary code and make it internally
+# consistent
+
 # NOTE the structure of this module is more complicated than really necessary -
 # basically I am using a class hierarchy to separate out three different areas
 # of functionality:
@@ -27,10 +30,15 @@
 # NOTE 2: a lot of Garrett's comments have been ported from the Perl code.
 # some of these may need updating or removing.
 
+# NOTE 3: I apologize for my reliance on double-underscores to indicate
+# pseudo-"private" attributes and methods; it looks gross but it helps
+# clarify the intent (at least in my own mind).
+
 """
 Backend for exporting SBML files.
 """
 
+from __future__ import division
 from main.models import * # XXX sorry, we need most of the models
 from main.utilities import interpolate_at, line_export_base
 from collections import defaultdict, OrderedDict
@@ -55,7 +63,7 @@ class sbml_info (object) :
   def __init__ (self) :
     self._metabolic_maps = list(MetabolicMap.objects.all())
     self._chosen_map = None
-    self._sbml_parsed = None
+    self._sbml_doc = None
     self._sbml_model = None
     self._sbml_species = []
     self._sbml_reactions = []
@@ -69,9 +77,13 @@ class sbml_info (object) :
     self._protein_reactions = defaultdict(list) # indexed by protein ID
     self._resolved_species = OrderedDict()
     self._resolved_exchanges = OrderedDict()
-    self.biomass_exchange = None
+    self.biomass_exchange = None # XXX accessed directly by HTML template
     self._all_metabolites = sorted(Metabolite.objects.all(),
       lambda a,b: cmp(a.short_name, b.short_name))
+    self._metabolites_by_sname = { m.short_name : m
+        for m in self._all_metabolites }
+    self._biomass_metab = Metabolite.objects.get(short_name="OD")
+    self._modified = set() # track altered DB records - mostly for testing
 
   def _select_map (self, i_map=None, map_id=None) :
     assert ([i_map, map_id].count(None) == 1)
@@ -86,7 +98,7 @@ class sbml_info (object) :
         "self._process_sbml()!")
     sbml = self._chosen_map.parseSBML()
     model = sbml.getModel()
-    self._sbml_parsed = sbml
+    self._sbml_doc = sbml
     self._sbml_model = model
     reactant_to_exchange = defaultdict(list)
     # some simple internal classes for storing relevant information extracted
@@ -109,6 +121,14 @@ class sbml_info (object) :
         return len(O.notes)
       def __str__ (O) :
         return O.id
+      def assign_concentration (O, minimum, maximum, values) :
+        assert (len(values) > 0)
+        value = sum(values) / len(values)
+        O.notes["CONCENTRATION_CURRENT"] = value
+        if (minimum is not None) :
+          O.notes["CONCENTRATION_LOWEST"] = minimum
+        if (maximum is not None) :
+          O.notes['CONCENTRATION_HIGHEST'] = maximum
     class ReactionInfo (object) : # XXX this class may be superfluous
       def __init__ (O, reaction) :
         O.reaction = reaction
@@ -148,7 +168,7 @@ class sbml_info (object) :
       def n_notes (O) :
         return len(O.notes)
     class ExchangeInfo (object) :
-      def __init__ (O, reaction) :
+      def __init__ (O, reaction, is_biomass_rxn=False) :
         # XXX due to some mysterious bugs in libsbml, we need to extract as
         # much information as needed immediately rather than storing a
         # reference to the SBML object
@@ -172,12 +192,14 @@ class sbml_info (object) :
           format_list(O.reaction.getListOfReactants()) + sep + \
           format_list(O.reaction.getListOfProducts())
         # There must be one, and only one, reactant
-        if (O.n_reactants == 1) :
-          O.re_id = reactants[0].getSpecies()
-          O.stoichiometry = reactants[0].getStoichiometry()
+        if (O.n_reactants == 1) or (is_biomass_rxn) :
+          if (not is_biomass_rxn) :
+            O.re_id = reactants[0].getSpecies()
+            O.stoichiometry = reactants[0].getStoichiometry()
           # The single reactant must be exactly 1 unit of the given metabolite
           # (no fractional exchange)
-          if (O.stoichiometry == 1) and (O.kin_law is not None) :
+          if ((is_biomass_rxn) or
+              ((O.stoichiometry == 1) and (O.kin_law is not None))) :
             O.ub_param = O.kin_law.getParameter("UPPER_BOUND")
             O.lb_param = O.kin_law.getParameter("LOWER_BOUND")
             if (O.lb_param is not None) and (O.lb_param.isSetValue()) :
@@ -185,8 +207,9 @@ class sbml_info (object) :
               if (O.ub_param is not None) and (O.ub_param.isSetValue()) :
                 O.ub_value = O.ub_param.getValue()
                 O.reject = False
-                self._exchanges_by_id[O.ex_id] = O
-                reactant_to_exchange[O.re_id].append(O)
+                if (not is_biomass_rxn) :
+                  self._exchanges_by_id[O.ex_id] = O
+                  reactant_to_exchange[O.re_id].append(O)
       def upper_bound (O) :  return str(O.ub_value)
       def lower_bound (O) :  return str(O.lb_value)
       def bad_status_symbol (O) :
@@ -200,6 +223,18 @@ class sbml_info (object) :
         return None
       def __str__ (O) :
         return O.reaction_desc
+      def assign_flux_value (O, values) :
+        assert (len(values) > 0)
+        value = sum(values) / len(values)
+        if (O.kin_law is None) :
+          raise ValueError("no kinetic law found")
+        if (O.ub_param is None) :
+          raise ValueError("No UPPER_BOUND parameter found")
+        if (O.lb_param is None) :
+          raise ValueError("No LOWER_BOUND parameter found")
+        O.ub_param.setValue(value)
+        O.lb_param.setValue(value)
+        return len(values)
     for species in model.getListOfSpecies() :
       self._sbml_species.append(SpeciesInfo(species))
     for reaction in model.getListOfReactions() :
@@ -244,6 +279,8 @@ class sbml_info (object) :
           ex_resolved = reactant_to_exchange.get(name, [None])[0]
           if (ex_resolved is not None) :
             break
+      # FIXME this is inconsistent - indexing by ID here, but short_name
+      # elsewhere in this module
       self._resolved_exchanges[met.id] = ex_resolved
       if (ex_resolved is not None) :
         self._exchanges_to_metabolites[ex_resolved.ex_id] = met
@@ -259,13 +296,14 @@ class sbml_info (object) :
       if (sp_resolved is not None) :
         self._species_to_metabolites[sp_resolved.id] = met
     # finally, biomass reaction
-    biomass_metab = Metabolite.objects.get(short_name="OD")
     try :
       biomass_rxn = model.getReaction(self.biomass_reaction_id())
     except Exception :
       biomass_rxn = None
+      # TODO if this fails should it be an error?
     if (biomass_rxn is not None) :
-      self.biomass_exchange = ExchangeInfo(biomass_rxn)
+      self.biomass_exchange = ExchangeInfo(biomass_rxn, is_biomass_rxn=True)
+      #self._resolved_exchanges[biomass_metab.id] = self.biomass_exchange
 
   def _unique_resolved_exchanges (self) :
     return set([ ex.ex_id for ex in self._resolved_exchanges.values()
@@ -285,7 +323,7 @@ class sbml_info (object) :
   # parsed from the current SBML model.  If it does, the Metabolite Type is
   # reassigned to the species and the species ID is returned.  If it doesn't,
   # the function returns the species that is currently assigned, or an empty
-  # string if none.
+  # string if None.
   # TODO this needs testing for sure!
   def _reassign_metabolite_to_species (self, metabolite, species_id) :
     species_id = str(species_id)
@@ -299,6 +337,7 @@ class sbml_info (object) :
           measurement_type_id=metabolite.id)
         print "DELETING RECORD"
         record.delete()
+        self._modified.add(species_id)
     else :
       species_id = ""
     # If the given species ID doesn't resolve to anything, it's got to be an
@@ -323,6 +362,7 @@ class sbml_info (object) :
           measurement_type_id=metabolite.id)
       print "DELETING RECORD 2"
       record.delete()
+      self._modified.add(species_id)
     except Exception as e :
       print e
     # insert the new record
@@ -334,6 +374,7 @@ class sbml_info (object) :
     # Alter the internal hashes to reflect the change
     self._resolved_species[metabolite.id] = self._species_by_id[species_id]
     self._species_to_metabolites[species_id] = metabolite
+    self._modified.add(species_id)
 
   # XXX this works exactly like the previous method
   # TODO also testing
@@ -346,6 +387,7 @@ class sbml_info (object) :
           measurement_type_id=metabolite.id)
         print "DELETING RECORD"
         record.delete()
+        self._modified.add(exchange_id)
     else :
       exchange_id = ""
     if (self._exchanges_by_id.get(exchange_id, None) is None) :
@@ -372,9 +414,45 @@ class sbml_info (object) :
       exchange_name=exchange_id)
     self._resolved_exchanges[metabolite.id]=self._exchanges_by_id[exchange_id]
     self._exchanges_to_metabolites[exchanges_id] = metabolite
+    self._modified.add(exchange_id)
+
+  def _assign_concentration_to_species (self, mid, minimum, maximum, values) :
+    if (not mid in self._resolved_species) :
+      raise ValueError("no matching species")
+    species = self._resolved_species[mid]
+    species.assign_concentration(minimum, maximum, values)
+
+  def _assign_value_to_flux (self, mid, values) :
+    exchange = None
+    if (mid == self._biomass_metab.id) :
+      exchange = self.biomass_exchange
+    else :
+      if (not mid in self._resolved_exchanges) :
+        raise ValueError("no matching exchange reaction")
+      exchange = self._resolved_exchanges[mid]
+    return exchange.assign_flux_value(values)
+
+  def _assign_transcription_value_to_gene (self, gene_name, values) :
+    pass
+
+  def _assign_value_to_protein (self, protein_name, values) :
+    pass
+
+  def _add_notes (self, notes_dict) :
+    current_notes = {}
+    if self._sbml_model.isSetNotes() :
+      current_notes = parse_sbml_notes_to_dict(self._sbml_model.getNotes())
+    current_notes.update(notes_dict)
+    sbml_notes = create_sbml_notes_object(current_notes)
+    self._sbml_model.setNotes(sbml_notes)
+    return len(current_notes), len(notes_dict)
 
   #---------------------------------------------------------------------
   # "public" methods
+  @property
+  def n_modified (self) :
+    return len(self._modified)
+
   def biomass_reaction_id (self) :
     # XXX important - must be str, not unicode!
     return str(self._chosen_map.biomass_exchange_name)
@@ -660,6 +738,32 @@ def generate_species_name_guesses_from_metabolite_name (mname) :
     "M_" + mname_transcoded + "_c_",
   ]
 
+def create_sbml_notes_object (notes) :
+  """
+  Convert a Python dictionary or equivalent to native SBML objects.
+  """
+  import libsbml
+  notes_dict = dict(notes)
+  notes = libsbml.XMLNode()
+  triple = libsbml.XMLTriple("body", "", "")
+  att = libsbml.XMLAttributes()
+  ns = libsbml.XMLNamespaces()
+  ns.add("http://www.w3.org/1999/xhtml", "")
+  token = libsbml.XMLToken(triple, att, ns)
+  body_node = libsbml.XMLNode(token)
+  ns.clear()
+  triple2 = libsbml.XMLTriple("p", "", "")
+  token2 = libsbml.XMLToken(triple2, att, ns)
+  for header in notes_dict.keys() :
+    for line in notes_dict[header] :
+      tt = libsbml.XMLToken(header + ":" + str(line))
+      n = libsbml.XMLNode(tt)
+      node = libsbml.XMLNode(token2)
+      node.addChild(n)
+      body_node.addChild(node)
+  notes.addChild(body_node)
+  return notes
+
 ########################################################################
 #
 # LAYER 2: ASSAY DATA PROCESSING
@@ -684,27 +788,26 @@ class line_assay_data (line_export_base) :
     # Initializing these for use later
     # Get a master set of all timestamps that contain data, separated according
     # to Line ID.
-    self.od_times_by_line = defaultdict(dict)
+    self._od_times_by_line = defaultdict(dict)
     self.have_gcdw_metadata = False
-    self.od_measurements = []
+    self._od_measurements = []
     # We will eventually use this 'checked' hash as a filter for all the
     # Measurements we intend to process and embed
-    self.metabolites_checked = {}
+    self._metabolites_checked = {}
     self._transcriptions_checked = set()
     self._proteins_checked = set()
-    self.metabolite_is_input = {}
-    self.metabolite_stats = {}
-    self.usable_metabolites_by_assay = defaultdict(list)
+    self._metabolite_is_input = {}
+    self._usable_metabolites_by_assay = defaultdict(list)
     self._proteomics_by_assay = defaultdict(list)
     self._transcription_by_assay = defaultdict(list)
-    self.measurement_ranges = {}
-    self.usable_protocols = defaultdict(list) # keyed by protocol category
-    self.usable_assays = defaultdict(dict) # keyed by P.category, P.name
-    self.usable_measurements = defaultdict(list) # keyed by protocol category
+    self._measurement_ranges = {}
+    self._usable_protocols = defaultdict(list) # keyed by protocol category
+    self._usable_assays = defaultdict(dict) # keyed by P.category, P.name
+    # this one isn't currently used for anything other than counting - we
+    # could just as easily replace 'list' with 'int'
+    self._usable_measurements = defaultdict(list) # keyed by protocol category
     # this tracks what measurement values are the result of interpolation
     self.interpolated_measurement_timestamps = defaultdict(set)
-    # this tracks processed measurement data (possibly interpolated)
-    self.measurement_data = defaultdict(list)
     # RAMOS stuff
     self.need_ramos_units_warning = False
     # This is a hash by Assay number, since all Transcriptomics measurements in
@@ -715,20 +818,24 @@ class line_assay_data (line_export_base) :
     # an Assay are grouped
     self.have_proteomics_to_embed = False
     self._consolidated_protein_ms = defaultdict(dict)
-    # This is where we'll accumulate our processed flux data.
-    # A multi-level hash, creating a hierarchy from Timestamps to Metabolites
-    # to flux values.  When it comes time to embed this in the SBML, we'll
-    # aggregate all the fluxes for each metabolite/timestamp and produce an
-    # upper and lower bound with a sensible margin of error.
-    self.flux_data_by_metabolite = defaultdict(dict)
-    self._flux_data_types_available = set()
+    # this tracks processed measurement data (possibly interpolated)
     self._processed_metabolite_data = []
     self._processed_carbon_ratio_data = []
-    self._comprehensive_valid_OD_mtimes = {}
-    # Here's where we accumulate values to embed in "species" (generally
-    # metabolites) in the SBML
-    self.species_data_by_metabolite = defaultdict(dict)
+    self._comprehensive_valid_OD_mtimes = []
+    self._metabolite_minima = {}
+    self._metabolite_maxima = {}
+    # This is where we'll accumulate our processed concentration and flux data.
+    # A multi-level hash, creating a hierarchy from Timestamps to Metabolites
+    # to values.  When it comes time to embed this in the SBML, we'll
+    # aggregate all the  datafor each metabolite/timestamp and produce an
+    # upper and lower bound with a sensible margin of error.
+    self._flux_data_by_metabolite = defaultdict(dict)
+    self._species_data_by_metabolite = defaultdict(dict)
+    self._carbon_data_by_metabolite = defaultdict(dict)
     self._species_data_types_available = set()
+    self._flux_data_types_available = set()
+    # biomass gets its own
+    self._biomass_data = defaultdict(list)
 
   def run (self) :
     """
@@ -791,8 +898,8 @@ class line_assay_data (line_export_base) :
       raise ValueError("Cannot find the OD600 protocol by name!")
     mt_meas_type = MeasurementType.objects.get(short_name="OD")
     # TODO look for gCDW/L/OD600 metadata
-    self.usable_protocols["OD"] = od_protocols
-    self.usable_assays["OD"] = defaultdict(list)
+    self._usable_protocols["OD"] = od_protocols
+    self._usable_assays["OD"] = defaultdict(list)
     od_assays = self._assays.get(od_protocols[0].id, [])
     # XXX do we still need to cross-reference with selected lines? I think not
     if (len(od_assays) == 0) :
@@ -806,14 +913,14 @@ class line_assay_data (line_export_base) :
       all_meas = self._get_metabolite_measurements(assay.id)
       assay_meas = [ m for m in all_meas if
                      (m.measurement_type_id == mt_meas_type.id) ]
-      self.od_measurements.extend(assay_meas)
+      self._od_measurements.extend(assay_meas)
       if (len(assay_meas) > 0) :
-        self.usable_assays["OD"][od_protocols[0].name].append(assay)
-    if (len(self.od_measurements) == 0) :
+        self._usable_assays["OD"][od_protocols[0].name].append(assay)
+    if (len(self._od_measurements) == 0) :
       raise ValueError("Assay selection has no Optical Data measurements "+
         "entered.  Biomass measurements are essential for FBA.")
     # Use all OD Measurements we can by default
-    selected_od_meas = self.od_measurements
+    selected_od_meas = self._od_measurements
     if self.submitted_from_export_page :
       selected_od_meas = []
       for m in od_measurements :
@@ -821,12 +928,12 @@ class line_assay_data (line_export_base) :
         if (form_key in self.form) :
           selected_od_meas.append(m)
     for od_meas in selected_od_meas :
-      self.metabolites_checked[od_meas.id] = True
+      self._metabolites_checked[od_meas.id] = True
     # get X-value limits now and store for later
     min_od_x, max_od_x = self._find_min_max_x_in_measurements(
-      self.od_measurements,
+      self._od_measurements,
       defined_only=True)
-    self.measurement_ranges["OD"] = (min_od_x, max_od_x)
+    self._measurement_ranges["OD"] = (min_od_x, max_od_x)
     if (len(selected_od_meas) == 0) :
       raise ValueError("No Optical Data measurements were selected. "+
         "Biomass measurements are essential for FBA.")
@@ -881,7 +988,7 @@ class line_assay_data (line_export_base) :
       mdata = self._get_measurement_data(m.id)
       xvalues = [ md.fx for md in mdata if md.fy is not None ]
       for h in xvalues :
-        self.od_times_by_line[m.assay.line_id][h] = 0
+        self._od_times_by_line[m.assay.line_id][h] = 0
     # For each Line, we take the full set of valid timstamps,
     # then walk through each set of OD Measurements and attempt to find a value
     # for that timestamp based on the data in that Measurement.
@@ -891,8 +998,8 @@ class line_assay_data (line_export_base) :
     # result, and store it in a list.  Finally, we average everything on each
     # list, and declare that value to be the official calibrated OD at that
     # timestamp for that Line.
-    for line_id in self.od_times_by_line.keys() :
-      all_times = self.od_times_by_line[line_id].keys()
+    for line_id in self._od_times_by_line.keys() :
+      all_times = self._od_times_by_line[line_id].keys()
       for t in all_times :
         y_values = []
         for odm in od_measurements_by_line[line_id] :
@@ -909,19 +1016,20 @@ class line_assay_data (line_export_base) :
           if (y_interp is not None) :
             y_values.append(y_interp * gcdw_cal)
         assert (len(y_values) > 0)
-        self.od_times_by_line[line_id][t] = sum(y_values) / len(y_values)
+        self._od_times_by_line[line_id][t] = sum(y_values) / len(y_values)
       # We have now created a master set of calibrated OD values for each Line,
       # using every available hard data point in the available Assays.  At this
-      # point, self.od_times_by_line contains timestamps that cover all of the
+      # point, self._od_times_by_line contains timestamps that cover all of the
       # points for which I want to generate fluxes.
     # Make a list of all the Line IDs that have at least two points of OD
     # data to work with.
-    lines_with_useful_od = [ line_id for line_id in self.od_times_by_line if
-      len(self.od_times_by_line[line_id]) > 1 ]
+    lines_with_useful_od = [ line_id for line_id in self._od_times_by_line if
+      len(self._od_times_by_line[line_id]) > 1 ]
     if (len(lines_with_useful_od) == 0) :
       raise ValueError("Selected Optical Data contains less than two " +
         "defined data points!  Biomass measurements are essential for FBA, " +
         "and we need at least two to define a growth rate.")
+    # FIXME are lines taken into account later?
 
   # Step 3: Select HPLC-like Measurements and mark the ones that are inputs
   def _step_3_get_hplc_data (self) :
@@ -944,7 +1052,7 @@ class line_assay_data (line_export_base) :
       assays = self._assays.get(protocol.id, [])
       if (len(assays) == 0) :
         continue
-      self.usable_assays[protocol_category] = defaultdict(list)
+      self._usable_assays[protocol_category] = defaultdict(list)
       # Sort by the Assay name, then re-sort by the Line name.
       assays.sort(lambda a,b: cmp(a.name, b.name))
       assays.sort(lambda a,b: cmp(a.line.name, b.line.name))
@@ -960,19 +1068,19 @@ class line_assay_data (line_export_base) :
         assay_has_usable_data = False
         for m in metabolites :
           if self._process_metabolite_measurement(m) :
-            self.usable_measurements[protocol_category].append(m)
-            self.usable_metabolites_by_assay[assay.id].append(m)
+            self._usable_measurements[protocol_category].append(m)
+            self._usable_metabolites_by_assay[assay.id].append(m)
             assay_has_usable_data = True
         # All transcription data are usable - there are no units restrictions
         transcriptions = self._process_transcription_measurements(assay)
         if (transcriptions is not None) :
-          self.usable_measurements[protocol_category].extend(transcriptions)
+          self._usable_measurements[protocol_category].extend(transcriptions)
           self._transcription_by_assay[assay.id].extend(transcriptions)
           assay_has_usable_data = True
         # same with proteomics data
         proteomics = self._process_proteomics_measurements(assay)
         if (proteomics is not None) :
-          self.usable_measurements[protocol_category].extend(proteomics)
+          self._usable_measurements[protocol_category].extend(proteomics)
           self._proteomics_by_assay[assay.id].extend(proteomics)
           assay_has_usable_data = True
         # Carbon Ratio data is handled in a simpler manner.
@@ -988,23 +1096,23 @@ class line_assay_data (line_export_base) :
             if (not meas_type.id in seen_cr_measurement_types) :
               m_selected = True
               seen_cr_measurement_types.add(meas_type.id)
-          self.metabolites_checked[m.id] = m_selected
-          self.usable_measurements["LCMS"].append(m)
-          self.usable_metabolites_by_assay[assay.id].append(m)
+          self._metabolites_checked[m.id] = m_selected
+          self._usable_measurements["LCMS"].append(m)
+          self._usable_metabolites_by_assay[assay.id].append(m)
           assay_has_usable_data = True
         # If the Assay has any usable Measurements, add it to a hash sorted
         # by Protocol
         if assay_has_usable_data :
-          self.usable_assays[protocol_category][protocol.name].append(assay)
-      usable_assays = self.usable_assays[protocol_category][protocol.name]
+          self._usable_assays[protocol_category][protocol.name].append(assay)
+      usable_assays = self._usable_assays[protocol_category][protocol.name]
       if (len(usable_assays) > 0) :
-        self.usable_protocols[protocol_category].append(protocol)
-    if (len(self.usable_protocols.get(protocol_category, [])) > 0) :
+        self._usable_protocols[protocol_category].append(protocol)
+    if (len(self._usable_protocols.get(protocol_category, [])) > 0) :
       min_x, max_x = self._find_min_max_x_in_measurements(
-        self.usable_measurements[protocol_category], True)
-      self.measurement_ranges[protocol_category] = (min_x, max_x)
+        self._usable_measurements[protocol_category], True)
+      self._measurement_ranges[protocol_category] = (min_x, max_x)
     else :
-      self.measurement_ranges[protocol_category] = (None, None)
+      self._measurement_ranges[protocol_category] = (None, None)
 
   def _process_metabolite_measurement (self, m) :
     """private method"""
@@ -1017,8 +1125,8 @@ class line_assay_data (line_export_base) :
     if (not self.submitted_from_export_page) :
       m_selected = True
       m_is_input = False
-    self.metabolites_checked[m.id] = m_selected
-    self.metabolite_is_input[m.id] = m_is_input
+    self._metabolites_checked[m.id] = m_selected
+    self._metabolite_is_input[m.id] = m_is_input
     return True
 
   def _process_transcription_measurements (self, assay) :
@@ -1068,7 +1176,7 @@ class line_assay_data (line_export_base) :
       assays = self._assays.get(protocol.id, [])
       if (len(assays) == 0) :
         continue
-      self.usable_assays["RAMOS"] = defaultdict(list)
+      self._usable_assays["RAMOS"] = defaultdict(list)
       assays.sort(lambda a,b: cmp(a.name, b.name))
       assays.sort(lambda a,b: cmp(a.line.name, b.line.name))
       for assay in assays :
@@ -1088,29 +1196,30 @@ class line_assay_data (line_export_base) :
             is_input = False
             if re.match("O2|\WO2", m.name) :
               is_input = True
-          self.metabolites_checked[m.id] = is_selected
-          self.metabolite_is_input[m.id] = is_input
-          self.usable_metabolites_by_assay[assay.id].append(m)
-          self.usable_measurements["RAMOS"].append(m)
+          self._metabolites_checked[m.id] = is_selected
+          self._metabolite_is_input[m.id] = is_input
+          self._usable_metabolites_by_assay[assay.id].append(m)
+          self._usable_measurements["RAMOS"].append(m)
           assay_has_usable_data = True
         # If the Assay has any usable Measurements, add it to a hash sorted
         # by Protocol
         if assay_has_usable_data :
-          self.usable_assays["RAMOS"][protocol.name].append(assay)
-      if (len(self.usable_assays["RAMOS"].get(protocol.name, [])) > 0) :
-        self.usable_protocols["RAMOS"].append(protocol)
+          self._usable_assays["RAMOS"][protocol.name].append(assay)
+      if (len(self._usable_assays["RAMOS"].get(protocol.name, [])) > 0) :
+        self._usable_protocols["RAMOS"].append(protocol)
     if (self.n_ramos_measurements > 0) :
       min_x, max_x = self._find_min_max_x_in_measurements(
-        self.usable_measurements["RAMOS"], True)
-      self.measurement_ranges["RAMOS"] = (min_x, max_x)
+        self._usable_measurements["RAMOS"], True)
+      self._measurement_ranges["RAMOS"] = (min_x, max_x)
     else :
-      self.measurement_ranges["RAMOS"] = (None, None)
+      self._measurement_ranges["RAMOS"] = (None, None)
 
   def _step_6_get_transcriptomics_proteomics (self) :
     """private method"""
     if self.debug : print "STEP 6: get transcriptomics/proteomics data"
     self._process_multi_purpose_protocol("TPOMICS")
 
+  # FIXME too spaghetti-like; refactor?
   def _step_7_calculate_fluxes (self) :
     """private method"""
     if self.debug : print "STEP 7: calculate fluxes"
@@ -1118,13 +1227,13 @@ class line_assay_data (line_export_base) :
     measurement_ids = []
     measurement_protocol_categories = {}
     measurement_assays = {}
-    for category in self.usable_protocols :
+    for category in self._usable_protocols :
       if (category == "TPOMICS") :
         continue
-      for protocol in self.usable_protocols[category] :
-        for assay in self.usable_assays[category][protocol.name] :
+      for protocol in self._usable_protocols[category] :
+        for assay in self._usable_assays[category][protocol.name] :
           for m in self._get_measurements(assay.id) :
-            is_checked = self.metabolites_checked.get(m.id, None)
+            is_checked = self._metabolites_checked.get(m.id, None)
             if is_checked :
               all_checked_measurements.append(m)
               measurement_protocol_categories[m.id] = category
@@ -1132,6 +1241,11 @@ class line_assay_data (line_export_base) :
             elif (is_checked is None) and self.debug :
               print "  warning: skipping measurement %d for assay '%s'" % \
                 (m.id, m.assay.name)
+    # FIXME not sure this should be necessary...
+    for m in self._od_measurements :
+      if self._metabolites_checked.get(m.id, None) :
+        if (not m.id in measurement_assays) :
+          all_checked_measurements.append(m)
     all_checked_measurements.sort(lambda a,b:
       cmp(a.short_name.lower(), b.short_name.lower()))
     if self.debug : print "  data fetched"
@@ -1153,15 +1267,20 @@ class line_assay_data (line_export_base) :
       # * Have at LEAST two measurement values for this measurement
       result = None
       if m.is_carbon_ratio() :
-        result = carbon_ratio_measurement(
+        crm = carbon_ratio_measurement(
           measurement=m,
           measurement_data=self._measurement_data[m.id],
           measurement_type=self._measurement_types[m.id],
           assay_name=self._assay_names[assay.id])
-        # TODO track whether a duplicate measurement gets skipped
-        self._processed_carbon_ratio_data.append(result)
+        self._processed_carbon_ratio_data.append(crm)
+        for t in crm.mtimes :
+          if (not crm.metabolite_name in self._carbon_data_by_metabolite[t]) :
+            value = crm.value_at_time(t)
+            # TODO track whether a duplicate measurement gets skipped
+            if (value is not None) :
+              self._carbon_data_by_metabolite[t][crm.metabolite_name] = value
       else :
-        result = processed_measurement(
+        pm = processed_measurement(
           measurement=m,
           measurement_data=self._measurement_data[m.id],
           measurement_type=self._measurement_types[m.id],
@@ -1169,14 +1288,35 @@ class line_assay_data (line_export_base) :
           assay_name=self._assay_names[assay.id],
           y_units=self._get_y_axis_units_name(m.id),
           protocol_category=protocol_category,
-          line_od_values=self.od_times_by_line[line_id],
-          is_input=self.metabolite_is_input.get(m.id, False),
+          line_od_values=self._od_times_by_line[line_id],
+          is_input=self._metabolite_is_input.get(m.id, False),
           is_od_measurement=(m.measurement_type_id == od_mtype.id),
           use_interpolation=(protocol_category != "OD"))
-        self._processed_metabolite_data.append(result)
-        if (result.n_errors == 0) and (protocol_category != "OD") :
-          self._species_data_types_available.add(result.metabolite_name)
-          self._flux_data_types_available.add(result.metabolite_name)
+        self._processed_metabolite_data.append(pm)
+        if (pm.n_errors == 0) :
+          if (protocol_category != "OD") :
+            mname = pm.metabolite_name
+            for t in pm.mtimes :
+              if (not mname in self._species_data_by_metabolite[t]) :
+                self._species_data_by_metabolite[t][mname] = []
+              if (not mname in self._flux_data_by_metabolite[t]) :
+                self._flux_data_by_metabolite[t][mname] = []
+              flux = pm.flux_at_time_point(t)
+              if (flux is not None) :
+                self._flux_data_by_metabolite[t][mname].append(flux)
+                self._species_data_by_metabolite[t][mname].append(flux)
+                self._species_data_types_available.add(mname)
+                self._flux_data_types_available.add(mname)
+            m_min, m_max = pm.min_max()
+            self._metabolite_minima[pm.metabolite_name] = min(m_min,
+              self._metabolite_minima.get(pm.metabolite_name, sys.maxint))
+            self._metabolite_maxima[pm.metabolite_name] = min(m_max,
+              self._metabolite_maxima.get(pm.metabolite_name, -sys.maxint))
+        if pm.is_od_measurement :
+          for t in pm.mtimes :
+            flux = pm.flux_at_time_point(t)
+            if (flux is not None) :
+              self._biomass_data[t].append(flux)
     # At this point we know exactly which timestamps have valid flux
     # measurements (these have already been filtered for valid OD).
     # We'll note the time as one of the columns we will want to offer in the
@@ -1184,8 +1324,8 @@ class line_assay_data (line_export_base) :
     # reject this Measurement based on problems with unit conversion or lack
     # of an exchange element in the SBML document.  (The zero in the table
     # will be informative to the user.)
-    data_times = [ d.mtimes for d in self._processed_metabolite_data ]
-    self._comprehensive_valid_OD_times=set(list(itertools.chain(*data_times)))
+    mtimes = self._flux_data_by_metabolite.keys()
+    self._comprehensive_valid_OD_times = sorted(mtimes)
 
   # Used for extracting HPLC/LCMS/RAMOS assays for display.  Metabolites are
   # listed individually, proteomics and transcriptomics measurements are
@@ -1255,9 +1395,9 @@ class line_assay_data (line_export_base) :
           "include" : (assay.id in self._proteins_checked),
           "input" : None,
         })
-      for m in self.usable_metabolites_by_assay.get(assay.id, ()) :
+      for m in self._usable_metabolites_by_assay.get(assay.id, ()) :
         meas_type = self._get_measurement_type(m.id).type_group
-        is_checked = self.metabolites_checked[m.id]
+        is_checked = self._metabolites_checked[m.id]
         data_points = []
         for md in self._get_measurement_data(m.id) :
           x = md.fx
@@ -1277,7 +1417,7 @@ class line_assay_data (line_export_base) :
           "n_points" : len(data_points),
           "include" : is_checked,
           # XXX this is irrelevant for carbon ratio measurements
-          "input" : self.metabolite_is_input.get(m.id, False),
+          "input" : self._metabolite_is_input.get(m.id, False),
         })
       assay_list.append({
         "name" : self._assay_names[assay.id],
@@ -1286,13 +1426,13 @@ class line_assay_data (line_export_base) :
     return assay_list
 
   def _export_protocol_measurements (self, category) :
-    if (len(self.usable_protocols[category]) == 0) :
+    if (len(self._usable_protocols[category]) == 0) :
       raise RuntimeError("No usable measurements in this category!")
     data = []
-    min_x, max_x = self.measurement_ranges[category]
-    for protocol in self.usable_protocols[category] :
+    min_x, max_x = self._measurement_ranges[category]
+    for protocol in self._usable_protocols[category] :
       assay_list = self._export_assay_measurements(
-        assays=self.usable_assays[category][protocol.name],
+        assays=self._usable_assays[category][protocol.name],
         max_x=max_x)
       protocol_data = {
         "name" : protocol.name,
@@ -1309,8 +1449,8 @@ class line_assay_data (line_export_base) :
     Provide data structure for display of OD600 measurements in HTML template.
     """
     meas_list = []
-    min_x, max_x = self.measurement_ranges["OD"]
-    for m in self.od_measurements :
+    min_x, max_x = self._measurement_ranges["OD"]
+    for m in self._od_measurements :
       data_points = []
       for md in self._get_measurement_data(m.id) :
         x = md.fx
@@ -1325,7 +1465,7 @@ class line_assay_data (line_export_base) :
         "assay_name" : m.assay.name,
         "data_points" : data_points,
         "n_points" : len(data_points),
-        "include" : self.metabolites_checked[m.id],
+        "include" : self._metabolites_checked[m.id],
       })
     return meas_list
 
@@ -1336,7 +1476,7 @@ class line_assay_data (line_export_base) :
 
   @property
   def n_hplc_measurements (self) :
-    return len(self.usable_measurements["HPLC"])
+    return len(self._usable_measurements["HPLC"])
 
   def export_hplc_measurements (self) :
     return self._export_protocol_measurements("HPLC")
@@ -1351,7 +1491,7 @@ class line_assay_data (line_export_base) :
 
   @property
   def n_lcms_measurements (self) :
-    return len(self.usable_measurements["LCMS"])
+    return len(self._usable_measurements["LCMS"])
 
   # RAMOS
   @property
@@ -1360,7 +1500,7 @@ class line_assay_data (line_export_base) :
 
   @property
   def n_ramos_measurements (self) :
-    return len(self.usable_measurements["RAMOS"])
+    return len(self._usable_measurements["RAMOS"])
 
   def export_ramos_measurements (self) :
     return self._export_protocol_measurements("RAMOS")
@@ -1372,7 +1512,7 @@ class line_assay_data (line_export_base) :
 
   @property
   def n_trans_prot_measurements (self) :
-    return len(self.usable_measurements["TPOMICS"])
+    return len(self._usable_measurements["TPOMICS"])
 
   def export_trans_prot_measurements (self) :
     return self._export_protocol_measurements("TPOMICS")
@@ -1387,6 +1527,16 @@ class line_assay_data (line_export_base) :
 
   def processed_measurements (self) :
     return self._processed_metabolite_data
+
+  def metabolites_at_time_point (self, t) :
+    data = self._species_data_by_metabolite[t]
+    result = []
+    for mname in sorted(data.keys()) :
+      result.append(data[mname])
+    return result
+
+  def fluxes_at_time_point (self, t) :
+    return sorted(self._flux_data_by_metabolite[t].keys())
 
 #-----------------------------------------------------------------------
 # Data container classes
@@ -1475,6 +1625,9 @@ class measurement_datum_converted_units (object) :
       fields += ["[interpolated]"]
     return " ".join(fields)
 
+# FIXME this could use some refactoring - maybe move the logic back to the
+# step_7 method above, keep flux_calculation or something like it as the
+# primary result?
 class processed_measurement (object) :
   is_carbon_ratio = False
   def __init__ (self,
@@ -1527,7 +1680,8 @@ class processed_measurement (object) :
     mdata_tuples.sort(lambda a,b: cmp(a[0], b[0]))
     # Container for a computed metabolite flux at a given time interval.
     class flux_calculation (object) :
-      def __init__ (O, start, end, y, delta, units, flux, interpolated) :
+      def __init__ (O, mname, start, end, y, delta, units, flux, interpolated):
+        O.mname = mname
         O.start = start
         O.end = end
         O.y = y
@@ -1538,6 +1692,9 @@ class processed_measurement (object) :
       @property
       def elapsed (O) :
         return O.end - O.start
+      @property
+      def conc (O) :
+        return O.y
       def __float__ (O) :
         return O.flux
       @property
@@ -1607,6 +1764,7 @@ class processed_measurement (object) :
         delta_y = md_next.y - md.y
         delta = delta_y
         flux = None
+        mname = self.metabolite_name
         if (protocol_category == "OD") :
           if (od_next is None) :
             self.warnings.append(("No OD measurement was found at the next "+
@@ -1642,6 +1800,7 @@ class processed_measurement (object) :
           delta = md.y
         self._flux_data.append(
           flux_calculation(
+            mname=mname,
             start=t,
             end=t_end,
             y=md.y,
@@ -1685,14 +1844,11 @@ class processed_measurement (object) :
   def flux_at_time_point (self, t) :
     for fd in self._flux_data :
       if (fd.start == t) :
-        return fd.flux
+        return fd
     return None
 
-  def concentration_at_time_point (self, t) :
-    for fd in self._flux_data :
-      if (fd.start == t) :
-        return fd.y
-    return None
+  def __repr__ (self) :
+    return "<processed_measurement:%s>" % self.metabolite_name
 
 class carbon_ratio_measurement (object) :
   is_carbon_ratio = True
@@ -1700,6 +1856,7 @@ class carbon_ratio_measurement (object) :
       assay_name) :
     self.measurement_id = measurement
     self.assay_name = assay_name
+    self.metabolite_id = measurement_type.id
     self.metabolite_name = measurement_type.short_name
     self._cr_data = []
     for mv in measurement_data :
@@ -1709,6 +1866,16 @@ class carbon_ratio_measurement (object) :
 
   def cr_data (self) :
     return self._cr_data
+
+  @property
+  def mtimes (self) :
+    return [ md.fx for md in self._cr_data ]
+
+  def value_at_time (self, t) :
+    for md in self._cr_data :
+      if (md.fx == t) :
+        return md.y
+    return None
 
 ########################################################################
 #
@@ -1785,7 +1952,6 @@ class line_sbml_export (line_assay_data, sbml_info) :
     """private method"""
     if self.debug : print "STEP 8: match to species in SBML file"
     self._process_sbml()
-    metabolites_by_sname = { m.short_name : m for m in self._all_metabolites }
     if (len(self._species_data_types_available) > 0) :
       # First we attempt to locate the form element that describes the set of
       # exmatch# elements that were submitted with the last page.
@@ -1804,7 +1970,7 @@ class line_sbml_export (line_assay_data, sbml_info) :
       # 'undef', for any spmatch# element that was on the previous incarnation
       # of the page.
       for species in sorted(list(self._species_data_types_available)) :
-        metabolite = metabolites_by_sname[species]
+        metabolite = self._metabolites_by_sname[species]
         form_element_id = "spmatch" + str(metabolite.id)
         species_match = self._reassign_metabolite_to_species(
           metabolite=metabolite,
@@ -1822,7 +1988,7 @@ class line_sbml_export (line_assay_data, sbml_info) :
       elements = [ "exmatch"+x for x in elements ]
       exchange_matches = {ex_id:self.form.get(ex_id, "") for ex_id in elements}
       for species in sorted(list(self._flux_data_types_available)) :
-        metabolite = metabolites_by_sname[species]
+        metabolite = self._metabolites_by_sname[species]
         form_element_id = "exmatch%d" % metabolite.id
         exchange_match = self._reassign_metabolite_to_reactant(
           metabolite=metabolite,
@@ -1865,11 +2031,53 @@ class line_sbml_export (line_assay_data, sbml_info) :
                 self._consolidated_proteomics_ms[t][protein_name] = []
               self._consolidated_proteomics_ms[t][protein_name].append(md.fy)
 
-  def as_sbml (self) :
+  def as_sbml (self, export_time) :
     """
     Export the SBML with our processed measurements incorporated.
     """
-    pass
+    assert (export_time in self._comprehensive_valid_OD_times)
+    t = export_time
+    species_data = self._species_data_by_metabolite[t]
+    flux_data = self._flux_data_by_metabolite[t]
+    for mname in species_data.keys() :
+      metabolite = self._metabolites_by_sname[mname]
+      m_hi = self._metabolite_maxima[mname]
+      m_lo = self._metabolite_minima[mname]
+      try :
+        self._assign_concentration_to_species(metabolite.id,
+          maximum=m_hi,
+          minimum=m_lo,
+          values=[ d.conc for d in species_data[mname] ])
+      except ValueError as e :
+        print e
+    for mname in flux_data.keys() :
+      metabolite = self._metabolites_by_sname[mname]
+      values = [ d.flux for d in flux_data[mname] ]
+      try :
+        self._assign_value_to_flux(metabolite.id, values)
+      except ValueError as e :
+        print e
+    # now biomass
+    values = [ d.flux for d in self._biomass_data[t] ]
+    self._assign_value_to_flux(self._biomass_metab.id, values)
+    # TODO transcriptomics
+    # TODO proteomics
+    carbon_data = self._carbon_data_by_metabolite.get(t, {})
+    if (len(carbon_data) > 0) :
+      carbon_notes = { "LCMS" : [] }
+      for mname, value_str in carbon_data.iteritems() :
+        values = value_str.split("/")
+        combined = []
+        for c in range(13) :
+          if (c < len(values)) :
+            combined.append(values[c] + "(0.02)\t")
+          else :
+            combined.append("-\t")
+        carbon_notes["LCMS"].append(mname + "\tM-0\t" + "".join(combined))
+      n_total, n_added = self._add_notes(carbon_notes)
+    # TODO some kind of feedback?
+    import libsbml
+    return libsbml.writeSBMLToString(self._sbml_doc)
 
   #---------------------------------------------------------------------
   # SBML NAME RESOLUTION
@@ -1933,3 +2141,7 @@ class line_sbml_export (line_assay_data, sbml_info) :
   @property
   def n_protein_names_resolved (self) :
     return self._proteomics_in_sbml_model.values().count(False)
+
+  @property
+  def available_timepoints (self) :
+    return self._comprehensive_valid_OD_times
