@@ -10,8 +10,10 @@ with the old EDD (to the extent that it's behaving correctly).
 
 from main.models import Study, Line
 from main import sbml_export
+from main.sbml_export import parse_sbml_notes_to_dict
 from django.core.management.base import BaseCommand, CommandError
 import unittest
+import os.path
 
 class SBMLTests (unittest.TestCase) :
   def test_sbml_setup (self) :
@@ -66,9 +68,62 @@ class SBMLTests (unittest.TestCase) :
       {'exchange': 'R_EX_pyr_LPAREN_e_RPAREN_', 'name': u'Pyruvate', 'short_name': u'pyr', 'id': 13},
       {'exchange': 'R_EX_succ_LPAREN_e_RPAREN_', 'name': u'Succinate', 'short_name': u'succ', 'id': 11}
     ])
-    # TODO lots more
-    out = sd.as_sbml(9.5)
-    #open("tmp.xml", "w").write(out)
+    out = sd.as_sbml(13)
+    open("/var/tmp/sbml_tmp.xml", "w").write(out)
+    # Diff this file against an equivalent output from the old EDD
+    import libsbml
+    dir_name = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    file_name = os.path.join(dir_name, "fixtures", "misc_data",
+      "edd-s34l368t13-arcA-1L.sbml")
+    s1 = libsbml.readSBML(file_name)
+    s2 = libsbml.readSBML("/var/tmp/sbml_tmp.xml")
+    m1 = s1.getModel()
+    m2 = s2.getModel()
+    # carbon ratio data is stored in the model notes
+    notes1 = parse_sbml_notes_to_dict(m1.getNotes())
+    notes2 = parse_sbml_notes_to_dict(m2.getNotes())
+    assert (notes1.keys() == notes2.keys())
+    cr_notes1 = sorted(notes1["LCMS"])
+    cr_notes2 = sorted(notes2["LCMS"])
+    assert (cr_notes1 == cr_notes2)
+    # compare species
+    for species1 in m1.getListOfSpecies() :
+      species2 = m2.getSpecies(species1.getId())
+      notes1 = parse_sbml_notes_to_dict(species1.getNotes())
+      notes2 = parse_sbml_notes_to_dict(species2.getNotes())
+      if ("CONCENTRATION_CURRENT" in notes1) :
+        assert ("CONCENTRATION_CURRENT" in notes2)
+        assert (species1.getId() in ["M_ac_c", "M_co2_c", "M_etoh_c",
+                "M_for_c", "M_glc_DASH_D_c", "M_o2_c", "M_pyr_c", "M_succ_c"])
+        #print "NOTES1", notes1
+        #print "NOTES2", notes2
+        for field in ["CONCENTRATION_CURRENT",
+                      "CONCENTRATION_LOWEST",
+                      "CONCENTRATION_HIGHEST"] :
+          # FIXME O2/CO2 in old file don't have min/mix - bug?
+          if (field in notes1.keys()) :
+            f1 = float(notes1[field][0])
+            f2 = float(notes2[field][0])
+            assert (abs(f2 - f1) < 0.001), (f1, f2)
+    # compare exchanges
+    for r1 in m1.getListOfReactions() :
+      r2 = m2.getReaction(r1.getId())
+      k1 = r1.getKineticLaw()
+      k2 = r2.getKineticLaw()
+      if (k1 is not None) :
+        assert (k2 is not None)
+        ub1 = k1.getParameter("UPPER_BOUND")
+        lb1 = k1.getParameter("LOWER_BOUND")
+        ub2 = k2.getParameter("UPPER_BOUND")
+        lb2 = k2.getParameter("LOWER_BOUND")
+        if (ub1.isSetValue()) :
+          f1 = float(ub1.getValue())
+          f2 = float(ub2.getValue())
+          assert (abs(f2 - f1) < 0.01), (f1, f2)
+        if (lb1.isSetValue()) :
+          f1 = float(lb1.getValue())
+          f2 = float(lb2.getValue())
+          assert (abs(f2 - f1) < 0.01), (f1, f2)
 
 class Command (BaseCommand) :
   def handle (self, *args, **kwds) :

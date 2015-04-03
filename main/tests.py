@@ -411,6 +411,7 @@ class ExportTests(TestCase) :
         protocol1 = Protocol.objects.create(name="GC-MS", owned_by=user1)
         protocol2 = Protocol.objects.create(name="OD600", owned_by=user1)
         protocol3 = Protocol.objects.create(name="HPLC", owned_by=user1)
+        protocol4 = Protocol.objects.create(name="O2/CO2", owned_by=user1)
         mt1 = Metabolite.objects.create(type_name="Acetate",
             short_name="ac", type_group="m", charge=-1, carbon_count=2,
             molecular_formula="C2H3O2", molar_mass=60.05)
@@ -420,6 +421,20 @@ class ExportTests(TestCase) :
         mt3 = Metabolite.objects.create(type_name="Optical Density",
             short_name="OD", type_group="m", charge=0, carbon_count=0,
             molecular_formula="", molar_mass=0)
+        # RAMOS-specific metabolites
+        mt4 = Metabolite.objects.create(type_name="CO2 production",
+            short_name="CO2p", type_group="m", charge=0, carbon_count=1,
+            molecular_formula="CO2", molar_mass=44.01)
+        mt5 = Metabolite.objects.create(type_name="O2 consumption",
+            short_name="O2c", type_group="m", charge=0, carbon_count=0,
+            molecular_formula="O2", molar_mass=32)
+        mt6 = Metabolite.objects.create(type_name="CO2",
+            short_name="co2", type_group="m", charge=0, carbon_count=1,
+            molecular_formula="CO2", molar_mass=44.01)
+        mt7 = Metabolite.objects.create(type_name="O2",
+            short_name="o2", type_group="m", charge=0, carbon_count=0,
+            molecular_formula="O2", molar_mass=32)
+        # ASSAYS
         assay1 = line1.assay_set.create(name="Assay 1",
             protocol=protocol1, description="GC-MS assay", experimenter=user1)
         assay2 = line2.assay_set.create(name="Assay 2",
@@ -429,11 +444,14 @@ class ExportTests(TestCase) :
             experimenter=user1)
         assay4 = line1.assay_set.create(name="HPLC assay", experimenter=user1,
             protocol=protocol3, description="HPLC measurement")
+        assay5 = line1.assay_set.create(name="RAMOS assay", experimenter=user1,
+            protocol=protocol4, description="O2/CO2 measurements")
         mu1 = MeasurementUnit.objects.create(unit_name="hours")
         mu1 = MeasurementUnit.objects.create(unit_name="hours")
         mu2 = MeasurementUnit.objects.create(unit_name="mM")
         mu3 = MeasurementUnit.objects.create(unit_name="n/a")
         mu4 = MeasurementUnit.objects.create(unit_name="Cmol/L")
+        mu5 = MeasurementUnit.objects.create(unit_name="mol/L/hr")
         up1 = Update.objects.create(mod_by=user1)
         meas1 = assay1.measurement_set.create(experimenter=user1,
             measurement_type=mt1, compartment="1", update_ref=up1,
@@ -456,6 +474,12 @@ class ExportTests(TestCase) :
         meas7 = assay4.measurement_set.create(experimenter=user1, # HPLC
             measurement_type=mt2, compartment="2", update_ref=up1,
             x_units=mu1, y_units=mu4)
+        meas8 = assay5.measurement_set.create(experimenter=user1,
+            measurement_type=mt4, compartment="0", update_ref=up1,
+            x_units=mu1, y_units=mu5)
+        meas9 = assay5.measurement_set.create(experimenter=user1,
+            measurement_type=mt5, compartment="0", update_ref=up1,
+            x_units=mu1, y_units=mu5)
         x1 = [ 0, 4, 8, 12, 18, 24 ]
         y1 = [ 0.0, 0.1, 0.2, 0.4, 0.8, 1.6 ]
         y2 = [ 0.0, 0.5, 0.6, 0.65, 0.675, 0.69 ]
@@ -473,7 +497,10 @@ class ExportTests(TestCase) :
         for x, y in zip(x1, y4) :
             md = meas4.measurementdatum_set.create(updated=up1, x=x, y=y)
         for x, y in zip(x1, y5) : # OD
-           md = meas5.measurementdatum_set.create(updated=up1, x=x, y=y)
+            md = meas5.measurementdatum_set.create(updated=up1, x=x, y=y)
+        for x, y in zip([0,12,24], [0.1,0.3,0.5]) :
+            md  = meas8.measurementdatum_set.create(updated=up1, x=x, y=y)
+            md2 = meas9.measurementdatum_set.create(updated=up1, x=x, y=y)
 
     def tearDown(self):
         TestCase.tearDown(self)
@@ -492,7 +519,7 @@ class ExportTests(TestCase) :
         user = User.objects.get(username="admin")
         exports = main.data_export.select_objects_for_export(study, user, form)
         table = main.data_export.assemble_table(**exports)
-        self.assertTrue(len(table) == 8)
+        self.assertTrue(len(table) == 10)
         self.assertTrue(len(table[0]) == 21)
         self.assertTrue(table[0][-6:] == [ 0, 4, 8, 12, 18, 24 ]) # x1 in setUp
         # XXX y3 in setUp
@@ -554,9 +581,9 @@ class ExportTests(TestCase) :
         lcms_data = data.export_lcms_measurements()
         dp = lcms_data[0]['assays'][0]['measurements'][0]['data_points'][2]
         self.assertTrue(dp['title'] == "0.20000 at 8h")
-        self.assertTrue(data.n_ramos_measurements == 0)
+        self.assertTrue(data.n_ramos_measurements == 2)
         all_meas = data.processed_measurements()
-        self.assertTrue(len(all_meas) == 5)
+        self.assertTrue(len(all_meas) == 7)
         meas = all_meas[0]
         self.assertTrue(meas.n_errors == 0)
         self.assertTrue(meas.n_warnings == 1)

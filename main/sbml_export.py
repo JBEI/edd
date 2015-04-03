@@ -131,11 +131,12 @@ class sbml_info (object) :
       def assign_concentration (O, minimum, maximum, values) :
         assert (len(values) > 0)
         value = sum(values) / len(values)
-        O.notes["CONCENTRATION_CURRENT"] = value
+        O.notes["CONCENTRATION_CURRENT"] = [ str(value) ]
         if (minimum is not None) :
-          O.notes["CONCENTRATION_LOWEST"] = minimum
+          O.notes["CONCENTRATION_LOWEST"] = [ str(minimum) ]
         if (maximum is not None) :
-          O.notes['CONCENTRATION_HIGHEST'] = maximum
+          O.notes['CONCENTRATION_HIGHEST'] = [ str(maximum) ]
+        O.species.setNotes(create_sbml_notes_object(O.notes))
     class ReactionInfo (object) : # XXX this class may be superfluous
       def __init__ (O, reaction) :
         O.reaction = reaction
@@ -645,6 +646,7 @@ class sbml_info (object) :
     })
 
 def parse_sbml_notes_to_dict (notes) :
+  if (notes is None) : return {}
   notes_dict = defaultdict(list)
   # Properly formated notes sections contain a body element.  If one exists,
   # we will descend into it.  Otherwise we will pretend we are already in one,
@@ -1338,7 +1340,7 @@ class line_assay_data (line_export_base) :
             m_min, m_max = pm.min_max()
             self._metabolite_minima[mid] = min(m_min,
               self._metabolite_minima.get(mid, sys.maxint))
-            self._metabolite_maxima[mid] = min(m_max,
+            self._metabolite_maxima[mid] = max(m_max,
               self._metabolite_maxima.get(mid, -sys.maxint))
         if pm.is_od_measurement :
           for t in pm.mtimes :
@@ -2054,6 +2056,9 @@ class line_sbml_export (line_assay_data, sbml_info) :
   #---------------------------------------------------------------------
   # EXPORT functions
   def output_file_name (self, export_time) :
+    """
+    Generate an SBML file name incorporating study and line IDs.
+    """
     return "edd-s%dl%st%g-%s.sbml" % (self.study.id,
       "_".join([ str(l.id) for l in self.lines ]), export_time,
       self.primary_line_name)
@@ -2110,6 +2115,10 @@ class line_sbml_export (line_assay_data, sbml_info) :
   #---------------------------------------------------------------------
   # SBML NAME RESOLUTION
   def species_match_elements (self) :
+    """
+    Export a list of dictionaries basically giving key-value pairs of
+    metabolite and SMBL species ID.
+    """
     self._species_match_elements.sort(
       lambda a,b: cmp(a[0].type_name, b[0].type_name))
     result = []
@@ -2131,6 +2140,10 @@ class line_sbml_export (line_assay_data, sbml_info) :
     return ",".join([ str(m.id) for m,s in self._species_match_elements ])
 
   def flux_match_elements (self) :
+    """
+    Export a list of dictionaries basically giving key-value pairs of
+    metabolite and SMBL exchange ID.
+    """
     self._flux_match_elements.sort(
       lambda a,b: cmp(a[0].type_name, b[0].type_name))
     result = []
@@ -2174,7 +2187,11 @@ class line_sbml_export (line_assay_data, sbml_info) :
   def available_timepoints (self) :
     return self._comprehensive_valid_OD_times
 
-  def data_by_timepoint (self) :
+  def summarize_data_by_timepoint (self) :
+    """
+    Export lists of metabolites available for various analyses at each
+    timepoint.
+    """
     result = []
     for i, t in enumerate(self.available_timepoints) :
       timepoint_data = {
