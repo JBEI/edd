@@ -43,6 +43,7 @@ from main.models import * # XXX sorry, we need most of the models
 from main.utilities import interpolate_at, line_export_base
 from collections import defaultdict, OrderedDict
 import itertools
+import json
 import time
 import math
 import re
@@ -60,7 +61,7 @@ class sbml_info (object) :
   information for display in a view and/or further processing w.r.t. assay
   data.
   """
-  def __init__ (self) :
+  def __init__ (self, i_map=None, map_id=None) :
     self._metabolic_maps = list(MetabolicMap.objects.all())
     self._chosen_map = None
     self._sbml_doc = None
@@ -80,10 +81,15 @@ class sbml_info (object) :
     self.biomass_exchange = None # XXX accessed directly by HTML template
     self._all_metabolites = sorted(Metabolite.objects.all(),
       lambda a,b: cmp(a.short_name, b.short_name))
-    self._metabolites_by_sname = { m.short_name : m
+    self._metabolites_by_id = { m.id : m
         for m in self._all_metabolites }
     self._biomass_metab = Metabolite.objects.get(short_name="OD")
     self._modified = set() # track altered DB records - mostly for testing
+    # XXX the processing can optionally be done at the time of initialization
+    # to facilitate JSON data export independent of assay data
+    if (i_map is not None) or (map_id is not None) :
+      self._select_map(i_map=i_map, map_id=map_id)
+      self._process_sbml()
 
   def _select_map (self, i_map=None, map_id=None) :
     assert ([i_map, map_id].count(None) == 1)
@@ -279,8 +285,8 @@ class sbml_info (object) :
           ex_resolved = reactant_to_exchange.get(name, [None])[0]
           if (ex_resolved is not None) :
             break
-      # FIXME this is inconsistent - indexing by ID here, but short_name
-      # elsewhere in this module
+      # FIXME make sure we are consistently indexing by metabolite ID, NOT
+      # the short_name
       self._resolved_exchanges[met.id] = ex_resolved
       if (ex_resolved is not None) :
         self._exchanges_to_metabolites[ex_resolved.ex_id] = met
@@ -326,6 +332,7 @@ class sbml_info (object) :
   # string if None.
   # TODO this needs testing for sure!
   def _reassign_metabolite_to_species (self, metabolite, species_id) :
+    print "REASSIGN:", metabolite, species_id
     species_id = str(species_id)
     if (species_id is not None) :
       # If the value is defined as an empty string, we should take that as a
@@ -335,7 +342,7 @@ class sbml_info (object) :
         record = MetaboliteSpecies.objects.get(
           metabolic_map_id=self._chosen_map.id,
           measurement_type_id=metabolite.id)
-        print "DELETING RECORD"
+        print "DELETING RECORD: %d:%d" % (self._chosen_map.id, metabolite.id)
         record.delete()
         self._modified.add(species_id)
     else :
@@ -353,6 +360,8 @@ class sbml_info (object) :
     old_met = self._species_to_metabolites.get(species_id, None)
     if (old_met is not None) and (old_met.id == metabolite.id) :
       return species_id
+    if (old_met is not None) :
+      print old_met.id, metabolite.id
     # Since the pairing is different, or doesn't exist, we need to
     # update/create it.  (We know the species ID is valid by now.)
     # First, clear out the old record:
@@ -360,7 +369,7 @@ class sbml_info (object) :
       record = MetaboliteSpecies.objects.get(
           metabolic_map_id=self._chosen_map.id,
           measurement_type_id=metabolite.id)
-      print "DELETING RECORD 2"
+      print "DELETING RECORD 2: %d:%d" % (self._chosen_map.id, metabolite.id)
       record.delete()
       self._modified.add(species_id)
     except Exception as e :
@@ -370,7 +379,7 @@ class sbml_info (object) :
       metabolic_map=self._chosen_map,
       measurement_type=metabolite,
       species=species_id)
-    print "CREATING RECORD"
+    print "CREATING RECORD %s:%s" % (metabolite.short_name, species_id)
     # Alter the internal hashes to reflect the change
     self._resolved_species[metabolite.id] = self._species_by_id[species_id]
     self._species_to_metabolites[species_id] = metabolite
@@ -406,14 +415,14 @@ class sbml_info (object) :
       record.delete()
     except Exception as e :
       print e
-    print "CREATING RECORD"
+    print "CREATING RECORD %s:%s" % (metabolite.short_name, exchange_id)
     record = MetaboliteExchange.objects.create(
       metabolic_map=self._chosen_map,
       measurement_type=metabolite,
       reactant_name=self._exchanges_by_id[exchange_id].re_id,
       exchange_name=exchange_id)
     self._resolved_exchanges[metabolite.id]=self._exchanges_by_id[exchange_id]
-    self._exchanges_to_metabolites[exchanges_id] = metabolite
+    self._exchanges_to_metabolites[exchange_id] = metabolite
     self._modified.add(exchange_id)
 
   def _assign_concentration_to_species (self, mid, minimum, maximum, values) :
@@ -464,6 +473,7 @@ class sbml_info (object) :
     return [ {
       "file_name" : m.xml_file.filename,
       "id" : i,
+      "map_id" : m.id,
       "is_selected" : m is self._chosen_map,
     } for i, m in enumerate(self._metabolic_maps) ]
 
@@ -591,38 +601,43 @@ class sbml_info (object) :
         })
     return result
 
-  def export_species (self) :
+  # FIXME this is really gross, but the mappings to metabolites depend on any
+  # modifications made up to this point, so AJAX won't work...
+  def export_JSON (self) :
     """
-    Generate a dictionary that will be sent to the browser as JSON.
+    Generate a dictionary that will be embedded in the template as part of a
+    JavaScript block.
     """
-    result = []
-    for species_id in self._species_by_id.keys() :
-      species_info = self._species_by_id[species_id]
-      paired_metabolite = ""
-      if (species_id in self._species_to_metabolites) :
-        paired_metabolite = self._species_to_metabolites[species_id].short_name
-      result.append({
-        "sid" : species_id,
-        "spn" : species_info.name,
-        "cp" : paired_metabolite,
-      })
-    return result
-
-  def export_exchanges (self) :
-    result = []
+    exchanges = []
     for exchange_id in self._exchanges_by_id.keys() :
       exchange_info = self._exchanges_by_id[exchange_id]
       paired_metabolite = None
       if (exchange_id in self._exchanges_to_metabolites) :
         m = self._exchanges_to_metabolites[exchange_id]
         paired_metabolite = m.short_name
-      result.append({
-        "rid" : exchange_info.re_id,
-        "exid" : exchange_id,
-        "exn" : exchange_info.name,
-        "cp" : paired_metabolite,
+      exchanges.append({
+        "rid" : str(exchange_info.re_id),
+        "exid" : str(exchange_id),
+        "exn" : str(exchange_info.name),
+        "cp" : str(paired_metabolite),
       })
-    return result
+    species = []
+    for species_id in self._species_by_id.keys() :
+      species_info = self._species_by_id[species_id]
+      paired_metabolite = ""
+      if (species_id in self._species_to_metabolites) :
+        paired_metabolite = self._species_to_metabolites[species_id].short_name
+      species.append({
+        "sid" : str(species_id),
+        "spn" : str(species_info.name),
+        "cp" : str(paired_metabolite),
+      })
+    return json.dumps({
+      "ExchangeIDs" : range(len(exchanges)),
+      "Exchanges" : { str(i+1):e for i,e in enumerate(exchanges) },
+      "SpeciesIDs" : range(len(species)),
+      "Species" : { str(i+1):s for i,s in enumerate(species) },
+    })
 
 def parse_sbml_notes_to_dict (notes) :
   notes_dict = defaultdict(list)
@@ -923,7 +938,7 @@ class line_assay_data (line_export_base) :
     selected_od_meas = self._od_measurements
     if self.submitted_from_export_page :
       selected_od_meas = []
-      for m in od_measurements :
+      for m in self._od_measurements :
         form_key = "measurement%dinclude" % m.id
         if (form_key in self.form) :
           selected_od_meas.append(m)
@@ -1278,7 +1293,7 @@ class line_assay_data (line_export_base) :
             value = crm.value_at_time(t)
             # TODO track whether a duplicate measurement gets skipped
             if (value is not None) :
-              self._carbon_data_by_metabolite[t][crm.metabolite_name] = value
+              self._carbon_data_by_metabolite[t][crm.metabolite_id] = value
       else :
         pm = processed_measurement(
           measurement=m,
@@ -1295,23 +1310,23 @@ class line_assay_data (line_export_base) :
         self._processed_metabolite_data.append(pm)
         if (pm.n_errors == 0) :
           if (protocol_category != "OD") :
-            mname = pm.metabolite_name
+            mid = pm.metabolite_id
             for t in pm.mtimes :
-              if (not mname in self._species_data_by_metabolite[t]) :
-                self._species_data_by_metabolite[t][mname] = []
-              if (not mname in self._flux_data_by_metabolite[t]) :
-                self._flux_data_by_metabolite[t][mname] = []
+              if (not mid in self._species_data_by_metabolite[t]) :
+                self._species_data_by_metabolite[t][mid] = []
+              if (not mid in self._flux_data_by_metabolite[t]) :
+                self._flux_data_by_metabolite[t][mid] = []
               flux = pm.flux_at_time_point(t)
               if (flux is not None) :
-                self._flux_data_by_metabolite[t][mname].append(flux)
-                self._species_data_by_metabolite[t][mname].append(flux)
-                self._species_data_types_available.add(mname)
-                self._flux_data_types_available.add(mname)
+                self._flux_data_by_metabolite[t][mid].append(flux)
+                self._species_data_by_metabolite[t][mid].append(flux)
+                self._species_data_types_available.add(mid)
+                self._flux_data_types_available.add(mid)
             m_min, m_max = pm.min_max()
-            self._metabolite_minima[pm.metabolite_name] = min(m_min,
-              self._metabolite_minima.get(pm.metabolite_name, sys.maxint))
-            self._metabolite_maxima[pm.metabolite_name] = min(m_max,
-              self._metabolite_maxima.get(pm.metabolite_name, -sys.maxint))
+            self._metabolite_minima[mid] = min(m_min,
+              self._metabolite_minima.get(mid, sys.maxint))
+            self._metabolite_maxima[mid] = min(m_max,
+              self._metabolite_maxima.get(mid, -sys.maxint))
         if pm.is_od_measurement :
           for t in pm.mtimes :
             flux = pm.flux_at_time_point(t)
@@ -1444,6 +1459,9 @@ class line_assay_data (line_export_base) :
   #---------------------------------------------------------------------
   # "public" methods - referenced by HTML template (and unit tests)
   #
+  def selected_line_ids (self) :
+    return ",".join([ str(line.id) for line in self.lines ])
+
   def export_od_measurements (self) :
     """
     Provide data structure for display of OD600 measurements in HTML template.
@@ -1527,16 +1545,6 @@ class line_assay_data (line_export_base) :
 
   def processed_measurements (self) :
     return self._processed_metabolite_data
-
-  def metabolites_at_time_point (self, t) :
-    data = self._species_data_by_metabolite[t]
-    result = []
-    for mname in sorted(data.keys()) :
-      result.append(data[mname])
-    return result
-
-  def fluxes_at_time_point (self, t) :
-    return sorted(self._flux_data_by_metabolite[t].keys())
 
 #-----------------------------------------------------------------------
 # Data container classes
@@ -1943,10 +1951,12 @@ class line_sbml_export (line_assay_data, sbml_info) :
         raise ValueError("No SBML templates have been uploaded!")
     else :
       map_id = self.form.get("chosenmap_id", None)
+      print "MAP ID", map_id
       if (map_id is not None) :
         self._select_map(map_id=int(map_id))
       else :
         self._select_map(i_map=int(self.form.get("chosenmap",0)))
+      print "SUCCESS"
 
   def _step_8_pre_parse_and_match (self) :
     """private method"""
@@ -1970,13 +1980,13 @@ class line_sbml_export (line_assay_data, sbml_info) :
       # 'undef', for any spmatch# element that was on the previous incarnation
       # of the page.
       for species in sorted(list(self._species_data_types_available)) :
-        metabolite = self._metabolites_by_sname[species]
+        metabolite = self._metabolites_by_id[species]
         form_element_id = "spmatch" + str(metabolite.id)
         species_match = self._reassign_metabolite_to_species(
           metabolite=metabolite,
           species_id=species_matches.get(form_element_id, None))
-        # We pass in the contents of the relevant form element here,
-        # and the code in UtilitiesSBML checks to see if it matches a known
+        # We pass in the contents of the relevant form element here, and the
+        # code in the sbml_info class checks to see if it matches a known
         # species.   If it does, the measurement type is reassigned to the
         # species and the species ID is returned.  If it doesn't, the function
         # returns the species that is currently assigned.  If an empty string
@@ -1988,7 +1998,7 @@ class line_sbml_export (line_assay_data, sbml_info) :
       elements = [ "exmatch"+x for x in elements ]
       exchange_matches = {ex_id:self.form.get(ex_id, "") for ex_id in elements}
       for species in sorted(list(self._flux_data_types_available)) :
-        metabolite = self._metabolites_by_sname[species]
+        metabolite = self._metabolites_by_id[species]
         form_element_id = "exmatch%d" % metabolite.id
         exchange_match = self._reassign_metabolite_to_reactant(
           metabolite=metabolite,
@@ -2031,6 +2041,13 @@ class line_sbml_export (line_assay_data, sbml_info) :
                 self._consolidated_proteomics_ms[t][protein_name] = []
               self._consolidated_proteomics_ms[t][protein_name].append(md.fy)
 
+  #---------------------------------------------------------------------
+  # EXPORT functions
+  def output_file_name (self, export_time) :
+    return "edd-s%dl%st%g-%s.sbml" % (self.study.id,
+      "_".join([ str(l.id) for l in self.lines ]), export_time,
+      self.primary_line_name)
+
   def as_sbml (self, export_time) :
     """
     Export the SBML with our processed measurements incorporated.
@@ -2039,20 +2056,20 @@ class line_sbml_export (line_assay_data, sbml_info) :
     t = export_time
     species_data = self._species_data_by_metabolite[t]
     flux_data = self._flux_data_by_metabolite[t]
-    for mname in species_data.keys() :
-      metabolite = self._metabolites_by_sname[mname]
-      m_hi = self._metabolite_maxima[mname]
-      m_lo = self._metabolite_minima[mname]
+    for mid in species_data.keys() :
+      metabolite = self._metabolites_by_id[mid]
+      m_hi = self._metabolite_maxima[mid]
+      m_lo = self._metabolite_minima[mid]
       try :
         self._assign_concentration_to_species(metabolite.id,
           maximum=m_hi,
           minimum=m_lo,
-          values=[ d.conc for d in species_data[mname] ])
+          values=[ d.conc for d in species_data[mid] ])
       except ValueError as e :
         print e
-    for mname in flux_data.keys() :
-      metabolite = self._metabolites_by_sname[mname]
-      values = [ d.flux for d in flux_data[mname] ]
+    for mid in flux_data.keys() :
+      metabolite = self._metabolites_by_id[mid]
+      values = [ d.flux for d in flux_data[mid] ]
       try :
         self._assign_value_to_flux(metabolite.id, values)
       except ValueError as e :
@@ -2065,7 +2082,7 @@ class line_sbml_export (line_assay_data, sbml_info) :
     carbon_data = self._carbon_data_by_metabolite.get(t, {})
     if (len(carbon_data) > 0) :
       carbon_notes = { "LCMS" : [] }
-      for mname, value_str in carbon_data.iteritems() :
+      for mid, value_str in carbon_data.iteritems() :
         values = value_str.split("/")
         combined = []
         for c in range(13) :
@@ -2073,6 +2090,7 @@ class line_sbml_export (line_assay_data, sbml_info) :
             combined.append(values[c] + "(0.02)\t")
           else :
             combined.append("-\t")
+        mname = self._metabolites_by_id[mid].short_name
         carbon_notes["LCMS"].append(mname + "\tM-0\t" + "".join(combined))
       n_total, n_added = self._add_notes(carbon_notes)
     # TODO some kind of feedback?
@@ -2145,3 +2163,35 @@ class line_sbml_export (line_assay_data, sbml_info) :
   @property
   def available_timepoints (self) :
     return self._comprehensive_valid_OD_times
+
+  def data_by_timepoint (self) :
+    result = []
+    for i, t in enumerate(self.available_timepoints) :
+      timepoint_data = {
+        "timestamp" : t,
+        "metabolites" : [],
+        "fluxes" : [],
+      }
+      species_data = self._species_data_by_metabolite[t]
+      flux_data = self._flux_data_by_metabolite[t]
+      carbon_data = self._carbon_data_by_metabolite[t]
+      for mid in sorted(species_data.keys()) :
+        interp_flags = [ m.interpolated for m in species_data[mid] ]
+        timepoint_data["metabolites"].append({
+          "name" : str(self._metabolites_by_id[mid].short_name),
+          "interpolated" : interp_flags.count(True),
+        })
+      for mid in sorted(flux_data.keys()) :
+        interp_flags = [ f.interpolated for f in flux_data[mid] ]
+        timepoint_data["fluxes"].append({
+          "name" : str(self._metabolites_by_id[mid].short_name),
+          "interpolated" : interp_flags.count(True),
+        })
+      if (i < len(self.available_timepoints) - 1) :
+        timepoint_data["fluxes"].append("BIOMASS")
+      timepoint_data["carbon_data"] = [ str(s) for s in
+        sorted(carbon_data.keys()) ]
+      timepoint_data["usable_items"] = len(timepoint_data["fluxes"]) +  \
+        len(timepoint_data["metabolites"]) + len(timepoint_data["carbon_data"])
+      result.append(timepoint_data)
+    return result

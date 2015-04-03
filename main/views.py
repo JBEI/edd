@@ -244,6 +244,16 @@ def study_export_sbml (request, study) :
             manager.run()
         except ValueError as e :
             error_message = str(e)
+        else :
+            if form.get("download", None) :
+                timestamp = float(form["timestamp"])
+                sbml = manager.as_sbml(timestamp)
+                response = HttpResponse(sbml,
+                    content_type="application/sbml+xml")
+                file_name = manager.output_file_name(timestamp)
+                response['Content-Disposition'] = \
+                    'attachment; filename="%s"' % file_name
+                return response
         return render_to_response("main/sbml_export.html",
             dictionary={
                 "data" : manager,

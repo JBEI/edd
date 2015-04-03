@@ -17,15 +17,9 @@ FIXME far too much logic encoded in this template
 
 <!-- Declare JS objects for later (will be fetched via AJAX) -->
 <script type="text/javascript">
-EDDData = { }; // Declaring the object for later use
+EDDData = JSON.parse("{{ data.export_JSON|escapejs }}"); // FIXME this is gross
 
 EDDData.currentUserID = {{ user.pk }};
-
-EDDData.SpeciesIDs = [];
-EDDData.Species = {"602":{"spn":"M_D_Mannose_1_phosphate_C6H11O9P","cp":"man1p","sid":"M_man1p_c"},"715":{"spn":"M_Inorganic_triphosphate_HO10P3","cp":"pppi","sid":"M_pppi_c"}};
-
-EDDData.ExchangeIDs = [];
-EDDData.Exchanges = {"180":{"exn":"R_L_Valine_exchange","exid":"R_EX_val_L_e_","rid":"M_val_L_e","cp":""},"133":{"exn":"R_D_Mannose_6_phosphate_exchange","rid":"M_man6p_e","exid":"R_EX_man6p_e_","cp":"man6p"}};
 
 function disclose() {
   $(this).closest('.disclose').toggleClass('discloseHide');
@@ -40,6 +34,9 @@ $(window).load(function () {
 <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
 <script type="text/javascript" src="{% static 'main/js/StudySBMLExport.js' %}"></script>
 <script type="text/javascript" src="{% static 'main/js/Autocomplete.js' %}"></script>
+<script type="text/javascript">
+EDDAutoComplete.initializeAllPageElements();
+</script>
 
 <!-- style for SVG graphics -->
 <style type="text/css">
@@ -77,9 +74,10 @@ $(window).load(function () {
 </div>
 
 
-<form method="post" id="exportForm" action="/study/{{ study.id }}/sbml/export">
+<form method="post" id="exportForm" action="/study/{{ study.id }}/sbml">
+{% csrf_token %}
 
-<input type="hidden" name="selectedLineIDs" value="{{ selected_line_ids }}" />
+<input type="hidden" name="selectedLineIDs" value="{{ data.selected_line_ids }}" />
 <input type="hidden" name="formSubmittedFromSBMLExport" value="1" />
 
 <!-- Export settings section -->
@@ -106,13 +104,13 @@ $(window).load(function () {
     <tr>
       <td>
         SBML Template:
-      <select name="chosenmap" id="chosenmap" onchange="submitForRefresh();">
+      <select name="chosenmap_id" id="chosenmap" onchange="submitForRefresh();">
         {% for template in data.template_info %}
           {% if template.is_selected %}
-            <option value="{{ template.id }}" selected="selected">
+            <option value="{{ template.map_id }}" selected="selected">
               {{ template.file_name }}</option>
           {% else %}
-            <option value="{{ template.id }}">
+            <option value="{{ template.map_id }}">
               {{ template.file_name }}</option>
           {% endif %}
         {% endfor %}
@@ -925,7 +923,7 @@ END OF EXPORT SETTINGS
 Downloads section
 
 -->
-<div class="pageSection" id="dataDownloads">
+<div class="pageSection" id="dataDownloads" style="width:90%;">
   <div class="sectionHead">
     SBML Data Downloads
   </div>
@@ -944,16 +942,16 @@ Downloads section
       id="linesTable">
 
     <tr class="columnLabels">
-      {% for sf in data.sbml_files %}
+      {% for t in data.available_timepoints %}
       <th class="sortheader" style="text-align:right;font-size:0.8em;">
-        {{ sf.timestamp }}h
+        {{ t }}h
       </th>
       {% endfor %}
     </tr>
 
     <tr>
       <!-- loop over SBML files -->
-      {% for sf in data.sbml_files %}
+      {% for sf in data.data_by_timepoint %}
       <td class="popupcell">
         <div class="p">
           <div class="q">
@@ -966,6 +964,7 @@ Downloads section
             <div class="s">
               <div class="t">
                 <div style="font-weight:bold;">Metabolomics:</div>
+              {% spaceless %}
                 <ul style="margin:2px 2px 4px 2px;padding:0px;">
               {% for mt in sf.metabolites %}
                 {% if mt.interpolated %}
@@ -975,7 +974,9 @@ Downloads section
                 {% endif %}
               {% endfor %}
                 </ul>
+              {% endspaceless %}
                 <div style="font-weight:bold;">Fluxomics:</div>
+              {% spaceless %}
                 <ul style="margin:2px 2px 4px 2px;padding:0px;">
               {% for fl in sf.fluxes %}
                 {% if fl.interpolated %}
@@ -985,6 +986,17 @@ Downloads section
                 {% endif %}
               {% endfor %}
                 </ul>
+              {% endspaceless %}
+              {% if sf.carbon_data %}
+                <div style="font-weight:bold;">C-13 ratios:</div>
+                {% spaceless %}
+                <ul style="margin:2px 2px 4px 2px;padding:0px;">
+                {% for met_name in sf.carbon_data %}
+                  <li>{{ met_name }}</li>
+                {% endfor %}
+                </ul>
+                {% endspaceless %}
+              {% endif %}
               </div>
             </div>
           </div>
@@ -999,5 +1011,7 @@ Downloads section
 </div><!-- #dataDownloads -->
 
 </form><!-- #exportForm -->
+
+<div style="padding:250px 0px 250px 0px;"> </div>
 
 {% endblock content %}

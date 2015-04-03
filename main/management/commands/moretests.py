@@ -28,7 +28,7 @@ class SBMLTests (unittest.TestCase) :
     assert (sd.n_meas_types_unresolved_to_species == 102)
     assert (sd.n_exchanges_resolved == 205)
     assert (sd.n_exchanges_not_resolved == 648)
-    assert (sd._biomass_exchange.ex_id == "R_Ec_biomass_iJO1366_WT_53p95M")
+    assert (sd.biomass_exchange.ex_id == "R_Ec_biomass_iJO1366_WT_53p95M")
 
   def test_sbml_export (self) :
     sd = sbml_export.line_sbml_export(
@@ -38,8 +38,9 @@ class SBMLTests (unittest.TestCase) :
     assert (sd.n_lcms_measurements == 44)
     assert (sd.n_ramos_measurements == 2)
     assert (sd.n_conversion_warnings == 3)
+    print sd.species_match_element_ids
     assert (sd.species_match_element_ids == sd.flux_match_element_ids ==
-            "36,35,4,5,6,84,13,11")
+            "4,5,6,11,13,35,36,84")
     assert (sd.available_timepoints == [0.0, 7.5, 9.5, 11.0, 13.0, 15.0, 17.0])
     assert (sd.n_modified == 0)
     # TODO lots more
