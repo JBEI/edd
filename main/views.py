@@ -224,6 +224,7 @@ def study_export_sbml (request, study) :
         form = request.POST
     else :
         form = request.GET
+    print form
     try :
         lines = get_selected_lines(form, model)
         manager = main.sbml_export.line_sbml_export(

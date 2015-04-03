@@ -1,6 +1,7 @@
 
 # TODO clean this up, get rid of unnecessary code and make it internally
 # consistent
+# TODO Garrett says we can get rid of the input checkboxes
 
 # NOTE the structure of this module is more complicated than really necessary -
 # basically I am using a class hierarchy to separate out three different areas
@@ -264,6 +265,13 @@ class sbml_info (object) :
     }
     for met in self._all_metabolites :
       mname = met.short_name # first we grab the unaltered name
+      # FIXME hack to handle RAMOS measurements - these are treated as
+      # synonymous with "co2" and "o2" but the dictionary mapping for species
+      # to metabolites is ignorant of this, so we substitue the metabolite
+      # elsewhere.  (It is still unclear why the old EDD doesn't have this
+      # problem - could it be an artifact of Postgres table order?)
+      if (met.short_name in ["CO2p", "O2c"]) :
+        continue
       if (mname == "OD") : continue # deal with this below
       # Then we create a version using the standard symbol substitutions.
       mname_transcoded = generate_transcoded_metabolite_name(mname)
@@ -332,7 +340,6 @@ class sbml_info (object) :
   # string if None.
   # TODO this needs testing for sure!
   def _reassign_metabolite_to_species (self, metabolite, species_id) :
-    print "REASSIGN:", metabolite, species_id
     species_id = str(species_id)
     if (species_id is not None) :
       # If the value is defined as an empty string, we should take that as a
@@ -360,8 +367,6 @@ class sbml_info (object) :
     old_met = self._species_to_metabolites.get(species_id, None)
     if (old_met is not None) and (old_met.id == metabolite.id) :
       return species_id
-    if (old_met is not None) :
-      print old_met.id, metabolite.id
     # Since the pairing is different, or doesn't exist, we need to
     # update/create it.  (We know the species ID is valid by now.)
     # First, clear out the old record:
@@ -1295,11 +1300,19 @@ class line_assay_data (line_export_base) :
             if (value is not None) :
               self._carbon_data_by_metabolite[t][crm.metabolite_id] = value
       else :
+        metabolite = self._metabolites[m.id]
+        # XXX This is a hack to adapt two RAMOS-specific metabolites from their
+        # "produced" and "-consumed" variants to their ordinary names.  It's
+        # needed here because the original variants are considered "rates",
+        # while the metabolites we're matching to are not.
+        if (metabolite.short_name == "CO2p") :
+          metabolite = Metabolite.objects.get(short_name="co2")
+        elif (metabolite.short_name == "O2c") :
+          metabolite = Metabolite.objects.get(short_name="o2")
         pm = processed_measurement(
           measurement=m,
           measurement_data=self._measurement_data[m.id],
-          measurement_type=self._measurement_types[m.id],
-          metabolite=self._metabolites[m.id],
+          metabolite=metabolite,
           assay_name=self._assay_names[assay.id],
           y_units=self._get_y_axis_units_name(m.id),
           protocol_category=protocol_category,
@@ -1318,8 +1331,8 @@ class line_assay_data (line_export_base) :
                 self._flux_data_by_metabolite[t][mid] = []
               flux = pm.flux_at_time_point(t)
               if (flux is not None) :
-                self._flux_data_by_metabolite[t][mid].append(flux)
                 self._species_data_by_metabolite[t][mid].append(flux)
+                self._flux_data_by_metabolite[t][mid].append(flux)
                 self._species_data_types_available.add(mid)
                 self._flux_data_types_available.add(mid)
             m_min, m_max = pm.min_max()
@@ -1641,8 +1654,7 @@ class processed_measurement (object) :
   def __init__ (self,
       measurement,
       measurement_data,
-      measurement_type,
-      metabolite,
+      metabolite, # XXX possibly substituted (for RAMOS measurements)
       assay_name,
       y_units,
       protocol_category,
@@ -1654,8 +1666,8 @@ class processed_measurement (object) :
     assert (not m.is_carbon_ratio())
     self.protocol_category = protocol_category
     self.measurement_id = m.id
-    self.metabolite_id = measurement_type.id
-    self.metabolite_name = measurement_type.short_name
+    self.metabolite_id = metabolite.id
+    self.metabolite_name = metabolite.short_name
     self.assay_name = assay_name
     self.interpolated_measurement_timestamps = set()
     self.skipped_due_to_lack_of_od = []
@@ -1951,12 +1963,10 @@ class line_sbml_export (line_assay_data, sbml_info) :
         raise ValueError("No SBML templates have been uploaded!")
     else :
       map_id = self.form.get("chosenmap_id", None)
-      print "MAP ID", map_id
       if (map_id is not None) :
         self._select_map(map_id=int(map_id))
       else :
         self._select_map(i_map=int(self.form.get("chosenmap",0)))
-      print "SUCCESS"
 
   def _step_8_pre_parse_and_match (self) :
     """private method"""
@@ -1979,9 +1989,9 @@ class line_sbml_export (line_assay_data, sbml_info) :
       # by passing a defined value, even if just an empty string, instead of
       # 'undef', for any spmatch# element that was on the previous incarnation
       # of the page.
-      for species in sorted(list(self._species_data_types_available)) :
-        metabolite = self._metabolites_by_id[species]
-        form_element_id = "spmatch" + str(metabolite.id)
+      for mid in sorted(list(self._species_data_types_available)) :
+        metabolite = self._metabolites_by_id[mid]
+        form_element_id = "spmatch%d" % mid
         species_match = self._reassign_metabolite_to_species(
           metabolite=metabolite,
           species_id=species_matches.get(form_element_id, None))
@@ -1997,9 +2007,9 @@ class line_sbml_export (line_assay_data, sbml_info) :
       elements = self.form.get("fluxmatchelements", "").split(",")
       elements = [ "exmatch"+x for x in elements ]
       exchange_matches = {ex_id:self.form.get(ex_id, "") for ex_id in elements}
-      for species in sorted(list(self._flux_data_types_available)) :
-        metabolite = self._metabolites_by_id[species]
-        form_element_id = "exmatch%d" % metabolite.id
+      for mid in sorted(list(self._flux_data_types_available)) :
+        metabolite = self._metabolites_by_id[mid]
+        form_element_id = "exmatch%d" % mid
         exchange_match = self._reassign_metabolite_to_reactant(
           metabolite=metabolite,
           exchange_id=exchange_matches.get(form_element_id, None))

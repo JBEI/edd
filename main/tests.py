@@ -556,7 +556,6 @@ class ExportTests(TestCase) :
         self.assertTrue(dp['title'] == "0.20000 at 8h")
         self.assertTrue(data.n_ramos_measurements == 0)
         all_meas = data.processed_measurements()
-        print all_meas
         self.assertTrue(len(all_meas) == 5)
         meas = all_meas[0]
         self.assertTrue(meas.n_errors == 0)
