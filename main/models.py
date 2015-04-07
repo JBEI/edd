@@ -196,6 +196,28 @@ class EDDObject(models.Model):
     def get_metadata_types(self):
         return list(MetadataType.objects.filter(pk__in=self.meta_store.keys()))
 
+    def get_metadata_item (self, pk=None, key=None) :
+        assert ([pk, key].count(None) == 1)
+        if (pk is None) :
+            pk = MetadataType.objects.get(type_name=key)
+        return self.meta_store.get(str(pk))
+
+    def get_metadata_dict (self) :
+        """
+        Return a Python dictionary of metadata with the keys replaced by the
+        string representations of the corresponding MetadataType records.
+        """
+        metadata_types = { str(mt.id):mt for mt in self.get_metadata_types() }
+        metadata = {}
+        for pk, value in self.meta_store.iteritems() :
+            metadata_type = metadata_types[pk]
+            if metadata_type.prefix :
+                value = metadata_type.prefix + " " + value
+            if metadata_type.postfix :
+                value = value + " " + metadata_type.postfix
+            metadata[str(metadata_types[pk])] = value
+        return metadata
+
     def __str__(self):
         return self.name
 
@@ -511,7 +533,14 @@ class Line(EDDObject):
             'created': self.created().to_json(),
         }
 
-    # FIXME broken right now because line_strain table is empty
+    @property
+    def primary_strain_name (self) :
+        strains = self.strains.all()
+        if (len(strains) > 0) :
+          return strains[0].name
+        return None
+
+    # FIXME not sure this does what we need here...
     @property
     def strain_ids (self) :
         """

@@ -501,6 +501,7 @@ class ExportTests(TestCase) :
         for x, y in zip([0,12,24], [0.1,0.3,0.5]) :
             md  = meas8.measurementdatum_set.create(updated=up1, x=x, y=y)
             md2 = meas9.measurementdatum_set.create(updated=up1, x=x, y=y)
+        # TODO incorporate metadata
 
     def tearDown(self):
         TestCase.tearDown(self)

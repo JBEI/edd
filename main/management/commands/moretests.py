@@ -11,9 +11,35 @@ with the old EDD (to the extent that it's behaving correctly).
 from main.models import Study, Line
 from main import sbml_export
 from main.sbml_export import parse_sbml_notes_to_dict
+from main.data_export import assemble_table
 from django.core.management.base import BaseCommand, CommandError
 import unittest
 import os.path
+
+class ExportTests (unittest.TestCase) :
+  def test_export_1 (self) :
+    study = Study.objects.get(id=34)
+    line = study.line_set.get(name="arcA-1L")
+    assays = line.assay_set.filter(name="13")
+    table = assemble_table(assays, [ line ], assays[0].measurement_set.all())
+    #print table
+    assert (len(table) == 10)
+    # NOTE this is one less than the number of columns in old EDD because the
+    # empty 'Time' column from Assay metadata is being discarded (I think)
+    assert (len(table[0]) == 28)
+    for row in table :
+      assert ([ not isinstance(c, unicode) for c in row].count(False)==0), row
+    assert (abs(table[-1][-1] - 0.01624) < 0.00001)
+    # check metadata, etc.
+    labels = ['Carbon Source', 'Culture Volume', 'Flask Volume', 'Induction',
+              'Media', 'Shaking speed', 'Starting OD', 'Line Experimenter']
+    values = ['1% Glucose (80% 1-13C 20% U-13C)', '35 mL', '250 mL', 'None',
+              'M9', '240 rpm', '0.1', 'JWG']
+    expected_values = dict(zip(labels, values))
+    for i_col, label in enumerate(table[0]) :
+      if (label in labels) :
+        col = [ row[i_col] for row in table[1:] ]
+        assert ([ c==expected_values[label] for c in col ].count(False) == 0)
 
 class SBMLTests (unittest.TestCase) :
   def test_sbml_setup (self) :
@@ -128,5 +154,7 @@ class SBMLTests (unittest.TestCase) :
 class Command (BaseCommand) :
   def handle (self, *args, **kwds) :
     # we can't call unittest.main() here
-    suite = unittest.TestLoader().loadTestsFromTestCase(SBMLTests)
+    loader = unittest.TestLoader()
+    suite = loader.loadTestsFromTestCase(ExportTests)
+    suite.addTests(loader.loadTestsFromTestCase(SBMLTests))
     unittest.TextTestRunner(verbosity=2).run(suite)
