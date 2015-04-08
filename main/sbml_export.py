@@ -86,6 +86,10 @@ class sbml_info (object) :
         for m in self._all_metabolites }
     self._biomass_metab = Metabolite.objects.get(short_name="OD")
     self._modified = set() # track altered DB records - mostly for testing
+    # these are populated later from assay data
+    self._gene_transcription_values = {}
+    self._protein_values = {}
+    self._reactions_requiring_notes_update = set()
     # XXX the processing can optionally be done at the time of initialization
     # to facilitate JSON data export independent of assay data
     if (i_map is not None) or (map_id is not None) :
@@ -137,7 +141,11 @@ class sbml_info (object) :
         if (maximum is not None) :
           O.notes['CONCENTRATION_HIGHEST'] = [ str(maximum) ]
         O.species.setNotes(create_sbml_notes_object(O.notes))
-    class ReactionInfo (object) : # XXX this class may be superfluous
+    # XXX this class may be superfluous - both it and ExchangeInfo are used to
+    # store info about reactions, but one is specific to gene and protein
+    # values, the other to metabolite fluxes.  it might make more sense to
+    # consolidate them into a single class.
+    class ReactionInfo (object) :
       def __init__ (O, reaction) :
         O.reaction = reaction
         O.id = reaction.getId()
@@ -175,6 +183,21 @@ class sbml_info (object) :
       @property
       def n_notes (O) :
         return len(O.notes)
+      def __hash__ (O) :
+        return O.id.__hash__()
+      def update_notes (O, transcripts, proteins) :
+        # note that using "%g" in the format strings will convert integral
+        # doubles to integer format - this isn't really necessary but it is
+        # consistent with the old EDD and thus makes testing easier
+        if (len(transcripts) > 0) :
+          gene_tr_str = " ".join(
+            [ "%s=%g"%(gid,v) for gid,v in transcripts.iteritems() ])
+          O.notes["GENE_TRANSCRIPTION_VALUES"] = [ gene_tr_str ]
+        if (len(proteins) > 0) :
+          prot_str = " ".join(
+            [ "%s=%g"%(pid,v) for pid,v in proteins.iteritems() ])
+          O.notes["PROTEIN_COPY_VALUES"] = [ prot_str ]
+        O.reaction.setNotes(create_sbml_notes_object(O.notes))
     class ExchangeInfo (object) :
       def __init__ (O, reaction, is_biomass_rxn=False) :
         # XXX due to some mysterious bugs in libsbml, we need to extract as
@@ -448,10 +471,48 @@ class sbml_info (object) :
     return exchange.assign_flux_value(values)
 
   def _assign_transcription_value_to_gene (self, gene_name, values) :
-    pass
+    assert (len(values) >= 1)
+    value = sum(values) / len(values)
+    gene_reactions = self._gene_reactions.get(gene_name, [])
+    if (len(gene_reactions) == 0) : return None
+    self._gene_transcription_values[gene_name] = value
+    for rxn in gene_reactions :
+      self._reactions_requiring_notes_update.add(rxn)
+    return [ rxn.id for rxn in gene_reactions ]
 
   def _assign_value_to_protein (self, protein_name, values) :
-    pass
+    assert (len(values) >= 1)
+    value = sum(values) / len(values)
+    protein_reactions = self._protein_reactions.get(protein_name, [])
+    if (len(protein_reactions) == 0) : return None
+    self._protein_values[protein_name] = value
+    for rxn in protein_reactions :
+      self._reactions_requiring_notes_update.add(rxn)
+    return [ rxn.id for rxn in protein_reactions ]
+
+  # If we didn't do this en-masse after updating all the individual
+  # transcription counts and protein values above, we would be doing a LOT of
+  # extra work mucking around with XML structures with every call to
+  # assignTranscriptionValueToGene, etc.
+  def _update_all_gene_protein_notes (self) :
+    # We need to remake the notes piece for all reactions that are associated
+    # with a gene, and to do that, we need to consolidate all the other
+    # transcription values for each of those reactions as well.
+    for rxn in self._reactions_requiring_notes_update :
+      tr = {} # all transcription values
+      # It's possible to have stale gene info, but no protein info at all, and
+      # vice versa... hence this if statement.
+      if (len(rxn.gene_ids) > 0) :
+        for gene_id in rxn.gene_ids :
+          if (gene_id in self._gene_transcription_values) :
+            tr[gene_id] = self._gene_transcription_values[gene_id]
+      pr = {} # all protein values
+      if (len(rxn.protein_ids) > 0) :
+        for protein_id in rxn.protein_ids :
+          if (protein_id in self._protein_values) :
+            pr[protein_id] = self._protein_values[protein_id]
+      rxn.update_notes(tr, pr)
+    return len(self._reactions_requiring_notes_update)
 
   def _add_notes (self, notes_dict) :
     current_notes = {}
@@ -832,14 +893,9 @@ class line_assay_data (line_export_base) :
     self.interpolated_measurement_timestamps = defaultdict(set)
     # RAMOS stuff
     self.need_ramos_units_warning = False
-    # This is a hash by Assay number, since all Transcriptomics measurements in
-    # an Assay are grouped
+    #
     self.have_transcriptomics_to_embed = False
-    self._consolidated_transcription_ms = defaultdict(dict)
-    # This is also a hash by Assay number, since all Proteomics measurements in
-    # an Assay are grouped
     self.have_proteomics_to_embed = False
-    self._consolidated_protein_ms = defaultdict(dict)
     # this tracks processed measurement data (possibly interpolated)
     self._processed_metabolite_data = []
     self._processed_carbon_ratio_data = []
@@ -1928,6 +1984,11 @@ class line_sbml_export (line_assay_data, sbml_info) :
     # first-seen basis.
     self.carbon_data_by_metabolite = {}
     self.metabolite_errors = {}
+    #
+    self._transcriptions_in_sbml_model = {}
+    self._proteomics_in_sbml_model = {}
+    self._consolidated_transcription_ms = defaultdict(dict)
+    self._consolidated_proteomics_ms = defaultdict(dict)
 
   def run (self, test_mode=False) :
     """
@@ -2017,7 +2078,7 @@ class line_sbml_export (line_assay_data, sbml_info) :
           exchange_id=exchange_matches.get(form_element_id, None))
         self._flux_match_elements.append((metabolite, exchange_match))
     if self.have_transcriptomics_to_embed :
-      for assay_id in self._transcriptomics_checked :
+      for assay_id in self._transcriptions_checked :
         transcription_measurements = self._transcription_by_assay[assay_id]
         for m in transcription_measurements :
           mtype = self._get_measurement_type(m.id)
@@ -2092,8 +2153,17 @@ class line_sbml_export (line_assay_data, sbml_info) :
     # now biomass
     values = [ d.flux for d in self._biomass_data[t] ]
     self._assign_value_to_flux(self._biomass_metab.id, values)
-    # TODO transcriptomics
-    # TODO proteomics
+    # transcriptomics
+    gene_data = self._consolidated_transcription_ms.get(t, {})
+    for gene_name in gene_data.keys() :
+      self._assign_transcription_value_to_gene(gene_name, gene_data[gene_name])
+    # proteomics
+    protein_data = self._consolidated_proteomics_ms.get(t, {})
+    for protein_name in protein_data.keys() :
+      self._assign_value_to_protein(protein_name, protein_data[protein_name])
+    # updates of the underlying XML notes are deferred until now
+    self._update_all_gene_protein_notes()
+    # carbon ratios - embedded in main model notes
     carbon_data = self._carbon_data_by_metabolite.get(t, {})
     if (len(carbon_data) > 0) :
       carbon_notes = { "LCMS" : [] }
@@ -2164,9 +2234,6 @@ class line_sbml_export (line_assay_data, sbml_info) :
     """
     return ",".join([ str(m.id) for m,s in self._flux_match_elements ])
 
-  def sbml_files (self) :
-    return []
-
   @property
   def n_gene_names_resolved (self) :
     return self._transcriptions_in_sbml_model.values().count(True)
@@ -2180,7 +2247,7 @@ class line_sbml_export (line_assay_data, sbml_info) :
     return self._proteomics_in_sbml_model.values().count(True)
 
   @property
-  def n_protein_names_resolved (self) :
+  def n_protein_names_not_resolved (self) :
     return self._proteomics_in_sbml_model.values().count(False)
 
   @property
@@ -2198,6 +2265,8 @@ class line_sbml_export (line_assay_data, sbml_info) :
         "timestamp" : t,
         "metabolites" : [],
         "fluxes" : [],
+        "genes" : len(self._consolidated_transcripton_ms.get(t, {})),
+        "proteins": len(self._consolidated_proteomics_ms.get(t, {})),
       }
       species_data = self._species_data_by_metabolite[t]
       flux_data = self._flux_data_by_metabolite[t]

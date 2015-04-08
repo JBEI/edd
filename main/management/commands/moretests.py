@@ -61,7 +61,7 @@ class SBMLTests (unittest.TestCase) :
     assert (sd.n_exchanges_not_resolved == 648)
     assert (sd.biomass_exchange.ex_id == "R_Ec_biomass_iJO1366_WT_53p95M")
 
-  def test_sbml_export (self) :
+  def test_sbml_export_1 (self) :
     sd = sbml_export.line_sbml_export(
       study=Study.objects.get(id=34),
       lines=[ Line.objects.get(name="arcA-1L") ],
@@ -96,21 +96,46 @@ class SBMLTests (unittest.TestCase) :
     ])
     out = sd.as_sbml(13)
     open("/var/tmp/sbml_tmp.xml", "w").write(out)
-    # Diff this file against an equivalent output from the old EDD
+    self.__diff_sbml(
+      sbml_file="/var/tmp/sbml_tmp.xml",
+      reference_file="edd-s34l368t13-arcA-1L.sbml",
+      expected_species=set(["M_ac_c", "M_co2_c", "M_etoh_c", "M_for_c",
+        "M_glc_DASH_D_c", "M_o2_c", "M_pyr_c", "M_succ_c"]))
+
+  def test_sbml_export_2 (self) :
+    sd = sbml_export.line_sbml_export(
+      study=Study.objects.get(id=34),
+      lines=[ Line.objects.get(name="poxB-2N") ],
+      form={"chosenmap": 0}).run()
+    assert (sd.n_gene_names_resolved == 1366)
+    assert (sd.n_gene_names_not_resolved == 3326)
+    assert (sd.n_protein_names_resolved == 33)
+    assert (sd.n_protein_names_not_resolved == 0)
+    assert (sd.n_modified == 0)
+    out = sd.as_sbml(13)
+    open("/var/tmp/sbml_tmp2.xml", "w").write(out)
+    self.__diff_sbml(
+      sbml_file="/var/tmp/sbml_tmp2.xml",
+      reference_file="edd-s34l373t13-poxB-2N.sbml",
+      expected_species=set(["M_ac_c", "M_co2_c", "M_etoh_c", "M_for_c",
+        "M_glc_DASH_D_c", "M_o2_c", "M_pyr_c", "M_succ_c"]))
+
+  def __diff_sbml (self, sbml_file, reference_file, expected_species=None) :
+    # Diff a file against an equivalent output from the old EDD
     import libsbml
     dir_name = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    file_name = os.path.join(dir_name, "fixtures", "misc_data",
-      "edd-s34l368t13-arcA-1L.sbml")
-    s1 = libsbml.readSBML(file_name)
-    s2 = libsbml.readSBML("/var/tmp/sbml_tmp.xml")
+    ref_file_name = os.path.join(dir_name, "fixtures", "misc_data",
+      reference_file)
+    s1 = libsbml.readSBML(ref_file_name)
+    s2 = libsbml.readSBML(sbml_file)
     m1 = s1.getModel()
     m2 = s2.getModel()
     # carbon ratio data is stored in the model notes
     notes1 = parse_sbml_notes_to_dict(m1.getNotes())
     notes2 = parse_sbml_notes_to_dict(m2.getNotes())
     assert (notes1.keys() == notes2.keys())
-    cr_notes1 = sorted(notes1["LCMS"])
-    cr_notes2 = sorted(notes2["LCMS"])
+    cr_notes1 = sorted(notes1.get("LCMS", []))
+    cr_notes2 = sorted(notes2.get("LCMS", []))
     assert (cr_notes1 == cr_notes2)
     # compare species
     for species1 in m1.getListOfSpecies() :
@@ -119,8 +144,8 @@ class SBMLTests (unittest.TestCase) :
       notes2 = parse_sbml_notes_to_dict(species2.getNotes())
       if ("CONCENTRATION_CURRENT" in notes1) :
         assert ("CONCENTRATION_CURRENT" in notes2)
-        assert (species1.getId() in ["M_ac_c", "M_co2_c", "M_etoh_c",
-                "M_for_c", "M_glc_DASH_D_c", "M_o2_c", "M_pyr_c", "M_succ_c"])
+        if (expected_species is not None) :
+          assert (species1.getId() in expected_species)
         #print "NOTES1", notes1
         #print "NOTES2", notes2
         for field in ["CONCENTRATION_CURRENT",
@@ -150,6 +175,31 @@ class SBMLTests (unittest.TestCase) :
           f1 = float(lb1.getValue())
           f2 = float(lb2.getValue())
           assert (abs(f2 - f1) < 0.01), (f1, f2)
+      if r1.isSetNotes() :
+        # this parses the embedded strings, e.g. "g1234=1.5 g5678=0.1"
+        def compare_records (rec1, rec2) :
+          dict1 = {}
+          for field in rec1.split() :
+            k,v = field.split("=")
+            dict1[k] = v
+          dict2 = {}
+          for field in rec2.split() :
+            k,v = field.split("=")
+            dict2[k] = v
+          assert (dict1 == dict2), (dict1, dict2)
+        notes1 = parse_sbml_notes_to_dict(r1.getNotes())
+        notes2 = parse_sbml_notes_to_dict(r2.getNotes())
+        assert (notes2.keys() == notes1.keys()), (notes1, notes2)
+        if ("GENE_TRANSCRIPTION_VALUES" in notes1) :
+          genes1 = notes1["GENE_TRANSCRIPTION_VALUES"]
+          genes2 = notes2["GENE_TRANSCRIPTION_VALUES"]
+          assert (len(genes1) == len(genes2) == 1)
+          compare_records(genes1[0], genes2[0])
+        if ("PROTEIN_COPY_VALUES" in notes1) :
+          proteins1 = notes1["PROTEIN_COPY_VALUES"]
+          proteins2 = notes2["PROTEIN_COPY_VALUES"]
+          assert (len(proteins1) == len(proteins2) == 1)
+          compare_records(proteins1[0], proteins2[0])
 
 class Command (BaseCommand) :
   def handle (self, *args, **kwds) :

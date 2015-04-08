@@ -904,6 +904,43 @@ Step 8
       <input type="hidden" name="fluxmatchelements"
              value="{{ data.flux_match_element_ids }}"/>
     </div>
+<!-- FIXME this shouldn't be necessary but the list items end up being placed
+far to the left for some reason -->
+<style>
+li {
+  margin-left: 40px;
+}
+</style>
+
+    {% if data.have_transcriptomics_to_embed %}
+    <p>
+      <b>Transcriptomics:</b> Matching available gene transcription values to
+      genes identified in SBML reaction notes...
+    </p>
+    <div>
+      <ul>
+        <li>Resolved {{ data.n_gene_names_resolved }} gene names given in
+          measurement data to gene names in the SBML.</li>
+        <li>Failed to resolve {{ data.n_gene_names_not_resolved }} gene names
+          from measurement data.</li>
+      </ul>
+    </div>
+    {% endif %}
+
+    {% if data.have_proteomics_to_embed %}
+    <p>
+      <b>Proteomics:</b> Matching available protein measurements to proteins
+      identified in SBML reaction notes...
+    </p>
+    <div>
+      <ul>
+        <li>Resolved {{ data.n_protein_names_resolved }} protein names given in
+          measurement data to protein names in the SBML</li>
+        <li>Failed to resolve {{ data.n_protein_names_not_resolved }} protein
+          names from measurement data.</li>
+      </ul>
+    </div>
+    {% endif %}
   </div><!-- #statusstep7main -->
 </div><!-- #step7 -->
 
