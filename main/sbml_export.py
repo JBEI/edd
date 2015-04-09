@@ -60,9 +60,19 @@ class sbml_info (object) :
   """
   Base class for processing a metabolic map (in SBML format) and extracting
   information for display in a view and/or further processing w.r.t. assay
-  data.
+  data.  In the production environment (e.g. as used within line_sbml_data)
+  this would normally be instantiated without arguments, but optional keywords
+  are allowed to facilitate testing.
+
+  :param i_map: index of MetabolicMap to select (starting at 0) - TESTING ONLY
+  :param map_id: database key for MetabolicMap to select - TESTING ONLY
+  :param sbml_file: SBML file to parse directly instead of pulling this from
+    the MetabolicMap object - TESTING ONLY
   """
-  def __init__ (self, i_map=None, map_id=None) :
+  def __init__ (self,
+      i_map=None,
+      map_id=None,
+      sbml_file=None) :
     self._metabolic_maps = list(MetabolicMap.objects.all())
     self._chosen_map = None
     self._sbml_doc = None
@@ -94,7 +104,7 @@ class sbml_info (object) :
     # to facilitate JSON data export independent of assay data
     if (i_map is not None) or (map_id is not None) :
       self._select_map(i_map=i_map, map_id=map_id)
-      self._process_sbml()
+      self._process_sbml(sbml_file=sbml_file)
 
   def _select_map (self, i_map=None, map_id=None) :
     assert ([i_map, map_id].count(None) == 1)
@@ -103,11 +113,16 @@ class sbml_info (object) :
     else :
       self._chosen_map = MetabolicMap.objects.get(id=map_id)
 
-  def _process_sbml (self) :
-    if (self._chosen_map is None) :
-      raise RuntimeError("You must call self._select_map(i) before "+
-        "self._process_sbml()!")
-    sbml = self._chosen_map.parseSBML()
+  def _process_sbml (self, sbml_file=None) :
+    sbml = None
+    if (sbml_file is not None) :
+      import libsbml
+      sbml = libsbml.readSBML(sbml_file)
+    else :
+      if (self._chosen_map is None) :
+        raise RuntimeError("You must call self._select_map(i) before "+
+          "self._process_sbml()!")
+      sbml = self._chosen_map.parseSBML()
     model = sbml.getModel()
     self._sbml_doc = sbml
     self._sbml_model = model
@@ -811,6 +826,7 @@ def generate_transcoded_metabolite_name (mname) :
            re.sub("\]", "_RSQBKT_", mname)))))
 
 # This returns an array of possible SBML species names from a metabolite name.
+# FIXME should this distinguish between compartments?
 def generate_species_name_guesses_from_metabolite_name (mname) :
   mname_transcoded = generate_transcoded_metabolite_name(mname)
   return [
@@ -1558,6 +1574,13 @@ class line_assay_data (line_export_base) :
       })
     return meas_list
 
+  @property
+  def n_od_warnings (self) :
+    n = 0
+    if (not self.have_gcdw_metadata) : n += 1
+    if self.used_generic_GCDW_in_assays : n += 1
+    return n
+
   # HPLC
   @property
   def n_hplc_protocols (self) :
@@ -1616,6 +1639,17 @@ class line_assay_data (line_export_base) :
 
   def processed_measurements (self) :
     return self._processed_metabolite_data
+
+  @property
+  def available_timepoints (self) :
+    return self._comprehensive_valid_OD_times
+
+  @property
+  def n_warnings (self) :
+    """Total count of warnings resulting from processing"""
+    n = self.n_od_warnings
+    n += self.n_conversion_warnings
+    return n
 
 #-----------------------------------------------------------------------
 # Data container classes
@@ -1990,7 +2024,7 @@ class line_sbml_export (line_assay_data, sbml_info) :
     self._consolidated_transcription_ms = defaultdict(dict)
     self._consolidated_proteomics_ms = defaultdict(dict)
 
-  def run (self, test_mode=False) :
+  def run (self, test_mode=False, sbml_file=None) :
     """
     Execute all processing steps.  This is not done on initialization because
     we want to display as many steps as possible in the view even if a
@@ -2007,8 +2041,8 @@ class line_sbml_export (line_assay_data, sbml_info) :
     self._step_5_get_ramos_data()
     self._step_6_get_transcriptomics_proteomics()
     self._step_7_calculate_fluxes()
-    if (not test_mode) : # TODO something smart
-      self._step_8_pre_parse_and_match()
+    if (not test_mode) or (sbml_file is not None) : # TODO something smart
+      self._step_8_pre_parse_and_match(sbml_file)
     t3 = time.time()
     self._fetch_time = (t2 - t1)
     self._setup_time = (t3 - t1)
@@ -2031,10 +2065,10 @@ class line_sbml_export (line_assay_data, sbml_info) :
       else :
         self._select_map(i_map=int(self.form.get("chosenmap",0)))
 
-  def _step_8_pre_parse_and_match (self) :
+  def _step_8_pre_parse_and_match (self, sbml_file=None) :
     """private method"""
     if self.debug : print "STEP 8: match to species in SBML file"
-    self._process_sbml()
+    self._process_sbml(sbml_file=sbml_file)
     if (len(self._species_data_types_available) > 0) :
       # First we attempt to locate the form element that describes the set of
       # exmatch# elements that were submitted with the last page.
@@ -2250,10 +2284,6 @@ class line_sbml_export (line_assay_data, sbml_info) :
   def n_protein_names_not_resolved (self) :
     return self._proteomics_in_sbml_model.values().count(False)
 
-  @property
-  def available_timepoints (self) :
-    return self._comprehensive_valid_OD_times
-
   def summarize_data_by_timepoint (self) :
     """
     Export lists of metabolites available for various analyses at each
@@ -2262,10 +2292,9 @@ class line_sbml_export (line_assay_data, sbml_info) :
     result = []
     for i, t in enumerate(self.available_timepoints) :
       timepoint_data = {
-        "timestamp" : t,
         "metabolites" : [],
         "fluxes" : [],
-        "genes" : len(self._consolidated_transcripton_ms.get(t, {})),
+        "genes" : len(self._consolidated_transcription_ms.get(t, {})),
         "proteins": len(self._consolidated_proteomics_ms.get(t, {})),
       }
       species_data = self._species_data_by_metabolite[t]
@@ -2287,7 +2316,12 @@ class line_sbml_export (line_assay_data, sbml_info) :
         timepoint_data["fluxes"].append("BIOMASS")
       timepoint_data["carbon_data"] = [ str(s) for s in
         sorted(carbon_data.keys()) ]
-      timepoint_data["usable_items"] = len(timepoint_data["fluxes"]) +  \
-        len(timepoint_data["metabolites"]) + len(timepoint_data["carbon_data"])
+      timepoint_data["usable_items"] = 0
+      for value in timepoint_data.values() :
+        if isinstance(value, list) :
+          timepoint_data["usable_items"] += len(value)
+        elif (value > 0) :
+          timepoint_data["usable_items"] += 1
+      timepoint_data["timestamp"] = t
       result.append(timepoint_data)
     return result

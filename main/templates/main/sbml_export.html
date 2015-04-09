@@ -84,7 +84,11 @@ EDDAutoComplete.initializeAllPageElements();
 <div class="pageSection" style="margin:10px;" id="allstatusmain">
 
 <div class="sectionHead">Export Settings:
-  <span class="warn2"> 1 Warning</span>
+  {% with n_warnings=data.n_warnings %}
+    {% if n_warnings %}
+      <span class="warn2">{{ n_warnings }} warnings</span>
+    {% endif %}
+  {% endwith %}
 </div>
 
 <!-- Step 1 -->
@@ -142,9 +146,11 @@ Step 2: Optical Density (OD600)
         Step 2: Find OD Data:
       </a>
     </span>
-    <!-- TODO warnings
-    <span class="warn2"> 1 Warning</span>
-    -->
+  {% with n_warnings=data.n_od_warnings %}
+    {% if n_warnings %}
+      <span class="warn2">{{ n_warnings }} warnings</span>
+    {% endif %}
+  {% endwith %}
   </div>
 
 <div class="sectionContent discloseBody" id="statusstep1main">
@@ -959,6 +965,8 @@ END OF EXPORT SETTINGS
 
 Downloads section
 
+TODO new layout
+
 -->
 <div class="pageSection" id="dataDownloads" style="width:90%;">
   <div class="sectionHead">
@@ -1031,6 +1039,22 @@ Downloads section
                 {% for met_name in sf.carbon_data %}
                   <li>{{ met_name }}</li>
                 {% endfor %}
+                </ul>
+                {% endspaceless %}
+              {% endif %}
+              {% if sf.genes %}
+                <div style="font-weight: bold;">Transcriptomics:</div>
+                {% spaceless %}
+                <ul style="margin:2px 2px 4px 2px;padding:0px;">
+                  <li>{{ sf.genes }} genes</li>
+                </ul>
+                {% endspaceless %}
+              {% endif %}
+              {% if sf.proteins %}
+                <div style="font-weight: bold;">Proteomics:</div>
+                {% spaceless %}
+                <ul style="margin:2px 2px 4px 2px;padding:0px;">
+                  <li>{{ sf.proteins }} proteins</li>
                 </ul>
                 {% endspaceless %}
               {% endif %}

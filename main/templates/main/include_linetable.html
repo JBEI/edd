@@ -39,7 +39,7 @@ Table displaying selected lines; used for table and SBML export pages
   <td>{{ line.media }}</td>
   <td><ul><li>{{ line.carbon_source_name }}</li></ul></td>
   <td><ul><li>{{ line.carbon_source_labeling }}</li></ul></td>
-  <td style="text-align:center;">{{ line.experimenter.username }}</td>
+  <td style="text-align:center;">{{ line.experimenter.userprofile.initials }}</td>
   <td>{{ line.last_modified }}</td>
 </tr>
 {% endfor %}

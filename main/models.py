@@ -7,6 +7,8 @@ from django.utils.dateformat import format as format_date
 from django_extensions.db.fields import PostgreSQLUUIDField
 from django_hstore import hstore
 from itertools import chain
+import calendar
+from datetime import datetime, timedelta
 import arrow
 import re
 
@@ -182,7 +184,12 @@ class EDDObject(models.Model):
         if (updated is None) :
             return "N/A"
         else : # FIXME these are UTC...
-            return updated.mod_time.strftime("%b %d %Y, %I:%M%p")
+            utc_dt = updated.mod_time
+            timestamp = calendar.timegm(utc_dt.timetuple())
+            local_dt = datetime.fromtimestamp(timestamp)
+            assert utc_dt.resolution >= timedelta(microseconds=1)
+            local_dt = local_dt.replace(microsecond=utc_dt.microsecond)
+            return local_dt.strftime("%b %d %Y, %I:%M%p")
 
     def get_attachment_count(self):
         return self.files.count()
@@ -540,13 +547,12 @@ class Line(EDDObject):
           return strains[0].name
         return None
 
-    # FIXME not sure this does what we need here...
     @property
     def strain_ids (self) :
         """
         String representation of associated strains; used in views.
         """
-        return ",".join([ s.registry_id for s in self.strains.all() ])
+        return ",".join([ s.name for s in self.strains.all() ])
 
     @property
     def carbon_source_info (self) :

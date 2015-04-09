@@ -201,10 +201,18 @@ class SBMLTests (unittest.TestCase) :
           assert (len(proteins1) == len(proteins2) == 1)
           compare_records(proteins1[0], proteins2[0])
 
+class MiscTests(unittest.TestCase) :
+  # this is mainly just to verify that UTC conversion is working
+  def test_line_data (self) :
+    line = Line.objects.get(name="poxB-2N")
+    assert (line.strain_ids == "poxB")
+    assert (line.last_modified == 'Apr 11 2014, 02:15PM')
+
 class Command (BaseCommand) :
   def handle (self, *args, **kwds) :
     # we can't call unittest.main() here
     loader = unittest.TestLoader()
     suite = loader.loadTestsFromTestCase(ExportTests)
+    suite = loader.loadTestsFromTestCase(MiscTests)
     suite.addTests(loader.loadTestsFromTestCase(SBMLTests))
     unittest.TextTestRunner(verbosity=2).run(suite)

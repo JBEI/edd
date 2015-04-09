@@ -6,6 +6,7 @@ import main.data_export
 import main.data_import
 import main.sbml_export
 import warnings
+import os.path
 
 class StudyTests(TestCase):
     
@@ -364,7 +365,13 @@ class SBMLUtilTests (TestCase) :
     Unit tests for various utilities used in SBML export
     """
     def setUp (self) :
-        pass
+        mm = MetabolicMap.objects.create(
+          name="R_Ec_biomass_iJO1366_WT_53p95M",
+          biomass_calculation=33.19037,
+          biomass_exchange_name="R_Ec_biomass_iJO1366_WT_53p95M")
+        mt = Metabolite.objects.create(type_name="Optical Density",
+            short_name="OD", type_group="m", charge=0, carbon_count=0,
+            molecular_formula="", molar_mass=0)
 
     def test_metabolite_name (self) :
         guesses = \
@@ -377,7 +384,7 @@ class SBMLUtilTests (TestCase) :
         try :
             import libsbml
         except ImportError :
-            warnings.warn(str(e), ImportWarning)
+            warnings.warn(str(e))
         else :
             notes = main.sbml_export.create_sbml_notes_object({
               "CONCENTRATION_CURRENT" : [ 0.5 ],
@@ -389,6 +396,20 @@ class SBMLUtilTests (TestCase) :
               'CONCENTRATION_CURRENT': ['0.5'],
               'CONCENTRATION_LOWEST': ['0.01'],
               'CONCENTRATION_HIGHEST': ['1.0'] })
+
+    def test_sbml_setup (self) :
+        try :
+            import libsbml
+        except ImportError :
+            warnings.warn(str(e))
+        else :
+            dir_name = os.path.dirname(__file__)
+            sbml_file = os.path.join(dir_name,"fixtures","misc_data",
+              "simple.sbml")
+            s = main.sbml_export.sbml_info(i_map=0, sbml_file=sbml_file)
+            assert (s.n_sbml_species == 4)
+            assert (s.n_sbml_reactions == 5)
+            # TODO lots more
 
 
 class ExportTests(TestCase) :
@@ -501,7 +522,12 @@ class ExportTests(TestCase) :
         for x, y in zip([0,12,24], [0.1,0.3,0.5]) :
             md  = meas8.measurementdatum_set.create(updated=up1, x=x, y=y)
             md2 = meas9.measurementdatum_set.create(updated=up1, x=x, y=y)
+        # TODO proteomics/transcriptomics would be nice
         # TODO incorporate metadata
+        mm = MetabolicMap.objects.create(
+          name="R_Ec_biomass_iJO1366_WT_53p95M",
+          biomass_calculation=33.19037,
+          biomass_exchange_name="R_Ec_biomass_iJO1366_WT_53p95M")
 
     def tearDown(self):
         TestCase.tearDown(self)
@@ -559,15 +585,14 @@ class ExportTests(TestCase) :
         else :
             raise Exception("Should have caught an exception here!")
 
-    # XXX very partial because this functionality isn't complete, but it's a
-    # messy enough module that I'm writing tests as I go
-    def test_sbml_export (self) :
+    # XXX this test does NOT depend on libsbml being available
+    def test_data_export_setup (self) :
         study = Study.objects.get(name="Test Study 1")
-        data = main.sbml_export.line_sbml_export(
+        data = main.sbml_export.line_assay_data(
             study=study,
             lines=[ Line.objects.get(name="Line 1") ],
             form={})
-        data.run(test_mode=True)
+        data.run()
         od_data = data.export_od_measurements()
         self.assertTrue(od_data[0]['data_points'][-1]['title'] == "0.59 at 24h")
         self.assertTrue(data.n_hplc_measurements == 2)
@@ -594,7 +619,33 @@ class ExportTests(TestCase) :
         #for fd in meas.flux_data :
         #  print fd
         # TODO test interpolation of measurements
+        assert (data.available_timepoints == [4.0, 8.0, 12.0, 18.0])
+
+    def test_sbml_export (self) :
+        try :
+            import libsbml
+        except ImportError :
+            warnings.warn(str(e))
+        else :
+            study = Study.objects.get(name="Test Study 1")
+            data = main.sbml_export.line_sbml_export(
+                study=study,
+                lines=[ Line.objects.get(name="Line 1") ],
+                form={"chosenmap":0})
+            dir_name = os.path.dirname(__file__)
+            sbml_file = os.path.join(dir_name,"fixtures","misc_data",
+              "simple.sbml")
+            data.run(test_mode=True,
+              sbml_file=sbml_file)
+            sbml_out = data.as_sbml(8.0)
+            sbml_in = libsbml.readSBMLFromString(sbml_out)
+            model = sbml_in.getModel()
+            assert (model is not None)
+            # TODO test contents of file output
+
+    def test_data_export_errors (self) :
         # now start removing data (testing for deliberate failure)
+        study = Study.objects.get(name="Test Study 1")
         od = Assay.objects.get(name="OD measurement")
         odm = od.measurement_set.all()[0]
         odm.measurementdatum_set.filter(x__gt=0).delete()
