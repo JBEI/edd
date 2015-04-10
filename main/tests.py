@@ -295,7 +295,11 @@ class ImportTests(TestCase) :
             user=user2)
         line1 = study1.line_set.create(name="Line 1", description="",
             experimenter=user1, contact=user1)
+        line2 = study1.line_set.create(name="Line 2", description="",
+            experimenter=user1, contact=user1)
         protocol1 = Protocol.objects.create(name="GC-MS", owned_by=user1)
+        protocol2 = Protocol.objects.create(name="Transcriptomics",
+            owned_by=user1)
         mt1 = Metabolite.objects.create(type_name="Acetate",
             short_name="ac", type_group="m", charge=-1, carbon_count=2,
             molecular_formula="C2H3O2", molar_mass=60.05)
@@ -304,6 +308,8 @@ class ImportTests(TestCase) :
             molecular_formula="C6H12O6", molar_mass=180.16)
         mu1 = MeasurementUnit.objects.create(unit_name="mM")
         mu2 = MeasurementUnit.objects.create(unit_name="hours")
+        mu3 = MeasurementUnit.objects.create(unit_name="counts")
+        mu4 = MeasurementUnit.objects.create(unit_name="FPKM")
 
     def get_form (self) :
         mu = MeasurementUnit.objects.get(unit_name="mM")
@@ -385,6 +391,30 @@ class ImportTests(TestCase) :
             pass
         else :
             raise Exception("Expected an AssertionError here")
+
+    def test_import_rna_seq (self) :
+        return True
+        line1 = Line.objects.get(name="Line 1")
+        line2 = Line.objects.get(name="Line 2")
+        table1 = [ # FPKM
+            "GENE"   "L1-1", "L1-2", "L2-1", "L2-2",
+            "gene1", "5.34", "5.32", "7.45", "7.56",
+            "gene2", "1.79", "1.94", "0.15", "0.33",
+        ]
+        update = Update.objects.create(
+            mod_time=timezone.now(),
+            mod_by=User.objects.get(username="admin"))
+        n_meas, n_meas_data = main.data_import.import_rna_seq(
+            study=Study.objects.get(name="Test Study 1"),
+            user=User.objects.get(username="admin"),
+            update=update,
+            table=table,
+            n_cols=4,
+            data_type="fpkm",
+            line_ids=[line1.id,line1.id,line2.id,line2.id],
+            assay_ids["1"]*4,
+            meas_times=[0]*4)
+        print n_meas, n_meas_data
 
 
 class SBMLUtilTests (TestCase) :

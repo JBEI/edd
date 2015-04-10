@@ -1,8 +1,5 @@
 
-# local imports
-from main.models import Assay, GeneIdentifier, Line, Measurement, \
-    MeasurementDatum, MeasurementType, MeasurementUnit, Protocol, Update
-# global imports
+from main.models import *
 from django.core.exceptions import ObjectDoesNotExist
 import warnings
 import json
@@ -252,7 +249,7 @@ def import_assay_table_data (study, user, post_data, update) :
             # If we're in transcription mode, we first attempt to look up the
             # name of the gene in the master table and resolve it to a
             # GeneIdentifier.
-            meas_units_id = 1 # Units are always n/a
+            meas_units_id = 1 # FIXME Units are always n/a
             # Given that there's currently no way to specify the compartment,
             # we'll default it to none.
             compartment_id = 0
@@ -331,3 +328,108 @@ def import_assay_table_data (study, user, post_data, update) :
             pass # TODO
     # TODO update study
     return n_added
+
+def import_rna_seq (study, user, update, **kwds) :
+    """
+    Import a set of RNA-Seq measurements all at once.  These may be any
+    combination of lines, biological replicates, technical replications,
+    or timepoints but each needs to be labeled distinctly.  The input table
+    should take this form:
+
+    GENE <label1> <label2> <label3>
+    <ID1> <value> <value> <value>
+    <ID2> <value> <value> <value>
+
+    (with the first row being optional, since the meaning of each column
+    should have already been disambiguited before form submission.)
+    """
+    assert study.user_can_write(user)
+    assert (user.id == update.mod_by.id)
+    data_type = kwds.get("data_type", "combined")
+    assert (data_type in ["combined", "fpkm", "counts"])
+    n_cols = kwds["n_cols"]
+    line_ids = kwds["line_ids"]
+    assay_ids = kwds["assay_ids"]
+    meas_times = [ float(x) for x in kwds["meas_times"] ]
+    assert (len(line_ids) == len(assay_ids) == len(meas_times) == n_cols)
+    unique_ids = set(zip(line_ids,assay_ids,meas_times))
+    if (len(unique_ids) != n_cols) :
+        raise ValueError("Duplicate line/assay/timepoint selections - " +
+            "each combination must be unique!  For technical replicates, you "+
+            "should treat each replica as a separate assay.")
+    for row in json_data :
+        assert (len(row[1:]) == n_cols)
+    protocol = Protocol.objects.get(name="Transcriptomics")
+    assert (protocol is not None)
+    table = kwds["table"]
+    if isinstance(table, basestring) :
+        table = json.loads(table) # XXX ugh....
+    assert (len(table) > 0)
+    lines = { l.pk:l for l in Line.objects.filter(id__in=line_ids) }
+    assays = {}
+    # XXX as written, this will treat each timepoint as a different set of
+    # Measurements within a single Assay - this is logically correct, but may
+    # not fit so well with the current EDD interface, especially if we want
+    # to compare expression at different timepoints.  should we instead treat
+    # different timepoints as separate Assays?
+    for line_id, assay_id in zip(line_ids, assay_ids) :
+        line = lines[line_id]
+        assay = line.assay_set.create(
+            name=assay_id,
+            protocol=protocol,
+            experimenter=user)
+        assays[(line_id, assay_id)] = assay
+    meas_units = {
+        "fpkm" : MeasurementUnit.objects.get(unit_name="FPKM"),
+        "counts" : MeasurementUnit.objects.get(unit_name="counts"),
+        "hours" : MeasurementUnit.objects.get(unit_name="hours"),
+    }
+    genes = Gene.by_name()
+    n_meas = n_meas_data = 0
+    for row in json_data :
+        gene_id = row[0]
+        if (gene_id == "GENE") : continue
+        gene_meas = genes.get(gene_id, None)
+        if (gene_meas is None) :
+            gene_meas = Gene.objects.create( # FIXME annotation?
+                type_name=gene_id,
+                type_group=MeasurementGroup.GENEID)
+            genes[gene_id] = gene_meas
+        all_fpkms = []
+        all_counts = []
+        for value in row[1:] :
+            fpkm = counts = None
+            if (data_type == "combined") :
+                fields = value.split(",")
+                all_counts.append(int(fields[0]))
+                all_fpkms.append(float(fields[1]))
+            elif (data_type == "fpkm") :
+                all_fpkms.append(float(value))
+            elif (data_type == "counts") :
+                all_counts.append(int(value))
+        def add_measurement_data (values, units) :
+            assert len(values) == n_cols
+            measurements = {}
+            for i_col, (line_id,assay_id) in enumerate(zip(line_ids,assay_id)):
+                meas = measurements.get((line_id, assay_id), None)
+                if (meas is None) :
+                    assay = assays[(line_id, assay_id)]
+                    meas = assay.measurement_set.create(
+                        measurement_type=gene_meas,
+                        x_units=meas_units["hours"],
+                        y_units=units,
+                        experimenter=user,
+                        update_ref=update,
+                        compartment=MeasurementCompartment.INTRACELLULAR)
+                    n_meas += 1
+                    measurements[(line_id, assay_id)] = meas
+                meas.measurementdatum_set.create(
+                    x=meas_times[i_col],
+                    y=values[i_col],
+                    updated=update)
+                n_meas_data += 1
+        if (len(all_fpkms) > 0) :
+            add_measurement_data(all_fpkms, meas_units["fpkm"])
+        if (len(all_counts) > 0) :
+            add_measurement_data(all_counts, meas_units["counts"])
+    return n_meas, n_meas_data

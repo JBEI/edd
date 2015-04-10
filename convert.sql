@@ -488,7 +488,16 @@ INSERT INTO public.measurement_unit(
     ORDER BY u.id;
 SELECT setval('public.measurement_unit_id_seq', max(id))
     FROM public.measurement_type;
-
+-- RNA-Seq additions
+INSERT INTO public.measurement_unit(
+        unit_name, display, type_group
+    ) VALUES ('RPKM', true, 'g');
+INSERT INTO public.measurement_unit(
+        unit_name, display, type_group
+    ) VALUES ('FPKM', true, 'g');
+INSERT INTO public.measurement_unit(
+        unit_name, display, type_group
+    ) VALUES ('counts', true, 'g');
 
 --
 -- copy over assay_measurements
