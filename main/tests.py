@@ -718,7 +718,7 @@ class UtilityTests (ExportTests) :
         assay = Assay.objects.get(name="Assay 1")
         meas = assay.measurement_set.all()[0]
         data = meas.measurementdatum_set.all()
-        self.assertTrue(main.utilities.interpolate_at(data, 10) == 0.3)
+        self.assertTrue(abs(main.utilities.interpolate_at(data,10)-0.3)<0.00001)
 
     def test_form_data (self) :
         lines = Line.objects.all()
