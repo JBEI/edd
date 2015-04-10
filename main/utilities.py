@@ -1,8 +1,9 @@
+
+from django.contrib.auth import get_user_model
 from main.models import *
 from collections import defaultdict
 from datetime import datetime, timedelta
 from decimal import Decimal
-from django.contrib.auth import get_user_model
 import calendar
 import json
 import os.path
@@ -79,17 +80,7 @@ def get_edddata_study (study) :
       "CSources" : { cs.id : cs.to_json() for cs in carbon_sources },
     }
 
-def User_to_json(self):
-    return {
-        "uid": self.username,
-        "email": self.email,
-        "initials": self.userprofile.initials,
-    }
-    
 def get_edddata_misc():
-    # Attach our own to_json() method to the User model
-    User = get_user_model()
-    User.to_json = User_to_json
     media_types = {
         '--' : '-- (No base media used)',
         'LB' : 'LB (Luria-Bertani Broth)',
@@ -97,15 +88,28 @@ def get_edddata_misc():
         'M9' : 'M9 (M9 salts minimal media)',
         'EZ' : 'EZ (EZ Rich)',
     }
-    users = get_user_model().objects.all() # TODO find a way to filter this down a bit?
+    users = get_edddata_users()
     return {
       # media types
       "MediaTypes" : media_types,
       # Users
-      "UserIDs" : [ u.id for u in users ],
-      "EnabledUserIDs" : [ u.id for u in users if u.is_active ],
-      "Users" : { u.id: u.to_json() for u in users },
+      "UserIDs" : users["UserIDs"],
+      "EnabledUserIDs" : users["EnabledUserIDs"],
+      "Users" : users["Users"],
     }
+
+def get_edddata_users (active_only=False) :
+    User = get_user_model()
+    users = []
+    if active_only :
+        users = User.objects.filter(is_active=True)
+    else :
+        users = User.objects.all()
+    return {
+        "UserIDs" : [ u.id for u in users ],
+        "EnabledUserIDs" : [ u.id for u in users if u.is_active ],
+        "Users" : { str(u.id) : u.to_json() for u in users },
+      }
 
 def interpolate_at (measurement_data, x) :
   """
@@ -143,11 +147,12 @@ def extract_id_list_as_form_keys (form, prefix) :
     """
     Extract unique IDs embedded in parameter keys, e.g. "prefix123include=1".
     """
-    re_str = "^%s([0-9]+)include$" % prefix
+    re_str = "^(%s)([0-9]+)include$" % prefix
     ids = []
     for key in form :
-        if re.match(re_str, key) and (not form.get(key, "0") in ["0", ""]) :
-            ids.append(form[key])
+        m = re.match(re_str, key)
+        if (m is not None) and (not form.get(key, "0") in ["0", ""]) :
+            ids.append(m.group(2)) # e.g. "123"
     return ids
 
 def get_selected_lines (form, study) :

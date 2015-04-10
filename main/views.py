@@ -263,6 +263,27 @@ def study_export_sbml (request, study) :
             },
             context_instance=RequestContext(request))
 
+# /admin/sbml
+def admin_sbml (request) :
+    return render_to_response("main/admin_sbml.html",
+        dictionary={
+            "metabolic_maps" : main.sbml_export.sbml_template_info(),
+        },
+        context_instance=RequestContext(request))
+
+# /admin/sbml/<map_id>/edit
+def admin_sbml_edit (request, map_id) :
+    sbml_info = main.sbml_export.sbml_info(map_id=map_id)
+    return render_to_response("main/admin_sbml_edit.html",
+        dictionary={
+            "data" : sbml_info,
+        },
+        context_instance=RequestContext(request))
+
+# /data/users
+def data_users (request) :
+    return JsonResponse(get_edddata_users())
+
 # FIXME it would be much better to avoid csrf_exempt...
 @csrf_exempt
 def utilities_parse_table (request) :

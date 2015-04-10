@@ -1,4 +1,5 @@
 
+# FIXME DON'T CALCULATE FLUXES FOR INTRACELLULAR MEASUREMENTS!
 # TODO clean this up, get rid of unnecessary code and make it internally
 # consistent
 # TODO Garrett says we can get rid of the input checkboxes
@@ -31,7 +32,7 @@
 # NOTE 2: a lot of Garrett's comments have been ported from the Perl code.
 # some of these may need updating or removing.
 
-# NOTE 3: I apologize for my reliance on double-underscores to indicate
+# NOTE 3: I apologize for my reliance on underscores to indicate
 # pseudo-"private" attributes and methods; it looks gross but it helps
 # clarify the intent (at least in my own mind).
 
@@ -540,6 +541,18 @@ class sbml_info (object) :
 
   #---------------------------------------------------------------------
   # "public" methods
+  def selected_map_info (self) :
+    """
+    Returns a dict summarizing the currently selected metabolic map.
+    """
+    return {
+      "id" : self._chosen_map.id,
+      "filename" : self._chosen_map.xml_file.filename,
+      "description" : self._chosen_map.xml_file.description,
+      "owner" : self._chosen_map.xml_file.created.mod_by.get_full_name(),
+      "biomass_ex_name" : self._chosen_map.biomass_exchange_name,
+    }
+
   @property
   def n_modified (self) :
     return len(self._modified)
@@ -2325,3 +2338,27 @@ class line_sbml_export (line_assay_data, sbml_info) :
       timepoint_data["timestamp"] = t
       result.append(timepoint_data)
     return result
+
+########################################################################
+# ADMIN FEATURES
+#
+def sbml_template_info () :
+  """
+  Construct a dict summarizing the existing SBML templates for display on
+  the /admin/sbml view.
+  """
+  maps = MetabolicMap.objects.all()
+  export = []
+  for m in maps :
+    attachment = m.xml_file
+    export.append({
+      "id" : m.id,
+      "name" : str(attachment.filename),
+      "attachment_id" : attachment.id,
+      "description" : str(attachment.description),
+      "biomass_calculation" : float(m.biomass_calculation),
+      "file_size" : attachment.file_size,
+      "user_initials" : attachment.created.mod_by.userprofile.initials,
+      "date_added" : attachment.created.format_timestamp(),
+    })
+  return export

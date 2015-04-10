@@ -21,6 +21,7 @@ EDDData = JSON.parse("{{ data.export_JSON|escapejs }}"); // FIXME this is gross
 
 EDDData.currentUserID = {{ user.pk }};
 
+// FIXME move this somewhere central
 function disclose() {
   $(this).closest('.disclose').toggleClass('discloseHide');
   return false;
@@ -123,7 +124,7 @@ EDDAutoComplete.initializeAllPageElements();
       </td>
       <td style="text-align:right">
         <!-- XXX actual URL TBD -->
-        <a href="/admin/templates">Manage Templates</a>
+        <a href="/admin/sbml">Manage Templates</a>
       </td>
     </tr>
   </table>

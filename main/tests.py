@@ -2,11 +2,38 @@ from django.contrib.auth.models import User, Group
 from django.test import TestCase
 from main.models import * #Study, Update, UserPermission, GroupPermission
 from main.solr import StudySearch
+from edd.profile.models import UserProfile
 import main.data_export
 import main.data_import
 import main.sbml_export
+import main.utilities
 import warnings
 import os.path
+
+class UserTests(TestCase) :
+    def setUp (self) :
+        TestCase.setUp(self)
+        user1 = User.objects.create_user(username='James Smith',
+            email="jsmith@localhost",
+            password='password')
+        user2 = User.objects.create_user(username='John Doe',
+            email="jdoe@localhost",
+            password='password')
+        profile1 = UserProfile.objects.create(
+            user=user1,
+            initials="JS",
+            description="random postdoc")
+
+    def test_monkey_patches (self) :
+        user1 = User.objects.get(username="James Smith")
+        user2 = User.objects.get(username="John Doe")
+        self.assertTrue(user1.initials == "JS")
+        self.assertTrue(user2.initials is None)
+        user_json = user1.to_json()
+        for key,value in {'initials': u'JS', 'uid': u'James Smith',
+              'name': u'', 'email': u'jsmith@localhost'}.iteritems() :
+            self.assertTrue(user_json[key] == value)
+
 
 class StudyTests(TestCase):
     
@@ -433,6 +460,9 @@ class ExportTests(TestCase) :
         protocol2 = Protocol.objects.create(name="OD600", owned_by=user1)
         protocol3 = Protocol.objects.create(name="HPLC", owned_by=user1)
         protocol4 = Protocol.objects.create(name="O2/CO2", owned_by=user1)
+        protocol5 = Protocol.objects.create(name="Proteomics", owned_by=user1)
+        protocol6 = Protocol.objects.create(name="Transcriptomics",
+          owned_by=user1)
         mt1 = Metabolite.objects.create(type_name="Acetate",
             short_name="ac", type_group="m", charge=-1, carbon_count=2,
             molecular_formula="C2H3O2", molar_mass=60.05)
@@ -672,3 +702,36 @@ class ExportTests(TestCase) :
                             in str(e))
         else :
             raise Exception("Should have caught an exception here!")
+
+
+# totally unrelated to ExportTests, but subclassing it so we can re-use the
+# setup
+class UtilityTests (ExportTests) :
+    def setUp (self) :
+        ExportTests.setUp(self)
+
+    def test_get_edddata_users (self) :
+        users = main.utilities.get_edddata_users()
+        #print users
+
+    def test_interpolate (self) :
+        assay = Assay.objects.get(name="Assay 1")
+        meas = assay.measurement_set.all()[0]
+        data = meas.measurementdatum_set.all()
+        self.assertTrue(main.utilities.interpolate_at(data, 10) == 0.3)
+
+    def test_form_data (self) :
+        lines = Line.objects.all()
+        form1 = {
+            "selectedLineIDs" : ",".join([str(l.id) for l in lines ]),
+        }
+        form2 = { "selectedLineIDs":[ str(l.id) for l in lines ] }
+        form3 = {}
+        for l in lines :
+            form3["line%dinclude"%l.id] = 1
+        ids1 = main.utilities.extract_id_list(form1, "selectedLineIDs")
+        ids2 = main.utilities.extract_id_list(form2, "selectedLineIDs")
+        ids3 = main.utilities.extract_id_list_as_form_keys(form3, "line")
+        self.assertTrue(ids1 == ids2 == sorted(ids3))
+        study = Study.objects.get(name="Test Study 1")
+        lines2 = main.utilities.get_selected_lines(form1, study)

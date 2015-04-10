@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.utils import timezone
 from django.utils.dateformat import format as format_date
@@ -53,6 +54,17 @@ class Update(models.Model):
             "user": self.mod_by.pk,
         }
 
+    def format_timestamp (self, format_string="%b %d %Y, %I:%M%p") :
+        """
+        Convert the datetime (mod_time) to a human-readable string, including
+        conversion from UTC to local time zone.
+        """
+        utc_dt = self.mod_time
+        timestamp = calendar.timegm(utc_dt.timetuple())
+        local_dt = datetime.fromtimestamp(timestamp)
+        assert utc_dt.resolution >= timedelta(microseconds=1)
+        local_dt = local_dt.replace(microsecond=utc_dt.microsecond)
+        return local_dt.strftime(format_string)
 
 class Comment(models.Model):
     """
@@ -77,6 +89,9 @@ class Attachment(models.Model):
     mime_type = models.CharField(max_length=255, null=True)
     file_size = models.IntegerField(default=0)
 
+    @classmethod
+    def from_upload (self, form) :
+        pass
 
 class MetadataGroup(models.Model):
     """
@@ -183,13 +198,8 @@ class EDDObject(models.Model):
         updated = self.updated()
         if (updated is None) :
             return "N/A"
-        else : # FIXME these are UTC...
-            utc_dt = updated.mod_time
-            timestamp = calendar.timegm(utc_dt.timetuple())
-            local_dt = datetime.fromtimestamp(timestamp)
-            assert utc_dt.resolution >= timedelta(microseconds=1)
-            local_dt = local_dt.replace(microsecond=utc_dt.microsecond)
-            return local_dt.strftime("%b %d %Y, %I:%M%p")
+        else :
+            return updated.format_timestamp("%b %d %Y, %I:%M%p")
 
     def get_attachment_count(self):
         return self.files.count()
@@ -857,7 +867,7 @@ class Measurement(models.Model):
         else :
             return [ m.fx for m in mdata ]
 
-    # XXX this shouldn't need to handle vectors (?)
+    # this shouldn't need to handle vectors
     def interpolate_at (self, x) :
         from main.utilities import interpolate_at
         return interpolate_at(self.valid_data(), x)
@@ -982,3 +992,43 @@ class MetaboliteSpecies (models.Model) :
     metabolic_map = models.ForeignKey(MetabolicMap)
     measurement_type = models.ForeignKey(MeasurementType)
     species = models.TextField()
+
+# XXX MONKEY PATCHING
+def User_initials (self) :
+    try :
+        return self.userprofile.initials
+    except ObjectDoesNotExist as e :
+        return None
+
+def User_institution (self) :
+    try :
+        institutions = self.userprofile.institutions.all()
+        if (len(institutions) > 0) :
+            return institutions[0].institution_name
+        return None
+    except ObjectDoesNotExist as e :
+        return None
+
+def User_to_json(self):
+    # FIXME this may be excessive - how much does the frontend actually need?
+    return {
+        "uid": self.username,
+        "email": self.email,
+        "initials": self.initials,
+        "name" : self.get_full_name(),
+        "institution":self.institution,
+        "description":"",
+        "lastname":self.last_name,
+        "groups":None,
+        "firstname":self.first_name,
+        "disabled":not self.is_active
+    }
+
+# this will get replaced by the actual model as soon as the app is initialized
+User = None
+def patch_user_model () :
+    global User
+    User = get_user_model()
+    User.add_to_class("to_json", User_to_json)
+    User.add_to_class("initials", property(User_initials))
+    User.add_to_class("institution", property(User_institution))

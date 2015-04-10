@@ -1,0 +1,147 @@
+{% extends "edd_base.html" %}
+{% load staticfiles %}
+
+{% block js_css %}
+  {{ block.super }}
+
+<script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
+<script type="text/javascript" src="{% static 'main/js/EDDEditing.js' %}"></script>
+<script type="text/javascript">
+//<![CDATA[
+EDDData = { }; // Declaring the object for later use
+
+EDDData.currentUserID = 40;
+
+//]]>
+</script>
+<script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
+<script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
+<script type="text/javascript" src="{% static 'main/js/Autocomplete.js' %}"></script>
+<script type="text/javascript" src="{% static 'main/js/BiomassCalculationUI.js' %}"></script>
+<script type="text/javascript" src="{% static 'main/js/AdminMetabolicMaps.js' %}"></script>
+
+<style>
+td {
+  vertical-align: bottom;
+  text-align: bottom;
+}
+</style>
+{% endblock js_css %}
+
+{% block head_title %}
+SBML Templates
+{% endblock head_title %}
+
+{% block body_title %}
+SBML Templates
+{% endblock body_title %}
+
+{% block content %}
+
+<div class="pageSection" id="add-template">
+  <div class="disclose discloseHide" id="add-template-body">
+    <div class="sectionChapter">
+      <span><a href="#" class="discloseLink">
+        Add a new SBML template
+      </a></span>
+    </div>
+
+    <div>
+      <p style="font-size:12px">
+        Template files must be in
+        <a href="http://sbml.org/Basic_Introduction_to_SBML">SBML format</a>.
+      </p>
+      <form method="post" action="/admin/sbml" enctype="multipart/form-data">
+        {% csrf_token %}    
+        <div id="attachmentActionPanel" class="sectionActions">
+          <table class="formTable" cellspacing="0" cellpadding="0"
+               style="margin:0px;">
+            <tr>
+              <td style="padding:4px 6px 0px 8px;">
+                <input type="file"
+                       name="newAttachmentContent"
+                       id="newAttachmentContent" />
+              </td>
+              <td style="padding:4px 10px 5px 4px;">
+                <span>Description:</span>
+                <input  type="text"
+                  size="55"
+                  name="newAttachmentDescription"
+                  id="newAttachmentDescription"/>
+              </td>
+              <td style="padding:4px 10px 5px 4px;">
+                <input type="submit" name="action" value="Upload Template" />
+              </td>
+            </tr>
+          </table>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="pageSection">
+  <div class="sectionHead">SBML Templates</div>
+  <table cellpadding="0" cellspacing="0" class="dataTable sortable">
+    <tr class="columnLabels">
+      <th class="sortheader smaller" style="text-align:left" id="haFilename"
+          sortvalues="0,1,2,3,4,5">
+        <div>Filename</div>
+      </th>
+      <th class="sortheader smaller" style="text-align:left" id="haDesc"
+          sortvalues="0,4,1,2,3,5">
+        <div>Description</div>
+      </th>
+      <th class="sortheader smaller" style="text-align:left"
+          sortvalues="4,1,2,0,3,5" id="haBiomass">
+        <div>Biomass Calculation</div>
+      </th>
+      <th class="sortheader smaller" style="text-align:right" id="haSize"
+          sortvalues="4,3,5,1,0,2">
+        <div>Size</div>
+      </th>
+      <th class="sortheader smaller" style="text-align:center" id="haCreator"
+          sortvalues="1,4,0,2,3,5">
+        <div class="nowrap">Added By</div>
+      </th>
+      <th class="sortheader smaller"
+          style="text-align:left;border-right-width:0px" id="haTime"
+          sortvalues="0,4,5,2,1,3">
+        <div class="nowrap">Date Added</div>
+      </th>
+    </tr>
+    {% for map in metabolic_maps %}
+    <tr class="{% cycle 'stripeRowA' 'stripeRowB' %}" data-line-id="1">
+      <td class="popupcell nowrap">
+        <!-- FIXME waaaay too complicated... -->
+        <div class="p">
+          <div class="q">
+            <div class="r" style="width:18px;">
+              <img style="margin:0;padding:0px 1px 0px 0px;border:none;"
+               src="https://edd.jbei.org//images/icon-generic.png" />
+            </div>
+            <div class="r nowrap" style="vertical-align:middle">
+              <a href="/admin/sbml/{{ map.id }}/edit">{{ map.name }}</a>
+            </div>
+            <div class="s">
+              <div class="t">
+                <a href="/download/{{ map.attachment_id }}">Download</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </td>
+      <td>{{ map.description }}</td>
+      <td class="clickableLink"
+          onclick="AdminMetabolicMaps.onClickBiomassCalculation(1);">
+        {{ map.biomass_calculation }}
+      </td>
+      <td style="text-align:right">{{ map.file_size|filesizeformat }}</td>
+      <td style="text-align:center;">{{ map.user_initials }}</td>
+      <td>{{ map.date_added }}</td>
+    </tr>
+    {% endfor %}<!-- metabolic_maps -->
+  </table>
+</div>
+
+{% endblock content %}

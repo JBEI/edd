@@ -18,6 +18,8 @@ urlpatterns = patterns('',
     url(r'^study/(?P<study>\d+)/export$', login_required(views.study_export_table)),
     url(r'^study/(?P<study>\d+)/export/data$', login_required(views.study_export_table_data)),
     url(r'^study/(?P<study>\d+)/sbml$', login_required(views.study_export_sbml)),
+    url(r'^admin/sbml$', login_required(views.admin_sbml)),
+    url(r'^admin/sbml/(?P<map_id>\d+)/edit$', login_required(views.admin_sbml_edit)),
     url(r'^utilities/parsefile$', login_required(views.utilities_parse_table)),
     url(r'^favicon\.ico$', RedirectView.as_view(
         url=staticfiles_storage.url('favicon.ico'),
