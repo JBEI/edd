@@ -393,29 +393,92 @@ class ImportTests(TestCase) :
             raise Exception("Expected an AssertionError here")
 
     def test_import_rna_seq (self) :
-        return True
         line1 = Line.objects.get(name="Line 1")
         line2 = Line.objects.get(name="Line 2")
         table1 = [ # FPKM
-            "GENE"   "L1-1", "L1-2", "L2-1", "L2-2",
-            "gene1", "5.34", "5.32", "7.45", "7.56",
-            "gene2", "1.79", "1.94", "0.15", "0.33",
+            ["GENE",  "L1-1", "L1-2", "L2-1", "L2-2"],
+            ["gene1", "5.34", "5.32", "7.45", "7.56"],
+            ["gene2", "1.79", "1.94", "0.15", "0.33"],
         ]
         update = Update.objects.create(
             mod_time=timezone.now(),
             mod_by=User.objects.get(username="admin"))
-        n_meas, n_meas_data = main.data_import.import_rna_seq(
+        # two assays per line (replicas)
+        result = main.data_import.import_rna_seq(
             study=Study.objects.get(name="Test Study 1"),
             user=User.objects.get(username="admin"),
             update=update,
-            table=table,
+            table=table1,
             n_cols=4,
             data_type="fpkm",
             line_ids=[line1.id,line1.id,line2.id,line2.id],
-            assay_ids["1"]*4,
+            assay_ids=[1,2,1,2],
             meas_times=[0]*4)
-        print n_meas, n_meas_data
-
+        self.assertTrue(result.n_meas == result.n_meas_data == 8)
+        self.assertTrue(result.n_assay == 4 and result.n_meas_type == 2)
+        # one assay, two timepoints per line
+        result = main.data_import.import_rna_seq(
+            study=Study.objects.get(name="Test Study 1"),
+            user=User.objects.get(username="admin"),
+            update=update,
+            table=table1,
+            n_cols=4,
+            data_type="fpkm",
+            line_ids=[line1.id,line1.id,line2.id,line2.id],
+            assay_ids=[1,1,1,1],
+            meas_times=[0,1,0,1])
+        self.assertTrue(result.n_meas == 4 and result.n_meas_data == 8)
+        self.assertTrue(result.n_meas_type == 0 and result.n_assay == 2)
+        table2 = [ # count
+            ["GENE",  "L1-1", "L1-2", "L2-1", "L2-2"],
+            ["gene1", "64", "67", "89", "91"],
+            ["gene2", "27", "30", "5", "4"],
+        ]
+        result = main.data_import.import_rna_seq(
+            study=Study.objects.get(name="Test Study 1"),
+            user=User.objects.get(username="admin"),
+            update=update,
+            table=table2,
+            n_cols=4,
+            data_type="counts",
+            line_ids=[line1.id,line1.id,line2.id,line2.id],
+            assay_ids=[1,2,1,2],
+            meas_times=[5]*4)
+        self.assertTrue(result.n_meas == result.n_meas_data == 8)
+        self.assertTrue(result.n_meas_type == 0 and result.n_assay == 4)
+        table3 = [ # combined
+            ["GENE",  "L1-1", "L1-2", "L2-1", "L2-2"],
+            ["gene1", "64,5.34", "67,5.32", "89,7.45", "91,7.56"],
+            ["gene2", "27,1.79", "30,1.94", "5,0.15", "4,0.33"],
+        ]
+        # one assay, two timepoints, counts+fpkms
+        result = main.data_import.import_rna_seq(
+            study=Study.objects.get(name="Test Study 1"),
+            user=User.objects.get(username="admin"),
+            update=update,
+            table=table3,
+            n_cols=4,
+            data_type="combined",
+            line_ids=[line1.id,line1.id,line2.id,line2.id],
+            assay_ids=[1,1,1,1],
+            meas_times=[0,1,0,1])
+        self.assertTrue(result.n_meas_type == 0 and result.n_assay == 2)
+        self.assertTrue(result.n_meas == 8 and result.n_meas_data == 16)
+        try :
+            result = main.data_import.import_rna_seq(
+                study=Study.objects.get(name="Test Study 1"),
+                user=User.objects.get(username="admin"),
+                update=update,
+                table=table3,
+                n_cols=4,
+                data_type="combined",
+                line_ids=[line1.id,line1.id,line2.id,line2.id],
+                assay_ids=[1,1,1,1],
+                meas_times=[0,0,0,0])
+        except ValueError as e :
+            pass
+        else :
+            raise Exception("ValueError expected")
 
 class SBMLUtilTests (TestCase) :
     """
