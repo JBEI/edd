@@ -39,44 +39,41 @@ SBML Templates
 {% block content %}
 
 <div class="pageSection" id="add-template">
-  <div class="disclose discloseHide" id="add-template-body">
-    <div class="sectionChapter">
-      <span><a href="#" class="discloseLink">
-        Add a new SBML template
-      </a></span>
-    </div>
+  <div class="sectionHead">
+     Add a new SBML template
+  </div>
 
-    <div>
-      <p style="font-size:12px">
-        Template files must be in
-        <a href="http://sbml.org/Basic_Introduction_to_SBML">SBML format</a>.
-      </p>
-      <form method="post" action="/admin/sbml" enctype="multipart/form-data">
-        {% csrf_token %}    
-        <div id="attachmentActionPanel" class="sectionActions">
-          <table class="formTable" cellspacing="0" cellpadding="0"
-               style="margin:0px;">
-            <tr>
-              <td style="padding:4px 6px 0px 8px;">
-                <input type="file"
-                       name="newAttachmentContent"
-                       id="newAttachmentContent" />
-              </td>
-              <td style="padding:4px 10px 5px 4px;">
-                <span>Description:</span>
-                <input  type="text"
-                  size="55"
-                  name="newAttachmentDescription"
-                  id="newAttachmentDescription"/>
-              </td>
-              <td style="padding:4px 10px 5px 4px;">
-                <input type="submit" name="action" value="Upload Template" />
-              </td>
-            </tr>
-          </table>
-        </div>
-      </form>
-    </div>
+  <div>
+    <p style="font-size:12px">
+      Template files must be in
+      <a href="http://sbml.org/Basic_Introduction_to_SBML">SBML format</a>.
+    </p>
+    <form method="post" action="/admin/sbml/upload"
+          enctype="multipart/form-data">
+      {% csrf_token %}    
+      <div id="attachmentActionPanel" class="sectionActions">
+        <table class="formTable" cellspacing="0" cellpadding="0"
+             style="margin:0px;">
+          <tr>
+            <td style="padding:4px 6px 0px 8px;">
+              <input type="file"
+                     name="newAttachmentContent"
+                     id="newAttachmentContent" />
+            </td>
+            <td style="padding:4px 10px 5px 4px;">
+              <span>Description:</span>
+              <input  type="text"
+                size="55"
+                name="newAttachmentDescription"
+                id="newAttachmentDescription"/>
+            </td>
+            <td style="padding:4px 10px 5px 4px;">
+              <input type="submit" name="action" value="Upload Template" />
+            </td>
+          </tr>
+        </table>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -110,7 +107,7 @@ SBML Templates
         <div class="nowrap">Date Added</div>
       </th>
     </tr>
-    {% for map in metabolic_maps %}
+    {% for template in sbml_templates %}
     <tr class="{% cycle 'stripeRowA' 'stripeRowB' %}" data-line-id="1">
       <td class="popupcell nowrap">
         <!-- FIXME waaaay too complicated... -->
@@ -121,26 +118,26 @@ SBML Templates
                src="https://edd.jbei.org//images/icon-generic.png" />
             </div>
             <div class="r nowrap" style="vertical-align:middle">
-              <a href="/admin/sbml/{{ map.id }}/edit">{{ map.name }}</a>
+              <a href="/admin/sbml/{{ template.id }}/edit">{{ template.name }}</a>
             </div>
             <div class="s">
               <div class="t">
-                <a href="/download/{{ map.attachment_id }}">Download</a>
+                <a href="/download/{{ template.attachment_id }}">Download</a>
               </div>
             </div>
           </div>
         </div>
       </td>
-      <td>{{ map.description }}</td>
+      <td>{{ template.description }}</td>
       <td class="clickableLink"
           onclick="AdminMetabolicMaps.onClickBiomassCalculation(1);">
-        {{ map.biomass_calculation }}
+        {{ template.biomass_calculation }}
       </td>
-      <td style="text-align:right">{{ map.file_size|filesizeformat }}</td>
-      <td style="text-align:center;">{{ map.user_initials }}</td>
-      <td>{{ map.date_added }}</td>
+      <td style="text-align:right">{{ template.file_size|filesizeformat }}</td>
+      <td style="text-align:center;">{{ template.user_initials }}</td>
+      <td>{{ template.date_added }}</td>
     </tr>
-    {% endfor %}<!-- metabolic_maps -->
+    {% endfor %}<!-- metabolic_templates -->
   </table>
 </div>
 

@@ -485,10 +485,10 @@ class SBMLUtilTests (TestCase) :
     Unit tests for various utilities used in SBML export
     """
     def setUp (self) :
-        mm = MetabolicMap.objects.create(
-          name="R_Ec_biomass_iJO1366_WT_53p95M",
+        mm = SBMLTemplate.objects.create(
+          name="R_Ec_biomass_iJO1366_core_53p95M",
           biomass_calculation=33.19037,
-          biomass_exchange_name="R_Ec_biomass_iJO1366_WT_53p95M")
+          biomass_exchange_name="R_Ec_biomass_iJO1366_core_53p95M")
         mt = Metabolite.objects.create(type_name="Optical Density",
             short_name="OD", type_group="m", charge=0, carbon_count=0,
             molecular_formula="", molar_mass=0)
@@ -526,7 +526,7 @@ class SBMLUtilTests (TestCase) :
             dir_name = os.path.dirname(__file__)
             sbml_file = os.path.join(dir_name,"fixtures","misc_data",
               "simple.sbml")
-            s = main.sbml_export.sbml_info(i_map=0, sbml_file=sbml_file)
+            s = main.sbml_export.sbml_info(i_template=0, sbml_file=sbml_file)
             assert (s.n_sbml_species == 4)
             assert (s.n_sbml_reactions == 5)
             # TODO lots more
@@ -655,10 +655,10 @@ def setup_export_data () :
         md2 = meas9.measurementdatum_set.create(updated=up1, x=x, y=y)
     # TODO proteomics/transcriptomics would be nice
     # TODO incorporate metadata
-    mm = MetabolicMap.objects.create(
-      name="R_Ec_biomass_iJO1366_WT_53p95M",
+    mm = SBMLTemplate.objects.create(
+      name="R_Ec_biomass_iJO1366_core_53p95M",
       biomass_calculation=33.19037,
-      biomass_exchange_name="R_Ec_biomass_iJO1366_WT_53p95M")
+      biomass_exchange_name="R_Ec_biomass_iJO1366_core_53p95M")
 
 
 class ExportTests(TestCase) :

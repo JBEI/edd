@@ -17,7 +17,18 @@ function disclose() {
   return false;
 }
 $(window).load(function () {
-  $('.disclose').find('a.discloseLink').on('click', disclose);
+    jQuery.ajax("/data/users", {
+        "success" : function (data, textStatus, response) {
+            console.log(data);
+            jQuery.extend(EDDData, data.EDDData);/*
+            for (var keyname in data.EDDData) {
+                EDDData[keyname] = data.EDDData[keyname];
+            }*/
+            EDDAutoComplete.initializeAllPageElements();
+        }
+    }).fail(function (x, s, e) {
+        alert(s);
+    });
 });
 
 </script>
@@ -36,20 +47,26 @@ td {
 {% endblock js_css %}
 
 {% block head_title %}
-SBML Templates
+Edit SBML Template
 {% endblock head_title %}
 
 {% block body_title %}
-SBML Templates
+Edit SBML Template
 {% endblock body_title %}
 
 {% block content %}
 
-<form method="post" action="https://edd.jbei.org/AdminMetabolicMapsEdit.cgi"
+{% if messages.success %}
+<h2 class="success">{{ messages.success }}</h2>
+{% elif messages.error %}
+<h2 class="bad">{{ messages.error }}</h2>
+{% endif %}
+
+{% with template=data.selected_template_info %}
+<form method="post" action="/admin/sbml/{{ template.id }}/edit"
       enctype="multipart/form-data">
   {% csrf_token %}
-  {% with map=data.selected_map_info %}
-  <input type="hidden" name="mapID" value="{{ map.id }}"/>
+  <input type="hidden" name="templateID" value="{{ template.id }}"/>
   <div class="pageSection">
     <div class="sectionHead">General Information</div>
     <div class="sectionContent">
@@ -58,7 +75,7 @@ SBML Templates
           <td>Filename:</td>
           <td>
             <input type="text" size="30" name="mname"
-                   value="{{ map.filename }}"/>
+                   value="{{ template.filename }}"/>
           </td>
         </tr>
         <tr>
@@ -68,14 +85,14 @@ SBML Templates
                 class="autocomplete"
                 autocompletetype="user"
                 autocomplete="off"
-                autocompletevalue="mapownervalue"
+                autocompletevalue="templateownervalue"
                 size="27"
-                name="mapowner"
-                id="mapowner"
-                value="{{ map.owner }}"/>
+                name="templateowner"
+                id="templateowner"
+                value="{{ template.owner }}"/>
           <input type="hidden"
-              id="mapownervalue"
-              name="mapownervalue"
+              id="templateownervalue"
+              name="templateownervalue"
               value="1"/>
           </td> 
         </tr>
@@ -83,14 +100,14 @@ SBML Templates
           <td><p>Description:</p></td>
           <td>
             <textarea style="height:3em;" rows="5" cols="75"
-                      name="description">{{ map.description }}</textarea>
+                      name="description">{{ template.description }}</textarea>
           </td>
         </tr>
         <tr>
           <td colspan="2">
             <span>BIOMASS exchange name:</span>
             <input type="text" size="50" name="exchangename"
-                   value="{{ map.biomass_ex_name }}"/>
+                   value="{{ template.biomass_ex_name }}"/>
           </td>
         </tr>
         <tr>
@@ -107,7 +124,7 @@ SBML Templates
       </table>
     </div>
   </div>
-  {% endwith %}<!-- map -->
+  {% endwith %}<!-- template -->
 
   <div class="pageSection" style="margin-top:10px;">
     <div class="sectionHead">Template Information</div>

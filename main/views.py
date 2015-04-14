@@ -2,19 +2,20 @@ from django.conf import settings
 from django.core import serializers
 from django.core.urlresolvers import reverse
 from django.db.models import Q
-from django.views.decorators.csrf import csrf_exempt
+from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
-from django.http.response import HttpResponseForbidden
+from django.http.response import HttpResponseForbidden, HttpResponseBadRequest
 from django.shortcuts import render, get_object_or_404, redirect, \
     render_to_response
 from django.template import RequestContext
 from django.template.defaulttags import register
 from django.views import generic
+from django.views.decorators.csrf import csrf_exempt
 from main.forms import CreateStudyForm
-from main.models import Study, Update, Protocol, Measurement, MeasurementType
+from main.models import *
 from main.solr import StudySearch
 from main.utilities import get_edddata_study, get_edddata_misc, \
-    get_selected_lines, JSONDecimalEncoder
+    get_edddata_users, get_selected_lines, JSONDecimalEncoder
 import main.sbml_export
 import main.data_export
 from io import BytesIO
@@ -267,22 +268,85 @@ def study_export_sbml (request, study) :
 def admin_sbml (request) :
     return render_to_response("main/admin_sbml.html",
         dictionary={
-            "metabolic_maps" : main.sbml_export.sbml_template_info(),
+            "sbml_templates" : main.sbml_export.sbml_template_info(),
         },
         context_instance=RequestContext(request))
 
+# /admin/sbml/upload
+def admin_sbml_upload (request) :
+    if (request.method != "POST") :
+        return HttpResponseBadRequest("POST data not found.")
+    else :
+        form = request.POST
+        update = Update.load_request_update(request)
+        try :
+            template = main.sbml_export.create_sbml_template_from_form(
+                description=form["newAttachmentDescription"],
+                uploaded_file=request.FILES['newAttachmentContent'],
+                update=update)
+        except ValueError as e :
+            return render(request, "main/error.html", {
+                "error_source" : "SBML template upload",
+                "error_message" : str(e),
+            })
+        else :
+            return redirect("/admin/sbml/%d/edit" % template.pk)
+
 # /admin/sbml/<map_id>/edit
-def admin_sbml_edit (request, map_id) :
-    sbml_info = main.sbml_export.sbml_info(map_id=map_id)
+def admin_sbml_edit (request, template_id) :
+    messages = {}
+    if (request.method == "POST") :
+        error = None
+        try :
+            # TODO handle owner assignment
+            update = Update.load_request_update(request)
+            model = SBMLTemplate.objects.get(pk=template_id)
+            main.sbml_export.update_template_from_form(
+                self = model,
+                filename = request.POST.get("mname", ""),
+                biomass_ex_id = request.POST.get("exchangename", ""),
+                description = request.POST.get("description", ""),
+                update=update,
+                uploaded_file=request.FILES.get("newAttachmentContent"))
+        except ObjectDoesNotExist as e :
+            return render(request, "main/error.html", {
+                "error_source" : "SBML template edit",
+                "error_message" : str(e),
+            })
+        except ValueError as e :
+            messages['error'] = str(e)
+        else :
+            messages['success'] = "Template updated."
+    sbml_info = main.sbml_export.sbml_info(template_id=template_id)
     return render_to_response("main/admin_sbml_edit.html",
         dictionary={
             "data" : sbml_info,
+            "messages" : messages,
         },
         context_instance=RequestContext(request))
 
 # /data/users
 def data_users (request) :
-    return JsonResponse(get_edddata_users())
+    return JsonResponse({ "EDDData" : get_edddata_users() })
+
+# /download/<file_id>
+def download (request, file_id) :
+    model = Attachment.objects.get(pk=file_id)
+    # FIXME this seems clumsy - is there a better way to detect what model an
+    # Attachment is linked to?
+    try :
+        study = Study.objects.get(pk=model.object_ref_id)
+    except ObjectDoesNotExist :
+        pass
+    else :
+        if (not study.user_can_read(request.user)) :
+            return HttpResponseForbidden("You do not have access to data "+
+                "associated with this study.")
+    response = HttpResponse(model.file.read(),
+        content_type=model.mime_type)
+    response['Content-Disposition'] = 'attachment; filename="%s"' % \
+        model.filename
+    return response
 
 # FIXME it would be much better to avoid csrf_exempt...
 @csrf_exempt

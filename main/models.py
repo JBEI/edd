@@ -1,3 +1,4 @@
+import edd.settings
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
@@ -91,7 +92,7 @@ class Attachment(models.Model):
 
     @classmethod
     def from_upload (self, form) :
-        pass
+        print form
 
 class MetadataGroup(models.Model):
     """
@@ -944,12 +945,12 @@ class MeasurementVector(models.Model):
         return float(self.x)
 
 
-class MetabolicMap (EDDObject) :
+class SBMLTemplate (EDDObject) :
     """
     Container for information used in SBML export.
     """
     class Meta:
-        db_table = "metabolic_map"
+        db_table = "sbml_template"
     object_ref = models.OneToOneField(EDDObject, parent_link=True)
     biomass_calculation = models.DecimalField(default=-1, decimal_places=5,
         max_digits=16) # XXX check that these parameters make sense!
@@ -958,28 +959,27 @@ class MetabolicMap (EDDObject) :
 
     @property
     def xml_file (self) :
-        files = self.files.all()
+        files = list(self.files.all())
         if (len(files) == 0) :
             raise RuntimeError("No attachments found for metabolic map %s!" %
                 self.name)
-        elif (len(files) > 1) :
-            raise RuntimeError("Multiple attachments found for metabolic map "+
-              "%s!" % self.name)
-        return files[0]
+        #elif (len(files) > 1) :
+        #    raise RuntimeError("Multiple attachments found for metabolic map "+
+        #      "%s!" % self.name)
+        return files[-1]
 
     def parseSBML (self) :
         import libsbml
         return libsbml.readSBML(str(self.xml_file.file.path))
 
-
 class MetaboliteExchange (models.Model) :
     """
-    Mapping for a metabolite to an exchange defined by a metabolic map.
+    Mapping for a metabolite to an exchange defined by a SBML template.
     """
     class Meta:
         db_table = "measurement_type_to_exchange"
-        unique_together = ( ("metabolic_map", "measurement_type"), )
-    metabolic_map = models.ForeignKey(MetabolicMap)
+        unique_together = ( ("sbml_template", "measurement_type"), )
+    sbml_template = models.ForeignKey(SBMLTemplate)
     measurement_type = models.ForeignKey(MeasurementType)
     reactant_name = models.CharField(max_length=255)
     exchange_name = models.CharField(max_length=255)
@@ -987,12 +987,12 @@ class MetaboliteExchange (models.Model) :
 
 class MetaboliteSpecies (models.Model) :
     """
-    Mapping for a metabolite to an species defined by a metabolic map.
+    Mapping for a metabolite to an species defined by a SBML template.
     """
     class Meta:
         db_table = "measurement_type_to_species"
-        unique_together = ( ("metabolic_map", "measurement_type"), )
-    metabolic_map = models.ForeignKey(MetabolicMap)
+        unique_together = ( ("sbml_template", "measurement_type"), )
+    sbml_template = models.ForeignKey(SBMLTemplate)
     measurement_type = models.ForeignKey(MeasurementType)
     species = models.TextField()
 

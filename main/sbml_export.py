@@ -60,23 +60,23 @@ import sys
 # adapted from UtilitiesSBML.pm:parseSBML
 class sbml_info (object) :
   """
-  Base class for processing a metabolic map (in SBML format) and extracting
+  Base class for processing an SBML template and extracting
   information for display in a view and/or further processing w.r.t. assay
   data.  In the production environment (e.g. as used within line_sbml_data)
   this would normally be instantiated without arguments, but optional keywords
   are allowed to facilitate testing.
 
-  :param i_map: index of MetabolicMap to select (starting at 0) - TESTING ONLY
-  :param map_id: database key for MetabolicMap to select - TESTING ONLY
+  :param i_template: index of SBMLTemplate to select (starting at 0) - TESTING ONLY
+  :param template_id: database key for SBMLTemplate to select - TESTING ONLY
   :param sbml_file: SBML file to parse directly instead of pulling this from
-    the MetabolicMap object - TESTING ONLY
+    the SBMLTemplate object - TESTING ONLY
   """
   def __init__ (self,
-      i_map=None,
-      map_id=None,
+      i_template=None,
+      template_id=None,
       sbml_file=None) :
-    self._metabolic_maps = list(MetabolicMap.objects.all())
-    self._chosen_map = None
+    self._sbml_templates = list(SBMLTemplate.objects.all())
+    self._chosen_template = None
     self._sbml_doc = None
     self._sbml_model = None
     self._sbml_species = []
@@ -104,16 +104,16 @@ class sbml_info (object) :
     self._reactions_requiring_notes_update = set()
     # XXX the processing can optionally be done at the time of initialization
     # to facilitate JSON data export independent of assay data
-    if (i_map is not None) or (map_id is not None) :
-      self._select_map(i_map=i_map, map_id=map_id)
+    if (i_template is not None) or (template_id is not None) :
+      self._select_template(i_template=i_template, template_id=template_id)
       self._process_sbml(sbml_file=sbml_file)
 
-  def _select_map (self, i_map=None, map_id=None) :
-    assert ([i_map, map_id].count(None) == 1)
-    if (i_map is not None) :
-      self._chosen_map = self._metabolic_maps[i_map]
+  def _select_template (self, i_template=None, template_id=None) :
+    assert ([i_template, template_id].count(None) == 1)
+    if (i_template is not None) :
+      self._chosen_template = self._sbml_templates[i_template]
     else :
-      self._chosen_map = MetabolicMap.objects.get(id=map_id)
+      self._chosen_template = SBMLTemplate.objects.get(id=template_id)
 
   def _process_sbml (self, sbml_file=None) :
     sbml = None
@@ -121,10 +121,10 @@ class sbml_info (object) :
       import libsbml
       sbml = libsbml.readSBML(sbml_file)
     else :
-      if (self._chosen_map is None) :
-        raise RuntimeError("You must call self._select_map(i) before "+
+      if (self._chosen_template is None) :
+        raise RuntimeError("You must call self._select_template(i) before "+
           "self._process_sbml()!")
-      sbml = self._chosen_map.parseSBML()
+      sbml = self._chosen_template.parseSBML()
     model = sbml.getModel()
     self._sbml_doc = sbml
     self._sbml_model = model
@@ -293,9 +293,9 @@ class sbml_info (object) :
     # that it matches the name of any one species, and any one reactant in the
     #$ detected exchanges
     known_exchanges = MetaboliteExchange.objects.filter(
-      metabolic_map_id=self._chosen_map.id)
+      sbml_template_id=self._chosen_template.id)
     known_species = MetaboliteSpecies.objects.filter(
-      metabolic_map_id=self._chosen_map.id)
+      sbml_template_id=self._chosen_template.id)
     exchanges_by_metab_id = {
       e.measurement_type_id:self._exchanges_by_id[e.exchange_name]
       for e in known_exchanges
@@ -353,12 +353,13 @@ class sbml_info (object) :
     # finally, biomass reaction
     try :
       biomass_rxn = model.getReaction(self.biomass_reaction_id())
+      assert (biomass_rxn is not None)
     except Exception :
-      biomass_rxn = None
+      raise ValueError(("Can't find biomass exchange reaction '%s' in "+
+        "selected SBML template.") % self.biomass_reaction_id())
       # TODO if this fails should it be an error?
-    if (biomass_rxn is not None) :
-      self.biomass_exchange = ExchangeInfo(biomass_rxn, is_biomass_rxn=True)
-      #self._resolved_exchanges[biomass_metab.id] = self.biomass_exchange
+    self.biomass_exchange = ExchangeInfo(biomass_rxn, is_biomass_rxn=True)
+    #self._resolved_exchanges[biomass_metab.id] = self.biomass_exchange
 
   def _unique_resolved_exchanges (self) :
     return set([ ex.ex_id for ex in self._resolved_exchanges.values()
@@ -388,9 +389,9 @@ class sbml_info (object) :
       # and any reactant, and then return the default.
       if (species_id == "") :
         record = MetaboliteSpecies.objects.get(
-          metabolic_map_id=self._chosen_map.id,
+          sbml_template_id=self._chosen_template.id,
           measurement_type_id=metabolite.id)
-        print "DELETING RECORD: %d:%d" % (self._chosen_map.id, metabolite.id)
+        print "DELETING RECORD: %d:%d" % (self._chosen_template.id, metabolite.id)
         record.delete()
         self._modified.add(species_id)
     else :
@@ -413,16 +414,16 @@ class sbml_info (object) :
     # First, clear out the old record:
     try :
       record = MetaboliteSpecies.objects.get(
-          metabolic_map_id=self._chosen_map.id,
+          sbml_template_id=self._chosen_template.id,
           measurement_type_id=metabolite.id)
-      print "DELETING RECORD 2: %d:%d" % (self._chosen_map.id, metabolite.id)
+      print "DELETING RECORD 2: %d:%d" % (self._chosen_template.id, metabolite.id)
       record.delete()
       self._modified.add(species_id)
     except Exception as e :
       print e
     # insert the new record
     record = MetaboliteSpecies.objects.create(
-      metabolic_map=self._chosen_map,
+      sbml_template=self._chosen_template,
       measurement_type=metabolite,
       species=species_id)
     print "CREATING RECORD %s:%s" % (metabolite.short_name, species_id)
@@ -438,7 +439,7 @@ class sbml_info (object) :
     if (exchange_id is not None) :
       if (exchange_id == "") :
         record = MetaboliteExchange(
-          metabolic_map_id=self._chosen_map.id,
+          sbml_template_id=self._chosen_template.id,
           measurement_type_id=metabolite.id)
         print "DELETING RECORD"
         record.delete()
@@ -455,7 +456,7 @@ class sbml_info (object) :
       return exchange_id
     try :
       record = MetaboliteExchange.objects.get(
-        metabolic_map_id=self._chosen_map.id,
+        sbml_template_id=self._chosen_template.id,
         measurement_type_id=metabolite.id)
       print "DELETING RECORD 2"
       record.delete()
@@ -463,7 +464,7 @@ class sbml_info (object) :
       print e
     print "CREATING RECORD %s:%s" % (metabolite.short_name, exchange_id)
     record = MetaboliteExchange.objects.create(
-      metabolic_map=self._chosen_map,
+      sbml_template=self._chosen_template,
       measurement_type=metabolite,
       reactant_name=self._exchanges_by_id[exchange_id].re_id,
       exchange_name=exchange_id)
@@ -542,16 +543,16 @@ class sbml_info (object) :
 
   #---------------------------------------------------------------------
   # "public" methods
-  def selected_map_info (self) :
+  def selected_template_info (self) :
     """
-    Returns a dict summarizing the currently selected metabolic map.
+    Returns a dict summarizing the currently selected SBML template.
     """
     return {
-      "id" : self._chosen_map.id,
-      "filename" : self._chosen_map.xml_file.filename,
-      "description" : self._chosen_map.xml_file.description,
-      "owner" : self._chosen_map.xml_file.created.mod_by.get_full_name(),
-      "biomass_ex_name" : self._chosen_map.biomass_exchange_name,
+      "id" : self._chosen_template.id,
+      "filename" : self._chosen_template.xml_file.filename,
+      "description" : self._chosen_template.xml_file.description,
+      "owner" : self._chosen_template.xml_file.created.mod_by.get_full_name(),
+      "biomass_ex_name" : self._chosen_template.biomass_exchange_name,
     }
 
   @property
@@ -560,7 +561,7 @@ class sbml_info (object) :
 
   def biomass_reaction_id (self) :
     # XXX important - must be str, not unicode!
-    return str(self._chosen_map.biomass_exchange_name)
+    return str(self._chosen_template.biomass_exchange_name)
 
   def template_info (self) :
     """
@@ -569,9 +570,9 @@ class sbml_info (object) :
     return [ {
       "file_name" : m.xml_file.filename,
       "id" : i,
-      "map_id" : m.id,
-      "is_selected" : m is self._chosen_map,
-    } for i, m in enumerate(self._metabolic_maps) ]
+      "template_id" : m.id,
+      "is_selected" : m is self._chosen_template,
+    } for i, m in enumerate(self._sbml_templates) ]
 
   # SPECIES
   @property
@@ -2083,15 +2084,15 @@ class line_sbml_export (line_assay_data, sbml_info) :
     """
     if self.debug : print "STEP 1: get template files"
     # TODO figure out something sensible for unit testing
-    if (len(self._metabolic_maps) == 0) :
+    if (len(self._sbml_templates) == 0) :
       if (not test_mode) :
         raise ValueError("No SBML templates have been uploaded!")
     else :
-      map_id = self.form.get("chosenmap_id", None)
-      if (map_id is not None) :
-        self._select_map(map_id=int(map_id))
+      template_id = self.form.get("chosenmap_id", None)
+      if (template_id is not None) :
+        self._select_template(template_id=int(template_id))
       else :
-        self._select_map(i_map=int(self.form.get("chosenmap",0)))
+        self._select_template(i_template=int(self.form.get("chosenmap",0)))
 
   def _step_8_pre_parse_and_match (self, sbml_file=None) :
     """private method"""
@@ -2362,9 +2363,9 @@ def sbml_template_info () :
   Construct a dict summarizing the existing SBML templates for display on
   the /admin/sbml view.
   """
-  maps = MetabolicMap.objects.all()
+  templates = SBMLTemplate.objects.all()
   export = []
-  for m in maps :
+  for m in templates :
     attachment = m.xml_file
     export.append({
       "id" : m.id,
@@ -2377,3 +2378,70 @@ def sbml_template_info () :
       "date_added" : attachment.created.format_timestamp(),
     })
   return export
+
+def validate_sbml_attachment (file_data) :
+    import libsbml
+    sbml = libsbml.readSBMLFromString(file_data)
+    errors = sbml.getErrorLog()
+    if (errors.getNumErrors() > 0) :
+        raise ValueError(errors.getError(1).getMessage())
+    model = sbml.getModel()
+    assert (model is not None)
+    return sbml
+
+def create_sbml_template_from_form (description, uploaded_file, update) :
+    """
+    Create a new SBMLTemplate object from the contents of the simple form
+    in the /admin/sbml view.
+    """
+    sbml_data = validate_sbml_attachment(uploaded_file.read())
+    sbml_model = sbml_data.getModel()
+    possible_biomass_ex_ids = set()
+    for rxn in sbml_model.getListOfReactions() :
+        if ("biomass" in rxn.getId()) and ("core" in rxn.getId()) :
+            possible_biomass_ex_ids.add(rxn.getId())
+    biomass_ex_id = ""
+    if (len(possible_biomass_ex_ids) == 1) :
+        biomass_ex_id = list(possible_biomass_ex_ids)[0]
+    model = SBMLTemplate.objects.create(
+        name=uploaded_file.name,
+        biomass_exchange_name=biomass_ex_id)
+    model.save()
+    model.updates.add(update)
+    attachment = Attachment.objects.create(
+        object_ref=model,
+        file=uploaded_file,
+        filename=uploaded_file.name,
+        created=update,
+        description=description,
+        mime_type="application/sbml+xml",
+        file_size=len(uploaded_file.read()))
+    attachment.save()
+    return model
+
+def update_template_from_form (self, filename, biomass_ex_id, description,
+        update, uploaded_file) :
+    if (filename == "") :
+        raise ValueError("Filename must not be blank.")
+    if (biomass_ex_id == "") :
+        raise ValueError("Biomass exchange name must not be blank.")
+    xml_file = self.xml_file
+    if (uploaded_file is not None) :
+        sbml_data = validate_sbml_attachment(uploaded_file.read())
+        attachment = Attachment.objects.create(
+            object_ref=self,
+            file=uploaded_file,
+            filename=filename,
+            description=description,
+            created=update,
+            mime_type="application/sbml+xml",
+            file_size=len(uploaded_file.read()))
+        xml_file.delete()
+        self.files.add(attachment)
+    else :
+        xml_file.filename = filename
+        xml_file.description = description
+        xml_file.save()
+    self.biomass_exchange_name = biomass_ex_id
+    self.updates.add(update)
+    self.save()

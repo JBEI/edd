@@ -112,10 +112,10 @@ EDDAutoComplete.initializeAllPageElements();
       <select name="chosenmap_id" id="chosenmap" onchange="submitForRefresh();">
         {% for template in data.template_info %}
           {% if template.is_selected %}
-            <option value="{{ template.map_id }}" selected="selected">
+            <option value="{{ template.template_id }}" selected="selected">
               {{ template.file_name }}</option>
           {% else %}
-            <option value="{{ template.map_id }}">
+            <option value="{{ template.template_id }}">
               {{ template.file_name }}</option>
           {% endif %}
         {% endfor %}

@@ -44,7 +44,7 @@ class ExportTests (unittest.TestCase) :
 class SBMLTests (unittest.TestCase) :
   def test_sbml_setup (self) :
     sd = sbml_export.sbml_info()
-    sd._select_map(0)
+    sd._select_template(0)
     sd._process_sbml()
     # part 1: pure SBML extraction, independent of study
     assert (sd.n_sbml_species_notes == 1805)

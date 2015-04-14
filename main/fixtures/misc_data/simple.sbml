@@ -142,7 +142,7 @@
           </listOfParameters>
         </kineticLaw>
       </reaction>
-      <reaction id="R_Ec_biomass_iJO1366_WT_53p95M" name="E. coli biomass objective function (iJO1366) - WT - with 53.95 GAM estimate" reversible="false">
+      <reaction id="R_Ec_biomass_iJO1366_core_53p95M" name="E. coli biomass objective function (iJO1366) - core - with 53.95 GAM estimate" reversible="false">
         <notes>
           <body xmlns="http://www.w3.org/1999/xhtml">
             <p>GENE_ASSOCIATION: </p>
@@ -150,10 +150,6 @@
             <p>EC Number: </p>
           </body>
         </notes>
-        <listOfReactants>
-        </listOfReactants>
-        <listOfProducts>
-        </listOfProducts>
         <kineticLaw>
           <math xmlns="http://www.w3.org/1998/Math/MathML">
             <ci> FLUX_VALUE </ci>

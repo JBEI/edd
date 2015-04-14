@@ -170,7 +170,6 @@ INSERT INTO public.study_group_permission(permission_type, study_id, group_id)
     INNER JOIN public.edd_object o ON o.study_id = sub.id
     WHERE sub.permission ~ 'g:__Everyone__'
     ORDER BY sub.id;
--- For now, skipping migration of metabolic maps
 
 
 --
@@ -547,45 +546,48 @@ INSERT INTO public.measurement_vector(
 --
 -- copy over metabolic maps
 --
-ALTER TABLE public.edd_object ADD COLUMN metabolic_map_id integer UNIQUE DEFAULT NULL;
-INSERT INTO public.edd_object(metabolic_map_id, name)
+ALTER TABLE public.edd_object ADD COLUMN sbml_template_id integer UNIQUE DEFAULT NULL;
+INSERT INTO public.edd_object(sbml_template_id, name)
     SELECT id, biomass_exchange_name FROM old_edd.metabolic_maps ORDER BY id;
-INSERT INTO public.metabolic_map(
+INSERT INTO public.sbml_template(
         biomass_exchange_name, biomass_calculation, biomass_calculation_info,
         object_ref_id
     ) SELECT mm.biomass_exchange_name, mm.biomass_calculation,
         mm.biomass_calculation_info, o.id
     FROM old_edd.metabolic_maps mm
-    INNER JOIN public.edd_object o ON o.metabolic_map_id = mm.id
+    INNER JOIN public.edd_object o ON o.sbml_template_id = mm.id
     ORDER BY mm.id;
 INSERT INTO public.measurement_type_to_exchange(
-        metabolic_map_id, measurement_type_id, reactant_name, exchange_name
+        sbml_template_id, measurement_type_id, reactant_name, exchange_name
     ) SELECT o.id, me.measurement_type_id, me.reactant_name, me.exchange_name
     FROM old_edd.measurement_types_to_exchanges me
-    INNER JOIN public.edd_object o ON o.metabolic_map_id = me.metabolic_map_id
+    INNER JOIN public.edd_object o ON o.sbml_template_id = me.metabolic_map_id
     ORDER BY me.metabolic_map_id;
 INSERT INTO public.measurement_type_to_species(
-        metabolic_map_id, measurement_type_id, species
+        sbml_template_id, measurement_type_id, species
     ) SELECT o.id, ms.measurement_type_id, ms.species_id
     FROM old_edd.measurement_types_to_species ms
-    INNER JOIN public.edd_object o ON o.metabolic_map_id = ms.metabolic_map_id
+    INNER JOIN public.edd_object o ON o.sbml_template_id = ms.metabolic_map_id
     ORDER BY ms.id;
 
 
 --
 -- copy over attachments
+-- XXX discarding the original ID! for some reason propagating the old ID
+-- leads to constraint violations when we add records, and we don't actually
+-- need the old ID anyway.
 --
 INSERT INTO public.attachment(
-      id, object_ref_id, filename, file, description, created_id, mime_type,
+      object_ref_id, filename, file, description, created_id, mime_type,
       file_size
-    ) SELECT a.id, o.id, a.filename, a.filename, a.description, m.id,
+    ) SELECT o.id, a.filename, a.filename, a.description, m.id,
         a.mime_type, a.file_size
     FROM old_edd.attachments a
     INNER JOIN public.edd_object o ON o.study_id = a.study_id
         OR o.line_id = a.line_id
         OR o.assay_id = a.assay_id
         OR o.protocol_id = a.protocol_id
-        OR o.metabolic_map_id = a.metabolic_map_id
+        OR o.sbml_template_id = a.metabolic_map_id
     LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
         date_trunc('second', a.creation_time)
         AND m.mod_by_id = a.created_by
@@ -604,4 +606,4 @@ ALTER TABLE public.edd_object DROP COLUMN carbon_id;
 ALTER TABLE public.edd_object DROP COLUMN line_id;
 ALTER TABLE public.edd_object DROP COLUMN protocol_id;
 ALTER TABLE public.edd_object DROP COLUMN assay_id;
-ALTER TABLE public.edd_object DROP COLUMN metabolic_map_id;
+ALTER TABLE public.edd_object DROP COLUMN sbml_template_id;

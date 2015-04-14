@@ -200,6 +200,11 @@ div.errorMessage {
     border-color: red;
 }
 
+.success {
+  color: #0000ff;
+  font-weight: bold;
+}
+
 
 /* Main content section */
 div.content {
