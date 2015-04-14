@@ -532,125 +532,142 @@ class SBMLUtilTests (TestCase) :
             # TODO lots more
 
 
+def setup_export_data () :
+    """
+    Utility method to populate the test database with data suitable for SBML
+    or table export.
+    """
+    user1 = User.objects.create_user(username="admin",
+        email="nechols@lbl.gov", password='12345')
+    user2 = User.objects.create_user(username="postdoc",
+        email="nechols@lbl.gov", password='12345')
+    study1 = Study.objects.create(name='Test Study 1', description='')
+    UserPermission.objects.create(study=study1, permission_type='R',
+        user=user1)
+    line1 = study1.line_set.create(name="Line 1", description="",
+        experimenter=user1, contact=user1)
+    line2 = study1.line_set.create(name="Line 2", description="",
+        study=study1, experimenter=user1, contact=user1)
+    protocol1 = Protocol.objects.create(name="GC-MS", owned_by=user1)
+    protocol2 = Protocol.objects.create(name="OD600", owned_by=user1)
+    protocol3 = Protocol.objects.create(name="HPLC", owned_by=user1)
+    protocol4 = Protocol.objects.create(name="O2/CO2", owned_by=user1)
+    protocol5 = Protocol.objects.create(name="Proteomics", owned_by=user1)
+    protocol6 = Protocol.objects.create(name="Transcriptomics",
+      owned_by=user1)
+    protocol7 = Protocol.objects.create(name="LC-MS", owned_by=user1)
+    mt1 = Metabolite.objects.create(type_name="Acetate",
+        short_name="ac", type_group="m", charge=-1, carbon_count=2,
+        molecular_formula="C2H3O2", molar_mass=60.05)
+    mt2 = Metabolite.objects.create(type_name="D-Glucose",
+        short_name="glc-D", type_group="m", charge=0, carbon_count=6,
+        molecular_formula="C6H12O6", molar_mass=180.16)
+    mt3 = Metabolite.objects.create(type_name="Optical Density",
+        short_name="OD", type_group="m", charge=0, carbon_count=0,
+        molecular_formula="", molar_mass=0)
+    # RAMOS-specific metabolites
+    mt4 = Metabolite.objects.create(type_name="CO2 production",
+        short_name="CO2p", type_group="m", charge=0, carbon_count=1,
+        molecular_formula="CO2", molar_mass=44.01)
+    mt5 = Metabolite.objects.create(type_name="O2 consumption",
+        short_name="O2c", type_group="m", charge=0, carbon_count=0,
+        molecular_formula="O2", molar_mass=32)
+    mt6 = Metabolite.objects.create(type_name="CO2",
+        short_name="co2", type_group="m", charge=0, carbon_count=1,
+        molecular_formula="CO2", molar_mass=44.01)
+    mt7 = Metabolite.objects.create(type_name="O2",
+        short_name="o2", type_group="m", charge=0, carbon_count=0,
+        molecular_formula="O2", molar_mass=32)
+    # ASSAYS
+    assay1 = line1.assay_set.create(name="Assay 1",
+        protocol=protocol1, description="GC-MS assay", experimenter=user1)
+    assay2 = line2.assay_set.create(name="Assay 2",
+        protocol=protocol1, description="GC-MS assay", experimenter=user1)
+    assay3 = line1.assay_set.create(name="OD measurement",
+        protocol=protocol2, description="OD measurement",
+        experimenter=user1)
+    assay4 = line1.assay_set.create(name="HPLC assay", experimenter=user1,
+        protocol=protocol3, description="HPLC measurement")
+    assay5 = line1.assay_set.create(name="RAMOS assay", experimenter=user1,
+        protocol=protocol4, description="O2/CO2 measurements")
+    assay6 = line1.assay_set.create(name="LC-MS assay", experimenter=user1,
+        protocol=protocol7, description="IC LC-MS measurements")
+    mu1 = MeasurementUnit.objects.create(unit_name="hours")
+    mu1 = MeasurementUnit.objects.create(unit_name="hours")
+    mu2 = MeasurementUnit.objects.create(unit_name="mM")
+    mu3 = MeasurementUnit.objects.create(unit_name="n/a")
+    mu4 = MeasurementUnit.objects.create(unit_name="Cmol/L")
+    mu5 = MeasurementUnit.objects.create(unit_name="mol/L/hr")
+    up1 = Update.objects.create(mod_by=user1)
+    meas1 = assay1.measurement_set.create(experimenter=user1,
+        measurement_type=mt1, compartment="2", update_ref=up1,
+        x_units=mu1, y_units=mu2)
+    meas2 = assay1.measurement_set.create(experimenter=user1,
+        measurement_type=mt2, compartment="2", update_ref=up1,
+        x_units=mu1, y_units=mu2)
+    meas3 = assay2.measurement_set.create(experimenter=user1, # GC-MS
+        measurement_type=mt1, compartment="2", update_ref=up1,
+        x_units=mu1, y_units=mu2)
+    meas4 = assay2.measurement_set.create(experimenter=user1, # GC-MS
+        measurement_type=mt2, compartment="2", update_ref=up1,
+        x_units=mu1, y_units=mu2)
+    meas5 = assay3.measurement_set.create(experimenter=user1, # OD
+        measurement_type=mt3, compartment="0", update_ref=up1,
+        x_units=mu1, y_units=mu3)
+    meas6 = assay4.measurement_set.create(experimenter=user1, # HPLC
+        measurement_type=mt1, compartment="2", update_ref=up1,
+        x_units=mu1, y_units=mu4)
+    meas7 = assay4.measurement_set.create(experimenter=user1, # HPLC
+        measurement_type=mt2, compartment="2", update_ref=up1,
+        x_units=mu1, y_units=mu4)
+    meas8 = assay5.measurement_set.create(experimenter=user1,
+        measurement_type=mt4, compartment="2", update_ref=up1,
+        x_units=mu1, y_units=mu5)
+    meas9 = assay5.measurement_set.create(experimenter=user1,
+        measurement_type=mt5, compartment="2", update_ref=up1,
+        x_units=mu1, y_units=mu5)
+    # an intracellular measurement - shouldn't have flux!
+    meas10 = assay6.measurement_set.create(experimenter=user1,
+        measurement_type=mt1, compartment="1", update_ref=up1,
+        x_units=mu1, y_units=mu2)
+    x1 = [ 0, 4, 8, 12, 18, 24 ]
+    y1 = [ 0.0, 0.1, 0.2, 0.4, 0.8, 1.6 ]
+    y2 = [ 0.0, 0.5, 0.6, 0.65, 0.675, 0.69 ]
+    y3 = [ 0.0, 0.2, 0.4, 0.8, 1.6, 3.2 ]
+    y4 = [ 0.0, 0.5, 1.1, 2.05, 4.09, 5.45 ]
+    y5 = [ 0.0, 0.3, 0.5, 0.55, 0.57, 0.59 ] # OD
+    for x, y in zip(x1, y1) : # acetate
+        md = meas1.measurementdatum_set.create(updated=up1, x=x, y=y)
+        md2 = meas6.measurementdatum_set.create(updated=up1, x=x, y=y*1.1)
+        md3 = meas10.measurementdatum_set.create(updated=up1, x=x,
+          y=2.0-y)
+    for x, y in zip(x1, y2) : # glucose
+        md = meas2.measurementdatum_set.create(updated=up1, x=x, y=y)
+        md2 = meas7.measurementdatum_set.create(updated=up1, x=x, y=y*1.1)
+    for x, y in zip(x1, y3) :
+        md = meas3.measurementdatum_set.create(updated=up1, x=x, y=y)
+    for x, y in zip(x1, y4) :
+        md = meas4.measurementdatum_set.create(updated=up1, x=x, y=y)
+    for x, y in zip(x1, y5) : # OD
+        md = meas5.measurementdatum_set.create(updated=up1, x=x, y=y)
+    for x, y in zip([0,12,24], [0.1,0.3,0.5]) :
+        md  = meas8.measurementdatum_set.create(updated=up1, x=x, y=y)
+        md2 = meas9.measurementdatum_set.create(updated=up1, x=x, y=y)
+    # TODO proteomics/transcriptomics would be nice
+    # TODO incorporate metadata
+    mm = MetabolicMap.objects.create(
+      name="R_Ec_biomass_iJO1366_WT_53p95M",
+      biomass_calculation=33.19037,
+      biomass_exchange_name="R_Ec_biomass_iJO1366_WT_53p95M")
+
+
 class ExportTests(TestCase) :
     """
     Test export of assay measurement data, either as simple tables or SBML.
     """
     def setUp(self):
         TestCase.setUp(self)
-        user1 = User.objects.create_user(username="admin",
-            email="nechols@lbl.gov", password='12345')
-        user2 = User.objects.create_user(username="postdoc",
-            email="nechols@lbl.gov", password='12345')
-        study1 = Study.objects.create(name='Test Study 1', description='')
-        UserPermission.objects.create(study=study1, permission_type='R',
-            user=user1)
-        line1 = study1.line_set.create(name="Line 1", description="",
-            experimenter=user1, contact=user1)
-        line2 = study1.line_set.create(name="Line 2", description="",
-            study=study1, experimenter=user1, contact=user1)
-        protocol1 = Protocol.objects.create(name="GC-MS", owned_by=user1)
-        protocol2 = Protocol.objects.create(name="OD600", owned_by=user1)
-        protocol3 = Protocol.objects.create(name="HPLC", owned_by=user1)
-        protocol4 = Protocol.objects.create(name="O2/CO2", owned_by=user1)
-        protocol5 = Protocol.objects.create(name="Proteomics", owned_by=user1)
-        protocol6 = Protocol.objects.create(name="Transcriptomics",
-          owned_by=user1)
-        mt1 = Metabolite.objects.create(type_name="Acetate",
-            short_name="ac", type_group="m", charge=-1, carbon_count=2,
-            molecular_formula="C2H3O2", molar_mass=60.05)
-        mt2 = Metabolite.objects.create(type_name="D-Glucose",
-            short_name="glc-D", type_group="m", charge=0, carbon_count=6,
-            molecular_formula="C6H12O6", molar_mass=180.16)
-        mt3 = Metabolite.objects.create(type_name="Optical Density",
-            short_name="OD", type_group="m", charge=0, carbon_count=0,
-            molecular_formula="", molar_mass=0)
-        # RAMOS-specific metabolites
-        mt4 = Metabolite.objects.create(type_name="CO2 production",
-            short_name="CO2p", type_group="m", charge=0, carbon_count=1,
-            molecular_formula="CO2", molar_mass=44.01)
-        mt5 = Metabolite.objects.create(type_name="O2 consumption",
-            short_name="O2c", type_group="m", charge=0, carbon_count=0,
-            molecular_formula="O2", molar_mass=32)
-        mt6 = Metabolite.objects.create(type_name="CO2",
-            short_name="co2", type_group="m", charge=0, carbon_count=1,
-            molecular_formula="CO2", molar_mass=44.01)
-        mt7 = Metabolite.objects.create(type_name="O2",
-            short_name="o2", type_group="m", charge=0, carbon_count=0,
-            molecular_formula="O2", molar_mass=32)
-        # ASSAYS
-        assay1 = line1.assay_set.create(name="Assay 1",
-            protocol=protocol1, description="GC-MS assay", experimenter=user1)
-        assay2 = line2.assay_set.create(name="Assay 2",
-            protocol=protocol1, description="GC-MS assay", experimenter=user1)
-        assay3 = line1.assay_set.create(name="OD measurement",
-            protocol=protocol2, description="OD measurement",
-            experimenter=user1)
-        assay4 = line1.assay_set.create(name="HPLC assay", experimenter=user1,
-            protocol=protocol3, description="HPLC measurement")
-        assay5 = line1.assay_set.create(name="RAMOS assay", experimenter=user1,
-            protocol=protocol4, description="O2/CO2 measurements")
-        mu1 = MeasurementUnit.objects.create(unit_name="hours")
-        mu1 = MeasurementUnit.objects.create(unit_name="hours")
-        mu2 = MeasurementUnit.objects.create(unit_name="mM")
-        mu3 = MeasurementUnit.objects.create(unit_name="n/a")
-        mu4 = MeasurementUnit.objects.create(unit_name="Cmol/L")
-        mu5 = MeasurementUnit.objects.create(unit_name="mol/L/hr")
-        up1 = Update.objects.create(mod_by=user1)
-        meas1 = assay1.measurement_set.create(experimenter=user1,
-            measurement_type=mt1, compartment="1", update_ref=up1,
-            x_units=mu1, y_units=mu2)
-        meas2 = assay1.measurement_set.create(experimenter=user1,
-            measurement_type=mt2, compartment="1", update_ref=up1,
-            x_units=mu1, y_units=mu2)
-        meas3 = assay2.measurement_set.create(experimenter=user1, # GC-MS
-            measurement_type=mt1, compartment="1", update_ref=up1,
-            x_units=mu1, y_units=mu2)
-        meas4 = assay2.measurement_set.create(experimenter=user1, # GC-MS
-            measurement_type=mt2, compartment="1", update_ref=up1,
-            x_units=mu1, y_units=mu2)
-        meas5 = assay3.measurement_set.create(experimenter=user1, # OD
-            measurement_type=mt3, compartment="0", update_ref=up1,
-            x_units=mu1, y_units=mu3)
-        meas6 = assay4.measurement_set.create(experimenter=user1, # HPLC
-            measurement_type=mt1, compartment="2", update_ref=up1,
-            x_units=mu1, y_units=mu4)
-        meas7 = assay4.measurement_set.create(experimenter=user1, # HPLC
-            measurement_type=mt2, compartment="2", update_ref=up1,
-            x_units=mu1, y_units=mu4)
-        meas8 = assay5.measurement_set.create(experimenter=user1,
-            measurement_type=mt4, compartment="0", update_ref=up1,
-            x_units=mu1, y_units=mu5)
-        meas9 = assay5.measurement_set.create(experimenter=user1,
-            measurement_type=mt5, compartment="0", update_ref=up1,
-            x_units=mu1, y_units=mu5)
-        x1 = [ 0, 4, 8, 12, 18, 24 ]
-        y1 = [ 0.0, 0.1, 0.2, 0.4, 0.8, 1.6 ]
-        y2 = [ 0.0, 0.5, 0.6, 0.65, 0.675, 0.69 ]
-        y3 = [ 0.0, 0.2, 0.4, 0.8, 1.6, 3.2 ]
-        y4 = [ 0.0, 0.5, 1.1, 2.05, 4.09, 5.45 ]
-        y5 = [ 0.0, 0.3, 0.5, 0.55, 0.57, 0.59 ] # OD
-        for x, y in zip(x1, y1) : # acetate
-            md = meas1.measurementdatum_set.create(updated=up1, x=x, y=y)
-            md2 = meas6.measurementdatum_set.create(updated=up1, x=x, y=y*1.1)
-        for x, y in zip(x1, y2) : # glucose
-            md = meas2.measurementdatum_set.create(updated=up1, x=x, y=y)
-            md2 = meas7.measurementdatum_set.create(updated=up1, x=x, y=y*1.1)
-        for x, y in zip(x1, y3) :
-            md = meas3.measurementdatum_set.create(updated=up1, x=x, y=y)
-        for x, y in zip(x1, y4) :
-            md = meas4.measurementdatum_set.create(updated=up1, x=x, y=y)
-        for x, y in zip(x1, y5) : # OD
-            md = meas5.measurementdatum_set.create(updated=up1, x=x, y=y)
-        for x, y in zip([0,12,24], [0.1,0.3,0.5]) :
-            md  = meas8.measurementdatum_set.create(updated=up1, x=x, y=y)
-            md2 = meas9.measurementdatum_set.create(updated=up1, x=x, y=y)
-        # TODO proteomics/transcriptomics would be nice
-        # TODO incorporate metadata
-        mm = MetabolicMap.objects.create(
-          name="R_Ec_biomass_iJO1366_WT_53p95M",
-          biomass_calculation=33.19037,
-          biomass_exchange_name="R_Ec_biomass_iJO1366_WT_53p95M")
+        setup_export_data()
 
     def tearDown(self):
         TestCase.tearDown(self)
@@ -669,7 +686,7 @@ class ExportTests(TestCase) :
         user = User.objects.get(username="admin")
         exports = main.data_export.select_objects_for_export(study, user, form)
         table = main.data_export.assemble_table(**exports)
-        self.assertTrue(len(table) == 10)
+        self.assertTrue(len(table) == 11)
         self.assertTrue(len(table[0]) == 21)
         self.assertTrue(table[0][-6:] == [ 0, 4, 8, 12, 18, 24 ]) # x1 in setUp
         # XXX y3 in setUp
@@ -726,13 +743,13 @@ class ExportTests(TestCase) :
             hplc_data[0]['assays'][0]['measurements'][0]['n_points'] == 6)
         dp = hplc_data[0]['assays'][0]['measurements'][0]['data_points'][2]
         self.assertTrue(dp['title'] == "0.22000 at 8h")
-        self.assertTrue(data.n_lcms_measurements == 2)
+        self.assertTrue(data.n_lcms_measurements == 3)
         lcms_data = data.export_lcms_measurements()
         dp = lcms_data[0]['assays'][0]['measurements'][0]['data_points'][2]
         self.assertTrue(dp['title'] == "0.20000 at 8h")
         self.assertTrue(data.n_ramos_measurements == 2)
         all_meas = data.processed_measurements()
-        self.assertTrue(len(all_meas) == 7)
+        self.assertTrue(len(all_meas) == 8)
         meas = all_meas[0]
         self.assertTrue(meas.n_errors == 0)
         self.assertTrue(meas.n_warnings == 1)
@@ -797,11 +814,10 @@ class ExportTests(TestCase) :
             raise Exception("Should have caught an exception here!")
 
 
-# totally unrelated to ExportTests, but subclassing it so we can re-use the
-# setup
-class UtilityTests (ExportTests) :
+class UtilityTests (TestCase) :
     def setUp (self) :
-        ExportTests.setUp(self)
+        TestCase.setUp(self)
+        setup_export_data()
 
     def test_get_edddata_users (self) :
         users = main.utilities.get_edddata_users()

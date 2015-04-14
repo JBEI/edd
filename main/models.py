@@ -843,6 +843,9 @@ class Measurement(models.Model):
         mdata = list(self.measurementdatum_set.all())
         return [ md for md in mdata if md.fy is not None ]
 
+    def is_extracellular (self) :
+        return self.compartment == str(MeasurementCompartment.EXTRACELLULAR)
+
     @property
     def name (self) :
         """alias for self.measurement_type.type_name"""

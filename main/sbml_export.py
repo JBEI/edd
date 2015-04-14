@@ -1,5 +1,6 @@
 
-# FIXME DON'T CALCULATE FLUXES FOR INTRACELLULAR MEASUREMENTS!
+# FIXME need to track intracellular and extracellular measurements separately
+# (and assign to SBML species differently)
 # TODO clean this up, get rid of unnecessary code and make it internally
 # consistent
 # TODO Garrett says we can get rid of the input checkboxes
@@ -914,7 +915,7 @@ class line_assay_data (line_export_base) :
     self._transcription_by_assay = defaultdict(list)
     self._measurement_ranges = {}
     self._usable_protocols = defaultdict(list) # keyed by protocol category
-    self._usable_assays = defaultdict(dict) # keyed by P.category, P.name
+    self._usable_assays = defaultdict(list) # keyed by protocol name
     # this one isn't currently used for anything other than counting - we
     # could just as easily replace 'list' with 'int'
     self._usable_measurements = defaultdict(list) # keyed by protocol category
@@ -1003,10 +1004,11 @@ class line_assay_data (line_export_base) :
     od_protocols = self._get_protocols_by_category("OD")
     if (len(od_protocols) == 0) :
       raise ValueError("Cannot find the OD600 protocol by name!")
+    assert (len(od_protocols) == 1)
     mt_meas_type = MeasurementType.objects.get(short_name="OD")
     # TODO look for gCDW/L/OD600 metadata
     self._usable_protocols["OD"] = od_protocols
-    self._usable_assays["OD"] = defaultdict(list)
+    protocol_name = od_protocols[0].name
     od_assays = self._assays.get(od_protocols[0].id, [])
     # XXX do we still need to cross-reference with selected lines? I think not
     if (len(od_assays) == 0) :
@@ -1022,7 +1024,7 @@ class line_assay_data (line_export_base) :
                      (m.measurement_type_id == mt_meas_type.id) ]
       self._od_measurements.extend(assay_meas)
       if (len(assay_meas) > 0) :
-        self._usable_assays["OD"][od_protocols[0].name].append(assay)
+        self._usable_assays[protocol_name].append(assay)
     if (len(self._od_measurements) == 0) :
       raise ValueError("Assay selection has no Optical Data measurements "+
         "entered.  Biomass measurements are essential for FBA.")
@@ -1159,7 +1161,6 @@ class line_assay_data (line_export_base) :
       assays = self._assays.get(protocol.id, [])
       if (len(assays) == 0) :
         continue
-      self._usable_assays[protocol_category] = defaultdict(list)
       # Sort by the Assay name, then re-sort by the Line name.
       assays.sort(lambda a,b: cmp(a.name, b.name))
       assays.sort(lambda a,b: cmp(a.line.name, b.line.name))
@@ -1210,8 +1211,8 @@ class line_assay_data (line_export_base) :
         # If the Assay has any usable Measurements, add it to a hash sorted
         # by Protocol
         if assay_has_usable_data :
-          self._usable_assays[protocol_category][protocol.name].append(assay)
-      usable_assays = self._usable_assays[protocol_category][protocol.name]
+          self._usable_assays[protocol.name].append(assay)
+      usable_assays = self._usable_assays.get(protocol.name, [])
       if (len(usable_assays) > 0) :
         self._usable_protocols[protocol_category].append(protocol)
     if (len(self._usable_protocols.get(protocol_category, [])) > 0) :
@@ -1283,7 +1284,6 @@ class line_assay_data (line_export_base) :
       assays = self._assays.get(protocol.id, [])
       if (len(assays) == 0) :
         continue
-      self._usable_assays["RAMOS"] = defaultdict(list)
       assays.sort(lambda a,b: cmp(a.name, b.name))
       assays.sort(lambda a,b: cmp(a.line.name, b.line.name))
       for assay in assays :
@@ -1311,8 +1311,8 @@ class line_assay_data (line_export_base) :
         # If the Assay has any usable Measurements, add it to a hash sorted
         # by Protocol
         if assay_has_usable_data :
-          self._usable_assays["RAMOS"][protocol.name].append(assay)
-      if (len(self._usable_assays["RAMOS"].get(protocol.name, [])) > 0) :
+          self._usable_assays[protocol.name].append(assay)
+      if (len(self._usable_assays.get(protocol.name, [])) > 0) :
         self._usable_protocols["RAMOS"].append(protocol)
     if (self.n_ramos_measurements > 0) :
       min_x, max_x = self._find_min_max_x_in_measurements(
@@ -1338,7 +1338,7 @@ class line_assay_data (line_export_base) :
       if (category == "TPOMICS") :
         continue
       for protocol in self._usable_protocols[category] :
-        for assay in self._usable_assays[category][protocol.name] :
+        for assay in self._usable_assays[protocol.name] :
           for m in self._get_measurements(assay.id) :
             is_checked = self._metabolites_checked.get(m.id, None)
             if is_checked :
@@ -1414,14 +1414,17 @@ class line_assay_data (line_export_base) :
             for t in pm.mtimes :
               if (not mid in self._species_data_by_metabolite[t]) :
                 self._species_data_by_metabolite[t][mid] = []
-              if (not mid in self._flux_data_by_metabolite[t]) :
-                self._flux_data_by_metabolite[t][mid] = []
-              flux = pm.flux_at_time_point(t)
-              if (flux is not None) :
-                self._species_data_by_metabolite[t][mid].append(flux)
-                self._flux_data_by_metabolite[t][mid].append(flux)
+              if pm.have_flux :
+                if (not mid in self._flux_data_by_metabolite[t]) :
+                  self._flux_data_by_metabolite[t][mid] = []
+              tp_data = pm.flux_at_time_point(t)
+              if (tp_data is not None) :
+                self._species_data_by_metabolite[t][mid].append(tp_data)
                 self._species_data_types_available.add(mid)
-                self._flux_data_types_available.add(mid)
+                if (pm.have_flux) :
+                  assert (m.is_extracellular() or protocol_category == "RAMOS")
+                  self._flux_data_by_metabolite[t][mid].append(tp_data)
+                  self._flux_data_types_available.add(mid)
             m_min, m_max = pm.min_max()
             self._metabolite_minima[mid] = min(m_min,
               self._metabolite_minima.get(mid, sys.maxint))
@@ -1439,7 +1442,7 @@ class line_assay_data (line_export_base) :
     # reject this Measurement based on problems with unit conversion or lack
     # of an exchange element in the SBML document.  (The zero in the table
     # will be informative to the user.)
-    mtimes = self._flux_data_by_metabolite.keys()
+    mtimes = self._species_data_by_metabolite.keys()
     self._comprehensive_valid_OD_times = sorted(mtimes)
 
   # Used for extracting HPLC/LCMS/RAMOS assays for display.  Metabolites are
@@ -1547,7 +1550,7 @@ class line_assay_data (line_export_base) :
     min_x, max_x = self._measurement_ranges[category]
     for protocol in self._usable_protocols[category] :
       assay_list = self._export_assay_measurements(
-        assays=self._usable_assays[category][protocol.name],
+        assays=self._usable_assays[protocol.name],
         max_x=max_x)
       protocol_data = {
         "name" : protocol.name,
@@ -1779,7 +1782,7 @@ class processed_measurement (object) :
     self.is_od_measurement = is_od_measurement
     self.data = []
     self.intervals = []
-    self._flux_data = []
+    self._timepoint_data = []
     self.errors = []
     self.warnings = []
     self.valid_od_mtimes = set()
@@ -1804,7 +1807,7 @@ class processed_measurement (object) :
           self.interpolated_measurement_timestamps.add(t)
     mdata_tuples.sort(lambda a,b: cmp(a[0], b[0]))
     # Container for a computed metabolite flux at a given time interval.
-    class flux_calculation (object) :
+    class timepoint (object) :
       def __init__ (O, mname, start, end, y, delta, units, flux, interpolated):
         O.mname = mname
         O.start = start
@@ -1923,8 +1926,15 @@ class processed_measurement (object) :
             md.y = 0 - md.y
           flux = md.y / od
           delta = md.y
-        self._flux_data.append(
-          flux_calculation(
+        # FIXME Since OD and RAMOS "metabolites" are always considered to be
+        # "extracellular", it might make more sense for the contents of the
+        # database to reflect this
+        if (not (measurement.is_extracellular() or
+                 self.is_od_measurement or
+                 protocol_category == "RAMOS")) :
+          flux = None
+        self._timepoint_data.append(
+          timepoint(
             mname=mname,
             start=t,
             end=t_end,
@@ -1937,6 +1947,7 @@ class processed_measurement (object) :
       process_md()
     except ValueError as e :
       self.errors.append(str(e))
+    self.have_flux = self.n_fluxes_computed > 0
 
   @property
   def n_errors (self) :
@@ -1952,8 +1963,12 @@ class processed_measurement (object) :
     return lo, hi
 
   @property
+  def n_fluxes_computed (self) :
+    return len([ t.flux for t in self._timepoint_data if t.flux is not None ])
+
+  @property
   def mtimes (self) :
-    return [ fd.start for fd in self._flux_data ]
+    return [ fd.start for fd in self._timepoint_data ]
 
   @property
   def n_skipped_measurements (self) :
@@ -1964,10 +1979,10 @@ class processed_measurement (object) :
 
   @property
   def flux_data (self) :
-    return self._flux_data
+    return self._timepoint_data
 
   def flux_at_time_point (self, t) :
-    for fd in self._flux_data :
+    for fd in self._timepoint_data :
       if (fd.start == t) :
         return fd
     return None
@@ -2192,7 +2207,7 @@ class line_sbml_export (line_assay_data, sbml_info) :
         print e
     for mid in flux_data.keys() :
       metabolite = self._metabolites_by_id[mid]
-      values = [ d.flux for d in flux_data[mid] ]
+      values = [ d.flux for d in flux_data[mid] if d.flux is not None ]
       try :
         self._assign_value_to_flux(metabolite.id, values)
       except ValueError as e :

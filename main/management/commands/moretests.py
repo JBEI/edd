@@ -70,7 +70,7 @@ class SBMLTests (unittest.TestCase) :
     assert (sd.n_ramos_measurements == 2)
     assert (sd.n_conversion_warnings == 3)
     assert (sd.species_match_element_ids == sd.flux_match_element_ids ==
-            "4,5,6,11,13,84,309,528")
+            "4,5,6,11,13,84,309,528"), sd.flux_match_element_ids
     assert (sd.available_timepoints == [0.0, 7.5, 9.5, 11.0, 13.0, 15.0, 17.0])
     assert (sd.n_modified == 0)
     # make sure RAMOS measurements are handled correctly!
@@ -155,7 +155,7 @@ class SBMLTests (unittest.TestCase) :
           if (field in notes1.keys()) :
             f1 = float(notes1[field][0])
             f2 = float(notes2[field][0])
-            assert (abs(f2 - f1) < 0.001), (f1, f2)
+            assert (abs(f2 - f1) < 0.001), (f1, f2, species1.getId())
     # compare exchanges
     for r1 in m1.getListOfReactions() :
       r2 = m2.getReaction(r1.getId())
@@ -170,11 +170,11 @@ class SBMLTests (unittest.TestCase) :
         if (ub1.isSetValue()) :
           f1 = float(ub1.getValue())
           f2 = float(ub2.getValue())
-          assert (abs(f2 - f1) < 0.01), (f1, f2)
+          assert (abs(f2 - f1) < 0.01), (f1, f2, r1.getId())
         if (lb1.isSetValue()) :
           f1 = float(lb1.getValue())
           f2 = float(lb2.getValue())
-          assert (abs(f2 - f1) < 0.01), (f1, f2)
+          assert (abs(f2 - f1) < 0.01), (f1, f2, r1.getId())
       if r1.isSetNotes() :
         # this parses the embedded strings, e.g. "g1234=1.5 g5678=0.1"
         def compare_records (rec1, rec2) :
