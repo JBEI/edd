@@ -24,8 +24,13 @@
             {% if user.is_authenticated %}
             <div>
                 <span class="user_welcome">{{ user.first_name }} {{ user.last_name }}</span>
+            </div>
+            <div>
                 <a href="{% url 'django.contrib.auth.views.logout' %}">Logout</a>
             </div>
+              {% if user.is_staff %}
+            <div><a href="/admin">Data types</a></div>
+              {% endif %}
             {% endif %}
             <div>
             {% block top_help %}

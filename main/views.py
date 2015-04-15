@@ -264,8 +264,26 @@ def study_export_sbml (request, study) :
             },
             context_instance=RequestContext(request))
 
+# /admin
+def admin_home (request) :
+    if (not request.user.is_staff) :
+        return HttpResponseForbidden("You do not have administrative access.")
+    return render(request, "main/admin.html")
+
+# /admin/protocols
+def admin_protocols (request) :
+    if (not request.user.is_staff) :
+        return HttpResponseForbidden("You do not have administrative access.")
+    return render_to_response("main/admin_protocols.html",
+        dictionary={
+            "protocols" : Protocol.objects.all().order_by("name"),
+        },
+        context_instance=RequestContext(request))
+
 # /admin/sbml
 def admin_sbml (request) :
+    if (not request.user.is_staff) :
+        return HttpResponseForbidden("You do not have administrative access.")
     return render_to_response("main/admin_sbml.html",
         dictionary={
             "sbml_templates" : main.sbml_export.sbml_template_info(),
@@ -274,6 +292,8 @@ def admin_sbml (request) :
 
 # /admin/sbml/upload
 def admin_sbml_upload (request) :
+    if (not request.user.is_staff) :
+        return HttpResponseForbidden("You do not have administrative access.")
     if (request.method != "POST") :
         return HttpResponseBadRequest("POST data not found.")
     else :
@@ -294,6 +314,8 @@ def admin_sbml_upload (request) :
 
 # /admin/sbml/<map_id>/edit
 def admin_sbml_edit (request, template_id) :
+    if (not request.user.is_staff) :
+        return HttpResponseForbidden("You do not have administrative access.")
     messages = {}
     if (request.method == "POST") :
         error = None

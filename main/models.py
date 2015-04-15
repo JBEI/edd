@@ -414,13 +414,16 @@ class Protocol(EDDObject):
     variant_of = models.ForeignKey('self', blank=True, null=True, related_name='derived_set')
     
     def creator(self):
-        return self.created.mod_by
+        return self.created().mod_by
     
     def owner(self):
         return self.owned_by
     
     def last_modified(self):
         return self.updated.mod_time
+
+    def last_modified_str (self) :
+        return self.updated().format_timestamp()
 
     def to_solr_value(self):
         return '%(id)s@%(name)s' % {'id':self.pk, 'name':self.name}

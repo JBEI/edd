@@ -1,0 +1,57 @@
+
+{% extends "edd_base.html" %}
+{% load staticfiles %}
+
+{% block js_css %}
+  {{ block.super }}
+<style type="text/css">
+  table.adminTable  {
+    margin:0px 0px 150px 0px;
+    border:none;
+    font-size: 14px;
+  }
+  table.adminTable td {
+    padding:1px 15px 1px 0px;
+  }
+  table.adminTable td h3 {
+    margin:10px;
+  }
+</style>
+{% endblock js_css %}
+
+{% block head_title %}
+  EDD Admin
+{% endblock head_title %}
+
+{% block body_title %}
+  <h1>Data Types</h1>
+{% endblock body_title %}
+
+{% block content %}
+<table class="adminTable" style="margin:14px 0px 18px 13px;">
+  <tr>
+    <td><a href="/admin/protocols">Protocols</a></td>
+    <td>Create, modify, and organize experiment protocols.</td>
+  </tr>
+  <tr>
+    <td><a href="/admin/strains">Strains</a></td>
+    <td>Create and modify strains and their Registry links.</td>
+  </tr>
+  <tr>
+    <td><a href="/admin/carbonsources">Carbon Sources</a></td>
+    <td>Create and modify carbon sources.</td>
+  </tr>
+  <tr>
+    <td><a href="/admin/sbml">SBML Templates</a></td>
+    <td>Add, remove, and change settings for SBML template files, used for flux balance analysis.</td>
+  </tr>
+  <tr>
+    <td><a href="/admin/metadata">Metadata</a></td>
+    <td>Create, modify, and organize metadata types.</td>
+  </tr>
+  <tr>
+    <td><a href="/admin/metabolites">Metabolites</a></td>
+    <td>Create, modify, and organize metabolite types and their units.</td>
+  </tr>
+</table>
+{% endblock content %}
