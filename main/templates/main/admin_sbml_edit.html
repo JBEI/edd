@@ -56,11 +56,7 @@ Edit SBML Template
 
 {% block content %}
 
-{% if messages.success %}
-<h2 class="success">{{ messages.success }}</h2>
-{% elif messages.error %}
-<h2 class="bad">{{ messages.error }}</h2>
-{% endif %}
+{% include "main/include_messages.html" %}
 
 {% with template=data.selected_template_info %}
 <form method="post" action="/admin/sbml/{{ template.id }}/edit"

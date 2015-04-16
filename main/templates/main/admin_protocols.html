@@ -30,6 +30,10 @@ EDDData.currentUserID =  {{ user.id }};
 
 {% block content %}
 
+{% if messages.error %}
+<h2 class="bad">{{ messages.error }}</h2>
+{% endif %}
+
 <div class="pageSection" id="addNewMain">
   <div class="sectionHead">Add a New Protocol</div>
   <div class="sectionContent">
@@ -46,7 +50,9 @@ EDDData.currentUserID =  {{ user.id }};
             <select name="newvariantof">
               <option value="all" selected="selected">--</option>
 {% for protocol in protocols %}
+  {% if protocol.active %}
               <option value="{{ protocol.id }}">{{ protocol.name }}</option>
+  {% endif %}
 {% endfor %}
             </select>
           </td>
@@ -57,65 +63,60 @@ EDDData.currentUserID =  {{ user.id }};
   </div>
 </div>
 
-<form method="post" action="/admin/protocols">
-  <div class="pageSection">
-    <div class="sectionHead">
-      Protocols
-      <input type="button"
-        class="tableControl"
-        tableControlType="showRowsButton"
-        id="disabledButton"
-        name="action"
-        value="Show Disabled Protocols"
-        enabledLabel="Show Disabled Protocols"
-        disabledLabel="Hide Disabled Protocols"
-        defaultState=1
-        rowsToShow="" /><!-- FIXME -->
-    </div>
-
-    <table cellpadding="0" cellspacing="0"
-        class="dataTable sortable dragboxes hastablecontrols"
-        rowToggleControls="disabledButton,groupsPulldown">
-
-      <tr class="columnLabels">
-        <th style="text-align:left">
-          <div>Name</div>
-        </th>
-        <th style="text-align:left">
-          <div>Description</div>
-        </th>
-        <th style="text-align:center">
-          <div>Creator</div>
-        </th>
-        <th style="text-align:center">
-          <div>Owner</div>
-        </th>
-        <th style="text-align:left;border-right-width:0px">
-          <div>Last Modification</div>
-        </th>
-      </tr>
-  {% for protocol in protocols %}
-      <!-- FIXME handle disabled protocols -->
-      <tr class="{% cycle 'stripeRowA' 'stripeRowB' %}" data-line-id="17">
-        <td class="popupcell nowrap" style="padding:4px;">
-          <a href="/admin/protocol/{{ protocol.id }}">
-            {{ protocol.name }}
-          </a>
-        </td>
-        <td style="white-space:pre-wrap;padding:4px;">{{ protocol.description }}</td>
-        <td style="text-align:center;padding:4px;">
-          {{ protocol.creator.initials }}
-        </td>
-        <td style="text-align:center;padding:4px;">
-          {{ protocol.owner.initials }}
-        </td>
-        <td class="nowrap" style="padding:4px;">
-          {{ protocol.last_modified_str }}
-        </td>
-      </tr>
-  {% endfor %}<!-- protocols -->
-    </table>
+<div class="pageSection">
+  <div class="sectionHead">
+    Protocols
+    <span class="tableControl" style="font-style:italic;">
+      (Protocols displayed in italics are disabled.)
+    </span>
   </div>
-</form>
+
+  <table cellpadding="0" cellspacing="0"
+      class="dataTable sortable dragboxes hastablecontrols"
+      rowToggleControls="disabledButton,groupsPulldown">
+
+    <tr class="columnLabels">
+      <th style="text-align:left">
+        <div>Name</div>
+      </th>
+      <th style="text-align:left">
+        <div>Description</div>
+      </th>
+      <th style="text-align:center">
+        <div>Creator</div>
+      </th>
+      <th style="text-align:center">
+        <div>Owner</div>
+      </th>
+      <th style="text-align:left;border-right-width:0px">
+        <div>Last Modification</div>
+      </th>
+    </tr>
+{% for protocol in protocols %}
+  {% if protocol.active %} 
+    <tr class="{% cycle 'stripeRowA' 'stripeRowB' %}">
+  {% else %}
+    <tr class="{% cycle 'stripeRowA' 'stripeRowB' %}" style="font-style:italic;">
+  {% endif %}
+      <td class="popupcell nowrap" style="padding:4px; font-weight: bold;">
+        <a href="/admin/protocol/{{ protocol.id }}">{{ protocol.name }}</a>
+        {% if not protocol.active %}
+        [disabled]
+        {% endif %}
+      </td>
+      <td style="white-space:pre-wrap;padding:4px;">{{ protocol.description }}</td>
+      <td style="text-align:center;padding:4px;">
+        {{ protocol.creator.initials }}
+      </td>
+      <td style="text-align:center;padding:4px;">
+        {{ protocol.owner.initials }}
+      </td>
+      <td class="nowrap" style="padding:4px;">
+        {{ protocol.last_modified_str }}
+      </td>
+    </tr>
+{% endfor %}<!-- protocols -->
+  </table>
+</div>
 
 {% endblock content %}

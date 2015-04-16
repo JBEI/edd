@@ -13,6 +13,7 @@ import calendar
 from datetime import datetime, timedelta
 import arrow
 import re
+import os.path
 
 
 class Update(models.Model):
@@ -91,8 +92,25 @@ class Attachment(models.Model):
     file_size = models.IntegerField(default=0)
 
     @classmethod
-    def from_upload (self, form) :
-        print form
+    def from_upload (cls, edd_object, form, uploaded_file, update) :
+        return cls.objects.create(
+            object_ref=edd_object,
+            file=uploaded_file,
+            filename=uploaded_file.name,
+            created=update,
+            description=form.get("newAttachmentDescription"),
+            mime_type=uploaded_file.content_type,
+            file_size=len(uploaded_file.read()))
+
+    @property
+    def user_initials (self) :
+        return self.created.mod_by.initials
+
+    @property
+    def icon (self) :
+        from main.utilities import extensions_to_icons
+        base, ext = os.path.splitext(self.filename)
+        return extensions_to_icons.get(ext, "icon-generic.png")
 
 class MetadataGroup(models.Model):
     """
@@ -412,6 +430,8 @@ class Protocol(EDDObject):
     owned_by = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='protocol_set')
     active = models.BooleanField(default=True)
     variant_of = models.ForeignKey('self', blank=True, null=True, related_name='derived_set')
+    default_units = models.ForeignKey('MeasurementUnit', blank=True,
+        null=True, related_name="protocol_set")
     
     def creator(self):
         return self.created().mod_by
@@ -436,6 +456,22 @@ class Protocol(EDDObject):
             "name" : self.name,
             "disabled" : not self.active,
         }
+
+    @classmethod
+    def from_form (cls, name, user, variant_of_id=None) :
+        all_protocol_names = set([ p.name for p in Protocol.objects.all() ])
+        if (name in ["", None]) :
+            raise ValueError("Protocol name required.")
+        elif (name in all_protocol_names) :
+            raise ValueError("There is already a protocol named '%s'.")
+        variant_of = None
+        if (not variant_of_id in [None, "", "all"]) :
+            variant_of = Protocol.objects.get(pk=variant_of_id)
+        return Protocol.objects.create(
+            name=name,
+            owned_by=user,
+            active=True,
+            variant_of=variant_of)
 
     @property
     def categorization (self) :
@@ -698,6 +734,16 @@ class Metabolite(MeasurementType):
             "chgn" : self.charge, # TODO find anywhere in typescript using this and fix it
         })
 
+    def export_formula (self) :
+        """
+        Convert the molecular formula to a list of dictionaries giving each
+        element and its count.  This is used in HTML views with <sub> tags.
+        """
+        elements = re.findall("([A-Z]{1,2})([1-9]{1}[0-9]*)",
+            self.molecular_formula)
+        if (len(elements) == 0) :
+            return None
+        return [ { "symbol":str(e),"count":int(c) } for e,c in elements ]
 
 class GeneIdentifier(MeasurementType):
     """

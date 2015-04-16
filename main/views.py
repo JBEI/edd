@@ -15,7 +15,8 @@ from main.forms import CreateStudyForm
 from main.models import *
 from main.solr import StudySearch
 from main.utilities import get_edddata_study, get_edddata_misc, \
-    get_edddata_users, get_selected_lines, JSONDecimalEncoder
+    get_edddata_users, get_selected_lines, JSONDecimalEncoder, \
+    get_edddata_measurement
 import main.sbml_export
 import main.data_export
 from io import BytesIO
@@ -113,6 +114,7 @@ def study_search(request):
     return HttpResponse(json.dumps(query_response), content_type='application/json; charset=utf-8')
 
 
+# /study/<study_id>/edddata
 def study_edddata (request, study) :
     """
     Various information (both global and study-specific) that populates the
@@ -124,7 +126,7 @@ def study_edddata (request, study) :
     data_study.update(data_misc)
     return JsonResponse(data_study)
 
-
+# /study/<study_id>/assaydata
 def study_assay_table_data (request, study) :
     """
     Request information on assays associated with a study.
@@ -141,7 +143,7 @@ def study_assay_table_data (request, study) :
       "EDDData" : get_edddata_study(model),
     })
 
-
+# /study/<study_id>/import
 def study_import_table (request, study) :
     """
     View for importing tabular assay data (replaces AssayTableData.cgi).
@@ -165,6 +167,7 @@ def study_import_table (request, study) :
         },
         context_instance=RequestContext(request))
 
+# /study/<study_id>/export
 def study_export_table (request, study) :
     """
     HTML view for exporting measurement data in table format (replaces
@@ -203,6 +206,7 @@ def study_export_table (request, study) :
         },
         context_instance=RequestContext(request))
 
+# /study/<study_id>/export/data
 def study_export_table_data (request, study) :
     model = Study.objects.get(pk=study)
     form = None
@@ -219,6 +223,7 @@ def study_export_table_data (request, study) :
     else :
         return main.data_export.export_table(exports, form)
 
+# /study/<study_id>/sbml
 def study_export_sbml (request, study) :
     model = Study.objects.get(pk=study)
     if (request.method == "POST") :
@@ -272,11 +277,82 @@ def admin_home (request) :
 
 # /admin/protocols
 def admin_protocols (request) :
+    messages = {}
     if (not request.user.is_staff) :
         return HttpResponseForbidden("You do not have administrative access.")
+    if (request.method == "POST") :
+        try :
+            protocol = Protocol.from_form(
+                name = request.POST.get("protocolname", ""),
+                user = request.user,
+                variant_of_id = request.POST.get("newvariantof", ""))
+        except ValueError as e :
+            messages['error'] = str(e)
+        else :
+            return redirect("/admin/protocol/%d" % protocol.pk)
     return render_to_response("main/admin_protocols.html",
         dictionary={
             "protocols" : Protocol.objects.all().order_by("name"),
+            "messages" : messages,
+        },
+        context_instance=RequestContext(request))
+
+# /admin/protocol/<protocol_id>
+def admin_protocol_edit (request, protocol_id) :
+    messages = {}
+    protocol = Protocol.objects.get(pk=protocol_id)
+    other_protocols = Protocol.objects.all().exclude(pk=protocol_id)
+    if (request.method == "GET") :
+        delete_attachment_id = request.GET.get("removeAttachment", None)
+        if (delete_attachment_id is not None) :
+            attachment = Attachment.objects.get(pk=delete_attachment_id)
+            attachment.delete()
+            messages['success'] = "Attachment deleted."
+    else :
+        action = request.POST.get("action")
+        if (action == "Attach File") :
+            update = Update.load_request_update(request)
+            att = Attachment.from_upload(
+                edd_object=protocol,
+                form=request.POST,
+                uploaded_file=request.FILES['newAttachmentContent'],
+                update=update)
+            messages['success'] = "Attachment '%s' added." % att.filename
+        else :
+            try :
+                user_id = request.POST.get("protocolownervalue")
+                name = request.POST.get("name", "").strip()
+                if (name == "") :
+                    raise ValueError("Protocol name must not be blank.")
+                units_id = request.POST.get("protocoldefunitsvalue", "0")
+                if (units_id.isdigit()) and (units_id != "0") :
+                    protocol.default_units = MeasurementUnit.objects.get(
+                        pk=units_id)
+                protocol.description = request.POST.get("description", "")
+                if (request.POST.get("disabled")) :
+                    protocol.active = False
+                variant_of_id = request.POST.get("variant_of", "all")
+                if (variant_of_id != "all") :
+                    protocol.variant_of=Protocol.objects.get(pk=variant_of_id)
+                messages['success'] = "Protocol updated."
+            except ValueError as e :
+                messages['error'] = str(e)
+    return render_to_response("main/admin_protocol_edit.html",
+        dictionary={
+            "protocol" : protocol,
+            "attachments" : protocol.files.all(),
+            "other_protocols" : other_protocols,
+            "messages" : messages,
+        },
+        context_instance=RequestContext(request))
+
+# /admin/measurements
+def admin_measurements (request) :
+    messages = {}
+    return render_to_response("main/admin_metabolites.html",
+        dictionary={
+            "messages" : messages,
+            "metabolites" : Metabolite.objects.all().order_by("short_name"),
         },
         context_instance=RequestContext(request))
 
@@ -351,6 +427,17 @@ def admin_sbml_edit (request, template_id) :
 def data_users (request) :
     return JsonResponse({ "EDDData" : get_edddata_users() })
 
+# /data/misc
+def data_misc (request) :
+    return JsonResponse({ "EDDData" : get_edddata_misc() })
+
+# /data/measurements
+def data_measurements (request) :
+    data_meas = get_edddata_measurement()
+    data_misc = get_edddata_misc()
+    data_meas.update(data_misc)
+    return JsonResponse({ "EDDData" : data_meas })
+
 # /download/<file_id>
 def download (request, file_id) :
     model = Attachment.objects.get(pk=file_id)
@@ -371,6 +458,7 @@ def download (request, file_id) :
     return response
 
 # FIXME it would be much better to avoid csrf_exempt...
+# /utilities/parsefile
 @csrf_exempt
 def utilities_parse_table (request) :
     """

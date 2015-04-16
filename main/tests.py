@@ -228,6 +228,9 @@ class AssayDataTests(TestCase) :
         self.assertTrue(met.to_json() == { 'id': mt1.id, 'cc': 6, 'name': u'Mevalonate',
             'chgn': -1, 'ans': '', 'mm': 148.16, 'f': u'C6H11O4', 'chg': -1, 'sn': u'mev',
             'family': mt1.type_group,})
+        self.assertTrue(met.export_formula() == [
+          {'count': 6, 'symbol': 'C'}, {'count': 11, 'symbol': 'H'},
+          {'count': 4, 'symbol': 'O'}])
 
     def test_measurement (self) :
         assay = Assay.objects.get(name="Assay 1")

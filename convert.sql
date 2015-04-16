@@ -337,6 +337,30 @@ INSERT INTO public.line_carbon_source(line_id, carbonsource_id)
     INNER JOIN public.edd_object ol ON ol.line_id = x.line_id
     INNER JOIN public.edd_object oc ON oc.carbon_id = x.carbon_source_id;
 
+--
+-- copy over measurement units (we need this for protocols)
+--
+INSERT INTO public.measurement_unit(
+        id, unit_name, display, type_group
+    ) SELECT u.id, u.unit_name, u.display, CASE
+        WHEN u.used_for_metabolites THEN 'm'
+        WHEN u.used_for_transcriptions THEN 'g'
+        WHEN u.used_for_proteins THEN 'p'
+        ELSE '_' END
+    FROM old_edd.measurement_units u
+    ORDER BY u.id;
+SELECT setval('public.measurement_unit_id_seq', max(id))
+    FROM public.measurement_unit;
+-- FIXME is there a way to avoid using hard-coded IDs here?
+INSERT INTO public.measurement_unit(
+        unit_name, display, type_group
+    ) VALUES ('RPKM', true, 'g');
+INSERT INTO public.measurement_unit(
+        unit_name, display, type_group
+    ) VALUES ('FPKM', true, 'g');
+INSERT INTO public.measurement_unit(
+        unit_name, display, type_group
+    ) VALUES ('counts', true, 'g');
 
 --
 -- copy over protocols
@@ -346,9 +370,10 @@ ALTER TABLE public.edd_object ADD COLUMN protocol_id integer UNIQUE DEFAULT NULL
 INSERT INTO public.edd_object(protocol_id, name, description)
     SELECT id, protocol_name, description FROM old_edd.protocols ORDER BY id;
 INSERT INTO public.protocol(
-        active, object_ref_id, owned_by_id, variant_of_id
+        active, object_ref_id, owned_by_id, variant_of_id, default_units_id
     ) SELECT NOT p.disabled, o.id,
-        CASE WHEN p.owned_by = 0 THEN 5 ELSE p.owned_by END, v.id
+        CASE WHEN p.owned_by = 0 THEN 5 ELSE p.owned_by END, v.id,
+        CASE WHEN p.default_units = 0 THEN NULL ELSE p.default_units END
     FROM old_edd.protocols p
     INNER JOIN public.edd_object o ON o.protocol_id = p.id
     LEFT JOIN public.edd_object v ON v.protocol_id = p.variant_of_id
@@ -476,27 +501,6 @@ INSERT INTO public.measurement_type(
     ORDER BY p.measurement_type_id;
 SELECT setval('public.measurement_type_id_seq', max(id))
     FROM public.measurement_type;
-INSERT INTO public.measurement_unit(
-        id, unit_name, display, type_group
-    ) SELECT u.id, u.unit_name, u.display, CASE
-        WHEN u.used_for_metabolites THEN 'm'
-        WHEN u.used_for_transcriptions THEN 'g'
-        WHEN u.used_for_proteins THEN 'p'
-        ELSE '_' END
-    FROM old_edd.measurement_units u
-    ORDER BY u.id;
-SELECT setval('public.measurement_unit_id_seq', max(id))
-    FROM public.measurement_type;
--- RNA-Seq additions
-INSERT INTO public.measurement_unit(
-        unit_name, display, type_group
-    ) VALUES ('RPKM', true, 'g');
-INSERT INTO public.measurement_unit(
-        unit_name, display, type_group
-    ) VALUES ('FPKM', true, 'g');
-INSERT INTO public.measurement_unit(
-        unit_name, display, type_group
-    ) VALUES ('counts', true, 'g');
 
 --
 -- copy over assay_measurements
