@@ -167,6 +167,12 @@ class AssayDataTests(TestCase) :
         mt1 = Metabolite.objects.create(type_name="Mevalonate",
             short_name="mev", type_group="m", charge=-1, carbon_count=6,
             molecular_formula="C6H11O4", molar_mass=148.16)
+        kw1 = MetaboliteKeyword.objects.create(name="GCMS", mod_by=user1)
+        kw2 = MetaboliteKeyword.objects.create(name="HPLC", mod_by=user1)
+        kw3 = MetaboliteKeyword.objects.create(name="Mevalonate Pathway",
+            mod_by=user1)
+        mt1.keywords.add(kw1)
+        mt1.keywords.add(kw3)
         mt2 = GeneIdentifier.objects.create(type_name="Gene name 1",
             short_name="gen1", type_group="g")
         mt3 = MeasurementType.create_protein(type_name="Protein name 2",
@@ -231,6 +237,9 @@ class AssayDataTests(TestCase) :
         self.assertTrue(met.export_formula() == [
           {'count': 6, 'symbol': 'C'}, {'count': 11, 'symbol': 'H'},
           {'count': 4, 'symbol': 'O'}])
+        met.set_keywords(["GCMS", "HPLC"])
+        print met.keywords_str
+        self.assertTrue(met.keywords_str == "GCMS, HPLC")
 
     def test_measurement (self) :
         assay = Assay.objects.get(name="Assay 1")

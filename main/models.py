@@ -706,6 +706,15 @@ class MeasurementType(models.Model):
             type_group=MeasurementGroup.PROTEINID)
 
 
+class MetaboliteKeyword (models.Model) :
+    class Meta:
+        db_table = "metabolite_keyword"
+    name = models.CharField(max_length=255)
+    mod_by = models.ForeignKey(settings.AUTH_USER_MODEL)
+
+    def __str__ (self) :
+        return self.name
+
 class Metabolite(MeasurementType):
     """
     Defines additional metadata on a metabolite measurement type; charge, carbon count, molar mass,
@@ -720,6 +729,8 @@ class Metabolite(MeasurementType):
     carbon_count = models.IntegerField()
     molar_mass = models.DecimalField(max_digits=16, decimal_places=5)
     molecular_formula = models.TextField()
+    keywords = models.ManyToManyField(MetaboliteKeyword,
+        db_table="metabolites_to_keywords")
 
     def is_metabolite (self) :
         return True
@@ -744,6 +755,33 @@ class Metabolite(MeasurementType):
         if (len(elements) == 0) :
             return None
         return [ { "symbol":str(e),"count":int(c) } for e,c in elements ]
+
+    @property
+    def keywords_str (self) :
+        return ", ".join([ str(k) for k in self.keywords.all() ])
+
+    def add_keyword (self, keyword) :
+        try :
+            kw_obj = MetaboliteKeyword.objects.get(name=keyword)
+        except ObjectDoesNotExist as e :
+            raise ValueError("'%s' is not a valid keyword." % keyword)
+        else :
+            self.keywords.add(kw_obj)
+
+    def set_keywords (self, keywords) :
+        """
+        Given a collection of keywords (as strings), link this metabolite to
+        the equivalent MetaboliteKeyword object(s).
+        """
+        new_keywords = set(keywords)
+        current_kwds = { kw.name:kw for kw in self.keywords.all() }
+        for keyword in keywords : # step 1: add new keywords
+            if (keyword in current_kwds) :
+                continue
+            self.add_keyword(keyword)
+        for keyword in current_kwds : # step 2: remove obsolete keywords
+            if (not keyword in new_keywords) :
+                self.keywords.remove(current_kwds[keyword])
 
 class GeneIdentifier(MeasurementType):
     """

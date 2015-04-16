@@ -501,6 +501,21 @@ INSERT INTO public.measurement_type(
     ORDER BY p.measurement_type_id;
 SELECT setval('public.measurement_type_id_seq', max(id))
     FROM public.measurement_type;
+-- associated keywords
+INSERT INTO public.metabolite_keyword (
+        id, name, mod_by_id
+    ) SELECT kw.id, kw.keyword,
+        CASE WHEN kw.modified_by = 0 THEN 5 ELSE kw.modified_by END
+    FROM old_edd.metabolite_type_keywords kw
+    ORDER BY kw.id;
+SELECT setval('public.metabolite_keyword_id_seq', max(id))
+    FROM public.metabolite_keyword;
+-- the metabolite_id in the new table already points to the underlying
+-- measurement type
+INSERT INTO public.metabolites_to_keywords (
+        metabolite_id, metabolitekeyword_id
+    ) SELECT mtk.metabolite_type_id, mtk.keyword_id
+      FROM old_edd.metabolite_types_to_keywords mtk;
 
 --
 -- copy over assay_measurements
