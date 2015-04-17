@@ -16,10 +16,7 @@ class HmacAuth(AuthBase):
         self.settings_key = settings_key
 
     def __call__(self, request):
-        key = base64.b64decode(self.edd_key)
-        msg = self.build_message(request)
-        digest = hmac.new(key, msg=msg, digestmod=hashlib.sha1).digest()
-        sig = base64.b64encode(digest).decode()
+        sig = self.build_signature(request)
         header = ':'.join(('1', 'edd', self.ident.username, sig))
         request.headers['Authorization'] = header
         return request
@@ -28,11 +25,18 @@ class HmacAuth(AuthBase):
         url = urlparse(request.url)
         msg = '\n'.join((self.ident.username, \
                          request.method, \
-                         url.hostname, \
+                         url.netloc, \
                          url.path, \
                          self.sort_parameters(url.query), \
                          request.body))
         return msg
+
+    def build_signature(self, request):
+        key = base64.b64decode(self.edd_key)
+        msg = self.build_message(request)
+        digest = hmac.new(key, msg=msg, digestmod=hashlib.sha1).digest()
+        sig = base64.b64encode(digest).decode()
+        return sig
 
     def sort_parameters(self, query):
         params = sorted(map(lambda p: p.split('=', 1), query.split('&')), key=lambda p: p[0])
@@ -47,7 +51,7 @@ class IceApi(object):
         if url is not None:
             self.url = url
         else:
-            self.url = 'http://registry-test.jbei.org/'
+            self.url = 'https://registry-test.jbei.org'
 
     def search_for_part(self, query):
         if self.ident is None:
@@ -55,7 +59,12 @@ class IceApi(object):
         url = self.url + '/rest/search'
         auth = HmacAuth(ident=self.ident)
         data = { 'queryString': query }
-        response = requests.post(url, json=data, auth=auth)
+        headers = { 'Content-Type': 'application/json; charset=utf8' }
+        response = requests.request('POST', url, \
+                                    auth=auth, \
+                                    data=json.dumps(data), \
+                                    headers=headers, \
+                                    )
         if response.status_code == requests.codes.ok:
             return response.json()
         else:
