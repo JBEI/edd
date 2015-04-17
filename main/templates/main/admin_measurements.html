@@ -1,4 +1,10 @@
 
+<!--
+
+FIXME tabke sorting/filtering does not work at all (even in old EDD)
+
+-->
+
 {% extends "edd_base.html" %}
 {% load staticfiles %}
 
@@ -7,6 +13,8 @@
 
 <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
 <script type="text/javascript" src="{% static 'main/js/EDDEditing.js' %}"></script>
+<script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
+<script type="text/javascript" src="{% static 'main/js/DataGridServerSide.js' %}"></script>
 <script type="text/javascript">
 //<![CDATA[
 EDDData = { }; // Declaring the object for later use
@@ -32,10 +40,9 @@ function disclose() {
   return false;
 }
 $(window).load(function () {
-  $('.disclose').find('.discloseLink').on('click', disclose);
+    $('.disclose').find('.discloseLink').on('click', disclose);
     jQuery.ajax("/data/measurements", {
         "success" : function (data, textStatus, response) {
-            console.log(data);
             jQuery.extend(EDDData, data.EDDData);
             EDDAutoComplete.initializeAllPageElements();
         }
@@ -46,24 +53,21 @@ $(window).load(function () {
 //]]>
 </script>
 <script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
-<script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
 <script type="text/javascript" src="{% static 'main/js/Autocomplete.js' %}"></script>
 
 {% endblock js_css %}
 
 {% block head_title %}
-  Edit Metabolites
+  Edit Measurements
 {% endblock head_title %}
 
 {% block body_title %}
-  Metabolites
+  Measurement types and units
 {% endblock %}
 
 {% block content %}
 
-{% if messages.error %}
-<h2 class="bad">{{ messages.error }}</h2>
-{% endif %}
+{% include "main/include_messages.html" %}
 
 <div class="pageSection disclose discloseHide" id="addNewMain">
   <div class="sectionHead">
@@ -77,6 +81,7 @@ $(window).load(function () {
   </div>
   <div class="sectionContent discloseBody" id="typeMain">
     <form method="post" action="/admin/measurements" id="mteditform">
+      <input type="hidden" name="action" value="addMetabolite"/>
       <input type="hidden" name="mtypeidtoedit" value="{{ selected_metabolite.id }}"/>
       <input type="hidden" name="keywordIDs" value="1,2,3,8,4,5,6,7" />
       <table class="formTable">
@@ -202,21 +207,19 @@ $(window).load(function () {
   </div>
 </div>
 
-<div class="pageSection disclose discloseHide">
+<div class="pageSection disclose"><!-- discloseHide">-->
   <div class="sectionHead">
     <span class="discloseLink"><a href="#">Metabolite Types</a></span>
     <span class="tableControl">Filter by Keyword:
       <select name="keywordIDToggle" id="mKeywordsPulldown"
               tableControlType="showRowsPulldown">
         <option value="all" selected="selected">--</option>
-        <option value="1" rowsToShow="">FAEE</option>
-        <option value="2" rowsToShow="">GCMS</option>
-        <option value="3" rowsToShow="">HPLC</option>
-        <option value="8" rowsToShow="">LCMS</option>
-        <option value="4" rowsToShow="">Mevalonate Pathway</option>
-        <option value="5" rowsToShow="613,505">OD</option>
-        <option value="6" rowsToShow="498,579,216">RAMOS</option>
-        <option value="7" rowsToShow="119">Specific Glucose Flux</option>
+      <!--
+      {% for keyword in keywords %}
+        <option value="{{ keyword.id }}"
+                rowsToShow="{{ keyword.metabolites|join:',' }}">
+           {{ keyword.name }}</option>
+      {% endfor %}--><!-- keywords -->
       </select>
     </span>
   </div>
@@ -226,67 +229,183 @@ $(window).load(function () {
       rowToggleControls="mKeywordsPulldown"
       editformshow="typeMain,editTypeBanner,editTypeButtons"
       editformhide="addNewTypeShow,addNewTypeBanner,addNewTypeButtons">
-
-      <tr class="columnLabels">
-        <th class="sortheader" style="text-align:left">
-          <div>Abbr.</div>
-        </th>
-        <th class="sortheader" style="text-align:left">
-          <div>Entity (And Alternate Names)</div>
-        </th>
-        <th class="sortheader" style="text-align:left">
-          <div>Formula</div>
-        </th>
-        <th class="sortheader smaller" style="text-align:right">
-          <div>Molar Mass</div>
-        </th>
-        <th class="sortheader smaller" style="text-align:right">
-          <div>Charge</div>
-        </th>
-        <th class="sortheader smaller" style="text-align:left">
-          <div>Display Format</div>
-        </th>
-        <th class="sortheader smaller" style="text-align:left;border-right-width:0px">
-          <div>Keywords</div>
-        </th>
-      </tr>
+      <thead>
+        <tr class="columnLabels">
+          <th class="sortheader" style="text-align:left">
+            <div>Abbr.</div>
+          </th>
+          <th class="sortheader" style="text-align:left">
+            <div>Entity (And Alternate Names)</div>
+          </th>
+          <th class="sortheader" style="text-align:left">
+            <div>Formula</div>
+          </th>
+          <th class="sortheader smaller" style="text-align:right">
+            <div>Molar Mass</div>
+          </th>
+          <th class="sortheader smaller" style="text-align:right">
+            <div>Charge</div>
+          </th>
+          <th class="sortheader smaller" style="text-align:left">
+            <div>Display Format</div>
+          </th>
+          <th class="sortheader smaller" style="text-align:left;border-right-width:0px">
+            <div>Keywords</div>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
       {% for m in metabolites %}
-      <tr class="{% cycle 'stripeRowA' 'stripeRowB' %}"
-          data-line-id="{{ m.id }}">
-        <td class="popupcell">
-          <div class="p"><div class="q">
-            <div class="r">{{ m.short_name }}</div>
-            <div class="s"><div class="t">
-              <a href="#mteditform" onclick='OnEdit(this, {{ m.id }});'>Edit</a>
+        <tr class="{% cycle 'stripeRowA' 'stripeRowB' %}"
+            data-line-id="{{ m.id }}">
+          <td class="popupcell">
+            <div class="p"><div class="q">
+              <div class="r">{{ m.short_name }}</div>
+              <div class="s"><div class="t">
+                <a href="#mteditform" onclick='OnEdit(this,{{m.id}});'>Edit</a>
+              </div></div>
             </div></div>
-          </div></div>
-        </td>
-        <td>{{ m.type_name }}</td>
-        <td>{% spaceless %}
-    {% with elements=m.export_formula %}
-      {% if elements %}
-       {% for e in elements %}{{e.symbol}}<sub>{{e.count}}</sub>{% endfor %}
-      {% else %}
-            {{ m.molecular_formula }}
-      {% endif %}
-    {% endwith %}
-        {% endspaceless %}</td>
-        <td style="text-align:right;">
-          {% if m.molar_mass %}
-            <span>{{ m.molar_mass }}</span>
-          {% else %}
-            <span style="color:#DDD;">N/A</span>
-          {% endif %}
-        </td>
-        <td style="text-align:right;">{{ m.charge }}</td>
-        <td>
-          <span style="color:#DDD;">Linear</span>
-        </td>
-        <td>{{ m.keywords_str }}</td>
-      </tr>
+          </td>
+          <td>{{ m.type_name }}</td>
+          <td>{% spaceless %}
+      {% with elements=m.export_formula %}
+        {% if elements %}
+         {% for e in elements %}{{e.symbol}}<sub>{{e.count}}</sub>{% endfor %}
+        {% else %}
+              {{ m.molecular_formula }}
+        {% endif %}
+      {% endwith %}
+          {% endspaceless %}</td>
+          <td style="text-align:right;">
+            {% if m.molar_mass %}
+              <span>{{ m.molar_mass }}</span>
+            {% else %}
+              <span style="color:#DDD;">N/A</span>
+            {% endif %}
+          </td>
+          <td style="text-align:right;">{{ m.charge }}</td>
+          <td>
+            <span style="color:#DDD;">Linear</span>
+          </td>
+          <td>{{ m.keywords_str }}</td>
+        </tr>
       {% endfor %}<!-- metabolites -->
+      </tbody>
     </table>
   </div><!-- #metaboliteTableSection -->
+</div>
+
+<!--
+
+MetaboliteKeyword form
+
+-->
+
+<div class="pageSection disclose discloseHide" id="addNewKeywordMain">
+  <div class="sectionHead">
+    <span class="discloseLink">
+      <a href="#">Add A New Metabolite Type Keyword</a>
+    </span>
+  </div>
+  <div class="sectionContent discloseBody">
+    <table class="formTable">
+      <tr>
+        <form method="post" action="/admin/measurements">
+          <input type="hidden" name="action" value="addKeyword"/>
+          <td>
+            <span>Keyword Name:</span>
+            <input type="text" size="25" name="keywordname" value="" />
+          </td>
+          <td>
+            <input type="submit" name="action" value="Add Keyword" />
+          </td>
+        </form>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<!--
+
+MeasurementUnit form
+
+-->
+
+<div class="pageSection disclose discloseHide" id="addNewUnitMain">
+  <div class="sectionHead">
+    <span class="discloseLink">
+      <a href="#">Add A New Unit Type</a>
+    </span>
+  </div>
+  <div class="sectionContent discloseBody">
+    <table class="formTable">
+      <form method="post" action="/admin/measurements">
+        <input type="hidden" name="action" value="addUnit"/>
+        <tr>
+          <td><span>Unit Name:</span></td>
+          <td><input type="text" size="15" name="unit_name" value="" /></td>
+        </tr>
+        <tr>
+          <td><span>Associated measurement type grouping:</span></td>
+          <td>
+            <select name="type_group">
+            {% for key, value in mtype_groups %}
+              <option value="{{ key }}">{{ value }}</option>
+            {% endfor %}
+            </select>
+            <span style="color:#888;font-size:11px;">("Generic" applies to any
+              measurement type)</span>
+          </td>
+        <tr>
+          <td><span>Alternate Unit Names:</span></td>
+          <td>
+            <input type="text" size="30" name="alternate_names" value="" />
+            <span style="color:#888;font-size:11px;">
+              (Comma-delimited list)
+            </span>
+          </td>
+        </tr>
+        <tr>
+          <td></td>
+          <td><input type="submit" name="action" value="Add Unit" /></td>
+        </tr>
+      </form>
+    </table>
+  </div>
+</div>
+
+<!--
+
+MeasurementUnit listing
+
+-->
+
+<div class="pageSection">
+  <div class="sectionHead">
+      Unit Types
+  </div>
+  <table cellpadding="0" cellspacing="0" class="dataTable sortable">
+    <thead>
+      <tr class="columnLabels">
+        <th class="sortheader" style="text-align:left">Name</th>
+        <th class="sortheader" style="text-align:left">Applicable measurements</th>
+        <th class="sortheader" style="text-align:left;border-right-width:0px">
+          Alternate Names
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for unit in units %}
+      <tr class="{% cycle 'stripeRowA' 'stripeRowB' %}">
+        <td>{{ unit.unit_name }}</td>
+        <td>{{ unit.group_name }}</td>
+        <td>
+          {% if unit.alternate_names %}{{ unit.alternate_names }}{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </div>
 
 {% endblock content %}

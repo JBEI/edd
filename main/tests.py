@@ -165,14 +165,21 @@ class AssayDataTests(TestCase) :
         protocol3 = Protocol.objects.create(name="New protocol",
             owned_by=user1, active=False)
         mt1 = Metabolite.objects.create(type_name="Mevalonate",
-            short_name="mev", type_group="m", charge=-1, carbon_count=6,
+            short_name="Mev", type_group="m", charge=-1, carbon_count=6,
             molecular_formula="C6H11O4", molar_mass=148.16)
+        mt2 = Metabolite.objects.create(type_name="D-Glucose",
+            short_name="glc-D", type_group="m", charge=0, carbon_count=6,
+            molecular_formula="C6H12O6", molar_mass=180.16)
+        mt3 = Metabolite.objects.create(type_name="Acetate",
+            short_name="ac", type_group="m", charge=-1, carbon_count=2,
+            molecular_formula="C2H3O2", molar_mass=60.05)
         kw1 = MetaboliteKeyword.objects.create(name="GCMS", mod_by=user1)
         kw2 = MetaboliteKeyword.objects.create(name="HPLC", mod_by=user1)
         kw3 = MetaboliteKeyword.objects.create(name="Mevalonate Pathway",
             mod_by=user1)
         mt1.keywords.add(kw1)
         mt1.keywords.add(kw3)
+        mt2.keywords.add(kw2)
         mt2 = GeneIdentifier.objects.create(type_name="Gene name 1",
             short_name="gen1", type_group="g")
         mt3 = MeasurementType.create_protein(type_name="Protein name 2",
@@ -183,7 +190,10 @@ class AssayDataTests(TestCase) :
             protocol=protocol1, description="GC-MS assay", experimenter=user1)
         up1 = Update.objects.create(mod_by=user1)
         mu1 = MeasurementUnit.objects.create(unit_name="hours")
-        mu2 = MeasurementUnit.objects.create(unit_name="mM")
+        mu2 = MeasurementUnit.objects.create(unit_name="mM", type_group="m")
+        mu3 = MeasurementUnit.objects.create(unit_name="Cmol/L")
+        mu4 = MeasurementUnit.objects.create(unit_name="abcd",
+            alternate_names="asdf")
         meas1 = assay1.measurement_set.create(experimenter=user1,
             measurement_type=mt1, compartment="1", update_ref=up1,
             x_units=mu1, y_units=mu2)
@@ -226,20 +236,30 @@ class AssayDataTests(TestCase) :
         proteins_by_name = MeasurementType.proteins_by_name()
         assay = Assay.objects.get(name="Assay 1")
         meas1 = assay.measurement_set.filter(
-            measurement_type__short_name="mev")[0]
+            measurement_type__short_name="Mev")[0]
         mt1 = meas1.measurement_type
         self.assertTrue(mt1.is_metabolite() and not mt1.is_protein()
                         and not mt1.is_gene())
-        met = Metabolite.objects.get(short_name="mev")
+        met = Metabolite.objects.get(short_name="Mev")
+        met.set_keywords(["GCMS", "HPLC"])
+        self.assertTrue(met.keywords_str == "GCMS, HPLC")
         self.assertTrue(met.to_json() == { 'id': mt1.id, 'cc': 6, 'name': u'Mevalonate',
-            'chgn': -1, 'ans': '', 'mm': 148.16, 'f': u'C6H11O4', 'chg': -1, 'sn': u'mev',
-            'family': mt1.type_group,})
+            'chgn': -1, 'ans': '', 'mm': 148.16, 'f': u'C6H11O4', 'chg': -1, 'sn': u'Mev',
+            'family': mt1.type_group, 'kstr':'GCMS, HPLC'})
         self.assertTrue(met.export_formula() == [
           {'count': 6, 'symbol': 'C'}, {'count': 11, 'symbol': 'H'},
           {'count': 4, 'symbol': 'O'}])
-        met.set_keywords(["GCMS", "HPLC"])
-        print met.keywords_str
-        self.assertTrue(met.keywords_str == "GCMS, HPLC")
+        keywords = MetaboliteKeyword.all_with_metabolite_ids()
+        self.assertTrue(len(keywords[1]['metabolites']) == 2)
+        mts = Metabolite.all_sorted_by_short_name()
+        self.assertTrue([ m.type_name for m in mts ] ==
+                        [u'Acetate', u'D-Glucose', u'Mevalonate'])
+
+    def test_measurement_unit (self) :
+        mu = MeasurementUnit.objects.get(unit_name="mM")
+        self.assertTrue(mu.group_name == "Metabolite")
+        all_units = [ mu.unit_name for mu in MeasurementUnit.all_sorted() ]
+        self.assertTrue(all_units == [u'abcd', u'Cmol/L', u'hours', u'mM'])
 
     def test_measurement (self) :
         assay = Assay.objects.get(name="Assay 1")
@@ -249,7 +269,7 @@ class AssayDataTests(TestCase) :
         meas2 = list(assay.get_gene_measurements())[0]
         self.assertTrue(meas1.y_axis_units_name == "mM")
         self.assertTrue(meas1.name == "Mevalonate")
-        self.assertTrue(meas1.short_name == "mev")
+        self.assertTrue(meas1.short_name == "Mev")
         self.assertTrue(meas1.full_name == "IC Mevalonate")
         self.assertTrue(meas1.is_concentration_measurement())
         self.assertTrue(not meas1.is_carbon_ratio())
@@ -604,7 +624,6 @@ def setup_export_data () :
         protocol=protocol4, description="O2/CO2 measurements")
     assay6 = line1.assay_set.create(name="LC-MS assay", experimenter=user1,
         protocol=protocol7, description="IC LC-MS measurements")
-    mu1 = MeasurementUnit.objects.create(unit_name="hours")
     mu1 = MeasurementUnit.objects.create(unit_name="hours")
     mu2 = MeasurementUnit.objects.create(unit_name="mM")
     mu3 = MeasurementUnit.objects.create(unit_name="n/a")

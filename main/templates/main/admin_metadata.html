@@ -1,0 +1,401 @@
+
+<!--
+
+FIXME tabke sorting/filtering does not work at all (even in old EDD)
+
+-->
+
+{% extends "edd_base.html" %}
+{% load staticfiles %}
+
+{% block js_css %}
+  {{ block.super }}
+
+<script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
+<script type="text/javascript" src="{% static 'main/js/EDDEditing.js' %}"></script>
+<script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
+<script type="text/javascript" src="{% static 'main/js/DataGridServerSide.js' %}"></script>
+<script type="text/javascript">
+//<![CDATA[
+EDDData = { }; // Declaring the object for later use
+
+EDDData.currentUserID =  {{ user.id }};
+
+function OnEdit (obj, metadata_id) {
+  EDDEdit.edit(obj, {
+   "typeprefix" : EDDData.MetadataTypes[metadata_id].pre,
+   "typeinputsizetext" : EDDData.MetadataTypes[metadata_id].is,
+   "typedefaultvalue" : EDDData.MetadataTypes[metadata_id]["default"],
+   "typegroup" : EDDData.MetadataTypes[metadata_id].gid,
+   "typeusedinprotocols" : EDDData.MetadataTypes[metadata_id].pl,
+   "typename" : EDDData.MetadataTypes[metadata_id].name,
+   "typepostfix" : EDDData.MetadataTypes[metadata_id].postfix,
+   "typeusedinlines" : EDDData.MetadataTypes[metadata_id].ll,
+   "typeidtoedit" : EDDData.MetadataTypes[metadata_id].id
+  });
+};
+
+// FIXME move this somewhere central
+function disclose() {
+  $(this).closest('.disclose').toggleClass('discloseHide');
+  return false;
+}
+$(window).load(function () {
+    $('.disclose').find('.discloseLink').on('click', disclose);
+    jQuery.ajax("/data/metadata", {
+        "success" : function (data, textStatus, response) {
+            jQuery.extend(EDDData, data.EDDData);
+            EDDAutoComplete.initializeAllPageElements();
+        }
+    }).fail(function (x, s, e) {
+        alert(s);
+    });
+});
+
+var queueRefreshInputTimer = 0;
+
+function queueRefreshInputSize() {
+    // Start a timer to wait before calling the routine that resizes the input.
+    // This way we're not bothering the user with the long redraw process when
+    // they are making fast edits.
+
+    if ( queueRefreshInputTimer ) {
+        clearTimeout ( queueRefreshInputTimer );
+    }
+    queueRefreshInputTimer = setTimeout ( "refreshInputSize()", 200 );
+}
+
+
+// Pick up the value the user enters in the newtypeinputsizetext field,
+// run some bounds-checking on it, store the result in the hidden element newtypeinputsize,
+// and resize the newtypedefaultvalue element to reflect the restricted value.
+function refreshInputSize() {
+
+    queueRefreshInputTimer = 0;
+
+    var srcInput = document.getElementById('newtypeinputsizetext');
+    var targetInput = document.getElementById('newtypedefaultvalue');
+    var filteredInput = document.getElementById('newtypeinputsize');
+
+    if (srcInput && targetInput && filteredInput) {
+
+        var newSize = parseInt(srcInput.value);
+        if (isNaN(newSize)) {
+            newSize = 10;
+        }
+        if (newSize < 3) {
+            newSize = 3;
+        }
+        if (newSize > 80) {
+            newSize = 80;
+        }
+        targetInput.size = newSize;
+        filteredInput.value = newSize;
+    }
+
+    // Do it for the 'edit' form as well
+
+    srcInput = document.getElementById('typeinputsizetext');
+    targetInput = document.getElementById('typedefaultvalue');
+    filteredInput = document.getElementById('typeinputsize');
+
+    if (srcInput && targetInput && filteredInput) {
+
+        var newSize = parseInt(srcInput.value);
+        if (isNaN(newSize)) {
+            newSize = 10;
+        }
+        if (newSize < 3) {
+            newSize = 3;
+        }
+        if (newSize > 80) {
+            newSize = 80;
+        }
+        targetInput.size = newSize;
+        filteredInput.value = newSize;
+    }
+}
+
+//]]>
+</script>
+<script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
+<script type="text/javascript" src="{% static 'main/js/Autocomplete.js' %}"></script>
+
+{% endblock js_css %}
+
+{% block head_title %}
+  Edit Metadata
+{% endblock head_title %}
+
+{% block body_title %}
+  Metadata
+{% endblock %}
+
+{% block content %}
+
+{% include "main/include_messages.html" %}
+
+<!--
+
+Section 1: Add a new metadata type
+
+-->
+
+<div id="editTypeHide">
+  <div class="pageSection" id="addNewTypeMain">
+    <div class="sectionHead">
+      <span class="discloseLink">
+        <a href="#">Add A New Metadata Type</a>
+      </span>
+    </div>
+    <div class="sectionContent">
+      <form method="post" action="/admin/metadata">
+        <table class="formTable">
+          <tr>
+            <td><span>Name:</span></td>
+            <td><input type="text" size="40" name="newtypename" value=""/></td>
+            <td><input type="checkbox"
+                        id="newtypeusedinlines"
+                        name="newtypeusedinlines"
+                        value="1" />
+                <label for="newtypeusedinlines">
+                    <span>For Lines</span>
+                </label>
+            </td>
+          </tr>
+          <tr>
+            <td><span>Group:</span></td>
+            <td>
+              <select name="newtypegroup">
+              {% for mdg in metadata_groups %}
+                <option value="{{ mdg.id }}">{{ mdg.group_name }}</option>
+              {% endfor %}
+              </select>
+            </td>
+            <td><input type="checkbox"
+                       id="newtypeusedinprotocols"
+                       name="newtypeusedinprotocols"
+                       value="1"/>
+              <label for="newtypeusedinprotocols">
+                <span>For Assays/Protocols</span>
+              </label>
+            </td>
+          </tr>
+        </table>
+        <table class="formTable">
+          <tr>
+            <td><span>Input Size</span></td>
+            <td style="text-align:right;padding-right:10px;">Prefix</td>
+            <td><span>Default Value</span></td>
+            <td><span>Postfix</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><input type="text"
+                       size="3"
+                       id="newtypeinputsizetext"
+                       name="newtypeinputsizetext"
+                       value="10"
+                       onkeydown="queueRefreshInputSize();" />
+                <input type="hidden"
+                       id="newtypeinputsize"
+                       name="newtypeinputsize"
+                       value="10" />
+            </td>
+            <td>
+              <input type="text" size="8" name="newtypeprefix" value="" />
+            </td>
+            <td><input type="text"
+                       size="10"
+                       id="newtypedefaultvalue"
+                       name="newtypedefaultvalue"
+                       value="" />
+            </td>
+            <td>
+              <input type="text" size="8" name="newtypepostfix" value="" />
+            </td>
+            <td>
+              <input type="submit" name="action" value="Add Metadata Type" />
+            </td>
+          </tr>
+        </table>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!--
+
+Section 2: Edit an existing type (hidden at start)
+
+-->
+<div id="editTypeShow off">
+  <div class="pageSection" id="editTypeShow">
+    <div class="sectionHead">
+      <span class="discloseLink">
+        <a href="#">Edit A Metadata Type</a>
+      </span>
+    </div>
+    <div class="sectionContent">
+      <form method="post" action="/admin/metadata">
+        <table class="formTable">
+          <tr>
+              <td><span>Name:</span></td>
+              <td><input type="text" size="40" name="typename" value="" />
+                  <input type="hidden" name="typeidtoedit" value="" /></td>
+              <td><input type="checkbox"
+                          id="typeusedinlines"
+                          name="typeusedinlines"
+                          value="1" />
+                  <label for="typeusedinlines">
+                      <span>For Lines</span>
+                  </label>
+              </td>
+          </tr>
+          <tr>
+            <td><span>Group:</span></td>
+            <td>
+              <select name="typegroup" id="typegroup">
+              {% for mdg in metadata_groups %}
+                <option value="{{ mdg.id }}">{{ mdg.group_name }}</option>
+              {% endfor %}
+              </select>
+            </td>
+            <td><input type="checkbox"
+                        id="typeusedinprotocols"
+                        name="typeusedinprotocols"
+                        value="1" />
+                <label for="typeusedinprotocols">
+                    <span>For Assays/Protocols</span>
+                </label>
+            </td>
+          </tr>
+        </table>
+        <table class="formTable">
+          <tr>
+            <td><span>Input Size</span></td>
+            <td style="text-align:right;padding-right:10px;">Prefix</td>
+            <td><span>Default Value</span></td>
+            <td><span>Postfix</span></td>
+            <td></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><input type="text"
+                        size="3"
+                        id="typeinputsizetext"
+                        name="typeinputsizetext"
+                        value="10"
+                        onkeydown="queueRefreshInputSize();" />
+                <input type="hidden"
+                        id="typeinputsize"
+                        name="typeinputsize"
+                        value="10" /></td>
+            <td><input type="text" size="8" name="typeprefix" id="typeprefix" value="" /></td>
+            <td><input type="text"
+                        size="10"
+                        id="typedefaultvalue"
+                        name="typedefaultvalue"
+                        value="" /></td>
+            <td><input type="text" size="8" name="typepostfix" id="typepostfix" value="" /></td>
+            <td>
+                <input type="button" name="none" value="Cancel"
+                    onclick='EDDEdit.cancel("editTypeShow","editTypeHide");' />
+            </td>
+            <td>
+                <input type="submit" name="action" value="Save" />
+            </td>
+          </tr>
+        </table>
+      </form>
+    </div>
+  </div>
+</div>
+
+
+<div class="pageSection" id="metaboliteList">
+  <div class="sectionHead">
+     Metadata Types
+    <span class="tableControl">Filter by Metadata Group:
+      <!-- FIXME -->
+      <select name="groupIDToggle" id="mGroupsPulldown" tableControlType="showRowsPulldown">
+        {% for mdg in metadata_groups %}
+        <option value="{{ mdg.id }}">{{ mdg.group_name }}</option>
+        {% endfor %}
+      </select>
+    </span>
+  </div>
+  <table cellpadding="0" cellspacing="0"
+         class="dataTable sortable dragboxes hastablecontrols"
+         rowToggleControls="mGroupsPulldown"
+         editformshow="editTypeShow"
+         editformhide="editTypeHide">
+    <thead>
+      <tr class="columnLabels">
+        <th class="sortheader" style="text-align:left" sortvalues="">
+          Type Name
+        </th>
+        <th class="sortheader" style="text-align:right" sortvalues="">
+          Prefix
+        </th>
+        <th class="sortheader" style="text-align:center" sortvalues="">
+          Default
+        </th>
+        <th class="sortheader" style="text-align:left" sortvalues="">
+          Postfix
+        </th>
+        <th class="sortheader smaller" style="text-align:center" sortvalues="">
+          Lines?
+        </th>
+        <th class="sortheader smaller" style="text-align:center" sortvalues="">
+          Assays/Protocols?
+        </th>
+        <th class="sortheader smaller" style="text-align:right" sortvalues="">
+          # Lines Using
+        </th>
+        <th class="sortheader smaller" style="text-align:right" sortvalues="">
+          # Assays Using
+        </th>
+        <th class="sortheader" style="text-align:left;border-right-width:0px" sortvalues="">
+          Group
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for mdtype in metadata_types %}
+      <tr class="stripeRowA" data-line-id="{{ mdtype.id }}">
+        <td class="popupcell nowrap">
+          <div class="p"><div class="q">
+            <div class="r">
+              Column Type
+            </div>
+            <div class="s"><div class="t">
+              <a href="#editform" onclick='OnEdit(this, {{ mdtype.id }});'>
+                Edit</a>
+            </div></div>
+          </div></div>
+        </td>
+        <td colspan="2" style="text-align:right;">
+          <input type="text" disabled
+                 size="{{ mdtype.input_size }}"
+                 name="type{{ mdtype.id }}inputsize"
+                 value="{{ mdtype.default_value }}"/>
+        </td>
+        <td>{{ mdtype.postfix }}</td>
+        <td style="text-align:center;">
+          {% if mdtype.for_line %} &#x2713; {% endif %}
+        </td>
+        <td style="text-align:center;">
+          {% if mdtype.for_protocol %} &#x2713; {% endif %}
+        </td>
+        <td style="text-align:right;">TBA</td><!-- lines using -->
+        <td style="text-align:right;">TBA</td><!-- assays using -->
+
+        <td>{{ mdtype.group.group_name }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock content %}

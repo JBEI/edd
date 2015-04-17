@@ -341,8 +341,8 @@ INSERT INTO public.line_carbon_source(line_id, carbonsource_id)
 -- copy over measurement units (we need this for protocols)
 --
 INSERT INTO public.measurement_unit(
-        id, unit_name, display, type_group
-    ) SELECT u.id, u.unit_name, u.display, CASE
+        id, unit_name, display, alternate_names, type_group
+    ) SELECT u.id, u.unit_name, u.display, u.alternate_unit_names, CASE
         WHEN u.used_for_metabolites THEN 'm'
         WHEN u.used_for_transcriptions THEN 'g'
         WHEN u.used_for_proteins THEN 'p'

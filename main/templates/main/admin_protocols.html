@@ -30,9 +30,7 @@ EDDData.currentUserID =  {{ user.id }};
 
 {% block content %}
 
-{% if messages.error %}
-<h2 class="bad">{{ messages.error }}</h2>
-{% endif %}
+{% include "main/include_messages.html" %}
 
 <div class="pageSection" id="addNewMain">
   <div class="sectionHead">Add a New Protocol</div>

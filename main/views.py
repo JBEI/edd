@@ -349,10 +349,33 @@ def admin_protocol_edit (request, protocol_id) :
 # /admin/measurements
 def admin_measurements (request) :
     messages = {}
-    return render_to_response("main/admin_metabolites.html",
+    if (request.method == "POST") :
+        action = request.POST.get("action", None)
+        # multiple forms on one page
+        try :
+            if (action == "addKeyword") :
+                kw = MetaboliteKeyword.objects.create(
+                    name=request.POST["keywordname"],
+                    mod_by=request.user)
+                messages['success'] = "Keyword '%s' added." % kw.name
+            elif (action == "addUnit") :
+                unit = MeasurementUnit.objects.create(
+                    unit_name=request.POST["unit_name"],
+                    type_group=request.POST["type_group"],
+                    alternate_names=request.POST["alternate_names"])
+                messages['success'] = "Measurement unit '%s' added." % \
+                    unit.unit_name
+            else :
+                pass
+        except ValueError as e :
+            messages['error'] = str(e)
+    return render_to_response("main/admin_measurements.html",
         dictionary={
             "messages" : messages,
-            "metabolites" : Metabolite.objects.all().order_by("short_name"),
+            "metabolites" : Metabolite.all_sorted_by_short_name(),
+            "keywords" : MetaboliteKeyword.all_with_metabolite_ids,
+            "units" : MeasurementUnit.all_sorted,
+            "mtype_groups" : MeasurementGroup.GROUP_CHOICE,
         },
         context_instance=RequestContext(request))
 
@@ -437,6 +460,12 @@ def data_measurements (request) :
     data_misc = get_edddata_misc()
     data_meas.update(data_misc)
     return JsonResponse({ "EDDData" : data_meas })
+
+# /data/metadata
+def data_metadata (request) :
+    return JsonResponse({
+        "EDDData" : { m.id:m.to_json() for m in MetadataType.objects.all() },
+    })
 
 # /download/<file_id>
 def download (request, file_id) :

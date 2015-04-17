@@ -174,6 +174,7 @@ class MetadataType(models.Model):
         return {
             "id" : self.pk,
             "gn" : self.group.group_name,
+            "gid" : self.group.id,
             "name" : self.type_name,
             "is" : self.input_size,
             "pre" : self.prefix,
@@ -647,7 +648,6 @@ class MeasurementGroup(object):
         (PROTEINID, 'Protein Identifer'),
     )
 
-
 class MeasurementType(models.Model):
     """
     Defines the type of measurement being made. A generic measurement only has name and short name;
@@ -705,15 +705,36 @@ class MeasurementType(models.Model):
             short_name=short_name,
             type_group=MeasurementGroup.PROTEINID)
 
+    # http://stackoverflow.com/questions/3409047
+    @classmethod
+    def all_sorted_by_short_name (cls) :
+        """
+        Returns a query set sorted by the short_name field in case-insensitive
+        order.  (Mostly useful for the Metabolite subclass.)
+        """
+        return cls.objects.all().extra(
+            select={'lower_name':'lower(short_name)'}).order_by('lower_name')
 
 class MetaboliteKeyword (models.Model) :
     class Meta:
         db_table = "metabolite_keyword"
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=255, unique=True)
     mod_by = models.ForeignKey(settings.AUTH_USER_MODEL)
 
     def __str__ (self) :
         return self.name
+
+    @classmethod
+    def all_with_metabolite_ids (cls) :
+        keywords = []
+        for keyword in cls.objects.all().order_by("name") :
+            ids_dicts = keyword.metabolite_set.values("id")
+            keywords.append({
+                "id" : keyword.id,
+                "name" : keyword.name,
+                "metabolites" : [ i_d['id'] for i_d in ids_dicts ],
+            })
+        return keywords
 
 class Metabolite(MeasurementType):
     """
@@ -737,12 +758,16 @@ class Metabolite(MeasurementType):
 
     def to_json(self):
         return dict(super(Metabolite, self).to_json(), **{
-            "ans" : "", # TODO alternate_names
+            # FIXME the alternate names pointed to by the 'ans' key are
+            # supposed to come from the 'alternate_metabolite_type_names'
+            # table in the old EDD, but this is actually empty.  Do we need it?
+            "ans" : "",
             "f" : self.molecular_formula,
             "mm" : float(self.molar_mass),
             "cc" : self.carbon_count,
             "chg" : self.charge,
             "chgn" : self.charge, # TODO find anywhere in typescript using this and fix it
+            "kstr" : self.keywords_str,
         })
 
     def export_formula (self) :
@@ -819,9 +844,9 @@ class MeasurementUnit(models.Model):
     """
     class Meta:
         db_table = 'measurement_unit'
-    # TODO alternate_unit_names ???
-    unit_name = models.CharField(max_length=255)
+    unit_name = models.CharField(max_length=255, unique=True)
     display = models.BooleanField(default=True)
+    alternate_names = models.CharField(max_length=255, blank=True, null=True)
     type_group = models.CharField(max_length=8,
                                   choices=MeasurementGroup.GROUP_CHOICE,
                                   default=MeasurementGroup.GENERIC)
@@ -829,6 +854,14 @@ class MeasurementUnit(models.Model):
     def to_json (self) :
         return { "name" : self.unit_name }
 
+    @property
+    def group_name (self) :
+        return dict(MeasurementGroup.GROUP_CHOICE)[self.type_group]
+
+    @classmethod
+    def all_sorted (cls) :
+        return cls.objects.filter(display=True).extra(
+            select={'lower_name':'lower(unit_name)'}).order_by('lower_name')
 
 class Assay(EDDObject):
     """
