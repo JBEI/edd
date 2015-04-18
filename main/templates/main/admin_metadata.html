@@ -2,6 +2,7 @@
 <!--
 
 FIXME tabke sorting/filtering does not work at all (even in old EDD)
+FIXME too much duplication in editing UI
 
 -->
 
@@ -27,11 +28,10 @@ function OnEdit (obj, metadata_id) {
    "typeinputsizetext" : EDDData.MetadataTypes[metadata_id].is,
    "typedefaultvalue" : EDDData.MetadataTypes[metadata_id]["default"],
    "typegroup" : EDDData.MetadataTypes[metadata_id].gid,
-   "typeusedinprotocols" : EDDData.MetadataTypes[metadata_id].pl,
    "typename" : EDDData.MetadataTypes[metadata_id].name,
    "typepostfix" : EDDData.MetadataTypes[metadata_id].postfix,
-   "typeusedinlines" : EDDData.MetadataTypes[metadata_id].ll,
-   "typeidtoedit" : EDDData.MetadataTypes[metadata_id].id
+   "typeidtoedit" : EDDData.MetadataTypes[metadata_id].id,
+   "typecontext" : EDDData.MetadataTypes[metadata_id].context
   });
 };
 
@@ -120,6 +120,11 @@ function refreshInputSize() {
 </script>
 <script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
 <script type="text/javascript" src="{% static 'main/js/Autocomplete.js' %}"></script>
+<style>
+td {
+    vertical-align: bottom;
+}
+</style>
 
 {% endblock js_css %}
 
@@ -145,26 +150,27 @@ Section 1: Add a new metadata type
   <div class="pageSection" id="addNewTypeMain">
     <div class="sectionHead">
       <span class="discloseLink">
-        <a href="#">Add A New Metadata Type</a>
+        <a class="discloseLink" href="#">Add A New Metadata Type</a>
       </span>
     </div>
     <div class="sectionContent">
       <form method="post" action="/admin/metadata">
+        {% csrf_token %}
         <table class="formTable">
           <tr>
-            <td><span>Name:</span></td>
+            <td style="vertical-align:middle"><span>Name:</span></td>
             <td><input type="text" size="40" name="newtypename" value=""/></td>
-            <td><input type="checkbox"
-                        id="newtypeusedinlines"
-                        name="newtypeusedinlines"
-                        value="1" />
-                <label for="newtypeusedinlines">
-                    <span>For Lines</span>
-                </label>
+            <td>
+                <span>Associated with:</span>
+                <select name="newtypecontext">
+                {% for key, value in metadata_context %}
+                    <option value="{{ key }}">{{ value }}</option>
+                {% endfor %}
+                </select>
             </td>
           </tr>
           <tr>
-            <td><span>Group:</span></td>
+            <td style="vertical-align:middle"><span>Group:</span></td>
             <td>
               <select name="newtypegroup">
               {% for mdg in metadata_groups %}
@@ -172,14 +178,7 @@ Section 1: Add a new metadata type
               {% endfor %}
               </select>
             </td>
-            <td><input type="checkbox"
-                       id="newtypeusedinprotocols"
-                       name="newtypeusedinprotocols"
-                       value="1"/>
-              <label for="newtypeusedinprotocols">
-                <span>For Assays/Protocols</span>
-              </label>
-            </td>
+            <td></td>
           </tr>
         </table>
         <table class="formTable">
@@ -191,7 +190,7 @@ Section 1: Add a new metadata type
             <td></td>
           </tr>
           <tr>
-            <td><input type="text"
+            <td><input type="number" min="1"
                        size="3"
                        id="newtypeinputsizetext"
                        name="newtypeinputsizetext"
@@ -229,7 +228,7 @@ Section 1: Add a new metadata type
 Section 2: Edit an existing type (hidden at start)
 
 -->
-<div id="editTypeShow off">
+<div id="editTypeShow" class="off">
   <div class="pageSection" id="editTypeShow">
     <div class="sectionHead">
       <span class="discloseLink">
@@ -238,18 +237,19 @@ Section 2: Edit an existing type (hidden at start)
     </div>
     <div class="sectionContent">
       <form method="post" action="/admin/metadata">
+        {% csrf_token %}
         <table class="formTable">
           <tr>
               <td><span>Name:</span></td>
               <td><input type="text" size="40" name="typename" value="" />
                   <input type="hidden" name="typeidtoedit" value="" /></td>
-              <td><input type="checkbox"
-                          id="typeusedinlines"
-                          name="typeusedinlines"
-                          value="1" />
-                  <label for="typeusedinlines">
-                      <span>For Lines</span>
-                  </label>
+              <td>
+                <span>Associated with:</span>
+                <select name="typecontext">
+                {% for key, value in metadata_context %}
+                    <option value="{{ key }}">{{ value }}</option>
+                {% endfor %}
+                </select>
               </td>
           </tr>
           <tr>
@@ -261,14 +261,7 @@ Section 2: Edit an existing type (hidden at start)
               {% endfor %}
               </select>
             </td>
-            <td><input type="checkbox"
-                        id="typeusedinprotocols"
-                        name="typeusedinprotocols"
-                        value="1" />
-                <label for="typeusedinprotocols">
-                    <span>For Assays/Protocols</span>
-                </label>
-            </td>
+            <td></td>
           </tr>
         </table>
         <table class="formTable">
@@ -281,7 +274,7 @@ Section 2: Edit an existing type (hidden at start)
             <td></td>
           </tr>
           <tr>
-            <td><input type="text"
+            <td><input type="number" min="1"
                         size="3"
                         id="typeinputsizetext"
                         name="typeinputsizetext"
@@ -344,16 +337,16 @@ Section 2: Edit an existing type (hidden at start)
         <th class="sortheader" style="text-align:left" sortvalues="">
           Postfix
         </th>
-        <th class="sortheader smaller" style="text-align:center" sortvalues="">
+        <th class="sortheader" style="text-align:center" sortvalues="">
           Lines?
         </th>
-        <th class="sortheader smaller" style="text-align:center" sortvalues="">
+        <th class="sortheader" style="text-align:center" sortvalues="">
           Assays/Protocols?
         </th>
-        <th class="sortheader smaller" style="text-align:right" sortvalues="">
+        <th class="sortheader" style="text-align:right" sortvalues="">
           # Lines Using
         </th>
-        <th class="sortheader smaller" style="text-align:right" sortvalues="">
+        <th class="sortheader" style="text-align:right" sortvalues="">
           # Assays Using
         </th>
         <th class="sortheader" style="text-align:left;border-right-width:0px" sortvalues="">
@@ -363,11 +356,12 @@ Section 2: Edit an existing type (hidden at start)
     </thead>
     <tbody>
       {% for mdtype in metadata_types %}
-      <tr class="stripeRowA" data-line-id="{{ mdtype.id }}">
-        <td class="popupcell nowrap">
+      <tr class="{% cycle 'stripeRowA' 'stripeRowB' %}"
+          data-line-id="{{ mdtype.id }}">
+        <td class="popupcell nowrap" style="vertical-align: bottom;">
           <div class="p"><div class="q">
             <div class="r">
-              Column Type
+              {{ mdtype.type_name }}
             </div>
             <div class="s"><div class="t">
               <a href="#editform" onclick='OnEdit(this, {{ mdtype.id }});'>
@@ -375,23 +369,28 @@ Section 2: Edit an existing type (hidden at start)
             </div></div>
           </div></div>
         </td>
-        <td colspan="2" style="text-align:right;">
+        <td colspan="2" style="text-align:right; vertical-align:bottom;">
           <input type="text" disabled
                  size="{{ mdtype.input_size }}"
                  name="type{{ mdtype.id }}inputsize"
                  value="{{ mdtype.default_value }}"/>
         </td>
-        <td>{{ mdtype.postfix }}</td>
-        <td style="text-align:center;">
+        <td style="vertical-align:bottom;">{{ mdtype.postfix }}</td>
+        <td style="text-align:center; vertical-align:bottom;">
           {% if mdtype.for_line %} &#x2713; {% endif %}
         </td>
-        <td style="text-align:center;">
+        <td style="text-align:center; vertical-align:bottom;">
           {% if mdtype.for_protocol %} &#x2713; {% endif %}
         </td>
-        <td style="text-align:right;">TBA</td><!-- lines using -->
-        <td style="text-align:right;">TBA</td><!-- assays using -->
-
-        <td>{{ mdtype.group.group_name }}</td>
+        {% with md_id=mdtype.id %}
+        <td style="text-align:right; vertical-align:bottom">
+            {{ line_frequencies|lookup:md_id }}
+        </td>
+        <td style="text-align:right; vertical-align:bottom">
+            {{ assay_frequencies|lookup:md_id }}
+        </td>
+        {% endwith %}
+        <td style="vertical-align:bottom;">{{ mdtype.group.group_name }}</td>
       </tr>
       {% endfor %}
     </tbody>

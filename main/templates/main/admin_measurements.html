@@ -267,15 +267,7 @@ $(window).load(function () {
             </div></div>
           </td>
           <td>{{ m.type_name }}</td>
-          <td>{% spaceless %}
-      {% with elements=m.export_formula %}
-        {% if elements %}
-         {% for e in elements %}{{e.symbol}}<sub>{{e.count}}</sub>{% endfor %}
-        {% else %}
-              {{ m.molecular_formula }}
-        {% endif %}
-      {% endwith %}
-          {% endspaceless %}</td>
+          <td>{{ m.molecular_formula|formula }}</td>
           <td style="text-align:right;">
             {% if m.molar_mass %}
               <span>{{ m.molar_mass }}</span>

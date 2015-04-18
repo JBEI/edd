@@ -9,6 +9,7 @@ from django.shortcuts import render, get_object_or_404, redirect, \
     render_to_response
 from django.template import RequestContext
 from django.template.defaulttags import register
+from django.utils.safestring import mark_safe
 from django.views import generic
 from django.views.decorators.csrf import csrf_exempt
 from main.forms import CreateStudyForm
@@ -38,6 +39,17 @@ def lookup(dictionary, key):
     except:
         return settings.TEMPLATE_STRING_IF_INVALID
 
+@register.filter(name='formula')
+def formula (molecular_formula) :
+    """
+    Convert the molecular formula to a list of dictionaries giving each
+    element and its count.  This is used in HTML views with <sub> tags.
+    """
+    elements = re.findall("([A-Z]{1,2})([1-9]{1}[0-9]*)",
+        molecular_formula)
+    if (len(elements) == 0) :
+        return ""
+    return mark_safe("".join(["%s<sub>%s</sub>" % (e,c) for e,c in elements]))
 
 class StudyCreateView(generic.edit.CreateView):
     """
@@ -277,9 +289,9 @@ def admin_home (request) :
 
 # /admin/protocols
 def admin_protocols (request) :
-    messages = {}
     if (not request.user.is_staff) :
         return HttpResponseForbidden("You do not have administrative access.")
+    messages = {}
     if (request.method == "POST") :
         try :
             protocol = Protocol.from_form(
@@ -299,6 +311,8 @@ def admin_protocols (request) :
 
 # /admin/protocol/<protocol_id>
 def admin_protocol_edit (request, protocol_id) :
+    if (not request.user.is_staff) :
+        return HttpResponseForbidden("You do not have administrative access.")
     messages = {}
     protocol = Protocol.objects.get(pk=protocol_id)
     other_protocols = Protocol.objects.all().exclude(pk=protocol_id)
@@ -348,6 +362,8 @@ def admin_protocol_edit (request, protocol_id) :
 
 # /admin/measurements
 def admin_measurements (request) :
+    if (not request.user.is_staff) :
+        return HttpResponseForbidden("You do not have administrative access.")
     messages = {}
     if (request.method == "POST") :
         action = request.POST.get("action", None)
@@ -446,6 +462,60 @@ def admin_sbml_edit (request, template_id) :
         },
         context_instance=RequestContext(request))
 
+# /admin/metadata
+def admin_metadata (request) :
+    if (not request.user.is_staff) :
+        return HttpResponseForbidden("You do not have administrative access.")
+    messages = {}
+    if (request.method == "POST") :
+        # FIXME can we do better than this mess?
+        form = request.POST
+        try :
+            old_id = request.POST.get("typeidtoedit", None)
+            if (old_id is not None) :
+                mdtype = MetadataType.objects.get(pk=old_id)
+                type_name = form.get("newtypename", "").strip()
+                if (type_name == "") :
+                    raise ValueError("Name field must not be blank.")
+                group_id = form.get("typegroup")
+                mdtype.group = MetadataGroup.objects.get(pk=group_id)
+                mdtype.type_name = type_name
+                mdtype.input_size = int(form.get("typeinputsize", "6"))
+                mdtype.default_value = form.get("typedefaultvalue")
+                mdtype.prefix = form.get("typeprefix")
+                mdtype.postfix = form.get("typepostfix")
+                mdtype.for_context = form.get("typecontext")
+                mdtype.save()
+                messages['success'] = "Metadata type updated."
+            else :
+                type_name = form.get("newtypename", "").strip()
+                if (type_name == "") :
+                    raise ValueError("Name field must not be blank.")
+                group_id = form.get("newtypegroup")
+                new_type = MetadataType.objects.create(
+                    type_name=type_name,
+                    group=MetadataGroup.objects.get(pk=group_id),
+                    input_size=form.get("newtypeinputsize", None),
+                    default_value=form.get("newtypedefaultvalue"),
+                    prefix=form.get("newtypeprefix"),
+                    postfix=form.get("newtypepostfix"),
+                    for_context=form.get("newtypecontext"))
+                messages['success'] = """Metadata type "%s" created.""" % \
+                    new_type.type_name
+        except ValueError as e :
+            messages['error'] = str(e)
+    metadata_types = MetadataType.all_with_groups()
+    return render_to_response("main/admin_metadata.html",
+        dictionary={
+            "messages" : messages,
+            "metadata_types" : metadata_types,
+            "metadata_context" : MetadataType.CONTEXT_SET,
+            "line_frequencies" : Line.metadata_type_frequencies(),
+            "assay_frequencies" : Assay.metadata_type_frequencies(),
+            "metadata_groups" : MetadataGroup.objects.all(),
+        },
+        context_instance=RequestContext(request))
+
 # /data/users
 def data_users (request) :
     return JsonResponse({ "EDDData" : get_edddata_users() })
@@ -464,7 +534,10 @@ def data_measurements (request) :
 # /data/metadata
 def data_metadata (request) :
     return JsonResponse({
-        "EDDData" : { m.id:m.to_json() for m in MetadataType.objects.all() },
+        "EDDData" : {
+            "MetadataTypes" :
+                { m.id:m.to_json() for m in MetadataType.objects.all() },
+        }
     })
 
 # /download/<file_id>

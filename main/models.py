@@ -11,6 +11,7 @@ from django_hstore import hstore
 from itertools import chain
 import calendar
 from datetime import datetime, timedelta
+from collections import defaultdict
 import arrow
 import re
 import os.path
@@ -141,7 +142,7 @@ class MetadataType(models.Model):
     class Meta:
         db_table = 'metadata_type'
     group = models.ForeignKey(MetadataGroup)
-    type_name = models.CharField(max_length=255)
+    type_name = models.CharField(max_length=255, unique=True)
     type_i18n = models.CharField(max_length=255, blank=True, null=True)
     input_size = models.IntegerField(default=6)
     default_value = models.CharField(max_length=255, blank=True)
@@ -182,8 +183,25 @@ class MetadataType(models.Model):
             "default" : self.default_value,
             "ll" : self.for_line(),
             "pl" : self.for_protocol(),
+            "context" : self.for_context,
         }
 
+    @classmethod
+    def all_with_groups (cls) :
+        return cls.objects.all().extra(
+            select={'lower_name':'lower(type_name)'}).order_by(
+                "lower_name").select_related("group")
+
+    def is_allowed_object (self, obj) :
+        """
+        Indicate whether this metadata type can be associated with the given
+        object based on the for_context attribute.
+        """
+        if (obj.__class__ is Study) : return self.for_study()
+        elif (obj.__class__ is Line) : return self.for_line()
+        elif (obj.__class__ is Protocol) : return self.for_protocol()
+        elif (obj.__class__ is Assay) : return self.for_protocol()
+        else : return (self.for_context == self.ALL)
 
 class EDDObject(models.Model):
     """
@@ -233,11 +251,20 @@ class EDDObject(models.Model):
     def get_metadata_types(self):
         return list(MetadataType.objects.filter(pk__in=self.meta_store.keys()))
 
-    def get_metadata_item (self, pk=None, key=None) :
+    @classmethod
+    def metadata_type_frequencies (cls) :
+        freqs = defaultdict(int)
+        for obj in cls.objects.all() :
+            mdtype_keys = obj.meta_store.keys()
+            for mdtype_id in mdtype_keys :
+                freqs[int(mdtype_id)] += 1
+        return freqs
+
+    def get_metadata_item (self, key=None, pk=None) :
         assert ([pk, key].count(None) == 1)
         if (pk is None) :
             pk = MetadataType.objects.get(type_name=key)
-        return self.meta_store.get(str(pk))
+        return self.meta_store.get(str(pk.id))
 
     def get_metadata_dict (self) :
         """
@@ -255,9 +282,17 @@ class EDDObject(models.Model):
             metadata[str(metadata_types[pk])] = value
         return metadata
 
+    def set_metadata_item (self, key, value, defer_save=False) :
+        mdtype = MetadataType.objects.get(type_name=key)
+        if (not mdtype.is_allowed_object(self)) :
+            raise ValueError(("The metadata type '%s' does not apply to "+
+                "%s objects.") % (mdtype.type_name, self.__class__.__name__))
+        self.meta_store[str(mdtype.id)] = value
+        if (not defer_save) :
+            self.save()
+
     def __str__(self):
         return self.name
-
 
 class Study(EDDObject):
     """
@@ -767,19 +802,8 @@ class Metabolite(MeasurementType):
             "cc" : self.carbon_count,
             "chg" : self.charge,
             "chgn" : self.charge, # TODO find anywhere in typescript using this and fix it
-            "kstr" : self.keywords_str,
+            "kstr" : ",".join([ str(k) for k in self.keywords.all() ])
         })
-
-    def export_formula (self) :
-        """
-        Convert the molecular formula to a list of dictionaries giving each
-        element and its count.  This is used in HTML views with <sub> tags.
-        """
-        elements = re.findall("([A-Z]{1,2})([1-9]{1}[0-9]*)",
-            self.molecular_formula)
-        if (len(elements) == 0) :
-            return None
-        return [ { "symbol":str(e),"count":int(c) } for e,c in elements ]
 
     @property
     def keywords_str (self) :

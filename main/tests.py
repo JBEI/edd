@@ -55,6 +55,19 @@ class StudyTests(TestCase):
         up3 = Update.objects.create(mod_by=user3)
         study1 = Study.objects.create(name='Test Study 1', description='')
         study2 = Study.objects.create(name='Test Study 2', description='')
+        mdg1 = MetadataGroup.objects.create(group_name="Misc")
+        mdt1 = MetadataType.objects.create(
+            type_name="Some key",
+            group=mdg1,
+            for_context=MetadataType.STUDY)
+        mdt2 = MetadataType.objects.create(
+            type_name="Some key 2",
+            group=mdg1,
+            for_context=MetadataType.ALL)
+        mdt3 = MetadataType.objects.create(
+            type_name="Some key 3",
+            group=mdg1,
+            for_context=MetadataType.PROTOCOL)
 
     def tearDown(self):
         TestCase.tearDown(self)
@@ -113,6 +126,20 @@ class StudyTests(TestCase):
         self.assertTrue(study.user_can_write(user3))
         self.assertFalse(study.user_can_read(user4))
         self.assertFalse(study.user_can_write(user4))
+
+    def test_study_metadata (self) :
+        study = Study.objects.get(name='Test Study 1')
+        study.set_metadata_item("Some key", "1.234")
+        study.set_metadata_item("Some key 2", "5.678")
+        self.assertTrue(study.get_metadata_item("Some key") == "1.234")
+        self.assertTrue(study.get_metadata_dict() ==
+            {'Some key 2': '5.678', 'Some key': '1.234'})
+        try :
+            study.set_metadata_item("Some key 3", "9.876")
+        except ValueError :
+            pass
+        else :
+            raise Exception("Should have caught a ValueError here...")
 
 
 class SolrTests(TestCase):
@@ -245,10 +272,7 @@ class AssayDataTests(TestCase) :
         self.assertTrue(met.keywords_str == "GCMS, HPLC")
         self.assertTrue(met.to_json() == { 'id': mt1.id, 'cc': 6, 'name': u'Mevalonate',
             'chgn': -1, 'ans': '', 'mm': 148.16, 'f': u'C6H11O4', 'chg': -1, 'sn': u'Mev',
-            'family': mt1.type_group, 'kstr':'GCMS, HPLC'})
-        self.assertTrue(met.export_formula() == [
-          {'count': 6, 'symbol': 'C'}, {'count': 11, 'symbol': 'H'},
-          {'count': 4, 'symbol': 'O'}])
+            'family': mt1.type_group, 'kstr':'GCMS,HPLC'})
         keywords = MetaboliteKeyword.all_with_metabolite_ids()
         self.assertTrue(len(keywords[1]['metabolites']) == 2)
         mts = Metabolite.all_sorted_by_short_name()
