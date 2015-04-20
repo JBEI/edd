@@ -108,7 +108,8 @@ SBML Templates
       </th>
     </tr>
     {% for template in sbml_templates %}
-    <tr class="{% cycle 'stripeRowA' 'stripeRowB' %}" data-line-id="1">
+    <tr class="{% cycle 'stripeRowA' 'stripeRowB' %}"
+        data-line-id="{{ template.id }}">
       <td class="popupcell nowrap">
         <!-- FIXME waaaay too complicated... -->
         <div class="p">

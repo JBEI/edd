@@ -1240,7 +1240,13 @@ class line_assay_data (line_export_base) :
 
   def _process_transcription_measurements (self, assay) :
     """private method"""
+    try :
+      counts_id = MeasurementUnit.objects.get(unit_name="counts").pk
+    except ObjectDoesNotExist :
+      counts_id = None
     transcriptions = self._get_gene_measurements(assay.id)
+    # filter out measurements that are read counts (not F/RPKM)
+    transcriptions = [ t for t in transcriptions if t.y_units_id != counts_id ]
     if (len(transcriptions) > 0) :
       transcription_selected = self.form.get("transcriptions%dinclude" %
         assay.id, None)

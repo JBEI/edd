@@ -239,6 +239,21 @@ class EDDObject(models.Model):
         else :
             return updated.format_timestamp("%b %d %Y, %I:%M%p")
 
+    @property
+    def date_created (self) :
+        updated = self.created()
+        if (updated) :
+            return updated.format_timestamp("%b %d %Y, %I:%M%p")
+        else :
+            return "N/A"
+
+    @property
+    def created_by (self) :
+        update = self.created()
+        if (update) :
+            return update.mod_by.initials
+        return "N/A"
+
     def get_attachment_count(self):
         return self.files.count()
 
@@ -293,6 +308,25 @@ class EDDObject(models.Model):
 
     def __str__(self):
         return self.name
+
+    # http://stackoverflow.com/questions/3409047
+    @classmethod
+    def all_sorted_by_name (cls) :
+        """
+        Returns a query set sorted by the name field in case-insensitive order.
+        """
+        return cls.objects.all().extra(
+            select={'lower_name':'lower(name)'}).order_by('lower_name')
+
+    def update_name_from_form (self, form, key) :
+        """
+        Set the 'name' field from a posted form, with error checking.
+        """
+        name = form.get(key, "").strip()
+        if (name == "") :
+            raise ValueError("%s name must not be blank." %
+                self.__class__.__name__)
+        self.name = name
 
 class Study(EDDObject):
     """
@@ -558,10 +592,19 @@ class Strain(EDDObject):
             "id" : self.pk,
             "name" : self.name,
             "desc" : self.description,
+            "disabled" : not self.active,
             "registry_id" : self.registry_id,
             "registry_url" : self.registry_url,
         }
 
+    @property
+    def n_lines (self) :
+        return self.line_set.count()
+
+    @property
+    def n_studies (self) :
+        lines = self.line_set.all().select_related("study")
+        return len(set([ l.study.pk for l in lines ]))
 
 class CarbonSource(EDDObject):
     """

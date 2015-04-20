@@ -98,6 +98,14 @@ def get_edddata_measurement () :
         "MetaboliteTypes" : { mt.id : mt.to_json() for mt in metab_types },
     }
 
+def get_edddata_strains () :
+    strains = Strain.objects.all()
+    return {
+      "StrainIDs" : [ s.id for s in strains ],
+      "EnabledStrainIDs" : [ s.id for s in strains if s.active ],
+      "Strains" : { s.id : s.to_json() for s in strains },
+    }
+
 def get_edddata_users (active_only=False) :
     User = get_user_model()
     users = []

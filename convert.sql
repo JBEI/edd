@@ -177,8 +177,8 @@ INSERT INTO public.study_group_permission(permission_type, study_id, group_id)
 --
 -- edd_object entries won't exist yet, make a temp column to track
 ALTER TABLE public.edd_object ADD COLUMN strain_id integer UNIQUE DEFAULT NULL;
-INSERT INTO public.edd_object(strain_id, name)
-    SELECT s.id, coalesce(sr.label, s.strain_name)
+INSERT INTO public.edd_object(strain_id, name, description)
+    SELECT s.id, coalesce(sr.label, s.strain_name), s.long_name
     FROM old_edd.strains s
     LEFT JOIN old_edd.strains_registry sr ON sr.id = s.registry_record_id
     ORDER BY id;

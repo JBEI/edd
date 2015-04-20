@@ -17,7 +17,7 @@ from main.models import *
 from main.solr import StudySearch
 from main.utilities import get_edddata_study, get_edddata_misc, \
     get_edddata_users, get_selected_lines, JSONDecimalEncoder, \
-    get_edddata_measurement
+    get_edddata_measurement, get_edddata_strains
 import main.sbml_export
 import main.data_export
 from io import BytesIO
@@ -395,6 +395,42 @@ def admin_measurements (request) :
         },
         context_instance=RequestContext(request))
 
+# /admin/strains
+def admin_strains (request) :
+    if (not request.user.is_staff) :
+        return HttpResponseForbidden("You do not have administrative access.")
+    messages = {}
+    if (request.method == "POST") :
+        form = request.POST
+        action = form.get("action", None)
+        try :
+            if (action == "Add") :
+                name = form.get("newstrainname", "").strip()
+                if (name == "") :
+                    raise ValueError("Strain name must not blank.")
+                strain = Strain.objects.create(
+                    name=name,
+                    description=form.get("newstrainlongname"))
+                messages['success'] = "Strain '%s' added." % name
+            else :
+                strain = Strain.objects.get(id=form.get("strainidtoedit"))
+                strain.update_name_from_form(form, "strainname")
+                strain.description = form.get("strainlongname", "")
+                strain.registry_url = form.get("strainurl", "")
+                strain.save()
+                messages['success'] = "Strain '%s' updated." % strain.name
+        except ValueError as e :
+            messages['error'] = str(e)
+    # FIXME still too slow...
+    strains = list(Strain.all_sorted_by_name().select_related(
+        "line_set").select_related("updates"))
+    return render_to_response("main/admin_strains.html",
+        dictionary={
+            "messages" : messages,
+            "strains" : strains,
+        },
+        context_instance=RequestContext(request))
+
 # /admin/sbml
 def admin_sbml (request) :
     if (not request.user.is_staff) :
@@ -530,6 +566,10 @@ def data_measurements (request) :
     data_misc = get_edddata_misc()
     data_meas.update(data_misc)
     return JsonResponse({ "EDDData" : data_meas })
+
+# /data/strains
+def data_strains (request) :
+    return JsonResponse({ "EDDData" : get_edddata_strains() })
 
 # /data/metadata
 def data_metadata (request) :
