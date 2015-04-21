@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.core.urlresolvers import reverse
 from requests.auth import AuthBase
 from requests.compat import urlparse
 import base64
@@ -52,6 +53,23 @@ class IceApi(object):
             self.url = url
         else:
             self.url = 'https://registry-test.jbei.org'
+
+    def link_study_to_part(self, study, strain):
+        url = self.url + '/rest/parts/' + strain.registry_id + '/experiments'
+        auth = HmacAuth(ident=self.ident)
+        response = requests.request('GET', url, auth=auth)
+        study_url = reverse('main:detail', kwargs={'pk':study.pk})
+        data = { 'url': study_url, 'label': study.name, 'created': study.created().mod_time }
+        found = False
+        if response.status_code == requests.codes.ok:
+            for exp in response.json():
+                if exp.url == study_url:
+                    found = True
+        if not found:
+            requests.request('POST', url, auth=auth, \
+                             data=json.dumps(data), \
+                             headers={ 'Content-Type': 'application/json; charset=utf8' })
+        pass
 
     def search_for_part(self, query):
         if self.ident is None:
