@@ -1,14 +1,20 @@
+import edd.settings
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.utils import timezone
 from django.utils.dateformat import format as format_date
 from django_extensions.db.fields import PostgreSQLUUIDField
 from django_hstore import hstore
 from itertools import chain
+import calendar
+from datetime import datetime, timedelta
+from collections import defaultdict
 import arrow
 import re
+import os.path
 
 
 class Update(models.Model):
@@ -51,6 +57,17 @@ class Update(models.Model):
             "user": self.mod_by.pk,
         }
 
+    def format_timestamp (self, format_string="%b %d %Y, %I:%M%p") :
+        """
+        Convert the datetime (mod_time) to a human-readable string, including
+        conversion from UTC to local time zone.
+        """
+        utc_dt = self.mod_time
+        timestamp = calendar.timegm(utc_dt.timetuple())
+        local_dt = datetime.fromtimestamp(timestamp)
+        assert utc_dt.resolution >= timedelta(microseconds=1)
+        local_dt = local_dt.replace(microsecond=utc_dt.microsecond)
+        return local_dt.strftime(format_string)
 
 class Comment(models.Model):
     """
@@ -75,6 +92,26 @@ class Attachment(models.Model):
     mime_type = models.CharField(max_length=255, null=True)
     file_size = models.IntegerField(default=0)
 
+    @classmethod
+    def from_upload (cls, edd_object, form, uploaded_file, update) :
+        return cls.objects.create(
+            object_ref=edd_object,
+            file=uploaded_file,
+            filename=uploaded_file.name,
+            created=update,
+            description=form.get("newAttachmentDescription"),
+            mime_type=uploaded_file.content_type,
+            file_size=len(uploaded_file.read()))
+
+    @property
+    def user_initials (self) :
+        return self.created.mod_by.initials
+
+    @property
+    def icon (self) :
+        from main.utilities import extensions_to_icons
+        base, ext = os.path.splitext(self.filename)
+        return extensions_to_icons.get(ext, "icon-generic.png")
 
 class MetadataGroup(models.Model):
     """
@@ -105,7 +142,7 @@ class MetadataType(models.Model):
     class Meta:
         db_table = 'metadata_type'
     group = models.ForeignKey(MetadataGroup)
-    type_name = models.CharField(max_length=255)
+    type_name = models.CharField(max_length=255, unique=True)
     type_i18n = models.CharField(max_length=255, blank=True, null=True)
     input_size = models.IntegerField(default=6)
     default_value = models.CharField(max_length=255, blank=True)
@@ -138,6 +175,7 @@ class MetadataType(models.Model):
         return {
             "id" : self.pk,
             "gn" : self.group.group_name,
+            "gid" : self.group.id,
             "name" : self.type_name,
             "is" : self.input_size,
             "pre" : self.prefix,
@@ -145,8 +183,25 @@ class MetadataType(models.Model):
             "default" : self.default_value,
             "ll" : self.for_line(),
             "pl" : self.for_protocol(),
+            "context" : self.for_context,
         }
 
+    @classmethod
+    def all_with_groups (cls) :
+        return cls.objects.all().extra(
+            select={'lower_name':'lower(type_name)'}).order_by(
+                "lower_name").select_related("group")
+
+    def is_allowed_object (self, obj) :
+        """
+        Indicate whether this metadata type can be associated with the given
+        object based on the for_context attribute.
+        """
+        if (obj.__class__ is Study) : return self.for_study()
+        elif (obj.__class__ is Line) : return self.for_line()
+        elif (obj.__class__ is Protocol) : return self.for_protocol()
+        elif (obj.__class__ is Assay) : return self.for_protocol()
+        else : return (self.for_context == self.ALL)
 
 class EDDObject(models.Model):
     """
@@ -181,8 +236,23 @@ class EDDObject(models.Model):
         updated = self.updated()
         if (updated is None) :
             return "N/A"
-        else : # FIXME these are UTC...
-            return updated.mod_time.strftime("%b %d %Y, %I:%M%p")
+        else :
+            return updated.format_timestamp("%b %d %Y, %I:%M%p")
+
+    @property
+    def date_created (self) :
+        updated = self.created()
+        if (updated) :
+            return updated.format_timestamp("%b %d %Y, %I:%M%p")
+        else :
+            return "N/A"
+
+    @property
+    def created_by (self) :
+        update = self.created()
+        if (update) :
+            return update.mod_by.initials
+        return "N/A"
 
     def get_attachment_count(self):
         return self.files.count()
@@ -196,9 +266,67 @@ class EDDObject(models.Model):
     def get_metadata_types(self):
         return list(MetadataType.objects.filter(pk__in=self.meta_store.keys()))
 
+    @classmethod
+    def metadata_type_frequencies (cls) :
+        freqs = defaultdict(int)
+        for obj in cls.objects.all() :
+            mdtype_keys = obj.meta_store.keys()
+            for mdtype_id in mdtype_keys :
+                freqs[int(mdtype_id)] += 1
+        return freqs
+
+    def get_metadata_item (self, key=None, pk=None) :
+        assert ([pk, key].count(None) == 1)
+        if (pk is None) :
+            pk = MetadataType.objects.get(type_name=key)
+        return self.meta_store.get(str(pk.id))
+
+    def get_metadata_dict (self) :
+        """
+        Return a Python dictionary of metadata with the keys replaced by the
+        string representations of the corresponding MetadataType records.
+        """
+        metadata_types = { str(mt.id):mt for mt in self.get_metadata_types() }
+        metadata = {}
+        for pk, value in self.meta_store.iteritems() :
+            metadata_type = metadata_types[pk]
+            if metadata_type.prefix :
+                value = metadata_type.prefix + " " + value
+            if metadata_type.postfix :
+                value = value + " " + metadata_type.postfix
+            metadata[str(metadata_types[pk])] = value
+        return metadata
+
+    def set_metadata_item (self, key, value, defer_save=False) :
+        mdtype = MetadataType.objects.get(type_name=key)
+        if (not mdtype.is_allowed_object(self)) :
+            raise ValueError(("The metadata type '%s' does not apply to "+
+                "%s objects.") % (mdtype.type_name, self.__class__.__name__))
+        self.meta_store[str(mdtype.id)] = value
+        if (not defer_save) :
+            self.save()
+
     def __str__(self):
         return self.name
 
+    # http://stackoverflow.com/questions/3409047
+    @classmethod
+    def all_sorted_by_name (cls) :
+        """
+        Returns a query set sorted by the name field in case-insensitive order.
+        """
+        return cls.objects.all().extra(
+            select={'lower_name':'lower(name)'}).order_by('lower_name')
+
+    def update_name_from_form (self, form, key) :
+        """
+        Set the 'name' field from a posted form, with error checking.
+        """
+        name = form.get(key, "").strip()
+        if (name == "") :
+            raise ValueError("%s name must not be blank." %
+                self.__class__.__name__)
+        self.name = name
 
 class Study(EDDObject):
     """
@@ -372,15 +500,20 @@ class Protocol(EDDObject):
     owned_by = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='protocol_set')
     active = models.BooleanField(default=True)
     variant_of = models.ForeignKey('self', blank=True, null=True, related_name='derived_set')
+    default_units = models.ForeignKey('MeasurementUnit', blank=True,
+        null=True, related_name="protocol_set")
     
     def creator(self):
-        return self.created.mod_by
+        return self.created().mod_by
     
     def owner(self):
         return self.owned_by
     
     def last_modified(self):
         return self.updated.mod_time
+
+    def last_modified_str (self) :
+        return self.updated().format_timestamp()
 
     def to_solr_value(self):
         return '%(id)s@%(name)s' % {'id':self.pk, 'name':self.name}
@@ -393,6 +526,22 @@ class Protocol(EDDObject):
             "name" : self.name,
             "disabled" : not self.active,
         }
+
+    @classmethod
+    def from_form (cls, name, user, variant_of_id=None) :
+        all_protocol_names = set([ p.name for p in Protocol.objects.all() ])
+        if (name in ["", None]) :
+            raise ValueError("Protocol name required.")
+        elif (name in all_protocol_names) :
+            raise ValueError("There is already a protocol named '%s'.")
+        variant_of = None
+        if (not variant_of_id in [None, "", "all"]) :
+            variant_of = Protocol.objects.get(pk=variant_of_id)
+        return Protocol.objects.create(
+            name=name,
+            owned_by=user,
+            active=True,
+            variant_of=variant_of)
 
     @property
     def categorization (self) :
@@ -443,10 +592,19 @@ class Strain(EDDObject):
             "id" : self.pk,
             "name" : self.name,
             "desc" : self.description,
+            "disabled" : not self.active,
             "registry_id" : self.registry_id,
             "registry_url" : self.registry_url,
         }
 
+    @property
+    def n_lines (self) :
+        return self.line_set.count()
+
+    @property
+    def n_studies (self) :
+        lines = self.line_set.all().select_related("study")
+        return len(set([ l.study.pk for l in lines ]))
 
 class CarbonSource(EDDObject):
     """
@@ -511,13 +669,19 @@ class Line(EDDObject):
             'created': self.created().to_json(),
         }
 
-    # FIXME broken right now because line_strain table is empty
+    @property
+    def primary_strain_name (self) :
+        strains = self.strains.all()
+        if (len(strains) > 0) :
+          return strains[0].name
+        return None
+
     @property
     def strain_ids (self) :
         """
         String representation of associated strains; used in views.
         """
-        return ",".join([ s.registry_id for s in self.strains.all() ])
+        return ",".join([ s.name for s in self.strains.all() ])
 
     @property
     def carbon_source_info (self) :
@@ -561,7 +725,6 @@ class MeasurementGroup(object):
         (GENEID, 'Gene Identifier'),
         (PROTEINID, 'Protein Identifer'),
     )
-
 
 class MeasurementType(models.Model):
     """
@@ -620,6 +783,36 @@ class MeasurementType(models.Model):
             short_name=short_name,
             type_group=MeasurementGroup.PROTEINID)
 
+    # http://stackoverflow.com/questions/3409047
+    @classmethod
+    def all_sorted_by_short_name (cls) :
+        """
+        Returns a query set sorted by the short_name field in case-insensitive
+        order.  (Mostly useful for the Metabolite subclass.)
+        """
+        return cls.objects.all().extra(
+            select={'lower_name':'lower(short_name)'}).order_by('lower_name')
+
+class MetaboliteKeyword (models.Model) :
+    class Meta:
+        db_table = "metabolite_keyword"
+    name = models.CharField(max_length=255, unique=True)
+    mod_by = models.ForeignKey(settings.AUTH_USER_MODEL)
+
+    def __str__ (self) :
+        return self.name
+
+    @classmethod
+    def all_with_metabolite_ids (cls) :
+        keywords = []
+        for keyword in cls.objects.all().order_by("name") :
+            ids_dicts = keyword.metabolite_set.values("id")
+            keywords.append({
+                "id" : keyword.id,
+                "name" : keyword.name,
+                "metabolites" : [ i_d['id'] for i_d in ids_dicts ],
+            })
+        return keywords
 
 class Metabolite(MeasurementType):
     """
@@ -635,20 +828,52 @@ class Metabolite(MeasurementType):
     carbon_count = models.IntegerField()
     molar_mass = models.DecimalField(max_digits=16, decimal_places=5)
     molecular_formula = models.TextField()
+    keywords = models.ManyToManyField(MetaboliteKeyword,
+        db_table="metabolites_to_keywords")
 
     def is_metabolite (self) :
         return True
 
     def to_json(self):
         return dict(super(Metabolite, self).to_json(), **{
-            "ans" : "", # TODO alternate_names
+            # FIXME the alternate names pointed to by the 'ans' key are
+            # supposed to come from the 'alternate_metabolite_type_names'
+            # table in the old EDD, but this is actually empty.  Do we need it?
+            "ans" : "",
             "f" : self.molecular_formula,
             "mm" : float(self.molar_mass),
             "cc" : self.carbon_count,
             "chg" : self.charge,
             "chgn" : self.charge, # TODO find anywhere in typescript using this and fix it
+            "kstr" : ",".join([ str(k) for k in self.keywords.all() ])
         })
 
+    @property
+    def keywords_str (self) :
+        return ", ".join([ str(k) for k in self.keywords.all() ])
+
+    def add_keyword (self, keyword) :
+        try :
+            kw_obj = MetaboliteKeyword.objects.get(name=keyword)
+        except ObjectDoesNotExist as e :
+            raise ValueError("'%s' is not a valid keyword." % keyword)
+        else :
+            self.keywords.add(kw_obj)
+
+    def set_keywords (self, keywords) :
+        """
+        Given a collection of keywords (as strings), link this metabolite to
+        the equivalent MetaboliteKeyword object(s).
+        """
+        new_keywords = set(keywords)
+        current_kwds = { kw.name:kw for kw in self.keywords.all() }
+        for keyword in keywords : # step 1: add new keywords
+            if (keyword in current_kwds) :
+                continue
+            self.add_keyword(keyword)
+        for keyword in current_kwds : # step 2: remove obsolete keywords
+            if (not keyword in new_keywords) :
+                self.keywords.remove(current_kwds[keyword])
 
 class GeneIdentifier(MeasurementType):
     """
@@ -686,9 +911,9 @@ class MeasurementUnit(models.Model):
     """
     class Meta:
         db_table = 'measurement_unit'
-    # TODO alternate_unit_names ???
-    unit_name = models.CharField(max_length=255)
+    unit_name = models.CharField(max_length=255, unique=True)
     display = models.BooleanField(default=True)
+    alternate_names = models.CharField(max_length=255, blank=True, null=True)
     type_group = models.CharField(max_length=8,
                                   choices=MeasurementGroup.GROUP_CHOICE,
                                   default=MeasurementGroup.GENERIC)
@@ -696,6 +921,14 @@ class MeasurementUnit(models.Model):
     def to_json (self) :
         return { "name" : self.unit_name }
 
+    @property
+    def group_name (self) :
+        return dict(MeasurementGroup.GROUP_CHOICE)[self.type_group]
+
+    @classmethod
+    def all_sorted (cls) :
+        return cls.objects.filter(display=True).extra(
+            select={'lower_name':'lower(unit_name)'}).order_by('lower_name')
 
 class Assay(EDDObject):
     """
@@ -798,6 +1031,9 @@ class Measurement(models.Model):
         mdata = list(self.measurementdatum_set.all())
         return [ md for md in mdata if md.fy is not None ]
 
+    def is_extracellular (self) :
+        return self.compartment == str(MeasurementCompartment.EXTRACELLULAR)
+
     @property
     def name (self) :
         """alias for self.measurement_type.type_name"""
@@ -822,7 +1058,7 @@ class Measurement(models.Model):
         else :
             return [ m.fx for m in mdata ]
 
-    # XXX this shouldn't need to handle vectors (?)
+    # this shouldn't need to handle vectors
     def interpolate_at (self, x) :
         from main.utilities import interpolate_at
         return interpolate_at(self.valid_data(), x)
@@ -896,12 +1132,12 @@ class MeasurementVector(models.Model):
         return float(self.x)
 
 
-class MetabolicMap (EDDObject) :
+class SBMLTemplate (EDDObject) :
     """
     Container for information used in SBML export.
     """
     class Meta:
-        db_table = "metabolic_map"
+        db_table = "sbml_template"
     object_ref = models.OneToOneField(EDDObject, parent_link=True)
     biomass_calculation = models.DecimalField(default=-1, decimal_places=5,
         max_digits=16) # XXX check that these parameters make sense!
@@ -910,28 +1146,27 @@ class MetabolicMap (EDDObject) :
 
     @property
     def xml_file (self) :
-        files = self.files.all()
+        files = list(self.files.all())
         if (len(files) == 0) :
             raise RuntimeError("No attachments found for metabolic map %s!" %
                 self.name)
-        elif (len(files) > 1) :
-            raise RuntimeError("Multiple attachments found for metabolic map "+
-              "%s!" % self.name)
-        return files[0]
+        #elif (len(files) > 1) :
+        #    raise RuntimeError("Multiple attachments found for metabolic map "+
+        #      "%s!" % self.name)
+        return files[-1]
 
     def parseSBML (self) :
         import libsbml
         return libsbml.readSBML(str(self.xml_file.file.path))
 
-
 class MetaboliteExchange (models.Model) :
     """
-    Mapping for a metabolite to an exchange defined by a metabolic map.
+    Mapping for a metabolite to an exchange defined by a SBML template.
     """
     class Meta:
         db_table = "measurement_type_to_exchange"
-        unique_together = ( ("metabolic_map", "measurement_type"), )
-    metabolic_map = models.ForeignKey(MetabolicMap)
+        unique_together = ( ("sbml_template", "measurement_type"), )
+    sbml_template = models.ForeignKey(SBMLTemplate)
     measurement_type = models.ForeignKey(MeasurementType)
     reactant_name = models.CharField(max_length=255)
     exchange_name = models.CharField(max_length=255)
@@ -939,11 +1174,51 @@ class MetaboliteExchange (models.Model) :
 
 class MetaboliteSpecies (models.Model) :
     """
-    Mapping for a metabolite to an species defined by a metabolic map.
+    Mapping for a metabolite to an species defined by a SBML template.
     """
     class Meta:
         db_table = "measurement_type_to_species"
-        unique_together = ( ("metabolic_map", "measurement_type"), )
-    metabolic_map = models.ForeignKey(MetabolicMap)
+        unique_together = ( ("sbml_template", "measurement_type"), )
+    sbml_template = models.ForeignKey(SBMLTemplate)
     measurement_type = models.ForeignKey(MeasurementType)
     species = models.TextField()
+
+# XXX MONKEY PATCHING
+def User_initials (self) :
+    try :
+        return self.userprofile.initials
+    except ObjectDoesNotExist as e :
+        return None
+
+def User_institution (self) :
+    try :
+        institutions = self.userprofile.institutions.all()
+        if (len(institutions) > 0) :
+            return institutions[0].institution_name
+        return None
+    except ObjectDoesNotExist as e :
+        return None
+
+def User_to_json(self):
+    # FIXME this may be excessive - how much does the frontend actually need?
+    return {
+        "uid": self.username,
+        "email": self.email,
+        "initials": self.initials,
+        "name" : self.get_full_name(),
+        "institution":self.institution,
+        "description":"",
+        "lastname":self.last_name,
+        "groups":None,
+        "firstname":self.first_name,
+        "disabled":not self.is_active
+    }
+
+# this will get replaced by the actual model as soon as the app is initialized
+User = None
+def patch_user_model () :
+    global User
+    User = get_user_model()
+    User.add_to_class("to_json", User_to_json)
+    User.add_to_class("initials", property(User_initials))
+    User.add_to_class("institution", property(User_institution))

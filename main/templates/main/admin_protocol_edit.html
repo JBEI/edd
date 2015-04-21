@@ -1,0 +1,155 @@
+{% extends "edd_base.html" %}
+{% load staticfiles %}
+
+{% block js_css %}
+  {{ block.super }}
+
+<script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
+<script type="text/javascript" src="{% static 'main/js/EDDEditing.js' %}"></script>
+<script type="text/javascript">
+EDDData = { }; // Declaring the object for later use
+
+EDDData.currentUserID = {{ user.id }};
+
+// FIXME move this somewhere central
+function disclose() {
+  $(this).closest('.disclose').toggleClass('discloseHide');
+  return false;
+}
+$(window).load(function () {
+    $('.disclose').find('a.discloseLink').on('click', disclose);
+    jQuery.ajax("/data/misc", {
+        "success" : function (data, textStatus, response) {
+            console.log(data);
+            jQuery.extend(EDDData, data.EDDData);/*
+            for (var keyname in data.EDDData) {
+                EDDData[keyname] = data.EDDData[keyname];
+            }*/
+            EDDAutoComplete.initializeAllPageElements();
+        }
+    }).fail(function (x, s, e) {
+        alert(s);
+    });
+});
+
+</script>
+<script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
+<script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
+<script type="text/javascript" src="{% static 'main/js/Autocomplete.js' %}"></script>
+
+<style>
+td {
+  vertical-align: bottom;
+  text-align: bottom;
+}
+</style>
+{% endblock js_css %}
+
+{% block head_title %}
+Edit Protocol
+{% endblock head_title %}
+
+{% block body_title %}
+Edit Protocol
+{% endblock body_title %}
+
+{% block content %}
+
+{% include "main/include_messages.html" %}
+
+<form method="post" action="/admin/protocol/{{ protocol.id }}"
+      enctype="multipart/form-data">
+  {% csrf_token %}
+  <input type="hidden" name="protocolID" value="{{ protocol.id }}"/>
+  <input type="hidden" name="edd_object_id" value="{{ protocol.id }}"/>
+
+  <div class="pageSection">
+    <div class="sectionHead">
+      General Information
+    </div>
+    <div class="sectionContent">
+      <table class="formTable">
+        <tr>
+          <td><p>Protocol Name:</p></td>
+          <td>
+            <input type="text" size="30" name="name" value="{{ protocol.name }}"/>
+          </td>
+          <td>
+            <span style="padding:0px 4px 0px 8px;">Variant Of:</span>
+            <select name="variant_of">
+              <option value="all">--</option>
+  {% for other in other_protocols %}
+    {% if other.active %}
+              <option value="{{ other.id }}">{{ other.name }}</option>
+    {% endif %}
+  {% endfor %}
+            </select>
+          </td>
+          <td style="text-align:right;">
+  {% if protocol.active %}
+            <input id="pdisabled" type="checkbox" name="disabled"/>
+  {% else %}
+            <input id="pdisabled" type="checkbox" name="disabled" checked="1"/>
+  {% endif %}
+          </td>
+          <td><label for="pdisabled"><p>Disabled</p></label></td>
+        </tr>
+        <tr>
+          <td><p>Owner:</p></td>
+          <td colspan="4">
+            <input  type="text"
+                class="autocomplete"
+                autocompletetype="user"
+                autocomplete="off"
+                autocompletevalue="protocolownervalue"
+                size="27"
+                name="protocolowner"
+                id="protocolowner"
+                value="{{ protocol.owned_by.get_full_name }}"/>
+            <input  type="hidden"
+                id="protocolownervalue"
+                name="protocolownervalue"
+                value="{{ protocol.owned_by.id }}"/>
+            <i style="color:gray;font-size:11px;">
+              (A user who is allowed to edit this protocol, even if not an Admin.)
+            </i>
+          </td> 
+        </tr>
+        <tr>
+          <td><p>Description:</p></td>
+          <td colspan="4">
+            <textarea style="height:3em;" rows="15" cols="75"
+              name="description">{{ protocol.description }}</textarea>
+          </td>
+        </tr>
+        <tr>
+          <td><p>Default Units:</p></td>
+          <td colspan="4">
+            <input  type="text"
+                class="autocomplete"
+                autocompletetype="units"
+                autocompletevalue="protocoldefunitsvalue"
+                size="15"
+                name="protocoldefunits"
+                id="protocoldefunits"
+                value="{{ protocol.default_units.unit_name }}"/>
+            <input  type="hidden"
+                id="protocoldefunitsvalue"
+                name="protocoldefunitsvalue"
+                value="{{ protocol.default_units_id }}"/>
+            <i style="color:gray;font-size:11px;">
+              (When measurement data are imported without units, this will automatically be assigned.)
+            </i>
+          </td>
+        </tr>
+      </table>
+    </div>
+    {% include "main/include_attachments.html" %}
+  </div>
+
+  <div style="width:99%;text-align:right;margin:10px 0px 10px 0px;">
+    <input type="submit" name="action" value="Update" />
+  </div>
+</form>
+
+{% endblock content %}

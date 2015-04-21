@@ -123,27 +123,36 @@ def extract_line_info_rows (lines, metadata_labels, column_flags) :
         row = TableRow(column_flags)
         row.add_item_if_not_flagged("StudyID", "S" + str(line.study.id))
         row.add_item_if_not_flagged("LineID", "L" + str(line.id))
-        row.add_item_if_not_flagged("Line", line.name)
+        row.add_item_if_not_flagged("Line", str(line.name))
         row.add_item_if_not_flagged("Control", "T" if line.control else "")
-        row.add_item_if_not_flagged("Strain", line.strain_ids)
-        row.add_item_if_not_flagged("CarbonSource", line.carbon_source_info)
+        row.add_item_if_not_flagged("Strain", str(line.primary_strain_name))
+        row.add_item_if_not_flagged("CarbonSource",
+          str(line.carbon_source_info))
         if (not column_flags.get("LineMetadata")) :
-            metadata = line.meta_store
+            metadata = line.get_metadata_dict()
             for column_name in metadata_labels :
                 row.append(str(metadata.get(column_name, "")))
         row.add_item_if_not_flagged("LineExperimenter",
-            line.experimenter.username)
-        row.add_item_if_not_flagged("LineContact", line.contact.email)
-        row.add_item_if_not_flagged("LineLastModified", line.last_modified)
+            get_initials(line.experimenter))
+        row.add_item_if_not_flagged("LineContact", str(line.contact.email))
+        row.add_item_if_not_flagged("LineLastModified", str(line.last_modified))
         rows[line.id] = row
     return rows
+
+def get_initials (user) :
+    """Hack to facilitate unit testing."""
+    try :
+        return str(user.userprofile.initials)
+    except Exception :
+        return ""
 
 def get_unique_metadata_names (objects) :
     names = []
     type_ids = set()
     for obj in objects :
         type_ids.update(obj.meta_store.keys())
-    return MetadataType.objects.filter(pk__in=type_ids).values('type_name').order_by('type_name')
+    metadata_types = list(MetadataType.objects.filter(pk__in=type_ids))
+    return sorted([ mdt.type_name for mdt in metadata_types ])
 
 def extract_line_column_headers (metadata_labels, column_flags) :
     row = TableRow(column_flags)
@@ -155,7 +164,7 @@ def extract_line_column_headers (metadata_labels, column_flags) :
     row.add_header_if_not_flagged("Carbon Source")
     if (not column_flags.get("LineMetadata")) :
         for label in metadata_labels :
-            row.append(label)
+            row.append(str(label))
     row.add_header_if_not_flagged("Line Experimenter")
     row.add_header_if_not_flagged("Line Contact")
     row.add_header_if_not_flagged("Line Last Modified")
@@ -169,7 +178,7 @@ def extract_assay_column_headers (metadata_labels, column_flags) :
     row.add_header_if_not_flagged("Assay Last Modified")
     if (not column_flags.get("AssayMetadata")) :
         for label in metadata_labels :
-            row.append(label)
+            row.append(str(label))
     return row
 
 def extract_protocol_column_headers (metadata_labels, column_flags) :
@@ -181,13 +190,13 @@ def extract_protocol_column_headers (metadata_labels, column_flags) :
     row.add_header_if_not_flagged("Assay Last Modified")
     if (not column_flags.get("AssayMetadata")) :
         for label in metadata_labels :
-            row.append(label)
+            row.append(str(label))
     return row
 
 def extract_protocol_assay_lookup (assays) :
     protocols_dict = defaultdict(list)
     for assay in assays :
-        protocols_dict[assay.protocol.name].append(assay)
+        protocols_dict[str(assay.protocol.name)].append(assay)
     return protocols_dict
 
 def extract_assay_measurement_lookup (measurements) :
@@ -271,11 +280,12 @@ def assemble_table (
         for assay in assays_by_protocol[protocol_name] :
             row = TableRow(column_flags)
             row.add_item_if_not_flagged("Protocol", protocol_name)
-            row.append(assay.name)
+            row.append(str(assay.name))
             row.add_item_if_not_flagged("AssayExperimenter",
-                assay.experimenter.username)
-            row.add_item_if_not_flagged("AssayLastModified", assay.mod_epoch())
-            assay_metadata = assay.meta_store
+                get_initials(assay.experimenter))
+            row.add_item_if_not_flagged("AssayLastModified",
+                str(assay.mod_epoch()))
+            assay_metadata = assay.get_metadata_dict()
             if (not column_flags.get("AssayMetadata", False)) :
                 for column_label in assay_metadata_labels :
                     row.append(str(assay_metadata.get(column_label, "")))
@@ -284,10 +294,10 @@ def assemble_table (
             # Assay's Protocol.
             protocol_row = TableRow(column_flags)
             protocol_row.add_item_if_not_flagged("Protocol", protocol_name)
-            protocol_row.append(assay.name) # XXX assay_full_name???
-            protocol_row.add_item_if_not_flagged("AssaySuffix", assay.name)
+            protocol_row.append(str(assay.name)) # XXX assay_full_name???
+            protocol_row.add_item_if_not_flagged("AssaySuffix", str(assay.name))
             protocol_row.add_item_if_not_flagged("AssayExperimenter",
-                assay.mod_epoch())
+                get_initials(assay.experimenter))
             protocol_row.add_item_if_not_flagged("AssayLastModified",
                 str(assay.updated()))
             if (not column_flags.get("AssayMetadata", False)) :
@@ -398,7 +408,7 @@ def assemble_table (
                 continue
             # COMMON FUNCTIONS
             def create_rows_dbya (m) :
-                mt_name = m.measurement_type.short_name
+                mt_name = str(m.measurement_type.short_name)
                 # Only include the measurement if there is data for it.
                 # FIXME confirm that this is actually what happens...
                 for i in range(len(all_xvalues)) :
@@ -410,7 +420,7 @@ def assemble_table (
                         row.append(measurement_export_rows[m.id][i])
                     table.append(row)
             def create_row_other (m, mt_compartment) :
-                mt_name = m.measurement_type.short_name
+                mt_name = str(m.measurement_type.short_name)
                 row = list(common_values)
                 if (not column_flags.get("MeasurementCompartment", False)):
                     row.append(mt_compartment)

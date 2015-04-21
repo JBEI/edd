@@ -1,0 +1,154 @@
+{% extends "edd_base.html" %}
+{% load staticfiles %}
+
+{% block js_css %}
+  {{ block.super }}
+
+<script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
+<script type="text/javascript" src="{% static 'main/js/EDDEditing.js' %}"></script>
+<script type="text/javascript">
+EDDData = { }; // Declaring the object for later use
+
+EDDData.currentUserID = {{ user.id }};
+
+// FIXME move this somewhere central
+function disclose() {
+  $(this).closest('.disclose').toggleClass('discloseHide');
+  return false;
+}
+$(window).load(function () {
+    jQuery.ajax("/data/users", {
+        "success" : function (data, textStatus, response) {
+            console.log(data);
+            jQuery.extend(EDDData, data.EDDData);/*
+            for (var keyname in data.EDDData) {
+                EDDData[keyname] = data.EDDData[keyname];
+            }*/
+            EDDAutoComplete.initializeAllPageElements();
+        }
+    }).fail(function (x, s, e) {
+        alert(s);
+    });
+});
+
+</script>
+<script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
+<script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
+<script type="text/javascript" src="{% static 'main/js/Autocomplete.js' %}"></script>
+<script type="text/javascript" src="{% static 'main/js/BiomassCalculationUI.js' %}"></script>
+<script type="text/javascript" src="{% static 'main/js/AdminMetabolicMaps.js' %}"></script>
+
+<style>
+td {
+  vertical-align: bottom;
+  text-align: bottom;
+}
+</style>
+{% endblock js_css %}
+
+{% block head_title %}
+Edit SBML Template
+{% endblock head_title %}
+
+{% block body_title %}
+Edit SBML Template
+{% endblock body_title %}
+
+{% block content %}
+
+{% include "main/include_messages.html" %}
+
+{% with template=data.selected_template_info %}
+<form method="post" action="/admin/sbml/{{ template.id }}/edit"
+      enctype="multipart/form-data">
+  {% csrf_token %}
+  <input type="hidden" name="templateID" value="{{ template.id }}"/>
+  <div class="pageSection">
+    <div class="sectionHead">General Information</div>
+    <div class="sectionContent">
+      <table class="formTable">
+        <tr>
+          <td>Filename:</td>
+          <td>
+            <input type="text" size="30" name="mname"
+                   value="{{ template.filename }}"/>
+          </td>
+        </tr>
+        <tr>
+          <td><p>Owner:</p></td>
+          <td>
+            <input  type="text"
+                class="autocomplete"
+                autocompletetype="user"
+                autocomplete="off"
+                autocompletevalue="templateownervalue"
+                size="27"
+                name="templateowner"
+                id="templateowner"
+                value="{{ template.owner }}"/>
+          <input type="hidden"
+              id="templateownervalue"
+              name="templateownervalue"
+              value="1"/>
+          </td> 
+        </tr>
+        <tr>
+          <td><p>Description:</p></td>
+          <td>
+            <textarea style="height:3em;" rows="5" cols="75"
+                      name="description">{{ template.description }}</textarea>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="2">
+            <span>BIOMASS exchange name:</span>
+            <input type="text" size="50" name="exchangename"
+                   value="{{ template.biomass_ex_name }}"/>
+          </td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>
+            <p style="color:gray;font-size:11px;">
+              (In order to embed BIOMASS fluxes, the EDD needs some help
+              identifying the reaction for BIOMASS exchange in the model.
+              Enter the ID of the reaction here.  Examples: "RB388CD2C_LR",
+              "R_Ec_biomass_iJO1366_core_53p95M", "R_BiomassEcoli")
+            </p>
+          </td>
+        </tr>
+      </table>
+    </div>
+  </div>
+  {% endwith %}<!-- template -->
+
+  <div class="pageSection" style="margin-top:10px;">
+    <div class="sectionHead">Template Information</div>
+    <div class="sectionContent" style="font-size:12px;">
+      {% include "main/include_sbml_info.html" %}
+    </div>
+    <div id="attachmentActionPanel" class="sectionActions">
+      <table class="formTable" cellspacing="0" cellpadding="0"
+        style="margin:0px;">
+        <tr>
+          <td style="padding:4px 6px 4px 8px;">
+            <input type="file"
+                name="newAttachmentContent"
+                id="newAttachmentContent" />
+          </td>
+          <td style="padding:6px 10px 3px 4px;">
+            <span>Choose a new file here if you want to replace the current
+                contents.</span>
+          </td>
+        </tr>
+      </table>
+    </div>
+  </div>
+  
+  <div style="width:99%;text-align:right;margin:10px 0px 10px 0px;">
+    <input type="submit" name="action" value="Update" />
+  </div>
+
+</form>
+
+{% endblock content %}
