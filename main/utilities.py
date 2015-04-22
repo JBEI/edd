@@ -257,22 +257,27 @@ class line_export_base (object) :
       self._measurement_units[meas_id] = None
 
   def _get_measurements (self, assay_id) :
+    assert isinstance(assay_id, int)
     return self._measurements.get(assay_id, [])
 
   def _get_measurement_data (self, measurement_id) :
+    assert isinstance(measurement_id, int)
     return self._measurement_data.get(measurement_id, [])
 
   def _get_measurement_type (self, measurement_id) :
+    assert isinstance(measurement_id, int)
     return self._measurement_types[measurement_id]
 
-  def _get_y_axis_units_name (self, measurementdatum_id) :
-    units = self._measurement_units.get(measurementdatum_id, None)
+  def _get_y_axis_units_name (self, measurement_id) :
+    assert isinstance(measurement_id, int)
+    units = self._measurement_units.get(measurement_id, None)
     if (units is not None) :
       return units.unit_name
     return None
 
   def _get_measurements_by_type_group (self, assay_id, group_flag,
       sort_by_name=None) :
+    assert isinstance(assay_id, int)
     metabolites = []
     for m in self._get_measurements(assay_id) :
       mtype_group = self._get_measurement_type(m.id).type_group
@@ -285,16 +290,19 @@ class line_export_base (object) :
     return metabolites
 
   def _get_metabolite_measurements (self, assay_id, sort_by_name=False) :
+    assert isinstance(assay_id, int)
     return self._get_measurements_by_type_group(assay_id,
       group_flag=MeasurementGroup.METABOLITE,
       sort_by_name=sort_by_name)
 
   def _get_gene_measurements (self, assay_id, sort_by_name=False) :
+    assert isinstance(assay_id, int)
     return self._get_measurements_by_type_group(assay_id,
       group_flag=MeasurementGroup.GENEID,
       sort_by_name=sort_by_name)
 
   def _get_protein_measurements (self, assay_id, sort_by_name=False) :
+    assert isinstance(assay_id, int)
     return self._get_measurements_by_type_group(assay_id,
       group_flag=MeasurementGroup.PROTEINID,
       sort_by_name=sort_by_name)

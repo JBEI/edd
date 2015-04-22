@@ -263,7 +263,7 @@ class EDDObject(models.Model):
     def get_comment_count(self):
         return self.comments.count()
 
-    def get_metadata_json(self):
+    def get_metadata_json(self): # FIXME not sure this does what we want...
         return self.meta_store
 
     def get_metadata_types(self):
@@ -536,7 +536,7 @@ class Protocol(EDDObject):
         if (name in ["", None]) :
             raise ValueError("Protocol name required.")
         elif (name in all_protocol_names) :
-            raise ValueError("There is already a protocol named '%s'.")
+            raise ValueError("There is already a protocol named '%s'." % name)
         variant_of = None
         if (not variant_of_id in [None, "", "all"]) :
             variant_of = Protocol.objects.get(pk=variant_of_id)
@@ -630,7 +630,7 @@ class CarbonSource(EDDObject):
             "id" : self.pk,
             "carbon" : self.name,
             "labeling" : self.labeling,
-            "initials" : None, # TODO
+            "initials" : self.created_by,
             "vol" : self.volume,
             "mod" : self.mod_epoch(),
             "modstr" : str(self.updated()),
@@ -645,6 +645,8 @@ class CarbonSource(EDDObject):
     @property
     def n_studies (self) : return _n_studies(self)
 
+    def __str__ (self) :
+        return "%s (%s)" % (self.name, self.labeling)
 
 class Line(EDDObject):
     """
@@ -667,6 +669,8 @@ class Line(EDDObject):
     strains = models.ManyToManyField(Strain, db_table='line_strain')
 
     def to_json(self):
+        updated = self.updated()
+        created = self.created()
         return {
             'id': self.pk,
             'name': self.name,
@@ -676,11 +680,11 @@ class Line(EDDObject):
             'replicate': self.replicate.pk if self.replicate else None,
             'contact': { 'user_id': self.contact.pk, 'text': self.contact_extra },
             'experimenter': self.experimenter.pk,
-            'meta': self.get_metadata_json(),
+            'meta': self.get_metadata_json(), # FIXME is this correct?
             'strain': [s.pk for s in self.strains.all()],
             'carbon': [c.pk for c in self.carbon_source.all()],
-            'modified': self.updated().to_json(),
-            'created': self.created().to_json(),
+            'modified': updated.to_json() if updated else None,
+            'created': created.to_json() if created else None,
         }
 
     @property
@@ -703,8 +707,7 @@ class Line(EDDObject):
         String representation of carbon source(s) with labeling included;
         used in views.
         """
-        return ",".join([ "%s (%s)" % (cs.name, cs.labeling)
-                          for cs in self.carbon_source.all() ])
+        return ",".join([ str(cs) for cs in self.carbon_source.all() ])
 
     @property
     def carbon_source_name (self) :
@@ -980,7 +983,7 @@ class Assay(EDDObject):
             "dis" : not self.active,
             "lid" : self.line.pk,
             "pid" : self.protocol.pk,
-            "meta": self.get_metadata_json(),
+            "meta": self.get_metadata_json(), # FIXME
             "mea_c" : len(self.measurement_set.all()),
             "met_c" : len(self.get_metabolite_measurements()),
             "tra_c" : len(self.get_protein_measurements()),
