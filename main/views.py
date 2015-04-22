@@ -362,6 +362,8 @@ def admin_protocol_edit (request, protocol_id) :
         context_instance=RequestContext(request))
 
 # /admin/measurements
+# TODO this view is probably at the top of my list of things we should refactor
+# once the port is more or less complete
 def admin_measurements (request) :
     if (not request.user.is_staff) :
         return HttpResponseForbidden("You do not have administrative access.")
@@ -383,7 +385,7 @@ def admin_measurements (request) :
                     alternate_names=request.POST["alternate_names"])
                 messages['success'] = "Measurement unit '%s' added." % \
                     unit.unit_name
-            else :
+            else : # TODO
                 pass
         except ValueError as e :
             messages['error'] = str(e)

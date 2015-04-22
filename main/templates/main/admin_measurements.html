@@ -22,16 +22,17 @@ EDDData = { }; // Declaring the object for later use
 EDDData.currentUserID =  {{ user.id }};
 
 function OnEdit (obj, metabolite_id) {
+  var m = EDDData.MetaboliteTypes[metabolite_id];
   EDDEdit.edit(obj, {
     "mtypeidtoedit" : metabolite_id,
-    "mtypeabbr" : EDDData.MetaboliteTypes[metabolite_id].sn,
-    "mtypeentity" : EDDData.MetaboliteTypes[metabolite_id].name,
-    "mtypealternates" : EDDData.MetaboliteTypes[metabolite_id].ans,
-    "mtypeformula" : EDDData.MetaboliteTypes[metabolite_id].f,
-    "mtypedefunitsvalue" : EDDData.MetaboliteTypes[metabolite_id].du,
+    "mtypeabbr" : m.sn,
+    "mtypeentity" : m.name,
+    "mtypealternates" : m.ans,
+    "mtypeformula" : m.f,
+    "mtypedefunitsvalue" : m.du,
     "mtypedisplayformat" : 0,
-    "mtypemolarmass" : EDDData.MetaboliteTypes[metabolite_id].mm,
-    "mtypecharge" : EDDData.MetaboliteTypes[metabolite_id].chg });
+    "mtypemolarmass" : m.mm,
+    "mtypecharge" : m.chg });
 };
 
 // FIXME move this somewhere central
@@ -81,6 +82,7 @@ $(window).load(function () {
   </div>
   <div class="sectionContent discloseBody" id="typeMain">
     <form method="post" action="/admin/measurements" id="mteditform">
+      {% csrf_token %}
       <input type="hidden" name="action" value="addMetabolite"/>
       <input type="hidden" name="mtypeidtoedit" value="{{ selected_metabolite.id }}"/>
       <input type="hidden" name="keywordIDs" value="1,2,3,8,4,5,6,7" />
@@ -135,38 +137,15 @@ $(window).load(function () {
             <p style="border-bottom:1px dotted #CCCCCC;
                 padding-bottom:2px;
                 margin-bottom:2px;">Keywords:</p>
+            {% for k in keywords %}
             <div style="width:170px;display:inline-block;">
-              <input type="checkbox" name="keyword1include" id="keyword1include" value="1" />
-              <label for="keyword1include"><span>FAEE</span></label>
+              <input type="checkbox" name="keyword{{ k.id }}include"
+                     id="keyword{{ k.id }}include" value="1" />
+              <label for="keyword{{ k.id }}include">
+                <span>{{k.name}}</span>
+              </label>
             </div>
-            <div style="width:170px;display:inline-block;">
-              <input type="checkbox" name="keyword2include" id="keyword2include" value="1" />
-              <label for="keyword2include"><span>GCMS</span></label>
-            </div>
-            <div style="width:170px;display:inline-block;">
-              <input type="checkbox" name="keyword3include" id="keyword3include" value="1" />
-              <label for="keyword3include"><span>HPLC</span></label>
-            </div>
-            <div style="width:170px;display:inline-block;">
-              <input type="checkbox" name="keyword8include" id="keyword8include" value="1" />
-              <label for="keyword8include"><span>LCMS</span></label>
-            </div>
-            <div style="width:170px;display:inline-block;">
-              <input type="checkbox" name="keyword4include" id="keyword4include" value="1" />
-              <label for="keyword4include"><span>Mevalonate Pathway</span></label>
-            </div>
-            <div style="width:170px;display:inline-block;">
-              <input type="checkbox" name="keyword5include" id="keyword5include" value="1" />
-              <label for="keyword5include"><span>OD</span></label>
-            </div>
-            <div style="width:170px;display:inline-block;">
-              <input type="checkbox" name="keyword6include" id="keyword6include" value="1" />
-              <label for="keyword6include"><span>RAMOS</span></label>
-            </div>
-            <div style="width:170px;display:inline-block;">
-              <input type="checkbox" name="keyword7include" id="keyword7include" value="1" />
-              <label for="keyword7include"><span>Specific Glucose Flux</span></label>
-            </div>
+            {% endfor %}
           </td>
         </tr>
         <tr>
@@ -190,14 +169,14 @@ $(window).load(function () {
         </tr>
         <tr>
           <td colspan="6" style="text-align:right;vertical-align:bottom;">
-            <input type="submit" name="action" id="addNewTypeButtons"
+            <input type="submit" name="submit" id="addNewTypeButtons"
                    value="Add Metabolite" style="margin:4px 0px 0px 8px;" />
             <div id="editTypeButtons" class="off">
               <input type="button" name="none" value="Cancel"
                 style="margin:10px 0px 4px 8px;"
                 onclick='EDDEdit.cancel(
                   "typeMain,editTypeBanner,addNewTypeBanner,editTypeButtons,addNewTypeButtons", "addNewTypeShow");' />
-              <input type="submit" name="action" value="Update Metabolite"
+              <input type="submit" name="submit" value="Update Metabolite"
             style="margin:4px 0px 0px 8px;" />
             </div>
           </td>
@@ -303,13 +282,14 @@ MetaboliteKeyword form
     <table class="formTable">
       <tr>
         <form method="post" action="/admin/measurements">
+        {% csrf_token %}
           <input type="hidden" name="action" value="addKeyword"/>
           <td>
             <span>Keyword Name:</span>
             <input type="text" size="25" name="keywordname" value="" />
           </td>
           <td>
-            <input type="submit" name="action" value="Add Keyword" />
+            <input type="submit" name="submit" value="Add Keyword" />
           </td>
         </form>
       </tr>
@@ -332,6 +312,7 @@ MeasurementUnit form
   <div class="sectionContent discloseBody">
     <table class="formTable">
       <form method="post" action="/admin/measurements">
+        {% csrf_token %}
         <input type="hidden" name="action" value="addUnit"/>
         <tr>
           <td><span>Unit Name:</span></td>
@@ -359,7 +340,7 @@ MeasurementUnit form
         </tr>
         <tr>
           <td></td>
-          <td><input type="submit" name="action" value="Add Unit" /></td>
+          <td><input type="submit" name="submit" value="Add Unit" /></td>
         </tr>
       </form>
     </table>
