@@ -140,19 +140,23 @@ Step 2: Optical Density (OD600)
       id="statusstep1show"
       name="statusstep1show"
       value="0"/>
+{% with n_warnings=data.n_od_warnings %}
+    {% if n_warnings %}
+<div class="disclose" id="step1">
+    {% else %}
 <div class="disclose discloseHide" id="step1">
+    {% endif %}
   <div class="sectionChapter">
     <span>
       <a href="#" class="discloseLink">
         Step 2: Find OD Data:
       </a>
     </span>
-  {% with n_warnings=data.n_od_warnings %}
     {% if n_warnings %}
       <span class="warn2">{{ n_warnings }} warnings</span>
     {% endif %}
-  {% endwith %}
   </div>
+{% endwith %}
 
 <div class="sectionContent discloseBody" id="statusstep1main">
   {% if not data.have_gcdw_metadata %}
@@ -474,7 +478,11 @@ Step 5 (RAMOS O2/CO2)
         name="statusstep4show"
         value="0"/>
 
+{% if data.need_ramos_units_warning %}
+<div class="disclose" id="step4">
+{% else %}
 <div class="disclose discloseHide" id="step4">
+{% endif %}
   <div class="sectionChapter">
     <span>
       <a href="#" class="discloseLink">
@@ -712,14 +720,18 @@ Step 7: convert units and calculate flux values
        name="statusstep6show"
        value="0"/>
 
+{% with data.n_conversion_warnings as n_warnings %}
+    {% if n_warnings %}
+<div class="disclose" id="step6">
+    {% else %}
 <div class="disclose discloseHide" id="step6">
+    {% endif %}
   <div class="sectionChapter">
     <span>
       <a href="#" class="discloseLink">
         Step 7: Convert units and calculate all selected flux values
       </a>
     </span>
-{% with data.n_conversion_warnings as n_warnings %}
   {% if n_warnings > 1 %}
     <span class="warn2">{{ n_warnings }} warnings</span>
   {% elif n_warnings == 1 %}

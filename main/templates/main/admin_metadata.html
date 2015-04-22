@@ -133,7 +133,7 @@ td {
 {% endblock head_title %}
 
 {% block body_title %}
-  Metadata
+  EDD administration: Metadata
 {% endblock %}
 
 {% block content %}
@@ -158,10 +158,14 @@ Section 1: Add a new metadata type
         {% csrf_token %}
         <table class="formTable">
           <tr>
-            <td style="vertical-align:middle"><span>Name:</span></td>
+            <td><span>Name:</span></td>
             <td><input type="text" size="40" name="newtypename" value=""/></td>
-            <td>
+          </tr>
+          <tr>
+            <td class="form-label">
                 <span>Associated with:</span>
+            </td>
+            <td>
                 <select name="newtypecontext">
                 {% for key, value in metadata_context %}
                     <option value="{{ key }}">{{ value }}</option>
@@ -170,13 +174,17 @@ Section 1: Add a new metadata type
             </td>
           </tr>
           <tr>
-            <td style="vertical-align:middle"><span>Group:</span></td>
+            <td><span>Group:</span></td>
             <td>
-              <select name="newtypegroup">
-              {% for mdg in metadata_groups %}
-                <option value="{{ mdg.id }}">{{ mdg.group_name }}</option>
-              {% endfor %}
-              </select>
+              <span>
+                <select name="newtypegroup">
+                {% for mdg in metadata_groups %}
+                  <option value="{{ mdg.id }}">{{ mdg.group_name }}</option>
+                {% endfor %}
+                </select>
+                or add new group:
+                <input type="text" size="20" name="newgroupname"/>
+              </span>
             </td>
             <td></td>
           </tr>
@@ -243,23 +251,30 @@ Section 2: Edit an existing type (hidden at start)
               <td><span>Name:</span></td>
               <td><input type="text" size="40" name="typename" value="" />
                   <input type="hidden" name="typeidtoedit" value="" /></td>
-              <td>
-                <span>Associated with:</span>
-                <select name="typecontext">
-                {% for key, value in metadata_context %}
-                    <option value="{{ key }}">{{ value }}</option>
-                {% endfor %}
-                </select>
-              </td>
+          <tr>
+            <td>
+              <span>Associated with:</span>
+            </td>
+            <td>
+              <select name="typecontext">
+              {% for key, value in metadata_context %}
+                <option value="{{ key }}">{{ value }}</option>
+              {% endfor %}
+              </select>
+            </td>
           </tr>
           <tr>
             <td><span>Group:</span></td>
             <td>
-              <select name="typegroup" id="typegroup">
+              <span>
+                <select name="typegroup" id="typegroup">
               {% for mdg in metadata_groups %}
-                <option value="{{ mdg.id }}">{{ mdg.group_name }}</option>
+                  <option value="{{ mdg.id }}">{{ mdg.group_name }}</option>
               {% endfor %}
-              </select>
+                </select>
+                or add new group:
+                <input type="text" size="20" name="newgroupname"/>
+              </span>
             </td>
             <td></td>
           </tr>
@@ -397,4 +412,5 @@ Section 2: Edit an existing type (hidden at start)
   </table>
 </div>
 
+<br/><br/><br/><br/>
 {% endblock content %}

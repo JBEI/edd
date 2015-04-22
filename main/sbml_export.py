@@ -351,15 +351,16 @@ class sbml_info (object) :
       if (sp_resolved is not None) :
         self._species_to_metabolites[sp_resolved.id] = met
     # finally, biomass reaction
-    try :
-      biomass_rxn = model.getReaction(self.biomass_reaction_id())
-      assert (biomass_rxn is not None)
-    except Exception :
-      raise ValueError(("Can't find biomass exchange reaction '%s' in "+
-        "selected SBML template.") % self.biomass_reaction_id())
-      # TODO if this fails should it be an error?
-    self.biomass_exchange = ExchangeInfo(biomass_rxn, is_biomass_rxn=True)
-    #self._resolved_exchanges[biomass_metab.id] = self.biomass_exchange
+    if (self.biomass_reaction_id() != "") :
+      try :
+        biomass_rxn = model.getReaction(self.biomass_reaction_id())
+        assert (biomass_rxn is not None)
+      except Exception :
+        raise ValueError(("Can't find biomass exchange reaction '%s' in "+
+          "selected SBML template.") % self.biomass_reaction_id())
+        # TODO if this fails should it be an error?
+      self.biomass_exchange = ExchangeInfo(biomass_rxn, is_biomass_rxn=True)
+      #self._resolved_exchanges[biomass_metab.id] = self.biomass_exchange
 
   def _unique_resolved_exchanges (self) :
     return set([ ex.ex_id for ex in self._resolved_exchanges.values()
@@ -1703,7 +1704,7 @@ class measurement_datum_converted_units (object) :
       pass
     elif (units in ["mg/L", "g/L"]) :
       if (metabolite.molar_mass == 0) :
-        raise ValueError("Cannot convert units from <b>mg/L<b> without "+
+        raise ValueError("Cannot convert units from mg/L without "+
           "knowing the molar mass of this metabolite.  Skipping all "+
           "intervals.")
       mm = float(metabolite.molar_mass)
@@ -1717,7 +1718,7 @@ class measurement_datum_converted_units (object) :
         self.conversion_equation = "%g / %g" % (self.initial_value, mm)
     elif (units == "Cmol/L") :
       if (metabolite.carbon_count == 0) :
-        raise ValueError("Cannot convert units from <b>Cmol/L</b> without "+
+        raise ValueError("Cannot convert units from Cmol/L without "+
           "knowing the carbon count of this metabolite.  Skipping all "+
           "intervals.")
       cc = float(metabolite.carbon_count)

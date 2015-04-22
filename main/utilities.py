@@ -15,12 +15,20 @@ class JSONDecimalEncoder(json.JSONEncoder):
             return float(o)
         return super(JSONDecimalEncoder, self).default(o)
 
+media_types = {
+    '--' : '-- (No base media used)',
+    'LB' : 'LB (Luria-Bertani Broth)',
+    'TB' : 'TB (Terrific Broth)',
+    'M9' : 'M9 (M9 salts minimal media)',
+    'EZ' : 'EZ (EZ Rich)',
+}
 
 def get_edddata_study (study) :
     """
     Dump of selected database contents used to populate EDDData object on the
-    client.  This contains mostly global metadata, but the assays are specific
-    to a study..
+    client.  Although this includes some data types like Strain and
+    CarbonSource that are not "children" of a Study, they have been filtered
+    to include only those that are used by the given study.
     """
     metab_types = Metabolite.objects.filter(assay__line__study=study).distinct()
     protocols = Protocol.objects.filter(assay__line__study=study).distinct()
@@ -55,13 +63,6 @@ def get_edddata_study (study) :
     }
 
 def get_edddata_misc():
-    media_types = {
-        '--' : '-- (No base media used)',
-        'LB' : 'LB (Luria-Bertani Broth)',
-        'TB' : 'TB (Terrific Broth)',
-        'M9' : 'M9 (M9 salts minimal media)',
-        'EZ' : 'EZ (EZ Rich)',
-    }
     # XXX should these be stored elsewhere (postgres, other module)?
     measurement_compartments = { i : comp for i, comp in enumerate([
       { "name" : "", "sn" : "" },
@@ -88,6 +89,16 @@ def get_edddata_misc():
       "MeasurementTypeCompartmentIDs" : measurement_compartments.keys(),
       "MeasurementTypeCompartments" : measurement_compartments,
     }
+
+def get_edddata_carbon_sources () :
+    """All available CarbonSource records."""
+    carbon_sources = CarbonSource.objects.all()
+    return {
+        "MediaTypes" : media_types,
+        "CSourceIDs" : [ cs.id for cs in carbon_sources ],
+        "EnabledCSourceIDs" : [ cs.id for cs in carbon_sources if cs.active ],
+        "CSources" : { cs.id : cs.to_json() for cs in carbon_sources },
+    } 
 
 # TODO unit test
 def get_edddata_measurement () :

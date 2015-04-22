@@ -1,0 +1,242 @@
+
+{% extends "edd_base.html" %}
+{% load staticfiles %}
+
+{% block js_css %}
+  {{ block.super }}
+
+<script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
+<script type="text/javascript" src="{% static 'main/js/EDDEditing.js' %}"></script>
+<script type="text/javascript">
+//<![CDATA[
+EDDData = { }; // Declaring the object for later use
+
+EDDData.currentUserID = {{ user.id }};
+
+function OnEdit (obj, cs_id) {
+  var cs = EDDData.CSources[cs_id];
+  EDDEdit.edit(obj, {
+    "csourceidtoedit" : cs.id,
+    "csourcename" : cs.carbon,
+    "csourcevolume" : cs.vol,
+    "csourcelabeling" : cs.labeling,
+    "csourcenotes" : cs.ainfo,
+    "csdisabled" :   cs.disabled
+  });
+};
+function disclose() {
+  $(this).closest('.disclose').toggleClass('discloseHide');
+  return false;
+}
+// FIXME move this somewhere central
+$(window).load(function () {
+    $('.disclose').find('.discloseLink').on('click', disclose);
+    jQuery.ajax("/data/carbonsources", {
+        "success" : function (data, textStatus, response) {
+            jQuery.extend(EDDData, data.EDDData);
+            EDDAutoComplete.initializeAllPageElements();
+        }
+    }).fail(function (x, s, e) {
+        alert(s);
+    });
+});
+
+//]]>
+</script>
+
+<script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
+<script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
+<script type="text/javascript" src="{% static 'main/js/Autocomplete.js' %}"></script>
+
+{% endblock js_css %}
+
+{% block head_title %}
+Carbon sources
+{% endblock head_title %}
+
+{% block body_title %}
+EDD administration: Carbon sources
+{% endblock body_title %}
+
+{% block content %}
+
+{% include "main/include_messages.html" %}
+
+<div class="pageSection disclose discloseHide">
+  <div class="sectionHead">
+    <span class="discloseLink">Add A New Carbon Source</span>
+  </div>
+  <div class="sectionContent discloseBody">
+    <form method="post" action="/admin/carbonsources">
+      {% csrf_token %}
+      <table class="formTable">
+        <tr>
+          <td style="text-align:right;"><p>Carbon Source:</p></td>
+          <td>
+            <input type="text" size="40" name="newcsourcename" value="" />
+          </td>
+        </tr>
+        <tr>
+          <td style="text-align:right;"><p>Volume:</p></td>
+          <td>
+            <input type="number" size="5" name="newcsourcevolume" value=""/>g/L
+          </td>
+        </tr>
+        <tr>
+          <td style="text-align:right;"><p>Labeling:</p></td>
+          <td>
+            <input type="text" size="60" name="newcsourcelabeling" value="" />
+          </td>
+        </tr>
+        <tr>
+          <td style="text-align:right;vertical-align:top;padding-top:12px;">
+            <p>Notes:</p>
+          </td>
+          <td style="vertical-align:top;padding-top:12px;">
+            <textarea style="height:3.5em;"
+                      rows="3" cols="75"
+                      name="newcsourcenotes"></textarea>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="2" style="padding-top:8px;text-align:right;">
+            <input type="submit" name="action" value="Add" />
+          </td>
+        </tr>
+      </table>
+    </form>
+  </div>
+</div>
+
+<div class="pageSection disclose off" id="editCSourceShow">
+  <div class="sectionHead">
+     <span class="discloseLink">Edit A Carbon Source</span>
+  </div>
+  <div class="sectionContent discloseBody">
+    <form method="post" action="/admin/carbonsources">
+      {% csrf_token %}
+      <input type="hidden" name="csourceidtoedit" value="" />
+      <table class="formTable">
+        <tr>
+          <td style="text-align:right;"><p>Carbon Source:</p></td>
+          <td>
+            <input type="text" size="40" name="csourcename" value="" />
+          </td>
+        </tr>
+        <tr>
+          <td style="text-align:right;"><p>Volume:</p></td>
+          <td>
+            <input type="number" size="5" name="csourcevolume" value=""/>g/L
+          </td>
+        </tr>
+        <tr>
+          <td style="text-align:right;"><p>Labeling:</p></td>
+          <td>
+            <input type="text" size="60" name="csourcelabeling" value="" />
+          </td>
+        </tr>
+        <tr>
+          <td style="text-align:right;vertical-align:top;padding-top:12px;">
+            <p>Notes:</p>
+          </td>
+          <td style="vertical-align:top;padding-top:12px;">
+              <textarea style="height:3.5em;"
+                      rows="3" cols="75"
+                      name="csourcenotes"></textarea>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="2" style="text-align:right;padding-top:8px;">
+              <input type="checkbox"
+                      name="csdisabled"
+                      id="cSourceDisabledCheckbox" value="1" />
+              <label style="margin-right:10px;" for="cSourceDisabledCheckbox">
+                Disabled</label>            
+              <input type="button" name="none" value="Cancel"
+                onclick='EDDEdit.cancel("editCSourceShow","editCSourceHide");'/>
+              <input type="submit" name="action" value="Save" />
+          </td>
+        </tr>
+      </table>
+    </form>
+  </div>
+</div>
+
+<div class="pageSection">
+  <form method="post">
+    <div class="sectionHead">
+      Carbon Sources
+      <input type="button"
+            class="tableControl"
+            tableControlType="showRowsButton"
+            id="disabledButton"
+            name="action"
+            value="Show Disabled"
+            enabledLabel="Show Disabled"
+            disabledLabel="Hide Disabled"
+            defaultState=1
+            rowsToShow="" />
+    </div>
+    <table cellpadding="0" cellspacing="0"
+           class="dataTable sortable dragboxes hastablecontrols"
+           rowToggleControls="disabledButton"
+           editformshow="editCSourceShow"
+           editformhide="editCSourceHide">
+      <thead>
+        <tr class="columnLabels">
+          <th class="sortheader" style="text-align:left" sortvalues="">
+            <div>Carbon Source</div>
+          </th>
+          <th class="sortheader" style="text-align:left" sortvalues="">
+            <div>Volume</div>
+          </th>
+          <th class="sortheader" style="text-align:left" sortvalues="">
+            <div>Labeling</div>
+          </th>
+          <th class="sortheader" style="text-align:left">
+            <div>Notes</div>
+          </th>
+          <th class="sortheader smaller" style="text-align:right" sortvalues="">
+            <div># Lines</div>
+          </th>
+          <th class="sortheader smaller" style="text-align:right" sortvalues="">
+            <div># Studies</div>
+          </th>
+          <th class="sortheader" style="text-align:center" sortvalues="">
+            <div>Created By</div>
+          </th>
+          <th class="sortheader" style="text-align:left;border-right-width:0px" sortvalues="">
+            <div>Creation Date</div>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for cs in carbon_sources %}
+        <tr class="{% cycle 'stripeRowA' 'stripeRowB' %}">
+          <td class="popupcell nowrap">
+            <div class="p"><div class="q">
+              <div class="r">{{ cs.name }}</div>
+              <div class="s"><div class="t">
+                {% if cs.was_modified %}
+                Modified: {{ cs.last_modified }}
+                <hr/>
+                {% endif %}
+                <a href="#editform" onclick='OnEdit(this, {{cs.id}});'>Edit</a>
+              </div></div>
+            </div></div>
+          </td>
+          <td align="right">{{ cs.volume|floatformat }}</td>
+          <td>{{ cs.labeling }}</td>
+          <td style="white-space:pre-wrap;">{{ cs.description }}</td>
+          <td align="right">{{ cs.n_lines }}</td>
+          <td align="right">{{ cs.n_studies }}</td>
+          <td align="center">{{ cs.created_by }}</td>
+          <td>{{ cs.date_created }}</td>
+        </tr>
+        {% endfor %}<!-- carbon_sources -->
+      </tbody>
+    </table>
+  </form>
+</div>
+
+{% endblock content %}

@@ -118,7 +118,7 @@ class MetadataGroup(models.Model):
     """
     class Meta:
         db_table = 'metadata_group'
-    group_name = models.CharField(max_length=255)
+    group_name = models.CharField(max_length=255, unique=True)
 
     def __str__(self):
         return self.group_name
@@ -238,6 +238,9 @@ class EDDObject(models.Model):
             return "N/A"
         else :
             return updated.format_timestamp("%b %d %Y, %I:%M%p")
+
+    def was_modified (self) :
+        return self.updates.count() > 1
 
     @property
     def date_created (self) :
@@ -569,6 +572,13 @@ class Protocol(EDDObject):
         else :
             return "Unknown"
 
+# methods used both in Strain and CarbonSource
+def _n_lines (self) :
+    return self.line_set.count()
+
+def _n_studies (self) :
+    lines = self.line_set.all().select_related("study")
+    return len(set([ l.study.pk for l in lines ]))
 
 class Strain(EDDObject):
     """
@@ -598,13 +608,10 @@ class Strain(EDDObject):
         }
 
     @property
-    def n_lines (self) :
-        return self.line_set.count()
+    def n_lines (self) : return _n_lines(self)
 
     @property
-    def n_studies (self) :
-        lines = self.line_set.all().select_related("study")
-        return len(set([ l.study.pk for l in lines ]))
+    def n_studies (self) : return _n_studies(self)
 
 class CarbonSource(EDDObject):
     """
@@ -620,16 +627,23 @@ class CarbonSource(EDDObject):
 
     def to_json (self) :
         return {
+            "id" : self.pk,
             "carbon" : self.name,
             "labeling" : self.labeling,
             "initials" : None, # TODO
             "vol" : self.volume,
             "mod" : self.mod_epoch(),
             "modstr" : str(self.updated()),
-            "ainfo" : None, # TODO
+            "ainfo" : self.description,
             "userid" : None, # TODO
             "disabled" : not self.active,
         }
+
+    @property
+    def n_lines (self) : return _n_lines(self)
+
+    @property
+    def n_studies (self) : return _n_studies(self)
 
 
 class Line(EDDObject):
