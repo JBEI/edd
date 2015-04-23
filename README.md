@@ -8,15 +8,24 @@
 ### MacOS X
  * Install XCode (and associated Developer Tools) via the App Store
     * As of OS X 10.9 "Mavericks": `xcode-select --install` to just get command-line tools
+    * Establish `/usr/include` with: ``sudo ln -s `xcrun --show-sdk-path`/usr/include /usr/include``
 
  * [Homebrew](http://brew.sh)
     * `ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"`
     * `brew doctor`
 
- * [pip](https://pip.pypa.io)
-    * Download get-pip.py, run `sudo python get-pip.py`
+ * Replace default OS X version of Python with the more up-to-date Homebrew version
+    * `brew install python`
+    * May need to reload shell to see the proper Python version
 
- * Establish `/usr/include` with: ``sudo ln -s `xcrun --show-sdk-path`/usr/include /usr/include``
+ * Replace default OS X version of OpenSSL
+    * `brew install OpenSSL`
+
+ * [pip](https://pip.pypa.io)
+    * Should be installed as part of Homebrew install of Python
+    * For latest version: `sudo pip install --upgrade --no-use-wheel pip`
+    * Also a good idea to: `sudo pip install --upgrade setuptools`
+    * Manually install by downloading get-pip.py, run `sudo python get-pip.py`
 
  * PostgreSQL (required for installing psycopg2 driver)
     * `brew install postgresql`
@@ -61,6 +70,12 @@
         * "Arrow is a Python library that offers a sensible, human-friendly approach to creating,
           manipulating, formatting and converting dates, times, and timestamps."
         * `sudo pip install arrow`
+    * [cryptography](https://cryptography.io/en/latest/)
+        * Adds some crypto libraries to help play nice with TLS certificates
+        * Needs additional env flags to ensure using Brew-installed OpenSSL
+        * `env ARCHFLAGS="-arch x86_64" LDFLAGS="-L/usr/local/opt/openssl/lib"
+            CFLAGS="-I/usr/local/opt/openssl/include" pip install cryptography`
+            * May need to include `--upgrade --force-reinstall` flags after `install` in prior command
     * [Django](https://www.djangoproject.com/)
         * MVC web framework used to develop EDD.
         * `sudo pip install Django`
@@ -83,7 +98,7 @@
         * `sudo pip install django-registration-redux`
     * [requests](http://docs.python-requests.org/en/latest/)
         * "Requests is an Apache2 Licensed HTTP library, written in Python, for human beings."
-        * `sudo pip install requests`
+        * `sudo pip install requests[security]`
     * [psycopg2](http://initd.org/psycopg/)
         * Database driver/adapter for PostgreSQL in Python.
         * `sudo pip install psycopg2`

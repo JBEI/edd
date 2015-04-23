@@ -1018,6 +1018,7 @@ class Measurement(models.Model):
     compartment = models.CharField(max_length=1,
                                    choices=MeasurementCompartment.GROUP_CHOICE,
                                    default=MeasurementCompartment.UNKNOWN)
+    # TODO: verify what this value means; carbon ratio data if 1? should be parameter of MeasurementType?
     measurement_format = models.IntegerField(default=0)
 
     def to_json(self):
@@ -1027,6 +1028,7 @@ class Measurement(models.Model):
             "assay": self.assay.pk,
             "type": self.measurement_type.pk,
             "compartment": self.compartment,
+            "format": self.measurement_format,
             "values": map(lambda p: p.to_json(), points),
             "x_units": self.x_units.pk,
             "y_units": self.y_units.pk,
