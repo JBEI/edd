@@ -3040,7 +3040,9 @@ class DataGridSpecAssays extends DataGridSpecBase {
                     var measure:any = EDDData.AssayMeasurements[measureId] || {},
                         data:any = measure.values || {};
                     data.forEach((point) => {
-                        (timeCount[point.x] = timeCount[point.x] || 0)++;
+                        timeCount[point.x] = timeCount[point.x] || 0;
+                        // Typescript compiler does not like using increment operator on expression
+                        ++timeCount[point.x];
                     });
                 });
                 // map the counts to [x, y] tuples, sorted by x value

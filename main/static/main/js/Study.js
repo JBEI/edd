@@ -2607,106 +2607,50 @@ var DataGridSpecAssays = (function (_super) {
         });
     };
     DataGridSpecAssays.prototype.generateMeasuringTimesCells = function (gridSpec, index) {
-        var aRecord = EDDData.Assays[index];
-        var mIDs = (aRecord.metabolites || []);
-        var cells;
-        // If the number of IDs is different from the count, we most likely haven't fetched full
-        // measurement records yet.  So we should just declare a single row that is "waiting".
-        if (mIDs.length != aRecord.met_c) {
-            cells = [
-                new DataGridDataCell(gridSpec, index, {})
-            ];
-        }
-        else {
-            var resolvedNames = {};
-            mIDs.forEach(function (mID) {
-                resolvedNames[mID] = Utl.EDD.resolveMeasurementRecordToName(EDDData.AssayMeasurements[mID]);
+        var tupleTimeCount = function (value, key) {
+            return [key, value];
+        }, sortByTime = function (a, b) {
+            var y = parseFloat(a[0]), z = parseFloat(b[0]);
+            return ((y > z) - (z > y));
+        }, svgCellForTimeCounts = function (ids) {
+            var consolidated, svg = '', timeCount = {};
+            // count values at each x for all measurements
+            ids.forEach(function (measureId) {
+                var measure = EDDData.AssayMeasurements[measureId] || {}, data = measure.values || {};
+                data.forEach(function (point) {
+                    timeCount[point.x] = timeCount[point.x] || 0;
+                    // Typescript compiler does not like using increment operator on expression
+                    ++timeCount[point.x];
+                });
             });
-            mIDs.sort(function (a, b) {
-                a = resolvedNames[a].toLowerCase();
-                b = resolvedNames[b].toLowerCase();
-                return ((a > b) - (b > a));
+            // map the counts to [x, y] tuples, sorted by x value
+            consolidated = $.map(timeCount, tupleTimeCount).sort(sortByTime);
+            // generate SVG string
+            if (consolidated.length) {
+                svg = gridSpec.assembleSVGStringForDataPoints(consolidated, '');
+            }
+            return new DataGridDataCell(gridSpec, index, {
+                'contentString': svg
             });
-            cells = mIDs.map(function (mID, i) {
-                var amRecord = EDDData.AssayMeasurements[mID];
-                var svgStr = '';
-                var data = amRecord.d || [];
-                if (data.length) {
-                    svgStr = gridSpec.assembleSVGStringForDataPoints(data, amRecord.mf == 1 ? 'carbon' : '');
-                }
+        };
+        return gridSpec.generateMeasurementCells(gridSpec, index, {
+            'metaboliteToValue': function (measureId) {
+                var measure = EDDData.AssayMeasurements[measureId] || {}, mtype = EDDData.MeasurementTypes[measure.type] || {};
+                return { 'name': mtype.name || '', 'id': measureId, 'measure': measure };
+            },
+            'metaboliteValueSort': function (a, b) {
+                var y = a.name.toLowerCase(), z = b.name.toLowerCase();
+                return ((y > z) - (z > y));
+            },
+            'metaboliteValueToCell': function (value) {
+                var measure = value.measure || {}, format = measure.format === 1 ? 'carbon' : '', data = value.measure.values || [], svg = gridSpec.assembleSVGStringForDataPoints(data, format);
                 return new DataGridDataCell(gridSpec, index, {
-                    'contentString': svgStr
+                    'contentString': svg
                 });
-            });
-        }
-        // Transcriptomics and proteomics each get single aggregate cells.
-        if (aRecord.tra_c) {
-            var tIDs = (aRecord.transcriptions || []);
-            var pointCountsByTime = {};
-            // Walk through all the data points in all the measurements and count the occurrences of
-            // each timestamp
-            tIDs.forEach(function (tID) {
-                var amRecord = EDDData.AssayMeasurements[tID];
-                var data = amRecord.d || [];
-                data.forEach(function (point) {
-                    if (typeof pointCountsByTime[point[0]] === "undefined") {
-                        pointCountsByTime[point[0]] = 0;
-                    }
-                    pointCountsByTime[point[0]] += 1;
-                });
-            });
-            // Get a sorted array of all the timestamps we've seen
-            var times = Object.keys(pointCountsByTime);
-            times.sort(function (a, b) {
-                a = parseFloat(a);
-                b = parseFloat(b);
-                return ((a > b) - (b > a));
-            });
-            // Build a single data string with the values being the count of measurements at each
-            // timestamp
-            var consolidatedData = times.map(function (t) {
-                return [t, pointCountsByTime[t]];
-            });
-            var svgStr = '';
-            if (consolidatedData.length) {
-                svgStr = gridSpec.assembleSVGStringForDataPoints(consolidatedData, '');
-            }
-            cells.push(new DataGridDataCell(gridSpec, index, {
-                'contentString': svgStr
-            }));
-        }
-        if (aRecord.pro_c) {
-            // Same as the Transcriptomics section
-            var pIDs = (aRecord.proteins || []);
-            var pointCountsByTime = {};
-            pIDs.forEach(function (pID) {
-                var amRecord = EDDData.AssayMeasurements[pID];
-                var data = amRecord.d || [];
-                data.forEach(function (point) {
-                    if (typeof pointCountsByTime[point[0]] === "undefined") {
-                        pointCountsByTime[point[0]] = 0;
-                    }
-                    pointCountsByTime[point[0]] += 1;
-                });
-            });
-            var times = Object.keys(pointCountsByTime);
-            times.sort(function (a, b) {
-                a = parseFloat(a);
-                b = parseFloat(b);
-                return ((a > b) - (b > a));
-            });
-            var consolidatedData = times.map(function (t) {
-                return [t, pointCountsByTime[t]];
-            });
-            var svgStr = '';
-            if (consolidatedData.length) {
-                svgStr = gridSpec.assembleSVGStringForDataPoints(consolidatedData, '');
-            }
-            cells.push(new DataGridDataCell(gridSpec, index, {
-                'contentString': svgStr
-            }));
-        }
-        return cells;
+            },
+            'transcriptToCell': svgCellForTimeCounts,
+            'proteinToCell': svgCellForTimeCounts
+        });
     };
     DataGridSpecAssays.prototype.generateExperimenterCells = function (gridSpec, index) {
         var exp = EDDData.Assays[index].exp;
