@@ -173,6 +173,106 @@ class SolrTests(TestCase):
         self.assertEqual(post_add['response']['numFound'], 1, "Added study was not found in query")
 
 
+class LineTests (TestCase) : # XXX also Strain, CarbonSource
+    def setUp (self) :
+        TestCase.setUp(self)
+        user1 = User.objects.create_user(username="admin",
+            email="nechols@lbl.gov", password='12345')
+        study1 = Study.objects.create(name='Test Study 1', description='')
+        study2 = Study.objects.create(name='Test Study 2', description='')
+        cs1 = CarbonSource.objects.create(name="Carbon source 1",
+            labeling="100% unlabeled", volume=50.0, description="Desc 1")
+        cs2 = CarbonSource.objects.create(name="Carbon source 2",
+            labeling="20% 13C", volume=100.0)
+        cs3 = CarbonSource.objects.create(name="Carbon source 3",
+            labeling="40% 14C", volume=100.0)
+        strain1 = Strain.objects.create(name="Strain 1",
+            description="JBEI strain 1",
+            registry_url="http://registry.jbei.org/strain/666")
+        strain2 = Strain.objects.create(name="Strain 2")
+        line1 = study1.line_set.create(name="Line 1", description="mutant 1",
+            experimenter=user1, contact=user1)
+        line1.carbon_source.add(cs1)
+        line2 = study1.line_set.create(name="Line 2", description="mutant 2",
+            experimenter=user1, contact=user1)
+        line2.carbon_source.add(cs2)
+        line3 = study2.line_set.create(name="Line 3",
+            description="double mutant",
+            experimenter=user1, contact=user1)
+        line3.carbon_source.add(cs1)
+        line3.carbon_source.add(cs3)
+        line1.strains.add(strain1)
+        line2.strains.add(strain1)
+        line3.strains.add(strain1)
+        line3.strains.add(strain2)
+        mdg1 = MetadataGroup.objects.create(group_name="Line metadata")
+        mdt1 = MetadataType.objects.create(
+            type_name="Media",
+            group=mdg1,
+            for_context=MetadataType.LINE)
+        mdg2 = MetadataGroup.objects.create(group_name="Assay metadata")
+        mdt2 = MetadataType.objects.create(
+            type_name="Sample volume",
+            group=mdg2,
+            for_context=MetadataType.PROTOCOL)
+
+    def test_line_metadata (self) :
+        line1 = Line.objects.get(name="Line 1")
+        line1.set_metadata_item("Media", "M9")
+        self.assertTrue(line1.media == "M9")
+        try :
+            line1.set_metadata_item("Sample volume", 1.5)
+        except ValueError as e :
+            pass
+        else :
+            raise Exception("Should have caught a ValueError here...")
+
+    def test_line_json (self) :
+        line1 = Line.objects.get(name="Line 1")
+        line1.set_metadata_item("Media", "M9")
+        json_dict = line1.to_json()
+        # FIXME don't we want recognizable string keys for metadata?
+        #print json_dict['meta']
+        #self.assertTrue(json_dict['meta'] == {"Media" : "M9"})
+
+    def test_strain (self) :
+        strain1 = Strain.objects.get(name="Strain 1")
+        strain2 = Strain.objects.get(name="Strain 2")
+        self.assertTrue(strain1.n_lines == 3)
+        self.assertTrue(strain1.n_studies == 2)
+        self.assertTrue(strain2.n_lines == 1)
+        self.assertTrue(strain2.n_studies == 1)
+        json_dict = strain1.to_json()
+        self.assertTrue(json_dict['registry_url'] == "http://registry.jbei.org/strain/666")
+        self.assertTrue(json_dict['desc'] == "JBEI strain 1")
+        line1 = Line.objects.get(name="Line 1")
+        line2 = Line.objects.get(name="Line 2")
+        line3 = Line.objects.get(name="Line 3")
+        self.assertTrue(line1.primary_strain_name == "Strain 1")
+        self.assertTrue(line3.primary_strain_name == "Strain 1")
+        self.assertTrue(line1.strain_ids == "Strain 1")
+        self.assertTrue(line1.strain_ids == line2.strain_ids)
+        self.assertTrue(line3.strain_ids == "Strain 1,Strain 2")
+
+    def test_carbon_source (self) :
+        line1 = Line.objects.get(name="Line 1")
+        line3 = Line.objects.get(name="Line 3")
+        cs1 = CarbonSource.objects.get(name="Carbon source 1")
+        cs2 = CarbonSource.objects.get(name="Carbon source 2")
+        self.assertTrue(cs1.n_lines == 2)
+        self.assertTrue(cs1.n_studies == 2)
+        self.assertTrue(cs2.n_lines == 1)
+        self.assertTrue(cs2.n_studies == 1)
+        json_dict = cs1.to_json()
+        self.assertTrue(json_dict['labeling'] == "100% unlabeled")
+        self.assertTrue(line1.carbon_source_labeling == "100% unlabeled")
+        self.assertTrue(line1.carbon_source_name == "Carbon source 1")
+        self.assertTrue(line1.carbon_source_info ==
+            "Carbon source 1 (100% unlabeled)")
+        self.assertTrue(line3.carbon_source_info ==
+            "Carbon source 1 (100% unlabeled),Carbon source 3 (40% 14C)")
+
+
 # XXX because there's so much overlap in functionality and the necessary setup
 # is somewhat involved, this set of tests includes multiple models, focused
 # on assay data and associated objects.
@@ -246,6 +346,29 @@ class AssayDataTests(TestCase) :
         self.assertTrue(p3.categorization == "Unknown")
         self.assertTrue(p1.to_json() == {'disabled': False, 'name': u'gc-ms'})
         self.assertTrue(p3.to_json()=={'disabled':True,'name':u'New protocol'})
+        user1 = User.objects.get(username="admin")
+        protocol4 = Protocol.from_form(
+            name="Another protocol",
+            user=user1,
+            variant_of_id=p3.id)
+        try :
+            protocol5 = Protocol.from_form(
+                name="Another protocol",
+                user=user1,
+                variant_of_id=p3.id)
+        except ValueError as e :
+            self.assertTrue(str(e) ==
+                "There is already a protocol named 'Another protocol'.")
+        else :
+            raise Exception("Should have caught a ValueError...")
+        try :
+            protocol5 = Protocol.from_form(
+                name="",
+                user=user1)
+        except ValueError as e :
+            self.assertTrue(str(e) == "Protocol name required.")
+        else :
+            raise Exception("Should have caught a ValueError...")
 
     def test_assay (self) :
         assay = Assay.objects.get(name="Assay 1")
@@ -600,10 +723,19 @@ def setup_export_data () :
     study1 = Study.objects.create(name='Test Study 1', description='')
     UserPermission.objects.create(study=study1, permission_type='R',
         user=user1)
+    cs1 = CarbonSource.objects.create(name="Carbon source",
+        volume=10.0)
     line1 = study1.line_set.create(name="Line 1", description="",
         experimenter=user1, contact=user1)
+    line1.carbon_source.add(cs1)
     line2 = study1.line_set.create(name="Line 2", description="",
         study=study1, experimenter=user1, contact=user1)
+    line2.carbon_source.add(cs1)
+    strain1 = Strain.objects.create(name="Strain 1",
+        description="JBEI strain 1",
+        registry_url="http://registry.jbei.org/strain/666")
+    strain2 = Strain.objects.create(name="Strain 2", active=False)
+    line1.strains.add(strain1)
     protocol1 = Protocol.objects.create(name="GC-MS", owned_by=user1)
     protocol2 = Protocol.objects.create(name="OD600", owned_by=user1)
     protocol3 = Protocol.objects.create(name="HPLC", owned_by=user1)
@@ -874,9 +1006,26 @@ class UtilityTests (TestCase) :
         TestCase.setUp(self)
         setup_export_data()
 
-    def test_get_edddata_users (self) :
+    def test_get_edddata (self) :
         users = main.utilities.get_edddata_users()
         #print users
+        meas = main.utilities.get_edddata_measurement()
+        self.assertTrue(
+          sorted([m['name'] for k,m in meas['MetaboliteTypes'].iteritems()]) ==
+          [u'Acetate', u'CO2', u'CO2 production', u'D-Glucose', u'O2',
+           u'O2 consumption', u'Optical Density'])
+        cs = main.utilities.get_edddata_carbon_sources()
+        #print cs
+        strains = main.utilities.get_edddata_strains()
+        self.assertTrue(len(strains['EnabledStrainIDs']) == 1)
+        misc = main.utilities.get_edddata_misc()
+        misc_keys = sorted(["UnitTypeIDs", "UnitTypes", "MediaTypes", "UserIDs",
+            "EnabledUserIDs", "Users", "MetaDataTypeIDs", "MetaDataTypes",
+            "MeasurementTypeCompartmentIDs", "MeasurementTypeCompartments"])
+        self.assertTrue(sorted(misc.keys()) == misc_keys)
+        study = Study.objects.get(name="Test Study 1")
+        data = main.utilities.get_edddata_study(study)
+        #print data
 
     def test_interpolate (self) :
         assay = Assay.objects.get(name="Assay 1")
@@ -899,3 +1048,24 @@ class UtilityTests (TestCase) :
         self.assertTrue(ids1 == ids2 == sorted(ids3))
         study = Study.objects.get(name="Test Study 1")
         lines2 = main.utilities.get_selected_lines(form1, study)
+
+    def test_line_export_base (self) :
+        study = Study.objects.get(name="Test Study 1")
+        data = main.utilities.line_export_base(
+            study=study,
+            lines=study.line_set.all())
+        data._fetch_cache_data()
+        assay = Assay.objects.get(name="Assay 1")
+        m = data._get_measurements(assay.id)
+        self.assertTrue(len(m) == 2)
+        md = data._get_measurement_data(m[0].id)
+        self.assertTrue(len(md) == 6)
+        mt = data._get_measurement_type(m[0].id)
+        if mt.type_name != "D-Glucose" : # BUG?
+            print mt.type_name, m[0].id
+            print data._measurement_types[m[0].id]
+        self.assertTrue(mt.type_name == "D-Glucose")
+        mu = data._get_y_axis_units_name(m[1].id)
+        self.assertTrue(mu == "mM")
+        met = data._get_metabolite_measurements(assay.id)
+        self.assertTrue(len(met) == 2)

@@ -15,9 +15,7 @@ from django.views.decorators.csrf import csrf_exempt
 from main.forms import CreateStudyForm
 from main.models import *
 from main.solr import StudySearch
-from main.utilities import get_edddata_study, get_edddata_misc, \
-    get_edddata_users, get_selected_lines, JSONDecimalEncoder, \
-    get_edddata_measurement, get_edddata_strains
+from main.utilities import *
 import main.sbml_export
 import main.data_export
 from io import BytesIO
@@ -264,14 +262,16 @@ def study_export_sbml (request, study) :
             error_message = str(e)
         else :
             if form.get("download", None) :
-                timestamp = float(form["timestamp"])
-                sbml = manager.as_sbml(timestamp)
-                response = HttpResponse(sbml,
+                timestamp_str = form["timestamp"]
+                if (timestamp_str != "") :
+                    timestamp = float(timestamp_str)
+                    sbml = manager.as_sbml(timestamp)
+                    response = HttpResponse(sbml,
                     content_type="application/sbml+xml")
-                file_name = manager.output_file_name(timestamp)
-                response['Content-Disposition'] = \
-                    'attachment; filename="%s"' % file_name
-                return response
+                    file_name = manager.output_file_name(timestamp)
+                    response['Content-Disposition'] = \
+                        'attachment; filename="%s"' % file_name
+                    return response
         return render_to_response("main/sbml_export.html",
             dictionary={
                 "data" : manager,
@@ -316,6 +316,7 @@ def admin_protocol_edit (request, protocol_id) :
     messages = {}
     protocol = Protocol.objects.get(pk=protocol_id)
     other_protocols = Protocol.objects.all().exclude(pk=protocol_id)
+    # FIXME this is inelegant...
     if (request.method == "GET") :
         delete_attachment_id = request.GET.get("removeAttachment", None)
         if (delete_attachment_id is not None) :
@@ -361,6 +362,8 @@ def admin_protocol_edit (request, protocol_id) :
         context_instance=RequestContext(request))
 
 # /admin/measurements
+# TODO this view is probably at the top of my list of things we should refactor
+# once the port is more or less complete
 def admin_measurements (request) :
     if (not request.user.is_staff) :
         return HttpResponseForbidden("You do not have administrative access.")
@@ -369,6 +372,7 @@ def admin_measurements (request) :
         action = request.POST.get("action", None)
         # multiple forms on one page
         try :
+            # FIXME this is inelegant...
             if (action == "addKeyword") :
                 kw = MetaboliteKeyword.objects.create(
                     name=request.POST["keywordname"],
@@ -381,7 +385,7 @@ def admin_measurements (request) :
                     alternate_names=request.POST["alternate_names"])
                 messages['success'] = "Measurement unit '%s' added." % \
                     unit.unit_name
-            else :
+            else : # TODO
                 pass
         except ValueError as e :
             messages['error'] = str(e)
@@ -395,6 +399,49 @@ def admin_measurements (request) :
         },
         context_instance=RequestContext(request))
 
+# /admin/carbonsources
+def admin_carbonsources (request) :
+    if (not request.user.is_staff) :
+        return HttpResponseForbidden("You do not have administrative access.")
+    messages = {}
+    if (request.method == "POST") :
+        form = request.POST
+        action = form.get("action", None)
+        print action
+        try :
+            # FIXME
+            update = Update.load_request_update(request)
+            if (action == "Add") :
+                name = form.get("newcsourcename")
+                if (name == "") :
+                    raise ValueError("Carbon source name must not blank.")
+                cs = CarbonSource.objects.create(
+                    name=name,
+                    description=form.get("newcsourcenotes"),
+                    volume=form.get("newcsourcevolume"),
+                    labeling=form.get("newcsourcelabeling"))
+                cs.updates.add(update)
+                messages['success'] = "Carbon source '%s' added." % cs.name
+            elif (action == "Save") :
+                cs = CarbonSource.objects.get(id=form.get("csourceidtoedit"))
+                cs.update_name_from_form(form, "csourcename")
+                cs.description = form.get("csourcenotes")
+                cs.volume = float(form.get("csourcevolume"))
+                cs.updates.add(update)
+                cs.save()
+                messages['success'] = "Carbon source '%s' updated." % cs.name
+        except ValueError as e :
+            messages['error'] = str(e)
+    carbon_sources = CarbonSource.all_sorted_by_name().prefetch_related(
+        "updates").prefetch_related("line_set").prefetch_related(
+            "line_set__study")
+    return render_to_response("main/admin_carbon_sources.html",
+        dictionary={
+            "messages" : messages,
+            "carbon_sources" : carbon_sources,
+        },
+        context_instance=RequestContext(request))
+
 # /admin/strains
 def admin_strains (request) :
     if (not request.user.is_staff) :
@@ -404,6 +451,8 @@ def admin_strains (request) :
         form = request.POST
         action = form.get("action", None)
         try :
+            update = Update.load_request_update(request)
+            # FIXME this is inelegant...
             if (action == "Add") :
                 name = form.get("newstrainname", "").strip()
                 if (name == "") :
@@ -411,12 +460,14 @@ def admin_strains (request) :
                 strain = Strain.objects.create(
                     name=name,
                     description=form.get("newstrainlongname"))
+                strain.updates.add(update)
                 messages['success'] = "Strain '%s' added." % name
             else :
                 strain = Strain.objects.get(id=form.get("strainidtoedit"))
                 strain.update_name_from_form(form, "strainname")
                 strain.description = form.get("strainlongname", "")
                 strain.registry_url = form.get("strainurl", "")
+                strain.updates.add(update)
                 strain.save()
                 messages['success'] = "Strain '%s' updated." % strain.name
         except ValueError as e :
@@ -508,13 +559,18 @@ def admin_metadata (request) :
         form = request.POST
         try :
             old_id = request.POST.get("typeidtoedit", None)
+            new_group_name = form.get("newgroupname", "").strip()
+            group = None
+            if (new_group_name != "") :
+                group = MetadataGroup.objects.create(group_name=new_group_name)
             if (old_id is not None) :
                 mdtype = MetadataType.objects.get(pk=old_id)
-                type_name = form.get("newtypename", "").strip()
+                type_name = form.get("typename", "").strip()
                 if (type_name == "") :
                     raise ValueError("Name field must not be blank.")
-                group_id = form.get("typegroup")
-                mdtype.group = MetadataGroup.objects.get(pk=group_id)
+                if (group is None) :
+                    group_id = form.get("typegroup")
+                    mdtype.group = MetadataGroup.objects.get(pk=group_id)
                 mdtype.type_name = type_name
                 mdtype.input_size = int(form.get("typeinputsize", "6"))
                 mdtype.default_value = form.get("typedefaultvalue")
@@ -527,10 +583,12 @@ def admin_metadata (request) :
                 type_name = form.get("newtypename", "").strip()
                 if (type_name == "") :
                     raise ValueError("Name field must not be blank.")
-                group_id = form.get("newtypegroup")
+                if (group is None) :
+                    group_id = form.get("newtypegroup")
+                    group = MetadataGroup.objects.get(pk=group_id)
                 new_type = MetadataType.objects.create(
                     type_name=type_name,
-                    group=MetadataGroup.objects.get(pk=group_id),
+                    group=group,
                     input_size=form.get("newtypeinputsize", None),
                     default_value=form.get("newtypedefaultvalue"),
                     prefix=form.get("newtypeprefix"),
@@ -579,6 +637,10 @@ def data_metadata (request) :
                 { m.id:m.to_json() for m in MetadataType.objects.all() },
         }
     })
+
+# /data/carbonsources
+def data_carbonsources (request) :
+    return JsonResponse({ "EDDData" : get_edddata_carbon_sources() })
 
 # /download/<file_id>
 def download (request, file_id) :

@@ -118,7 +118,7 @@ class MetadataGroup(models.Model):
     """
     class Meta:
         db_table = 'metadata_group'
-    group_name = models.CharField(max_length=255)
+    group_name = models.CharField(max_length=255, unique=True)
 
     def __str__(self):
         return self.group_name
@@ -239,6 +239,9 @@ class EDDObject(models.Model):
         else :
             return updated.format_timestamp("%b %d %Y, %I:%M%p")
 
+    def was_modified (self) :
+        return self.updates.count() > 1
+
     @property
     def date_created (self) :
         updated = self.created()
@@ -260,7 +263,7 @@ class EDDObject(models.Model):
     def get_comment_count(self):
         return self.comments.count()
 
-    def get_metadata_json(self):
+    def get_metadata_json(self): # FIXME not sure this does what we want...
         return self.meta_store
 
     def get_metadata_types(self):
@@ -533,7 +536,7 @@ class Protocol(EDDObject):
         if (name in ["", None]) :
             raise ValueError("Protocol name required.")
         elif (name in all_protocol_names) :
-            raise ValueError("There is already a protocol named '%s'.")
+            raise ValueError("There is already a protocol named '%s'." % name)
         variant_of = None
         if (not variant_of_id in [None, "", "all"]) :
             variant_of = Protocol.objects.get(pk=variant_of_id)
@@ -569,6 +572,13 @@ class Protocol(EDDObject):
         else :
             return "Unknown"
 
+# methods used both in Strain and CarbonSource
+def _n_lines (self) :
+    return self.line_set.count()
+
+def _n_studies (self) :
+    lines = self.line_set.all().select_related("study")
+    return len(set([ l.study.pk for l in lines ]))
 
 class Strain(EDDObject):
     """
@@ -598,13 +608,10 @@ class Strain(EDDObject):
         }
 
     @property
-    def n_lines (self) :
-        return self.line_set.count()
+    def n_lines (self) : return _n_lines(self)
 
     @property
-    def n_studies (self) :
-        lines = self.line_set.all().select_related("study")
-        return len(set([ l.study.pk for l in lines ]))
+    def n_studies (self) : return _n_studies(self)
 
 class CarbonSource(EDDObject):
     """
@@ -620,17 +627,26 @@ class CarbonSource(EDDObject):
 
     def to_json (self) :
         return {
+            "id" : self.pk,
             "carbon" : self.name,
             "labeling" : self.labeling,
-            "initials" : None, # TODO
+            "initials" : self.created_by,
             "vol" : self.volume,
             "mod" : self.mod_epoch(),
             "modstr" : str(self.updated()),
-            "ainfo" : None, # TODO
+            "ainfo" : self.description,
             "userid" : None, # TODO
             "disabled" : not self.active,
         }
 
+    @property
+    def n_lines (self) : return _n_lines(self)
+
+    @property
+    def n_studies (self) : return _n_studies(self)
+
+    def __str__ (self) :
+        return "%s (%s)" % (self.name, self.labeling)
 
 class Line(EDDObject):
     """
@@ -653,6 +669,8 @@ class Line(EDDObject):
     strains = models.ManyToManyField(Strain, db_table='line_strain')
 
     def to_json(self):
+        updated = self.updated()
+        created = self.created()
         return {
             'id': self.pk,
             'name': self.name,
@@ -662,11 +680,11 @@ class Line(EDDObject):
             'replicate': self.replicate.pk if self.replicate else None,
             'contact': { 'user_id': self.contact.pk, 'text': self.contact_extra },
             'experimenter': self.experimenter.pk,
-            'meta': self.get_metadata_json(),
+            'meta': self.get_metadata_json(), # FIXME is this correct?
             'strain': [s.pk for s in self.strains.all()],
             'carbon': [c.pk for c in self.carbon_source.all()],
-            'modified': self.updated().to_json(),
-            'created': self.created().to_json(),
+            'modified': updated.to_json() if updated else None,
+            'created': created.to_json() if created else None,
         }
 
     @property
@@ -689,8 +707,7 @@ class Line(EDDObject):
         String representation of carbon source(s) with labeling included;
         used in views.
         """
-        return ",".join([ "%s (%s)" % (cs.name, cs.labeling)
-                          for cs in self.carbon_source.all() ])
+        return ",".join([ str(cs) for cs in self.carbon_source.all() ])
 
     @property
     def carbon_source_name (self) :
@@ -966,7 +983,7 @@ class Assay(EDDObject):
             "dis" : not self.active,
             "lid" : self.line.pk,
             "pid" : self.protocol.pk,
-            "meta": self.get_metadata_json(),
+            "meta": self.get_metadata_json(), # FIXME
             "mea_c" : len(self.measurement_set.all()),
             "met_c" : len(self.get_metabolite_measurements()),
             "tra_c" : len(self.get_protein_measurements()),
