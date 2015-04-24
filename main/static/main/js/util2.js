@@ -36,3 +36,11 @@ function setupFileDrop (element_id, url, process_result, csrf_token,
     });
   });
 }
+
+function startWaitBadge (selector) {
+  $(selector).css("class", "waitbadge wait");
+};
+
+function stopWaitBadge (element_id) {
+  $(selector).css("class", "waitbadge");
+};

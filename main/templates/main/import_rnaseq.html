@@ -13,7 +13,7 @@ var CSRF_TOKEN = "{{ csrf_token }}";
 /* see http://filedropjs.org */
 var process_result = function (result) {
     $("#data-field").text(result.raw_data);
-    $("#data-table").val(result.table);
+    $("#data-table").val(JSON.stringify(result.table));
     if (result.guessed_data_type) {
       $("#data-type").val(result.guessed_data_type);
     }
@@ -23,20 +23,46 @@ var process_result = function (result) {
     for (var i = 0; i < result.samples.length; i++) {
       $("#assay-id").append($("<option/>").attr("value", i).text(i));
     }
+    $("#n-cols").val(result.samples.length);
     for (var i = 0; i < result.samples.length; i++) {
       var s = result.samples[i];
       var fields = $("#sample-fields-0").clone();
       fields.find("#col-label").text(s.label);
-      fields.find("#assay-id").val(s.assay_id);
-      fields.find("#line-id").val(s.line_id);
+      fields.find("#assay-id").val(s.assay_id).attr("name", "assay-"+i);
+      fields.find("#line-id").val(s.line_id).attr("name", "line-"+i);
+      fields.find("#time-point").attr("name", "time-"+i);
+      fields.find("#desc-field").attr("name", "desc-"+i);
       tbody.append(fields);
       fields.toggle();
     }
   };
+function submit_data (study_id) {
+  var fd = new FormData(document.getElementById("data-form"));
+  jQuery.ajax({
+    url : "/study/" + study_id + "/import/rnaseq/process",
+    type: "POST",
+    data: fd,
+    processData: false,
+    contentType: false,
+    enctype: 'multipart/form-data',
+    success : function (result) {
+      if (result.python_error) {
+        alert(result.python_error);
+      } else {
+        process_result(result);
+      }
+    }
+  });
+};
 $(window).load(function () {
   var study_id = $("#study-id").val();
-  var url = "/study/" + study_id + "/import/rnaseq/parse";
-  setupFileDrop("data-field", url, process_result, CSRF_TOKEN, false);
+  var filedrop_url = "/study/" + study_id + "/import/rnaseq/parse";
+  $("#file-name").live("change", function () {
+    $("#data-field").text("");
+    submit_data(study_id);
+  });
+  setupFileDrop("data-field", filedrop_url, process_result, CSRF_TOKEN, false);
+  $("#process-button").click(function () { submit_data(study_id) });
 });
 </script>
 
@@ -83,8 +109,8 @@ RNA-seq data import
 
 {% block content %}
 
-<form method="post" id="rnaseqForm"
-      action="/study/{{ study.id }}/import/rnaseq">
+<form method="post" id="data-form"
+      action="/study/{{ study.id }}/import/rnaseq/process">
   {% csrf_token %}
   <input type="hidden" name="action" value="parse"/>
   <input type="hidden" name="study_id" value="{{ study.id }}" id="study-id"/>
@@ -92,6 +118,30 @@ RNA-seq data import
 <div class="pageSection" id="dataViewDiv">
   <div class="sectionHead">
     Step 1: Data input
+    <div class="helpBadgeDiv" style="float:left;">Help
+      <div class="helpContent" style="width:540px;">
+        <p>Input must be in tab-separated text format of the following form:
+        <pre>
+GENE  sample1   sample2   sample3   sample4   sample5   sample6
+orf1  25        40        50        1024      1470      1230
+orf2  329       258       407       122       136       117
+...</pre>
+          The samples may be any combination of lines, biological replicates,
+          technical replicates, or timepoints.  Sample labels may correspond
+          to the line name and replica number, but this is not a requirement.
+          You will be asked to disambiguate the
+          data and associate them with existing EDD records in Step 2 below.
+        </p>
+        <p>You may either drag and drop a text file into the input field,
+          select a file by clicking "Choose File", or enter tabular data
+          directly into the field.  For file input the form will be
+          automatically submitted to the server for further processing, and
+          the contents will appear in the input field.  Once the server has
+          read and interpreted the raw input, additional form elements will
+          appear for Step 2.
+        </p>
+      </div>
+    </div>
   </div>
 
   <div class="sectionContent">
@@ -101,7 +151,10 @@ RNA-seq data import
       RPKMs, raw read counts, or a combination of the two (comma-separated).
     </p>
     <textarea name="data" id="data-field"></textarea>
-    <input type="submit" name="submit" value="Process data">
+    <span>
+      <input type="file" name="file_name" id="file-name"/>
+      <button type="button" id="process-button">Process data</button>
+    </span>
   </div>
 </div>
 </form>
@@ -109,11 +162,39 @@ RNA-seq data import
 <form method="post" id="rnaseqForm"
       action="/study/{{ study.id }}/import/rnaseq">
   {% csrf_token %}
-  <input type="hidden" name="file_name" value=""/>
-  <input type="hidden" name="source" value="form"/>
+  <input type="hidden" name="study_id" value="{{ study.id }}" id="study-id"/>
+  <input type="hidden" name="n_cols" value=0" id="n-cols"/>
+  <input type="hidden" name="data_table" id="data-table" value=""/>
 <div class="pageSection" id="disambiguateDiv">
   <div class="sectionHead">
     Step 2: Disambiguate data
+    <div class="helpBadgeDiv" style="float:left;">Help
+      <div class="helpContent">
+        <p>This form is used to link the columns in the uploaded data to
+          existing lines in EDD, and determine how the assay data are input.
+          Samples may be grouped in several ways:
+          <ul style="margin-left: 20px;">
+            <li>One assay per sample, usually with the same timepoint</li>
+            <li>One assay for each group of samples from the same line
+                at different timepoints.</li>
+          </ul>
+        </p>
+        <p>Furthermore:
+          <ul style="margin-left: 20px;">
+            <li>Technical replicates will usually be associated with the
+              same line, but should be separate assays.</li>
+            <li>Biological replicates should be associated with separate lines.
+            </li>
+          </ul>
+        </p>
+        <p>Assay numbers do not have any particular meaning other than being
+          used to group samples within each line: thus assay number 1 for
+          line A is distinct from assay number 1 for line B.  However,
+          the combination of line ID, assay ID, and timepoint for each sample
+          must be unique.
+        </p>
+      </div>
+    </div>
   </div>
 
   <div class="sectionContent">
@@ -135,29 +216,35 @@ RNA-seq data import
         <td class="field-contents"><span id="col-label"></span></td>
         <td class="field-label">Line:</td>
         <td class="field-contents">
-          <select name="line-0" id="line-id">
+          <select name="line" id="line-id">
             <option value="-1">---</option>
             {% for line in lines %}
             <option value="{{ line.id }}">{{ line.name }}</option>
             {% endfor %}<!-- lines -->
           </select>
         </td>
+        <td class="field-label">Assay number:</td>
+        <td class="field-contents">
+          <select name="assay" id="assay-id"></select>
+        </td>
         <td class="field-label">Timepoint:</td>
         <td class="field-contents">
-          <input type="number" name="time-0" class="time-input" value="0"/>
+          <input type="number" name="time" class="time-input"
+                 id="time-point" value="0"/>
           h
         </td>
-        <td class="field-label">Assay ID:</td>
+        <td>Description (optional):</td>
         <td class="field-contents">
-          <select name="assay-0" id="assay-id"></select>
+          <input type="text" style="width: 200px;" name="desc"
+                 id="desc-field"/>
         </td>
       </tr>
       <tbody id="sample-fields"></tbody>
     </table>
+    <input type="submit" value="Import data"/>
   </div>
 </div>
 
-<input type="submit" value="Import data"/>
 </form>
 
 {% endblock content %}

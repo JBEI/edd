@@ -472,9 +472,9 @@ class ImportTests(TestCase) :
             user=user1)
         UserPermission.objects.create(study=study1, permission_type='R',
             user=user2)
-        line1 = study1.line_set.create(name="Line 1", description="",
+        line1 = study1.line_set.create(name="L1", description="Line 1",
             experimenter=user1, contact=user1)
-        line2 = study1.line_set.create(name="Line 2", description="",
+        line2 = study1.line_set.create(name="L2", description="Line 2",
             experimenter=user1, contact=user1)
         protocol1 = Protocol.objects.create(name="GC-MS", owned_by=user1)
         protocol2 = Protocol.objects.create(name="Transcriptomics",
@@ -518,7 +518,7 @@ class ImportTests(TestCase) :
             'enableRow5' : 6,
             'jsonoutput' : """[{"label":"Column 0","name":"Column 0","units":"units","parsingIndex":0,"assay":null,"assayName":null,"measurementType":1,"metadata":{},"singleData":null,"color":"rgb(10, 136, 109)","data":[[0,"0.1"],[1,"0.2"],[2,"0.4"],[4,"1.7"],[8,"5.9"]]},{"label":"Column 1","name":"Column 1","units":"units","parsingIndex":1,"assay":null,"assayName":null,"measurementType":2,"metadata":{},"singleData":null,"color":"rgb(136, 14, 43)","data":[[0,"0.2"],[1,"0.4"],[2,"0.6"],[4,"0.8"],[8,"1.2"]]}]""",
             'masterAssay' : "new",
-            'masterLine' : Line.objects.get(name="Line 1").pk,
+            'masterLine' : Line.objects.get(name="L1").pk,
             'masterMComp' : '',
             'masterMCompValue' : 0,
             'masterMType' : '',
@@ -547,7 +547,7 @@ class ImportTests(TestCase) :
             user=User.objects.get(username="admin"),
             post_data=self.get_form(),
             update=update)
-        assays = Line.objects.get(name="Line 1").assay_set.all()
+        assays = Line.objects.get(name="L1").assay_set.all()
         self.assertTrue(len(assays) == 1)
         meas = assays[0].measurement_set.all()
         self.assertTrue(len(meas) == 2)
@@ -572,8 +572,8 @@ class ImportTests(TestCase) :
             raise Exception("Expected an AssertionError here")
 
     def test_import_rna_seq (self) :
-        line1 = Line.objects.get(name="Line 1")
-        line2 = Line.objects.get(name="Line 2")
+        line1 = Line.objects.get(name="L1")
+        line2 = Line.objects.get(name="L2")
         table1 = [ # FPKM
             ["GENE",  "L1-1", "L1-2", "L2-1", "L2-2"],
             ["gene1", "5.34", "5.32", "7.45", "7.56"],
@@ -595,6 +595,12 @@ class ImportTests(TestCase) :
             meas_times=[0]*4)
         self.assertTrue(result.n_meas == result.n_meas_data == 8)
         self.assertTrue(result.n_assay == 4 and result.n_meas_type == 2)
+        result = main.data_import.interpret_raw_rna_seq_data(
+            raw_data="\n".join([ "\t".join(row) for row in table1 ]),
+            study=Study.objects.get(name="Test Study 1"))
+        self.assertTrue(result["guessed_data_type"] == "fpkm")
+        self.assertTrue(result["samples"][0]["line_id"] == line1.pk)
+        self.assertTrue(result["samples"][2]["line_id"] == line2.pk)
         # one assay, two timepoints per line
         result = main.data_import.import_rna_seq(
             study=Study.objects.get(name="Test Study 1"),
@@ -658,6 +664,10 @@ class ImportTests(TestCase) :
             pass
         else :
             raise Exception("ValueError expected")
+        result = main.data_import.interpret_raw_rna_seq_data(
+            raw_data="\n".join([ "\t".join(row) for row in table3 ]),
+            study=Study.objects.get(name="Test Study 1"))
+        self.assertTrue(result["guessed_data_type"] == "combined")
 
 class SBMLUtilTests (TestCase) :
     """
@@ -676,8 +686,9 @@ class SBMLUtilTests (TestCase) :
         guesses = \
           main.sbml_export.generate_species_name_guesses_from_metabolite_name(
             "acetyl-CoA")
-        assert (guesses == ['acetyl-CoA', 'acetyl_DASH_CoA', 'M_acetyl-CoA_c',
-                            'M_acetyl_DASH_CoA_c', 'M_acetyl_DASH_CoA_c_'])
+        self.assertTrue(
+            guesses == ['acetyl-CoA', 'acetyl_DASH_CoA', 'M_acetyl-CoA_c',
+                        'M_acetyl_DASH_CoA_c', 'M_acetyl_DASH_CoA_c_'])
 
     def test_sbml_notes (self) :
         try :
@@ -691,7 +702,7 @@ class SBMLUtilTests (TestCase) :
               "CONCENTRATION_LOWEST"  : [ 0.01 ],
             })
             notes_dict = main.sbml_export.parse_sbml_notes_to_dict(notes)
-            assert (dict(notes_dict) == {
+            self.assertTrue(dict(notes_dict) == {
               'CONCENTRATION_CURRENT': ['0.5'],
               'CONCENTRATION_LOWEST': ['0.01'],
               'CONCENTRATION_HIGHEST': ['1.0'] })
@@ -706,8 +717,8 @@ class SBMLUtilTests (TestCase) :
             sbml_file = os.path.join(dir_name,"fixtures","misc_data",
               "simple.sbml")
             s = main.sbml_export.sbml_info(i_template=0, sbml_file=sbml_file)
-            assert (s.n_sbml_species == 4)
-            assert (s.n_sbml_reactions == 5)
+            self.assertTrue(s.n_sbml_species == 4)
+            self.assertTrue(s.n_sbml_reactions == 5)
             # TODO lots more
 
 
@@ -946,7 +957,7 @@ class ExportTests(TestCase) :
         #for fd in meas.flux_data :
         #  print fd
         # TODO test interpolation of measurements
-        assert (data.available_timepoints == [4.0, 8.0, 12.0, 18.0])
+        self.assertTrue(data.available_timepoints == [4.0, 8.0, 12.0, 18.0])
 
     def test_sbml_export (self) :
         try :
@@ -967,7 +978,7 @@ class ExportTests(TestCase) :
             sbml_out = data.as_sbml(8.0)
             sbml_in = libsbml.readSBMLFromString(sbml_out)
             model = sbml_in.getModel()
-            assert (model is not None)
+            self.assertTrue(model is not None)
             # TODO test contents of file output
 
     def test_data_export_errors (self) :

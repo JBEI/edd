@@ -103,19 +103,7 @@ $(window).load(function () {
 
 {% block content %}
 
-{% if pageError %}
-
-  <div style="padding:1em;color:red;">{{ pageError }}</div>
-
-{% endif %}
-
-{% if pageMessage %}
-
-  <div class="statusMessage">{{ pageMessage }}</div>
-  <p><a href="/study/{{ study.id }}">Return to the Study page</a>
-    or import more data below...</p>
-
-{% endif %}
+{% include "main/include_messages.html" %}
 
 <form method="post" id="assayTableForm" action="/study/{{ study.id }}/import">
 {% csrf_token %}

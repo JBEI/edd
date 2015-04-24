@@ -161,7 +161,7 @@ def study_import_table (request, study) :
     """
     model = Study.objects.get(pk=study)
     protocols = Protocol.objects.all()
-    pageMessage = pageError = None
+    messages = {}
     post_contents = []
     if (request.method == "POST") :
         for key in sorted(request.POST) :
@@ -172,31 +172,76 @@ def study_import_table (request, study) :
         dictionary={
             "study" : model,
             "protocols" : protocols,
-            "pageMessage" : pageMessage,
-            "pageError" : pageError,
+            "message" : messages,
             "post_contents" : "\n".join(post_contents), # XXX DEBUG
         },
         context_instance=RequestContext(request))
 
 # /study/<study_id>/import/rnaseq
 def study_import_rnaseq (request, study) :
+    messages = {}
     model = Study.objects.get(pk=study)
     lines = model.line_set.all()
+    if (request.method == "POST") :
+        try :
+            result = main.data_import.import_rna_seq.from_form(request, model)
+            messages["success"] = "Added %d measurements in %d assays." %\
+                (result.n_assay, result.n_meas)
+        except ValueError as e :
+            messages["error"] = str(e)
+        #else :
+        #    return redirect("/study/%s" % study)
     return render_to_response("main/import_rnaseq.html",
         dictionary={
+            "messages" : messages,
             "study" : model,
             "lines" : lines,
         },
         context_instance=RequestContext(request))
 
 # /study/<study_id>/import/rnaseq/parse
+# FIXME get rid of csrf_exempt
 @csrf_exempt
 def study_import_rnaseq_parse (request, study) :
+    """
+    Parse raw data from an uploaded text file, and return JSON object of
+    processed result.  Result is identical to study_import_rnaseq_process,
+    but this method is invoked by drag-and-drop of a file.
+    """
     model = Study.objects.get(pk=study)
     try :
-        result = main.data_import.process_raw_rna_seq_data(
+        result = main.data_import.interpret_raw_rna_seq_data(
             raw_data=request.read(),
             study=model)
+    except ValueError as e :
+        return JsonResponse({ "python_error" : str(e) })
+    except Exception as e :
+        print e
+    else :
+        return JsonResponse(result)
+
+# /study/<study_id>/import/rnaseq/process
+def study_import_rnaseq_process (request, study) :
+    """
+    Process form submission containing either a file or text field, and
+    return JSON object of processed result.
+    """
+    model = Study.objects.get(pk=study)
+    assert (request.method == "POST")
+    try :
+        data = request.POST.get("data", "").strip()
+        file_name = None
+        if (data == "") :
+            data_file = request.FILES.get("file_name", None)
+            if (data_file is None) :
+                raise ValueError("Either a text file or pasted table is "+
+                    "required as input.")
+            data = data_file.read()
+            file_name = data_file.name
+        result = main.data_import.interpret_raw_rna_seq_data(
+            raw_data=data,
+            study=model,
+            file_name=file_name)
     except ValueError as e :
         return JsonResponse({ "python_error" : str(e) })
     except Exception as e :
