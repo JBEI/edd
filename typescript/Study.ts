@@ -1225,7 +1225,7 @@ module StudyD {
 
         $.each(postFilteringMeasurements, (i, measurementId) => {
             var measurement = EDDData.AssayMeasurements[measurementId],
-                points = (measurement.d ? measurement.d.length : 0),
+                points = (measurement.values ? measurement.values.length : 0),
                 assay, line, protocol, newSet;
             dataPointsTotal += points;
             if (dataPointsDisplayed > 15000) {
@@ -1240,7 +1240,8 @@ module StudyD {
                 'measurementname': Utl.EDD.resolveMeasurementRecordToName(measurement),
                 'name': [line.name, protocol.name, assay.an].join('-'),
                 'units': Utl.EDD.resolveMeasurementRecordToUnits(measurement),
-                'data': measurement.d
+                // FIXME does not handle MeasurementVector data
+                'data': $.map(measurement.values, (d) => [[ d.x, d.y ]] )
             };
             if (measurement.mtdf) newSet.logscale = 1;
             if (line.control) newSet.iscontrol = 1;
@@ -2529,61 +2530,47 @@ class DataGridAssays extends DataGrid {
 
 
     remakeGraphArea() {
-        this.graphRefreshTimerID = 0;    
+        var spec:DataGridSpecAssays = this.getSpec(), g, ids;
+        this.graphRefreshTimerID = 0;
 
-        if (!StudyDGraphing) {
+        if (!StudyDGraphing || !spec || !spec.graphObject) {
             return;
         }
 
-        var spec:DataGridSpecAssays = this.getSpec();
-        var g = spec.graphObject;
-        if (!g) {
-            return;
-        } 
-
+        g = spec.graphObject;
         g.clearAllSets();
+        ids = spec.getRecordIDs();
 
-        var ids = spec.getRecordIDs();
-        for (var x = 0; x < ids.length; x++) {
-            var assayID = ids[x];
-            var assayRecord = EDDData.Assays[assayID];
-            // We wont display items from disabled Assays on the graph
-            if (assayRecord.dis) { continue; }
-            var lineID = assayRecord.lid;
-            var lineRecord = EDDData.Lines[lineID];
-            var pid = assayRecord.pid;
-            var fn = [lineRecord.name, EDDData.Protocols[pid].name, assayRecord.an].join('-');
-
-            var mIDs = (assayRecord.metabolites || []);
-            mIDs = mIDs.concat(assayRecord.transcriptions || [], assayRecord.proteins || []);
-
-            for (var i=0; i < mIDs.length; i++) {
-                var amID = mIDs[i];
-                var measurementRecord = EDDData.AssayMeasurements[amID];
-
-                var mName = Utl.EDD.resolveMeasurementRecordToName(measurementRecord);
-                var mUnits = Utl.EDD.resolveMeasurementRecordToUnits(measurementRecord);
-
-                var newSet:any = {
-                    label: 'dt' + amID,
-                    measurementname: mName,
-                    name: fn,
-                    aid: assayID,
-                    mtid: measurementRecord.mt,
-                    units: mUnits,
-                    data: measurementRecord.d
+        $.each(ids, (x, id) => {
+            var assay:any = EDDData.Assays[id] || {},
+                line:any = EDDData.Lines[assay.lid] || {},
+                protocol, name, measures;
+            if (!assay.active || !line.active) { return; }
+            protocol = EDDData.Protocols[assay.pid] || {};
+            // FIXME just use assay name directly instead of rebuilding each time
+            name = [ line.name, protocol.name, assay.an ].join('-');
+            measures = assay.metabolites || [];
+            measures.concat(assay.transcriptions || [], assay.protiens || []);
+            $.each(measures, (i, measureId) => {
+                var measure = EDDData.AssayMeasurements[measureId],
+                    mName = Utl.EDD.resolveMeasurementRecordToName(measure),
+                    mUnit = Utl.EDD.resolveMeasurementRecordToUnits(measure),
+                    set;
+                set = {
+                    'label': 'dt' + measureId,
+                    'measurementname': mName,
+                    'name': name,
+                    'aid': id,
+                    'mtid': measure.mt,
+                    'units': mUnit,
+                    // FIXME does not handle MeasurementVector data
+                    'data': $.map(measure.values, (d) => [[ d.x, d.y ]] )
                 };
-
-                if (measurementRecord.mtdf == 1) {
-                    newSet.logscale = 1;    // Set a flag for the log10 scale.
-                }
-                if (lineRecord.ctrl) {
-                    newSet.iscontrol = 1;    // Set a flag for drawing as the "control" style.
-                }
-            
-                g.addNewSet(newSet);
-            }
-        }
+                if (measure.mtdf == 1) { set.logscale = true; }
+                if (line.ctrl) { set.iscontrol = true; }
+                g.addNewSet(set);
+            });
+        });
 
         g.drawSets();
     }
@@ -2730,8 +2717,8 @@ class DataGridSpecAssays extends DataGridSpecBase {
             maxForRecord = measures.reduce((prev:number, measureId) => {
                 var measure = EDDData.AssayMeasurements[measureId], maxForMeasure;
                 // reduce to find highest value across all data in measurement
-                maxForMeasure = (measure.d || []).reduce((prev:number, point) => {
-                    return Math.max(prev, parseFloat(point[0]));
+                maxForMeasure = (measure.values || []).reduce((prev:number, point) => {
+                    return Math.max(prev, parseFloat(point.x));
                 }, 0);
                 return Math.max(prev, maxForMeasure);
             }, 0);
