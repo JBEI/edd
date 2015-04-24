@@ -18,6 +18,7 @@ from main.solr import StudySearch
 from main.utilities import *
 import main.sbml_export
 import main.data_export
+import main.data_import
 from io import BytesIO
 import json
 import csv
@@ -176,6 +177,32 @@ def study_import_table (request, study) :
             "post_contents" : "\n".join(post_contents), # XXX DEBUG
         },
         context_instance=RequestContext(request))
+
+# /study/<study_id>/import/rnaseq
+def study_import_rnaseq (request, study) :
+    model = Study.objects.get(pk=study)
+    lines = model.line_set.all()
+    return render_to_response("main/import_rnaseq.html",
+        dictionary={
+            "study" : model,
+            "lines" : lines,
+        },
+        context_instance=RequestContext(request))
+
+# /study/<study_id>/import/rnaseq/parse
+@csrf_exempt
+def study_import_rnaseq_parse (request, study) :
+    model = Study.objects.get(pk=study)
+    try :
+        result = main.data_import.process_raw_rna_seq_data(
+            raw_data=request.read(),
+            study=model)
+    except ValueError as e :
+        return JsonResponse({ "python_error" : str(e) })
+    except Exception as e :
+        print e
+    else :
+        return JsonResponse(result)
 
 # /study/<study_id>/export
 def study_export_table (request, study) :

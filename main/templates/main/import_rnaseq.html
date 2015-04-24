@@ -1,0 +1,163 @@
+
+{% extends "edd_base.html" %}
+{% load staticfiles %}
+
+{% block js_css %}
+    {{ block.super }}
+
+<script type="text/javascript" src="{% static 'main/js/lib/filedrop-min.js' %}"></script>
+<script type="text/javascript" src="{% static 'main/js/util2.js' %}"></script>
+
+<script type="text/javascript">
+var CSRF_TOKEN = "{{ csrf_token }}";
+/* see http://filedropjs.org */
+var process_result = function (result) {
+    $("#data-field").text(result.raw_data);
+    $("#data-table").val(result.table);
+    if (result.guessed_data_type) {
+      $("#data-type").val(result.guessed_data_type);
+    }
+    var tbody = $("#sample-fields");
+    tbody.empty();
+    $("#assay-id").empty();
+    for (var i = 0; i < result.samples.length; i++) {
+      $("#assay-id").append($("<option/>").attr("value", i).text(i));
+    }
+    for (var i = 0; i < result.samples.length; i++) {
+      var s = result.samples[i];
+      var fields = $("#sample-fields-0").clone();
+      fields.find("#col-label").text(s.label);
+      fields.find("#assay-id").val(s.assay_id);
+      fields.find("#line-id").val(s.line_id);
+      tbody.append(fields);
+      fields.toggle();
+    }
+  };
+$(window).load(function () {
+  var study_id = $("#study-id").val();
+  var url = "/study/" + study_id + "/import/rnaseq/parse";
+  setupFileDrop("data-field", url, process_result, CSRF_TOKEN, false);
+});
+</script>
+
+<style>
+#data-field {
+  width: 100%;
+  height: 200px;
+  font-family: Courier, Monaco, monospace;
+  font-size: 11pt;
+}
+td {
+  padding: 2px;
+  margin: 2px;
+}
+#samples-table {
+  margin: 4px 4px 4px 20px;
+}
+.field-label {
+  font-weight: bold;
+}
+.field-contents {
+  padding: 2px 8px 2px 2px;
+}
+.time-input {
+  width: 40px;
+  text-align: right;
+}
+/* http://stackoverflow.com/questions/3790935 */
+input::-webkit-inner-spin-button {
+ /* display: none; <- Crashes Chrome on hover */
+ -webkit-appearance: none;
+ margin: 0; /* <-- Apparently some margin are still there even though it's hidden */
+}
+</style>
+{% endblock js_css %}
+
+{% block head_title %}
+RNA-seq import
+{% endblock head_title %}
+
+{% block body_title %}
+RNA-seq data import
+{% endblock body_title %}
+
+{% block content %}
+
+<form method="post" id="rnaseqForm"
+      action="/study/{{ study.id }}/import/rnaseq">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="parse"/>
+  <input type="hidden" name="study_id" value="{{ study.id }}" id="study-id"/>
+
+<div class="pageSection" id="dataViewDiv">
+  <div class="sectionHead">
+    Step 1: Data input
+  </div>
+
+  <div class="sectionContent">
+    <p>This field should contain tabular gene expression data, with the gene
+      name as the first column, and each sample as successive columns.  The
+      first row should be the column labels.  Values can either be FPKMs or
+      RPKMs, raw read counts, or a combination of the two (comma-separated).
+    </p>
+    <textarea name="data" id="data-field"></textarea>
+    <input type="submit" name="submit" value="Process data">
+  </div>
+</div>
+</form>
+
+<form method="post" id="rnaseqForm"
+      action="/study/{{ study.id }}/import/rnaseq">
+  {% csrf_token %}
+  <input type="hidden" name="file_name" value=""/>
+  <input type="hidden" name="source" value="form"/>
+<div class="pageSection" id="disambiguateDiv">
+  <div class="sectionHead">
+    Step 2: Disambiguate data
+  </div>
+
+  <div class="sectionContent">
+    <div style="padding: 4px;">
+      <span class="field-label">Data type:</span>
+      <select name="data_type" id="data-type">
+        <option value="counts">Raw read counts</option>
+        <option value="fpkm">FPKM or RPKM</option>
+        <option value="combined">Combined counts + FPKMs</option>
+      </select>
+    </div>
+    <div style="padding: 4px;">
+      <b>Data associations:</b>
+      <span id="no-data"><i>(no data entered)</i></span>
+    </div>
+    <table style="padding: 4px;" id="samples-table">
+      <tr id="sample-fields-0" style="display: none;">
+        <td class="field-label">Column:</td>
+        <td class="field-contents"><span id="col-label"></span></td>
+        <td class="field-label">Line:</td>
+        <td class="field-contents">
+          <select name="line-0" id="line-id">
+            <option value="-1">---</option>
+            {% for line in lines %}
+            <option value="{{ line.id }}">{{ line.name }}</option>
+            {% endfor %}<!-- lines -->
+          </select>
+        </td>
+        <td class="field-label">Timepoint:</td>
+        <td class="field-contents">
+          <input type="number" name="time-0" class="time-input" value="0"/>
+          h
+        </td>
+        <td class="field-label">Assay ID:</td>
+        <td class="field-contents">
+          <select name="assay-0" id="assay-id"></select>
+        </td>
+      </tr>
+      <tbody id="sample-fields"></tbody>
+    </table>
+  </div>
+</div>
+
+<input type="submit" value="Import data"/>
+</form>
+
+{% endblock content %}

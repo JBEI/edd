@@ -451,3 +451,43 @@ class import_rna_seq (object) :
                 add_measurement_data(all_fpkms, meas_units["fpkm"])
             if (len(all_counts) > 0) :
                 add_measurement_data(all_counts, meas_units["counts"])
+
+def process_raw_rna_seq_data (raw_data, study, file_name=None) :
+    data_type = None
+    lines = study.line_set.all()
+    lines_by_name = { line.name:line for line in lines }
+    table = [ l.strip().split("\t") for l in raw_data.splitlines() ]
+    headers = table[0]
+    if (headers[0] != "GENE") :
+        raise ValueError("First column of first row must be 'GENE'")
+    samples = []
+    condition_ids = defaultdict(int)
+    for i_sample, label in enumerate(headers[1:]) :
+        fields = label.split("-")
+        rep_id = fields[-1]
+        condition_name = "-".join(fields[:-1])
+        condition_ids[condition_name] += 1
+        line_id = None
+        if (condition_name in lines_by_name) :
+            line_id = lines_by_name[condition_name].id
+        samples.append({
+            "i_sample" : i_sample,
+            "label" : label,
+            "assay_id" : condition_ids[condition_name],
+            "line_id" : line_id,
+        })
+    #processed_table = [ headers ]
+    for row in table[1:2] : # XXX not looping over entire table right now
+        if (data_type is None) and ("," in row[1]) :
+            data_type = "combined"
+    if (data_type is None) and (file_name is not None) :
+        if ("rpkm" in file_name.lower()) or ("fpkm" in file_name.lower()) :
+            data_type = "fpkm"
+        elif ("counts" in file_name.lower()) :
+            data_type = "counts"
+    return {
+        "guessed_data_type" : data_type,
+        "raw_data" : raw_data,
+        "table" : table,
+        "samples" : samples,
+    }
