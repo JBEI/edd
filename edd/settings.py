@@ -13,6 +13,7 @@ import os
 import json
 import ldap
 from django_auth_ldap.config import LDAPSearch, GroupOfUniqueNamesType
+from django.conf.global_settings import TEMPLATE_CONTEXT_PROCESSORS as TCP
 from test_app.settings import ACCOUNT_ACTIVATION_DAYS
 from django.conf.global_settings import LOGIN_REDIRECT_URL
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
@@ -71,6 +72,11 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 )
 
+# this gives us access to the original request in templates
+# see e.g.: http://stackoverflow.com/questions/2882490
+TEMPLATE_CONTEXT_PROCESSORS = TCP + (
+    'django.core.context_processors.request',
+)
 
 # See https://pythonhosted.org/django-auth-ldap/install.html
 # See https://docs.djangoproject.com/en/1.7/howto/auth-remote-user/

@@ -84,6 +84,17 @@ class StudyDetailView(generic.DetailView):
         context['protocol'] = self.object.get_protocols_used()
         return context
 
+# /study/<study_id>/attach
+def study_attach (request, study) :
+    """Attach a file to a study."""
+    model = Study.objects.get(pk=study)
+    update = Update.load_request_update(request)
+    att = Attachment.from_upload(
+        edd_object=model,
+        form=request.POST,
+        uploaded_file=request.FILES['newAttachmentContent'],
+        update=update)
+    return redirect("/study/%s" % study)
 
 def study_lines(request, study):
     """
@@ -717,23 +728,27 @@ def data_carbonsources (request) :
 # /download/<file_id>
 def download (request, file_id) :
     model = Attachment.objects.get(pk=file_id)
-    # FIXME this seems clumsy - is there a better way to detect what model an
-    # Attachment is linked to?
-    try :
-        study = Study.objects.get(pk=model.object_ref_id)
-    except ObjectDoesNotExist :
-        pass
-    else :
-        if (not study.user_can_read(request.user)) :
-            return HttpResponseForbidden("You do not have access to data "+
-                "associated with this study.")
+    if (not model.user_can_read(request.user)) :
+        return HttpResponseForbidden("You do not have access to data "+
+            "associated with this study.")
     response = HttpResponse(model.file.read(),
         content_type=model.mime_type)
     response['Content-Disposition'] = 'attachment; filename="%s"' % \
         model.filename
     return response
 
-# FIXME it would be much better to avoid csrf_exempt...
+def delete_file (request, file_id) :
+    redirect_url = request.GET.get("redirect", None)
+    if (redirect_url is None) :
+        return HttpResponseBadRequest("Missing redirect URL.")
+    model = Attachment.objects.get(pk=file_id)
+    if (not model.user_can_delete(request.user)) :
+        return HttpResponseForbidden("You do not have permission to remove "+
+            "files associated with this study.")
+    model.delete()
+    return redirect(redirect_url)
+
+# FIXMe it wnuld be much better to avoid csrf_exempt...
 # /utilities/parsefile
 @csrf_exempt
 def utilities_parse_table (request) :

@@ -144,7 +144,9 @@ Edit Protocol
         </tr>
       </table>
     </div>
-    {% include "main/include_attachments.html" %}
+    {% with attachments=protocol.attachments %}
+        {% include "main/include_attachments.html" %}
+    {% endwith %}
   </div>
 
   <div style="width:99%;text-align:right;margin:10px 0px 10px 0px;">
