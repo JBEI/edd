@@ -25,8 +25,8 @@ fieldset {
 /* EDD basic style */
 HTML {
     color: #000000;
-    font-family: Helvetica, sans-serif;
-    font-size: 12px;
+    font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+    font-size: 14px;
 }
 H1, H2, H3, H4 {
 	margin:3px;
@@ -162,7 +162,7 @@ div.topBanner > div.userMenu {
 /* A section near the top of the page for reporting the result of attempted operations */
 div.statusMessage {
     clear: both;
-    font-size:12px;
+    font-size:14px;
 	padding:0.7em 0.6em 0.1em 0.6em;
 }
 div.statusMessage > p {
@@ -237,12 +237,12 @@ div.helpBadgeDiv div.helpContent {
 	z-index:10;
 	width:350px;
 	position:absolute;
-	border:2px solid black;
+	border:1px solid #606060;
 	padding:3px 6px;
 	background-color:white;
 	color:black;
 	font-weight:normal;
-	font-size:12px;
+	font-size:14px;
 	text-align:left;
 	transform: translate(-15px,9px);
 	-ms-transform: translate(-15px,9px);
@@ -263,7 +263,7 @@ div.helpBadgeDiv:hover div.helpContent {
 div.pageSection {
 	background: #fcfcfc;
 	margin:10px 8px 3px 8px;
-	border-width:2px;
+	border-width:1px;
 	border-style:solid;
 	border-color:#a0a0a0;/*#6CA5E9;*/
 /*	border-radius: 6px;
@@ -272,7 +272,7 @@ div.pageSection {
 }
 div.pageSection div.sectionHead {
 	color:#606060;/*#0C4589;*/
-	font-size:13px;
+	font-size:16px;
 	font-weight:bold;
 	padding:4px 4px 4px 6px;
 	background: linear-gradient(top, rgba(200,200,200,0.5) 0%, rgba(200,200,200,0.1) 100%);
@@ -286,7 +286,7 @@ div.pageSection div.sectionHead {
 }
 div.pageSection div.sectionChapter {
 	color:#a0a0a0;/*#1C5294;*/
-	font-size:12px;
+	font-size:16px;
 	margin:0px;
 	padding:3px;
 	background: linear-gradient(top, rgba(180,180,180,0.2) 0%, rgba(200,200,200,0.3) 50%, rgba(220,220,220,0.1) 100%);
@@ -303,7 +303,7 @@ div.pageSection div.sectionContent {
 	padding:4px 8px 4px 8px;
 }
 div.pageSection div.sectionContent div.subSectionChapter {
-	font-size:12px;
+	font-size:14px;
 	margin:2px 0px 0px 4px;
 	padding:0px 1px 0px 1px;
 	border-style:solid;
@@ -314,7 +314,7 @@ div.pageSection div.sectionContent div.subSectionContent {
 	padding:0px 8px 3px 16px;
 }
 div.subSectionContent {
-  font-size: 12px;
+  font-size: 14px;
 }
 /* A section meant for the bottom of page sections,
    with form elements representing actions you can take on content in above sections */
@@ -328,7 +328,7 @@ div.pageSection.discloseHide.minor {
     background: transparent;
     border-width: 0;
 	color:#3C75B9;
-	font-size:13px;
+	font-size:14px;
 	font-weight:bold;
 }
 div.pageSection.minor div.sectionHead {

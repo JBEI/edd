@@ -113,6 +113,28 @@ class Attachment(models.Model):
         base, ext = os.path.splitext(self.filename)
         return extensions_to_icons.get(ext, "icon-generic.png")
 
+    # TODO can we make this more general?
+    def user_can_delete (self, user) :
+        """
+        Verify that a user has the appropriate permissions to delete an
+        attachment.  This only applies to files attached to a Study.
+        """
+        if (self.object_ref.__class__ is Study) :
+            return self.object_ref.user_can_write(user)
+        else :
+            return user.is_staff
+
+    # TODO can we make this more general?
+    def user_can_read (self, user) :
+        """
+        Verify that a user has the appropriate permissions to see (that is,
+        download) an attachment.  This only applies to files attached to a
+        Study.
+        """
+        if (self.object_ref.__class__ is Study) :
+            return self.object_ref.user_can_read(user)
+        return True # XXX is this wise?
+
 class MetadataGroup(models.Model):
     """
     """
@@ -259,6 +281,10 @@ class EDDObject(models.Model):
 
     def get_attachment_count(self):
         return self.files.count()
+
+    @property
+    def attachments (self) :
+        return self.files.all()
 
     def get_comment_count(self):
         return self.comments.count()

@@ -18,6 +18,7 @@ from main.solr import StudySearch
 from main.utilities import *
 import main.sbml_export
 import main.data_export
+import main.data_import
 from io import BytesIO
 import json
 import csv
@@ -83,6 +84,17 @@ class StudyDetailView(generic.DetailView):
         context['protocol'] = self.object.get_protocols_used()
         return context
 
+# /study/<study_id>/attach
+def study_attach (request, study) :
+    """Attach a file to a study."""
+    model = Study.objects.get(pk=study)
+    update = Update.load_request_update(request)
+    att = Attachment.from_upload(
+        edd_object=model,
+        form=request.POST,
+        uploaded_file=request.FILES['newAttachmentContent'],
+        update=update)
+    return redirect("/study/%s" % study)
 
 def study_lines(request, study):
     """
@@ -160,7 +172,7 @@ def study_import_table (request, study) :
     """
     model = Study.objects.get(pk=study)
     protocols = Protocol.objects.all()
-    pageMessage = pageError = None
+    messages = {}
     post_contents = []
     if (request.method == "POST") :
         for key in sorted(request.POST) :
@@ -171,11 +183,82 @@ def study_import_table (request, study) :
         dictionary={
             "study" : model,
             "protocols" : protocols,
-            "pageMessage" : pageMessage,
-            "pageError" : pageError,
+            "message" : messages,
             "post_contents" : "\n".join(post_contents), # XXX DEBUG
         },
         context_instance=RequestContext(request))
+
+# /study/<study_id>/import/rnaseq
+def study_import_rnaseq (request, study) :
+    messages = {}
+    model = Study.objects.get(pk=study)
+    lines = model.line_set.all()
+    if (request.method == "POST") :
+        try :
+            result = main.data_import.import_rna_seq.from_form(request, model)
+            messages["success"] = "Added %d measurements in %d assays." %\
+                (result.n_assay, result.n_meas)
+        except ValueError as e :
+            messages["error"] = str(e)
+        #else :
+        #    return redirect("/study/%s" % study)
+    return render_to_response("main/import_rnaseq.html",
+        dictionary={
+            "messages" : messages,
+            "study" : model,
+            "lines" : lines,
+        },
+        context_instance=RequestContext(request))
+
+# /study/<study_id>/import/rnaseq/parse
+# FIXME get rid of csrf_exempt
+@csrf_exempt
+def study_import_rnaseq_parse (request, study) :
+    """
+    Parse raw data from an uploaded text file, and return JSON object of
+    processed result.  Result is identical to study_import_rnaseq_process,
+    but this method is invoked by drag-and-drop of a file.
+    """
+    model = Study.objects.get(pk=study)
+    try :
+        result = main.data_import.interpret_raw_rna_seq_data(
+            raw_data=request.read(),
+            study=model)
+    except ValueError as e :
+        return JsonResponse({ "python_error" : str(e) })
+    except Exception as e :
+        print e
+    else :
+        return JsonResponse(result)
+
+# /study/<study_id>/import/rnaseq/process
+def study_import_rnaseq_process (request, study) :
+    """
+    Process form submission containing either a file or text field, and
+    return JSON object of processed result.
+    """
+    model = Study.objects.get(pk=study)
+    assert (request.method == "POST")
+    try :
+        data = request.POST.get("data", "").strip()
+        file_name = None
+        if (data == "") :
+            data_file = request.FILES.get("file_name", None)
+            if (data_file is None) :
+                raise ValueError("Either a text file or pasted table is "+
+                    "required as input.")
+            data = data_file.read()
+            file_name = data_file.name
+        result = main.data_import.interpret_raw_rna_seq_data(
+            raw_data=data,
+            study=model,
+            file_name=file_name)
+    except ValueError as e :
+        return JsonResponse({ "python_error" : str(e) })
+    except Exception as e :
+        print e
+    else :
+        return JsonResponse(result)
 
 # /study/<study_id>/export
 def study_export_table (request, study) :
@@ -645,23 +728,27 @@ def data_carbonsources (request) :
 # /download/<file_id>
 def download (request, file_id) :
     model = Attachment.objects.get(pk=file_id)
-    # FIXME this seems clumsy - is there a better way to detect what model an
-    # Attachment is linked to?
-    try :
-        study = Study.objects.get(pk=model.object_ref_id)
-    except ObjectDoesNotExist :
-        pass
-    else :
-        if (not study.user_can_read(request.user)) :
-            return HttpResponseForbidden("You do not have access to data "+
-                "associated with this study.")
+    if (not model.user_can_read(request.user)) :
+        return HttpResponseForbidden("You do not have access to data "+
+            "associated with this study.")
     response = HttpResponse(model.file.read(),
         content_type=model.mime_type)
     response['Content-Disposition'] = 'attachment; filename="%s"' % \
         model.filename
     return response
 
-# FIXME it would be much better to avoid csrf_exempt...
+def delete_file (request, file_id) :
+    redirect_url = request.GET.get("redirect", None)
+    if (redirect_url is None) :
+        return HttpResponseBadRequest("Missing redirect URL.")
+    model = Attachment.objects.get(pk=file_id)
+    if (not model.user_can_delete(request.user)) :
+        return HttpResponseForbidden("You do not have permission to remove "+
+            "files associated with this study.")
+    model.delete()
+    return redirect(redirect_url)
+
+# FIXMe it wnuld be much better to avoid csrf_exempt...
 # /utilities/parsefile
 @csrf_exempt
 def utilities_parse_table (request) :

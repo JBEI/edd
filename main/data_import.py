@@ -355,8 +355,11 @@ class import_rna_seq (object) :
         n_cols = kwds["n_cols"]
         line_ids = kwds["line_ids"]
         assay_ids = kwds["assay_ids"]
+        descriptions = kwds.get('descriptions', None)
         meas_times = [ float(x) for x in kwds["meas_times"] ]
         assert (len(line_ids) == len(assay_ids) == len(meas_times) == n_cols)
+        if (descriptions is None) :
+            descriptions = [ None ] * n_cols
         unique_ids = set(zip(line_ids,assay_ids,meas_times))
         if (len(unique_ids) != n_cols) :
             raise ValueError("Duplicate line/assay/timepoint selections - " +
@@ -371,12 +374,13 @@ class import_rna_seq (object) :
             assert (len(row[1:]) == n_cols), row
         lines = { l.pk:l for l in Line.objects.filter(id__in=line_ids) }
         assays = {}
+        # TODO should we distinguish between different replica types?
         # XXX as written, this will treat each timepoint as a different set of
         # Measurements within a single Assay - this is logically correct, but
         # may not fit so well with the current EDD interface, especially if we
         # want to compare expression at different timepoints.  should we
         # instead treat different timepoints as separate Assays?
-        for line_id, assay_id in zip(line_ids, assay_ids) :
+        for line_id, assay_id, desc in zip(line_ids, assay_ids, descriptions) :
             if ((line_id, assay_id) in assays) : continue
             line = lines[line_id]
             line_assays = line.assay_set.all()
@@ -393,6 +397,7 @@ class import_rna_seq (object) :
             # require that the assays be created as part of this process?
             assay = line.assay_set.create(
                 name=str(assay_start_id),
+                description=desc,
                 protocol=protocol,
                 experimenter=user)
             assays[(line_id, assay_id)] = assay
@@ -403,7 +408,7 @@ class import_rna_seq (object) :
             "hours" : MeasurementUnit.objects.get(unit_name="hours"),
         }
         genes = GeneIdentifier.by_name()
-        for row in table :
+        for i_row, row in enumerate(table) :
             gene_id = row[0]
             if (gene_id == "GENE") : continue
             gene_meas = genes.get(gene_id, None)
@@ -415,16 +420,20 @@ class import_rna_seq (object) :
                 self.n_meas_type += 1
             all_fpkms = []
             all_counts = []
-            for value in row[1:] :
+            for i_col, value in enumerate(row[1:]) :
                 fpkm = counts = None
-                if (data_type == "combined") :
-                    fields = value.split(",")
-                    all_counts.append(int(fields[0]))
-                    all_fpkms.append(float(fields[1]))
-                elif (data_type == "fpkm") :
-                    all_fpkms.append(float(value))
-                elif (data_type == "counts") :
-                    all_counts.append(int(value))
+                try :
+                    if (data_type == "combined") :
+                        fields = value.split(",")
+                        all_counts.append(int(fields[0]))
+                        all_fpkms.append(float(fields[1]))
+                    elif (data_type == "fpkm") :
+                        all_fpkms.append(float(value))
+                    elif (data_type == "counts") :
+                        all_counts.append(int(value))
+                except ValueError :
+                    raise ValueError("Couldn't interpret value at (%d,%d): %s"%
+                        (i_row+1, i_col+2, value))
             def add_measurement_data (values, units) :
                 assert len(values) == n_cols
                 measurements = {}
@@ -451,3 +460,105 @@ class import_rna_seq (object) :
                 add_measurement_data(all_fpkms, meas_units["fpkm"])
             if (len(all_counts) > 0) :
                 add_measurement_data(all_counts, meas_units["counts"])
+
+    @classmethod
+    def from_form (cls, request, study) :
+        form = request.POST
+        n_cols = int(form["n_cols"])
+        meas_times = []
+        line_ids = []
+        assay_ids = []
+        descriptions = []
+        for i in range(n_cols) :
+            meas_times.append(float(form["time-%d"%i]))
+            assay_ids.append(int(form["assay-%d"%i]))
+            line_ids.append(int(form["line-%d"%i]))
+            descriptions.append(form.get("desc-%d" % i, None))
+        return cls(
+            study=study,
+            user=request.user,
+            update=Update.load_request_update(request),
+            n_cols=n_cols,
+            line_ids=line_ids,
+            assay_ids=assay_ids,
+            meas_times=meas_times,
+            descriptions=descriptions,
+            table=form["data_table"],
+            data_type=form["data_type"])
+
+def interpret_raw_rna_seq_data (raw_data, study, file_name=None) :
+    """
+    Given tabular RNA-Seq data (reads or FPKMs), attempt to determine the
+    data type and groupings automatically, and return a dictionary that
+    will be used to populate the view with new form elements.
+    """
+    data_type = None
+    lines = study.line_set.all()
+    lines_by_name = { line.name:line for line in lines }
+    table = [ l.strip().split() for l in raw_data.splitlines() ]
+    if (len(table) < 2) :
+        raise ValueError("You must have a single line specifying column "+
+            "labels, followed by a separate line for each gene.")
+    elif (len(table[0]) < 2) :
+        raise ValueError("At least two columns are required, the first for "+
+            "gene IDs, followed by a column for each condition/sample.")
+    headers = table[0]
+    if (headers[0] != "GENE") :
+        raise ValueError("First column of first row must be 'GENE'")
+    samples = []
+    condition_ids = defaultdict(int)
+    for i_sample, label in enumerate(headers[1:]) :
+        fields = label.split("-")
+        rep_id = fields[-1]
+        condition_name = "-".join(fields[:-1])
+        condition_ids[condition_name] += 1
+        line_id = None
+        if (condition_name in lines_by_name) :
+            line_id = lines_by_name[condition_name].id
+        samples.append({
+            "i_sample" : i_sample,
+            "label" : label,
+            "assay_id" : condition_ids[condition_name],
+            "line_id" : line_id,
+        })
+    #processed_table = [ headers ]
+    if (file_name is not None) :
+        if ("rpkm" in file_name.lower()) or ("fpkm" in file_name.lower()) :
+            data_type = "fpkm"
+        elif ("counts" in file_name.lower()) :
+            data_type = "counts"
+    for i, row in enumerate(table[1:]) :
+        if ("," in row[1]) :
+            data_type = "combined"
+            _validate_row(row, i, True)
+        else :
+            if (data_type is None) :
+                if ([ "." in cell for cell in row[1:] ].count(True) > 0) :
+                    data_type = "fpkm"
+            _validate_row(row, i)
+    return {
+        "guessed_data_type" : data_type,
+        "raw_data" : raw_data,
+        "table" : table,
+        "samples" : samples,
+    }
+
+def _validate_row (row, i_row, assume_csv_pairs=False) :
+    """Utility function to verify that a row of RNA-seq data to be imported
+    conforms to the expected format."""
+    if assume_csv_pairs :
+        for j in range(1, len(row)) :
+            fields = row[j].split(",")
+            try :
+                val1 = float(fields[0])
+                val2 = float(fields[1])
+            except Exception as e :
+                raise ValueError(("Can't interpret field (%d,%d) as "+
+                    "a pair of real numbers: '%s'") % (i_row+1, j+2, row[j]))
+    else :
+        for j in range(1, len(row)) :
+            try :
+                val = float(row[j])
+            except Exception as e :
+                raise ValueError(("Can't interpret field (%d,%d) as "+
+                    "a real number: '%s'") % (i_row+1, j+2, row[j]))

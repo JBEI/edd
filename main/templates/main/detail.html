@@ -51,38 +51,39 @@
 
 
 {% block content %}
-    <form action="" method="POST" enctype="multipart/form-data">
-        <div class="pageSection">
-            <div class="sectionHead" id="genInfoViewBanner">General Information</div>
-            <div class="sectionContent" id="genInfoView">
-                <dl class="infolist">
-                    <dt>Description</dt>
-                    <dd>{% firstof study.description "<i>(None)</i>"|safe %}</dd>
-                    <dt>Contact</dt>
-                    <dd>{% if study.contact %}
-                        <a href="mailto:{{ study.contact.email }}">{{ study.contact.first_name }} {{ study.contact.last_name }}</a>
-                        {% elif study.contact_extra %}
-                        {{ study.contact_extra }}
-                        {% else %}
-                        (None)
-                        {% endif %}
-                    </dd>
-                </dl>
-            </div>
-            <div class="disclose discloseHide">
-                <div class="sectionChapter" id="attachmentsBanner">
-                    <span class="discloseLink"><span>Attachments</span></span>
-                </div>
-                <div class="sectionActions discloseBody" id="attachmentActionPanel">TODO</div>
-            </div>
-            <div class="disclose discloseHide">
-                <div class="sectionChapter" id="commentsBanner">
-                    <span class="discloseLink"><span>Comments</span></span>
-                </div>
-                <div class="sectionActions discloseBody" id="commentActionPanel">TODO</div>
-            </div>
+    <div class="pageSection">
+        <div class="sectionHead" id="genInfoViewBanner">General Information</div>
+        <div class="sectionContent" id="genInfoView">
+            <dl class="infolist">
+                <dt>Description</dt>
+                <dd>{% firstof study.description "<i>(None)</i>"|safe %}</dd>
+                <dt>Contact</dt>
+                <dd>{% if study.contact %}
+                    <a href="mailto:{{ study.contact.email }}">{{ study.contact.first_name }} {{ study.contact.last_name }}</a>
+                    {% elif study.contact_extra %}
+                    {{ study.contact_extra }}
+                    {% else %}
+                    (None)
+                    {% endif %}
+                </dd>
+            </dl>
         </div>
+        <form method="POST" enctype="multipart/form-data"
+              action="/study/{{ study.id }}/attach">
+        {% csrf_token %}
+        {% with attachments=study.attachments %}
+            {% include "main/include_attachments.html" %}
+        {% endwith %}
+        </form>
+        <div class="disclose discloseHide">
+            <div class="sectionChapter" id="commentsBanner">
+                <span class="discloseLink"><span>Comments</span></span>
+            </div>
+            <div class="sectionActions discloseBody" id="commentActionPanel">TODO</div>
+        </div>
+    </div>
         
+    <form action="" method="POST" enctype="multipart/form-data">
         <div class="pageSectionTabs" id="graphTabsOverviewSelected">
             <div class="active absoverlay">Data Overview</div>
             <div class="active">Data Overview</div>
