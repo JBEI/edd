@@ -976,20 +976,25 @@ class Assay(EDDObject):
     def to_json (self) :
         return {
             "id": self.pk,
+            # TODO remove this section of deprecated properties
             "fn" : self.name,
             "ln" : self.line.name,
             "an" : self.name,
             "des" : self.description,
             "dis" : not self.active,
+            # TODO end remove
+            "name": self.name,
+            "description": self.description,
+            "active" : self.active,
             "lid" : self.line.pk,
             "pid" : self.protocol.pk,
-            "meta": self.get_metadata_json(), # FIXME
-            "mea_c" : len(self.measurement_set.all()),
-            "met_c" : len(self.get_metabolite_measurements()),
-            "tra_c" : len(self.get_protein_measurements()),
-            "pro_c" : len(self.get_gene_measurements()),
             "mod" : str(self.updated()),
             "exp" : self.experimenter.id,
+            "meta": self.get_metadata_json(),
+            "measurements": list(self.measurement_set.values_list('id', flat=True)),
+            "metabolites": list(self.get_metabolite_measurements().values_list('id', flat=True)),
+            "transcriptions": list(self.get_gene_measurements().values_list('id', flat=True)),
+            "proteins": list(self.get_protein_measurements().values_list('id', flat=True)),
         }
 
 
