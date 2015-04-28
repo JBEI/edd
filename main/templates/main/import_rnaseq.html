@@ -5,11 +5,11 @@
 {% block js_css %}
     {{ block.super }}
 
+<script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.cookie.js' %}"></script>
 <script type="text/javascript" src="{% static 'main/js/lib/filedrop-min.js' %}"></script>
 <script type="text/javascript" src="{% static 'main/js/util2.js' %}"></script>
 
 <script type="text/javascript">
-var CSRF_TOKEN = "{{ csrf_token }}";
 /* see http://filedropjs.org */
 var process_result = function (result) {
     $("#data-field").text(result.raw_data);
@@ -61,7 +61,7 @@ $(window).load(function () {
     $("#data-field").text("");
     submit_data(study_id);
   });
-  setupFileDrop("data-field", filedrop_url, process_result, CSRF_TOKEN, false);
+  setupFileDrop("data-field", filedrop_url, process_result, false);
   $("#process-button").click(function () { submit_data(study_id) });
 });
 </script>

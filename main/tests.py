@@ -579,13 +579,14 @@ class ImportTests(TestCase) :
             ["gene1", "5.34", "5.32", "7.45", "7.56"],
             ["gene2", "1.79", "1.94", "0.15", "0.33"],
         ]
+        user = User.objects.get(username="admin")
         update = Update.objects.create(
             mod_time=timezone.now(),
-            mod_by=User.objects.get(username="admin"))
+            mod_by=user)
         # two assays per line (replicas)
         result = main.data_import.import_rna_seq(
             study=Study.objects.get(name="Test Study 1"),
-            user=User.objects.get(username="admin"),
+            user=user,
             update=update,
             table=table1,
             n_cols=4,
@@ -604,7 +605,7 @@ class ImportTests(TestCase) :
         # one assay, two timepoints per line
         result = main.data_import.import_rna_seq(
             study=Study.objects.get(name="Test Study 1"),
-            user=User.objects.get(username="admin"),
+            user=user,
             update=update,
             table=table1,
             n_cols=4,
@@ -621,7 +622,7 @@ class ImportTests(TestCase) :
         ]
         result = main.data_import.import_rna_seq(
             study=Study.objects.get(name="Test Study 1"),
-            user=User.objects.get(username="admin"),
+            user=user,
             update=update,
             table=table2,
             n_cols=4,
@@ -639,7 +640,7 @@ class ImportTests(TestCase) :
         # one assay, two timepoints, counts+fpkms
         result = main.data_import.import_rna_seq(
             study=Study.objects.get(name="Test Study 1"),
-            user=User.objects.get(username="admin"),
+            user=user,
             update=update,
             table=table3,
             n_cols=4,
@@ -652,7 +653,7 @@ class ImportTests(TestCase) :
         try :
             result = main.data_import.import_rna_seq(
                 study=Study.objects.get(name="Test Study 1"),
-                user=User.objects.get(username="admin"),
+                user=user,
                 update=update,
                 table=table3,
                 n_cols=4,
@@ -668,6 +669,32 @@ class ImportTests(TestCase) :
             raw_data="\n".join([ "\t".join(row) for row in table3 ]),
             study=Study.objects.get(name="Test Study 1"))
         self.assertTrue(result["guessed_data_type"] == "combined")
+        # EDGE-pro output
+        raw = """\
+gene_ID                  start_coord       end_coord     average_cov          #reads            RPKM
+
+b0001                            190             255           171.3              45             207
+b0002                            337            2799           257.0            2502             309
+b0003                           2801            3733           303.9            1121             366
+b0004                           3734            5020           197.5            1005             238
+b0005                           5234            5530           201.3             236             242
+b0006                           5683            6459           183.9             565             221"""
+        assay = line2.assay_set.create(
+            name="RNA-seq",
+            description="EDGE-pro result",
+            protocol=Protocol.objects.get(name="Transcriptomics"),
+            experimenter=user)
+        result = main.data_import.import_rnaseq_edgepro(
+            form={
+                "assay_id" : assay.pk,
+                "timepoint" : "0",
+                "table" : raw,
+            },
+            user=user,
+            update=update)
+        self.assertTrue(result.n_meas_type == 6)
+        self.assertTrue(result.n_meas == 12)
+
 
 class SBMLUtilTests (TestCase) :
     """

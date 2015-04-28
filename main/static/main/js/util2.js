@@ -5,9 +5,9 @@ Miscellaneous utilities (native JavaScript)
 
 */
 
-function setupFileDrop (element_id, url, process_result, csrf_token,
-        multiple) {
+function setupFileDrop (element_id, url, process_result, multiple) {
   var zone = new FileDrop(element_id, {});
+  var csrftoken = jQuery.cookie('csrftoken');
   if (! (typeof multiple === "undefined")) {
     zone.multiple(multiple);
   } else {
@@ -29,13 +29,17 @@ function setupFileDrop (element_id, url, process_result, csrf_token,
         alert('Error uploading ' + this.name + ': ' +
               xhr.status + ', ' + xhr.statusText);
       });
+
+      // this ensures that the CSRF middleware in Django doesn't reject our
+      // HTTP request
+      file.event('xhrSetup', function (xhr) {
+         xhr.setRequestHeader("X-CSRFToken", csrftoken);
+      });
   
-      file.sendTo(url, {
-        // FIXME this is a nice idea but it doesn't seem to work...
-        extraHeaders : {"X-CSRFToken" : csrf_token } });
+      file.sendTo(url);
     });
   });
-}
+};
 
 function startWaitBadge (selector) {
   $(selector).css("class", "waitbadge wait");

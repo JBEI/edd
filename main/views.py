@@ -11,7 +11,7 @@ from django.template import RequestContext
 from django.template.defaulttags import register
 from django.utils.safestring import mark_safe
 from django.views import generic
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import ensure_csrf_cookie
 from main.forms import CreateStudyForm
 from main.models import *
 from main.solr import StudySearch
@@ -166,6 +166,7 @@ def study_assay_table_data (request, study) :
     })
 
 # /study/<study_id>/import
+@ensure_csrf_cookie
 def study_import_table (request, study) :
     """
     View for importing tabular assay data (replaces AssayTableData.cgi).
@@ -189,6 +190,7 @@ def study_import_table (request, study) :
         context_instance=RequestContext(request))
 
 # /study/<study_id>/import/rnaseq
+@ensure_csrf_cookie
 def study_import_rnaseq (request, study) :
     messages = {}
     model = Study.objects.get(pk=study)
@@ -211,8 +213,6 @@ def study_import_rnaseq (request, study) :
         context_instance=RequestContext(request))
 
 # /study/<study_id>/import/rnaseq/parse
-# FIXME get rid of csrf_exempt
-@csrf_exempt
 def study_import_rnaseq_parse (request, study) :
     """
     Parse raw data from an uploaded text file, and return JSON object of
@@ -748,9 +748,7 @@ def delete_file (request, file_id) :
     model.delete()
     return redirect(redirect_url)
 
-# FIXMe it wnuld be much better to avoid csrf_exempt...
 # /utilities/parsefile
-@csrf_exempt
 def utilities_parse_table (request) :
     """
     Attempt to process posted data as either a TSV or CSV file or Excel

@@ -562,3 +562,68 @@ def _validate_row (row, i_row, assume_csv_pairs=False) :
             except Exception as e :
                 raise ValueError(("Can't interpret field (%d,%d) as "+
                     "a real number: '%s'") % (i_row+1, j+2, row[j]))
+
+class import_rnaseq_edgepro (object) :
+    """
+    Separate utility for uploading files directly from the EDGE-pro
+    processing pipeline for prokaryotic RNA-seq experiments; these
+    contain both read counts and RPKMs.  The data will be in a simple
+    tabular format (space-delineated, column-based), with fields
+    gene_ID, start_coord, end_coord, average_cov, #reads, and RPKM.
+    The first line is these labels, followed by a blank line.
+    """
+    def __init__ (self, form, user, update) :
+        self.n_meas = self.n_meas_type = 0
+        assay_id = form["assay_id"]
+        assay = Assay.objects.get(pk=assay_id)
+        timepoint = float(form["timepoint"])
+        table = form["table"].splitlines()
+        assert table[0].startswith("gene_ID")
+        rpkm_unit = MeasurementUnit.objects.get(unit_name="FPKM")
+        counts_unit = MeasurementUnit.objects.get(unit_name="counts")
+        hours_unit = MeasurementUnit.objects.get(unit_name="hours")
+        genes = GeneIdentifier.by_name()
+        for i_row, row in enumerate(table[2:]) :
+            row = row.strip()
+            if (row == "") : continue
+            fields = row.split()
+            if (len(fields) != 6) :
+                raise ValueError("Unexpected number of fields in line: '%s'" %
+                    row)
+            gene_id = fields[0]
+            n_reads = int(fields[4])
+            rpkm = float(fields[5])
+            gene_meas = genes.get(gene_id, None)
+            # add new gene measurement type if necessary
+            if (gene_meas is None) :
+                gene_meas = GeneIdentifier.objects.create( # FIXME annotation?
+                    type_name=gene_id,
+                    type_group=MeasurementGroup.GENEID) # XXX is this necessary?
+                genes[gene_id] = gene_meas
+                self.n_meas_type += 1
+            # first measurement: rpkm
+            meas_fpkm = assay.measurement_set.create(
+                measurement_type=gene_meas,
+                x_units=hours_unit,
+                y_units=rpkm_unit,
+                experimenter=user,
+                update_ref=update,
+                compartment=MeasurementCompartment.INTRACELLULAR)
+            self.n_meas += 1
+            meas_fpkm.measurementdatum_set.create(
+                x=timepoint,
+                y=rpkm,
+                updated=update)
+            # second measurement: #reads
+            meas_counts = assay.measurement_set.create(
+                measurement_type=gene_meas,
+                x_units=hours_unit,
+                y_units=counts_unit,
+                experimenter=user,
+                update_ref=update,
+                compartment=MeasurementCompartment.INTRACELLULAR)
+            self.n_meas += 1
+            meas_counts.measurementdatum_set.create(
+                x=timepoint,
+                y=n_reads,
+                updated=update)

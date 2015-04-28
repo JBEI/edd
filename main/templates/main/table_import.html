@@ -29,12 +29,12 @@ POSTed query:
     <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.threshold.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.orderbars.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.stack.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.cookie.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/lib/filedrop-min.js' %}"></script>
 <script type="text/javascript" src="{% static 'main/js/util2.js' %}"></script>
 
 <!-- some page-specific code -->
 <script type="text/javascript">
-var CSRF_TOKEN = "{{ csrf_token }}";
 var ATData = {}; // this needs to be declared before loading AssayTableData.js!
 var EDDData = { }; // this needs to be declared before loading Autocomplete.js!
 EDDData.currentUserID = {{ user.pk }};
@@ -67,7 +67,7 @@ var process_result = function (result) {
     }
   };
 $(window).load(function () {
-    setupFileDrop("textData", url, process_result, CSRF_TOKEN, false);
+    setupFileDrop("textData", url, process_result, false);
     $('.disclose').find('a.discloseLink').on('click', disclose);
     // Populate ATData and EDDData objects via AJAX calls
     jQuery.ajax(atdata_url, {
