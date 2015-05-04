@@ -75,6 +75,9 @@ a:hover {
 .stripeRowB {
     background-color:white;
 }
+.disabledRecord {
+    background-color:#FFC0C0;
+}
 .link_indicator {
     background-image:url('./images/link_go.png');
     background-position:right;

@@ -1013,7 +1013,7 @@ module StudyD {
         // loop over all downloaded measurements
         $.each(data.data, (index, measurement) => {
             var assay = EDDData.Assays[measurement.assay], line, mtype;
-            if (!assay || assay.dis) return;
+            if (!assay || !assay.active) return;
             line = EDDData.Lines[assay.lid];
             if (!line || !line.active) return;
             // store the measurements
@@ -1225,7 +1225,7 @@ module StudyD {
 
         $.each(postFilteringMeasurements, (i, measurementId) => {
             var measurement = EDDData.AssayMeasurements[measurementId],
-                points = (measurement.d ? measurement.d.length : 0),
+                points = (measurement.values ? measurement.values.length : 0),
                 assay, line, protocol, newSet;
             dataPointsTotal += points;
             if (dataPointsDisplayed > 15000) {
@@ -1240,7 +1240,8 @@ module StudyD {
                 'measurementname': Utl.EDD.resolveMeasurementRecordToName(measurement),
                 'name': [line.name, protocol.name, assay.an].join('-'),
                 'units': Utl.EDD.resolveMeasurementRecordToUnits(measurement),
-                'data': measurement.d
+                // FIXME does not handle MeasurementVector data
+                'data': $.map(measurement.values, (d) => [[ d.x, d.y ]] )
             };
             if (measurement.mtdf) newSet.logscale = 1;
             if (line.control) newSet.iscontrol = 1;
@@ -1494,9 +1495,9 @@ module StudyD {
         // Create a mapping from the JSON record to the form elements
         var formInfo = {
             assayidtoedit: index,
-            assayname: record.an,
+            assayname: record.name,
             assayprotocol: record.pid,
-            assaydescription: record.des,
+            assaydescription: record.description,
             assayexperimentervalue: record.exp,
         };
         // Set the checkbox of the Line this Assay belongs to
@@ -2304,10 +2305,7 @@ class DGDisabledLinesWidget extends DataGridOptionWidget {
 
     initialFormatRowElementsForID(dataRowObjects:any, rowID:any):any {
         if (!EDDData.Lines[rowID].active) {
-            for (var r = 0; r < dataRowObjects.length; r++) {
-                var rowElement = dataRowObjects[r].getElement();
-                rowElement.style.backgroundColor = "#FFC0C0";
-            }
+            $.each(dataRowObjects, (x, row) => $(row.getElement()).addClass('disabledRecord'));
         }
     }
 }
@@ -2529,61 +2527,47 @@ class DataGridAssays extends DataGrid {
 
 
     remakeGraphArea() {
-        this.graphRefreshTimerID = 0;    
+        var spec:DataGridSpecAssays = this.getSpec(), g, ids;
+        this.graphRefreshTimerID = 0;
 
-        if (!StudyDGraphing) {
+        if (!StudyDGraphing || !spec || !spec.graphObject) {
             return;
         }
 
-        var spec:DataGridSpecAssays = this.getSpec();
-        var g = spec.graphObject;
-        if (!g) {
-            return;
-        } 
-
+        g = spec.graphObject;
         g.clearAllSets();
+        ids = spec.getRecordIDs();
 
-        var ids = spec.getRecordIDs();
-        for (var x = 0; x < ids.length; x++) {
-            var assayID = ids[x];
-            var assayRecord = EDDData.Assays[assayID];
-            // We wont display items from disabled Assays on the graph
-            if (assayRecord.dis) { continue; }
-            var lineID = assayRecord.lid;
-            var lineRecord = EDDData.Lines[lineID];
-            var pid = assayRecord.pid;
-            var fn = [lineRecord.name, EDDData.Protocols[pid].name, assayRecord.an].join('-');
-
-            var mIDs = (assayRecord.metabolites || []);
-            mIDs = mIDs.concat(assayRecord.transcriptions || [], assayRecord.proteins || []);
-
-            for (var i=0; i < mIDs.length; i++) {
-                var amID = mIDs[i];
-                var measurementRecord = EDDData.AssayMeasurements[amID];
-
-                var mName = Utl.EDD.resolveMeasurementRecordToName(measurementRecord);
-                var mUnits = Utl.EDD.resolveMeasurementRecordToUnits(measurementRecord);
-
-                var newSet:any = {
-                    label: 'dt' + amID,
-                    measurementname: mName,
-                    name: fn,
-                    aid: assayID,
-                    mtid: measurementRecord.mt,
-                    units: mUnits,
-                    data: measurementRecord.d
+        $.each(ids, (x, id) => {
+            var assay:any = EDDData.Assays[id] || {},
+                line:any = EDDData.Lines[assay.lid] || {},
+                protocol, name, measures;
+            if (!assay.active || !line.active) { return; }
+            protocol = EDDData.Protocols[assay.pid] || {};
+            // FIXME just use assay name directly instead of rebuilding each time
+            name = [ line.name, protocol.name, assay.an ].join('-');
+            measures = assay.metabolites || [];
+            measures.concat(assay.transcriptions || [], assay.protiens || []);
+            $.each(measures, (i, measureId) => {
+                var measure = EDDData.AssayMeasurements[measureId],
+                    mName = Utl.EDD.resolveMeasurementRecordToName(measure),
+                    mUnit = Utl.EDD.resolveMeasurementRecordToUnits(measure),
+                    set;
+                set = {
+                    'label': 'dt' + measureId,
+                    'measurementname': mName,
+                    'name': name,
+                    'aid': id,
+                    'mtid': measure.mt,
+                    'units': mUnit,
+                    // FIXME does not handle MeasurementVector data
+                    'data': $.map(measure.values, (d) => [[ d.x, d.y ]] )
                 };
-
-                if (measurementRecord.mtdf == 1) {
-                    newSet.logscale = 1;    // Set a flag for the log10 scale.
-                }
-                if (lineRecord.ctrl) {
-                    newSet.iscontrol = 1;    // Set a flag for drawing as the "control" style.
-                }
-            
-                g.addNewSet(newSet);
-            }
-        }
+                if (measure.mtdf == 1) { set.logscale = true; }
+                if (line.ctrl) { set.iscontrol = true; }
+                g.addNewSet(set);
+            });
+        });
 
         g.drawSets();
     }
@@ -2710,7 +2694,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
         this.metaDataIDsUsedInAssays = [];
         $.each(this.getRecordIDs(), (x, assayId) => {
             var assay = EDDData.Assays[assayId];
-            $.each(assay.md || {}, (metaId) => { seenHash[metaId] = true; });
+            $.each(assay.meta || {}, (metaId) => { seenHash[metaId] = true; });
         });
         // MetaDataTypeIDs is in alpha-order by name
         $.each(EDDData.MetaDataTypeIDs, (i, metaId) => {
@@ -2728,10 +2712,12 @@ class DataGridSpecAssays extends DataGridSpecBase {
                     assay.proteins || []);
             // reduce to find highest value across all measures
             maxForRecord = measures.reduce((prev:number, measureId) => {
-                var measure = EDDData.AssayMeasurements[measureId], maxForMeasure;
+                var lookup:any = EDDData.AssayMeasurements || {},
+                    measure:any = lookup[measureId] || {},
+                    maxForMeasure;
                 // reduce to find highest value across all data in measurement
-                maxForMeasure = (measure.d || []).reduce((prev:number, point) => {
-                    return Math.max(prev, parseFloat(point[0]));
+                maxForMeasure = (measure.values || []).reduce((prev:number, point) => {
+                    return Math.max(prev, parseFloat(point.x));
                 }, 0);
                 return Math.max(prev, maxForMeasure);
             }, 0);
@@ -2837,8 +2823,8 @@ class DataGridSpecAssays extends DataGridSpecBase {
     private makeMetaDataSortFunction(id) {
         return (i) => {
             var record = EDDData.Assays[i];
-            if (record && record.md) {
-                return record.md[id] || '';
+            if (record && record.meta) {
+                return record.meta[id] || '';
             }
             return '';
         }
@@ -2874,7 +2860,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
                 'rowspan': gridSpec.rowSpanForRecord(index),
                 // In a typical EDDData.Assays record this string is currently pre-assembled and
                 // stored in 'fn'. But we're not relying on that for now.
-                'contentString': [line.name, gridSpec.protocolName, record.an].join('-')
+                'contentString': [line.name, gridSpec.protocolName, record.name].join('-')
             })
         ];
     }
@@ -2883,7 +2869,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
     makeMetaDataCellsGeneratorFunction(id) {
         return (gridSpec:DataGridSpecAssays, index:number):DataGridDataCell[] => {
             var contentStr = '', assay = EDDData.Assays[index], type = EDDData.MetaDataTypes[id];
-            if (assay && type && assay.md && (contentStr = assay.md[id] || '')) {
+            if (assay && type && assay.meta && (contentStr = assay.meta[id] || '')) {
                 contentStr = [ type.pre || '', contentStr, type.postfix || '' ].join(' ').trim();
             }
             return [
@@ -2899,31 +2885,32 @@ class DataGridSpecAssays extends DataGridSpecBase {
     private generateMeasurementCells(gridSpec:DataGridSpecAssays, index:number,
             opt:any):DataGridDataCell[] {
         var record = EDDData.Assays[index], cells = [];
-        if (!record.met_c) {
-            // Do nothing if there is no metabolomics data
-        } else if (record.met_c !== (record.metabolites || []).length) {
-            cells.push(new DataGridLoadingCell(gridSpec, index));
-        } else {
-            // convert IDs to measurements, sort by name, then convert to cell objects
-            cells = record.metabolites.map(opt.metaboliteToValue)
-                    .sort(opt.metaboliteValueSort)
-                    .map(opt.metaboliteValueToCell);
+
+        if (record.metabolites.length > 0) {
+            if (EDDData.AssayMeasurements === undefined) {
+                cells.push(new DataGridLoadingCell(gridSpec, index));
+            } else {
+                // convert IDs to measurements, sort by name, then convert to cell objects
+                cells = record.metabolites.map(opt.metaboliteToValue)
+                        .sort(opt.metaboliteValueSort)
+                        .map(opt.metaboliteValueToCell);
+            }
         }
         // generate only one cell if there is any transcriptomics data
-        if (!record.tra_c) {
-            // Do nothing if there is no transcription data
-        } else if (record.tra_c !== (record.transcriptions || []).length) {
-            cells.push(new DataGridLoadingCell(gridSpec, index));
-        } else {
-            cells.push(opt.transcriptToCell(record.transcriptions));
+        if (record.transcriptions.length > 0) {
+            if (EDDData.AssayMeasurements === undefined) {
+                cells.push(new DataGridLoadingCell(gridSpec, index));
+            } else {
+                cells.push(opt.transcriptToCell(record.transcriptions));
+            }
         }
         // generate only one cell if there is any proteomics data
-        if (!record.pro_c) {
-            // Do nothing if there is no proteomics data
-        } else if (record.pro_c !== (record.proteins || []).length) {
-            cells.push(new DataGridLoadingCell(gridSpec, index));
-        } else {
-            cells.push(opt.proteinToCell(record.proteins));
+        if (record.proteins.length > 0) {
+            if (EDDData.AssayMeasurements === undefined) {
+                cells.push(new DataGridLoadingCell(gridSpec, index));
+            } else {
+                cells.push(opt.proteinToCell(record.proteins));
+            }
         }
         return cells;
     }
@@ -3284,7 +3271,7 @@ class DGDisabledAssaysWidget extends DataGridOptionWidget {
             var id = rowIDs[r];
             // Here is the condition that determines whether the rows associated with this ID are
             // shown or hidden.
-            if (!EDDData.Assays[id].dis) {
+            if (EDDData.Assays[id].active) {
                 filteredIDs.push(id);            
             }
         }
@@ -3293,11 +3280,8 @@ class DGDisabledAssaysWidget extends DataGridOptionWidget {
 
 
     initialFormatRowElementsForID(dataRowObjects:any, rowID:any):any {
-        if (EDDData.Assays[rowID].dis) {
-            for (var r = 0; r < dataRowObjects.length; r++) {
-                var rowElement = dataRowObjects[r].getElement();
-                rowElement.style.backgroundColor = "#FFC0C0";
-            }
+        if (!EDDData.Assays[rowID].active) {
+            $.each(dataRowObjects, (x, row) => $(row.getElement()).addClass('disabledRecord'));
         }
     }
 }
