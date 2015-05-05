@@ -51,9 +51,8 @@ def select_objects_for_export (study, user, form) :
     selected_assays = []
     selected_measurements = []
     if (not assay_level) :
-        if ("selectedLineIDs" in form) :
-            line_id_param = form['selectedLineIDs']
-            selected_line_ids = extract_id_list(form, "selectedLineIDs")
+        if ("line" in form) :
+            selected_line_ids = extract_id_list(form, "line")
         else :
             selected_line_ids = extract_id_list_as_form_keys(form, "line")
         if (len(selected_line_ids) == 0) :
@@ -68,13 +67,13 @@ def select_objects_for_export (study, user, form) :
                     selected_measurements.extend(
                         list(assay.measurement_set.filter(active=True)))
     else :
-        if ("selectedAssayIDs" in form) :
-            selected_assay_ids = extract_id_list(form, "selectedAssayIDs")
+        if ("assay" in form) :
+            selected_assay_ids = extract_id_list(form, "assay")
         else :
             selected_assay_ids = extract_id_list_as_form_keys(form, "assay")
-        if ("selectedMeasurementIDs" in form) :
+        if ("meass" in form) :
             selected_measurement_ids = extract_id_list(form,
-                "selectedMeasurementIDs")
+                "meas")
         else :
             selected_measurement_ids = extract_id_list_as_form_keys(form,
                 "measurement")
@@ -471,6 +470,6 @@ def table_view (export_data, form) :
         separate_lines=(form.get("separateLines", "0") == "1"),
         separate_protocols=(form.get("separateProtocols", "0") == "1"))
     sep = ","
-    if (table_format == "tab") :
+    if (table_format == "tsv") :
         sep = "\t"
     return export_table(table, sep)

@@ -57,7 +57,7 @@ class Update(models.Model):
             "user": self.mod_by.pk,
         }
 
-    def format_timestamp (self, format_string="%b %d %Y, %I:%M%p") :
+    def format_timestamp (self, format_string="%b %d %Y %I:%M%p") :
         """
         Convert the datetime (mod_time) to a human-readable string, including
         conversion from UTC to local time zone.
@@ -259,7 +259,7 @@ class EDDObject(models.Model):
         if (updated is None) :
             return "N/A"
         else :
-            return updated.format_timestamp("%b %d %Y, %I:%M%p")
+            return updated.format_timestamp("%b %d %Y %I:%M%p")
 
     def was_modified (self) :
         return self.updates.count() > 1
@@ -268,7 +268,7 @@ class EDDObject(models.Model):
     def date_created (self) :
         updated = self.created()
         if (updated) :
-            return updated.format_timestamp("%b %d %Y, %I:%M%p")
+            return updated.format_timestamp("%b %d %Y %I:%M%p")
         else :
             return "N/A"
 

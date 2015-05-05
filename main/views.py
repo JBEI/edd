@@ -282,6 +282,13 @@ def study_export_table (request, study) :
         error_message = "No measurements selected for export!"
     else :
         formatted_table = main.data_export.table_view(exports, form)
+    if (form.get("download", None) == "1") and (formatted_table is not None) :
+        table_format = form.get("recordformat", "csv")
+        file_name = "edd_export_%s.%s" % (study, table_format)
+        response = HttpResponse(formatted_table,
+            content_type="text/plain")
+        response['Content-Disposition'] = 'attachment; filename="%s"'%file_name
+        return response
     return render_to_response("main/export.html",
         dictionary={
             "study" : model,

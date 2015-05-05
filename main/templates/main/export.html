@@ -12,6 +12,11 @@ EDDData = { }; // Declaring the object for later use
 
 EDDData.currentUserID = {{ user.pk }};
 
+function onDownload (evt) {
+  $("#download-flag").val("1");
+  $("#exportForm").submit();
+  $("#download-flag").val("0");
+};
 function disclose() {
   $(this).closest('.disclose').toggleClass('discloseHide');
   return false;
@@ -31,7 +36,7 @@ $(document).ready(function () {
 {% endblock head_title %}
 
 {% block body_title %}
-  Data Export For {{ study.name }}
+  Data Export For <a href="/study/{{ study.id }}">{{ study.name }}</a>
 {% endblock body_title %}
 
 {% block content %}
@@ -53,7 +58,7 @@ $(document).ready(function () {
 
 
 <!-- start of main form -->
-<form method="post" id="exportForm" action="StudyExport.cgi">
+<form method="post" id="exportForm" action="/study/{{ study.id }}/export">
 {% csrf_token %}
 <div class="pageSection" style="margin:10px;" id="mainModeDiv">
 <div class="sectionHead">Specify the layout of the data you wish to export.</div>
@@ -111,7 +116,7 @@ $(document).ready(function () {
       Record Separators:
       <select name="recordformat" id="recordformatp">
         <option value="csv" >Comma-separated (CSV)</option> 
-        <option value="tab" >Tab-separated</option>
+        <option value="tsv" >Tab-separated</option>
       </select> 
     </td>
     <td>
@@ -143,12 +148,13 @@ $(document).ready(function () {
 </div>
 
 <input type="hidden" name="assaylevel" value="1"/>
-<input type="hidden" name="selectedLineIDs" value="{{ line_id_str }}"/>
-<input type="hidden" name="selectedAssayIDs" value="{{ assay_id_str }}"/>
-<input type="hidden" name="selectedMeasurementIDs" value="{{ measurement_id_str }}"/>
-<input type="hidden" name="studyID" value="{{ study.id }}"/>
+<input type="hidden" name="line" value="{{ line_id_str }}"/>
+<input type="hidden" name="assay" value="{{ assay_id_str }}"/>
+<input type="hidden" name="meas" value="{{ measurement_id_str }}"/>
+<input type="hidden" name="study" value="{{ study.id }}"/>
 
 </div>
+<input type="hidden" name="download" value="0" id="download-flag"/>
 </form>
 
 <!-- display section -->

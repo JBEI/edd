@@ -377,7 +377,6 @@ class AssayDataTests(TestCase) :
         self.assertTrue(len(assay.get_protein_measurements()))
         json_dict = assay.to_json()
         self.assertTrue(json_dict['ln'] == "Line 1")
-        self.assertTrue(json_dict['mea_c'] == 3)
 
     def test_measurement_type (self) :
         proteins = MeasurementType.proteins()
@@ -904,8 +903,8 @@ class ExportTests(TestCase) :
         for line in lines :
           assays.extend(list(line.assay_set.all()))
         form = {
-            "selectedLineIDs" : ",".join([ str(l.id) for l in lines ]),
-            "selectedAssayIDs" : ",".join([ str(a.id) for a in assays ]),
+            "line" : ",".join([ str(l.id) for l in lines ]),
+            "assay" : ",".join([ str(a.id) for a in assays ]),
             "assaylevel" : "1",
         }
         user = User.objects.get(username="admin")
