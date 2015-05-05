@@ -150,6 +150,9 @@
  * \(_optional_\) `sudo apt-get install tomcat7` for Tomcat/Solr
     * Download [Solr](http://lucene.apache.org/solr/) and copy WAR to webapps folder
 
+ * `sudo apt-get install libapache2-mod-python` for mod_python to run in Apache
+    * `libapache2-mod-python-doc` for documentation of mod_python
+
  * TODO complete Debian instructions
  
 ## Helpful Python Packages

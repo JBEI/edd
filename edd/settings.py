@@ -37,9 +37,9 @@ SECRET_KEY = config['site'].get('secret', 'I was awake and dreaming at the same 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 TEMPLATE_DEBUG = True
-ADMINS = (('William', 'wcmorrell@lbl.gov'),
-          ('Nat', 'nechols@lbl.gov'),
-          ('Garrett', 'gwbirkel@lbl.gov'),)
+ADMINS = MANAGERS = (('William', 'wcmorrell@lbl.gov'),
+          ('Nat', 'nechols@lbl.gov'),)
+EMAIL_SUBJECT_PREFIX = '[EDD] '
 ALLOWED_HOSTS = []
 SITE_ID = 1
 LOGIN_REDIRECT_URL = '/'
