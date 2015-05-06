@@ -27,6 +27,18 @@
     * Also a good idea to: `sudo pip install --upgrade setuptools`
     * Manually install by downloading get-pip.py, run `sudo python get-pip.py`
 
+ * [virtualenvwrapper](http://virtualenvwrapper.readthedocs.org/en/latest/install.html)
+    * Makes dependency tracking, development, and deployment easier
+    * `sudo pip install virtualenvwrapper`
+    * Add to your shell startup (e.g. `~/.bashrc`) and `source` your startup file
+
+            export WORKON_HOME=$HOME/.virtualenvs
+            source /usr/local/bin/virtualenvwrapper.sh
+
+    * Make a new virtualenv, e.g. `mkvirtualenv edd`
+        * `deactivate` to return to regular global python environment
+        * `workon edd` to switch back to edd python environment
+
  * PostgreSQL (required for installing psycopg2 driver)
     * `brew install postgresql`
     * Following PostgreSQL steps are optional if using external database server
@@ -41,7 +53,7 @@
                 NOSUPERUSER INHERIT CREATEDB NOCREATEROLE NOREPLICATION;
 
  * Tomcat/Solr (optional if using external server for Solr)
-    * Install a JDK7+ from [Oracle](http://java.oracle.com)
+    * Install a JDK8+ from [Oracle](http://java.oracle.com)
     * `brew install tomcat solr`
     * Link to easily access tomcat and solr install directories:
 
@@ -66,6 +78,8 @@
     * Access admin interface via <http://localhost:8080/solr>
 
  * Install python packages (these can be combined into one `sudo pip install`)
+    * All the following can be installed to your virtualenv with `pip install -r requirements.txt`
+        * N.B. probably need to re-install `cryptography` to compile in correct OpenSSL
     * [Arrow](http://crsmithdev.com/arrow/)
         * "Arrow is a Python library that offers a sensible, human-friendly approach to creating,
           manipulating, formatting and converting dates, times, and timestamps."
@@ -75,7 +89,8 @@
         * Needs additional env flags to ensure using Brew-installed OpenSSL
         * `env ARCHFLAGS="-arch x86_64" LDFLAGS="-L/usr/local/opt/openssl/lib"
             CFLAGS="-I/usr/local/opt/openssl/include" pip install cryptography`
-            * May need to include `--upgrade --force-reinstall` flags after `install` in prior command
+            * May need to include `--upgrade --force-reinstall` flags after `install` in prior
+              command
     * [Django](https://www.djangoproject.com/)
         * MVC web framework used to develop EDD.
         * `sudo pip install Django`
@@ -96,6 +111,10 @@
     * [django-registration](http://django-registration-redux.readthedocs.org/en/latest/index.html)
         * A Django application allowing for local-account registration and creation.
         * `sudo pip install django-registration-redux`
+        * Version 1.1 used with Django 1.8+ results in a warning at server startup; to patch:
+            # locate _`ENV`_`/site-packages/registration/models.py`
+            # edit line 187 `user = models.ForeignKey(…` to read `user = models.OneToOneField(…`
+            # change results in no model changes, merely removes the warning
     * [requests](http://docs.python-requests.org/en/latest/)
         * "Requests is an Apache2 Licensed HTTP library, written in Python, for human beings."
         * `sudo pip install requests[security]`
@@ -139,9 +158,10 @@
 
 ### Debian
  * `sudo apt-get install -t testing libpq-dev` for headers required by psycopg2
+    * At time of writing, testing was "jessie"; may be able to use stable with release of jessie.
+    * `sudo apt-get install libpq-dev`
 
- * `sudo apt-get install libldap2-dev libsasl2-dev libssl-dev` for headers
-    required by python-ldap
+ * `sudo apt-get install libldap2-dev libsasl2-dev libssl-dev` for headers required by python-ldap
 
  * Configure LDAP SSL handling in `/etc/ldap/ldap.conf`
     * Add line `TLS_CACERTDIR   /etc/ssl/certs`
@@ -150,8 +170,10 @@
  * \(_optional_\) `sudo apt-get install tomcat7` for Tomcat/Solr
     * Download [Solr](http://lucene.apache.org/solr/) and copy WAR to webapps folder
 
- * `sudo apt-get install libapache2-mod-python` for mod_python to run in Apache
-    * `libapache2-mod-python-doc` for documentation of mod_python
+ * Apache setup
+    * virtualenv: `sudo apt-get install python-virtualenv virtualenv`
+    * mod_wsgi: `sudo apt-get install libapache2-mod-wsgi`
+
 
  * TODO complete Debian instructions
  
