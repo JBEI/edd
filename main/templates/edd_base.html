@@ -8,7 +8,10 @@
     <link rel="stylesheet" type="text/css" href="{% static 'main/common.css' %}" />
     {% block js_css %}
     {% if user.is_authenticated %}
-    <script type="text/javascript">EDDData = EDDData || {}; EDDData.currentUserID = {{ user.id }}</script>
+    <script type="text/javascript">
+    window.EDDData = window.EDDData || {};
+    EDDData.currentUserID = {{ user.id }};
+    </script>
     {% endif %}
     {% endblock js_css%}
 </head>
