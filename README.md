@@ -27,6 +27,18 @@
     * Also a good idea to: `sudo pip install --upgrade setuptools`
     * Manually install by downloading get-pip.py, run `sudo python get-pip.py`
 
+ * [virtualenvwrapper](http://virtualenvwrapper.readthedocs.org/en/latest/install.html)
+    * Makes dependency tracking, development, and deployment easier
+    * `sudo pip install virtualenvwrapper`
+    * Add to your shell startup (e.g. `~/.bashrc`) and `source` your startup file
+
+            export WORKON_HOME=$HOME/.virtualenvs
+            source /usr/local/bin/virtualenvwrapper.sh
+
+    * Make a new virtualenv, e.g. `mkvirtualenv edd`
+        * `deactivate` to return to regular global python environment
+        * `workon edd` to switch back to edd python environment
+
  * PostgreSQL (required for installing psycopg2 driver)
     * `brew install postgresql`
     * Following PostgreSQL steps are optional if using external database server
@@ -41,7 +53,7 @@
                 NOSUPERUSER INHERIT CREATEDB NOCREATEROLE NOREPLICATION;
 
  * Tomcat/Solr (optional if using external server for Solr)
-    * Install a JDK7+ from [Oracle](http://java.oracle.com)
+    * Install a JDK8+ from [Oracle](http://java.oracle.com)
     * `brew install tomcat solr`
     * Link to easily access tomcat and solr install directories:
 
@@ -66,6 +78,8 @@
     * Access admin interface via <http://localhost:8080/solr>
 
  * Install python packages (these can be combined into one `sudo pip install`)
+    * All the following can be installed to your virtualenv with `pip install -r requirements.txt`
+        * N.B. probably need to re-install `cryptography` to compile in correct OpenSSL
     * [Arrow](http://crsmithdev.com/arrow/)
         * "Arrow is a Python library that offers a sensible, human-friendly approach to creating,
           manipulating, formatting and converting dates, times, and timestamps."
@@ -75,7 +89,8 @@
         * Needs additional env flags to ensure using Brew-installed OpenSSL
         * `env ARCHFLAGS="-arch x86_64" LDFLAGS="-L/usr/local/opt/openssl/lib"
             CFLAGS="-I/usr/local/opt/openssl/include" pip install cryptography`
-            * May need to include `--upgrade --force-reinstall` flags after `install` in prior command
+            * May need to include `--upgrade --force-reinstall` flags after `install` in prior
+              command
     * [Django](https://www.djangoproject.com/)
         * MVC web framework used to develop EDD.
         * `sudo pip install Django`
@@ -96,6 +111,10 @@
     * [django-registration](http://django-registration-redux.readthedocs.org/en/latest/index.html)
         * A Django application allowing for local-account registration and creation.
         * `sudo pip install django-registration-redux`
+        * Version 1.1 used with Django 1.8+ results in a warning at server startup; to patch:
+            # locate _`ENV`_`/site-packages/registration/models.py`
+            # edit line 187 `user = models.ForeignKey(…` to read `user = models.OneToOneField(…`
+            # change results in no model changes, merely removes the warning
     * [requests](http://docs.python-requests.org/en/latest/)
         * "Requests is an Apache2 Licensed HTTP library, written in Python, for human beings."
         * `sudo pip install requests[security]`
@@ -137,19 +156,50 @@
     * `./manage.py test main` will run unit tests on the main application
         * Solr tests make use of a different core, see Solr section below.
 
-### Debian
- * `sudo apt-get install -t testing libpq-dev` for headers required by psycopg2
-
- * `sudo apt-get install libldap2-dev libsasl2-dev libssl-dev` for headers
-    required by python-ldap
+### Debian (for deployment)
+ * Required `.deb` packages
+    * `sudo apt-get install pip` for PyPI/pip python package manager
+    * `sudo apt-get install libpq-dev` for headers required by psycopg2
+    * `sudo apt-get install libldap2-dev libsasl2-dev libssl-dev` for headers required by python-ldap
+    * `sudo apt-get install python-dev libffi-dev` for headers required by cryptography
 
  * Configure LDAP SSL handling in `/etc/ldap/ldap.conf`
     * Add line `TLS_CACERTDIR   /etc/ssl/certs`
     * Add line `TLS_CACERT  /etc/ssl/certs/ca-certificates.crt`
 
+ * Check out code to `/var/www/${SITE}`
+
+ * Python packages
+    * `sudo pip install virtualenvwrapper`
+    * Add to your shell startup (e.g. `~/.bashrc`) and `source` your startup file
+
+            export WORKON_HOME=/usr/local/virtualenvs
+            source /usr/local/bin/virtualenvwrapper.sh
+
+    * `mkvirtualenv edd.jbei.org` or `workon edd.jbei.org`
+    * `pip install -r /path/to/project/requirements.txt` to install python packages to virtualenv
+
  * \(_optional_\) `sudo apt-get install tomcat7` for Tomcat/Solr
     * Download [Solr](http://lucene.apache.org/solr/) and copy WAR to webapps folder
 
+ * Django setup
+    * See section Database Conversion below if migrating from CGI EDD database
+    * `./manage.py collectstatic` to ensure that all static files are in one spot
+
+ * Apache setup
+    * mod_wsgi: `sudo apt-get install libapache2-mod-wsgi`
+    * Add inside `VirtualHost` config:
+
+            Alias   /robots.txt     /var/www/robots.txt
+            Alias   /favicon.ico    /var/www/favicon.ico
+            Alias   /media/         /var/www/uploads/
+            Alias   /static/        /var/www/${SITE}/static/
+
+            WSGIDaemonProcess   edd     python-path=/var/www/${SITE}:/usr/local/virtualenvs/${SITE}/lib/python2.7/site-packages/
+            WSGIProcessGroup    edd
+            WSGIScriptAlias     /       /var/www/${SITE}/edd/wsgi.py
+
+ *
  * TODO complete Debian instructions
  
 ## Helpful Python Packages
@@ -170,14 +220,21 @@
 
  * Compile changes in `*.ts` to `*.js` by simply running `grunt` 
 
-## Database conversion
- 1. `pg_dump -i -h postgres.jbei.org -U edduser -F p -b -v -f edddb.sql edddb`
- 2. Create a new schema in the django database, e.g. `CREATE SCHEMA edd_old`
- 3. Edit the SQL file to prepend the new schema to the `SET search_path` line,
-    and replace all instances of `public.` with `edd_old.` (or whatever the
-    schema name is)
- 4. `psql edd < edddb.sql`
- 5. `psql edd < convert.sql`
+## Database Conversion
+ * `pg_dump -i -h postgres.jbei.org -U edduser -F p -b -v -f edddb.sql edddb` copies old database
+   to a file `edddb.sql`
+ * Create a database for the django application
+    * `psql -c 'create database edddjango;'` to create the database
+    * `psql -d edddjango -c 'create schema old_edd;'` to make a schema for migrating data
+    * `psql -d edddjango -c 'grant all on schema old_edd to edduser;'`
+ * Edit the SQL file to prepend the new schema to the `SET search_path` line, and replace all
+   instances of `public.` with `old_edd.` (or whatever the schema name is)
+ * Copy the dump in with `psql edddjango < edddb.sql`
+ * Initialize the django schema
+    * Run `./manage.py migrate` to create schema for django
+        * There is a problem with `registration` app in Django 1.8+; comment the app out in
+          `settings.py` before running `migrate`, then uncomment and run again
+    * Fill in data with `psql edddjango < convert.sql`
 
 ## Solr
  * Tests in this project make use of a `test` core, which will need to be created
