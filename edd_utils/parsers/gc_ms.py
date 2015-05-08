@@ -207,9 +207,9 @@ class SampleCollection (object) :
     Use kernel density estimation to analyze the distribution of retention
     times and identify consensus values for major species.
     """
-    import jbei_tools.math
+    import edd_utils.math
     x = self.extract_all_retention_times()
-    return jbei_tools.math.find_consensus_values(x, **kwds)
+    return edd_utils.math.find_consensus_values(x, **kwds)
 
   def find_peaks_automatically_and_export (self,
       n_expected=None,
