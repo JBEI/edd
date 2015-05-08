@@ -1,0 +1,74 @@
+{% extends "edd_base.html" %}
+{% load staticfiles %}
+
+{% block js_css %}
+{{ block.super }}
+<link rel="stylesheet" type="text/css" href="{% static 'edd_utils/css/style.css' %}"/>
+<script src="{% static 'edd_utils/js/lib/dropzone.js' %}"></script>
+<script src="{% static 'edd_utils/js/conversions.js' %}"></script>
+<script>
+$(document).ready(function () {
+  var table_out = new TableOutput("#formatted", "#sep_type", "#table_type");
+  $("#sep_type").change(function () {
+    $("#formatted").data().format_table();
+  });
+  $("#table_type").change(function() {
+    $("#formatted").data().format_table();
+  });
+});
+</script>
+{% endblock js_css %}
+
+
+{% block head_title %}
+Skyline conversion
+{% endblock head_title %}
+
+{% block body_title %}
+Skyline conversion
+{% endblock body_title %}
+
+{% block content %}
+<div class="dropzone-wrapper dz-default" style="padding: 20px;">
+<form action="/utilities/proteomics/parse"
+    class="dropzone"
+    enctype="multipart/form-data"
+    id="skylineDropzone"
+    style="width: 100%; height: 100%;">
+  {% csrf_token %}
+</form>
+</div>
+<div class="output" name="output">
+  <br/>
+  <div class="fileinfo">
+    <center><h3>File info</h3></center>
+    <center><div id="fileinfo"></div></center>
+  </div>
+  <br/>
+  <div>
+    <center><h3>Formatted output</h3></center>
+    <center>
+      <div>
+      <b>Separator type:</b>
+      <select id="sep_type">
+        <option>comma</option>
+        <option>space</option>
+      </select>
+      </div>
+      <br/>
+      <div>
+      <b>Table type:</b>
+        <select id="table_type">
+          <option value="vert">Fixed columns, one row per protein for each sample</option>
+          <option value="horiz">One row per sample, proteins as columns</option>
+        </select>
+      </div>
+      <br/>
+    </center>
+    <div class="rawtext">
+    <div><textarea class="rawtext" id="formatted"></textarea></div>
+    </div>
+  </div>
+</div>
+
+{% endblock content %}

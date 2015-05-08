@@ -1,0 +1,140 @@
+{% extends "edd_base.html" %}
+{% load staticfiles %}
+
+{% block js_css %}
+{{ block.super }}
+<link rel="stylesheet" type="text/css" href="{% static 'edd_utils/css/style.css' %}"/>
+<link rel="stylesheet" media="screen" href="{% static 'edd_utils/css/lib/handsontable.full.min.css' %}"/>
+<script src="{% static 'edd_utils/js/lib/dropzone.js' %}"></script>
+<script src="{% static 'edd_utils/js/lib/handsontable.full.min.js' %}"></script>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script src="{% static 'edd_utils/js/workbench.js' %}"></script>
+<script>
+$(document).ready(function () {
+  $("#hidden-options").toggle();
+  $("#auto-peaks").change(function () {
+    $("#hidden-options").toggle();
+  });
+  $("#add-molecule").click(function () { onAddMolecule(); });
+  $("#del-molecule").click(function () { onDeleteMolecule(); });
+  $("#n-molecules").data("n_mols", 1);
+});
+
+</script>
+{% endblock js_css %}
+
+
+{% block head_title %}
+GC-MS data reduction
+{% endblock head_title %}
+
+{% block body_title %}
+GC-MS data reduction
+<a id="show-help-1" href="#" onclick="showHelp(1);">[show help]</a>
+{% endblock body_title %}
+
+{% block content %}
+<div id="controls-and-plot" style="width: 1300px;">
+  <div style="display: inline-block; width: 640px; align: top; float: left; overflow: auto;">
+    <div class="dropzone-wrapper dz-default" style="width: 640px; height: 480px;">
+      <form action="/utilities/gc_ms/parse" class="dropzone" enctype="multipart/form-data"
+        id="gcmsDropzone" method="POST">
+        {% csrf_token %}
+        <center>
+          <h3>Input data and parameters</h3>
+        <div class="dz-message">
+          <span class="status-go">Drag files here to upload</span>
+        </div>
+        <div id="file-preview"></div>
+        <div id="file-status"></div>
+
+        <span>
+          <input type="checkbox" name="auto_peaks" checked="yes" value="auto" id="auto-peaks"/>
+          Automatically identify and extract peak retention times
+        </span>
+        <div id="hidden-options">
+          <table class="form-input-clear" id="molecule-entry">
+          <tr>
+            <td class="form-label-clear">Molecule:</td>
+            <td class="form-label-clear">Standard</td>
+            <td class="form-content-clear">
+              Retention times:
+              <input type="number" name="rt_standard_min" class="text-rt-input"/> to
+              <input type="number" name="rt_standard_max" class="text-rt-input"/>
+            </td>
+          </tr>
+          <tr id="molecule-0">
+            <td class="form-label-clear">Molecule:</td>
+            <td class="form-label-clear">
+              <input type="text" name="mol_name_0" class="text-mol-name" id="mol-name"/>
+            </td>
+            <td class="form-content-clear">
+              Retention times:
+              <input type="number" name="rt_min_mol_0" class="text-rt-input" id="rt-min-mol"/> to
+              <input type="number" name="rt_max_mol_0" class="text-rt-input" id="rt-max-mol"/>
+            </td>
+          </tr>
+        </table>
+        <span id="table-control-buttons">
+          <button type="button" id="add-molecule" class="workbench-button"/>Add molecule</button>
+          <button type="button" id="del-molecule" class="workbench-button"/>Delete last</button>
+          <button type="submit" class="workbench-button">Re-submit data</button>
+        </span>
+        <input type="hidden" name="n_mols" value="1" id="n-molecules"/>
+        </div><!-- #hidden-options -->
+        </center>
+
+        <hr class="break"/>
+        <div class="table-wrapper">
+          <center>
+          <h3>Processed peak areas</h3>
+          <div id="fileinfo"></div>
+          <div id="control-buttons"></div>
+          </center>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div style="display: inline-block;" id="plot-container"></div>
+</div><!-- #controls-and-plot -->
+
+<!-- <br style="display: block; margin: 4px 0;"/> -->
+<div class="table-view" id="tableview"></div>
+
+</div><!-- #content -->
+
+<div class="help-content" id="help-1">
+<p>Instructions for using this page:</p>
+<p>1. Make sure you have the MSDChemStation report file from the Agilent
+GC-MS control system, and an associated Excel spreadsheet defining
+metadata for the samples.</p>
+<p>2. If you already know what specific retention times define
+the peaks of interest, uncheck the box labeled "Automatically identify and
+extract peak retention times" and enter the upper and lower bounds for
+each peak to be extracted, along with the molecule names.</p>
+<p>3. Once you have entered retention times - or if you want the program to
+identify peaks for you - drag in the GC-MS report file.</p>
+<p>4. You should also upload the Excel spreadsheet using the same form (this
+can be done at any time).</p>
+<p>5. If the report is processed successfully, the section below will be
+populated with summary information and a table allowing you to edit the
+processed report.  Please pay special attention to any sample or peak
+marked by a red triangle - these indicate that additional peaks were
+found in the given range.</p>
+<p>6. If you want to normalize peak areas using the standard in each sample,
+click the button "Calculate relative peak areas".  You may reset the table
+to the original extracted values at any time by clicking "Reset table".</p>
+<p>7. Once both the report and the Excel key are loaded, click "Finalize and
+continue" to merge the processed peak areas and metadata.  The server
+will then generate an Excel spreadsheet that will be downloaded to your
+computer.</p>
+<center>
+<button type="button" class="workbench-button" onclick="showHelp(1)">
+  Close</button>
+</center>
+</div>
+
+<div id="overlay-back"></div>
+
+{% endblock content %}

@@ -11,4 +11,5 @@ urlpatterns = patterns('',
     url(r'^admin/', include(admin.site.urls)),
     url(r'^accounts/', include('registration.backends.default.urls')),
     url(r'^', include('main.urls', namespace='main')),
+    url(r'^utilities/', include('edd_utils.urls', namespace='edd_utils')),
 )

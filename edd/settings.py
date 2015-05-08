@@ -59,6 +59,7 @@ INSTALLED_APPS = (
     'registration',
     'django_hstore',
     'main',
+    'edd_utils',
     'edd.profile',
 )
 MIDDLEWARE_CLASSES = (

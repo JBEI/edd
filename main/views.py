@@ -783,7 +783,7 @@ def utilities_parse_table (request) :
             })
         except Exception as e :
             try :
-                from jbei_tools.parsers import excel
+                from edd_utils.parsers import excel
                 result = excel.import_xlsx_tables(
                     file=BytesIO(data))
                 return JsonResponse({

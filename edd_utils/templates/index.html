@@ -1,0 +1,33 @@
+{% extends "edd_base.html" %}
+
+{% block js_css %}
+<style>
+li {
+  margin-left: 40px;
+}
+</style>
+{% endblock %}
+
+{% block head_title %}
+EDD utilities
+{% endblock head_title %}
+
+{% block body_title %}
+EDD utilities
+{% endblock body_title %}
+
+{% block content %}
+
+<p>These tools provide additional data-processing functionality for handling
+non-standard formats that will eventually be imported into EDD.
+  <ul>
+    <li><a href="gc_ms">GC-MS report extraction</a>: this tool streamlines
+    parsing and extracting peaks from reports output by Agilent's
+    MSDChemStation software.</li>
+    <li><a href="proteomics">Skyline reformatting</a>: condense tabular output
+    from the MS data analysis app <a href="http://skyline.gs.washington.edu">
+    Skyline</a>.</li>
+  </ul>
+</p>
+
+{% endblock content %}
