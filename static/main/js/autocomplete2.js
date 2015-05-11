@@ -1,11 +1,33 @@
+// requires: jQuery, jQuery-UI
+//
 // XXX obtained from http://jsfiddle.net/alforno/g4stL/
 // see copyright notice below
 //
-// TODO this is basically just a stub - it requires additional functionality
-// (and metadata) not yet implemented, but it has been confirmed to work if
-// the necessary backend infrastructure is available.  A production version
-// should use SOLR instead of Django.
+// TODO this is basically just a proof-of-concept - it is only used for the
+// user field in a single view, but it has been confirmed to work with the
+// (very crude) generic search function in edd.main.views.  A production
+// version should use SOLR instead of Django to execute the search.
 //
+
+// Static specification of column layout for each model in EDD that we want to
+// make searchable.  (This might be better done as a static JSON file
+// somewhere.)
+var column_layouts = {
+    "User" : [
+        {
+            name: 'User',
+            width: '150px',
+            valueField: 'name'
+        }, {
+            name: 'Initials',
+            width: '120px',
+            valueField: 'initials'
+        }, {
+            name: 'E-mail',
+            width: '120px',
+            valueField: 'email'
+        }]
+};
 
 /*
  * jQuery UI Multicolumn Autocomplete Widget Plugin 2.1
@@ -55,30 +77,41 @@ $(window).load(function () {
 });
 
 
-// Sets up the multicolumn autocomplete widget.
-function setup_field_autocomplete (selector, result_selector, columns) {
+// Sets up the multicolumn autocomplete widget.  Must be called after the
+// $(window).load handler above.
+// XXX there are two different selectors here because we may want to display
+// the human-readable model name, but store the primary key in our form.
+function setup_field_autocomplete (selector, id_selector, model_name,
+        value_key, valid_keys) {
+    if (typeof model_name === "undefined") {
+        throw Error("model_name must be defined!");
+    }
+    if (typeof value_key === "undefined") {
+        value_key = "name";
+    }
+    if (typeof valid_keys === "undefined") {
+        valid_keys = "all";
+    }
+    var columns = column_layouts[model_name];
+    if (typeof columns === "undefined") {
+        columns = [{
+            name: 'Name',
+            width: '300px',
+            valueField: 'name'
+        }];
+    }
     $(selector).mcautocomplete({
         // These next two options are what this plugin adds to the autocomplete widget.
         // FIXME these will need to vary depending on record type
         showHeader: true,
-        columns: [{
-            name: 'User',
-            width: '150px',
-            valueField: 'name'
-        }, {
-            name: 'Initials',
-            width: '120px',
-            valueField: 'initials'
-        }, {
-            name: 'E-mail',
-            width: '120px',
-            valueField: 'email'
-        }],
-    
+        columns: columns,
         // Event handler for when a list item is selected.
         select: function (event, ui) {
-            this.value = (ui.item ? ui.item.name : '');
-            $(result_selector).text(ui.item ? 'Selected: ' + ui.item.name + ', ' + ui.item.initials + ', ' + ui.item.email : 'Nothing selected, input was ' + this.value);
+            this.value = (ui.item ? ui.item[value_key] : '');
+            if (id_selector) {
+                $(id_selector).val(ui.item.id);
+            }
+        //    $(result_selector).text(ui.item ? 'Selected: ' + ui.item.name + ', ' + ui.item.initials + ', ' + ui.item.email : 'Nothing selected, input was ' + this.value);
             return false;
         },
     
@@ -90,7 +123,8 @@ function setup_field_autocomplete (selector, result_selector, columns) {
                 url: '/search',
                 dataType: 'json',
                 data: {
-                    model : "User",
+                    model : model_name,
+                    keys : valid_keys,
                     term : request.term
                 },
                 // The success event handler will display "No match found" if no items are returned.
@@ -108,4 +142,15 @@ function setup_field_autocomplete (selector, result_selector, columns) {
             });
         }
     });
+};
+/***********************************************************************/
+
+// CONVENIENCE METHODS
+// there should be one of these for each model that we want to search
+function setup_field_autocomplete_users (selector, id_selector) {
+    return setup_field_autocomplete(selector,
+        id_selector,
+        "User", // model_name
+        "name", // value_key
+        "name,initials,email"); // valid_keys
 };
