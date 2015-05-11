@@ -1252,6 +1252,7 @@ def User_institution (self) :
 def User_to_json(self):
     # FIXME this may be excessive - how much does the frontend actually need?
     return {
+        "id" : self.pk,
         "uid": self.username,
         "email": self.email,
         "initials": self.initials,

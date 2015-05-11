@@ -16,6 +16,7 @@ from main.forms import CreateStudyForm
 from main.models import *
 from main.solr import StudySearch
 from main.utilities import *
+import main.models
 import main.sbml_export
 import main.data_export
 import main.data_import
@@ -798,3 +799,42 @@ def utilities_parse_table (request) :
                 return JsonResponse({ "python_error" : str(e) })
             except Exception as e :
                 return default_error
+
+# /search
+def search (request) :
+    """
+    Naive implementation of model-independent server-side autocomplete backend,
+    paired with autocomplete2.js on the client side.  This is probably too
+    inefficient to be suitable for production use due to the overhead of
+    pulling out all instances of a model and exporting dictionaries each time
+    it is called, but it provides a template for something smarter (to be
+    determined), and a proof-of-concept for the frontend.
+    """
+    # XXX actually, the overhead for searching User entries isn't awful,
+    # maybe 150ms per query on average on my laptop.  it will probably scale
+    # less well for metabolites.
+    term = request.GET["term"]
+    model_name = request.GET["model"]
+    # if desired, limit to specific search keys
+    valid_keys = request.GET.get("keys", "all").split(",")
+    use_all_keys = (valid_keys == ["all"])
+    models = getattr(main.models, model_name).objects.all()
+    results = []
+    terms = term.split()
+    for item in models :
+        json_dict = item.to_json()
+        keys = valid_keys
+        if (use_all_keys) :
+            keys = json_dict.keys()
+        for key in keys :
+            value = json_dict[key]
+            if (not isinstance(value, basestring)) :
+                continue
+            for term in terms :
+                if (term in value) :
+                    results.append(json_dict)
+                    break
+            else :
+                continue
+            break
+    return JsonResponse({ "rows": results })

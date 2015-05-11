@@ -41,6 +41,7 @@ urlpatterns = patterns('',
     url(r'^data/misc$', login_required(views.data_misc)),
     url(r'^data/strains$', login_required(views.data_strains)),
     url(r'^data/users$', login_required(views.data_users)),
+    url(r'^search$', login_required(views.search)),
     url(r'^favicon\.ico$', RedirectView.as_view(
         url=staticfiles_storage.url('favicon.ico'),
         permanent=False), name='favicon'),

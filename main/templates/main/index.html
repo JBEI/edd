@@ -3,6 +3,10 @@
 
 {% block js_css %}
     {{ block.super }}
+    <!-- jQuery-UI needed for autocomplete2 -->
+    <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/jquery-ui/jquery-ui.min.css' %}"/>
+    <script type="text/javascript" src="{% static 'main/js/lib/jquery-ui/jquery-ui.min.js' %}"></script>
+    <!-- -->
     <script type="text/javascript" src="{% static 'main/js/Autocomplete.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
@@ -10,6 +14,13 @@
     <script type="text/javascript" src="{% static 'main/js/EditableElement.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/index.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/autocomplete2.js' %}"></script>
+<script type="text/javascript">
+// set up autocomplete for new study user field (and hidden ID input)
+$(window).load(function () {
+    setup_field_autocomplete_users("#id_contact", "#contact_hidden");
+});
+</script>
 {% endblock js_css %}
 
 
