@@ -56,7 +56,7 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     'django_extensions',
     'debug_toolbar',
-    'registration',
+    #'registration',
     'django_hstore',
     'main',
     'edd_utils',
