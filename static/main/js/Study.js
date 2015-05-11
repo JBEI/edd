@@ -800,9 +800,8 @@ var StudyD;
     // Clear out any old fitlers in the filtering section, and add in the ones that
     // claim to be "useful".
     function repopulateFilteringSection() {
-        // Clear out the old filtering UI
-        var mainFilter = $('#mainFilterSection').empty();
-        var table = $('<div>').addClass('filterTable').appendTo(mainFilter);
+        // Clear out the old filtering UI, add back filter widgets
+        var table = $('<div>').addClass('filterTable').appendTo($('#mainFilterSection').empty());
         $.each(this.allFilteringWidgets, function (i, widget) {
             if (widget.isFilterUseful()) {
                 widget.addToParent(table[0]);
@@ -2450,7 +2449,7 @@ var DataGridSpecAssays = (function (_super) {
                 },
                 'sideMenuItems': [
                     '<a href="#" onclick="StudyD.editAssay(this, ' + index + ');">Edit Assay</a>',
-                    '<a href="export?selectedAssayIDs=' + index + '">Export Data as CSV/etc</a>'
+                    '<a href="export?assay=' + index + '">Export Data as CSV/etc</a>'
                 ],
                 'hoverEffect': true,
                 'nowrap': true,
