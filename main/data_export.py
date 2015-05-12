@@ -136,19 +136,12 @@ def extract_line_info_rows (lines, metadata_labels, column_flags) :
             for column_name in metadata_labels :
                 row.append(str(metadata.get(column_name, "")))
         row.add_item_if_not_flagged("Line Experimenter",
-            get_initials(line.experimenter))
+            line.experimenter.initials)
         row.add_item_if_not_flagged("Line Contact", str(line.contact.email))
         row.add_item_if_not_flagged("Line Last Modified",
             str(line.last_modified))
         rows[line.id] = row
     return rows
-
-def get_initials (user) :
-    """Hack to facilitate unit testing."""
-    try :
-        return str(user.userprofile.initials)
-    except Exception :
-        return ""
 
 def get_unique_metadata_names (objects) :
     names = []
@@ -286,7 +279,7 @@ def assemble_table (
             row.add_item_if_not_flagged("Protocol", protocol_name)
             row.append(str(assay.name))
             row.add_item_if_not_flagged("Assay Experimenter",
-                get_initials(assay.experimenter))
+                assay.experimenter.initials)
             row.add_item_if_not_flagged("Assay Last Modified",
                 str(assay.mod_epoch()))
             assay_metadata = assay.get_metadata_dict()
@@ -301,7 +294,7 @@ def assemble_table (
             protocol_row.append(str(assay.name)) # XXX assay_full_name???
             protocol_row.add_item_if_not_flagged("Assay Suffix",str(assay.name))
             protocol_row.add_item_if_not_flagged("Assay Experimenter",
-                get_initials(assay.experimenter))
+                assay.experimenter.initials)
             protocol_row.add_item_if_not_flagged("Assay Last Modified",
                 str(assay.updated()))
             if (not "Assay Metadata" in column_flags) :
@@ -457,6 +450,8 @@ def assemble_table (
                     create_rows_dbya(m)
                 else :
                     create_row_other(m, "") # compartment always blank?
+    if (dlayout_type == "lbyd") : # swap columns and rows
+        table = [ [ row[i] for row in table ] for i in range(len(table[0])) ]
     return table
 
 def export_table (table, sep=",") :
@@ -466,15 +461,18 @@ def table_view (export_data, form, column_flags=None) :
     if (column_flags is None) :
         column_flags = extract_column_flags(form)
     table_format = form.get("recordformat", "csv")
+    dlayout_type = form.get("dlayouttype", "dbyl")
     table = assemble_table(
         assays=export_data['assays'],
         lines=export_data['lines'],
         measurements=export_data['measurements'],
         column_flags=column_flags,
-        dlayout_type=(form.get("dlayouttype", "dbyl")),
+        dlayout_type=dlayout_type,
         mdata_format=(form.get("mdataformat", "all")),
         separate_lines=(form.get("separateLines", "0") == "1"),
         separate_protocols=(form.get("separateProtocols", "0") == "1"))
+    for row in table :
+        assert len(row) == len(table[0]), row
     sep = ","
     if (table_format == "tsv") :
         sep = "\t"

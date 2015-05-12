@@ -2853,7 +2853,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
                 'checkboxWithID': (id) => { return 'assay' + id + 'include'; },
                 'sideMenuItems': [
                     '<a href="#" onclick="StudyD.editAssay(this, ' + index + ');">Edit Assay</a>',
-                    '<a href="export?assay=' + index + '">Export Data as CSV/etc</a>'
+                    '<a href="export?assaylevel=1&assay=' + index + '">Export Data as CSV/etc</a>'
                 ],
                 'hoverEffect': true,
                 'nowrap': true,

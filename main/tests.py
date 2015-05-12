@@ -917,6 +917,15 @@ class ExportTests(TestCase) :
         self.assertTrue(table[3][-6:] == [0.0, 0.2, 0.4, 0.8, 1.6, 3.2])
         # TODO more checks for expected content
         kwds = dict(exports)
+        kwds['dlayout_type'] = "lbyd"
+        t = main.data_export.assemble_table(**kwds)
+        self.assertTrue(len(t[0]) == 11)
+        #
+        kwds['dlayout_type'] = "dbya"
+        t = main.data_export.assemble_table(**kwds)
+        print t
+        #
+        kwds = dict(exports)
         kwds['column_flags'] = set([ "Line Contact", "Line Last Modified",
             "Assay Last Modified" ])
         t = main.data_export.assemble_table(**kwds)

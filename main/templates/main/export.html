@@ -68,16 +68,16 @@ $(document).ready(function () {
 <ul style="font-size:13px;list-style-type:none;">
 <li>
   <div class="disclose discloseHide" id="exampleHide">
-  A table of <b>metadata and Lines</b>, with
+  A table of <b>metadata and lines</b>, with
   <select name="dlayouttype" id="dlayoutp">
     <option value="dbyl" >
-      columns of metadata types, and rows of Line names
+      columns of metadata types, and rows of lines/assays
     </option>
     <option value="dbya" >
-      columns of metadata types, and rows of single measurements
+      columns of metadata types, and rows of single measurement points
     </option>
-    <option value="lbyd" >
-      columns of Line names, and rows of metadata types
+    <option value="lbyd">
+      columns of lines/assays, and rows of metadata types
     </option>
   </select>
     <a href="#" class="discloseLink">Example</a>
@@ -150,7 +150,7 @@ $(document).ready(function () {
 
 </div>
 
-<input type="hiden" name="form_submit" value="1"/>
+<input type="hidden" name="form_submit" value="1"/>
 <input type="hidden" name="assaylevel" value="{{ assaylevel }}"/>
 <input type="hidden" name="line" value="{{ line_id_str }}"/>
 <input type="hidden" name="assay" value="{{ assay_id_str }}"/>
