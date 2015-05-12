@@ -275,14 +275,21 @@ def study_export_table (request, study) :
         form = request.GET
     exports = main.data_export.select_objects_for_export(
         study=model,
-        user=None, # FIXME
+        user=request.user, # FIXME
         form=form)
+    column_info = list(main.data_export.column_info)
+    column_flags = main.data_export.extract_column_flags(form)
+    for col in column_info :
+        if (col['label'] in column_flags) :
+            col['checked'] = False
     error_message = None
     formatted_table = None
     if (len(exports['measurements']) == 0) :
         error_message = "No measurements selected for export!"
     else :
-        formatted_table = main.data_export.table_view(exports, form)
+        formatted_table = main.data_export.table_view(export_data=exports,
+            form=form,
+            column_flags=column_flags)
     if (form.get("download", None) == "1") and (formatted_table is not None) :
         table_format = form.get("recordformat", "csv")
         file_name = "edd_export_%s.%s" % (study, table_format)
@@ -295,15 +302,16 @@ def study_export_table (request, study) :
             "study" : model,
             "line_id_str" : ",".join([ str(l.id) for l in exports['lines'] ]),
             "assay_id_str" : ",".join([ str(a.id) for a in exports['assays'] ]),
-            "measurement_id_str" : ",".join([ str(l.id) for m in
+            "measurement_id_str" : ",".join([ str(m.id) for m in
                                               exports['measurements'] ]),
-            "column_info" : main.data_export.column_info,
+            "column_info" : column_info,
             "lines" : exports['lines'],
             "n_meas" : len(exports['measurements']),
             "n_assays" : len(exports['assays']),
             "n_lines" : len(exports['lines']),
             "error_message" : error_message,
             "formatted_table" : formatted_table,
+            "assaylevel" : form.get("assaylevel", "0"),
         },
         context_instance=RequestContext(request))
 

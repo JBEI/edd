@@ -917,8 +917,8 @@ class ExportTests(TestCase) :
         self.assertTrue(table[3][-6:] == [0.0, 0.2, 0.4, 0.8, 1.6, 3.2])
         # TODO more checks for expected content
         kwds = dict(exports)
-        kwds['column_flags'] = { l:1 for l in [
-            "LineContact", "LineLastModified", "AssayLastModified" ] }
+        kwds['column_flags'] = set([ "Line Contact", "Line Last Modified",
+            "Assay Last Modified" ])
         t = main.data_export.assemble_table(**kwds)
         #print t
         self.assertTrue(len(t[0]) == 18)
@@ -936,8 +936,8 @@ class ExportTests(TestCase) :
         assays = []
         for line in lines : assays.extend(list(line.assay_set.all()))
         form = {
-            "selectedLineIDs" : ",".join([ str(l.id) for l in lines ]),
-            "selectedAssayIDs" : ",".join([ str(a.id) for a in assays ]),
+            "line" : ",".join([ str(l.id) for l in lines ]),
+            "assay" : ",".join([ str(a.id) for a in assays ]),
             "assaylevel" : "1",
         }
         user2 = User.objects.get(username="postdoc")
@@ -1066,8 +1066,9 @@ class UtilityTests (TestCase) :
 
     def test_interpolate (self) :
         assay = Assay.objects.get(name="Assay 1")
-        meas = assay.measurement_set.all()[0]
-        data = meas.measurementdatum_set.all()
+        mt1 = Metabolite.objects.get(type_name="Acetate")
+        meas = assay.measurement_set.get(measurement_type=mt1)
+        data = meas.data()
         self.assertTrue(abs(main.utilities.interpolate_at(data,10)-0.3)<0.00001)
 
     def test_form_data (self) :

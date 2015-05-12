@@ -16,19 +16,23 @@ column_labels = [
   'Line Last Modified', 'Protocol', 'Assay Suffix', 'Assay Metadata',
   'Assay Experimenter', 'Assay Last Modified', 'Measurement Compartment',
 ]
-column_param_names = [ "col" + "".join(l.split()) + "include"
-                        for l in column_labels ]
+column_param_names = [ "".join(l.split()) for l in column_labels ]
 params_dict = { n:l for (n, l) in zip(column_param_names, column_labels) }
-labels_dict = { l:n for (n, l) in zip(column_param_names, column_labels) }
-column_info = [ { "label" : l, "name" : n}
+column_info = [ { "label" : l, "name" : n, "checked" : True }
                 for (n, l) in zip(column_param_names, column_labels) ]
 
 def extract_column_flags (form) :
-    column_flags = {}
-    for column in column_param_names :
-        key = "col" + column + "include"
-        if (form.get("key", "0") != "1") :
-            column_flags[column] = True
+    """
+    Search form parameters for flags enabling specific columns, of the form
+    'colColumnNameinclude', and return a set of columns that should *not* be
+    included in the exported table.
+    """
+    if (not "form_submit" in form) : return set([])
+    column_flags = set()
+    for column_name, column_label in params_dict.iteritems() :
+        column_key = "col" + column_name + "include"
+        if (form.get(column_key, "0") != "1") :
+            column_flags.add(column_label)
     return column_flags
 
 def select_objects_for_export (study, user, form) :
@@ -71,7 +75,7 @@ def select_objects_for_export (study, user, form) :
             selected_assay_ids = extract_id_list(form, "assay")
         else :
             selected_assay_ids = extract_id_list_as_form_keys(form, "assay")
-        if ("meass" in form) :
+        if ("meas" in form) :
             selected_measurement_ids = extract_id_list(form,
                 "meas")
         else :
@@ -103,11 +107,11 @@ class TableRow (list) :
         self._column_flags = column_flags
 
     def add_header_if_not_flagged (self, col_label) :
-        if (not self._column_flags.get("".join(col_label.split()), False)) :
+        if (not col_label in self._column_flags) :
             self.append(col_label)
 
-    def add_item_if_not_flagged (self, col_flag, value) :
-        if (not self._column_flags.get(col_flag, False)) :
+    def add_item_if_not_flagged (self, col_label, value) :
+        if (not col_label in self._column_flags) :
             self.append(value)
 
 # XXX Should this be a method of models.Line instead?
@@ -120,21 +124,22 @@ def extract_line_info_rows (lines, metadata_labels, column_flags) :
     rows = {}
     for line in lines :
         row = TableRow(column_flags)
-        row.add_item_if_not_flagged("StudyID", "S" + str(line.study.id))
-        row.add_item_if_not_flagged("LineID", "L" + str(line.id))
+        row.add_item_if_not_flagged("Study ID", "S" + str(line.study.id))
+        row.add_item_if_not_flagged("Line ID", "L" + str(line.id))
         row.add_item_if_not_flagged("Line", str(line.name))
         row.add_item_if_not_flagged("Control", "T" if line.control else "")
         row.add_item_if_not_flagged("Strain", str(line.primary_strain_name))
-        row.add_item_if_not_flagged("CarbonSource",
+        row.add_item_if_not_flagged("Carbon Source",
           str(line.carbon_source_info))
-        if (not column_flags.get("LineMetadata")) :
+        if (not "Line Metadata" in column_flags) :
             metadata = line.get_metadata_dict()
             for column_name in metadata_labels :
                 row.append(str(metadata.get(column_name, "")))
-        row.add_item_if_not_flagged("LineExperimenter",
+        row.add_item_if_not_flagged("Line Experimenter",
             get_initials(line.experimenter))
-        row.add_item_if_not_flagged("LineContact", str(line.contact.email))
-        row.add_item_if_not_flagged("LineLastModified", str(line.last_modified))
+        row.add_item_if_not_flagged("Line Contact", str(line.contact.email))
+        row.add_item_if_not_flagged("Line Last Modified",
+            str(line.last_modified))
         rows[line.id] = row
     return rows
 
@@ -161,7 +166,7 @@ def extract_line_column_headers (metadata_labels, column_flags) :
     row.add_header_if_not_flagged("Control")
     row.add_header_if_not_flagged("Strain")
     row.add_header_if_not_flagged("Carbon Source")
-    if (not column_flags.get("LineMetadata")) :
+    if (not "Line Metadata" in column_flags) :
         for label in metadata_labels :
             row.append(str(label))
     row.add_header_if_not_flagged("Line Experimenter")
@@ -175,7 +180,7 @@ def extract_assay_column_headers (metadata_labels, column_flags) :
     row.add_header_if_not_flagged("Assay Suffix")
     row.add_header_if_not_flagged("Assay Experimenter")
     row.add_header_if_not_flagged("Assay Last Modified")
-    if (not column_flags.get("AssayMetadata")) :
+    if (not "Assay Metadata" in column_flags) :
         for label in metadata_labels :
             row.append(str(label))
     return row
@@ -187,7 +192,7 @@ def extract_protocol_column_headers (metadata_labels, column_flags) :
     row.add_header_if_not_flagged("Assay Suffix")
     row.add_header_if_not_flagged("Assay Experimenter")
     row.add_header_if_not_flagged("Assay Last Modified")
-    if (not column_flags.get("AssayMetadata")) :
+    if (not "Assay Metadata" in column_flags) :
         for label in metadata_labels :
             row.append(str(label))
     return row
@@ -280,12 +285,12 @@ def assemble_table (
             row = TableRow(column_flags)
             row.add_item_if_not_flagged("Protocol", protocol_name)
             row.append(str(assay.name))
-            row.add_item_if_not_flagged("AssayExperimenter",
+            row.add_item_if_not_flagged("Assay Experimenter",
                 get_initials(assay.experimenter))
-            row.add_item_if_not_flagged("AssayLastModified",
+            row.add_item_if_not_flagged("Assay Last Modified",
                 str(assay.mod_epoch()))
             assay_metadata = assay.get_metadata_dict()
-            if (not column_flags.get("AssayMetadata", False)) :
+            if (not "Assay Metadata" in column_flags) :
                 for column_label in assay_metadata_labels :
                     row.append(str(assay_metadata.get(column_label, "")))
             assay_export_rows[assay.id] = row
@@ -294,12 +299,12 @@ def assemble_table (
             protocol_row = TableRow(column_flags)
             protocol_row.add_item_if_not_flagged("Protocol", protocol_name)
             protocol_row.append(str(assay.name)) # XXX assay_full_name???
-            protocol_row.add_item_if_not_flagged("AssaySuffix", str(assay.name))
-            protocol_row.add_item_if_not_flagged("AssayExperimenter",
+            protocol_row.add_item_if_not_flagged("Assay Suffix",str(assay.name))
+            protocol_row.add_item_if_not_flagged("Assay Experimenter",
                 get_initials(assay.experimenter))
-            protocol_row.add_item_if_not_flagged("AssayLastModified",
+            protocol_row.add_item_if_not_flagged("Assay Last Modified",
                 str(assay.updated()))
-            if (not column_flags.get("AssayMetadata", False)) :
+            if (not "Assay Metadata" in column_flags) :
                 for column_label in assay_metadata_labels :
                     protocol_row.append(
                         str(assay_metadata.get(column_label, "")))
@@ -311,12 +316,12 @@ def assemble_table (
                 measurements_dict[assay.id])
             found_meas_data = False
             measurement_summaries = []
+            # XXX this should handle both scalar and vector data types
             for m in assay_measurements :
                 type_name = m.measurement_type.type_name
                 if m.measurement_type.is_metabolite() :
                     type_name = m.measurement_type.short_name
-                mdata = sorted(m.measurementdatum_set.all(),
-                    lambda a,b: cmp(a.x, b.x))
+                mdata = sorted(m.data(), lambda a,b: cmp(a.x, b.x))
                 ydata = []
                 ydata_for_protocol = []
                 if (len(mdata) > 0) :
@@ -324,14 +329,14 @@ def assemble_table (
                     k = 0
                     for x in all_xvalues :
                         if (k < len(mdata)) and (x == mdata[k].x) :
-                            ydata.append(mdata[k].fy)
+                            ydata.append(mdata[k].export_value())
                             k += 1
                         else :
                             ydata.append("")
                     k = 0
                     for x in xvalues_by_protocol[protocol_name] :
                         if (k < len(mdata)) and (x == mdata[k].x) :
-                            ydata_for_protocol.append(mdata[k].fy)
+                            ydata_for_protocol.append(mdata[k].export_value())
                             k += 1
                         else :
                             ydata_for_protocol.append("")
@@ -359,13 +364,13 @@ def assemble_table (
     def get_measurement_headers () :
         headers_ = []
         if (dlayout_type == "dbya") :
-            if (not column_flags.get("MeasurementCompartment")) :
+            if (not "Measurement Compartment" in column_flags) :
                 headers_.append("Measurement Compartment")
             headers_.extend(['X Value','Measurement Type','Measurement Value'])
         elif (mdata_format == "sum") :
             headers_.append("Data Summary")
         elif (mdata_format == "all") :
-            if (not column_flags.get("MeasurementCompartment")) :
+            if (not "Measurement Compartment" in column_flags) :
                 headers_.append("Measurement Compartment")
             headers_.append("Measurement")
             headers_.extend(all_xvalues)
@@ -421,7 +426,7 @@ def assemble_table (
             def create_row_other (m, mt_compartment) :
                 mt_name = str(m.measurement_type.short_name)
                 row = list(common_values)
-                if (not column_flags.get("MeasurementCompartment", False)):
+                if (not "Measurement Compartment" in column_flags):
                     row.append(mt_compartment)
                 row.append(mt_name)
                 if separate_protocols :
@@ -434,18 +439,17 @@ def assemble_table (
             # METABOLITES
             for m in assay_measurements :
                 if (not m.measurement_type.is_metabolite()) : continue
-                mt_compartment = "" # TODO
                 if (dlayout_type == "dbya") :
                     create_rows_dbya(m)
                 elif (len(mdata) > 0) :
-                    create_row_other(m, mt_compartment)
+                    create_row_other(m, m.compartment_symbol)
             # GENES
             for m in assay_measurements :
                 if (not m.measurement_type.is_gene()) : continue
                 if (dlayout_type == "dbya") :
                     create_rows_dbya(m)
                 else :
-                    create_row_other(m, "") # compartment always blank?
+                    create_row_other(m, "IC") # compartment always IC?
             # PROTEINS
             for m in assay_measurements :
                 if (not m.measurement_type.is_protein()) : continue
@@ -458,13 +462,15 @@ def assemble_table (
 def export_table (table, sep=",") :
     return "\n".join([ sep.join([ str(x) for x in row ]) for row in table ])
 
-def table_view (export_data, form) :
+def table_view (export_data, form, column_flags=None) :
+    if (column_flags is None) :
+        column_flags = extract_column_flags(form)
     table_format = form.get("recordformat", "csv")
     table = assemble_table(
         assays=export_data['assays'],
         lines=export_data['lines'],
         measurements=export_data['measurements'],
-        column_flags=extract_column_flags(form),
+        column_flags=column_flags,
         dlayout_type=(form.get("dlayouttype", "dbyl")),
         mdata_format=(form.get("mdataformat", "all")),
         separate_lines=(form.get("separateLines", "0") == "1"),

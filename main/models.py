@@ -1030,6 +1030,9 @@ class MeasurementCompartment (object) :
     names = ["", "Intracellular/Cytosol (Cy)", "Extracellular"]
     GROUP_CHOICE = ( (str(i), cn) for (i,cn) in enumerate(names) )
 
+class MeasurementFormat (object) :
+    FORMAT_CHOICE = ( str(i) for i in range(3) )
+    SCALAR, VECTOR, GRID = FORMAT_CHOICE
 
 class Measurement(models.Model):
     """
@@ -1050,7 +1053,9 @@ class Measurement(models.Model):
                                    choices=MeasurementCompartment.GROUP_CHOICE,
                                    default=MeasurementCompartment.UNKNOWN)
     # TODO: verify what this value means; carbon ratio data if 1? should be parameter of MeasurementType?
-    measurement_format = models.IntegerField(default=0)
+    measurement_format = models.CharField(max_length=2,
+        choices=MeasurementFormat.FORMAT_CHOICE,
+        default=MeasurementFormat.SCALAR)
 
     def to_json(self):
         points = chain(self.measurementdatum_set.all(), self.measurementvector_set.all())
@@ -1074,15 +1079,33 @@ class Measurement(models.Model):
     def is_protein_measurement (self) :
         return self.measurement_type.type_group == MeasurementGroup.PROTEINID
 
+    # may not be the best method name, if we ever want to support other
+    # types of data as vectors in the future
     def is_carbon_ratio (self) :
-        return (self.measurement_format == 1)
+        return (int(self.measurement_format) == 1)
 
     def valid_data (self) :
-        mdata = list(self.measurementdatum_set.all())
-        return [ md for md in mdata if md.fy is not None ]
+        """Data (either MeasurementDatum or MeasurementVector objects) for
+        which the y-value is defined (non-NULL, non-blank)."""
+        mdata = list(self.data())
+        return [ md for md in mdata if md.is_defined() ]
 
     def is_extracellular (self) :
         return self.compartment == str(MeasurementCompartment.EXTRACELLULAR)
+
+    def data (self) :
+        """
+        Return the data associated with this measurement.  This can be either
+        a scalar (x,y) (MeasurementDatum) or vector (x,y1/y2/y3/...)
+        (MeasurementVector) at present, but not both.
+        """
+        if (int(self.measurement_format) == 0) :
+            return self.measurementdatum_set.all()
+        elif (int(self.measurement_format) == 1) :
+            return self.measurementvector_set.all()
+        else :
+            raise NotImplementedError("Measurement format %s not supported." %
+                self.measurement_format)
 
     @property
     def name (self) :
@@ -1095,6 +1118,10 @@ class Measurement(models.Model):
         return self.measurement_type.short_name
 
     @property
+    def compartment_symbol (self) :
+        return MeasurementCompartment.short_names[int(self.compartment)]
+
+    @property
     def full_name (self) :
         """measurement compartment plus measurement_type.type_name"""
         return ({"0":"","1":"IC","2":"EC"}.get(self.compartment) +
@@ -1102,19 +1129,22 @@ class Measurement(models.Model):
 
     # TODO also handle vectors
     def extract_data_xvalues (self, defined_only=False) :
-        mdata = list(self.measurementdatum_set.all())
+        mdata = list(self.data())
         if defined_only :
-            return [ m.fx for m in mdata if m.fy is not None ]
+            return [ m.fx for m in mdata if m.is_defined() ]
         else :
             return [ m.fx for m in mdata ]
 
     # this shouldn't need to handle vectors
     def interpolate_at (self, x) :
+        assert (int(self.measurement_format) == 0)
         from main.utilities import interpolate_at
         return interpolate_at(self.valid_data(), x)
 
     @property
     def y_axis_units_name (self) :
+        """Human-readable units for Y-axis.  Not intended for repeated/bulk use,
+        since it involves a foreign key lookup."""
         return self.y_units.unit_name
 
     def is_concentration_measurement (self) :
@@ -1151,10 +1181,20 @@ class MeasurementDatum(models.Model):
     @property
     def fy (self) :
         """Returns self.y as a Python float OR None if undefined"""
-        if (self.y is not None) :
+        if self.is_defined() :
             return float(self.y)
         return None
 
+    def is_defined (self) :
+        return (self.y is not None)
+
+    def export_value (self) :
+        """
+        Convert the value to something we can put in a table, etc.; the
+        DecimalField will appear as Decimal('1.2345'), which is not what we
+        want to see.
+        """
+        return self.fy
 
 class MeasurementVector(models.Model):
     """
@@ -1181,6 +1221,12 @@ class MeasurementVector(models.Model):
     def fx (self) :
         return float(self.x)
 
+    def is_defined (self) :
+        return (self.y is not None) and (self.y != "")
+
+    def export_value (self) :
+        """For API compatibility with MeasurementDatum"""
+        return str(self.y)
 
 class SBMLTemplate (EDDObject) :
     """

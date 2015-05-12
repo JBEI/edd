@@ -206,7 +206,7 @@ class MiscTests(unittest.TestCase) :
   def test_line_data (self) :
     line = Line.objects.get(name="poxB-2N")
     assert (line.strain_ids == "poxB")
-    assert (line.last_modified == 'Apr 11 2014, 02:15PM')
+    assert (line.last_modified == 'Apr 11 2014 02:15PM')
 
 class Command (BaseCommand) :
   def handle (self, *args, **kwds) :

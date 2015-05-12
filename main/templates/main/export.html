@@ -100,34 +100,37 @@ $(document).ready(function () {
     {% for column in column_info %}
     <div style="width:160px;display:inline-block;padding:0px 0px 0px 5px;">
       <input type="checkbox" name="col{{ column.name }}include"
-             id="col{{ column.name }}include" value="1"  checked="checked"/>
+        {% if column.checked %}
+             checked="checked"
+        {% endif %}
+             id="col{{ column.name }}include" value="1"/>
       <label for="col{{ column.name }}include">
         <span>{{ column.label }}</span>
       </label>
     </div>
-    {% endfor %}
+    {% endfor %}<!-- column_info -->
   </div>
 </div>
 <div class="sectionContent" style="border-top:1px solid #6CA5E9;" id="dmodeoptions">
 
   <table style="width:100%;font-size:13px;">
   <tr>
-    <td>
+    <td style="padding:2px;">
       Record Separators:
       <select name="recordformat" id="recordformatp">
         <option value="csv" >Comma-separated (CSV)</option> 
         <option value="tsv" >Tab-separated</option>
       </select> 
     </td>
-    <td>
+    <td style="padding:2px;">
       <input type="checkbox" name="separatelines" value="1" id="cseparatelines" />
       <label for="cseparatelines">Lines / Assays in separate sections</label>
     </td>
     <td>
     </td>
   </tr>
-  <tr>
-    <td>
+  <tr style="padding:2px;">
+    <td style="padding:2px;">
       Include Measurement Data:
       <select name="mdataformat" id="mdataformatp">
         <option value="all"  selected="selected">All</option> 
@@ -135,7 +138,7 @@ $(document).ready(function () {
         <option value="none" >None</option>
       </select> 
     </td>
-    <td>
+    <td style="padding:2px;">
       <input type="checkbox" name="separateprotocols" value="1" id="cseparateprotocols" />
       <label for="cseparateprotocols">Each Protocol in its own section</label>
     </td>
@@ -147,7 +150,8 @@ $(document).ready(function () {
 
 </div>
 
-<input type="hidden" name="assaylevel" value="1"/>
+<input type="hiden" name="form_submit" value="1"/>
+<input type="hidden" name="assaylevel" value="{{ assaylevel }}"/>
 <input type="hidden" name="line" value="{{ line_id_str }}"/>
 <input type="hidden" name="assay" value="{{ assay_id_str }}"/>
 <input type="hidden" name="meas" value="{{ measurement_id_str }}"/>
