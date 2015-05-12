@@ -8,6 +8,7 @@ from main.models import Assay, Line, Measurement, MetadataType
 from main.models import Assay, Line, Measurement
 from main.utilities import extract_id_list, extract_id_list_as_form_keys
 from collections import defaultdict
+import time
 import re
 
 column_labels = [
@@ -65,11 +66,16 @@ def select_objects_for_export (study, user, form) :
         else :
             selected_lines=study.line_set.filter(id__in=selected_line_ids)
             for line in selected_lines :
-                assays = line.assay_set.filter(active=True)
+                assays = line.assay_set.filter(active=True).select_related(
+                    "protocol")
                 selected_assays.extend(list(assays))
                 for assay in assays :
-                    selected_measurements.extend(
-                        list(assay.measurement_set.filter(active=True)))
+                    selected_measurements.extend(list(
+                        assay.measurement_set.filter(
+                            active=True).prefetch_related(
+                            "measurementdatum_set").prefetch_related(
+                            "measurementvector_set").select_related(
+                            "measurement_type")))
     else :
         if ("assay" in form) :
             selected_assay_ids = extract_id_list(form, "assay")
@@ -82,16 +88,22 @@ def select_objects_for_export (study, user, form) :
             selected_measurement_ids = extract_id_list_as_form_keys(form,
                 "measurement")
         selected_assays = Assay.objects.filter(line__study=study,
-            id__in=selected_assay_ids)
+            id__in=selected_assay_ids).select_related("protocol")
         selected_lines = Line.objects.filter(
           assay__in=selected_assays).distinct()
         if (len(selected_measurement_ids) == 0) :
             selected_measurements = Measurement.objects.filter(
-                assay__in=selected_assays)
+                assay__in=selected_assays).prefetch_related(
+                    "measurementdatum_set").prefetch_related(
+                    "measurementvector_set").select_related(
+                    "measurement_type")
         if (len(selected_measurement_ids) > 0) :
             selected_measurements = Measurement.objects.filter(
                 assay__line__study=study).filter(
-                id__in=selected_measurement_ids)
+                id__in=selected_measurement_ids).prefetch_related(
+                    "measurementdatum_set").prefetch_related(
+                    "measurementvector_set").select_related(
+                    "measurement_type")
     return {
         "lines" : selected_lines,
         "assays" : selected_assays,
@@ -199,7 +211,7 @@ def extract_protocol_assay_lookup (assays) :
 def extract_assay_measurement_lookup (measurements) :
     assays_dict = defaultdict(list)
     for meas in measurements :
-        assays_dict[meas.assay.id].append(meas)
+        assays_dict[meas.assay_id].append(meas)
     return assays_dict
 
 # XXX as usual, the flexibility of the (original) data export function requires
@@ -216,6 +228,7 @@ def assemble_table (
         separate_protocols=False) :
     assert (mdata_format in ["all", "sum", "none"])
     assert (dlayout_type in ["dbya", "dbyl", "lbyd"])
+    timepoints = [ time.time() ]
     # Collect column headers and partial columns for lines
     line_metadata_labels = get_unique_metadata_names(lines)
     line_headers = extract_line_column_headers(line_metadata_labels,
@@ -248,6 +261,7 @@ def assemble_table (
                 protocol_xvalues.update(set(xvalues))
                 all_xvalues.extend(xvalues)
         xvalues_by_protocol[protocol_name] = sorted(list(protocol_xvalues))
+    timepoints.append(time.time())
     # Using these lists, we can make appropriately-spaced sequences of Y values
     # for our Measurement data.
     all_xvalues = sorted(list(set(all_xvalues)))
@@ -349,6 +363,7 @@ def assemble_table (
             # End of Assay loop
         # End of Protocol loop
     # Now we can connect together all our prepared arrays and print them.
+    timepoints.append(time.time())
     table = []
     # separate section for lines
     if (separate_lines) :
@@ -375,6 +390,7 @@ def assemble_table (
         headers.extend(assay_headers)
         headers.extend(get_measurement_headers())
         table.append(headers)
+    timepoints.append(time.time())
     for protocol_name in used_protocols :
         # If we're doing each Protocol separately, each needs its own header
         # list
@@ -450,8 +466,11 @@ def assemble_table (
                     create_rows_dbya(m)
                 else :
                     create_row_other(m, "") # compartment always blank?
+    timepoints.append(time.time())
     if (dlayout_type == "lbyd") : # swap columns and rows
         table = [ [ row[i] for row in table ] for i in range(len(table[0])) ]
+    for i, t in enumerate(timepoints[:-1]) :
+        print "%d: %.1f" % (i+1, 1000*(timepoints[i+1] - t))
     return table
 
 def export_table (table, sep=",") :
