@@ -13,6 +13,11 @@ Dropzone.options.skylineDropzone = {
   init: function() {
     oninit(this);
   },
+  // add CSRF token to xmlHTTPRequest headers
+  sending : function (evt, xhr, fd) {
+    var csrftoken = jQuery.cookie('csrftoken');
+    xhr.setRequestHeader("X-CSRFToken", csrftoken);
+  },
   success: function(file, response){
     console.log(response);
     var report = response; //jQuery.parseJSON(response);
