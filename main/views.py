@@ -488,10 +488,12 @@ def admin_measurements (request) :
                 pass
         except ValueError as e :
             messages['error'] = str(e)
+    metabolites = Metabolite.all_sorted_by_short_name()#.prefetch_related(
+        #"keywords")
     return render_to_response("main/admin_measurements.html",
         dictionary={
             "messages" : messages,
-            "metabolites" : Metabolite.all_sorted_by_short_name(),
+            "metabolites" : metabolites,
             "keywords" : MetaboliteKeyword.all_with_metabolite_ids,
             "units" : MeasurementUnit.all_sorted,
             "mtype_groups" : MeasurementGroup.GROUP_CHOICE,
@@ -531,9 +533,15 @@ def admin_carbonsources (request) :
                 messages['success'] = "Carbon source '%s' updated." % cs.name
         except ValueError as e :
             messages['error'] = str(e)
-    carbon_sources = CarbonSource.all_sorted_by_name().prefetch_related(
+    # XXX this does not appear to be having any kind of useful effect...
+    carbon_sources = CarbonSource.objects.all().extra(
+        select={'lower_name':'lower(name)'}).order_by(
+        'lower_name').prefetch_related(
         "updates").prefetch_related("line_set").prefetch_related(
-            "line_set__study")
+        "line_set__study").prefetch_related(
+        "updates__mod_by").prefetch_related(
+        "updates__mod_by__userprofile").all().extra(
+        select={'lower_name':'lower(name)'}).order_by('lower_name')
     return render_to_response("main/admin_carbon_sources.html",
         dictionary={
             "messages" : messages,
@@ -572,8 +580,11 @@ def admin_strains (request) :
         except ValueError as e :
             messages['error'] = str(e)
     # FIXME still too slow...
-    strains = list(Strain.all_sorted_by_name().select_related(
-        "line_set").select_related("updates"))
+    strains = Strain.objects.all().extra(
+        select={'lower_name':'lower(name)'}).order_by(
+        'lower_name').prefetch_related(
+        "line_set").prefetch_related("updates").prefetch_related(
+        "updates__mod_by").prefetch_related("updates__mod_by__userprofile")
     return render_to_response("main/admin_strains.html",
         dictionary={
             "messages" : messages,

@@ -469,8 +469,8 @@ def assemble_table (
     timepoints.append(time.time())
     if (dlayout_type == "lbyd") : # swap columns and rows
         table = [ [ row[i] for row in table ] for i in range(len(table[0])) ]
-    for i, t in enumerate(timepoints[:-1]) :
-        print "%d: %.1f" % (i+1, 1000*(timepoints[i+1] - t))
+    #for i, t in enumerate(timepoints[:-1]) :
+    #    print "%d: %.1f" % (i+1, 1000*(timepoints[i+1] - t))
     return table
 
 def export_table (table, sep=",") :

@@ -603,8 +603,8 @@ def _n_lines (self) :
     return self.line_set.count()
 
 def _n_studies (self) :
-    lines = self.line_set.all().select_related("study")
-    return len(set([ l.study.pk for l in lines ]))
+    lines = self.line_set.all()
+    return len(set([ l.study_id for l in lines ]))
 
 class Strain(EDDObject):
     """
@@ -704,8 +704,8 @@ class Line(EDDObject):
             'active': self.active,
             'control': self.control,
             'replicate': self.replicate.pk if self.replicate else None,
-            'contact': { 'user_id': self.contact.pk, 'text': self.contact_extra },
-            'experimenter': self.experimenter.pk,
+            'contact': { 'user_id': self.contact_id, 'text': self.contact_extra },
+            'experimenter': self.experimenter_id,
             'meta': self.get_metadata_json(), # FIXME is this correct?
             'strain': [s.pk for s in self.strains.all()],
             'carbon': [c.pk for c in self.carbon_source.all()],
@@ -833,7 +833,7 @@ class MeasurementType(models.Model):
         Returns a query set sorted by the short_name field in case-insensitive
         order.  (Mostly useful for the Metabolite subclass.)
         """
-        return cls.objects.all().extra(
+        return cls.objects.all().prefetch_related('keywords').extra(
             select={'lower_name':'lower(short_name)'}).order_by('lower_name')
 
 class MetaboliteKeyword (models.Model) :
@@ -848,7 +848,9 @@ class MetaboliteKeyword (models.Model) :
     @classmethod
     def all_with_metabolite_ids (cls) :
         keywords = []
-        for keyword in cls.objects.all().order_by("name") :
+        kwd_objects = cls.objects.all().order_by("name").prefetch_related(
+            "metabolite_set")
+        for keyword in kwd_objects :
             ids_dicts = keyword.metabolite_set.values("id")
             keywords.append({
                 "id" : keyword.id,
@@ -878,6 +880,11 @@ class Metabolite(MeasurementType):
         return True
 
     def to_json(self):
+        """
+        Export a serializable dictionary.  Because this will access all
+        associated keyword objects, it is recommended to include a call to
+        query.prefetch_related("keywords") when selecting metabolites in bulk.
+        """
         return dict(super(Metabolite, self).to_json(), **{
             # FIXME the alternate names pointed to by the 'ans' key are
             # supposed to come from the 'alternate_metabolite_type_names'

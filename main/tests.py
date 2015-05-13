@@ -923,7 +923,7 @@ class ExportTests(TestCase) :
         #
         kwds['dlayout_type'] = "dbya"
         t = main.data_export.assemble_table(**kwds)
-        print t
+        #print t
         #
         kwds = dict(exports)
         kwds['column_flags'] = set([ "Line Contact", "Line Last Modified",
