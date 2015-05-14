@@ -40,7 +40,7 @@ class SolrSearch(object):
             log.error('%s == %s' % (url, response.text))
             raise Exception('Commit to Solr failed')
 
-    def query(self, queryopt={'q':'*:*','wt':'json'}):
+    def search(self, queryopt={'q':'*:*','wt':'json'}):
         """ Runs query with raw Solr parameters """
         response = requests.get(self.url + '/select', params=queryopt)
         if response.status_code == requests.codes.ok:
@@ -162,7 +162,7 @@ class StudySearch(SolrSearch):
             queryopt['q.alt'] = '*:*'
         if options.get('showDisabled', False):
             queryopt['fq'] = [queryopt['fq'], 'active:true']
-        return super(StudySearch, self).query(queryopt=queryopt)
+        return self.search(queryopt=queryopt)
 
 
 class UserSearch(SolrSearch):
@@ -211,4 +211,4 @@ class UserSearch(SolrSearch):
             queryopt['q.alt'] = '*:*'
         if options.get('showDisabled', False):
             queryopt['fq'] = [queryopt['fq'], 'is_active:true']
-        return super(UserSearch, self).query(queryopt=queryopt)
+        return self.search(queryopt=queryopt)
