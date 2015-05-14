@@ -149,8 +149,8 @@ class SolrTests(TestCase):
         email = 'wcmorrell@lbl.gov'
         self.admin = User.objects.create_superuser(username='admin', email=email, password='12345')
         self.user1 = User.objects.create_user(username='test1', email=email, password='password')
-        self.solr_admin = StudySearch(ident=self.admin, settings_key='test')
-        self.solr_user = StudySearch(ident=self.user1, settings_key='test')
+        self.solr_admin = StudySearch(ident=self.admin, core='test')
+        self.solr_user = StudySearch(ident=self.user1, core='test')
         up1 = Update.objects.create(mod_by=self.user1)
         self.study1 = Study.objects.create(name='Test Study 1',
                                            description='Lorem ipsum dolor sit amet')

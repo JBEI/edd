@@ -1,4 +1,8 @@
+import arrow
 import edd.settings
+import os.path
+import re
+from collections import defaultdict
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
@@ -9,12 +13,6 @@ from django.utils.dateformat import format as format_date
 from django_extensions.db.fields import PostgreSQLUUIDField
 from django_hstore import hstore
 from itertools import chain
-import calendar
-from datetime import datetime, timedelta
-from collections import defaultdict
-import arrow
-import re
-import os.path
 
 
 class Update(models.Model):
@@ -62,12 +60,8 @@ class Update(models.Model):
         Convert the datetime (mod_time) to a human-readable string, including
         conversion from UTC to local time zone.
         """
-        utc_dt = self.mod_time
-        timestamp = calendar.timegm(utc_dt.timetuple())
-        local_dt = datetime.fromtimestamp(timestamp)
-        assert utc_dt.resolution >= timedelta(microseconds=1)
-        local_dt = local_dt.replace(microsecond=utc_dt.microsecond)
-        return local_dt.strftime(format_string)
+        return arrow.get(self.mod_time).to('local').strftime(format_string)
+
 
 class Comment(models.Model):
     """
@@ -134,6 +128,7 @@ class Attachment(models.Model):
         if (self.object_ref.__class__ is Study) :
             return self.object_ref.user_can_read(user)
         return True # XXX is this wise?
+
 
 class MetadataGroup(models.Model):
     """
@@ -224,6 +219,7 @@ class MetadataType(models.Model):
         elif (obj.__class__ is Protocol) : return self.for_protocol()
         elif (obj.__class__ is Assay) : return self.for_protocol()
         else : return (self.for_context == self.ALL)
+
 
 class EDDObject(models.Model):
     """
@@ -356,6 +352,7 @@ class EDDObject(models.Model):
             raise ValueError("%s name must not be blank." %
                 self.__class__.__name__)
         self.name = name
+
 
 class Study(EDDObject):
     """
@@ -606,6 +603,7 @@ def _n_studies (self) :
     lines = self.line_set.all().select_related("study")
     return len(set([ l.study.pk for l in lines ]))
 
+
 class Strain(EDDObject):
     """
     A link to a strain/part in the JBEI ICE Registry.
@@ -638,6 +636,7 @@ class Strain(EDDObject):
 
     @property
     def n_studies (self) : return _n_studies(self)
+
 
 class CarbonSource(EDDObject):
     """
@@ -673,6 +672,7 @@ class CarbonSource(EDDObject):
 
     def __str__ (self) :
         return "%s (%s)" % (self.name, self.labeling)
+
 
 class Line(EDDObject):
     """
@@ -1233,6 +1233,7 @@ class MetaboliteSpecies (models.Model) :
     measurement_type = models.ForeignKey(MeasurementType)
     species = models.TextField()
 
+
 # XXX MONKEY PATCHING
 def User_initials (self) :
     try :
@@ -1265,11 +1266,30 @@ def User_to_json(self):
         "disabled":not self.is_active
     }
 
+def User_to_solr_json(self):
+    p = self.userprofile
+    format_string = '%Y-%m-%dT%H:%M:%SZ'
+    return {
+        'id': self.pk,
+        'username': self.username,
+        'name': [ self.first_name, self.last_name ],
+        'email': self.email,
+        'initials': p.initials,
+        'group': ['@'.join((str(g.pk), g.name)) for g in self.groups.all()],
+        'institution': ['@'.join((str(i.pk), i.institution_name)) for i in p.institutions.all()],
+        'date_joined': self.date_joined.strftime(format_string),
+        'last_login': self.last_login.strftime(format_string),
+        'is_active': self.is_active,
+        'is_staff': self.is_staff,
+        'is_superuser': self.is_superuser,
+    }
+
 # this will get replaced by the actual model as soon as the app is initialized
 User = None
 def patch_user_model () :
     global User
     User = get_user_model()
     User.add_to_class("to_json", User_to_json)
+    User.add_to_class("to_solr_json", User_to_solr_json)
     User.add_to_class("initials", property(User_initials))
     User.add_to_class("institution", property(User_institution))

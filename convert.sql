@@ -6,11 +6,10 @@
 -- copy over users
 --
 INSERT INTO public.auth_user(
-        id, password, last_login, is_superuser, username, first_name,
-        last_name, email, is_staff, is_active, date_joined
-    ) SELECT id, '', lastlogin_time, superuser,
-        substring(lower(email) from '^[^@]*'), firstname, lastname, email,
-        editor, TRUE, NOW()
+        id, password, CASE WHEN last_login < '1900-01-01' THEN NOW() ELSE last_login,
+        is_superuser, username, first_name, last_name, email, is_staff, is_active, date_joined
+    ) SELECT id, '', lastlogin_time, superuser, substring(lower(email) from '^[^@]*'), firstname,
+        lastname, email, editor, TRUE, NOW()
     FROM old_edd.accounts;
 -- Update sequence with the current maximum
 SELECT setval('public.auth_user_id_seq', max(id)) FROM public.auth_user;

@@ -121,12 +121,34 @@ ACCOUNT_ACTIVATION_DAYS=1
 # Solr/Haystack Configuration
 EDD_MAIN_SOLR = {
     'default': {
-        'URL': config['solr'].get('url', 'http://localhost:8080/studies/'),
-    },
-    'test': {
-        'URL': 'http://localhost:8080/test/',
+        'URL': config['solr'].get('url', 'http://localhost:8080/'),
     },
 }
+
+
+# Logging -- uncomment to see all queries sent to database
+# LOGGING = {
+#     'version': 1,
+#     'disable_existing_loggers': False,
+#     'filters': {
+#         'require_debug_true': {
+#             '()': 'django.utils.log.RequireDebugTrue',
+#         },
+#     },
+#     'handlers': {
+#         'console': {
+#             'level': 'DEBUG',
+#             'filters': ['require_debug_true', ],
+#             'class': 'logging.StreamHandler',
+#         },
+#     },
+#     'loggers': {
+#         'django.db.backends': {
+#             'level': 'DEBUG',
+#             'handlers': ['console', ],
+#         },
+#     },
+# }
 
 
 # Database
