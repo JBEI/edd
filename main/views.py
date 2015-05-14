@@ -228,13 +228,13 @@ def study_import_rnaseq_edgepro (request, study) :
     model = Study.objects.get(pk=study)
     assay_id = None
     if (request.method == "GET") :
-        assay_id = request.GET.get("assay", None)
-        if (assay_id is None) :
-            return HttpResponseForbidden("An assay ID must be specified "+
-                "for this form to be displayed.")
+        assay_id = request.POST.get("assay", None)
     elif (request.method == "POST") :
+        assay_id = request.POST.get("assay", None)
         try :
-            result = main.data_import.import_rna_seq_edgepro.from_form(
+            if (assay_id is None) or (assay_id == "") :
+                raise ValueError("Assay ID required for form submission.")
+            result = main.data_import.import_rnaseq_edgepro.from_form(
                 request=request,
                 study=model)
             messages["success"] = result.format_message()
@@ -242,15 +242,23 @@ def study_import_rnaseq_edgepro (request, study) :
             messages["error"] = str(e)
         #else :
         #    return redirect("/study/%s" % study)
-    assay = Assay.objects.get(pk=assay_id)
-    n_existing_meas = assay.measurement_set.all().count()
+    protocol = Protocol.objects.get(name="Transcriptomics")
+    assays_ = Assay.objects.filter(protocol=protocol,
+        line__study=study).prefetch_related(
+        "measurement_set").select_related("line").select_related("protocol")
+    assay_info = []
+    for assay in assays_ :
+        assay_info.append({
+            "id" : assay.id,
+            "long_name" : assay.long_name,
+            "n_meas" : assay.measurement_set.count(),
+        })
     return render_to_response("main/import_rnaseq_edgepro.html",
         dictionary={
-            "assay" : assay,
-            "n_existing_meas" : n_existing_meas,
+            "selected_assay_id" : assay_id,
+            "assays" : assay_info,
             "messages" : messages,
             "study" : model,
-            "lines" : lines,
         },
         context_instance=RequestContext(request))
 
@@ -284,8 +292,7 @@ def study_import_rnaseq_parse_edgepro (request, study) :
     model = Study.objects.get(pk=study)
     try :
         result = main.data_import.interpret_edgepro_data(
-            raw_data=request.read(),
-            study=model)
+            raw_data=request.read())
     except ValueError as e :
         return JsonResponse({ "python_error" : str(e) })
     except Exception as e :

@@ -329,6 +329,9 @@ def import_assay_table_data (study, user, post_data, update) :
     # TODO update study
     return n_added
 
+########################################################################
+# RNA-SEQ DATA IMPORT
+#
 # TODO this should be able to work with existing assays!
 class import_rna_seq (object) :
     """
@@ -497,15 +500,16 @@ def interpret_raw_rna_seq_data (raw_data, study, file_name=None) :
     lines = study.line_set.all()
     lines_by_name = { line.name:line for line in lines }
     table = [ l.strip().split() for l in raw_data.splitlines() ]
+    msg = "These data do not appear to be in the expected format.  "
     if (len(table) < 2) :
-        raise ValueError("You must have a single line specifying column "+
+        raise ValueError(msg+"You must have a single line specifying column "+
             "labels, followed by a separate line for each gene.")
     elif (len(table[0]) < 2) :
-        raise ValueError("At least two columns are required, the first for "+
-            "gene IDs, followed by a column for each condition/sample.")
+        raise ValueError(msg+"At least two columns are required, the first "+
+            "for gene IDs, followed by a column for each condition/sample.")
     headers = table[0]
     if (headers[0] != "GENE") :
-        raise ValueError("First column of first row must be 'GENE'")
+        raise ValueError(msg+"First column of first row must be 'GENE'")
     samples = []
     condition_ids = defaultdict(int)
     for i_sample, label in enumerate(headers[1:]) :
@@ -564,6 +568,45 @@ def _validate_row (row, i_row, assume_csv_pairs=False) :
                 raise ValueError(("Can't interpret field (%d,%d) as "+
                     "a real number: '%s'") % (i_row+1, j+2, row[j]))
 
+def get_edgepro_genes (data) :
+    """
+    Iterator for parsing tabular data from EDGE-pro; yields the gene ID,
+    number of reads, and RPKM in each valid row (starting from the 3rd row).
+    """
+    table = data.splitlines()
+    if (not table[0].startswith("gene_ID")) :
+        raise ValueError("This does not appear to be an output file from "+
+            "EDGE-pro: the first line of the file should start with 'gene_ID'")
+    for i_row, row in enumerate(table[2:]) :
+        row = row.strip()
+        if (row == "") : continue
+        fields = row.split()
+        if (len(fields) != 6) :
+            raise ValueError("Unexpected number of fields in line: '%s'" %
+                row)
+        gene_id = fields[0]
+        n_reads = int(fields[4])
+        rpkm = float(fields[5])
+        yield gene_id, n_reads, rpkm
+
+def interpret_edgepro_data (raw_data) :
+    """
+    Process data uploaded from a form and return a summary of its contents
+    """
+    n_genes = 0
+    rpkm_max = 0
+    count_max = 0
+    for gene_id, n_reads, rpkm in get_edgepro_genes(raw_data) :
+        n_genes += 1
+        rpkm_max = max(rpkm, rpkm_max)
+        count_max = max(n_reads, count_max)
+    return {
+        "n_genes" : n_genes,
+        "rpkm_max" : rpkm_max,
+        "count_max" : count_max,
+        "raw_data" : raw_data,
+    }
+
 class import_rnaseq_edgepro (object) :
     """
     Separate utility for uploading files directly from the EDGE-pro
@@ -573,90 +616,119 @@ class import_rnaseq_edgepro (object) :
     gene_ID, start_coord, end_coord, average_cov, #reads, and RPKM.
     The first line is these labels, followed by a blank line.
     """
-    def __init__ (self, form, user, update) :
+    def __init__ (self, study, form, update) :
         self.n_meas = self.n_meas_type = self.n_meas_data = 0
         self.n_meas_updated = 0
         remove_all = form.get("remove_all", "0") == "1"
         assay_id = form["assay"]
         assay = Assay.objects.get(pk=assay_id)
-        old_measurements = assay.measurement_set.select_related(
-            "measurement_type").select_related(
-            "measurement_unit").prefetch_related("measurementdatum_set").all()
-        meas_dict = defaultdict(list)
-        for m in old_measurements :
-            meas_dict[m.measurement_type.type_name].append(m)
+        assert (assay.line.study.id == study.id)
+        def get_measurements_dict () :
+            old_measurements = assay.measurement_set.select_related(
+                "measurement_type").select_related(
+                "measurement_unit")
+            meas_dict_ = defaultdict(list)
+            for m in old_measurements :
+                meas_dict_[m.measurement_type.type_name].append(m)
+            return meas_dict_
+        meas_dict = get_measurements_dict()
         timepoint = float(form["timepoint"])
-        table = form["table"].splitlines()
-        assert table[0].startswith("gene_ID")
         rpkm_unit = MeasurementUnit.objects.get(unit_name="FPKM")
         counts_unit = MeasurementUnit.objects.get(unit_name="counts")
         hours_unit = MeasurementUnit.objects.get(unit_name="hours")
         genes = GeneIdentifier.by_name()
-        for i_row, row in enumerate(table[2:]) :
-            row = row.strip()
-            if (row == "") : continue
-            fields = row.split()
-            if (len(fields) != 6) :
-                raise ValueError("Unexpected number of fields in line: '%s'" %
-                    row)
-            gene_id = fields[0]
-            n_reads = int(fields[4])
-            rpkm = float(fields[5])
+        if (remove_all) :
+            # get rid of all data points for this assay, regardless of
+            # timepoint
+            MeasurementDatum.objects.filter(measurement__assay=assay).delete()
+        else :
+            # delete any existing data points for this assay at the given
+            # timepoint
+            MeasurementDatum.objects.filter(
+                measurement__assay=assay,
+                x=timepoint).delete()
+        # XXX to facilitate bulk record creation, there are two loops over
+        # entries in the table.  loop 1 creates new GeneIdentifiers as
+        # needed, and either creates new Measurements or flags the existing
+        # ones for updating.  we can't create MeasurementDatum objects yet
+        # because any new parent Measurements won't have IDs until they're
+        # actually entered into the database.
+        new_meas = []
+        update_meas = []
+        for gene_id, n_reads, rpkm in get_edgepro_genes(form["data_table"]) :
             gene_meas = genes.get(gene_id, None)
-            meas_fpkm = meas_counts = None
             # add new gene measurement type if necessary
             if (gene_meas is None) :
-                gene_meas = GeneIdentifier.objects.create( # FIXME annotation?
+                gene_meas = GeneIdentifier.objects.create(
                     type_name=gene_id,
                     type_group=MeasurementGroup.GENEID) # XXX is this necessary?
                 genes[gene_id] = gene_meas
                 self.n_meas_type += 1
-            else :
-                # if we already have assay measurements for this gene, use
-                # those instead of creating new ones
-                if (gene_id in meas_dict) :
-                    for old_meas in meas_dict[gene_id] :
-                        if (old_meas.y_units_id == rpkm_unit.pk) :
-                            meas_fpkm = old_meas
-                        elif (old_meas.y_units_id == counts_unit.pk) :
-                            meas_counts = old_meas
+            meas_fpkm = meas_counts = None
+            # add new gene measurement type if necessary
+            # if we already have assay measurements for this gene, use
+            # those instead of creating new ones
+            if (gene_id in meas_dict) :
+                for old_meas in meas_dict[gene_id] :
+                    if (old_meas.y_units_id == rpkm_unit.pk) :
+                        meas_fpkm = old_meas
+                    elif (old_meas.y_units_id == counts_unit.pk) :
+                        meas_counts = old_meas
             # For both types of measurement, either create a new Measurement
-            # record or update the old one; if the latter, check for an
-            # existing MeasurementDatum at the same timepoint and update if
-            # present, otherwise create a new one.
+            # record or update the old one.
             for meas_record, meas_unit, md_value in zip(
                     [meas_fpkm, meas_counts],
                     [rpkm_unit, counts_unit],
                     [rpkm, n_reads]) :
-                create_new_datum = True
                 if (meas_record is None) :
-                    meas_record = assay.measurement_set.create(
+                    meas_record = Measurement(
+                        assay=assay,
                         measurement_type=gene_meas,
                         x_units=hours_unit,
                         y_units=meas_unit,
-                        experimenter=user,
+                        experimenter=update.mod_by,
                         update_ref=update,
                         compartment=MeasurementCompartment.INTRACELLULAR)
+                    new_meas.append(meas_record)
                     self.n_meas += 1
                 else :
-                    meas_record.update_ref = update
-                    meas_data = meas_record.measurementdatum_set.all()
-                    if (remove_all) :
-                        meas_data.delete()
-                    else :
-                        for md in meas_data :
-                            if (md.fx == timepoint) :
-                                md.y = md_value
-                                md.updated = update
-                                md.save()
-                                create_new_datum = False
-                                self.n_meas_updated += 1
-                if create_new_datum :
-                    meas_record.measurementdatum_set.create(
-                        x=timepoint,
-                        y=md_value,
-                        updated=update)
-                    self.n_meas_data += 1
+                    update_meas.append(meas_record.id)
+                    self.n_meas_updated += 1
+        # actually run the database INSERT/UPDATE statements
+        if (len(new_meas) > 0) :
+            Measurement.objects.bulk_create(new_meas)
+        if (len(update_meas) > 0) :
+            Measurement.objects.filter(id__in=update_meas).update(
+                update_ref=update)
+        # XXX loop 2 creates the MeasurementDatum objects, now that we have
+        # IDs associated with the parent measurements.
+        meas_dict = get_measurements_dict()
+        new_meas_data = []
+        for gene_id, n_reads, rpkm in get_edgepro_genes(form["data_table"]) :
+            gene_meas = genes[gene_id]
+            meas_fpkm = meas_counts = None
+            # add new gene measurement type if necessary
+            # if we already have assay measurements for this gene, use
+            # those instead of creating new ones
+            if (gene_id in meas_dict) :
+                for old_meas in meas_dict[gene_id] :
+                    if (old_meas.y_units_id == rpkm_unit.pk) :
+                        meas_fpkm = old_meas
+                    elif (old_meas.y_units_id == counts_unit.pk) :
+                        meas_counts = old_meas
+            assert (not None in [meas_fpkm, meas_counts])
+            for meas_record, meas_unit, md_value in zip(
+                    [meas_fpkm, meas_counts],
+                    [rpkm_unit, counts_unit],
+                    [rpkm, n_reads]) :
+                meas_data = MeasurementDatum(
+                    measurement=meas_record,
+                    x=timepoint,
+                    y=md_value,
+                    updated=update)
+                new_meas_data.append(meas_data)
+                self.n_meas_data += 1
+        MeasurementDatum.objects.bulk_create(new_meas_data)
 
     def format_message (self) :
         msg = "Added %d gene identifiers and %d measurements" % \

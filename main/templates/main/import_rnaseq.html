@@ -1,4 +1,3 @@
-
 {% extends "edd_base.html" %}
 {% load staticfiles %}
 
@@ -108,6 +107,8 @@ RNA-seq data import
 {% endblock body_title %}
 
 {% block content %}
+
+{% include "main/include_messages.html" %}
 
 <form method="post" id="data-form"
       action="/study/{{ study.id }}/import/rnaseq/process">

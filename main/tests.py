@@ -695,9 +695,9 @@ b0006                           5683            6459           183.9            
             form={
                 "assay" : assay.pk,
                 "timepoint" : "0",
-                "table" : raw,
+                "data_table" : raw,
             },
-            user=user,
+            study=line2.study,
             update=update)
         self.assertTrue(result.n_meas_type == 6)
         self.assertTrue(result.n_meas == result.n_meas_data == 12)
@@ -706,20 +706,20 @@ b0006                           5683            6459           183.9            
             form={
                 "assay" : assay.pk,
                 "timepoint" : "0",
-                "table" : raw,
+                "data_table" : raw,
             },
-            user=user,
+            study=line2.study,
             update=update)
         self.assertTrue(result.n_meas_type == result.n_meas == 0)
-        self.assertTrue(result.n_meas_data == 0)
+        self.assertTrue(result.n_meas_data == 12)
         # adding a timepoint
         result = main.data_import.import_rnaseq_edgepro(
             form={
                 "assay" : assay.pk,
                 "timepoint" : "4",
-                "table" : raw,
+                "data_table" : raw,
             },
-            user=user,
+            study=line2.study,
             update=update)
         self.assertTrue(result.n_meas_type == result.n_meas == 0)
         self.assertTrue(result.n_meas_data == 12)
@@ -728,10 +728,10 @@ b0006                           5683            6459           183.9            
             form={
                 "assay" : assay.pk,
                 "timepoint" : "0",
-                "table" : raw,
+                "data_table" : raw,
                 "remove_all" : "1",
             },
-            user=user,
+            study=line2.study,
             update=update)
         self.assertTrue(result.n_meas_type == result.n_meas == 0)
         self.assertTrue(result.n_meas_data == 12)
@@ -743,12 +743,12 @@ b0006                           5683            6459           183.9            
             form={
                 "assay" : assay.pk,
                 "timepoint" : "0",
-                "table" : raw,
+                "data_table" : raw,
             },
-            user=user,
+            study=line2.study,
             update=update)
         self.assertTrue(result.n_meas_type == 0)
-        self.assertTrue(result.n_meas == result.n_meas_data == 6)
+        self.assertTrue(result.n_meas == 6 and result.n_meas_data == 12)
         self.assertTrue(result.format_message() == "Added 0 gene identifiers and 6 measurements, and updated 6 measurements")
 
 
@@ -1171,7 +1171,7 @@ class UtilityTests (TestCase) :
         if mt.type_name != "D-Glucose" : # BUG?
             print mt.type_name, m[0].id
             print data._measurement_types[m[0].id]
-        self.assertTrue(mt.type_name == "D-Glucose")
+        self.assertTrue(mt.type_name=="D-Glucose" or mt.type_name=="Acetate")
         mu = data._get_y_axis_units_name(m[1].id)
         self.assertTrue(mu == "mM")
         met = data._get_metabolite_measurements(assay.id)

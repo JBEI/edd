@@ -1,3 +1,9 @@
+<!--
+
+View for import data from EDGE-pro RNA-seq pipeline for eukaryotes.  Associated
+with a single pre-existing Assay object.
+
+-->
 {% extends "edd_base.html" %}
 {% load staticfiles %}
 
@@ -10,6 +16,10 @@
 
 <script type="text/javascript">
 var process_result = function (result) {
+    $("#data-field").text(result.raw_data);
+    $("#data-table").val(result.raw_data);
+    $("#data-info").text("Table contains counts and RPKMs for " +
+        result.n_genes + " genes.");
 };
 function submit_data (study_id) {
   var fd = new FormData(document.getElementById("data-form"));
@@ -31,15 +41,43 @@ function submit_data (study_id) {
 };
 $(window).load(function () {
   var study_id = $("#study-id").val();
-  var filedrop_url = "/study/" + study_id + "/import/rnaseq/parse";
+  var filedrop_url = "/study/" + study_id + "/import/rnaseq/parseedgepro";
   $("#file-name").live("change", function () {
     $("#data-field").text("");
+    $("#data-info").text("");
+    $("#data-table").val("");
     submit_data(study_id);
   });
   setupFileDrop("data-field", filedrop_url, process_result, false);
   $("#process-button").click(function () { submit_data(study_id) });
 });
 </script>
+
+<style>
+#data-field {
+  width: 100%;
+  height: 200px;
+  font-family: Courier, Monaco, monospace;
+  font-size: 11pt;
+}
+td {
+  padding: 2px;
+  margin: 2px;
+}
+#samples-table {
+  margin: 4px 4px 4px 20px;
+}
+.field-label {
+  font-weight: bold;
+}
+.field-contents {
+  padding: 2px 8px 2px 2px;
+}
+.time-input {
+  width: 40px;
+  text-align: right;
+}
+</style>
 
 {% endblock js_css %}
 
@@ -52,12 +90,15 @@ EDGE-pro RNA-seq data import
 {% endblock body_title %}
 
 {% block content %}
+
+{% include "main/include_messages.html" %}
+
 <form method="post" id="data-form"
       action="/study/{{ study.id }}/import/rnaseq/process">
   {% csrf_token %}
   <input type="hidden" name="action" value="parse"/>
   <input type="hidden" name="format" value="edgepro"/>
-  <input type="hidden" name="assay" value="{{ assay.id }}" id="assay-id"/>
+  <input type="hidden" name="study_id" value="{{ study.id }}" id="study-id"/>
 
 <div class="pageSection" id="dataViewDiv">
   <div class="sectionHead">
@@ -82,6 +123,7 @@ EDGE-pro RNA-seq data import
     samples (in a different format), use the
     <a href="/study/{{ study.id }}/import/rnaseq">general-purpose interface</a>.
     </p>
+    <textarea name="data" id="data-field"></textarea>
     <span>
       <input type="file" name="file_name" id="file-name"/>
       <button type="button" id="process-button">Process data</button>
@@ -90,34 +132,41 @@ EDGE-pro RNA-seq data import
 </div>
 </form>
 
-<form method="post" id="rnaseqForm"
-    action="/study/{{ study.id }}/import/rnaseq">
+<form method="post" id="rnaseqForm">
+    <!--action="/study/{{ study.id }}/import/rnaseq/edgepro">-->
   <input type="hidden" name="format" value="edgepro"/>
-  <input type="hidden" name="assay" value="{{ assay.id }}" id="assay-id"/>
   <input type="hidden" name="data_table" id="data-table" value=""/>
+  {% csrf_token %}
 <div class="pageSection" id="disambiguateDiv">
   <div class="sectionHead">
     Step 2: Disambiguate data
   </div>
 
   <div class="sectionContent">
+    <span id="data-info" style="font-weight: bold;">(no data loaded)</span>
     <div style="margin:4px;">
       <span class="field-label">Assay name:</span>
-      <span class="field-contents">{{ assay.long_name }}</span>
+      <span class="field-contents">
+         <select name="assay">
+            {% for assay in assays %}
+                {% if assay.id == selected_assay_id %}
+            <option value="{{ assay.id }}" selected="1">{{ assay.long_name }} ({{ assay.n_meas }} measurements)</option>
+                {% else %}
+            <option value="{{ assay.id }}">{{ assay.long_name }} ({{ assay.n_meas }} measurements)</option>
+                {% endif %}
+            {% endfor %}
+         </select>
+      </span>
       <span class="field-label">Timepoint:</span>
       <span class="field-contents">
-        <input type="number" name="timepoint" value="0" size="64"/> h
+        <input type="number" name="timepoint" value="0" class="time-input"/> h
       </span>
     </div>
-    {% if n_existing_meas %}
-    <span>
-        <input type="checkbox" name="remove_all" value="1" id="remove-all-box"/>
+    <span style="display: off;">
+        <input type="checkbox" name="remove_all" value="0" id="remove-all-box"/>
         <label for="remove-all-box">Remove all existing measurements for this
             assay</label>
     </span>
-    {% else %}
-    <input type="hidden" name="remove_all" value="0"/>
-    {% endif %}
     <input type="submit" value="Import data"/>
   </div>
 </div>
