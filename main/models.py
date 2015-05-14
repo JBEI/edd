@@ -240,7 +240,11 @@ class EDDObject(models.Model):
     objects = hstore.HStoreManager()
     
     def created(self):
-        created = self.updates.order_by('mod_time')[:1] 
+        created = self.updates.order_by('mod_time')[:1]
+        # FIXME the line above results in an additional query that we can't
+        # fix by prefetching.  an alternative:
+        #   created = sorted(list(self.updates.all()),
+        #      lambda a,b: cmp(a.mod_time, b.mod_time))[:1]
         return created[0] if created else None
     
     def updated(self):
@@ -1005,6 +1009,10 @@ class Assay(EDDObject):
     def get_gene_measurements (self) :
         return self.measurement_set.filter(
             measurement_type__type_group=MeasurementGroup.GENEID)
+
+    @property
+    def long_name (self) :
+        return "%s-%s-%s" % (self.line.name, self.protocol.name, self.name)
 
     def to_json (self) :
         return {

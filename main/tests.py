@@ -377,6 +377,7 @@ class AssayDataTests(TestCase) :
         self.assertTrue(len(assay.get_protein_measurements()))
         json_dict = assay.to_json()
         self.assertTrue(json_dict['ln'] == "Line 1")
+        self.assertTrue(assay.long_name == "Line 1-gc-ms-Assay 1")
 
     def test_measurement_type (self) :
         proteins = MeasurementType.proteins()
@@ -668,6 +669,13 @@ class ImportTests(TestCase) :
             raw_data="\n".join([ "\t".join(row) for row in table3 ]),
             study=Study.objects.get(name="Test Study 1"))
         self.assertTrue(result["guessed_data_type"] == "combined")
+
+    def test_import_rna_seq_edgepro (self) :
+        line2 = Line.objects.get(name="L2")
+        user = User.objects.get(username="admin")
+        update = Update.objects.create(
+            mod_time=timezone.now(),
+            mod_by=user)
         # EDGE-pro output
         raw = """\
 gene_ID                  start_coord       end_coord     average_cov          #reads            RPKM
@@ -685,14 +693,63 @@ b0006                           5683            6459           183.9            
             experimenter=user)
         result = main.data_import.import_rnaseq_edgepro(
             form={
-                "assay_id" : assay.pk,
+                "assay" : assay.pk,
                 "timepoint" : "0",
                 "table" : raw,
             },
             user=user,
             update=update)
         self.assertTrue(result.n_meas_type == 6)
-        self.assertTrue(result.n_meas == 12)
+        self.assertTrue(result.n_meas == result.n_meas_data == 12)
+        # overwriting old data
+        result = main.data_import.import_rnaseq_edgepro(
+            form={
+                "assay" : assay.pk,
+                "timepoint" : "0",
+                "table" : raw,
+            },
+            user=user,
+            update=update)
+        self.assertTrue(result.n_meas_type == result.n_meas == 0)
+        self.assertTrue(result.n_meas_data == 0)
+        # adding a timepoint
+        result = main.data_import.import_rnaseq_edgepro(
+            form={
+                "assay" : assay.pk,
+                "timepoint" : "4",
+                "table" : raw,
+            },
+            user=user,
+            update=update)
+        self.assertTrue(result.n_meas_type == result.n_meas == 0)
+        self.assertTrue(result.n_meas_data == 12)
+        # erasing all existing data
+        result = main.data_import.import_rnaseq_edgepro(
+            form={
+                "assay" : assay.pk,
+                "timepoint" : "0",
+                "table" : raw,
+                "remove_all" : "1",
+            },
+            user=user,
+            update=update)
+        self.assertTrue(result.n_meas_type == result.n_meas == 0)
+        self.assertTrue(result.n_meas_data == 12)
+        # now get rid of all count measurements...
+        assay.measurement_set.filter(y_units__unit_name="counts").delete()
+        # ... and reload, which will update the unchanged RPKMs and add new
+        # count measurements
+        result = main.data_import.import_rnaseq_edgepro(
+            form={
+                "assay" : assay.pk,
+                "timepoint" : "0",
+                "table" : raw,
+            },
+            user=user,
+            update=update)
+        self.assertTrue(result.n_meas_type == 0)
+        self.assertTrue(result.n_meas == result.n_meas_data == 6)
+        self.assertTrue(result.format_message() == "Added 0 gene identifiers and 6 measurements, and updated 6 measurements")
 
 
 class SBMLUtilTests (TestCase) :
@@ -1108,6 +1165,9 @@ class UtilityTests (TestCase) :
         md = data._get_measurement_data(m[0].id)
         self.assertTrue(len(md) == 6)
         mt = data._get_measurement_type(m[0].id)
+        # FIXME for reasons unknown, this occasionally fails and returns
+        # Acetate instead.  this won't break the code that uses these methods,
+        # but we probably should avoid stochastic behavior if possible.
         if mt.type_name != "D-Glucose" : # BUG?
             print mt.type_name, m[0].id
             print data._measurement_types[m[0].id]

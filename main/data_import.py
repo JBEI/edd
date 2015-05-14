@@ -329,6 +329,7 @@ def import_assay_table_data (study, user, post_data, update) :
     # TODO update study
     return n_added
 
+# TODO this should be able to work with existing assays!
 class import_rna_seq (object) :
     """
     Import a set of RNA-Seq measurements all at once.  These may be any
@@ -573,9 +574,17 @@ class import_rnaseq_edgepro (object) :
     The first line is these labels, followed by a blank line.
     """
     def __init__ (self, form, user, update) :
-        self.n_meas = self.n_meas_type = 0
-        assay_id = form["assay_id"]
+        self.n_meas = self.n_meas_type = self.n_meas_data = 0
+        self.n_meas_updated = 0
+        remove_all = form.get("remove_all", "0") == "1"
+        assay_id = form["assay"]
         assay = Assay.objects.get(pk=assay_id)
+        old_measurements = assay.measurement_set.select_related(
+            "measurement_type").select_related(
+            "measurement_unit").prefetch_related("measurementdatum_set").all()
+        meas_dict = defaultdict(list)
+        for m in old_measurements :
+            meas_dict[m.measurement_type.type_name].append(m)
         timepoint = float(form["timepoint"])
         table = form["table"].splitlines()
         assert table[0].startswith("gene_ID")
@@ -594,6 +603,7 @@ class import_rnaseq_edgepro (object) :
             n_reads = int(fields[4])
             rpkm = float(fields[5])
             gene_meas = genes.get(gene_id, None)
+            meas_fpkm = meas_counts = None
             # add new gene measurement type if necessary
             if (gene_meas is None) :
                 gene_meas = GeneIdentifier.objects.create( # FIXME annotation?
@@ -601,29 +611,63 @@ class import_rnaseq_edgepro (object) :
                     type_group=MeasurementGroup.GENEID) # XXX is this necessary?
                 genes[gene_id] = gene_meas
                 self.n_meas_type += 1
-            # first measurement: rpkm
-            meas_fpkm = assay.measurement_set.create(
-                measurement_type=gene_meas,
-                x_units=hours_unit,
-                y_units=rpkm_unit,
-                experimenter=user,
-                update_ref=update,
-                compartment=MeasurementCompartment.INTRACELLULAR)
-            self.n_meas += 1
-            meas_fpkm.measurementdatum_set.create(
-                x=timepoint,
-                y=rpkm,
-                updated=update)
-            # second measurement: #reads
-            meas_counts = assay.measurement_set.create(
-                measurement_type=gene_meas,
-                x_units=hours_unit,
-                y_units=counts_unit,
-                experimenter=user,
-                update_ref=update,
-                compartment=MeasurementCompartment.INTRACELLULAR)
-            self.n_meas += 1
-            meas_counts.measurementdatum_set.create(
-                x=timepoint,
-                y=n_reads,
-                updated=update)
+            else :
+                # if we already have assay measurements for this gene, use
+                # those instead of creating new ones
+                if (gene_id in meas_dict) :
+                    for old_meas in meas_dict[gene_id] :
+                        if (old_meas.y_units_id == rpkm_unit.pk) :
+                            meas_fpkm = old_meas
+                        elif (old_meas.y_units_id == counts_unit.pk) :
+                            meas_counts = old_meas
+            # For both types of measurement, either create a new Measurement
+            # record or update the old one; if the latter, check for an
+            # existing MeasurementDatum at the same timepoint and update if
+            # present, otherwise create a new one.
+            for meas_record, meas_unit, md_value in zip(
+                    [meas_fpkm, meas_counts],
+                    [rpkm_unit, counts_unit],
+                    [rpkm, n_reads]) :
+                create_new_datum = True
+                if (meas_record is None) :
+                    meas_record = assay.measurement_set.create(
+                        measurement_type=gene_meas,
+                        x_units=hours_unit,
+                        y_units=meas_unit,
+                        experimenter=user,
+                        update_ref=update,
+                        compartment=MeasurementCompartment.INTRACELLULAR)
+                    self.n_meas += 1
+                else :
+                    meas_record.update_ref = update
+                    meas_data = meas_record.measurementdatum_set.all()
+                    if (remove_all) :
+                        meas_data.delete()
+                    else :
+                        for md in meas_data :
+                            if (md.fx == timepoint) :
+                                md.y = md_value
+                                md.updated = update
+                                md.save()
+                                create_new_datum = False
+                                self.n_meas_updated += 1
+                if create_new_datum :
+                    meas_record.measurementdatum_set.create(
+                        x=timepoint,
+                        y=md_value,
+                        updated=update)
+                    self.n_meas_data += 1
+
+    def format_message (self) :
+        msg = "Added %d gene identifiers and %d measurements" % \
+            (self.n_meas_type, self.n_meas)
+        if (self.n_meas_updated) :
+            msg += ", and updated %d measurements" % self.n_meas_updated
+        return msg
+
+    @classmethod
+    def from_form (cls, request, study) :
+        return cls(
+            study=study,
+            form=request.POST,
+            update=Update.load_request_update(request))

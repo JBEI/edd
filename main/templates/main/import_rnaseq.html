@@ -113,6 +113,7 @@ RNA-seq data import
       action="/study/{{ study.id }}/import/rnaseq/process">
   {% csrf_token %}
   <input type="hidden" name="action" value="parse"/>
+  <input type="hidden" name="format" value="htseq-combined"/>
   <input type="hidden" name="study_id" value="{{ study.id }}" id="study-id"/>
 
 <div class="pageSection" id="dataViewDiv">
