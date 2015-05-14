@@ -12,9 +12,9 @@ from django.template.defaulttags import register
 from django.utils.safestring import mark_safe
 from django.views import generic
 from django.views.decorators.csrf import ensure_csrf_cookie
-from main.forms import CreateStudyForm
+from main.forms import *
 from main.models import *
-from main.solr import StudySearch
+from main.solr import StudySearch, UserSearch
 from main.utilities import *
 import main.models
 import main.sbml_export
@@ -51,6 +51,7 @@ def formula (molecular_formula) :
         return ""
     return mark_safe("".join(["%s<sub>%s</sub>" % (e,c) for e,c in elements]))
 
+
 class StudyCreateView(generic.edit.CreateView):
     """
     View for request to create a study, and the index page.
@@ -81,6 +82,7 @@ class StudyDetailView(generic.DetailView):
         context = super(StudyDetailView, self).get_context_data(**kwargs)
         context['lines'] = self.object.line_set.order_by('replicate', 'name').all()
         context['line_meta'] = self.object.get_line_metadata_types()
+        context['new_line'] = CreateLineForm()
         context['strain'] = self.object.get_strains_used()
         context['protocol'] = self.object.get_protocols_used()
         return context
@@ -815,26 +817,31 @@ def search (request) :
     # less well for metabolites.
     term = request.GET["term"]
     model_name = request.GET["model"]
-    # if desired, limit to specific search keys
-    valid_keys = request.GET.get("keys", "all").split(",")
-    use_all_keys = (valid_keys == ["all"])
-    models = getattr(main.models, model_name).objects.all()
     results = []
-    terms = term.split()
-    for item in models :
-        json_dict = item.to_json()
-        keys = valid_keys
-        if (use_all_keys) :
-            keys = json_dict.keys()
-        for key in keys :
-            value = json_dict[key]
-            if (not isinstance(value, basestring)) :
-                continue
-            for term in terms :
-                if (term in value) :
-                    results.append(json_dict)
-                    break
-            else :
-                continue
-            break
+    if model_name == "User":
+        solr = UserSearch()
+        results = solr.query(query=term, options={'edismax':True})
+        return JsonResponse({ "rows": results['response']['docs'] })
+    else:
+        # if desired, limit to specific search keys
+        valid_keys = request.GET.get("keys", "all").split(",")
+        use_all_keys = (valid_keys == ["all"])
+        models = getattr(main.models, model_name).objects.all()
+        terms = term.split()
+        for item in models :
+            json_dict = item.to_json()
+            keys = valid_keys
+            if (use_all_keys) :
+                keys = json_dict.keys()
+            for key in keys :
+                value = json_dict[key]
+                if (not isinstance(value, basestring)) :
+                    continue
+                for term in terms :
+                    if (term in value) :
+                        results.append(json_dict)
+                        break
+                else :
+                    continue
+                break
     return JsonResponse({ "rows": results })

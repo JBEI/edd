@@ -126,7 +126,7 @@ var StudyD;
             // the scrolling container div declares a large padding margin for the scroll bar,
             // and that padding margin would be an empty waste of space otherwise.
             if (this.uniqueValuesOrder.length > 15) {
-                $(fCol).append(this.searchBoxElement).append(this.scrollZoneDiv);
+                $(fCol).append(this.titleElement).append(this.searchBoxElement).append(this.scrollZoneDiv);
                 // Change the reference so we're affecting the innerHTML of the correct div later on
                 fCol = this.scrollZoneDiv;
             }

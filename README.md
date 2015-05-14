@@ -135,8 +135,8 @@
         * Pull CA certificates from `identity.lbl.gov`
             * As root in `/System/Library/OpenSSL/certs`
                 * `openssl s_client -showcerts -connect identity.lbl.gov:636 > godaddy.crt`
-                * Edit `godaddy.crt` to remove all non-certificate blocks (outside BEGIN/END), and the
-                  first certificate block (the identity.lbl.gov certificate).
+                * Edit `godaddy.crt` to remove all non-certificate blocks (outside BEGIN/END), and
+                  the first certificate block (the identity.lbl.gov certificate).
         * Edit as root `/etc/openldap/ldap.conf`
             * Add line `TLS_CACERTDIR   /System/Library/OpenSSL/certs`
             * Add line `TLS_CACERT      /System/Library/OpenSSL/certs/godaddy.crt`
@@ -160,8 +160,10 @@
  * Required `.deb` packages
     * `sudo apt-get install pip` for PyPI/pip python package manager
     * `sudo apt-get install libpq-dev` for headers required by psycopg2
-    * `sudo apt-get install libldap2-dev libsasl2-dev libssl-dev` for headers required by python-ldap
+    * `sudo apt-get install libldap2-dev libsasl2-dev libssl-dev` for headers required by
+      python-ldap
     * `sudo apt-get install python-dev libffi-dev` for headers required by cryptography
+    * `sudo apt-get install libatlas-dev liblapack-dev gfortran` for packages required by SciPy
 
  * Configure LDAP SSL handling in `/etc/ldap/ldap.conf`
     * Add line `TLS_CACERTDIR   /etc/ssl/certs`
