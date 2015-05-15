@@ -446,6 +446,18 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name='eddobject',
+            name='created',
+            field=models.ForeignKey(related_name='+', to='main.Update'),
+            preserve_default=True,
+        ),
+        migrations.AddField(
+            model_name='eddobject',
+            name='updated',
+            field=models.ForeignKey(related_name='+', to='main.Update'),
+            preserve_default=True,
+        ),
+        migrations.AddField(
+            model_name='eddobject',
             name='updates',
             field=models.ManyToManyField(related_name='+', db_table=b'edd_object_update', to='main.Update'),
             preserve_default=True,

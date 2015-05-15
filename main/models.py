@@ -8,8 +8,6 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
-from django.utils import timezone
-from django.utils.dateformat import format as format_date
 from django_extensions.db.fields import PostgreSQLUUIDField
 from django_hstore import hstore
 from itertools import chain
@@ -39,7 +37,7 @@ class Update(models.Model):
     @classmethod
     def load_request_update(cls, request):
         if not hasattr(request, 'update_key'):
-            update = cls(mod_time=timezone.now(),
+            update = cls(mod_time=arrow.utcnow(),
                          mod_by=request.user,
                          path=request.get_full_path(),
                          origin=request.META['REMOTE_HOST'])
@@ -51,7 +49,7 @@ class Update(models.Model):
 
     def to_json(self):
         return {
-            "time": format_date(self.mod_time, 'U'),
+            "time": arrow.get(self.mod_time).timestamp,
             "user": self.mod_by.pk,
         }
 
@@ -230,50 +228,31 @@ class EDDObject(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     updates = models.ManyToManyField(Update, db_table='edd_object_update', related_name='+')
+    # these are used often enough we should save extra queries by including as fields
+    created = models.ForeignKey(Update, related_name='+')
+    updated = models.ForeignKey(Update, related_name='+')
+    # store arbitrary metadata as a dict with hstore extension
     meta_store = hstore.DictionaryField(blank=True, default=dict)
 
     # Use custom hstore manager to enable queries on hstore data
     objects = hstore.HStoreManager()
-    
-    def created(self):
-        created = self.updates.order_by('mod_time')[:1] 
-        return created[0] if created else None
-    
-    def updated(self):
-        updated = self.updates.order_by('-mod_time')[:1]
-        return updated[0] if updated else None
-
-    def mod_epoch (self) :
-        mod_date = self.updated()
-        if (mod_date) :
-          return format_date(mod_date.mod_time, 'U')
-        return None
 
     @property
+    def mod_epoch (self) :
+        return arrow.get(self.updated.mod_time).timestamp
+
+    # FIXME is this needed with updated now a field?
+    @property
     def last_modified (self) :
-        updated = self.updated()
-        if (updated is None) :
-            return "N/A"
-        else :
-            return updated.format_timestamp("%b %d %Y %I:%M%p")
+        return self.updated.format_timestamp()
 
     def was_modified (self) :
         return self.updates.count() > 1
 
+    # FIXME is this needed with created now a field?
     @property
     def date_created (self) :
-        updated = self.created()
-        if (updated) :
-            return updated.format_timestamp("%b %d %Y %I:%M%p")
-        else :
-            return "N/A"
-
-    @property
-    def created_by (self) :
-        update = self.created()
-        if (update) :
-            return update.mod_by.initials
-        return "N/A"
+        return self.created.format_timestamp()
 
     def get_attachment_count(self):
         return self.files.count()
@@ -285,7 +264,7 @@ class EDDObject(models.Model):
     def get_comment_count(self):
         return self.comments.count()
 
-    def get_metadata_json(self): # FIXME not sure this does what we want...
+    def get_metadata_json(self):
         return self.meta_store
 
     def get_metadata_types(self):
@@ -375,8 +354,8 @@ class Study(EDDObject):
         """
         Convert the Study model to a dict structure formatted for Solr JSON.
         """
-        created = self.created()
-        updated = self.updated()
+        created = self.created
+        updated = self.updated
         owner = created.mod_by.userprofile if hasattr(created.mod_by, 'userprofile') else None
         return {
             'id': self.pk,
@@ -530,7 +509,7 @@ class Protocol(EDDObject):
         null=True, related_name="protocol_set")
     
     def creator(self):
-        return self.created().mod_by
+        return self.created.mod_by
     
     def owner(self):
         return self.owned_by
@@ -539,7 +518,7 @@ class Protocol(EDDObject):
         return self.updated.mod_time
 
     def last_modified_str (self) :
-        return self.updated().format_timestamp()
+        return self.updated.format_timestamp()
 
     def to_solr_value(self):
         return '%(id)s@%(name)s' % {'id':self.pk, 'name':self.name}
@@ -655,10 +634,10 @@ class CarbonSource(EDDObject):
             "id" : self.pk,
             "carbon" : self.name,
             "labeling" : self.labeling,
-            "initials" : self.created_by,
+            "initials" : self.created.mod_by.initials,
             "vol" : self.volume,
-            "mod" : self.mod_epoch(),
-            "modstr" : str(self.updated()),
+            "mod" : self.mod_epoch,
+            "modstr" : str(self.updated),
             "ainfo" : self.description,
             "userid" : None, # TODO
             "disabled" : not self.active,
@@ -695,8 +674,8 @@ class Line(EDDObject):
     strains = models.ManyToManyField(Strain, db_table='line_strain')
 
     def to_json(self):
-        updated = self.updated()
-        created = self.created()
+        updated = self.updated
+        created = self.created
         return {
             'id': self.pk,
             'name': self.name,
@@ -1014,7 +993,7 @@ class Assay(EDDObject):
             "active" : self.active,
             "lid" : self.line.pk,
             "pid" : self.protocol.pk,
-            "mod" : str(self.updated()),
+            "mod" : str(self.updated),
             "exp" : self.experimenter.id,
             "meta": self.get_metadata_json(),
             "measurements": list(self.measurement_set.values_list('id', flat=True)),

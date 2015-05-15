@@ -58,9 +58,17 @@ class StudyAdmin(admin.ModelAdmin):
     inlines = [UserPermissionInline, GroupPermissionInline]
     list_display = ['name', 'description', 'created', 'updated']
 
+    def get_queryset(self, request):
+        q = super(StudyAdmin, self).get_queryset(request)
+        #
+        return q
+
     def solr_index(self, request, queryset):
         solr = StudySearch(ident=request.user)
-        solr.update(queryset)
+        # optimize queryset to fetch several related fields
+        q = queryset.prefetch_related('updates__mod_by__userprofile')
+        q = q.prefetch_related('userpermission_set__user', 'grouppermission_set__group')
+        solr.update(q)
     solr_index.short_description = 'Index in Solr'
 
 
