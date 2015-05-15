@@ -285,7 +285,7 @@ class AssayDataTests(TestCase) :
         user1 = User.objects.create_user(username="admin",
             email="nechols@lbl.gov", password='12345')
         study1 = Study.objects.create(name='Test Study 1', description='')
-        line1 = study1.line_set.create(name="Line 1", description="",
+        line1 = study1.line_set.create(name="WT1", description="",
             experimenter=user1, contact=user1)
         protocol1 = Protocol.objects.create(name="gc-ms", owned_by=user1)
         protocol2 = Protocol.objects.create(name="OD600", owned_by=user1)
@@ -313,8 +313,10 @@ class AssayDataTests(TestCase) :
             short_name="prot2")
         mt4 = MeasurementType.create_protein(type_name="Protein name 1",
             short_name="prot1")
-        assay1 = line1.assay_set.create(name="Assay 1",
-            protocol=protocol1, description="GC-MS assay", experimenter=user1)
+        assay1 = line1.assay_set.create(name="1",
+            protocol=protocol1, description="GC-MS assay 1", experimenter=user1)
+        assay2 = line1.assay_set.create(name="1",
+            protocol=protocol2, description="OD600 assay 1", experimenter=user1)
         up1 = Update.objects.create(mod_by=user1)
         mu1 = MeasurementUnit.objects.create(unit_name="hours")
         mu2 = MeasurementUnit.objects.create(unit_name="mM", type_group="m")
@@ -337,7 +339,7 @@ class AssayDataTests(TestCase) :
         meas1.measurementdatum_set.create(updated=up1, x=32, y=None)
 
     def test_protocol (self) :
-        p1 = Assay.objects.get(name="Assay 1").protocol
+        p1 = Assay.objects.get(description="GC-MS assay 1").protocol
         p2 = Protocol.objects.get(name="OD600")
         p3 = Protocol.objects.filter(active=False)[0]
         self.assertTrue(str(p1) == "gc-ms")
@@ -371,20 +373,22 @@ class AssayDataTests(TestCase) :
             raise Exception("Should have caught a ValueError...")
 
     def test_assay (self) :
-        assay = Assay.objects.get(name="Assay 1")
+        assay = Assay.objects.get(description="GC-MS assay 1")
         self.assertTrue(len(assay.get_metabolite_measurements()) == 1)
         self.assertTrue(len(assay.get_gene_measurements()) == 1)
         self.assertTrue(len(assay.get_protein_measurements()))
         json_dict = assay.to_json()
-        self.assertTrue(json_dict['ln'] == "Line 1")
-        self.assertTrue(assay.long_name == "Line 1-gc-ms-Assay 1")
+        self.assertTrue(json_dict['ln'] == "WT1")
+        self.assertTrue(assay.long_name == "WT1-gc-ms-1")
+        new_assay_number = assay.line.new_assay_number("gc-ms")
+        self.assertTrue(new_assay_number == 2)
 
     def test_measurement_type (self) :
         proteins = MeasurementType.proteins()
         self.assertTrue(len(proteins) == 2)
         self.assertTrue(proteins[0].is_protein())
         proteins_by_name = MeasurementType.proteins_by_name()
-        assay = Assay.objects.get(name="Assay 1")
+        assay = Assay.objects.get(description="GC-MS assay 1")
         meas1 = assay.measurement_set.filter(
             measurement_type__short_name="Mev")[0]
         mt1 = meas1.measurement_type
@@ -409,7 +413,7 @@ class AssayDataTests(TestCase) :
         self.assertTrue(all_units == [u'abcd', u'Cmol/L', u'hours', u'mM'])
 
     def test_measurement (self) :
-        assay = Assay.objects.get(name="Assay 1")
+        assay = Assay.objects.get(description="GC-MS assay 1")
         metabolites = list(assay.get_metabolite_measurements())
         self.assertTrue(len(metabolites) == 1)
         meas1 = metabolites[0]
@@ -428,7 +432,7 @@ class AssayDataTests(TestCase) :
         self.assertTrue(mdata[-1].fy is None)
 
     def test_measurement_extract (self) :
-        assay = Assay.objects.get(name="Assay 1")
+        assay = Assay.objects.get(description="GC-MS assay 1")
         meas1 = list(assay.get_metabolite_measurements())[0]
         meas2 = list(assay.get_gene_measurements())[0]
         xval = meas1.extract_data_xvalues()
@@ -439,7 +443,7 @@ class AssayDataTests(TestCase) :
         self.assertTrue(len(xval3) == 0)
 
     def test_measurement_interpolate (self) :
-        assay = Assay.objects.get(name="Assay 1")
+        assay = Assay.objects.get(description="GC-MS assay 1")
         meas1 = list(assay.get_metabolite_measurements())[0]
         meas2 = list(assay.get_gene_measurements())[0]
         y_interp = meas1.interpolate_at(21)
@@ -591,8 +595,8 @@ class ImportTests(TestCase) :
             table=table1,
             n_cols=4,
             data_type="fpkm",
-            line_ids=[line1.id,line1.id,line2.id,line2.id],
-            assay_ids=[1,2,1,2],
+            line_ids=[line1.pk,line1.pk,line2.pk,line2.pk],
+            assay_ids=[0,0,0,0],
             meas_times=[0]*4)
         self.assertTrue(result.n_meas == result.n_meas_data == 8)
         self.assertTrue(result.n_assay == 4 and result.n_meas_type == 2)
@@ -610,9 +614,10 @@ class ImportTests(TestCase) :
             table=table1,
             n_cols=4,
             data_type="fpkm",
-            line_ids=[line1.id,line1.id,line2.id,line2.id],
-            assay_ids=[1,1,1,1],
-            meas_times=[0,1,0,1])
+            line_ids=[line1.pk,line1.pk,line2.pk,line2.pk],
+            assay_ids=[0,0,0,0],
+            meas_times=[0,1,0,1],
+            group_timepoints=1)
         self.assertTrue(result.n_meas == 4 and result.n_meas_data == 8)
         self.assertTrue(result.n_meas_type == 0 and result.n_assay == 2)
         table2 = [ # count
@@ -627,8 +632,8 @@ class ImportTests(TestCase) :
             table=table2,
             n_cols=4,
             data_type="counts",
-            line_ids=[line1.id,line1.id,line2.id,line2.id],
-            assay_ids=[1,2,1,2],
+            line_ids=[line1.pk,line1.pk,line2.pk,line2.pk],
+            assay_ids=[0,0,0,0],
             meas_times=[5]*4)
         self.assertTrue(result.n_meas == result.n_meas_data == 8)
         self.assertTrue(result.n_meas_type == 0 and result.n_assay == 4)
@@ -645,11 +650,31 @@ class ImportTests(TestCase) :
             table=table3,
             n_cols=4,
             data_type="combined",
-            line_ids=[line1.id,line1.id,line2.id,line2.id],
-            assay_ids=[1,1,1,1],
-            meas_times=[0,1,0,1])
+            line_ids=[line1.pk,line1.pk,line2.pk,line2.pk],
+            assay_ids=[0,0,0,0],
+            meas_times=[0,1,0,1],
+            group_timepoints=1)
         self.assertTrue(result.n_meas_type == 0 and result.n_assay == 2)
         self.assertTrue(result.n_meas == 8 and result.n_meas_data == 16)
+        # two timepoints per condition, separate assays
+        result = main.data_import.import_rna_seq(
+            study=Study.objects.get(name="Test Study 1"),
+            user=user,
+            update=update,
+            table=table3,
+            n_cols=4,
+            data_type="combined",
+            line_ids=[line1.pk,line1.pk,line2.pk,line2.pk],
+            assay_ids=[0,0,0,0],
+            meas_times=[0,1,0,1])
+        self.assertTrue(result.n_meas_type == 0 and result.n_assay == 4)
+        self.assertTrue(result.n_meas == 16 and result.n_meas_data == 16)
+        # error catching
+        p = Protocol.objects.get(name="Transcriptomics")
+        assay1 = line1.assay_set.create(
+            name="assay1", description="", protocol=p, experimenter=user)
+        assay2 = line2.assay_set.create(
+            name="assay1", description="", protocol=p, experimenter=user)
         try :
             result = main.data_import.import_rna_seq(
                 study=Study.objects.get(name="Test Study 1"),
@@ -658,13 +683,28 @@ class ImportTests(TestCase) :
                 table=table3,
                 n_cols=4,
                 data_type="combined",
-                line_ids=[line1.id,line1.id,line2.id,line2.id],
-                assay_ids=[1,1,1,1],
+                line_ids=[line1.pk,line1.pk,line2.pk,line2.pk],
+                assay_ids=[assay1.pk,assay1.pk,assay2.pk,assay2.pk],
                 meas_times=[0,0,0,0])
         except ValueError as e :
             pass
         else :
             raise Exception("ValueError expected")
+        # use existing Assays instead of creating new ones
+        result = main.data_import.import_rna_seq(
+            study=Study.objects.get(name="Test Study 1"),
+            user=user,
+            update=update,
+            table=table3,
+            n_cols=4,
+            data_type="combined",
+            line_ids=[line1.pk,line1.pk,line2.pk,line2.pk],
+            assay_ids=[assay1.pk,assay1.pk,assay2.pk,assay2.pk],
+            meas_times=[0,4,0,4])
+        self.assertTrue(result.n_meas_type == 0 and result.n_assay == 0)
+        self.assertTrue(result.n_meas == 8 and result.n_meas_data == 16)
+        self.assertTrue(assay1.measurement_set.count() == 4)
+        #
         result = main.data_import.interpret_raw_rna_seq_data(
             raw_data="\n".join([ "\t".join(row) for row in table3 ]),
             study=Study.objects.get(name="Test Study 1"))

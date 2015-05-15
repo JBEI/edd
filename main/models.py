@@ -757,6 +757,28 @@ class Line(EDDObject):
     def media (self) :
         return self.get_metadata_dict().get("Media", None)
 
+    def new_assay_number (self, protocol) :
+        """
+        Given a Protocol name, fetch all matching child Assays, attempt to
+        convert their names into integers, and return the next highest integer
+        for creating a new assay.  (This will result in duplication of names
+        for Assays of different protocols under the same Line, but the frontend
+        displays Assay.long_name, which should be unique.)
+        """
+        if isinstance(protocol, basestring) : # assume Protocol.name
+            protocol = Protocol.objects.get(name=protocol)
+        assays = self.assay_set.filter(protocol=protocol)
+        existing_assay_numbers = []
+        for assay in assays :
+            try :
+                existing_assay_numbers.append(int(assay.name))
+            except ValueError :
+                pass
+        assay_start_id = 1
+        if (len(existing_assay_numbers) > 0) :
+            assay_start_id = max(existing_assay_numbers) + 1
+        return assay_start_id
+
 class MeasurementGroup(object):
     """
     Does not need its own table in database, but multiple models will reference measurements that

@@ -345,7 +345,7 @@ class import_rna_seq (object) :
     <ID2> <value> <value> <value>
 
     (with the first row being optional, since the meaning of each column
-    should have already been disambiguited before form submission.)
+    should have already been disambiguated before form submission.)
 
     This functionality is implemented as a class to facilitate tracking of new
     record creation, but the resulting object is essentially disposable.
@@ -360,15 +360,20 @@ class import_rna_seq (object) :
         line_ids = kwds["line_ids"]
         assay_ids = kwds["assay_ids"]
         descriptions = kwds.get('descriptions', None)
+        group_timepoints = int(kwds.get("group_timepoints", "0"))
         meas_times = [ float(x) for x in kwds["meas_times"] ]
         assert (len(line_ids) == len(assay_ids) == len(meas_times) == n_cols)
         if (descriptions is None) :
             descriptions = [ None ] * n_cols
-        unique_ids = set(zip(line_ids,assay_ids,meas_times))
-        if (len(unique_ids) != n_cols) :
-            raise ValueError("Duplicate line/assay/timepoint selections - " +
-                "each combination must be unique!  For technical replicates, "+
-                "you should treat each replica as a separate assay.")
+        unique_ids = set([])
+        for line_id, assay_id, t in zip(line_ids,assay_ids,meas_times) :
+            key = (line_id, assay_id, t)
+            if (key in unique_ids) and ((assay_id != 0) or group_timepoints) :
+                raise ValueError("Duplicate line/assay/timepoint selections"+
+                    "- each combination must be unique!  For technical "+
+                    "replicates, you should treat each replica as a separate "+
+                    "assay.")
+            unique_ids.add(key)
         protocol = Protocol.objects.get(name="Transcriptomics")
         table = kwds["table"]
         if isinstance(table, basestring) :
@@ -378,40 +383,53 @@ class import_rna_seq (object) :
             assert (len(row[1:]) == n_cols), row
         lines = { l.pk:l for l in Line.objects.filter(id__in=line_ids) }
         assays = {}
-        # TODO should we distinguish between different replica types?
-        # XXX as written, this will treat each timepoint as a different set of
-        # Measurements within a single Assay - this is logically correct, but
-        # may not fit so well with the current EDD interface, especially if we
-        # want to compare expression at different timepoints.  should we
-        # instead treat different timepoints as separate Assays?
-        for line_id, assay_id, desc in zip(line_ids, assay_ids, descriptions) :
-            if ((line_id, assay_id) in assays) : continue
+        new_assays = {}
+        new_assay_ids = []
+        for line_id, assay_id, desc, t in \
+                zip(line_ids, assay_ids, descriptions, meas_times) :
             line = lines[line_id]
-            line_assays = line.assay_set.all()
-            int_names = []
-            for assay_ in line_assays :
-                try :
-                    int_names.append(int(assay_.name))
-                except ValueError :
-                    pass
-            assay_start_id = 1
-            if (len(int_names) > 0) :
-                assay_start_id = max(int_names) + 1
-            # XXX I'm not sure this is ideal either; is it unreasonable to
-            # require that the assays be created as part of this process?
-            assay = line.assay_set.create(
-                name=str(assay_start_id),
-                description=desc,
-                protocol=protocol,
-                experimenter=user)
-            assays[(line_id, assay_id)] = assay
-            self.n_assay += 1
+            if (assay_id == 0) : # new assay needed
+                if (group_timepoints) :
+                    if (line_id in new_assays) :
+                        assay = new_assays[line_id]
+                        new_assay_ids.append(assay.id)
+                        continue
+                assay_start_id = line.new_assay_number(protocol)
+                assay = line.assay_set.create(
+                    name=str(assay_start_id),
+                    description=desc,
+                    protocol=protocol,
+                    experimenter=user)
+                assays[(line_id, assay.pk)] = assay
+                new_assays[line_id] = assay
+                new_assay_ids.append(assay.pk)
+                self.n_assay += 1
+            else :
+                assay = line.assay_set.get(pk=assay_id)
+                assays[(line_id, assay_id)] = assay
+                new_assay_ids.append(assay_id)
+        assay_ids = new_assay_ids
         meas_units = {
             "fpkm" : MeasurementUnit.objects.get(unit_name="FPKM"),
             "counts" : MeasurementUnit.objects.get(unit_name="counts"),
             "hours" : MeasurementUnit.objects.get(unit_name="hours"),
         }
         genes = GeneIdentifier.by_name()
+        # now collect all Measurements for each assay, and store in a dict
+        # keyed by (assay_id, measurement_type_id, y_units_id)
+        def get_measurements_dict () :
+            meas_dict_ = {}
+            for line_id, assay_id in zip(line_ids, assay_ids) :
+                assay = assays[(line_id, assay_id)]
+                all_measurements = assay.measurement_set.all()
+                for m in all_measurements :
+                    key = (assay_id, m.measurement_type_id, m.y_units_id)
+                    meas_dict_[key] = m
+            return meas_dict_
+        meas_dict = get_measurements_dict()
+        new_measurements = []
+        update_measurements = []
+        values_by_gene = { "fpkm" : {}, "counts" : {} }
         for i_row, row in enumerate(table) :
             gene_id = row[0]
             if (gene_id == "GENE") : continue
@@ -438,15 +456,25 @@ class import_rna_seq (object) :
                 except ValueError :
                     raise ValueError("Couldn't interpret value at (%d,%d): %s"%
                         (i_row+1, i_col+2, value))
+            if (all_counts) :
+                values_by_gene["counts"][gene_id] = all_counts
+            if (all_fpkms) :
+                values_by_gene["fpkm"][gene_id] = all_fpkms
             def add_measurement_data (values, units) :
                 assert len(values) == n_cols
                 measurements = {}
                 for i_col,(line_id,assay_id) in enumerate(zip(line_ids,
                                                               assay_ids)):
-                    meas = measurements.get((line_id, assay_id), None)
+                    key = (assay_id, gene_meas.pk, units.pk)
+                    if (key in meas_dict) :
+                        meas = meas_dict[key]
+                        update_measurements.append(meas.pk)
+                    else :
+                        meas = measurements.get((line_id, assay_id), None)
                     if (meas is None) :
                         assay = assays[(line_id, assay_id)]
-                        meas = assay.measurement_set.create(
+                        meas = Measurement(
+                            assay=assay,
                             measurement_type=gene_meas,
                             x_units=meas_units["hours"],
                             y_units=units,
@@ -454,16 +482,41 @@ class import_rna_seq (object) :
                             update_ref=update,
                             compartment=MeasurementCompartment.INTRACELLULAR)
                         self.n_meas += 1
+                        new_measurements.append(meas)
                         measurements[(line_id, assay_id)] = meas
-                    meas.measurementdatum_set.create(
-                        x=meas_times[i_col],
-                        y=values[i_col],
-                        updated=update)
-                    self.n_meas_data += 1
+                    #meas.measurementdatum_set.create(
+                    #    x=meas_times[i_col],
+                    #    y=values[i_col],
+                    #    updated=update)
+                    #self.n_meas_data += 1
             if (len(all_fpkms) > 0) :
                 add_measurement_data(all_fpkms, meas_units["fpkm"])
             if (len(all_counts) > 0) :
                 add_measurement_data(all_counts, meas_units["counts"])
+        if (len(new_measurements) > 0) :
+            Measurement.objects.bulk_create(new_measurements)
+        self.n_meas_updated = len(update_measurements)
+        if (self.n_meas_updated) :
+            Measurement.objects.filter(id__in=update_measurements).update(
+                update_ref=update)
+        meas_dict = get_measurements_dict()
+        new_meas_data = []
+        for gene_id in genes.keys() :
+            meas_type = genes[gene_id]
+            for ytype in ["counts", "fpkm"] :
+                if (len(values_by_gene[ytype]) > 0) :
+                    for i_col, (assay_id, t) in enumerate(
+                            zip(assay_ids, meas_times)) :
+                        key = (assay_id, meas_type.pk, meas_units[ytype].pk)
+                        mdata = MeasurementDatum(
+                            measurement=meas_dict[key],
+                            x=t,
+                            y=values_by_gene[ytype][gene_id][i_col],
+                            updated=update)
+                        new_meas_data.append(mdata)
+                        self.n_meas_data += 1
+        if (len(new_meas_data) > 0) :
+            MeasurementDatum.objects.bulk_create(new_meas_data)
 
     @classmethod
     def from_form (cls, request, study) :
