@@ -594,11 +594,15 @@ def interpret_raw_rna_seq_data (raw_data, study, file_name=None) :
                 if ([ "." in cell for cell in row[1:] ].count(True) > 0) :
                     data_type = "fpkm"
             _validate_row(row, i)
+    assays = Assay.objects.filter(line__study=study,
+        protocol__name="Transcriptomics").select_related(
+        "line__study").select_related("protocol")
     return {
         "guessed_data_type" : data_type,
         "raw_data" : raw_data,
         "table" : table,
         "samples" : samples,
+        "assays" : [ {"id":a.id, "name": a.long_name} for a in assays ],
     }
 
 def _validate_row (row, i_row, assume_csv_pairs=False) :
