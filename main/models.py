@@ -11,6 +11,7 @@ from django.db import models
 from django_extensions.db.fields import PostgreSQLUUIDField
 from django_hstore import hstore
 from itertools import chain
+from threadlocals.threadlocals import get_current_request
 
 
 class Update(models.Model):
@@ -23,7 +24,7 @@ class Update(models.Model):
     class Meta:
         db_table = 'update_info'
     mod_time = models.DateTimeField(auto_now_add=True, editable=False)
-    mod_by = models.ForeignKey(settings.AUTH_USER_MODEL, editable=False)
+    mod_by = models.ForeignKey(settings.AUTH_USER_MODEL, editable=False, null=True)
     path = models.TextField(blank=True, null=True)
     origin = models.TextField(blank=True, null=True)
 
@@ -33,6 +34,19 @@ class Update(models.Model):
         except Exception as e:
             time = self.mod_time
         return '%s by %s' % (time, self.mod_by)
+
+    @classmethod
+    def load_update(cls):
+        request = get_current_request()
+        if request is None:
+            update = cls(mod_time=arrow.utcnow(),
+                         mod_by=None,
+                         path=None,
+                         origin='localhost')
+            update.save()
+        else:
+            update = cls.load_request_update(request)
+        return update
 
     @classmethod
     def load_request_update(cls, request):
@@ -229,8 +243,8 @@ class EDDObject(models.Model):
     description = models.TextField(blank=True, null=True)
     updates = models.ManyToManyField(Update, db_table='edd_object_update', related_name='+')
     # these are used often enough we should save extra queries by including as fields
-    created = models.ForeignKey(Update, related_name='+')
-    updated = models.ForeignKey(Update, related_name='+')
+    created = models.ForeignKey(Update, related_name='+', editable=False)
+    updated = models.ForeignKey(Update, related_name='+', editable=False)
     # store arbitrary metadata as a dict with hstore extension
     meta_store = hstore.DictionaryField(blank=True, default=dict)
 
@@ -331,6 +345,13 @@ class EDDObject(models.Model):
             raise ValueError("%s name must not be blank." %
                 self.__class__.__name__)
         self.name = name
+
+    def save(self, *args, **kwargs):
+        if self.created_id is None:
+            self.created = Update.load_update()
+        if self.updated_id is None:
+            self.updated = Update.load_update()
+        super(EDDObject, self).save(*args, **kwargs)
 
 
 class Study(EDDObject):
