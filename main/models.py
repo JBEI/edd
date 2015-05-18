@@ -61,10 +61,17 @@ class Update(models.Model):
             update = cls.objects.get(pk=request.update_key)
         return update
 
+    @property
+    def initials(self):
+        if self.mod_by_id is None:
+            return '--'
+        return self.mod_by.initials
+    
+
     def to_json(self):
         return {
             "time": arrow.get(self.mod_time).timestamp,
-            "user": self.mod_by.pk,
+            "user": self.mod_by_id,
         }
 
     def format_timestamp (self, format_string="%b %d %Y %I:%M%p") :
@@ -655,7 +662,7 @@ class CarbonSource(EDDObject):
             "id" : self.pk,
             "carbon" : self.name,
             "labeling" : self.labeling,
-            "initials" : self.created.mod_by.initials,
+            "initials" : self.created.initials,
             "vol" : self.volume,
             "mod" : self.mod_epoch,
             "modstr" : str(self.updated),

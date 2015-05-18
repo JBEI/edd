@@ -3,6 +3,7 @@ from django.test import TestCase
 from main.models import * #Study, Update, UserPermission, GroupPermission
 from main.solr import StudySearch
 from edd.profile.models import UserProfile
+import arrow
 import main.data_export
 import main.data_import
 import main.sbml_export
@@ -539,7 +540,7 @@ class ImportTests(TestCase) :
 
     def test_import_gc_ms_metabolites (self) :
         update = Update.objects.create(
-            mod_time=timezone.now(),
+            mod_time=arrow.utcnow(),
             mod_by=User.objects.get(username="admin"))
         main.data_import.import_assay_table_data(
             study=Study.objects.get(name="Test Study 1"),
@@ -557,7 +558,7 @@ class ImportTests(TestCase) :
 
     def test_error (self) :
         update = Update.objects.create(
-            mod_time=timezone.now(),
+            mod_time=arrow.utcnow(),
             mod_by=User.objects.get(username="admin"))
         try : # failed user permissions check
             main.data_import.import_assay_table_data(
@@ -580,7 +581,7 @@ class ImportTests(TestCase) :
         ]
         user = User.objects.get(username="admin")
         update = Update.objects.create(
-            mod_time=timezone.now(),
+            mod_time=arrow.utcnow(),
             mod_by=user)
         # two assays per line (replicas)
         result = main.data_import.import_rna_seq(
@@ -719,7 +720,7 @@ class SBMLUtilTests (TestCase) :
     def test_sbml_notes (self) :
         try :
             import libsbml
-        except ImportError :
+        except ImportError as e :
             warnings.warn(str(e))
         else :
             notes = main.sbml_export.create_sbml_notes_object({
@@ -736,7 +737,7 @@ class SBMLUtilTests (TestCase) :
     def test_sbml_setup (self) :
         try :
             import libsbml
-        except ImportError :
+        except ImportError as e :
             warnings.warn(str(e))
         else :
             dir_name = os.path.dirname(__file__)
@@ -988,7 +989,7 @@ class ExportTests(TestCase) :
     def test_sbml_export (self) :
         try :
             import libsbml
-        except ImportError :
+        except ImportError as e :
             warnings.warn(str(e))
         else :
             study = Study.objects.get(name="Test Study 1")

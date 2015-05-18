@@ -283,7 +283,7 @@ def assemble_table (
             row.add_item_if_not_flagged("AssayExperimenter",
                 get_initials(assay.experimenter))
             row.add_item_if_not_flagged("AssayLastModified",
-                str(assay.mod_epoch()))
+                str(assay.mod_epoch))
             assay_metadata = assay.get_metadata_dict()
             if (not column_flags.get("AssayMetadata", False)) :
                 for column_label in assay_metadata_labels :
@@ -298,7 +298,7 @@ def assemble_table (
             protocol_row.add_item_if_not_flagged("AssayExperimenter",
                 get_initials(assay.experimenter))
             protocol_row.add_item_if_not_flagged("AssayLastModified",
-                str(assay.updated()))
+                str(assay.updated))
             if (not column_flags.get("AssayMetadata", False)) :
                 for column_label in assay_metadata_labels :
                     protocol_row.append(
