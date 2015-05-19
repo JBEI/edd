@@ -13,7 +13,7 @@ class CreateStudyForm(forms.ModelForm):
     """
     class Meta:
         model = Study
-        fields = ['name', 'contact', 'description', ]
+        fields = ['name', 'description', ]
         labels = {
             'name': _('Study'),
             'contact': _('Contact'),
@@ -47,7 +47,13 @@ class CreateLineForm(forms.ModelForm):
     """
     class Meta:
         model = Line
-        fields = ['name', 'contact', 'description', 'control', ]
+        fields = ['name', 'description', 'control', ]
+        labels = {
+            'name': _('Line'),
+            'contact': _('Contact'),
+            'description': _('Description'),
+            'control': _('Is Control?')
+        }
     # use own definition of contact, contact_id
     contact = forms.CharField()
     contact.widget.attrs['class'] = 'autocomp autocomp_user'
@@ -55,4 +61,4 @@ class CreateLineForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         kwargs.setdefault('label_suffix', '')
-        super(CreateStudyForm, self).__init__(*args, **kwargs)
+        super(CreateLineForm, self).__init__(*args, **kwargs)

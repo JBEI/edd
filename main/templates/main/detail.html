@@ -117,11 +117,7 @@
         <div class="sectionContent discloseBody">
             <form action="" method="POST">
                 {% csrf_token %}
-                <div>
-                    <label for="id_line_name">Line Name</label>
-                    <input id="id_line_name" type="text" name="line_name" maxlength="255" />
-                </div>
-                {# TODO finish form elements #}
+                {{ new_line.as_p }}
                 <button type="submit">Add Line</button>
             </form>
         </div>
