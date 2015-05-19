@@ -50,11 +50,14 @@ class Update(models.Model):
 
     @classmethod
     def load_request_update(cls, request):
+        rhost = '%s; %s' % (
+            request.META.get('REMOTE_ADDR', None),
+            request.META.get('REMOTE_HOST', ''))
         if not hasattr(request, 'update_key'):
             update = cls(mod_time=arrow.utcnow(),
                          mod_by=request.user,
                          path=request.get_full_path(),
-                         origin=request.META['REMOTE_HOST'])
+                         origin=rhost)
             update.save()
             request.update_key = update.pk
         else:
