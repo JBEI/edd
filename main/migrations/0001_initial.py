@@ -332,7 +332,7 @@ class Migration(migrations.Migration):
                 ('mod_time', models.DateTimeField(auto_now_add=True)),
                 ('path', models.TextField(null=True, blank=True)),
                 ('origin', models.TextField(null=True, blank=True)),
-                ('mod_by', models.ForeignKey(editable=False, to=settings.AUTH_USER_MODEL)),
+                ('mod_by', models.ForeignKey(editable=False, to=settings.AUTH_USER_MODEL, null=True)),
             ],
             options={
                 'db_table': 'update_info',
@@ -447,13 +447,13 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='eddobject',
             name='created',
-            field=models.ForeignKey(related_name='+', to='main.Update'),
+            field=models.ForeignKey(related_name='+', editable=False, to='main.Update'),
             preserve_default=True,
         ),
         migrations.AddField(
             model_name='eddobject',
             name='updated',
-            field=models.ForeignKey(related_name='+', to='main.Update'),
+            field=models.ForeignKey(related_name='+', editable=False, to='main.Update'),
             preserve_default=True,
         ),
         migrations.AddField(
