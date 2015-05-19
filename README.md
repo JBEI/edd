@@ -115,6 +115,13 @@
             # locate _`ENV`_`/site-packages/registration/models.py`
             # edit line 187 `user = models.ForeignKey(…` to read `user = models.OneToOneField(…`
             # change results in no model changes, merely removes the warning
+    * [django-threadlocals](https://pypi.python.org/pypi/django-threadlocals/)
+        * A Django middleware for storing the current request in a thread.local
+        * Version on PyPI is python2 incompatible!
+            * In `${venv}/lib/python2.7/site-packages/threadlocals/middleware.py`
+
+                    s/^from threadlocals\.threadlocals import/from .threadlocals import/
+
     * [requests](http://docs.python-requests.org/en/latest/)
         * "Requests is an Apache2 Licensed HTTP library, written in Python, for human beings."
         * `sudo pip install requests[security]`
