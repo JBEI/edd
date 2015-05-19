@@ -1,0 +1,3112 @@
+[
+{
+  "fields": {
+    "domain": "example.com",
+    "name": "example.com"
+  },
+  "model": "sites.site",
+  "pk": 1
+},
+{
+  "fields": {
+    "model": "logentry",
+    "name": "log entry",
+    "app_label": "admin"
+  },
+  "model": "contenttypes.contenttype",
+  "pk": 1
+},
+{
+  "fields": {
+    "model": "permission",
+    "name": "permission",
+    "app_label": "auth"
+  },
+  "model": "contenttypes.contenttype",
+  "pk": 2
+},
+{
+  "fields": {
+    "model": "group",
+    "name": "group",
+    "app_label": "auth"
+  },
+  "model": "contenttypes.contenttype",
+  "pk": 3
+},
+{
+  "fields": {
+    "model": "user",
+    "name": "user",
+    "app_label": "auth"
+  },
+  "model": "contenttypes.contenttype",
+  "pk": 4
+},
+{
+  "fields": {
+    "model": "site",
+    "name": "site",
+    "app_label": "sites"
+  },
+  "model": "contenttypes.contenttype",
+  "pk": 5
+},
+{
+  "fields": {
+    "model": "contenttype",
+    "name": "content type",
+    "app_label": "contenttypes"
+  },
+  "model": "contenttypes.contenttype",
+  "pk": 6
+},
+{
+  "fields": {
+    "model": "session",
+    "name": "session",
+    "app_label": "sessions"
+  },
+  "model": "contenttypes.contenttype",
+  "pk": 7
+},
+{
+  "fields": {
+    "model": "update",
+    "name": "update",
+    "app_label": "main"
+  },
+  "model": "contenttypes.contenttype",
+  "pk": 8
+},
+{
+  "fields": {
+    "model": "comment",
+    "name": "comment",
+    "app_label": "main"
+  },
+  "model": "contenttypes.contenttype",
+  "pk": 9
+},
+{
+  "fields": {
+    "model": "attachment",
+    "name": "attachment",
+    "app_label": "main"
+  },
+  "model": "contenttypes.contenttype",
+  "pk": 10
+},
+{
+  "fields": {
+    "model": "metadatagroup",
+    "name": "metadata group",
+    "app_label": "main"
+  },
+  "model": "contenttypes.contenttype",
+  "pk": 11
+},
+{
+  "fields": {
+    "model": "metadatatype",
+    "name": "metadata type",
+    "app_label": "main"
+  },
+  "model": "contenttypes.contenttype",
+  "pk": 12
+},
+{
+  "fields": {
+    "model": "eddobject",
+    "name": "edd object",
+    "app_label": "main"
+  },
+  "model": "contenttypes.contenttype",
+  "pk": 13
+},
+{
+  "fields": {
+    "model": "study",
+    "name": "study",
+    "app_label": "main"
+  },
+  "model": "contenttypes.contenttype",
+  "pk": 14
+},
+{
+  "fields": {
+    "model": "userpermission",
+    "name": "user permission",
+    "app_label": "main"
+  },
+  "model": "contenttypes.contenttype",
+  "pk": 15
+},
+{
+  "fields": {
+    "model": "grouppermission",
+    "name": "group permission",
+    "app_label": "main"
+  },
+  "model": "contenttypes.contenttype",
+  "pk": 16
+},
+{
+  "fields": {
+    "model": "protocol",
+    "name": "protocol",
+    "app_label": "main"
+  },
+  "model": "contenttypes.contenttype",
+  "pk": 17
+},
+{
+  "fields": {
+    "model": "strain",
+    "name": "strain",
+    "app_label": "main"
+  },
+  "model": "contenttypes.contenttype",
+  "pk": 18
+},
+{
+  "fields": {
+    "model": "carbonsource",
+    "name": "carbon source",
+    "app_label": "main"
+  },
+  "model": "contenttypes.contenttype",
+  "pk": 19
+},
+{
+  "fields": {
+    "model": "line",
+    "name": "line",
+    "app_label": "main"
+  },
+  "model": "contenttypes.contenttype",
+  "pk": 20
+},
+{
+  "fields": {
+    "model": "measurementtype",
+    "name": "measurement type",
+    "app_label": "main"
+  },
+  "model": "contenttypes.contenttype",
+  "pk": 21
+},
+{
+  "fields": {
+    "model": "metabolitekeyword",
+    "name": "metabolite keyword",
+    "app_label": "main"
+  },
+  "model": "contenttypes.contenttype",
+  "pk": 22
+},
+{
+  "fields": {
+    "model": "metabolite",
+    "name": "metabolite",
+    "app_label": "main"
+  },
+  "model": "contenttypes.contenttype",
+  "pk": 23
+},
+{
+  "fields": {
+    "model": "geneidentifier",
+    "name": "gene identifier",
+    "app_label": "main"
+  },
+  "model": "contenttypes.contenttype",
+  "pk": 24
+},
+{
+  "fields": {
+    "model": "measurementunit",
+    "name": "measurement unit",
+    "app_label": "main"
+  },
+  "model": "contenttypes.contenttype",
+  "pk": 25
+},
+{
+  "fields": {
+    "model": "assay",
+    "name": "assay",
+    "app_label": "main"
+  },
+  "model": "contenttypes.contenttype",
+  "pk": 26
+},
+{
+  "fields": {
+    "model": "measurement",
+    "name": "measurement",
+    "app_label": "main"
+  },
+  "model": "contenttypes.contenttype",
+  "pk": 27
+},
+{
+  "fields": {
+    "model": "measurementdatum",
+    "name": "measurement datum",
+    "app_label": "main"
+  },
+  "model": "contenttypes.contenttype",
+  "pk": 28
+},
+{
+  "fields": {
+    "model": "measurementvector",
+    "name": "measurement vector",
+    "app_label": "main"
+  },
+  "model": "contenttypes.contenttype",
+  "pk": 29
+},
+{
+  "fields": {
+    "model": "sbmltemplate",
+    "name": "sbml template",
+    "app_label": "main"
+  },
+  "model": "contenttypes.contenttype",
+  "pk": 30
+},
+{
+  "fields": {
+    "model": "metaboliteexchange",
+    "name": "metabolite exchange",
+    "app_label": "main"
+  },
+  "model": "contenttypes.contenttype",
+  "pk": 31
+},
+{
+  "fields": {
+    "model": "metabolitespecies",
+    "name": "metabolite species",
+    "app_label": "main"
+  },
+  "model": "contenttypes.contenttype",
+  "pk": 32
+},
+{
+  "fields": {
+    "model": "institution",
+    "name": "institution",
+    "app_label": "profile"
+  },
+  "model": "contenttypes.contenttype",
+  "pk": 33
+},
+{
+  "fields": {
+    "model": "userprofile",
+    "name": "user profile",
+    "app_label": "profile"
+  },
+  "model": "contenttypes.contenttype",
+  "pk": 34
+},
+{
+  "fields": {
+    "model": "institutionid",
+    "name": "institution id",
+    "app_label": "profile"
+  },
+  "model": "contenttypes.contenttype",
+  "pk": 35
+},
+{
+  "fields": {
+    "model": "userpreference",
+    "name": "user preference",
+    "app_label": "profile"
+  },
+  "model": "contenttypes.contenttype",
+  "pk": 36
+},
+{
+  "fields": {
+    "updated": 2,
+    "name": "Test Study 1",
+    "created": 1,
+    "meta_store": {},
+    "updates": [],
+    "description": ""
+  },
+  "model": "main.eddobject",
+  "pk": 1
+},
+{
+  "fields": {
+    "updated": 4,
+    "name": "Carbon source",
+    "created": 3,
+    "meta_store": {},
+    "updates": [],
+    "description": null
+  },
+  "model": "main.eddobject",
+  "pk": 2
+},
+{
+  "fields": {
+    "updated": 6,
+    "name": "Line 1",
+    "created": 5,
+    "meta_store": {},
+    "updates": [],
+    "description": ""
+  },
+  "model": "main.eddobject",
+  "pk": 3
+},
+{
+  "fields": {
+    "updated": 8,
+    "name": "Line 2",
+    "created": 7,
+    "meta_store": {},
+    "updates": [],
+    "description": ""
+  },
+  "model": "main.eddobject",
+  "pk": 4
+},
+{
+  "fields": {
+    "updated": 10,
+    "name": "Strain 1",
+    "created": 9,
+    "meta_store": {},
+    "updates": [],
+    "description": "JBEI strain 1"
+  },
+  "model": "main.eddobject",
+  "pk": 5
+},
+{
+  "fields": {
+    "updated": 12,
+    "name": "Strain 2",
+    "created": 11,
+    "meta_store": {},
+    "updates": [],
+    "description": null
+  },
+  "model": "main.eddobject",
+  "pk": 6
+},
+{
+  "fields": {
+    "updated": 14,
+    "name": "GC-MS",
+    "created": 13,
+    "meta_store": {},
+    "updates": [],
+    "description": null
+  },
+  "model": "main.eddobject",
+  "pk": 7
+},
+{
+  "fields": {
+    "updated": 16,
+    "name": "OD600",
+    "created": 15,
+    "meta_store": {},
+    "updates": [],
+    "description": null
+  },
+  "model": "main.eddobject",
+  "pk": 8
+},
+{
+  "fields": {
+    "updated": 18,
+    "name": "HPLC",
+    "created": 17,
+    "meta_store": {},
+    "updates": [],
+    "description": null
+  },
+  "model": "main.eddobject",
+  "pk": 9
+},
+{
+  "fields": {
+    "updated": 20,
+    "name": "O2/CO2",
+    "created": 19,
+    "meta_store": {},
+    "updates": [],
+    "description": null
+  },
+  "model": "main.eddobject",
+  "pk": 10
+},
+{
+  "fields": {
+    "updated": 22,
+    "name": "Proteomics",
+    "created": 21,
+    "meta_store": {},
+    "updates": [],
+    "description": null
+  },
+  "model": "main.eddobject",
+  "pk": 11
+},
+{
+  "fields": {
+    "updated": 24,
+    "name": "Transcriptomics",
+    "created": 23,
+    "meta_store": {},
+    "updates": [],
+    "description": null
+  },
+  "model": "main.eddobject",
+  "pk": 12
+},
+{
+  "fields": {
+    "updated": 26,
+    "name": "LC-MS",
+    "created": 25,
+    "meta_store": {},
+    "updates": [],
+    "description": null
+  },
+  "model": "main.eddobject",
+  "pk": 13
+},
+{
+  "fields": {
+    "updated": 28,
+    "name": "Assay 1",
+    "created": 27,
+    "meta_store": {},
+    "updates": [],
+    "description": "GC-MS assay"
+  },
+  "model": "main.eddobject",
+  "pk": 14
+},
+{
+  "fields": {
+    "updated": 30,
+    "name": "Assay 2",
+    "created": 29,
+    "meta_store": {},
+    "updates": [],
+    "description": "GC-MS assay"
+  },
+  "model": "main.eddobject",
+  "pk": 15
+},
+{
+  "fields": {
+    "updated": 32,
+    "name": "OD measurement",
+    "created": 31,
+    "meta_store": {},
+    "updates": [],
+    "description": "OD measurement"
+  },
+  "model": "main.eddobject",
+  "pk": 16
+},
+{
+  "fields": {
+    "updated": 34,
+    "name": "HPLC assay",
+    "created": 33,
+    "meta_store": {},
+    "updates": [],
+    "description": "HPLC measurement"
+  },
+  "model": "main.eddobject",
+  "pk": 17
+},
+{
+  "fields": {
+    "updated": 36,
+    "name": "RAMOS assay",
+    "created": 35,
+    "meta_store": {},
+    "updates": [],
+    "description": "O2/CO2 measurements"
+  },
+  "model": "main.eddobject",
+  "pk": 18
+},
+{
+  "fields": {
+    "updated": 38,
+    "name": "LC-MS assay",
+    "created": 37,
+    "meta_store": {},
+    "updates": [],
+    "description": "IC LC-MS measurements"
+  },
+  "model": "main.eddobject",
+  "pk": 19
+},
+{
+  "fields": {
+    "updated": 41,
+    "name": "R_Ec_biomass_iJO1366_core_53p95M",
+    "created": 40,
+    "meta_store": {},
+    "updates": [],
+    "description": null
+  },
+  "model": "main.eddobject",
+  "pk": 20
+},
+{
+  "fields": {
+    "active": true,
+    "registry_id": "ddfe51d0-4f7b-4625-8094-a1b51b509a72",
+    "updates": [],
+    "registry_url": "http://registry.jbei.org/strain/666"
+  },
+  "model": "main.strain",
+  "pk": 5
+},
+{
+  "fields": {
+    "active": false,
+    "registry_id": "cc3cdabf-1871-4195-b08d-307b79345907",
+    "updates": [],
+    "registry_url": null
+  },
+  "model": "main.strain",
+  "pk": 6
+},
+{
+  "fields": {
+    "volume": "10.00000",
+    "active": true,
+    "updates": [],
+    "labeling": ""
+  },
+  "model": "main.carbonsource",
+  "pk": 2
+},
+{
+  "fields": {
+    "type_name": "Acetate",
+    "type_group": "m",
+    "short_name": "ac"
+  },
+  "model": "main.measurementtype",
+  "pk": 1
+},
+{
+  "fields": {
+    "type_name": "D-Glucose",
+    "type_group": "m",
+    "short_name": "glc-D"
+  },
+  "model": "main.measurementtype",
+  "pk": 2
+},
+{
+  "fields": {
+    "type_name": "Optical Density",
+    "type_group": "m",
+    "short_name": "OD"
+  },
+  "model": "main.measurementtype",
+  "pk": 3
+},
+{
+  "fields": {
+    "type_name": "CO2 production",
+    "type_group": "m",
+    "short_name": "CO2p"
+  },
+  "model": "main.measurementtype",
+  "pk": 4
+},
+{
+  "fields": {
+    "type_name": "O2 consumption",
+    "type_group": "m",
+    "short_name": "O2c"
+  },
+  "model": "main.measurementtype",
+  "pk": 5
+},
+{
+  "fields": {
+    "type_name": "CO2",
+    "type_group": "m",
+    "short_name": "co2"
+  },
+  "model": "main.measurementtype",
+  "pk": 6
+},
+{
+  "fields": {
+    "type_name": "O2",
+    "type_group": "m",
+    "short_name": "o2"
+  },
+  "model": "main.measurementtype",
+  "pk": 7
+},
+{
+  "fields": {
+    "molecular_formula": "C2H3O2",
+    "keywords": [],
+    "charge": -1,
+    "carbon_count": 2,
+    "molar_mass": "60.05000"
+  },
+  "model": "main.metabolite",
+  "pk": 1
+},
+{
+  "fields": {
+    "molecular_formula": "C6H12O6",
+    "keywords": [],
+    "charge": 0,
+    "carbon_count": 6,
+    "molar_mass": "180.16000"
+  },
+  "model": "main.metabolite",
+  "pk": 2
+},
+{
+  "fields": {
+    "molecular_formula": "",
+    "keywords": [],
+    "charge": 0,
+    "carbon_count": 0,
+    "molar_mass": "0.00000"
+  },
+  "model": "main.metabolite",
+  "pk": 3
+},
+{
+  "fields": {
+    "molecular_formula": "CO2",
+    "keywords": [],
+    "charge": 0,
+    "carbon_count": 1,
+    "molar_mass": "44.01000"
+  },
+  "model": "main.metabolite",
+  "pk": 4
+},
+{
+  "fields": {
+    "molecular_formula": "O2",
+    "keywords": [],
+    "charge": 0,
+    "carbon_count": 0,
+    "molar_mass": "32.00000"
+  },
+  "model": "main.metabolite",
+  "pk": 5
+},
+{
+  "fields": {
+    "molecular_formula": "CO2",
+    "keywords": [],
+    "charge": 0,
+    "carbon_count": 1,
+    "molar_mass": "44.01000"
+  },
+  "model": "main.metabolite",
+  "pk": 6
+},
+{
+  "fields": {
+    "molecular_formula": "O2",
+    "keywords": [],
+    "charge": 0,
+    "carbon_count": 0,
+    "molar_mass": "32.00000"
+  },
+  "model": "main.metabolite",
+  "pk": 7
+},
+{
+  "fields": {
+    "unit_name": "hours",
+    "alternate_names": null,
+    "display": true,
+    "type_group": "_"
+  },
+  "model": "main.measurementunit",
+  "pk": 1
+},
+{
+  "fields": {
+    "unit_name": "mM",
+    "alternate_names": null,
+    "display": true,
+    "type_group": "_"
+  },
+  "model": "main.measurementunit",
+  "pk": 2
+},
+{
+  "fields": {
+    "unit_name": "n/a",
+    "alternate_names": null,
+    "display": true,
+    "type_group": "_"
+  },
+  "model": "main.measurementunit",
+  "pk": 3
+},
+{
+  "fields": {
+    "unit_name": "Cmol/L",
+    "alternate_names": null,
+    "display": true,
+    "type_group": "_"
+  },
+  "model": "main.measurementunit",
+  "pk": 4
+},
+{
+  "fields": {
+    "unit_name": "mol/L/hr",
+    "alternate_names": null,
+    "display": true,
+    "type_group": "_"
+  },
+  "model": "main.measurementunit",
+  "pk": 5
+},
+{
+  "fields": {
+    "y": "0.00000",
+    "x": "0.00000",
+    "updated": 39,
+    "measurement": 1
+  },
+  "model": "main.measurementdatum",
+  "pk": 1
+},
+{
+  "fields": {
+    "y": "0.00000",
+    "x": "0.00000",
+    "updated": 39,
+    "measurement": 6
+  },
+  "model": "main.measurementdatum",
+  "pk": 2
+},
+{
+  "fields": {
+    "y": "2.00000",
+    "x": "0.00000",
+    "updated": 39,
+    "measurement": 10
+  },
+  "model": "main.measurementdatum",
+  "pk": 3
+},
+{
+  "fields": {
+    "y": "0.10000",
+    "x": "4.00000",
+    "updated": 39,
+    "measurement": 1
+  },
+  "model": "main.measurementdatum",
+  "pk": 4
+},
+{
+  "fields": {
+    "y": "0.11000",
+    "x": "4.00000",
+    "updated": 39,
+    "measurement": 6
+  },
+  "model": "main.measurementdatum",
+  "pk": 5
+},
+{
+  "fields": {
+    "y": "1.90000",
+    "x": "4.00000",
+    "updated": 39,
+    "measurement": 10
+  },
+  "model": "main.measurementdatum",
+  "pk": 6
+},
+{
+  "fields": {
+    "y": "0.20000",
+    "x": "8.00000",
+    "updated": 39,
+    "measurement": 1
+  },
+  "model": "main.measurementdatum",
+  "pk": 7
+},
+{
+  "fields": {
+    "y": "0.22000",
+    "x": "8.00000",
+    "updated": 39,
+    "measurement": 6
+  },
+  "model": "main.measurementdatum",
+  "pk": 8
+},
+{
+  "fields": {
+    "y": "1.80000",
+    "x": "8.00000",
+    "updated": 39,
+    "measurement": 10
+  },
+  "model": "main.measurementdatum",
+  "pk": 9
+},
+{
+  "fields": {
+    "y": "0.40000",
+    "x": "12.00000",
+    "updated": 39,
+    "measurement": 1
+  },
+  "model": "main.measurementdatum",
+  "pk": 10
+},
+{
+  "fields": {
+    "y": "0.44000",
+    "x": "12.00000",
+    "updated": 39,
+    "measurement": 6
+  },
+  "model": "main.measurementdatum",
+  "pk": 11
+},
+{
+  "fields": {
+    "y": "1.60000",
+    "x": "12.00000",
+    "updated": 39,
+    "measurement": 10
+  },
+  "model": "main.measurementdatum",
+  "pk": 12
+},
+{
+  "fields": {
+    "y": "0.80000",
+    "x": "18.00000",
+    "updated": 39,
+    "measurement": 1
+  },
+  "model": "main.measurementdatum",
+  "pk": 13
+},
+{
+  "fields": {
+    "y": "0.88000",
+    "x": "18.00000",
+    "updated": 39,
+    "measurement": 6
+  },
+  "model": "main.measurementdatum",
+  "pk": 14
+},
+{
+  "fields": {
+    "y": "1.20000",
+    "x": "18.00000",
+    "updated": 39,
+    "measurement": 10
+  },
+  "model": "main.measurementdatum",
+  "pk": 15
+},
+{
+  "fields": {
+    "y": "1.60000",
+    "x": "24.00000",
+    "updated": 39,
+    "measurement": 1
+  },
+  "model": "main.measurementdatum",
+  "pk": 16
+},
+{
+  "fields": {
+    "y": "1.76000",
+    "x": "24.00000",
+    "updated": 39,
+    "measurement": 6
+  },
+  "model": "main.measurementdatum",
+  "pk": 17
+},
+{
+  "fields": {
+    "y": "0.40000",
+    "x": "24.00000",
+    "updated": 39,
+    "measurement": 10
+  },
+  "model": "main.measurementdatum",
+  "pk": 18
+},
+{
+  "fields": {
+    "y": "0.00000",
+    "x": "0.00000",
+    "updated": 39,
+    "measurement": 2
+  },
+  "model": "main.measurementdatum",
+  "pk": 19
+},
+{
+  "fields": {
+    "y": "0.00000",
+    "x": "0.00000",
+    "updated": 39,
+    "measurement": 7
+  },
+  "model": "main.measurementdatum",
+  "pk": 20
+},
+{
+  "fields": {
+    "y": "0.50000",
+    "x": "4.00000",
+    "updated": 39,
+    "measurement": 2
+  },
+  "model": "main.measurementdatum",
+  "pk": 21
+},
+{
+  "fields": {
+    "y": "0.55000",
+    "x": "4.00000",
+    "updated": 39,
+    "measurement": 7
+  },
+  "model": "main.measurementdatum",
+  "pk": 22
+},
+{
+  "fields": {
+    "y": "0.60000",
+    "x": "8.00000",
+    "updated": 39,
+    "measurement": 2
+  },
+  "model": "main.measurementdatum",
+  "pk": 23
+},
+{
+  "fields": {
+    "y": "0.66000",
+    "x": "8.00000",
+    "updated": 39,
+    "measurement": 7
+  },
+  "model": "main.measurementdatum",
+  "pk": 24
+},
+{
+  "fields": {
+    "y": "0.65000",
+    "x": "12.00000",
+    "updated": 39,
+    "measurement": 2
+  },
+  "model": "main.measurementdatum",
+  "pk": 25
+},
+{
+  "fields": {
+    "y": "0.71500",
+    "x": "12.00000",
+    "updated": 39,
+    "measurement": 7
+  },
+  "model": "main.measurementdatum",
+  "pk": 26
+},
+{
+  "fields": {
+    "y": "0.67500",
+    "x": "18.00000",
+    "updated": 39,
+    "measurement": 2
+  },
+  "model": "main.measurementdatum",
+  "pk": 27
+},
+{
+  "fields": {
+    "y": "0.74250",
+    "x": "18.00000",
+    "updated": 39,
+    "measurement": 7
+  },
+  "model": "main.measurementdatum",
+  "pk": 28
+},
+{
+  "fields": {
+    "y": "0.69000",
+    "x": "24.00000",
+    "updated": 39,
+    "measurement": 2
+  },
+  "model": "main.measurementdatum",
+  "pk": 29
+},
+{
+  "fields": {
+    "y": "0.75900",
+    "x": "24.00000",
+    "updated": 39,
+    "measurement": 7
+  },
+  "model": "main.measurementdatum",
+  "pk": 30
+},
+{
+  "fields": {
+    "y": "0.00000",
+    "x": "0.00000",
+    "updated": 39,
+    "measurement": 3
+  },
+  "model": "main.measurementdatum",
+  "pk": 31
+},
+{
+  "fields": {
+    "y": "0.20000",
+    "x": "4.00000",
+    "updated": 39,
+    "measurement": 3
+  },
+  "model": "main.measurementdatum",
+  "pk": 32
+},
+{
+  "fields": {
+    "y": "0.40000",
+    "x": "8.00000",
+    "updated": 39,
+    "measurement": 3
+  },
+  "model": "main.measurementdatum",
+  "pk": 33
+},
+{
+  "fields": {
+    "y": "0.80000",
+    "x": "12.00000",
+    "updated": 39,
+    "measurement": 3
+  },
+  "model": "main.measurementdatum",
+  "pk": 34
+},
+{
+  "fields": {
+    "y": "1.60000",
+    "x": "18.00000",
+    "updated": 39,
+    "measurement": 3
+  },
+  "model": "main.measurementdatum",
+  "pk": 35
+},
+{
+  "fields": {
+    "y": "3.20000",
+    "x": "24.00000",
+    "updated": 39,
+    "measurement": 3
+  },
+  "model": "main.measurementdatum",
+  "pk": 36
+},
+{
+  "fields": {
+    "y": "0.00000",
+    "x": "0.00000",
+    "updated": 39,
+    "measurement": 4
+  },
+  "model": "main.measurementdatum",
+  "pk": 37
+},
+{
+  "fields": {
+    "y": "0.50000",
+    "x": "4.00000",
+    "updated": 39,
+    "measurement": 4
+  },
+  "model": "main.measurementdatum",
+  "pk": 38
+},
+{
+  "fields": {
+    "y": "1.10000",
+    "x": "8.00000",
+    "updated": 39,
+    "measurement": 4
+  },
+  "model": "main.measurementdatum",
+  "pk": 39
+},
+{
+  "fields": {
+    "y": "2.05000",
+    "x": "12.00000",
+    "updated": 39,
+    "measurement": 4
+  },
+  "model": "main.measurementdatum",
+  "pk": 40
+},
+{
+  "fields": {
+    "y": "4.09000",
+    "x": "18.00000",
+    "updated": 39,
+    "measurement": 4
+  },
+  "model": "main.measurementdatum",
+  "pk": 41
+},
+{
+  "fields": {
+    "y": "5.45000",
+    "x": "24.00000",
+    "updated": 39,
+    "measurement": 4
+  },
+  "model": "main.measurementdatum",
+  "pk": 42
+},
+{
+  "fields": {
+    "y": "0.00000",
+    "x": "0.00000",
+    "updated": 39,
+    "measurement": 5
+  },
+  "model": "main.measurementdatum",
+  "pk": 43
+},
+{
+  "fields": {
+    "y": "0.30000",
+    "x": "4.00000",
+    "updated": 39,
+    "measurement": 5
+  },
+  "model": "main.measurementdatum",
+  "pk": 44
+},
+{
+  "fields": {
+    "y": "0.50000",
+    "x": "8.00000",
+    "updated": 39,
+    "measurement": 5
+  },
+  "model": "main.measurementdatum",
+  "pk": 45
+},
+{
+  "fields": {
+    "y": "0.55000",
+    "x": "12.00000",
+    "updated": 39,
+    "measurement": 5
+  },
+  "model": "main.measurementdatum",
+  "pk": 46
+},
+{
+  "fields": {
+    "y": "0.57000",
+    "x": "18.00000",
+    "updated": 39,
+    "measurement": 5
+  },
+  "model": "main.measurementdatum",
+  "pk": 47
+},
+{
+  "fields": {
+    "y": "0.59000",
+    "x": "24.00000",
+    "updated": 39,
+    "measurement": 5
+  },
+  "model": "main.measurementdatum",
+  "pk": 48
+},
+{
+  "fields": {
+    "y": "0.10000",
+    "x": "0.00000",
+    "updated": 39,
+    "measurement": 8
+  },
+  "model": "main.measurementdatum",
+  "pk": 49
+},
+{
+  "fields": {
+    "y": "0.10000",
+    "x": "0.00000",
+    "updated": 39,
+    "measurement": 9
+  },
+  "model": "main.measurementdatum",
+  "pk": 50
+},
+{
+  "fields": {
+    "y": "0.30000",
+    "x": "12.00000",
+    "updated": 39,
+    "measurement": 8
+  },
+  "model": "main.measurementdatum",
+  "pk": 51
+},
+{
+  "fields": {
+    "y": "0.30000",
+    "x": "12.00000",
+    "updated": 39,
+    "measurement": 9
+  },
+  "model": "main.measurementdatum",
+  "pk": 52
+},
+{
+  "fields": {
+    "y": "0.50000",
+    "x": "24.00000",
+    "updated": 39,
+    "measurement": 8
+  },
+  "model": "main.measurementdatum",
+  "pk": 53
+},
+{
+  "fields": {
+    "y": "0.50000",
+    "x": "24.00000",
+    "updated": 39,
+    "measurement": 9
+  },
+  "model": "main.measurementdatum",
+  "pk": 54
+},
+{
+  "fields": {
+    "biomass_exchange_name": "R_Ec_biomass_iJO1366_core_53p95M",
+    "biomass_calculation": "33.19037",
+    "updates": [],
+    "biomass_calculation_info": ""
+  },
+  "model": "main.sbmltemplate",
+  "pk": 20
+},
+{
+  "fields": {
+    "codename": "add_logentry",
+    "name": "Can add log entry",
+    "content_type": 1
+  },
+  "model": "auth.permission",
+  "pk": 1
+},
+{
+  "fields": {
+    "codename": "change_logentry",
+    "name": "Can change log entry",
+    "content_type": 1
+  },
+  "model": "auth.permission",
+  "pk": 2
+},
+{
+  "fields": {
+    "codename": "delete_logentry",
+    "name": "Can delete log entry",
+    "content_type": 1
+  },
+  "model": "auth.permission",
+  "pk": 3
+},
+{
+  "fields": {
+    "codename": "add_permission",
+    "name": "Can add permission",
+    "content_type": 2
+  },
+  "model": "auth.permission",
+  "pk": 4
+},
+{
+  "fields": {
+    "codename": "change_permission",
+    "name": "Can change permission",
+    "content_type": 2
+  },
+  "model": "auth.permission",
+  "pk": 5
+},
+{
+  "fields": {
+    "codename": "delete_permission",
+    "name": "Can delete permission",
+    "content_type": 2
+  },
+  "model": "auth.permission",
+  "pk": 6
+},
+{
+  "fields": {
+    "codename": "add_group",
+    "name": "Can add group",
+    "content_type": 3
+  },
+  "model": "auth.permission",
+  "pk": 7
+},
+{
+  "fields": {
+    "codename": "change_group",
+    "name": "Can change group",
+    "content_type": 3
+  },
+  "model": "auth.permission",
+  "pk": 8
+},
+{
+  "fields": {
+    "codename": "delete_group",
+    "name": "Can delete group",
+    "content_type": 3
+  },
+  "model": "auth.permission",
+  "pk": 9
+},
+{
+  "fields": {
+    "codename": "add_user",
+    "name": "Can add user",
+    "content_type": 4
+  },
+  "model": "auth.permission",
+  "pk": 10
+},
+{
+  "fields": {
+    "codename": "change_user",
+    "name": "Can change user",
+    "content_type": 4
+  },
+  "model": "auth.permission",
+  "pk": 11
+},
+{
+  "fields": {
+    "codename": "delete_user",
+    "name": "Can delete user",
+    "content_type": 4
+  },
+  "model": "auth.permission",
+  "pk": 12
+},
+{
+  "fields": {
+    "codename": "add_site",
+    "name": "Can add site",
+    "content_type": 5
+  },
+  "model": "auth.permission",
+  "pk": 13
+},
+{
+  "fields": {
+    "codename": "change_site",
+    "name": "Can change site",
+    "content_type": 5
+  },
+  "model": "auth.permission",
+  "pk": 14
+},
+{
+  "fields": {
+    "codename": "delete_site",
+    "name": "Can delete site",
+    "content_type": 5
+  },
+  "model": "auth.permission",
+  "pk": 15
+},
+{
+  "fields": {
+    "codename": "add_contenttype",
+    "name": "Can add content type",
+    "content_type": 6
+  },
+  "model": "auth.permission",
+  "pk": 16
+},
+{
+  "fields": {
+    "codename": "change_contenttype",
+    "name": "Can change content type",
+    "content_type": 6
+  },
+  "model": "auth.permission",
+  "pk": 17
+},
+{
+  "fields": {
+    "codename": "delete_contenttype",
+    "name": "Can delete content type",
+    "content_type": 6
+  },
+  "model": "auth.permission",
+  "pk": 18
+},
+{
+  "fields": {
+    "codename": "add_session",
+    "name": "Can add session",
+    "content_type": 7
+  },
+  "model": "auth.permission",
+  "pk": 19
+},
+{
+  "fields": {
+    "codename": "change_session",
+    "name": "Can change session",
+    "content_type": 7
+  },
+  "model": "auth.permission",
+  "pk": 20
+},
+{
+  "fields": {
+    "codename": "delete_session",
+    "name": "Can delete session",
+    "content_type": 7
+  },
+  "model": "auth.permission",
+  "pk": 21
+},
+{
+  "fields": {
+    "codename": "add_update",
+    "name": "Can add update",
+    "content_type": 8
+  },
+  "model": "auth.permission",
+  "pk": 22
+},
+{
+  "fields": {
+    "codename": "change_update",
+    "name": "Can change update",
+    "content_type": 8
+  },
+  "model": "auth.permission",
+  "pk": 23
+},
+{
+  "fields": {
+    "codename": "delete_update",
+    "name": "Can delete update",
+    "content_type": 8
+  },
+  "model": "auth.permission",
+  "pk": 24
+},
+{
+  "fields": {
+    "codename": "add_comment",
+    "name": "Can add comment",
+    "content_type": 9
+  },
+  "model": "auth.permission",
+  "pk": 25
+},
+{
+  "fields": {
+    "codename": "change_comment",
+    "name": "Can change comment",
+    "content_type": 9
+  },
+  "model": "auth.permission",
+  "pk": 26
+},
+{
+  "fields": {
+    "codename": "delete_comment",
+    "name": "Can delete comment",
+    "content_type": 9
+  },
+  "model": "auth.permission",
+  "pk": 27
+},
+{
+  "fields": {
+    "codename": "add_attachment",
+    "name": "Can add attachment",
+    "content_type": 10
+  },
+  "model": "auth.permission",
+  "pk": 28
+},
+{
+  "fields": {
+    "codename": "change_attachment",
+    "name": "Can change attachment",
+    "content_type": 10
+  },
+  "model": "auth.permission",
+  "pk": 29
+},
+{
+  "fields": {
+    "codename": "delete_attachment",
+    "name": "Can delete attachment",
+    "content_type": 10
+  },
+  "model": "auth.permission",
+  "pk": 30
+},
+{
+  "fields": {
+    "codename": "add_metadatagroup",
+    "name": "Can add metadata group",
+    "content_type": 11
+  },
+  "model": "auth.permission",
+  "pk": 31
+},
+{
+  "fields": {
+    "codename": "change_metadatagroup",
+    "name": "Can change metadata group",
+    "content_type": 11
+  },
+  "model": "auth.permission",
+  "pk": 32
+},
+{
+  "fields": {
+    "codename": "delete_metadatagroup",
+    "name": "Can delete metadata group",
+    "content_type": 11
+  },
+  "model": "auth.permission",
+  "pk": 33
+},
+{
+  "fields": {
+    "codename": "add_metadatatype",
+    "name": "Can add metadata type",
+    "content_type": 12
+  },
+  "model": "auth.permission",
+  "pk": 34
+},
+{
+  "fields": {
+    "codename": "change_metadatatype",
+    "name": "Can change metadata type",
+    "content_type": 12
+  },
+  "model": "auth.permission",
+  "pk": 35
+},
+{
+  "fields": {
+    "codename": "delete_metadatatype",
+    "name": "Can delete metadata type",
+    "content_type": 12
+  },
+  "model": "auth.permission",
+  "pk": 36
+},
+{
+  "fields": {
+    "codename": "add_eddobject",
+    "name": "Can add edd object",
+    "content_type": 13
+  },
+  "model": "auth.permission",
+  "pk": 37
+},
+{
+  "fields": {
+    "codename": "change_eddobject",
+    "name": "Can change edd object",
+    "content_type": 13
+  },
+  "model": "auth.permission",
+  "pk": 38
+},
+{
+  "fields": {
+    "codename": "delete_eddobject",
+    "name": "Can delete edd object",
+    "content_type": 13
+  },
+  "model": "auth.permission",
+  "pk": 39
+},
+{
+  "fields": {
+    "codename": "add_study",
+    "name": "Can add study",
+    "content_type": 14
+  },
+  "model": "auth.permission",
+  "pk": 40
+},
+{
+  "fields": {
+    "codename": "change_study",
+    "name": "Can change study",
+    "content_type": 14
+  },
+  "model": "auth.permission",
+  "pk": 41
+},
+{
+  "fields": {
+    "codename": "delete_study",
+    "name": "Can delete study",
+    "content_type": 14
+  },
+  "model": "auth.permission",
+  "pk": 42
+},
+{
+  "fields": {
+    "codename": "add_userpermission",
+    "name": "Can add user permission",
+    "content_type": 15
+  },
+  "model": "auth.permission",
+  "pk": 43
+},
+{
+  "fields": {
+    "codename": "change_userpermission",
+    "name": "Can change user permission",
+    "content_type": 15
+  },
+  "model": "auth.permission",
+  "pk": 44
+},
+{
+  "fields": {
+    "codename": "delete_userpermission",
+    "name": "Can delete user permission",
+    "content_type": 15
+  },
+  "model": "auth.permission",
+  "pk": 45
+},
+{
+  "fields": {
+    "codename": "add_grouppermission",
+    "name": "Can add group permission",
+    "content_type": 16
+  },
+  "model": "auth.permission",
+  "pk": 46
+},
+{
+  "fields": {
+    "codename": "change_grouppermission",
+    "name": "Can change group permission",
+    "content_type": 16
+  },
+  "model": "auth.permission",
+  "pk": 47
+},
+{
+  "fields": {
+    "codename": "delete_grouppermission",
+    "name": "Can delete group permission",
+    "content_type": 16
+  },
+  "model": "auth.permission",
+  "pk": 48
+},
+{
+  "fields": {
+    "codename": "add_protocol",
+    "name": "Can add protocol",
+    "content_type": 17
+  },
+  "model": "auth.permission",
+  "pk": 49
+},
+{
+  "fields": {
+    "codename": "change_protocol",
+    "name": "Can change protocol",
+    "content_type": 17
+  },
+  "model": "auth.permission",
+  "pk": 50
+},
+{
+  "fields": {
+    "codename": "delete_protocol",
+    "name": "Can delete protocol",
+    "content_type": 17
+  },
+  "model": "auth.permission",
+  "pk": 51
+},
+{
+  "fields": {
+    "codename": "add_strain",
+    "name": "Can add strain",
+    "content_type": 18
+  },
+  "model": "auth.permission",
+  "pk": 52
+},
+{
+  "fields": {
+    "codename": "change_strain",
+    "name": "Can change strain",
+    "content_type": 18
+  },
+  "model": "auth.permission",
+  "pk": 53
+},
+{
+  "fields": {
+    "codename": "delete_strain",
+    "name": "Can delete strain",
+    "content_type": 18
+  },
+  "model": "auth.permission",
+  "pk": 54
+},
+{
+  "fields": {
+    "codename": "add_carbonsource",
+    "name": "Can add carbon source",
+    "content_type": 19
+  },
+  "model": "auth.permission",
+  "pk": 55
+},
+{
+  "fields": {
+    "codename": "change_carbonsource",
+    "name": "Can change carbon source",
+    "content_type": 19
+  },
+  "model": "auth.permission",
+  "pk": 56
+},
+{
+  "fields": {
+    "codename": "delete_carbonsource",
+    "name": "Can delete carbon source",
+    "content_type": 19
+  },
+  "model": "auth.permission",
+  "pk": 57
+},
+{
+  "fields": {
+    "codename": "add_line",
+    "name": "Can add line",
+    "content_type": 20
+  },
+  "model": "auth.permission",
+  "pk": 58
+},
+{
+  "fields": {
+    "codename": "change_line",
+    "name": "Can change line",
+    "content_type": 20
+  },
+  "model": "auth.permission",
+  "pk": 59
+},
+{
+  "fields": {
+    "codename": "delete_line",
+    "name": "Can delete line",
+    "content_type": 20
+  },
+  "model": "auth.permission",
+  "pk": 60
+},
+{
+  "fields": {
+    "codename": "add_measurementtype",
+    "name": "Can add measurement type",
+    "content_type": 21
+  },
+  "model": "auth.permission",
+  "pk": 61
+},
+{
+  "fields": {
+    "codename": "change_measurementtype",
+    "name": "Can change measurement type",
+    "content_type": 21
+  },
+  "model": "auth.permission",
+  "pk": 62
+},
+{
+  "fields": {
+    "codename": "delete_measurementtype",
+    "name": "Can delete measurement type",
+    "content_type": 21
+  },
+  "model": "auth.permission",
+  "pk": 63
+},
+{
+  "fields": {
+    "codename": "add_metabolitekeyword",
+    "name": "Can add metabolite keyword",
+    "content_type": 22
+  },
+  "model": "auth.permission",
+  "pk": 64
+},
+{
+  "fields": {
+    "codename": "change_metabolitekeyword",
+    "name": "Can change metabolite keyword",
+    "content_type": 22
+  },
+  "model": "auth.permission",
+  "pk": 65
+},
+{
+  "fields": {
+    "codename": "delete_metabolitekeyword",
+    "name": "Can delete metabolite keyword",
+    "content_type": 22
+  },
+  "model": "auth.permission",
+  "pk": 66
+},
+{
+  "fields": {
+    "codename": "add_metabolite",
+    "name": "Can add metabolite",
+    "content_type": 23
+  },
+  "model": "auth.permission",
+  "pk": 67
+},
+{
+  "fields": {
+    "codename": "change_metabolite",
+    "name": "Can change metabolite",
+    "content_type": 23
+  },
+  "model": "auth.permission",
+  "pk": 68
+},
+{
+  "fields": {
+    "codename": "delete_metabolite",
+    "name": "Can delete metabolite",
+    "content_type": 23
+  },
+  "model": "auth.permission",
+  "pk": 69
+},
+{
+  "fields": {
+    "codename": "add_geneidentifier",
+    "name": "Can add gene identifier",
+    "content_type": 24
+  },
+  "model": "auth.permission",
+  "pk": 70
+},
+{
+  "fields": {
+    "codename": "change_geneidentifier",
+    "name": "Can change gene identifier",
+    "content_type": 24
+  },
+  "model": "auth.permission",
+  "pk": 71
+},
+{
+  "fields": {
+    "codename": "delete_geneidentifier",
+    "name": "Can delete gene identifier",
+    "content_type": 24
+  },
+  "model": "auth.permission",
+  "pk": 72
+},
+{
+  "fields": {
+    "codename": "add_measurementunit",
+    "name": "Can add measurement unit",
+    "content_type": 25
+  },
+  "model": "auth.permission",
+  "pk": 73
+},
+{
+  "fields": {
+    "codename": "change_measurementunit",
+    "name": "Can change measurement unit",
+    "content_type": 25
+  },
+  "model": "auth.permission",
+  "pk": 74
+},
+{
+  "fields": {
+    "codename": "delete_measurementunit",
+    "name": "Can delete measurement unit",
+    "content_type": 25
+  },
+  "model": "auth.permission",
+  "pk": 75
+},
+{
+  "fields": {
+    "codename": "add_assay",
+    "name": "Can add assay",
+    "content_type": 26
+  },
+  "model": "auth.permission",
+  "pk": 76
+},
+{
+  "fields": {
+    "codename": "change_assay",
+    "name": "Can change assay",
+    "content_type": 26
+  },
+  "model": "auth.permission",
+  "pk": 77
+},
+{
+  "fields": {
+    "codename": "delete_assay",
+    "name": "Can delete assay",
+    "content_type": 26
+  },
+  "model": "auth.permission",
+  "pk": 78
+},
+{
+  "fields": {
+    "codename": "add_measurement",
+    "name": "Can add measurement",
+    "content_type": 27
+  },
+  "model": "auth.permission",
+  "pk": 79
+},
+{
+  "fields": {
+    "codename": "change_measurement",
+    "name": "Can change measurement",
+    "content_type": 27
+  },
+  "model": "auth.permission",
+  "pk": 80
+},
+{
+  "fields": {
+    "codename": "delete_measurement",
+    "name": "Can delete measurement",
+    "content_type": 27
+  },
+  "model": "auth.permission",
+  "pk": 81
+},
+{
+  "fields": {
+    "codename": "add_measurementdatum",
+    "name": "Can add measurement datum",
+    "content_type": 28
+  },
+  "model": "auth.permission",
+  "pk": 82
+},
+{
+  "fields": {
+    "codename": "change_measurementdatum",
+    "name": "Can change measurement datum",
+    "content_type": 28
+  },
+  "model": "auth.permission",
+  "pk": 83
+},
+{
+  "fields": {
+    "codename": "delete_measurementdatum",
+    "name": "Can delete measurement datum",
+    "content_type": 28
+  },
+  "model": "auth.permission",
+  "pk": 84
+},
+{
+  "fields": {
+    "codename": "add_measurementvector",
+    "name": "Can add measurement vector",
+    "content_type": 29
+  },
+  "model": "auth.permission",
+  "pk": 85
+},
+{
+  "fields": {
+    "codename": "change_measurementvector",
+    "name": "Can change measurement vector",
+    "content_type": 29
+  },
+  "model": "auth.permission",
+  "pk": 86
+},
+{
+  "fields": {
+    "codename": "delete_measurementvector",
+    "name": "Can delete measurement vector",
+    "content_type": 29
+  },
+  "model": "auth.permission",
+  "pk": 87
+},
+{
+  "fields": {
+    "codename": "add_sbmltemplate",
+    "name": "Can add sbml template",
+    "content_type": 30
+  },
+  "model": "auth.permission",
+  "pk": 88
+},
+{
+  "fields": {
+    "codename": "change_sbmltemplate",
+    "name": "Can change sbml template",
+    "content_type": 30
+  },
+  "model": "auth.permission",
+  "pk": 89
+},
+{
+  "fields": {
+    "codename": "delete_sbmltemplate",
+    "name": "Can delete sbml template",
+    "content_type": 30
+  },
+  "model": "auth.permission",
+  "pk": 90
+},
+{
+  "fields": {
+    "codename": "add_metaboliteexchange",
+    "name": "Can add metabolite exchange",
+    "content_type": 31
+  },
+  "model": "auth.permission",
+  "pk": 91
+},
+{
+  "fields": {
+    "codename": "change_metaboliteexchange",
+    "name": "Can change metabolite exchange",
+    "content_type": 31
+  },
+  "model": "auth.permission",
+  "pk": 92
+},
+{
+  "fields": {
+    "codename": "delete_metaboliteexchange",
+    "name": "Can delete metabolite exchange",
+    "content_type": 31
+  },
+  "model": "auth.permission",
+  "pk": 93
+},
+{
+  "fields": {
+    "codename": "add_metabolitespecies",
+    "name": "Can add metabolite species",
+    "content_type": 32
+  },
+  "model": "auth.permission",
+  "pk": 94
+},
+{
+  "fields": {
+    "codename": "change_metabolitespecies",
+    "name": "Can change metabolite species",
+    "content_type": 32
+  },
+  "model": "auth.permission",
+  "pk": 95
+},
+{
+  "fields": {
+    "codename": "delete_metabolitespecies",
+    "name": "Can delete metabolite species",
+    "content_type": 32
+  },
+  "model": "auth.permission",
+  "pk": 96
+},
+{
+  "fields": {
+    "codename": "add_institution",
+    "name": "Can add institution",
+    "content_type": 33
+  },
+  "model": "auth.permission",
+  "pk": 97
+},
+{
+  "fields": {
+    "codename": "change_institution",
+    "name": "Can change institution",
+    "content_type": 33
+  },
+  "model": "auth.permission",
+  "pk": 98
+},
+{
+  "fields": {
+    "codename": "delete_institution",
+    "name": "Can delete institution",
+    "content_type": 33
+  },
+  "model": "auth.permission",
+  "pk": 99
+},
+{
+  "fields": {
+    "codename": "add_userprofile",
+    "name": "Can add user profile",
+    "content_type": 34
+  },
+  "model": "auth.permission",
+  "pk": 100
+},
+{
+  "fields": {
+    "codename": "change_userprofile",
+    "name": "Can change user profile",
+    "content_type": 34
+  },
+  "model": "auth.permission",
+  "pk": 101
+},
+{
+  "fields": {
+    "codename": "delete_userprofile",
+    "name": "Can delete user profile",
+    "content_type": 34
+  },
+  "model": "auth.permission",
+  "pk": 102
+},
+{
+  "fields": {
+    "codename": "add_institutionid",
+    "name": "Can add institution id",
+    "content_type": 35
+  },
+  "model": "auth.permission",
+  "pk": 103
+},
+{
+  "fields": {
+    "codename": "change_institutionid",
+    "name": "Can change institution id",
+    "content_type": 35
+  },
+  "model": "auth.permission",
+  "pk": 104
+},
+{
+  "fields": {
+    "codename": "delete_institutionid",
+    "name": "Can delete institution id",
+    "content_type": 35
+  },
+  "model": "auth.permission",
+  "pk": 105
+},
+{
+  "fields": {
+    "codename": "add_userpreference",
+    "name": "Can add user preference",
+    "content_type": 36
+  },
+  "model": "auth.permission",
+  "pk": 106
+},
+{
+  "fields": {
+    "codename": "change_userpreference",
+    "name": "Can change user preference",
+    "content_type": 36
+  },
+  "model": "auth.permission",
+  "pk": 107
+},
+{
+  "fields": {
+    "codename": "delete_userpreference",
+    "name": "Can delete user preference",
+    "content_type": 36
+  },
+  "model": "auth.permission",
+  "pk": 108
+},
+{
+  "fields": {
+    "username": "admin",
+    "first_name": "",
+    "last_name": "",
+    "is_active": true,
+    "is_superuser": false,
+    "is_staff": false,
+    "last_login": "2015-05-19T01:40:41.648Z",
+    "groups": [],
+    "user_permissions": [],
+    "password": "pbkdf2_sha256$15000$M6SaAKgcxosP$W9Lgxi5L9vL2jeNWyh6rv6TSqjeCGFfiuaqfrZvy39Q=",
+    "email": "nechols@lbl.gov",
+    "date_joined": "2015-05-19T01:40:41.648Z"
+  },
+  "model": "auth.user",
+  "pk": 1
+},
+{
+  "fields": {
+    "username": "postdoc",
+    "first_name": "",
+    "last_name": "",
+    "is_active": true,
+    "is_superuser": false,
+    "is_staff": false,
+    "last_login": "2015-05-19T01:40:41.743Z",
+    "groups": [],
+    "user_permissions": [],
+    "password": "pbkdf2_sha256$15000$uCaiarG21Zt8$pf6zHPbo6aTHO7yet98OOl5zAHh42e/jzeW9RYVPX/o=",
+    "email": "nechols@lbl.gov",
+    "date_joined": "2015-05-19T01:40:41.743Z"
+  },
+  "model": "auth.user",
+  "pk": 2
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.830Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 1
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.831Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 2
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.849Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 3
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.851Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 4
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.854Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 5
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.855Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 6
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.874Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 7
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.876Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 8
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.888Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 9
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.889Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 10
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.895Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 11
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.896Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 12
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.908Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 13
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.909Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 14
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.912Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 15
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.913Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 16
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.916Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 17
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.917Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 18
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.920Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 19
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.921Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 20
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.923Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 21
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.924Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 22
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.926Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 23
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.927Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 24
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.930Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 25
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.931Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 26
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.946Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 27
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.947Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 28
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.956Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 29
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.957Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 30
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.961Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 31
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.962Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 32
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.965Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 33
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.966Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 34
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.969Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 35
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.970Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 36
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.974Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 37
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.974Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 38
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:41.982Z",
+    "path": null,
+    "origin": null,
+    "mod_by": 1
+  },
+  "model": "main.update",
+  "pk": 39
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:42.114Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 40
+},
+{
+  "fields": {
+    "mod_time": "2015-05-19T01:40:42.115Z",
+    "path": null,
+    "origin": "localhost",
+    "mod_by": null
+  },
+  "model": "main.update",
+  "pk": 41
+},
+{
+  "fields": {
+    "active": true,
+    "contact_extra": "",
+    "contact": null,
+    "updates": []
+  },
+  "model": "main.study",
+  "pk": 1
+},
+{
+  "fields": {
+    "study": 1,
+    "user": 1,
+    "permission_type": "R"
+  },
+  "model": "main.userpermission",
+  "pk": 1
+},
+{
+  "fields": {
+    "active": true,
+    "owned_by": 1,
+    "variant_of": null,
+    "updates": [],
+    "default_units": null
+  },
+  "model": "main.protocol",
+  "pk": 7
+},
+{
+  "fields": {
+    "active": true,
+    "owned_by": 1,
+    "variant_of": null,
+    "updates": [],
+    "default_units": null
+  },
+  "model": "main.protocol",
+  "pk": 8
+},
+{
+  "fields": {
+    "active": true,
+    "owned_by": 1,
+    "variant_of": null,
+    "updates": [],
+    "default_units": null
+  },
+  "model": "main.protocol",
+  "pk": 9
+},
+{
+  "fields": {
+    "active": true,
+    "owned_by": 1,
+    "variant_of": null,
+    "updates": [],
+    "default_units": null
+  },
+  "model": "main.protocol",
+  "pk": 10
+},
+{
+  "fields": {
+    "active": true,
+    "owned_by": 1,
+    "variant_of": null,
+    "updates": [],
+    "default_units": null
+  },
+  "model": "main.protocol",
+  "pk": 11
+},
+{
+  "fields": {
+    "active": true,
+    "owned_by": 1,
+    "variant_of": null,
+    "updates": [],
+    "default_units": null
+  },
+  "model": "main.protocol",
+  "pk": 12
+},
+{
+  "fields": {
+    "active": true,
+    "owned_by": 1,
+    "variant_of": null,
+    "updates": [],
+    "default_units": null
+  },
+  "model": "main.protocol",
+  "pk": 13
+},
+{
+  "fields": {
+    "control": false,
+    "carbon_source": [
+      2
+    ],
+    "study": 1,
+    "strains": [
+      5
+    ],
+    "contact": 1,
+    "experimenter": 1,
+    "updates": [],
+    "active": true,
+    "replicate": null,
+    "contact_extra": ""
+  },
+  "model": "main.line",
+  "pk": 3
+},
+{
+  "fields": {
+    "control": false,
+    "carbon_source": [
+      2
+    ],
+    "study": 1,
+    "strains": [],
+    "contact": 1,
+    "experimenter": 1,
+    "updates": [],
+    "active": true,
+    "replicate": null,
+    "contact_extra": ""
+  },
+  "model": "main.line",
+  "pk": 4
+},
+{
+  "fields": {
+    "active": true,
+    "experimenter": 1,
+    "line": 3,
+    "protocol": 7,
+    "updates": []
+  },
+  "model": "main.assay",
+  "pk": 14
+},
+{
+  "fields": {
+    "active": true,
+    "experimenter": 1,
+    "line": 4,
+    "protocol": 7,
+    "updates": []
+  },
+  "model": "main.assay",
+  "pk": 15
+},
+{
+  "fields": {
+    "active": true,
+    "experimenter": 1,
+    "line": 3,
+    "protocol": 8,
+    "updates": []
+  },
+  "model": "main.assay",
+  "pk": 16
+},
+{
+  "fields": {
+    "active": true,
+    "experimenter": 1,
+    "line": 3,
+    "protocol": 9,
+    "updates": []
+  },
+  "model": "main.assay",
+  "pk": 17
+},
+{
+  "fields": {
+    "active": true,
+    "experimenter": 1,
+    "line": 3,
+    "protocol": 10,
+    "updates": []
+  },
+  "model": "main.assay",
+  "pk": 18
+},
+{
+  "fields": {
+    "active": true,
+    "experimenter": 1,
+    "line": 3,
+    "protocol": 13,
+    "updates": []
+  },
+  "model": "main.assay",
+  "pk": 19
+},
+{
+  "fields": {
+    "x_units": 1,
+    "assay": 14,
+    "compartment": "2",
+    "measurement_format": 0,
+    "measurement_type": 1,
+    "experimenter": 1,
+    "y_units": 2,
+    "active": true,
+    "update_ref": 39
+  },
+  "model": "main.measurement",
+  "pk": 1
+},
+{
+  "fields": {
+    "x_units": 1,
+    "assay": 14,
+    "compartment": "2",
+    "measurement_format": 0,
+    "measurement_type": 2,
+    "experimenter": 1,
+    "y_units": 2,
+    "active": true,
+    "update_ref": 39
+  },
+  "model": "main.measurement",
+  "pk": 2
+},
+{
+  "fields": {
+    "x_units": 1,
+    "assay": 15,
+    "compartment": "2",
+    "measurement_format": 0,
+    "measurement_type": 1,
+    "experimenter": 1,
+    "y_units": 2,
+    "active": true,
+    "update_ref": 39
+  },
+  "model": "main.measurement",
+  "pk": 3
+},
+{
+  "fields": {
+    "x_units": 1,
+    "assay": 15,
+    "compartment": "2",
+    "measurement_format": 0,
+    "measurement_type": 2,
+    "experimenter": 1,
+    "y_units": 2,
+    "active": true,
+    "update_ref": 39
+  },
+  "model": "main.measurement",
+  "pk": 4
+},
+{
+  "fields": {
+    "x_units": 1,
+    "assay": 16,
+    "compartment": "0",
+    "measurement_format": 0,
+    "measurement_type": 3,
+    "experimenter": 1,
+    "y_units": 3,
+    "active": true,
+    "update_ref": 39
+  },
+  "model": "main.measurement",
+  "pk": 5
+},
+{
+  "fields": {
+    "x_units": 1,
+    "assay": 17,
+    "compartment": "2",
+    "measurement_format": 0,
+    "measurement_type": 1,
+    "experimenter": 1,
+    "y_units": 4,
+    "active": true,
+    "update_ref": 39
+  },
+  "model": "main.measurement",
+  "pk": 6
+},
+{
+  "fields": {
+    "x_units": 1,
+    "assay": 17,
+    "compartment": "2",
+    "measurement_format": 0,
+    "measurement_type": 2,
+    "experimenter": 1,
+    "y_units": 4,
+    "active": true,
+    "update_ref": 39
+  },
+  "model": "main.measurement",
+  "pk": 7
+},
+{
+  "fields": {
+    "x_units": 1,
+    "assay": 18,
+    "compartment": "2",
+    "measurement_format": 0,
+    "measurement_type": 4,
+    "experimenter": 1,
+    "y_units": 5,
+    "active": true,
+    "update_ref": 39
+  },
+  "model": "main.measurement",
+  "pk": 8
+},
+{
+  "fields": {
+    "x_units": 1,
+    "assay": 18,
+    "compartment": "2",
+    "measurement_format": 0,
+    "measurement_type": 5,
+    "experimenter": 1,
+    "y_units": 5,
+    "active": true,
+    "update_ref": 39
+  },
+  "model": "main.measurement",
+  "pk": 9
+},
+{
+  "fields": {
+    "x_units": 1,
+    "assay": 19,
+    "compartment": "1",
+    "measurement_format": 0,
+    "measurement_type": 1,
+    "experimenter": 1,
+    "y_units": 2,
+    "active": true,
+    "update_ref": 39
+  },
+  "model": "main.measurement",
+  "pk": 10
+}
+]

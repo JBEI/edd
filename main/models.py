@@ -64,9 +64,20 @@ class Update(models.Model):
     @property
     def initials(self):
         if self.mod_by_id is None:
-            return '--'
+            return None
         return self.mod_by.initials
-    
+
+    @property
+    def full_name(self):
+        if self.mod_by_id is None:
+            return None
+        return ' '.join([self.mod_by.first_name, self.mod_by.last_name, ])
+
+    @property
+    def email(self):
+        if self.mod_by_id is None:
+            return None
+        return self.mod_by.email
 
     def to_json(self):
         return {
@@ -118,7 +129,7 @@ class Attachment(models.Model):
 
     @property
     def user_initials (self) :
-        return self.created.mod_by.initials
+        return self.created.initials
 
     @property
     def icon (self) :
@@ -189,17 +200,17 @@ class MetadataType(models.Model):
     #   a model instance; e.g. type_class = 'CarbonSource' would do a
     #   CarbonSource.objects.get(pk=value)
     type_class = models.CharField(max_length=255, blank=True, null=True)
-    
+
     def for_line(self):
         return (self.for_context == self.LINE or
             self.for_context == self.LINE_OR_PROTOCOL or
             self.for_context == self.ALL)
-    
+
     def for_protocol(self):
         return (self.for_context == self.PROTOCOL or
             self.for_context == self.LINE_OR_PROTOCOL or
             self.for_context == self.ALL)
-    
+
     def for_study(self):
         return (self.for_context == self.STUDY or
             self.for_context == self.ALL)
@@ -384,15 +395,14 @@ class Study(EDDObject):
         """
         created = self.created
         updated = self.updated
-        owner = created.mod_by.userprofile if hasattr(created.mod_by, 'userprofile') else None
         return {
             'id': self.pk,
             'name': self.name,
             'description': self.description,
-            'creator': created.mod_by.pk,
-            'creator_email': created.mod_by.email,
-            'creator_name': ' '.join([created.mod_by.first_name, created.mod_by.last_name]),
-            'initials': owner.initials if owner != None else None,
+            'creator': created.mod_by_id,
+            'creator_email': created.email,
+            'creator_name': created.full_name,
+            'initials': created.initials,
             'contact': self.get_contact(),
             'active': self.active,
             'created': created.mod_time.strftime('%Y-%m-%dT%H:%M:%SZ'),
@@ -467,11 +477,11 @@ class StudyPermission(models.Model):
     )
     study = models.ForeignKey(Study)
     permission_type = models.CharField(max_length=8, choices=TYPE_CHOICE, default=NONE)
-    
+
     def applies_to_user(self, user):
         """
         Test if permission applies to given user.
-        
+
         Base class will always return False, override in child classes.
         Arguments:
             user: to be tested, model from django.contrib.auth.models.User
@@ -483,7 +493,7 @@ class StudyPermission(models.Model):
     def is_read(self):
         """
         Test if the permission grants read privileges.
-        
+
         Returns:
             True if permission grants read
         """
@@ -492,7 +502,7 @@ class StudyPermission(models.Model):
     def is_write(self):
         """
         Test if the permission grants write privileges.
-        
+
         Returns:
             True if permission grants write
         """
@@ -503,7 +513,7 @@ class UserPermission(StudyPermission):
     class Meta:
         db_table = 'study_user_permission'
     user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='userpermission_set')
-    
+
     def applies_to_user(self, user):
         return self.user == user
 
@@ -515,7 +525,7 @@ class GroupPermission(StudyPermission):
     class Meta:
         db_table = 'study_group_permission'
     group = models.ForeignKey('auth.Group', related_name='grouppermission_set')
-    
+
     def applies_to_user(self, user):
         return user.groups.contains(user)
 
@@ -535,13 +545,13 @@ class Protocol(EDDObject):
     variant_of = models.ForeignKey('self', blank=True, null=True, related_name='derived_set')
     default_units = models.ForeignKey('MeasurementUnit', blank=True,
         null=True, related_name="protocol_set")
-    
+
     def creator(self):
         return self.created.mod_by
-    
+
     def owner(self):
         return self.owned_by
-    
+
     def last_modified(self):
         return self.updated.mod_time
 
@@ -768,7 +778,7 @@ class MeasurementGroup(object):
     GENERIC = '_'
     METABOLITE = 'm'
     GENEID = 'g'
-    PROTEINID = 'p' 
+    PROTEINID = 'p'
     GROUP_CHOICE = (
         (GENERIC, 'Generic'),
         (METABOLITE, 'Metabolite'),
@@ -843,6 +853,7 @@ class MeasurementType(models.Model):
         return cls.objects.all().extra(
             select={'lower_name':'lower(short_name)'}).order_by('lower_name')
 
+
 class MetaboliteKeyword (models.Model) :
     class Meta:
         db_table = "metabolite_keyword"
@@ -863,6 +874,7 @@ class MetaboliteKeyword (models.Model) :
                 "metabolites" : [ i_d['id'] for i_d in ids_dicts ],
             })
         return keywords
+
 
 class Metabolite(MeasurementType):
     """
