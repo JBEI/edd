@@ -37,6 +37,14 @@
     <script type="text/javascript" src="{% static 'main/js/CarbonSummation.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/StudyCarbonBalance.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/StudySBMLExport.js' %}"></script>
+    <!-- Autocomplete code found by Nat -->
+    <script type="text/javascript" src="{% static 'main/js/autocomplete2.js' %}"></script>
+    <script type="text/javascript">
+    // set up autocomplete for new study user field (and hidden ID input)
+    $(window).load(function () {
+        setup_field_autocomplete_users(".autocomp.autocomp_user");
+    });
+    </script>
 {% endblock js_css %}
 
 
