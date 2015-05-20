@@ -81,7 +81,7 @@ $(window).load(function () {
 // $(window).load handler above.
 // XXX there are two different selectors here because we may want to display
 // the human-readable model name, but store the primary key in our form.
-function setup_field_autocomplete (selector, id_selector, model_name,
+function setup_field_autocomplete (selector, model_name,
         value_key, valid_keys) {
     if (typeof model_name === "undefined") {
         throw Error("model_name must be defined!");
@@ -100,6 +100,12 @@ function setup_field_autocomplete (selector, id_selector, model_name,
             valueField: 'name'
         }];
     }
+    // Define a null-result for display
+    var empty = {};
+    empty[columns[0].valueField] = empty[0] = '<i>No Results Found</i>';
+    for (var i = 1; i < columns.length; ++i) {
+        empty[columns[i].valueField] = empty[i] = '';
+    }
     $(selector).mcautocomplete({
         // These next two options are what this plugin adds to the autocomplete widget.
         // FIXME these will need to vary depending on record type
@@ -108,10 +114,8 @@ function setup_field_autocomplete (selector, id_selector, model_name,
         // Event handler for when a list item is selected.
         select: function (event, ui) {
             this.value = (ui.item ? ui.item[value_key] : '');
-            if (id_selector) {
-                $(id_selector).val(ui.item.id);
-            }
-        //    $(result_selector).text(ui.item ? 'Selected: ' + ui.item.name + ', ' + ui.item.initials + ', ' + ui.item.email : 'Nothing selected, input was ' + this.value);
+            // assign value of selected item ID to input with same name appended with '_id'
+            $(this).closest('form').find('input[name=' + this.name + '_id]').val(ui.item.id);
             return false;
         },
     
@@ -131,9 +135,9 @@ function setup_field_autocomplete (selector, id_selector, model_name,
                 success: function (data) {
                     var result;
                     if (!data || !data.rows || data.rows.length === 0) {
-                        result = [{
-                            label: 'No match found.'
-                        }];
+                        result = [
+                            empty
+                        ];
                     } else {
                         result = data.rows;
                     }
@@ -147,9 +151,8 @@ function setup_field_autocomplete (selector, id_selector, model_name,
 
 // CONVENIENCE METHODS
 // there should be one of these for each model that we want to search
-function setup_field_autocomplete_users (selector, id_selector) {
+function setup_field_autocomplete_users (selector) {
     return setup_field_autocomplete(selector,
-        id_selector,
         "User", // model_name
         "name", // value_key
         "name,initials,email"); // valid_keys

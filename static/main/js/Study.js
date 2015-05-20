@@ -126,7 +126,7 @@ var StudyD;
             // the scrolling container div declares a large padding margin for the scroll bar,
             // and that padding margin would be an empty waste of space otherwise.
             if (this.uniqueValuesOrder.length > 15) {
-                $(fCol).append(this.searchBoxElement).append(this.scrollZoneDiv);
+                $(fCol).append(this.titleElement).append(this.searchBoxElement).append(this.scrollZoneDiv);
                 // Change the reference so we're affecting the innerHTML of the correct div later on
                 fCol = this.scrollZoneDiv;
             }
@@ -2441,16 +2441,20 @@ var DataGridSpecAssays = (function (_super) {
     DataGridSpecAssays.prototype.generateAssayNameCells = function (gridSpec, index) {
         var record = EDDData.Assays[index];
         var line = EDDData.Lines[record.lid];
+        var sideMenuItems = [
+            '<a href="#" onclick="StudyD.editAssay(this, ' + index + ');">Edit Assay</a>',
+            '<a href="export?assaylevel=1&assay=' + index + '">Export Data as CSV/etc</a>'
+        ];
+        if (gridSpec.protocolName == "Transcriptomics") {
+            sideMenuItems.push('<a href="import/rnaseq/edgepro?assay=' + index + '">Import RNA-seq data from EDGE-pro</a>');
+        }
         // TODO get rid of onclick, check export URL
         return [
             new DataGridDataCell(gridSpec, index, {
                 'checkboxWithID': function (id) {
                     return 'assay' + id + 'include';
                 },
-                'sideMenuItems': [
-                    '<a href="#" onclick="StudyD.editAssay(this, ' + index + ');">Edit Assay</a>',
-                    '<a href="export?assay=' + index + '">Export Data as CSV/etc</a>'
-                ],
+                'sideMenuItems': sideMenuItems,
                 'hoverEffect': true,
                 'nowrap': true,
                 'rowspan': gridSpec.rowSpanForRecord(index),

@@ -1,4 +1,3 @@
-
 {% extends "edd_base.html" %}
 {% load staticfiles %}
 
@@ -8,62 +7,10 @@
 <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.cookie.js' %}"></script>
 <script type="text/javascript" src="{% static 'main/js/lib/filedrop-min.js' %}"></script>
 <script type="text/javascript" src="{% static 'main/js/util2.js' %}"></script>
+<script type="text/javascript" src="{% static 'main/js/data_import.js' %}"></script>
 
 <script type="text/javascript">
-/* see http://filedropjs.org */
-var process_result = function (result) {
-    $("#data-field").text(result.raw_data);
-    $("#data-table").val(JSON.stringify(result.table));
-    if (result.guessed_data_type) {
-      $("#data-type").val(result.guessed_data_type);
-    }
-    var tbody = $("#sample-fields");
-    tbody.empty();
-    $("#assay-id").empty();
-    for (var i = 0; i < result.samples.length; i++) {
-      $("#assay-id").append($("<option/>").attr("value", i).text(i));
-    }
-    $("#n-cols").val(result.samples.length);
-    for (var i = 0; i < result.samples.length; i++) {
-      var s = result.samples[i];
-      var fields = $("#sample-fields-0").clone();
-      fields.find("#col-label").text(s.label);
-      fields.find("#assay-id").val(s.assay_id).attr("name", "assay-"+i);
-      fields.find("#line-id").val(s.line_id).attr("name", "line-"+i);
-      fields.find("#time-point").attr("name", "time-"+i);
-      fields.find("#desc-field").attr("name", "desc-"+i);
-      tbody.append(fields);
-      fields.toggle();
-    }
-  };
-function submit_data (study_id) {
-  var fd = new FormData(document.getElementById("data-form"));
-  jQuery.ajax({
-    url : "/study/" + study_id + "/import/rnaseq/process",
-    type: "POST",
-    data: fd,
-    processData: false,
-    contentType: false,
-    enctype: 'multipart/form-data',
-    success : function (result) {
-      if (result.python_error) {
-        alert(result.python_error);
-      } else {
-        process_result(result);
-      }
-    }
-  });
-};
-$(window).load(function () {
-  var study_id = $("#study-id").val();
-  var filedrop_url = "/study/" + study_id + "/import/rnaseq/parse";
-  $("#file-name").live("change", function () {
-    $("#data-field").text("");
-    submit_data(study_id);
-  });
-  setupFileDrop("data-field", filedrop_url, process_result, false);
-  $("#process-button").click(function () { submit_data(study_id) });
-});
+EDDRnaSeq.initialize_window({{ study.id }});
 </script>
 
 <style>
@@ -109,10 +56,13 @@ RNA-seq data import
 
 {% block content %}
 
+{% include "main/include_messages.html" %}
+
 <form method="post" id="data-form"
       action="/study/{{ study.id }}/import/rnaseq/process">
   {% csrf_token %}
   <input type="hidden" name="action" value="parse"/>
+  <input type="hidden" name="format" value="htseq-combined"/>
   <input type="hidden" name="study_id" value="{{ study.id }}" id="study-id"/>
 
 <div class="pageSection" id="dataViewDiv">
@@ -233,7 +183,7 @@ orf2  329       258       407       122       136       117
                  id="time-point" value="0"/>
           h
         </td>
-        <td>Description (optional):</td>
+        <td>Description (if new assay):</td>
         <td class="field-contents">
           <input type="text" style="width: 200px;" name="desc"
                  id="desc-field"/>

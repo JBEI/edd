@@ -195,6 +195,10 @@ def study_import_table (request, study) :
 # /study/<study_id>/import/rnaseq
 @ensure_csrf_cookie
 def study_import_rnaseq (request, study) :
+    """
+    View for importing multiple sets of RNA-seq measurements in various simple
+    tabular formats defined by us.  Handles both GET and POST.
+    """
     messages = {}
     model = Study.objects.get(pk=study)
     lines = model.line_set.all()
@@ -215,22 +219,75 @@ def study_import_rnaseq (request, study) :
         },
         context_instance=RequestContext(request))
 
+# /study/<study_id>/import/rnaseq/edgepro
+@ensure_csrf_cookie
+def study_import_rnaseq_edgepro (request, study) :
+    """
+    View for importing a single set of RNA-seq measurements from the EDGE-pro
+    pipeline, attached to an existing Assay.  Handles both GET and POST.
+    """
+    messages = {}
+    model = Study.objects.get(pk=study)
+    assay_id = None
+    if (request.method == "GET") :
+        assay_id = request.POST.get("assay", None)
+    elif (request.method == "POST") :
+        assay_id = request.POST.get("assay", None)
+        try :
+            if (assay_id is None) or (assay_id == "") :
+                raise ValueError("Assay ID required for form submission.")
+            result = main.data_import.import_rnaseq_edgepro.from_form(
+                request=request,
+                study=model)
+            messages["success"] = result.format_message()
+        except ValueError as e :
+            messages["error"] = str(e)
+        #else :
+        #    return redirect("/study/%s" % study)
+    protocol = Protocol.objects.get(name="Transcriptomics")
+    assays_ = Assay.objects.filter(protocol=protocol,
+        line__study=study).prefetch_related(
+        "measurement_set").select_related("line").select_related("protocol")
+    assay_info = []
+    for assay in assays_ :
+        assay_info.append({
+            "id" : assay.id,
+            "long_name" : assay.long_name,
+            "n_meas" : assay.measurement_set.count(),
+        })
+    return render_to_response("main/import_rnaseq_edgepro.html",
+        dictionary={
+            "selected_assay_id" : assay_id,
+            "assays" : assay_info,
+            "messages" : messages,
+            "study" : model,
+        },
+        context_instance=RequestContext(request))
+
 # /study/<study_id>/import/rnaseq/parse
 def study_import_rnaseq_parse (request, study) :
     """
     Parse raw data from an uploaded text file, and return JSON object of
     processed result.  Result is identical to study_import_rnaseq_process,
-    but this method is invoked by drag-and-drop of a file.
+    but this method is invoked by drag-and-drop of a file (via filedrop.js).
     """
     model = Study.objects.get(pk=study)
+    referrer = request.META['HTTP_REFERER']
+    result = None
+    # XXX slightly gross: using HTTP_REFERER to dictate choice of parsing
+    # functions
     try :
-        result = main.data_import.interpret_raw_rna_seq_data(
-            raw_data=request.read(),
-            study=model)
+        if ("edgepro" in referrer) :
+            result = main.data_import.interpret_edgepro_data(
+                raw_data=request.read())
+            result['format'] = "edgepro"
+        else :
+            result = main.data_import.interpret_raw_rna_seq_data(
+                raw_data=request.read(),
+                study=model)
+            result['format'] = "generic"
     except ValueError as e :
         return JsonResponse({ "python_error" : str(e) })
-    except Exception as e :
-        print e
     else :
         return JsonResponse(result)
 
@@ -252,10 +309,19 @@ def study_import_rnaseq_process (request, study) :
                     "required as input.")
             data = data_file.read()
             file_name = data_file.name
-        result = main.data_import.interpret_raw_rna_seq_data(
-            raw_data=data,
-            study=model,
-            file_name=file_name)
+        result = None
+        if (request.POST.get("format") == "htseq-combined") :
+            result = main.data_import.interpret_raw_rna_seq_data(
+                raw_data=data,
+                study=model,
+                file_name=file_name)
+        elif (request.POST.get("format") == "edgepro") :
+            result = main.data_import.interpret_edgepro_data(
+                raw_data=data,
+                study=model,
+                file_name=file_name)
+        else :
+            raise ValueError("Format needs to be specified!")
     except ValueError as e :
         return JsonResponse({ "python_error" : str(e) })
     except Exception as e :
@@ -277,14 +343,21 @@ def study_export_table (request, study) :
         form = request.GET
     exports = main.data_export.select_objects_for_export(
         study=model,
-        user=None, # FIXME
+        user=request.user, # FIXME
         form=form)
+    column_info = list(main.data_export.column_info)
+    column_flags = main.data_export.extract_column_flags(form)
+    for col in column_info :
+        if (col['label'] in column_flags) :
+            col['checked'] = False
     error_message = None
     formatted_table = None
     if (len(exports['measurements']) == 0) :
         error_message = "No measurements selected for export!"
     else :
-        formatted_table = main.data_export.table_view(exports, form)
+        formatted_table = main.data_export.table_view(export_data=exports,
+            form=form,
+            column_flags=column_flags)
     if (form.get("download", None) == "1") and (formatted_table is not None) :
         table_format = form.get("recordformat", "csv")
         file_name = "edd_export_%s.%s" % (study, table_format)
@@ -297,15 +370,16 @@ def study_export_table (request, study) :
             "study" : model,
             "line_id_str" : ",".join([ str(l.id) for l in exports['lines'] ]),
             "assay_id_str" : ",".join([ str(a.id) for a in exports['assays'] ]),
-            "measurement_id_str" : ",".join([ str(l.id) for m in
+            "measurement_id_str" : ",".join([ str(m.id) for m in
                                               exports['measurements'] ]),
-            "column_info" : main.data_export.column_info,
+            "column_info" : column_info,
             "lines" : exports['lines'],
             "n_meas" : len(exports['measurements']),
             "n_assays" : len(exports['assays']),
             "n_lines" : len(exports['lines']),
             "error_message" : error_message,
             "formatted_table" : formatted_table,
+            "assaylevel" : form.get("assaylevel", "0"),
         },
         context_instance=RequestContext(request))
 
@@ -482,10 +556,12 @@ def admin_measurements (request) :
                 pass
         except ValueError as e :
             messages['error'] = str(e)
+    metabolites = Metabolite.all_sorted_by_short_name()#.prefetch_related(
+        #"keywords")
     return render_to_response("main/admin_measurements.html",
         dictionary={
             "messages" : messages,
-            "metabolites" : Metabolite.all_sorted_by_short_name(),
+            "metabolites" : metabolites,
             "keywords" : MetaboliteKeyword.all_with_metabolite_ids,
             "units" : MeasurementUnit.all_sorted,
             "mtype_groups" : MeasurementGroup.GROUP_CHOICE,
@@ -525,9 +601,11 @@ def admin_carbonsources (request) :
                 messages['success'] = "Carbon source '%s' updated." % cs.name
         except ValueError as e :
             messages['error'] = str(e)
-    carbon_sources = CarbonSource.all_sorted_by_name().prefetch_related(
-        "updates").prefetch_related("line_set").prefetch_related(
-            "line_set__study")
+    # FIXME prefetch doesn't work here - need to handle updates better
+    carbon_sources = CarbonSource.objects.prefetch_related(
+        "updates__mod_by__userprofile").prefetch_related(
+        "line_set__study").all().extra(
+        select={'lower_name':'lower(name)'}).order_by('lower_name')
     return render_to_response("main/admin_carbon_sources.html",
         dictionary={
             "messages" : messages,
@@ -565,9 +643,13 @@ def admin_strains (request) :
                 messages['success'] = "Strain '%s' updated." % strain.name
         except ValueError as e :
             messages['error'] = str(e)
-    # FIXME still too slow...
-    strains = list(Strain.all_sorted_by_name().select_related(
-        "line_set").select_related("updates"))
+    # FIXME note that the prefetch_related doesn't help much for the updates,
+    # because the updates will eventually be fetched by a new query that
+    # sorts them.
+    strains = Strain.objects.prefetch_related(
+        "line_set").prefetch_related(
+        "updates__mod_by__userprofile").all().extra(
+        select={'lower_name':'lower(name)'}).order_by('lower_name')
     return render_to_response("main/admin_strains.html",
         dictionary={
             "messages" : messages,

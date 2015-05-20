@@ -30,13 +30,16 @@ def get_edddata_study (study) :
     CarbonSource that are not "children" of a Study, they have been filtered
     to include only those that are used by the given study.
     """
-    metab_types = Metabolite.objects.filter(assay__line__study=study).distinct()
+    metab_types = Metabolite.objects.prefetch_related("keywords").filter(
+        assay__line__study=study).distinct()
     protocols = Protocol.objects.filter(assay__line__study=study).distinct()
     enabled_protocols = protocols.filter(active=True)
     carbon_sources = CarbonSource.objects.filter(line__study=study).distinct()
     assays = study.get_assays()
     strains = study.get_strains_used()
-    lines = study.line_set.all()
+    lines = study.line_set.all().prefetch_related(
+        "carbon_source").prefetch_related("strains").prefetch_related(
+        "updates")
     return {
       # metabolites
       "MetaboliteTypeIDs" : [ mt.id for mt in metab_types ],
@@ -103,14 +106,14 @@ def get_edddata_carbon_sources () :
 # TODO unit test
 def get_edddata_measurement () :
     """All data not associated with a study or related objects."""
-    metab_types = Metabolite.objects.all()
+    metab_types = Metabolite.objects.all().prefetch_related("keywords")
     return {
         "MetaboliteTypeIDs" : [ mt.id for mt in metab_types ],
         "MetaboliteTypes" : { mt.id : mt.to_json() for mt in metab_types },
     }
 
 def get_edddata_strains () :
-    strains = Strain.objects.all()
+    strains = Strain.objects.all().prefetch_related("updates")
     return {
       "StrainIDs" : [ s.id for s in strains ],
       "EnabledStrainIDs" : [ s.id for s in strains if s.active ],
@@ -121,9 +124,11 @@ def get_edddata_users (active_only=False) :
     User = get_user_model()
     users = []
     if active_only :
-        users = User.objects.filter(is_active=True)
+        users = User.objects.filter(is_active=True).select_related(
+            "userprofile")
     else :
-        users = User.objects.all()
+        users = User.objects.all().select_related(
+            "userprofile")
     return {
         "UserIDs" : [ u.id for u in users ],
         "EnabledUserIDs" : [ u.id for u in users if u.is_active ],
@@ -186,6 +191,8 @@ def get_selected_lines (form, study) :
     else :
         return study.line_set.filter(id__in=selected_line_ids)
 
+# XXX I suspect some of this could be replaced by smarter use of
+# prefetch_related and select_related
 class line_export_base (object) :
   """
   Helper class for extracting various data associated with a set of lines.
@@ -210,7 +217,7 @@ class line_export_base (object) :
     self._metabolites = {} # keyed by measurement.id
 
   def _fetch_cache_data (self) :
-    assays = list(Assay.objects.filter(line__in=self.lines).select_related(
+    assays = list(Assay.objects.filter(line__in=self.lines).prefetch_related(
       "measurement_set").select_related("protocol").select_related("line"))
     for assay in assays :
       self._assays[assay.protocol_id].append(assay)

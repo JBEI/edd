@@ -1,4 +1,10 @@
 
+// http://stackoverflow.com/questions/22063612
+$.ajaxPrefilter(function (options, originalOptions, jqXHR) {
+  console.log("Hello, world!");
+  jqXHR.setRequestHeader('X-CSRFToken', jQuery.cookie('csrftoken'));
+});
+
 function oninit (dz) {
   var _this = dz;
   _this.on("dragstart", function () {
@@ -32,6 +38,11 @@ Dropzone.options.gcmsDropzone = {
         }
         gcms_dz.processQueue();
       });
+  },
+  // add CSRF token to xmlHTTPRequest headers
+  sending : function (evt, xhr, fd) {
+    var csrftoken = jQuery.cookie('csrftoken');
+    xhr.setRequestHeader("X-CSRFToken", csrftoken);
   },
   // reset file preview div when a new file is dropped
   drop: function (e) {
@@ -278,6 +289,7 @@ function onFinalize (table) {
     contentType: 'application/json; charset=UTF-8',
     dataType: 'json',
     data: JSON.stringify({
+      'CSRFToken' : jQuery.cookie('csrftoken'),
       'molecules' : processed['molecules'],
       'data' : processed['data'],
       'key_headers' : xlsx['headers'],
@@ -301,8 +313,14 @@ function onFinalize (table) {
 }
 
 // POST a request to convert a table and column headers to an Excel workbook.
+// FIXME this works fine, but Chrome prints a warning about the resource being
+// interpreted as a document (conflicting with the MIME type set on the
+// server).  The recommended solutions all seem to involve making AJAX calls,
+// which do not support file downloads.
 function download_xlsx (headers, table, prefix) {
   var form = $('<form method="POST" action="/utilities/gc_ms/export">');
+  form.append($('<input type="hidden" name="csrfmiddlewaretoken"/>').val(
+    jQuery.cookie('csrftoken')));
   form.append($('<input type="hidden" name="headers"/>').val(JSON.stringify(headers)));
   form.append($('<input type="hidden" name="table"/>').val(JSON.stringify(table)));
   form.append($('<input type="hidden" name="prefix"/>').val(prefix));

@@ -2848,14 +2848,18 @@ class DataGridSpecAssays extends DataGridSpecBase {
     generateAssayNameCells(gridSpec:DataGridSpecAssays, index:number):DataGridDataCell[] {
         var record = EDDData.Assays[index];
         var line = EDDData.Lines[record.lid];
+        var sideMenuItems = [
+            '<a href="#" onclick="StudyD.editAssay(this, ' + index + ');">Edit Assay</a>',
+            '<a href="export?assaylevel=1&assay=' + index + '">Export Data as CSV/etc</a>'
+        ];
+        if (gridSpec.protocolName == "Transcriptomics") {
+            sideMenuItems.push('<a href="import/rnaseq/edgepro?assay='+index+'">Import RNA-seq data from EDGE-pro</a>');
+        }
         // TODO get rid of onclick, check export URL
         return [
             new DataGridDataCell(gridSpec, index, {
                 'checkboxWithID': (id) => { return 'assay' + id + 'include'; },
-                'sideMenuItems': [
-                    '<a href="#" onclick="StudyD.editAssay(this, ' + index + ');">Edit Assay</a>',
-                    '<a href="export?assay=' + index + '">Export Data as CSV/etc</a>'
-                ],
+                'sideMenuItems': sideMenuItems,
                 'hoverEffect': true,
                 'nowrap': true,
                 'rowspan': gridSpec.rowSpanForRecord(index),
