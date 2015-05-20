@@ -240,7 +240,11 @@ class EDDObject(models.Model):
     objects = hstore.HStoreManager()
     
     def created(self):
-        created = self.updates.order_by('mod_time')[:1] 
+        created = self.updates.order_by('mod_time')[:1]
+        # FIXME the line above results in an additional query that we can't
+        # fix by prefetching.  an alternative:
+        #   created = sorted(list(self.updates.all()),
+        #      lambda a,b: cmp(a.mod_time, b.mod_time))[:1]
         return created[0] if created else None
     
     def updated(self):
@@ -603,8 +607,8 @@ def _n_lines (self) :
     return self.line_set.count()
 
 def _n_studies (self) :
-    lines = self.line_set.all().select_related("study")
-    return len(set([ l.study.pk for l in lines ]))
+    lines = self.line_set.all()
+    return len(set([ l.study_id for l in lines ]))
 
 class Strain(EDDObject):
     """
@@ -704,8 +708,8 @@ class Line(EDDObject):
             'active': self.active,
             'control': self.control,
             'replicate': self.replicate.pk if self.replicate else None,
-            'contact': { 'user_id': self.contact.pk, 'text': self.contact_extra },
-            'experimenter': self.experimenter.pk,
+            'contact': { 'user_id': self.contact_id, 'text': self.contact_extra },
+            'experimenter': self.experimenter_id,
             'meta': self.get_metadata_json(), # FIXME is this correct?
             'strain': [s.pk for s in self.strains.all()],
             'carbon': [c.pk for c in self.carbon_source.all()],
@@ -752,6 +756,28 @@ class Line(EDDObject):
     @property
     def media (self) :
         return self.get_metadata_dict().get("Media", None)
+
+    def new_assay_number (self, protocol) :
+        """
+        Given a Protocol name, fetch all matching child Assays, attempt to
+        convert their names into integers, and return the next highest integer
+        for creating a new assay.  (This will result in duplication of names
+        for Assays of different protocols under the same Line, but the frontend
+        displays Assay.long_name, which should be unique.)
+        """
+        if isinstance(protocol, basestring) : # assume Protocol.name
+            protocol = Protocol.objects.get(name=protocol)
+        assays = self.assay_set.filter(protocol=protocol)
+        existing_assay_numbers = []
+        for assay in assays :
+            try :
+                existing_assay_numbers.append(int(assay.name))
+            except ValueError :
+                pass
+        assay_start_id = 1
+        if (len(existing_assay_numbers) > 0) :
+            assay_start_id = max(existing_assay_numbers) + 1
+        return assay_start_id
 
 class MeasurementGroup(object):
     """
@@ -833,7 +859,7 @@ class MeasurementType(models.Model):
         Returns a query set sorted by the short_name field in case-insensitive
         order.  (Mostly useful for the Metabolite subclass.)
         """
-        return cls.objects.all().extra(
+        return cls.objects.all().prefetch_related('keywords').extra(
             select={'lower_name':'lower(short_name)'}).order_by('lower_name')
 
 class MetaboliteKeyword (models.Model) :
@@ -848,7 +874,9 @@ class MetaboliteKeyword (models.Model) :
     @classmethod
     def all_with_metabolite_ids (cls) :
         keywords = []
-        for keyword in cls.objects.all().order_by("name") :
+        kwd_objects = cls.objects.all().order_by("name").prefetch_related(
+            "metabolite_set")
+        for keyword in kwd_objects :
             ids_dicts = keyword.metabolite_set.values("id")
             keywords.append({
                 "id" : keyword.id,
@@ -878,6 +906,11 @@ class Metabolite(MeasurementType):
         return True
 
     def to_json(self):
+        """
+        Export a serializable dictionary.  Because this will access all
+        associated keyword objects, it is recommended to include a call to
+        query.prefetch_related("keywords") when selecting metabolites in bulk.
+        """
         return dict(super(Metabolite, self).to_json(), **{
             # FIXME the alternate names pointed to by the 'ans' key are
             # supposed to come from the 'alternate_metabolite_type_names'
@@ -999,6 +1032,10 @@ class Assay(EDDObject):
         return self.measurement_set.filter(
             measurement_type__type_group=MeasurementGroup.GENEID)
 
+    @property
+    def long_name (self) :
+        return "%s-%s-%s" % (self.line.name, self.protocol.name, self.name)
+
     def to_json (self) :
         return {
             "id": self.pk,
@@ -1030,6 +1067,9 @@ class MeasurementCompartment (object) :
     names = ["", "Intracellular/Cytosol (Cy)", "Extracellular"]
     GROUP_CHOICE = ( (str(i), cn) for (i,cn) in enumerate(names) )
 
+class MeasurementFormat (object) :
+    FORMAT_CHOICE = ( str(i) for i in range(3) )
+    SCALAR, VECTOR, GRID = FORMAT_CHOICE
 
 class Measurement(models.Model):
     """
@@ -1050,7 +1090,9 @@ class Measurement(models.Model):
                                    choices=MeasurementCompartment.GROUP_CHOICE,
                                    default=MeasurementCompartment.UNKNOWN)
     # TODO: verify what this value means; carbon ratio data if 1? should be parameter of MeasurementType?
-    measurement_format = models.IntegerField(default=0)
+    measurement_format = models.CharField(max_length=2,
+        choices=MeasurementFormat.FORMAT_CHOICE,
+        default=MeasurementFormat.SCALAR)
 
     def to_json(self):
         points = chain(self.measurementdatum_set.all(), self.measurementvector_set.all())
@@ -1074,15 +1116,33 @@ class Measurement(models.Model):
     def is_protein_measurement (self) :
         return self.measurement_type.type_group == MeasurementGroup.PROTEINID
 
+    # may not be the best method name, if we ever want to support other
+    # types of data as vectors in the future
     def is_carbon_ratio (self) :
-        return (self.measurement_format == 1)
+        return (int(self.measurement_format) == 1)
 
     def valid_data (self) :
-        mdata = list(self.measurementdatum_set.all())
-        return [ md for md in mdata if md.fy is not None ]
+        """Data (either MeasurementDatum or MeasurementVector objects) for
+        which the y-value is defined (non-NULL, non-blank)."""
+        mdata = list(self.data())
+        return [ md for md in mdata if md.is_defined() ]
 
     def is_extracellular (self) :
         return self.compartment == str(MeasurementCompartment.EXTRACELLULAR)
+
+    def data (self) :
+        """
+        Return the data associated with this measurement.  This can be either
+        a scalar (x,y) (MeasurementDatum) or vector (x,y1/y2/y3/...)
+        (MeasurementVector) at present, but not both.
+        """
+        if (int(self.measurement_format) == 0) :
+            return self.measurementdatum_set.all()
+        elif (int(self.measurement_format) == 1) :
+            return self.measurementvector_set.all()
+        else :
+            raise NotImplementedError("Measurement format %s not supported." %
+                self.measurement_format)
 
     @property
     def name (self) :
@@ -1095,6 +1155,10 @@ class Measurement(models.Model):
         return self.measurement_type.short_name
 
     @property
+    def compartment_symbol (self) :
+        return MeasurementCompartment.short_names[int(self.compartment)]
+
+    @property
     def full_name (self) :
         """measurement compartment plus measurement_type.type_name"""
         return ({"0":"","1":"IC","2":"EC"}.get(self.compartment) +
@@ -1102,19 +1166,22 @@ class Measurement(models.Model):
 
     # TODO also handle vectors
     def extract_data_xvalues (self, defined_only=False) :
-        mdata = list(self.measurementdatum_set.all())
+        mdata = list(self.data())
         if defined_only :
-            return [ m.fx for m in mdata if m.fy is not None ]
+            return [ m.fx for m in mdata if m.is_defined() ]
         else :
             return [ m.fx for m in mdata ]
 
     # this shouldn't need to handle vectors
     def interpolate_at (self, x) :
+        assert (int(self.measurement_format) == 0)
         from main.utilities import interpolate_at
         return interpolate_at(self.valid_data(), x)
 
     @property
     def y_axis_units_name (self) :
+        """Human-readable units for Y-axis.  Not intended for repeated/bulk use,
+        since it involves a foreign key lookup."""
         return self.y_units.unit_name
 
     def is_concentration_measurement (self) :
@@ -1151,10 +1218,20 @@ class MeasurementDatum(models.Model):
     @property
     def fy (self) :
         """Returns self.y as a Python float OR None if undefined"""
-        if (self.y is not None) :
+        if self.is_defined() :
             return float(self.y)
         return None
 
+    def is_defined (self) :
+        return (self.y is not None)
+
+    def export_value (self) :
+        """
+        Convert the value to something we can put in a table, etc.; the
+        DecimalField will appear as Decimal('1.2345'), which is not what we
+        want to see.
+        """
+        return self.fy
 
 class MeasurementVector(models.Model):
     """
@@ -1181,6 +1258,12 @@ class MeasurementVector(models.Model):
     def fx (self) :
         return float(self.x)
 
+    def is_defined (self) :
+        return (self.y is not None) and (self.y != "")
+
+    def export_value (self) :
+        """For API compatibility with MeasurementDatum"""
+        return str(self.y)
 
 class SBMLTemplate (EDDObject) :
     """

@@ -5,7 +5,7 @@ Miscellaneous data-processing utilities.
 
 from edd_utils import gc_ms_workbench
 from edd_utils.parsers import skyline
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from io import BytesIO
@@ -17,11 +17,11 @@ def utilities_index (request) :
 ########################################################################
 # GC-MS
 #
+@ensure_csrf_cookie
 def gcms_home (request):
     """Starting point for extracting peaks from ChemStation report files."""
     return render(request, 'gc_ms.html', {})
 
-@csrf_exempt
 def gcms_parse (request) :
     """
     Process an Agilent MSDChemStation report and return a table of data as
@@ -36,7 +36,6 @@ def gcms_parse (request) :
     except ValueError as e :
         return JsonResponse({ 'python_error' : str(e) })
 
-@csrf_exempt
 def gcms_merge (request) :
     data = json.loads(request.body)
     try :
@@ -44,7 +43,6 @@ def gcms_merge (request) :
     except RuntimeError as e :
         return JsonResponse({ 'python_error' : str(e) })
 
-@csrf_exempt
 def gcms_export (request) :
     form = request.POST
     prefix = form['prefix']
@@ -65,10 +63,10 @@ def gcms_export (request) :
 ########################################################################
 # PROTEOMICS
 #
+@ensure_csrf_cookie
 def skyline_home (request):
     return render(request, 'skyline_import.html', {})
 
-@csrf_exempt
 def skyline_parse (request) :
     data = request.FILES['file'].read()
     result = skyline.ParseCSV(data.splitlines())
