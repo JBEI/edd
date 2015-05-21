@@ -183,3 +183,8 @@ STATIC_URL = '/static/'
 
 # File upload location
 MEDIA_ROOT = '/var/www/uploads'
+
+try:
+    from .local_settings import *
+except ImportError:
+    pass
