@@ -14,6 +14,11 @@ from itertools import chain
 from threadlocals.threadlocals import get_current_request
 
 
+class UpdateManager(models.Manager):
+    def get_queryset(self):
+        return super(UpdateManager, self).get_queryset().select_related('mod_by')
+
+
 class Update(models.Model):
     """
     A user update; referenced from other models that track creation and/or modification.
@@ -27,6 +32,10 @@ class Update(models.Model):
     mod_by = models.ForeignKey(settings.AUTH_USER_MODEL, editable=False, null=True)
     path = models.TextField(blank=True, null=True)
     origin = models.TextField(blank=True, null=True)
+
+    # references to self.mod_by potentially creates LOTS of queries
+    # custom manager will always select_related('mod_by')
+    objects = UpdateManager()
 
     def __str__(self):
         try:
@@ -161,6 +170,14 @@ class Attachment(models.Model):
         if (self.object_ref.__class__ is Study) :
             return self.object_ref.user_can_read(user)
         return True # XXX is this wise?
+
+    def save(self, *args, **kwargs):
+        if self.created_id is None:
+            self.created = Update.load_update()
+        self.filename = self.file.name
+        self.file_size = self.file.size
+        self.mime_type = self.file.content_type
+        super(Attachment, self).save(*args, **kwargs)
 
 
 class MetadataGroup(models.Model):
