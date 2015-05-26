@@ -1,8 +1,22 @@
+from django import forms
 from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin
+from django.utils.translation import ugettext_lazy as _
+from main.forms import UserAutocompleteWidget
 from main.models import *
 from main.solr import *
+
+
+class AttachmentInline(admin.TabularInline):
+    """ Inline submodel for editing attachments """
+    model = Attachment
+    fields = ('file', 'description', 'created', 'mime_type', 'file_size')
+    # would like to have file readonly for existing attachments
+    # Django cannot currently do this on Inlines; see:
+    # https://code.djangoproject.com/ticket/15602
+    readonly_fields = ('created', 'file_size')
+    extra = 1
 
 
 class MetadataGroupAdmin(admin.ModelAdmin):
@@ -17,10 +31,40 @@ class MetadataTypeAdmin(admin.ModelAdmin):
     radio_fields = {'group': admin.VERTICAL, 'for_context': admin.VERTICAL}
 
 
+class ProtocolAdminForm(forms.ModelForm):
+    class Meta:
+        model = Protocol
+        fields = ('name', 'variant_of', 'active', 'owned_by', 'description', 'default_units', )
+        help_texts = {
+            'owned_by': _('(A user who is allowed to edit this protocol, even if not an Admin.)'),
+            'default_units': _(' (When measurement data are imported without units, this will automatically be assigned.)'),
+        }
+        labels = {
+            'name': _('Protocol'),
+            'variant_of': _('Variant Of'),
+            'active': _('Is Active'),
+            'owned_by': _('Owner'),
+            'description': _('Description'),
+            'default_units': _('Default Units'),
+        }
+        widgets = {
+            'owned_by': UserAutocompleteWidget()
+        }
+
+    def clean(self):
+        super(ProtocolAdminForm, self).clean()
+        print self.cleaned_data
+        c_id = self.cleaned_data.get('owned_by', None)
+        if c_id is not None:
+            c_user = User.objects.get(pk=c_id)
+            self.instance.owner = c_user
+
+
 class ProtocolAdmin(admin.ModelAdmin):
     """ Definition for admin-edit of Protocols """
-    fields = ['name', 'description', 'active', 'variant_of']
+    form = ProtocolAdminForm
     list_display = ['name', 'description', 'active', 'variant_of', 'owner',]
+    inlines = (AttachmentInline, )
 
     def save_model(self, request, obj, form, change):
         update = Update.load_request_update(request)
@@ -29,6 +73,11 @@ class ProtocolAdmin(admin.ModelAdmin):
             obj.owned_by = request.user
         obj.updated = update
         obj.save()
+
+    def save_related(self, request, form, formsets, change):
+        #print request.FILES.keys()
+        # FIXME get content_type from request.FILES and update Attachment
+        return super(ProtocolAdmin, self).save_related(request, form, formsets, change)
 
 
 class MeasurementTypeAdmin(admin.ModelAdmin):
@@ -55,7 +104,7 @@ class StudyAdmin(admin.ModelAdmin):
     exclude = ['name', 'description', 'active', 'updates', 'comments',
                'files', 'contact', 'contact_extra', 'metadata']
     fields = []
-    inlines = [UserPermissionInline, GroupPermissionInline]
+    inlines = (UserPermissionInline, GroupPermissionInline, AttachmentInline, )
     list_display = ['name', 'description', 'created', 'updated']
 
     def get_queryset(self, request):

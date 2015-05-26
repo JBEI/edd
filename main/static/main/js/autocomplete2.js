@@ -9,10 +9,13 @@
 // version should use SOLR instead of Django to execute the search.
 //
 
+var EDD_auto = EDD_auto || {};
+(function ($) { // immediately invoked function to bind jQuery to $
+
 // Static specification of column layout for each model in EDD that we want to
 // make searchable.  (This might be better done as a static JSON file
 // somewhere.)
-var column_layouts = {
+EDD_auto.column_layouts = $.extend(EDD_auto.column_layouts || {}, {
     "User" : [
         {
             name: 'User',
@@ -27,7 +30,8 @@ var column_layouts = {
             width: '120px',
             valueField: 'email'
         }]
-};
+});
+// 
 
 /*
  * jQuery UI Multicolumn Autocomplete Widget Plugin 2.1
@@ -74,15 +78,14 @@ $(window).load(function () {
             return result;
         }
     });
+
 });
 
 
 // Sets up the multicolumn autocomplete widget.  Must be called after the
 // $(window).load handler above.
-// XXX there are two different selectors here because we may want to display
-// the human-readable model name, but store the primary key in our form.
-function setup_field_autocomplete (selector, model_name,
-        value_key, valid_keys) {
+EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(
+        selector, model_name, value_key, valid_keys) {
     if (typeof model_name === "undefined") {
         throw Error("model_name must be defined!");
     }
@@ -92,7 +95,7 @@ function setup_field_autocomplete (selector, model_name,
     if (typeof valid_keys === "undefined") {
         valid_keys = "all";
     }
-    var columns = column_layouts[model_name];
+    var columns = EDD_auto.column_layouts[model_name];
     if (typeof columns === "undefined") {
         columns = [{
             name: 'Name',
@@ -114,8 +117,8 @@ function setup_field_autocomplete (selector, model_name,
         // Event handler for when a list item is selected.
         select: function (event, ui) {
             this.value = (ui.item ? ui.item[value_key] : '');
-            // assign value of selected item ID to input with same name appended with '_id'
-            $(this).closest('form').find('input[name=' + this.name + '_id]').val(ui.item.id);
+            // assign value of selected item ID to sibling hidden input
+            $(this).siblings('input[type=hidden]').val(ui.item.id);
             return false;
         },
     
@@ -135,9 +138,7 @@ function setup_field_autocomplete (selector, model_name,
                 success: function (data) {
                     var result;
                     if (!data || !data.rows || data.rows.length === 0) {
-                        result = [
-                            empty
-                        ];
+                        result = [ empty ];
                     } else {
                         result = data.rows;
                     }
@@ -147,13 +148,14 @@ function setup_field_autocomplete (selector, model_name,
         }
     });
 };
+
 /***********************************************************************/
 
-// CONVENIENCE METHODS
-// there should be one of these for each model that we want to search
-function setup_field_autocomplete_users (selector) {
-    return setup_field_autocomplete(selector,
-        "User", // model_name
-        "name", // value_key
-        "name,initials,email"); // valid_keys
-};
+$(window).load(function () {
+    // add user autocomplete to all '.autocomp.autocomp_user' fields
+    $('.autocomp.autocomp_user').each(function () {
+        EDD_auto.setup_field_autocomplete(this, 'User', 'username', 'name,initials,email');
+    });
+});
+
+}(jQuery));
