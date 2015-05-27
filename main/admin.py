@@ -98,6 +98,9 @@ class UserPermissionInline(admin.TabularInline):
     model = UserPermission
     extra = 1
 
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        kwargs['widget'] = UserAutocompleteWidget()
+        return db_field.formfield(**kwargs)
 
 class GroupPermissionInline(admin.TabularInline):
     """ Inline submodel for editing group permissions """
