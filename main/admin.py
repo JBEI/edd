@@ -37,7 +37,8 @@ class ProtocolAdminForm(forms.ModelForm):
         fields = ('name', 'variant_of', 'active', 'owned_by', 'description', 'default_units', )
         help_texts = {
             'owned_by': _('(A user who is allowed to edit this protocol, even if not an Admin.)'),
-            'default_units': _(' (When measurement data are imported without units, this will automatically be assigned.)'),
+            'default_units': _('(When measurement data are imported without units, this will ' +
+                    'automatically be assigned.)'),
         }
         labels = {
             'name': _('Protocol'),
@@ -80,6 +81,12 @@ class ProtocolAdmin(admin.ModelAdmin):
         return super(ProtocolAdmin, self).save_related(request, form, formsets, change)
 
 
+class CarbonSourceAdmin(admin.ModelAdmin):
+    """ Definition for admin-edit of Carbon Sources """
+    fields = ['name', 'description', 'active', 'labeling', 'volume', ]
+    list_display = ['name', 'description', 'active', 'labeling', 'volume', ]
+
+
 class MeasurementTypeAdmin(admin.ModelAdmin):
     """ Definition for admin-edit of Measurement Types """
     fields = ['type_name', 'short_name', 'type_group']
@@ -109,7 +116,7 @@ class StudyAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         q = super(StudyAdmin, self).get_queryset(request)
-        #
+        q = q.select_related('created__mod_by', 'updated__mod_by')
         return q
 
     def solr_index(self, request, queryset):
@@ -143,6 +150,7 @@ class EDDUserAdmin(UserAdmin):
 admin.site.register(MetadataGroup, MetadataGroupAdmin)
 admin.site.register(MetadataType, MetadataTypeAdmin)
 admin.site.register(Protocol, ProtocolAdmin)
+admin.site.register(CarbonSource, CarbonSourceAdmin)
 admin.site.register(MeasurementType, MeasurementTypeAdmin)
 admin.site.register(Study, StudyAdmin)
 admin.site.unregister(get_user_model())
