@@ -81,6 +81,19 @@ class ProtocolAdmin(admin.ModelAdmin):
         return super(ProtocolAdmin, self).save_related(request, form, formsets, change)
 
 
+class StrainAdminForm(forms.ModelForm):
+    class Meta:
+        model = Strain
+        exclude = ('updates', )
+        #fields = ('name', 'description', 'active', 'registry_id', 'registry_url', )
+
+
+class StrainAdmin(admin.ModelAdmin):
+    """ Definition for admin-edit of Strains """
+    form = StrainAdminForm
+    list_display = ('name', 'description', )
+
+
 class CarbonSourceAdmin(admin.ModelAdmin):
     """ Definition for admin-edit of Carbon Sources """
     fields = ['name', 'description', 'active', 'labeling', 'volume', ]
@@ -153,6 +166,7 @@ class EDDUserAdmin(UserAdmin):
 admin.site.register(MetadataGroup, MetadataGroupAdmin)
 admin.site.register(MetadataType, MetadataTypeAdmin)
 admin.site.register(Protocol, ProtocolAdmin)
+admin.site.register(Strain, StrainAdmin)
 admin.site.register(CarbonSource, CarbonSourceAdmin)
 admin.site.register(MeasurementType, MeasurementTypeAdmin)
 admin.site.register(Study, StudyAdmin)

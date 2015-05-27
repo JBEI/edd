@@ -1,5 +1,6 @@
 from django import forms
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.utils.translation import ugettext_lazy as _
 from main.models import *
 
@@ -19,9 +20,9 @@ class AutocompleteWidget(forms.widgets.MultiWidget):
             'all': ('main/js/lib/jquery-ui/jquery-ui.min.css', ),
         }
 
-    def __init__(self, attrs=None, model=User):
+    def __init__(self, attrs=None, model=User, opt={}):
         _widgets = (
-            forms.widgets.TextInput(attrs={ 'class': 'autocomp autocomp_user' }),
+            forms.widgets.TextInput(attrs=opt.get('text_attr', {})),
             forms.HiddenInput()
             )
         self.model = model
@@ -45,7 +46,33 @@ class AutocompleteWidget(forms.widgets.MultiWidget):
 
 
 class UserAutocompleteWidget(AutocompleteWidget):
-    pass
+    """ Autocomplete widget for Users """
+    def __init__(self, attrs=None, opt={}):
+        _opt = opt.copy()
+        _opt.update({
+            'text_attr': { 'class': 'autocomp autocomp_user' },
+            })
+        super(UserAutocompleteWidget, self).__init__(attrs=attrs, model=User, opt=_opt)
+
+
+class GroupAutocompleteWidget(AutocompleteWidget):
+    """ Autocomplete widget for Groups """
+    def __init__(self, attrs=None, opt={}):
+        _opt = opt.copy()
+        _opt.update({
+            'text_attr': { 'class': 'autocomp autocomp_group' },
+            })
+        super(GroupAutocompleteWidget, self).__init__(attrs=attrs, model=Group, opt=_opt)
+
+
+class RegistryAutocompleteWidget(AutocompleteWidget):
+    """ Autocomplete widget for Registry strains """
+    def __init__(self, attrs=None, opt={}):
+        _opt = opt.copy()
+        _opt.update({
+            'text_attr': { 'class': 'autocomp autocomp_reg' },
+            })
+        super(RegistryAutocompleteWidget, self).__init__(attrs=attrs, model=Strain, opt=_opt)
 
 
 class CreateStudyForm(forms.ModelForm):
