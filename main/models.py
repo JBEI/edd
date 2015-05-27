@@ -8,6 +8,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
+from django.utils.encoding import python_2_unicode_compatible
 from django_extensions.db.fields import PostgreSQLUUIDField
 from django_hstore import hstore
 from itertools import chain
@@ -1016,6 +1017,7 @@ class GeneIdentifier(MeasurementType):
 #         db_table = 'protein_identifier'
 
 
+@python_2_unicode_compatible
 class MeasurementUnit(models.Model):
     """
     Defines a unit type and metadata on measurement values.
@@ -1040,6 +1042,9 @@ class MeasurementUnit(models.Model):
     def all_sorted (cls) :
         return cls.objects.filter(display=True).extra(
             select={'lower_name':'lower(unit_name)'}).order_by('lower_name')
+
+    def __str__(self):
+        return self.unit_name
 
 class Assay(EDDObject):
     """
