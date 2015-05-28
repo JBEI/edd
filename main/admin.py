@@ -112,7 +112,8 @@ class UserPermissionInline(admin.TabularInline):
     extra = 1
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
-        kwargs['widget'] = UserAutocompleteWidget()
+        if db_field.name == 'user':
+            kwargs['widget'] = UserAutocompleteWidget()
         return db_field.formfield(**kwargs)
 
 class GroupPermissionInline(admin.TabularInline):
