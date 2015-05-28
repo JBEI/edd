@@ -2,6 +2,7 @@ from django import forms
 from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin
+from django.db.models import Count
 from django.utils.translation import ugettext_lazy as _
 from main.forms import UserAutocompleteWidget
 from main.models import *
@@ -85,19 +86,31 @@ class StrainAdminForm(forms.ModelForm):
     class Meta:
         model = Strain
         exclude = ('updates', )
-        #fields = ('name', 'description', 'active', 'registry_id', 'registry_url', )
 
 
 class StrainAdmin(admin.ModelAdmin):
     """ Definition for admin-edit of Strains """
     form = StrainAdminForm
-    list_display = ('name', 'description', )
+    list_display = ('name', 'description', 'num_lines', 'num_studies', 'created', )
+
+    def get_queryset(self, request):
+        q = super(StrainAdmin, self).get_queryset(request)
+        q = q.annotate(num_lines=Count('line'), num_studies=Count('line__study', distinct=True))
+        return q
+
+    def num_lines(self, instance):
+        return instance.num_lines
+    num_lines.short_description = '# Lines'
+
+    def num_studies(self, instance):
+        return instance.num_studies
+    num_studies.short_description = '# Studies'
 
 
 class CarbonSourceAdmin(admin.ModelAdmin):
     """ Definition for admin-edit of Carbon Sources """
     fields = ['name', 'description', 'active', 'labeling', 'volume', ]
-    list_display = ['name', 'description', 'active', 'labeling', 'volume', ]
+    list_display = ['name', 'description', 'active', 'labeling', 'volume', 'created', ]
 
 
 class MeasurementTypeAdmin(admin.ModelAdmin):
