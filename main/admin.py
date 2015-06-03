@@ -32,6 +32,16 @@ class MetadataTypeAdmin(admin.ModelAdmin):
     radio_fields = {'group': admin.VERTICAL, 'for_context': admin.VERTICAL}
 
 
+class EDDObjectAdmin(admin.ModelAdmin):
+    """ Parent class for EDD Object model admin classes """
+    def save_model(self, request, obj, form, change):
+        update = Update.load_request_update(request)
+        if not change:
+            obj.created = update
+        obj.updated = update
+        super(EDDObjectAdmin, self).save_model(request, obj, form, change)
+
+
 class ProtocolAdminForm(forms.ModelForm):
     class Meta:
         model = Protocol
@@ -62,24 +72,16 @@ class ProtocolAdminForm(forms.ModelForm):
             self.instance.owner = c_user
 
 
-class ProtocolAdmin(admin.ModelAdmin):
+class ProtocolAdmin(EDDObjectAdmin):
     """ Definition for admin-edit of Protocols """
     form = ProtocolAdminForm
     list_display = ['name', 'description', 'active', 'variant_of', 'owner',]
     inlines = (AttachmentInline, )
 
     def save_model(self, request, obj, form, change):
-        update = Update.load_request_update(request)
         if not change:
-            obj.created = update
             obj.owned_by = request.user
-        obj.updated = update
-        obj.save()
-
-    def save_related(self, request, form, formsets, change):
-        #print request.FILES.keys()
-        # FIXME get content_type from request.FILES and update Attachment
-        return super(ProtocolAdmin, self).save_related(request, form, formsets, change)
+        super(ProtocolAdmin, self).save_model(request, obj, form, change)
 
 
 class StrainAdminForm(forms.ModelForm):
@@ -88,7 +90,7 @@ class StrainAdminForm(forms.ModelForm):
         exclude = ('updates', )
 
 
-class StrainAdmin(admin.ModelAdmin):
+class StrainAdmin(EDDObjectAdmin):
     """ Definition for admin-edit of Strains """
     form = StrainAdminForm
     list_display = ('name', 'description', 'num_lines', 'num_studies', 'created', )
@@ -98,16 +100,18 @@ class StrainAdmin(admin.ModelAdmin):
         q = q.annotate(num_lines=Count('line'), num_studies=Count('line__study', distinct=True))
         return q
 
+    # annotated queryset with count of lines referencing strain, need method to load annotation
     def num_lines(self, instance):
         return instance.num_lines
     num_lines.short_description = '# Lines'
 
+    # annotated queryset with count of studies referencing strain, need method to load annotation
     def num_studies(self, instance):
         return instance.num_studies
     num_studies.short_description = '# Studies'
 
 
-class CarbonSourceAdmin(admin.ModelAdmin):
+class CarbonSourceAdmin(EDDObjectAdmin):
     """ Definition for admin-edit of Carbon Sources """
     fields = ['name', 'description', 'active', 'labeling', 'volume', ]
     list_display = ['name', 'description', 'active', 'labeling', 'volume', 'created', ]
@@ -135,14 +139,14 @@ class GroupPermissionInline(admin.TabularInline):
     extra = 1
 
 
-class StudyAdmin(admin.ModelAdmin):
+class StudyAdmin(EDDObjectAdmin):
     """ Definition for admin-edit of Studies """
-    actions = ['solr_index']
+    actions = ['solr_index', ]
     exclude = ['name', 'description', 'active', 'updates', 'comments',
-               'files', 'contact', 'contact_extra', 'metadata']
+               'files', 'contact', 'contact_extra', 'metadata', ]
     fields = []
     inlines = (UserPermissionInline, GroupPermissionInline, AttachmentInline, )
-    list_display = ['name', 'description', 'created', 'updated']
+    list_display = ['name', 'description', 'created', 'updated', ]
 
     def get_queryset(self, request):
         q = super(StudyAdmin, self).get_queryset(request)
@@ -152,10 +156,39 @@ class StudyAdmin(admin.ModelAdmin):
     def solr_index(self, request, queryset):
         solr = StudySearch(ident=request.user)
         # optimize queryset to fetch several related fields
-        q = queryset.prefetch_related('updates__mod_by__userprofile')
-        q = q.prefetch_related('userpermission_set__user', 'grouppermission_set__group')
+        q = queryset.prefetch_related(
+                'updates__mod_by__userprofile',
+                'userpermission_set__user',
+                'grouppermission_set__group',
+                )
         solr.update(q)
     solr_index.short_description = 'Index in Solr'
+
+
+class SBMLTemplateAdmin(EDDObjectAdmin):
+    """ Definition fro admin-edit of SBML Templates """
+    fields = ('name', 'description', 'sbml_file', 'biomass_calculation', )
+    list_display = ('name', 'description', 'biomass_calculation', 'created', )
+    inlines = (AttachmentInline, )
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == 'sbml_file':
+            kwargs['queryset'] = Attachment.objects.filter(object_ref=self._obj)
+        return super(SBMLTemplateAdmin, self).formfield_for_foreignkey(db_field, request, **kwargs)
+
+    def get_form(self, request, obj=None, **kwargs):
+        # save model for later
+        self._obj = obj
+        return super(SBMLTemplateAdmin, self).get_form(request, obj, **kwargs)
+
+    def get_queryset(self, request):
+        q = super(SBMLTemplateAdmin, self).get_queryset(request)
+        q = q.select_related('sbml_file')
+        return q
+
+    def save_model(self, request, obj, form, change):
+        #validate_sbml_attachment()
+        super(SBMLTemplateAdmin, self).save_model(request, obj, form, change)
 
 
 class EDDUserAdmin(UserAdmin):
@@ -170,8 +203,7 @@ class EDDUserAdmin(UserAdmin):
         # optimize queryset to fetch profile with JOIN, and single 
         # queries for group/institutions instead of one per record
         q = queryset.select_related('userprofile')
-        q = q.prefetch_related('groups')
-        q = q.prefetch_related('userprofile__institutions')
+        q = q.prefetch_related('groups', 'userprofile__institutions')
         print q.query
         solr.update(q)
     solr_index.short_description = 'Index in Solr'
@@ -184,5 +216,6 @@ admin.site.register(Strain, StrainAdmin)
 admin.site.register(CarbonSource, CarbonSourceAdmin)
 admin.site.register(MeasurementType, MeasurementTypeAdmin)
 admin.site.register(Study, StudyAdmin)
+admin.site.register(SBMLTemplate, SBMLTemplateAdmin)
 admin.site.unregister(get_user_model())
 admin.site.register(get_user_model(), EDDUserAdmin)

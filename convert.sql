@@ -607,21 +607,47 @@ INSERT INTO public.measurement_vector(
 -- copy over metabolic maps
 --
 ALTER TABLE public.edd_object ADD COLUMN sbml_template_id integer UNIQUE DEFAULT NULL;
-INSERT INTO public.edd_object(sbml_template_id, name, created_id, updated_id)
-    SELECT mm.id, mm.biomass_exchange_name, c.id, c.id
+-- name = biomass_exchange_name
+-- description = attachment -> description
+-- created/updated = attachment -> created
+INSERT INTO public.edd_object(sbml_template_id, name, description, created_id, updated_id)
+    SELECT mm.id, mm.biomass_exchange_name, a.description, c.id, c.id
     FROM old_edd.metabolic_maps mm
     LEFT JOIN old_edd.attachments a ON a.id = mm.attachment_id
     LEFT JOIN public.update_info c ON date_trunc('second', c.mod_time) = 
         date_trunc('second', a.creation_time)
         AND c.mod_by_id = a.created_by
     ORDER BY mm.id;
+-- continue metabolic maps / SBML Template conversion after attachments
+
+
+--
+-- copy over attachments
+--
+INSERT INTO public.attachment(
+      object_ref_id, filename, file, description, created_id, mime_type, file_size
+    ) SELECT o.id, a.filename, a.filename, a.description, m.id, a.mime_type, a.file_size
+    FROM old_edd.attachments a
+    INNER JOIN public.edd_object o ON o.study_id = a.study_id
+        OR o.line_id = a.line_id
+        OR o.assay_id = a.assay_id
+        OR o.protocol_id = a.protocol_id
+        OR o.sbml_template_id = a.metabolic_map_id
+    LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
+        date_trunc('second', a.creation_time)
+        AND m.mod_by_id = a.created_by
+    ORDER BY a.id;
+
+
+-- continue SBML Template conversion
 INSERT INTO public.sbml_template(
         biomass_exchange_name, biomass_calculation, biomass_calculation_info,
-        object_ref_id
+        object_ref_id, sbml_file_id
     ) SELECT mm.biomass_exchange_name, mm.biomass_calculation,
-        mm.biomass_calculation_info, o.id
+        mm.biomass_calculation_info, o.id, a.id
     FROM old_edd.metabolic_maps mm
     INNER JOIN public.edd_object o ON o.sbml_template_id = mm.id
+    LEFT JOIN public.attachment a ON a.object_ref_id = o.id
     ORDER BY mm.id;
 INSERT INTO public.measurement_type_to_exchange(
         sbml_template_id, measurement_type_id, reactant_name, exchange_name
@@ -635,29 +661,6 @@ INSERT INTO public.measurement_type_to_species(
     FROM old_edd.measurement_types_to_species ms
     INNER JOIN public.edd_object o ON o.sbml_template_id = ms.metabolic_map_id
     ORDER BY ms.id;
-
-
---
--- copy over attachments
--- XXX discarding the original ID! for some reason propagating the old ID
--- leads to constraint violations when we add records, and we don't actually
--- need the old ID anyway.
---
-INSERT INTO public.attachment(
-      object_ref_id, filename, file, description, created_id, mime_type,
-      file_size
-    ) SELECT o.id, a.filename, a.filename, a.description, m.id,
-        a.mime_type, a.file_size
-    FROM old_edd.attachments a
-    INNER JOIN public.edd_object o ON o.study_id = a.study_id
-        OR o.line_id = a.line_id
-        OR o.assay_id = a.assay_id
-        OR o.protocol_id = a.protocol_id
-        OR o.sbml_template_id = a.metabolic_map_id
-    LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
-        date_trunc('second', a.creation_time)
-        AND m.mod_by_id = a.created_by
-    ORDER BY a.id;
 
 
 -- add permissions needed for migrating attachments

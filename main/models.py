@@ -8,6 +8,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
+from django.db.models import Q
 from django.utils.encoding import python_2_unicode_compatible
 from django_extensions.db.fields import PostgreSQLUUIDField
 from django_hstore import hstore
@@ -128,6 +129,9 @@ class Attachment(models.Model):
     description = models.TextField(blank=True, null=False)
     mime_type = models.CharField(max_length=255, null=True)
     file_size = models.IntegerField(default=0)
+
+    def __str__(self):
+        return self.filename
 
     @classmethod
     def from_upload (cls, edd_object, form, uploaded_file, update) :
@@ -1316,17 +1320,12 @@ class SBMLTemplate (EDDObject) :
         max_digits=16) # XXX check that these parameters make sense!
     biomass_calculation_info = models.TextField(default='')
     biomass_exchange_name = models.TextField()
+    # FIXME would like to limit this to attachments only on parent EDDObject, and remove null=True
+    sbml_file = models.ForeignKey(Attachment, null=True)
 
     @property
     def xml_file (self) :
-        files = list(self.files.all())
-        if (len(files) == 0) :
-            raise RuntimeError("No attachments found for metabolic map %s!" %
-                self.name)
-        #elif (len(files) > 1) :
-        #    raise RuntimeError("Multiple attachments found for metabolic map "+
-        #      "%s!" % self.name)
-        return files[-1]
+        return self.sbml_file
 
     def parseSBML (self) :
         import libsbml
