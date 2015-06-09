@@ -6,6 +6,7 @@ from django.db.models import Count
 from django.utils.translation import ugettext_lazy as _
 from main.forms import UserAutocompleteWidget
 from main.models import *
+from main.sbml_export import validate_sbml_attachment
 from main.solr import *
 
 
@@ -176,6 +177,11 @@ class SBMLTemplateAdmin(EDDObjectAdmin):
             kwargs['queryset'] = Attachment.objects.filter(object_ref=self._obj)
         return super(SBMLTemplateAdmin, self).formfield_for_foreignkey(db_field, request, **kwargs)
 
+    def get_fields(self, request, obj=None):
+        if obj:
+            return ('name', 'description', 'sbml_file', 'biomass_calculation' ,)
+        return ((), )
+
     def get_form(self, request, obj=None, **kwargs):
         # save model for later
         self._obj = obj
@@ -187,8 +193,30 @@ class SBMLTemplateAdmin(EDDObjectAdmin):
         return q
 
     def save_model(self, request, obj, form, change):
-        #validate_sbml_attachment()
+        print "SBMLTemplateAdmin save_model: sbml = %s" % (obj.sbml_file, )
+        if change:
+            sbml = Attachment.objects.get(pk=obj.sbml_file).file
+            sbml_data = validate_sbml_attachment(sbml.read())
+            obj.biomass_exchange_name = self._extract_biomass_exchange_name(sbml_data.getModel())
+        else:
+            if len(form.files) == 1:
+                sbml = list(form.files.values())[0]
+                sbml_data = validate_sbml_attachment(sbml.read())
+                sbml_model = sbml_data.getModel()
+                obj.biomass_exchange_name = self._extract_biomass_exchange_name(sbml_model)
+                # FIXME need to set obj.sbml_file at some point (after save?)
         super(SBMLTemplateAdmin, self).save_model(request, obj, form, change)
+
+    def _extract_biomass_exchange_name(self, sbml_model):
+        possible_exchange_ids = set()
+        for reaction in sbml_model.getListOfReactions():
+            rxid = reaction.getId()
+            if ('biomass' in rxid) and ('core' in rxid):
+                possible_exchange_ids.add(rxid)
+        exchange_name = ''
+        if len(possible_exchange_ids) == 1:
+            exchange_name = list(possible_exchange_ids)[0]
+        return exchange_name
 
 
 class EDDUserAdmin(UserAdmin):

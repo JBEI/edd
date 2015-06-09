@@ -127,7 +127,7 @@ class Attachment(models.Model):
     filename = models.CharField(max_length=255)
     created = models.ForeignKey(Update, related_name='+')
     description = models.TextField(blank=True, null=False)
-    mime_type = models.CharField(max_length=255, null=True)
+    mime_type = models.CharField(max_length=255, blank=True, null=True)
     file_size = models.IntegerField(default=0)
 
     def __str__(self):
@@ -177,11 +177,13 @@ class Attachment(models.Model):
         return True # XXX is this wise?
 
     def save(self, *args, **kwargs):
+        print "Attachment#save called"
         if self.created_id is None:
             self.created = Update.load_update()
         self.filename = self.file.name
         self.file_size = self.file.size
-        self.mime_type = self.file.content_type
+        # self.file is the db field; self.file.file is the actual file
+        self.mime_type = self.file.file.content_type
         super(Attachment, self).save(*args, **kwargs)
 
 
@@ -1321,7 +1323,7 @@ class SBMLTemplate (EDDObject) :
     biomass_calculation_info = models.TextField(default='')
     biomass_exchange_name = models.TextField()
     # FIXME would like to limit this to attachments only on parent EDDObject, and remove null=True
-    sbml_file = models.ForeignKey(Attachment, null=True)
+    sbml_file = models.ForeignKey(Attachment, blank=True, null=True)
 
     @property
     def xml_file (self) :
