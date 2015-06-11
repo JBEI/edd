@@ -43,6 +43,9 @@ EMAIL_SUBJECT_PREFIX = '[EDD] '
 ALLOWED_HOSTS = []
 SITE_ID = 1
 LOGIN_REDIRECT_URL = '/'
+DEBUG_TOOLBAR_CONFIG = {
+    'JQUERY_URL': '',
+}
 
 
 # Application definition
