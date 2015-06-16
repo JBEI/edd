@@ -331,6 +331,7 @@ class EDDObject(models.Model):
 
     @classmethod
     def metadata_type_frequencies (cls) :
+        # TODO should be able to do this in the database
         freqs = defaultdict(int)
         for obj in cls.objects.all() :
             mdtype_keys = obj.meta_store.keys()
@@ -993,6 +994,10 @@ class Metabolite(MeasurementType):
             if (not keyword in new_keywords) :
                 self.keywords.remove(current_kwds[keyword])
 
+# override the default type_group for metabolites
+Metabolite._meta.get_field('type_group').default = MeasurementGroup.METABOLITE
+
+
 class GeneIdentifier(MeasurementType):
     """
     Defines additional metadata on gene identifier transcription measurement type.
@@ -1013,14 +1018,16 @@ class GeneIdentifier(MeasurementType):
         genes = cls.objects.all().order_by("type_name")
         return { g.type_name : g for g in genes }
 
+GeneIdentifier._meta.get_field('type_group').default = MeasurementGroup.GENEID
 
-# Commented out until there is more to ProteinIdentifier than what already is in MeasurementType
-# class ProteinIdentifier(MeasurementType):
-#     """
-#     Defines additional metadata on gene identifier transcription measurement type.
-#     """
-#     class Meta:
-#         db_table = 'protein_identifier'
+
+class ProteinIdentifier(MeasurementType):
+    """ Defines additional metadata on gene identifier transcription measurement type. """
+    class Meta:
+        db_table = 'protein_identifier'
+    pass
+
+ProteinIdentifier._meta.get_field('type_group').default = MeasurementGroup.PROTEINID
 
 
 @python_2_unicode_compatible
@@ -1311,10 +1318,9 @@ class MeasurementVector(models.Model):
         """For API compatibility with MeasurementDatum"""
         return str(self.y)
 
-class SBMLTemplate (EDDObject) :
-    """
-    Container for information used in SBML export.
-    """
+
+class SBMLTemplate(EDDObject):
+    """ Container for information used in SBML export. """
     class Meta:
         db_table = "sbml_template"
     object_ref = models.OneToOneField(EDDObject, parent_link=True)
@@ -1326,12 +1332,17 @@ class SBMLTemplate (EDDObject) :
     sbml_file = models.ForeignKey(Attachment, blank=True, null=True)
 
     @property
-    def xml_file (self) :
+    def xml_file(self):
         return self.sbml_file
 
-    def parseSBML (self) :
+    def parseSBML(self):
         import libsbml
         return libsbml.readSBML(str(self.xml_file.file.path))
+
+    def save(self, *args, **kwargs):
+        # may need to do a post-save signal; get sbml attachment and save in sbml_file
+        super(SBMLTemplate, self).save(*args, **kwargs)
+
 
 class MetaboliteExchange (models.Model) :
     """

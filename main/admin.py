@@ -1,3 +1,5 @@
+# coding: utf-8
+
 from django import forms
 from django.contrib import admin
 from django.contrib.auth import get_user_model
@@ -28,9 +30,38 @@ class MetadataGroupAdmin(admin.ModelAdmin):
 
 class MetadataTypeAdmin(admin.ModelAdmin):
     """ Definition for admin-edit of Metadata Types """
-    fields = ['type_name', 'input_size', 'default_value', 'prefix', 'postfix',
-              'group', 'for_context']
+    fields = ('type_name', 'input_size', 'default_value', 'prefix', 'postfix',
+              'group', 'for_context', )
+    list_display = ('type_name', 'prefix', 'default_value', 'postfix', 'is_line', 'is_protocol',
+                    'num_lines', 'num_assay', 'group', )
+    list_filter = ('group', )
     radio_fields = {'group': admin.VERTICAL, 'for_context': admin.VERTICAL}
+    search_fields = ('type_name', )
+
+    def get_queryset(self, request):
+        q = super(MetadataTypeAdmin, self).get_queryset(request)
+        self._num_lines = Line.metadata_type_frequencies()
+        self._num_assay = Assay.metadata_type_frequencies()
+        #q = q.annotate(num_lines=Count('line'), num_studies=Count('line__study', distinct=True))
+        return q
+
+    def is_line(self, instance):
+        return instance.for_line()
+    is_line.boolean = True
+    is_line.short_description = 'Lines?'
+
+    def is_protocol(self, instance):
+        return instance.for_protocol()
+    is_protocol.boolean = True
+    is_protocol.short_description = 'Protocols/Assays?'
+
+    def num_lines(self, instance):
+        return self._num_lines.get(instance.pk, 0)
+    num_lines.short_description = '# Lines'
+
+    def num_assay(self, instance):
+        return self._num_assay.get(instance.pk, 0)
+    num_assay.short_description = '# Assays'
 
 
 class EDDObjectAdmin(admin.ModelAdmin):
@@ -88,7 +119,13 @@ class ProtocolAdmin(EDDObjectAdmin):
 class StrainAdminForm(forms.ModelForm):
     class Meta:
         model = Strain
-        exclude = ('updates', )
+        fields = ('name', 'registry_url', 'description', 'active', )
+        labels = {
+            'name': _('Strain'),
+            'registry_url': _('Registry URL'),
+            'description': _('Description'),
+            'active': _('Is Active'),
+        }
 
 
 class StrainAdmin(EDDObjectAdmin):
@@ -120,9 +157,34 @@ class CarbonSourceAdmin(EDDObjectAdmin):
 
 class MeasurementTypeAdmin(admin.ModelAdmin):
     """ Definition for admin-edit of Measurement Types """
-    fields = ['type_name', 'short_name', 'type_group']
-    list_display = ['type_name', 'short_name', 'type_group']
+    search_fields = ('type_name', 'short_name', )
 
+    def get_fields(self, request, obj=None):
+        if issubclass(self.model, Metabolite):
+            return (('short_name', 'molar_mass', 'charge', ), 'type_name', 'molecular_formula', )
+        elif issubclass(self.model, GeneIdentifier):
+            return ('type_name', ('location_in_genome', 'positive_strand', 'location_start',
+                    'location_end', 'gene_length'), )
+        elif issubclass(self.model, MeasurementType):
+            return ('type_name', 'short_name', )
+        return ('type_name', 'short_name', )
+
+    def get_list_display(self, request):
+        if issubclass(self.model, Metabolite):
+            return ('type_name', 'short_name', 'molecular_formula', 'molar_mass', 'charge',
+                    'keywords', )
+        elif issubclass(self.model, GeneIdentifier):
+            return ('type_name', 'location_in_genome', 'positive_strand', 'location_start',
+                    'location_end', 'gene_length', )
+        elif issubclass(self.model, MeasurementType):
+            return ('type_name', 'short_name', )
+        return ('type_name', 'short_name', )
+
+    def get_queryset(self, request):
+        q = super(MeasurementTypeAdmin, self).get_queryset(request)
+        if self.model == MeasurementType:
+            q = q.filter(type_group=MeasurementGroup.GENERIC)
+        return q
 
 class UserPermissionInline(admin.TabularInline):
     """ Inline submodel for editing user permissions """
@@ -166,6 +228,23 @@ class StudyAdmin(EDDObjectAdmin):
     solr_index.short_description = 'Index in Solr'
 
 
+class SBMLTemplateCreateAdmin(forms.Form):
+    """
+    TODO !!!
+    Want only a file upload field and a description field
+    Save attachment without object_ref … may need to set blank=True, null=True
+    Attachment.objects.create(
+        file=upload,
+        filename=upload.name,
+        file_size=upload.size,
+        mime_type=upload.content_type, 
+        description=description)
+    Create SBMLTemplate referencing saved attachment
+    Update attachment to have object_ref pointing to SBMLTemplate
+    """
+    pass
+
+
 class SBMLTemplateAdmin(EDDObjectAdmin):
     """ Definition fro admin-edit of SBML Templates """
     fields = ('name', 'description', 'sbml_file', 'biomass_calculation', )
@@ -180,11 +259,14 @@ class SBMLTemplateAdmin(EDDObjectAdmin):
     def get_fields(self, request, obj=None):
         if obj:
             return ('name', 'description', 'sbml_file', 'biomass_calculation' ,)
+        # Only show attachment inline for NEW templates
         return ((), )
 
     def get_form(self, request, obj=None, **kwargs):
         # save model for later
         self._obj = obj
+        if not obj:
+            return SBMLTemplateCreateAdmin()
         return super(SBMLTemplateAdmin, self).get_form(request, obj, **kwargs)
 
     def get_queryset(self, request):
@@ -193,18 +275,16 @@ class SBMLTemplateAdmin(EDDObjectAdmin):
         return q
 
     def save_model(self, request, obj, form, change):
-        print "SBMLTemplateAdmin save_model: sbml = %s" % (obj.sbml_file, )
         if change:
             sbml = Attachment.objects.get(pk=obj.sbml_file).file
             sbml_data = validate_sbml_attachment(sbml.read())
             obj.biomass_exchange_name = self._extract_biomass_exchange_name(sbml_data.getModel())
-        else:
-            if len(form.files) == 1:
-                sbml = list(form.files.values())[0]
-                sbml_data = validate_sbml_attachment(sbml.read())
-                sbml_model = sbml_data.getModel()
-                obj.biomass_exchange_name = self._extract_biomass_exchange_name(sbml_model)
-                # FIXME need to set obj.sbml_file at some point (after save?)
+        elif len(form.files) == 1:
+            sbml = list(form.files.values())[0]
+            sbml_data = validate_sbml_attachment(sbml.read())
+            sbml_model = sbml_data.getModel()
+            obj.biomass_exchange_name = self._extract_biomass_exchange_name(sbml_model)
+            # FIXME need to set obj.sbml_file at some point (after save?)
         super(SBMLTemplateAdmin, self).save_model(request, obj, form, change)
 
     def _extract_biomass_exchange_name(self, sbml_model):
@@ -243,6 +323,9 @@ admin.site.register(Protocol, ProtocolAdmin)
 admin.site.register(Strain, StrainAdmin)
 admin.site.register(CarbonSource, CarbonSourceAdmin)
 admin.site.register(MeasurementType, MeasurementTypeAdmin)
+admin.site.register(Metabolite, MeasurementTypeAdmin)
+admin.site.register(GeneIdentifier, MeasurementTypeAdmin)
+admin.site.register(ProteinIdentifier, MeasurementTypeAdmin)
 admin.site.register(Study, StudyAdmin)
 admin.site.register(SBMLTemplate, SBMLTemplateAdmin)
 admin.site.unregister(get_user_model())

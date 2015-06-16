@@ -540,6 +540,10 @@ INSERT INTO public.measurement_type(
     ) SELECT p.measurement_type_id, p.name, '', 'p'
     FROM old_edd.protein_identifiers p
     ORDER BY p.measurement_type_id;
+INSERT INTO public.protein_identifier(measurementtype_ptr_id)
+    SELECT p.measurement_type_id
+    FROM old_edd.protein_identifiers p
+    ORDER BY p.measurement_type_id;
 SELECT setval('public.measurement_type_id_seq', max(id))
     FROM public.measurement_type;
 -- associated keywords
