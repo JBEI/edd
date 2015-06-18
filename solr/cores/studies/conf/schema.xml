@@ -25,6 +25,13 @@
                 <filter class="solr.LowerCaseFilterFactory" />
             </analyzer>
         </fieldType>
+        <!-- Text field normalized to lower-case, taking only first 30 characters, for sorting -->
+        <fieldType name="sort_lower" class="solr.TextField" positionIncrementGap="10">
+            <analyzer>
+                <tokenizer class="solr.PatternTokenizerFactory" pattern="^.{0,30}" group="0" />
+                <filter class="solr.LowerCaseFilterFactory" />
+            </analyzer>
+        </fieldType>
         <!-- value in form of ([0-9a-fA-F-]+)@Name, or a ID/UUID followed by at-sign and a name -->
         <fieldType name="idval" class="solr.TextField" indexed="true" stored="true" omitNorms="true"
                 multiValued="true">
@@ -109,7 +116,7 @@
         <field name="creator" type="tlong" indexed="true" stored="true" />
         <field name="creator_email" type="text_lower" indexed="true" stored="true" />
         <field name="creator_name" type="text_lower" indexed="true" stored="true" />
-        <field name="initials" type="string" indexed="false" stored="true" />
+        <field name="initials" type="string" indexed="true" stored="true" />
         <!-- study contact (email address?), and ngram form for substring matches -->
         <field name="contact" type="text_lower" indexed="true" stored="true" />
         <!-- creation timestamp of study -->
@@ -144,7 +151,9 @@
           == Generated fields:
           ==    _version_
           ==    name_ng
+          ==    name_s
           ==    description_ng
+          ==    desc_s
           ==    contact_ng
           ==    metabolite_name
           ==    protocol_name
@@ -156,10 +165,16 @@
         <field name="text" type="text_lower" indexed="true" stored="false" multiValued="true" />
         <!-- name of the study in ngram form for substring matches -->
         <field name="name_ng" type="ngram" indexed="true" stored="false" />
+        <!-- name of the study in sort_lower form for sorting -->
+        <field name="name_s" type="sort_lower" indexed="true" stored="false" multiValued="false" />
         <!-- description of the study in ngram form for substring matches -->
         <field name="description_ng" type="ngram" indexed="true" stored="false" />
+        <!-- description of the study in sort_lower form for sorting -->
+        <field name="desc_s" type="sort_lower" indexed="true" stored="false" multiValued="false" />
         <!-- study creator (email, name) in ngram form for substring matches -->
         <field name="creator_ng" type="ngram" indexed="true" stored="false" />
+        <!-- study creator in sort_lower form for sorting -->
+        <field name="creator_s" type="sort_lower" indexed="true" stored="false" multiValued="false" />
         <!-- study contact (email) in ngram form for substring matches -->
         <field name="contact_ng" type="ngram" indexed="true" stored="false" />
         <!-- tags for metabolites referenced in the study lines; index Name part of ID@Name -->
@@ -177,9 +192,12 @@
     
     <!-- copy ngram fields -->
     <copyField source="name" dest="name_ng" />
+    <copyField source="name" dest="name_s" />
     <copyField source="description" dest="description_ng" />
+    <copyField source="description" dest="desc_s" />
     <copyField source="creator_email" dest="creator_ng" />
     <copyField source="creator_name" dest="creator_ng" />
+    <copyField source="creator_name" dest="creator_s" />
     <copyField source="contact" dest="contact_ng" />
     <copyField source="metabolite" dest="metabolite_name" />
     <copyField source="protocol" dest="protocol_name" />

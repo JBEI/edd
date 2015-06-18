@@ -404,6 +404,13 @@ class DataGrid {
 		return checkedBoxes;
 	}
 
+    setSortHeader(header:DataGridHeaderSpec) {
+        this._sortHeaderCurrent = header;
+        if (this._sortHeaderPrevious == header) {
+            header.sortCurrentlyReversed = !header.sortCurrentlyReversed;
+        }
+    }
+
 
 	arrangeTableDataRows() {
 		var currentSortHeader:DataGridHeaderSpec = this._sortHeaderCurrent;
@@ -605,6 +612,9 @@ class DataGrid {
     			header.sorted = false;
     			header.sortSequence = [];
     			header.sortSequenceReversed = [];
+            } else if (header.sortId) {         // anything with sortId is sorted server-side already
+                header.sorted = true;
+                header.sortSequence = header.sortSequenceReversed = this._spec.getRecordIDs();
             }
 		});
         do {
@@ -713,43 +723,10 @@ class DataGrid {
 	}
 
 
-	// The server code hooks table headers with this function.
-	clickedSort(header:DataGridHeaderSpec) {
-
-		$(header.element).addClass('sortwait');
-		// We turn the rest of the operation into an event so the browser
-		// will (probably) refresh, showing our 'please wait' style
-		this.scheduleTimer('_sortIt', () => this._sortIt(header));
-	}
-
-
 	// Handle the "sortable" CSS class in a table.
 	private _prepareSortable():void {
-		// Add a click event for every header cell that identifies as sortable
-        this._spec.tableHeaderSpec.forEach((header) => {
-            if (!header.sortBy) {
-                return;
-            }
-            $(header.element).click(() => this.clickedSort(header));
-		});
-	}
-
-
-	// Sort by a particular column.
-	// thisth is the <th> element for the table header.
-	// sameSortOrder is optional. If it's true, then we'll use the same sort order as thisth previously used.
-	private _sortIt(header:DataGridHeaderSpec, sameSortOrder:boolean = false):void {
-		this._sortHeaderCurrent = header;
-
-		// If we just sorted on this column, and reversesort has been defined but is zero,
-		// do a reverse sort.
-		if (sameSortOrder == false) {
-            // if previous header and new header are same, flip the reversed flag
-			if (this._sortHeaderPrevious == header) {
-                header.sortCurrentlyReversed = !header.sortCurrentlyReversed;
-			}
-		}
-		this.arrangeTableDataRows();
+        // Add a click event for every header cell that identifies as sortable
+        this._spec.enableSort(this);
 	}
 
 
@@ -1910,6 +1887,8 @@ class DataGridHeaderSpec {
                             // A function resolving a row ID to a value we can use for sorting by this header
     sortAfter:number;       // The index of another header that we will base these sorting results on (e.g. sort by Description, then by Study Name)
                             // Leave this property empty if there is no sorting prerequisite.
+    sortId:string;          // an ID to use when sorting on server-side
+
     //
     // These are internal values that should not be defined by spec
     //
@@ -1937,6 +1916,7 @@ class DataGridHeaderSpec {
         this.width = opt['width'];
         this.sortBy = opt['sortBy'];
         this.sortAfter = opt['sortAfter'];
+        this.sortId = opt['sortId'];
     }
 
 
@@ -2067,7 +2047,7 @@ class DataGridRowGroupSpec {
 // Users of DataGrid should derive from this class, altering the constructor to
 // provide a specification for the layout, interface, and data sources of their DataGrid table,
 // and override the callbacks to customize functionality.
-// Then, when they instantiate a DataGrid, they should provide an instance of this derived DataGridSpacBase.
+// Then, when they instantiate a DataGrid, they should provide an instance of this derived DataGridSpecBase.
 // As an example, this base class is set up to render the Studies table on the main page of the EDD.
 class DataGridSpecBase {
 
@@ -2135,6 +2115,27 @@ class DataGridSpecBase {
 	defineRowGroupSpec():DataGridRowGroupSpec[] {
 		return [];
 	}
+
+
+    // attach event handlers for sorting
+    enableSort(grid:DataGrid):DataGridSpecBase {
+        this.tableHeaderSpec.forEach((header) => {
+            if (header.sortBy) {
+                $(header.element).on('click.datatable', () => this.clickedSort(grid, header));
+            }
+        });
+        return this;
+    }
+
+    // The server code hooks table headers with this function.
+    private clickedSort(grid:DataGrid, header:DataGridHeaderSpec) {
+
+        $(header.element).addClass('sortwait');
+        // We turn the rest of the operation into an event so the browser
+        // will (probably) refresh, showing our 'please wait' style
+        grid.setSortHeader(header);
+        grid.arrangeTableDataRows();
+    }
 
 
 	// When passed a record ID, returns the row group that the record is a member of.

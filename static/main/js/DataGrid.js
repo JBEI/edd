@@ -328,6 +328,12 @@ var DataGrid = (function () {
         });
         return checkedBoxes;
     };
+    DataGrid.prototype.setSortHeader = function (header) {
+        this._sortHeaderCurrent = header;
+        if (this._sortHeaderPrevious == header) {
+            header.sortCurrentlyReversed = !header.sortCurrentlyReversed;
+        }
+    };
     DataGrid.prototype.arrangeTableDataRows = function () {
         var _this = this;
         var currentSortHeader = this._sortHeaderCurrent;
@@ -503,6 +509,10 @@ var DataGrid = (function () {
                 header.sortSequence = [];
                 header.sortSequenceReversed = [];
             }
+            else if (header.sortId) {
+                header.sorted = true;
+                header.sortSequence = header.sortSequenceReversed = _this._spec.getRecordIDs();
+            }
         });
         do {
             sortedAtLeastOneNewHeader = false;
@@ -597,40 +607,10 @@ var DataGrid = (function () {
         });
         return this;
     };
-    // The server code hooks table headers with this function.
-    DataGrid.prototype.clickedSort = function (header) {
-        var _this = this;
-        $(header.element).addClass('sortwait');
-        // We turn the rest of the operation into an event so the browser
-        // will (probably) refresh, showing our 'please wait' style
-        this.scheduleTimer('_sortIt', function () { return _this._sortIt(header); });
-    };
     // Handle the "sortable" CSS class in a table.
     DataGrid.prototype._prepareSortable = function () {
-        var _this = this;
         // Add a click event for every header cell that identifies as sortable
-        this._spec.tableHeaderSpec.forEach(function (header) {
-            if (!header.sortBy) {
-                return;
-            }
-            $(header.element).click(function () { return _this.clickedSort(header); });
-        });
-    };
-    // Sort by a particular column.
-    // thisth is the <th> element for the table header.
-    // sameSortOrder is optional. If it's true, then we'll use the same sort order as thisth previously used.
-    DataGrid.prototype._sortIt = function (header, sameSortOrder) {
-        if (sameSortOrder === void 0) { sameSortOrder = false; }
-        this._sortHeaderCurrent = header;
-        // If we just sorted on this column, and reversesort has been defined but is zero,
-        // do a reverse sort.
-        if (sameSortOrder == false) {
-            // if previous header and new header are same, flip the reversed flag
-            if (this._sortHeaderPrevious == header) {
-                header.sortCurrentlyReversed = !header.sortCurrentlyReversed;
-            }
-        }
-        this.arrangeTableDataRows();
+        this._spec.enableSort(this);
     };
     DataGrid.prototype._clickedOptMenuWhileOff = function () {
         $(this._optionsMenuBlockElement).add(this._optionsLabelOnElement).removeClass('off');
@@ -1499,6 +1479,7 @@ var DataGridHeaderSpec = (function () {
         this.width = opt['width'];
         this.sortBy = opt['sortBy'];
         this.sortAfter = opt['sortAfter'];
+        this.sortId = opt['sortId'];
     }
     DataGridHeaderSpec.prototype.initSortSequence = function (spec) {
         if (this.sortAfter >= 0) {
@@ -1576,7 +1557,7 @@ var DataGridRowGroupSpec = (function () {
 // Users of DataGrid should derive from this class, altering the constructor to
 // provide a specification for the layout, interface, and data sources of their DataGrid table,
 // and override the callbacks to customize functionality.
-// Then, when they instantiate a DataGrid, they should provide an instance of this derived DataGridSpacBase.
+// Then, when they instantiate a DataGrid, they should provide an instance of this derived DataGridSpecBase.
 // As an example, this base class is set up to render the Studies table on the main page of the EDD.
 var DataGridSpecBase = (function () {
     function DataGridSpecBase() {
@@ -1622,6 +1603,24 @@ var DataGridSpecBase = (function () {
     // Specification for the groups that rows can be gathered into
     DataGridSpecBase.prototype.defineRowGroupSpec = function () {
         return [];
+    };
+    // attach event handlers for sorting
+    DataGridSpecBase.prototype.enableSort = function (grid) {
+        var _this = this;
+        this.tableHeaderSpec.forEach(function (header) {
+            if (header.sortBy) {
+                $(header.element).on('click.datatable', function () { return _this.clickedSort(grid, header); });
+            }
+        });
+        return this;
+    };
+    // The server code hooks table headers with this function.
+    DataGridSpecBase.prototype.clickedSort = function (grid, header) {
+        $(header.element).addClass('sortwait');
+        // We turn the rest of the operation into an event so the browser
+        // will (probably) refresh, showing our 'please wait' style
+        grid.setSortHeader(header);
+        grid.arrangeTableDataRows();
     };
     // When passed a record ID, returns the row group that the record is a member of.
     DataGridSpecBase.prototype.getRowGroupMembership = function (recordID) {

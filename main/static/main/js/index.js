@@ -16,7 +16,6 @@ var IndexPage;
     // Called when the page loads.
     function prepareIt() {
         $('.disclose').find('.discloseLink').on('click', disclose);
-        // TODO: make autocomplete looking up users for $('#id_contact');
         IndexPage.prepareTable();
     }
     IndexPage.prepareIt = prepareIt;
@@ -71,6 +70,11 @@ var IndexPage;
     IndexPage.initDescriptionEditFields = initDescriptionEditFields;
 })(IndexPage || (IndexPage = {}));
 ;
+var DataGridSort = (function () {
+    function DataGridSort() {
+    }
+    return DataGridSort;
+})();
 // The spec object that will be passed to DataGrid to create the Studies table
 var DataGridSpecStudies = (function (_super) {
     __extends(DataGridSpecStudies, _super);
@@ -80,6 +84,7 @@ var DataGridSpecStudies = (function (_super) {
         this._offset = 0;
         this._pageSize = 50;
         this._query = '';
+        this._sort = [];
     }
     // Specification for the table as a whole
     DataGridSpecStudies.prototype.defineTableSpec = function () {
@@ -87,58 +92,38 @@ var DataGridSpecStudies = (function (_super) {
     };
     // Specification for the headers along the top of the table
     DataGridSpecStudies.prototype.defineHeaderSpec = function () {
-        var _this = this;
         // capture here, as the `this` variable below will point to global object, not this object
         var self = this;
         return [
             new DataGridHeaderSpec(1, 'hStudyName', {
                 'name': 'Study Name',
                 'nowrap': true,
-                'sortBy': function (index) {
-                    return _this.dataObj[index].n.toUpperCase();
-                },
-                'sortAfter': 1
+                'sortId': 'name_s'
             }),
             new DataGridHeaderSpec(2, 'hStudyDesc', {
                 'name': 'Description',
-                'sortBy': function (index) {
-                    return _this.dataObj[index].des.toUpperCase();
-                }
+                'sortId': 'desc_s'
             }),
             new DataGridHeaderSpec(3, 'hStudyOwnerInitials', {
                 'name': 'Owner',
-                'sortBy': function (index) {
-                    return _this.dataObj[index].initials || '?';
-                },
-                'sortAfter': 0
+                'sortId': 'initials'
             }),
             new DataGridHeaderSpec(4, 'hStudyOwnerFullName', {
                 'name': 'Owner Full Name',
                 'nowrap': true,
-                'sortBy': function (index) {
-                    return _this.dataObj[index].ownerName.toUpperCase() || '?';
-                },
-                'sortAfter': 0
+                'sortId': 'creator_s'
             }),
             new DataGridHeaderSpec(5, 'hStudyOwnerInstitute', {
                 'name': 'Institute',
-                'nowrap': true,
-                'sortBy': function (i) { return '?'; },
-                'sortAfter': 0
+                'nowrap': true
             }),
             new DataGridHeaderSpec(6, 'hStudyCreated', {
                 'name': 'Created',
-                'sortBy': function (index) {
-                    return _this.dataObj[index].cr;
-                },
-                'sortAfter': 0
+                'sortId': 'created'
             }),
             new DataGridHeaderSpec(7, 'hStudyMod', {
                 'name': 'Last Modified',
-                'sortBy': function (index) {
-                    return _this.dataObj[index].mod;
-                },
-                'sortAfter': 0
+                'sortId': 'modified'
             })
         ];
     };
@@ -247,6 +232,51 @@ var DataGridSpecStudies = (function (_super) {
         }
         return [];
     };
+    DataGridSpecStudies.prototype.enableSort = function (grid) {
+        var _this = this;
+        var sortCols = this.sortCols();
+        _super.prototype.enableSort.call(this, grid);
+        if (sortCols) {
+            this.tableHeaderSpec.forEach(function (header) {
+                if (header.sortId) {
+                    // remove any events from super in favor of our own
+                    $(header.element).off('click.datatable').on('click.datatable', function (ev) {
+                        _this.columnSort(grid, header, ev);
+                    });
+                }
+            });
+        }
+        return this;
+    };
+    DataGridSpecStudies.prototype.columnSort = function (grid, header, ev) {
+        var sort = this.sortCols(), oldSort, newSort;
+        if (ev.shiftKey || ev.ctrlKey || ev.metaKey) {
+            newSort = sort.filter(function (v) {
+                return v.spec.sortId === header.sortId;
+            });
+            oldSort = sort.filter(function (v) {
+                return v.spec.sortId !== header.sortId;
+            });
+            // if column already sorted, flip asc; move column to front of sort list
+            if (newSort.length) {
+                newSort[0].asc = !newSort[0].asc;
+                (sort = oldSort).unshift(newSort[0]);
+            }
+            else {
+                sort.unshift({ spec: header, asc: true });
+            }
+        }
+        else if (sort.length === 1 && sort[0].spec.sortId === header.sortId) {
+            sort[0].asc = !sort[0].asc;
+        }
+        else {
+            sort = [{ spec: header, asc: true }];
+        }
+        this.sortCols(sort).requestPageOfData(function (success) {
+            if (success)
+                grid.triggerDataReset();
+        });
+    };
     DataGridSpecStudies.prototype.pageSize = function (size) {
         if (size === undefined) {
             return this._pageSize;
@@ -287,6 +317,16 @@ var DataGridSpecStudies = (function (_super) {
             return this;
         }
     };
+    DataGridSpecStudies.prototype.sortCols = function (cols) {
+        if (cols === undefined) {
+            return this._sort;
+        }
+        else {
+            // convert to sort strings, filter out falsy values, join with commas
+            this._sort = cols;
+            return this;
+        }
+    };
     DataGridSpecStudies.prototype.pageDelta = function (delta) {
         this._offset += (delta * this._pageSize);
         return this;
@@ -296,7 +336,16 @@ var DataGridSpecStudies = (function (_super) {
         $.ajax({
             'url': '/study/search/',
             'type': 'GET',
-            'data': { 'q': this._query, 'i': this._offset, 'size': this._pageSize },
+            'data': {
+                'q': this._query,
+                'i': this._offset,
+                'size': this._pageSize,
+                // convert to sort strings, filter out falsy values, join with commas
+                'sort': this._sort.map(function (col) {
+                    if (col.spec.sortId)
+                        return col.spec.sortId + (col.asc ? ' asc' : ' desc');
+                }).filter(Boolean).join(',')
+            },
             'error': function (xhr, status, e) {
                 console.log(['Search failed: ', status, ';', e].join(''));
                 callback && callback.call({}, false);

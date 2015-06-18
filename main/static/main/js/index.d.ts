@@ -10,12 +10,17 @@ declare module IndexPage {
     function prepareTable(): void;
     function initDescriptionEditFields(): void;
 }
+declare class DataGridSort {
+    spec: DataGridHeaderSpec;
+    asc: boolean;
+}
 declare class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
     private dataObj;
     private _size;
     private _offset;
     private _pageSize;
     private _query;
+    private _sort;
     defineTableSpec(): DataGridTableSpec;
     defineHeaderSpec(): DataGridHeaderSpec[];
     generateStudyNameCells(gridSpec: DataGridSpecStudies, index: number): DataGridDataCell[];
@@ -29,6 +34,8 @@ declare class DataGridSpecStudies extends DataGridSpecBase implements DGPageData
     defineColumnGroupSpec(): DataGridColumnGroupSpec[];
     getTableElement(): HTMLElement;
     getRecordIDs(): number[];
+    enableSort(grid: DataGrid): DataGridSpecStudies;
+    private columnSort(grid, header, ev);
     pageSize(): number;
     pageSize(size: number): DGPageDataSource;
     totalOffset(): number;
@@ -38,6 +45,8 @@ declare class DataGridSpecStudies extends DataGridSpecBase implements DGPageData
     viewSize(): number;
     query(): string;
     query(query: string): DGPageDataSource;
+    sortCols(): DataGridSort[];
+    sortCols(cols: DataGridSort[]): DGPageDataSource;
     pageDelta(delta: number): DGPageDataSource;
     requestPageOfData(callback?: (success: boolean) => void): DGPageDataSource;
     createCustomHeaderWidgets(dataGrid: DataGrid): DataGridHeaderWidget[];

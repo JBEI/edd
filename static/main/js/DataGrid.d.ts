@@ -15,6 +15,7 @@ declare class DataGrid {
     private _applyColumnVisibilityToOneRecord(recordID);
     getDataCellObjectsForColumnIndex(i: number): DataGridDataCell[];
     getSelectedCheckboxElements(): HTMLInputElement[];
+    setSortHeader(header: DataGridHeaderSpec): void;
     arrangeTableDataRows(): void;
     applyAllWidgetFiltering(filteredSequence: number[]): number[];
     getSpec(): any;
@@ -25,9 +26,7 @@ declare class DataGrid {
     private _buildTableHeaders();
     private _allocateTableRowRecords();
     private _buildRowGroupTitleRows();
-    clickedSort(header: DataGridHeaderSpec): void;
     private _prepareSortable();
-    private _sortIt(header, sameSortOrder?);
     private _clickedOptMenuWhileOff();
     private _clickedOptMenuWhileOn();
     private _collapseRowGroup(groupIndex);
@@ -241,6 +240,7 @@ declare class DataGridHeaderSpec {
     width: string;
     sortBy: (index: number) => any;
     sortAfter: number;
+    sortId: string;
     hidden: boolean;
     element: HTMLElement;
     sortFunc: (a: number, b: number) => number;
@@ -303,6 +303,8 @@ declare class DataGridSpecBase {
     defineColumnSpec(): DataGridColumnSpec[];
     defineColumnGroupSpec(): DataGridColumnGroupSpec[];
     defineRowGroupSpec(): DataGridRowGroupSpec[];
+    enableSort(grid: DataGrid): DataGridSpecBase;
+    private clickedSort(grid, header);
     getRowGroupMembership(recordID: number): number;
     getTableElement(): HTMLElement;
     getRecordIDs(): number[];
