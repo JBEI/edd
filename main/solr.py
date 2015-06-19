@@ -115,7 +115,7 @@ class StudySearch(SolrSearch):
             ' OR '.join(map(lambda w: 'aclw:'+w, acl)),
         )
 
-    def query(self, query='active:true', options={}):
+    def query(self, query='', options={}):
         """
         Run a query against Solr index.
         
@@ -127,6 +127,7 @@ class StudySearch(SolrSearch):
                 - size: maximum fetch size (default: 50)
                 - sort: comma-delimited string of "field (asc|desc)" (default: None)
                 - showDisabled: boolean adds a filter query for active studies (default: False)
+                - showMine: boolean adds a filter query for current user's studies (default: False)
         Returns:
             JSON results of query:
                 - responseHeader
@@ -141,6 +142,7 @@ class StudySearch(SolrSearch):
         if self.ident is None:
             raise RuntimeError('No user defined for query')
         (readable, writable) = StudySearch.build_acl_filter(self.ident)
+        fq = [ readable, ]
         queryopt = {
             'indent': True,
             'q': query,
@@ -148,7 +150,6 @@ class StudySearch(SolrSearch):
             'rows': options.get('size', 50),
             'sort': options.get('sort', None),
             'wt': 'json',
-            'fq': readable,
             'fl': '*,score,writable:exists(query({!v=\'%(aclw)s\'},0))' % {'aclw': writable},
         }
         if options.get('edismax', False):
@@ -160,8 +161,9 @@ class StudySearch(SolrSearch):
                                        'part_name',
                                        ])
             queryopt['q.alt'] = '*:*'
-        if options.get('showDisabled', False):
-            queryopt['fq'] = [queryopt['fq'], 'active:true']
+        if not options.get('showDisabled', False): fq.append('active:true')
+        if options.get('showMine', False): fq.append('creator:%s' % (self.ident.pk))
+        queryopt['fq'] = fq
         return self.search(queryopt=queryopt)
 
 

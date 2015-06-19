@@ -10,17 +10,14 @@ declare module IndexPage {
     function prepareTable(): void;
     function initDescriptionEditFields(): void;
 }
-declare class DataGridSort {
-    spec: DataGridHeaderSpec;
-    asc: boolean;
-}
 declare class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
     private dataObj;
+    private recordIds;
     private _size;
     private _offset;
     private _pageSize;
     private _query;
-    private _sort;
+    private _searchOpt;
     defineTableSpec(): DataGridTableSpec;
     defineHeaderSpec(): DataGridHeaderSpec[];
     generateStudyNameCells(gridSpec: DataGridSpecStudies, index: number): DataGridDataCell[];
@@ -45,16 +42,16 @@ declare class DataGridSpecStudies extends DataGridSpecBase implements DGPageData
     viewSize(): number;
     query(): string;
     query(query: string): DGPageDataSource;
-    sortCols(): DataGridSort[];
-    sortCols(cols: DataGridSort[]): DGPageDataSource;
+    filter(): any;
+    filter(opt: any): DGPageDataSource;
     pageDelta(delta: number): DGPageDataSource;
     requestPageOfData(callback?: (success: boolean) => void): DGPageDataSource;
     createCustomHeaderWidgets(dataGrid: DataGrid): DataGridHeaderWidget[];
     createCustomOptionsWidgets(dataGrid: DataGrid): DataGridOptionWidget[];
     onInitialized(dataGrid: DataGrid): void;
     data(): any;
-    data(replacement: any, totalSize?: number, totalOffset?: number): DataGridSpecStudies;
-    private _transformData(data);
+    data(replacement: any[], totalSize?: number, totalOffset?: number): DataGridSpecStudies;
+    private _transformData(docs);
 }
 interface TextRegion {
     begin: number;
@@ -82,14 +79,15 @@ declare class DGStudiesSearchWidget extends DGSearchWidget {
 declare class DGOnlyMyStudiesWidget extends DataGridOptionWidget {
     private _spec;
     constructor(grid: DataGrid, spec: DataGridSpecStudies);
-    createElements(uniqueID: any): void;
-    applyFilterToIDs(rowIDs: any): any;
-    initialFormatRowElementsForID(dataRowObjects: DataGridDataRow[], rowID: number): void;
+    getIDFragment(): string;
+    getLabelText(): string;
+    onWidgetChange(e: any): void;
 }
 declare class DGDisabledStudiesWidget extends DataGridOptionWidget {
     private _spec;
     constructor(grid: DataGrid, spec: DataGridSpecStudies);
-    createElements(uniqueID: any): void;
-    applyFilterToIDs(rowIDs: number[]): number[];
+    getIDFragment(): string;
+    getLabelText(): string;
+    onWidgetChange(e: any): void;
     initialFormatRowElementsForID(dataRowObjects: DataGridDataRow[], rowID: number): any;
 }

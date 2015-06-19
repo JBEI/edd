@@ -70,21 +70,17 @@ var IndexPage;
     IndexPage.initDescriptionEditFields = initDescriptionEditFields;
 })(IndexPage || (IndexPage = {}));
 ;
-var DataGridSort = (function () {
-    function DataGridSort() {
-    }
-    return DataGridSort;
-})();
 // The spec object that will be passed to DataGrid to create the Studies table
 var DataGridSpecStudies = (function (_super) {
     __extends(DataGridSpecStudies, _super);
     function DataGridSpecStudies() {
         _super.apply(this, arguments);
+        this.recordIds = [];
         this._size = 0;
         this._offset = 0;
         this._pageSize = 50;
         this._query = '';
-        this._sort = [];
+        this._searchOpt = {};
     }
     // Specification for the table as a whole
     DataGridSpecStudies.prototype.defineTableSpec = function () {
@@ -224,32 +220,23 @@ var DataGridSpecStudies = (function (_super) {
     };
     // An array of unique identifiers, used to identify the records in the data set being displayed
     DataGridSpecStudies.prototype.getRecordIDs = function () {
-        if (this.dataObj) {
-            var ids = Object.getOwnPropertyNames(this.dataObj);
-            return ids.map(function (id) {
-                return parseInt(id, 10);
-            });
-        }
-        return [];
+        return this.recordIds;
     };
     DataGridSpecStudies.prototype.enableSort = function (grid) {
         var _this = this;
-        var sortCols = this.sortCols();
         _super.prototype.enableSort.call(this, grid);
-        if (sortCols) {
-            this.tableHeaderSpec.forEach(function (header) {
-                if (header.sortId) {
-                    // remove any events from super in favor of our own
-                    $(header.element).off('click.datatable').on('click.datatable', function (ev) {
-                        _this.columnSort(grid, header, ev);
-                    });
-                }
-            });
-        }
+        this.tableHeaderSpec.forEach(function (header) {
+            if (header.sortId) {
+                // remove any events from super in favor of our own
+                $(header.element).off('click.datatable').on('click.datatable', function (ev) {
+                    _this.columnSort(grid, header, ev);
+                });
+            }
+        });
         return this;
     };
     DataGridSpecStudies.prototype.columnSort = function (grid, header, ev) {
-        var sort = this.sortCols(), oldSort, newSort;
+        var sort = grid.sortCols(), oldSort, newSort, sortOpt;
         if (ev.shiftKey || ev.ctrlKey || ev.metaKey) {
             newSort = sort.filter(function (v) {
                 return v.spec.sortId === header.sortId;
@@ -272,7 +259,15 @@ var DataGridSpecStudies = (function (_super) {
         else {
             sort = [{ spec: header, asc: true }];
         }
-        this.sortCols(sort).requestPageOfData(function (success) {
+        grid.sortCols(sort);
+        // convert to sort strings, filter out falsy values, join with commas
+        sortOpt = sort.map(function (col) {
+            if (col.spec.sortId)
+                return col.spec.sortId + (col.asc ? ' asc' : ' desc');
+        }).filter(Boolean).join(',');
+        // store in options object, as grid will not be available in requestPageOfData
+        $.extend(this._searchOpt, { 'sort': sortOpt });
+        this.requestPageOfData(function (success) {
             if (success)
                 grid.triggerDataReset();
         });
@@ -317,13 +312,12 @@ var DataGridSpecStudies = (function (_super) {
             return this;
         }
     };
-    DataGridSpecStudies.prototype.sortCols = function (cols) {
-        if (cols === undefined) {
-            return this._sort;
+    DataGridSpecStudies.prototype.filter = function (opt) {
+        if (opt === undefined) {
+            return this._searchOpt;
         }
         else {
-            // convert to sort strings, filter out falsy values, join with commas
-            this._sort = cols;
+            this._searchOpt = opt;
             return this;
         }
     };
@@ -336,22 +330,17 @@ var DataGridSpecStudies = (function (_super) {
         $.ajax({
             'url': '/study/search/',
             'type': 'GET',
-            'data': {
+            'data': $.extend({}, this._searchOpt, {
                 'q': this._query,
                 'i': this._offset,
-                'size': this._pageSize,
-                // convert to sort strings, filter out falsy values, join with commas
-                'sort': this._sort.map(function (col) {
-                    if (col.spec.sortId)
-                        return col.spec.sortId + (col.asc ? ' asc' : ' desc');
-                }).filter(Boolean).join(',')
-            },
+                'size': this._pageSize
+            }),
             'error': function (xhr, status, e) {
                 console.log(['Search failed: ', status, ';', e].join(''));
                 callback && callback.call({}, false);
             },
             'success': function (data) {
-                _this.data(_this._transformData(data), data.numFound, data.start);
+                _this.data(data.docs, data.numFound, data.start);
                 callback && callback.call({}, true);
             }
         });
@@ -391,17 +380,16 @@ var DataGridSpecStudies = (function (_super) {
             return this.dataObj;
         }
         else {
-            this.dataObj = replacement;
+            this.dataObj = this._transformData(replacement); // transform also handles storing sort keys
             this._size = totalSize || this.viewSize();
             this._offset = totalOffset || 0;
         }
         return this;
     };
-    DataGridSpecStudies.prototype._transformData = function (data) {
+    DataGridSpecStudies.prototype._transformData = function (docs) {
         var _this = this;
-        var docs = data.docs;
         var transformed = {};
-        docs.forEach(function (doc) {
+        this.recordIds = docs.map(function (doc) {
             var match = new ResultMatcher(_this._query);
             // straightforward matching on name, description, contact, creator_name, initials
             match.findAndSet('name', doc.name).findAndSet('description', doc.description).findAndSet('contact', doc.contact).findAndSet('creator', doc.creator_name).findAndSet('initials', doc.initials);
@@ -431,6 +419,7 @@ var DataGridSpecStudies = (function (_super) {
                 'initials': doc.initials,
                 'match': match
             };
+            return parseInt(doc.id, 10);
         });
         return transformed;
     };
@@ -535,6 +524,7 @@ var DGStudiesSearchWidget = (function (_super) {
         _super.prototype.inputKeyDownHandler.call(this, e);
         // we will handle return differently
         if (e.keyCode === 13) {
+            this.typingDelayExpirationHandler.call({});
         }
     };
     return DGStudiesSearchWidget;
@@ -547,50 +537,24 @@ var DGOnlyMyStudiesWidget = (function (_super) {
         _super.call(this, grid, spec);
         this._spec = spec;
     }
-    DGOnlyMyStudiesWidget.prototype.createElements = function (uniqueID) {
-        var _this = this;
-        var cbID = this.dataGridSpec.tableSpec.id + 'ShowMyStudiesCB' + uniqueID;
-        var cb = this._createCheckbox(cbID, cbID, '1');
-        $(cb).click(function (e) { return _this.dataGridOwnerObject.clickedOptionWidget(e); });
-        if (this.isEnabledByDefault()) {
-            cb.setAttribute('checked', 'checked');
-        }
-        this.checkBoxElement = cb;
-        this.labelElement = this._createLabel('My Studies Only', cbID);
-        this._createdElements = true;
+    DGOnlyMyStudiesWidget.prototype.getIDFragment = function () {
+        return 'ShowMyStudiesCB';
     };
-    DGOnlyMyStudiesWidget.prototype.applyFilterToIDs = function (rowIDs) {
-        var checked = false;
+    DGOnlyMyStudiesWidget.prototype.getLabelText = function () {
+        return 'My Studies Only';
+    };
+    DGOnlyMyStudiesWidget.prototype.onWidgetChange = function (e) {
+        // update spec with filter options
+        var filter = this._spec.filter();
         if (this.checkBoxElement.checked) {
-            checked = true;
+            $.extend(filter, { 'showMine': 1 });
         }
-        // If the box is not checked, return the set of IDs unfiltered
-        if (!checked) {
-            return rowIDs;
+        else {
+            delete filter.showMine;
         }
-        // If for some crazy reason there's no current user ID set, do not filter
-        if (!EDDData.currentUserID) {
-            return rowIDs;
-        }
-        var filteredIDs = [];
-        var data = this._spec.data();
-        for (var r = 0; r < rowIDs.length; r++) {
-            var id = rowIDs[r];
-            // Here is the condition that determines whether the rows associated with this ID are shown or hidden.
-            if (data[id].own == EDDData.currentUserID) {
-                filteredIDs.push(id);
-            }
-        }
-        return filteredIDs;
-    };
-    DGOnlyMyStudiesWidget.prototype.initialFormatRowElementsForID = function (dataRowObjects, rowID) {
-        var data = this._spec.data();
-        if (data[rowID].dis) {
-            for (var r = 0; r < dataRowObjects.length; r++) {
-                var rowElement = dataRowObjects[r].getElement();
-                rowElement.style.backgroundColor = "#FFC0C0";
-            }
-        }
+        this._spec.filter(filter);
+        // continue with parent operations
+        _super.prototype.onWidgetChange.call(this, e);
     };
     return DGOnlyMyStudiesWidget;
 })(DataGridOptionWidget);
@@ -602,37 +566,24 @@ var DGDisabledStudiesWidget = (function (_super) {
         _super.call(this, grid, spec);
         this._spec = spec;
     }
-    DGDisabledStudiesWidget.prototype.createElements = function (uniqueID) {
-        var _this = this;
-        var cbID = this.dataGridSpec.tableSpec.id + 'ShowDStudiesCB' + uniqueID;
-        var cb = this._createCheckbox(cbID, cbID, '1');
-        $(cb).click(function (e) { return _this.dataGridOwnerObject.clickedOptionWidget(e); });
-        if (this.isEnabledByDefault()) {
-            cb.setAttribute('checked', 'checked');
-        }
-        this.checkBoxElement = cb;
-        this.labelElement = this._createLabel('Show Disabled', cbID);
-        this._createdElements = true;
+    DGDisabledStudiesWidget.prototype.getIDFragment = function () {
+        return 'ShowDStudiesCB';
     };
-    DGDisabledStudiesWidget.prototype.applyFilterToIDs = function (rowIDs) {
-        var checked = false;
+    DGDisabledStudiesWidget.prototype.getLabelText = function () {
+        return 'Show Disabled';
+    };
+    DGDisabledStudiesWidget.prototype.onWidgetChange = function (e) {
+        // update spec with filter options
+        var filter = this._spec.filter();
         if (this.checkBoxElement.checked) {
-            checked = true;
+            $.extend(filter, { 'showDisabled': 1 });
         }
-        // If the box is checked, return the set of IDs unfiltered
-        if (checked) {
-            return rowIDs;
+        else {
+            delete filter.showDisabled;
         }
-        var filteredIDs = [];
-        var data = this._spec.data();
-        for (var r = 0; r < rowIDs.length; r++) {
-            var id = rowIDs[r];
-            // Here is the condition that determines whether the rows associated with this ID are shown or hidden.
-            if (data[id].active) {
-                filteredIDs.push(id);
-            }
-        }
-        return filteredIDs;
+        this._spec.filter(filter);
+        // continue with parent operations
+        _super.prototype.onWidgetChange.call(this, e);
     };
     DGDisabledStudiesWidget.prototype.initialFormatRowElementsForID = function (dataRowObjects, rowID) {
         var data = this._spec.data();

@@ -18,7 +18,8 @@ var DataGrid = (function () {
     function DataGrid(dataGridSpec) {
         var _this = this;
         this._groupingEnabled = false; // grouping mode off by default
-        this._sortHeaderPrevious = null;
+        this._sort = [];
+        this._sequence = {};
         // Use !! double-not operator to coerce truth-y/false-y values to booleans
         Utl.JS.assert(!!dataGridSpec, "DataGrid needs to be supplied with a DataGridSpecBase-derived object.");
         Utl.JS.assert(!!(dataGridSpec.tableElement && dataGridSpec.tableSpec && dataGridSpec.tableHeaderSpec && dataGridSpec.tableColumnSpec), "DataGridSpecBase-derived object does not have enough to work with.");
@@ -78,14 +79,18 @@ var DataGrid = (function () {
                 widget.appendElements(hCell, index.toString(10));
             }
         });
-        this._sortHeaderCurrent = this._spec.tableHeaderSpec[this._spec.tableSpec.defaultSort || 0];
-        this.arrangeTableDataRows();
+        this._initializeSort().arrangeTableDataRows();
         // Now that we've constructed our elements, apply visibility styling to them.
         this._applyColumnVisibility();
         // Prepare the table for sorting
         this._prepareSortable();
         this._spec.onInitialized(this);
         $(this._waitBadge).addClass('off');
+        return this;
+    };
+    DataGrid.prototype._initializeSort = function () {
+        var defaultSort = this._spec.tableSpec.defaultSort || 0;
+        this._sort = [{ 'spec': this._spec.tableHeaderSpec[defaultSort], 'asc': true }];
         return this;
     };
     // Notify the DataGrid that its underlying data has reset
@@ -305,7 +310,7 @@ var DataGrid = (function () {
     // and if a checkbox is checked, return its element on an array.
     DataGrid.prototype.getSelectedCheckboxElements = function () {
         var _this = this;
-        var sequence = this._sortHeaderCurrent.sortSequence;
+        var sequence = this._getSequence(this._sort[0]);
         // Verify that the row sets referred to by the IDs actually exist
         var filteredSequence = sequence.filter(function (v) {
             return !!_this._recordElements[v];
@@ -328,28 +333,22 @@ var DataGrid = (function () {
         });
         return checkedBoxes;
     };
-    DataGrid.prototype.setSortHeader = function (header) {
-        this._sortHeaderCurrent = header;
-        if (this._sortHeaderPrevious == header) {
-            header.sortCurrentlyReversed = !header.sortCurrentlyReversed;
+    DataGrid.prototype.applySortIndicators = function () {
+        if (this._headerRows) {
+            $(this._headerRows).find('.sortedup, .sorteddown').removeClass('sortedup sorteddown');
         }
+        this._sort.forEach(function (sort) {
+            $(sort.spec.element).addClass(sort.asc ? 'sorteddown' : 'sortedup');
+        });
     };
     DataGrid.prototype.arrangeTableDataRows = function () {
         var _this = this;
-        var currentSortHeader = this._sortHeaderCurrent;
         var striping = 1;
         // We create a document fragment - a kind of container for document-related objects that we don't
         // want in the page - and accumulate inside it all the rows we want to display, in sorted order.
         var frag = document.createDocumentFragment();
-        // We need to track which header was the last to sort this table,
-        // If that reference is null, the table is being displayed sorted for the first time.
-        var lastSorted = this._sortHeaderPrevious === null ? this._sortHeaderCurrent : this._sortHeaderPrevious;
-        $(lastSorted.element).removeClass('sortedup sorteddown');
-        var isReversed = currentSortHeader.sortCurrentlyReversed;
-        // Update CSS styles to reflect which direction it's sorted in.
-        $(currentSortHeader.element).removeClass('sortwait').addClass(isReversed ? 'sorteddown' : 'sortedup');
-        // If we're in reversed mode, use the reversed version of the sort sequence
-        var sequence = isReversed ? currentSortHeader.sortSequenceReversed : currentSortHeader.sortSequence;
+        this.applySortIndicators();
+        var sequence = this._getSequence(this._sort[0]);
         // Verify that the row sets referred to by the IDs actually exist
         var filteredSequence = sequence.filter(function (v) {
             return !!_this._recordElements[v];
@@ -434,8 +433,8 @@ var DataGrid = (function () {
             });
         }
         // Remember that we last sorted by this column
-        this._sortHeaderPrevious = currentSortHeader;
         this._tableBody.appendChild(frag);
+        return this;
     };
     // Given an array of record IDs, send the array through the filtering function for each of
     // the header widgets, and each of the options menu widgets, then return the filtered array.
@@ -503,33 +502,43 @@ var DataGrid = (function () {
         var sortedAtLeastOneNewHeader = false;
         // Declare all the headers unsorted, and add them to the unsorted set.
         this._spec.tableHeaderSpec.forEach(function (header) {
-            if (header.sortFunc) {
+            if (header.sortId) {
+                header.sorted = true;
+            }
+            else if (header.sortFunc) {
                 unsortedHeaders.unshift(header); // add in front, so set is reversed
                 header.sorted = false;
-                header.sortSequence = [];
-                header.sortSequenceReversed = [];
-            }
-            else if (header.sortId) {
-                header.sorted = true;
-                header.sortSequence = header.sortSequenceReversed = _this._spec.getRecordIDs();
             }
         });
         do {
             sortedAtLeastOneNewHeader = false;
             // use slice so that splice inside the callback does not interfere with loop
             unsortedHeaders.slice(0).forEach(function (header, index) {
-                if (header.prerequisitesSorted(_this._spec)) {
-                    header.initSortSequence(_this._spec);
-                    header.sortSequence.sort(header.sortFunc);
-                    // copy to new array via slice, then reverse sort
-                    header.sortSequenceReversed = header.sortSequence.slice(0).reverse();
-                    header.sorted = true;
-                    unsortedHeaders.splice(index, 1);
-                    sortedAtLeastOneNewHeader = true;
+                var after;
+                if (header.sortAfter >= 0) {
+                    after = _this._spec.tableHeaderSpec[header.sortAfter];
+                    if (!after.sorted)
+                        return;
                 }
+                _this._sequence[header.id] = _this._spec.getRecordIDs();
+                if (after && after.id && _this._sequence[after.id]) {
+                    _this._sequence[header.id] = _this._sequence[after.id].slice(0);
+                }
+                _this._sequence[header.id].sort(header.sortFunc);
+                _this._sequence['-' + header.id] = _this._sort[header.id].slice(0).reverse();
+                header.sorted = true;
+                unsortedHeaders.splice(index, 1);
+                sortedAtLeastOneNewHeader = true;
             });
         } while (sortedAtLeastOneNewHeader);
         return this;
+    };
+    DataGrid.prototype._getSequence = function (sort) {
+        var key = (sort.asc ? '' : '-') + sort.spec.id, sequence = this._sequence[key];
+        if (sequence === undefined) {
+            return this._spec.getRecordIDs();
+        }
+        return sequence;
     };
     DataGrid.prototype._buildTableHeaders = function () {
         // Find the minimum number of rows we need to create to contain all the headers
@@ -735,8 +744,16 @@ var DataGrid = (function () {
     };
     // retreive the current sequence of records in the DataGrid
     DataGrid.prototype.currentSequence = function () {
-        var header = this._sortHeaderCurrent;
-        return header.sortCurrentlyReversed ? header.sortSequenceReversed : header.sortSequence;
+        return this._getSequence(this._sort[0]);
+    };
+    DataGrid.prototype.sortCols = function (cols) {
+        if (cols === undefined) {
+            return this._sort;
+        }
+        else {
+            this._sort = cols;
+            return this;
+        }
     };
     return DataGrid;
 })();
@@ -1154,20 +1171,32 @@ var DataGridOptionWidget = (function (_super) {
         _super.call(this, dataGridOwnerObject, dataGridSpec);
         this._createdElements = false;
     }
+    // Return a fragment to use in generating option widget IDs
+    DataGridOptionWidget.prototype.getIDFragment = function () {
+        return 'GenericOptionCB';
+    };
+    // Return text used to label the widget
+    DataGridOptionWidget.prototype.getLabelText = function () {
+        return 'Name Of Option';
+    };
+    // Handle activation of widget
+    DataGridOptionWidget.prototype.onWidgetChange = function (e) {
+        this.dataGridOwnerObject.clickedOptionWidget(e);
+    };
     // The uniqueID is provided to assist the widget in avoiding collisions
     // when creating input element labels or other things requiring an ID.
     DataGridOptionWidget.prototype.createElements = function (uniqueID) {
         var _this = this;
-        var cbID = this.dataGridSpec.tableSpec.id + 'GenericOptionCB' + uniqueID;
+        var cbID = this.dataGridSpec.tableSpec.id + this.getIDFragment() + uniqueID;
         var cb = this._createCheckbox(cbID, cbID, '1');
         // We need to make sure the checkbox has a callback to the DataGrid's handler function.
         // Among other things, the handler function will call the appropriate filtering functions for all the widgets in turn.
-        $(cb).click(function (e) { return _this.dataGridOwnerObject.clickedOptionWidget(e); });
+        $(cb).on('change.datagrid', function (e) { return _this.onWidgetChange(e); });
         if (this.isEnabledByDefault()) {
             cb.setAttribute('checked', 'checked');
         }
         this.checkBoxElement = cb;
-        this.labelElement = this._createLabel("Name Of Option", cbID);
+        this.labelElement = this._createLabel(this.getLabelText(), cbID);
         this._createdElements = true;
     };
     // This is called to append the widget elements beneath the given element.
@@ -1399,6 +1428,11 @@ var DGSearchWidget = (function (_super) {
     };
     return DGSearchWidget;
 })(DataGridHeaderWidget);
+var DataGridSort = (function () {
+    function DataGridSort() {
+    }
+    return DataGridSort;
+})();
 // This is a widget that will place controls for paging
 var DGPagingWidget = (function (_super) {
     __extends(DGPagingWidget, _super);
@@ -1481,24 +1515,6 @@ var DataGridHeaderSpec = (function () {
         this.sortAfter = opt['sortAfter'];
         this.sortId = opt['sortId'];
     }
-    DataGridHeaderSpec.prototype.initSortSequence = function (spec) {
-        if (this.sortAfter >= 0) {
-            // if there is a prerequisite, init from its sort sequence
-            this.sortSequence = spec.tableHeaderSpec[this.sortAfter].sortSequence.slice(0);
-        }
-        else {
-            // otherwise go to the original source
-            this.sortSequence = spec.getRecordIDs();
-        }
-        return this;
-    };
-    DataGridHeaderSpec.prototype.prerequisitesSorted = function (spec) {
-        // make sure all prerequisites are sorted
-        if (this.sortAfter >= 0) {
-            return spec.tableHeaderSpec[this.sortAfter].sorted;
-        }
-        return true;
-    };
     return DataGridHeaderSpec;
 })();
 // Define the ColumnSpec object used by DataGridSpecBase
@@ -1609,18 +1625,21 @@ var DataGridSpecBase = (function () {
         var _this = this;
         this.tableHeaderSpec.forEach(function (header) {
             if (header.sortBy) {
-                $(header.element).on('click.datatable', function () { return _this.clickedSort(grid, header); });
+                $(header.element).on('click.datatable', function (ev) { return _this.clickedSort(grid, header, ev); });
             }
         });
         return this;
     };
     // The server code hooks table headers with this function.
-    DataGridSpecBase.prototype.clickedSort = function (grid, header) {
-        $(header.element).addClass('sortwait');
-        // We turn the rest of the operation into an event so the browser
-        // will (probably) refresh, showing our 'please wait' style
-        grid.setSortHeader(header);
-        grid.arrangeTableDataRows();
+    DataGridSpecBase.prototype.clickedSort = function (grid, header, ev) {
+        var sort = grid.sortCols();
+        if (sort.length && sort[0].spec.id === header.id) {
+            sort[0].asc = !sort[0].asc;
+        }
+        else {
+            sort = [{ 'spec': header, 'asc': true }];
+        }
+        grid.sortCols(sort).arrangeTableDataRows();
     };
     // When passed a record ID, returns the row group that the record is a member of.
     DataGridSpecBase.prototype.getRowGroupMembership = function (recordID) {
