@@ -4,7 +4,6 @@
 /// <reference path="Utl.ts" />
 /// <reference path="lib/jquery.d.ts" />
 
-
 declare var EDDData:EDDData;  // sticking this here as IDE isn't following references
 
 module IndexPage {
@@ -12,20 +11,16 @@ module IndexPage {
 	var studiesDataGridSpec:DataGridSpecStudies = null;
 	var studiesDataGrid:DataGrid = null;
 
-
 	// Called when the page loads.
 	export function prepareIt() {
         $('.disclose').find('.discloseLink').on('click', disclose);
-        // TODO: make autocomplete looking up users for $('#id_contact');
         IndexPage.prepareTable();
 	}
-    
-    
+
     export function disclose() {
         $(this).closest('.disclose').toggleClass('discloseHide');
         return false;
     }
-
 
 	export function prepareTable() {
 		// Instantiate a table specification for the Studies table
@@ -36,7 +31,6 @@ module IndexPage {
             if (success) this.studiesDataGrid.triggerDataReset();
         });
 	}
-
 
 	// This creates an EditableElement object for each Study description that the user is allowed to edit.
 	export function initDescriptionEditFields() {
@@ -68,24 +62,23 @@ module IndexPage {
 };
 
 
-
 // The spec object that will be passed to DataGrid to create the Studies table
 class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
 
     // spec object tracks what data should be displayed by the table
     private dataObj:{};
+    private recordIds:number[] = [];
     private _size:number = 0;
     private _offset:number = 0;
     private _pageSize:number = 50;
     private _query:string = '';
-
+    private _searchOpt = {};
 
 	// Specification for the table as a whole
 	defineTableSpec():DataGridTableSpec {
         return new DataGridTableSpec('studies', { 'name': 'Studies' });
 	}
 
-        
 	// Specification for the headers along the top of the table
 	defineHeaderSpec():DataGridHeaderSpec[] {
         // capture here, as the `this` variable below will point to global object, not this object
@@ -94,37 +87,29 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
             new DataGridHeaderSpec(1, 'hStudyName', {
                 'name': 'Study Name',
                 'nowrap': true,
-                'sortBy': (index:number):any => { return this.dataObj[index].n.toUpperCase(); },
-                'sortAfter': 1 }),
+                'sortId': 'name_s' }),
             new DataGridHeaderSpec(2, 'hStudyDesc', {
                 'name': 'Description',
-                'sortBy': (index:number):any => { return this.dataObj[index].des.toUpperCase(); } }),
+                'sortId': 'desc_s' }),
             new DataGridHeaderSpec(3, 'hStudyOwnerInitials', {
                 'name': 'Owner',
-                'sortBy': (index:number):any => { return this.dataObj[index].initials || '?'; },
-                'sortAfter': 0 }),
+                'sortId': 'initials' }),
             new DataGridHeaderSpec(4, 'hStudyOwnerFullName', {
                 'name': 'Owner Full Name',
                 'nowrap': true,
-                'sortBy': (index:number):any => { return this.dataObj[index].ownerName.toUpperCase() || '?'; },
-                'sortAfter': 0 }),
+                'sortId': 'creator_s' }),
             new DataGridHeaderSpec(5, 'hStudyOwnerInstitute', {
                 'name': 'Institute',
-                'nowrap': true,
-                'sortBy': (i) => '?',
-                'sortAfter': 0 }),
+                'nowrap': true }),
             new DataGridHeaderSpec(6, 'hStudyCreated', {
                 'name': 'Created',
-                'sortBy': (index:number):any => { return this.dataObj[index].cr; },
-                'sortAfter': 0 }),
+                'sortId': 'created' }),
             new DataGridHeaderSpec(7, 'hStudyMod', {
                 'name': 'Last Modified',
-                'sortBy': (index:number):any => { return this.dataObj[index].mod; },
-                'sortAfter': 0 })
+                'sortId': 'modified' })
 		];
 	}
-    
-    
+
     generateStudyNameCells(gridSpec:DataGridSpecStudies, index:number):DataGridDataCell[] {
         var studyDoc = gridSpec.dataObj[index];
         var sideMenuItems = [];
@@ -145,7 +130,6 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
         ];
     }
 
-
     generateDescriptionCells(gridSpec:DataGridSpecStudies, index:number):DataGridDataCell[] {
         return [
             new DataGridDataCell(gridSpec, index, {
@@ -156,7 +140,6 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
         ];
     }
 
-
     generateOwnerInitialsCells(gridSpec:DataGridSpecStudies, index:number):DataGridDataCell[] {
         return [
             new DataGridDataCell(gridSpec, index, {
@@ -164,7 +147,6 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
             })
         ];
     }
-
 
     generateOwnerNameCells(gridSpec:DataGridSpecStudies, index:number):DataGridDataCell[] {
         return [
@@ -174,7 +156,6 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
         ];
     }
 
-
     generateInstitutionCells(gridSpec:DataGridSpecStudies, index:number):DataGridDataCell[] {
         return [
             new DataGridDataCell(gridSpec, index, {
@@ -182,7 +163,6 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
             })
         ];
     }
-
 
     generateCreatedCells(gridSpec:DataGridSpecStudies, index:number):DataGridDataCell[] {
         return [
@@ -192,7 +172,6 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
         ];
     }
 
-
     generateModifiedCells(gridSpec:DataGridSpecStudies, index:number):DataGridDataCell[] {
         return [
             new DataGridDataCell(gridSpec, index, {
@@ -200,7 +179,6 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
             })
         ];
     }
-	
 
 	// Specification for each of the columns that will make up the body of the table
 	defineColumnSpec():DataGridColumnSpec[] {
@@ -216,7 +194,6 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
             new DataGridColumnSpec(7, this.generateModifiedCells)
 		];
 	}
-	
 
 	// Specification for each of the groups that the headers and data columns are organized into
 	defineColumnGroupSpec():DataGridColumnGroupSpec[] {
@@ -231,25 +208,58 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
 		];
 	}
 
-
 	// The table element on the page that will be turned into the DataGrid.  Any preexisting table content will be removed.
 	getTableElement() {
 		return document.getElementById("studiesTable");
 	}
 
-
 	// An array of unique identifiers, used to identify the records in the data set being displayed
 	getRecordIDs() {
-        if (this.dataObj) {
-            var ids = Object.getOwnPropertyNames(this.dataObj);
-            return ids.map((id):number => {
-                return parseInt(id, 10);
-            });
-        }
-        return [];
+        return this.recordIds;
 	}
-    
-    
+
+    enableSort(grid:DataGrid):DataGridSpecStudies {
+        super.enableSort(grid);
+        this.tableHeaderSpec.forEach((header) => {
+            if (header.sortId) {
+                // remove any events from super in favor of our own
+                $(header.element).off('click.datatable').on('click.datatable', (ev) => {
+                    this.columnSort(grid, header, ev);
+                });
+            }
+        });
+        return this;
+    }
+
+    private columnSort(grid:DataGrid, header:DataGridHeaderSpec, ev):any {
+        var sort = grid.sortCols(), oldSort, newSort, sortOpt;
+        if (ev.shiftKey || ev.ctrlKey || ev.metaKey) {
+            newSort = sort.filter((v) => { return v.spec.sortId === header.sortId; });
+            oldSort = sort.filter((v) => { return v.spec.sortId !== header.sortId; });
+            // if column already sorted, flip asc; move column to front of sort list
+            if (newSort.length) {
+                newSort[0].asc = !newSort[0].asc;
+                (sort = oldSort).unshift(newSort[0]);
+            } else {
+                sort.unshift({ spec: header, asc: true });
+            }
+        } else if (sort.length === 1 && sort[0].spec.sortId === header.sortId) {
+            sort[0].asc = !sort[0].asc;
+        } else {
+            sort = [ { spec: header, asc: true } ];
+        }
+        grid.sortCols(sort);
+        // convert to sort strings, filter out falsy values, join with commas
+        sortOpt = sort.map((col:DataGridSort) => {
+            if (col.spec.sortId) return col.spec.sortId + (col.asc ? ' asc' : ' desc');
+        }).filter(Boolean).join(',');
+        // store in options object, as grid will not be available in requestPageOfData
+        $.extend(this._searchOpt, { 'sort': sortOpt });
+        this.requestPageOfData((success) => {
+            if (success) grid.triggerDataReset();
+        });
+    }
+
     pageSize():number;
     pageSize(size:number):DGPageDataSource;
     pageSize(size?:number):any {
@@ -260,8 +270,7 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
             return this;
         }
     }
-    
-    
+
     totalOffset():number;
     totalOffset(offset:number):DGPageDataSource;
     totalOffset(offset?:number):any {
@@ -272,8 +281,7 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
             return this;
         }
     }
-    
-    
+
     totalSize():number;
     totalSize(size:number):DGPageDataSource;
     totalSize(size?:number):any {
@@ -284,13 +292,11 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
             return this;
         }
     }
-    
-    
+
     viewSize():number {
         return this.getRecordIDs().length;
     }
-    
-    
+
     query():string;
     query(query:string):DGPageDataSource;
     query(query?:string):any {
@@ -302,31 +308,43 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
             return this;
         }
     }
-    
-    
+
+    filter():any;
+    filter(opt:any):DGPageDataSource;
+    filter(opt?:any):any {
+        if (opt === undefined) {
+            return this._searchOpt;
+        } else {
+            this._searchOpt = opt;
+            return this;
+        }
+    }
+
     pageDelta(delta:number):DGPageDataSource {
         this._offset += (delta * this._pageSize);
         return this;
     }
-    
-    
+
     requestPageOfData(callback?:(success:boolean) => void):DGPageDataSource {
         $.ajax({
             'url': '/study/search/',
             'type': 'GET',
-            'data': { 'q': this._query, 'i': this._offset, 'size': this._pageSize },
+            'data': $.extend({}, this._searchOpt, {
+                'q': this._query,
+                'i': this._offset,
+                'size': this._pageSize
+            }),
             'error': (xhr, status, e) => {
                 console.log(['Search failed: ', status, ';', e].join(''));
                 callback && callback.call({}, false);
              },
             'success': (data) => {
-                this.data(this._transformData(data), data.numFound, data.start);
+                this.data(data.docs, data.numFound, data.start);
                 callback && callback.call({}, true);
             }
         });
         return this;
     }
-
 
 	// This is called to generate the array of custom header widgets.
 	// The order of the array will be the order they are added to the header bar.
@@ -339,7 +357,6 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
         ];
         return array;
 	}
-
 
 	// This is called to generate the array of custom options menu widgets.
 	// The order of the array will be the order they are displayed in the menu.
@@ -356,31 +373,28 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
 		return widgetSet;
 	}
 
-
 	// This is called after everything is initialized, including the creation of the table content.
 	onInitialized(dataGrid:DataGrid):void {
 		// Wire-in our custom edit fields for the Studies page
 		IndexPage.initDescriptionEditFields();
 	}
-    
+
     data():any;
-    data(replacement:any, totalSize?:number, totalOffset?:number):DataGridSpecStudies;
-    data(replacement?:any, totalSize?:number, totalOffset?:number):any {
+    data(replacement:any[], totalSize?:number, totalOffset?:number):DataGridSpecStudies;
+    data(replacement?:any[], totalSize?:number, totalOffset?:number):any {
         if (replacement === undefined) {
             return this.dataObj;
         } else {
-            this.dataObj = replacement;
+            this.dataObj = this._transformData(replacement); // transform also handles storing sort keys
             this._size = totalSize || this.viewSize();
             this._offset = totalOffset || 0;
         }
         return this;
     }
-    
-    
-    private _transformData(data:any):{} {
-        var docs:any[] = data.docs;
+
+    private _transformData(docs:any[]):any {
         var transformed = {};
-        docs.forEach((doc) => {
+        this.recordIds = docs.map((doc) => {
             var match = new ResultMatcher(this._query);
             // straightforward matching on name, description, contact, creator_name, initials
             match.findAndSet('name', doc.name)
@@ -414,12 +428,11 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
                 'initials': doc.initials,
                 'match': match
             };
+            return parseInt(doc.id, 10);
         });
         return transformed;
     }
 }
-
-
 
 // data structure marks a region of interest in a string passed through ResultMatcher
 interface TextRegion {
@@ -429,17 +442,15 @@ interface TextRegion {
 }
 // initialized with a query string, can search study fields for matches to query terms
 class ResultMatcher {
-    
+
     private _query:string[];
     private _match:{[index:string]:TextRegion[]};
-    
-    
+
     constructor(query:string) {
         this._query = query.split(/\s+/).filter((x) => x.length > 0);
         this._match = {};
     }
-    
-    
+
     // searches for constructor text query in the source string, saving to field name if found
     findAndSet(field:string, source:string):ResultMatcher {
         var index:number;
@@ -455,13 +466,11 @@ class ResultMatcher {
         });
         return this;
     }
-    
-    
+
     getFields():string[] {
         return Object.getOwnPropertyNames(this._match);
     }
-    
-    
+
     // returns array of strings marked as matching the constructor text query
     getMatches(field:string, prefix?:string, postfix?:string, slop?:number):string[] {
         slop = slop === undefined ? Number.MAX_VALUE : slop;
@@ -483,24 +492,18 @@ class ResultMatcher {
     }
 }
 
-
-
 // This is a DataGridHeaderWidget derived from DGSearchWidget.
 // It's a search field that offers options for additional data types, querying the server for results.
 class DGStudiesSearchWidget extends DGSearchWidget {
-    
-    private _grid:DataGrid;
+
     private _spec:DataGridSpecStudies;
 
 	searchDisclosureElement:HTMLElement;
 
-
-	constructor(dataGridOwnerObject:DataGrid, dataGridSpec:DataGridSpecStudies, placeHolder:string, size:number, getsFocus:boolean) {
-		super(dataGridOwnerObject, dataGridSpec, placeHolder, size, getsFocus);
-        this._grid = dataGridOwnerObject;
-        this._spec = dataGridSpec;
+	constructor(grid:DataGrid, spec:DataGridSpecStudies, placeHolder:string, size:number, getsFocus:boolean) {
+		super(grid, spec, placeHolder, size, getsFocus);
+        this._spec = spec;
 	}
-
 
 	// This is called to append the widget elements beneath the given element.
 	// If the elements have not been created yet, they are created, and the uniqueID is passed along.
@@ -513,15 +516,13 @@ class DGStudiesSearchWidget extends DGSearchWidget {
         this.searchDisclosureElement = span;
 		container.appendChild(this.searchDisclosureElement);
 	}
-    
-    
+
     // OVERRIDE
     // HEY GUYS WE DON'T NEED TO FILTER HERE ANYMORE
     applyFilterToIDs(rowIDs:number[]):number[] {
         return rowIDs;
     }
-    
-    
+
     // OVERRIDE
     // We want to work slightly differently from base widget, where return does nothing
     inputKeyDownHandler(e) {
@@ -529,11 +530,10 @@ class DGStudiesSearchWidget extends DGSearchWidget {
         super.inputKeyDownHandler(e);
         // we will handle return differently
         if (e.keyCode === 13) {
-            // TODO build URL for search and reload page
+            this.typingDelayExpirationHandler.call({});
         }
     }
-    
-    
+
     // OVERRIDE
     // We don't at all want to do what the base widget does here, not all data is local
     typingDelayExpirationHandler = ():void => {
@@ -550,127 +550,80 @@ class DGStudiesSearchWidget extends DGSearchWidget {
         this._spec.query(v).requestPageOfData((success:boolean):void => {
             input.removeClass('wait').toggleClass('error', success);
             if (success) {
-                this._grid.triggerDataReset();
+                this.dataGridOwnerObject.triggerDataReset();
             }
         });
     }
 }
 
-
-
 // Here's an example of a working DataGridOptionWidget.
 // When checked, this hides all Studies that are not owned by the current user.
 class DGOnlyMyStudiesWidget extends DataGridOptionWidget {
-    
+
     private _spec:DataGridSpecStudies;
-    
+
     constructor(grid:DataGrid, spec:DataGridSpecStudies) {
         super(grid, spec);
         this._spec = spec;
     }
 
-	createElements(uniqueID:any):void {
+    getIDFragment():string {
+        return 'ShowMyStudiesCB';
+    }
 
-		var cbID:string = this.dataGridSpec.tableSpec.id+'ShowMyStudiesCB'+uniqueID;
-		var cb:HTMLInputElement = this._createCheckbox(cbID, cbID, '1');
-		$(cb).click( (e) => this.dataGridOwnerObject.clickedOptionWidget(e) );
-		if (this.isEnabledByDefault()) {
-			cb.setAttribute('checked', 'checked');
-		}
-		this.checkBoxElement = cb;
-		this.labelElement = this._createLabel('My Studies Only', cbID);
-		this._createdElements = true;
-	}
+    getLabelText():string {
+        return 'My Studies Only';
+    }
 
-
-	applyFilterToIDs(rowIDs:any):any {
-
-		var checked:boolean = false;
-		if (this.checkBoxElement.checked) {
-			checked = true;
-		}
-		// If the box is not checked, return the set of IDs unfiltered
-		if (!checked) {
-			return rowIDs;
-		}
-		// If for some crazy reason there's no current user ID set, do not filter
-		if (!EDDData.currentUserID) {
-			return rowIDs;
-		}
-
-		var filteredIDs = [];
-        var data = this._spec.data();
-		for (var r = 0; r < rowIDs.length; r++) {
-			var id = rowIDs[r];
-			// Here is the condition that determines whether the rows associated with this ID are shown or hidden.
-            if (data[id].own == EDDData.currentUserID) {
-				filteredIDs.push(id);
-			}
-		}
-		return filteredIDs;
-	}
-
-
-	initialFormatRowElementsForID(dataRowObjects:DataGridDataRow[], rowID:number):void {
-        var data = this._spec.data();
-		if (data[rowID].dis) {
-			for (var r = 0; r < dataRowObjects.length; r++) {
-				var rowElement = dataRowObjects[r].getElement();
-				rowElement.style.backgroundColor = "#FFC0C0";
-			}
-		}
-	}
+    onWidgetChange(e):void {
+        // update spec with filter options
+        var filter = this._spec.filter();
+        if (this.checkBoxElement.checked) {
+            $.extend(filter, { 'showMine': 1 });
+        } else {
+            delete filter.showMine;
+        }
+        this._spec.filter(filter).requestPageOfData((success:boolean):void => {
+            if (success) {
+                this.dataGridOwnerObject.triggerDataReset();
+            }
+        });
+    }
 }
-
-
 
 // Here's another example of a working DataGridOptionWidget.
 // When unchecked, this hides the set of Studies that are marked as disabled.
 class DGDisabledStudiesWidget extends DataGridOptionWidget {
-    
+
     private _spec:DataGridSpecStudies;
-    
+
     constructor(grid:DataGrid, spec:DataGridSpecStudies) {
         super(grid, spec);
         this._spec = spec;
     }
 
-	createElements(uniqueID:any):void {
-		var cbID:string = this.dataGridSpec.tableSpec.id+'ShowDStudiesCB'+uniqueID;
-		var cb:HTMLInputElement = this._createCheckbox(cbID, cbID, '1');
-		$(cb).click( (e) => this.dataGridOwnerObject.clickedOptionWidget(e) );
-		if (this.isEnabledByDefault()) {
-			cb.setAttribute('checked', 'checked');
-		}
-		this.checkBoxElement = cb;
-		this.labelElement = this._createLabel('Show Disabled', cbID);
-		this._createdElements = true;
-	}
+    getIDFragment():string {
+        return 'ShowDStudiesCB';
+    }
 
+    getLabelText():string {
+        return 'Show Disabled';
+    }
 
-	applyFilterToIDs(rowIDs:number[]):number[] {
-
-		var checked:boolean = false;
-		if (this.checkBoxElement.checked) {
-			checked = true;
-		}
-		// If the box is checked, return the set of IDs unfiltered
-		if (checked) {
-			return rowIDs;
-		}
-
-		var filteredIDs = [];
-        var data = this._spec.data();
-		for (var r = 0; r < rowIDs.length; r++) {
-			var id = rowIDs[r];
-			// Here is the condition that determines whether the rows associated with this ID are shown or hidden.
-            if (data[id].active) {
-				filteredIDs.push(id);			
-			}
-		}
-		return filteredIDs;
-	}
-
+    onWidgetChange(e):void {
+        // update spec with filter options
+        var filter = this._spec.filter();
+        if (this.checkBoxElement.checked) {
+            $.extend(filter, { 'showDisabled': 1 });
+        } else {
+            delete filter.showDisabled;
+        }
+        this._spec.filter(filter).requestPageOfData((success:boolean):void => {
+            if (success) {
+                this.dataGridOwnerObject.triggerDataReset();
+            }
+        });
+    }
 
 	initialFormatRowElementsForID(dataRowObjects:DataGridDataRow[], rowID:number):any {
         var data = this._spec.data();

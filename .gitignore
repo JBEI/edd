@@ -6,3 +6,10 @@
 # per-machine configuration file; contains secrets, DO NOT CHECK-IN
 server.cfg
 
+# per-machine local settings file; this will override default settigns with local changes
+edd/local_settings.py
+# also ignore any local media/upload folders
+/media
+/upload
+/uploads
+

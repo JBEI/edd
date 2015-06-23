@@ -292,10 +292,10 @@ def assemble_table (
             row = TableRow(column_flags)
             row.add_item_if_not_flagged("Protocol", protocol_name)
             row.append(str(assay.name))
-            row.add_item_if_not_flagged("Assay Experimenter",
+            row.add_item_if_not_flagged("AssayExperimenter",
                 assay.experimenter.initials)
-            row.add_item_if_not_flagged("Assay Last Modified",
-                str(assay.mod_epoch()))
+            row.add_item_if_not_flagged("AssayLastModified",
+                str(assay.mod_epoch))
             assay_metadata = assay.get_metadata_dict()
             if (not "Assay Metadata" in column_flags) :
                 for column_label in assay_metadata_labels :
@@ -306,12 +306,12 @@ def assemble_table (
             protocol_row = TableRow(column_flags)
             protocol_row.add_item_if_not_flagged("Protocol", protocol_name)
             protocol_row.append(str(assay.name)) # XXX assay_full_name???
-            protocol_row.add_item_if_not_flagged("Assay Suffix",str(assay.name))
-            protocol_row.add_item_if_not_flagged("Assay Experimenter",
+            protocol_row.add_item_if_not_flagged("AssaySuffix", str(assay.name))
+            protocol_row.add_item_if_not_flagged("AssayExperimenter",
                 assay.experimenter.initials)
-            protocol_row.add_item_if_not_flagged("Assay Last Modified",
-                str(assay.updated()))
-            if (not "Assay Metadata" in column_flags) :
+            protocol_row.add_item_if_not_flagged("AssayLastModified",
+                str(assay.updated))
+            if (not column_flags.get("AssayMetadata", False)) :
                 for column_label in assay_metadata_labels :
                     protocol_row.append(
                         str(assay_metadata.get(column_label, "")))

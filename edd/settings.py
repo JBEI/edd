@@ -43,6 +43,9 @@ EMAIL_SUBJECT_PREFIX = '[EDD] '
 ALLOWED_HOSTS = []
 SITE_ID = 1
 LOGIN_REDIRECT_URL = '/'
+DEBUG_TOOLBAR_CONFIG = {
+    'JQUERY_URL': '/static/main/js/lib/jquery/jquery.js',
+}
 
 
 # Application definition
@@ -69,6 +72,7 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.auth.middleware.RemoteUserMiddleware',
     'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
+    'threadlocals.middleware.ThreadLocalMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 )
@@ -121,12 +125,34 @@ ACCOUNT_ACTIVATION_DAYS=1
 # Solr/Haystack Configuration
 EDD_MAIN_SOLR = {
     'default': {
-        'URL': config['solr'].get('url', 'http://localhost:8080/studies/'),
-    },
-    'test': {
-        'URL': 'http://localhost:8080/test/',
+        'URL': config['solr'].get('url', 'http://localhost:8080/'),
     },
 }
+
+
+# Logging -- uncomment to see all queries sent to database
+# LOGGING = {
+#     'version': 1,
+#     'disable_existing_loggers': False,
+#     'filters': {
+#         'require_debug_true': {
+#             '()': 'django.utils.log.RequireDebugTrue',
+#         },
+#     },
+#     'handlers': {
+#         'console': {
+#             'level': 'DEBUG',
+#             'filters': ['require_debug_true', ],
+#             'class': 'logging.StreamHandler',
+#         },
+#     },
+#     'loggers': {
+#         'django.db.backends': {
+#             'level': 'DEBUG',
+#             'handlers': ['console', ],
+#         },
+#     },
+# }
 
 
 # Database
@@ -160,3 +186,8 @@ STATIC_URL = '/static/'
 
 # File upload location
 MEDIA_ROOT = '/var/www/uploads'
+
+try:
+    from .local_settings import *
+except ImportError:
+    pass

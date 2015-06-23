@@ -495,13 +495,15 @@ input[type="button"].tableControl {
 	font-size:10px;
 }
 input[type="text"].searchBox {
-	float:right;
-	margin:0px 1px 0px 0px;
-	padding:0px 4px 0px 4px;
-	font-size:11px;
-	border-radius: 7px;
-	-webkit-border-radius: 7px;
-	-moz-border-radius: 7px;
+    margin:0px 1px 0px 0px;
+    padding:0px 4px 0px 4px;
+    font-size:11px;
+    border-radius: 7px;
+    -webkit-border-radius: 7px;
+    -moz-border-radius: 7px;
+}
+input[type="text"].searchBox.tableControl {
+    float:right;
 }
 input[type="text"].searchBox.wait {
 	background-repeat: no-repeat;
@@ -563,7 +565,7 @@ div.pulldownMenuLabelOff:hover {
 }
 div.pulldownMenuLabelOn {
 	display:block;
-	position:absolute;
+	position:relative;
 	margin:0px 0px 0px 0px;
 	border-style:solid;
 	border-color:black;

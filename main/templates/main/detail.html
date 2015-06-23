@@ -37,6 +37,8 @@
     <script type="text/javascript" src="{% static 'main/js/CarbonSummation.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/StudyCarbonBalance.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/StudySBMLExport.js' %}"></script>
+    <!-- Autocomplete code found by Nat -->
+    <script type="text/javascript" src="{% static 'main/js/autocomplete2.js' %}"></script>
 {% endblock js_css %}
 
 
@@ -99,9 +101,9 @@
                     <label for="separateAxesCheckbox">Separate Y Axes for Measurement Types</label>
                 </span>
                 <span class="tableControl" id="pointsDisplayedSpan"></span>
-            </div>
-            <div id="mainFilterSection" class="filteringSection discloseBody">
-                <div class="filterTable"></div>
+                <div id="mainFilterSection" class="filteringSection discloseBody">
+                    <div class="filterTable"></div>
+                </div>
             </div>
         </div>
     </form>
@@ -117,11 +119,7 @@
         <div class="sectionContent discloseBody">
             <form action="" method="POST">
                 {% csrf_token %}
-                <div>
-                    <label for="id_line_name">Line Name</label>
-                    <input id="id_line_name" type="text" name="line_name" maxlength="255" />
-                </div>
-                {# TODO finish form elements #}
+                {{ new_line.as_p }}
                 <button type="submit">Add Line</button>
             </form>
         </div>

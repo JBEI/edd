@@ -115,6 +115,13 @@
             # locate _`ENV`_`/site-packages/registration/models.py`
             # edit line 187 `user = models.ForeignKey(…` to read `user = models.OneToOneField(…`
             # change results in no model changes, merely removes the warning
+    * [django-threadlocals](https://pypi.python.org/pypi/django-threadlocals/)
+        * A Django middleware for storing the current request in a thread.local
+        * Version on PyPI is python2 incompatible!
+            * In `${venv}/lib/python2.7/site-packages/threadlocals/middleware.py`
+
+                    s/^from threadlocals\.threadlocals import/from .threadlocals import/
+
     * [requests](http://docs.python-requests.org/en/latest/)
         * "Requests is an Apache2 Licensed HTTP library, written in Python, for human beings."
         * `sudo pip install requests[security]`
@@ -135,8 +142,8 @@
         * Pull CA certificates from `identity.lbl.gov`
             * As root in `/System/Library/OpenSSL/certs`
                 * `openssl s_client -showcerts -connect identity.lbl.gov:636 > godaddy.crt`
-                * Edit `godaddy.crt` to remove all non-certificate blocks (outside BEGIN/END), and the
-                  first certificate block (the identity.lbl.gov certificate).
+                * Edit `godaddy.crt` to remove all non-certificate blocks (outside BEGIN/END), and
+                  the first certificate block (the identity.lbl.gov certificate).
         * Edit as root `/etc/openldap/ldap.conf`
             * Add line `TLS_CACERTDIR   /System/Library/OpenSSL/certs`
             * Add line `TLS_CACERT      /System/Library/OpenSSL/certs/godaddy.crt`
@@ -160,8 +167,10 @@
  * Required `.deb` packages
     * `sudo apt-get install pip` for PyPI/pip python package manager
     * `sudo apt-get install libpq-dev` for headers required by psycopg2
-    * `sudo apt-get install libldap2-dev libsasl2-dev libssl-dev` for headers required by python-ldap
+    * `sudo apt-get install libldap2-dev libsasl2-dev libssl-dev` for headers required by
+      python-ldap
     * `sudo apt-get install python-dev libffi-dev` for headers required by cryptography
+    * `sudo apt-get install libatlas-dev liblapack-dev gfortran` for packages required by SciPy
 
  * Configure LDAP SSL handling in `/etc/ldap/ldap.conf`
     * Add line `TLS_CACERTDIR   /etc/ssl/certs`

@@ -1,20 +1,24 @@
+import arrow
 import edd.settings
+import os.path
+import re
+from collections import defaultdict
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
-from django.utils import timezone
-from django.utils.dateformat import format as format_date
+from django.db.models import Q
+from django.utils.encoding import python_2_unicode_compatible
 from django_extensions.db.fields import PostgreSQLUUIDField
 from django_hstore import hstore
 from itertools import chain
-import calendar
-from datetime import datetime, timedelta
-from collections import defaultdict
-import arrow
-import re
-import os.path
+from threadlocals.threadlocals import get_current_request
+
+
+class UpdateManager(models.Manager):
+    def get_queryset(self):
+        return super(UpdateManager, self).get_queryset().select_related('mod_by')
 
 
 class Update(models.Model):
@@ -27,9 +31,13 @@ class Update(models.Model):
     class Meta:
         db_table = 'update_info'
     mod_time = models.DateTimeField(auto_now_add=True, editable=False)
-    mod_by = models.ForeignKey(settings.AUTH_USER_MODEL, editable=False)
+    mod_by = models.ForeignKey(settings.AUTH_USER_MODEL, editable=False, null=True)
     path = models.TextField(blank=True, null=True)
     origin = models.TextField(blank=True, null=True)
+
+    # references to self.mod_by potentially creates LOTS of queries
+    # custom manager will always select_related('mod_by')
+    objects = UpdateManager()
 
     def __str__(self):
         try:
@@ -39,22 +47,56 @@ class Update(models.Model):
         return '%s by %s' % (time, self.mod_by)
 
     @classmethod
+    def load_update(cls):
+        request = get_current_request()
+        if request is None:
+            update = cls(mod_time=arrow.utcnow(),
+                         mod_by=None,
+                         path=None,
+                         origin='localhost')
+            update.save()
+        else:
+            update = cls.load_request_update(request)
+        return update
+
+    @classmethod
     def load_request_update(cls, request):
+        rhost = '%s; %s' % (
+            request.META.get('REMOTE_ADDR', None),
+            request.META.get('REMOTE_HOST', ''))
         if not hasattr(request, 'update_key'):
-            update = cls(mod_time=timezone.now(),
+            update = cls(mod_time=arrow.utcnow(),
                          mod_by=request.user,
                          path=request.get_full_path(),
-                         origin=request.META['REMOTE_HOST'])
+                         origin=rhost)
             update.save()
             request.update_key = update.pk
         else:
             update = cls.objects.get(pk=request.update_key)
         return update
 
+    @property
+    def initials(self):
+        if self.mod_by_id is None:
+            return None
+        return self.mod_by.initials
+
+    @property
+    def full_name(self):
+        if self.mod_by_id is None:
+            return None
+        return ' '.join([self.mod_by.first_name, self.mod_by.last_name, ])
+
+    @property
+    def email(self):
+        if self.mod_by_id is None:
+            return None
+        return self.mod_by.email
+
     def to_json(self):
         return {
-            "time": format_date(self.mod_time, 'U'),
-            "user": self.mod_by.pk,
+            "time": arrow.get(self.mod_time).timestamp,
+            "user": self.mod_by_id,
         }
 
     def format_timestamp (self, format_string="%b %d %Y %I:%M%p") :
@@ -62,12 +104,8 @@ class Update(models.Model):
         Convert the datetime (mod_time) to a human-readable string, including
         conversion from UTC to local time zone.
         """
-        utc_dt = self.mod_time
-        timestamp = calendar.timegm(utc_dt.timetuple())
-        local_dt = datetime.fromtimestamp(timestamp)
-        assert utc_dt.resolution >= timedelta(microseconds=1)
-        local_dt = local_dt.replace(microsecond=utc_dt.microsecond)
-        return local_dt.strftime(format_string)
+        return arrow.get(self.mod_time).to('local').strftime(format_string)
+
 
 class Comment(models.Model):
     """
@@ -89,8 +127,11 @@ class Attachment(models.Model):
     filename = models.CharField(max_length=255)
     created = models.ForeignKey(Update, related_name='+')
     description = models.TextField(blank=True, null=False)
-    mime_type = models.CharField(max_length=255, null=True)
+    mime_type = models.CharField(max_length=255, blank=True, null=True)
     file_size = models.IntegerField(default=0)
+
+    def __str__(self):
+        return self.filename
 
     @classmethod
     def from_upload (cls, edd_object, form, uploaded_file, update) :
@@ -105,7 +146,7 @@ class Attachment(models.Model):
 
     @property
     def user_initials (self) :
-        return self.created.mod_by.initials
+        return self.created.initials
 
     @property
     def icon (self) :
@@ -134,6 +175,17 @@ class Attachment(models.Model):
         if (self.object_ref.__class__ is Study) :
             return self.object_ref.user_can_read(user)
         return True # XXX is this wise?
+
+    def save(self, *args, **kwargs):
+        print "Attachment#save called"
+        if self.created_id is None:
+            self.created = Update.load_update()
+        self.filename = self.file.name
+        self.file_size = self.file.size
+        # self.file is the db field; self.file.file is the actual file
+        self.mime_type = self.file.file.content_type
+        super(Attachment, self).save(*args, **kwargs)
+
 
 class MetadataGroup(models.Model):
     """
@@ -175,17 +227,17 @@ class MetadataType(models.Model):
     #   a model instance; e.g. type_class = 'CarbonSource' would do a
     #   CarbonSource.objects.get(pk=value)
     type_class = models.CharField(max_length=255, blank=True, null=True)
-    
+
     def for_line(self):
         return (self.for_context == self.LINE or
             self.for_context == self.LINE_OR_PROTOCOL or
             self.for_context == self.ALL)
-    
+
     def for_protocol(self):
         return (self.for_context == self.PROTOCOL or
             self.for_context == self.LINE_OR_PROTOCOL or
             self.for_context == self.ALL)
-    
+
     def for_study(self):
         return (self.for_context == self.STUDY or
             self.for_context == self.ALL)
@@ -225,6 +277,7 @@ class MetadataType(models.Model):
         elif (obj.__class__ is Assay) : return self.for_protocol()
         else : return (self.for_context == self.ALL)
 
+
 class EDDObject(models.Model):
     """
     A first-class EDD object, with update trail, comments, attachments.
@@ -234,54 +287,31 @@ class EDDObject(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     updates = models.ManyToManyField(Update, db_table='edd_object_update', related_name='+')
+    # these are used often enough we should save extra queries by including as fields
+    created = models.ForeignKey(Update, related_name='+', editable=False)
+    updated = models.ForeignKey(Update, related_name='+', editable=False)
+    # store arbitrary metadata as a dict with hstore extension
     meta_store = hstore.DictionaryField(blank=True, default=dict)
 
     # Use custom hstore manager to enable queries on hstore data
     objects = hstore.HStoreManager()
-    
-    def created(self):
-        created = self.updates.order_by('mod_time')[:1]
-        # FIXME the line above results in an additional query that we can't
-        # fix by prefetching.  an alternative:
-        #   created = sorted(list(self.updates.all()),
-        #      lambda a,b: cmp(a.mod_time, b.mod_time))[:1]
-        return created[0] if created else None
-    
-    def updated(self):
-        updated = self.updates.order_by('-mod_time')[:1]
-        return updated[0] if updated else None
-
-    def mod_epoch (self) :
-        mod_date = self.updated()
-        if (mod_date) :
-          return format_date(mod_date.mod_time, 'U')
-        return None
 
     @property
+    def mod_epoch (self) :
+        return arrow.get(self.updated.mod_time).timestamp
+
+    # FIXME is this needed with updated now a field?
+    @property
     def last_modified (self) :
-        updated = self.updated()
-        if (updated is None) :
-            return "N/A"
-        else :
-            return updated.format_timestamp("%b %d %Y %I:%M%p")
+        return self.updated.format_timestamp()
 
     def was_modified (self) :
         return self.updates.count() > 1
 
+    # FIXME is this needed with created now a field?
     @property
     def date_created (self) :
-        updated = self.created()
-        if (updated) :
-            return updated.format_timestamp("%b %d %Y %I:%M%p")
-        else :
-            return "N/A"
-
-    @property
-    def created_by (self) :
-        update = self.created()
-        if (update) :
-            return update.mod_by.initials
-        return "N/A"
+        return self.created.format_timestamp()
 
     def get_attachment_count(self):
         return self.files.count()
@@ -293,7 +323,7 @@ class EDDObject(models.Model):
     def get_comment_count(self):
         return self.comments.count()
 
-    def get_metadata_json(self): # FIXME not sure this does what we want...
+    def get_metadata_json(self):
         return self.meta_store
 
     def get_metadata_types(self):
@@ -301,6 +331,7 @@ class EDDObject(models.Model):
 
     @classmethod
     def metadata_type_frequencies (cls) :
+        # TODO should be able to do this in the database
         freqs = defaultdict(int)
         for obj in cls.objects.all() :
             mdtype_keys = obj.meta_store.keys()
@@ -361,6 +392,14 @@ class EDDObject(models.Model):
                 self.__class__.__name__)
         self.name = name
 
+    def save(self, *args, **kwargs):
+        if self.created_id is None:
+            self.created = Update.load_update()
+        if self.updated_id is None:
+            self.updated = Update.load_update()
+        super(EDDObject, self).save(*args, **kwargs)
+
+
 class Study(EDDObject):
     """
     A collection of items to be studied.
@@ -382,17 +421,16 @@ class Study(EDDObject):
         """
         Convert the Study model to a dict structure formatted for Solr JSON.
         """
-        created = self.created()
-        updated = self.updated()
-        owner = created.mod_by.userprofile if hasattr(created.mod_by, 'userprofile') else None
+        created = self.created
+        updated = self.updated
         return {
             'id': self.pk,
             'name': self.name,
             'description': self.description,
-            'creator': created.mod_by.pk,
-            'creator_email': created.mod_by.email,
-            'creator_name': ' '.join([created.mod_by.first_name, created.mod_by.last_name]),
-            'initials': owner.initials if owner != None else None,
+            'creator': created.mod_by_id,
+            'creator_email': created.email,
+            'creator_name': created.full_name,
+            'initials': created.initials,
             'contact': self.get_contact(),
             'active': self.active,
             'created': created.mod_time.strftime('%Y-%m-%dT%H:%M:%SZ'),
@@ -467,11 +505,11 @@ class StudyPermission(models.Model):
     )
     study = models.ForeignKey(Study)
     permission_type = models.CharField(max_length=8, choices=TYPE_CHOICE, default=NONE)
-    
+
     def applies_to_user(self, user):
         """
         Test if permission applies to given user.
-        
+
         Base class will always return False, override in child classes.
         Arguments:
             user: to be tested, model from django.contrib.auth.models.User
@@ -483,7 +521,7 @@ class StudyPermission(models.Model):
     def is_read(self):
         """
         Test if the permission grants read privileges.
-        
+
         Returns:
             True if permission grants read
         """
@@ -492,7 +530,7 @@ class StudyPermission(models.Model):
     def is_write(self):
         """
         Test if the permission grants write privileges.
-        
+
         Returns:
             True if permission grants write
         """
@@ -503,7 +541,7 @@ class UserPermission(StudyPermission):
     class Meta:
         db_table = 'study_user_permission'
     user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='userpermission_set')
-    
+
     def applies_to_user(self, user):
         return self.user == user
 
@@ -515,7 +553,7 @@ class GroupPermission(StudyPermission):
     class Meta:
         db_table = 'study_group_permission'
     group = models.ForeignKey('auth.Group', related_name='grouppermission_set')
-    
+
     def applies_to_user(self, user):
         return user.groups.contains(user)
 
@@ -535,18 +573,18 @@ class Protocol(EDDObject):
     variant_of = models.ForeignKey('self', blank=True, null=True, related_name='derived_set')
     default_units = models.ForeignKey('MeasurementUnit', blank=True,
         null=True, related_name="protocol_set")
-    
+
     def creator(self):
-        return self.created().mod_by
-    
+        return self.created.mod_by
+
     def owner(self):
         return self.owned_by
-    
+
     def last_modified(self):
         return self.updated.mod_time
 
     def last_modified_str (self) :
-        return self.updated().format_timestamp()
+        return self.updated.format_timestamp()
 
     def to_solr_value(self):
         return '%(id)s@%(name)s' % {'id':self.pk, 'name':self.name}
@@ -610,6 +648,7 @@ def _n_studies (self) :
     lines = self.line_set.all()
     return len(set([ l.study_id for l in lines ]))
 
+
 class Strain(EDDObject):
     """
     A link to a strain/part in the JBEI ICE Registry.
@@ -643,6 +682,7 @@ class Strain(EDDObject):
     @property
     def n_studies (self) : return _n_studies(self)
 
+
 class CarbonSource(EDDObject):
     """
     Information about carbon sources, isotope labeling.
@@ -660,10 +700,10 @@ class CarbonSource(EDDObject):
             "id" : self.pk,
             "carbon" : self.name,
             "labeling" : self.labeling,
-            "initials" : self.created_by,
+            "initials" : self.created.initials,
             "vol" : self.volume,
-            "mod" : self.mod_epoch(),
-            "modstr" : str(self.updated()),
+            "mod" : self.mod_epoch,
+            "modstr" : str(self.updated),
             "ainfo" : self.description,
             "userid" : None, # TODO
             "disabled" : not self.active,
@@ -677,6 +717,7 @@ class CarbonSource(EDDObject):
 
     def __str__ (self) :
         return "%s (%s)" % (self.name, self.labeling)
+
 
 class Line(EDDObject):
     """
@@ -699,8 +740,8 @@ class Line(EDDObject):
     strains = models.ManyToManyField(Strain, db_table='line_strain')
 
     def to_json(self):
-        updated = self.updated()
-        created = self.created()
+        updated = self.updated
+        created = self.created
         return {
             'id': self.pk,
             'name': self.name,
@@ -787,7 +828,7 @@ class MeasurementGroup(object):
     GENERIC = '_'
     METABOLITE = 'm'
     GENEID = 'g'
-    PROTEINID = 'p' 
+    PROTEINID = 'p'
     GROUP_CHOICE = (
         (GENERIC, 'Generic'),
         (METABOLITE, 'Metabolite'),
@@ -862,6 +903,7 @@ class MeasurementType(models.Model):
         return cls.objects.all().prefetch_related('keywords').extra(
             select={'lower_name':'lower(short_name)'}).order_by('lower_name')
 
+
 class MetaboliteKeyword (models.Model) :
     class Meta:
         db_table = "metabolite_keyword"
@@ -884,6 +926,7 @@ class MetaboliteKeyword (models.Model) :
                 "metabolites" : [ i_d['id'] for i_d in ids_dicts ],
             })
         return keywords
+
 
 class Metabolite(MeasurementType):
     """
@@ -951,6 +994,10 @@ class Metabolite(MeasurementType):
             if (not keyword in new_keywords) :
                 self.keywords.remove(current_kwds[keyword])
 
+# override the default type_group for metabolites
+Metabolite._meta.get_field('type_group').default = MeasurementGroup.METABOLITE
+
+
 class GeneIdentifier(MeasurementType):
     """
     Defines additional metadata on gene identifier transcription measurement type.
@@ -971,16 +1018,19 @@ class GeneIdentifier(MeasurementType):
         genes = cls.objects.all().order_by("type_name")
         return { g.type_name : g for g in genes }
 
-
-# Commented out until there is more to ProteinIdentifier than what already is in MeasurementType
-# class ProteinIdentifier(MeasurementType):
-#     """
-#     Defines additional metadata on gene identifier transcription measurement type.
-#     """
-#     class Meta:
-#         db_table = 'protein_identifier'
+GeneIdentifier._meta.get_field('type_group').default = MeasurementGroup.GENEID
 
 
+class ProteinIdentifier(MeasurementType):
+    """ Defines additional metadata on gene identifier transcription measurement type. """
+    class Meta:
+        db_table = 'protein_identifier'
+    pass
+
+ProteinIdentifier._meta.get_field('type_group').default = MeasurementGroup.PROTEINID
+
+
+@python_2_unicode_compatible
 class MeasurementUnit(models.Model):
     """
     Defines a unit type and metadata on measurement values.
@@ -1005,6 +1055,9 @@ class MeasurementUnit(models.Model):
     def all_sorted (cls) :
         return cls.objects.filter(display=True).extra(
             select={'lower_name':'lower(unit_name)'}).order_by('lower_name')
+
+    def __str__(self):
+        return self.unit_name
 
 class Assay(EDDObject):
     """
@@ -1051,7 +1104,7 @@ class Assay(EDDObject):
             "active" : self.active,
             "lid" : self.line.pk,
             "pid" : self.protocol.pk,
-            "mod" : str(self.updated()),
+            "mod" : str(self.updated),
             "exp" : self.experimenter.id,
             "meta": self.get_metadata_json(),
             "measurements": list(self.measurement_set.values_list('id', flat=True)),
@@ -1265,10 +1318,9 @@ class MeasurementVector(models.Model):
         """For API compatibility with MeasurementDatum"""
         return str(self.y)
 
-class SBMLTemplate (EDDObject) :
-    """
-    Container for information used in SBML export.
-    """
+
+class SBMLTemplate(EDDObject):
+    """ Container for information used in SBML export. """
     class Meta:
         db_table = "sbml_template"
     object_ref = models.OneToOneField(EDDObject, parent_link=True)
@@ -1276,21 +1328,21 @@ class SBMLTemplate (EDDObject) :
         max_digits=16) # XXX check that these parameters make sense!
     biomass_calculation_info = models.TextField(default='')
     biomass_exchange_name = models.TextField()
+    # FIXME would like to limit this to attachments only on parent EDDObject, and remove null=True
+    sbml_file = models.ForeignKey(Attachment, blank=True, null=True)
 
     @property
-    def xml_file (self) :
-        files = list(self.files.all())
-        if (len(files) == 0) :
-            raise RuntimeError("No attachments found for metabolic map %s!" %
-                self.name)
-        #elif (len(files) > 1) :
-        #    raise RuntimeError("Multiple attachments found for metabolic map "+
-        #      "%s!" % self.name)
-        return files[-1]
+    def xml_file(self):
+        return self.sbml_file
 
-    def parseSBML (self) :
+    def parseSBML(self):
         import libsbml
         return libsbml.readSBML(str(self.xml_file.file.path))
+
+    def save(self, *args, **kwargs):
+        # may need to do a post-save signal; get sbml attachment and save in sbml_file
+        super(SBMLTemplate, self).save(*args, **kwargs)
+
 
 class MetaboliteExchange (models.Model) :
     """
@@ -1315,6 +1367,7 @@ class MetaboliteSpecies (models.Model) :
     sbml_template = models.ForeignKey(SBMLTemplate)
     measurement_type = models.ForeignKey(MeasurementType)
     species = models.TextField()
+
 
 # XXX MONKEY PATCHING
 def User_initials (self) :
@@ -1348,11 +1401,30 @@ def User_to_json(self):
         "disabled":not self.is_active
     }
 
+def User_to_solr_json(self):
+    p = self.userprofile
+    format_string = '%Y-%m-%dT%H:%M:%SZ'
+    return {
+        'id': self.pk,
+        'username': self.username,
+        'name': [ self.first_name, self.last_name ],
+        'email': self.email,
+        'initials': p.initials,
+        'group': ['@'.join((str(g.pk), g.name)) for g in self.groups.all()],
+        'institution': ['@'.join((str(i.pk), i.institution_name)) for i in p.institutions.all()],
+        'date_joined': self.date_joined.strftime(format_string),
+        'last_login': self.last_login.strftime(format_string),
+        'is_active': self.is_active,
+        'is_staff': self.is_staff,
+        'is_superuser': self.is_superuser,
+    }
+
 # this will get replaced by the actual model as soon as the app is initialized
 User = None
 def patch_user_model () :
     global User
     User = get_user_model()
     User.add_to_class("to_json", User_to_json)
+    User.add_to_class("to_solr_json", User_to_solr_json)
     User.add_to_class("initials", property(User_initials))
     User.add_to_class("institution", property(User_institution))

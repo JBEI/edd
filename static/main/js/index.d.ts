@@ -12,10 +12,12 @@ declare module IndexPage {
 }
 declare class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
     private dataObj;
+    private recordIds;
     private _size;
     private _offset;
     private _pageSize;
     private _query;
+    private _searchOpt;
     defineTableSpec(): DataGridTableSpec;
     defineHeaderSpec(): DataGridHeaderSpec[];
     generateStudyNameCells(gridSpec: DataGridSpecStudies, index: number): DataGridDataCell[];
@@ -29,6 +31,8 @@ declare class DataGridSpecStudies extends DataGridSpecBase implements DGPageData
     defineColumnGroupSpec(): DataGridColumnGroupSpec[];
     getTableElement(): HTMLElement;
     getRecordIDs(): number[];
+    enableSort(grid: DataGrid): DataGridSpecStudies;
+    private columnSort(grid, header, ev);
     pageSize(): number;
     pageSize(size: number): DGPageDataSource;
     totalOffset(): number;
@@ -38,14 +42,16 @@ declare class DataGridSpecStudies extends DataGridSpecBase implements DGPageData
     viewSize(): number;
     query(): string;
     query(query: string): DGPageDataSource;
+    filter(): any;
+    filter(opt: any): DGPageDataSource;
     pageDelta(delta: number): DGPageDataSource;
     requestPageOfData(callback?: (success: boolean) => void): DGPageDataSource;
     createCustomHeaderWidgets(dataGrid: DataGrid): DataGridHeaderWidget[];
     createCustomOptionsWidgets(dataGrid: DataGrid): DataGridOptionWidget[];
     onInitialized(dataGrid: DataGrid): void;
     data(): any;
-    data(replacement: any, totalSize?: number, totalOffset?: number): DataGridSpecStudies;
-    private _transformData(data);
+    data(replacement: any[], totalSize?: number, totalOffset?: number): DataGridSpecStudies;
+    private _transformData(docs);
 }
 interface TextRegion {
     begin: number;
@@ -61,10 +67,9 @@ declare class ResultMatcher {
     getMatches(field: string, prefix?: string, postfix?: string, slop?: number): string[];
 }
 declare class DGStudiesSearchWidget extends DGSearchWidget {
-    private _grid;
     private _spec;
     searchDisclosureElement: HTMLElement;
-    constructor(dataGridOwnerObject: DataGrid, dataGridSpec: DataGridSpecStudies, placeHolder: string, size: number, getsFocus: boolean);
+    constructor(grid: DataGrid, spec: DataGridSpecStudies, placeHolder: string, size: number, getsFocus: boolean);
     appendElements(container: HTMLElement, uniqueID: string): void;
     applyFilterToIDs(rowIDs: number[]): number[];
     inputKeyDownHandler(e: any): void;
@@ -73,14 +78,15 @@ declare class DGStudiesSearchWidget extends DGSearchWidget {
 declare class DGOnlyMyStudiesWidget extends DataGridOptionWidget {
     private _spec;
     constructor(grid: DataGrid, spec: DataGridSpecStudies);
-    createElements(uniqueID: any): void;
-    applyFilterToIDs(rowIDs: any): any;
-    initialFormatRowElementsForID(dataRowObjects: DataGridDataRow[], rowID: number): void;
+    getIDFragment(): string;
+    getLabelText(): string;
+    onWidgetChange(e: any): void;
 }
 declare class DGDisabledStudiesWidget extends DataGridOptionWidget {
     private _spec;
     constructor(grid: DataGrid, spec: DataGridSpecStudies);
-    createElements(uniqueID: any): void;
-    applyFilterToIDs(rowIDs: number[]): number[];
+    getIDFragment(): string;
+    getLabelText(): string;
+    onWidgetChange(e: any): void;
     initialFormatRowElementsForID(dataRowObjects: DataGridDataRow[], rowID: number): any;
 }

@@ -12,9 +12,9 @@ from django.template.defaulttags import register
 from django.utils.safestring import mark_safe
 from django.views import generic
 from django.views.decorators.csrf import ensure_csrf_cookie
-from main.forms import CreateStudyForm
+from main.forms import *
 from main.models import *
-from main.solr import StudySearch
+from main.solr import StudySearch, UserSearch
 from main.utilities import *
 import main.models
 import main.sbml_export
@@ -51,6 +51,7 @@ def formula (molecular_formula) :
         return ""
     return mark_safe("".join(["%s<sub>%s</sub>" % (e,c) for e,c in elements]))
 
+
 class StudyCreateView(generic.edit.CreateView):
     """
     View for request to create a study, and the index page.
@@ -81,11 +82,13 @@ class StudyDetailView(generic.DetailView):
         context = super(StudyDetailView, self).get_context_data(**kwargs)
         context['lines'] = self.object.line_set.order_by('replicate', 'name').all()
         context['line_meta'] = self.object.get_line_metadata_types()
+        context['new_line'] = CreateLineForm()
         context['strain'] = self.object.get_strains_used()
         context['protocol'] = self.object.get_protocols_used()
         return context
 
 # /study/<study_id>/attach
+# FIXME should have trailing slash?
 def study_attach (request, study) :
     """Attach a file to a study."""
     model = Study.objects.get(pk=study)
@@ -97,19 +100,18 @@ def study_attach (request, study) :
         update=update)
     return redirect("/study/%s" % study)
 
+# /study/<study_id>/lines/
 def study_lines(request, study):
-    """
-    Request information on lines in a study.
-    """
+    """ Request information on lines in a study. """
     model = Study.objects.get(pk=study)
+    # FIXME use JsonResponse
     lines = json.dumps(map(lambda l: l.to_json(), model.line_set.all()))
     return HttpResponse(lines, content_type='application/json; charset=utf-8')
 
-
+# /study/<study_id>/measurements
+# FIXME should have trailing slash?
 def study_measurements(request, study):
-    """
-    Request measurement data in a study.
-    """
+    """ Request measurement data in a study. """
     model = Study.objects.get(pk=study)
     measure_types = MeasurementType.objects.filter(measurement__assay__line__study=model).distinct()
     measurements = Measurement.objects.filter(assay__line__study=model, active=True)
@@ -117,14 +119,13 @@ def study_measurements(request, study):
         'types': { t.pk: t.to_json() for t in measure_types },
         'data': map(lambda m: m.to_json(), measurements),
     }
+    # FIXME use JsonResponse
     measure_json = json.dumps(payload, cls=JSONDecimalEncoder)
     return HttpResponse(measure_json, content_type='application/json; charset=utf-8')
 
-
+# /study/search/
 def study_search(request):
-    """
-    View function handles incoming requests to search solr
-    """
+    """ View function handles incoming requests to search solr """
     solr = StudySearch(ident=request.user)
     query = request.GET.get('q', 'active:true')
     opt = request.GET.copy()
@@ -134,10 +135,11 @@ def study_search(request):
     query_response = data['response']
     for doc in query_response['docs']:
         doc['url'] = reverse('main:detail', kwargs={'pk':doc['id']})
+    # FIXME use JsonResponse
     return HttpResponse(json.dumps(query_response), content_type='application/json; charset=utf-8')
 
-
 # /study/<study_id>/edddata
+# FIXME should have trailing slash?
 def study_edddata (request, study) :
     """
     Various information (both global and study-specific) that populates the
@@ -150,11 +152,11 @@ def study_edddata (request, study) :
     return JsonResponse(data_study)
 
 # /study/<study_id>/assaydata
+# FIXME should have trailing slash?
 def study_assay_table_data (request, study) :
-    """
-    Request information on assays associated with a study.
-    """
+    """ Request information on assays associated with a study. """
     model = Study.objects.get(pk=study)
+    # FIXME filter protocols?
     protocols = Protocol.objects.all()
     lines = model.line_set.all()
     return JsonResponse({
@@ -167,12 +169,14 @@ def study_assay_table_data (request, study) :
     })
 
 # /study/<study_id>/import
+# FIXME should have trailing slash?
 @ensure_csrf_cookie
 def study_import_table (request, study) :
     """
     View for importing tabular assay data (replaces AssayTableData.cgi).
     """
     model = Study.objects.get(pk=study)
+    # FIXME filter protocols?
     protocols = Protocol.objects.all()
     messages = {}
     post_contents = []
@@ -191,6 +195,7 @@ def study_import_table (request, study) :
         context_instance=RequestContext(request))
 
 # /study/<study_id>/import/rnaseq
+# FIXME should have trailing slash?
 @ensure_csrf_cookie
 def study_import_rnaseq (request, study) :
     """
@@ -218,6 +223,7 @@ def study_import_rnaseq (request, study) :
         context_instance=RequestContext(request))
 
 # /study/<study_id>/import/rnaseq/edgepro
+# FIXME should have trailing slash?
 @ensure_csrf_cookie
 def study_import_rnaseq_edgepro (request, study) :
     """
@@ -263,6 +269,7 @@ def study_import_rnaseq_edgepro (request, study) :
         context_instance=RequestContext(request))
 
 # /study/<study_id>/import/rnaseq/parse
+# FIXME should have trailing slash?
 def study_import_rnaseq_parse (request, study) :
     """
     Parse raw data from an uploaded text file, and return JSON object of
@@ -290,6 +297,7 @@ def study_import_rnaseq_parse (request, study) :
         return JsonResponse(result)
 
 # /study/<study_id>/import/rnaseq/process
+# FIXME should have trailing slash?
 def study_import_rnaseq_process (request, study) :
     """
     Process form submission containing either a file or text field, and
@@ -328,6 +336,7 @@ def study_import_rnaseq_process (request, study) :
         return JsonResponse(result)
 
 # /study/<study_id>/export
+# FIXME should have trailing slash?
 def study_export_table (request, study) :
     """
     HTML view for exporting measurement data in table format (replaces
@@ -382,6 +391,7 @@ def study_export_table (request, study) :
         context_instance=RequestContext(request))
 
 # /study/<study_id>/export/data
+# FIXME should have trailing slash?
 def study_export_table_data (request, study) :
     model = Study.objects.get(pk=study)
     form = None
@@ -399,6 +409,7 @@ def study_export_table_data (request, study) :
         return main.data_export.export_table(exports, form)
 
 # /study/<study_id>/sbml
+# FIXME should have trailing slash?
 def study_export_sbml (request, study) :
     model = Study.objects.get(pk=study)
     if (request.method == "POST") :
@@ -447,84 +458,11 @@ def study_export_sbml (request, study) :
             context_instance=RequestContext(request))
 
 # /admin
+# FIXME fold into default admin site
 def admin_home (request) :
     if (not request.user.is_staff) :
         return HttpResponseForbidden("You do not have administrative access.")
     return render(request, "main/admin.html")
-
-# /admin/protocols
-def admin_protocols (request) :
-    if (not request.user.is_staff) :
-        return HttpResponseForbidden("You do not have administrative access.")
-    messages = {}
-    if (request.method == "POST") :
-        try :
-            protocol = Protocol.from_form(
-                name = request.POST.get("protocolname", ""),
-                user = request.user,
-                variant_of_id = request.POST.get("newvariantof", ""))
-        except ValueError as e :
-            messages['error'] = str(e)
-        else :
-            return redirect("/admin/protocol/%d" % protocol.pk)
-    return render_to_response("main/admin_protocols.html",
-        dictionary={
-            "protocols" : Protocol.objects.all().order_by("name"),
-            "messages" : messages,
-        },
-        context_instance=RequestContext(request))
-
-# /admin/protocol/<protocol_id>
-def admin_protocol_edit (request, protocol_id) :
-    if (not request.user.is_staff) :
-        return HttpResponseForbidden("You do not have administrative access.")
-    messages = {}
-    protocol = Protocol.objects.get(pk=protocol_id)
-    other_protocols = Protocol.objects.all().exclude(pk=protocol_id)
-    # FIXME this is inelegant...
-    if (request.method == "GET") :
-        delete_attachment_id = request.GET.get("removeAttachment", None)
-        if (delete_attachment_id is not None) :
-            attachment = Attachment.objects.get(pk=delete_attachment_id)
-            attachment.delete()
-            messages['success'] = "Attachment deleted."
-    else :
-        action = request.POST.get("action")
-        if (action == "Attach File") :
-            update = Update.load_request_update(request)
-            att = Attachment.from_upload(
-                edd_object=protocol,
-                form=request.POST,
-                uploaded_file=request.FILES['newAttachmentContent'],
-                update=update)
-            messages['success'] = "Attachment '%s' added." % att.filename
-        else :
-            try :
-                user_id = request.POST.get("protocolownervalue")
-                name = request.POST.get("name", "").strip()
-                if (name == "") :
-                    raise ValueError("Protocol name must not be blank.")
-                units_id = request.POST.get("protocoldefunitsvalue", "0")
-                if (units_id.isdigit()) and (units_id != "0") :
-                    protocol.default_units = MeasurementUnit.objects.get(
-                        pk=units_id)
-                protocol.description = request.POST.get("description", "")
-                if (request.POST.get("disabled")) :
-                    protocol.active = False
-                variant_of_id = request.POST.get("variant_of", "all")
-                if (variant_of_id != "all") :
-                    protocol.variant_of=Protocol.objects.get(pk=variant_of_id)
-                messages['success'] = "Protocol updated."
-            except ValueError as e :
-                messages['error'] = str(e)
-    return render_to_response("main/admin_protocol_edit.html",
-        dictionary={
-            "protocol" : protocol,
-            "attachments" : protocol.files.all(),
-            "other_protocols" : other_protocols,
-            "messages" : messages,
-        },
-        context_instance=RequestContext(request))
 
 # /admin/measurements
 # TODO this view is probably at the top of my list of things we should refactor
@@ -563,162 +501,6 @@ def admin_measurements (request) :
             "keywords" : MetaboliteKeyword.all_with_metabolite_ids,
             "units" : MeasurementUnit.all_sorted,
             "mtype_groups" : MeasurementGroup.GROUP_CHOICE,
-        },
-        context_instance=RequestContext(request))
-
-# /admin/carbonsources
-def admin_carbonsources (request) :
-    if (not request.user.is_staff) :
-        return HttpResponseForbidden("You do not have administrative access.")
-    messages = {}
-    if (request.method == "POST") :
-        form = request.POST
-        action = form.get("action", None)
-        print action
-        try :
-            # FIXME
-            update = Update.load_request_update(request)
-            if (action == "Add") :
-                name = form.get("newcsourcename")
-                if (name == "") :
-                    raise ValueError("Carbon source name must not blank.")
-                cs = CarbonSource.objects.create(
-                    name=name,
-                    description=form.get("newcsourcenotes"),
-                    volume=form.get("newcsourcevolume"),
-                    labeling=form.get("newcsourcelabeling"))
-                cs.updates.add(update)
-                messages['success'] = "Carbon source '%s' added." % cs.name
-            elif (action == "Save") :
-                cs = CarbonSource.objects.get(id=form.get("csourceidtoedit"))
-                cs.update_name_from_form(form, "csourcename")
-                cs.description = form.get("csourcenotes")
-                cs.volume = float(form.get("csourcevolume"))
-                cs.updates.add(update)
-                cs.save()
-                messages['success'] = "Carbon source '%s' updated." % cs.name
-        except ValueError as e :
-            messages['error'] = str(e)
-    # FIXME prefetch doesn't work here - need to handle updates better
-    carbon_sources = CarbonSource.objects.prefetch_related(
-        "updates__mod_by__userprofile").prefetch_related(
-        "line_set__study").all().extra(
-        select={'lower_name':'lower(name)'}).order_by('lower_name')
-    return render_to_response("main/admin_carbon_sources.html",
-        dictionary={
-            "messages" : messages,
-            "carbon_sources" : carbon_sources,
-        },
-        context_instance=RequestContext(request))
-
-# /admin/strains
-def admin_strains (request) :
-    if (not request.user.is_staff) :
-        return HttpResponseForbidden("You do not have administrative access.")
-    messages = {}
-    if (request.method == "POST") :
-        form = request.POST
-        action = form.get("action", None)
-        try :
-            update = Update.load_request_update(request)
-            # FIXME this is inelegant...
-            if (action == "Add") :
-                name = form.get("newstrainname", "").strip()
-                if (name == "") :
-                    raise ValueError("Strain name must not blank.")
-                strain = Strain.objects.create(
-                    name=name,
-                    description=form.get("newstrainlongname"))
-                strain.updates.add(update)
-                messages['success'] = "Strain '%s' added." % name
-            else :
-                strain = Strain.objects.get(id=form.get("strainidtoedit"))
-                strain.update_name_from_form(form, "strainname")
-                strain.description = form.get("strainlongname", "")
-                strain.registry_url = form.get("strainurl", "")
-                strain.updates.add(update)
-                strain.save()
-                messages['success'] = "Strain '%s' updated." % strain.name
-        except ValueError as e :
-            messages['error'] = str(e)
-    # FIXME note that the prefetch_related doesn't help much for the updates,
-    # because the updates will eventually be fetched by a new query that
-    # sorts them.
-    strains = Strain.objects.prefetch_related(
-        "line_set").prefetch_related(
-        "updates__mod_by__userprofile").all().extra(
-        select={'lower_name':'lower(name)'}).order_by('lower_name')
-    return render_to_response("main/admin_strains.html",
-        dictionary={
-            "messages" : messages,
-            "strains" : strains,
-        },
-        context_instance=RequestContext(request))
-
-# /admin/sbml
-def admin_sbml (request) :
-    if (not request.user.is_staff) :
-        return HttpResponseForbidden("You do not have administrative access.")
-    return render_to_response("main/admin_sbml.html",
-        dictionary={
-            "sbml_templates" : main.sbml_export.sbml_template_info(),
-        },
-        context_instance=RequestContext(request))
-
-# /admin/sbml/upload
-def admin_sbml_upload (request) :
-    if (not request.user.is_staff) :
-        return HttpResponseForbidden("You do not have administrative access.")
-    if (request.method != "POST") :
-        return HttpResponseBadRequest("POST data not found.")
-    else :
-        form = request.POST
-        update = Update.load_request_update(request)
-        try :
-            template = main.sbml_export.create_sbml_template_from_form(
-                description=form["newAttachmentDescription"],
-                uploaded_file=request.FILES['newAttachmentContent'],
-                update=update)
-        except ValueError as e :
-            return render(request, "main/error.html", {
-                "error_source" : "SBML template upload",
-                "error_message" : str(e),
-            })
-        else :
-            return redirect("/admin/sbml/%d/edit" % template.pk)
-
-# /admin/sbml/<map_id>/edit
-def admin_sbml_edit (request, template_id) :
-    if (not request.user.is_staff) :
-        return HttpResponseForbidden("You do not have administrative access.")
-    messages = {}
-    if (request.method == "POST") :
-        error = None
-        try :
-            # TODO handle owner assignment
-            update = Update.load_request_update(request)
-            model = SBMLTemplate.objects.get(pk=template_id)
-            main.sbml_export.update_template_from_form(
-                self = model,
-                filename = request.POST.get("mname", ""),
-                biomass_ex_id = request.POST.get("exchangename", ""),
-                description = request.POST.get("description", ""),
-                update=update,
-                uploaded_file=request.FILES.get("newAttachmentContent"))
-        except ObjectDoesNotExist as e :
-            return render(request, "main/error.html", {
-                "error_source" : "SBML template edit",
-                "error_message" : str(e),
-            })
-        except ValueError as e :
-            messages['error'] = str(e)
-        else :
-            messages['success'] = "Template updated."
-    sbml_info = main.sbml_export.sbml_info(template_id=template_id)
-    return render_to_response("main/admin_sbml_edit.html",
-        dictionary={
-            "data" : sbml_info,
-            "messages" : messages,
         },
         context_instance=RequestContext(request))
 
@@ -897,26 +679,31 @@ def search (request) :
     # less well for metabolites.
     term = request.GET["term"]
     model_name = request.GET["model"]
-    # if desired, limit to specific search keys
-    valid_keys = request.GET.get("keys", "all").split(",")
-    use_all_keys = (valid_keys == ["all"])
-    models = getattr(main.models, model_name).objects.all()
     results = []
-    terms = term.split()
-    for item in models :
-        json_dict = item.to_json()
-        keys = valid_keys
-        if (use_all_keys) :
-            keys = json_dict.keys()
-        for key in keys :
-            value = json_dict[key]
-            if (not isinstance(value, basestring)) :
-                continue
-            for term in terms :
-                if (term in value) :
-                    results.append(json_dict)
-                    break
-            else :
-                continue
-            break
+    if model_name == "User":
+        solr = UserSearch()
+        results = solr.query(query=term, options={'edismax':True})
+        return JsonResponse({ "rows": results['response']['docs'] })
+    else:
+        # if desired, limit to specific search keys
+        valid_keys = request.GET.get("keys", "all").split(",")
+        use_all_keys = (valid_keys == ["all"])
+        models = getattr(main.models, model_name).objects.all()
+        terms = term.split()
+        for item in models :
+            json_dict = item.to_json()
+            keys = valid_keys
+            if (use_all_keys) :
+                keys = json_dict.keys()
+            for key in keys :
+                value = json_dict[key]
+                if (not isinstance(value, basestring)) :
+                    continue
+                for term in terms :
+                    if (term in value) :
+                        results.append(json_dict)
+                        break
+                else :
+                    continue
+                break
     return JsonResponse({ "rows": results })

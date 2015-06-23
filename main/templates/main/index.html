@@ -15,12 +15,6 @@
     <script type="text/javascript" src="{% static 'main/js/index.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/autocomplete2.js' %}"></script>
-<script type="text/javascript">
-// set up autocomplete for new study user field (and hidden ID input)
-$(window).load(function () {
-    setup_field_autocomplete_users("#id_contact", "#contact_hidden");
-});
-</script>
 {% endblock js_css %}
 
 
@@ -39,19 +33,7 @@ $(window).load(function () {
         <div class="sectionContent discloseBody">
             <form action="{% url 'main:create_study' %}" method="POST">
                 {% csrf_token %}
-                <div>
-                    <label for="id_study_name">Study Name</label>
-                    <input id="id_study_name" type="text" name="name" maxlength="255" />
-                </div>
-                <div>
-                    <label for="id_contact">Contact</label>
-                    <input id="id_contact" type="text" name="contact_extra" maxlength="255" />
-                    <input id="contact_hidden" type="hidden" name="contact"/>
-                </div>
-                <div>
-                    <label for="id_description">Description</label>
-                    <textarea id="id_description" name="description" rows="2" cols="65"></textarea>
-                </div>
+                {{ form.as_p }}
                 <button type="submit">Add Study</button>
             </form>
         </div>

@@ -5,6 +5,7 @@
 declare class DataGrid {
     constructor(dataGridSpec: DataGridSpecBase);
     _initializeTableData(): DataGrid;
+    _initializeSort(): DataGrid;
     triggerDataReset(): DataGrid;
     triggerPartialDataReset(recordIDs: number[], reflow: boolean): DataGrid;
     reconstructSingleRecord(recordID: number): DataGrid;
@@ -15,21 +16,21 @@ declare class DataGrid {
     private _applyColumnVisibilityToOneRecord(recordID);
     getDataCellObjectsForColumnIndex(i: number): DataGridDataCell[];
     getSelectedCheckboxElements(): HTMLInputElement[];
-    arrangeTableDataRows(): void;
+    applySortIndicators(): void;
+    arrangeTableDataRows(): DataGrid;
     applyAllWidgetFiltering(filteredSequence: number[]): number[];
     getSpec(): any;
     countTotalColumns(): number;
     private _buildAllTableSorters();
     buildTableSorter(lookupFunc: (rowIndex: number) => any): (x: number, y: number) => number;
     private _buildTableSortSequences();
+    private _getSequence(sort);
     private _buildTableHeaders();
     private _allocateTableRowRecords();
     private _buildRowGroupTitleRows();
-    clickedSort(header: DataGridHeaderSpec): void;
     private _prepareSortable();
-    private _sortIt(header, sameSortOrder?);
-    private _clickedOptMenuWhileOff();
-    private _clickedOptMenuWhileOn();
+    private _showOptMenu();
+    private _hideOptMenu();
     private _collapseRowGroup(groupIndex);
     private _expandRowGroup(groupIndex);
     turnOnRowGrouping(): void;
@@ -43,6 +44,8 @@ declare class DataGrid {
     scheduleTimer(uid: string, func: () => any): DataGrid;
     applyToRecordSet(func: (rows: DataGridDataRow[], id: number, spec: DataGridSpecBase, grid: DataGrid) => void, ids: number[]): DataGrid;
     currentSequence(): number[];
+    sortCols(): DataGridSort[];
+    sortCols(cols: DataGridSort[]): DataGrid;
     private _spec;
     private _table;
     private _tableBody;
@@ -56,11 +59,10 @@ declare class DataGrid {
     private _optionsMenuWidgets;
     private _optionsMenuElement;
     private _optionsMenuBlockElement;
-    private _optionsLabelOnElement;
-    private _optionsLabelOffElement;
+    private _optionsLabel;
     private _groupingEnabled;
-    private _sortHeaderPrevious;
-    private _sortHeaderCurrent;
+    private _sort;
+    private _sequence;
     private _timers;
 }
 declare class DataGridRecordSet {
@@ -147,6 +149,9 @@ declare class DataGridOptionWidget extends DataGridWidget {
     checkBoxElement: HTMLInputElement;
     labelElement: HTMLElement;
     constructor(dataGridOwnerObject: DataGrid, dataGridSpec: DataGridSpecBase);
+    getIDFragment(): string;
+    getLabelText(): string;
+    onWidgetChange(e: any): void;
     createElements(uniqueID: string): void;
     appendElements(container: HTMLElement, uniqueID: string): void;
     applyFilterToIDs(rowIDs: number[]): number[];
@@ -188,6 +193,10 @@ declare class DGSearchWidget extends DataGridHeaderWidget {
     typingDelayExpirationHandler: () => void;
     applyFilterToIDs(rowIDs: number[]): number[];
 }
+declare class DataGridSort {
+    spec: DataGridHeaderSpec;
+    asc: boolean;
+}
 interface DGPageDataSource {
     pageSize(): number;
     pageSize(size: number): DGPageDataSource;
@@ -202,6 +211,9 @@ interface DGPageDataSource {
     query(): string;
     query(query: string): DGPageDataSource;
     query(query?: string): any;
+    filter(): any;
+    filter(opt: any): DGPageDataSource;
+    filter(opt?: any): any;
     pageDelta(delta: number): DGPageDataSource;
     requestPageOfData(callback?: (success: boolean) => void): DGPageDataSource;
 }
@@ -241,18 +253,14 @@ declare class DataGridHeaderSpec {
     width: string;
     sortBy: (index: number) => any;
     sortAfter: number;
+    sortId: string;
     hidden: boolean;
     element: HTMLElement;
     sortFunc: (a: number, b: number) => number;
-    sortSequence: number[];
-    sortSequenceReversed: number[];
-    sortCurrentlyReversed: boolean;
     sorted: boolean;
     constructor(group: number, id: string, opt?: {
         [x: string]: any;
     });
-    initSortSequence(spec: DataGridSpecBase): DataGridHeaderSpec;
-    prerequisitesSorted(spec: DataGridSpecBase): boolean;
 }
 declare class DataGridColumnSpec {
     columnGroup: number;
@@ -303,6 +311,8 @@ declare class DataGridSpecBase {
     defineColumnSpec(): DataGridColumnSpec[];
     defineColumnGroupSpec(): DataGridColumnGroupSpec[];
     defineRowGroupSpec(): DataGridRowGroupSpec[];
+    enableSort(grid: DataGrid): DataGridSpecBase;
+    private clickedSort(grid, header, ev);
     getRowGroupMembership(recordID: number): number;
     getTableElement(): HTMLElement;
     getRecordIDs(): number[];
