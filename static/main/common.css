@@ -258,7 +258,6 @@ div.helpBadgeDiv:hover div.helpContent {
 	display:block;
 }
 
-
 /* Page sections */
 div.pageSection {
 	background: #fcfcfc;
@@ -333,6 +332,15 @@ div.pageSection.discloseHide.minor {
 }
 div.pageSection.minor div.sectionHead {
     background: transparent;
+}
+
+/* mimic the appearance of sectionHeader, independently of a pageSection */
+div.bare-header {
+    margin: 10px 8px 3px 8px;
+    padding: 4px 4px 4px 6px;
+    font-size:16px;
+    font-weight:bold;
+    padding:4px 4px 4px 6px;
 }
 
 /* Data tables and controls */
@@ -487,13 +495,15 @@ input[type="button"].tableControl {
 	font-size:10px;
 }
 input[type="text"].searchBox {
-	float:right;
-	margin:0px 1px 0px 0px;
-	padding:0px 4px 0px 4px;
-	font-size:11px;
-	border-radius: 7px;
-	-webkit-border-radius: 7px;
-	-moz-border-radius: 7px;
+    margin:0px 1px 0px 0px;
+    padding:0px 4px 0px 4px;
+    font-size:11px;
+    border-radius: 7px;
+    -webkit-border-radius: 7px;
+    -moz-border-radius: 7px;
+}
+input[type="text"].searchBox.tableControl {
+    float:right;
 }
 input[type="text"].searchBox.wait {
 	background-repeat: no-repeat;
@@ -555,7 +565,7 @@ div.pulldownMenuLabelOff:hover {
 }
 div.pulldownMenuLabelOn {
 	display:block;
-	position:absolute;
+	position:relative;
 	margin:0px 0px 0px 0px;
 	border-style:solid;
 	border-color:black;

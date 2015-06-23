@@ -198,9 +198,22 @@ var DataGrid = (function () {
             });
         }
         var mainSpan = $(this._optionsMenuElement = document.createElement("span")).attr('id', mainID + 'ColumnChooser').addClass('pulldownMenu');
-        var menuLabelOn = $(this._optionsLabelOnElement = document.createElement("div")).addClass('pulldownMenuLabelOn off').text('View\u25BE').click(function () { return _this._clickedOptMenuWhileOn(); }).appendTo(mainSpan);
-        var menuLabelOff = $(this._optionsLabelOffElement = document.createElement("div")).addClass('pulldownMenuLabelOff').text('View\u25BE').click(function () { return _this._clickedOptMenuWhileOff(); }).appendTo(mainSpan);
+        var menuLabel = $(this._optionsLabel = document.createElement("div")).addClass('pulldownMenuLabelOff').text('View\u25BE').click(function () {
+            if (menuLabel.hasClass('pulldownMenuLabelOff'))
+                _this._showOptMenu();
+        }).appendTo(mainSpan);
         var menuBlock = $(this._optionsMenuBlockElement = document.createElement("div")).addClass('pulldownMenuMenuBlock off').appendTo(mainSpan);
+        // event handlers to hide menu if clicking outside menu block or pressing ESC
+        $(document).click(function (ev) {
+            var t = $(ev.target);
+            if (t.closest(_this._optionsMenuElement).size() === 0) {
+                _this._hideOptMenu();
+            }
+        }).keydown(function (ev) {
+            if (ev.keyCode === 27) {
+                _this._hideOptMenu();
+            }
+        });
         if (hasCustomWidgets) {
             var menuCWList = $(document.createElement("ul")).appendTo(menuBlock);
             if (hasColumnsInVisibilityList) {
@@ -525,7 +538,7 @@ var DataGrid = (function () {
                     _this._sequence[header.id] = _this._sequence[after.id].slice(0);
                 }
                 _this._sequence[header.id].sort(header.sortFunc);
-                _this._sequence['-' + header.id] = _this._sort[header.id].slice(0).reverse();
+                _this._sequence['-' + header.id] = _this._sequence[header.id].slice(0).reverse();
                 header.sorted = true;
                 unsortedHeaders.splice(index, 1);
                 sortedAtLeastOneNewHeader = true;
@@ -621,11 +634,13 @@ var DataGrid = (function () {
         // Add a click event for every header cell that identifies as sortable
         this._spec.enableSort(this);
     };
-    DataGrid.prototype._clickedOptMenuWhileOff = function () {
-        $(this._optionsMenuBlockElement).add(this._optionsLabelOnElement).removeClass('off');
+    DataGrid.prototype._showOptMenu = function () {
+        $(this._optionsLabel).removeClass('pulldownMenuLabelOff').addClass('pulldownMenuLabelOn');
+        $(this._optionsMenuBlockElement).removeClass('off');
     };
-    DataGrid.prototype._clickedOptMenuWhileOn = function () {
-        $(this._optionsMenuBlockElement).add(this._optionsLabelOnElement).addClass('off');
+    DataGrid.prototype._hideOptMenu = function () {
+        $(this._optionsLabel).removeClass('pulldownMenuLabelOn').addClass('pulldownMenuLabelOff');
+        $(this._optionsMenuBlockElement).addClass('off');
     };
     DataGrid.prototype._collapseRowGroup = function (groupIndex) {
         var _this = this;

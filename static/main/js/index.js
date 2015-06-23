@@ -474,9 +474,9 @@ var ResultMatcher = (function () {
 // It's a search field that offers options for additional data types, querying the server for results.
 var DGStudiesSearchWidget = (function (_super) {
     __extends(DGStudiesSearchWidget, _super);
-    function DGStudiesSearchWidget(dataGridOwnerObject, dataGridSpec, placeHolder, size, getsFocus) {
+    function DGStudiesSearchWidget(grid, spec, placeHolder, size, getsFocus) {
         var _this = this;
-        _super.call(this, dataGridOwnerObject, dataGridSpec, placeHolder, size, getsFocus);
+        _super.call(this, grid, spec, placeHolder, size, getsFocus);
         // OVERRIDE
         // We don't at all want to do what the base widget does here, not all data is local
         this.typingDelayExpirationHandler = function () {
@@ -494,12 +494,11 @@ var DGStudiesSearchWidget = (function (_super) {
             _this._spec.query(v).requestPageOfData(function (success) {
                 input.removeClass('wait').toggleClass('error', success);
                 if (success) {
-                    _this._grid.triggerDataReset();
+                    _this.dataGridOwnerObject.triggerDataReset();
                 }
             });
         };
-        this._grid = dataGridOwnerObject;
-        this._spec = dataGridSpec;
+        this._spec = spec;
     }
     // This is called to append the widget elements beneath the given element.
     // If the elements have not been created yet, they are created, and the uniqueID is passed along.
@@ -544,6 +543,7 @@ var DGOnlyMyStudiesWidget = (function (_super) {
         return 'My Studies Only';
     };
     DGOnlyMyStudiesWidget.prototype.onWidgetChange = function (e) {
+        var _this = this;
         // update spec with filter options
         var filter = this._spec.filter();
         if (this.checkBoxElement.checked) {
@@ -552,9 +552,11 @@ var DGOnlyMyStudiesWidget = (function (_super) {
         else {
             delete filter.showMine;
         }
-        this._spec.filter(filter);
-        // continue with parent operations
-        _super.prototype.onWidgetChange.call(this, e);
+        this._spec.filter(filter).requestPageOfData(function (success) {
+            if (success) {
+                _this.dataGridOwnerObject.triggerDataReset();
+            }
+        });
     };
     return DGOnlyMyStudiesWidget;
 })(DataGridOptionWidget);
@@ -573,6 +575,7 @@ var DGDisabledStudiesWidget = (function (_super) {
         return 'Show Disabled';
     };
     DGDisabledStudiesWidget.prototype.onWidgetChange = function (e) {
+        var _this = this;
         // update spec with filter options
         var filter = this._spec.filter();
         if (this.checkBoxElement.checked) {
@@ -581,9 +584,11 @@ var DGDisabledStudiesWidget = (function (_super) {
         else {
             delete filter.showDisabled;
         }
-        this._spec.filter(filter);
-        // continue with parent operations
-        _super.prototype.onWidgetChange.call(this, e);
+        this._spec.filter(filter).requestPageOfData(function (success) {
+            if (success) {
+                _this.dataGridOwnerObject.triggerDataReset();
+            }
+        });
     };
     DGDisabledStudiesWidget.prototype.initialFormatRowElementsForID = function (dataRowObjects, rowID) {
         var data = this._spec.data();

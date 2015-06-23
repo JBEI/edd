@@ -29,8 +29,8 @@ declare class DataGrid {
     private _allocateTableRowRecords();
     private _buildRowGroupTitleRows();
     private _prepareSortable();
-    private _clickedOptMenuWhileOff();
-    private _clickedOptMenuWhileOn();
+    private _showOptMenu();
+    private _hideOptMenu();
     private _collapseRowGroup(groupIndex);
     private _expandRowGroup(groupIndex);
     turnOnRowGrouping(): void;
@@ -59,8 +59,7 @@ declare class DataGrid {
     private _optionsMenuWidgets;
     private _optionsMenuElement;
     private _optionsMenuBlockElement;
-    private _optionsLabelOnElement;
-    private _optionsLabelOffElement;
+    private _optionsLabel;
     private _groupingEnabled;
     private _sort;
     private _sequence;

@@ -496,15 +496,13 @@ class ResultMatcher {
 // It's a search field that offers options for additional data types, querying the server for results.
 class DGStudiesSearchWidget extends DGSearchWidget {
 
-    private _grid:DataGrid;
     private _spec:DataGridSpecStudies;
 
 	searchDisclosureElement:HTMLElement;
 
-	constructor(dataGridOwnerObject:DataGrid, dataGridSpec:DataGridSpecStudies, placeHolder:string, size:number, getsFocus:boolean) {
-		super(dataGridOwnerObject, dataGridSpec, placeHolder, size, getsFocus);
-        this._grid = dataGridOwnerObject;
-        this._spec = dataGridSpec;
+	constructor(grid:DataGrid, spec:DataGridSpecStudies, placeHolder:string, size:number, getsFocus:boolean) {
+		super(grid, spec, placeHolder, size, getsFocus);
+        this._spec = spec;
 	}
 
 	// This is called to append the widget elements beneath the given element.
@@ -552,7 +550,7 @@ class DGStudiesSearchWidget extends DGSearchWidget {
         this._spec.query(v).requestPageOfData((success:boolean):void => {
             input.removeClass('wait').toggleClass('error', success);
             if (success) {
-                this._grid.triggerDataReset();
+                this.dataGridOwnerObject.triggerDataReset();
             }
         });
     }
@@ -585,9 +583,11 @@ class DGOnlyMyStudiesWidget extends DataGridOptionWidget {
         } else {
             delete filter.showMine;
         }
-        this._spec.filter(filter);
-        // continue with parent operations
-        super.onWidgetChange(e);
+        this._spec.filter(filter).requestPageOfData((success:boolean):void => {
+            if (success) {
+                this.dataGridOwnerObject.triggerDataReset();
+            }
+        });
     }
 }
 
@@ -618,9 +618,11 @@ class DGDisabledStudiesWidget extends DataGridOptionWidget {
         } else {
             delete filter.showDisabled;
         }
-        this._spec.filter(filter);
-        // continue with parent operations
-        super.onWidgetChange(e);
+        this._spec.filter(filter).requestPageOfData((success:boolean):void => {
+            if (success) {
+                this.dataGridOwnerObject.triggerDataReset();
+            }
+        });
     }
 
 	initialFormatRowElementsForID(dataRowObjects:DataGridDataRow[], rowID:number):any {

@@ -67,10 +67,9 @@ declare class ResultMatcher {
     getMatches(field: string, prefix?: string, postfix?: string, slop?: number): string[];
 }
 declare class DGStudiesSearchWidget extends DGSearchWidget {
-    private _grid;
     private _spec;
     searchDisclosureElement: HTMLElement;
-    constructor(dataGridOwnerObject: DataGrid, dataGridSpec: DataGridSpecStudies, placeHolder: string, size: number, getsFocus: boolean);
+    constructor(grid: DataGrid, spec: DataGridSpecStudies, placeHolder: string, size: number, getsFocus: boolean);
     appendElements(container: HTMLElement, uniqueID: string): void;
     applyFilterToIDs(rowIDs: number[]): number[];
     inputKeyDownHandler(e: any): void;

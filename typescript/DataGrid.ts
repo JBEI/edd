@@ -248,15 +248,28 @@ class DataGrid {
 		var mainSpan = $(this._optionsMenuElement = document.createElement("span"))
             .attr('id', mainID + 'ColumnChooser').addClass('pulldownMenu');
 
-		var menuLabelOn = $(this._optionsLabelOnElement = document.createElement("div"))
-            .addClass('pulldownMenuLabelOn off')    // Hidden with 'off' until we need it
-            .text('View\u25BE').click(() => this._clickedOptMenuWhileOn()).appendTo(mainSpan);
-		var menuLabelOff = $(this._optionsLabelOffElement = document.createElement("div"))
-            .addClass('pulldownMenuLabelOff').text('View\u25BE')
-            .click(() => this._clickedOptMenuWhileOff()).appendTo(mainSpan);
+		var menuLabel = $(this._optionsLabel = document.createElement("div"))
+            .addClass('pulldownMenuLabelOff')
+            .text('View\u25BE')
+            .click(() => { if (menuLabel.hasClass('pulldownMenuLabelOff')) this._showOptMenu(); })
+            .appendTo(mainSpan);
 
 		var menuBlock = $(this._optionsMenuBlockElement = document.createElement("div"))
-            .addClass('pulldownMenuMenuBlock off').appendTo(mainSpan);
+            .addClass('pulldownMenuMenuBlock off')
+            .appendTo(mainSpan);
+
+        // event handlers to hide menu if clicking outside menu block or pressing ESC
+        $(document).click((ev) => {
+            var t = $(ev.target);
+            if (t.closest(this._optionsMenuElement).size() === 0) {
+                this._hideOptMenu();
+            }
+        }).keydown((ev) => {
+            if (ev.keyCode === 27) {
+                this._hideOptMenu();
+            }
+        });
+
 
 		if (hasCustomWidgets) {
 			var menuCWList = $(document.createElement("ul")).appendTo(menuBlock);
@@ -627,7 +640,7 @@ class DataGrid {
                     this._sequence[header.id] = this._sequence[after.id].slice(0);
                 }
                 this._sequence[header.id].sort(header.sortFunc);
-                this._sequence['-'+header.id] = this._sort[header.id].slice(0).reverse();
+                this._sequence['-'+header.id] = this._sequence[header.id].slice(0).reverse();
                 header.sorted = true;
                 unsortedHeaders.splice(index, 1);
                 sortedAtLeastOneNewHeader = true;
@@ -742,14 +755,15 @@ class DataGrid {
 	}
 
 
-	private _clickedOptMenuWhileOff():void {
-        $(this._optionsMenuBlockElement).add(this._optionsLabelOnElement).removeClass('off');
+	private _showOptMenu():void {
+        $(this._optionsLabel).removeClass('pulldownMenuLabelOff').addClass('pulldownMenuLabelOn');
+        $(this._optionsMenuBlockElement).removeClass('off');
 	}
 
-
-	private _clickedOptMenuWhileOn():void {
-        $(this._optionsMenuBlockElement).add(this._optionsLabelOnElement).addClass('off');
-	}
+    private _hideOptMenu():void {
+        $(this._optionsLabel).removeClass('pulldownMenuLabelOn').addClass('pulldownMenuLabelOff');
+        $(this._optionsMenuBlockElement).addClass('off');
+    }
 
 
 	private _collapseRowGroup(groupIndex):void {
@@ -915,8 +929,7 @@ class DataGrid {
 	private _optionsMenuElement:HTMLElement;
 
 	private _optionsMenuBlockElement:HTMLElement;
-	private _optionsLabelOnElement:HTMLElement;
-	private _optionsLabelOffElement:HTMLElement;
+	private _optionsLabel:HTMLElement;
 
 	private _groupingEnabled:boolean = false;	// grouping mode off by default
     private _sort:DataGridSort[] = [];
