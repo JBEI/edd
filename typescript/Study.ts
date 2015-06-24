@@ -1583,14 +1583,14 @@ module StudyD {
 
             if (firstRow) {
                 var buttonImg = document.createElement("img");
-                buttonImg.setAttribute('src', "images/plus.png");
+                buttonImg.setAttribute('src', "/static/main/images/plus.png");
                 buttonImg.style.marginTop = "1px";
                 var oc = "StudyD.addMetaboliteRow();";
                 buttonImg.setAttribute('onclick', oc);
                 buttonSpan.appendChild(buttonImg);
             } else {
                 var buttonImg = document.createElement("img");
-                buttonImg.setAttribute('src', "images/minus.png");
+                buttonImg.setAttribute('src', "/static/main/images/minus.png");
                 buttonImg.style.marginTop = "1px";
                 var oc = "StudyD.removeMeasurementTypeRow(" + order + ");";
                 buttonImg.setAttribute('onclick', oc);
