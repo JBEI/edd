@@ -1102,15 +1102,15 @@ class Assay(EDDObject):
             "name": self.name,
             "description": self.description,
             "active" : self.active,
-            "lid" : self.line.pk,
-            "pid" : self.protocol.pk,
+            "lid" : self.line_id,
+            "pid" : self.protocol_id,
             "mod" : str(self.updated),
-            "exp" : self.experimenter.id,
+            "exp" : self.experimenter_id,
             "meta": self.get_metadata_json(),
-            "measurements": list(self.measurement_set.values_list('id', flat=True)),
-            "metabolites": list(self.get_metabolite_measurements().values_list('id', flat=True)),
-            "transcriptions": list(self.get_gene_measurements().values_list('id', flat=True)),
-            "proteins": list(self.get_protein_measurements().values_list('id', flat=True)),
+            # "measurements": list(self.measurement_set.values_list('id', flat=True)),
+            # "metabolites": list(self.get_metabolite_measurements().values_list('id', flat=True)),
+            # "transcriptions": list(self.get_gene_measurements().values_list('id', flat=True)),
+            # "proteins": list(self.get_protein_measurements().values_list('id', flat=True)),
         }
 
 

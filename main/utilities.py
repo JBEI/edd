@@ -23,7 +23,7 @@ media_types = {
     'EZ' : 'EZ (EZ Rich)',
 }
 
-def get_edddata_study (study) :
+def get_edddata_study(study):
     """
     Dump of selected database contents used to populate EDDData object on the
     client.  Although this includes some data types like Strain and
@@ -35,11 +35,11 @@ def get_edddata_study (study) :
     protocols = Protocol.objects.filter(assay__line__study=study).distinct()
     enabled_protocols = protocols.filter(active=True)
     carbon_sources = CarbonSource.objects.filter(line__study=study).distinct()
-    assays = study.get_assays()
+    assays = Assay.objects.filter(line__study=study).select_related(
+      'line__name', 'updated__mod_by') #.prefetch_related('measurement_set')
     strains = study.get_strains_used()
-    lines = study.line_set.all().prefetch_related(
-        "carbon_source").prefetch_related("strains").prefetch_related(
-        "updates")
+    lines = study.line_set.all().select_related('created', 'updated').prefetch_related(
+        "carbon_source", "strains", "updates")
     return {
       # metabolites
       "MetaboliteTypeIDs" : [ mt.id for mt in metab_types ],
@@ -49,8 +49,10 @@ def get_edddata_study (study) :
       "EnabledProtocolIDs" : [ p.id for p in enabled_protocols ],
       "Protocols" : { p.id : p.to_json() for p in protocols },
       # Assays
-      "AssayIDs" : [ a.id for a in assays ],
-      "EnabledAssayIDs" : [ a.id for a in assays if a.active ],
+      "AssayIDs" : list(Assay.objects.filter(
+        line__study=study).values_list('id', flat=True)),
+      "EnabledAssayIDs" : list(Assay.objects.filter(
+        line__study=study, active=True).values_list('id', flat=True)),
       "Assays" : { a.id : a.to_json() for a in assays },
       # Strains
       "StrainIDs" : [ s.id for s in strains ],
@@ -73,7 +75,7 @@ def get_edddata_misc():
       { "name" : "Extracellular", "sn" : "EC" },
     ]) }
     users = get_edddata_users()
-    mdtypes = MetadataType.objects.all()
+    mdtypes = MetadataType.objects.all().select_related('group')
     unit_types = MeasurementUnit.objects.all()
     return {
       # Measurement units
