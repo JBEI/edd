@@ -123,12 +123,11 @@ def get_edddata_strains () :
 def get_edddata_users (active_only=False) :
     User = get_user_model()
     users = []
-    if active_only :
-        users = User.objects.filter(is_active=True).select_related(
-            "userprofile")
-    else :
-        users = User.objects.all().select_related(
-            "userprofile")
+    if active_only:
+        users = User.objects.filter(is_active=True)
+    else:
+        users = User.objects.all()
+    users = users.select_related('userprofile').prefetch_related('userprofile__institutions')
     return {
         "UserIDs" : [ u.id for u in users ],
         "EnabledUserIDs" : [ u.id for u in users if u.is_active ],
