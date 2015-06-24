@@ -2,9 +2,7 @@
 from django.contrib.auth import get_user_model
 from main.models import *
 from collections import defaultdict
-from datetime import datetime, timedelta
 from decimal import Decimal
-import calendar
 import json
 import os.path
 
@@ -36,10 +34,10 @@ def get_edddata_study(study):
     enabled_protocols = protocols.filter(active=True)
     carbon_sources = CarbonSource.objects.filter(line__study=study).distinct()
     assays = Assay.objects.filter(line__study=study).select_related(
-      'line__name', 'updated__mod_by') #.prefetch_related('measurement_set')
+      'line__name', 'updated__mod_by')
     strains = study.get_strains_used()
     lines = study.line_set.all().select_related('created', 'updated').prefetch_related(
-        "carbon_source", "strains", "updates")
+        "carbon_source", "strains")
     return {
       # metabolites
       "MetaboliteTypeIDs" : [ mt.id for mt in metab_types ],

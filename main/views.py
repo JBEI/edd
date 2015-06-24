@@ -112,9 +112,9 @@ def study_lines(request, study):
 # FIXME should have trailing slash?
 def study_measurements(request, study):
     """ Request measurement data in a study. """
-    model = Study.objects.get(pk=study)
-    measure_types = MeasurementType.objects.filter(measurement__assay__line__study=model).distinct()
-    measurements = Measurement.objects.filter(assay__line__study=model, active=True)
+    measure_types = MeasurementType.objects.filter(measurement__assay__line__study__pk=study).distinct()
+    measurements = Measurement.objects.filter(assay__line__study__pk=study,
+        active=True, assay__active=True, assay__line__active=True)
     payload = {
         'types': { t.pk: t.to_json() for t in measure_types },
         'data': map(lambda m: m.to_json(), measurements),

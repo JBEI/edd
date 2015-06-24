@@ -14,7 +14,6 @@ import json
 import ldap
 from django_auth_ldap.config import LDAPSearch, GroupOfUniqueNamesType
 from django.conf.global_settings import TEMPLATE_CONTEXT_PROCESSORS as TCP
-from test_app.settings import ACCOUNT_ACTIVATION_DAYS
 from django.conf.global_settings import LOGIN_REDIRECT_URL
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 
@@ -57,10 +56,9 @@ INSTALLED_APPS = (
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.postgres',
     'django_extensions',
     'debug_toolbar',
-    #'registration',
-    'django_hstore',
     'main',
     'edd_utils',
     'edd.profile',
@@ -116,10 +114,6 @@ AUTH_LDAP_USER_ATTR_MAP = {
 AUTH_LDAP_PROFILE_ATTR_MAP = {
     'employee_number': 'lblempnum',
 }
-
-
-# See http://django-registration-redux.readthedocs.org/en/latest/quickstart.html
-ACCOUNT_ACTIVATION_DAYS=1
 
 
 # Solr/Haystack Configuration

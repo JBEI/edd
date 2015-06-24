@@ -6,12 +6,11 @@ from collections import defaultdict
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.contrib.postgres.fields import HStoreField
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.db.models import Q
 from django.utils.encoding import python_2_unicode_compatible
-from django_extensions.db.fields import PostgreSQLUUIDField
-from django_hstore import hstore
 from itertools import chain
 from threadlocals.threadlocals import get_current_request
 
@@ -291,10 +290,7 @@ class EDDObject(models.Model):
     created = models.ForeignKey(Update, related_name='+', editable=False)
     updated = models.ForeignKey(Update, related_name='+', editable=False)
     # store arbitrary metadata as a dict with hstore extension
-    meta_store = hstore.DictionaryField(blank=True, default=dict)
-
-    # Use custom hstore manager to enable queries on hstore data
-    objects = hstore.HStoreManager()
+    meta_store = HStoreField()
 
     @property
     def mod_epoch (self) :
@@ -656,7 +652,7 @@ class Strain(EDDObject):
     class Meta:
         db_table = 'strain'
     object_ref = models.OneToOneField(EDDObject, parent_link=True)
-    registry_id = PostgreSQLUUIDField(blank=True, null=True)
+    registry_id = models.UUIDField(blank=True, null=True)
     registry_url = models.URLField(max_length=255, blank=True, null=True)
     active = models.BooleanField(default=True)
 
@@ -751,7 +747,7 @@ class Line(EDDObject):
             'replicate': self.replicate.pk if self.replicate else None,
             'contact': { 'user_id': self.contact_id, 'text': self.contact_extra },
             'experimenter': self.experimenter_id,
-            'meta': self.get_metadata_json(), # FIXME is this correct?
+            'meta': self.meta_store,
             'strain': [s.pk for s in self.strains.all()],
             'carbon': [c.pk for c in self.carbon_source.all()],
             'modified': updated.to_json() if updated else None,
@@ -1092,21 +1088,14 @@ class Assay(EDDObject):
     def to_json (self) :
         return {
             "id": self.pk,
-            # TODO remove this section of deprecated properties
-            "fn" : self.name,
-            "ln" : self.line.name,
-            "an" : self.name,
-            "des" : self.description,
-            "dis" : not self.active,
-            # TODO end remove
             "name": self.name,
             "description": self.description,
             "active" : self.active,
             "lid" : self.line_id,
             "pid" : self.protocol_id,
-            "mod" : str(self.updated),
+            "mod" : self.updated.to_json() if self.updated else None,
             "exp" : self.experimenter_id,
-            "meta": self.get_metadata_json(),
+            "meta": self.meta_store,
             # "measurements": list(self.measurement_set.values_list('id', flat=True)),
             # "metabolites": list(self.get_metabolite_measurements().values_list('id', flat=True)),
             # "transcriptions": list(self.get_gene_measurements().values_list('id', flat=True)),
@@ -1151,13 +1140,13 @@ class Measurement(models.Model):
         points = chain(self.measurementdatum_set.all(), self.measurementvector_set.all())
         return {
             "id": self.pk,
-            "assay": self.assay.pk,
-            "type": self.measurement_type.pk,
+            "assay": self.assay_id,
+            "type": self.measurement_type_id,
             "compartment": self.compartment,
             "format": self.measurement_format,
             "values": map(lambda p: p.to_json(), points),
-            "x_units": self.x_units.pk,
-            "y_units": self.y_units.pk,
+            "x_units": self.x_units_id,
+            "y_units": self.y_units_id,
         }
 
     def __str__(self):

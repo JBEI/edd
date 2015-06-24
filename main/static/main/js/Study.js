@@ -452,9 +452,9 @@ var StudyD;
             this.filterHash = {};
             ids.forEach(function (assayId) {
                 var assay = _this._assayIdToAssay(assayId) || {};
-                if (assay.an) {
-                    uniqueNamesId[assay.an] = uniqueNamesId[assay.an] || ++unique;
-                    _this.filterHash[assayId] = uniqueNamesId[assay.an];
+                if (assay.name) {
+                    uniqueNamesId[assay.name] = uniqueNamesId[assay.name] || ++unique;
+                    _this.filterHash[assayId] = uniqueNamesId[assay.name];
                 }
             });
             return uniqueNamesId;
@@ -736,7 +736,7 @@ var StudyD;
         // First do some basic sanity filtering on the list
         $.each(EDDData.Assays, function (assayId, assay) {
             var line = EDDData.Lines[assay.lid];
-            if (assay.dis || !line || !line.active)
+            if (!assay.active || !line || !line.active)
                 return;
             aIDsToUse.push(assayId);
             if (assay.metabolites && assay.metabolites.length)
@@ -1041,7 +1041,7 @@ var StudyD;
         // will just use the set and return it unaltered.
         $.each(EDDData.Assays, function (assayId, assay) {
             var line = EDDData.Lines[assay.lid];
-            if (assay.dis || !line || !line.active)
+            if (!assay.active || !line || !line.active)
                 return;
             previousIDSet.push(assayId);
         });
@@ -1100,7 +1100,7 @@ var StudyD;
             newSet = {
                 'label': 'dt' + measurementId,
                 'measurementname': Utl.EDD.resolveMeasurementRecordToName(measurement),
-                'name': [line.name, protocol.name, assay.an].join('-'),
+                'name': [line.name, protocol.name, assay.name].join('-'),
                 'units': Utl.EDD.resolveMeasurementRecordToUnits(measurement),
                 // FIXME does not handle MeasurementVector data
                 'data': $.map(measurement.values, function (d) { return [[d.x, d.y]]; })
@@ -1378,7 +1378,7 @@ var StudyD;
             aTD.appendChild(buttonSpan);
             if (firstRow) {
                 var buttonImg = document.createElement("img");
-                buttonImg.setAttribute('src', "images/plus.png");
+                buttonImg.setAttribute('src', "/static/main/images/plus.png");
                 buttonImg.style.marginTop = "1px";
                 var oc = "StudyD.addMetaboliteRow();";
                 buttonImg.setAttribute('onclick', oc);
@@ -1386,7 +1386,7 @@ var StudyD;
             }
             else {
                 var buttonImg = document.createElement("img");
-                buttonImg.setAttribute('src', "images/minus.png");
+                buttonImg.setAttribute('src', "/static/main/images/minus.png");
                 buttonImg.style.marginTop = "1px";
                 var oc = "StudyD.removeMeasurementTypeRow(" + order + ");";
                 buttonImg.setAttribute('onclick', oc);
@@ -2207,7 +2207,7 @@ var DataGridAssays = (function (_super) {
             }
             protocol = EDDData.Protocols[assay.pid] || {};
             // FIXME just use assay name directly instead of rebuilding each time
-            name = [line.name, protocol.name, assay.an].join('-');
+            name = [line.name, protocol.name, assay.name].join('-');
             measures = assay.metabolites || [];
             measures.concat(assay.transcriptions || [], assay.protiens || []);
             $.each(measures, function (i, measureId) {
@@ -2357,7 +2357,7 @@ var DataGridSpecAssays = (function (_super) {
         var assay, line;
         if ((assay = EDDData.Assays[index])) {
             if ((line = EDDData.Lines[assay.lid])) {
-                return [line.n, this.protocolName, assay.an].join('-').toUpperCase();
+                return [line.n, this.protocolName, assay.name].join('-').toUpperCase();
             }
         }
         return '';
@@ -2481,7 +2481,7 @@ var DataGridSpecAssays = (function (_super) {
         var record = EDDData.Assays[index], cells = [], factory = function () {
             return new DataGridLoadingCell(gridSpec, index);
         };
-        if (record.metabolites.length > 0) {
+        if ((record.metabolites || []).length > 0) {
             if (EDDData.AssayMeasurements === undefined) {
                 cells.push(new DataGridLoadingCell(gridSpec, index, { 'rowspan': record.metabolites.length }));
             }
@@ -2491,7 +2491,7 @@ var DataGridSpecAssays = (function (_super) {
             }
         }
         // generate only one cell if there is any transcriptomics data
-        if (record.transcriptions.length > 0) {
+        if ((record.transcriptions || []).length > 0) {
             if (EDDData.AssayMeasurements === undefined) {
                 cells.push(new DataGridLoadingCell(gridSpec, index));
             }
@@ -2500,7 +2500,7 @@ var DataGridSpecAssays = (function (_super) {
             }
         }
         // generate only one cell if there is any proteomics data
-        if (record.proteins.length > 0) {
+        if ((record.proteins || []).length > 0) {
             if (EDDData.AssayMeasurements === undefined) {
                 cells.push(new DataGridLoadingCell(gridSpec, index));
             }
