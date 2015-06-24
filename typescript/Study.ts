@@ -994,16 +994,17 @@ module StudyD {
 
 
     function requestAllMetaboliteData(context) {
-        $.ajax({
-            url: 'measurements',
-            type: 'GET',
-            dataType: "json",
-            error: (xhr, status) => {
-                console.log('Failed to fetch measurement data!');
-                console.log(status);
-            },
-            success: (data) => { processMeasurementData(context, data); }
-        });
+        // FIXME this request takes an EXTREMELY LONG TIME
+        // $.ajax({
+        //     url: 'measurements',
+        //     type: 'GET',
+        //     dataType: "json",
+        //     error: (xhr, status) => {
+        //         console.log('Failed to fetch measurement data!');
+        //         console.log(status);
+        //     },
+        //     success: (data) => { processMeasurementData(context, data); }
+        // });
     }
 
 
@@ -1356,14 +1357,14 @@ module StudyD {
 
             if (firstRow) {
                 var buttonImg = document.createElement("img");
-                buttonImg.setAttribute('src', "images/plus.png");
+                buttonImg.setAttribute('src', "/static/main/images/plus.png");
                 buttonImg.style.marginTop = "1px";
                 var oc = "StudyD.addCarbonSourceRow();";
                 buttonImg.setAttribute('onclick', oc);
                 buttonSpan.appendChild(buttonImg);
             } else {
                 var buttonImg = document.createElement("img");
-                buttonImg.setAttribute('src', "images/minus.png");
+                buttonImg.setAttribute('src', "/static/main/images/minus.png");
                 buttonImg.style.marginTop = "1px";
                 var oc = "StudyD.removeCarbonSourceRow(" + order + ");";
                 buttonImg.setAttribute('onclick', oc);
@@ -2889,11 +2890,13 @@ class DataGridSpecAssays extends DataGridSpecBase {
 
     private generateMeasurementCells(gridSpec:DataGridSpecAssays, index:number,
             opt:any):DataGridDataCell[] {
-        var record = EDDData.Assays[index], cells = [];
+        var record = EDDData.Assays[index], cells = [],
+            factory = () => { return new DataGridLoadingCell(gridSpec, index); };
 
         if (record.metabolites.length > 0) {
             if (EDDData.AssayMeasurements === undefined) {
-                cells.push(new DataGridLoadingCell(gridSpec, index));
+                cells.push(new DataGridLoadingCell(gridSpec, index,
+                        { 'rowspan': record.metabolites.length }));
             } else {
                 // convert IDs to measurements, sort by name, then convert to cell objects
                 cells = record.metabolites.map(opt.metaboliteToValue)
@@ -2916,6 +2919,10 @@ class DataGridSpecAssays extends DataGridSpecBase {
             } else {
                 cells.push(opt.proteinToCell(record.proteins));
             }
+        }
+        // generate a loading cell if none created by measurements
+        if (!cells.length) {
+            cells.push(factory());
         }
         return cells;
     }

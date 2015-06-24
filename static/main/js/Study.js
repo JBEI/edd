@@ -873,18 +873,17 @@ var StudyD;
     }
     StudyD.prepareAfterLinesTable = prepareAfterLinesTable;
     function requestAllMetaboliteData(context) {
-        $.ajax({
-            url: 'measurements',
-            type: 'GET',
-            dataType: "json",
-            error: function (xhr, status) {
-                console.log('Failed to fetch measurement data!');
-                console.log(status);
-            },
-            success: function (data) {
-                processMeasurementData(context, data);
-            }
-        });
+        // FIXME this request takes an EXTREMELY LONG TIME
+        // $.ajax({
+        //     url: 'measurements',
+        //     type: 'GET',
+        //     dataType: "json",
+        //     error: (xhr, status) => {
+        //         console.log('Failed to fetch measurement data!');
+        //         console.log(status);
+        //     },
+        //     success: (data) => { processMeasurementData(context, data); }
+        // });
     }
     function processMeasurementData(context, data) {
         var assaySeen = {}, filterIds = { 'm': [], 'p': [], 'g': [] }, protocolToAssay = {};
@@ -1200,7 +1199,7 @@ var StudyD;
             rtd.appendChild(buttonSpan);
             if (firstRow) {
                 var buttonImg = document.createElement("img");
-                buttonImg.setAttribute('src', "images/plus.png");
+                buttonImg.setAttribute('src', "/static/main/images/plus.png");
                 buttonImg.style.marginTop = "1px";
                 var oc = "StudyD.addCarbonSourceRow();";
                 buttonImg.setAttribute('onclick', oc);
@@ -1208,7 +1207,7 @@ var StudyD;
             }
             else {
                 var buttonImg = document.createElement("img");
-                buttonImg.setAttribute('src', "images/minus.png");
+                buttonImg.setAttribute('src', "/static/main/images/minus.png");
                 buttonImg.style.marginTop = "1px";
                 var oc = "StudyD.removeCarbonSourceRow(" + order + ");";
                 buttonImg.setAttribute('onclick', oc);
@@ -2479,10 +2478,12 @@ var DataGridSpecAssays = (function (_super) {
         };
     };
     DataGridSpecAssays.prototype.generateMeasurementCells = function (gridSpec, index, opt) {
-        var record = EDDData.Assays[index], cells = [];
+        var record = EDDData.Assays[index], cells = [], factory = function () {
+            return new DataGridLoadingCell(gridSpec, index);
+        };
         if (record.metabolites.length > 0) {
             if (EDDData.AssayMeasurements === undefined) {
-                cells.push(new DataGridLoadingCell(gridSpec, index));
+                cells.push(new DataGridLoadingCell(gridSpec, index, { 'rowspan': record.metabolites.length }));
             }
             else {
                 // convert IDs to measurements, sort by name, then convert to cell objects
@@ -2506,6 +2507,10 @@ var DataGridSpecAssays = (function (_super) {
             else {
                 cells.push(opt.proteinToCell(record.proteins));
             }
+        }
+        // generate a loading cell if none created by measurements
+        if (!cells.length) {
+            cells.push(factory());
         }
         return cells;
     };

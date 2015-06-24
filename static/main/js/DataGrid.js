@@ -845,45 +845,39 @@ var DataGridRecord = (function () {
             cellsForColumns[index] = colSpec.generateCells(_this.gridSpec, _this.recordID);
         });
         // We will use these indexes to determine when we need to add the next cell, in the sequence of rows.
-        var currentRowHeightsForColumns = {};
+        var currentRowHeights = [];
         this.gridSpec.tableColumnSpec.forEach(function (colSpec, index) {
-            currentRowHeightsForColumns[index] = 0;
+            currentRowHeights[index] = 0;
         });
         var addingForRow = 0;
         var moreToAdd = true;
+        var cells = [];
         while (moreToAdd) {
             moreToAdd = false;
-            var addingForColumn = 0;
-            var cells = [];
-            while (addingForColumn < this.gridSpec.tableColumnSpec.length) {
-                if (currentRowHeightsForColumns[addingForColumn] > addingForRow) {
-                    addingForColumn++;
-                    continue;
-                }
-                var colCells = cellsForColumns[addingForColumn];
-                if (colCells.length) {
-                    var c = colCells.shift();
-                    // If there are still cells left to use, in any column, after drawing off the one
-                    // we're dealing with, then we should run through this loop again.
-                    if (colCells.length) {
+            cells = [];
+            this.gridSpec.tableColumnSpec.forEach(function (spec, col) {
+                var colCells, c, next;
+                if (currentRowHeights[col] > addingForRow)
+                    return;
+                if ((colCells = cellsForColumns[col]).length) {
+                    c = colCells.shift();
+                    if (colCells.length)
                         moreToAdd = true;
-                    }
-                    var nextOpenColumn = addingForColumn + c.colspan;
-                    while (addingForColumn < nextOpenColumn) {
-                        currentRowHeightsForColumns[addingForColumn] = addingForRow + c.rowspan;
-                        addingForColumn++;
+                    next = col + c.colspan;
+                    while (col < next) {
+                        currentRowHeights[col] = c.rowspan + addingForRow;
+                        col++;
                     }
                     cells.push(c);
                 }
-                else {
-                    // nothing in the current column, skip ahead to next one
-                    ++addingForColumn;
-                }
-            }
+            });
             var r = new DataGridDataRow(this.recordID, cells);
             this.dataGridDataRows.push(r);
             this.rowElements.push(r.getElement());
-            addingForRow++;
+            // keep going if current row is less than highest rowspan
+            moreToAdd = (++addingForRow < currentRowHeights.reduce(function (a, b) {
+                return Math.max(a, b);
+            }, 0));
         }
         this.createdElements = true;
     };
@@ -1348,7 +1342,7 @@ var DGSearchWidget = (function (_super) {
         this.typingDelayExpirationHandler = function () {
             // ignore if the following keys are pressed: [del] [shift] [capslock]
             //if (this.lastKeyPressCode == 46) {
-            //	return;
+            //    return;
             //}
             // ignore if the following keys are pressed: [del] [shift] [capslock]
             if (_this.lastKeyPressCode > 8 && _this.lastKeyPressCode < 32) {
@@ -1683,11 +1677,11 @@ var DataGridSpecBase = (function () {
     DataGridSpecBase.prototype.createCustomOptionsWidgets = function (dataGrid) {
         var widgetSet = [];
         // Create a single widget for showing only the Studies that belong to the current user
-        //		var onlyMyStudiesWidget = new DGOnlyMyStudiesWidget(dataGrid, this);
-        //		widgetSet.push(onlyMyStudiesWidget);
+        //        var onlyMyStudiesWidget = new DGOnlyMyStudiesWidget(dataGrid, this);
+        //        widgetSet.push(onlyMyStudiesWidget);
         // Create a single widget for showing disabled Studies
-        //		var disabledStudiesWidget = new DGDisabledStudiesWidget(dataGrid, this);
-        //		widgetSet.push(disabledStudiesWidget);
+        //        var disabledStudiesWidget = new DGDisabledStudiesWidget(dataGrid, this);
+        //        widgetSet.push(disabledStudiesWidget);
         return widgetSet;
     };
     // This is called after everything is initialized, including the creation of the table content.
