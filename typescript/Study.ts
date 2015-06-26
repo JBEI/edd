@@ -227,13 +227,11 @@ module StudyD {
                     cell, p, q, r;
                 this.tableRows[rowId] = this.tableBodyElement.insertRow();
                 cell = this.tableRows[rowId].insertCell();
-                // TODO look at CSS and see if all these nested divs are really necessary
-                p = $("<div>").addClass('p').appendTo(cell);
-                q = $("<div>").addClass('q').appendTo(p);
-                r = $("<div>").addClass('r').appendTo(q);
-                $("<div>").addClass('s').appendTo(q).text(this.uniqueValues[rowId]);
                 this.checkboxes[rowId] = $("<input type='checkbox'>")
-                    .attr('name', cboxName).appendTo(r)[0];
+                    .attr({ 'name': cboxName, 'id': cboxName })
+                    .appendTo(cell)[0];
+                $('<label>').attr('for', cboxName).text(this.uniqueValues[rowId])
+                    .appendTo(cell);
             });
             Dragboxes.initTable(this.filteringTable);
         }

@@ -143,12 +143,8 @@ var StudyD;
                 var cboxName = ['filter', _this.sectionShortLabel, 'n', rowId, 'cbox'].join(''), cell, p, q, r;
                 _this.tableRows[rowId] = _this.tableBodyElement.insertRow();
                 cell = _this.tableRows[rowId].insertCell();
-                // TODO look at CSS and see if all these nested divs are really necessary
-                p = $("<div>").addClass('p').appendTo(cell);
-                q = $("<div>").addClass('q').appendTo(p);
-                r = $("<div>").addClass('r').appendTo(q);
-                $("<div>").addClass('s').appendTo(q).text(_this.uniqueValues[rowId]);
-                _this.checkboxes[rowId] = $("<input type='checkbox'>").attr('name', cboxName).appendTo(r)[0];
+                _this.checkboxes[rowId] = $("<input type='checkbox'>").attr({ 'name': cboxName, 'id': cboxName }).appendTo(cell)[0];
+                $('<label>').attr('for', cboxName).text(_this.uniqueValues[rowId]).appendTo(cell);
             });
             Dragboxes.initTable(this.filteringTable);
         };
