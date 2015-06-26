@@ -6,7 +6,7 @@ from collections import defaultdict
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
-from django.contrib.postgres.fields import HStoreField
+from django.contrib.postgres.fields import ArrayField, HStoreField
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.db.models import Q
@@ -1137,14 +1137,16 @@ class Measurement(models.Model):
         default=MeasurementFormat.SCALAR)
 
     def to_json(self):
-        points = chain(self.measurementdatum_set.all(), self.measurementvector_set.all())
+        #points = chain(self.measurementdatum_set.all(), self.measurementvector_set.all())
         return {
             "id": self.pk,
             "assay": self.assay_id,
             "type": self.measurement_type_id,
-            "compartment": self.compartment,
+            "comp": self.compartment,
             "format": self.measurement_format,
-            "values": map(lambda p: p.to_json(), points),
+            # including points here is extremely inefficient
+            # better to directly filter MeasurementValue and map to parent IDs later
+            #"values": map(lambda p: p.to_json(), points),
             "x_units": self.x_units_id,
             "y_units": self.y_units_id,
         }
@@ -1306,6 +1308,26 @@ class MeasurementVector(models.Model):
     def export_value (self) :
         """For API compatibility with MeasurementDatum"""
         return str(self.y)
+
+
+class MeasurementValue(models.Model):
+    """ Pairs of ((x0, x1, ... , xn), (y0, y1, ... , ym)) values as part of a measurement """
+    class Meta:
+        db_table = 'measurement_value'
+    measurement = models.ForeignKey(Measurement)
+    x = ArrayField(models.DecimalField(max_digits=16, decimal_places=5))
+    y = ArrayField(models.DecimalField(max_digits=16, decimal_places=5))
+    updated = models.ForeignKey(Update, related_name='+')
+
+    def __str__(self):
+        return '(%s, %s)' % (self.x, self.y)
+
+    def to_json(self):
+        return {
+            "id": self.pk,
+            "x": self.x,
+            "y": self.y,
+        }
 
 
 class SBMLTemplate(EDDObject):

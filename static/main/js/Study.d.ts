@@ -204,6 +204,7 @@ declare class DataGridAssays extends DataGrid {
     invalidateAssayRecords(records: number[]): void;
     clickedDisclose(disclose: boolean): void;
     triggerAssayRecordsRefresh(): void;
+    private _cancelGraph();
     queueGraphRemake(): void;
     remakeGraphArea(): void;
     resizeGraph(g: any): void;

@@ -244,44 +244,37 @@ StudyDGraphing = {
 	
 		this.tickArray = [];
 
-		for (var i = 0; i < this.dataSets.length; i++) {
-			var oneSeries = this.dataSets[i];
-
-			if (oneSeries.data) {
-				var di = 0;
-				var ti = 0;
-				var oldTickArray = this.tickArray;
+		this.dataSets.forEach((series) => {
+			var di = 0, ti = 0, oldTickArray = this.tickArray, d, t;
+			if (series.data) {
 				this.tickArray = [];
-
-				while ((di < oneSeries.data.length) && (ti < oldTickArray.length)) {
-					var d = parseFloat(oneSeries.data[di][0]);
-					var t = oldTickArray[ti][0];
-					if (d == t) {
-						this.tickArray.push([t, oldTickArray[ti][1]]);
-						di++;
-						ti++;
-					}
+				while ((di < series.data.length) && (ti < oldTickArray.length)) {
+					d = parseFloat(series.data[di][0]);
+					t = oldTickArray[ti][0];
 					if (d < t) {
 						this.tickArray.push([d, d]);
 						di++;
-					}
-					if (t < d) {
+					} else if (t < d) {
 						this.tickArray.push([t, oldTickArray[ti][1]]);
+						ti++;
+					} else {
+						this.tickArray.push([t, oldTickArray[ti][1]]);
+						di++;
 						ti++;
 					}
 				}
-				while (di < oneSeries.data.length) {
-					var d = parseFloat(oneSeries.data[di][0]);
+				while (di < series.data.length) {
+					d = parseFloat(series.data[di][0]);
 					this.tickArray.push([d, d]);
 					di++;
 				}
 				while (ti < oldTickArray.length) {
-					var t = oldTickArray[ti][0];
+					t = oldTickArray[ti][0];
 					this.tickArray.push([t, oldTickArray[ti][1]]);
 					ti++;
 				}
 			}
-		}
+		});
 		
 		// Embed it in the options for eventual passing through flot and into the custom tick generator just below
 		this.graphOptions.xaxis.fullTickArray = this.tickArray;

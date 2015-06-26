@@ -874,29 +874,35 @@ var StudyD;
     StudyD.prepareAfterLinesTable = prepareAfterLinesTable;
     function requestAllMetaboliteData(context) {
         // FIXME this request takes an EXTREMELY LONG TIME
-        // $.ajax({
-        //     url: 'measurements',
-        //     type: 'GET',
-        //     dataType: "json",
-        //     error: (xhr, status) => {
-        //         console.log('Failed to fetch measurement data!');
-        //         console.log(status);
-        //     },
-        //     success: (data) => { processMeasurementData(context, data); }
-        // });
+        $.each(EDDData.Protocols, function (id, protocol) {
+            $.ajax({
+                url: 'measurements/' + id + '/',
+                type: 'GET',
+                dataType: 'json',
+                error: function (xhr, status) {
+                    console.log('Failed to fetch measurement data on ' + protocol.name + '!');
+                    console.log(status);
+                },
+                success: function (data) {
+                    processMeasurementData(context, data);
+                }
+            });
+        });
     }
     function processMeasurementData(context, data) {
         var assaySeen = {}, filterIds = { 'm': [], 'p': [], 'g': [] }, protocolToAssay = {};
         EDDData.AssayMeasurements = EDDData.AssayMeasurements || {};
         EDDData.MeasurementTypes = $.extend(EDDData.MeasurementTypes || {}, data.types);
         // loop over all downloaded measurements
-        $.each(data.data, function (index, measurement) {
+        $.each(data.measures, function (index, measurement) {
             var assay = EDDData.Assays[measurement.assay], line, mtype;
             if (!assay || !assay.active)
                 return;
             line = EDDData.Lines[assay.lid];
             if (!line || !line.active)
                 return;
+            // attach values
+            $.extend(measurement, { 'values': data.data[measurement.id] || [] });
             // store the measurements
             EDDData.AssayMeasurements[measurement.id] = measurement;
             // track which assays received updated measurements
@@ -1078,7 +1084,13 @@ var StudyD;
         return measurements;
     }
     function remakeMainGraphArea(context, force) {
-        var previousIDSet, postFilteringMeasurements, dataPointsDisplayed = 0, dataPointsTotal = 0, separateAxes = $('#separateAxesCheckbox').prop('checked');
+        var previousIDSet, postFilteringMeasurements, dataPointsDisplayed = 0, dataPointsTotal = 0, separateAxes = $('#separateAxesCheckbox').prop('checked'), 
+        // FIXME assumes (x0, y0) points
+        convert = function (d) {
+            return [[d[0][0], d[1][0]]];
+        }, compare = function (a, b) {
+            return a[0] - b[0];
+        };
         context.mainGraphRefreshTimerID = 0;
         if (!checkRedrawRequired(context, force)) {
             return;
@@ -1102,11 +1114,8 @@ var StudyD;
                 'measurementname': Utl.EDD.resolveMeasurementRecordToName(measurement),
                 'name': [line.name, protocol.name, assay.name].join('-'),
                 'units': Utl.EDD.resolveMeasurementRecordToUnits(measurement),
-                // FIXME does not handle MeasurementVector data
-                'data': $.map(measurement.values, function (d) { return [[d.x, d.y]]; })
+                'data': $.map(measurement.values, convert).sort(compare)
             };
-            if (measurement.mtdf)
-                newSet.logscale = 1;
             if (line.control)
                 newSet.iscontrol = 1;
             if (separateAxes) {
@@ -2183,51 +2192,55 @@ var DataGridAssays = (function (_super) {
             console.log('Failed to execute records refresh: ' + e);
         }
     };
+    DataGridAssays.prototype._cancelGraph = function () {
+        if (this.graphRefreshTimerID) {
+            clearTimeout(this.graphRefreshTimerID);
+            delete this.graphRefreshTimerID;
+        }
+    };
     // Start a timer to wait before calling the routine that remakes the graph.
     DataGridAssays.prototype.queueGraphRemake = function () {
         var _this = this;
-        if (this.graphRefreshTimerID) {
-            clearTimeout(this.graphRefreshTimerID);
-        }
+        this._cancelGraph();
         this.graphRefreshTimerID = setTimeout(function () { return _this.remakeGraphArea(); }, 100);
     };
     DataGridAssays.prototype.remakeGraphArea = function () {
-        var spec = this.getSpec(), g, ids;
-        this.graphRefreshTimerID = 0;
+        var spec = this.getSpec(), g, convert, compare;
+        // if called directly, cancel any pending requests in "queue"
+        this._cancelGraph();
         if (!StudyDGraphing || !spec || !spec.graphObject) {
             return;
         }
         g = spec.graphObject;
         g.clearAllSets();
-        ids = spec.getRecordIDs();
-        $.each(ids, function (x, id) {
-            var assay = EDDData.Assays[id] || {}, line = EDDData.Lines[assay.lid] || {}, protocol, name, measures;
+        // function converts downloaded data point to form usable by flot
+        // FIXME assumes (x0, y0) points only
+        convert = function (d) {
+            return [[d[0][0], d[1][0]]];
+        };
+        // function comparing two points, to sort data sent to flot
+        compare = function (a, b) {
+            return a[0] - b[0];
+        };
+        spec.getRecordIDs().forEach(function (id) {
+            var assay = EDDData.Assays[id] || {}, line = EDDData.Lines[assay.lid] || {}, measures;
             if (!assay.active || !line.active) {
                 return;
             }
-            protocol = EDDData.Protocols[assay.pid] || {};
-            // FIXME just use assay name directly instead of rebuilding each time
-            name = [line.name, protocol.name, assay.name].join('-');
-            measures = assay.metabolites || [];
-            measures.concat(assay.transcriptions || [], assay.protiens || []);
-            $.each(measures, function (i, measureId) {
-                var measure = EDDData.AssayMeasurements[measureId], mName = Utl.EDD.resolveMeasurementRecordToName(measure), mUnit = Utl.EDD.resolveMeasurementRecordToUnits(measure), set;
+            measures = [].concat(assay.metabolites || [], assay.transcriptions || [], assay.proteins || []);
+            measures.forEach(function (m) {
+                var measure = EDDData.AssayMeasurements[m], set;
                 set = {
-                    'label': 'dt' + measureId,
-                    'measurementname': mName,
-                    'name': name,
+                    'label': 'dt' + m,
+                    'measurementname': Utl.EDD.resolveMeasurementRecordToName(m),
+                    'name': assay.name,
                     'aid': id,
-                    'mtid': measure.mt,
-                    'units': mUnit,
-                    // FIXME does not handle MeasurementVector data
-                    'data': $.map(measure.values, function (d) { return [[d.x, d.y]]; })
+                    'mtid': measure.type,
+                    'units': Utl.EDD.resolveMeasurementRecordToUnits(m),
+                    'data': $.map(measure.values, convert).sort(compare)
                 };
-                if (measure.mtdf == 1) {
-                    set.logscale = true;
-                }
-                if (line.ctrl) {
+                if (line.control)
                     set.iscontrol = true;
-                }
                 g.addNewSet(set);
             });
         });
@@ -2342,7 +2355,7 @@ var DataGridSpecAssays = (function (_super) {
                 var lookup = EDDData.AssayMeasurements || {}, measure = lookup[measureId] || {}, maxForMeasure;
                 // reduce to find highest value across all data in measurement
                 maxForMeasure = (measure.values || []).reduce(function (prev, point) {
-                    return Math.max(prev, parseFloat(point.x));
+                    return Math.max(prev, point[0][0]);
                 }, 0);
                 return Math.max(prev, maxForMeasure);
             }, 0);
@@ -2616,9 +2629,9 @@ var DataGridSpecAssays = (function (_super) {
             ids.forEach(function (measureId) {
                 var measure = EDDData.AssayMeasurements[measureId] || {}, data = measure.values || {};
                 data.forEach(function (point) {
-                    timeCount[point.x] = timeCount[point.x] || 0;
+                    timeCount[point[0][0]] = timeCount[point[0][0]] || 0;
                     // Typescript compiler does not like using increment operator on expression
-                    ++timeCount[point.x];
+                    ++timeCount[point[0][0]];
                 });
             });
             // map the counts to [x, y] tuples, sorted by x value
@@ -2669,6 +2682,7 @@ var DataGridSpecAssays = (function (_super) {
         ];
     };
     DataGridSpecAssays.prototype.assembleSVGStringForDataPoints = function (points, format) {
+        var _this = this;
         var svg = '<svg xmlns="http://www.w3.org/2000/svg" version="1.2" width="100%" height="10px"\
                     viewBox="0 0 470 10" preserveAspectRatio="none">\
                 <style type="text/css"><![CDATA[\
@@ -2682,26 +2696,23 @@ var DataGridSpecAssays = (function (_super) {
                         style="stroke-width:2px;"\
                         stroke-width="2"></path>';
         var paths = [svg];
-        for (var x = 0; x < points.length; x++) {
-            var point = points[x];
-            var ax = parseFloat(point[0]);
-            var ay = point[1];
-            var rx = ((ax / this.maximumXValueInData) * 450) + 10;
-            paths.push('<path class="cE" d="M' + rx.toString() + ',5v4"></path>');
-            if (ay === null) {
-                paths.push('<path class="cE" d="M' + rx.toString() + ',2v6"></path>');
-                continue;
+        points.sort(function (a, b) {
+            return a[0] - b[0];
+        }).forEach(function (point) {
+            var x = point[0][0], y = point[1][0], rx = ((x / _this.maximumXValueInData) * 450) + 10, tt = [y, ' at ', x, 'h'].join('');
+            paths.push(['<path class="cE" d="M', rx, ',5v4"></path>'].join(''));
+            if (y === null) {
+                paths.push(['<path class="cE" d="M', rx, ',2v6"></path>'].join(''));
+                return;
             }
-            paths.push('<path class="cP" d="M' + rx.toString() + ',1v4"></path>');
-            var tt = ay + ' at ' + ax.toString() + 'h';
-            var rx_str = rx.toString();
-            if (format == 'carbon') {
-                paths.push('<path class="cV" d="M' + rx_str + ',1v8"><title>' + tt + '</title></path>');
+            paths.push(['<path class="cP" d="M', rx, ',1v4"></path>'].join(''));
+            if (format === 'carbon') {
+                paths.push(['<path class="cV" d="M', rx, ',1v8"><title>', tt, '</title></path>'].join(''));
             }
             else {
-                paths.push('<path class="cP" d="M' + rx_str + ',1v8"><title>' + tt + '</title></path>');
+                paths.push(['<path class="cP" d="M', rx, ',1v8"><title>', tt, '</title></path>'].join(''));
             }
-        }
+        });
         paths.push('</svg>');
         return paths.join('\n');
     };

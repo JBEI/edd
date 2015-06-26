@@ -12,17 +12,19 @@ from django.template.defaulttags import register
 from django.utils.safestring import mark_safe
 from django.views import generic
 from django.views.decorators.csrf import ensure_csrf_cookie
+from io import BytesIO
 from main.forms import *
 from main.models import *
 from main.solr import StudySearch, UserSearch
 from main.utilities import *
+
+import collections
+import csv
+import json
 import main.models
 import main.sbml_export
 import main.data_export
 import main.data_import
-from io import BytesIO
-import json
-import csv
 
 
 @register.filter(name='lookup')
@@ -108,16 +110,34 @@ def study_lines(request, study):
     lines = json.dumps(map(lambda l: l.to_json(), model.line_set.all()))
     return HttpResponse(lines, content_type='application/json; charset=utf-8')
 
-# /study/<study_id>/measurements
-# FIXME should have trailing slash?
-def study_measurements(request, study):
+# /study/<study_id>/measurements/<protocol_id>/
+def study_measurements(request, study, protocol):
     """ Request measurement data in a study. """
-    measure_types = MeasurementType.objects.filter(measurement__assay__line__study__pk=study).distinct()
-    measurements = Measurement.objects.filter(assay__line__study__pk=study,
-        active=True, assay__active=True, assay__line__active=True)
+    measure_types = MeasurementType.objects.filter(
+        measurement__assay__line__study_id=study,
+        measurement__assay__protocol_id=protocol,
+        ).distinct()
+    measurements = Measurement.objects.filter(
+        assay__line__study_id=study,
+        assay__protocol_id=protocol,
+        active=True,
+        assay__active=True,
+        assay__line__active=True,
+        )
+    values = MeasurementValue.objects.filter(
+        measurement__assay__line__study_id=study,
+        measurement__assay__protocol_id=protocol,
+        measurement__active=True,
+        measurement__assay__active=True,
+        measurement__assay__line__active=True,
+        )
+    value_dict = collections.defaultdict(list)
+    for v in values:
+        value_dict[v.measurement_id].append((v.x, v.y))
     payload = {
         'types': { t.pk: t.to_json() for t in measure_types },
-        'data': map(lambda m: m.to_json(), measurements),
+        'measures': map(lambda m: m.to_json(), measurements),
+        'data': value_dict,
     }
     # FIXME use JsonResponse
     measure_json = json.dumps(payload, cls=JSONDecimalEncoder)

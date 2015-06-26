@@ -219,43 +219,41 @@ StudyDGraphing = {
         this.plotObject = $.plot(this.graphDiv, this.dataSets, this.graphOptions);
     },
     rebuildXAxis: function () {
+        var _this = this;
         this.tickArray = [];
-        for (var i = 0; i < this.dataSets.length; i++) {
-            var oneSeries = this.dataSets[i];
-            if (oneSeries.data) {
-                var di = 0;
-                var ti = 0;
-                var oldTickArray = this.tickArray;
-                this.tickArray = [];
-                while ((di < oneSeries.data.length) && (ti < oldTickArray.length)) {
-                    var d = parseFloat(oneSeries.data[di][0]);
-                    var t = oldTickArray[ti][0];
-                    if (d == t) {
-                        this.tickArray.push([t, oldTickArray[ti][1]]);
+        this.dataSets.forEach(function (series) {
+            var di = 0, ti = 0, oldTickArray = _this.tickArray, d, t;
+            if (series.data) {
+                _this.tickArray = [];
+                while ((di < series.data.length) && (ti < oldTickArray.length)) {
+                    d = parseFloat(series.data[di][0]);
+                    t = oldTickArray[ti][0];
+                    if (d < t) {
+                        _this.tickArray.push([d, d]);
                         di++;
+                    }
+                    else if (t < d) {
+                        _this.tickArray.push([t, oldTickArray[ti][1]]);
                         ti++;
                     }
-                    if (d < t) {
-                        this.tickArray.push([d, d]);
+                    else {
+                        _this.tickArray.push([t, oldTickArray[ti][1]]);
                         di++;
-                    }
-                    if (t < d) {
-                        this.tickArray.push([t, oldTickArray[ti][1]]);
                         ti++;
                     }
                 }
-                while (di < oneSeries.data.length) {
-                    var d = parseFloat(oneSeries.data[di][0]);
-                    this.tickArray.push([d, d]);
+                while (di < series.data.length) {
+                    d = parseFloat(series.data[di][0]);
+                    _this.tickArray.push([d, d]);
                     di++;
                 }
                 while (ti < oldTickArray.length) {
-                    var t = oldTickArray[ti][0];
-                    this.tickArray.push([t, oldTickArray[ti][1]]);
+                    t = oldTickArray[ti][0];
+                    _this.tickArray.push([t, oldTickArray[ti][1]]);
                     ti++;
                 }
             }
-        }
+        });
         // Embed it in the options for eventual passing through flot and into the custom tick generator just below
         this.graphOptions.xaxis.fullTickArray = this.tickArray;
     },

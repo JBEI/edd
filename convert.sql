@@ -585,27 +585,20 @@ INSERT INTO public.measurement(
     ORDER BY a.id;
 SELECT setval('public.measurement_id_seq', max(id)) FROM public.measurement;
 -- copy data values
-INSERT INTO public.measurement_datum(
+INSERT INTO public.measurement_value(
         measurement_id, x, y, updated_id
-    ) SELECT a.id, am.x, am.y, m.id
+    ) SELECT a.id, ARRAY[am.x], CASE
+        WHEN am.y IS NOT NULL THEN ARRAY[am.y]
+        WHEN am.yvector IS NOT NULL THEN CAST(regexp_split_to_array(
+            am.yvector, E'/+') AS numeric(16,5)[])
+        ELSE ARRAY[] END, m.id
     FROM old_edd.assay_measurements a
     INNER JOIN old_edd.assay_measurement_data am ON am.measurement_id = a.id
     LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
         date_trunc('second', am.modification_time)
         AND m.mod_by_id = am.modified_by
-    WHERE am.y IS NOT NULL
+    WHERE am.yvector IS NOT NULL AND am.yvector != ''
     ORDER BY a.id;
-INSERT INTO public.measurement_vector(
-        measurement_id, x, y, updated_id
-    ) SELECT a.id, am.x, coalesce(am.yvector, ''), m.id
-    FROM old_edd.assay_measurements a
-    INNER JOIN old_edd.assay_measurement_data am ON am.measurement_id = a.id
-    LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
-        date_trunc('second', am.modification_time)
-        AND m.mod_by_id = am.modified_by
-    WHERE am.yvector IS NOT NULL
-    ORDER BY a.id;
-
 
 --
 -- copy over metabolic maps

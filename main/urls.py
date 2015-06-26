@@ -11,9 +11,11 @@ urlpatterns = patterns('',
     url(r'^study/(?P<pk>\d+)/$', login_required(views.StudyDetailView.as_view()), name='detail'),
     url(r'^study/(?P<study>\d+)/lines/$', login_required(views.study_lines)),
     url(r'^study/search/$', login_required(views.study_search)),
-    url(r'^study/(?P<study>\d+)/assaydata$', login_required(views.study_assay_table_data)),
-    url(r'^study/(?P<study>\d+)/edddata$', login_required(views.study_edddata)),
-    url(r'^study/(?P<study>\d+)/measurements$', login_required(views.study_measurements)),
+    url(r'^study/(?P<study>\d+)/assaydata/$', login_required(views.study_assay_table_data)),
+    url(r'^study/(?P<study>\d+)/edddata/$', login_required(views.study_edddata)),
+    url(r'^study/(?P<study>\d+)/measurements/(?P<protocol>\d+)/$',
+        login_required(views.study_measurements)),
+
     # FIXME make a module/app just for import?
     # url(r'^study/(?P<study>\d+)/import/$', include('main.import.urls', namespace='edd-import'))
     url(r'^study/(?P<study>\d+)/import$', login_required(views.study_import_table)),
