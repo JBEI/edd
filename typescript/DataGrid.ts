@@ -10,6 +10,32 @@
 
 class DataGrid {
 
+    // Member variables.
+    private _spec:DataGridSpecBase;
+
+    private _table:HTMLElement;
+    private _tableBody:HTMLElement;
+    private _tableHeaderCell:HTMLElement;
+    private _waitBadge:HTMLElement;
+    tableTitleSpan:HTMLElement;
+
+    private _headerRows:HTMLElement[];
+    private _totalColumnCount:number;
+    private _recordElements:DataGridRecordSet;
+
+    private _headerWidgets:DataGridHeaderWidget[];
+    private _optionsMenuWidgets:DataGridOptionWidget[];
+    private _optionsMenuElement:HTMLElement;
+
+    private _optionsMenuBlockElement:HTMLElement;
+    private _optionsLabel:HTMLElement;
+
+    private _groupingEnabled:boolean = false;    // grouping mode off by default
+    private _sort:DataGridSort[] = [];
+    private _sequence:{ [index:number]: string[] } = {};
+
+    private _timers:{[index:string]:number};
+
     // This binds a table element to an instance of DataGrid.
     // The previous contents of the table, if any, are deleted, and DataGrid takes over the table
     constructor(dataGridSpec:DataGridSpecBase) {
@@ -163,7 +189,7 @@ class DataGrid {
     // Update only the table rows for the specified records.
     // For use in situations where you want to add rows, or rebuild existing rows,
     // and leave the rest unchanged.
-    triggerPartialDataReset(recordIDs:number[], reflow:boolean):DataGrid {
+    triggerPartialDataReset(recordIDs:string[], reflow:boolean):DataGrid {
         this._spec.onPartialDataReset(this, recordIDs);
         // Rebuild rows.
         recordIDs.forEach((id) => {
@@ -191,7 +217,7 @@ class DataGrid {
     // It's quite possible that changes to the appearance will alter the visibility of the rows in
     // complicated ways.  For example, the generic search widget logic may decide to hide a previously shown
     // row or vice-versa, corrupting row striping.  Do not delay the reflow for too long.
-    reconstructSingleRecord(recordID:number):DataGrid {
+    reconstructSingleRecord(recordID:string):DataGrid {
         if (this._recordElements[recordID]) {
             this._recordElements[recordID].reCreateElementsInPlace();
         } else {
@@ -374,7 +400,7 @@ class DataGrid {
     }
 
 
-    private _applyColumnVisibilityToOneRecord(recordID:number):DataGrid {
+    private _applyColumnVisibilityToOneRecord(recordID:string):DataGrid {
         this._spec.tableColumnGroupSpec.forEach((group) => {
             var hidden = group.currentlyHidden;
             group.memberColumns.forEach((column) => {
@@ -398,7 +424,7 @@ class DataGrid {
     // then search the visible rows for spec-mandated checkbox elements,
     // and if a checkbox is checked, return its element on an array.
     getSelectedCheckboxElements():HTMLInputElement[] {
-        var sequence:number[] = this._getSequence(this._sort[0]);
+        var sequence:string[] = this._getSequence(this._sort[0]);
 
         // Verify that the row sets referred to by the IDs actually exist
         var filteredSequence = sequence.filter((v) => { return !!this._recordElements[v]; });
@@ -504,7 +530,7 @@ class DataGrid {
 
             filteredSequence.forEach((s) => {
                 var rowGroup = rowGroupSpec[this._spec.getRowGroupMembership(s)];
-                   rowGroup.memberRecords.push(this._recordElements[s]);
+                rowGroup.memberRecords.push(this._recordElements[s]);
             });
 
              rowGroupSpec.forEach((rowGroup) => {
@@ -547,7 +573,7 @@ class DataGrid {
 
     // Given an array of record IDs, send the array through the filtering function for each of
     // the header widgets, and each of the options menu widgets, then return the filtered array.
-    applyAllWidgetFiltering(filteredSequence:number[]):number[] {
+    applyAllWidgetFiltering(filteredSequence:string[]):string[] {
         // Give each header widget a chance to apply filtering
         this._headerWidgets.forEach((widget) => {
             filteredSequence = widget.applyFilterToIDs(filteredSequence);
@@ -650,7 +676,7 @@ class DataGrid {
     }
 
 
-    private _getSequence(sort:DataGridSort):number[] {
+    private _getSequence(sort:DataGridSort):string[] {
         var key = (sort.asc ? '' : '-') + sort.spec.id,
             sequence = this._sequence[key];
         if (sequence === undefined) {
@@ -886,7 +912,7 @@ class DataGrid {
 
 
     // apply a function to every record ID specified
-    applyToRecordSet(func:(rows:DataGridDataRow[], id:number, spec:DataGridSpecBase, grid:DataGrid)=>void, ids:number[]):DataGrid {
+    applyToRecordSet(func:(rows:DataGridDataRow[], id:string, spec:DataGridSpecBase, grid:DataGrid)=>void, ids:string[]):DataGrid {
         ids.forEach((id) => {
             func.call({}, this._recordElements[id].getDataGridDataRows(), id, this._spec, this);
         });
@@ -895,7 +921,7 @@ class DataGrid {
 
 
     // retreive the current sequence of records in the DataGrid
-    currentSequence():number[] {
+    currentSequence():string[] {
         return this._getSequence(this._sort[0]);
     }
 
@@ -910,46 +936,20 @@ class DataGrid {
         }
     }
 
-
-    // Member variables.
-    private _spec:DataGridSpecBase;
-
-    private _table:HTMLElement;
-    private _tableBody:HTMLElement;
-    private _tableHeaderCell:HTMLElement;
-    private _waitBadge:HTMLElement;
-    tableTitleSpan:HTMLElement;
-
-    private _headerRows:HTMLElement[];
-    private _totalColumnCount:number;
-    private _recordElements:DataGridRecordSet;
-
-    private _headerWidgets:DataGridHeaderWidget[];
-    private _optionsMenuWidgets:DataGridOptionWidget[];
-    private _optionsMenuElement:HTMLElement;
-
-    private _optionsMenuBlockElement:HTMLElement;
-    private _optionsLabel:HTMLElement;
-
-    private _groupingEnabled:boolean = false;    // grouping mode off by default
-    private _sort:DataGridSort[] = [];
-    private _sequence:{ [index:string]: number[] } = {};
-
-    private _timers:{[index:string]:number};
 }
 
 
 
 // Type definition for the records contained in a DataGrid
 class DataGridRecordSet {
-    [index:number]:DataGridRecord;
+    [index:string]:DataGridRecord;
 }
 
 
 // Type definition for the records contained in a DataGrid
 class DataGridRecord {
     gridSpec:DataGridSpecBase;
-    recordID:number;
+    recordID:string;
     dataGridDataRows:DataGridDataRow[];
     rowElements:HTMLElement[];
     createdElements:boolean;
@@ -957,7 +957,7 @@ class DataGridRecord {
     stripeStylesJoin:string;
     recentStripeIndex:any;
 
-    constructor(gridSpec:DataGridSpecBase, id:number) {
+    constructor(gridSpec:DataGridSpecBase, id:string) {
         this.gridSpec = gridSpec;
         this.recordID = id;
         this.rowElements = [];
@@ -1119,11 +1119,11 @@ class DataGridDataRow {
     rowElement:HTMLElement;
     rowElementJQ:JQuery;
     // Defined or set by the constructor
-    recordID:number;
+    recordID:string;
     dataGridDataCells:DataGridDataCell[];
     createdElement:boolean;
 
-    constructor(id:number, cells:DataGridDataCell[]) {
+    constructor(id:string, cells:DataGridDataCell[]) {
         this.recordID = id;
         this.dataGridDataCells = cells;
         this.createdElement = false;
@@ -1186,7 +1186,7 @@ class DataGridDataCell {
 
     // Defined or set by the constructor
     gridSpec:DataGridSpecBase;
-    recordID:number;
+    recordID:string;
 
     // Options potentially set by the constructor
     rowspan:number;
@@ -1211,7 +1211,7 @@ class DataGridDataCell {
     hidden:boolean;
     createdElement:boolean;
 
-    constructor(gridSpec:DataGridSpecBase, id:number, opt?:{[index:string]:any}) {
+    constructor(gridSpec:DataGridSpecBase, id:string, opt?:{[index:string]:any}) {
         this.gridSpec = gridSpec;
         this.recordID = id;
         this.hidden = false;
@@ -1386,7 +1386,7 @@ class DataGridDataCell {
 // A placeholder cell when data is still loading
 class DataGridLoadingCell extends DataGridDataCell {
 
-    constructor(gridSpec:DataGridSpecBase, id:number, opt?:{[index:string]:any}) {
+    constructor(gridSpec:DataGridSpecBase, id:string, opt?:{[index:string]:any}) {
         super(gridSpec, id, opt);
         this.contentString = '<span class="loading">Loading...</span>';
     }
@@ -1431,7 +1431,7 @@ class DataGridWidget {
     // This is called with an array of row elements, and the ID they represent, so the widget can
     //  apply any custom styling it needs. It is called one time for each ID and respective row
     //  array, during the construction of the table rows.
-    initialFormatRowElementsForID(dataRowObjects:DataGridDataRow[], rowID:number):void {
+    initialFormatRowElementsForID(dataRowObjects:DataGridDataRow[], rowID:string):void {
         // no special formatting by default
     }
 
@@ -1519,7 +1519,7 @@ class DataGridOptionWidget extends DataGridWidget {
     // For example, if the widget is "additive", you would apply filtering if the widget's checkbox
     // is clear, and skip filtering if the checkbox is set, creating the appearance of a checkbox
     // that "adds" rows when checked.
-    applyFilterToIDs(rowIDs:number[]):number[] {
+    applyFilterToIDs(rowIDs:string[]):string[] {
         return rowIDs;
     }
 
@@ -1618,7 +1618,7 @@ class DataGridHeaderWidget extends DataGridWidget {
 
     // This is called with an array of record IDs for filtering, and a filtered array is returned.
     // It is acceptable to just return the original array if no record filtering needs to be done.
-    applyFilterToIDs(rowIDs:number[]):number[] {
+    applyFilterToIDs(rowIDs:string[]):string[] {
         return rowIDs;
     }
 }
@@ -1754,7 +1754,7 @@ class DGSearchWidget extends DataGridHeaderWidget {
 
     // This is called with an array of record IDs for filtering, and a filtered array is returned.
     // It is acceptable to just return the original array if no record filtering needs to be done.
-    applyFilterToIDs(rowIDs:number[]):number[] {
+    applyFilterToIDs(rowIDs:string[]):string[] {
 
         var v = this.previousSelection;
         if (v == null) {
@@ -1969,38 +1969,38 @@ class DataGridHeaderSpec {
 // Define the ColumnSpec object used by DataGridSpecBase
 class DataGridColumnSpec {
     columnGroup:number;
-    generateCellsFunction:(gridSpec:DataGridSpecBase, index:number)=>DataGridDataCell[];
+    generateCellsFunction:(gridSpec:DataGridSpecBase, index:string)=>DataGridDataCell[];
 
     //
     // These are internal values that should not be defined by spec
     //
-    createdDataCellObjects:{[id:number]:DataGridDataCell[]};
+    createdDataCellObjects:{[id:string]:DataGridDataCell[]};
 
-    constructor(group:number, generateCells:(gridSpec:DataGridSpecBase, index:number)=>DataGridDataCell[]) {
+    constructor(group:number, generateCells:(gridSpec:DataGridSpecBase, index:string)=>DataGridDataCell[]) {
         this.columnGroup = group;
         this.generateCellsFunction = generateCells;
         this.createdDataCellObjects = {};
     }
 
 
-    generateCells(gridSpec:DataGridSpecBase, index:number):DataGridDataCell[] {
+    generateCells(gridSpec:DataGridSpecBase, index:string):DataGridDataCell[] {
         var c = this.generateCellsFunction(gridSpec, index);
         this.createdDataCellObjects[index] = c.slice(0);
           return c;
     }
 
 
-    clearEntireIndex(index:number):void {
-        this.createdDataCellObjects = {};
-    }
+    // clearEntireIndex(index:number):void {
+    //     this.createdDataCellObjects = {};
+    // }
 
 
-    clearIndexAtID(index:number):void {
+    clearIndexAtID(index:string):void {
         delete this.createdDataCellObjects[index];
     }
 
 
-    cellIndexAtID(index:number):DataGridDataCell[] {
+    cellIndexAtID(index:string):DataGridDataCell[] {
         return this.createdDataCellObjects[index];
     }
 
@@ -2113,11 +2113,11 @@ class DataGridSpecBase {
     // Specification for each of the data columns that will make up the body of the table
     defineColumnSpec():DataGridColumnSpec[] {
         return [
-            new DataGridColumnSpec(1, (gridSpec:DataGridSpecBase, index:number):DataGridDataCell[] => {
+            new DataGridColumnSpec(1, (gridSpec:DataGridSpecBase, index:string):DataGridDataCell[] => {
                    // Create cell(s) for a given record ID, for column 1
                 return [new DataGridDataCell(gridSpec, index)]; 
                }),
-            new DataGridColumnSpec(2, (gridSpec:DataGridSpecBase, index:number):DataGridDataCell[] => {
+            new DataGridColumnSpec(2, (gridSpec:DataGridSpecBase, index:string):DataGridDataCell[] => {
                    // Create cell(s) for a given record ID, for column 2
                 return [new DataGridDataCell(gridSpec, index)]; 
                }),
@@ -2163,7 +2163,7 @@ class DataGridSpecBase {
 
 
     // When passed a record ID, returns the row group that the record is a member of.
-    getRowGroupMembership(recordID:number):number {
+    getRowGroupMembership(recordID:string):number {
         return 0;
     }
 
@@ -2175,7 +2175,7 @@ class DataGridSpecBase {
 
 
     // An array of unique identifiers, used to identify the records in the data set being displayed
-    getRecordIDs():number[] {
+    getRecordIDs():string[] {
         return [];
     }
 
@@ -2223,7 +2223,7 @@ class DataGridSpecBase {
     // This is called when a partial data reset is triggered, but before the table rows are rebuilt.
     // A partial data reset is one where a collection of records have been specified for re-parsing,
     // and will be mixed-in with the currently rendered collection afterwards.
-    onPartialDataReset(dataGrid:DataGrid, records:number[]):void {
+    onPartialDataReset(dataGrid:DataGrid, records:string[]):void {
         return;    // Do nothing by default.
     }
 

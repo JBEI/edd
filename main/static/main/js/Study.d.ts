@@ -1,6 +1,5 @@
 /// <reference path="EDDDataInterface.d.ts" />
 /// <reference path="Utl.d.ts" />
-/// <reference path="Autocomplete.d.ts" />
 /// <reference path="Dragboxes.d.ts" />
 /// <reference path="EditableElement.d.ts" />
 /// <reference path="BiomassCalculationUI.d.ts" />
@@ -24,7 +23,6 @@ declare module StudyD {
         tableBodyElement: any;
         typingTimeout: number;
         typingDelay: number;
-        gotFirstFocus: boolean;
         currentSearchSelection: string;
         previousSearchSelection: string;
         minCharsToTriggerSearch: number;
@@ -34,8 +32,8 @@ declare module StudyD {
         constructor();
         configure(): void;
         createContainerObjects(): void;
-        processFilteringData(ids: any[]): void;
-        buildUniqueValuesHash(ids: any[]): any;
+        processFilteringData(ids: string[]): void;
+        buildUniqueValuesHash(ids: string[]): any;
         isFilterUseful(): boolean;
         addToParent(parentDiv: any): void;
         applyBackgroundStyle(darker: number): void;
@@ -45,30 +43,31 @@ declare module StudyD {
         _assayIdToAssay(assayId: string): any;
         _assayIdToLine(assayId: string): LineRecord;
         _assayIdToProtocol(assayId: string): any;
+        getIdMapToValues(): (id: string) => any[];
     }
     class StrainFilterSection extends GenericFilterSection {
         configure(): void;
-        buildUniqueValuesHash(ids: any[]): any;
+        buildUniqueValuesHash(ids: string[]): any;
     }
     class CarbonSourceFilterSection extends GenericFilterSection {
         configure(): void;
-        buildUniqueValuesHash(ids: any[]): any;
+        buildUniqueValuesHash(ids: string[]): any;
     }
     class CarbonLabelingFilterSection extends GenericFilterSection {
         configure(): void;
-        buildUniqueValuesHash(ids: any[]): any;
+        buildUniqueValuesHash(ids: string[]): any;
     }
     class LineNameFilterSection extends GenericFilterSection {
         configure(): void;
-        buildUniqueValuesHash(ids: any[]): any;
+        buildUniqueValuesHash(ids: string[]): any;
     }
     class ProtocolFilterSection extends GenericFilterSection {
         configure(): void;
-        buildUniqueValuesHash(ids: any[]): any;
+        buildUniqueValuesHash(ids: string[]): any;
     }
     class AssaySuffixFilterSection extends GenericFilterSection {
         configure(): void;
-        buildUniqueValuesHash(ids: any[]): any;
+        buildUniqueValuesHash(ids: string[]): any;
     }
     class MetaDataFilterSection extends GenericFilterSection {
         metaDataID: string;
@@ -78,32 +77,32 @@ declare module StudyD {
         configure(): void;
     }
     class LineMetaDataFilterSection extends MetaDataFilterSection {
-        buildUniqueValuesHash(ids: any[]): any;
+        buildUniqueValuesHash(ids: string[]): any;
     }
     class AssayMetaDataFilterSection extends MetaDataFilterSection {
-        buildUniqueValuesHash(ids: any): any;
+        buildUniqueValuesHash(ids: string[]): any;
     }
     class MetaboliteCompartmentFilterSection extends GenericFilterSection {
         configure(): void;
-        buildUniqueValuesHash(amIDs: any[]): any;
+        buildUniqueValuesHash(amIDs: string[]): any;
     }
     class MetaboliteFilterSection extends GenericFilterSection {
         loadPending: boolean;
         configure(): void;
         isFilterUseful(): boolean;
-        buildUniqueValuesHash(amIDs: any[]): any;
+        buildUniqueValuesHash(amIDs: string[]): any;
     }
     class ProteinFilterSection extends GenericFilterSection {
         loadPending: boolean;
         configure(): void;
         isFilterUseful(): boolean;
-        buildUniqueValuesHash(amIDs: any[]): any;
+        buildUniqueValuesHash(amIDs: string[]): any;
     }
     class GeneFilterSection extends GenericFilterSection {
         loadPending: boolean;
         configure(): void;
         isFilterUseful(): boolean;
-        buildUniqueValuesHash(amIDs: any[]): any;
+        buildUniqueValuesHash(amIDs: string[]): any;
     }
     function prepareIt(): void;
     function prepareFilteringSection(): void;
@@ -154,27 +153,27 @@ declare class DataGridSpecLines extends DataGridSpecBase {
     defineHeaderSpec(): DataGridHeaderSpec[];
     private makeMetaDataSortFunction(id);
     private rowSpanForRecord(index);
-    generateLineNameCells(gridSpec: DataGridSpecLines, index: number): DataGridDataCell[];
-    generateStrainNameCells(gridSpec: DataGridSpecLines, index: number): DataGridDataCell[];
-    generateCarbonSourceCells(gridSpec: DataGridSpecLines, index: number): DataGridDataCell[];
-    generateCarbonSourceLabelingCells(gridSpec: DataGridSpecLines, index: number): DataGridDataCell[];
-    generateCarbonBalanceBlankCells(gridSpec: DataGridSpecLines, index: number): DataGridDataCell[];
-    generateExperimenterInitialsCells(gridSpec: DataGridSpecLines, index: number): DataGridDataCell[];
-    generateModificationDateCells(gridSpec: DataGridSpecLines, index: number): DataGridDataCell[];
-    makeMetaDataCellsGeneratorFunction(id: any): (gridSpec: DataGridSpecLines, index: number) => DataGridDataCell[];
+    generateLineNameCells(gridSpec: DataGridSpecLines, index: string): DataGridDataCell[];
+    generateStrainNameCells(gridSpec: DataGridSpecLines, index: string): DataGridDataCell[];
+    generateCarbonSourceCells(gridSpec: DataGridSpecLines, index: string): DataGridDataCell[];
+    generateCarbonSourceLabelingCells(gridSpec: DataGridSpecLines, index: string): DataGridDataCell[];
+    generateCarbonBalanceBlankCells(gridSpec: DataGridSpecLines, index: string): DataGridDataCell[];
+    generateExperimenterInitialsCells(gridSpec: DataGridSpecLines, index: string): DataGridDataCell[];
+    generateModificationDateCells(gridSpec: DataGridSpecLines, index: string): DataGridDataCell[];
+    makeMetaDataCellsGeneratorFunction(id: any): (gridSpec: DataGridSpecLines, index: string) => DataGridDataCell[];
     defineColumnSpec(): DataGridColumnSpec[];
     defineColumnGroupSpec(): DataGridColumnGroupSpec[];
     defineRowGroupSpec(): any;
     getTableElement(): HTMLElement;
-    getRecordIDs(): number[];
+    getRecordIDs(): string[];
     createCustomHeaderWidgets(dataGrid: DataGrid): DataGridHeaderWidget[];
     createCustomOptionsWidgets(dataGrid: DataGrid): DataGridOptionWidget[];
     onInitialized(dataGrid: DataGrid): void;
 }
 declare class DGDisabledLinesWidget extends DataGridOptionWidget {
     createElements(uniqueID: any): void;
-    applyFilterToIDs(rowIDs: any): any;
-    initialFormatRowElementsForID(dataRowObjects: any, rowID: any): any;
+    applyFilterToIDs(rowIDs: string[]): string[];
+    initialFormatRowElementsForID(dataRowObjects: any, rowID: string): any;
 }
 declare class DGGroupStudyReplicatesWidget extends DataGridOptionWidget {
     createElements(uniqueID: any): void;
@@ -212,7 +211,7 @@ declare class DataGridAssays extends DataGrid {
 declare class DataGridSpecAssays extends DataGridSpecBase {
     protocolID: any;
     protocolName: string;
-    assayIDsInProtocol: any[];
+    assayIDsInProtocol: string[];
     metaDataIDsUsedInAssays: any;
     maximumXValueInData: number;
     undisclosedSectionDiv: any;
@@ -221,7 +220,7 @@ declare class DataGridSpecAssays extends DataGridSpecBase {
     graphObject: any;
     constructor(protocolID: any);
     refreshIDList(): void;
-    getRecordIDs(): any[];
+    getRecordIDs(): string[];
     onDataReset(dataGrid: DataGrid): void;
     getTableElement(): HTMLElement;
     defineTableSpec(): DataGridTableSpec;
@@ -233,15 +232,15 @@ declare class DataGridSpecAssays extends DataGridSpecBase {
     defineHeaderSpec(): DataGridHeaderSpec[];
     private makeMetaDataSortFunction(id);
     private rowSpanForRecord(index);
-    generateAssayNameCells(gridSpec: DataGridSpecAssays, index: number): DataGridDataCell[];
-    makeMetaDataCellsGeneratorFunction(id: any): (gridSpec: DataGridSpecAssays, index: number) => DataGridDataCell[];
+    generateAssayNameCells(gridSpec: DataGridSpecAssays, index: string): DataGridDataCell[];
+    makeMetaDataCellsGeneratorFunction(id: any): (gridSpec: DataGridSpecAssays, index: string) => DataGridDataCell[];
     private generateMeasurementCells(gridSpec, index, opt);
-    generateMeasurementNameCells(gridSpec: DataGridSpecAssays, index: number): DataGridDataCell[];
-    generateUnitsCells(gridSpec: DataGridSpecAssays, index: number): DataGridDataCell[];
-    generateCountCells(gridSpec: DataGridSpecAssays, index: number): DataGridDataCell[];
-    generateMeasuringTimesCells(gridSpec: DataGridSpecAssays, index: number): DataGridDataCell[];
-    generateExperimenterCells(gridSpec: DataGridSpecAssays, index: number): DataGridDataCell[];
-    generateModificationDateCells(gridSpec: DataGridSpecAssays, index: number): DataGridDataCell[];
+    generateMeasurementNameCells(gridSpec: DataGridSpecAssays, index: string): DataGridDataCell[];
+    generateUnitsCells(gridSpec: DataGridSpecAssays, index: string): DataGridDataCell[];
+    generateCountCells(gridSpec: DataGridSpecAssays, index: string): DataGridDataCell[];
+    generateMeasuringTimesCells(gridSpec: DataGridSpecAssays, index: string): DataGridDataCell[];
+    generateExperimenterCells(gridSpec: DataGridSpecAssays, index: string): DataGridDataCell[];
+    generateModificationDateCells(gridSpec: DataGridSpecAssays, index: string): DataGridDataCell[];
     assembleSVGStringForDataPoints(points: any, format: string): string;
     defineColumnSpec(): DataGridColumnSpec[];
     defineColumnGroupSpec(): DataGridColumnGroupSpec[];
@@ -251,7 +250,7 @@ declare class DataGridSpecAssays extends DataGridSpecBase {
 }
 declare class DGDisabledAssaysWidget extends DataGridOptionWidget {
     createElements(uniqueID: any): void;
-    applyFilterToIDs(rowIDs: any): any;
+    applyFilterToIDs(rowIDs: string[]): string[];
     initialFormatRowElementsForID(dataRowObjects: any, rowID: any): any;
 }
 declare class DGAssaysSearchWidget extends DGSearchWidget {

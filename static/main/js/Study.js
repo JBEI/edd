@@ -1,6 +1,5 @@
 /// <reference path="EDDDataInterface.ts" />
 /// <reference path="Utl.ts" />
-/// <reference path="Autocomplete.ts" />
 /// <reference path="Dragboxes.ts" />
 /// <reference path="EditableElement.ts" />
 /// <reference path="BiomassCalculationUI.ts" />
@@ -53,7 +52,6 @@ var StudyD;
             this.previousCheckboxState = {};
             this.typingTimeout = null;
             this.typingDelay = 330;
-            this.gotFirstFocus = false;
             this.currentSearchSelection = '';
             this.previousSearchSelection = '';
             this.minCharsToTriggerSearch = 1;
@@ -69,8 +67,8 @@ var StudyD;
         GenericFilterSection.prototype.createContainerObjects = function () {
             var sBoxID = 'filter' + this.sectionShortLabel + 'SearchBox', sBox;
             this.filterColumnDiv = $("<div>").addClass('filterColumn')[0];
-            this.titleElement = $("<p>").text(this.sectionTitle)[0];
-            $(sBox = document.createElement("input")).attr({ 'id': sBoxID, 'name': sBoxID, 'placeholder': this.sectionTitle, 'size': 14 }).addClass('searchBox');
+            this.titleElement = $("<p>").addClass('filterHead').text(this.sectionTitle)[0];
+            $(sBox = document.createElement("input")).attr({ 'id': sBoxID, 'name': sBoxID, 'placeholder': this.sectionTitle, 'size': 14 }).addClass('searchBox filterHead');
             sBox.setAttribute('type', 'text'); // JQuery .attr() cannot set this
             this.searchBoxElement = sBox;
             this.scrollZoneDiv = $("<div>").addClass('filterCriteriaScrollZone')[0];
@@ -80,7 +78,7 @@ var StudyD;
             var usedValues = this.buildUniqueValuesHash(ids);
             var crSet = [];
             var cHash = {};
-            // Create a reversed hash so keys = values and vice versa
+            // Create a reversed hash so keys map values and values map keys
             $.each(usedValues, function (key, value) {
                 cHash[value] = key;
                 crSet.push(value);
@@ -126,7 +124,7 @@ var StudyD;
             // the scrolling container div declares a large padding margin for the scroll bar,
             // and that padding margin would be an empty waste of space otherwise.
             if (this.uniqueValuesOrder.length > 15) {
-                $(fCol).append(this.titleElement).append(this.searchBoxElement).append(this.scrollZoneDiv);
+                $(fCol).append(this.searchBoxElement).append(this.scrollZoneDiv);
                 // Change the reference so we're affecting the innerHTML of the correct div later on
                 fCol = this.scrollZoneDiv;
             }
@@ -152,6 +150,7 @@ var StudyD;
         // last called
         GenericFilterSection.prototype.anyCheckboxesChangedSinceLastInquiry = function () {
             var _this = this;
+            var changed = false, currentCheckboxState = {}, v = $(this.searchBoxElement).val();
             this.anyCheckboxesChecked = false;
             var changed = false;
             var currentCheckboxState = {};
@@ -165,16 +164,13 @@ var StudyD;
                     _this.anyCheckboxesChecked = true;
                 currentCheckboxState[rowId] = current;
             });
-            if (this.gotFirstFocus) {
-                var v = $(this.searchBoxElement).val();
-                v = v.trim(); // Remove leading and trailing whitespace
-                v = v.toLowerCase();
-                v = v.replace(/\s\s*/, ' '); // Replace internal whitespace with single spaces
-                this.currentSearchSelection = v;
-                if (v !== this.previousSearchSelection) {
-                    this.previousSearchSelection = v;
-                    changed = true;
-                }
+            v = v.trim(); // Remove leading and trailing whitespace
+            v = v.toLowerCase();
+            v = v.replace(/\s\s*/, ' '); // Replace internal whitespace with single spaces
+            this.currentSearchSelection = v;
+            if (v !== this.previousSearchSelection) {
+                this.previousSearchSelection = v;
+                changed = true;
             }
             if (!changed) {
                 // If we haven't detected any change so far, there is one more angle to cover:
@@ -190,6 +186,7 @@ var StudyD;
             return changed;
         };
         GenericFilterSection.prototype.applyProgressiveFiltering = function (ids) {
+            var _this = this;
             // If the filter only contains one item, it's pointless to apply it.
             if (!this.isFilterUseful()) {
                 return ids;
@@ -197,82 +194,55 @@ var StudyD;
             var useSearchBox = false;
             var v = this.currentSearchSelection;
             var queryStrs = [];
-            if ((v != null) && this.gotFirstFocus) {
+            if (v != null) {
                 if (v.length >= this.minCharsToTriggerSearch) {
                     useSearchBox = true;
                     // If there are multiple words, we match each separately.
                     // We will not attempt to match against empty strings, so we filter those out if
                     // any slipped through
-                    queryStrs = v.split(' ').filter(function (one) {
+                    queryStrs = v.split(/\s+/).filter(function (one) {
                         return one.length > 0;
                     });
                 }
             }
             var valuesVisiblePreFiltering = {};
             var idsPostFiltering = [];
-            for (var i = 0; i < ids.length; i++) {
-                var id = ids[i];
-                var valueIndexes = this.filterHash[id];
-                var keepThisID = false;
+            var indexIsVisible = function (index) {
+                var match = true, text;
+                if (useSearchBox) {
+                    text = _this.uniqueValues[index].toLowerCase();
+                    match = queryStrs.some(function (v) {
+                        return text.length >= v.length && text.indexOf(v) >= 0;
+                    });
+                }
+                if (match) {
+                    valuesVisiblePreFiltering[index] = 1;
+                    if ((_this.previousCheckboxState[index] === 'C') || !_this.anyCheckboxesChecked) {
+                        return true;
+                    }
+                }
+                return false;
+            };
+            idsPostFiltering = ids.filter(function (id) {
+                var valueIndexes = _this.filterHash[id];
                 if (valueIndexes instanceof Array) {
-                    for (var k = 0; k < valueIndexes.length; k++) {
-                        var match = true;
-                        if (useSearchBox) {
-                            var text = this.uniqueValues[valueIndexes[k]].toLowerCase();
-                            match = queryStrs.some(function (v) {
-                                return text.length >= v.length && text.indexOf(v) >= 0;
-                            });
-                        }
-                        if (match) {
-                            valuesVisiblePreFiltering[valueIndexes[k]] = 1;
-                            // The "previous" checkbox state is equivalent to the current when this
-                            // function is called
-                            if ((this.previousCheckboxState[valueIndexes[k]] == 'C') || !this.anyCheckboxesChecked) {
-                                // Can't just do the push here - might end up pushing several times
-                                keepThisID = true;
-                            }
-                        }
-                    }
+                    return valueIndexes.some(indexIsVisible);
                 }
-                else {
-                    var match = true;
-                    if (useSearchBox) {
-                        var text = this.uniqueValues[valueIndexes].toLowerCase();
-                        match = queryStrs.some(function (v) {
-                            return text.length >= v.length && text.indexOf(v) >= 0;
-                        });
-                    }
-                    if (match) {
-                        valuesVisiblePreFiltering[valueIndexes] = 1;
-                        if ((this.previousCheckboxState[valueIndexes] == 'C') || !this.anyCheckboxesChecked) {
-                            keepThisID = true;
-                        }
-                    }
-                }
-                // If this ID actually matched a _selected_ criteria, keep it for the next round.
-                if (keepThisID) {
-                    idsPostFiltering.push(id);
-                }
-            }
+                return indexIsVisible(valueIndexes);
+            });
             var rowsToAppend = [];
-            for (var j = 0; j < this.uniqueValuesOrder.length; j++) {
-                var crID = this.uniqueValuesOrder[j];
-                var checkBox = this.checkboxes[crID];
-                var checkBoxRow = this.tableRows[crID];
-                if (valuesVisiblePreFiltering[crID]) {
-                    $(checkBoxRow).removeClass('nodata');
-                    checkBox.disabled = false;
-                    this.tableBodyElement.appendChild(checkBoxRow);
+            this.uniqueValuesOrder.forEach(function (crID) {
+                var checkbox = _this.checkboxes[crID], row = _this.tableRows[crID], show = !!valuesVisiblePreFiltering[crID];
+                $(row).toggleClass('nodata', (checkbox.disabled = !show));
+                if (show) {
+                    _this.tableBodyElement.appendChild(row);
                 }
                 else {
-                    $(checkBoxRow).addClass('nodata');
-                    checkBox.disabled = true;
-                    rowsToAppend.push(checkBoxRow);
+                    rowsToAppend.push(row);
                 }
-            }
-            for (var j = 0; j < rowsToAppend.length; j++) {
-                this.tableBodyElement.appendChild(rowsToAppend[j]);
-            }
+            });
+            // Now, (re)append all the rows we disabled, so they go to the bottom of the table
+            rowsToAppend.forEach(function (row) { return _this.tableBodyElement.appendChild(row); });
             return idsPostFiltering;
         };
         GenericFilterSection.prototype._assayIdToAssay = function (assayId) {
@@ -289,6 +259,9 @@ var StudyD;
             if (assay)
                 return EDDData.Protocols[assay.pid];
             return undefined;
+        };
+        GenericFilterSection.prototype.getIdMapToValues = function () {
+            return function () { return []; };
         };
         return GenericFilterSection;
     })();
@@ -487,9 +460,9 @@ var StudyD;
                 var line = _this._assayIdToLine(assayId) || {}, value = '(Empty)';
                 if (line.meta && line.meta[_this.metaDataID]) {
                     value = [_this.pre, line.meta[_this.metaDataID], _this.post].join(' ').trim();
-                    uniqueNamesId[value] = uniqueNamesId[value] || ++unique;
-                    _this.filterHash[assayId] = uniqueNamesId[value];
                 }
+                uniqueNamesId[value] = uniqueNamesId[value] || ++unique;
+                _this.filterHash[assayId] = uniqueNamesId[value];
             });
             return uniqueNamesId;
         };
@@ -509,9 +482,9 @@ var StudyD;
                 var assay = _this._assayIdToAssay(assayId) || {}, value = '(Empty)';
                 if (assay.meta && assay.meta[_this.metaDataID]) {
                     value = [_this.pre, assay.meta[_this.metaDataID], _this.post].join(' ').trim();
-                    uniqueNamesId[value] = uniqueNamesId[value] || ++unique;
-                    _this.filterHash[assayId] = uniqueNamesId[value];
                 }
+                uniqueNamesId[value] = uniqueNamesId[value] || ++unique;
+                _this.filterHash[assayId] = uniqueNamesId[value];
             });
             return uniqueNamesId;
         };
@@ -685,7 +658,7 @@ var StudyD;
             return false;
         });
         $.ajax({
-            'url': 'edddata',
+            'url': 'edddata/',
             'type': 'GET',
             'error': function (xhr, status, e) {
                 console.log(['Loading EDDData failed: ', status, ';', e].join(''));
@@ -728,33 +701,22 @@ var StudyD;
         var haveMetabolomics = false;
         var haveTranscriptomics = false;
         var haveProteomics = false;
-        var aIDsToUse = [];
         // First do some basic sanity filtering on the list
-        $.each(EDDData.Assays, function (assayId, assay) {
+        var aIDsToUse = $.map(EDDData.Assays, function (assay, assayId) {
             var line = EDDData.Lines[assay.lid];
             if (!assay.active || !line || !line.active)
                 return;
-            aIDsToUse.push(assayId);
-            if (assay.metabolites && assay.metabolites.length)
-                haveMetabolomics = true;
-            if (assay.transcriptions && assay.transcriptions.length)
-                haveTranscriptomics = true;
-            if (assay.proteins && assay.proteins.length)
-                haveProteomics = true;
-            $.each(assay.md || [], function (metadataId) {
+            $.each(assay.meta || [], function (metadataId) {
                 seenInAssaysHash[metadataId] = 1;
             });
-            $.each(line.md || [], function (metadataId) {
+            $.each(line.meta || [], function (metadataId) {
                 seenInLinesHash[metadataId] = 1;
             });
+            return assayId;
         });
         // MetaDataTypeIDs should come alpha-sorted by name, store used IDs in same order
-        $.each(EDDData.MetaDataTypeIDs, function (i, metadataId) {
-            if (seenInLinesHash[metadataId])
-                MetaDataTypesRelevantForLines.push(metadataId);
-            if (seenInAssaysHash[metadataId])
-                MetaDataTypesRelevantForAssays.push(metadataId);
-        });
+        MetaDataTypesRelevantForLines = EDDData.MetaDataTypeIDs.filter(function (id) { return !!seenInLinesHash[id]; });
+        MetaDataTypesRelevantForAssays = EDDData.MetaDataTypeIDs.filter(function (id) { return !!seenInAssaysHash[id]; });
         // Create filters on assay tables
         // TODO media is now a metadata type, strain and carbon source should be too
         var assayFilters = [];
@@ -771,25 +733,19 @@ var StudyD;
             assayFilters.push(new AssayMetaDataFilterSection(typeId));
         });
         // We can initialize all the Assay- and Line-level filters immediately
-        this.assayFilteringWidgets = $.each(assayFilters, function (i, filter) {
+        this.assayFilteringWidgets = assayFilters;
+        assayFilters.forEach(function (filter) {
             filter.processFilteringData(aIDsToUse);
             filter.populateTable();
         });
         this.metaboliteFilteringWidgets = [];
-        // Only create these filters if we have a nonzero count for metabolics measurements
-        if (haveMetabolomics) {
-            this.metaboliteFilteringWidgets.push(new MetaboliteCompartmentFilterSection());
-            this.metaboliteFilteringWidgets.push(new MetaboliteFilterSection());
-        }
+        this.metaboliteFilteringWidgets.push(new MetaboliteCompartmentFilterSection());
+        this.metaboliteFilteringWidgets.push(new MetaboliteFilterSection());
         this.proteinFilteringWidgets = [];
-        if (haveProteomics) {
-            this.proteinFilteringWidgets.push(new ProteinFilterSection());
-        }
+        this.proteinFilteringWidgets.push(new ProteinFilterSection());
         this.geneFilteringWidgets = [];
-        if (haveTranscriptomics) {
-            this.geneFilteringWidgets.push(new GeneFilterSection());
-        }
-        this.allFilteringWidgets = assayFilters.concat(this.metaboliteFilteringWidgets, this.proteinFilteringWidgets, this.geneFilteringWidgets);
+        this.geneFilteringWidgets.push(new GeneFilterSection());
+        this.allFilteringWidgets = [].concat(assayFilters, this.metaboliteFilteringWidgets, this.proteinFilteringWidgets, this.geneFilteringWidgets);
         this.repopulateFilteringSection();
     }
     StudyD.prepareFilteringSection = prepareFilteringSection;
@@ -857,10 +813,10 @@ var StudyD;
         // number of table row elements.
         this.cSourceEntries = [];
         // try to load hidden field value, if empty use a string zero value forcing one row
-        csIDs = ($('#initialcarbonsources').val() || '0').split(',');
-        $.each(csIDs, function (i, sourceId) { return _this.addCarbonSourceRow(sourceId); });
+        // csIDs = ($('#initialcarbonsources').val() || '0').split(',');
+        // $.each(csIDs, (i, sourceId) => this.addCarbonSourceRow(sourceId));
         this.mTypeEntries = [];
-        this.addMetaboliteRow();
+        // this.addMetaboliteRow();
         // Initialize the description edit fields.
         this.initDescriptionEditFields();
         // Hacky button for changing the metabolic map
@@ -869,7 +825,6 @@ var StudyD;
     }
     StudyD.prepareAfterLinesTable = prepareAfterLinesTable;
     function requestAllMetaboliteData(context) {
-        // FIXME this request takes an EXTREMELY LONG TIME
         $.each(EDDData.Protocols, function (id, protocol) {
             $.ajax({
                 url: 'measurements/' + id + '/',
@@ -1930,7 +1885,7 @@ var DataGridSpecLines = (function (_super) {
     // An array of unique identifiers (numbers, not strings), used to identify the records in the
     // data set being displayed
     DataGridSpecLines.prototype.getRecordIDs = function () {
-        return EDDData.LineIDs;
+        return Object.keys(EDDData.Lines);
     };
     // This is called to generate the array of custom header widgets. The order of the array will be
     // the order they are added to the header bar. It's perfectly fine to return an empty array.
@@ -2327,7 +2282,7 @@ var DataGridSpecAssays = (function (_super) {
         var _this = this;
         var seenHash = {};
         this.metaDataIDsUsedInAssays = [];
-        $.each(this.getRecordIDs(), function (x, assayId) {
+        this.getRecordIDs().forEach(function (assayId) {
             var assay = EDDData.Assays[assayId];
             $.each(assay.meta || {}, function (metaId) {
                 seenHash[metaId] = true;

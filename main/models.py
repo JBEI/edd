@@ -1085,7 +1085,7 @@ class Assay(EDDObject):
     def long_name (self) :
         return "%s-%s-%s" % (self.line.name, self.protocol.name, self.name)
 
-    def to_json (self) :
+    def to_json(self):
         return {
             "id": self.pk,
             "name": self.name,
@@ -1096,10 +1096,6 @@ class Assay(EDDObject):
             "mod" : self.updated.to_json() if self.updated else None,
             "exp" : self.experimenter_id,
             "meta": self.meta_store,
-            # "measurements": list(self.measurement_set.values_list('id', flat=True)),
-            # "metabolites": list(self.get_metabolite_measurements().values_list('id', flat=True)),
-            # "transcriptions": list(self.get_gene_measurements().values_list('id', flat=True)),
-            # "proteins": list(self.get_protein_measurements().values_list('id', flat=True)),
         }
 
 

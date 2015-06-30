@@ -133,8 +133,8 @@ interface EDDData {
     UserIDs:number[];
     Users:{[id:number]:any};
 
-	ProtocolIDs:number[];
-	EnabledProtocolIDs:number[];
+	// ProtocolIDs:number[];
+	// EnabledProtocolIDs:number[];
 	Protocols:{[id:number]:any};
 
     MeasurementTypes:{[id:number]:MeasurementTypeRecord};
@@ -174,11 +174,13 @@ interface EDDData {
 	StudiesSize:number;			// Used in index.ts
  	StudiesStart:number;
 
-	LineIDs:number[];
-	EnabledLineIDs:number[];
+	// LineIDs:number[];
+	// TODO comment out; won't be using
+    EnabledLineIDs:number[];
 	Lines:{[id:number]:LineRecord};
 
-	AssayIDs:number[];
+	// AssayIDs:number[];
+    // TODO comment out; won't be using
 	EnabledAssayIDs:number[];
 	Assays:{[id:number]:AssayRecord};
 

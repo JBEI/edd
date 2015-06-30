@@ -67,7 +67,7 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
 
     // spec object tracks what data should be displayed by the table
     private dataObj:{};
-    private recordIds:number[] = [];
+    private recordIds:string[] = [];
     private _size:number = 0;
     private _offset:number = 0;
     private _pageSize:number = 50;
@@ -110,7 +110,7 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
 		];
 	}
 
-    generateStudyNameCells(gridSpec:DataGridSpecStudies, index:number):DataGridDataCell[] {
+    generateStudyNameCells(gridSpec:DataGridSpecStudies, index:string):DataGridDataCell[] {
         var studyDoc = gridSpec.dataObj[index];
         var sideMenuItems = [];
         var match:ResultMatcher = studyDoc.match;
@@ -130,7 +130,7 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
         ];
     }
 
-    generateDescriptionCells(gridSpec:DataGridSpecStudies, index:number):DataGridDataCell[] {
+    generateDescriptionCells(gridSpec:DataGridSpecStudies, index:string):DataGridDataCell[] {
         return [
             new DataGridDataCell(gridSpec, index, {
                 'maxWidth': '400',
@@ -140,7 +140,7 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
         ];
     }
 
-    generateOwnerInitialsCells(gridSpec:DataGridSpecStudies, index:number):DataGridDataCell[] {
+    generateOwnerInitialsCells(gridSpec:DataGridSpecStudies, index:string):DataGridDataCell[] {
         return [
             new DataGridDataCell(gridSpec, index, {
                 'contentString': gridSpec.dataObj[index].initials || '?'
@@ -148,7 +148,7 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
         ];
     }
 
-    generateOwnerNameCells(gridSpec:DataGridSpecStudies, index:number):DataGridDataCell[] {
+    generateOwnerNameCells(gridSpec:DataGridSpecStudies, index:string):DataGridDataCell[] {
         return [
             new DataGridDataCell(gridSpec, index, {
                 'contentString': gridSpec.dataObj[index].ownerName || '?'
@@ -156,7 +156,7 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
         ];
     }
 
-    generateInstitutionCells(gridSpec:DataGridSpecStudies, index:number):DataGridDataCell[] {
+    generateInstitutionCells(gridSpec:DataGridSpecStudies, index:string):DataGridDataCell[] {
         return [
             new DataGridDataCell(gridSpec, index, {
                 'contentString': '?'
@@ -164,7 +164,7 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
         ];
     }
 
-    generateCreatedCells(gridSpec:DataGridSpecStudies, index:number):DataGridDataCell[] {
+    generateCreatedCells(gridSpec:DataGridSpecStudies, index:string):DataGridDataCell[] {
         return [
             new DataGridDataCell(gridSpec, index, {
                 'contentString': Utl.JS.utcToTodayString(gridSpec.dataObj[index].cr)
@@ -172,7 +172,7 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
         ];
     }
 
-    generateModifiedCells(gridSpec:DataGridSpecStudies, index:number):DataGridDataCell[] {
+    generateModifiedCells(gridSpec:DataGridSpecStudies, index:string):DataGridDataCell[] {
         return [
             new DataGridDataCell(gridSpec, index, {
                 'contentString': Utl.JS.utcToTodayString(gridSpec.dataObj[index].mod)
@@ -394,7 +394,7 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
 
     private _transformData(docs:any[]):any {
         var transformed = {};
-        this.recordIds = docs.map((doc) => {
+        this.recordIds = docs.map((doc):string => {
             var match = new ResultMatcher(this._query);
             // straightforward matching on name, description, contact, creator_name, initials
             match.findAndSet('name', doc.name)
@@ -428,7 +428,7 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
                 'initials': doc.initials,
                 'match': match
             };
-            return parseInt(doc.id, 10);
+            return doc.id;
         });
         return transformed;
     }
@@ -519,7 +519,7 @@ class DGStudiesSearchWidget extends DGSearchWidget {
 
     // OVERRIDE
     // HEY GUYS WE DON'T NEED TO FILTER HERE ANYMORE
-    applyFilterToIDs(rowIDs:number[]):number[] {
+    applyFilterToIDs(rowIDs:string[]):string[] {
         return rowIDs;
     }
 
@@ -625,7 +625,7 @@ class DGDisabledStudiesWidget extends DataGridOptionWidget {
         });
     }
 
-	initialFormatRowElementsForID(dataRowObjects:DataGridDataRow[], rowID:number):any {
+	initialFormatRowElementsForID(dataRowObjects:DataGridDataRow[], rowID:string):any {
         var data = this._spec.data();
 		if (data[rowID].dis) {
 			for (var r = 0; r < dataRowObjects.length; r++) {

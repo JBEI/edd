@@ -419,7 +419,7 @@ var DataGridSpecStudies = (function (_super) {
                 'initials': doc.initials,
                 'match': match
             };
-            return parseInt(doc.id, 10);
+            return doc.id;
         });
         return transformed;
     };

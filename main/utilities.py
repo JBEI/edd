@@ -1,5 +1,7 @@
 
 from django.contrib.auth import get_user_model
+from django.db.models import Aggregate, Case, Count, Value, When
+from django.db.models.sql.aggregates import Aggregate as SQLAggregate
 from main.models import *
 from collections import defaultdict
 from decimal import Decimal
@@ -12,6 +14,14 @@ class JSONDecimalEncoder(json.JSONEncoder):
         if isinstance(o, Decimal):
             return float(o)
         return super(JSONDecimalEncoder, self).default(o)
+
+class SQLArrayAgg(SQLAggregate):
+  sql_function = 'array_agg'
+
+class ArrayAgg(Aggregate):
+  name = 'ArrayAgg'
+  def add_to_query(self, query, alias, col, source, is_summary):
+    query.aggregates[alias] = SQLArrayAgg(col, source=source, is_summary=is_summary, **self.extra)
 
 media_types = {
     '--' : '-- (No base media used)',
@@ -30,34 +40,39 @@ def get_edddata_study(study):
     """
     metab_types = Metabolite.objects.prefetch_related("keywords").filter(
         assay__line__study=study).distinct()
+    gene_types = GeneIdentifier.objects.filter(assay__line__study=study).distinct()
+    protein_types = ProteinIdentifier.objects.filter(assay__line__study=study).distinct()
     protocols = Protocol.objects.filter(assay__line__study=study).distinct()
-    enabled_protocols = protocols.filter(active=True)
     carbon_sources = CarbonSource.objects.filter(line__study=study).distinct()
-    assays = Assay.objects.filter(line__study=study).select_related(
-      'line__name', 'updated__mod_by')
+    assays = Assay.objects.filter(
+        line__study=study,
+      ).select_related(
+        'line__name',
+        'updated__mod_by',
+      )
+      # This could be nice, but slows down the query by an order of magnitude
+      #.annotate(
+      #   metabolites=Count(Case(When(measurement__measurement_type__type_group=MeasurementGroup.METABOLITE, then=Value(1)))),
+      #   transcripts=Count(Case(When(measurement__measurement_type__type_group=MeasurementGroup.GENEID, then=Value(1)))),
+      #   proteins=Count(Case(When(measurement__measurement_type__type_group=MeasurementGroup.PROTEINID, then=Value(1)))),
+      # )
     strains = study.get_strains_used()
     lines = study.line_set.all().select_related('created', 'updated').prefetch_related(
         "carbon_source", "strains")
     return {
-      # metabolites
-      "MetaboliteTypeIDs" : [ mt.id for mt in metab_types ],
+      # measurement types
       "MetaboliteTypes" : { mt.id : mt.to_json() for mt in metab_types },
+      "GeneTypes" : { gt.id : gt.to_json() for gt in gene_types },
+      "ProteinTypes" : { pt.id : pt.to_json() for pt in protein_types },
       # Protocols
-      "ProtocolIDs" : [ p.id for p in protocols ],
-      "EnabledProtocolIDs" : [ p.id for p in enabled_protocols ],
       "Protocols" : { p.id : p.to_json() for p in protocols },
       # Assays
-      "AssayIDs" : list(Assay.objects.filter(
-        line__study=study).values_list('id', flat=True)),
-      "EnabledAssayIDs" : list(Assay.objects.filter(
-        line__study=study, active=True).values_list('id', flat=True)),
       "Assays" : { a.id : a.to_json() for a in assays },
       # Strains
       "StrainIDs" : [ s.id for s in strains ],
       "EnabledStrainIDs" : [ s.id for s in strains if s.active ],
       "Strains" : { s.id : s.to_json() for s in strains },
       # Lines
-      "LineIDs" : [ l.id for l in lines ],
       "Lines" : { l.id : l.to_json() for l in lines },
       # Carbon sources
       "CSourceIDs" : [ cs.id for cs in carbon_sources ],

@@ -96,8 +96,6 @@ interface EDDData {
     Users: {
         [x: number]: any;
     };
-    ProtocolIDs: number[];
-    EnabledProtocolIDs: number[];
     Protocols: {
         [x: number]: any;
     };
@@ -150,12 +148,10 @@ interface EDDData {
     };
     StudiesSize: number;
     StudiesStart: number;
-    LineIDs: number[];
     EnabledLineIDs: number[];
     Lines: {
         [x: number]: LineRecord;
     };
-    AssayIDs: number[];
     EnabledAssayIDs: number[];
     Assays: {
         [x: number]: AssayRecord;

@@ -649,52 +649,25 @@ table.filterCriteriaTable {
 	padding:0px;
 	margin:2px 9px 2px 5px;
 }
-table.filterCriteriaTable tr > th.columnLabel {
-	padding:1px 0px 4px 2px;
+table.filterCriteriaTable tr {
+    color:black;
+    cursor:default;
 	margin:0px;
-	vertical-align:bottom;
+    padding:1px 0px;
 	text-align:left;
 }
-table.filterCriteriaTable tr > td {
-	padding:1px 0px 1px 0px;
-	margin:0px;
-	cursor:default;
-	text-align:left;
-}
-table.filterCriteriaTable tr > td:hover {
+table.filterCriteriaTable tr:hover {
 	background-color:#CECEFF;
 }
-table.filterCriteriaTable tr.nodata > td {
+table.filterCriteriaTable tr.nodata {
 	color:#888888;
 }
-table.filterCriteriaTable tr.nodata > td:hover {
+table.filterCriteriaTable tr.nodata:hover {
 	background-color:#E0E0E0;
 }
-table.filterCriteriaTable tr > td div.p {
-	display:table;
-	padding:0px;
-	border:0px;
-}
-table.filterCriteriaTable tr > td div.p > div.q {
-	display:table-row;
-	padding:0px;
-	border:0px;
-}
-table.filterCriteriaTable tr > td div.p > div.q > div.r {
-	display:table-cell;
-	padding:0px 4px 0px 4px;
-	border:0px;
-	vertical-align:top;
-}
-table.filterCriteriaTable tr > td input[type="checkbox"] {
-	padding:0px;
-	margin:0px 0px 0px 2px;
-}
-table.filterCriteriaTable tr > td div.p > div.q > div.s {
-	display:table-cell;
-	padding:0px 0px 0px 2px;
-	border:0px;
-	vertical-align:top;
+.filterHead {
+    color:black;
+    font-weight: bold;
 }
 
 

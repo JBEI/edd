@@ -1538,9 +1538,9 @@ var DataGridColumnSpec = (function () {
         this.createdDataCellObjects[index] = c.slice(0);
         return c;
     };
-    DataGridColumnSpec.prototype.clearEntireIndex = function (index) {
-        this.createdDataCellObjects = {};
-    };
+    // clearEntireIndex(index:number):void {
+    //     this.createdDataCellObjects = {};
+    // }
     DataGridColumnSpec.prototype.clearIndexAtID = function (index) {
         delete this.createdDataCellObjects[index];
     };

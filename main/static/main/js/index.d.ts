@@ -20,17 +20,17 @@ declare class DataGridSpecStudies extends DataGridSpecBase implements DGPageData
     private _searchOpt;
     defineTableSpec(): DataGridTableSpec;
     defineHeaderSpec(): DataGridHeaderSpec[];
-    generateStudyNameCells(gridSpec: DataGridSpecStudies, index: number): DataGridDataCell[];
-    generateDescriptionCells(gridSpec: DataGridSpecStudies, index: number): DataGridDataCell[];
-    generateOwnerInitialsCells(gridSpec: DataGridSpecStudies, index: number): DataGridDataCell[];
-    generateOwnerNameCells(gridSpec: DataGridSpecStudies, index: number): DataGridDataCell[];
-    generateInstitutionCells(gridSpec: DataGridSpecStudies, index: number): DataGridDataCell[];
-    generateCreatedCells(gridSpec: DataGridSpecStudies, index: number): DataGridDataCell[];
-    generateModifiedCells(gridSpec: DataGridSpecStudies, index: number): DataGridDataCell[];
+    generateStudyNameCells(gridSpec: DataGridSpecStudies, index: string): DataGridDataCell[];
+    generateDescriptionCells(gridSpec: DataGridSpecStudies, index: string): DataGridDataCell[];
+    generateOwnerInitialsCells(gridSpec: DataGridSpecStudies, index: string): DataGridDataCell[];
+    generateOwnerNameCells(gridSpec: DataGridSpecStudies, index: string): DataGridDataCell[];
+    generateInstitutionCells(gridSpec: DataGridSpecStudies, index: string): DataGridDataCell[];
+    generateCreatedCells(gridSpec: DataGridSpecStudies, index: string): DataGridDataCell[];
+    generateModifiedCells(gridSpec: DataGridSpecStudies, index: string): DataGridDataCell[];
     defineColumnSpec(): DataGridColumnSpec[];
     defineColumnGroupSpec(): DataGridColumnGroupSpec[];
     getTableElement(): HTMLElement;
-    getRecordIDs(): number[];
+    getRecordIDs(): string[];
     enableSort(grid: DataGrid): DataGridSpecStudies;
     private columnSort(grid, header, ev);
     pageSize(): number;
@@ -71,7 +71,7 @@ declare class DGStudiesSearchWidget extends DGSearchWidget {
     searchDisclosureElement: HTMLElement;
     constructor(grid: DataGrid, spec: DataGridSpecStudies, placeHolder: string, size: number, getsFocus: boolean);
     appendElements(container: HTMLElement, uniqueID: string): void;
-    applyFilterToIDs(rowIDs: number[]): number[];
+    applyFilterToIDs(rowIDs: string[]): string[];
     inputKeyDownHandler(e: any): void;
     typingDelayExpirationHandler: () => void;
 }
@@ -88,5 +88,5 @@ declare class DGDisabledStudiesWidget extends DataGridOptionWidget {
     getIDFragment(): string;
     getLabelText(): string;
     onWidgetChange(e: any): void;
-    initialFormatRowElementsForID(dataRowObjects: DataGridDataRow[], rowID: number): any;
+    initialFormatRowElementsForID(dataRowObjects: DataGridDataRow[], rowID: string): any;
 }

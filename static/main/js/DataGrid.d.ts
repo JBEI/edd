@@ -3,12 +3,30 @@
 /// <reference path="Dragboxes.d.ts" />
 /// <reference path="lib/jquery.d.ts" />
 declare class DataGrid {
+    private _spec;
+    private _table;
+    private _tableBody;
+    private _tableHeaderCell;
+    private _waitBadge;
+    tableTitleSpan: HTMLElement;
+    private _headerRows;
+    private _totalColumnCount;
+    private _recordElements;
+    private _headerWidgets;
+    private _optionsMenuWidgets;
+    private _optionsMenuElement;
+    private _optionsMenuBlockElement;
+    private _optionsLabel;
+    private _groupingEnabled;
+    private _sort;
+    private _sequence;
+    private _timers;
     constructor(dataGridSpec: DataGridSpecBase);
     _initializeTableData(): DataGrid;
     _initializeSort(): DataGrid;
     triggerDataReset(): DataGrid;
-    triggerPartialDataReset(recordIDs: number[], reflow: boolean): DataGrid;
-    reconstructSingleRecord(recordID: number): DataGrid;
+    triggerPartialDataReset(recordIDs: string[], reflow: boolean): DataGrid;
+    reconstructSingleRecord(recordID: string): DataGrid;
     private _createOptionsMenu();
     private _createHeaderWidgets();
     prepareColumnVisibility(flagHash: {}): void;
@@ -18,7 +36,7 @@ declare class DataGrid {
     getSelectedCheckboxElements(): HTMLInputElement[];
     applySortIndicators(): void;
     arrangeTableDataRows(): DataGrid;
-    applyAllWidgetFiltering(filteredSequence: number[]): number[];
+    applyAllWidgetFiltering(filteredSequence: string[]): string[];
     getSpec(): any;
     countTotalColumns(): number;
     private _buildAllTableSorters();
@@ -42,42 +60,24 @@ declare class DataGrid {
     hideColumn(columnIndex: number): void;
     private _updateColumnSettings();
     scheduleTimer(uid: string, func: () => any): DataGrid;
-    applyToRecordSet(func: (rows: DataGridDataRow[], id: number, spec: DataGridSpecBase, grid: DataGrid) => void, ids: number[]): DataGrid;
-    currentSequence(): number[];
+    applyToRecordSet(func: (rows: DataGridDataRow[], id: string, spec: DataGridSpecBase, grid: DataGrid) => void, ids: string[]): DataGrid;
+    currentSequence(): string[];
     sortCols(): DataGridSort[];
     sortCols(cols: DataGridSort[]): DataGrid;
-    private _spec;
-    private _table;
-    private _tableBody;
-    private _tableHeaderCell;
-    private _waitBadge;
-    tableTitleSpan: HTMLElement;
-    private _headerRows;
-    private _totalColumnCount;
-    private _recordElements;
-    private _headerWidgets;
-    private _optionsMenuWidgets;
-    private _optionsMenuElement;
-    private _optionsMenuBlockElement;
-    private _optionsLabel;
-    private _groupingEnabled;
-    private _sort;
-    private _sequence;
-    private _timers;
 }
 declare class DataGridRecordSet {
-    [index: number]: DataGridRecord;
+    [index: string]: DataGridRecord;
 }
 declare class DataGridRecord {
     gridSpec: DataGridSpecBase;
-    recordID: number;
+    recordID: string;
     dataGridDataRows: DataGridDataRow[];
     rowElements: HTMLElement[];
     createdElements: boolean;
     stripeStyles: string[];
     stripeStylesJoin: string;
     recentStripeIndex: any;
-    constructor(gridSpec: DataGridSpecBase, id: number);
+    constructor(gridSpec: DataGridSpecBase, id: string);
     reCreateElementsInPlace(): void;
     createElements(): void;
     removeElements(): void;
@@ -89,10 +89,10 @@ declare class DataGridRecord {
 declare class DataGridDataRow {
     rowElement: HTMLElement;
     rowElementJQ: JQuery;
-    recordID: number;
+    recordID: string;
     dataGridDataCells: DataGridDataCell[];
     createdElement: boolean;
-    constructor(id: number, cells: DataGridDataCell[]);
+    constructor(id: string, cells: DataGridDataCell[]);
     createElement(): void;
     removeElement(): void;
     detachElement(): void;
@@ -101,7 +101,7 @@ declare class DataGridDataRow {
 }
 declare class DataGridDataCell {
     gridSpec: DataGridSpecBase;
-    recordID: number;
+    recordID: string;
     rowspan: number;
     colspan: number;
     align: string;
@@ -121,7 +121,7 @@ declare class DataGridDataCell {
     checkboxElement: HTMLInputElement;
     hidden: boolean;
     createdElement: boolean;
-    constructor(gridSpec: DataGridSpecBase, id: number, opt?: {
+    constructor(gridSpec: DataGridSpecBase, id: string, opt?: {
         [x: string]: any;
     });
     createElement(): void;
@@ -131,7 +131,7 @@ declare class DataGridDataCell {
     unhide(): void;
 }
 declare class DataGridLoadingCell extends DataGridDataCell {
-    constructor(gridSpec: DataGridSpecBase, id: number, opt?: {
+    constructor(gridSpec: DataGridSpecBase, id: string, opt?: {
         [x: string]: any;
     });
 }
@@ -141,7 +141,7 @@ declare class DataGridWidget {
     constructor(dataGridOwnerObject: DataGrid, dataGridSpec: DataGridSpecBase);
     _createLabel(text: string, id: string): HTMLElement;
     _createCheckbox(id: string, name: string, value: string): HTMLInputElement;
-    initialFormatRowElementsForID(dataRowObjects: DataGridDataRow[], rowID: number): void;
+    initialFormatRowElementsForID(dataRowObjects: DataGridDataRow[], rowID: string): void;
     refreshWidget(): void;
 }
 declare class DataGridOptionWidget extends DataGridWidget {
@@ -154,7 +154,7 @@ declare class DataGridOptionWidget extends DataGridWidget {
     onWidgetChange(e: any): void;
     createElements(uniqueID: string): void;
     appendElements(container: HTMLElement, uniqueID: string): void;
-    applyFilterToIDs(rowIDs: number[]): number[];
+    applyFilterToIDs(rowIDs: string[]): string[];
     getState(): boolean;
     isEnabledByDefault(): boolean;
     setState(enabled: boolean): void;
@@ -170,7 +170,7 @@ declare class DataGridHeaderWidget extends DataGridWidget {
     createdElements(flag: boolean): DataGridHeaderWidget;
     displayBeforeViewMenu(): boolean;
     displayBeforeViewMenu(flag: boolean): DataGridHeaderWidget;
-    applyFilterToIDs(rowIDs: number[]): number[];
+    applyFilterToIDs(rowIDs: string[]): string[];
 }
 declare class DGSelectAllWidget extends DataGridHeaderWidget {
     constructor(dataGridOwnerObject: DataGrid, dataGridSpec: DataGridSpecBase);
@@ -191,7 +191,7 @@ declare class DGSearchWidget extends DataGridHeaderWidget {
     createElements(uniqueID: string): void;
     inputKeyDownHandler(e: any): void;
     typingDelayExpirationHandler: () => void;
-    applyFilterToIDs(rowIDs: number[]): number[];
+    applyFilterToIDs(rowIDs: string[]): string[];
 }
 declare class DataGridSort {
     spec: DataGridHeaderSpec;
@@ -264,15 +264,14 @@ declare class DataGridHeaderSpec {
 }
 declare class DataGridColumnSpec {
     columnGroup: number;
-    generateCellsFunction: (gridSpec: DataGridSpecBase, index: number) => DataGridDataCell[];
+    generateCellsFunction: (gridSpec: DataGridSpecBase, index: string) => DataGridDataCell[];
     createdDataCellObjects: {
-        [x: number]: DataGridDataCell[];
+        [x: string]: DataGridDataCell[];
     };
-    constructor(group: number, generateCells: (gridSpec: DataGridSpecBase, index: number) => DataGridDataCell[]);
-    generateCells(gridSpec: DataGridSpecBase, index: number): DataGridDataCell[];
-    clearEntireIndex(index: number): void;
-    clearIndexAtID(index: number): void;
-    cellIndexAtID(index: number): DataGridDataCell[];
+    constructor(group: number, generateCells: (gridSpec: DataGridSpecBase, index: string) => DataGridDataCell[]);
+    generateCells(gridSpec: DataGridSpecBase, index: string): DataGridDataCell[];
+    clearIndexAtID(index: string): void;
+    cellIndexAtID(index: string): DataGridDataCell[];
     getEntireIndex(): DataGridDataCell[];
 }
 declare class DataGridColumnGroupSpec {
@@ -313,14 +312,14 @@ declare class DataGridSpecBase {
     defineRowGroupSpec(): DataGridRowGroupSpec[];
     enableSort(grid: DataGrid): DataGridSpecBase;
     private clickedSort(grid, header, ev);
-    getRowGroupMembership(recordID: number): number;
+    getRowGroupMembership(recordID: string): number;
     getTableElement(): HTMLElement;
-    getRecordIDs(): number[];
+    getRecordIDs(): string[];
     createCustomHeaderWidgets(dataGrid: DataGrid): DataGridHeaderWidget[];
     createCustomOptionsWidgets(dataGrid: DataGrid): DataGridOptionWidget[];
     onInitialized(dataGrid: DataGrid): void;
     onDataReset(dataGrid: DataGrid): void;
-    onPartialDataReset(dataGrid: DataGrid, records: number[]): void;
+    onPartialDataReset(dataGrid: DataGrid, records: string[]): void;
     onRowVisibilityChanged(): void;
     generateGroupName(dataGrid: DataGrid, groupID: string): string;
     onUpdatedGroupingEnabled(dataGrid: DataGrid, enabled: boolean): void;

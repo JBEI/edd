@@ -158,8 +158,7 @@ def study_search(request):
     # FIXME use JsonResponse
     return HttpResponse(json.dumps(query_response), content_type='application/json; charset=utf-8')
 
-# /study/<study_id>/edddata
-# FIXME should have trailing slash?
+# /study/<study_id>/edddata/
 def study_edddata (request, study) :
     """
     Various information (both global and study-specific) that populates the
