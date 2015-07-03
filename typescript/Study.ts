@@ -126,7 +126,7 @@ module StudyD {
             var sBoxID:string = 'filter' + this.sectionShortLabel + 'SearchBox',
                 sBox:HTMLInputElement;
             this.filterColumnDiv = $("<div>").addClass('filterColumn')[0];
-            this.titleElement = $("<p>").addClass('filterHead').text(this.sectionTitle)[0];
+            this.titleElement = $("<span>").addClass('filterHead').text(this.sectionTitle)[0];
 
             $(sBox = document.createElement("input"))
                 .attr({ 'id': sBoxID, 
@@ -198,19 +198,18 @@ module StudyD {
 
 
         populateTable():void {
-            var fCol = this.filterColumnDiv;
+            var fCol = $(this.filterColumnDiv).empty();
             // Only use the scrolling container div if the size of the list warrants it, because
             // the scrolling container div declares a large padding margin for the scroll bar,
             // and that padding margin would be an empty waste of space otherwise.
             if (this.uniqueValuesOrder.length > 15) {
-                $(fCol).append(this.searchBoxElement)
-                        .append(this.scrollZoneDiv);
+                fCol.append(this.searchBoxElement).append(this.scrollZoneDiv);
                 // Change the reference so we're affecting the innerHTML of the correct div later on
-                fCol = this.scrollZoneDiv;
+                fCol = $(this.scrollZoneDiv);
             } else {
-                $(fCol).append(this.titleElement).find(this.scrollZoneDiv).remove();
+                fCol.append(this.titleElement);
             }
-            $(fCol).append(this.filteringTable);
+            fCol.append(this.filteringTable);
 
             var tBody = this.tableBodyElement;
             // Clear out any old table contents
@@ -243,7 +242,7 @@ module StudyD {
             var changed = false;
             var currentCheckboxState:any = {};
 
-            $.each(this.checkboxes, (rowId, checkbox) => {
+            $.each(this.checkboxes || {}, (rowId, checkbox) => {
                 var current, previous;
                 current = (checkbox.checked && !checkbox.disabled) ? 'C' : 'U';
                 previous = this.previousCheckboxState[rowId] || 'N';
@@ -799,15 +798,8 @@ module StudyD {
     // the main graph area with columns of labeled checkboxes.
     export function prepareFilteringSection() {
 
-        var MetaDataTypesRelevantForLines = [];
-        var MetaDataTypesRelevantForAssays = [];
-
         var seenInLinesHash:any = {};
         var seenInAssaysHash:any = {};
-
-        var haveMetabolomics:boolean = false;
-        var haveTranscriptomics:boolean = false;
-        var haveProteomics:boolean = false;
 
         // First do some basic sanity filtering on the list
         var aIDsToUse:string[] = $.map(EDDData.Assays, (assay:any, assayId:string):string => {
@@ -817,9 +809,6 @@ module StudyD {
             $.each(line.meta || [], (metadataId) => { seenInLinesHash[metadataId] = 1; });
             return assayId;
         });
-        // MetaDataTypeIDs should come alpha-sorted by name, store used IDs in same order
-        MetaDataTypesRelevantForLines = EDDData.MetaDataTypeIDs.filter((id) => !!seenInLinesHash[id]);
-        MetaDataTypesRelevantForAssays = EDDData.MetaDataTypeIDs.filter((id) => !!seenInAssaysHash[id]);
 
         // Create filters on assay tables
         // TODO media is now a metadata type, strain and carbon source should be too
@@ -827,15 +816,11 @@ module StudyD {
         assayFilters.push(new StrainFilterSection());
         assayFilters.push(new CarbonSourceFilterSection());
         assayFilters.push(new CarbonLabelingFilterSection());
-        $.each(MetaDataTypesRelevantForLines, (i, typeId) => {
-            assayFilters.push(new LineMetaDataFilterSection(typeId));
-        });
+        [].push.apply(assayFilters, $.map(seenInLinesHash, (id) => new LineMetaDataFilterSection(id)));
         assayFilters.push(new LineNameFilterSection());
         assayFilters.push(new ProtocolFilterSection());
         assayFilters.push(new AssaySuffixFilterSection());
-        $.each(MetaDataTypesRelevantForAssays, (i, typeId) => {
-            assayFilters.push(new AssayMetaDataFilterSection(typeId));
-        });
+        [].push.apply(assayFilters, $.map(seenInAssaysHash, (id) => new AssayMetaDataFilterSection(id)));
 
         // We can initialize all the Assay- and Line-level filters immediately
         this.assayFilteringWidgets = assayFilters;
@@ -927,8 +912,6 @@ module StudyD {
         $('#mainFilterSection').on('mouseover mousedown mouseup', () => this.queueMainGraphRemake())
                 .on('keydown', (e) => filterTableKeyDown(this, e));
         $('#separateAxesCheckbox').on('change', () => this.queueMainGraphRemake(true));
-        $('#assaysSection').on('mouseover mousedown mouseup',
-                () => this.queueAssaysActionPanelShow());
 
         // Read in the initial set of Carbon Source selections, if any, and create the proper
         // number of table row elements.
@@ -997,22 +980,28 @@ module StudyD {
                 filterIds.g.push(measurement.id);
             }
         });
-        $.each(context.metaboliteFilteringWidgets, (i, widget) => {
-            widget.processFilteringData(filterIds.m);
-            widget.populateTable();
-        });
-        $.each(context.proteinFilteringWidgets, (i, widget) => {
-            widget.processFilteringData(filterIds.p);
-            widget.populateTable();
-        });
-        $.each(context.geneFilteringWidgets, (i, widget) => {
-            widget.processFilteringData(filterIds.g);
-            widget.populateTable();
-        });
+        if (filterIds.m.length) {
+            $.each(context.metaboliteFilteringWidgets, (i, widget) => {
+                widget.processFilteringData(filterIds.m);
+                widget.populateTable();
+            });
+            context.metaboliteDataProcessed = true;
+        }
+        if (filterIds.p.length) {
+            $.each(context.proteinFilteringWidgets, (i, widget) => {
+                widget.processFilteringData(filterIds.p);
+                widget.populateTable();
+            });
+            context.proteinDataProcessed = true;
+        }
+        if (filterIds.g.length) {
+            $.each(context.geneFilteringWidgets, (i, widget) => {
+                widget.processFilteringData(filterIds.g);
+                widget.populateTable();
+            });
+            context.geneDataProcessed = true;
+        }
         context.repopulateFilteringSection();
-        context.metaboliteDataProcessed = true;
-        context.proteinDataProcessed = true;
-        context.geneDataProcessed = true;
         // invalidate assays on all DataGrids; I think this means they are initially hidden?
         $.each(context.assaysDataGrids, (protocolId, dataGrid) => {
             dataGrid.invalidateAssayRecords(Object.keys(protocolToAssay[protocolId] || {}));
@@ -1040,11 +1029,9 @@ module StudyD {
 
     function linesActionPanelShow(context) {
         // Figure out how many lines are selected.
-        var checkedBoxes, checkedLen, linesActionPanel;
+        var checkedBoxes = [], checkedLen, linesActionPanel;
         if (context.linesDataGrid) {
             checkedBoxes = context.linesDataGrid.getSelectedCheckboxElements();
-        } else {
-            checkedBoxes = [];
         }
         checkedLen = checkedBoxes.length;
         linesActionPanel = $('#linesActionPanel').toggleClass('off', !checkedLen);
@@ -1063,7 +1050,6 @@ module StudyD {
     }
 
 
-    // TODO: Rewrite using client-side structure and table spec queries
     function assaysActionPanelShow(context) {
         var checkedBoxes = [], checkedAssays, checkedMeasure, panel, infobox;
         panel = $('#assaysActionPanel');
@@ -1111,7 +1097,6 @@ module StudyD {
             // we should not skip this loop, even if we already know a redraw is required, since the
             // call to anyCheckboxesChangedSinceLastInquiry sets internal state in the filter
             // widgets that we will use next time around.
-            // TODO this should be an event handler
             $.each(context.allFilteringWidgets, (i, filter) => {
                 if (filter.anyCheckboxesChangedSinceLastInquiry()) {
                     redraw = true;
@@ -1408,41 +1393,39 @@ module StudyD {
         };
 
         // Run through the collection of metadata, and add a form element entry for each
-        for (var i in record.md) {
-            var v = record.md[i];
-            var field = "linemeta" + i;
-            var cbfield = "linemeta" + i + "include";
-            formInfo[field] = v;
-            formInfo[cbfield] = 1;
-        }
+        $.each(record.meta, (key, value) => {
+            formInfo['linemeta' + key] = value;
+            formInfo['linemeta' + key + 'include'] = 1;
+        });
 
-        var cs = record.cs;    // We need to do something special with the Carbon Sources array
+        // TODO need to re-implement the form take-over
+        // var cs = record.carbon || [];    // We need to do something special with the Carbon Sources array
 
         // Either show just enough carbon source boxes for the entry in question,
         // or if there is no carbon source set, show one box (which will be defaulted to blank)
-        var sourcesToShow = 1;
-        if (cs.length > 1) {
-            sourcesToShow = cs.length;
-        }
+        // var sourcesToShow = 1;
+        // if (cs.length > 1) {
+        //     sourcesToShow = cs.length;
+        // }
 
-        this.disableAllButFirstCarbonSourceRow();
-        for (var i:any=1; i < sourcesToShow; i++) {
-            this.addCarbonSourceRow(0);
-        }
+        // this.disableAllButFirstCarbonSourceRow();
+        // for (var i:any=1; i < sourcesToShow; i++) {
+        //     this.addCarbonSourceRow(0);
+        // }
 
-        // Run through the set of carbon sources, creating a form entry for each
-        for (var i:any=0; i < cs.length; i++) {
-            var c = cs[i];
-            var field = "linecsvalue" + this.cSourceEntries[i].label;
-            formInfo[field] = c;
-        }
+        // // Run through the set of carbon sources, creating a form entry for each
+        // for (var i:any=0; i < cs.length; i++) {
+        //     var c = cs[i];
+        //     var field = "linecsvalue" + this.cSourceEntries[i].label;
+        //     formInfo[field] = c;
+        // }
 
         // TODO: WHY IS THIS TAKING GIGANTIC HARDCODED STRINGS
-        EDDEdit.prepareForm(formInfo, 'lineMain,editLineBanner,lineNameRow,editLineButtons',
-                ['addNewLineShow','addNewLineBanner','bulkEditLineBanner','addNewLineButtons',
-                 'bulkEditLineButtons','lineStrainCheckbox','lineMediaCheckbox',
-                 'lineControlCheckbox','lineCSCheckbox','lineExpCheckbox','lineContactCheckbox',
-                 'importLinesButton'].join(','));
+        // EDDEdit.prepareForm(formInfo, 'lineMain,editLineBanner,lineNameRow,editLineButtons',
+        //         ['addNewLineShow','addNewLineBanner','bulkEditLineBanner','addNewLineButtons',
+        //          'bulkEditLineButtons','lineStrainCheckbox','lineMediaCheckbox',
+        //          'lineControlCheckbox','lineCSCheckbox','lineExpCheckbox','lineContactCheckbox',
+        //          'importLinesButton'].join(','));
     }
 
 
@@ -1981,7 +1964,7 @@ class DataGridSpecLines extends DataGridSpecBase {
             new DataGridDataCell(gridSpec, index, {
                 'checkboxWithID': (id) => { return 'line' + id + 'include'; },
                 'sideMenuItems': [
-                    '<a href="#" onclick="StudyD.editLine(this, ' + index + ');">Edit Line</a>',
+                    '<a href="#editline" class="line-edit-link">Edit Line</a>',
                     '<a href="export?line=' + index + '">Export Data as CSV/etc</a>'
                 ],
                 'hoverEffect': true,
@@ -2090,7 +2073,15 @@ class DataGridSpecLines extends DataGridSpecBase {
 
     // Specification for each of the data columns that will make up the body of the table
     defineColumnSpec():DataGridColumnSpec[] {
-        var leftSide:DataGridColumnSpec[] = [
+        var leftSide:DataGridColumnSpec[],
+            metaDataCols:DataGridColumnSpec[],
+            rightSide:DataGridColumnSpec[];
+        // add click handler for menu on line name cells
+        $(this.tableElement).on('click', 'a.line-edit-link', (ev) => {
+            StudyD.editLine(ev.target, $(ev.target).closest('.popupcell').find('input').val());
+            return false;
+        });
+        leftSide = [
             new DataGridColumnSpec(1, this.generateLineNameCells),
             new DataGridColumnSpec(2, this.generateStrainNameCells),
             new DataGridColumnSpec(3, this.generateCarbonSourceCells),
@@ -2098,12 +2089,10 @@ class DataGridSpecLines extends DataGridSpecBase {
             // The Carbon Balance cells are populated by a callback, triggered when first displayed
             new DataGridColumnSpec(5, this.generateCarbonBalanceBlankCells)
         ];
-
-        var metaDataCols:DataGridColumnSpec[] = this.metaDataIDsUsedInLines.map((id, index) => {
+        metaDataCols = this.metaDataIDsUsedInLines.map((id, index) => {
             return new DataGridColumnSpec(6 + index, this.makeMetaDataCellsGeneratorFunction(id));
         });
-
-        var rightSide:DataGridColumnSpec[] = [
+        rightSide = [
             new DataGridColumnSpec(6 + metaDataCols.length, this.generateExperimenterInitialsCells),
             new DataGridColumnSpec(7 + metaDataCols.length, this.generateModificationDateCells)
         ];
@@ -2213,7 +2202,7 @@ class DataGridSpecLines extends DataGridSpecBase {
 
         // Wire up the 'action panels' for the Lines and Assays sections
         var linesTable = this.getTableElement();
-        $(linesTable).on('mouseover mousedown mouseup', StudyD.queueLinesActionPanelShow);
+        $(linesTable).on('change', ':checkbox', () => StudyD.queueLinesActionPanelShow());
 
         // This calls down into the instantiated widget and alters its styling,
         // so we need to do it after the table has been created.
@@ -2663,10 +2652,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
             var assay = EDDData.Assays[assayId];
             $.each(assay.meta || {}, (metaId) => { seenHash[metaId] = true; });
         });
-        // MetaDataTypeIDs is in alpha-order by name
-        $.each(EDDData.MetaDataTypeIDs, (i, metaId) => {
-            if (seenHash[metaId]) { this.metaDataIDsUsedInAssays.push(metaId); }
-        });
+        [].push.apply(this.metaDataIDsUsedInAssays, Object.keys(seenHash));
     }
 
 
@@ -2992,7 +2978,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
 
 
     generateMeasuringTimesCells(gridSpec:DataGridSpecAssays, index:string):DataGridDataCell[] {
-        var tupleTimeCount = (value, key) => { return [ key, value ]; },
+        var tupleTimeCount = (value, key) => { return [[ key, value ]]; },
             sortByTime = (a:any, b:any) => {
                 var y = parseFloat(a[0]), z = parseFloat(b[0]);
                 return (<any>(y > z) - <any>(z > y));
@@ -3002,7 +2988,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
                 // count values at each x for all measurements
                 ids.forEach((measureId) => {
                     var measure:any = EDDData.AssayMeasurements[measureId] || {},
-                        data:any = measure.values || {};
+                        data:any[] = measure.values || [];
                     data.forEach((point) => {
                         timeCount[point[0][0]] = timeCount[point[0][0]] || 0;
                         // Typescript compiler does not like using increment operator on expression
@@ -3187,9 +3173,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
 
         // Wire up the 'action panels' for the Assays sections
         var table = this.getTableElement();
-        table.addEventListener('mouseover', StudyD.queueAssaysActionPanelShow, false);
-        table.addEventListener('mousedown', StudyD.queueAssaysActionPanelShow, false);
-        table.addEventListener('mouseup', StudyD.queueAssaysActionPanelShow, false);
+        $(table).on('change', ':checkbox', () => StudyD.queueAssaysActionPanelShow());
 
         if (this.undisclosedSectionDiv) {
             $(this.undisclosedSectionDiv).click(() => dataGrid.clickedDisclose(true));
@@ -3199,9 +3183,8 @@ class DataGridSpecAssays extends DataGridSpecBase {
         var graphid = "pro" + p + "graph";
         if (this.graphAreaHeaderSpec) {
             if (this.measuringTimesHeaderSpec.element) {
-                // TODO: style attribute should be a class
                 $(this.graphAreaHeaderSpec.element).html('<div id="' + graphid +
-                        '" style="width:98%;height:240px;padding:0px;margin:5px 0px;"></div>');
+                        '" class="graphContainer"></div>');
                 // Initialize the graph object
                 this.graphObject = Object.create(StudyDGraphing);
                 this.graphObject.Setup(graphid);

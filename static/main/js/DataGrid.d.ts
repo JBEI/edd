@@ -114,7 +114,7 @@ declare class DataGridDataCell {
     contentString: string;
     checkboxWithID: (index: number) => string;
     customID: (index: number) => string;
-    sideMenuItems: string;
+    sideMenuItems: string[];
     cellElement: HTMLElement;
     cellElementJQ: JQuery;
     contentContainerElement: HTMLElement;

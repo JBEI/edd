@@ -75,6 +75,16 @@ class RegistryAutocompleteWidget(AutocompleteWidget):
         super(RegistryAutocompleteWidget, self).__init__(attrs=attrs, model=Strain, opt=_opt)
 
 
+class CarbonSourceAutocompleteWidget(AutocompleteWidget):
+    """ Autocomplete widget for carbon sources """
+    def __init__(self, attrs=None, opt={}):
+        _opt = opt.copy()
+        _opt.update({
+            'text_attr': { 'class': 'autocomp autocomp_carbon' },
+            })
+        super(CarbonSourceAutocompleteWidget, self).__init__(attrs=attrs, model=CarbonSource, opt=_opt)
+
+
 class CreateStudyForm(forms.ModelForm):
     """ Form to create a new study. """
     class Meta:
@@ -99,15 +109,21 @@ class CreateLineForm(forms.ModelForm):
     """ Form to create a new line. """
     class Meta:
         model = Line
-        fields = ['name', 'description', 'control', 'contact', ]
+        fields = (
+            'name', 'description', 'control', 'contact', 'experimenter', 'carbon_source',
+            'strains', )
         labels = {
             'name': _('Line'),
             'description': _('Description'),
             'control': _('Is Control?'),
             'contact': _('Contact'),
+            'experimenter': _('Experimenter'),
         }
         widgets = {
-            'contact': UserAutocompleteWidget()
+            'contact': UserAutocompleteWidget(),
+            'experimenter': UserAutocompleteWidget(),
+            'carbon_source': CarbonSourceAutocompleteWidget(),
+            'strains': RegistryAutocompleteWidget(),
         }
 
     def __init__(self, *args, **kwargs):

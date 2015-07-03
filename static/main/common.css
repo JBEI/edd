@@ -781,6 +781,7 @@ span.popup:hover > span.popupinfo {
 td.popupcell:hover {
 	background-color:#CECEFF;
 }
+/* old style rules */
 td.popupcell div.p {
 	display:table;
 	width:100%;
@@ -840,6 +841,22 @@ td.popupcell div.p > div.q > div.s > div.t ul {
 	white-space:pre-wrap;
 	max-width:450px;
 }
+/* new style rules */
+td.popupcell ul.popupmenu {
+    background-color: #E4E4FF;
+    border: 1px solid #3C75B9;
+    border-radius: 3px;
+    box-shadow: 3px 3px 6px rgba(0,0,0,0.4);
+    display: none;
+    list-style-type: none;
+    padding: 3px 8px !important;
+    position: absolute;
+    transform: translate(4px, 0);
+    z-index: 2;
+}
+td.popupcell:hover ul.popupmenu {
+    display: inline-block;
+}
 
 
 /* Tables for filling out forms */
@@ -878,11 +895,13 @@ table.formTable tr > td p {
     padding:0px;
 }
 #assaysMeasSelectedTD {
-    border-right: 1px solid #6CA5E9
+    border-right: 1px solid rgba(164, 164, 164, 0.7)
+    float: left;
     vertical-align: top;
 }
 #assaysMeasSelectedTD p {
-    padding:5px 8px 0px 9px;
+    margin: 0.25em;
+    padding: 0 8px;
 }
 table.formTable tr > td textarea {
 	vertical-align:top;
@@ -1012,8 +1031,13 @@ table.autocompleteResults.autocompleteResults tr > td {
 
 
 div.graphContainer {
+    height: 240px;
     min-height: 100px;
+    padding: 0;
+    position: relative;
+    width: 100%;
 }
+
 div.graphToolTip {
 	font-family: arial;
 	font-size: 12px;

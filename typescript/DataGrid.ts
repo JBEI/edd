@@ -1201,7 +1201,7 @@ class DataGridDataCell {
     contentString:string;
     checkboxWithID:(index:number)=>string;
     customID:(index:number)=>string;
-    sideMenuItems:string;
+    sideMenuItems:string[];
 
     // Local data
     cellElement:HTMLElement;
@@ -1235,68 +1235,28 @@ class DataGridDataCell {
 
 
     createElement() {
-        var id = this.recordID;
-
-        var c:HTMLElement = document.createElement("td");
-        // If we're adding a checkbox on the left, or a popup side-menu on the right,
-        // we need to create a sequence of divs as a scaffolding.
-        if (this.checkboxWithID || this.sideMenuItems) {
-            // td > div.p
-            var dp = document.createElement("div");
-            dp.className = 'p';
-            c.appendChild(dp);
-            // td > div.p > div.q
-            var dq = document.createElement("div");
-            dq.className = 'q';
-            dp.appendChild(dq);
-            if (this.checkboxWithID) {
-                // td > div.p > div.q > div.r.checkbox
-                var dr = document.createElement("div");
-                dr.className = 'r checkbox';
-                dq.appendChild(dr);
-                // td > div.p > div.q > div.r.checkbox > input[checkbox]
-                var cbID = this.checkboxWithID.call(this.gridSpec, id);
-                var cb = document.createElement("input");
-                cb.setAttribute('type', 'checkbox');
-                cb.setAttribute('name', cbID);
-                cb.setAttribute('id', cbID);
-                cb.setAttribute('value', id.toString());
-                this.checkboxElement = cb;
-                dr.appendChild(cb);
-            }
-            // td > div.p > div.q > div.r
-            var dr = document.createElement("div");
-            dr.className = 'r';
-            dq.appendChild(dr);
-            if (this.sideMenuItems) {
-                var mItems = this.sideMenuItems;
-                if (mItems.length) {
-                    // td > div.p > div.q > div.s
-                    var ds = document.createElement("div");
-                    ds.className = 's';
-                    dq.appendChild(ds);
-                    // td > div.p > div.q > div.s > div.t
-                    var dt = document.createElement("div");
-                    dt.className = 't';
-                    ds.appendChild(dt);
-                    // td > div.p > div.q > div.s > div.t > ul
-                    var ul = document.createElement("ul");
-                    dt.appendChild(ul);
-                    for (var i=0; i < mItems.length; i++) {
-                        // td > div.p > div.q > div.s > div.t > ul > li
-                        var li = document.createElement("li");
-                        li.innerHTML = mItems[i];
-                        ul.appendChild(li);
-                    }
-                }
-            }
-            this.contentContainerElement = dr;
+        var id = this.recordID,
+            c:HTMLElement = document.createElement("td"),
+            checkId:string, menu;
+        if (this.checkboxWithID) {
+            checkId = this.checkboxWithID.call(this.gridSpec, id);
+            this.checkboxElement = document.createElement('input');
+            this.checkboxElement.setAttribute('type', 'checkbox');
+            $(this.checkboxElement).attr({
+                'id': checkId, 'name': checkId, 'value': id.toString()
+            }).appendTo(c);
+            this.contentContainerElement = $('<label>').attr('for', checkId).appendTo(c)[0];
         } else {
-            // If we're not adding a checkbox or a side menu, construction is a lot easier...
-            this.contentContainerElement = c;
+            this.contentContainerElement = $('<span>').appendTo(c)[0];
         }
-        this.contentContainerElement.innerHTML = this.contentString;
+        $(this.contentContainerElement).html(this.contentString);
         this.contentFunction.call(this.gridSpec, this.contentContainerElement, id);
+        if (this.sideMenuItems && this.sideMenuItems.length) {
+            menu = $('<ul>').addClass('popupmenu').appendTo(c);
+            this.sideMenuItems.forEach((item) => {
+                $('<li>').html(item).appendTo(menu);
+            });
+        }
 
         var cellClasses = [];
 

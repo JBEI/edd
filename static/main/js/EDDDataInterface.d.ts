@@ -127,8 +127,6 @@ interface EDDData {
         [x: number]: any;
     };
     Labelings: any[];
-    EnabledStrainIDs: number[];
-    StrainIDs: number[];
     Strains: {
         [x: number]: any;
     };

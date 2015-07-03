@@ -23,7 +23,7 @@ EDD_auto.column_layouts = $.extend(EDD_auto.column_layouts || {}, {
             valueField: 'name'
         }, {
             name: 'Initials',
-            width: '120px',
+            width: '60px',
             valueField: 'initials'
         }, {
             name: 'E-mail',

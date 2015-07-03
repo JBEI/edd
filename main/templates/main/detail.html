@@ -187,7 +187,28 @@
             </form>
         </div>
     </div>
-    <div class="pageSection" id="assaysSection"></div>
+
+    <div class="pageSection" id="assaysSection">
+        <div id="assaysActionPanel" class="sectionActions off">
+            <!-- -->
+            <span id="assaysMeasSelectedTD">0 selected</span>
+            <input type="radio" name="assayaction" id="assayactionmark" value="markas" />
+            <label for="assayactionmark">
+                Mark as <select name="markassayas">
+                <option value="0" selected="selected">Disabled</option>
+                <option value="1">Enabled</option>
+                </select>
+            </label>
+            <input type="radio" name="assayaction" id="assayactiondelete" value="delete" />
+            <label for="assayactiondelete">Delete Measurements</label>
+            <input type="radio" name="assayaction" id="assayactionedit" value="edit" />
+            <label for="assayactionedit">Edit Measurements</label>
+            <input type="radio" name="assayaction" id="assayactionexport" value="export" />
+            <label for="assayactionexport">Export Data</label>
+            <button type="submit">Take Action</button>
+            <div class="clear"></div>
+        </div>
+    </div>
 
     <div class="pageSection minor disclose discloseHide" id="measurementMain">
         <div class="sectionHead">

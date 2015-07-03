@@ -133,8 +133,6 @@ interface EDDData {
     UserIDs:number[];
     Users:{[id:number]:any};
 
-	// ProtocolIDs:number[];
-	// EnabledProtocolIDs:number[];
 	Protocols:{[id:number]:any};
 
     MeasurementTypes:{[id:number]:MeasurementTypeRecord};
@@ -156,8 +154,6 @@ interface EDDData {
 
     Labelings:any[];
 
-    EnabledStrainIDs:number[];
-    StrainIDs:number[];
     Strains:{[id:number]:any};
 
     EnabledCSourceIDs:number[];

@@ -69,14 +69,10 @@ def get_edddata_study(study):
       # Assays
       "Assays" : { a.id : a.to_json() for a in assays },
       # Strains
-      "StrainIDs" : [ s.id for s in strains ],
-      "EnabledStrainIDs" : [ s.id for s in strains if s.active ],
       "Strains" : { s.id : s.to_json() for s in strains },
       # Lines
       "Lines" : { l.id : l.to_json() for l in lines },
       # Carbon sources
-      "CSourceIDs" : [ cs.id for cs in carbon_sources ],
-      "EnabledCSourceIDs" : [ cs.id for cs in carbon_sources if cs.active ],
       "CSources" : { cs.id : cs.to_json() for cs in carbon_sources },
     }
 
@@ -92,19 +88,14 @@ def get_edddata_misc():
     unit_types = MeasurementUnit.objects.all()
     return {
       # Measurement units
-      "UnitTypeIDs" : [ ut.id for ut in unit_types ],
       "UnitTypes" : { ut.id : ut.to_json() for ut in unit_types },
       # media types
       "MediaTypes" : media_types,
       # Users
-      "UserIDs" : users["UserIDs"],
-      "EnabledUserIDs" : users["EnabledUserIDs"],
-      "Users" : users["Users"],
+      "Users" : users,
       # Assay metadata
-      "MetaDataTypeIDs" : [ m.id for m in mdtypes ],
       "MetaDataTypes" : { m.id : m.to_json() for m in mdtypes },
       # compartments
-      "MeasurementTypeCompartmentIDs" : measurement_compartments.keys(),
       "MeasurementTypeCompartments" : measurement_compartments,
     }
 
@@ -137,17 +128,14 @@ def get_edddata_strains () :
 
 def get_edddata_users (active_only=False) :
     User = get_user_model()
-    users = []
+    users = User.objects.select_related(
+        'userprofile'
+      ).prefetch_related(
+        'userprofile__institutions'
+      )
     if active_only:
-        users = User.objects.filter(is_active=True)
-    else:
-        users = User.objects.all()
-    users = users.select_related('userprofile').prefetch_related('userprofile__institutions')
-    return {
-        "UserIDs" : [ u.id for u in users ],
-        "EnabledUserIDs" : [ u.id for u in users if u.is_active ],
-        "Users" : { str(u.id) : u.to_json() for u in users },
-      }
+        users = users.filter(is_active=True)
+    return { u.id : u.to_json() for u in users }
 
 def interpolate_at (measurement_data, x) :
   """
