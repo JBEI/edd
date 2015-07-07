@@ -46,8 +46,9 @@
         * Manually start with `postgres -D /usr/local/var/postgres`
     * Enable the hstore extension on all new databases:
         * `psql -d template1 -c 'create extension hstore;'`
-    * `createdb edd`
-    * `psql edd` and
+    * `createdb edddjango`
+    * `createuser postgres`
+    * `psql edddjango` and
 
             CREATE USER edduser WITH PASSWORD 'somegoodpassword'
                 NOSUPERUSER INHERIT CREATEDB NOCREATEROLE NOREPLICATION;
@@ -61,11 +62,11 @@
             ln -s /usr/local/Cellar/solr/(VERSION)/ /usr/local/solr
 
     * Copy Solr libraries to Tomcat lib:
-      `cp /usr/local/solr/example/lib/ext/* /usr/local/tomcat/lib/`
+      `cp /usr/local/solr/server/lib/ext/* /usr/local/tomcat/lib/`
     * Create Solr directories:
       `mkdir -p /usr/local/var/solr`
     * Copy Solr configuration from `edd-django/solr` to `/usr/local/var/solr`
-    * `cp /usr/local/solr/libexec/dist/solr-(VERSION).war /usr/local/tomcat/webapps/solr.war`
+    * `cp /usr/local/solr/server/webapps/solr.war /usr/local/tomcat/webapps/solr.war`
     * Add a `setenv.sh` to `/usr/local/tomcat/bin/` and `chmod +x /usr/local/tomcat/bin/setenv.sh`
     
             #!/bin/bash
@@ -115,13 +116,6 @@
             # locate _`ENV`_`/site-packages/registration/models.py`
             # edit line 187 `user = models.ForeignKey(…` to read `user = models.OneToOneField(…`
             # change results in no model changes, merely removes the warning
-    * [django-threadlocals](https://pypi.python.org/pypi/django-threadlocals/)
-        * A Django middleware for storing the current request in a thread.local
-        * Version on PyPI is python2 incompatible!
-            * In `${venv}/lib/python2.7/site-packages/threadlocals/middleware.py`
-
-                    s/^from threadlocals\.threadlocals import/from .threadlocals import/
-
     * [requests](http://docs.python-requests.org/en/latest/)
         * "Requests is an Apache2 Licensed HTTP library, written in Python, for human beings."
         * `sudo pip install requests[security]`
@@ -142,8 +136,8 @@
         * Pull CA certificates from `identity.lbl.gov`
             * As root in `/System/Library/OpenSSL/certs`
                 * `openssl s_client -showcerts -connect identity.lbl.gov:636 > godaddy.crt`
-                * Edit `godaddy.crt` to remove all non-certificate blocks (outside BEGIN/END), and
-                  the first certificate block (the identity.lbl.gov certificate).
+                * Edit `godaddy.crt` to remove all non-certificate blocks (outside BEGIN/END), and the
+                  first certificate block (the identity.lbl.gov certificate).
         * Edit as root `/etc/openldap/ldap.conf`
             * Add line `TLS_CACERTDIR   /System/Library/OpenSSL/certs`
             * Add line `TLS_CACERT      /System/Library/OpenSSL/certs/godaddy.crt`
@@ -167,10 +161,8 @@
  * Required `.deb` packages
     * `sudo apt-get install pip` for PyPI/pip python package manager
     * `sudo apt-get install libpq-dev` for headers required by psycopg2
-    * `sudo apt-get install libldap2-dev libsasl2-dev libssl-dev` for headers required by
-      python-ldap
+    * `sudo apt-get install libldap2-dev libsasl2-dev libssl-dev` for headers required by python-ldap
     * `sudo apt-get install python-dev libffi-dev` for headers required by cryptography
-    * `sudo apt-get install libatlas-dev liblapack-dev gfortran` for packages required by SciPy
 
  * Configure LDAP SSL handling in `/etc/ldap/ldap.conf`
     * Add line `TLS_CACERTDIR   /etc/ssl/certs`
@@ -237,16 +229,21 @@
     * `psql -d edddjango -c 'create schema old_edd;'` to make a schema for migrating data
     * `psql -d edddjango -c 'grant all on schema old_edd to edduser;'`
  * Edit the SQL file to prepend the new schema to the `SET search_path` line, and replace all
-   instances of `public.` with `old_edd.` (or whatever the schema name is)
- * Copy the dump in with `psql edddjango < edddb.sql`
+    instances of `public.` with `old_edd.` (or whatever the schema name is) with:
+    
+        cat edddb.sql | sed 's#SET search_path = #SET search_path = old_edd, #g' | \
+        sed 's#public\.#old_edd.#g' > edddb_upd.sql
+
+ * Copy the dump in with `psql edddjango < edddb_upd.sql`
  * Initialize the django schema
     * Run `./manage.py migrate` to create schema for django
         * There is a problem with `registration` app in Django 1.8+; comment the app out in
-          `settings.py` before running `migrate`, then uncomment and run again
+          `./edd/settings.py` before running `migrate`, then uncomment and run again
     * Fill in data with `psql edddjango < convert.sql`
 
 ## Solr
  * Tests in this project make use of a `test` core, which will need to be created
-    * Create a new data directory (e.g. `/usr/local/var/solr/data/test`)
+    * Create a new data directory `mkdir -p /usr/local/var/solr/data/test`
     * Add new line to `solr.xml` using same studies `instanceDir` and new data directory
+        `<core name="tests" instanceDir="./cores/studies" dataDir="/usr/local/var/solr/data/test"/>`
 
