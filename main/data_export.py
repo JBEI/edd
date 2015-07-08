@@ -28,8 +28,8 @@ def extract_column_flags (form) :
     'colColumnNameinclude', and return a set of columns that should *not* be
     included in the exported table.
     """
-    if (not "form_submit" in form) : return set([])
-    column_flags = set()
+    if (not "form_submit" in form) : return dict()
+    column_flags = dict()
     for column_name, column_label in params_dict.iteritems() :
         column_key = "col" + column_name + "include"
         if (form.get(column_key, "0") != "1") :
@@ -72,10 +72,12 @@ def select_objects_for_export (study, user, form) :
                 for assay in assays :
                     selected_measurements.extend(list(
                         assay.measurement_set.filter(
-                            active=True).prefetch_related(
-                            "measurementdatum_set").prefetch_related(
-                            "measurementvector_set").select_related(
-                            "measurement_type")))
+                            active=True,
+                        ).prefetch_related(
+                            "measurementvalue_set",
+                        ).select_related(
+                            "measurement_type",
+                        )))
     else :
         if ("assay" in form) :
             selected_assay_ids = extract_id_list(form, "assay")
@@ -221,7 +223,7 @@ def assemble_table (
         assays,
         lines,
         measurements,
-        column_flags={},
+        column_flags=dict(),
         dlayout_type="dbyl",
         mdata_format="all",
         separate_lines=False,

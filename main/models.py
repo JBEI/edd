@@ -1133,7 +1133,6 @@ class Measurement(models.Model):
         default=MeasurementFormat.SCALAR)
 
     def to_json(self):
-        #points = chain(self.measurementdatum_set.all(), self.measurementvector_set.all())
         return {
             "id": self.pk,
             "assay": self.assay_id,
@@ -1142,7 +1141,7 @@ class Measurement(models.Model):
             "format": self.measurement_format,
             # including points here is extremely inefficient
             # better to directly filter MeasurementValue and map to parent IDs later
-            #"values": map(lambda p: p.to_json(), points),
+            #"values": map(lambda p: p.to_json(), self.measurementvalue_set.all()),
             "x_units": self.x_units_id,
             "y_units": self.y_units_id,
         }
@@ -1162,8 +1161,7 @@ class Measurement(models.Model):
         return (int(self.measurement_format) == 1)
 
     def valid_data (self) :
-        """Data (either MeasurementDatum or MeasurementVector objects) for
-        which the y-value is defined (non-NULL, non-blank)."""
+        """ Data for which the y-value is defined (non-NULL, non-blank). """
         mdata = list(self.data())
         return [ md for md in mdata if md.is_defined() ]
 
@@ -1171,18 +1169,8 @@ class Measurement(models.Model):
         return self.compartment == str(MeasurementCompartment.EXTRACELLULAR)
 
     def data (self) :
-        """
-        Return the data associated with this measurement.  This can be either
-        a scalar (x,y) (MeasurementDatum) or vector (x,y1/y2/y3/...)
-        (MeasurementVector) at present, but not both.
-        """
-        if (int(self.measurement_format) == 0) :
-            return self.measurementdatum_set.all()
-        elif (int(self.measurement_format) == 1) :
-            return self.measurementvector_set.all()
-        else :
-            raise NotImplementedError("Measurement format %s not supported." %
-                self.measurement_format)
+        """ Return the data associated with this measurement. """
+        return self.measurementvalue_set.all()
 
     @property
     def name (self) :
@@ -1208,9 +1196,9 @@ class Measurement(models.Model):
     def extract_data_xvalues (self, defined_only=False) :
         mdata = list(self.data())
         if defined_only :
-            return [ m.fx for m in mdata if m.is_defined() ]
+            return [ m.x[0] for m in mdata if m.is_defined() ]
         else :
-            return [ m.fx for m in mdata ]
+            return [ m.x[0] for m in mdata ]
 
     # this shouldn't need to handle vectors
     def interpolate_at (self, x) :
@@ -1247,6 +1235,9 @@ class MeasurementValue(models.Model):
             "x": self.x,
             "y": self.y,
         }
+
+    def is_defined(self):
+        return (self.y is not None and len(self.y) > 0)
 
 
 class SBMLTemplate(EDDObject):
