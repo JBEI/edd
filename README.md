@@ -43,6 +43,7 @@
     * Make a new virtualenv, e.g. `mkvirtualenv edd`
         * `deactivate` to return to regular global python environment
         * `workon edd` to switch back to edd python environment
+		* run under `workon edd` for the remainder of the pip installs in this document. This will isolate your EDD Python configuration from any other changes you make to your system.
 
  * PostgreSQL (required for installing psycopg2 driver)
     * `brew install postgresql`
@@ -59,18 +60,23 @@
                 NOSUPERUSER INHERIT CREATEDB NOCREATEROLE NOREPLICATION;
 				
  * Tomcat / Solr ( For older 4.X Solr. Skip this item for Solr 5.0+)
+    * At present, this is the recommended version until EDD and these directions are updated for Solr 5.0+
     * Install a JDK8+ from [Oracle](http://java.oracle.com)
-    * `brew install tomcat solr`
+    * `brew install tomcat`
+	* `brew install homebrew/versions/solr4`
     * Link to easily access tomcat and solr install directories:
 
              ln -s /usr/local/Cellar/tomcat/(VERSION)/libexec/ /usr/local/tomcat
-             ln -s /usr/local/Cellar/solr/(VERSION)/ /usr/local/solr
+             ln -s /usr/local/Cellar/	solr4/(VERSION)/ /usr/local/solr
 
-    * For solr 4.x: Copy Solr libraries to Tomcat lib:
-       `cp /usr/local/solr/server/lib/ext/* /usr/local/tomcat/lib/`
+    * Copy Solr libraries to Tomcat lib:
+       * For solr 4.x:
+          `cp /usr/local/solr/example/lib/ext/* /usr/local/tomcat/lib/`
+	   * For solr 5.x: Copy Solr libraries to Tomcat lib. Complete directions for this version may not be known.
+	      `cp /usr/local/solr/server/lib/ext/* /usr/local/tomcat/lib/`
     * Create Solr directories:
        `mkdir -p /usr/local/var/solr/data`
-    * Copy Solr configuration from `edd-django/solr` to `/usr/local/var/solr`
+    * Copy Solr configuration from `edd-django/solr` to `/usr/local/var/solr/data`
     * `cp /usr/local/solr/server/webapps/solr.war /usr/local/tomcat/webapps/solr.war`
 
     * Add a `setenv.sh` to `/usr/local/tomcat/bin/` and `chmod +x /usr/local/tomcat/bin/setenv.sh`
@@ -92,20 +98,19 @@
 
             ln -s /usr/local/Cellar/solr/(VERSION)/ /usr/local/solr
 
-    * TODO: re-examine Solr directions from this point forward.
-	   * Need to distill guidance in:
-	      * [Installing Solr](https://cwiki.apache.org/confluence/display/solr/Installing+Solr)
-	   	  * [Upgrading to 5.0](https://cwiki.apache.org/confluence/display/solr/Upgrading+a+Solr+4.x+Cluster+to+Solr+5.0#UpgradingaSolr4.xClustertoSolr5.0-Step2:InstallSolr5asaService)
+    * TODO: re-examine Solr directions from this point forward, with EDD in mind.
+	   * Need to distill guidance in, following resources, also updating EDD's solr files:
+	      * [Installing](https://cwiki.apache.org/confluence/display/solr/Installing+Solr)
+	   	  * [Upgrading](https://cwiki.apache.org/confluence/display/solr/Upgrading+a+Solr+4.x+Cluster+to+Solr+5.0#UpgradingaSolr4.xClustertoSolr5.0-Step2:InstallSolr5asaService)
 		  * [Solr.xml format changes](http://wiki.apache.org/solr/Solr.xml%204.4%20and%20beyond)
-		  * [Core Admin](http://wiki.apache.org/solr/CoreAdmin) -- shows details of solr.xml -- see newer format required in 5.0
+		  * [Core Admin](http://wiki.apache.org/solr/CoreAdmin) -- referenced from sample solr.xml -- see newer format required in 5.0
     * Create Solr data directories: TODO: still necessary?
       `mkdir -p /usr/local/var/solr/data`
-    * Copy Solr configuration from `edd-django/solr` to solr data directory `usr/local/Cellar/solr/(VERSION)/server/solr` //TODO: correct version
-
+    * Copy Solr configuration from `edd-django/solr` to solr data directory `usr/local/Cellar/solr/(VERSION)/server/solr`
     * Modify `/usr/local/tomcat/conf/server.xml` to only listen on localhostcd 
         * find `<Connector port="8080" ...`
         * add attribute `address="localhost"`
-    * Service is controlled with `solr` command; `solr start` and `solr stop`
+    * Service is controlled with `solr` command; `solr start` and `solr stop -all`
     * Access admin interface via <http://localhost:8983/solr/#/>
 
  * Install python packages (these can be combined into one `sudo pip install`)
@@ -148,6 +153,15 @@
             # locate _`ENV`_`/site-packages/registration/models.py`
             # edit line 187 `user = models.ForeignKey(…` to read `user = models.OneToOneField(…`
             # change results in no model changes, merely removes the warning
+	* [django-threadlocals](https://pypi.python.org/pypi/django-threadlocals/)
+	        * A Django middleware for storing the current request in a thread.local
+	        * Version on PyPI is Python2 incompatible! It only needs one-liner import change to work.
+               * Open in vim `vi ${venv}/lib/python2.7/site-packages/threadlocals/middleware.py`, for example `/usr/local/lib/python2.7/site-packages/`
+			   * In vim: `s/^from threadlocals\.threadlocals import/from .threadlocals import/)`
+			   
+			   cd /Users/mforrer/.virtualenvs/edd/lib/python2.7/site-packages/threadlocals/
+			   (edd)mforrer-mr:threadlocals mforrer$ vim middleware.py
+	            
     * [requests](http://docs.python-requests.org/en/latest/)
         * "Requests is an Apache2 Licensed HTTP library, written in Python, for human beings."
         * `sudo pip install requests[security]`
@@ -173,11 +187,10 @@
             * As root in `/System/Library/OpenSSL/certs`
                 * `openssl s_client -showcerts -connect identity.lbl.gov:636 > godaddy.crt`
                 * Edit `godaddy.crt` to remove all non-certificate blocks (outside BEGIN/END), and the
-                  first certificate block (the identity.lbl.gov certificate).
+                  first certificate block (the identity.lbl.gov certificate). When you're finished, the only file content should be the "BEGIN/END" lines and the certificates themselves. No blank lines!
         * Edit as root `/etc/openldap/ldap.conf`
             * Add line `TLS_CACERTDIR   /System/Library/OpenSSL/certs`
             * Add line `TLS_CACERT      /System/Library/OpenSSL/certs/godaddy.crt`
-			** TODO make edits very explicit
         * Test with:
 
                 ldapsearch -H ldaps://identity.lbl.gov -b "ou=People,dc=lbl,dc=gov" -W \
@@ -186,7 +199,7 @@
 		* Output should contain `result: 0 Success`
 
     * For problems in OS X 10.10.x "Yosemite":
-        * Problems occurred for some users in certificate checking with ldapsearch
+        * Problems occurred for some developers in certificate checking with ldapsearch
         * Work-around, comment out the `TLS_REQCERT` line
 
  * The EDD should now be ready to run with an empty database. See [Database Conversion] below for instructions on copying data.
