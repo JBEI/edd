@@ -3,5 +3,9 @@
     <cores adminPath="/admin/cores" shareSchema="true">
         <core name="studies" default="true" instanceDir="./cores/studies" dataDir="../../data/studies0"/>
         <core name="studies_swap" instanceDir="./cores/studies" dataDir="../../data/studies1"/>
+        <core name="test_studies" instanceDir="./cores/studies" dataDir="../../data/test_studies"/>
+        <core name="users" default="true" instanceDir="./cores/users" dataDir="../../data/users0"/>
+        <core name="users_swap" instanceDir="./cores/users" dataDir="../../data/users1"/>
+        <core name="test_users" instanceDir="./cores/users" dataDir="../../data/test_users"/>
     </cores>
 </solr>
