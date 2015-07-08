@@ -219,12 +219,14 @@ class StudyAdmin(EDDObjectAdmin):
     def solr_index(self, request, queryset):
         solr = StudySearch(ident=request.user)
         # optimize queryset to fetch several related fields
-        q = queryset.prefetch_related(
-                'updates__mod_by__userprofile',
+        q = queryset.select_related(
+                'updated__mod_by__userprofile',
+                'created__mod_by__userprofile',
+            ).prefetch_related(
                 'userpermission_set__user',
                 'grouppermission_set__group',
-                )
-        solr.update(q)
+            )
+        solr.update(list(q))
     solr_index.short_description = 'Index in Solr'
 
 

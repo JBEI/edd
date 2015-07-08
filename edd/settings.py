@@ -180,6 +180,7 @@ STATIC_URL = '/static/'
 
 # File upload location
 MEDIA_ROOT = '/var/www/uploads'
+MEDIA_URL = '/uploads/'
 
 try:
     from .local_settings import *

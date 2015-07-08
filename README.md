@@ -224,6 +224,8 @@
     * `sudo apt-get install libpq-dev` for headers required by psycopg2
     * `sudo apt-get install libldap2-dev libsasl2-dev libssl-dev` for headers required by python-ldap
     * `sudo apt-get install python-dev libffi-dev` for headers required by cryptography
+    * `sudo apt-get install libatlas-dev liblapack-dev gfortran` for packages required by SciPy
+    * `sudo apt-get install libbz2-dev` for packages required by libsmbl
 
  * Configure LDAP SSL handling in `/etc/ldap/ldap.conf`
     * Add line `TLS_CACERTDIR   /etc/ssl/certs`
