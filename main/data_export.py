@@ -28,7 +28,7 @@ def extract_column_flags (form) :
     'colColumnNameinclude', and return a set of columns that should *not* be
     included in the exported table.
     """
-    if (not "form_submit" in form) : return set([])
+    if (not "form_submit" in form) : return set()
     column_flags = set()
     for column_name, column_label in params_dict.iteritems() :
         column_key = "col" + column_name + "include"
@@ -72,10 +72,12 @@ def select_objects_for_export (study, user, form) :
                 for assay in assays :
                     selected_measurements.extend(list(
                         assay.measurement_set.filter(
-                            active=True).prefetch_related(
-                            "measurementdatum_set").prefetch_related(
-                            "measurementvector_set").select_related(
-                            "measurement_type")))
+                            active=True,
+                        ).prefetch_related(
+                            "measurementvalue_set",
+                        ).select_related(
+                            "measurement_type",
+                        )))
     else :
         if ("assay" in form) :
             selected_assay_ids = extract_id_list(form, "assay")
@@ -139,19 +141,16 @@ def extract_line_info_rows (lines, metadata_labels, column_flags) :
         row.add_item_if_not_flagged("Study ID", "S" + str(line.study.id))
         row.add_item_if_not_flagged("Line ID", "L" + str(line.id))
         row.add_item_if_not_flagged("Line", str(line.name))
-        row.add_item_if_not_flagged("Control", "T" if line.control else "")
+        row.add_item_if_not_flagged("Control", "T" if line.control else "F")
         row.add_item_if_not_flagged("Strain", str(line.primary_strain_name))
-        row.add_item_if_not_flagged("Carbon Source",
-          str(line.carbon_source_info))
+        row.add_item_if_not_flagged("Carbon Source", str(line.carbon_source_info))
         if (not "Line Metadata" in column_flags) :
             metadata = line.get_metadata_dict()
-            for column_name in metadata_labels :
-                row.append(str(metadata.get(column_name, "")))
-        row.add_item_if_not_flagged("Line Experimenter",
-            line.experimenter.initials)
+            for column in metadata_labels :
+                row.append(str(metadata.get(column.id, "")))
+        row.add_item_if_not_flagged("Line Experimenter", line.experimenter.initials)
         row.add_item_if_not_flagged("Line Contact", str(line.contact.email))
-        row.add_item_if_not_flagged("Line Last Modified",
-            str(line.last_modified))
+        row.add_item_if_not_flagged("Line Last Modified", str(line.last_modified))
         rows[line.id] = row
     return rows
 
@@ -161,7 +160,7 @@ def get_unique_metadata_names (objects) :
     for obj in objects :
         type_ids.update(obj.meta_store.keys())
     metadata_types = list(MetadataType.objects.filter(pk__in=type_ids))
-    return sorted([ mdt.type_name for mdt in metadata_types ])
+    return sorted(metadata_types, key=lambda t: t.type_name)
 
 def extract_line_column_headers (metadata_labels, column_flags) :
     row = TableRow(column_flags)
@@ -173,7 +172,7 @@ def extract_line_column_headers (metadata_labels, column_flags) :
     row.add_header_if_not_flagged("Carbon Source")
     if (not "Line Metadata" in column_flags) :
         for label in metadata_labels :
-            row.append(str(label))
+            row.append(label.type_name)
     row.add_header_if_not_flagged("Line Experimenter")
     row.add_header_if_not_flagged("Line Contact")
     row.add_header_if_not_flagged("Line Last Modified")
@@ -187,7 +186,7 @@ def extract_assay_column_headers (metadata_labels, column_flags) :
     row.add_header_if_not_flagged("Assay Last Modified")
     if (not "Assay Metadata" in column_flags) :
         for label in metadata_labels :
-            row.append(str(label))
+            row.append(label.type_name)
     return row
 
 def extract_protocol_column_headers (metadata_labels, column_flags) :
@@ -199,7 +198,7 @@ def extract_protocol_column_headers (metadata_labels, column_flags) :
     row.add_header_if_not_flagged("Assay Last Modified")
     if (not "Assay Metadata" in column_flags) :
         for label in metadata_labels :
-            row.append(str(label))
+            row.append(label.type_name)
     return row
 
 def extract_protocol_assay_lookup (assays) :
@@ -221,7 +220,7 @@ def assemble_table (
         assays,
         lines,
         measurements,
-        column_flags={},
+        column_flags=set(),
         dlayout_type="dbyl",
         mdata_format="all",
         separate_lines=False,
@@ -298,8 +297,8 @@ def assemble_table (
                 str(assay.mod_epoch))
             assay_metadata = assay.get_metadata_dict()
             if (not "Assay Metadata" in column_flags) :
-                for column_label in assay_metadata_labels :
-                    row.append(str(assay_metadata.get(column_label, "")))
+                for column in assay_metadata_labels :
+                    row.append(str(assay_metadata.get(column.id, "")))
             assay_export_rows[assay.id] = row
             # A second version of the row, customized for exporting within this
             # Assay's Protocol.
@@ -311,10 +310,9 @@ def assemble_table (
                 assay.experimenter.initials)
             protocol_row.add_item_if_not_flagged("AssayLastModified",
                 str(assay.updated))
-            if (not column_flags.get("AssayMetadata", False)) :
-                for column_label in assay_metadata_labels :
-                    protocol_row.append(
-                        str(assay_metadata.get(column_label, "")))
+            if (not "AssayMetadata" in column_flags) :
+                for column in assay_metadata_labels :
+                    protocol_row.append(str(assay_metadata.get(column.id, "")))
             assay_protocol_export_rows[assay.id] = protocol_row
             # Now let's create both a summary blurb for all the selected
             # Measurements for the Line, as well as the full data strings for
@@ -420,12 +418,14 @@ def assemble_table (
                 table.append(common_values)
                 continue
             # COMMON FUNCTIONS
-            def create_rows_dbya (m) :
+            def create_rows_dbya (m, mt_compartment) :
                 mt_name = str(m.measurement_type.short_name)
                 # Only include the measurement if there is data for it.
                 # FIXME confirm that this is actually what happens...
                 for i in range(len(all_xvalues)) :
                     row = list(common_values)
+                    if (not "Measurement Compartment" in column_flags):
+                        row.append(mt_compartment)
                     row.extend([ all_xvalues[i], mt_name ])
                     if separate_protocols :
                         row.append(measurement_protocol_export_rows[m.id][i])
@@ -449,21 +449,21 @@ def assemble_table (
             for m in assay_measurements :
                 if (not m.measurement_type.is_metabolite()) : continue
                 if (dlayout_type == "dbya") :
-                    create_rows_dbya(m)
+                    create_rows_dbya(m, m.compartment_symbol)
                 elif (len(mdata) > 0) :
                     create_row_other(m, m.compartment_symbol)
             # GENES
             for m in assay_measurements :
                 if (not m.measurement_type.is_gene()) : continue
                 if (dlayout_type == "dbya") :
-                    create_rows_dbya(m)
+                    create_rows_dbya(m, "IC")
                 else :
                     create_row_other(m, "IC") # compartment always IC?
             # PROTEINS
             for m in assay_measurements :
                 if (not m.measurement_type.is_protein()) : continue
                 if (dlayout_type == "dbya") :
-                    create_rows_dbya(m)
+                    create_rows_dbya(m, "")
                 else :
                     create_row_other(m, "") # compartment always blank?
     timepoints.append(time.time())
