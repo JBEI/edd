@@ -283,8 +283,8 @@
  * Create a database for the django application
     * `psql -c 'create database edddjango;'` to create the database
     * `psql -d edddjango -c 'create schema old_edd;'` to make a schema for migrating data
-    * `p`
- * Run commands below to edit the SQL file. They prepend the new schema to the `SET search_path` line, and replace all
+    * `psql -d edddjango -c 'grant all on schema old_edd to edduser;'`
+ * Edit the SQL file to prepend the new schema to the `SET search_path` line, and replace all
     instances of `public.` with `old_edd.` (or whatever the schema name is) with:
     
         cat edddb.sql | sed 's#SET search_path = #SET search_path = old_edd, #g' | \
