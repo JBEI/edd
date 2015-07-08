@@ -204,10 +204,19 @@
 
  * The EDD should now be ready to run with an empty database. 
     * See [Database Conversion](#DbConversion) below for instructions on copying data.
-    * From project root, `./manage.py migrate` will create the needed database tables.
-    * `./manage.py runserver` will launch the application at <http://localhost:8000/>
+	* If not already running, start supporting services
+		* Solr
+		   * 4.X: `catalina start` to start Tomcat and Solr
+		   * 5+: `solr start` to start standalone Solr server
+    * `./manage.py runserver` will launch EDD at <http://localhost:8000/>
     * `./manage.py test main` will run unit tests on the main application
         * Solr tests make use of a different core, see Solr section below.
+		
+ * Manually Build Solr indices (new deployments only)
+    * Navigate to the [Study Administration page](http://localhost:8000/admin/main/study/)
+	* Select all studies by checking box at top left in the header column (adjacent to the text "Name")
+	* Click on the "Action" dropdown just above it, and choose "Index in Solr"
+	* Click the "Go" button. Resulting TypeError should be resolved by ~7/9/15.
 
 ### Debian (for deployment)
  * Required `.deb` packages
@@ -285,8 +294,8 @@ This section provides instructions for converting the EDD database to handle a n
 populating a new deployment with existing data.
 
  * Create a SQL dump file to capture the contents of the existing EDD database
- 
- 		pg_dump -i -h postgres.jbei.org -U edduser -F p -b -v -f edddb.sql edddb
+ 		
+		pg_dump -i -h postgres.jbei.org -U edduser -F p -b -v -f edddb.sql edddb
 		Enter remote edduser password (NOT the one you created for your local instance)
  
  * Create a database for the django application
@@ -294,9 +303,9 @@ populating a new deployment with existing data.
     * `psql -d edddjango -c 'create schema old_edd;'` to make a schema for migrating data
     * `psql -d edddjango -c 'grant all on schema old_edd to edduser;'`
  * Edit the SQL file to prepend the new schema to the `SET search_path` line, and replace all
-    instances of `public.` with `old_edd.` (or whatever the schema name is):
-    
-        cat edddb.sql | sed 's#SET search_path = #SET search_path = old_edd, #g' | \
+    instances of `public.` with `old_edd.` (or whatever schema name you created above):
+	
+		cat edddb.sql | sed 's#SET search_path = #SET search_path = old_edd, #g' | \
         sed 's#public\.#old_edd\.#g' | sed 's#Schema: public;#Schema: old_edd;#g' > edddb_upd.sql
 
  * Copy the dump file content into the database with `psql edddjango < edddb_upd.sql`
@@ -305,6 +314,10 @@ populating a new deployment with existing data.
         * There is a problem with `registration` app in Django 1.8+; comment the app out in
           `./edd/settings.py` before running `migrate`, then uncomment and run again
     * Fill in data with `psql edddjango < convert.sql`
+ * Set user permissions
+    * If this is a development database, manually edit the auth_user table to set `is_superuser` and `is_staff` to true for your account.
+
+      psql edddjango -c "update auth_user set is_superuser=true, is_staff=true where username = 'YOUR_USERNAME'"
 
 ## Solr
  * Tests in this project make use of a `test` core, which will need to be created
