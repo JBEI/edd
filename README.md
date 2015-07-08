@@ -9,7 +9,7 @@
 
  * Get required passwords from a teammate
     * JBEI_AUTH - to configure LDAP SSL handling and EDD's server.cfg
-	* edduser - the password to the production EDD instance. You'll need this to copy its data for local development work.
+	* edduser - the password to the production EDD instance. You'll need this to copy its data for local development work. See [Database Conversion](#DbConversion)
 	
  * Install XCode (and associated Developer Tools) via the App Store
     * As of OS X 10.9 "Mavericks": `xcode-select --install` to just get command-line tools
@@ -75,8 +75,8 @@
 	   * For solr 5.x: Copy Solr libraries to Tomcat lib. Complete directions for this version may not be known.
 	      `cp /usr/local/solr/server/lib/ext/* /usr/local/tomcat/lib/`
     * Create Solr directories:
-       `mkdir -p /usr/local/var/solr/data`
-    * Copy Solr configuration from `edd-django/solr` to `/usr/local/var/solr/data`
+       `mkdir -p /usr/local/var/solr/data`. Note that `data/` must exist for Solr to work, but files are purposefully copied to its parent, `/usr/local/var/solr/` in subsequent steps.
+    * Copy Solr configuration from `edd-django/solr` to `/usr/local/var/solr/`
     * `cp /usr/local/solr/server/webapps/solr.war /usr/local/tomcat/webapps/solr.war`
 
     * Add a `setenv.sh` to `/usr/local/tomcat/bin/` and `chmod +x /usr/local/tomcat/bin/setenv.sh`
@@ -202,7 +202,8 @@
         * Problems occurred for some developers in certificate checking with ldapsearch
         * Work-around, comment out the `TLS_REQCERT` line
 
- * The EDD should now be ready to run with an empty database. See [Database Conversion] below for instructions on copying data.
+ * The EDD should now be ready to run with an empty database. 
+    * See [Database Conversion](#DbConversion) below for instructions on copying data.
     * From project root, `./manage.py migrate` will create the needed database tables.
     * `./manage.py runserver` will launch the application at <http://localhost:8000/>
     * `./manage.py test main` will run unit tests on the main application
@@ -277,20 +278,28 @@
 
  * Compile changes in `*.ts` to `*.js` by simply running `grunt` 
 
+<a name="DbConversion"></a>
 ## Database Conversion
- * `pg_dump -i -h postgres.jbei.org -U edduser -F p -b -v -f edddb.sql edddb` copies old database
-   to a file `edddb.sql`
+
+This section provides instructions for converting the EDD database to handle a new schema, or on
+populating a new deployment with existing data.
+
+ * Create a SQL dump file to capture the contents of the existing EDD database
+ 
+ 		pg_dump -i -h postgres.jbei.org -U edduser -F p -b -v -f edddb.sql edddb
+		Enter remote edduser password (NOT the one you created for your local instance)
+ 
  * Create a database for the django application
     * `psql -c 'create database edddjango;'` to create the database
     * `psql -d edddjango -c 'create schema old_edd;'` to make a schema for migrating data
     * `psql -d edddjango -c 'grant all on schema old_edd to edduser;'`
  * Edit the SQL file to prepend the new schema to the `SET search_path` line, and replace all
-    instances of `public.` with `old_edd.` (or whatever the schema name is) with:
+    instances of `public.` with `old_edd.` (or whatever the schema name is):
     
         cat edddb.sql | sed 's#SET search_path = #SET search_path = old_edd, #g' | \
-        sed 's#public\.#old_edd.#g' > edddb_upd.sql
+        sed 's#public\.#old_edd\.#g' | sed 's#Schema: public;#Schema: old_edd;#g' > edddb_upd.sql
 
- * Copy the dump in with `psql edddjango < edddb_upd.sql`
+ * Copy the dump file content into the database with `psql edddjango < edddb_upd.sql`
  * Initialize the django schema
     * Run `./manage.py migrate` to create schema for django
         * There is a problem with `registration` app in Django 1.8+; comment the app out in
