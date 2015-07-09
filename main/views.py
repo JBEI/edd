@@ -105,10 +105,7 @@ def study_attach (request, study) :
 # /study/<study_id>/lines/
 def study_lines(request, study):
     """ Request information on lines in a study. """
-    model = Study.objects.get(pk=study)
-    # FIXME use JsonResponse
-    lines = json.dumps(map(lambda l: l.to_json(), model.line_set.all()))
-    return HttpResponse(lines, content_type='application/json; charset=utf-8')
+    return JsonResponse(Line.objects.filter(study=study), encoder=JSONDecimalEncoder)
 
 # /study/<study_id>/measurements/<protocol_id>/
 def study_measurements(request, study, protocol):
@@ -142,9 +139,7 @@ def study_measurements(request, study, protocol):
         'measures': map(lambda m: m.to_json(), measure_list),
         'data': value_dict,
     }
-    # FIXME use JsonResponse
-    measure_json = json.dumps(payload, cls=JSONDecimalEncoder)
-    return HttpResponse(measure_json, content_type='application/json; charset=utf-8')
+    return JsonResponse(payload, encoder=JSONDecimalEncoder)
 
 # /study/search/
 def study_search(request):
@@ -158,8 +153,7 @@ def study_search(request):
     query_response = data['response']
     for doc in query_response['docs']:
         doc['url'] = reverse('main:detail', kwargs={'pk':doc['id']})
-    # FIXME use JsonResponse
-    return HttpResponse(json.dumps(query_response), content_type='application/json; charset=utf-8')
+    return JsonResponse(query_response, encoder=JSONDecimalEncoder)
 
 # /study/<study_id>/edddata/
 def study_edddata (request, study) :
@@ -171,7 +165,7 @@ def study_edddata (request, study) :
     data_misc = get_edddata_misc()
     data_study = get_edddata_study(model)
     data_study.update(data_misc)
-    return JsonResponse(data_study)
+    return JsonResponse(data_study, encoder=JSONDecimalEncoder)
 
 # /study/<study_id>/assaydata
 # FIXME should have trailing slash?
@@ -182,13 +176,13 @@ def study_assay_table_data (request, study) :
     protocols = Protocol.objects.all()
     lines = model.line_set.all()
     return JsonResponse({
-      "ATData" : {
-        "existingProtocols" : { p.id : p.name for p in protocols },
-        "existingLines" : [ {"n":l.name,"id":l.id} for l in lines ],
-        "existingAssays" : model.get_assays_by_protocol(),
-      },
-      "EDDData" : get_edddata_study(model),
-    })
+            "ATData" : {
+                "existingProtocols" : { p.id : p.name for p in protocols },
+                "existingLines" : [ {"n":l.name,"id":l.id} for l in lines ],
+                "existingAssays" : model.get_assays_by_protocol(),
+            },
+            "EDDData" : get_edddata_study(model),
+        }, encoder=JSONDecimalEncoder)
 
 # /study/<study_id>/import
 # FIXME should have trailing slash?
@@ -589,35 +583,35 @@ def admin_metadata (request) :
 
 # /data/users
 def data_users (request) :
-    return JsonResponse({ "EDDData" : get_edddata_users() })
+    return JsonResponse({ "EDDData" : get_edddata_users() }, encoder=JSONDecimalEncoder)
 
 # /data/misc
 def data_misc (request) :
-    return JsonResponse({ "EDDData" : get_edddata_misc() })
+    return JsonResponse({ "EDDData" : get_edddata_misc() }, encoder=JSONDecimalEncoder)
 
 # /data/measurements
 def data_measurements (request) :
     data_meas = get_edddata_measurement()
     data_misc = get_edddata_misc()
     data_meas.update(data_misc)
-    return JsonResponse({ "EDDData" : data_meas })
+    return JsonResponse({ "EDDData" : data_meas }, encoder=JSONDecimalEncoder)
 
 # /data/strains
 def data_strains (request) :
-    return JsonResponse({ "EDDData" : get_edddata_strains() })
+    return JsonResponse({ "EDDData" : get_edddata_strains() }, encoder=JSONDecimalEncoder)
 
 # /data/metadata
 def data_metadata (request) :
     return JsonResponse({
-        "EDDData" : {
-            "MetadataTypes" :
-                { m.id:m.to_json() for m in MetadataType.objects.all() },
-        }
-    })
+            "EDDData" : {
+                "MetadataTypes" :
+                    { m.id:m.to_json() for m in MetadataType.objects.all() },
+            }
+        }, encoder=JSONDecimalEncoder)
 
 # /data/carbonsources
 def data_carbonsources (request) :
-    return JsonResponse({ "EDDData" : get_edddata_carbon_sources() })
+    return JsonResponse({ "EDDData" : get_edddata_carbon_sources() }, encoder=JSONDecimalEncoder)
 
 # /download/<file_id>
 def download (request, file_id) :

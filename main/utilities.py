@@ -5,6 +5,7 @@ from django.db.models.sql.aggregates import Aggregate as SQLAggregate
 from main.models import *
 from collections import defaultdict
 from decimal import Decimal
+from uuid import UUID
 import json
 import os.path
 
@@ -13,6 +14,8 @@ class JSONDecimalEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, Decimal):
             return float(o)
+        elif isinstance(o, UUID):
+            return str(o)
         return super(JSONDecimalEncoder, self).default(o)
 
 class SQLArrayAgg(SQLAggregate):
