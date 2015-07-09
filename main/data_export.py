@@ -43,9 +43,8 @@ def select_objects_for_export (study, user, form) :
     and implicitly).  Returns a dict storing lists of each object type.
     """
     # FIXME permissions?  I think these are broken right now...
-    if (user is not None) and (not study.user_can_read(user)) :
-        raise RuntimeError("You do not have permissions to view data "+
-            "for this study.")
+    if (user is not None) and (not user.is_superuser) and (not study.user_can_read(user)):
+        raise RuntimeError("You do not have permissions to view data for this study.")
     assay_level = form.get("assaylevel", None) == "1"
     # these hold unique IDs from the form
     selected_line_ids = []
@@ -291,10 +290,8 @@ def assemble_table (
             row = TableRow(column_flags)
             row.add_item_if_not_flagged("Protocol", protocol_name)
             row.append(str(assay.name))
-            row.add_item_if_not_flagged("AssayExperimenter",
-                assay.experimenter.initials)
-            row.add_item_if_not_flagged("AssayLastModified",
-                str(assay.mod_epoch))
+            row.add_item_if_not_flagged("AssayExperimenter", assay.experimenter.initials)
+            row.add_item_if_not_flagged("AssayLastModified", assay.last_modified)
             assay_metadata = assay.get_metadata_dict()
             if (not "Assay Metadata" in column_flags) :
                 for column in assay_metadata_labels :
@@ -306,10 +303,8 @@ def assemble_table (
             protocol_row.add_item_if_not_flagged("Protocol", protocol_name)
             protocol_row.append(str(assay.name)) # XXX assay_full_name???
             protocol_row.add_item_if_not_flagged("AssaySuffix", str(assay.name))
-            protocol_row.add_item_if_not_flagged("AssayExperimenter",
-                assay.experimenter.initials)
-            protocol_row.add_item_if_not_flagged("AssayLastModified",
-                str(assay.updated))
+            protocol_row.add_item_if_not_flagged("AssayExperimenter", assay.experimenter.initials)
+            protocol_row.add_item_if_not_flagged("AssayLastModified", assay.last_modified)
             if (not "AssayMetadata" in column_flags) :
                 for column in assay_metadata_labels :
                     protocol_row.append(str(assay_metadata.get(column.id, "")))
@@ -317,8 +312,7 @@ def assemble_table (
             # Now let's create both a summary blurb for all the selected
             # Measurements for the Line, as well as the full data strings for
             # each Measurement.
-            assay_measurements = sorted_by_measurement_type_name(
-                measurements_dict[assay.id])
+            assay_measurements = sorted_by_measurement_type_name(measurements_dict[assay.id])
             found_meas_data = False
             measurement_summaries = []
             # XXX this should handle both scalar and vector data types
