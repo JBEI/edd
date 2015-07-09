@@ -5,33 +5,33 @@ The Experiment Data Depot (EDD) is a web-based repository of processed data
 	
 ## Contents
 * System Pre-requisites
-    * Passwords
+    * [Passwords](#Passwords)
     * Mac OSX
-		* [XCode](#XCode)
-		* [HomeBrew](#HomeBrew)
-		* [Python](#Python)
-		* [OpenSSL](#OpenSSL)
-		* [PIP](#Pip)
-		* [virtualenvwrapper](#VirtualEnvWrapper)
-		* [PostGres](#PostgreSQL)
-		* [Solr/Tomcat ](#Solr_Tomcat) (Solr 4.X)
-		* [Solr Standalone ](#Solr) (Solr 5.X)
-		* [Python Packages](#Python_Packages)
-		* [Update EDD Configuration Files](#EDD_Config)
-		* [Configure LDAP SSL](#LDAP_SSL)
-		* [Build Tools](#Build_Tools)
-		* [Configure Database](#Configure_DB)
-		* [Start EDD](#Start_EDD)
-		* [Build Solr Indices](#Build_Indices)
+	   * [XCode](#XCode)
+	   * [HomeBrew](#HomeBrew)
+	   * [Python](#Python)
+	   * [OpenSSL](#OpenSSL)
+	   * [PIP](#Pip)
+	   * [virtualenvwrapper](#VirtualEnvWrapper)
+	   * [PostGres](#PostgreSQL)
+	   * [Solr/Tomcat ](#Solr_Tomcat) (Solr 4.X)
+	   * [Solr Standalone ](#Solr) (Solr 5.X)
+	   * [Python Packages](#Python_Packages)
+	   * [Update EDD Configuration Files](#EDD_Config)
+	   * [Configure LDAP SSL](#LDAP_SSL)
+	   * [Build Tools](#Build_Tools)
+	   * [Configure Database](#Configure_DB)
+	   * [Start EDD](#Start_EDD)
+	   * [Build Solr Indices](#Build_Indices)
    * [Debian (for deployment)](#Debian)
-        * [Required Debian Packages](#Debian_Packages)
-		* [Configure LDAP](#Configure_LDAP)
-		* [Check Out Code](#Check_Out)
-		* [Python packages](#Python_Packages_Deb)
-		* [Solr/Tomcat](#Solr_Tomcat_Deb)
-		* [Django](#Django_Deb)
-		* [Apache Setup](#Apache_Deb)
-		* TODO: update TOC when Debian directions are complete
+       * [Required Debian Packages](#Debian_Packages)
+	   * [Configure LDAP](#Configure_LDAP)
+	   * [Check Out Code](#Check_Out)
+	   * [Python packages](#Python_Packages_Deb)
+	   * [Solr/Tomcat](#Solr_Tomcat_Deb)
+	   * [Django](#Django_Deb)
+	   * [Apache Setup](#Apache_Deb)
+	   * TODO: update TOC when Debian directions are complete
 * [Helpful Python Packages](#Helpful_Python)
 * [Build Tools](#BuildTools)
 * [Database Conversion](#Db_Conversion)
@@ -41,15 +41,17 @@ The Experiment Data Depot (EDD) is a web-based repository of processed data
 
 ## System Pre-requisites
 
+ <a name="Passwords"/>
  * Passwords
  Get required passwords from a teammate
-    * JBEI_AUTH - to configure LDAP SSL handling and EDD's server.cfg
-	* edduser - the password to the production EDD instance. You'll need this to copy its data for local development work. See [Database Conversion](#DbConversion)
+   * JBEI_AUTH - to configure LDAP SSL handling and EDD's server.cfg
+   * edduser - the password to the production EDD instance. You'll need this to copy its data for local development work. See [Database Conversion](#DbConversion)
+   
 ### Mac OS X
 This section contains directions for setting up a development environment on EDD in OSX.
 
  <a name ="XCode"/>	
- * XCode
+* XCode
  Install XCode (and associated Developer Tools) via the App Store
    * As of OS X 10.9 "Mavericks": `xcode-select --install` to just get command-line tools
    * Establish `/usr/include` with: ``sudo ln -s `xcrun --show-sdk-path`/usr/include /usr/include``
