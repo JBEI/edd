@@ -167,6 +167,7 @@ This section contains directions for setting up a development environment on EDD
         * Pull CA certificates from `identity.lbl.gov`
             * As root in `/System/Library/OpenSSL/certs`
                 * `openssl s_client -showcerts -connect identity.lbl.gov:636 > godaddy.crt`
+				   * The command will hang, but still generates the data. CTRL-C to stop it.
                 * Edit `godaddy.crt` to remove all non-certificate blocks (outside BEGIN/END), and the
                   first certificate block (the identity.lbl.gov certificate). When you're finished, the only file content should be the "BEGIN/END" lines and the certificates themselves. No blank lines!
         * Edit as root `/etc/openldap/ldap.conf`
