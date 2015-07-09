@@ -42,7 +42,7 @@ The Experiment Data Depot (EDD) is a web-based repository of processed data
 
 ## System Pre-requisites
  * Passwords <a name="Passwords"/>
-   Get required passwords from a teammate
+    Get required passwords from a teammate
     * JBEI_AUTH - to configure LDAP SSL handling and EDD's server.cfg
     * edduser - the password to the production EDD instance. You'll need this to copy its data for local development work. See [Database Conversion](#DbConversion)
    
@@ -92,7 +92,7 @@ This section contains directions for setting up a development environment on EDD
 
             CREATE USER edduser WITH PASSWORD 'somegoodpassword'
                 NOSUPERUSER INHERIT CREATEDB NOCREATEROLE NOREPLICATION;
-	
+
  * Solr / Tomcat ( For older 4.X Solr. Skip this item for Solr 5.0+) <a name="Solr_Tomcat"/>
     * At present, this is the recommended version until EDD and these directions are updated for Solr 5.0+
     * Install a JDK8+ from [Oracle](http://java.oracle.com)
@@ -130,7 +130,7 @@ This section contains directions for setting up a development environment on EDD
 	   * `ln -s /usr/local/Cellar/solr/(VERSION)/ /usr/local/solr`
 	   
     * TODO: re-examine Solr directions from this point forward, with EDD in mind.
-	   * Need to distill guidance in, following resources, also updating EDD's solr files:
+	   * Need to distill guidance in thefollowing resources, also updating EDD's solr files:
 	      * [Installing](https://cwiki.apache.org/confluence/display/solr/Installing+Solr)
 		  * [Upgrading](https://cwiki.apache.org/confluence/display/solr/Upgrading+a+Solr+4.x+Cluster+to+Solr+5.0#UpgradingaSolr4.xClustertoSolr5.0-Step2:InstallSolr5asaService)
 	      * [Solr.xml format changes](http://wiki.apache.org/solr/Solr.xml%204.4%20and%20beyond)
@@ -148,6 +148,7 @@ This section contains directions for setting up a development environment on EDD
 	
             cd code/edd-django
 		    sudo pip install -r requirements.txt
+
 	* See [Python Packages](#PythonPackages) for a detailed list
 	* Add the workaround specified in [django-threadlocals](#django-threadlocals) to make this package Python 2 compliant
  
@@ -175,7 +176,7 @@ This section contains directions for setting up a development environment on EDD
 
                 ldapsearch -H ldaps://identity.lbl.gov -b "ou=People,dc=lbl,dc=gov" -W \
                     -D "uid=jbei_auth,cn=operational,cn=other" -s base "objectclass=*"
-			
+
 		* Output should contain `result: 0 Success`
 
     * For problems in OS X 10.10.x "Yosemite":
@@ -202,7 +203,9 @@ This section contains directions for setting up a development environment on EDD
    * Select all studies by checking box at top left in the header column (adjacent to the text "Name")
    * Click on the "Action" dropdown just above it, and choose "Index in Solr"
    * Click the "Go" button. Resulting TypeError should be resolved by ~7/9/15.
+
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 <a name="Debian"></a>
 ### Debian (for deployment) <a name="Debian_Packages"/>
 
@@ -227,7 +230,7 @@ This section contains directions for setting up a development environment on EDD
 
             export WORKON_HOME=/usr/local/virtualenvs
             source /usr/local/bin/virtualenvwrapper.sh
-			
+
 	* Test your work by launching a new Terminal and running `echo $WORKON_HOME`
 			* If no value is printed, consider adding a ``~/.bash_profile`` file to force your .bashrc to be executed. See [explanation](http://apple.stackexchange.com/questions/119711/why-mac-os-x-dont-source-bashrc)
 				
@@ -257,7 +260,9 @@ This section contains directions for setting up a development environment on EDD
             WSGIScriptAlias     /       /var/www/${SITE}/edd/wsgi.py
 
  * TODO complete Debian instructions
+ 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 <a name="Helpful_Python"></a>
 ## Helpful Python Packages 
  * django-debug-toolbar `pip install django-debug-toolbar`
@@ -358,8 +363,7 @@ should normally be used to install required packages.
         * locate _`ENV`_`/site-packages/registration/models.py`
         * edit line 187 `user = models.ForeignKey(…` to read `user = models.OneToOneField(…`
         * change results in no model changes, merely removes the warning
-    <a name="django-threadlocals"></a>
-    * [django-threadlocals](https://pypi.python.org/pypi/django-threadlocals/)
+    * [django-threadlocals](https://pypi.python.org/pypi/django-threadlocals/) <a name="django-threadlocals"></a>
 	   * A Django middleware for storing the current request in a thread.local
 	      * Version on PyPI is Python2 incompatible! It only needs one-liner import change to work.
           * Open in vim `vi ${venv}/lib/python2.7/site-packages/threadlocals/middleware.py`, for example `/usr/local/lib/python2.7/site-packages/`
@@ -367,7 +371,7 @@ should normally be used to install required packages.
 			      
 				 cd /Users/YOURUSERNAME/.virtualenvs/edd/lib/python2.7/site-packages/threadlocals/
 				 vim middleware.py
-   	            
+
  * [requests](http://docs.python-requests.org/en/latest/)
     * "Requests is an Apache2 Licensed HTTP library, written in Python, for human beings."
     * `sudo pip install requests[security]`
