@@ -40,9 +40,7 @@ The Experiment Data Depot (EDD) is a web-based repository of processed data
 
 
 ## System Pre-requisites
-
- <a name="Passwords"/>
- * Passwords
+ * Passwords <a name="Passwords"/>
  Get required passwords from a teammate
    * JBEI_AUTH - to configure LDAP SSL handling and EDD's server.cfg
    * edduser - the password to the production EDD instance. You'll need this to copy its data for local development work. See [Database Conversion](#DbConversion)
@@ -50,8 +48,7 @@ The Experiment Data Depot (EDD) is a web-based repository of processed data
 ### Mac OS X
 This section contains directions for setting up a development environment on EDD in OSX.
 
- <a name ="XCode"/>	
-* XCode
+* XCode <a name ="XCode"/>	
  Install XCode (and associated Developer Tools) via the App Store
    * As of OS X 10.9 "Mavericks": `xcode-select --install` to just get command-line tools
    * Establish `/usr/include` with: ``sudo ln -s `xcrun --show-sdk-path`/usr/include /usr/include``
