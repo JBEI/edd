@@ -11,7 +11,7 @@ The Experiment Data Depot (EDD) is a web-based repository of processed data
 	   * [HomeBrew](#HomeBrew)
 	   * [Python](#Python)
 	   * [OpenSSL](#OpenSSL)
-	   * [PIP](#Pip)
+	   * [Pip](#Pip)
 	   * [virtualenvwrapper](#VirtualEnvWrapper)
 	   * [PostGres](#PostgreSQL)
 	   * [Solr/Tomcat ](#Solr_Tomcat) (Solr 4.X)
@@ -41,38 +41,32 @@ The Experiment Data Depot (EDD) is a web-based repository of processed data
 
 ## System Pre-requisites
  * Passwords <a name="Passwords"/>
- Get required passwords from a teammate
-   * JBEI_AUTH - to configure LDAP SSL handling and EDD's server.cfg
-   * edduser - the password to the production EDD instance. You'll need this to copy its data for local development work. See [Database Conversion](#DbConversion)
+     Get required passwords from a teammate
+    * JBEI_AUTH - to configure LDAP SSL handling and EDD's server.cfg
+    * edduser - the password to the production EDD instance. You'll need this to copy its data for local development work. See [Database Conversion](#DbConversion)
    
 ### Mac OS X
 This section contains directions for setting up a development environment on EDD in OSX.
 
 * XCode <a name ="XCode"/>	
- Install XCode (and associated Developer Tools) via the App Store
+    Install XCode (and associated Developer Tools) via the App Store
    * As of OS X 10.9 "Mavericks": `xcode-select --install` to just get command-line tools
-   * Establish `/usr/include` with: ``sudo ln -s `xcrun --show-sdk-path`/usr/include /usr/include``
-
- <a name ="HomeBrew"/>	
- * [Homebrew](http://brew.sh)
+   * Establish `/usr/include` with: ``sudo ln -s `xcrun --show-sdk-path`/usr/include /usr/include`` 
+ * [Homebrew](http://brew.sh) <a name ="HomeBrew"/>	
     * `ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"`
     * `brew doctor`
- <a name="Python"/>
- * Python
- 	Replace default OS X version of Python with the more up-to-date Homebrew version
+ * Python <a name="Python"/>
+    Replace default OS X version of Python with the more up-to-date Homebrew version
    * `brew install python`
    * May need to reload shell to see the proper Python version
- <a name="OpenSSL"/>
- * Replace default OS X version of OpenSSL
+ * Replace default OS X version of OpenSSL <a name="OpenSSL"/>
     * `brew install OpenSSL`
- <a name="Pip"/>
- * [Pip](https://pip.pypa.io)
+ * [Pip](https://pip.pypa.io) <a name="Pip"/>
     * Should be installed as part of Homebrew install of Python
     * For latest version: `sudo pip install --upgrade --no-use-wheel pip`
     * Also a good idea to: `sudo pip install --upgrade setuptools`
     * Manually install by downloading get-pip.py, run `sudo python get-pip.py`
- <a name="VirtualEnvWrapper"/>
- * [virtualenvwrapper](http://virtualenvwrapper.readthedocs.org/en/latest/install.html)
+ * [virtualenvwrapper](http://virtualenvwrapper.readthedocs.org/en/latest/install.html) <a name="VirtualEnvWrapper"/>
     * Makes dependency tracking, development, and deployment easier
     * `sudo pip install virtualenvwrapper`
     * Add to your shell startup (e.g. `~/.bashrc`) and `source` your startup file
@@ -84,8 +78,7 @@ This section contains directions for setting up a development environment on EDD
         * `deactivate` to return to regular global python environment
         * `workon edd` to switch back to edd python environment
 		* run under `workon edd` for the remainder of the pip installs in this document. This will isolate your EDD Python configuration from any other changes you make to your system.
- <a name="PostgreSQL"/>
- * PostgreSQL (required for installing psycopg2 driver)
+ * PostgreSQL (required for installing psycopg2 driver) <a name="PostgreSQL"/>
     * `brew install postgresql`
     * Following PostgreSQL steps are optional if using external database server
     * Instructions on startup can be found with `brew info postgresql`
@@ -99,8 +92,7 @@ This section contains directions for setting up a development environment on EDD
             CREATE USER edduser WITH PASSWORD 'somegoodpassword'
                 NOSUPERUSER INHERIT CREATEDB NOCREATEROLE NOREPLICATION;
 	
- <a name="Solr_Tomcat"/>
- * Solr / Tomcat ( For older 4.X Solr. Skip this item for Solr 5.0+)
+ * Solr / Tomcat ( For older 4.X Solr. Skip this item for Solr 5.0+) <a name="Solr_Tomcat"/>
     * At present, this is the recommended version until EDD and these directions are updated for Solr 5.0+
     * Install a JDK8+ from [Oracle](http://java.oracle.com)
     * `brew install tomcat`
@@ -128,8 +120,8 @@ This section contains directions for setting up a development environment on EDD
          * add attribute `address="localhost"`
      * Service is controlled with `catalina` command; `catalina start` and `catalina stop`
      * Access admin interface via <http://localhost:8080/solr>
- <a name= "Solr"/>
- * Solr (For versions 5.0+. Optional if using non-local server for Solr)
+ 
+ * Solr (For versions 5.0+. Optional if using non-local server for Solr) <a name= "Solr"/>
     * Starting with 5.0, Solr no longer supports deployment to a separate application server. It's designed to run as a separate server.
     * Install a JDK8+ from [Oracle](http://java.oracle.com)
     * `brew install solr`
@@ -150,24 +142,23 @@ This section contains directions for setting up a development environment on EDD
         * add attribute `address="localhost"`
     * Service is controlled with `solr` command; `solr start` and `solr stop -all`
     * Access admin interface via <http://localhost:8983/solr/#/>
- <a name="Python_Packages"/>
- * Install python packages
+ 
+ * Install python packages <a name="Python_Packages"/>
 	
             cd code/edd-django
 		    sudo pip install -r requirements.txt
 	* See [Python Packages](#PythonPackages) for a detailed list
-        
- <a name="EDD_Config"/>
- * Update EDD Configuration Files
-   Use EDD's `server.cfg-example` as a template to create a `server.cfg` file
+ 
+ * Update EDD Configuration Files <a name="EDD_Config"/>
+    Use EDD's `server.cfg-example` as a template to create a `server.cfg` file
    * Need to put in appropriate values for `site.secret`, `db.pass`, and `ldap.pass`
 		* db.pass is the password you created for your local edduser account
 		* ldap.pass in the JBEI_AUTH password
     * Update `site`, `db`, `solr`, `ldap`, and `ice` for appropriate connection parameters
     * _*DO NOT CHECK THIS FILE INTO SOURCE CONTROL*_ ! This file is included by default in EDD's `.gitignore` file, so you should have to work hard to commit it to Git by mistake.
-
- <a name="LDAP_SSL"/>
- * Configure LDAP SSL handling in `/etc/openldap/ldap.conf`
+ 
+ * Configure LDAP SSL <a name="LDAP_SSL"/>
+     Configue handling in `/etc/openldap/ldap.conf` 
     * For OS X 10.9.x "Mavericks" or 10.10.x "Yosemite"
 		* `sudo su`
         * Pull CA certificates from `identity.lbl.gov`
@@ -188,13 +179,13 @@ This section contains directions for setting up a development environment on EDD
     * For problems in OS X 10.10.x "Yosemite":
         * Problems occurred for some developers in certificate checking with ldapsearch
         * Work-around, comment out the `TLS_REQCERT` line
- <a name="Build_Tools"/>
- * Install and run [Build Tools](#BuildTools)
- <a name="Configure_DB"/>
- * Configure Database
+ 
+ * Install and run [Build Tools](#BuildTools) <a name="Build_Tools"/>
+ 
+ * Configure Database <a name="Configure_DB"/>
     * See [Database Conversion](#DbConversion) below for instructions that also apply to initial database creation
- <a name="Start_EDD"/>
- * Start EDD
+ 
+ * Start EDD <a name="Start_EDD"/>
 	* If not already running, start supporting services
 		* Solr
 		   * 4.X: `catalina start` to start Tomcat and Solr
@@ -202,9 +193,9 @@ This section contains directions for setting up a development environment on EDD
     * `./manage.py runserver` will launch EDD at <http://localhost:8000/>
     * `./manage.py test main` will run unit tests on the main application
         * Solr tests make use of a different core, see Solr section below.
- <a name="Build_Indices"/>
- * Build Solr Indices
-   Manually Build Solr's indices (new deployments only)
+ 
+ * Build Solr Indices <a name="Build_Indices"/>
+    Manually Build Solr's indices (new deployments only)
    * Navigate to the [Study Administration page](http://localhost:8000/admin/main/study/)
    * Select all studies by checking box at top left in the header column (adjacent to the text "Name")
    * Click on the "Action" dropdown just above it, and choose "Index in Solr"
@@ -212,8 +203,8 @@ This section contains directions for setting up a development environment on EDD
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 <a name="Debian"/>
-### Debian (for deployment)
-<a name="Debian_Packages"/>
+### Debian (for deployment) <a name="Debian_Packages"/>
+
  * Required `.deb` packages
     * `sudo apt-get install pip` for PyPI/pip python package manager
     * `sudo apt-get install libpq-dev` for headers required by psycopg2
@@ -222,14 +213,14 @@ This section contains directions for setting up a development environment on EDD
     * `sudo apt-get install libatlas-dev liblapack-dev gfortran` for packages required by SciPy
     * `sudo apt-get install libbz2-dev` for packages required by libsmbl
 
- <a name="Configure_LDAP"/>
- * Configure LDAP SSL handling in `/etc/ldap/ldap.conf`
+ 
+ * Configure LDAP SSL handling in `/etc/ldap/ldap.conf` <a name="Configure_LDAP"/>
     * Add line `TLS_CACERTDIR   /etc/ssl/certs`
     * Add line `TLS_CACERT  /etc/ssl/certs/ca-certificates.crt`
- <a name="Check_Out">
- * Check out code to `/var/www/${SITE}`
- <a name="Python_Packages_Deb"/>
- * Python packages
+ 
+ * Check out code to `/var/www/${SITE}` <a name="Check_Out">
+ 
+ * Python packages <a name="Python_Packages_Deb"/>
     * `sudo pip install virtualenvwrapper`
     * Add to your shell startup (e.g. `~/.bashrc`) and `source` your startup file
 
@@ -243,15 +234,15 @@ This section contains directions for setting up a development environment on EDD
 
     * `mkvirtualenv edd.jbei.org` or `workon edd.jbei.org`
     * `pip install -r /path/to/project/requirements.txt` to install python packages to virtualenv
- <a name="Solr_Tomcat_Deb"/>
- * \(_optional_\) `sudo apt-get install tomcat7` for Tomcat/Solr
+ 
+ * \(_optional_\) `sudo apt-get install tomcat7` for Tomcat/Solr <a name="Solr_Tomcat_Deb"/>
     * Download [Solr](http://lucene.apache.org/solr/) and copy WAR to webapps folder
- <a name = "Django_Deb"/>
- * Django setup
+ 
+ * Django setup <a name = "Django_Deb"/>
     * See section Database Conversion below if migrating from CGI EDD database
     * `./manage.py collectstatic` to ensure that all static files are in one spot
- <a name = "Apache_Deb"/>
- * Apache setup
+ 
+ * Apache setup <a name = "Apache_Deb"/>
     * mod_wsgi: `sudo apt-get install libapache2-mod-wsgi`
     * Add inside `VirtualHost` config:
 
@@ -266,13 +257,12 @@ This section contains directions for setting up a development environment on EDD
 
  * TODO complete Debian instructions
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-<a name="Helpful_Python">
-## Helpful Python Packages
+
+## Helpful Python Packages <a name="Helpful_Python">
  * django-debug-toolbar `pip install django-debug-toolbar`
     * Include `debug_toolbar` in settings.py INSTALLED_APPS
 
-<a name="BuildTools"/>
-## Build Tools
+## Build Tools <a name="BuildTools"/>
  * The EDD makes use of Node.js and grunt for builds; it would be a good
     idea to:
     * `brew install node`
@@ -315,18 +305,18 @@ populating a new deployment with existing data.
           `./edd/settings.py` before running `migrate`, then uncomment and run again
     * Fill in data with `psql edddjango < convert.sql`
  * Set user permissions
-  If this is a development database, manually edit the auth_user table to set `is_superuser` and `is_staff` to true for your account.
+    If this is a development database, manually edit the auth_user table to set `is_superuser` and `is_staff` to true for your account.
    * `psql edddjango -c "update auth_user set is_superuser=true, is_staff=true where username = 'YOUR_USERNAME'"`
 
-<a name="Solr_Test">
-## Solr Tests
+
+## Solr Tests <a name="Solr_Test">
  * Tests in this project make use of a `test` core, which will need to be created
     * Create a new data directory `mkdir -p /usr/local/var/solr/data/test`
     * Add new line to `solr.xml` using same studies `instanceDir` and new data directory
         `<core name="tests" instanceDir="./cores/studies" dataDir="/usr/local/var/solr/data/test"/>`
 
-<a name="PythonPackages"/>
-## Required Python Package Reference
+
+## Required Python Package Reference <a name="PythonPackages"/>
 This section describes required Python packages for EDD. This listing is for reference only, since EDD's requirements.txt
 should normally be used to install required packages.
 
