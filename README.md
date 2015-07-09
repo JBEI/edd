@@ -5,15 +5,15 @@ The Experiment Data Depot (EDD) is a web-based repository of processed data
 	
 ## Contents
 * System Pre-requisites
-    * [Passwords](#Passwords)
-    * Mac OSX
+   * [Passwords](#Passwords)
+   * Mac OSX
 	   * [XCode](#XCode)
 	   * [HomeBrew](#HomeBrew)
 	   * [Python](#Python)
 	   * [OpenSSL](#OpenSSL)
 	   * [Pip](#Pip)
 	   * [virtualenvwrapper](#VirtualEnvWrapper)
-	   * [PostGres](#PostgreSQL)
+	   * [PostgreSQL](#PostgreSQL)
 	   * [Solr/Tomcat ](#Solr_Tomcat) (Solr 4.X)
 	   * [Solr Standalone ](#Solr) (Solr 5.X)
 	   * [Python Packages](#Python_Packages)
@@ -36,22 +36,23 @@ The Experiment Data Depot (EDD) is a web-based repository of processed data
 * [Build Tools](#BuildTools)
 * [Database Conversion](#Db_Conversion)
 * [Solr Tests](#Solr_Test)
-* [Required Python Package Reference](PythonPackages)
+* [Required Python Package Reference](#PythonPackages)
 
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ## System Pre-requisites
  * Passwords <a name="Passwords"/>
-     Get required passwords from a teammate
+   Get required passwords from a teammate
     * JBEI_AUTH - to configure LDAP SSL handling and EDD's server.cfg
     * edduser - the password to the production EDD instance. You'll need this to copy its data for local development work. See [Database Conversion](#DbConversion)
    
 ### Mac OS X
 This section contains directions for setting up a development environment on EDD in OSX.
 
-* XCode <a name ="XCode"/>	
+ * XCode <a name ="XCode"/>	
     Install XCode (and associated Developer Tools) via the App Store
-   * As of OS X 10.9 "Mavericks": `xcode-select --install` to just get command-line tools
-   * Establish `/usr/include` with: ``sudo ln -s `xcrun --show-sdk-path`/usr/include /usr/include`` 
+    * As of OS X 10.9 "Mavericks": `xcode-select --install` to just get command-line tools
+    * Establish `/usr/include` with: ``sudo ln -s `xcrun --show-sdk-path`/usr/include /usr/include``
  * [Homebrew](http://brew.sh) <a name ="HomeBrew"/>	
     * `ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"`
     * `brew doctor`
@@ -148,6 +149,7 @@ This section contains directions for setting up a development environment on EDD
             cd code/edd-django
 		    sudo pip install -r requirements.txt
 	* See [Python Packages](#PythonPackages) for a detailed list
+	* Add the workaround specified in [django-threadlocals](#django-threadlocals) to make this package Python 2 compliant
  
  * Update EDD Configuration Files <a name="EDD_Config"/>
     Use EDD's `server.cfg-example` as a template to create a `server.cfg` file
@@ -200,9 +202,8 @@ This section contains directions for setting up a development environment on EDD
    * Select all studies by checking box at top left in the header column (adjacent to the text "Name")
    * Click on the "Action" dropdown just above it, and choose "Index in Solr"
    * Click the "Go" button. Resulting TypeError should be resolved by ~7/9/15.
-
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-<a name="Debian"/>
+<a name="Debian"></a>
 ### Debian (for deployment) <a name="Debian_Packages"/>
 
  * Required `.deb` packages
@@ -257,12 +258,13 @@ This section contains directions for setting up a development environment on EDD
 
  * TODO complete Debian instructions
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-## Helpful Python Packages <a name="Helpful_Python">
+<a name="Helpful_Python"></a>
+## Helpful Python Packages 
  * django-debug-toolbar `pip install django-debug-toolbar`
     * Include `debug_toolbar` in settings.py INSTALLED_APPS
 
-## Build Tools <a name="BuildTools"/>
+<a name="BuildTools"></a>
+## Build Tools 
  * The EDD makes use of Node.js and grunt for builds; it would be a good
     idea to:
     * `brew install node`
@@ -276,7 +278,7 @@ This section contains directions for setting up a development environment on EDD
 
  * Compile changes in `*.ts` to `*.js` by simply running `grunt` from the edd base directory
 
-<a name="DbConversion"/>
+<a name="DbConversion"></a>
 ## Database Conversion
 
 This section provides instructions for converting the EDD database to handle a new schema, or on
@@ -308,69 +310,70 @@ populating a new deployment with existing data.
     If this is a development database, manually edit the auth_user table to set `is_superuser` and `is_staff` to true for your account.
    * `psql edddjango -c "update auth_user set is_superuser=true, is_staff=true where username = 'YOUR_USERNAME'"`
 
-
-## Solr Tests <a name="Solr_Test">
+<a name="Solr_Test"></a>
+## Solr Tests 
  * Tests in this project make use of a `test` core, which will need to be created
     * Create a new data directory `mkdir -p /usr/local/var/solr/data/test`
     * Add new line to `solr.xml` using same studies `instanceDir` and new data directory
         `<core name="tests" instanceDir="./cores/studies" dataDir="/usr/local/var/solr/data/test"/>`
 
-
-## Required Python Package Reference <a name="PythonPackages"/>
+<a name="PythonPackages"></a>
+## Required Python Package Reference 
 This section describes required Python packages for EDD. This listing is for reference only, since EDD's requirements.txt
 should normally be used to install required packages.
 
-   * N.B. probably need to re-install `cryptography` to compile in correct OpenSSL
-   * [Arrow](http://crsmithdev.com/arrow/)
-        * "Arrow is a Python library that offers a sensible, human-friendly approach to creating,
-          manipulating, formatting and converting dates, times, and timestamps."
-        * `sudo pip install arrow`
-    * [cryptography](https://cryptography.io/en/latest/)
-        * Adds some crypto libraries to help play nice with TLS certificates
-        * Needs additional env flags to ensure using Brew-installed OpenSSL
-        * `env ARCHFLAGS="-arch x86_64" LDFLAGS="-L/usr/local/opt/openssl/lib"
-            CFLAGS="-I/usr/local/opt/openssl/include" pip install cryptography`
-            * May need to include `--upgrade --force-reinstall` flags after `install` in prior
-              command
-    * [Django](https://www.djangoproject.com/)
-        * MVC web framework used to develop EDD.
-        * `sudo pip install Django`
-    * [django-auth-ldap](https://pythonhosted.org/django-auth-ldap/index.html)
-        * A Django application providing authentication with an LDAP backend.
-        * `sudo pip install django-auth-ldap`
-    * [django-extensions](https://django-extensions.readthedocs.org/en/latest/)
-        * Adds additional management extensions to the Django management script.
-        * `sudo pip install django-extensions`
-    * [django-hstore](https://github.com/djangonauts/django-hstore)
-        * Supports the PostgreSQL HStore extension for key-value store columns.
-        * `sudo pip install django-hstore`
-        * Ensure that the hstore extension is enabled on the PostgreSQL template1 database before
-          use; details in django-hstore documentation, and command provided in PostgreSQL setup
-          above.
-        * Requires running `python manage.py collectstatic` to copy static files in all apps to a
-          common location; this may need to be run every deploy.
-    * [django-registration](http://django-registration-redux.readthedocs.org/en/latest/index.html)
-        * A Django application allowing for local-account registration and creation.
-        * `sudo pip install django-registration-redux`
-        * Version 1.1 used with Django 1.8+ results in a warning at server startup; to patch:
-            * locate _`ENV`_`/site-packages/registration/models.py`
-            * edit line 187 `user = models.ForeignKey(…` to read `user = models.OneToOneField(…`
-            * change results in no model changes, merely removes the warning
-	* [django-threadlocals](https://pypi.python.org/pypi/django-threadlocals/)
-	        * A Django middleware for storing the current request in a thread.local
-	        * Version on PyPI is Python2 incompatible! It only needs one-liner import change to work.
-               * Open in vim `vi ${venv}/lib/python2.7/site-packages/threadlocals/middleware.py`, for example `/usr/local/lib/python2.7/site-packages/`
-			   * In vim: `s/^from threadlocals\.threadlocals import/from .threadlocals import/)`
-			   
-			   cd /Users/YOURUSERNAME/.virtualenvs/edd/lib/python2.7/site-packages/threadlocals/
-			   vim middleware.py
-	            
-    * [requests](http://docs.python-requests.org/en/latest/)
-        * "Requests is an Apache2 Licensed HTTP library, written in Python, for human beings."
-        * `sudo pip install requests[security]`
-    * [psycopg2](http://initd.org/psycopg/)
-        * Database driver/adapter for PostgreSQL in Python.
-        * `sudo pip install psycopg2`
-    * [python-ldap](http://www.python-ldap.org/)
-        * Object-oriented client API for accessing LDAP directories.
-        * `sudo pip install python-ldap`
+ * N.B. probably need to re-install `cryptography` to compile in correct OpenSSL
+ * [Arrow](http://crsmithdev.com/arrow/)
+      * "Arrow is a Python library that offers a sensible, human-friendly approach to creating,
+        manipulating, formatting and converting dates, times, and timestamps."
+      * `sudo pip install arrow`
+ * [cryptography](https://cryptography.io/en/latest/)
+    * Adds some crypto libraries to help play nice with TLS certificates
+    * Needs additional env flags to ensure using Brew-installed OpenSSL
+    * `env ARCHFLAGS="-arch x86_64" LDFLAGS="-L/usr/local/opt/openssl/lib"
+        CFLAGS="-I/usr/local/opt/openssl/include" pip install cryptography`
+        * May need to include `--upgrade --force-reinstall` flags after `install` in prior
+          command
+ * [Django](https://www.djangoproject.com/)
+    * MVC web framework used to develop EDD.
+    * `sudo pip install Django`
+ * [django-auth-ldap](https://pythonhosted.org/django-auth-ldap/index.html)
+    * A Django application providing authentication with an LDAP backend.
+    * `sudo pip install django-auth-ldap`
+ * [django-extensions](https://django-extensions.readthedocs.org/en/latest/)
+    * Adds additional management extensions to the Django management script.
+    * `sudo pip install django-extensions`
+ * [django-hstore](https://github.com/djangonauts/django-hstore)
+    * Supports the PostgreSQL HStore extension for key-value store columns.
+    * `sudo pip install django-hstore`
+    * Ensure that the hstore extension is enabled on the PostgreSQL template1 database before
+      use; details in django-hstore documentation, and command provided in PostgreSQL setup
+      above.
+    * Requires running `python manage.py collectstatic` to copy static files in all apps to a
+      common location; this may need to be run every deploy.
+ * [django-registration](http://django-registration-redux.readthedocs.org/en/latest/index.html)
+    * A Django application allowing for local-account registration and creation.
+    * `sudo pip install django-registration-redux`
+    * Version 1.1 used with Django 1.8+ results in a warning at server startup; to patch:
+        * locate _`ENV`_`/site-packages/registration/models.py`
+        * edit line 187 `user = models.ForeignKey(…` to read `user = models.OneToOneField(…`
+        * change results in no model changes, merely removes the warning
+    <a name="django-threadlocals"></a>
+    * [django-threadlocals](https://pypi.python.org/pypi/django-threadlocals/)
+	   * A Django middleware for storing the current request in a thread.local
+	      * Version on PyPI is Python2 incompatible! It only needs one-liner import change to work.
+          * Open in vim `vi ${venv}/lib/python2.7/site-packages/threadlocals/middleware.py`, for example `/usr/local/lib/python2.7/site-packages/`
+		     * In vim: `s/^from threadlocals\.threadlocals import/from .threadlocals import/)`
+			      
+				 cd /Users/YOURUSERNAME/.virtualenvs/edd/lib/python2.7/site-packages/threadlocals/
+				 vim middleware.py
+   	            
+ * [requests](http://docs.python-requests.org/en/latest/)
+    * "Requests is an Apache2 Licensed HTTP library, written in Python, for human beings."
+    * `sudo pip install requests[security]`
+ * [psycopg2](http://initd.org/psycopg/)
+    * Database driver/adapter for PostgreSQL in Python.
+    * `sudo pip install psycopg2`
+ * [python-ldap](http://www.python-ldap.org/)
+    * Object-oriented client API for accessing LDAP directories.
+    * `sudo pip install python-ldap`
