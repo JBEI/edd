@@ -98,7 +98,7 @@ class Update(models.Model):
             "user": self.mod_by_id,
         }
 
-    def format_timestamp (self, format_string="%b %d %Y %I:%M%p") :
+    def format_timestamp (self, format_string="%Y-%m-%d %I:%M%p") :
         """
         Convert the datetime (mod_time) to a human-readable string, including
         conversion from UTC to local time zone.
