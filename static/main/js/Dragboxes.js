@@ -9,7 +9,7 @@ var Dragboxes;
     Dragboxes.findAndInitAllTables = findAndInitAllTables;
     function dragEnd(event) {
         globalChecked = null;
-        event.data.table.off('mousedown', 'td :checkbox', dragStart).off('mouseover', 'td', dragOver);
+        event.data.table.off('mouseover.dragboxes');
     }
     Dragboxes.dragEnd = dragEnd;
     function dragOver(event) {
@@ -23,17 +23,15 @@ var Dragboxes;
         // also attaches mouseover event to all cells in parent table
         var table = $(this).prop('checked', function (i, value) {
             return (globalChecked = !value);
-        }).closest('.dragboxes').on('mouseover', 'td', dragOver);
+        }).closest('.dragboxes').on('mouseover.dragboxes', 'td', dragOver);
         // wait for mouse to go up anywhere, then end drag events
-        $(document).one('mouseup', { 'table': table }, dragEnd);
+        $(document).one('mouseup.dragboxes', { 'table': table }, dragEnd);
         return false;
     }
     Dragboxes.dragStart = dragStart;
     function initTable(table) {
-        $(table).filter('.dragboxes').on('mousedown', 'td :checkbox', dragStart);
+        $(table).filter('.dragboxes').on('mousedown.dragboxes', 'td :checkbox, td label', dragStart);
     }
     Dragboxes.initTable = initTable;
 })(Dragboxes || (Dragboxes = {}));
-// call function when ready
-$(Dragboxes.findAndInitAllTables);
 //# sourceMappingURL=Dragboxes.js.map

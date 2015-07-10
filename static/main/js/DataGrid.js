@@ -63,6 +63,7 @@ var DataGrid = (function () {
     // in Firefox and Safari, according to load-time profiling ... and only when paired with some servers??)
     DataGrid.prototype._initializeTableData = function () {
         var hCell = this._tableHeaderCell;
+        Dragboxes.initTable(this._table);
         this._buildAllTableSorters()._buildTableSortSequences()._allocateTableRowRecords()._buildRowGroupTitleRows()._createOptionsMenu()._createHeaderWidgets();
         // First, append the header widgets that should to appear "after" the pulldown.
         // (Since all widgets are styled to float right, they will appear from right to left.)

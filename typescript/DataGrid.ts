@@ -104,6 +104,7 @@ class DataGrid {
 
         var hCell = this._tableHeaderCell;
 
+        Dragboxes.initTable(this._table);
         this._buildAllTableSorters()
             ._buildTableSortSequences()
             ._allocateTableRowRecords()
