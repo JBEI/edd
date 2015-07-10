@@ -105,6 +105,58 @@ class CreateStudyForm(forms.ModelForm):
         super(CreateStudyForm, self).__init__(*args, **kwargs)
 
 
+class CreateAttachmentForm(forms.ModelForm):
+    """ Form to create a new attachment. """
+    class Meta:
+        model = Attachment
+        fields = ('file', 'description', )
+        labels = {
+            'file': _('Attachment'),
+            'description': _('Description'),
+        }
+        widgets = {
+            'description': forms.widgets.TextInput(),
+        }
+
+    def __init__(self, *args, **kwargs):
+        # removes default hard-coded suffix of colon character on all labels
+        kwargs.setdefault('label_suffix', '')
+        # store the parent EDDObject
+        self._parent = kwargs.pop('edd_object', None)
+        super(CreateAttachmentForm, self).__init__(*args, **kwargs)
+
+    def save(self, commit=True, force_insert=False, force_update=False, *args, **kwargs):
+        a = super(CreateAttachmentForm, self).save(commit=False, *args, **kwargs)
+        a.object_ref = self._parent
+        if commit:
+            a.save()
+        return a
+
+
+class CreateCommentForm(forms.ModelForm):
+    """ Form to create a new comment. """
+    class Meta:
+        model = Comment
+        fields = ('body', )
+        labels = {
+            'body': _('')
+        }
+
+    def __init__(self, *args, **kwargs):
+        # removes default hard-coded suffix of colon character on all labels
+        kwargs.setdefault('label_suffix', '')
+        # store the parent EDDObject
+        self._parent = kwargs.pop('edd_object', None)
+        super(CreateCommentForm, self).__init__(*args, **kwargs)
+
+    def save(self, commit=True, force_insert=False, force_update=False, *args, **kwargs):
+        c = super(CreateCommentForm, self).save(commit=False, *args, **kwargs)
+        c.object_ref = self._parent
+        if commit:
+            c.save()
+        return c
+
+
 class CreateLineForm(forms.ModelForm):
     """ Form to create a new line. """
     class Meta:

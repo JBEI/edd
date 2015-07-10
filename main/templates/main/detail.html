@@ -69,18 +69,46 @@
                 </dd>
             </dl>
         </div>
-        <form method="POST" enctype="multipart/form-data"
-              action="/study/{{ study.id }}/attach">
-        {% csrf_token %}
-        {% with attachments=study.attachments %}
-            {% include "main/include_attachments.html" %}
-        {% endwith %}
-        </form>
-        <div class="disclose discloseHide">
-            <div class="sectionChapter" id="commentsBanner">
-                <span class="discloseLink"><span>Comments</span></span>
+        <div class="disclose discloseHide" id="attachments">
+            <div class="sectionChapter" id="attachmentsBanner">
+                <span class="discloseLink">Attachments ({{ study.attachments|length }})</span>
             </div>
-            <div class="sectionActions discloseBody" id="commentActionPanel">TODO</div>
+            <div class="sectionActions discloseBody">
+                {% with attachments=study.attachments %}
+                    {% include "main/include_attachments.html" %}
+                {% endwith %}
+                <div class="sectionActions">
+                    <form method="POST" enctype="multipart/form-data" class="attachments"
+                            action="{% url 'main:study_attach' study=study.id %}">
+                        {% csrf_token %}
+                        {{ new_attach.as_p }}
+                        <p><button type="submit">Attach File</button></p>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="disclose discloseHide" id="comments">
+            <div class="sectionChapter" id="commentsBanner">
+                <span class="discloseLink">Comments ({{ study.comment_list|length }})</span>
+            </div>
+            <div class="sectionActions discloseBody">
+                <ol class="comment-list">
+                {% for comment in study.comment_list reversed %}
+                    <li>
+                        <span>{{ comment.created.full_name }} at {{ comment.created.format_timestamp }}</span>
+                        <p>{{ comment.body }}</p>
+                    </li>
+                {% endfor %}
+                </ol>
+                <div class="sectionActions">
+                    <form method="POST" class="comments"
+                            action="{% url 'main:study_comment' study=study.id %}">
+                        {% csrf_token %}
+                        {{ new_comment.as_p }}
+                        <p><button type="submit">Comment</button></p>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
         

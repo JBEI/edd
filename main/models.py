@@ -115,6 +115,11 @@ class Comment(models.Model):
     body = models.TextField()
     created = models.ForeignKey(Update, related_name='+')
 
+    def save(self, *args, **kwargs):
+        if self.created_id is None:
+            self.created = Update.load_update()
+        super(Comment, self).save(*args, **kwargs)
+
 
 class Attachment(models.Model):
     """
@@ -131,17 +136,6 @@ class Attachment(models.Model):
 
     def __str__(self):
         return self.filename
-
-    @classmethod
-    def from_upload (cls, edd_object, form, uploaded_file, update) :
-        return cls.objects.create(
-            object_ref=edd_object,
-            file=uploaded_file,
-            filename=uploaded_file.name,
-            created=update,
-            description=form.get("newAttachmentDescription"),
-            mime_type=uploaded_file.content_type,
-            file_size=len(uploaded_file.read()))
 
     @property
     def user_initials (self) :
@@ -176,7 +170,6 @@ class Attachment(models.Model):
         return True # XXX is this wise?
 
     def save(self, *args, **kwargs):
-        print "Attachment#save called"
         if self.created_id is None:
             self.created = Update.load_update()
         self.filename = self.file.name
@@ -313,8 +306,12 @@ class EDDObject(models.Model):
         return self.files.count()
 
     @property
-    def attachments (self) :
+    def attachments(self):
         return self.files.all()
+
+    @property
+    def comment_list(self):
+        return self.comments.order_by('created__mod_time').all()
 
     def get_comment_count(self):
         return self.comments.count()

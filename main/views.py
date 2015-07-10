@@ -47,8 +47,8 @@ def formula (molecular_formula) :
     Convert the molecular formula to a list of dictionaries giving each
     element and its count.  This is used in HTML views with <sub> tags.
     """
-    elements = re.findall("([A-Z]{1,2})([1-9]{1}[0-9]*)",
-        molecular_formula)
+    # TODO this is wrong, will not match e.g. Fe2O3
+    elements = re.findall("([A-Z]{1,2})([1-9]{1}[0-9]*)", molecular_formula)
     if (len(elements) == 0) :
         return ""
     return mark_safe("".join(["%s<sub>%s</sub>" % (e,c) for e,c in elements]))
@@ -84,23 +84,28 @@ class StudyDetailView(generic.DetailView):
         context = super(StudyDetailView, self).get_context_data(**kwargs)
         context['lines'] = self.object.line_set.order_by('replicate', 'name').all()
         context['line_meta'] = self.object.get_line_metadata_types()
+        context['new_attach'] = CreateAttachmentForm()
+        context['new_comment'] = CreateCommentForm()
         context['new_line'] = CreateLineForm()
         context['strain'] = self.object.get_strains_used()
         context['protocol'] = self.object.get_protocols_used()
         return context
 
-# /study/<study_id>/attach
-# FIXME should have trailing slash?
-def study_attach (request, study) :
-    """Attach a file to a study."""
+# /study/<study_id>/attach/
+def study_attach(request, study):
+    """ Attach a file to a study. """
     model = Study.objects.get(pk=study)
-    update = Update.load_request_update(request)
-    att = Attachment.from_upload(
-        edd_object=model,
-        form=request.POST,
-        uploaded_file=request.FILES['newAttachmentContent'],
-        update=update)
-    return redirect("/study/%s" % study)
+    form = CreateAttachmentForm(request.POST, request.FILES, edd_object=model)
+    form.save()
+    return redirect(reverse('main:detail', kwargs={ 'pk': study }))
+
+# /study/<study_id>/comment/
+def study_comment(request, study):
+    """ Add a comment to a study. """
+    model = Study.objects.get(pk=study)
+    form = CreateCommentForm(request.POST, edd_object=model)
+    form.save()
+    return redirect(reverse('main:detail', kwargs={ 'pk': study }))
 
 # /study/<study_id>/lines/
 def study_lines(request, study):
@@ -126,6 +131,43 @@ def study_measurements(request, study, protocol):
     values = MeasurementValue.objects.filter(
         measurement__assay__line__study_id=study,
         measurement__assay__protocol_id=protocol,
+        measurement__active=True,
+        measurement__assay__active=True,
+        measurement__assay__line__active=True,
+        measurement__range=(measure_list[0].id, measure_list[-1].id),
+        )
+    value_dict = collections.defaultdict(list)
+    for v in values:
+        value_dict[v.measurement_id].append((v.x, v.y))
+    payload = {
+        'types': { t.pk: t.to_json() for t in measure_types },
+        'measures': map(lambda m: m.to_json(), measure_list),
+        'data': value_dict,
+    }
+    return JsonResponse(payload, encoder=JSONDecimalEncoder)
+
+# /study/<study_id>/measurements/<protocol_id>/<assay_id>/
+def study_assay_measurements(request, study, protocol, assay):
+    """ Request measurement data in a study, for a single assay. """
+    measure_types = MeasurementType.objects.filter(
+        measurement__assay__line__study_id=study,
+        measurement__assay__protocol_id=protocol,
+        measurement__assay=assay,
+        ).distinct()
+    # Limit the measurements returned to keep browser performant
+    measurements = Measurement.objects.filter(
+        assay__line__study_id=study,
+        assay__protocol_id=protocol,
+        assay=assay,
+        active=True,
+        assay__active=True,
+        assay__line__active=True,
+        ).order_by('id')[:5000]
+    measure_list = list(measurements)
+    values = MeasurementValue.objects.filter(
+        measurement__assay__line__study_id=study,
+        measurement__assay__protocol_id=protocol,
+        measurement__assay=assay,
         measurement__active=True,
         measurement__assay__active=True,
         measurement__assay__line__active=True,
@@ -167,8 +209,7 @@ def study_edddata (request, study) :
     data_study.update(data_misc)
     return JsonResponse(data_study, encoder=JSONDecimalEncoder)
 
-# /study/<study_id>/assaydata
-# FIXME should have trailing slash?
+# /study/<study_id>/assaydata/
 def study_assay_table_data (request, study) :
     """ Request information on assays associated with a study. """
     model = Study.objects.get(pk=study)

@@ -109,6 +109,9 @@ a:hover {
     height:16px;
     vertical-align:-25%;
 }
+.disclose {
+    clear: both;
+}
 /* .discloseAlt is alternate content to show when an .disclose element is collapsed */
 .disclose .discloseAlt {
     display:none;
@@ -380,10 +383,20 @@ table.dataTable tr.columnLabels > th {
 	background: -webkit-linear-gradient(top, rgba(230,230,230,0.8) 0%, rgba(255,255,255,0.8) 60%, rgba(255,255,255,1) 100%);
 	background: -ms-linear-gradient(top, rgba(230,230,230,0.8) 0%, rgba(255,255,255,0.8) 60%, rgba(255,255,255,1) 100%);
 }
+table.dataTable tr.columnLabels > th:last-child {
+    border-right-width: 0;
+}
 /* Table sorting components */
 table.dataTable tr.columnLabels > th.sortheader {
 	cursor: pointer;
+    text-align: left;
 	text-decoration:none;
+}
+table.dataTable tr.columnLabels > th.sortheader.right {
+    text-align: right;
+}
+table.dataTable tr.columnLabels > th.sortheader.center {
+    text-align: center;
 }
 table.dataTable tr.columnLabels > th.smaller {
 	font-size:11px;
@@ -1402,4 +1415,12 @@ dl.infolist > dd {
   vertical-align: middle;
 }
 
+form.attachments > * {
+    float: left;
+    margin: 0;
+}
+
+ol.comment-list > li {
+    margin-left: 2em;
+}
 /* End of common styles */
