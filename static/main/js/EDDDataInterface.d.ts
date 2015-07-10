@@ -2,52 +2,34 @@ interface UpdateRecord {
     time: number;
     user: number;
 }
-interface LineRecord {
+interface EDDRecord {
     id: number;
     name: string;
     description: string;
+    meta: any;
+    created: UpdateRecord;
+    modified: UpdateRecord;
+}
+interface LineRecord extends EDDRecord {
     active: boolean;
     control: boolean;
     replicate: any;
     contact: any;
     experimenter: number;
-    meta: any;
     strain: number[];
     carbon: number[];
     exp: number;
-    modified: UpdateRecord;
-    created: UpdateRecord;
-    n: any;
-    m: any;
-    s: any;
-    cs: any;
-    md: any;
-    dis: any;
-    ctrl: any;
-    con: any;
 }
-interface AssayRecord {
-    id: any;
-    name: string;
-    description: string;
+interface AssayRecord extends EDDRecord {
     active: boolean;
-    meta: any;
     lid: number;
     pid: number;
     mod: number;
     exp: number;
-    measurements: number[];
+    measures: number[];
     metabolites: number[];
     transcriptions: number[];
     proteins: number[];
-    an: string;
-    des: string;
-    dis: boolean;
-    md: any;
-    met_c: number;
-    tra_c: number;
-    pro_c: number;
-    mea_c: number;
 }
 interface AssayMeasurementRecord {
     id: number;

@@ -58,7 +58,7 @@ var CarbonBalance;
             var needMolarMassByMeasurementTypeID = {};
             for (var lineID in EDDData.Lines) {
                 var line = EDDData.Lines[lineID];
-                if (line.dis) {
+                if (!line.active) {
                     continue;
                 }
                 // Create the output LineData structure.
@@ -71,7 +71,7 @@ var CarbonBalance;
                     var assayID = lineAssays[iAssay];
                     var assay = EDDData.Assays[assayID];
                     var pid = assay.pid;
-                    var assayName = [line.n, EDDData.Protocols[pid].name, assay.an].join('-');
+                    var assayName = [line.name, EDDData.Protocols[pid].name, assay.name].join('-');
                     this._writeDebugLine(lineID == this._debugLineID, "Assay " + assayName);
                     this._debugOutputIndent++;
                     // Create the AssayData output structure.
@@ -391,7 +391,7 @@ var CarbonBalance;
                         var assay = EDDData.Assays[measurement.aid];
                         var lid = assay.lid;
                         var pid = assay.pid;
-                        var assayName = [EDDData.Lines[lid].n, EDDData.Protocols[pid].name, assay.an].join('-');
+                        var assayName = [EDDData.Lines[lid].name, EDDData.Protocols[pid].name, assay.name].join('-');
                         this._writeDebugLine(true, "Biomass Calculation for " + assayName);
                         this._debugOutputIndent++;
                         this._writeDebugLineWithHeader(true, "raw OD at " + prev.timeStamp + "h", this._numStr(prev.carbonValue));
@@ -471,7 +471,7 @@ var CarbonBalance;
                 var assay = EDDData.Assays[measurement.aid];
                 var lid = assay.lid;
                 var pid = assay.pid;
-                var assayName = [EDDData.Lines[lid].n, EDDData.Protocols[pid].name, assay.an].join('-');
+                var assayName = [EDDData.Lines[lid].name, EDDData.Protocols[pid].name, assay.name].join('-');
                 this._writeDebugLine(true, "Getting optical density from " + assayName);
                 this._debugOutputIndent++;
                 if (t != 1)
@@ -494,7 +494,7 @@ var CarbonBalance;
                 return measurementID;
             }
             else {
-                console.log("Warning! Unable to find OD measurement for " + EDDData.Lines[lineID].n);
+                console.log("Warning! Unable to find OD measurement for " + EDDData.Lines[lineID].name);
                 return -1;
             }
         };
@@ -502,14 +502,14 @@ var CarbonBalance;
         Summation.prototype._precalculateValidLists = function () {
             for (var lineID in EDDData.Lines) {
                 var line = EDDData.Lines[lineID];
-                if (line.dis) {
+                if (!line.active) {
                     continue;
                 }
                 this._validAssaysByLineID[lineID] = [];
             }
             for (var assayID in EDDData.Assays) {
                 var assay = EDDData.Assays[assayID];
-                if (assay.dis) {
+                if (!assay.active) {
                     continue;
                 }
                 // TypeScript lies - JavaScript always turns property names into strings.

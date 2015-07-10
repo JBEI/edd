@@ -80,7 +80,7 @@ var CarbonBalance;
         // Called to create a single Line's CB graph.
         Display.prototype.createCBGraphForLine = function (lineID, parent) {
             //$(parent).css('padding', '3px 2px 0px 2px');
-            var lineName = EDDData.Lines[lineID].n;
+            var lineName = EDDData.Lines[lineID].name;
             // Add an SVG object with the graph data.
             var svgElement = Utl.SVG.createSVG('100%', '10px', 470, 10);
             // Put a thin line down the middle.
@@ -175,7 +175,7 @@ var CarbonBalance;
                     var assayRecord = EDDData.Assays[measurement.timeline.assay.assayID];
                     var lid = assayRecord.lid;
                     var pid = assayRecord.pid;
-                    var assayName = [EDDData.Lines[lid].n, EDDData.Protocols[pid].name, assayRecord.an].join('-');
+                    var assayName = [EDDData.Lines[lid].name, EDDData.Protocols[pid].name, assayRecord.name].join('-');
                     var numberString = Utl.JS.padStringRight(Math.abs(measurement.carbonDelta).toFixed(4), 8);
                     text += name + " : " + numberString + "    [" + assayName + "]" + "\n";
                 }
@@ -195,7 +195,7 @@ var CarbonBalance;
                 return a.carbonDelta - b.carbonDelta;
             });
             var prevTimeStamp = this._getPreviousMergedTimestamp(lineID, timeStamp);
-            var title = EDDData.Lines[lineID].n + " from " + parseFloat(prevTimeStamp).toFixed(1) + "h to " + parseFloat(timeStamp).toFixed(1) + "h";
+            var title = EDDData.Lines[lineID].name + " from " + parseFloat(prevTimeStamp).toFixed(1) + "h to " + parseFloat(timeStamp).toFixed(1) + "h";
             var divider = "========================================\n";
             var text = title + "\n" + divider + "\n";
             text += this._printCarbonBalanceList("== Inputs", sortedList.filter(function (x) { return x.carbonDelta < 0; }), true) + "\n";
@@ -272,7 +272,7 @@ var CarbonBalance;
         // Generates the title bar string for a carbon balance popup display.
         Display.prototype._generatePopupTitleForImbalance = function (lineID, timeStamp) {
             var prevTimeStamp = this._getPreviousMergedTimestamp(lineID, timeStamp);
-            return EDDData.Lines[lineID].n + " from " + parseFloat(prevTimeStamp).toFixed(1) + "h to " + parseFloat(timeStamp).toFixed(1) + "h";
+            return EDDData.Lines[lineID].name + " from " + parseFloat(prevTimeStamp).toFixed(1) + "h to " + parseFloat(timeStamp).toFixed(1) + "h";
         };
         // When they hover over a tick mark, we should display all the carbon in/out data for all 
         // assays that have an imbalance at this time point.

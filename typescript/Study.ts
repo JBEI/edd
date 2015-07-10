@@ -954,7 +954,7 @@ module StudyD {
         EDDData.AssayMeasurements = EDDData.AssayMeasurements || {};
         EDDData.MeasurementTypes = $.extend(EDDData.MeasurementTypes || {}, data.types);
         // loop over all downloaded measurements
-        $.each(data.measures, (index, measurement) => {
+        $.each(data.measures || {}, (index, measurement) => {
             var assay = EDDData.Assays[measurement.assay], line, mtype;
             if (!assay || !assay.active) return;
             line = EDDData.Lines[assay.lid];
@@ -969,7 +969,8 @@ module StudyD {
             protocolToAssay[assay.pid][assay.id] = true;
             // handle measurement data based on type
             mtype = data.types[measurement.type] || {};
-            if (mtype.family === 'm') { // measurement is of metabolite
+            (assay.measures = assay.measures || []).push(measurement.id);
+            if (mtype.family === 'm' || mtype.family === '_') { // measurement is of metabolite
                 (assay.metabolites = assay.metabolites || []).push(measurement.id);
                 filterIds.m.push(measurement.id);
             } else if (mtype.family === 'p') { // measurement is of protein
@@ -1133,16 +1134,9 @@ module StudyD {
         };
         $.each(previousIDSet, (i, assayId) => {
             var assay = EDDData.Assays[assayId];
-            if (context.metaboliteDataProcessed) {
-                $.merge(measurements, assay.metabolites || []);
-            }
-            if (context.proteinDataProcessed) {
-                $.merge(measurements, assay.proteins || []);
-            }
-            if (context.geneDataProcessed) {
-                $.merge(measurements, assay.transcriptions || []);
-            }
+            $.merge(measurements, assay.measures || []);
         });
+        // only try to filter if we got measurements that apply to the widget types
         if (context.metaboliteDataProcessed) {
             $.each(context.metaboliteFilteringWidgets, widgetFilter);
         }
@@ -2508,7 +2502,7 @@ class DataGridAssays extends DataGrid {
                 line:any = EDDData.Lines[assay.lid] || {},
                 measures;
             if (!assay.active || !line.active) { return; }
-            measures = [].concat(assay.metabolites || [], assay.transcriptions || [], assay.proteins || []);
+            measures = assay.measures || [];
             measures.forEach((m) => {
                 var measure = EDDData.AssayMeasurements[m], set;
                 set = {
@@ -2661,8 +2655,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
         // reduce to find highest value across all records
         maxForAll = this.getRecordIDs().reduce((prev:number, assayId) => {
             var assay = EDDData.Assays[assayId], measures, maxForRecord;
-            measures = [].concat(assay.metabolites || [], assay.transcriptions || [],
-                    assay.proteins || []);
+            measures = assay.measures || [];
             // reduce to find highest value across all measures
             maxForRecord = measures.reduce((prev:number, measureId) => {
                 var lookup:any = EDDData.AssayMeasurements || {},

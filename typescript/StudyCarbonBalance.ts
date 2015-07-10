@@ -95,7 +95,7 @@ module CarbonBalance {
 		createCBGraphForLine(lineID, parent) {
 			//$(parent).css('padding', '3px 2px 0px 2px');
 
-			var lineName = EDDData.Lines[lineID].n;
+			var lineName = EDDData.Lines[lineID].name;
 
 			// Add an SVG object with the graph data.
 			var svgElement = Utl.SVG.createSVG('100%', '10px', 470, 10);
@@ -219,7 +219,7 @@ module CarbonBalance {
 					var assayRecord = EDDData.Assays[measurement.timeline.assay.assayID];
 			    	var lid = assayRecord.lid;
 			    	var pid = assayRecord.pid;
-					var assayName:string = [EDDData.Lines[lid].n, EDDData.Protocols[pid].name, assayRecord.an].join('-');
+					var assayName:string = [EDDData.Lines[lid].name, EDDData.Protocols[pid].name, assayRecord.name].join('-');
 
 					var numberString:string = Utl.JS.padStringRight(Math.abs(measurement.carbonDelta).toFixed(4), 8);
 					text += name + " : " + numberString + "    [" + assayName + "]" + "\n";
@@ -241,7 +241,7 @@ module CarbonBalance {
 			sortedList.sort( (a,b) => {return a.carbonDelta - b.carbonDelta;} )
 
 			var prevTimeStamp:string = this._getPreviousMergedTimestamp(lineID, timeStamp);
-			var title:string = EDDData.Lines[lineID].n + " from " + parseFloat(prevTimeStamp).toFixed(1) + "h to " + parseFloat(timeStamp).toFixed(1) + "h";
+			var title:string = EDDData.Lines[lineID].name + " from " + parseFloat(prevTimeStamp).toFixed(1) + "h to " + parseFloat(timeStamp).toFixed(1) + "h";
 
 			var divider = "========================================\n";
 			var text = title + "\n" + divider + "\n";
@@ -350,7 +350,7 @@ module CarbonBalance {
 		// Generates the title bar string for a carbon balance popup display.
 		private _generatePopupTitleForImbalance(lineID, timeStamp) {
 			var prevTimeStamp:string = this._getPreviousMergedTimestamp(lineID, timeStamp);
-			return EDDData.Lines[lineID].n + " from " + parseFloat(prevTimeStamp).toFixed(1) + "h to " + parseFloat(timeStamp).toFixed(1) + "h";
+			return EDDData.Lines[lineID].name + " from " + parseFloat(prevTimeStamp).toFixed(1) + "h to " + parseFloat(timeStamp).toFixed(1) + "h";
 		}
 
 

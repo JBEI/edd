@@ -7,59 +7,41 @@ interface UpdateRecord {
 }
 
 
+interface EDDRecord {
+    id:number;          // object ID
+    name:string;        // object name
+    description:string; // object description
+    meta:any;           // Metadata structure
+    created:UpdateRecord;
+    modified:UpdateRecord;
+}
+
+
 // This is what we expect in EDDData.Lines
-interface LineRecord {
-    id:number;          // Line ID
-	name:string;        // Name
-    description:string; // Description
+interface LineRecord extends EDDRecord {
     active:boolean;     // Active line
     control:boolean;    // Is Control
     replicate:any;      // Line ID of replicate parent Line, or undefined/null
     contact:any;        // Contact Info structure (user_id, text)
     experimenter:number;// Experimenter user ID
-	meta:any;      	    // Metadata structure
     strain:number[];    // Strain ID array
 	carbon:number[];    // Carbon Sources ID array
 	exp:number;		    // Experimenter ID
-    modified:UpdateRecord;
-    created:UpdateRecord;
-    /////// BELOW ARE DEPRECATED ////////
-    n:any;
-    m:any;
-    s:any;
-    cs:any;
-    md:any;
-    dis:any;
-    ctrl:any;
-    con:any;
 }
 
 
 
 // This is what we expect in EDDData.Assays
-interface AssayRecord {
-    id:any;             // Assay ID
-    name:string;        // Name
-    description:string; // Description
-    active:boolean;     // Active line
-	meta:any;		    // Metadata structure
+interface AssayRecord extends EDDRecord {
+    active:boolean;     // Active assay
 	lid:number;         // Line ID
 	pid:number;         // Protocol ID
 	mod:number;         // Modification epoch
 	exp:number;         // Experimenter ID
-	measurements:number[];		// All collected measurements associated with Assay
+	measures:number[];	// All collected measurements associated with Assay
 	metabolites:number[];		// Metabolite measurements associated with Assay
 	transcriptions:number[];	// Transcription measurements associated with Assay
 	proteins:number[];			// Proteins measurements associated with Assay
-    /////// BELOW ARE DEPRECATED ////////
-    an:string;      // Assay Name
-    des:string;     // Description
-    dis:boolean;    // Disabled
-    md:any;         // Metadata structure
-    met_c:number;   // Metabolites Count
-    tra_c:number;   // Transcriptions Count
-    pro_c:number;   // Proteins Count
-    mea_c:number;   // Measurements Count (sum of all measurement type counts above)
 }
 
 

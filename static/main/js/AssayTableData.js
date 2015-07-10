@@ -104,7 +104,11 @@ EDDATD = {
             aOPT.setAttribute('value', id);
             var lid = EDDData.Assays[id].lid;
             var pid = EDDData.Assays[id].pid;
-            var n = [EDDData.Lines[lid].n, EDDData.Protocols[pid].name, EDDData.Assays[id].an].join('-');
+            var n = [
+                EDDData.Lines[lid].name,
+                EDDData.Protocols[pid].name,
+                EDDData.Assays[id].name
+            ].join('-');
             aOPT.appendChild(document.createTextNode(n));
             masterAssayEl.appendChild(aOPT);
         }
@@ -1401,7 +1405,11 @@ EDDATD = {
                         }
                         var lid = EDDData.Assays[id].lid;
                         var pid = EDDData.Assays[id].pid;
-                        var fullN = [EDDData.Lines[lid].n, EDDData.Protocols[pid].name, EDDData.Assays[id].an].join('-');
+                        var fullN = [
+                            EDDData.Lines[lid].name,
+                            EDDData.Protocols[pid].name,
+                            EDDData.Assays[id].name
+                        ].join('-');
                         aOPT.appendChild(document.createTextNode(fullN));
                         aSEL.appendChild(aOPT);
                     }
@@ -1717,9 +1725,9 @@ EDDATD = {
             var id = ATData.existingAssays[masterP][ea];
             var assay = EDDData.Assays[id];
             var lid = assay.lid;
-            var ln = EDDData.Lines[lid].n;
+            var ln = EDDData.Lines[lid].name;
             var pid = assay.pid;
-            var fn = [ln, EDDData.Protocols[pid].name, assay.an].join('-');
+            var fn = [ln, EDDData.Protocols[pid].name, assay.name].join('-');
             // The full Assay name, even case-insensitive, is the best match
             if (assayOrLine.toLowerCase() == fn.toLowerCase()) {
                 selections.assayID = id;
@@ -1729,7 +1737,7 @@ EDDATD = {
                 continue;
             }
             // An exact-case match with the Assay name fragment alone is second-best.
-            if (assayOrLine == assay.an) {
+            if (assayOrLine == assay.name) {
                 highestMatchQuality = 0.8;
                 selections.assayID = id;
                 continue;
@@ -1738,7 +1746,7 @@ EDDATD = {
             if (highestMatchQuality >= 0.7) {
                 continue;
             }
-            if (assay.an.indexOf(assayOrLine) >= 0) {
+            if (assay.name.indexOf(assayOrLine) >= 0) {
                 highestMatchQuality = 0.7;
                 selections.assayID = id;
                 continue;
@@ -1757,7 +1765,7 @@ EDDATD = {
                 continue;
             }
             // Finding the Assay name fragment within the whole string, as a whole word, is our last option.
-            var reg = new RegExp('(^|\\W)' + assay.an + '(\\W|$)', 'g');
+            var reg = new RegExp('(^|\\W)' + assay.name + '(\\W|$)', 'g');
             if (reg.test(assayOrLine)) {
                 highestMatchQuality = 0.4;
                 selections.assayID = id;

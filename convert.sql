@@ -506,11 +506,21 @@ WITH media_type AS (
 --
 -- copy over measurement_type
 --
+-- Optical density was stored with metabolites previously
+INSERT INTO public.measurement_type(
+        id, type_name, short_name, type_group
+    ) SELECT m.measurement_type_id, m.type_name, m.short_name, '_'
+    FROM old_edd.metabolite_types m
+    WHERE m.type_name = 'Optical Density'
+    ORDER BY m.measurement_type_id;
+-- now copy the rest of metabolites
 INSERT INTO public.measurement_type(
         id, type_name, short_name, type_group
     ) SELECT m.measurement_type_id, m.type_name, m.short_name, 'm'
     FROM old_edd.metabolite_types m
+    WHERE m.type_name NOT IN ('Optical Density', 'Test')
     ORDER BY m.measurement_type_id;
+-- and metabolite-specific info
 INSERT INTO public.metabolite(
         measurementtype_ptr_id, charge, carbon_count, molar_mass,
         molecular_formula
@@ -521,6 +531,7 @@ INSERT INTO public.metabolite(
         CASE WHEN m.molar_mass IS NULL THEN 0 ELSE m.molar_mass END,
         coalesce(m.molecular_formula, '')
     FROM old_edd.metabolite_types m
+    WHERE m.type_name NOT IN ('Optical Density', 'Test')
     ORDER BY m.measurement_type_id;
 INSERT INTO public.measurement_type(
         id, type_name, short_name, type_group

@@ -64,7 +64,7 @@ module CarbonBalance {
 			// Iterate over lines.
 			for (var lineID in EDDData.Lines) {
 				var line:LineRecord = EDDData.Lines[lineID];
-				if (line.dis) {
+				if (!line.active) {
 					continue;
 				}
 
@@ -81,7 +81,7 @@ module CarbonBalance {
 					var assay:AssayRecord = EDDData.Assays[assayID];
 
 			    	var pid = assay.pid;
-					var assayName:string = [line.n, EDDData.Protocols[pid].name, assay.an].join('-');
+					var assayName:string = [line.name, EDDData.Protocols[pid].name, assay.name].join('-');
 
 					this._writeDebugLine(lineID == this._debugLineID, "Assay " + assayName);
 					this._debugOutputIndent++;
@@ -480,7 +480,7 @@ module CarbonBalance {
 						var assay:AssayRecord = EDDData.Assays[measurement.aid];
 				    	var lid = assay.lid;
 				    	var pid = assay.pid;
-						var assayName:string = [EDDData.Lines[lid].n, EDDData.Protocols[pid].name, assay.an].join('-');
+						var assayName:string = [EDDData.Lines[lid].name, EDDData.Protocols[pid].name, assay.name].join('-');
 
 						this._writeDebugLine(true, "Biomass Calculation for " + assayName);
 						this._debugOutputIndent++;
@@ -581,7 +581,7 @@ module CarbonBalance {
 				var assay:AssayRecord = EDDData.Assays[measurement.aid];
 		    	var lid = assay.lid;
 		    	var pid = assay.pid;
-				var assayName:string = [EDDData.Lines[lid].n, EDDData.Protocols[pid].name, assay.an].join('-');
+				var assayName:string = [EDDData.Lines[lid].name, EDDData.Protocols[pid].name, assay.name].join('-');
 
  				this._writeDebugLine(true, "Getting optical density from " + assayName);
 				this._debugOutputIndent++;
@@ -612,7 +612,7 @@ module CarbonBalance {
 			if (typeof measurementID !== 'undefined') {
 				return measurementID;
 			} else {
-				console.log("Warning! Unable to find OD measurement for " + EDDData.Lines[lineID].n);
+				console.log("Warning! Unable to find OD measurement for " + EDDData.Lines[lineID].name);
 				return -1;
 			}
 		}
@@ -622,7 +622,7 @@ module CarbonBalance {
 		private _precalculateValidLists():void {
 			for (var lineID in EDDData.Lines) {
 				var line:LineRecord = EDDData.Lines[lineID];
-				if (line.dis) {
+				if (!line.active) {
 					continue;
 				}
 				this._validAssaysByLineID[lineID] = [];
@@ -631,7 +631,7 @@ module CarbonBalance {
 			// Go through all assays for all lines.
 			for (var assayID in EDDData.Assays) {
 				var assay:AssayRecord = EDDData.Assays[assayID];
-				if (assay.dis) {
+				if (!assay.active) {
 					continue;
 				}
 				// TypeScript lies - JavaScript always turns property names into strings.
