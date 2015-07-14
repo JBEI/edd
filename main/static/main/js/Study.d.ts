@@ -127,9 +127,6 @@ declare module StudyD {
     function onChangedMetabolicMap(): void;
     function rebuildCarbonBalanceGraphs(columnIndex: number): void;
     function onClickedMetabolicMapName(): void;
-    function submitToStudy(action: any): void;
-    function takeLinesAction(): void;
-    function takeAssaysAction(): void;
 }
 declare class DataGridSpecLines extends DataGridSpecBase {
     metaDataIDsUsedInLines: any;
