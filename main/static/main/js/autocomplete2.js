@@ -29,7 +29,22 @@ EDD_auto.column_layouts = $.extend(EDD_auto.column_layouts || {}, {
             name: 'E-mail',
             width: '120px',
             valueField: 'email'
-        }]
+        }],
+    "Strain" : [
+        {
+            name: 'Part ID',
+            width: '100px',
+            valueField: 'partId'
+        },
+        {
+            name: 'Name',
+            width: '200px',
+            valueField: 'name'
+        }],
+    "CarbonSource" : [
+        {
+        }
+        ]
 });
 // 
 
@@ -85,7 +100,7 @@ $(window).load(function () {
 // Sets up the multicolumn autocomplete widget.  Must be called after the
 // $(window).load handler above.
 EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(
-        selector, model_name, value_key, valid_keys) {
+        selector, model_name, display_key, value_key, valid_keys) {
     if (typeof model_name === "undefined") {
         throw Error("model_name must be defined!");
     }
@@ -116,9 +131,9 @@ EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(
         columns: columns,
         // Event handler for when a list item is selected.
         select: function (event, ui) {
-            this.value = (ui.item ? ui.item[value_key] : '');
+            this.value = (ui.item ? ui.item[display_key] : '');
             // assign value of selected item ID to sibling hidden input
-            $(this).siblings('input[type=hidden]').val(ui.item.id);
+            $(this).siblings('input[type=hidden]').val(ui.item[value_key]);
             return false;
         },
     
@@ -154,7 +169,10 @@ EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(
 $(window).load(function () {
     // add user autocomplete to all '.autocomp.autocomp_user' fields
     $('.autocomp.autocomp_user').each(function () {
-        EDD_auto.setup_field_autocomplete(this, 'User', 'username', 'name,initials,email');
+        EDD_auto.setup_field_autocomplete(this, 'User', 'username', 'id');
+    });
+    $('.autocomp.autocomp_reg').each(function () {
+        EDD_auto.setup_field_autocomplete(this, 'Strain', 'name', 'recordId')
     });
 });
 

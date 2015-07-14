@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 from main.models import *
 
@@ -157,8 +158,10 @@ class CreateCommentForm(forms.ModelForm):
         return c
 
 
-class CreateLineForm(forms.ModelForm):
+class LineForm(forms.ModelForm):
     """ Form to create a new line. """
+    # include hidden field for applying form changes to multiple Line instances by ID
+    ids = forms.CharField(required=False, widget=forms.HiddenInput())
     class Meta:
         model = Line
         fields = (
@@ -181,4 +184,29 @@ class CreateLineForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         # removes default hard-coded suffix of colon character on all labels
         kwargs.setdefault('label_suffix', '')
-        super(CreateLineForm, self).__init__(*args, **kwargs)
+        # store the parent Study
+        self._study = kwargs.pop('study', None)
+        super(LineForm, self).__init__(*args, **kwargs)
+        # alter all fields to include a "bulk-edit" checkbox in label, initially hidden via "off" class
+        for fieldname, field in self.fields.items():
+            field.label = mark_safe(
+                '<input type="checkbox" class="off bulk" name="_bulk_%s" checked="checked"/>%s' %
+                (fieldname, field.label)
+                )
+
+    def check_bulk_edit(self):
+        exclude = []
+        for fieldname, field in self.fields.items():
+            check = '_bulk_%s' % (fieldname)
+            if not self.data.has_key(check):
+                print('Not checked field %s' % (fieldname))
+                exclude.append(fieldname)
+        for fieldname in exclude:
+            del self.fields[fieldname]
+
+    def save(self, commit=True, force_insert=False, force_update=False, *args, **kwargs):
+        line = super(LineForm, self).save(commit=False, *args, **kwargs)
+        line.study = self._study
+        if commit:
+            line.save()
+        return line

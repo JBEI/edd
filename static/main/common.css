@@ -109,6 +109,9 @@ a:hover {
     height:16px;
     vertical-align:-25%;
 }
+.disclose {
+    clear: both;
+}
 /* .discloseAlt is alternate content to show when an .disclose element is collapsed */
 .disclose .discloseAlt {
     display:none;
@@ -183,28 +186,27 @@ div.errorMessage {
     -webkit-border-radius: 6px;
     -moz-border-radius: 6px;
 }
-.good {
+div.statusMessage > p.good, .good {
     background-color: #F3F9F4;
     border-color: green;
 }
-.neutral {
+div.statusMessage > p.neutral, .neutral {
     background-color: #D8E4F1;
     border-color: #77B1EF;
 }
-.warn {
+div.statusMessage > p.warn, .warn {
     background-color: #FFFDF6;
     border-color: #FFEAAE;
 }
 /* used in sbml export */
-.warn2 {
+div.statusMessage > p.warn2, .warn2 {
   color:rgb(200, 130, 0);
 }
-.bad {
+div.statusMessage > p.bad, .bad {
     background-color: #FFCCCC;
     border-color: red;
 }
-
-.success {
+div.statusMessage > p.success, .success {
   color: #0000ff;
   font-weight: bold;
 }
@@ -380,10 +382,20 @@ table.dataTable tr.columnLabels > th {
 	background: -webkit-linear-gradient(top, rgba(230,230,230,0.8) 0%, rgba(255,255,255,0.8) 60%, rgba(255,255,255,1) 100%);
 	background: -ms-linear-gradient(top, rgba(230,230,230,0.8) 0%, rgba(255,255,255,0.8) 60%, rgba(255,255,255,1) 100%);
 }
+table.dataTable tr.columnLabels > th:last-child {
+    border-right-width: 0;
+}
 /* Table sorting components */
 table.dataTable tr.columnLabels > th.sortheader {
 	cursor: pointer;
+    text-align: left;
 	text-decoration:none;
+}
+table.dataTable tr.columnLabels > th.sortheader.right {
+    text-align: right;
+}
+table.dataTable tr.columnLabels > th.sortheader.center {
+    text-align: center;
 }
 table.dataTable tr.columnLabels > th.smaller {
 	font-size:11px;
@@ -1374,6 +1386,14 @@ div.errorMessage > a.close {
     float: right;
     margin: 0 5px;
 }
+.errorlist {
+    background-color: #FFF0F0;
+    border:  2px solid red;
+    border-radius: 6px;
+    list-style: none;
+    margin: 0;
+    padding: 3px;
+}
 
 
 dl.infolist > dt {
@@ -1402,4 +1422,12 @@ dl.infolist > dd {
   vertical-align: middle;
 }
 
+form.attachments > * {
+    float: left;
+    margin: 0;
+}
+
+ol.comment-list > li {
+    margin-left: 2em;
+}
 /* End of common styles */

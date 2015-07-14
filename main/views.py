@@ -1,8 +1,9 @@
 from django.conf import settings
+from django.contrib import messages
 from django.core import serializers
+from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
 from django.core.urlresolvers import reverse
 from django.db.models import Q
-from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.http.response import HttpResponseForbidden, HttpResponseBadRequest
 from django.shortcuts import render, get_object_or_404, redirect, \
@@ -14,6 +15,7 @@ from django.views import generic
 from django.views.decorators.csrf import ensure_csrf_cookie
 from io import BytesIO
 from main.forms import *
+from main.ice import IceApi
 from main.models import *
 from main.solr import StudySearch, UserSearch
 from main.utilities import *
@@ -74,22 +76,86 @@ class StudyCreateView(generic.edit.CreateView):
 
 
 class StudyDetailView(generic.DetailView):
-    """
-    Study details page, displays line/assay data.
-    """
+    """ Study details page, displays line/assay data. """
     model = Study
     template_name = 'main/detail.html'
     
     def get_context_data(self, **kwargs):
         context = super(StudyDetailView, self).get_context_data(**kwargs)
-        context['lines'] = self.object.line_set.order_by('replicate', 'name').all()
-        context['line_meta'] = self.object.get_line_metadata_types()
+        action = kwargs.pop('action', None)
+        request = kwargs.pop('request', None)
         context['new_attach'] = CreateAttachmentForm()
         context['new_comment'] = CreateCommentForm()
-        context['new_line'] = CreateLineForm()
-        context['strain'] = self.object.get_strains_used()
-        context['protocol'] = self.object.get_protocols_used()
+        context['new_line'] = LineForm()
         return context
+
+    def handle_attach(self, request, context):
+        form = CreateAttachmentForm(request.POST, request.FILES, edd_object=self.get_object())
+        if form.is_valid():
+            form.save()
+        else:
+            context['new_attach'] = form
+
+    def handle_comment(self, request, context):
+        form = CreateCommentForm(request.POST, edd_object=self.get_object())
+        if form.is_valid():
+            form.save()
+        else:
+            context['new_comment'] = form
+
+    def handle_line(self, request, context):
+        form = LineForm(request.POST, study=self.get_object())
+        ids = [ v for v in (form['ids'].data or '').split(',') if v.strip() != '' ]
+        if len(ids) == 0:
+            self.handle_line_new(request, context, form)
+        elif len(ids) == 1:
+            self.handle_line_edit(request, context, ids[0])
+        else:
+            self.handle_line_bulk(request, context, ids)
+
+    def handle_line_bulk(self, request, context, ids):
+        study = self.get_object()
+        total = len(ids)
+        saved = 0
+        for value in ids:
+            line = Line.objects.get(pk=value, study=study)
+            form = LineForm(request.POST, instance=line, study=study)
+            form.check_bulk_edit() # removes fields having disabled bulk edit checkbox
+            if form.is_valid():
+                form.save()
+                saved += 1
+        messages.success(request, 'Saved %(saved)s of %(total)s Lines' % {
+            'saved': saved,
+            'total': total })
+
+    def handle_line_edit(self, request, context, pk):
+        study = self.get_object()
+        line = Line.objects.get(pk=pk, study=study)
+        form = LineForm(request.POST, instance=line, study=study)
+        if form.is_valid():
+            form.save()
+            messages.success("Saved Line '%(name)s'" % { 'name': form.name.value() })
+
+    def handle_line_new(self, request, context, form):
+        if form.is_valid():
+            form.save()
+            messages.success("Added Line '%(name)s" % { 'name': form.name.value() })
+        else:
+            context['new_line'] = form
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        action = request.POST.get('action', None)
+        context = self.get_context_data(object=self.object, action=action, request=request)
+        # TODO these should probably do a redirect
+        if action == 'comment':
+            self.handle_comment(request, context)
+        elif action == 'attach':
+            self.handle_attach(request, context)
+        elif action == 'line':
+            self.handle_line(request, context)
+        return self.render_to_response(context)
+
 
 # /study/<study_id>/attach/
 def study_attach(request, study):
@@ -741,6 +807,11 @@ def search (request) :
         solr = UserSearch()
         results = solr.query(query=term, options={'edismax':True})
         return JsonResponse({ "rows": results['response']['docs'] })
+    elif model_name == "Strain":
+        ice = IceApi(ident=request.user)
+        results = ice.search_for_part(term)
+        rows = [ match.entryInfo for match in results['results'] ]
+        return JsonResponse({ "rows": rows })
     else:
         # if desired, limit to specific search keys
         valid_keys = request.GET.get("keys", "all").split(",")

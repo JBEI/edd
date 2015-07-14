@@ -283,7 +283,7 @@ class EDDObject(models.Model):
     created = models.ForeignKey(Update, related_name='+', editable=False)
     updated = models.ForeignKey(Update, related_name='+', editable=False)
     # store arbitrary metadata as a dict with hstore extension
-    meta_store = HStoreField()
+    meta_store = HStoreField(blank=True, default=dict)
 
     @property
     def mod_epoch (self) :
@@ -388,9 +388,10 @@ class EDDObject(models.Model):
     def save(self, *args, **kwargs):
         if self.created_id is None:
             self.created = Update.load_update()
-        if self.updated_id is None:
-            self.updated = Update.load_update()
+        self.updated = Update.load_update()
         super(EDDObject, self).save(*args, **kwargs)
+        # must ensure EDDObject is saved *before* attempting to add to updates
+        self.updates.add(self.updated)
 
 
 class Study(EDDObject):
@@ -728,9 +729,9 @@ class Line(EDDObject):
     experimenter = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True,
                                      related_name='line_experimenter_set')
     active = models.BooleanField(default=True)
-    carbon_source = models.ManyToManyField(CarbonSource, db_table='line_carbon_source')
+    carbon_source = models.ManyToManyField(CarbonSource, blank=True, db_table='line_carbon_source')
     protocols = models.ManyToManyField(Protocol, through='Assay')
-    strains = models.ManyToManyField(Strain, db_table='line_strain')
+    strains = models.ManyToManyField(Strain, blank=True, db_table='line_strain')
 
     def to_json(self):
         updated = self.updated

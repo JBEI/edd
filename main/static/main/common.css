@@ -186,28 +186,27 @@ div.errorMessage {
     -webkit-border-radius: 6px;
     -moz-border-radius: 6px;
 }
-.good {
+div.statusMessage > p.good, .good {
     background-color: #F3F9F4;
     border-color: green;
 }
-.neutral {
+div.statusMessage > p.neutral, .neutral {
     background-color: #D8E4F1;
     border-color: #77B1EF;
 }
-.warn {
+div.statusMessage > p.warn, .warn {
     background-color: #FFFDF6;
     border-color: #FFEAAE;
 }
 /* used in sbml export */
-.warn2 {
+div.statusMessage > p.warn2, .warn2 {
   color:rgb(200, 130, 0);
 }
-.bad {
+div.statusMessage > p.bad, .bad {
     background-color: #FFCCCC;
     border-color: red;
 }
-
-.success {
+div.statusMessage > p.success, .success {
   color: #0000ff;
   font-weight: bold;
 }
@@ -1386,6 +1385,14 @@ div.errorMessage > a.close {
     cursor: pointer;
     float: right;
     margin: 0 5px;
+}
+.errorlist {
+    background-color: #FFF0F0;
+    border:  2px solid red;
+    border-radius: 6px;
+    list-style: none;
+    margin: 0;
+    padding: 3px;
 }
 
 

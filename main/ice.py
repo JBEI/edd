@@ -24,11 +24,11 @@ class HmacAuth(AuthBase):
 
     def build_message(self, request):
         url = urlparse(request.url)
-        msg = '\n'.join((self.ident.username, \
-                         request.method, \
-                         url.netloc, \
-                         url.path, \
-                         self.sort_parameters(url.query), \
+        msg = '\n'.join((self.ident.username,
+                         request.method,
+                         url.netloc,
+                         url.path,
+                         self.sort_parameters(url.query),
                          request.body))
         return msg
 
@@ -66,9 +66,10 @@ class IceApi(object):
                 if exp.url == study_url:
                     found = True
         if not found:
-            requests.request('POST', url, auth=auth, \
-                             data=json.dumps(data), \
-                             headers={ 'Content-Type': 'application/json; charset=utf8' })
+            requests.request('POST', url, auth=auth,
+                             data=json.dumps(data),
+                             headers={ 'Content-Type': 'application/json; charset=utf8' },
+                             )
         pass
 
     def search_for_part(self, query):
@@ -78,10 +79,10 @@ class IceApi(object):
         auth = HmacAuth(ident=self.ident)
         data = { 'queryString': query }
         headers = { 'Content-Type': 'application/json; charset=utf8' }
-        response = requests.request('POST', url, \
-                                    auth=auth, \
-                                    data=json.dumps(data), \
-                                    headers=headers, \
+        response = requests.request('POST', url,
+                                    auth=auth,
+                                    data=json.dumps(data),
+                                    headers=headers,
                                     )
         if response.status_code == requests.codes.ok:
             return response.json()
