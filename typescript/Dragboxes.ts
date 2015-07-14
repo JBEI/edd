@@ -32,6 +32,7 @@ module Dragboxes {
     }
 
     export function initTable(table) {
-        $(table).filter('.dragboxes').on('mousedown.dragboxes', 'td :checkbox, td label', dragStart);
+        $(table).filter('.dragboxes').on('mousedown.dragboxes', 'td :checkbox', dragStart)
+            .on('mousedown.dragboxes', 'td label', dragStart);
     }
 }
