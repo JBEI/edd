@@ -126,8 +126,8 @@ ALTER TABLE public.edd_object ADD COLUMN study_id integer UNIQUE DEFAULT NULL;
 -- ugh, django default kwarg does not result in a DEFAULT clause in SQL
 -- TODO put this raw SQL in a migration
 ALTER TABLE public.edd_object ALTER COLUMN meta_store SET DEFAULT ''::hstore;
-INSERT INTO public.edd_object(study_id, name, description, created_id, updated_id)
-    SELECT s.id, s.study_name, s.additional_info, c.id, COALESCE(m.id, c.id)
+INSERT INTO public.edd_object(study_id, name, description, created_id, updated_id, active)
+    SELECT s.id, s.study_name, s.additional_info, c.id, COALESCE(m.id, c.id), NOT s.disabled
     FROM old_edd.studies s
     LEFT JOIN public.update_info c ON date_trunc('second', c.mod_time) = 
         date_trunc('second', s.creation_time)
@@ -137,8 +137,8 @@ INSERT INTO public.edd_object(study_id, name, description, created_id, updated_i
         AND m.mod_by_id = s.modified_by
     ORDER BY s.id;
 INSERT INTO public.study(
-        active, contact_extra, contact_id, object_ref_id
-    ) SELECT NOT s.disabled, s.contact, u.id, o.id
+        contact_extra, contact_id, object_ref_id
+    ) SELECT s.contact, u.id, o.id
     FROM old_edd.studies s
     INNER JOIN public.edd_object o ON o.study_id = s.id
     LEFT JOIN public.auth_user u ON lower(u.email) = lower(s.contact)
@@ -185,8 +185,9 @@ INSERT INTO public.study_group_permission(permission_type, study_id, group_id)
 --
 -- edd_object entries won't exist yet, make a temp column to track
 ALTER TABLE public.edd_object ADD COLUMN strain_id integer UNIQUE DEFAULT NULL;
-INSERT INTO public.edd_object(strain_id, name, description, created_id, updated_id)
-    SELECT s.id, coalesce(sr.label, s.strain_name), s.long_name, c.id, COALESCE(m.id, c.id)
+INSERT INTO public.edd_object(strain_id, name, description, created_id, updated_id, active)
+    SELECT s.id, coalesce(sr.label, s.strain_name), s.long_name, c.id, COALESCE(m.id, c.id),
+        NOT s.disabled
     FROM old_edd.strains s
     LEFT JOIN old_edd.strains_registry sr ON sr.id = s.registry_record_id
     LEFT JOIN public.update_info c ON date_trunc('second', c.mod_time) = 
@@ -197,8 +198,8 @@ INSERT INTO public.edd_object(strain_id, name, description, created_id, updated_
         AND m.mod_by_id = s.modified_by
     ORDER BY s.id;
 INSERT INTO public.strain(
-        registry_id, registry_url, object_ref_id, active
-    ) SELECT s.registry_record_id, sr.url, o.id, NOT s.disabled
+        registry_id, registry_url, object_ref_id
+    ) SELECT s.registry_record_id, sr.url, o.id
     FROM old_edd.strains s
     INNER JOIN public.edd_object o ON o.strain_id = s.id
     LEFT JOIN old_edd.strains_registry sr ON sr.id = s.registry_record_id
@@ -225,8 +226,9 @@ INSERT INTO public.edd_object_update(eddobject_id, update_id)
 -- copy over carbon sources
 --
 ALTER TABLE public.edd_object ADD COLUMN carbon_id integer UNIQUE DEFAULT NULL;
-INSERT INTO public.edd_object(carbon_id, name, description, created_id, updated_id)
-    SELECT cs.id, cs.carbon_source, cs.additional_info, c.id, COALESCE(m.id, c.id)
+INSERT INTO public.edd_object(carbon_id, name, description, created_id, updated_id, active)
+    SELECT cs.id, cs.carbon_source, cs.additional_info, c.id, COALESCE(m.id, c.id),
+        NOT cs.disabled
     FROM old_edd.carbon_sources cs
     LEFT JOIN public.update_info c ON date_trunc('second', c.mod_time) = 
         date_trunc('second', cs.creation_time)
@@ -236,8 +238,8 @@ INSERT INTO public.edd_object(carbon_id, name, description, created_id, updated_
         AND m.mod_by_id = cs.modified_by
     ORDER BY cs.id;
 INSERT INTO public.carbon_source(
-        labeling, volume, active, object_ref_id
-    ) SELECT c.labeling, c.volume, NOT c.disabled, o.id
+        labeling, volume, object_ref_id
+    ) SELECT c.labeling, c.volume, o.id
     FROM old_edd.carbon_sources c
     INNER JOIN public.edd_object o ON o.carbon_id = c.id
     ORDER BY c.id;
@@ -292,8 +294,8 @@ WITH grp AS (
 --
 -- edd_object entries won't exist yet, make a temp column to track
 ALTER TABLE public.edd_object ADD COLUMN line_id integer UNIQUE DEFAULT NULL;
-INSERT INTO public.edd_object(line_id, name, created_id, updated_id)
-    SELECT l.id, l.line_name, c.id, COALESCE(m.id, c.id)
+INSERT INTO public.edd_object(line_id, name, created_id, updated_id, active)
+    SELECT l.id, l.line_name, c.id, COALESCE(m.id, c.id), NOT l.disabled
     FROM old_edd.lines l
     LEFT JOIN public.update_info c ON date_trunc('second', c.mod_time) = 
         date_trunc('second', l.creation_time)
@@ -303,11 +305,9 @@ INSERT INTO public.edd_object(line_id, name, created_id, updated_id)
         AND m.mod_by_id = l.modified_by
     ORDER BY l.id;
 INSERT INTO public.line(
-        control, active, contact_extra, contact_id, experimenter_id,
-        object_ref_id, study_id
-    ) SELECT l.is_control, NOT l.disabled, l.contact, u.id,
-        CASE WHEN l.experimenter = 0 THEN NULL ELSE l.experimenter END,
-        o.id, os.id
+        control, contact_extra, contact_id, experimenter_id, object_ref_id, study_id
+    ) SELECT l.is_control, l.contact, u.id,
+        CASE WHEN l.experimenter = 0 THEN NULL ELSE l.experimenter END, o.id, os.id
     FROM old_edd.lines l
     INNER JOIN public.edd_object o ON o.line_id = l.id
     INNER JOIN public.edd_object os ON os.study_id = l.study_id
@@ -395,17 +395,16 @@ INSERT INTO public.measurement_unit(
 --
 -- edd_object entries won't exist yet, make a temp column to track
 ALTER TABLE public.edd_object ADD COLUMN protocol_id integer UNIQUE DEFAULT NULL;
-INSERT INTO public.edd_object(protocol_id, name, description, created_id, updated_id)
-    SELECT p.id, p.protocol_name, p.description, c.id, c.id
+INSERT INTO public.edd_object(protocol_id, name, description, created_id, updated_id, active)
+    SELECT p.id, p.protocol_name, p.description, c.id, c.id, NOT p.disabled
     FROM old_edd.protocols p
     LEFT JOIN public.update_info c ON date_trunc('second', c.mod_time) = 
         date_trunc('second', p.modification_time)
         AND c.mod_by_id = p.created_by
     ORDER BY p.id;
 INSERT INTO public.protocol(
-        active, object_ref_id, owned_by_id, variant_of_id, default_units_id
-    ) SELECT NOT p.disabled, o.id,
-        CASE WHEN p.owned_by = 0 THEN 5 ELSE p.owned_by END, v.id,
+        object_ref_id, owned_by_id, variant_of_id, default_units_id
+    ) SELECT o.id, CASE WHEN p.owned_by = 0 THEN 5 ELSE p.owned_by END, v.id,
         CASE WHEN p.default_units = 0 THEN NULL ELSE p.default_units END
     FROM old_edd.protocols p
     INNER JOIN public.edd_object o ON o.protocol_id = p.id
@@ -426,8 +425,8 @@ INSERT INTO public.edd_object_update(eddobject_id, update_id)
 --
 -- edd_object entries won't exist yet, make a temp column to track
 ALTER TABLE public.edd_object ADD COLUMN assay_id integer UNIQUE DEFAULT NULL;
-INSERT INTO public.edd_object(assay_id, name, description, created_id, updated_id)
-    SELECT a.id, a.assay_name, a.description, c.id, COALESCE(m.id, c.id)
+INSERT INTO public.edd_object(assay_id, name, description, created_id, updated_id, active)
+    SELECT a.id, a.assay_name, a.description, c.id, COALESCE(m.id, c.id), NOT a.disabled
     FROM old_edd.assays a
     LEFT JOIN public.update_info c ON date_trunc('second', c.mod_time) = 
         date_trunc('second', a.creation_time)
@@ -437,10 +436,8 @@ INSERT INTO public.edd_object(assay_id, name, description, created_id, updated_i
         AND m.mod_by_id = a.modified_by
     ORDER BY a.id;
 INSERT INTO public.assay(
-        active, experimenter_id, line_id, object_ref_id, protocol_id
-    ) SELECT NOT a.disabled,
-        CASE WHEN a.experimenter = 0 THEN NULL ELSE a.experimenter END,
-        ol.id, o.id, op.id
+        experimenter_id, line_id, object_ref_id, protocol_id
+    ) SELECT CASE WHEN a.experimenter = 0 THEN NULL ELSE a.experimenter END, ol.id, o.id, op.id
     FROM old_edd.assays a
     INNER JOIN public.edd_object o ON o.assay_id = a.id
     INNER JOIN public.edd_object ol ON ol.line_id = a.line_id
@@ -571,7 +568,9 @@ SELECT setval('public.metabolite_keyword_id_seq', max(id))
 INSERT INTO public.metabolites_to_keywords (
         metabolite_id, metabolitekeyword_id
     ) SELECT mtk.metabolite_type_id, mtk.keyword_id
-      FROM old_edd.metabolite_types_to_keywords mtk;
+      FROM old_edd.metabolite_types_to_keywords mtk
+      INNER JOIN public.metabolite m ON m.measurementtype_ptr_id = mtk.metabolite_type_id
+      INNER JOIN public.metabolite_keyword k ON k.id = mtk.keyword_id;
 
 --
 -- copy over assay_measurements
@@ -617,8 +616,8 @@ ALTER TABLE public.edd_object ADD COLUMN sbml_template_id integer UNIQUE DEFAULT
 -- name = biomass_exchange_name
 -- description = attachment -> description
 -- created/updated = attachment -> created
-INSERT INTO public.edd_object(sbml_template_id, name, description, created_id, updated_id)
-    SELECT mm.id, mm.biomass_exchange_name, a.description, c.id, c.id
+INSERT INTO public.edd_object(sbml_template_id, name, description, created_id, updated_id, active)
+    SELECT mm.id, mm.biomass_exchange_name, a.description, c.id, c.id, TRUE
     FROM old_edd.metabolic_maps mm
     LEFT JOIN old_edd.attachments a ON a.id = mm.attachment_id
     LEFT JOIN public.update_info c ON date_trunc('second', c.mod_time) = 

@@ -278,6 +278,7 @@ class EDDObject(models.Model):
         db_table = 'edd_object'
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
+    active = models.BooleanField(default=True)
     updates = models.ManyToManyField(Update, db_table='edd_object_update', related_name='+')
     # these are used often enough we should save extra queries by including as fields
     created = models.ForeignKey(Update, related_name='+', editable=False)
@@ -393,6 +394,17 @@ class EDDObject(models.Model):
         # must ensure EDDObject is saved *before* attempting to add to updates
         self.updates.add(self.updated)
 
+    def to_json(self):
+        return {
+            'id': self.pk,
+            'name': self.name,
+            'description': self.description,
+            'active': self.active,
+            'meta': self.meta_store,
+            'modified': self.updated.to_json() if self.updated else None,
+            'created': self.created.to_json() if self.created else None,
+        }
+
 
 class Study(EDDObject):
     """
@@ -401,7 +413,6 @@ class Study(EDDObject):
     class Meta:
         db_table = 'study'
         verbose_name_plural = 'Studies'
-    active = models.BooleanField(default=True)
     object_ref = models.OneToOneField(EDDObject, parent_link=True)
     # contact info has two fields to support:
     # 1. linking to a specific user in EDD
@@ -563,7 +574,6 @@ class Protocol(EDDObject):
         db_table = 'protocol'
     object_ref = models.OneToOneField(EDDObject, parent_link=True)
     owned_by = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='protocol_set')
-    active = models.BooleanField(default=True)
     variant_of = models.ForeignKey('self', blank=True, null=True, related_name='derived_set')
     default_units = models.ForeignKey('MeasurementUnit', blank=True,
         null=True, related_name="protocol_set")
@@ -652,7 +662,6 @@ class Strain(EDDObject):
     object_ref = models.OneToOneField(EDDObject, parent_link=True)
     registry_id = models.UUIDField(blank=True, null=True)
     registry_url = models.URLField(max_length=255, blank=True, null=True)
-    active = models.BooleanField(default=True)
 
     def to_solr_value(self):
         return '%(id)s@%(name)s' % {'id':self.registry_id, 'name':self.name}
@@ -661,14 +670,12 @@ class Strain(EDDObject):
         return self.name
 
     def to_json(self):
-        return {
-            "id" : self.pk,
-            "name" : self.name,
-            "desc" : self.description,
-            "disabled" : not self.active,
-            "registry_id" : self.registry_id,
-            "registry_url" : self.registry_url,
-        }
+        json_dict = super(Strain, self).to_json()
+        json_dict.update({
+            'registry_id': self.registry_id,
+            'registry_url': self.registry_url,
+            })
+        return json_dict
 
     @property
     def n_lines (self) : return _n_lines(self)
@@ -687,21 +694,15 @@ class CarbonSource(EDDObject):
     # Labeling is description of isotope labeling used in carbon source
     labeling = models.TextField()
     volume = models.DecimalField(max_digits=16, decimal_places=5)
-    active = models.BooleanField(default=True)
 
-    def to_json (self) :
-        return {
-            "id" : self.pk,
-            "carbon" : self.name,
-            "labeling" : self.labeling,
-            "initials" : self.created.initials,
-            "vol" : self.volume,
-            "mod" : self.mod_epoch,
-            "modstr" : str(self.updated),
-            "ainfo" : self.description,
-            "userid" : None, # TODO
-            "disabled" : not self.active,
-        }
+    def to_json(self):
+        json_dict = super(CarbonSource, self).to_json()
+        json_dict.update({
+            'labeling': self.labeling,
+            'volume': self.volume,
+            'initials': self.created.initials,
+            })
+        return json_dict
 
     @property
     def n_lines (self) : return _n_lines(self)
@@ -728,29 +729,21 @@ class Line(EDDObject):
     contact_extra = models.TextField()
     experimenter = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True,
                                      related_name='line_experimenter_set')
-    active = models.BooleanField(default=True)
     carbon_source = models.ManyToManyField(CarbonSource, blank=True, db_table='line_carbon_source')
     protocols = models.ManyToManyField(Protocol, through='Assay')
     strains = models.ManyToManyField(Strain, blank=True, db_table='line_strain')
 
     def to_json(self):
-        updated = self.updated
-        created = self.created
-        return {
-            'id': self.pk,
-            'name': self.name,
-            'description': self.description,
-            'active': self.active,
+        json_dict = super(Line, self).to_json()
+        json_dict.update({
             'control': self.control,
             'replicate': self.replicate.pk if self.replicate else None,
             'contact': { 'user_id': self.contact_id, 'text': self.contact_extra },
             'experimenter': self.experimenter_id,
-            'meta': self.meta_store,
             'strain': [s.pk for s in self.strains.all()],
             'carbon': [c.pk for c in self.carbon_source.all()],
-            'modified': updated.to_json() if updated else None,
-            'created': created.to_json() if created else None,
-        }
+            })
+        return json_dict
 
     @property
     def primary_strain_name (self) :
@@ -1064,7 +1057,6 @@ class Assay(EDDObject):
     object_ref = models.OneToOneField(EDDObject, parent_link=True)
     experimenter = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True,
                                      related_name='assay_experimenter_set')
-    active = models.BooleanField(default=True)
     measurement_types = models.ManyToManyField(MeasurementType, through='Measurement')
 
     def get_metabolite_measurements (self) :
@@ -1084,17 +1076,13 @@ class Assay(EDDObject):
         return "%s-%s-%s" % (self.line.name, self.protocol.name, self.name)
 
     def to_json(self):
-        return {
-            "id": self.pk,
-            "name": self.name,
-            "description": self.description,
-            "active" : self.active,
-            "lid" : self.line_id,
-            "pid" : self.protocol_id,
-            "mod" : self.updated.to_json() if self.updated else None,
-            "exp" : self.experimenter_id,
-            "meta": self.meta_store,
-        }
+        json_dict = super(Assay, self).to_json()
+        json_dict.update({
+            'lid': self.line_id,
+            'pid': self.protocol_id,
+            'experimenter': self.experimenter_id,
+            })
+        return json_dict
 
 
 class MeasurementCompartment (object) :
