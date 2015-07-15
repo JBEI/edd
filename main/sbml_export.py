@@ -989,7 +989,7 @@ class line_assay_data (line_export_base) :
     for m in measurements :
       mdata = self._get_measurement_data(m.id)
       for md in mdata :
-        if (md.y is not None) :
+        if (md.y is not None and len(md.y)) :
           xvalues.add(md.fx)
     xvalues = list(xvalues)
     return min(xvalues), max(xvalues)

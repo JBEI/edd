@@ -9,330 +9,6 @@
 },
 {
   "fields": {
-    "model": "logentry",
-    "name": "log entry",
-    "app_label": "admin"
-  },
-  "model": "contenttypes.contenttype",
-  "pk": 1
-},
-{
-  "fields": {
-    "model": "permission",
-    "name": "permission",
-    "app_label": "auth"
-  },
-  "model": "contenttypes.contenttype",
-  "pk": 2
-},
-{
-  "fields": {
-    "model": "group",
-    "name": "group",
-    "app_label": "auth"
-  },
-  "model": "contenttypes.contenttype",
-  "pk": 3
-},
-{
-  "fields": {
-    "model": "user",
-    "name": "user",
-    "app_label": "auth"
-  },
-  "model": "contenttypes.contenttype",
-  "pk": 4
-},
-{
-  "fields": {
-    "model": "site",
-    "name": "site",
-    "app_label": "sites"
-  },
-  "model": "contenttypes.contenttype",
-  "pk": 5
-},
-{
-  "fields": {
-    "model": "contenttype",
-    "name": "content type",
-    "app_label": "contenttypes"
-  },
-  "model": "contenttypes.contenttype",
-  "pk": 6
-},
-{
-  "fields": {
-    "model": "session",
-    "name": "session",
-    "app_label": "sessions"
-  },
-  "model": "contenttypes.contenttype",
-  "pk": 7
-},
-{
-  "fields": {
-    "model": "update",
-    "name": "update",
-    "app_label": "main"
-  },
-  "model": "contenttypes.contenttype",
-  "pk": 8
-},
-{
-  "fields": {
-    "model": "comment",
-    "name": "comment",
-    "app_label": "main"
-  },
-  "model": "contenttypes.contenttype",
-  "pk": 9
-},
-{
-  "fields": {
-    "model": "attachment",
-    "name": "attachment",
-    "app_label": "main"
-  },
-  "model": "contenttypes.contenttype",
-  "pk": 10
-},
-{
-  "fields": {
-    "model": "metadatagroup",
-    "name": "metadata group",
-    "app_label": "main"
-  },
-  "model": "contenttypes.contenttype",
-  "pk": 11
-},
-{
-  "fields": {
-    "model": "metadatatype",
-    "name": "metadata type",
-    "app_label": "main"
-  },
-  "model": "contenttypes.contenttype",
-  "pk": 12
-},
-{
-  "fields": {
-    "model": "eddobject",
-    "name": "edd object",
-    "app_label": "main"
-  },
-  "model": "contenttypes.contenttype",
-  "pk": 13
-},
-{
-  "fields": {
-    "model": "study",
-    "name": "study",
-    "app_label": "main"
-  },
-  "model": "contenttypes.contenttype",
-  "pk": 14
-},
-{
-  "fields": {
-    "model": "userpermission",
-    "name": "user permission",
-    "app_label": "main"
-  },
-  "model": "contenttypes.contenttype",
-  "pk": 15
-},
-{
-  "fields": {
-    "model": "grouppermission",
-    "name": "group permission",
-    "app_label": "main"
-  },
-  "model": "contenttypes.contenttype",
-  "pk": 16
-},
-{
-  "fields": {
-    "model": "protocol",
-    "name": "protocol",
-    "app_label": "main"
-  },
-  "model": "contenttypes.contenttype",
-  "pk": 17
-},
-{
-  "fields": {
-    "model": "strain",
-    "name": "strain",
-    "app_label": "main"
-  },
-  "model": "contenttypes.contenttype",
-  "pk": 18
-},
-{
-  "fields": {
-    "model": "carbonsource",
-    "name": "carbon source",
-    "app_label": "main"
-  },
-  "model": "contenttypes.contenttype",
-  "pk": 19
-},
-{
-  "fields": {
-    "model": "line",
-    "name": "line",
-    "app_label": "main"
-  },
-  "model": "contenttypes.contenttype",
-  "pk": 20
-},
-{
-  "fields": {
-    "model": "measurementtype",
-    "name": "measurement type",
-    "app_label": "main"
-  },
-  "model": "contenttypes.contenttype",
-  "pk": 21
-},
-{
-  "fields": {
-    "model": "metabolitekeyword",
-    "name": "metabolite keyword",
-    "app_label": "main"
-  },
-  "model": "contenttypes.contenttype",
-  "pk": 22
-},
-{
-  "fields": {
-    "model": "metabolite",
-    "name": "metabolite",
-    "app_label": "main"
-  },
-  "model": "contenttypes.contenttype",
-  "pk": 23
-},
-{
-  "fields": {
-    "model": "geneidentifier",
-    "name": "gene identifier",
-    "app_label": "main"
-  },
-  "model": "contenttypes.contenttype",
-  "pk": 24
-},
-{
-  "fields": {
-    "model": "measurementunit",
-    "name": "measurement unit",
-    "app_label": "main"
-  },
-  "model": "contenttypes.contenttype",
-  "pk": 25
-},
-{
-  "fields": {
-    "model": "assay",
-    "name": "assay",
-    "app_label": "main"
-  },
-  "model": "contenttypes.contenttype",
-  "pk": 26
-},
-{
-  "fields": {
-    "model": "measurement",
-    "name": "measurement",
-    "app_label": "main"
-  },
-  "model": "contenttypes.contenttype",
-  "pk": 27
-},
-{
-  "fields": {
-    "model": "measurementdatum",
-    "name": "measurement datum",
-    "app_label": "main"
-  },
-  "model": "contenttypes.contenttype",
-  "pk": 28
-},
-{
-  "fields": {
-    "model": "measurementvector",
-    "name": "measurement vector",
-    "app_label": "main"
-  },
-  "model": "contenttypes.contenttype",
-  "pk": 29
-},
-{
-  "fields": {
-    "model": "sbmltemplate",
-    "name": "sbml template",
-    "app_label": "main"
-  },
-  "model": "contenttypes.contenttype",
-  "pk": 30
-},
-{
-  "fields": {
-    "model": "metaboliteexchange",
-    "name": "metabolite exchange",
-    "app_label": "main"
-  },
-  "model": "contenttypes.contenttype",
-  "pk": 31
-},
-{
-  "fields": {
-    "model": "metabolitespecies",
-    "name": "metabolite species",
-    "app_label": "main"
-  },
-  "model": "contenttypes.contenttype",
-  "pk": 32
-},
-{
-  "fields": {
-    "model": "institution",
-    "name": "institution",
-    "app_label": "profile"
-  },
-  "model": "contenttypes.contenttype",
-  "pk": 33
-},
-{
-  "fields": {
-    "model": "userprofile",
-    "name": "user profile",
-    "app_label": "profile"
-  },
-  "model": "contenttypes.contenttype",
-  "pk": 34
-},
-{
-  "fields": {
-    "model": "institutionid",
-    "name": "institution id",
-    "app_label": "profile"
-  },
-  "model": "contenttypes.contenttype",
-  "pk": 35
-},
-{
-  "fields": {
-    "model": "userpreference",
-    "name": "user preference",
-    "app_label": "profile"
-  },
-  "model": "contenttypes.contenttype",
-  "pk": 36
-},
-{
-  "fields": {
     "updated": 2,
     "name": "Test Study 1",
     "created": 1,
@@ -793,542 +469,542 @@
 },
 {
   "fields": {
-    "y": "0.00000",
-    "x": "0.00000",
+    "y": [ "0.00000" ],
+    "x": [ "0.00000" ],
     "updated": 39,
     "measurement": 1
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 1
 },
 {
   "fields": {
-    "y": "0.00000",
-    "x": "0.00000",
+    "y": [ "0.00000" ],
+    "x": [ "0.00000" ],
     "updated": 39,
     "measurement": 6
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 2
 },
 {
   "fields": {
-    "y": "2.00000",
-    "x": "0.00000",
+    "y": [ "2.00000" ],
+    "x": [ "0.00000" ],
     "updated": 39,
     "measurement": 10
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 3
 },
 {
   "fields": {
-    "y": "0.10000",
-    "x": "4.00000",
+    "y": [ "0.10000" ],
+    "x": [ "4.00000" ],
     "updated": 39,
     "measurement": 1
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 4
 },
 {
   "fields": {
-    "y": "0.11000",
-    "x": "4.00000",
+    "y": [ "0.11000" ],
+    "x": [ "4.00000" ],
     "updated": 39,
     "measurement": 6
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 5
 },
 {
   "fields": {
-    "y": "1.90000",
-    "x": "4.00000",
+    "y": [ "1.90000" ],
+    "x": [ "4.00000" ],
     "updated": 39,
     "measurement": 10
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 6
 },
 {
   "fields": {
-    "y": "0.20000",
-    "x": "8.00000",
+    "y": [ "0.20000" ],
+    "x": [ "8.00000" ],
     "updated": 39,
     "measurement": 1
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 7
 },
 {
   "fields": {
-    "y": "0.22000",
-    "x": "8.00000",
+    "y": [ "0.22000" ],
+    "x": [ "8.00000" ],
     "updated": 39,
     "measurement": 6
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 8
 },
 {
   "fields": {
-    "y": "1.80000",
-    "x": "8.00000",
+    "y": [ "1.80000" ],
+    "x": [ "8.00000" ],
     "updated": 39,
     "measurement": 10
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 9
 },
 {
   "fields": {
-    "y": "0.40000",
-    "x": "12.00000",
+    "y": [ "0.40000" ],
+    "x": [ "12.00000" ],
     "updated": 39,
     "measurement": 1
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 10
 },
 {
   "fields": {
-    "y": "0.44000",
-    "x": "12.00000",
+    "y": [ "0.44000" ],
+    "x": [ "12.00000" ],
     "updated": 39,
     "measurement": 6
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 11
 },
 {
   "fields": {
-    "y": "1.60000",
-    "x": "12.00000",
+    "y": [ "1.60000" ],
+    "x": [ "12.00000" ],
     "updated": 39,
     "measurement": 10
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 12
 },
 {
   "fields": {
-    "y": "0.80000",
-    "x": "18.00000",
+    "y": [ "0.80000" ],
+    "x": [ "18.00000" ],
     "updated": 39,
     "measurement": 1
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 13
 },
 {
   "fields": {
-    "y": "0.88000",
-    "x": "18.00000",
+    "y": [ "0.88000" ],
+    "x": [ "18.00000" ],
     "updated": 39,
     "measurement": 6
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 14
 },
 {
   "fields": {
-    "y": "1.20000",
-    "x": "18.00000",
+    "y": [ "1.20000" ],
+    "x": [ "18.00000" ],
     "updated": 39,
     "measurement": 10
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 15
 },
 {
   "fields": {
-    "y": "1.60000",
-    "x": "24.00000",
+    "y": [ "1.60000" ],
+    "x": [ "24.00000" ],
     "updated": 39,
     "measurement": 1
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 16
 },
 {
   "fields": {
-    "y": "1.76000",
-    "x": "24.00000",
+    "y": [ "1.76000" ],
+    "x": [ "24.00000" ],
     "updated": 39,
     "measurement": 6
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 17
 },
 {
   "fields": {
-    "y": "0.40000",
-    "x": "24.00000",
+    "y": [ "0.40000" ],
+    "x": [ "24.00000" ],
     "updated": 39,
     "measurement": 10
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 18
 },
 {
   "fields": {
-    "y": "0.00000",
-    "x": "0.00000",
+    "y": [ "0.00000" ],
+    "x": [ "0.00000" ],
     "updated": 39,
     "measurement": 2
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 19
 },
 {
   "fields": {
-    "y": "0.00000",
-    "x": "0.00000",
+    "y": [ "0.00000" ],
+    "x": [ "0.00000" ],
     "updated": 39,
     "measurement": 7
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 20
 },
 {
   "fields": {
-    "y": "0.50000",
-    "x": "4.00000",
+    "y": [ "0.50000" ],
+    "x": [ "4.00000" ],
     "updated": 39,
     "measurement": 2
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 21
 },
 {
   "fields": {
-    "y": "0.55000",
-    "x": "4.00000",
+    "y": [ "0.55000" ],
+    "x": [ "4.00000" ],
     "updated": 39,
     "measurement": 7
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 22
 },
 {
   "fields": {
-    "y": "0.60000",
-    "x": "8.00000",
+    "y": [ "0.60000" ],
+    "x": [ "8.00000" ],
     "updated": 39,
     "measurement": 2
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 23
 },
 {
   "fields": {
-    "y": "0.66000",
-    "x": "8.00000",
+    "y": [ "0.66000" ],
+    "x": [ "8.00000" ],
     "updated": 39,
     "measurement": 7
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 24
 },
 {
   "fields": {
-    "y": "0.65000",
-    "x": "12.00000",
+    "y": [ "0.65000" ],
+    "x": [ "12.00000" ],
     "updated": 39,
     "measurement": 2
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 25
 },
 {
   "fields": {
-    "y": "0.71500",
-    "x": "12.00000",
+    "y": [ "0.71500" ],
+    "x": [ "12.00000" ],
     "updated": 39,
     "measurement": 7
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 26
 },
 {
   "fields": {
-    "y": "0.67500",
-    "x": "18.00000",
+    "y": [ "0.67500" ],
+    "x": [ "18.00000" ],
     "updated": 39,
     "measurement": 2
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 27
 },
 {
   "fields": {
-    "y": "0.74250",
-    "x": "18.00000",
+    "y": [ "0.74250" ],
+    "x": [ "18.00000" ],
     "updated": 39,
     "measurement": 7
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 28
 },
 {
   "fields": {
-    "y": "0.69000",
-    "x": "24.00000",
+    "y": [ "0.69000" ],
+    "x": [ "24.00000" ],
     "updated": 39,
     "measurement": 2
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 29
 },
 {
   "fields": {
-    "y": "0.75900",
-    "x": "24.00000",
+    "y": [ "0.75900" ],
+    "x": [ "24.00000" ],
     "updated": 39,
     "measurement": 7
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 30
 },
 {
   "fields": {
-    "y": "0.00000",
-    "x": "0.00000",
+    "y": [ "0.00000" ],
+    "x": [ "0.00000" ],
     "updated": 39,
     "measurement": 3
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 31
 },
 {
   "fields": {
-    "y": "0.20000",
-    "x": "4.00000",
+    "y": [ "0.20000" ],
+    "x": [ "4.00000" ],
     "updated": 39,
     "measurement": 3
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 32
 },
 {
   "fields": {
-    "y": "0.40000",
-    "x": "8.00000",
+    "y": [ "0.40000" ],
+    "x": [ "8.00000" ],
     "updated": 39,
     "measurement": 3
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 33
 },
 {
   "fields": {
-    "y": "0.80000",
-    "x": "12.00000",
+    "y": [ "0.80000" ],
+    "x": [ "12.00000" ],
     "updated": 39,
     "measurement": 3
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 34
 },
 {
   "fields": {
-    "y": "1.60000",
-    "x": "18.00000",
+    "y": [ "1.60000" ],
+    "x": [ "18.00000" ],
     "updated": 39,
     "measurement": 3
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 35
 },
 {
   "fields": {
-    "y": "3.20000",
-    "x": "24.00000",
+    "y": [ "3.20000" ],
+    "x": [ "24.00000" ],
     "updated": 39,
     "measurement": 3
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 36
 },
 {
   "fields": {
-    "y": "0.00000",
-    "x": "0.00000",
+    "y": [ "0.00000" ],
+    "x": [ "0.00000" ],
     "updated": 39,
     "measurement": 4
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 37
 },
 {
   "fields": {
-    "y": "0.50000",
-    "x": "4.00000",
+    "y": [ "0.50000" ],
+    "x": [ "4.00000" ],
     "updated": 39,
     "measurement": 4
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 38
 },
 {
   "fields": {
-    "y": "1.10000",
-    "x": "8.00000",
+    "y": [ "1.10000" ],
+    "x": [ "8.00000" ],
     "updated": 39,
     "measurement": 4
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 39
 },
 {
   "fields": {
-    "y": "2.05000",
-    "x": "12.00000",
+    "y": [ "2.05000" ],
+    "x": [ "12.00000" ],
     "updated": 39,
     "measurement": 4
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 40
 },
 {
   "fields": {
-    "y": "4.09000",
-    "x": "18.00000",
+    "y": [ "4.09000" ],
+    "x": [ "18.00000" ],
     "updated": 39,
     "measurement": 4
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 41
 },
 {
   "fields": {
-    "y": "5.45000",
-    "x": "24.00000",
+    "y": [ "5.45000" ],
+    "x": [ "24.00000" ],
     "updated": 39,
     "measurement": 4
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 42
 },
 {
   "fields": {
-    "y": "0.00000",
-    "x": "0.00000",
+    "y": [ "0.00000" ],
+    "x": [ "0.00000" ],
     "updated": 39,
     "measurement": 5
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 43
 },
 {
   "fields": {
-    "y": "0.30000",
-    "x": "4.00000",
+    "y": [ "0.30000" ],
+    "x": [ "4.00000" ],
     "updated": 39,
     "measurement": 5
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 44
 },
 {
   "fields": {
-    "y": "0.50000",
-    "x": "8.00000",
+    "y": [ "0.50000" ],
+    "x": [ "8.00000" ],
     "updated": 39,
     "measurement": 5
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 45
 },
 {
   "fields": {
-    "y": "0.55000",
-    "x": "12.00000",
+    "y": [ "0.55000" ],
+    "x": [ "12.00000" ],
     "updated": 39,
     "measurement": 5
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 46
 },
 {
   "fields": {
-    "y": "0.57000",
-    "x": "18.00000",
+    "y": [ "0.57000" ],
+    "x": [ "18.00000" ],
     "updated": 39,
     "measurement": 5
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 47
 },
 {
   "fields": {
-    "y": "0.59000",
-    "x": "24.00000",
+    "y": [ "0.59000" ],
+    "x": [ "24.00000" ],
     "updated": 39,
     "measurement": 5
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 48
 },
 {
   "fields": {
-    "y": "0.10000",
-    "x": "0.00000",
+    "y": [ "0.10000" ],
+    "x": [ "0.00000" ],
     "updated": 39,
     "measurement": 8
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 49
 },
 {
   "fields": {
-    "y": "0.10000",
-    "x": "0.00000",
+    "y": [ "0.10000" ],
+    "x": [ "0.00000" ],
     "updated": 39,
     "measurement": 9
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 50
 },
 {
   "fields": {
-    "y": "0.30000",
-    "x": "12.00000",
+    "y": [ "0.30000" ],
+    "x": [ "12.00000" ],
     "updated": 39,
     "measurement": 8
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 51
 },
 {
   "fields": {
-    "y": "0.30000",
-    "x": "12.00000",
+    "y": [ "0.30000" ],
+    "x": [ "12.00000" ],
     "updated": 39,
     "measurement": 9
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 52
 },
 {
   "fields": {
-    "y": "0.50000",
-    "x": "24.00000",
+    "y": [ "0.50000" ],
+    "x": [ "24.00000" ],
     "updated": 39,
     "measurement": 8
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 53
 },
 {
   "fields": {
-    "y": "0.50000",
-    "x": "24.00000",
+    "y": [ "0.50000" ],
+    "x": [ "24.00000" ],
     "updated": 39,
     "measurement": 9
   },
-  "model": "main.measurementdatum",
+  "model": "main.measurementvalue",
   "pk": 54
 },
 {

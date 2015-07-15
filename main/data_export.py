@@ -94,17 +94,21 @@ def select_objects_for_export (study, user, form) :
           assay__in=selected_assays).distinct()
         if (len(selected_measurement_ids) == 0) :
             selected_measurements = Measurement.objects.filter(
-                assay__in=selected_assays).prefetch_related(
-                    "measurementdatum_set").prefetch_related(
-                    "measurementvector_set").select_related(
-                    "measurement_type")
+                    assay__in=selected_assays,
+                ).prefetch_related(
+                    "measurementvalue_set",
+                ).select_related(
+                    "measurement_type",
+                )
         if (len(selected_measurement_ids) > 0) :
             selected_measurements = Measurement.objects.filter(
-                assay__line__study=study).filter(
-                id__in=selected_measurement_ids).prefetch_related(
-                    "measurementdatum_set").prefetch_related(
-                    "measurementvector_set").select_related(
-                    "measurement_type")
+                    assay__line__study=study,
+                    id__in=selected_measurement_ids,
+                ).prefetch_related(
+                    "measurementvalue_set",
+                ).select_related(
+                    "measurement_type",
+                )
     return {
         "lines" : selected_lines,
         "assays" : selected_assays,

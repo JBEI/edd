@@ -122,7 +122,7 @@ def get_edddata_measurement () :
     }
 
 def get_edddata_strains () :
-    strains = Strain.objects.all().prefetch_related("updates")
+    strains = Strain.objects.all().select_related("created", "updated")
     return {
       "StrainIDs" : [ s.id for s in strains ],
       "EnabledStrainIDs" : [ s.id for s in strains if s.active ],
@@ -146,15 +146,15 @@ def interpolate_at (measurement_data, x) :
   compute an approximate Y-value based on adjacent measurements (if any).
   """
   import numpy
-  data = [ md for md in measurement_data if md.fx is not None ]
-  data.sort(lambda a,b: cmp(a.x, b.x))
+  data = [ md for md in measurement_data if len(md.x) and md.x[0] is not None ]
+  data.sort(lambda a,b: cmp(a.x[0], b.x[0]))
   if (len(data) == 0) :
       raise ValueError("Can't interpolate because no valid "+
         "measurement data are present.")
-  xp = numpy.array([ d.fx for d in data ])
+  xp = numpy.array([ float(d.x[0]) for d in data ])
   if (not (xp[0] <= x <= xp[-1])) :
       return None
-  fp = numpy.array([ d.fy for d in data ])
+  fp = numpy.array([ float(d.y[0]) for d in data ])
   return numpy.interp(float(x), xp, fp)
 
 def extract_id_list (form, key) :
@@ -223,14 +223,16 @@ class line_export_base (object) :
 
   def _fetch_cache_data (self) :
     assays = list(Assay.objects.filter(line__in=self.lines).prefetch_related(
-      "measurement_set").select_related("protocol").select_related("line"))
+      "measurement_set").select_related("protocol", "line"))
     for assay in assays :
       self._assays[assay.protocol_id].append(assay)
       self._assay_names[assay.id] = "%s-%s-%s" % (assay.line.name,
         assay.protocol.name, assay.name)
     measurements = list(Measurement.objects.filter(
-      assay_id__in=[ a.id for a in assays ]).select_related(
-        "assay").select_related("measurement_type").select_related("y_units"))
+        assay__line__in=self.lines
+      ).select_related(
+        'assay', 'measurement_type', 'y_units',
+      ))
     #measurements.select_related("assay")
     #measurements.prefetch_related("meaurement_type")
     #measurements.prefetch_related("meaurementdatum_set")
@@ -241,11 +243,8 @@ class line_export_base (object) :
     mtypes_dict = { mt.id : mt for mt in measurement_types }
     metabolites_dict = { mt.id : mt for mt in metabolites }
     # FIXME this is a huge bottleneck!  can it be made more efficient?
-    measurement_data = MeasurementDatum.objects.filter(
-      measurement_id__in=measurement_ids)
-    # FIXME this one too
-    measurement_vectors = MeasurementVector.objects.filter(
-      measurement_id__in=measurement_ids)
+    measurement_data = MeasurementValue.objects.filter(
+      measurement__assay__line__in=self.lines)
     # XXX I think the reason for this is that the old EDD stores the line and
     # study IDs directly in various other tables, and selects on these instead
     # of a huge list of measurements.
@@ -263,10 +262,6 @@ class line_export_base (object) :
     for md in measurement_data :
       meas_id = md.measurement_id
       self._measurement_data[meas_id].append(md)
-    for mv in measurement_vectors :
-      meas_id = mv.measurement_id
-      self._measurement_data[meas_id].append(mv)
-      self._measurement_units[meas_id] = None
 
   def _get_measurements (self, assay_id) :
     assert isinstance(assay_id, int)

@@ -301,27 +301,15 @@ def import_assay_table_data (study, user, post_data, update) :
             meas_record.save()
             # TODO update
         for x,y in data :
-            if (mtype_format == 0) :
-                try :
-                    datum = meas_record.measurementdatum_set.get(x=x)
-                except MeasurementDatum.DoesNotExist as e :
-                    datum = meas_record.measurementdatum_set.create(
-                        x=x, y=y, updated=update)
-                else :
-                    datum.y = y
-                    datum.save()
-                    # TODO update
-                    datum.save()
+            try :
+                datum = meas_record.measurementvalue_set.get(x__0=x)
+            except MeasurementValue.DoesNotExist as e :
+                datum = meas_record.measurementvalue_set.create(
+                    x=[x], y=[y], updated=update)
             else :
-                try :
-                    mdata = meas_record.measurementvector_set.get(x=x)
-                except MeasurementVector.DoesNotExist as e :
-                    mdata = meas_record.measurementvector_set.create(
-                        x=x, y=y, updated=update) # XXX check y type?
-                else :
-                    mdata.y = y
-                    mdata.save()
-                    # TODO update
+                datum.y = [y]
+                # TODO update
+                datum.save()
             n_added += 1
         metadata = u.get('metadata', None)
         if (len(metadata) > 0) :
@@ -508,15 +496,15 @@ class import_rna_seq (object) :
                     for i_col, (assay_id, t) in enumerate(
                             zip(assay_ids, meas_times)) :
                         key = (assay_id, meas_type.pk, meas_units[ytype].pk)
-                        mdata = MeasurementDatum(
+                        mdata = MeasurementValue(
                             measurement=meas_dict[key],
-                            x=t,
-                            y=values_by_gene[ytype][gene_id][i_col],
+                            x=[t],
+                            y=[values_by_gene[ytype][gene_id][i_col]],
                             updated=update)
                         new_meas_data.append(mdata)
                         self.n_meas_data += 1
         if (len(new_meas_data) > 0) :
-            MeasurementDatum.objects.bulk_create(new_meas_data)
+            MeasurementValue.objects.bulk_create(new_meas_data)
 
     @classmethod
     def from_form (cls, request, study) :
@@ -682,8 +670,7 @@ class import_rnaseq_edgepro (object) :
         assert (assay.line.study.id == study.id)
         def get_measurements_dict () :
             old_measurements = assay.measurement_set.select_related(
-                "measurement_type").select_related(
-                "measurement_unit")
+                "measurement_type", "x_units", "y_units")
             meas_dict_ = defaultdict(list)
             for m in old_measurements :
                 meas_dict_[m.measurement_type.type_name].append(m)
@@ -697,17 +684,17 @@ class import_rnaseq_edgepro (object) :
         if (remove_all) :
             # get rid of all data points for this assay, regardless of
             # timepoint
-            MeasurementDatum.objects.filter(measurement__assay=assay).delete()
+            MeasurementValue.objects.filter(measurement__assay=assay).delete()
         else :
             # delete any existing data points for this assay at the given
             # timepoint
-            MeasurementDatum.objects.filter(
+            MeasurementValue.objects.filter(
                 measurement__assay=assay,
-                x=timepoint).delete()
+                x__0=timepoint).delete()
         # XXX to facilitate bulk record creation, there are two loops over
         # entries in the table.  loop 1 creates new GeneIdentifiers as
         # needed, and either creates new Measurements or flags the existing
-        # ones for updating.  we can't create MeasurementDatum objects yet
+        # ones for updating.  we can't create MeasurementValue objects yet
         # because any new parent Measurements won't have IDs until they're
         # actually entered into the database.
         new_meas = []
@@ -757,7 +744,7 @@ class import_rnaseq_edgepro (object) :
         if (len(update_meas) > 0) :
             Measurement.objects.filter(id__in=update_meas).update(
                 update_ref=update)
-        # XXX loop 2 creates the MeasurementDatum objects, now that we have
+        # XXX loop 2 creates the MeasurementValue objects, now that we have
         # IDs associated with the parent measurements.
         meas_dict = get_measurements_dict()
         new_meas_data = []
@@ -778,14 +765,14 @@ class import_rnaseq_edgepro (object) :
                     [meas_fpkm, meas_counts],
                     [rpkm_unit, counts_unit],
                     [rpkm, n_reads]) :
-                meas_data = MeasurementDatum(
+                meas_data = MeasurementValue(
                     measurement=meas_record,
-                    x=timepoint,
-                    y=md_value,
+                    x=[timepoint],
+                    y=[md_value],
                     updated=update)
                 new_meas_data.append(meas_data)
                 self.n_meas_data += 1
-        MeasurementDatum.objects.bulk_create(new_meas_data)
+        MeasurementValue.objects.bulk_create(new_meas_data)
 
     def format_message (self) :
         msg = "Added %d gene identifiers and %d measurements" % \

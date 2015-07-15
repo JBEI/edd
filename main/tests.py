@@ -11,6 +11,7 @@ import main.utilities
 import warnings
 import os.path
 
+
 class UserTests(TestCase) :
     def setUp (self) :
         TestCase.setUp(self)
@@ -245,7 +246,7 @@ class LineTests (TestCase) : # XXX also Strain, CarbonSource
         self.assertTrue(strain2.n_studies == 1)
         json_dict = strain1.to_json()
         self.assertTrue(json_dict['registry_url'] == "http://registry.jbei.org/strain/666")
-        self.assertTrue(json_dict['desc'] == "JBEI strain 1")
+        self.assertTrue(json_dict['description'] == "JBEI strain 1")
         line1 = Line.objects.get(name="Line 1")
         line2 = Line.objects.get(name="Line 2")
         line3 = Line.objects.get(name="Line 3")
@@ -336,8 +337,8 @@ class AssayDataTests(TestCase) :
         x1 = [ 0, 4, 8, 12, 18, 24 ]
         y1 = [ 0.0, 0.1, 0.2, 0.4, 0.8, 1.6 ]
         for x, y in zip(x1, y1) :
-            md = meas1.measurementdatum_set.create(updated=up1, x=x, y=y)
-        meas1.measurementdatum_set.create(updated=up1, x=32, y=None)
+            values = meas1.measurementvalue_set.create(updated=up1, x=[x], y=[y])
+        meas1.measurementvalue_set.create(updated=up1, x=[32], y=[])
 
     def test_protocol (self) :
         p1 = Assay.objects.get(description="GC-MS assay 1").protocol
@@ -379,7 +380,6 @@ class AssayDataTests(TestCase) :
         self.assertTrue(len(assay.get_gene_measurements()) == 1)
         self.assertTrue(len(assay.get_protein_measurements()))
         json_dict = assay.to_json()
-        self.assertTrue(json_dict['ln'] == "WT1")
         self.assertTrue(assay.long_name == "WT1-gc-ms-1")
         new_assay_number = assay.line.new_assay_number("gc-ms")
         self.assertTrue(new_assay_number == 2)
@@ -426,11 +426,11 @@ class AssayDataTests(TestCase) :
         self.assertTrue(meas1.is_concentration_measurement())
         self.assertTrue(not meas1.is_carbon_ratio())
         self.assertTrue(meas2.is_gene_measurement())
-        mdata = list(meas1.measurementdatum_set.all())
-        self.assertTrue(str(mdata[0].fx) == "0.0")
-        self.assertTrue(str(mdata[0].fy) == "0.0")
-        self.assertTrue(str(mdata[-1].fx) == "32.0")
-        self.assertTrue(mdata[-1].fy is None)
+        mdata = list(meas1.measurementvalue_set.all())
+        self.assertTrue(mdata[0].x[0] == 0)
+        self.assertTrue(mdata[0].y[0] == 0)
+        self.assertTrue(mdata[-1].x[0] == 32)
+        self.assertTrue(mdata[-1].y is None)
 
     def test_measurement_extract (self) :
         assay = Assay.objects.get(description="GC-MS assay 1")
@@ -558,7 +558,7 @@ class ImportTests(TestCase) :
         self.assertTrue(len(meas) == 2)
         data = []
         for m in meas :
-            data.append([(d.fx,d.fy) for d in m.measurementdatum_set.all()])
+            data.append([ (float(d.x[0]), float(d.y[0])) for d in m.measurementvalue_set.all() ])
         self.assertTrue(str(data) == """[[(0.0, 0.1), (1.0, 0.2), (2.0, 0.4), (4.0, 1.7), (8.0, 5.9)], [(0.0, 0.2), (1.0, 0.4), (2.0, 0.6), (4.0, 0.8), (8.0, 1.2)]]""")
 
     def test_error (self) :
@@ -715,7 +715,7 @@ class ImportTests(TestCase) :
         line2 = Line.objects.get(name="L2")
         user = User.objects.get(username="admin")
         update = Update.objects.create(
-            mod_time=timezone.now(),
+            mod_time=arrow.utcnow(),
             mod_by=user)
         # EDGE-pro output
         raw = """\
@@ -977,7 +977,7 @@ class ExportTests(TestCase) :
         study = Study.objects.get(name="Test Study 1")
         od = Assay.objects.get(name="OD measurement")
         odm = od.measurement_set.all()[0]
-        odm.measurementdatum_set.filter(x__gt=0).delete()
+        odm.measurementvalue_set.filter(x__0__gt=0).delete()
         try :
             data = main.sbml_export.line_sbml_export(
                 study=study,

@@ -1215,6 +1215,14 @@ class MeasurementValue(models.Model):
     def __str__(self):
         return '(%s, %s)' % (self.x, self.y)
 
+    @property
+    def fx(self):
+        return float(self.x[0])
+
+    @property
+    def fy(self):
+        return float(self.y[0])
+
     def to_json(self):
         return {
             "id": self.pk,
