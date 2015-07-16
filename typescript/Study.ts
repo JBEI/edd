@@ -790,6 +790,16 @@ module StudyD {
                 });
             }
         });
+
+        $('form.line-edit').on('change', '.line-meta > :input', (ev) => {
+            var form = $(ev.target).closest('form'), meta = {}, value;
+            form.find('.line-meta > :input').each((i, input) => {
+                var key = $(input).attr('id').match(/-(\d+)$/)[1];
+                meta[key] = $(input).val();
+            });
+            value = JSON.stringify(meta);
+            form.find('[name=line-meta_store]').val(value);
+        });
     }
 
 
@@ -1369,7 +1379,8 @@ module StudyD {
 
     function clearLineForm() {
         var form = $('#id_line-ids').closest('form');
-        form.find('.line-meta').remove().end().find(':input').not('[name=action]').val('');
+        form.find('.line-meta').remove().end().find(':input').filter('[name^=line-]').val('');
+        form.find('.cancel-link').remove();
     }
 
 
@@ -1380,6 +1391,7 @@ module StudyD {
             return;
         }
 
+        clearLineForm();
         // Update the form elements with current Line information
         form = $('#id_line-ids').val(index).closest('form');
         form.find('[name=line-name]').val(record.name);
@@ -1398,20 +1410,23 @@ module StudyD {
         metaRow = form.find('.line-edit-meta');
         // Run through the collection of metadata, and add a form element entry for each
         $.each(record.meta, (key, value) => {
-            // TODO map metadata to form elements
             var row, label, input, id = 'line-meta-' + key;
             row = $('<p>').attr('id', 'row_' + id).addClass('line-meta').insertBefore(metaRow);
             label = $('<label>').attr('for', 'id_' + id)
                     .text(EDDData.MetaDataTypes[key].name).appendTo(row);
             input = $('<input type="text">').attr('id', 'id_' + id)
                     .val(value).appendTo(row);
+            // TODO add a remove button
         });
+        // store original metadata in initial- field
+        form.find('[name=line-meta_store]').val(JSON.stringify(record.meta));
+        form.find('[name=initial-line-meta_store]').val(JSON.stringify(record.meta));
         // Update the button to read 'Edit Line'
         button = form.find('[name=action][value=line]').text('Edit Line');
-        $('<a href="#">Cancel</a>').on('click', (ev) => {
+        // Add link to revert back to 'Add Line' form
+        $('<a href="#">Cancel</a>').addClass('cancel-link').on('click', (ev) => {
             clearLineForm();
             button.text('Add Line');
-            $(ev.target).remove();
             return false;
         }).insertAfter(button);
     }
