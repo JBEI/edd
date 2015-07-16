@@ -12,41 +12,50 @@
 var EDD_auto = EDD_auto || {};
 (function ($) { // immediately invoked function to bind jQuery to $
 
-// Static specification of column layout for each model in EDD that we want to
-// make searchable.  (This might be better done as a static JSON file
-// somewhere.)
-EDD_auto.column_layouts = $.extend(EDD_auto.column_layouts || {}, {
-    "User" : [
-        {
-            name: 'User',
-            width: '150px',
-            valueField: 'name'
-        }, {
-            name: 'Initials',
-            width: '60px',
-            valueField: 'initials'
-        }, {
-            name: 'E-mail',
-            width: '120px',
-            valueField: 'email'
-        }],
-    "Strain" : [
-        {
-            name: 'Part ID',
-            width: '100px',
-            valueField: 'partId'
-        },
-        {
-            name: 'Name',
-            width: '200px',
-            valueField: 'name'
-        }],
-    "CarbonSource" : [
-        {
-        }
-        ]
-});
-// 
+    var AutoColumn = function AutoColumn(name, width, valueField) {
+        this.name = name;
+        this.width = width;
+        this.valueField = valueField;
+        return this;
+    };
+
+    EDD_auto.cache_counter = EDD_auto.cache_counter || 0;
+    // Static specification of column layout for each model in EDD that we want to
+    // make searchable.  (This might be better done as a static JSON file
+    // somewhere.)
+    EDD_auto.column_layouts = $.extend(EDD_auto.column_layouts || {}, {
+        "User" : [
+            new AutoColumn('User', '150px', 'name'),
+            new AutoColumn('Initials', '60px', 'initials'),
+            new AutoColumn('E-mail', '120px', 'email')
+            ],
+        "Strain" : [
+            new AutoColumn('Part ID', '100px', 'partId'),
+            new AutoColumn('Name', '200px', 'name')
+            ],
+        "CarbonSource" : [
+            new AutoColumn('Name', '150px', 'name'),
+            new AutoColumn('Volume', '60px', 'volume'),
+            new AutoColumn('Labeling', '100px', 'labeling'),
+            new AutoColumn('Description', '150px', 'description'),
+            new AutoColumn('Initials', '60px', 'initials')
+            ]
+    });
+    EDD_auto.display_keys = $.extend(EDD_auto.display_keys || {}, {
+        "User": 'name',
+        "Strain": 'name',
+        "CarbonSource": 'name'
+    });
+    EDD_auto.value_cache = $.extend(EDD_auto.value_cache || {}, {
+        "User": 'Users',
+        "Strain": 'Strains',
+        "CarbonSource": 'CSources'
+    })
+    EDD_auto.value_keys = $.extend(EDD_auto.value_keys || {}, {
+        "User": 'id',
+        "Strain": 'recordId',
+        "CarbonSource": 'id'
+    });
 
 /*
  * jQuery UI Multicolumn Autocomplete Widget Plugin 2.1
@@ -99,31 +108,22 @@ $(window).load(function () {
 
 // Sets up the multicolumn autocomplete widget.  Must be called after the
 // $(window).load handler above.
-EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(
-        selector, model_name, display_key, value_key, valid_keys) {
+EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(selector, model_name) {
+    var empty = {}, columns, display_key, value_key, cache;
     if (typeof model_name === "undefined") {
         throw Error("model_name must be defined!");
     }
-    if (typeof value_key === "undefined") {
-        value_key = "name";
-    }
-    if (typeof valid_keys === "undefined") {
-        valid_keys = "all";
-    }
-    var columns = EDD_auto.column_layouts[model_name];
-    if (typeof columns === "undefined") {
-        columns = [{
-            name: 'Name',
-            width: '300px',
-            valueField: 'name'
-        }];
-    }
-    // Define a null-result for display
-    var empty = {};
+    columns = EDD_auto.column_layouts[model_name] || [ new AutoColumn('Name', '300px', 'name') ];
+    display_key = EDD_auto.display_keys[model_name] || 'name';
+    value_key = EDD_auto.value_keys[model_name] || 'id';
+    cache = EDD_auto.value_cache[model_name] || ('cache_' + (++EDD_auto.cache_counter));
+    EDDData[cache] = EDDData[cache] || {};
     empty[columns[0].valueField] = empty[0] = '<i>No Results Found</i>';
-    for (var i = 1; i < columns.length; ++i) {
-        empty[columns[i].valueField] = empty[i] = '';
-    }
+    columns.slice(1).forEach(function (column, index) {
+        empty[column.valueField] = empty[index] = '';
+    });
+    // TODO add flag(s) to handle multiple inputs
+    // TODO possibly also use something like https://github.com/xoxco/jQuery-Tags-Input
     $(selector).mcautocomplete({
         // These next two options are what this plugin adds to the autocomplete widget.
         // FIXME these will need to vary depending on record type
@@ -131,9 +131,16 @@ EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(
         columns: columns,
         // Event handler for when a list item is selected.
         select: function (event, ui) {
-            this.value = (ui.item ? ui.item[display_key] : '');
-            // assign value of selected item ID to sibling hidden input
-            $(this).siblings('input[type=hidden]').val(ui.item[value_key]);
+            var cacheKey, record, display, value;
+            if (ui.item) {
+                cacheKey = ui.item[value_key];
+                record = EDDData[cache][cacheKey] = EDDData[cache][cacheKey] || {};
+                $.extend(record, ui.item);
+                display = record[display_key] || '';
+                value = record[value_key] || '';
+                // assign value of selected item ID to sibling hidden input
+                $(this).val(display).next('input[type=hidden]').val(value);
+            }
             return false;
         },
     
@@ -146,7 +153,6 @@ EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(
                 dataType: 'json',
                 data: {
                     model : model_name,
-                    keys : valid_keys,
                     term : request.term
                 },
                 // The success event handler will display "No match found" if no items are returned.
@@ -161,6 +167,10 @@ EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(
                 }
             });
         }
+    }).on('blur', function (ev) {
+        var hiddenId = $(this).next('input[type=hidden]').val(),
+            old = EDDData[cache][hiddenId] || {};
+        $(this).val(old[display_key] || '');
     });
 };
 
@@ -169,10 +179,13 @@ EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(
 $(window).load(function () {
     // add user autocomplete to all '.autocomp.autocomp_user' fields
     $('.autocomp.autocomp_user').each(function () {
-        EDD_auto.setup_field_autocomplete(this, 'User', 'username', 'id');
+        EDD_auto.setup_field_autocomplete(this, 'User', EDDData.Users);
     });
     $('.autocomp.autocomp_reg').each(function () {
-        EDD_auto.setup_field_autocomplete(this, 'Strain', 'name', 'recordId')
+        EDD_auto.setup_field_autocomplete(this, 'Strain', EDDData.Strains);
+    });
+    $('.autocomp.autocomp_carbon').each(function () {
+        EDD_auto.setup_field_autocomplete(this, 'CarbonSource', EDDData.CSources);
     });
 });
 

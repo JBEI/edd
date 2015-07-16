@@ -27,6 +27,7 @@ import main.models
 import main.sbml_export
 import main.data_export
 import main.data_import
+import operator
 
 
 @register.filter(name='lookup')
@@ -86,7 +87,7 @@ class StudyDetailView(generic.DetailView):
         request = kwargs.pop('request', None)
         context['new_attach'] = CreateAttachmentForm()
         context['new_comment'] = CreateCommentForm()
-        context['new_line'] = LineForm()
+        context['new_line'] = LineForm(prefix='line')
         return context
 
     def handle_attach(self, request, context):
@@ -104,7 +105,7 @@ class StudyDetailView(generic.DetailView):
             context['new_comment'] = form
 
     def handle_line(self, request, context):
-        form = LineForm(request.POST, study=self.get_object())
+        form = LineForm(request.POST, prefix='line', study=self.get_object())
         ids = [ v for v in (form['ids'].data or '').split(',') if v.strip() != '' ]
         if len(ids) == 0:
             self.handle_line_new(request, context, form)
@@ -119,7 +120,7 @@ class StudyDetailView(generic.DetailView):
         saved = 0
         for value in ids:
             line = Line.objects.get(pk=value, study=study)
-            form = LineForm(request.POST, instance=line, study=study)
+            form = LineForm(request.POST, instance=line, prefix='line', study=study)
             form.check_bulk_edit() # removes fields having disabled bulk edit checkbox
             if form.is_valid():
                 form.save()
@@ -131,15 +132,15 @@ class StudyDetailView(generic.DetailView):
     def handle_line_edit(self, request, context, pk):
         study = self.get_object()
         line = Line.objects.get(pk=pk, study=study)
-        form = LineForm(request.POST, instance=line, study=study)
+        form = LineForm(request.POST, instance=line, prefix='line', study=study)
         if form.is_valid():
             form.save()
-            messages.success("Saved Line '%(name)s'" % { 'name': form.name.value() })
+            messages.success(request, "Saved Line '%(name)s'" % { 'name': form['name'].value() })
 
     def handle_line_new(self, request, context, form):
         if form.is_valid():
             form.save()
-            messages.success("Added Line '%(name)s" % { 'name': form.name.value() })
+            messages.success(request, "Added Line '%(name)s" % { 'name': form['name'].value() })
         else:
             context['new_line'] = form
 
@@ -813,25 +814,19 @@ def search (request) :
         rows = [ match.entryInfo for match in results['results'] ]
         return JsonResponse({ "rows": rows })
     else:
-        # if desired, limit to specific search keys
-        valid_keys = request.GET.get("keys", "all").split(",")
-        use_all_keys = (valid_keys == ["all"])
-        models = getattr(main.models, model_name).objects.all()
-        terms = term.split()
-        for item in models :
-            json_dict = item.to_json()
-            keys = valid_keys
-            if (use_all_keys) :
-                keys = json_dict.keys()
-            for key in keys :
-                value = json_dict[key]
-                if (not isinstance(value, basestring)) :
-                    continue
-                for term in terms :
-                    if (term in value) :
-                        results.append(json_dict)
-                        break
-                else :
-                    continue
-                break
+        Model = getattr(main.models, model_name)
+        # gets all the direct field names that can be filtered by terms
+        ifields = [ f.get_attname() 
+                    for f in Model._meta.get_fields()
+                    if hasattr(f, 'get_attname') and (
+                        f.get_internal_type() == 'TextField' or
+                        f.get_internal_type() == 'CharField')
+                    ]
+        term_filters = []
+        # construct a Q object for each term/field combination
+        for term in term.split():
+            term_filters.extend([ Q(**{ f+'__iregex': term }) for f in ifields ])
+        # run search with each Q object OR'd together; limit to 20
+        found = Model.objects.filter(reduce(operator.or_, term_filters))[:20]
+        results = [ item.to_json() for item in found ]
     return JsonResponse({ "rows": results })

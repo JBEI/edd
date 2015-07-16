@@ -117,7 +117,7 @@ declare module StudyD {
     function removeCarbonSourceRow(order: any): void;
     function disableAllButFirstCarbonSourceRow(): void;
     function redrawCarbonSourceRows(): void;
-    function editLine(linkelement: any, index: any): void;
+    function editLine(index: any): void;
     function editAssay(linkelement: any, index: any): void;
     function addMetaboliteRow(): void;
     function removeMeasurementTypeRow(order: any): void;

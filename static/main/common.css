@@ -153,7 +153,7 @@ div.topBanner > div.siteLogo {
 div.topBanner > div.pageName {
     color: #6c6c6c;
     font-size: 20pt;
-    line-height: 70px;
+    padding-top: 20px;
 }
 div.topBanner > div.userMenu {
     float: right;
@@ -1429,5 +1429,15 @@ form.attachments > * {
 
 ol.comment-list > li {
     margin-left: 2em;
+}
+
+form.line-edit > p > label,
+form.line-edit > p > .label {
+    display: inline-block;
+    vertical-align: top;
+    width: 8em;
+}
+form.line-edit > p > label {
+    line-height: 20px; /* bare text looks too offset compared to text boxes, so tweak line-height */
 }
 /* End of common styles */

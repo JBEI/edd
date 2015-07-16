@@ -36,8 +36,11 @@ class AutocompleteWidget(forms.widgets.MultiWidget):
         if value:
             Model = self.get_model()
             o = Model.objects.get(pk=value)
-            return [ str(o), value ]
+            return [ self.display_value(o), value ]
         return [ '', None ]
+
+    def display_value(self, value):
+        return str(value)
 
     def value_from_datadict(self, data, files, name):
         widgets = enumerate(self.widgets)
@@ -46,44 +49,78 @@ class AutocompleteWidget(forms.widgets.MultiWidget):
         return v[1]
 
 
+class MultiAutocompleteWidget(AutocompleteWidget):
+    """ Extension to Autocomplete widget that handles multiple autocompleted values.
+        All values must be lists; either a list of results from decompress, or a list of values
+        to be passed to decompress """
+    def __init__(self, **kwargs):
+        self._separator = kwargs.pop('separator', ',')
+        super(MultiAutocompleteWidget, self).__init__(**kwargs)
+
+    def render(self, name, value, attrs=None):
+        joined = []
+        _range = range(len(self.widgets))
+        for index in _range:
+            joined.append([])
+        if value is None:
+            value = []
+        for item in value:
+            if not isinstance(item, list):
+                item = self.decompress(item)
+            for index in _range:
+                joined[index].append(item[index] if len(item) > index else '')
+        for index in _range:
+            joined[index] = self._separator.join(map(lambda v: str(v), joined[index]))
+        return super(MultiAutocompleteWidget, self).render(name, joined, attrs)
+
+    def value_from_datadict(self, data, files, name):
+        # value from super will be joined by self._separator, so split it to get the true value
+        joined = super(MultiAutocompleteWidget, self).value_from_datadict(data, files, name)
+        return joined.split(self._separator)
+
+
 class UserAutocompleteWidget(AutocompleteWidget):
     """ Autocomplete widget for Users """
     def __init__(self, attrs=None, opt={}):
-        _opt = opt.copy()
-        _opt.update({
-            'text_attr': { 'class': 'autocomp autocomp_user' },
-            })
-        super(UserAutocompleteWidget, self).__init__(attrs=attrs, model=User, opt=_opt)
+        opt.update({ 'text_attr': { 'class': 'autocomp autocomp_user', }, })
+        super(UserAutocompleteWidget, self).__init__(attrs=attrs, model=User, opt=opt)
 
 
 class GroupAutocompleteWidget(AutocompleteWidget):
     """ Autocomplete widget for Groups """
     def __init__(self, attrs=None, opt={}):
-        _opt = opt.copy()
-        _opt.update({
-            'text_attr': { 'class': 'autocomp autocomp_group' },
-            })
-        super(GroupAutocompleteWidget, self).__init__(attrs=attrs, model=Group, opt=_opt)
+        opt.update({ 'text_attr': { 'class': 'autocomp autocomp_group', }, })
+        super(GroupAutocompleteWidget, self).__init__(attrs=attrs, model=Group, opt=opt)
 
 
 class RegistryAutocompleteWidget(AutocompleteWidget):
     """ Autocomplete widget for Registry strains """
     def __init__(self, attrs=None, opt={}):
-        _opt = opt.copy()
-        _opt.update({
-            'text_attr': { 'class': 'autocomp autocomp_reg' },
-            })
-        super(RegistryAutocompleteWidget, self).__init__(attrs=attrs, model=Strain, opt=_opt)
+        opt.update({ 'text_attr': { 'class': 'autocomp autocomp_reg', }, })
+        super(RegistryAutocompleteWidget, self).__init__(attrs=attrs, model=Strain, opt=opt)
+
+class MultiRegistryAutocompleteWidget(MultiAutocompleteWidget, RegistryAutocompleteWidget):
+    pass
 
 
 class CarbonSourceAutocompleteWidget(AutocompleteWidget):
     """ Autocomplete widget for carbon sources """
     def __init__(self, attrs=None, opt={}):
-        _opt = opt.copy()
-        _opt.update({
-            'text_attr': { 'class': 'autocomp autocomp_carbon' },
-            })
-        super(CarbonSourceAutocompleteWidget, self).__init__(attrs=attrs, model=CarbonSource, opt=_opt)
+        opt.update({ 'text_attr': { 'class': 'autocomp autocomp_carbon', }, })
+        super(CarbonSourceAutocompleteWidget, self).__init__(attrs=attrs, model=CarbonSource, opt=opt)
+
+    def display_value(self, value):
+        return value.name
+
+class MultiCarbonSourceAutocompleteWidget(MultiAutocompleteWidget, CarbonSourceAutocompleteWidget):
+    pass
+
+
+class MetadataTypeAutocompleteWidget(AutocompleteWidget):
+    """ Autocomplete widget for types of metadata """
+    def __init__(self, attrs=None, opt={}):
+        opt.update({ 'text_attr': { 'class': 'autocomp autocomp_meta', }, })
+        super(MetadataTypeAutocompleteWidget, self).__init__(attrs=attrs, model=MetadataType, opt=opt)
 
 
 class CreateStudyForm(forms.ModelForm):
@@ -162,23 +199,27 @@ class LineForm(forms.ModelForm):
     """ Form to create a new line. """
     # include hidden field for applying form changes to multiple Line instances by ID
     ids = forms.CharField(required=False, widget=forms.HiddenInput())
+    # TODO meta_store included as hidden field; populate with JSON of MetadataType.id to value
     class Meta:
         model = Line
         fields = (
             'name', 'description', 'control', 'contact', 'experimenter', 'carbon_source',
-            'strains', )
+            'strains', 'meta_store', )
         labels = {
             'name': _('Line'),
             'description': _('Description'),
             'control': _('Is Control?'),
             'contact': _('Contact'),
             'experimenter': _('Experimenter'),
+            'carbon_source': _('Carbon Source'),
+            'strains': _('Strains'),
         }
         widgets = {
             'contact': UserAutocompleteWidget(),
             'experimenter': UserAutocompleteWidget(),
-            'carbon_source': CarbonSourceAutocompleteWidget(),
-            'strains': RegistryAutocompleteWidget(),
+            'carbon_source': MultiCarbonSourceAutocompleteWidget(),
+            'strains': MultiRegistryAutocompleteWidget(),
+            'meta_store': forms.HiddenInput(),
         }
 
     def __init__(self, *args, **kwargs):

@@ -315,9 +315,9 @@ var StudyD;
                 // assign unique ID to every encountered carbon source name
                 (line.carbon || []).forEach(function (carbonId) {
                     var src = EDDData.CSources[carbonId];
-                    if (src && src.carbon) {
-                        uniqueNamesId[src.carbon] = uniqueNamesId[src.carbon] || ++unique;
-                        _this.filterHash[assayId].push(uniqueNamesId[src.carbon]);
+                    if (src && src.name) {
+                        uniqueNamesId[src.name] = uniqueNamesId[src.name] || ++unique;
+                        _this.filterHash[assayId].push(uniqueNamesId[src.name]);
                     }
                 });
             });
@@ -1203,50 +1203,46 @@ var StudyD;
         }
     }
     StudyD.redrawCarbonSourceRows = redrawCarbonSourceRows;
-    function editLine(linkelement, index) {
-        var record = EDDData.Lines[index];
+    function clearLineForm() {
+        var form = $('#id_line-ids').closest('form');
+        form.find('.line-meta').remove().end().find(':input').not('[name=action]').val('');
+    }
+    function editLine(index) {
+        var record = EDDData.Lines[index], form, button, metaRow;
         if (!record) {
             console.log('Invalid record for editing: ' + index);
             return;
         }
-        // Create a mapping from the JSON record to the form elements
-        var formInfo = {
-            lineidtoedit: index,
-            linename: record.name,
-            lineiscontrol: record.control,
-            linestrainvalue: record.strain,
-            lineexperimentervalue: record.experimenter,
-            linecontact: record.contact
-        };
+        // Update the form elements with current Line information
+        form = $('#id_line-ids').val(index).closest('form');
+        form.find('[name=line-name]').val(record.name);
+        form.find('[name=line-description]').val(record.description);
+        form.find('[name=line-control]').prop('checked', record.control);
+        form.find('[name=line-contact_0]').val(record.contact.text);
+        form.find('[name=line-contact_1]').val(record.contact.user_id);
+        form.find('[name=line-experimenter_0]').val(EDDData.Users[record.experimenter].uid);
+        form.find('[name=line-experimenter_1]').val(record.experimenter);
+        form.find('[name=line-carbon_source_0]').val(record.carbon.map(function (v) { return EDDData.CSources[v].name; }).join(','));
+        form.find('[name=line-carbon_source_1]').val(record.carbon.join(','));
+        form.find('[name=line-strain_0]').val(record.strain.map(function (v) { return EDDData.Strains[v].name; }).join(','));
+        form.find('[name=line-strain_1]').val(record.strain.join(','));
+        metaRow = form.find('.line-edit-meta');
         // Run through the collection of metadata, and add a form element entry for each
         $.each(record.meta, function (key, value) {
-            formInfo['linemeta' + key] = value;
-            formInfo['linemeta' + key + 'include'] = 1;
+            // TODO map metadata to form elements
+            var row, label, input, id = 'line-meta-' + key;
+            row = $('<p>').attr('id', 'row_' + id).addClass('line-meta').insertBefore(metaRow);
+            label = $('<label>').attr('for', 'id_' + id).text(EDDData.MetaDataTypes[key].name).appendTo(row);
+            input = $('<input type="text">').attr('id', 'id_' + id).val(value).appendTo(row);
         });
-        // TODO need to re-implement the form take-over
-        // var cs = record.carbon || [];    // We need to do something special with the Carbon Sources array
-        // Either show just enough carbon source boxes for the entry in question,
-        // or if there is no carbon source set, show one box (which will be defaulted to blank)
-        // var sourcesToShow = 1;
-        // if (cs.length > 1) {
-        //     sourcesToShow = cs.length;
-        // }
-        // this.disableAllButFirstCarbonSourceRow();
-        // for (var i:any=1; i < sourcesToShow; i++) {
-        //     this.addCarbonSourceRow(0);
-        // }
-        // // Run through the set of carbon sources, creating a form entry for each
-        // for (var i:any=0; i < cs.length; i++) {
-        //     var c = cs[i];
-        //     var field = "linecsvalue" + this.cSourceEntries[i].label;
-        //     formInfo[field] = c;
-        // }
-        // TODO: WHY IS THIS TAKING GIGANTIC HARDCODED STRINGS
-        // EDDEdit.prepareForm(formInfo, 'lineMain,editLineBanner,lineNameRow,editLineButtons',
-        //         ['addNewLineShow','addNewLineBanner','bulkEditLineBanner','addNewLineButtons',
-        //          'bulkEditLineButtons','lineStrainCheckbox','lineMediaCheckbox',
-        //          'lineControlCheckbox','lineCSCheckbox','lineExpCheckbox','lineContactCheckbox',
-        //          'importLinesButton'].join(','));
+        // Update the button to read 'Edit Line'
+        button = form.find('[name=action][value=line]').text('Edit Line');
+        $('<a href="#">Cancel</a>').on('click', function (ev) {
+            clearLineForm();
+            button.text('Add Line');
+            $(ev.target).remove();
+            return false;
+        }).insertAfter(button);
     }
     StudyD.editLine = editLine;
     function editAssay(linkelement, index) {
@@ -1533,7 +1529,7 @@ var DataGridSpecLines = (function (_super) {
     DataGridSpecLines.prototype.loadCarbonSource = function (index) {
         var source = this.loadFirstCarbonSource(index);
         if (source) {
-            return source.carbon.toUpperCase();
+            return source.name.toUpperCase();
         }
         return '?';
     };
@@ -1672,7 +1668,7 @@ var DataGridSpecLines = (function (_super) {
         if ((line = EDDData.Lines[index])) {
             if (line.carbon && line.carbon.length) {
                 strings = line.carbon.map(function (id) {
-                    return EDDData.CSources[id].carbon;
+                    return EDDData.CSources[id].name;
                 });
             }
         }
@@ -1743,7 +1739,7 @@ var DataGridSpecLines = (function (_super) {
         var leftSide, metaDataCols, rightSide;
         // add click handler for menu on line name cells
         $(this.tableElement).on('click', 'a.line-edit-link', function (ev) {
-            StudyD.editLine(ev.target, $(ev.target).closest('.popupcell').find('input').val());
+            StudyD.editLine($(ev.target).closest('.popupcell').find('input').val());
             return false;
         });
         leftSide = [

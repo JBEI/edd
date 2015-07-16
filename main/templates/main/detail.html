@@ -140,9 +140,16 @@
             <div class="clear"></div>
         </div>
         <div class="sectionContent discloseBody">
-            <form action="" method="POST">
+            <form action="" class="line-edit" method="POST">
                 {% csrf_token %}
                 {{ new_line.as_p }}
+                <p class="line-edit-meta">
+                    <span class="label">
+                        <input type="text" class="autocomp autocomp_type" placeholder="Metadata Type" size="12" />
+                    </span>
+                    <input type="text" placeholder="Metadata Value" />
+                    <button id="line-meta-add">Add Value</button>
+                </p>
                 <button type="submit" name="action" value="line">Add Line</button>
             </form>
         </div>
