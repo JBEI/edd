@@ -430,7 +430,7 @@ class AssayDataTests(TestCase) :
         self.assertTrue(mdata[0].x[0] == 0)
         self.assertTrue(mdata[0].y[0] == 0)
         self.assertTrue(mdata[-1].x[0] == 32)
-        self.assertTrue(mdata[-1].y is None)
+        self.assertFalse(mdata[-1].y)
 
     def test_measurement_extract (self) :
         assay = Assay.objects.get(description="GC-MS assay 1")
