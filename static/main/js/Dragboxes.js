@@ -2,6 +2,7 @@
 // Code for supporting drag-select
 var Dragboxes;
 (function (Dragboxes) {
+    'use strict';
     var globalChecked = null;
     function findAndInitAllTables() {
         $('table.dragboxes').each(function (i, table) { return initTable(table); });
@@ -25,7 +26,7 @@ var Dragboxes;
             // have to check for null to prevent double event from clicking label
             $this.prop('checked', function (i, value) {
                 return (globalChecked = !value);
-            });
+            }).trigger('change');
         }
         // also attaches mouseover event to all cells in parent table
         table = $(this).closest('.dragboxes').on('mouseover.dragboxes', 'td', dragOver);

@@ -3,30 +3,33 @@
 // Code for supporting drag-select
 
 module Dragboxes {
+    'use strict';
 
-    var globalChecked = null;
+    var globalChecked:boolean = null;
 
-	export function findAndInitAllTables() {
-		$('table.dragboxes').each((i, table) => initTable(table));
+	export function findAndInitAllTables():void {
+		$('table.dragboxes').each((i:number, table:HTMLElement):void => initTable(table));
 	}
 
-    export function dragEnd(event) {
+    export function dragEnd(event:JQueryMouseEventObject):void {
         globalChecked = null;
         event.data.table.off('mouseover.dragboxes');
     }
 
-    export function dragOver(event) {
+    export function dragOver(event:JQueryMouseEventObject):void {
         if (globalChecked !== null) {
             $(':checkbox', this).prop('checked', globalChecked).trigger('change');
         }
     }
 
-    export function dragStart(event) {
-        var $this = $(this), table;
+    export function dragStart(event:JQueryMouseEventObject):boolean {
+        var $this:JQuery = $(this), table:JQuery;
         // mousedown toggles the clicked checkbox value and stores new value in globalChecked
         if (globalChecked === null) {
             // have to check for null to prevent double event from clicking label
-            $this.prop('checked', (i, value) => { return (globalChecked = !value); });
+            $this.prop('checked', (i:number, value:boolean):boolean => {
+                return (globalChecked = !value);
+            }).trigger('change');
         }
         // also attaches mouseover event to all cells in parent table
         table = $(this).closest('.dragboxes').on('mouseover.dragboxes', 'td', dragOver);
@@ -35,13 +38,13 @@ module Dragboxes {
         return false;
     }
 
-    export function initTable(table) {
+    export function initTable(table:HTMLElement):void {
         $(table).filter('.dragboxes')
             // watch for mousedown on checkboxes
             .on('mousedown.dragboxes', 'td :checkbox', dragStart)
             // also watch for mousedown on labels
             .on('mousedown.dragboxes', 'td label', dragStart)
             // disable click because mousedown is handling it now
-            .on('click.dragboxes', 'td :checkbox', () => false);
+            .on('click.dragboxes', 'td :checkbox', ():boolean => false);
     }
 }
