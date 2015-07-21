@@ -1440,4 +1440,8 @@ form.line-edit > p > .label {
 form.line-edit > p > label {
     line-height: 20px; /* bare text looks too offset compared to text boxes, so tweak line-height */
 }
+form.line-edit > a.cancel-link {
+    font-size: 12px;
+    margin-left: 1em;
+}
 /* End of common styles */

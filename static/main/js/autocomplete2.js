@@ -145,7 +145,7 @@ EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(selector, 
         },
     
         // The rest of the options are for configuring the ajax webservice call.
-        minLength: 1,
+        minLength: 0,
         source: function (request, response) {
             $.ajax({
                 // FIXME replace this with SOLR query
@@ -187,6 +187,9 @@ $(window).load(function () {
     $('.autocomp.autocomp_carbon').each(function () {
         EDD_auto.setup_field_autocomplete(this, 'CarbonSource', EDDData.CSources);
     });
+    $('.autocomp.autocomp_type').each(function () {
+        EDD_auto.setup_field_autocomplete(this, 'MetadataType', EDDData.MetaDataTypes);
+    })
 });
 
 }(jQuery));

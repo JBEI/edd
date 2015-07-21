@@ -792,6 +792,7 @@ module StudyD {
         });
 
         $('form.line-edit').on('change', '.line-meta > :input', (ev) => {
+            // watch for changes to metadata values, and serialize to the meta_store field
             var form = $(ev.target).closest('form'), meta = {}, value;
             form.find('.line-meta > :input').each((i, input) => {
                 var key = $(input).attr('id').match(/-(\d+)$/)[1];
@@ -799,6 +800,16 @@ module StudyD {
             });
             value = JSON.stringify(meta);
             form.find('[name=line-meta_store]').val(value);
+        }).on('click', '.line-meta-add', (ev) => {
+            // make metadata Add Value button work and not submit the form
+            var addrow = $(ev.target).closest('.line-edit-meta'), type, value;
+            type = addrow.find('.line-meta-type').val();
+            value = addrow.find('.line-meta-value').val();
+            addrow.find(':input').val(''); // clear out inputs so another value can be entered
+            if (EDDData.MetaDataTypes[type]) {
+                insertLineMetadataRow(addrow, type, value).find(':input').trigger('change');
+            }
+            return false;
         });
     }
 
@@ -1384,8 +1395,25 @@ module StudyD {
     }
 
 
+    function insertLineMetadataRow(refRow, key, value) {
+        var row, type, label, input, id = 'line-meta-' + key;
+        row = $('<p>').attr('id', 'row_' + id).addClass('line-meta').insertBefore(refRow);
+        type = EDDData.MetaDataTypes[key];
+        label = $('<label>').attr('for', 'id_' + id).text(type.name).appendTo(row);
+        input = $('<input type="text">').attr('id', 'id_' + id).val(value).appendTo(row);
+        if (type.pre) {
+            $('<span>').addClass('meta-prefix').text(type.pre).insertBefore(input);
+        }
+        if (type.postfix) {
+            $('<span>').addClass('meta-postfix').text(type.postfix).insertAfter(input);
+        }
+        // TODO add a remove button
+        return row;
+    }
+
+
     export function editLine(index) {
-        var record = EDDData.Lines[index], form, button, metaRow;
+        var record = EDDData.Lines[index], form, button, metaRow, top;
         if (!record) {
             console.log('Invalid record for editing: ' + index);
             return;
@@ -1397,26 +1425,20 @@ module StudyD {
         form.find('[name=line-name]').val(record.name);
         form.find('[name=line-description]').val(record.description);
         form.find('[name=line-control]').prop('checked', record.control);
-        form.find('[name=line-contact_0]').val(record.contact.text);
+        form.find('[name=line-contact_0]').val(record.contact.text || (EDDData.Users[record.contact.user_id] || {}).uid || '--');
         form.find('[name=line-contact_1]').val(record.contact.user_id);
-        form.find('[name=line-experimenter_0]').val(EDDData.Users[record.experimenter].uid);
+        form.find('[name=line-experimenter_0]').val((EDDData.Users[record.experimenter] || {}).uid || '--');
         form.find('[name=line-experimenter_1]').val(record.experimenter);
         form.find('[name=line-carbon_source_0]').val(
-                record.carbon.map((v) => EDDData.CSources[v].name).join(','));
+                record.carbon.map((v) => (EDDData.CSources[v] || {}).name || '--').join(','));
         form.find('[name=line-carbon_source_1]').val(record.carbon.join(','));
-        form.find('[name=line-strain_0]').val(
-                record.strain.map((v) => EDDData.Strains[v].name).join(','));
-        form.find('[name=line-strain_1]').val(record.strain.join(','));
+        form.find('[name=line-strains_0]').val(
+                record.strain.map((v) => (EDDData.Strains[v] || {}).name || '--').join(','));
+        form.find('[name=line-strains_1]').val(record.strain.join(','));
         metaRow = form.find('.line-edit-meta');
         // Run through the collection of metadata, and add a form element entry for each
         $.each(record.meta, (key, value) => {
-            var row, label, input, id = 'line-meta-' + key;
-            row = $('<p>').attr('id', 'row_' + id).addClass('line-meta').insertBefore(metaRow);
-            label = $('<label>').attr('for', 'id_' + id)
-                    .text(EDDData.MetaDataTypes[key].name).appendTo(row);
-            input = $('<input type="text">').attr('id', 'id_' + id)
-                    .val(value).appendTo(row);
-            // TODO add a remove button
+            insertLineMetadataRow(metaRow, key, value);
         });
         // store original metadata in initial- field
         form.find('[name=line-meta_store]').val(JSON.stringify(record.meta));
@@ -1429,6 +1451,9 @@ module StudyD {
             button.text('Add Line');
             return false;
         }).insertAfter(button);
+        // make sure form is disclosed
+        top = form.closest('.disclose').toggleClass('discloseHide', false).offset().top;
+        $('html').animate({ 'scrollTop': top }, 'slow');
     }
 
 
@@ -1962,9 +1987,9 @@ class DataGridSpecLines extends DataGridSpecBase {
 
     generateLineNameCells(gridSpec:DataGridSpecLines, index:string):DataGridDataCell[] {
         var line = EDDData.Lines[index];
-        // TODO get rid of onclick, check that URL for export is OK
         return [
             new DataGridDataCell(gridSpec, index, {
+                'checkboxName': 'lineId',
                 'checkboxWithID': (id) => { return 'line' + id + 'include'; },
                 'sideMenuItems': [
                     '<a href="#editline" class="line-edit-link">Edit Line</a>',

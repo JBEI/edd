@@ -23,11 +23,15 @@ from main.utilities import *
 import collections
 import csv
 import json
+import logging
 import main.models
 import main.sbml_export
 import main.data_export
 import main.data_import
 import operator
+
+
+logger = logging.getLogger(__name__)
 
 
 @register.filter(name='lookup')
@@ -94,85 +98,115 @@ class StudyDetailView(generic.DetailView):
         form = CreateAttachmentForm(request.POST, request.FILES, edd_object=self.get_object())
         if form.is_valid():
             form.save()
+            return True
         else:
             context['new_attach'] = form
+        return False
+
+    def handle_clone(self, request, context):
+        ids = request.POST.getlist('lineId', [])
+        study = self.get_object()
+        cloned = 0
+        for line_id in ids:
+            line = self._get_line(line_id)
+            if line:
+                # easy way to clone is just pretend to fill out add line form
+                initial = LineForm.initial_from_model(line)
+                # update name to indicate which is the clone
+                initial['name'] = initial['name'] + ' clone'
+                clone = LineForm(initial, study=study)
+                if clone.is_valid():
+                    clone.save()
+                    cloned += 1
+        messages.success(request, 'Cloned %(cloned)s of %(total)s Lines' % {
+            'cloned': cloned,
+            'total': len(ids),
+            })
+        return True
 
     def handle_comment(self, request, context):
         form = CreateCommentForm(request.POST, edd_object=self.get_object())
         if form.is_valid():
             form.save()
+            return True
         else:
             context['new_comment'] = form
+        return False
 
     def handle_line(self, request, context):
         form = LineForm(request.POST, prefix='line', study=self.get_object())
         ids = [ v for v in (form['ids'].data or '').split(',') if v.strip() != '' ]
         if len(ids) == 0:
-            self.handle_line_new(request, context, form)
+            return self.handle_line_new(request, context, form)
         elif len(ids) == 1:
-            self.handle_line_edit(request, context, ids[0])
+            return self.handle_line_edit(request, context, ids[0])
         else:
-            self.handle_line_bulk(request, context, ids)
+            return self.handle_line_bulk(request, context, ids)
+        return False
 
     def handle_line_bulk(self, request, context, ids):
         study = self.get_object()
         total = len(ids)
         saved = 0
         for value in ids:
-            line = Line.objects.get(pk=value, study=study)
-            form = LineForm(request.POST, instance=line, prefix='line', study=study)
-            form.check_bulk_edit() # removes fields having disabled bulk edit checkbox
-            if form.is_valid():
-                form.save()
-                saved += 1
+            line = self._get_line(value)
+            if line:
+                form = LineForm(request.POST, instance=line, prefix='line', study=study)
+                form.check_bulk_edit() # removes fields having disabled bulk edit checkbox
+                if form.is_valid():
+                    form.save()
+                    saved += 1
         messages.success(request, 'Saved %(saved)s of %(total)s Lines' % {
             'saved': saved,
-            'total': total })
+            'total': total,
+            })
+        return True
 
     def handle_line_edit(self, request, context, pk):
         study = self.get_object()
-        line = Line.objects.get(pk=pk, study=study)
-        form = LineForm(request.POST, instance=line, prefix='line', study=study)
-        if form.is_valid():
-            form.save()
-            messages.success(request, "Saved Line '%(name)s'" % { 'name': form['name'].value() })
+        line = self._get_line(pk)
+        if line:
+            form = LineForm(request.POST, instance=line, prefix='line', study=study)
+            if form.is_valid():
+                form.save()
+                messages.success(request, "Saved Line '%(name)s'" % { 'name': form['name'].value() })
+                return True
+        return False
 
     def handle_line_new(self, request, context, form):
         if form.is_valid():
             form.save()
             messages.success(request, "Added Line '%(name)s" % { 'name': form['name'].value() })
+            return True
         else:
             context['new_line'] = form
+        return False
 
     def post(self, request, *args, **kwargs):
         self.object = self.get_object()
         action = request.POST.get('action', None)
         context = self.get_context_data(object=self.object, action=action, request=request)
-        # TODO these should probably do a redirect
+        form_valid = False
         if action == 'comment':
-            self.handle_comment(request, context)
+            form_valid = self.handle_comment(request, context)
         elif action == 'attach':
-            self.handle_attach(request, context)
+            form_valid = self.handle_attach(request, context)
         elif action == 'line':
-            self.handle_line(request, context)
+            form_valid = self.handle_line(request, context)
+        elif action == 'clone':
+            form_valid = self.handle_clone(request, context)
+        if form_valid:
+            return HttpResponseRedirect(reverse('main:detail', kwargs={'pk':self.object.pk}))
         return self.render_to_response(context)
 
+    def _get_line(self, line_id):
+        study = self.get_object()
+        try:
+            return Line.objects.get(pk=line_id, study=study)
+        except Line.DoesNotExist, e:
+            logger.warning('Failed to load line,study combo %s,%s' % (line_id, study.pk))
+        return None
 
-# /study/<study_id>/attach/
-def study_attach(request, study):
-    """ Attach a file to a study. """
-    model = Study.objects.get(pk=study)
-    form = CreateAttachmentForm(request.POST, request.FILES, edd_object=model)
-    form.save()
-    return redirect(reverse('main:detail', kwargs={ 'pk': study }))
-
-# /study/<study_id>/comment/
-def study_comment(request, study):
-    """ Add a comment to a study. """
-    model = Study.objects.get(pk=study)
-    form = CreateCommentForm(request.POST, edd_object=model)
-    form.save()
-    return redirect(reverse('main:detail', kwargs={ 'pk': study }))
 
 # /study/<study_id>/lines/
 def study_lines(request, study):

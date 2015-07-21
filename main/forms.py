@@ -1,9 +1,13 @@
 from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.db.models.base import Model
+from django.db.models.manager import BaseManager
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 from main.models import *
+
+import json
 
 
 User = get_user_model()
@@ -33,9 +37,12 @@ class AutocompleteWidget(forms.widgets.MultiWidget):
         return self.model
 
     def decompress(self, value):
-        if value:
-            Model = self.get_model()
-            o = Model.objects.get(pk=value)
+        # if the value is the actual model instance, don't try to look up model
+        if isinstance(value, Model):
+            return [ self.display_value(value), value.pk ]
+        elif value:
+            SelfModel = self.get_model()
+            o = SelfModel.objects.get(pk=value)
             return [ self.display_value(o), value ]
         return [ '', None ]
 
@@ -57,6 +64,19 @@ class MultiAutocompleteWidget(AutocompleteWidget):
         self._separator = kwargs.pop('separator', ',')
         super(MultiAutocompleteWidget, self).__init__(**kwargs)
 
+    def decompress(self, value):
+        if isinstance(value, BaseManager):
+            # delegate decompress for individual items
+            values = map(super(MultiAutocompleteWidget, self).decompress, value.all())
+            # zip together into array of two values
+            values = zip(*values)
+            # join by the separator string
+            return [
+                self._separator.join(map(str, values[0])),
+                self._separator.join(map(str, values[1])),
+                ]
+        return super(MultiAutocompleteWidget, self).decompress(value)
+
     def render(self, name, value, attrs=None):
         joined = []
         _range = range(len(self.widgets))
@@ -70,13 +90,15 @@ class MultiAutocompleteWidget(AutocompleteWidget):
             for index in _range:
                 joined[index].append(item[index] if len(item) > index else '')
         for index in _range:
-            joined[index] = self._separator.join(map(lambda v: str(v), joined[index]))
+            joined[index] = self._separator.join(map(str, joined[index]))
         return super(MultiAutocompleteWidget, self).render(name, joined, attrs)
 
     def value_from_datadict(self, data, files, name):
         # value from super will be joined by self._separator, so split it to get the true value
         joined = super(MultiAutocompleteWidget, self).value_from_datadict(data, files, name)
-        return joined.split(self._separator)
+        if joined:
+            return joined.split(self._separator)
+        return []
 
 
 class UserAutocompleteWidget(AutocompleteWidget):
@@ -204,7 +226,8 @@ class LineForm(forms.ModelForm):
         model = Line
         fields = (
             'name', 'description', 'control', 'contact', 'experimenter', 'carbon_source',
-            'strains', 'meta_store', )
+            'strains', 'meta_store',
+        )
         labels = {
             'name': _('Line'),
             'description': _('Description'),
@@ -235,6 +258,24 @@ class LineForm(forms.ModelForm):
                 (fieldname, field.label)
                 )
 
+    @classmethod
+    def initial_from_model(cls, line, prefix=None):
+        """ Builds a dict of initial form values from a Line model """
+        initial = {}
+        for fieldname in cls._meta.fields:
+            widget = cls._meta.widgets.get(fieldname, None)
+            value = getattr(line, fieldname)
+            # need to split MultiWidget values into each widget value
+            if isinstance(widget, forms.widgets.MultiWidget):
+                for i, part in enumerate(widget.decompress(value)):
+                    initial[fieldname + '_%s' % i] = part
+            # HStoreField gives back a dict; must serialize to json
+            elif isinstance(value, dict):
+                initial[fieldname] = json.dumps(value)
+            else:
+                initial[fieldname] = value
+        return initial
+
     def check_bulk_edit(self):
         exclude = []
         for fieldname, field in self.fields.items():
@@ -250,4 +291,6 @@ class LineForm(forms.ModelForm):
         line.study = self._study
         if commit:
             line.save()
+            # since we forced commit=False in the first save, need to explicitly call save_m2m
+            self.save_m2m()
         return line

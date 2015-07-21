@@ -968,36 +968,31 @@ var DataGridDataRow = (function () {
 // passing in a reference to the DataGridSpecBase and a unique identifier for a data record.
 var DataGridDataCell = (function () {
     function DataGridDataCell(gridSpec, id, opt) {
+        var defaults;
         this.gridSpec = gridSpec;
         this.recordID = id;
         this.hidden = false;
         this.createdElement = false;
-        opt = opt || {};
-        this.contentFunction = opt['contentFunction'] || function (e, index) {
+        defaults = {
+            'contentFunction': function (e, index) {
+            },
+            'contentString': '',
+            'align': 'left',
+            'rowspan': 1,
+            'colspan': 1
         };
-        this.contentString = opt['contentString'] || '';
-        opt = $.extend({ 'align': 'left' }, opt);
-        this.rowspan = opt['rowspan'] || 1;
-        this.colspan = opt['colspan'] || 1;
-        this.align = opt['align'];
-        this.valign = opt['valign'];
-        this.maxWidth = opt['maxWidth'];
-        this.minWidth = opt['minWidth'];
-        this.nowrap = opt['nowrap'];
-        this.hoverEffect = opt['hoverEffect'];
-        this.checkboxWithID = opt['checkboxWithID'];
-        this.customID = opt['customID'];
-        this.sideMenuItems = opt['sideMenuItems'];
+        $.extend(this, defaults, opt || {});
     }
     DataGridDataCell.prototype.createElement = function () {
-        var id = this.recordID, c = document.createElement("td"), checkId, menu;
+        var id = this.recordID, c = document.createElement("td"), checkId, checkName, menu;
         if (this.checkboxWithID) {
             checkId = this.checkboxWithID.call(this.gridSpec, id);
+            checkName = this.checkboxName || checkId;
             this.checkboxElement = document.createElement('input');
             this.checkboxElement.setAttribute('type', 'checkbox');
             $(this.checkboxElement).attr({
                 'id': checkId,
-                'name': checkId,
+                'name': checkName,
                 'value': id.toString()
             }).appendTo(c);
             this.contentContainerElement = $('<label>').attr('for', checkId).appendTo(c)[0];
@@ -1049,9 +1044,6 @@ var DataGridDataCell = (function () {
         }
         this.cellElement = c;
         this.cellElementJQ = $(c);
-        if (this.hidden) {
-            this.cellElementJQ.addClass('off');
-        }
         this.createdElement = true;
     };
     DataGridDataCell.prototype.getElement = function () {

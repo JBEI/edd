@@ -146,39 +146,43 @@
                 <p class="line-edit-meta">
                     <span class="label">
                         <input type="text" class="autocomp autocomp_type" placeholder="Metadata Type" size="12" />
+                        <input type="hidden" class="line-meta-type" value="" />
                     </span>
-                    <input type="text" placeholder="Metadata Value" />
-                    <button id="line-meta-add">Add Value</button>
+                    <input type="text" class="line-meta-value" placeholder="Metadata Value" />
+                    <button class="line-meta-add">Add Value</button>
                 </p>
                 <button type="submit" name="action" value="line">Add Line</button>
             </form>
         </div>
     </div>
     <div class="pageSection">
-        <table id="studyLinesTable"></table>
-        <div id="linesActionPanel" class="sectionActions off">
-            <span id="linesSelectedCell">0 selected</span>
-            <button id="cloneLineButton">Clone Line</button>
-            <button id="editLineButton">Edit Line</button>
-            <button id="groupLineButton">Group As Replicates</button>
-            <input type="radio" id="line_action_mark" name="line_action" value="edit"/>
-            <label for="line_action_mark">
-                <span>Mark as</span>
-                <select name="disable">
-                    <option value="true">Disabled</option>
-                    <option value="false">Enabled</option>
-                </select>
-            </label>
-            <input type="radio" id="line_action_export" name="line_action" value="export"/>
-            <label for="line_action_export">
-                <span>Export Data</span>
-                <select name="export">
-                    <option value="csv">as CSV/etc</option>
-                    <option value="sbml">to SBML</option>
-                </select>
-            </label>
-            <button type="submit">Take Action</button>
-        </div>
+        <form action="" class="line-action" method="POST">
+            {% csrf_token %}
+            <table id="studyLinesTable"></table>
+            <div id="linesActionPanel" class="sectionActions off">
+                <span id="linesSelectedCell">0 selected</span>
+                <button id="cloneLineButton" type="submit" name="action" value="clone">Clone Line</button>
+                <button id="editLineButton">Edit Line</button>
+                <button id="groupLineButton">Group As Replicates</button>
+                <input type="radio" id="line_action_mark" name="line_action" value="edit"/>
+                <label for="line_action_mark">
+                    <span>Mark as</span>
+                    <select name="disable">
+                        <option value="true">Disabled</option>
+                        <option value="false">Enabled</option>
+                    </select>
+                </label>
+                <input type="radio" id="line_action_export" name="line_action" value="export"/>
+                <label for="line_action_export">
+                    <span>Export Data</span>
+                    <select name="export">
+                        <option value="csv">as CSV/etc</option>
+                        <option value="sbml">to SBML</option>
+                    </select>
+                </label>
+                <button type="submit" name="action" value="export">Take Action</button>
+            </div>
+        </form>
     </div>
     
     <div class="pageSection minor disclose discloseHide" id="assayMain">
