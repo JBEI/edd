@@ -58,11 +58,8 @@ This section contains directions for setting up a development environment on EDD
     * `brew doctor`
  * Python <a name="Python"/>
     Replace default OS X version of Python with the more up-to-date Homebrew version
-   * Note that the current version of EDD is written in Python 2!
    * `brew install python`
    * May need to reload shell to see the proper Python version
-   * Check your work with `python --version`, confirming that the result is version 2.X
-   
  * Replace default OS X version of OpenSSL <a name="OpenSSL"/>
     * `brew install OpenSSL`
  * [Pip](https://pip.pypa.io) <a name="Pip"/>
@@ -292,6 +289,8 @@ This section contains directions for setting up a development environment on EDD
 
 This section provides instructions for converting the EDD database to handle a new schema, or on
 populating a new deployment with existing data.
+
+ * Run edd's 'reset_db.sh' to execute all of the steps below.
 
  * Create a SQL dump file to capture the contents of the existing EDD database
  
