@@ -1,3 +1,4 @@
+/// <reference path="typescript-declarations.d.ts" />
 /// <reference path="EDDDataInterface.ts" />
 /// <reference path="Utl.ts" />
 /// <reference path="Dragboxes.ts" />
@@ -816,14 +817,17 @@ var StudyD;
         }
         $('#mainFilterSection').on('mouseover mousedown mouseup', function () { return _this.queueMainGraphRemake(); }).on('keydown', function (e) { return filterTableKeyDown(_this, e); });
         $('#separateAxesCheckbox').on('change', function () { return _this.queueMainGraphRemake(true); });
-        // Read in the initial set of Carbon Source selections, if any, and create the proper
-        // number of table row elements.
-        this.cSourceEntries = [];
-        // try to load hidden field value, if empty use a string zero value forcing one row
-        // csIDs = ($('#initialcarbonsources').val() || '0').split(',');
-        // $.each(csIDs, (i, sourceId) => this.addCarbonSourceRow(sourceId));
-        this.mTypeEntries = [];
-        // this.addMetaboliteRow();
+        // Enable edit lines button
+        $('#editLineButton').on('click', function (ev) {
+            var button = $(ev.target), data = button.data(), form = clearLineForm();
+            if (data.ids.length === 1) {
+                fillLineForm(form, EDDData.Lines[data.ids[0]]);
+            }
+            updateUILineForm(form, data.count > 1);
+            scrollToLineForm(form);
+            form.find('[name=line-ids]').val(data.ids.join(','));
+            return false;
+        });
         // Initialize the description edit fields.
         this.initDescriptionEditFields();
         // Hacky button for changing the metabolic map
@@ -935,6 +939,13 @@ var StudyD;
         checkedLen = checkedBoxes.length;
         linesActionPanel = $('#linesActionPanel').toggleClass('off', !checkedLen);
         $('#linesSelectedCell').empty().text(checkedLen + ' selected');
+        // enable singular/plural changes
+        $('#cloneLineButton').text('Clone Line' + (checkedLen > 1 ? 's' : ''));
+        $('#editLineButton').text('Edit Line' + (checkedLen > 1 ? 's' : '')).data({
+            'count': checkedLen,
+            'ids': checkedBoxes.map(function (box) { return box.value; })
+        });
+        $('#groupLineButton').toggleClass('off', checkedLen < 2);
     }
     function queueAssaysActionPanelShow() {
         var _this = this;
@@ -1227,31 +1238,12 @@ var StudyD;
         var form = $('#id_line-ids').closest('form');
         form.find('.line-meta').remove().end().find(':input').filter('[name^=line-]').val('');
         form.find('.cancel-link').remove();
+        form.find('.bulk').addClass('off');
+        return form;
     }
-    function insertLineMetadataRow(refRow, key, value) {
-        var row, type, label, input, id = 'line-meta-' + key;
-        row = $('<p>').attr('id', 'row_' + id).addClass('line-meta').insertBefore(refRow);
-        type = EDDData.MetaDataTypes[key];
-        label = $('<label>').attr('for', 'id_' + id).text(type.name).appendTo(row);
-        input = $('<input type="text">').attr('id', 'id_' + id).val(value).appendTo(row);
-        if (type.pre) {
-            $('<span>').addClass('meta-prefix').text(type.pre).insertBefore(input);
-        }
-        if (type.postfix) {
-            $('<span>').addClass('meta-postfix').text(type.postfix).insertAfter(input);
-        }
-        // TODO add a remove button
-        return row;
-    }
-    function editLine(index) {
-        var record = EDDData.Lines[index], form, button, metaRow, top;
-        if (!record) {
-            console.log('Invalid record for editing: ' + index);
-            return;
-        }
-        clearLineForm();
-        // Update the form elements with current Line information
-        form = $('#id_line-ids').val(index).closest('form');
+    function fillLineForm(form, record) {
+        var metaRow;
+        form.find('[name=line-ids]').val(record.id);
         form.find('[name=line-name]').val(record.name);
         form.find('[name=line-description]').val(record.description);
         form.find('[name=line-control]').prop('checked', record.control);
@@ -1271,17 +1263,53 @@ var StudyD;
         // store original metadata in initial- field
         form.find('[name=line-meta_store]').val(JSON.stringify(record.meta));
         form.find('[name=initial-line-meta_store]').val(JSON.stringify(record.meta));
+    }
+    function scrollToLineForm(form) {
+        // make sure form is disclosed
+        var top = form.closest('.disclose').toggleClass('discloseHide', false).offset().top;
+        $('html').animate({ 'scrollTop': top }, 'slow');
+    }
+    function updateUILineForm(form, plural) {
+        var title, button, text = 'Edit Line' + (plural ? 's' : '');
+        // Update the disclose title to read 'Edit Line'
+        title = form.closest('.disclose').find('.discloseLink > a').text(text);
         // Update the button to read 'Edit Line'
-        button = form.find('[name=action][value=line]').text('Edit Line');
+        button = form.find('[name=action][value=line]').text(text);
+        form.find('.bulk').toggleClass('off', !plural);
         // Add link to revert back to 'Add Line' form
         $('<a href="#">Cancel</a>').addClass('cancel-link').on('click', function (ev) {
             clearLineForm();
+            title.text('Add A New Line');
             button.text('Add Line');
             return false;
         }).insertAfter(button);
-        // make sure form is disclosed
-        top = form.closest('.disclose').toggleClass('discloseHide', false).offset().top;
-        $('html').animate({ 'scrollTop': top }, 'slow');
+    }
+    function insertLineMetadataRow(refRow, key, value) {
+        var row, type, label, input, id = 'line-meta-' + key;
+        row = $('<p>').attr('id', 'row_' + id).addClass('line-meta').insertBefore(refRow);
+        type = EDDData.MetaDataTypes[key];
+        label = $('<label>').attr('for', 'id_' + id).text(type.name).appendTo(row);
+        input = $('<input type="text">').attr('id', 'id_' + id).val(value).appendTo(row);
+        if (type.pre) {
+            $('<span>').addClass('meta-prefix').text(type.pre).insertBefore(input);
+        }
+        if (type.postfix) {
+            $('<span>').addClass('meta-postfix').text(type.postfix).insertAfter(input);
+        }
+        // TODO add a remove button
+        return row;
+    }
+    function editLine(index) {
+        var record = EDDData.Lines[index], form;
+        if (!record) {
+            console.log('Invalid record for editing: ' + index);
+            return;
+        }
+        form = clearLineForm();
+        // Update the form elements with current Line information
+        fillLineForm(form, record);
+        updateUILineForm(form);
+        scrollToLineForm(form);
     }
     StudyD.editLine = editLine;
     function editAssay(linkelement, index) {
