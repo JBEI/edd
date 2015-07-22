@@ -737,7 +737,7 @@ class Line(EDDObject):
         json_dict = super(Line, self).to_json()
         json_dict.update({
             'control': self.control,
-            'replicate': self.replicate.pk if self.replicate else None,
+            'replicate': self.replicate_id,
             'contact': { 'user_id': self.contact_id, 'text': self.contact_extra },
             'experimenter': self.experimenter_id,
             'strain': [s.pk for s in self.strains.all()],

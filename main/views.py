@@ -133,6 +133,26 @@ class StudyDetailView(generic.DetailView):
             context['new_comment'] = form
         return False
 
+    def handle_disable(self, request, context):
+        ids = request.POST.getlist('lineId', [])
+        study = self.get_object()
+        disable = request.POST.get('disable', 'true')
+        active = disable == 'false'
+        count = Line.objects.filter(study=self.object, id__in=ids).update(active=active)
+        messages.success(request, '%s %s Lines' % ('Enabled' if active else 'Disabled', count))
+        return True
+
+    def handle_group(self, request, context):
+        ids = request.POST.getlist('lineId', [])
+        study = self.get_object()
+        if len(ids) > 1:
+            first = ids[0]
+            count = Line.objects.filter(study=study, pk__in=ids).update(replicate_id=first)
+            messages.success(request, 'Grouped %s Lines' % count)
+            return True
+        messages.error(request, 'Must select more than one Line to group.')
+        return False
+
     def handle_line(self, request, context):
         form = LineForm(request.POST, prefix='line', study=self.get_object())
         ids = [ v for v in (form['ids'].data or '').split(',') if v.strip() != '' ]
@@ -195,6 +215,14 @@ class StudyDetailView(generic.DetailView):
             form_valid = self.handle_line(request, context)
         elif action == 'clone':
             form_valid = self.handle_clone(request, context)
+        elif action == 'group':
+            form_valid = self.handle_group(request, context)
+        elif action == 'line_action':
+            line_action = request.POST.get('line_action', None)
+            if line_action == 'edit':
+                form_valid = self.handle_disable(request, context)
+            elif line_action == 'export':
+                'TODO: export data'
         if form_valid:
             return HttpResponseRedirect(reverse('main:detail', kwargs={'pk':self.object.pk}))
         return self.render_to_response(context)
