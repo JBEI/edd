@@ -21,6 +21,10 @@ var Dragboxes;
     Dragboxes.dragOver = dragOver;
     function dragStart(event) {
         var $this = $(this), table;
+        // ignore mouse events not using the left mouse button
+        if (event.which !== 1) {
+            return true;
+        }
         // mousedown toggles the clicked checkbox value and stores new value in globalChecked
         if (globalChecked === null) {
             // have to check for null to prevent double event from clicking label

@@ -24,6 +24,10 @@ module Dragboxes {
 
     export function dragStart(event:JQueryMouseEventObject):boolean {
         var $this:JQuery = $(this), table:JQuery;
+        // ignore mouse events not using the left mouse button
+        if (event.which !== 1) {
+            return true;
+        }
         // mousedown toggles the clicked checkbox value and stores new value in globalChecked
         if (globalChecked === null) {
             // have to check for null to prevent double event from clicking label
