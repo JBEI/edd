@@ -188,6 +188,31 @@ This section contains directions for setting up a development environment on EDD
  
  * Configure Database <a name="Configure_DB"/>
     * See [Database Conversion](#DbConversion) below for instructions that also apply to initial database creation
+	
+ * Install Celery : TODO
+    * 'workon edd'
+    * `pip install -U Celery`
+	* `pip install sqlalchemy` # TODO: used by django, but not available on command line for celery. humph. installing made Celery work as configured.
+	* Install flower (pronounced 'flow-er'...or 'flower'), Flower is the recommended web [monitoring](http://celery.readthedocs.org/en/latest/userguide/monitoring.html#introduction) tool for Celery, but you can use the command line if you prefer.
+	   * `pip install flower`
+	   * To start EDD using flower
+	      * celery -A edd flower
+		  * Access the web app via http://localhost:5555
+	* `brew install rabbitmq`
+	* Update .bashrc or .bash_profile to add rabbitmq to the path: `PATH=$PATH:/usr/local/sbin`. NOPE! unsetting this caused it to work.
+	* Start rabbitmq `sudo rabbitmq-server`, optionally add `-detached` to run in the background
+	* Confirm working using `sudo rabbitmqctl status`
+	* Stop using sudo rabbitmqctl stop
+	* TODO: configure access controls, SSL, other options for Rabbit after some initial Celery investigation. Try using same setup for dev/prod environments.
+	   * See Celery's [Next Steps](http://docs.celeryproject.org/en/latest/getting-started/next-steps.html) tutorial - In the background" section for ideas on daemonization
+	   * See Celery's [Security](http://docs.celeryproject.org/en/latest/userguide/security.html) article, and RabbitMQ's [production checklist](http://www.rabbitmq.com/production-checklist.html) too
+	   * `sudo rabbitmqctl add_vhost edd`
+	   * Grant permissions on the "edd" virtual host to the guest account `sudo rabbitmqctl set_permissions -p edd guest ".*" ".*" ".*"`
+	      * Note that by default the RabbitMQ guest account is only accessible from localhost, so this should be safe
+	* Start the worker by running `celery -A edd worker --loglevel=info`
+	   * Note that in production, prefork() processes will have the same memory and file access as the user that launches this process -- see Security link above
+	   * For Celery 3.1, the final message should end with'celery@yourhostname ready.'
+	   
  
  * Start EDD <a name="Start_EDD"/>
 	* If not already running, start supporting services
