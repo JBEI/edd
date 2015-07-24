@@ -1,3 +1,4 @@
+/// <reference path="typescript-declarations.d.ts" />
 /// <reference path="EDDDataInterface.d.ts" />
 /// <reference path="Utl.d.ts" />
 /// <reference path="Dragboxes.d.ts" />
@@ -113,12 +114,8 @@ declare module StudyD {
     function queueLinesActionPanelShow(): void;
     function queueAssaysActionPanelShow(): void;
     function queueMainGraphRemake(force?: boolean): void;
-    function addCarbonSourceRow(carbonId: any): void;
-    function removeCarbonSourceRow(order: any): void;
-    function disableAllButFirstCarbonSourceRow(): void;
-    function redrawCarbonSourceRows(): void;
-    function editLine(linkelement: any, index: any): void;
-    function editAssay(linkelement: any, index: any): void;
+    function editAssay(index: number): void;
+    function editLine(index: number): void;
     function addMetaboliteRow(): void;
     function removeMeasurementTypeRow(order: any): void;
     function redrawMeasurementTypeRows(): void;

@@ -63,15 +63,15 @@ class Update(models.Model):
         rhost = '%s; %s' % (
             request.META.get('REMOTE_ADDR', None),
             request.META.get('REMOTE_HOST', ''))
-        if not hasattr(request, 'update_key'):
+        if not hasattr(request, 'update_obj'):
             update = cls(mod_time=arrow.utcnow(),
                          mod_by=request.user,
                          path=request.get_full_path(),
                          origin=rhost)
             update.save()
-            request.update_key = update.pk
+            request.update_obj = update
         else:
-            update = cls.objects.get(pk=request.update_key)
+            update = request.update_obj
         return update
 
     @property
@@ -113,7 +113,7 @@ class Comment(models.Model):
         db_table = 'comment'
     object_ref = models.ForeignKey('EDDObject', related_name='comments')
     body = models.TextField()
-    created = models.ForeignKey(Update, related_name='+')
+    created = models.ForeignKey(Update)
 
     def save(self, *args, **kwargs):
         if self.created_id is None:
@@ -129,7 +129,7 @@ class Attachment(models.Model):
     object_ref = models.ForeignKey('EDDObject', related_name='files')
     file = models.FileField(max_length=255)
     filename = models.CharField(max_length=255)
-    created = models.ForeignKey(Update, related_name='+')
+    created = models.ForeignKey(Update)
     description = models.TextField(blank=True, null=False)
     mime_type = models.CharField(max_length=255, blank=True, null=True)
     file_size = models.IntegerField(default=0)
@@ -281,8 +281,8 @@ class EDDObject(models.Model):
     active = models.BooleanField(default=True)
     updates = models.ManyToManyField(Update, db_table='edd_object_update', related_name='+')
     # these are used often enough we should save extra queries by including as fields
-    created = models.ForeignKey(Update, related_name='+', editable=False)
-    updated = models.ForeignKey(Update, related_name='+', editable=False)
+    created = models.ForeignKey(Update, related_name='object_created', editable=False)
+    updated = models.ForeignKey(Update, related_name='object_updated', editable=False)
     # store arbitrary metadata as a dict with hstore extension
     meta_store = HStoreField(blank=True, default=dict)
 
@@ -737,7 +737,7 @@ class Line(EDDObject):
         json_dict = super(Line, self).to_json()
         json_dict.update({
             'control': self.control,
-            'replicate': self.replicate.pk if self.replicate else None,
+            'replicate': self.replicate_id,
             'contact': { 'user_id': self.contact_id, 'text': self.contact_extra },
             'experimenter': self.experimenter_id,
             'strain': [s.pk for s in self.strains.all()],
@@ -1108,7 +1108,7 @@ class Measurement(models.Model):
     measurement_type = models.ForeignKey(MeasurementType)
     x_units = models.ForeignKey(MeasurementUnit, related_name='+')
     y_units = models.ForeignKey(MeasurementUnit, related_name='+')
-    update_ref = models.ForeignKey(Update, related_name='+')
+    update_ref = models.ForeignKey(Update)
     active = models.BooleanField(default=True)
     compartment = models.CharField(max_length=1,
                                    choices=MeasurementCompartment.GROUP_CHOICE,
@@ -1210,7 +1210,7 @@ class MeasurementValue(models.Model):
     measurement = models.ForeignKey(Measurement)
     x = ArrayField(models.DecimalField(max_digits=16, decimal_places=5))
     y = ArrayField(models.DecimalField(max_digits=16, decimal_places=5))
-    updated = models.ForeignKey(Update, related_name='+')
+    updated = models.ForeignKey(Update)
 
     def __str__(self):
         return '(%s, %s)' % (self.x, self.y)

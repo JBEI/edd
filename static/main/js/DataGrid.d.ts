@@ -113,6 +113,7 @@ declare class DataGridDataCell {
     contentFunction: (e: HTMLElement, index: number) => void;
     contentString: string;
     checkboxWithID: (index: number) => string;
+    checkboxName: string;
     customID: (index: number) => string;
     sideMenuItems: string[];
     cellElement: HTMLElement;

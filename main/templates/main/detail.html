@@ -130,106 +130,109 @@
             </div>
         </div>
     </div>
-        
-    <div class="pageSection minor disclose discloseHide" id="lineMain">
+    
+    <div class="pageSection minor disclose{% if not new_line.is_editing %} discloseHide{% endif %}" id="lineMain">
+        <!-- {{ new_line.instance }} {{ new_line.instance.pk }} {{ new_line.is_editing }} -->
         <div class="sectionHead">
-            <span class="discloseLink"><a href="#">Add A New Line</a></span>
+            <span class="discloseLink"><a href="#">{% if new_line.is_editing %}Edit Line{% else %}Add A New Line{% endif %}</a></span>
             <div class="discloseAlt" style="float:right;">
                 <button>Import Lines</button>
             </div>
             <div class="clear"></div>
         </div>
         <div class="sectionContent discloseBody">
-            <form action="" method="POST">
+            <form action="" class="line-edit" method="POST">
                 {% csrf_token %}
                 {{ new_line.as_p }}
-                <button type="submit" name="action" value="line">Add Line</button>
+                <p class="line-edit-meta">
+                    <span class="label">
+                        <input type="text" class="autocomp autocomp_type" placeholder="Metadata Type" size="12" />
+                        <input type="hidden" class="line-meta-type" value="" />
+                    </span>
+                    <input type="text" class="line-meta-value" placeholder="Metadata Value" />
+                    <button class="line-meta-add">Add Value</button>
+                </p>
+                <button type="submit" name="action" value="line">{% if new_line.is_editing %}Edit Line{% else %}Add Line{% endif %}</button>
             </form>
         </div>
     </div>
-    <div class="pageSection">
-        <table id="studyLinesTable"></table>
-        <div id="linesActionPanel" class="sectionActions off">
-            <span id="linesSelectedCell">0 selected</span>
-            <button id="cloneLineButton">Clone Line</button>
-            <button id="editLineButton">Edit Line</button>
-            <button id="groupLineButton">Group As Replicates</button>
-            <input type="radio" id="line_action_mark" name="line_action" value="edit"/>
-            <label for="line_action_mark">
-                <span>Mark as</span>
-                <select name="disable">
-                    <option value="true">Disabled</option>
-                    <option value="false">Enabled</option>
-                </select>
-            </label>
-            <input type="radio" id="line_action_export" name="line_action" value="export"/>
-            <label for="line_action_export">
-                <span>Export Data</span>
-                <select name="export">
-                    <option value="csv">as CSV/etc</option>
-                    <option value="sbml">to SBML</option>
-                </select>
-            </label>
-            <button type="submit">Take Action</button>
+
+    <form action="" class="line-action" method="POST">
+        {% csrf_token %}
+        <div class="pageSection">
+            {# studyLinesTable will have checkboxes; name=lineId, value=pk #}
+            <table id="studyLinesTable"></table>
+            <div id="linesActionPanel" class="sectionActions off">
+                <span id="linesSelectedCell">0 selected</span>
+                <button id="cloneLineButton" type="submit" name="action" value="clone">Clone Line</button>
+                <button id="editLineButton">Edit Line</button>
+                <button id="groupLineButton" type="submit" name="action" value="group">Group As Replicates</button>
+                <input type="radio" id="line_action_mark" name="line_action" value="edit"/>
+                <label for="line_action_mark">
+                    <span>Mark as</span>
+                    <select name="disable">
+                        <option value="true">Disabled</option>
+                        <option value="false">Enabled</option>
+                    </select>
+                </label>
+                <input type="radio" id="line_action_export" name="line_action" value="export"/>
+                <label for="line_action_export">
+                    <span>Export Data</span>
+                    <select name="export">
+                        <option value="csv">as CSV/etc</option>
+                        <option value="sbml">to SBML</option>
+                    </select>
+                </label>
+                <button type="submit" name="action" value="line_action">Take Action</button>
+            </div>
         </div>
-    </div>
     
-    <div class="pageSection minor disclose discloseHide" id="assayMain">
-        <div class="sectionHead">
-            <span class="discloseLink"><a href="#">Add Assays To Selected Lines</a></span>
+        <div class="pageSection minor disclose{% if not new_assay.is_editing %} discloseHide{% endif %}" id="assayMain">
+            <div class="sectionHead">
+                <span class="discloseLink"><a href="#">{% if new_assay.is_editing %}Edit Assay{% else %}Add Assays To Selected Lines{% endif %}</a></span>
+            </div>
+            <div class="sectionContent discloseBody assay-edit">
+                {{ new_assay.as_p }}
+                <button type="submit" name="action" value="assay">{% if new_assay.is_editing %}Edit Assay{% else %}Add Assay{% endif %}</button>
+            </div>
         </div>
-        <div class="sectionContent discloseBody">
-            <form action="" method="POST">
-                {% csrf_token %}
-                <div>
-                    <label for="id_assay_name">Assay Name</label>
-                    <input id="id_assay_name" type="text" name="assay_name" maxlength="255"/>
-                </div>
-                {# TODO finish form elements #}
-                <button type="submit">Add Assay</button>
-            </form>
-        </div>
-    </div>
+    </form>
 
-    <div class="pageSection" id="assaysSection">
-        <div id="assaysActionPanel" class="sectionActions off">
-            <!-- -->
-            <span id="assaysMeasSelectedTD">0 selected</span>
-            <input type="radio" name="assayaction" id="assayactionmark" value="markas" />
-            <label for="assayactionmark">
-                Mark as <select name="markassayas">
-                <option value="0" selected="selected">Disabled</option>
-                <option value="1">Enabled</option>
-                </select>
-            </label>
-            <input type="radio" name="assayaction" id="assayactiondelete" value="delete" />
-            <label for="assayactiondelete">Delete Measurements</label>
-            <input type="radio" name="assayaction" id="assayactionedit" value="edit" />
-            <label for="assayactionedit">Edit Measurements</label>
-            <input type="radio" name="assayaction" id="assayactionexport" value="export" />
-            <label for="assayactionexport">Export Data</label>
-            <button type="submit">Take Action</button>
-            <div class="clear"></div>
+    <form action="" class="assay-action" method="POST">
+        {% csrf_token %}
+        <div class="pageSection" id="assaysSection">
+            <!-- individual protocol assay sections inserted here -->
+            <div id="assaysActionPanel" class="sectionActions off">
+                <span id="assaysSelectedCell">0 selected</span>
+                <input id="assay_action_mark" type="radio" name="assay_action" value="mark" />
+                <label for="assay_action_mark">
+                    <span>Mark as</span>
+                    <select name="disable">
+                        <option value="true">Disabled</option>
+                        <option value="false">Enabled</option>
+                    </select>
+                </label>
+                <input id="assay_action_delete" type="radio" name="assay_action" value="delete" />
+                <label for="assay_action_delete">Delete Measurements</label>
+                <input id="assay_action_edit" type="radio" name="assay_action" value="edit" />
+                <label for="assay_action_edit">Edit Measurements</label>
+                <input id="assay_action_export" type="radio" name="assay_action" value="export" />
+                <label for="assay_action_export">Export Data</label>
+                <button name="action" type="submit" value="assay_action">Take Action</button>
+                <div class="clear"></div>
+            </div>
         </div>
-    </div>
 
-    <div class="pageSection minor disclose discloseHide" id="measurementMain">
-        <div class="sectionHead">
-            <span class="discloseLink"><a href="#">Add Measurements To Selected Assays</a></span>
+        <div class="pageSection minor disclose discloseHide" id="measurementMain">
+            <div class="sectionHead">
+                <span class="discloseLink"><a href="#">Add Measurements To Selected Assays</a></span>
+            </div>
+            <div class="sectionContent discloseBody measurement-create">
+                {{ new_measurement.as_p }}
+                <button type="submit" name="action" value="measurement">Add Measurement</button>
+            </div>
         </div>
-        <div class="sectionContent discloseBody">
-            <form action="" method="POST">
-                {% csrf_token %}
-                <div>
-                    <label for="id_measurement_type">Measurement Type</label>
-                    <input id="id_measurement_type" type="text" name="measurement_type"
-                            maxlength="255"/>
-                </div>
-                {# TODO finish form elements #}
-                <button type="submit">Add Measurement</button>
-            </form>
-        </div>
-    </div>
+    </form>
 
     <div class="bare-header">
         <a href="/study/{{ study.id }}/import">Import tabular data...</a>

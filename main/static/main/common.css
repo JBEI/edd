@@ -153,7 +153,7 @@ div.topBanner > div.siteLogo {
 div.topBanner > div.pageName {
     color: #6c6c6c;
     font-size: 20pt;
-    line-height: 70px;
+    padding-top: 20px;
 }
 div.topBanner > div.userMenu {
     float: right;
@@ -1429,5 +1429,31 @@ form.attachments > * {
 
 ol.comment-list > li {
     margin-left: 2em;
+}
+
+.line-edit > p > label,
+.line-edit > p > .label,
+.assay-edit > p > label,
+.assay-edit > p > .label,
+.measurement-create > p > label,
+.measurement-create > p > .label {
+    display: inline-block;
+    vertical-align: top;
+    width: 8em;
+}
+.line-edit > p > label,
+.assay-edit > p > label ,
+.measurement-create > p > label{
+    line-height: 20px; /* bare text looks too offset compared to text boxes, so tweak line-height */
+}
+.line-edit > a.cancel-link,
+.assay-edit > a.cancel-link,
+.measurement-create > a.cancel-link {
+    font-size: 12px;
+    margin-left: 1em;
+}
+.helptext {
+    color: gray;
+    font-size: 11px;
 }
 /* End of common styles */
