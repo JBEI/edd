@@ -942,7 +942,7 @@ module StudyD {
                 fillLineForm(form, EDDData.Lines[data.ids[0]]);
             }
             updateUILineForm(form, data.count > 1);
-            scrollToLineForm(form);
+            scrollToForm(form);
             form.find('[name=line-ids]').val(data.ids.join(','));
             return false;
         });
@@ -1096,7 +1096,7 @@ module StudyD {
         checkedMeasure = $(checkedBoxes).filter(':not([id^=assay])').size();
         panel.toggleClass('off', !checkedAssays && !checkedMeasure);
         if (checkedAssays || checkedMeasure) {
-            infobox = $('#assaysMeasSelectedTD').empty();
+            infobox = $('#assaysSelectedCell').empty();
             if (checkedAssays) {
                 $("<p>").appendTo(infobox).text((checkedAssays > 1) ?
                         (checkedAssays + " Assays selected") : "1 Assay selected");
@@ -1241,169 +1241,27 @@ module StudyD {
     }
 
 
-    // TODO: this is gross, do it better
-    export function addCarbonSourceRow(carbonId) {
-
-        // Search for an old row that's been disabled, and if we find one,
-        // re-enable it and stick it on the end of the array.
-        var turnedOffIndex = -1;
-        for (var j=0; j < this.cSourceEntries.length; j++) {
-
-            if (this.cSourceEntries[j].disabled == true) {
-                turnedOffIndex = j;
-                break;
-            }
-        }
-
-        if (turnedOffIndex > -1) {
-    
-            var toAdd = this.cSourceEntries.splice(turnedOffIndex, 1);
-            toAdd[0].disabled = false;
-            if (carbonId) {
-                toAdd[0].hiddeninput.value = carbonId;
-            }
-            toAdd[0].input.autocompleter.setFromHiddenElement();
-            this.cSourceEntries.push(toAdd[0]);
-    
-        } else {
-
-            var firstRow = false;
-            // If this is the first row we're creating, we create it a little differently
-            if (this.cSourceEntries.length == 0) {
-                firstRow = true;
-            }
-            var order = this.cSourceEntries.length;
-
-            var rtr = document.createElement("tr");
-            rtr.className = "multientrybuttonrow";
-
-            var rtd = document.createElement("td");
-            if (firstRow) {
-                rtd.innerHTML = '<input type="checkbox" id="lineCSCheckbox" class="off" ' +
-                        'name="lineCSCheckbox" value="1" />';
-            }
-            rtr.appendChild(rtd);
-
-            rtd = document.createElement("td");
-            rtr.appendChild(rtd);
-            if (firstRow) {
-                var aL = document.createElement("label");
-                aL.setAttribute('for', "lineCSCheckbox");
-                rtd.appendChild(aL);
-
-                var p = document.createElement("p");
-                aL.appendChild(p);
-
-                p.appendChild(document.createTextNode("Carbon Source(s):"));
-            }        
-        
-            rtd = document.createElement("td");
-            rtr.appendChild(rtd);
-
-            var aCI = document.createElement("input");
-            aCI.setAttribute('type', "text");
-            aCI.setAttribute('id', "linecs" + order);
-            aCI.setAttribute('name', "linecs" + order);
-            aCI.setAttribute('autocomplete', "off");
-            aCI.setAttribute('autocompletetype', "carbonsource");
-            aCI.setAttribute('autocompletevalue', "linecsvalue" + order);
-            aCI.setAttribute('size', "61");
-            aCI.className = "autocomplete";
-            aCI.style.marginRight = "2px";
-            rtd.appendChild(aCI);
-
-            var aCHI = document.createElement("input");
-            aCHI.setAttribute('type', "hidden");
-            aCHI.setAttribute('id', "linecsvalue" + order);
-            aCHI.setAttribute('name', "linecsvalue" + order);
-            aCHI.setAttribute('value', carbonId);
-            rtd.appendChild(aCHI);
-
-            rtd = document.createElement("td");
-            rtr.appendChild(rtd);
-
-            var buttonSpan = document.createElement("div");
-            buttonSpan.className = "multientrybutton";
-            rtd.appendChild(buttonSpan);
-
-            if (firstRow) {
-                var buttonImg = document.createElement("img");
-                buttonImg.setAttribute('src', "/static/main/images/plus.png");
-                buttonImg.style.marginTop = "1px";
-                var oc = "StudyD.addCarbonSourceRow();";
-                buttonImg.setAttribute('onclick', oc);
-                buttonSpan.appendChild(buttonImg);
-            } else {
-                var buttonImg = document.createElement("img");
-                buttonImg.setAttribute('src', "/static/main/images/minus.png");
-                buttonImg.style.marginTop = "1px";
-                var oc = "StudyD.removeCarbonSourceRow(" + order + ");";
-                buttonImg.setAttribute('onclick', oc);
-                buttonSpan.appendChild(buttonImg);        
-            }
-        
-            var newRowRecord = {
-                row: rtr,
-                input: aCI,
-                hiddeninput: aCHI,
-                label: order,
-                initialized: false,
-                disabled: false
-            };
-
-            this.cSourceEntries.push(newRowRecord);
-        }
-
-        this.redrawCarbonSourceRows();
+    function clearAssayForm():JQuery {
+        var form:JQuery = $('#id_assay-assay_id').closest('.disclose');
+        form.find('[name^=assay-]').val('').end().find('.cancel-link').remove();
+        return form;
     }
-
-
-    export function removeCarbonSourceRow(order) {
-        for (var j=0; j < this.cSourceEntries.length; j++) {
-            if (this.cSourceEntries[j].label == order) {
-                this.cSourceEntries[j].disabled = true;
-                break;
-            }
-        }
-        this.redrawCarbonSourceRows();
-    }
-
-
-    export function disableAllButFirstCarbonSourceRow() {
-        for (var j=1; j < this.cSourceEntries.length; j++) {
-            this.cSourceEntries[j].disabled = true;
-        }
-        this.redrawCarbonSourceRows();
-    }
-
-
-    export function redrawCarbonSourceRows() {
-        var carbonSourceTableBody = <any>document.getElementById("carbonSourceTableBody");
-        if (!carbonSourceTableBody)
-            return;
-
-        while (carbonSourceTableBody.firstChild) {
-            carbonSourceTableBody.removeChild(carbonSourceTableBody.firstChild);
-        }
-
-        for (var j=0; j < this.cSourceEntries.length; j++) {
-            if (this.cSourceEntries[j].disabled == false) {
-                carbonSourceTableBody.appendChild(this.cSourceEntries[j].row);
-                if (this.cSourceEntries[j].initialized == false) {
-                    this.cSourceEntries[j].initialized = true;
-                    EDDAutoComplete.initializeElement(this.cSourceEntries[j].input);
-                }
-            }
-        }
-    }
-
 
     function clearLineForm() {
-        var form = $('#id_line-ids').closest('form');
+        var form = $('#id_line-ids').closest('.disclose');
         form.find('.line-meta').remove().end().find(':input').filter('[name^=line-]').val('');
         form.find('.cancel-link').remove();
         form.find('.bulk').addClass('off');
         return form;
+    }
+
+    function fillAssayForm(form, record) {
+        form.find('[name=assay-assay_id]').val(record.id);
+        form.find('[name=assay-name]').val(record.name);
+        form.find('[name=assay-description]').val(record.description);
+        form.find('[name=assay-protocol]').val(record.pid);
+        form.find('[name=assay-experimenter_0]').val((EDDData.Users[record.experimenter] || {}).uid || '--');
+        form.find('[name=assay-experimenter_1]').val(record.experimenter);
     }
 
     function fillLineForm(form, record) {
@@ -1432,16 +1290,31 @@ module StudyD {
         form.find('[name=initial-line-meta_store]').val(JSON.stringify(record.meta));
     }
 
-    function scrollToLineForm(form) {
+    function scrollToForm(form) {
         // make sure form is disclosed
-        var top = form.closest('.disclose').toggleClass('discloseHide', false).offset().top;
+        var top = form.toggleClass('discloseHide', false).offset().top;
         $('html').animate({ 'scrollTop': top }, 'slow');
+    }
+
+    function updateUIAssayForm(form) {
+        var title, button;
+        // Update the disclose title to read Edit
+        title = form.find('.discloseLink > a').text('Edit Assay');
+        // Update the button to read Edit
+        button = form.find('[name=action][value=assay]').text('Edit Assay');
+        // Add link to revert back to 'Add Line' form
+        $('<a href="#">Cancel</a>').addClass('cancel-link').on('click', (ev) => {
+            clearAssayForm();
+            title.text('Add Assays To Selected Lines');
+            button.text('Add Assay');
+            return false;
+        }).insertAfter(button);
     }
 
     function updateUILineForm(form, plural?) {
         var title, button, text = 'Edit Line' + (plural ? 's' : '');
         // Update the disclose title to read 'Edit Line'
-        title = form.closest('.disclose').find('.discloseLink > a').text(text);
+        title = form.find('.discloseLink > a').text(text);
         // Update the button to read 'Edit Line'
         button = form.find('[name=action][value=line]').text(text);
         form.find('.bulk').toggleClass('off', !plural);
@@ -1453,7 +1326,6 @@ module StudyD {
             return false;
         }).insertAfter(button);
     }
-
 
     function insertLineMetadataRow(refRow, key, value) {
         var row, type, label, input, id = 'line-meta-' + key;
@@ -1471,46 +1343,31 @@ module StudyD {
         return row;
     }
 
+    export function editAssay(index:number):void {
+        var record = EDDData.Assays[index], form;
+        if (!record) {
+            console.log('Invalid record for editing: ' + index);
+            return;
+        }
 
-    export function editLine(index) {
+        form = clearAssayForm(); // "form" is actually the disclose block
+        fillAssayForm(form, record);
+        updateUIAssayForm(form);
+        scrollToForm(form);
+    }
+
+    export function editLine(index:number):void {
         var record = EDDData.Lines[index], form;
         if (!record) {
             console.log('Invalid record for editing: ' + index);
             return;
         }
 
-        form = clearLineForm();
-        // Update the form elements with current Line information
+        form = clearLineForm(); // "form" is actually the disclose block
         fillLineForm(form, record);
         updateUILineForm(form);
-        scrollToLineForm(form);
+        scrollToForm(form);
     }
-
-
-    export function editAssay(linkelement, index) {
-
-        var record = EDDData.Assays[index];
-    
-        if (!record) {
-            console.log('Invalid record for editing: ' + index);
-            return;
-        }
-
-        // Create a mapping from the JSON record to the form elements
-        var formInfo = {
-            assayidtoedit: index,
-            assayname: record.name,
-            assayprotocol: record.pid,
-            assaydescription: record.description,
-            assayexperimentervalue: record.exp,
-        };
-        // Set the checkbox of the Line this Assay belongs to
-        formInfo['line'+record.lid+'include'] = 1;
-
-        EDDEdit.prepareForm(formInfo, 'studyLinesTable,assayMain,editAssayBanner,editAssayButtons',
-                'addNewAssayCover,newAssayBanner,newAssayButtons');
-    }
-
 
     export function addMetaboliteRow() {
 
@@ -2855,25 +2712,22 @@ class DataGridSpecAssays extends DataGridSpecBase {
 
 
     generateAssayNameCells(gridSpec:DataGridSpecAssays, index:string):DataGridDataCell[] {
-        var record = EDDData.Assays[index];
-        var line = EDDData.Lines[record.lid];
-        var sideMenuItems = [
-            '<a href="#" onclick="StudyD.editAssay(this, ' + index + ');">Edit Assay</a>',
+        var record = EDDData.Assays[index], line = EDDData.Lines[record.lid], sideMenuItems = [
+            '<a href="#editassay" class="assay-edit-link">Edit Assay</a>',
             '<a href="export?assaylevel=1&assay=' + index + '">Export Data as CSV/etc</a>'
         ];
+        // TODO we probably don't want to special-case like this by name
         if (gridSpec.protocolName == "Transcriptomics") {
             sideMenuItems.push('<a href="import/rnaseq/edgepro?assay='+index+'">Import RNA-seq data from EDGE-pro</a>');
         }
-        // TODO get rid of onclick, check export URL
         return [
             new DataGridDataCell(gridSpec, index, {
+                'checkboxName': 'assayId',
                 'checkboxWithID': (id) => { return 'assay' + id + 'include'; },
                 'sideMenuItems': sideMenuItems,
                 'hoverEffect': true,
                 'nowrap': true,
                 'rowspan': gridSpec.rowSpanForRecord(index),
-                // In a typical EDDData.Assays record this string is currently pre-assembled and
-                // stored in 'fn'. But we're not relying on that for now.
                 'contentString': [line.name, gridSpec.protocolName, record.name].join('-')
             })
         ];
@@ -2950,6 +2804,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
             'metaboliteValueToCell': (value) => {
                 return new DataGridDataCell(gridSpec, index, {
                     'hoverEffect': true,
+                    'checkboxName': 'measurementId',
                     'checkboxWithID': () => { return 'measurement' + value.id + 'include'; },
                     'contentString': value.name
                 });
@@ -3147,16 +3002,24 @@ class DataGridSpecAssays extends DataGridSpecBase {
 
     // Specification for each of the data columns that will make up the body of the table
     defineColumnSpec():DataGridColumnSpec[] {
-        var leftSide:DataGridColumnSpec[] = [
+        var leftSide:DataGridColumnSpec[],
+            metaDataCols:DataGridColumnSpec[],
+            rightSide:DataGridColumnSpec[];
+        // add click handler for menu on assay name cells
+        $(this.tableElement).on('click', 'a.assay-edit-link', (ev) => {
+            StudyD.editAssay($(ev.target).closest('.popupcell').find('input').val());
+            return false;
+        });
+        leftSide = [
             new DataGridColumnSpec(1, this.generateAssayNameCells)
            ];
 
-        var metaDataCols:DataGridColumnSpec[] = this.metaDataIDsUsedInAssays.map((id, index) => {
+        metaDataCols = this.metaDataIDsUsedInAssays.map((id, index) => {
             var mdType = EDDData.MetaDataTypes[id];
             return new DataGridColumnSpec(2 + index, this.makeMetaDataCellsGeneratorFunction(id));
         });
 
-        var rightSide:DataGridColumnSpec[] = [
+        rightSide = [
             new DataGridColumnSpec(2 + metaDataCols.length, this.generateMeasurementNameCells),
             new DataGridColumnSpec(3 + metaDataCols.length, this.generateUnitsCells),
             new DataGridColumnSpec(4 + metaDataCols.length, this.generateCountCells),

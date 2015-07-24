@@ -27,7 +27,7 @@ var EDD_auto = EDD_auto || {};
         "User" : [
             new AutoColumn('User', '150px', 'name'),
             new AutoColumn('Initials', '60px', 'initials'),
-            new AutoColumn('E-mail', '120px', 'email')
+            new AutoColumn('E-mail', '150px', 'email')
             ],
         "Strain" : [
             new AutoColumn('Part ID', '100px', 'partId'),
@@ -148,15 +148,14 @@ EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(selector, 
         minLength: 0,
         source: function (request, response) {
             $.ajax({
-                // FIXME replace this with SOLR query
-                url: '/search',
-                dataType: 'json',
-                data: {
-                    model : model_name,
-                    term : request.term
+                'url': '/search',
+                'dataType': 'json',
+                'data': {
+                    'model': model_name,
+                    'term': request.term
                 },
                 // The success event handler will display "No match found" if no items are returned.
-                success: function (data) {
+                'success': function (data) {
                     var result;
                     if (!data || !data.rows || data.rows.length === 0) {
                         result = [ empty ];
@@ -177,19 +176,26 @@ EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(selector, 
 /***********************************************************************/
 
 $(window).load(function () {
-    // add user autocomplete to all '.autocomp.autocomp_user' fields
-    $('.autocomp.autocomp_user').each(function () {
-        EDD_auto.setup_field_autocomplete(this, 'User', EDDData.Users);
+    var AutoOpts, setup_info;
+    AutoOpts = function AutoOpts(selector, klass, dataField) {
+        this.selector = selector;
+        this.klass = klass;
+        this.dataField = dataField;
+        return this;
+    };
+    setup_info = [
+        new AutoOpts('.autocomp_user',    'User',            'Users'),
+        new AutoOpts('.autocomp_reg',     'Strain',          'Strains'),
+        new AutoOpts('.autocomp_carbon',  'CarbonSource',    'CSources'),
+        new AutoOpts('.autocomp_type',    'MetadataType',    'MetaDataTypes'),
+        new AutoOpts('.autocomp_measure', 'MeasurementType', 'MeasurementTypes')
+    ];
+    setup_info.forEach(function (item) {
+        var setup_func = function () {
+            EDD_auto.setup_field_autocomplete(this, item.klass, EDDData[item.dataField]);
+        };
+        $(item.selector).each(setup_func);
     });
-    $('.autocomp.autocomp_reg').each(function () {
-        EDD_auto.setup_field_autocomplete(this, 'Strain', EDDData.Strains);
-    });
-    $('.autocomp.autocomp_carbon').each(function () {
-        EDD_auto.setup_field_autocomplete(this, 'CarbonSource', EDDData.CSources);
-    });
-    $('.autocomp.autocomp_type').each(function () {
-        EDD_auto.setup_field_autocomplete(this, 'MetadataType', EDDData.MetaDataTypes);
-    })
 });
 
 }(jQuery));

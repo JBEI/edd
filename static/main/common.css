@@ -1431,17 +1431,29 @@ ol.comment-list > li {
     margin-left: 2em;
 }
 
-form.line-edit > p > label,
-form.line-edit > p > .label {
+.line-edit > p > label,
+.line-edit > p > .label,
+.assay-edit > p > label,
+.assay-edit > p > .label,
+.measurement-create > p > label,
+.measurement-create > p > .label {
     display: inline-block;
     vertical-align: top;
     width: 8em;
 }
-form.line-edit > p > label {
+.line-edit > p > label,
+.assay-edit > p > label ,
+.measurement-create > p > label{
     line-height: 20px; /* bare text looks too offset compared to text boxes, so tweak line-height */
 }
-form.line-edit > a.cancel-link {
+.line-edit > a.cancel-link,
+.assay-edit > a.cancel-link,
+.measurement-create > a.cancel-link {
     font-size: 12px;
     margin-left: 1em;
+}
+.helptext {
+    color: gray;
+    font-size: 11px;
 }
 /* End of common styles */

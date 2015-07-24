@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.contrib import messages
 from django.core import serializers
-from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
+from django.core.exceptions import ObjectDoesNotExist, PermissionDenied, ValidationError
 from django.core.urlresolvers import reverse
 from django.db.models import Q
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
@@ -11,6 +11,7 @@ from django.shortcuts import render, get_object_or_404, redirect, \
 from django.template import RequestContext
 from django.template.defaulttags import register
 from django.utils.safestring import mark_safe
+from django.utils.translation import ugettext_lazy as _
 from django.views import generic
 from django.views.decorators.csrf import ensure_csrf_cookie
 from io import BytesIO
@@ -89,10 +90,31 @@ class StudyDetailView(generic.DetailView):
         context = super(StudyDetailView, self).get_context_data(**kwargs)
         action = kwargs.pop('action', None)
         request = kwargs.pop('request', None)
+        context['new_assay'] = AssayForm(prefix='assay')
         context['new_attach'] = CreateAttachmentForm()
         context['new_comment'] = CreateCommentForm()
         context['new_line'] = LineForm(prefix='line')
+        context['new_measurement'] = MeasurementForm(prefix='measurement')
         return context
+
+    def handle_assay(self, request, context):
+        assay_id = request.POST.get('assay-assay_id', None)
+        assay = self._get_assay(assay_id) if assay_id else None
+        if assay:
+            form = AssayForm(request.POST, instance=assay, lines=[ assay.line_id ], prefix='assay')
+        else:
+            ids = request.POST.getlist('lineId', [])
+            form = AssayForm(request.POST, lines=ids, prefix='assay')
+            if len(ids) == 0:
+                form.add_error(None, ValidationError(
+                    _('Must select at least one line to add Assay'),
+                    code='no-lines-selected'
+                    ))
+        context['new_assay'] = form
+        if form.is_valid():
+            form.save()
+            return True
+        return False
 
     def handle_attach(self, request, context):
         form = CreateAttachmentForm(request.POST, request.FILES, edd_object=self.get_object())
@@ -154,10 +176,9 @@ class StudyDetailView(generic.DetailView):
         return False
 
     def handle_line(self, request, context):
-        form = LineForm(request.POST, prefix='line', study=self.get_object())
-        ids = [ v for v in (form['ids'].data or '').split(',') if v.strip() != '' ]
+        ids = [ v for v in request.POST.get('line-ids', '').split(',') if v.strip() != '' ]
         if len(ids) == 0:
-            return self.handle_line_new(request, context, form)
+            return self.handle_line_new(request, context)
         elif len(ids) == 1:
             return self.handle_line_edit(request, context, ids[0])
         else:
@@ -187,19 +208,37 @@ class StudyDetailView(generic.DetailView):
         line = self._get_line(pk)
         if line:
             form = LineForm(request.POST, instance=line, prefix='line', study=study)
+            context['new_line'] = form
             if form.is_valid():
                 form.save()
                 messages.success(request, "Saved Line '%(name)s'" % { 'name': form['name'].value() })
                 return True
+        else:
+            messages.error(request, 'Failed to load line for editing.')
         return False
 
-    def handle_line_new(self, request, context, form):
+    def handle_line_new(self, request, context):
+        form = LineForm(request.POST, prefix='line', study=self.get_object())
         if form.is_valid():
             form.save()
             messages.success(request, "Added Line '%(name)s" % { 'name': form['name'].value() })
             return True
         else:
             context['new_line'] = form
+        return False
+
+    def handle_measurement(self, request, context):
+        ids = request.POST.getlist('assayId', [])
+        form = MeasurementForm(request.POST, assays=ids, prefix='measurement')
+        if len(ids) == 0:
+            form.add_error(None, ValidationError(
+                _('Must select at least one assay to add Measurement'),
+                code='no-assays-selected'
+                ))
+        context['new_measurement'] = form
+        if form.is_valid():
+            form.save()
+            return True
         return False
 
     def post(self, request, *args, **kwargs):
@@ -223,9 +262,19 @@ class StudyDetailView(generic.DetailView):
                 form_valid = self.handle_disable(request, context)
             elif line_action == 'export':
                 'TODO: export data'
+        elif action == 'assay':
+            form_valid = self.handle_assay(request, context)
         if form_valid:
             return HttpResponseRedirect(reverse('main:detail', kwargs={'pk':self.object.pk}))
         return self.render_to_response(context)
+
+    def _get_assay(self, assay_id):
+        study = self.get_object()
+        try:
+            return Assay.objects.get(pk=assay_id, line__study=study)
+        except Assay.DoesNotExist, e:
+            logger.warning('Failed to load assay,study combo %s,%s' % (assay_id, study.pk))
+        return None
 
     def _get_line(self, line_id):
         study = self.get_object()
@@ -257,20 +306,24 @@ def study_measurements(request, study, protocol):
         assay__line__active=True,
         ).order_by('id')[:5000]
     measure_list = list(measurements)
-    values = MeasurementValue.objects.filter(
-        measurement__assay__line__study_id=study,
-        measurement__assay__protocol_id=protocol,
-        measurement__active=True,
-        measurement__assay__active=True,
-        measurement__assay__line__active=True,
-        measurement__range=(measure_list[0].id, measure_list[-1].id),
-        )
+    if len(measure_list):
+        # only try to pull values when we have measurement objects
+        values = MeasurementValue.objects.filter(
+            measurement__assay__line__study_id=study,
+            measurement__assay__protocol_id=protocol,
+            measurement__active=True,
+            measurement__assay__active=True,
+            measurement__assay__line__active=True,
+            measurement__range=(measure_list[0].id, measure_list[-1].id),
+            )
+    else:
+        values = []
     value_dict = collections.defaultdict(list)
     for v in values:
         value_dict[v.measurement_id].append((v.x, v.y))
     payload = {
         'types': { t.pk: t.to_json() for t in measure_types },
-        'measures': map(lambda m: m.to_json(), measure_list),
+        'measures': [ m.to_json() for m in measure_list ],
         'data': value_dict,
     }
     return JsonResponse(payload, encoder=JSONDecimalEncoder)
@@ -873,7 +926,7 @@ def search (request) :
     elif model_name == "Strain":
         ice = IceApi(ident=request.user)
         results = ice.search_for_part(term)
-        rows = [ match.entryInfo for match in results['results'] ]
+        rows = [ match.get('entryInfo', dict()) for match in results.get('results', []) ]
         return JsonResponse({ "rows": rows })
     else:
         Model = getattr(main.models, model_name)
@@ -889,6 +942,6 @@ def search (request) :
         for term in term.split():
             term_filters.extend([ Q(**{ f+'__iregex': term }) for f in ifields ])
         # run search with each Q object OR'd together; limit to 20
-        found = Model.objects.filter(reduce(operator.or_, term_filters))[:20]
+        found = Model.objects.filter(reduce(operator.or_, term_filters, Q()))[:20]
         results = [ item.to_json() for item in found ]
     return JsonResponse({ "rows": results })
