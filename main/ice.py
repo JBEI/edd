@@ -18,13 +18,13 @@ class HmacAuth(AuthBase):
 
     def __call__(self, request):
         sig = self.build_signature(request)
-        header = ':'.join(('1', 'edd', self.ident.username, sig))
+        header = ':'.join(('1', 'edd', self.ident.email, sig))
         request.headers['Authorization'] = header
         return request
 
     def build_message(self, request):
         url = urlparse(request.url)
-        msg = '\n'.join((self.ident.username,
+        msg = '\n'.join((self.ident.email,
                          request.method,
                          url.netloc,
                          url.path,
