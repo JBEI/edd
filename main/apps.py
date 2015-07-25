@@ -9,5 +9,6 @@ from django.apps import AppConfig
 class EDDConfig (AppConfig) :
     name = "main"
     def ready (self) :
-        from main.models import patch_user_model
+        from .models import patch_user_model
+        from .signals import handlers
         patch_user_model()

@@ -15,11 +15,13 @@ from django.utils.translation import ugettext_lazy as _
 from django.views import generic
 from django.views.decorators.csrf import ensure_csrf_cookie
 from io import BytesIO
-from main.forms import *
-from main.ice import IceApi
-from main.models import *
-from main.solr import StudySearch, UserSearch
-from main.utilities import *
+
+from .forms import *
+from .ice import IceApi
+from .models import *
+from .signals import study_modified
+from .solr import StudySearch, UserSearch
+from .utilities import *
 
 import collections
 import csv
@@ -265,6 +267,7 @@ class StudyDetailView(generic.DetailView):
         elif action == 'assay':
             form_valid = self.handle_assay(request, context)
         if form_valid:
+            study_modified.send(sender=self.__class__, study=self.object)
             return HttpResponseRedirect(reverse('main:detail', kwargs={'pk':self.object.pk}))
         return self.render_to_response(context)
 
