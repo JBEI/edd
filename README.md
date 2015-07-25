@@ -209,9 +209,12 @@ This section contains directions for setting up a development environment on EDD
 	   * `sudo rabbitmqctl add_vhost edd`
 	   * Grant permissions on the "edd" virtual host to the guest account `sudo rabbitmqctl set_permissions -p edd guest ".*" ".*" ".*"`
 	      * Note that by default the RabbitMQ guest account is only accessible from localhost, so this should be safe
-	* Start the worker by running `celery -A edd worker --loglevel=info`
+	* Start the worker by running `celery worker --app edd --queues=edd --hostname=edd-worker-1.%h --autoscale=10,1 --autoreload --loglevel=info`
 	   * Note that in production, prefork() processes will have the same memory and file access as the user that launches this process -- see Security link above
 	   * For Celery 3.1, the final message should end with'celery@yourhostname ready.'
+	* Prod-ish quality commands
+		* Start worker1 on localhost: `celery worker --app edd --queues=edd --hostname=edd-worker-1.%h --autoscale=10,1 --autoreload --loglevel=info` TODO: remove --autoload and loglevel for prod
+		* Start flower on localhost: `celery -app edd flower`
 	   
  
  * Start EDD <a name="Start_EDD"/>
