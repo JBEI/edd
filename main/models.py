@@ -450,15 +450,15 @@ class Study(EDDObject):
         }
 
     def user_can_read(self, user):
-        return any(p.is_read() for p in chain(
+        return user.is_superuser or user.is_staff or any(p.is_read() for p in chain(
                 self.userpermission_set.filter(user=user),
-                self.grouppermission_set.filter(group=user.groups.all())
+                self.grouppermission_set.filter(group__user=user)
         ))
 
     def user_can_write(self, user):
-        return any(p.is_write() for p in chain(
+        return user.is_superuser or any(p.is_write() for p in chain(
                 self.userpermission_set.filter(user=user),
-                self.grouppermission_set.filter(group=user.groups.all())
+                self.grouppermission_set.filter(group__user=user)
         ))
 
     def get_combined_permission(self):
