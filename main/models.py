@@ -1300,6 +1300,12 @@ def User_institution (self) :
     except ObjectDoesNotExist as e :
         return None
 
+def User_institutions(self):
+    try:
+        return self.userprofile.institutions.all()
+    except ObjectDoesNotExist, e:
+        return []
+
 def User_to_json(self):
     # FIXME this may be excessive - how much does the frontend actually need?
     return {
@@ -1317,16 +1323,15 @@ def User_to_json(self):
     }
 
 def User_to_solr_json(self):
-    p = self.userprofile
     format_string = '%Y-%m-%dT%H:%M:%SZ'
     return {
         'id': self.pk,
         'username': self.username,
         'name': [ self.first_name, self.last_name ],
         'email': self.email,
-        'initials': p.initials,
+        'initials': self.initials,
         'group': ['@'.join((str(g.pk), g.name)) for g in self.groups.all()],
-        'institution': ['@'.join((str(i.pk), i.institution_name)) for i in p.institutions.all()],
+        'institution': ['@'.join((str(i.pk), i.institution_name)) for i in self.institutions],
         'date_joined': self.date_joined.strftime(format_string),
         'last_login': self.last_login.strftime(format_string),
         'is_active': self.is_active,
@@ -1343,3 +1348,4 @@ def patch_user_model () :
     User.add_to_class("to_solr_json", User_to_solr_json)
     User.add_to_class("initials", property(User_initials))
     User.add_to_class("institution", property(User_institution))
+    User.add_to_class("institutions", property(User_institutions))
