@@ -29,7 +29,7 @@ class HmacAuth(AuthBase):
                          url.netloc,
                          url.path,
                          self.sort_parameters(url.query),
-                         request.body))
+                         request.body or ''))
         return msg
 
     def build_signature(self, request):
@@ -54,6 +54,14 @@ class IceApi(object):
         else:
             self.url = 'https://registry-test.jbei.org'
 
+    def fetch_part(self, record_id):
+        url = self.url + '/rest/parts/' + record_id
+        auth = HmacAuth(ident=self.ident)
+        response = requests.request('GET', url, auth=auth)
+        if response.status_code == requests.codes.ok:
+            return (response.json(), url, )
+        return None
+
     def link_study_to_part(self, study, strain):
         url = self.url + '/rest/parts/' + strain.registry_id + '/experiments'
         auth = HmacAuth(ident=self.ident)
@@ -70,7 +78,6 @@ class IceApi(object):
                              data=json.dumps(data),
                              headers={ 'Content-Type': 'application/json; charset=utf8' },
                              )
-        pass
 
     def search_for_part(self, query):
         if self.ident is None:

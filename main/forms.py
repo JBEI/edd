@@ -6,6 +6,7 @@ from django.db.models.base import Model
 from django.db.models.manager import BaseManager
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
+from main.ice import IceApi
 from main.models import *
 
 import json
@@ -122,8 +123,39 @@ class RegistryAutocompleteWidget(AutocompleteWidget):
         opt.update({ 'text_attr': { 'class': 'autocomp autocomp_reg', }, })
         super(RegistryAutocompleteWidget, self).__init__(attrs=attrs, model=Strain, opt=opt)
 
+    def validate_strain(self, value):
+        try:
+            Strain.objects.get(registry_id=value)
+        except Strain.DoesNotExist, e:
+            # attempt to create strain from ICE
+            try:
+                up = Update.load_update()
+                ice = IceApi(ident=up.mod_by)
+                (part, url) = ice.fetch_part(value)
+                if part:
+                    strain = Strain(
+                        name=part['name'],
+                        description=part['shortDescription'],
+                        registry_id=part['recordId'],
+                        registry_url=url,
+                        )
+                    strain.save()
+            except Exception, e:
+                # TODO set up logging
+                raise e
+        return value
+
+    def value_from_datadict(self, data, files, name):
+        value = super(RegistryAutocompleteWidget, self).value_from_datadict(data, files, name)
+        return self.validate_strain(value)
+
 class MultiRegistryAutocompleteWidget(MultiAutocompleteWidget, RegistryAutocompleteWidget):
-    pass
+    def value_from_datadict(self, data, files, name):
+        # value from super will be joined by self._separator, so split it to get the true value
+        joined = super(RegistryAutocompleteWidget, self).value_from_datadict(data, files, name)
+        if joined:
+            return map(self.validate_strain, joined.split(self._separator))
+        return []
 
 
 class CarbonSourceAutocompleteWidget(AutocompleteWidget):
@@ -266,6 +298,8 @@ class LineForm(forms.ModelForm):
                 '<input type="checkbox" class="off bulk" name="_bulk_%s" checked="checked"/>%s' %
                 (fieldname, field.label)
                 )
+        # make sure strain is keyed by registry_id instead of pk
+        self.fields['strains'].to_field_name = 'registry_id'
 
     @classmethod
     def initial_from_model(cls, line, prefix=None):

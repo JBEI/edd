@@ -31,7 +31,8 @@ var EDD_auto = EDD_auto || {};
             ],
         "Strain" : [
             new AutoColumn('Part ID', '100px', 'partId'),
-            new AutoColumn('Name', '200px', 'name')
+            new AutoColumn('Name', '150px', 'name'),
+            new AutoColumn('Description', '200px', 'shortDescription')
             ],
         "CarbonSource" : [
             new AutoColumn('Name', '150px', 'name'),

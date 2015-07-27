@@ -53,6 +53,7 @@ class Update(models.Model):
                          mod_by=None,
                          path=None,
                          origin='localhost')
+            # TODO this save may be too early?
             update.save()
         else:
             update = cls.load_request_update(request)
@@ -68,6 +69,7 @@ class Update(models.Model):
                          mod_by=request.user,
                          path=request.get_full_path(),
                          origin=rhost)
+            # TODO this save may be too early?
             update.save()
             request.update_obj = update
         else:
