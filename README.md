@@ -307,7 +307,8 @@ This section contains directions for setting up a development environment on EDD
 
  * EDD uses [TypeScript](http://typescriptlang.org) for its client-side
     interface; you will want:
-    * `sudo npm install -g typescript`
+	
+    * `sudo npm install -g typescript@1.3`
     * `sudo npm install grunt-typescript`
 
  * Compile changes in `*.ts` to `*.js` by simply running `grunt` from the edd base directory

@@ -50,9 +50,6 @@ CELERY_DEFAULT_ROUTING_KEY = 'edd'
 CELERYD_TASK_SOFT_TIME_LIMIT=270 # time limit in seconds after which a task is notified that it'll be killed soon
 CELERYD_TASK_TIME_LIMIT=300 # upper limit in seconds that a task may take before it's host process is terminated
 
-# List of modules to import when celery worker starts
-CELERY_IMPORTS = ('edd.remote_tasks',)
-
 # CELERYD_MAX_TASKS_PER_CHILD=100 # work around task memory leaks
 
 #############################################################
