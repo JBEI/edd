@@ -1431,24 +1431,16 @@ ol.comment-list > li {
     margin-left: 2em;
 }
 
-.line-edit > p > label,
-.line-edit > p > .label,
-.assay-edit > p > label,
-.assay-edit > p > .label,
-.measurement-create > p > label,
-.measurement-create > p > .label {
+.edd-form > p > label,
+.edd-form > p > .label {
     display: inline-block;
     vertical-align: top;
     width: 8em;
 }
-.line-edit > p > label,
-.assay-edit > p > label ,
-.measurement-create > p > label{
+.edd-form > p > label {
     line-height: 20px; /* bare text looks too offset compared to text boxes, so tweak line-height */
 }
-.line-edit > a.cancel-link,
-.assay-edit > a.cancel-link,
-.measurement-create > a.cancel-link {
+.edd-form > a.cancel-link {
     font-size: 12px;
     margin-left: 1em;
 }
