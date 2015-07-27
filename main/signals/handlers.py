@@ -10,7 +10,7 @@ solr = StudySearch()
 @receiver(post_save, sender=Study)
 def study_saved(sender, instance, created, raw, **kwargs):
     if not raw:
-        study_modified.send(sender, instance)
+        study_modified.send(sender=sender, study=instance)
 
 @receiver(study_modified)
 def index_study(sender, study, **kwargs):
