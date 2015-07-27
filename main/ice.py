@@ -10,6 +10,7 @@ import requests
 
 
 class HmacAuth(AuthBase):
+    # TODO this value needs to be pulled out into a server.cfg key
     edd_key = 'yJwU0chpercYs/R4YmCUxhbRZBHM4WqpO3ZH0ZW6+4X+/aTodSGTI2w5jeBxWgJXNN1JNQIg02Ic3ZnZtSEVYA=='
 
     def __init__(self, ident=None, settings_key='default'):
@@ -18,12 +19,14 @@ class HmacAuth(AuthBase):
 
     def __call__(self, request):
         sig = self.build_signature(request)
+        # TODO handle None == self.ident
         header = ':'.join(('1', 'edd', self.ident.email, sig))
         request.headers['Authorization'] = header
         return request
 
     def build_message(self, request):
         url = urlparse(request.url)
+        # TODO handle None == self.ident
         msg = '\n'.join((self.ident.email,
                          request.method,
                          url.netloc,
