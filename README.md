@@ -304,12 +304,10 @@ This section contains directions for setting up a development environment on EDD
     * `brew install node`
     * `sudo npm install -g grunt-cli`
     * `sudo npm install grunt`
-
- * EDD uses [TypeScript](http://typescriptlang.org) for its client-side
-    interface; you will want:
-	
-    * `sudo npm install -g typescript@1.3`
-    * `sudo npm install grunt-typescript`
+ * EDD uses [TypeScript](http://typescriptlang.org) for its client-side interface; you will want:
+    * The following are included by default in the EDD codebase.
+	   * `sudo npm install -g typescript@1.3.0`
+	   * `sudo npm install grunt-typescript`
 
  * Compile changes in `*.ts` to `*.js` by simply running `grunt` from the edd base directory
 
