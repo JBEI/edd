@@ -127,15 +127,10 @@ class RegistryAutocompleteWidget(AutocompleteWidget):
     def validate_strain(self, value):
         try:
             Strain.objects.get(registry_id=value)
+            return value
         except ValueError, e:
             # TODO set up logging
-            # this error gets caught in overload of LineForm.is_valid()
-            raise ValidationError(
-                '"%(value)s" is not a valid strain identifier',
-                code='invalid-strain',
-                params={'value': value},
-                )
-            return ''
+            pass
         except Strain.DoesNotExist, e:
             # attempt to create strain from ICE
             try:
@@ -150,10 +145,11 @@ class RegistryAutocompleteWidget(AutocompleteWidget):
                         registry_url=url,
                         )
                     strain.save()
+                    return value
             except Exception, e:
                 # TODO set up logging
                 raise e
-        return value
+        return None
 
     def value_from_datadict(self, data, files, name):
         value = super(RegistryAutocompleteWidget, self).value_from_datadict(data, files, name)
@@ -341,16 +337,15 @@ class LineForm(forms.ModelForm):
         for fieldname in exclude:
             del self.fields[fieldname]
 
-    def is_editing(self):
-        return self.instance.pk != None
-
-    def is_valid(self):
+    def full_clean(self):
         # Validation from the RegistryAutocompleteWidget never gets caught in default handlers
         try:
-            return super(LineForm, self).is_valid()
-        except ValidationError, e:
+            super(LineForm, self).full_clean()
+        except ValidationError as e:
             self.add_error(None, e)
-            return False
+
+    def is_editing(self):
+        return self.instance.pk != None
 
     def save(self, commit=True, force_insert=False, force_update=False, *args, **kwargs):
         line = super(LineForm, self).save(commit=False, *args, **kwargs)
