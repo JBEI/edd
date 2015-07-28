@@ -1112,6 +1112,7 @@ var StudyD;
         form.find('.line-meta').remove().end().find(':input').filter('[name^=line-]').val('');
         form.find('.cancel-link').remove();
         form.find('.bulk').addClass('off');
+        form.off('change.bulk');
         return form;
     }
     function fillAssayForm(form, record) {
@@ -1135,7 +1136,7 @@ var StudyD;
         form.find('[name=line-carbon_source_0]').val(record.carbon.map(function (v) { return (EDDData.CSources[v] || {}).name || '--'; }).join(','));
         form.find('[name=line-carbon_source_1]').val(record.carbon.join(','));
         form.find('[name=line-strains_0]').val(record.strain.map(function (v) { return (EDDData.Strains[v] || {}).name || '--'; }).join(','));
-        form.find('[name=line-strains_1]').val(record.strain.join(','));
+        form.find('[name=line-strains_1]').val(record.strain.map(function (v) { return (EDDData.Strains[v] || {}).registry_id || '--'; }).join(','));
         metaRow = form.find('.line-edit-meta');
         // Run through the collection of metadata, and add a form element entry for each
         $.each(record.meta, function (key, value) {
@@ -1170,7 +1171,12 @@ var StudyD;
         title = form.find('.discloseLink > a').text(text);
         // Update the button to read 'Edit Line'
         button = form.find('[name=action][value=line]').text(text);
-        form.find('.bulk').toggleClass('off', !plural);
+        if (plural) {
+            form.find('.bulk').prop('checked', false).removeClass('off');
+            form.on('change.bulk', ':input', function (ev) {
+                $(ev.target).siblings('label').find('.bulk').prop('checked', true);
+            });
+        }
         // Add link to revert back to 'Add Line' form
         $('<a href="#">Cancel</a>').addClass('cancel-link').on('click', function (ev) {
             clearLineForm();

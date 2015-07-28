@@ -140,7 +140,7 @@ EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(selector, 
                 display = record[display_key] || '';
                 value = record[value_key] || '';
                 // assign value of selected item ID to sibling hidden input
-                $(this).val(display).next('input[type=hidden]').val(value);
+                $(this).val(display).trigger('change').next('input[type=hidden]').val(value);
             }
             return false;
         },

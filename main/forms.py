@@ -2,6 +2,7 @@ from copy import deepcopy
 from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.core.exceptions import ValidationError
 from django.db.models.base import Model
 from django.db.models.manager import BaseManager
 from django.utils.safestring import mark_safe
@@ -126,6 +127,15 @@ class RegistryAutocompleteWidget(AutocompleteWidget):
     def validate_strain(self, value):
         try:
             Strain.objects.get(registry_id=value)
+        except ValueError, e:
+            # TODO set up logging
+            # this error gets caught in overload of LineForm.is_valid()
+            raise ValidationError(
+                '"%(value)s" is not a valid strain identifier',
+                code='invalid-strain',
+                params={'value': value},
+                )
+            return ''
         except Strain.DoesNotExist, e:
             # attempt to create strain from ICE
             try:
@@ -333,6 +343,14 @@ class LineForm(forms.ModelForm):
 
     def is_editing(self):
         return self.instance.pk != None
+
+    def is_valid(self):
+        # Validation from the RegistryAutocompleteWidget never gets caught in default handlers
+        try:
+            return super(LineForm, self).is_valid()
+        except ValidationError, e:
+            self.add_error(None, e)
+            return False
 
     def save(self, commit=True, force_insert=False, force_update=False, *args, **kwargs):
         line = super(LineForm, self).save(commit=False, *args, **kwargs)

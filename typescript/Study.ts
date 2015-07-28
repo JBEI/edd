@@ -1252,6 +1252,7 @@ module StudyD {
         form.find('.line-meta').remove().end().find(':input').filter('[name^=line-]').val('');
         form.find('.cancel-link').remove();
         form.find('.bulk').addClass('off');
+        form.off('change.bulk');
         return form;
     }
 
@@ -1279,7 +1280,8 @@ module StudyD {
         form.find('[name=line-carbon_source_1]').val(record.carbon.join(','));
         form.find('[name=line-strains_0]').val(
                 record.strain.map((v) => (EDDData.Strains[v] || {}).name || '--').join(','));
-        form.find('[name=line-strains_1]').val(record.strain.join(','));
+        form.find('[name=line-strains_1]').val(
+                record.strain.map((v) => (EDDData.Strains[v] || {}).registry_id || '--').join(','));
         metaRow = form.find('.line-edit-meta');
         // Run through the collection of metadata, and add a form element entry for each
         $.each(record.meta, (key, value) => {
@@ -1317,7 +1319,12 @@ module StudyD {
         title = form.find('.discloseLink > a').text(text);
         // Update the button to read 'Edit Line'
         button = form.find('[name=action][value=line]').text(text);
-        form.find('.bulk').toggleClass('off', !plural);
+        if (plural) {
+            form.find('.bulk').prop('checked', false).removeClass('off');
+            form.on('change.bulk', ':input', (ev:JQueryEventObject) => {
+                $(ev.target).siblings('label').find('.bulk').prop('checked', true);
+            });
+        }
         // Add link to revert back to 'Add Line' form
         $('<a href="#">Cancel</a>').addClass('cancel-link').on('click', (ev) => {
             clearLineForm();
@@ -1575,80 +1582,6 @@ module StudyD {
         new StudyMetabolicMapChooser(EDDData.currentUserID, EDDData.currentStudyID, false,
                 callback);
     }
-
-
-    // // Direct the form to submit to the Study.cgi page
-    // export function submitToStudy(action) {
-    //     var form = <any>document.getElementById("assaysForm");
-    //     var formAction = <any>document.getElementById("assaysFormActionElement");
-    //     if (!form) {
-    //         console.log('Cannot find assaysForm form!');
-    //         return;
-    //     }
-    //     if (action && !formAction) {
-    //         console.log('Cannot find formAction input to embed action!');
-    //         return;
-    //     } else {
-    //         formAction.value = action;    
-    //     }
-    //     form.action = "Study.cgi";
-    //     form.submit();
-    // }
-
-
-    // // Direct the Study page to act on Lines with the information submitted
-    // export function takeLinesAction() {
-    //     var leForm = <any>document.getElementById("assaysForm");
-    //     var leActOn = <any>document.getElementById("actOn");
-    //     var leEARadioButton = <any>document.getElementById("exportlbutton");
-    //     var lePulldown = <any>document.getElementById("exportLinesAs");
-    //     if (!lePulldown || !leEARadioButton || !leForm || !leActOn) {
-    //         console.log("Page elements missing!");
-    //         return;
-    //     }
-
-    //     if (leEARadioButton.checked) {
-    //         if (lePulldown.value == 'csv') {
-    //             leForm.action = "StudyExport.cgi";
-    //         } else {
-    //             leForm.action = "StudySBMLExport.cgi";
-    //         }
-    //         leForm.submit();
-    //         return;
-    //     }
-    //     leActOn.value = "lines";
-    //     this.submitToStudy('Take Action');
-    // }
-
-
-    // // Direct the Study page to act on Assays with the information submitted
-    // export function takeAssaysAction() {
-    //     var leForm = <any>document.getElementById("assaysForm");
-    //     var leActOn = <any>document.getElementById("actOn");
-    //     if (!leForm || !leActOn) {
-    //         return;
-    //     }
-    //     leActOn.value = "assays";
-        
-    //     var leEARadioButton = <any>document.getElementById("exportAssaysButton");
-    //     // Direct the form to submit to the StudyExport.cgi page.
-    //     if (leEARadioButton.checked) {
-    //         var assayLevelInput = <HTMLInputElement>document.getElementById("assaylevelElement");
-    //         if (assayLevelInput) {
-    //             assayLevelInput.value = "1";
-    //         }
-    //         leForm.action = "StudyExport.cgi";
-    //         leForm.submit();
-    //         return;
-    //     }
-    //     var leEMRadioButton = <any>document.getElementById("editMeasurementsButton");
-    //     if (leEMRadioButton.checked) {
-    //         leForm.action = "AssayTableDataEdit.cgi";
-    //         leForm.submit();
-    //         return;
-    //     }
-    //     this.submitToStudy('Take Action');
-    // }
 };
 
 
