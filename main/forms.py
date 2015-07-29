@@ -2,6 +2,7 @@ from copy import deepcopy
 from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.contrib.postgres.forms import HStoreField
 from django.core.exceptions import ValidationError
 from django.db.models.base import Model
 from django.db.models.manager import BaseManager
@@ -148,7 +149,7 @@ class RegistryAutocompleteWidget(AutocompleteWidget):
                     return value
             except Exception, e:
                 # TODO set up logging
-                raise e
+                pass
         return None
 
     def value_from_datadict(self, data, files, name):
@@ -262,6 +263,18 @@ class CreateCommentForm(forms.ModelForm):
             c.save()
         return c
 
+class EDDHStoreField(HStoreField):
+    def to_python(self, value):
+        if not value:
+            return {}
+        try:
+            value = json.loads(value)
+        except ValueError:
+            raise ValidationError(
+                self.error_messages['invalid_json'],
+                code='invalid_json',
+            )
+        return value
 
 class LineForm(forms.ModelForm):
     """ Form to create/edit a line. """
@@ -306,6 +319,11 @@ class LineForm(forms.ModelForm):
                 )
         # make sure strain is keyed by registry_id instead of pk
         self.fields['strains'].to_field_name = 'registry_id'
+        # keep a flag for bulk edit, treats meta_store slightly differently
+        self._bulk = False
+        # override form field handling of HStore
+        meta = self.fields['meta_store']
+        meta.to_python = EDDHStoreField.to_python.__get__(meta, EDDHStoreField)
 
     @classmethod
     def initial_from_model(cls, line, prefix=None):
@@ -327,15 +345,39 @@ class LineForm(forms.ModelForm):
         return initial
 
     def check_bulk_edit(self):
+        self._bulk = True
         exclude = []
         # Look for "bulk-edit" checkboxes for each field
-        for fieldname, field in self.fields.items():
-            check = '_bulk_%s' % (fieldname)
+        for field in self.visible_fields():
+            check = '_bulk_%s' % (field.name)
             if not self.data.has_key(check):
-                exclude.append(fieldname)
+                exclude.append(field.name)
         # remove fields without a check from self, preventing processing
         for fieldname in exclude:
+            print("Removing %s from form" % (fieldname,))
             del self.fields[fieldname]
+
+    def clean_meta_store(self):
+        # go through and delete any keys with None values
+        meta = self.cleaned_data['meta_store']
+        print("Cleaning meta_store == %s" % (meta, ))
+        none_keys = []
+        for key, value in meta.items():
+            if value is None:
+                none_keys.append(key)
+        for key in none_keys:
+            print("Removing None-valued key %s from meta" % (key, ))
+            del meta[key]
+        if self.is_editing() and self._bulk:
+            print("Bulk edit updating meta_store")
+            print("instance.meta_store == %s" % (self.instance.meta_store, ))
+            print("meta == %s" % (meta, ))
+            in_place = {}
+            in_place.update(self.instance.meta_store)
+            in_place.update(meta)
+            meta = in_place
+            print("Value returning == %s" % (meta, ))
+        return meta
 
     def full_clean(self):
         # Validation from the RegistryAutocompleteWidget never gets caught in default handlers
