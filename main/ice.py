@@ -10,6 +10,7 @@ import requests
 
 
 class HmacAuth(AuthBase):
+    # TODO this value needs to be pulled out into a server.cfg key
     edd_key = 'yJwU0chpercYs/R4YmCUxhbRZBHM4WqpO3ZH0ZW6+4X+/aTodSGTI2w5jeBxWgJXNN1JNQIg02Ic3ZnZtSEVYA=='
 
     def __init__(self, ident=None, settings_key='default'):
@@ -18,18 +19,20 @@ class HmacAuth(AuthBase):
 
     def __call__(self, request):
         sig = self.build_signature(request)
+        # TODO handle None == self.ident
         header = ':'.join(('1', 'edd', self.ident.email, sig))
         request.headers['Authorization'] = header
         return request
 
     def build_message(self, request):
         url = urlparse(request.url)
+        # TODO handle None == self.ident
         msg = '\n'.join((self.ident.email,
                          request.method,
                          url.netloc,
                          url.path,
                          self.sort_parameters(url.query),
-                         request.body))
+                         request.body or ''))
         return msg
 
     def build_signature(self, request):
@@ -54,6 +57,14 @@ class IceApi(object):
         else:
             self.url = 'https://registry-test.jbei.org'
 
+    def fetch_part(self, record_id):
+        url = self.url + '/rest/parts/' + record_id
+        auth = HmacAuth(ident=self.ident)
+        response = requests.request('GET', url, auth=auth)
+        if response.status_code == requests.codes.ok:
+            return (response.json(), url, )
+        return None
+
     def link_study_to_part(self, study, strain):
         url = self.url + '/rest/parts/' + strain.registry_id + '/experiments'
         auth = HmacAuth(ident=self.ident)
@@ -70,7 +81,6 @@ class IceApi(object):
                              data=json.dumps(data),
                              headers={ 'Content-Type': 'application/json; charset=utf8' },
                              )
-        pass
 
     def search_for_part(self, query):
         if self.ident is None:

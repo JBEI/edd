@@ -141,7 +141,7 @@
             <div class="clear"></div>
         </div>
         <div class="sectionContent discloseBody">
-            <form action="" class="line-edit" method="POST">
+            <form action="" class="line-edit edd-form" method="POST">
                 {% csrf_token %}
                 {{ new_line.as_p }}
                 <p class="line-edit-meta">
@@ -191,7 +191,7 @@
             <div class="sectionHead">
                 <span class="discloseLink"><a href="#">{% if new_assay.is_editing %}Edit Assay{% else %}Add Assays To Selected Lines{% endif %}</a></span>
             </div>
-            <div class="sectionContent discloseBody assay-edit">
+            <div class="sectionContent discloseBody assay-edit edd-form">
                 {{ new_assay.as_p }}
                 <button type="submit" name="action" value="assay">{% if new_assay.is_editing %}Edit Assay{% else %}Add Assay{% endif %}</button>
             </div>
@@ -227,7 +227,7 @@
             <div class="sectionHead">
                 <span class="discloseLink"><a href="#">Add Measurements To Selected Assays</a></span>
             </div>
-            <div class="sectionContent discloseBody measurement-create">
+            <div class="sectionContent discloseBody measurement-create edd-form">
                 {{ new_measurement.as_p }}
                 <button type="submit" name="action" value="measurement">Add Measurement</button>
             </div>

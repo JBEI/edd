@@ -116,11 +116,6 @@ declare module StudyD {
     function queueMainGraphRemake(force?: boolean): void;
     function editAssay(index: number): void;
     function editLine(index: number): void;
-    function addMetaboliteRow(): void;
-    function removeMeasurementTypeRow(order: any): void;
-    function redrawMeasurementTypeRows(): void;
-    function setAttachmentDescription(element: any, attachmentID: any, newDescription: any): void;
-    function initDescriptionEditFields(): void;
     function onChangedMetabolicMap(): void;
     function rebuildCarbonBalanceGraphs(columnIndex: number): void;
     function onClickedMetabolicMapName(): void;

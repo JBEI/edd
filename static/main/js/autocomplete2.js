@@ -31,7 +31,8 @@ var EDD_auto = EDD_auto || {};
             ],
         "Strain" : [
             new AutoColumn('Part ID', '100px', 'partId'),
-            new AutoColumn('Name', '200px', 'name')
+            new AutoColumn('Name', '150px', 'name'),
+            new AutoColumn('Description', '200px', 'shortDescription')
             ],
         "CarbonSource" : [
             new AutoColumn('Name', '150px', 'name'),
@@ -139,7 +140,7 @@ EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(selector, 
                 display = record[display_key] || '';
                 value = record[value_key] || '';
                 // assign value of selected item ID to sibling hidden input
-                $(this).val(display).next('input[type=hidden]').val(value);
+                $(this).val(display).trigger('change').next('input[type=hidden]').val(value);
             }
             return false;
         },

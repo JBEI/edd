@@ -691,13 +691,12 @@ var StudyD;
         });
         $('form.line-edit').on('change', '.line-meta > :input', function (ev) {
             // watch for changes to metadata values, and serialize to the meta_store field
-            var form = $(ev.target).closest('form'), meta = {}, value;
+            var form = $(ev.target).closest('form'), metaIn = form.find('[name=line-meta_store]'), meta = JSON.parse(metaIn.val() || '{}');
             form.find('.line-meta > :input').each(function (i, input) {
                 var key = $(input).attr('id').match(/-(\d+)$/)[1];
                 meta[key] = $(input).val();
             });
-            value = JSON.stringify(meta);
-            form.find('[name=line-meta_store]').val(value);
+            metaIn.val(JSON.stringify(meta));
         }).on('click', '.line-meta-add', function (ev) {
             // make metadata Add Value button work and not submit the form
             var addrow = $(ev.target).closest('.line-edit-meta'), type, value;
@@ -708,6 +707,12 @@ var StudyD;
                 insertLineMetadataRow(addrow, type, value).find(':input').trigger('change');
             }
             return false;
+        }).on('click', '.meta-remove', function (ev) {
+            // remove metadata row and insert null value for the metadata key
+            var form = $(ev.target).closest('form'), metaRow = $(ev.target).closest('.line-meta'), metaIn = form.find('[name=line-meta_store]'), meta = JSON.parse(metaIn.val() || '{}'), key = metaRow.attr('id').match(/-(\d+)$/)[1];
+            meta[key] = null;
+            metaIn.val(JSON.stringify(meta));
+            metaRow.remove();
         });
     }
     StudyD.prepareIt = prepareIt;
@@ -819,17 +824,24 @@ var StudyD;
         $('#separateAxesCheckbox').on('change', function () { return _this.queueMainGraphRemake(true); });
         // Enable edit lines button
         $('#editLineButton').on('click', function (ev) {
-            var button = $(ev.target), data = button.data(), form = clearLineForm();
+            var button = $(ev.target), data = button.data(), form = clearLineForm(), allMeta = {}, metaRow;
             if (data.ids.length === 1) {
                 fillLineForm(form, EDDData.Lines[data.ids[0]]);
+            }
+            else {
+                // compute used metadata fields on all data.ids, insert metadata rows?
+                data.ids.map(function (id) { return EDDData.Lines[id] || {}; }).forEach(function (line) {
+                    $.extend(allMeta, line.meta || {});
+                });
+                metaRow = form.find('.line-edit-meta');
+                // Run through the collection of metadata, and add a form element entry for each
+                $.each(allMeta, function (key) { return insertLineMetadataRow(metaRow, key, ''); });
             }
             updateUILineForm(form, data.count > 1);
             scrollToForm(form);
             form.find('[name=line-ids]').val(data.ids.join(','));
             return false;
         });
-        // Initialize the description edit fields.
-        this.initDescriptionEditFields();
         // Hacky button for changing the metabolic map
         $("#metabolicMapName").click(function () { return _this.onClickedMetabolicMapName(); });
         requestAllMetaboliteData(this);
@@ -1105,13 +1117,17 @@ var StudyD;
     function clearAssayForm() {
         var form = $('#id_assay-assay_id').closest('.disclose');
         form.find('[name^=assay-]').val('').end().find('.cancel-link').remove();
+        form.find('.errorlist').remove();
         return form;
     }
     function clearLineForm() {
         var form = $('#id_line-ids').closest('.disclose');
-        form.find('.line-meta').remove().end().find(':input').filter('[name^=line-]').val('');
+        form.find('.line-meta').remove();
+        form.find(':input').filter('[name^=line-]').val('');
+        form.find('.errorlist').remove();
         form.find('.cancel-link').remove();
         form.find('.bulk').addClass('off');
+        form.off('change.bulk');
         return form;
     }
     function fillAssayForm(form, record) {
@@ -1135,7 +1151,7 @@ var StudyD;
         form.find('[name=line-carbon_source_0]').val(record.carbon.map(function (v) { return (EDDData.CSources[v] || {}).name || '--'; }).join(','));
         form.find('[name=line-carbon_source_1]').val(record.carbon.join(','));
         form.find('[name=line-strains_0]').val(record.strain.map(function (v) { return (EDDData.Strains[v] || {}).name || '--'; }).join(','));
-        form.find('[name=line-strains_1]').val(record.strain.join(','));
+        form.find('[name=line-strains_1]').val(record.strain.map(function (v) { return (EDDData.Strains[v] || {}).registry_id || '--'; }).join(','));
         metaRow = form.find('.line-edit-meta');
         // Run through the collection of metadata, and add a form element entry for each
         $.each(record.meta, function (key, value) {
@@ -1170,7 +1186,12 @@ var StudyD;
         title = form.find('.discloseLink > a').text(text);
         // Update the button to read 'Edit Line'
         button = form.find('[name=action][value=line]').text(text);
-        form.find('.bulk').toggleClass('off', !plural);
+        if (plural) {
+            form.find('.bulk').prop('checked', false).removeClass('off');
+            form.on('change.bulk', ':input', function (ev) {
+                $(ev.target).siblings('label').find('.bulk').prop('checked', true);
+            });
+        }
         // Add link to revert back to 'Add Line' form
         $('<a href="#">Cancel</a>').addClass('cancel-link').on('click', function (ev) {
             clearLineForm();
@@ -1184,14 +1205,15 @@ var StudyD;
         row = $('<p>').attr('id', 'row_' + id).addClass('line-meta').insertBefore(refRow);
         type = EDDData.MetaDataTypes[key];
         label = $('<label>').attr('for', 'id_' + id).text(type.name).appendTo(row);
+        // bulk checkbox?
         input = $('<input type="text">').attr('id', 'id_' + id).val(value).appendTo(row);
         if (type.pre) {
             $('<span>').addClass('meta-prefix').text(type.pre).insertBefore(input);
         }
+        $('<span>').addClass('meta-remove').text('Remove').insertAfter(input);
         if (type.postfix) {
             $('<span>').addClass('meta-postfix').text(type.postfix).insertAfter(input);
         }
-        // TODO add a remove button
         return row;
     }
     function editAssay(index) {
@@ -1218,134 +1240,6 @@ var StudyD;
         scrollToForm(form);
     }
     StudyD.editLine = editLine;
-    function addMetaboliteRow() {
-        // Search for an old row that's been disabled, and if we find one,
-        // re-enable it and stick it on the end of the array.
-        var turnedOffIndex = -1;
-        for (var j = 0; j < this.mTypeEntries.length; j++) {
-            if (this.mTypeEntries[j].disabled == true) {
-                turnedOffIndex = j;
-                break;
-            }
-        }
-        if (turnedOffIndex > -1) {
-            var toAddArray = this.mTypeEntries.splice(turnedOffIndex, 1);
-            var toAdd = toAddArray[0];
-            toAdd.disabled = false;
-            this.mTypeEntries.push(toAdd);
-        }
-        else {
-            var firstRow = false;
-            // If this is the first row we're creating, we create it a little differently
-            if (this.mTypeEntries.length == 0) {
-                firstRow = true;
-            }
-            var order = this.mTypeEntries.length;
-            var rtr = document.createElement("tr");
-            rtr.className = "multientrybuttonrow";
-            var aTD = document.createElement("td");
-            rtr.appendChild(aTD);
-            if (firstRow) {
-                var p = document.createElement("p");
-                aTD.appendChild(p);
-                p.appendChild(document.createTextNode("Metabolite Type(s):"));
-            }
-            var mQAutocomplete = EDDAutoComplete.createAutoCompleteContainer("measurementcompartment", 4, "assaycomp" + order, '', 0);
-            aTD = document.createElement("td");
-            rtr.appendChild(aTD);
-            mQAutocomplete.inputElement.style.marginRight = "2px";
-            aTD.appendChild(mQAutocomplete.inputElement);
-            aTD.appendChild(mQAutocomplete.hiddenInputElement);
-            var mTypeAutocomplete = EDDAutoComplete.createAutoCompleteContainer("metabolite", 45, "assaymt" + order, '', 0);
-            aTD = document.createElement("td");
-            rtr.appendChild(aTD);
-            mTypeAutocomplete.inputElement.style.marginRight = "2px";
-            aTD.appendChild(mTypeAutocomplete.inputElement);
-            aTD.appendChild(mTypeAutocomplete.hiddenInputElement);
-            var unitsAutocomplete = EDDAutoComplete.createAutoCompleteContainer("units", 15, "assayunits" + order, '', 0);
-            aTD = document.createElement("td");
-            rtr.appendChild(aTD);
-            aTD.appendChild(unitsAutocomplete.inputElement);
-            aTD.appendChild(unitsAutocomplete.hiddenInputElement);
-            aTD = document.createElement("td");
-            rtr.appendChild(aTD);
-            var buttonSpan = document.createElement("div");
-            buttonSpan.className = "multientrybutton";
-            aTD.appendChild(buttonSpan);
-            if (firstRow) {
-                var buttonImg = document.createElement("img");
-                buttonImg.setAttribute('src', "/static/main/images/plus.png");
-                buttonImg.style.marginTop = "1px";
-                var oc = "StudyD.addMetaboliteRow();";
-                buttonImg.setAttribute('onclick', oc);
-                buttonSpan.appendChild(buttonImg);
-            }
-            else {
-                var buttonImg = document.createElement("img");
-                buttonImg.setAttribute('src', "/static/main/images/minus.png");
-                buttonImg.style.marginTop = "1px";
-                var oc = "StudyD.removeMeasurementTypeRow(" + order + ");";
-                buttonImg.setAttribute('onclick', oc);
-                buttonSpan.appendChild(buttonImg);
-            }
-            var newRowRecord = {
-                row: rtr,
-                mQAutocomplete: mQAutocomplete,
-                mTypeAutocomplete: mTypeAutocomplete,
-                unitsAutocomplete: unitsAutocomplete,
-                label: order,
-                initialized: false,
-                disabled: false
-            };
-            this.mTypeEntries.push(newRowRecord);
-        }
-        this.redrawMeasurementTypeRows();
-    }
-    StudyD.addMetaboliteRow = addMetaboliteRow;
-    function removeMeasurementTypeRow(order) {
-        for (var j = 0; j < this.mTypeEntries.length; j++) {
-            if (this.mTypeEntries[j].label == order) {
-                this.mTypeEntries[j].disabled = true;
-                break;
-            }
-        }
-        this.redrawMeasurementTypeRows();
-    }
-    StudyD.removeMeasurementTypeRow = removeMeasurementTypeRow;
-    function redrawMeasurementTypeRows() {
-        var measurementTypeTableBody = document.getElementById("measurementTypeTableBody");
-        if (!measurementTypeTableBody)
-            return;
-        while (measurementTypeTableBody.firstChild) {
-            measurementTypeTableBody.removeChild(measurementTypeTableBody.firstChild);
-        }
-        for (var j = 0; j < this.mTypeEntries.length; j++) {
-            var mte = this.mTypeEntries[j];
-            if (mte.disabled == false) {
-                measurementTypeTableBody.appendChild(mte.row);
-                if (mte.initialized == false) {
-                    mte.initialized = true;
-                    EDDAutoComplete.initializeElement(mte.mQAutocomplete.inputElement);
-                    mte.mQAutocomplete.initialized = 1;
-                    EDDAutoComplete.initializeElement(mte.mTypeAutocomplete.inputElement);
-                    mte.mTypeAutocomplete.initialized = 1;
-                    EDDAutoComplete.initializeElement(mte.unitsAutocomplete.inputElement);
-                    mte.unitsAutocomplete.initialized = 1;
-                }
-            }
-        }
-    }
-    StudyD.redrawMeasurementTypeRows = redrawMeasurementTypeRows;
-    // This is called by the LiveTextEdit control to set a new description for an attachemnt.
-    function setAttachmentDescription(element, attachmentID, newDescription) {
-        // TODO: call correct new URL for update
-    }
-    StudyD.setAttachmentDescription = setAttachmentDescription;
-    // This creates a LiveTextEdit object for each attachment description.
-    function initDescriptionEditFields() {
-        this.descriptionEditFields = [];
-    }
-    StudyD.initDescriptionEditFields = initDescriptionEditFields;
     function onChangedMetabolicMap() {
         if (this.metabolicMapName) {
             // Update the UI to show the new filename for the metabolic map.
