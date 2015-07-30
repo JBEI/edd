@@ -1,0 +1,23 @@
+{% extends "edd_base.html" %}
+{% load staticfiles %}
+
+
+{% block js_css %}
+    {{ block.super }}
+    {# TODO put any additional scripts or styles here #}
+{% endblock js_css %}
+
+
+{% block head_title %}
+    Profile: {{ profile_user.first_name }} {{ profile_user.last_name }} - Experiment Data Depot
+{% endblock head_title %}
+
+
+{% block body_title %}
+    <h1>{{ profile_user.first_name }} {{ profile_user.last_name }}</h1>
+{% endblock body_title %}
+
+
+{% block content %}
+    <div>Put content here</div>
+{% endblock content %}
