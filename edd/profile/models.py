@@ -4,6 +4,8 @@ from django.conf import settings
 from django.contrib.postgres.fields import HStoreField
 from django.db import models
 
+from main.models import Study
+
 
 class Institution(models.Model):
     """
@@ -32,6 +34,10 @@ class UserProfile(models.Model):
 
     def __str__(self):
         return str(self.user)
+
+    @property
+    def studies(self):
+        return Study.objects.filter(created__mod_by=self.user)
 
 
 class InstitutionID(models.Model):

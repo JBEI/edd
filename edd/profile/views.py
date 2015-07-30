@@ -17,7 +17,7 @@ def profile(request, username):
     except User.DoesNotExist, e:
         raise Http404("User does not exist")
     return render_to_response("edd/profile/profile.html",
-        dictionary={ 'profile_user': user, },
+        dictionary={ 'profile_user': user, 'profile': user.userprofile, },
         context_instance=RequestContext(request),
         )
 
