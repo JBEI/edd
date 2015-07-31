@@ -17,7 +17,7 @@ class DataGrid {
     private _tableBody:HTMLElement;
     private _tableHeaderCell:HTMLElement;
     private _waitBadge:HTMLElement;
-    tableTitleSpan:HTMLElement;
+    private tableTitleSpan:HTMLElement;
 
     private _headerRows:HTMLElement[];
     private _totalColumnCount:number;
@@ -41,10 +41,10 @@ class DataGrid {
     constructor(dataGridSpec:DataGridSpecBase) {
 
         // Use !! double-not operator to coerce truth-y/false-y values to booleans
-        Utl.JS.assert(!!dataGridSpec, "DataGrid needs to be supplied with a DataGridSpecBase-derived object.");
-        Utl.JS.assert(
-            !!(dataGridSpec.tableElement && dataGridSpec.tableSpec && dataGridSpec.tableHeaderSpec &&
-            dataGridSpec.tableColumnSpec),
+        Utl.JS.assert(!!dataGridSpec,
+            "DataGrid needs to be supplied with a DataGridSpecBase-derived object.");
+        Utl.JS.assert(!!(dataGridSpec.tableElement && dataGridSpec.tableSpec &&
+                dataGridSpec.tableHeaderSpec && dataGridSpec.tableColumnSpec),
             "DataGridSpecBase-derived object does not have enough to work with.");
 
         //
@@ -59,12 +59,13 @@ class DataGrid {
         this._table = dataGridSpec.tableElement;
         this._timers = {};
 
-        var tableBody = $(this._tableBody = document.createElement("tbody"));
+        var tableBody:JQuery = $(this._tableBody = document.createElement("tbody"));
 
         // First step: Blow away the old contents of the table
         $(this._table).empty()
             .attr({ 'cellpadding': 0, 'cellspacing': 0 })
-            .addClass('dataTable sortable dragboxes hastablecontrols')  // TODO: Most of these classes are probably not needed now
+            // TODO: Most of these classes are probably not needed now
+            .addClass('dataTable sortable dragboxes hastablecontrols')
             .append(tableBody);
 
         var tableHeaderRow = $(document.createElement("tr")).addClass('header');
@@ -876,28 +877,55 @@ class DataGrid {
         }
     }
 
+    private _basePayload():any {
+        var token:string = document.cookie.replace(
+            /(?:(?:^|.*;\s*)csrftoken\s*\=\s*([^;]*).*$)|^.*$/,
+            '$1');
+        return { 'csrfmiddlewaretoken': token };
+    }
+
+    private _columnSettingsKey():string {
+        return [ 'datagrid', this._spec.tableSpec.id, 'column' ].join('.');
+    }
+
+    private _fetchSettings(propKey:string, callback:(value:any)=>void):void {
+        $.ajax('/profile/settings/' + propKey, {
+            'dataType': 'json',
+            'success': (data:any):void => {
+                // data should be array of column names, but may arrive as null or JSON-string
+                data = data || [];
+                if (typeof data === 'string') {
+                    data = JSON.parse(data);
+                }
+                callback.call({}, data);
+            }
+        });
+    }
 
     // The server binds this. 'this' is a checkbox.
     private _updateColumnSettings():DataGrid {
-
-        // Fetch the all-important pagename attribute
-        var id = this._spec.tableSpec.id;
-        // Build an AJAX URL containing the required action and the pagename
-        var url = "PreferencesAjaxResp.cgi?action=_updateColumnSettings&pagename=" + encodeURIComponent(id);
-
-        // Query every checkbox in the column visibility pulldown
-        // and send its name and checked status back as part of the query.
-        this._spec.tableColumnGroupSpec.forEach((group, index) => {
-            if (!group.showInVisibilityList || !group.checkboxElement) {
-                return;
+        var propKey = this._columnSettingsKey(), setCol = [], unsetCol = [];
+        this._spec.tableColumnGroupSpec.forEach((col) => {
+            if (col.showInVisibilityList && col.checkboxElement) {
+                if (col.checkboxElement.checked) {
+                    setCol.push(col.name);
+                } else {
+                    unsetCol.push(col.name);
+                }
             }
-            var j = group.checkboxElement;
-            url += "&" + (index + 1) + "=" + encodeURIComponent(j.checked.toString());
         });
-        $.ajax({
-            url: url,
-            dataTypeString: "json",
-            success: function(data, textStatus, jqXHR) {}
+        this._fetchSettings(propKey, (data:any) => {
+            // filter out all the unset boxes
+            data = data.filter((name:string):boolean => unsetCol.indexOf(name) === -1);
+            // filter out all the set boxes already in the settings list
+            setCol = setCol.filter((name:string):boolean => data.indexOf(name) === -1);
+            // add any missing items
+            Array.prototype.push.apply(data, setCol);
+            // store new setting value
+            $.ajax('/profile/settings/' + propKey, {
+                'data': $.extend({}, this._basePayload(), { 'data': JSON.stringify(data) }),
+                'type': 'POST'
+            });
         });
         return this;
     }

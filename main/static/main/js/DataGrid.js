@@ -718,26 +718,52 @@ var DataGrid = (function () {
             this.scheduleTimer('_applyColumnVisibility', function () { return _this._applyColumnVisibility(); });
         }
     };
+    DataGrid.prototype._basePayload = function () {
+        var token = document.cookie.replace(/(?:(?:^|.*;\s*)csrftoken\s*\=\s*([^;]*).*$)|^.*$/, '$1');
+        return { 'csrfmiddlewaretoken': token };
+    };
+    DataGrid.prototype._columnSettingsKey = function () {
+        return ['datagrid', this._spec.tableSpec.id, 'column'].join('.');
+    };
+    DataGrid.prototype._fetchSettings = function (propKey, callback) {
+        $.ajax('/profile/settings/' + propKey, {
+            'dataType': 'json',
+            'success': function (data) {
+                // data should be array of column names, but may arrive as null or JSON-string
+                data = data || [];
+                if (typeof data === 'string') {
+                    data = JSON.parse(data);
+                }
+                callback.call({}, data);
+            }
+        });
+    };
     // The server binds this. 'this' is a checkbox.
     DataGrid.prototype._updateColumnSettings = function () {
-        // Fetch the all-important pagename attribute
-        var id = this._spec.tableSpec.id;
-        // Build an AJAX URL containing the required action and the pagename
-        var url = "PreferencesAjaxResp.cgi?action=_updateColumnSettings&pagename=" + encodeURIComponent(id);
-        // Query every checkbox in the column visibility pulldown
-        // and send its name and checked status back as part of the query.
-        this._spec.tableColumnGroupSpec.forEach(function (group, index) {
-            if (!group.showInVisibilityList || !group.checkboxElement) {
-                return;
+        var _this = this;
+        var propKey = this._columnSettingsKey(), setCol = [], unsetCol = [];
+        this._spec.tableColumnGroupSpec.forEach(function (col) {
+            if (col.showInVisibilityList && col.checkboxElement) {
+                if (col.checkboxElement.checked) {
+                    setCol.push(col.name);
+                }
+                else {
+                    unsetCol.push(col.name);
+                }
             }
-            var j = group.checkboxElement;
-            url += "&" + (index + 1) + "=" + encodeURIComponent(j.checked.toString());
         });
-        $.ajax({
-            url: url,
-            dataTypeString: "json",
-            success: function (data, textStatus, jqXHR) {
-            }
+        this._fetchSettings(propKey, function (data) {
+            // filter out all the unset boxes
+            data = data.filter(function (name) { return unsetCol.indexOf(name) === -1; });
+            // filter out all the set boxes already in the settings list
+            setCol = setCol.filter(function (name) { return data.indexOf(name) === -1; });
+            // add any missing items
+            Array.prototype.push.apply(data, setCol);
+            // store new setting value
+            $.ajax('/profile/settings/' + propKey, {
+                'data': $.extend({}, _this._basePayload(), { 'data': JSON.stringify(data) }),
+                'type': 'POST'
+            });
         });
         return this;
     };

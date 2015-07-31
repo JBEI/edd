@@ -8,7 +8,7 @@ declare class DataGrid {
     private _tableBody;
     private _tableHeaderCell;
     private _waitBadge;
-    tableTitleSpan: HTMLElement;
+    private tableTitleSpan;
     private _headerRows;
     private _totalColumnCount;
     private _recordElements;
@@ -58,6 +58,9 @@ declare class DataGrid {
     private _clickedColVisibilityControl(event);
     showColumn(columnIndex: number): void;
     hideColumn(columnIndex: number): void;
+    private _basePayload();
+    private _columnSettingsKey();
+    private _fetchSettings(propKey, callback);
     private _updateColumnSettings();
     scheduleTimer(uid: string, func: () => any): DataGrid;
     applyToRecordSet(func: (rows: DataGridDataRow[], id: string, spec: DataGridSpecBase, grid: DataGrid) => void, ids: string[]): DataGrid;
