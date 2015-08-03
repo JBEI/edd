@@ -739,20 +739,23 @@ var DataGrid = (function () {
                 else {
                     unsetCol.push(col.name);
                     if (!col.hiddenByDefault) {
-                        delCol.push(col.name);
+                        delCol.push('-' + col.name);
                     }
                 }
             }
         });
         this._fetchSettings(propKey, function (data) {
+            var inData = function (name) { return data.indexOf(name) === -1; };
             // filter out all the unset boxes
             data = data.filter(function (name) { return unsetCol.indexOf(name) === -1; });
             // filter out all the set boxes already in the settings list
-            setCol = setCol.filter(function (name) { return data.indexOf(name) === -1; });
+            setCol = setCol.filter(inData);
+            // filter out dupes in delCol
+            delCol = delCol.filter(inData);
             // add any missing items
             Array.prototype.push.apply(data, setCol);
             // mark non-default hide (i.e. default show) as explicitly excluded
-            Array.prototype.push.apply(data, delCol.map(function (name) { return '-' + name; }));
+            Array.prototype.push.apply(data, delCol);
             // store new setting value
             $.ajax('/profile/settings/' + propKey, {
                 'data': $.extend({}, _this._basePayload(), { 'data': JSON.stringify(data) }),

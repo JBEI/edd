@@ -899,20 +899,23 @@ class DataGrid {
                 } else {
                     unsetCol.push(col.name);
                     if (!col.hiddenByDefault) {
-                        delCol.push(col.name);
+                        delCol.push('-' + col.name);
                     }
                 }
             }
         });
         this._fetchSettings(propKey, (data:any) => {
+            var inData = (name:string):boolean => data.indexOf(name) === -1;
             // filter out all the unset boxes
             data = data.filter((name:string):boolean => unsetCol.indexOf(name) === -1);
             // filter out all the set boxes already in the settings list
-            setCol = setCol.filter((name:string):boolean => data.indexOf(name) === -1);
+            setCol = setCol.filter(inData);
+            // filter out dupes in delCol
+            delCol = delCol.filter(inData)
             // add any missing items
             Array.prototype.push.apply(data, setCol);
             // mark non-default hide (i.e. default show) as explicitly excluded
-            Array.prototype.push.apply(data, delCol.map((name:string) => '-' + name));
+            Array.prototype.push.apply(data, delCol);
             // store new setting value
             $.ajax('/profile/settings/' + propKey, {
                 'data': $.extend({}, this._basePayload(), { 'data': JSON.stringify(data) }),
