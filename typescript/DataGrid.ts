@@ -908,6 +908,10 @@ class DataGrid {
             var inData = (name:string):boolean => data.indexOf(name) === -1;
             // filter out all the unset boxes
             data = data.filter((name:string):boolean => unsetCol.indexOf(name) === -1);
+            // filter out all excluded that are now set
+            data = data.filter((name:string):boolean => {
+                return !(setCol.indexOf(name.substring(1)) !== -1 && name.indexOf('-') === 0);
+            });
             // filter out all the set boxes already in the settings list
             setCol = setCol.filter(inData);
             // filter out dupes in delCol
