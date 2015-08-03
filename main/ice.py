@@ -55,10 +55,10 @@ class IceApi(object):
         if url is not None:
             self.url = url
         else:
-            self.url = 'https://registry-test.jbei.org'
+            self.url = 'https://registry-test.jbei.org/'
 
     def fetch_part(self, record_id):
-        url = self.url + '/rest/parts/' + record_id
+        url = self.url + 'rest/parts/' + record_id
         auth = HmacAuth(ident=self.ident)
         response = requests.request('GET', url, auth=auth)
         if response.status_code == requests.codes.ok:
@@ -66,7 +66,7 @@ class IceApi(object):
         return None
 
     def link_study_to_part(self, study, strain):
-        url = self.url + '/rest/parts/' + strain.registry_id + '/experiments'
+        url = self.url + 'rest/parts/' + strain.registry_id + '/experiments'
         auth = HmacAuth(ident=self.ident)
         response = requests.request('GET', url, auth=auth)
         study_url = reverse('main:detail', kwargs={'pk':study.pk})
@@ -85,7 +85,7 @@ class IceApi(object):
     def search_for_part(self, query):
         if self.ident is None:
             raise RuntimeError('No user defined for ICE search')
-        url = self.url + '/rest/search'
+        url = self.url + 'rest/search'
         auth = HmacAuth(ident=self.ident)
         data = { 'queryString': query }
         headers = { 'Content-Type': 'application/json; charset=utf8' }

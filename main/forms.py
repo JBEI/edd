@@ -12,9 +12,11 @@ from main.ice import IceApi
 from main.models import *
 
 import json
+import logging
 
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 class AutocompleteWidget(forms.widgets.MultiWidget):
@@ -130,10 +132,9 @@ class RegistryAutocompleteWidget(AutocompleteWidget):
             Strain.objects.get(registry_id=value)
             return value
         except ValueError, e:
-            # TODO set up logging
-            pass
+            logger.error('Failed to load Strain with registry_id %s: %s' % (value, str(e), ))
         except Strain.DoesNotExist, e:
-            # attempt to create strain from ICE
+            logger.warning('No Strain found with registry_id %s, searching ICE' % (value, ))
             try:
                 up = Update.load_update()
                 ice = IceApi(ident=up.mod_by)
@@ -143,13 +144,13 @@ class RegistryAutocompleteWidget(AutocompleteWidget):
                         name=part['name'],
                         description=part['shortDescription'],
                         registry_id=part['recordId'],
-                        registry_url=url,
+                        registry_url=''.join((ice.url, 'entry/', str(part['id']), )),
                         )
                     strain.save()
                     return value
+                logger.error('No strain in ICE with registry_id %s' % (value, ))
             except Exception, e:
-                # TODO set up logging
-                pass
+                logger.error('Failed to load strain %s from ICE: %s' % (value, str(e)))
         return None
 
     def value_from_datadict(self, data, files, name):
@@ -354,29 +355,25 @@ class LineForm(forms.ModelForm):
                 exclude.append(field.name)
         # remove fields without a check from self, preventing processing
         for fieldname in exclude:
-            print("Removing %s from form" % (fieldname,))
+            # Removing excluded key from fields
             del self.fields[fieldname]
 
     def clean_meta_store(self):
         # go through and delete any keys with None values
         meta = self.cleaned_data['meta_store']
-        print("Cleaning meta_store == %s" % (meta, ))
         none_keys = []
         for key, value in meta.items():
             if value is None:
                 none_keys.append(key)
         for key in none_keys:
-            print("Removing None-valued key %s from meta" % (key, ))
+            # Removing None-valued key from meta
             del meta[key]
         if self.is_editing() and self._bulk:
-            print("Bulk edit updating meta_store")
-            print("instance.meta_store == %s" % (self.instance.meta_store, ))
-            print("meta == %s" % (meta, ))
+            # Bulk edit updating meta_store
             in_place = {}
             in_place.update(self.instance.meta_store)
             in_place.update(meta)
             meta = in_place
-            print("Value returning == %s" % (meta, ))
         return meta
 
     def full_clean(self):
