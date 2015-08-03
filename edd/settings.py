@@ -86,6 +86,7 @@ TEMPLATE_CONTEXT_PROCESSORS = TCP + (
 AUTHENTICATION_BACKENDS = (
     'django_auth_ldap.backend.LDAPBackend',
     'django.contrib.auth.backends.RemoteUserBackend',
+    'django.contrib.auth.backends.ModelBackend',
 )
 ROOT_URLCONF = 'edd.urls'
 WSGI_APPLICATION = 'edd.wsgi.application'
