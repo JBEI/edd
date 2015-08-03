@@ -86,8 +86,7 @@ class DataGrid {
         }
 
         // Apply the default column visibility settings.
-        // TODO: Read in the user-defined column visibility hash and apply it before first rendering the table
-        this.prepareColumnVisibility(null);
+        this.prepareColumnVisibility();
 
         var headerRows = this._headerRows = this._buildTableHeaders();
         this._headerRows.forEach((v) => tableBody.append(v));
@@ -313,21 +312,37 @@ class DataGrid {
             var menuColList = $(document.createElement("ul")).appendTo(menuBlock);
             // Add each hide-able group to the menu.
             // Note: We have to walk through this anew, because we're going to make use of the index 'i'.
-            this._spec.tableColumnGroupSpec.forEach((group, index) => {
-                if (!group.showInVisibilityList) {
-                    return;
+            this._spec.tableColumnGroupSpec.forEach((group:DataGridColumnGroupSpec, index:number) => {
+                var item, checkbox, id;
+                if (group.showInVisibilityList) {
+                    item = $('<li>').appendTo(menuColList);
+                    id = mainID + 'ColumnCheck' + index;
+                    checkbox = $('<input type="checkbox">')
+                            .appendTo(item)
+                            .attr('id', id)
+                            .data('column', group)
+                            .click(group, (e) => this._clickedColVisibilityControl(e));
+                    group.checkboxElement = checkbox[0];
+                    $('<label>').attr('for', id).text(group.name).appendTo(item);
+                    if (!group.currentlyHidden) {
+                        checkbox.prop('checked', true);
+                    }
                 }
-                var item = $(document.createElement("li")).appendTo(menuColList);
-                var id:string = mainID + 'ColumnCheckbox' + (index + 1);
-                var checkbox = $(group.checkboxElement = document.createElement("input"))
-                    .appendTo(item).attr({ 'id': id, 'name': id, 'value': index + 1 })
-                    .click((e) => this._clickedColVisibilityControl(e));
-                group.checkboxElement.type = 'checkbox'; // cannot set this via jQuery
-                if (!group.currentlyHidden) {
-                    checkbox.prop('checked', true);
-                }
-                $(document.createElement("label")).appendTo(item).attr('for', id).text(group.name);
             });
+            // update checks based on settings
+            this._fetchSettings(this._columnSettingsKey(), (data) => {
+                menuColList.find('li').find(':input').each((i, box) => {
+                    var $box = $(box), col = $box.data('column');
+                    if ((data.indexOf(col.name) === -1 && !!col.hiddenByDefault) ||
+                            data.indexOf('-' + col.name) > -1) {
+                        $box.prop('checked', false);
+                        this.hideColumn(col);
+                    } else {
+                        $box.prop('checked', true);
+                        this.showColumn(col);
+                    }
+                });
+            }, []);
         }
 
         return this;
@@ -348,21 +363,13 @@ class DataGrid {
 
 
     // Prepare the column visibility state for the table.
-    // If given a flagHash object, look in the object for attributes matching the column group IDs,
-    // and enable or disable the column groups accordingly.
     // This function should be called during instantiation, since it initializes the column visibility
     // variables that are referred to throughout the rest of the DataGrid class.
-    // TODO: Call the 'made visible' spec callback for any columns that are initially visible
-    prepareColumnVisibility(flagHash:{}) {
+    prepareColumnVisibility() {
         // First, run through a sequence of checks to set the 'currentlyHidden' attribute to a reasonable value.
-        this._spec.tableColumnGroupSpec.forEach((group, index) => {
+        this._spec.tableColumnGroupSpec.forEach((group:DataGridColumnGroupSpec) => {
             // Establish what the default is, before checking any passed-in column flags
             group.currentlyHidden = !!group.hiddenByDefault;
-            if (flagHash) {
-                // Column groups are numbered starting from 1, so when we prepare the 0th group,
-                // we need to check in the hash for the attribute 1.
-                group.currentlyHidden = !flagHash[index + 1];
-            }
             // Ensure that the necessary arrays are present to keep track of group members
             group.memberHeaders = group.memberHeaders || [];
             group.memberColumns = group.memberColumns || [];
@@ -370,7 +377,7 @@ class DataGrid {
 
         // Collect all the headers under their respective column groups
         this._spec.tableHeaderSpec.forEach((header) => {
-            var c = header.columnGroup;
+            var c:number = header.columnGroup;
             if (c && this._spec.tableColumnGroupSpec[c - 1]) {
                 this._spec.tableColumnGroupSpec[c - 1].memberHeaders.push(header);
             }
@@ -378,7 +385,7 @@ class DataGrid {
 
         // Collect all the columns (and in turn their cells) under their respective column groups
         this._spec.tableColumnSpec.forEach((col) => {
-            var c = col.columnGroup;
+            var c:number = col.columnGroup;
             if (c && this._spec.tableColumnGroupSpec[c - 1]) {
                 this._spec.tableColumnGroupSpec[c - 1].memberColumns.push(col);
             }
@@ -389,7 +396,7 @@ class DataGrid {
     // Read the current column visibility state and alter the styling of headers and cells to reflect it
 
     private _applyColumnVisibility():DataGrid {
-        this._spec.tableColumnGroupSpec.forEach((group) => {
+        this._spec.tableColumnGroupSpec.forEach((group:DataGridColumnGroupSpec) => {
             var hidden = group.currentlyHidden;
 
             group.memberHeaders.forEach((header) => $(header.element).toggleClass('off', hidden));
@@ -403,22 +410,13 @@ class DataGrid {
 
 
     private _applyColumnVisibilityToOneRecord(recordID:string):DataGrid {
-        this._spec.tableColumnGroupSpec.forEach((group) => {
+        this._spec.tableColumnGroupSpec.forEach((group:DataGridColumnGroupSpec) => {
             var hidden = group.currentlyHidden;
             group.memberColumns.forEach((column) => {
                 column.cellIndexAtID(recordID).forEach((c) => hidden ? c.hide() : c.unhide());
             });
         });
         return this;
-    }
-
-
-    // Return a copy of the array of DataGridDataCell objects, for the column at the given index in the spec.
-    getDataCellObjectsForColumnIndex(i:number):DataGridDataCell[] {
-        if (this._spec.tableColumnSpec[i]) {
-            return this._spec.tableColumnSpec[i].getEntireIndex();
-        }
-        return [];
     }
 
 
@@ -832,30 +830,23 @@ class DataGrid {
 
 
     // 'control' is a column visibility checkbox
-    private _clickedColVisibilityControl(event:Event):DataGrid {
-        var control:any = event.target;    // Grab the checkbox that sent the event
-        // Acquire the value in a way that doesn't make Typescript throw a hissy-fit
-        var val = parseInt(control.getAttribute('value'), 10) - 1;
-        if (control.checked) {
-            this.showColumn(val);
+    private _clickedColVisibilityControl(event:JQueryMouseEventObject):DataGrid {
+        var check = $(event.target), col = event.data;
+        if (check.prop('checked')) {
+            this.showColumn(col);
         } else {
-            this.hideColumn(val);
+            this.hideColumn(col);
         }
         return this;
     }
 
 
     // 'control' is a column visibility checkbox
-    showColumn(columnIndex:number):void {
-        // The value points to an entry in the column groups specification
-        if (!this._spec.tableColumnGroupSpec[columnIndex]) {
-            return;
-        }
-        var group = this._spec.tableColumnGroupSpec[columnIndex];
+    showColumn(group):void {
         if (group.currentlyHidden) {
             group.currentlyHidden = false;
             if (group.revealedCallback) {
-                group.revealedCallback(columnIndex, this._spec, this);
+                group.revealedCallback(this._spec, this);
             }
             this.scheduleTimer('_updateColumnSettings', () => this._updateColumnSettings());
             this.scheduleTimer('_applyColumnVisibility', () => this._applyColumnVisibility());
@@ -864,12 +855,7 @@ class DataGrid {
 
 
     // 'control' is a column visibility checkbox
-    hideColumn(columnIndex:number):void {
-        // The value points to an entry in the column groups specification
-        if (!this._spec.tableColumnGroupSpec[columnIndex]) {
-            return;
-        }
-        var group = this._spec.tableColumnGroupSpec[columnIndex];
+    hideColumn(group):void {
         if (!group.currentlyHidden) {
             group.currentlyHidden = true;
             this.scheduleTimer('_updateColumnSettings', () => this._updateColumnSettings());
@@ -888,14 +874,15 @@ class DataGrid {
         return [ 'datagrid', this._spec.tableSpec.id, 'column' ].join('.');
     }
 
-    private _fetchSettings(propKey:string, callback:(value:any)=>void):void {
+    private _fetchSettings(propKey:string, callback:(value:any)=>void, defaultValue?:any):void {
         $.ajax('/profile/settings/' + propKey, {
             'dataType': 'json',
             'success': (data:any):void => {
-                // data should be array of column names, but may arrive as null or JSON-string
-                data = data || [];
+                data = data || defaultValue;
                 if (typeof data === 'string') {
-                    data = JSON.parse(data);
+                    try {
+                        data = JSON.parse(data);
+                    } catch (e) { /* ParseError, just use string value */ }
                 }
                 callback.call({}, data);
             }
@@ -904,13 +891,16 @@ class DataGrid {
 
     // The server binds this. 'this' is a checkbox.
     private _updateColumnSettings():DataGrid {
-        var propKey = this._columnSettingsKey(), setCol = [], unsetCol = [];
+        var propKey = this._columnSettingsKey(), setCol = [], unsetCol = [], delCol = [];
         this._spec.tableColumnGroupSpec.forEach((col) => {
             if (col.showInVisibilityList && col.checkboxElement) {
                 if (col.checkboxElement.checked) {
                     setCol.push(col.name);
                 } else {
                     unsetCol.push(col.name);
+                    if (!col.hiddenByDefault) {
+                        delCol.push(col.name);
+                    }
                 }
             }
         });
@@ -921,12 +911,14 @@ class DataGrid {
             setCol = setCol.filter((name:string):boolean => data.indexOf(name) === -1);
             // add any missing items
             Array.prototype.push.apply(data, setCol);
+            // mark non-default hide (i.e. default show) as explicitly excluded
+            Array.prototype.push.apply(data, delCol.map((name:string) => '-' + name));
             // store new setting value
             $.ajax('/profile/settings/' + propKey, {
                 'data': $.extend({}, this._basePayload(), { 'data': JSON.stringify(data) }),
                 'type': 'POST'
             });
-        });
+        }, []);
         return this;
     }
 
@@ -1990,9 +1982,10 @@ class DataGridColumnSpec {
     getEntireIndex():DataGridDataCell[] {
         var cells:DataGridDataCell[] = [];
         for (var key in this.createdDataCellObjects) {
-            var a = this.createdDataCellObjects[key];
+            var a:DataGridDataCell[] = this.createdDataCellObjects[key];
             if (a) {
-                a.forEach((b) => { cells.push(b)});    // Much faster than repeated concats
+                // Much faster than repeated concats
+                Array.prototype.push.apply(cells, a);
             }
         }
         return cells;
@@ -2007,7 +2000,7 @@ class DataGridColumnGroupSpec {
     showInVisibilityList:boolean;   // Whether to place this column in the show/hide list
     hiddenByDefault:boolean;        // Flag if group is hidden by default
     // callback for when a column transitions from hidden to visible
-    revealedCallback:(index:number, spec:DataGridSpecBase, grid:DataGrid)=>void;
+    revealedCallback:(spec:DataGridSpecBase, grid:DataGrid)=>void;
 
     //
     // These are internal values that should not be defined by spec

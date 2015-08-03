@@ -110,14 +110,14 @@ declare module StudyD {
     function repopulateFilteringSection(): void;
     function processCarbonBalanceData(): void;
     function prepareAfterLinesTable(): void;
-    function carbonBalanceColumnRevealedCallback(index: any, spec: DataGridSpecLines, dataGridObj: DataGrid): void;
+    function carbonBalanceColumnRevealedCallback(spec: DataGridSpecLines, dataGridObj: DataGrid): void;
     function queueLinesActionPanelShow(): void;
     function queueAssaysActionPanelShow(): void;
     function queueMainGraphRemake(force?: boolean): void;
     function editAssay(index: number): void;
     function editLine(index: number): void;
     function onChangedMetabolicMap(): void;
-    function rebuildCarbonBalanceGraphs(columnIndex: number): void;
+    function rebuildCarbonBalanceGraphs(): void;
     function onClickedMetabolicMapName(): void;
 }
 declare class DataGridSpecLines extends DataGridSpecBase {
@@ -125,6 +125,7 @@ declare class DataGridSpecLines extends DataGridSpecBase {
     groupIDsInOrder: any;
     groupIDsToGroupIndexes: any;
     groupIDsToGroupNames: any;
+    carbonBalanceCol: DataGridColumnSpec;
     carbonBalanceWidget: DGShowCarbonBalanceWidget;
     constructor();
     highlightCarbonBalanceWidget(v: boolean): void;

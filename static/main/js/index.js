@@ -36,12 +36,16 @@ var IndexPage;
         });
     }
     IndexPage.prepareTable = prepareTable;
-    // This creates an EditableElement object for each Study description that the user is allowed to edit.
+    // This creates an EditableElement object for each Study description that the user is allowed
+    // to edit.
     function initDescriptionEditFields() {
-        // Since we've already created the table, we can look into the spec and find the other objects created in the process.
-        // Under the specification for the "description" column, we find all the DataGridDataCell objects that belong to that column.
-        var descriptionCells = this.studiesDataGrid.getDataCellObjectsForColumnIndex(1);
-        var data = this.studiesDataGridSpec.data();
+        // Since we've already created the table, we can look into the spec and find the other
+        // objects created in the process.
+        // Under the specification for the "description" column, we find all the
+        // DataGridDataCell objects that belong to that column.
+        var descriptionCells, data;
+        descriptionCells = this.studiesDataGridSpec.descriptionCol.getEntireIndex();
+        data = this.studiesDataGridSpec.data();
         descriptionCells.forEach(function (cell) {
             if (data[cell.recordID].write) {
                 EditableElements.initializeElement({
@@ -194,7 +198,7 @@ var DataGridSpecStudies = (function (_super) {
         var self = this;
         return [
             new DataGridColumnSpec(1, this.generateStudyNameCells),
-            new DataGridColumnSpec(2, this.generateDescriptionCells),
+            this.descriptionCol = new DataGridColumnSpec(2, this.generateDescriptionCells),
             new DataGridColumnSpec(3, this.generateOwnerInitialsCells),
             new DataGridColumnSpec(4, this.generateOwnerNameCells),
             new DataGridColumnSpec(5, this.generateInstitutionCells),

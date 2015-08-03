@@ -929,8 +929,8 @@ var StudyD;
         context.processCarbonBalanceData();
         context.queueMainGraphRemake();
     }
-    function carbonBalanceColumnRevealedCallback(index, spec, dataGridObj) {
-        StudyD.rebuildCarbonBalanceGraphs(index);
+    function carbonBalanceColumnRevealedCallback(spec, dataGridObj) {
+        StudyD.rebuildCarbonBalanceGraphs();
     }
     StudyD.carbonBalanceColumnRevealedCallback = carbonBalanceColumnRevealedCallback;
     // Start a timer to wait before calling the routine that shows the actions panel.
@@ -1253,24 +1253,22 @@ var StudyD;
             this.carbonBalanceData.calculateCarbonBalances(this.metabolicMapID, this.biomassCalculation);
             // Rebuild the CB graphs.
             this.carbonBalanceDisplayIsFresh = false;
-            this.rebuildCarbonBalanceGraphs(5);
+            this.rebuildCarbonBalanceGraphs();
         }
     }
     StudyD.onChangedMetabolicMap = onChangedMetabolicMap;
-    // TODO: Use a special variable in the spec to get the right column object, not a lousy magic
-    // index number.
-    function rebuildCarbonBalanceGraphs(columnIndex) {
+    function rebuildCarbonBalanceGraphs() {
+        var _this = this;
+        var cellObjs;
         if (this.carbonBalanceDisplayIsFresh) {
             return;
         }
         // Drop any previously created Carbon Balance SVG elements from the DOM.
         this.carbonBalanceData.removeAllCBGraphs();
-        var cellObjs = this.linesDataGrid.getDataCellObjectsForColumnIndex(columnIndex);
-        for (var i = 0; i < cellObjs.length; i++) {
-            var lineID = cellObjs[i].recordID;
-            var element = cellObjs[i].cellElement;
-            this.carbonBalanceData.createCBGraphForLine(lineID, element);
-        }
+        cellObjs = this.linesDataGridSpec.carbonBalanceCol.getEntireIndex();
+        cellObjs.forEach(function (cell) {
+            _this.carbonBalanceData.createCBGraphForLine(cell.recordID, cell.cellElement);
+        });
         this.carbonBalanceDisplayIsFresh = true;
     }
     StudyD.rebuildCarbonBalanceGraphs = rebuildCarbonBalanceGraphs;
@@ -1595,7 +1593,7 @@ var DataGridSpecLines = (function (_super) {
             new DataGridColumnSpec(2, this.generateStrainNameCells),
             new DataGridColumnSpec(3, this.generateCarbonSourceCells),
             new DataGridColumnSpec(4, this.generateCarbonSourceLabelingCells),
-            new DataGridColumnSpec(5, this.generateCarbonBalanceBlankCells)
+            this.carbonBalanceCol = new DataGridColumnSpec(5, this.generateCarbonBalanceBlankCells)
         ];
         metaDataCols = this.metaDataIDsUsedInLines.map(function (id, index) {
             return new DataGridColumnSpec(6 + index, _this.makeMetaDataCellsGeneratorFunction(id));

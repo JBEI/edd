@@ -1054,9 +1054,9 @@ module StudyD {
     }
 
 
-    export function carbonBalanceColumnRevealedCallback(index:any, spec:DataGridSpecLines,
+    export function carbonBalanceColumnRevealedCallback(spec:DataGridSpecLines,
             dataGridObj:DataGrid) {
-        StudyD.rebuildCarbonBalanceGraphs(index);
+        StudyD.rebuildCarbonBalanceGraphs();
     }
 
 
@@ -1413,25 +1413,22 @@ module StudyD {
 
             // Rebuild the CB graphs.
             this.carbonBalanceDisplayIsFresh = false;
-            this.rebuildCarbonBalanceGraphs(5);
+            this.rebuildCarbonBalanceGraphs();
         }
     }
 
 
-    // TODO: Use a special variable in the spec to get the right column object, not a lousy magic
-    // index number.
-    export function rebuildCarbonBalanceGraphs(columnIndex:number) {
+    export function rebuildCarbonBalanceGraphs() {
+        var cellObjs:DataGridDataCell[];
         if (this.carbonBalanceDisplayIsFresh) {
             return;
         }
         // Drop any previously created Carbon Balance SVG elements from the DOM.
         this.carbonBalanceData.removeAllCBGraphs();
-        var cellObjs = this.linesDataGrid.getDataCellObjectsForColumnIndex(columnIndex);
-         for (var i=0; i < cellObjs.length; i++) {
-             var lineID = cellObjs[i].recordID;
-            var element = cellObjs[i].cellElement;
-            this.carbonBalanceData.createCBGraphForLine(lineID, element);
-        }
+        cellObjs = this.linesDataGridSpec.carbonBalanceCol.getEntireIndex();
+        cellObjs.forEach((cell:DataGridDataCell) => {
+            this.carbonBalanceData.createCBGraphForLine(cell.recordID, cell.cellElement);
+        });
         this.carbonBalanceDisplayIsFresh = true;
     }
 
@@ -1461,6 +1458,7 @@ class DataGridSpecLines extends DataGridSpecBase {
     groupIDsInOrder:any;
     groupIDsToGroupIndexes:any;
     groupIDsToGroupNames:any;
+    carbonBalanceCol:DataGridColumnSpec;
     carbonBalanceWidget:DGShowCarbonBalanceWidget;
 
 
@@ -1803,7 +1801,7 @@ class DataGridSpecLines extends DataGridSpecBase {
             new DataGridColumnSpec(3, this.generateCarbonSourceCells),
             new DataGridColumnSpec(4, this.generateCarbonSourceLabelingCells),
             // The Carbon Balance cells are populated by a callback, triggered when first displayed
-            new DataGridColumnSpec(5, this.generateCarbonBalanceBlankCells)
+            this.carbonBalanceCol = new DataGridColumnSpec(5, this.generateCarbonBalanceBlankCells)
         ];
         metaDataCols = this.metaDataIDsUsedInLines.map((id, index) => {
             return new DataGridColumnSpec(6 + index, this.makeMetaDataCellsGeneratorFunction(id));
