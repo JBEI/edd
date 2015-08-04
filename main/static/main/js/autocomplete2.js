@@ -10,6 +10,7 @@
 //
 
 var EDD_auto = EDD_auto || {};
+var EDDData = EDDData || {};
 (function ($) { // immediately invoked function to bind jQuery to $
 
     var AutoColumn = function AutoColumn(name, width, valueField) {
@@ -109,16 +110,16 @@ $(window).load(function () {
 
 // Sets up the multicolumn autocomplete widget.  Must be called after the
 // $(window).load handler above.
-EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(selector, model_name) {
-    var empty = {}, columns, display_key, value_key, cache;
+EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(selector, model_name, cache) {
+    var empty = {}, columns, display_key, value_key, cacheId;
     if (typeof model_name === "undefined") {
         throw Error("model_name must be defined!");
     }
     columns = EDD_auto.column_layouts[model_name] || [ new AutoColumn('Name', '300px', 'name') ];
     display_key = EDD_auto.display_keys[model_name] || 'name';
     value_key = EDD_auto.value_keys[model_name] || 'id';
-    cache = EDD_auto.value_cache[model_name] || ('cache_' + (++EDD_auto.cache_counter));
-    EDDData[cache] = EDDData[cache] || {};
+    cacheId = EDD_auto.value_cache[model_name] || ('cache_' + (++EDD_auto.cache_counter));
+    cache = cache || (EDDData[cacheId] = EDDData[cacheId] || {});
     empty[columns[0].valueField] = empty[0] = '<i>No Results Found</i>';
     columns.slice(1).forEach(function (column, index) {
         empty[column.valueField] = empty[index] = '';
@@ -135,7 +136,7 @@ EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(selector, 
             var cacheKey, record, display, value;
             if (ui.item) {
                 cacheKey = ui.item[value_key];
-                record = EDDData[cache][cacheKey] = EDDData[cache][cacheKey] || {};
+                record = cache[cacheKey] = cache[cacheKey] || {};
                 $.extend(record, ui.item);
                 display = record[display_key] || '';
                 value = record[value_key] || '';
@@ -169,7 +170,7 @@ EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(selector, 
         }
     }).on('blur', function (ev) {
         var hiddenId = $(this).next('input[type=hidden]').val(),
-            old = EDDData[cache][hiddenId] || {};
+            old = cache[hiddenId] || {};
         $(this).val(old[display_key] || '');
     });
 };
@@ -193,7 +194,8 @@ $(window).load(function () {
     ];
     setup_info.forEach(function (item) {
         var setup_func = function () {
-            EDD_auto.setup_field_autocomplete(this, item.klass, EDDData[item.dataField]);
+            var cache = EDDData[item.dataField] = EDDData[item.dataField] || {};
+            EDD_auto.setup_field_autocomplete(this, item.klass, cache);
         };
         $(item.selector).each(setup_func);
     });
