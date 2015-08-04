@@ -69,7 +69,7 @@
                 </dd>
             </dl>
         </div>
-        <div class="disclose discloseHide" id="attachments">
+        <div class="disclose{% if not new_attach.errors %} discloseHide{% endif %}" id="attachments">
             <div class="sectionChapter" id="attachmentsBanner">
                 <span class="discloseLink">Attachments ({{ study.attachments|length }})</span>
             </div>
@@ -78,7 +78,7 @@
                     {% include "main/include_attachments.html" %}
                 {% endwith %}
                 <div class="sectionActions">
-                    <form method="POST" enctype="multipart/form-data" class="attachments" action="">
+                    <form method="POST" enctype="multipart/form-data" class="attachments edd-form" action="">
                         {% csrf_token %}
                         {{ new_attach.as_p }}
                         <p><button type="submit" name="action" value="attach">Attach File</button></p>
@@ -86,7 +86,7 @@
                 </div>
             </div>
         </div>
-        <div class="disclose discloseHide" id="comments">
+        <div class="disclose{% if not new_comment.errors %} discloseHide{% endif %}" id="comments">
             <div class="sectionChapter" id="commentsBanner">
                 <span class="discloseLink">Comments ({{ study.comment_list|length }})</span>
             </div>
@@ -100,7 +100,7 @@
                 {% endfor %}
                 </ol>
                 <div class="sectionActions">
-                    <form method="POST" class="comments" action="">
+                    <form method="POST" class="comments edd-form" action="">
                         {% csrf_token %}
                         {{ new_comment.as_p }}
                         <p><button type="submit" name="action" value="comment">Comment</button></p>
@@ -223,7 +223,7 @@
             </div>
         </div>
 
-        <div class="pageSection minor disclose discloseHide" id="measurementMain">
+        <div class="pageSection minor disclose{% if not new_measurement.errors %} discloseHide{% endif %}" id="measurementMain">
             <div class="sectionHead">
                 <span class="discloseLink"><a href="#">Add Measurements To Selected Assays</a></span>
             </div>

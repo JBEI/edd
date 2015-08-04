@@ -6,6 +6,7 @@ TODO deleting a file may be a little too easy; should we require confirmation?
 -->
 {% endcomment %}
 <table cellpadding="0" cellspacing="0" class="dataTable sortable">
+  {% if attachments %}
   <tr class="columnLabels">
     <th class="sortheader smaller">Filename</th>
     <th class="sortheader smaller">Description</th>
@@ -13,6 +14,7 @@ TODO deleting a file may be a little too easy; should we require confirmation?
     <th class="sortheader smaller center">Added By</th>
     <th class="sortheader smaller">Date Added</th>
   </tr>
+  {% endif %}
   {% for attachment in attachments %}
   <tr class="stripeRow{% cycle 'A' 'B' %}">
     <td class="popupcell nowrap">

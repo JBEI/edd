@@ -710,13 +710,13 @@ div.pageSectionTabs > div {
 	padding-right:7px;
 }
 div.pageSectionTabs > div.active {
-	border-width:2px 2px 0px 2px;
-	padding-bottom:2px;
+	border-width:1px 1px 0px 1px;
+	padding-bottom:1px;
 	z-index:4;
 }
 div.pageSectionTabs > div.inactive {
 	cursor: pointer;
-	border-width:2px 2px 2px 2px;
+	border-width:1px;
 	padding-bottom:0px;
 }
 div.pageSectionTabs > div.inactive:hover {
@@ -1457,5 +1457,8 @@ ol.comment-list > li {
     font-size: 11px;
     margin-left: 6px;
     padding-left: 14px;
+}
+form.comments textarea {
+    width: 100%;
 }
 /* End of common styles */
