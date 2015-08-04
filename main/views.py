@@ -410,6 +410,23 @@ def study_assay_table_data (request, study) :
             "EDDData" : get_edddata_study(model),
         }, encoder=JSONDecimalEncoder)
 
+# /study/<study_id>/map/
+def study_map(request, study):
+    """ Request information on metabolic map associated with a study. """
+    try:
+        mmap = SBMLTemplate.objects.get(study=study)
+        return JsonResponse({
+                "name": mmap.name,
+                "id": mmap.pk,
+                "biomassCalculation": mmap.biomass_calculation,
+                },
+            encoder=JSONDecimalEncoder
+            )
+    except SBMLTemplate.DoesNotExist, e:
+        return JsonResponse({ "name": "", "biomassCalculation": -1, }, encoder=JSONDecimalEncoder)
+    except Exception, e:
+        raise e
+
 # /study/<study_id>/import
 # FIXME should have trailing slash?
 @ensure_csrf_cookie
@@ -713,6 +730,44 @@ def data_measurements (request) :
     data_misc = get_edddata_misc()
     data_meas.update(data_misc)
     return JsonResponse({ "EDDData" : data_meas }, encoder=JSONDecimalEncoder)
+
+# /data/sbml/
+def data_sbml(request):
+    all_sbml = SBMLTemplate.objects.all()
+    return JsonResponse(
+        [ sbml.to_json() for sbml in all_sbml ],
+        encoder=JSONDecimalEncoder,
+        safe=False)
+
+# /data/sbml/<sbml_id>/
+def data_sbml_info(request, sbml_id):
+    sbml = get_object_or_404(SBMLTemplate, pk=sbml_id)
+    return JsonResponse(sbml.to_json(), encoder=JSONDecimalEncoder)
+
+# /data/sbml/<sbml_id>/reactions/
+def data_sbml_reactions(request, sbml_id):
+    sbml = get_object_or_404(SBMLTemplate, pk=sbml_id)
+    # sbml_file is Attachment, file#1 is FileField, file#2 is File, read() returns data
+    contents = sbml.sbml_file.file.file.read()
+    import libsbml
+    read_sbml = libsbml.readSBMLFromString(contents)
+    if read_sbml.getNumErrors() > 0:
+        log = read_sbml.getErrorLog()
+        for i in range(read_sbml.getNumErrors()):
+            print("--- SBML ERROR --- " + log.getError(i).getMessage())
+        raise Exception("Could not load SBML")
+    model = read_sbml.getModel()
+    rlist = model.getListOfReactions()
+    return JsonResponse(
+        [{
+            "metabolicMapID": sbml_id,
+            "reactionName": r.getName(),
+            "reactionID": r.getId(),
+        } for r in rlist if 'biomass' in r.getId() ],
+        encoder=JSONDecimalEncoder,
+        safe=False
+        )
+
 
 # /data/strains
 def data_strains (request) :

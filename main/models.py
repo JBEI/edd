@@ -1261,6 +1261,13 @@ class SBMLTemplate(EDDObject):
         # may need to do a post-save signal; get sbml attachment and save in sbml_file
         super(SBMLTemplate, self).save(*args, **kwargs)
 
+    def to_json(self):
+        return {
+            "id": self.pk,
+            "name": self.name,
+            "biomassCalculation": self.biomass_calculation,
+        }
+
 
 class MetaboliteExchange (models.Model) :
     """

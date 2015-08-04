@@ -111,7 +111,9 @@ interface ServerBiomassSpeciesEntry {
 	eddMetaboliteName:string    // The metabolite in EDD (from metabolite_types.type_name that matches the species, or '' if not matched yet)
 }
 
-interface MetabolicMapChooserResult { (err:string, metabolicMapID?:number, metabolicMapFilename?:string, biomassCalculation?:number): void; };
+interface MetabolicMapChooserResult {
+	(err:string, metabolicMapID?:number, metabolicMapFilename?:string, biomassCalculation?:number): void;
+};
 
 
 
@@ -127,22 +129,20 @@ class StudyMetabolicMapChooser {
 
 		if (checkWithServerFirst) {
 			// First check the metabolic map associated with this study.
-			this._requestStudyMetabolicMap( (err:string, map:ServerMetabolicMap) => {
-				if (err) {
-					callback(err, 0);
+			this._requestStudyMetabolicMap( (map:ServerMetabolicMap) => {
+				if (map.id == -1) {
+					// This study hasn't bound to a metabolic map yet. 
+					// Let's show a chooser for the metabolic map.
+					this._chooseMetabolicMap(callback);
 				} else {
-					if (map.id == -1) {
-						// This study hasn't bound to a metabolic map yet. 
-						// Let's show a chooser for the metabolic map.
-						this._chooseMetabolicMap(callback);
-					} else {
-						// Ok, everything is fine. This should only happen if someone else setup the
-						// biomass calculation for this study in the background since the page was
-						// originally loaded.
-						this._dialogBox.term();
-						callback(null, map.id, map.name, map.biomassCalculation);
-					}
+					// Ok, everything is fine. This should only happen if someone else setup the
+					// biomass calculation for this study in the background since the page was
+					// originally loaded.
+					this._dialogBox.term();
+					callback.call({}, null, map.id, map.name, map.biomassCalculation);
 				}
+			}, (err:string) => {
+				callback.call({}, err);
 			});
 		} else {
 			// This study hasn't bound to a metabolic map yet. 
@@ -155,13 +155,7 @@ class StudyMetabolicMapChooser {
 	// Present the user with a list of SBML files to choose from. If they choose one
 	// and it still requires biomass calculations, we'll go on to _matchMetabolites().
 	private _chooseMetabolicMap( callback:MetabolicMapChooserResult ) {
-		this._requestMetabolicMapList( (err:string, metabolicMaps:ServerMetabolicMap[]) => {
-			// Handle errors.
-			if (err) {
-				this._dialogBox.showMessage(err, () => {callback(err);});				
-				return;
-			}
-
+		this._requestMetabolicMapList( (metabolicMaps:ServerMetabolicMap[]) => {
 			// Display the list.
 			this._dialogBox.clearContents();
 			this._dialogBox.addHTML( '<div>Please choose an SBML file to get the biomass data from.<br>This is necessary to calculate carbon balance.<br><br></div>' );
@@ -183,6 +177,8 @@ class StudyMetabolicMapChooser {
 				$(column).click( this._onMetabolicMapChosen.bind(this, map, callback) );
 			}
 			this._dialogBox.addElement(table.table);
+		}, (err:string) => {
+			this._dialogBox.showMessage(err, () => callback.call({}, err));
 		});
 	}
 
@@ -205,36 +201,30 @@ class StudyMetabolicMapChooser {
 
 
 	// Get info from the server..
-	private _requestStudyMetabolicMap( callback: (err:string, map:ServerMetabolicMap) => void ): void {
+	private _requestStudyMetabolicMap(
+			callback: (map:ServerMetabolicMap) => void,
+			error: (error:string) => void): void {
 		$.ajax({
-			type: "POST",
 			dataType: "json",
-	      	url: "FormAjaxResp.cgi", 
-	      	data: { "action":"requestStudyMetabolicMap", "studyID":this._studyID },
-	      	success: ( response:any ) => {
-	      		if (response.type == "Success") {
-	      			callback(null, response.data.map);
-	      		} else {
-	      			callback(response.message, null);
-	      		}
+	      	url: "map/",
+	      	success: callback,
+		    error: (jqXHR, status, errorText) => {
+		    	error.call({}, status + " " + errorText);
 		    }
 		});
 	}
 
 
 	// Get a list of metabolic maps that we could use for this study.
-	private _requestMetabolicMapList( callback: (err:string, metabolicMaps:ServerMetabolicMap[]) => void ):void {
+	private _requestMetabolicMapList(
+			callback: (metabolicMaps:ServerMetabolicMap[]) => void,
+			error: (error:string) => void):void {
 		$.ajax({
-			type: "POST",
 			dataType: "json",
-	      	url: "FormAjaxResp.cgi", 
-	      	data: { "action":"requestMetabolicMapList" },
-	      	success: ( response:any ) => {
-	      		if (response.type == "Success") {
-	      			callback(null, response.data.metabolicMaps);
-	      		} else {
-	      			callback(response.message, null);
-	      		}
+	      	url: "/data/sbml/", 
+	      	success: callback,
+	      	error: (jqXHR, status, errorText) => {
+		    	error.call({}, status + " " + errorText);
 		    }
 		});
 	}
@@ -445,18 +435,15 @@ class BiomassCalculationUI {
 
 
 	// Get a list of biomass reactions in the specified metabolic map.
-	private _requestBiomassReactionList( metabolicMapID:number, callback: (err:string, reactions:ServerBiomassReaction[]) => void ):void {
+	private _requestBiomassReactionList(metabolicMapID:number,
+			callback: (reactions:ServerBiomassReaction[]) => void,
+			error: (error:string) => void):void {
 		$.ajax({
-			type: "POST",
 			dataType: "json",
-	      	url: "FormAjaxResp.cgi", 
-	      	data: { "action":"requestBiomassReactionList", metabolicMapID:metabolicMapID },
-	      	success: ( response:any ) => {
-	      		if (response.type == "Success") {
-	      			callback(null, response.data.reactions);
-	      		} else {
-	      			callback(response.message, null);
-	      		}
+	      	url: "/data/sbml/" + metabolicMapID + "/reactions/",
+	      	success: callback,
+	      	error: (jqXHR, status, errorText) => {
+		    	error.call({}, status + " " + errorText);
 		    }
 		});
 	}
