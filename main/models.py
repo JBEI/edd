@@ -423,6 +423,7 @@ class Study(EDDObject):
     contact = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True,
                                 related_name='contact_study_set')
     contact_extra = models.TextField()
+    metabolic_map = models.ForeignKey('SBMLTemplate', blank=True, null=True)
 
     def to_solr_json(self):
         """
