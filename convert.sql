@@ -16,8 +16,8 @@ INSERT INTO public.auth_user(
 SELECT setval('public.auth_user_id_seq', max(id)) FROM public.auth_user;
 INSERT INTO public.profile_institution(institution_name)
     VALUES ('Lawrence Berkeley National Lab');
-INSERT INTO public.profile_user(initials, user_id)
-    SELECT u.initials, u.id
+INSERT INTO public.profile_user(initials, user_id, prefs)
+    SELECT u.initials, u.id, ''
     FROM old_edd.accounts u;
 -- Add everyone to LBNL, copy ldap ID if there
 INSERT INTO public.profile_institution_user(identifier, profile_id, institution_id)
