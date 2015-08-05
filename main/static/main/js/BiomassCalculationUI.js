@@ -1,3 +1,5 @@
+/// <reference path="typescript-declarations.d.ts" />
+/// <reference path="lib/jqueryui.d.ts" />
 /// <reference path="Utl.ts" />
 // At this point, this class is experimental. It's supposed to make modal dialog boxes
 // easier to create and configure.
@@ -42,15 +44,15 @@ var DialogBox = (function () {
         this.clearContents();
         offset = (typeof offset === 'undefined') ? this._height / 4 : offset;
         var el = Utl.JS.createElementFromString('<div>\
-				<div style="height:' + offset.toString() + 'px"></div>\
-		    	<table width="100%"> \
-		    	<tr><td align="center"> \
-			    	<div>' + caption + '<br><br> \
-			    		<img src="images/loading_spinner.gif"></img> \
-			    	</div> \
-			    </td></tr> \
-		    	</table>\
-		    	</div>');
+                <div style="height:' + offset.toString() + 'px"></div>\
+                <table width="100%"> \
+                <tr><td align="center"> \
+                    <div>' + caption + '<br><br> \
+                        <img src="images/loading_spinner.gif"></img> \
+                    </div> \
+                </td></tr> \
+                </table>\
+                </div>');
         this.addElement(el);
     };
     // NOTE: This will clear out the contents of the dialog and replace with the error text.
@@ -58,19 +60,20 @@ var DialogBox = (function () {
         this.clearContents();
         var offset = this._height / 4;
         var el = Utl.JS.createElementFromString('<div>\
-				<div style="height:' + offset.toString() + 'px"></div>\
-		    	<table width="100%"> \
-		    	<tr><td align="center"> \
-			    	<div>' + message + '</div> \
-			    </td></tr> \
-		    	</table>\
-		    	</div>');
+                <div style="height:' + offset.toString() + 'px"></div>\
+                <table width="100%"> \
+                <tr><td align="center"> \
+                    <div>' + message + '</div> \
+                </td></tr> \
+                </table>\
+                </div>');
         this.addElement(el);
     };
     return DialogBox;
 })();
 ;
-// This UI lets the user pick a metabolic map and a biomass reaction inside of it to use for the specified study.
+// This UI lets the user pick a metabolic map and a biomass reaction inside of it to use for the
+// specified study.
 var StudyMetabolicMapChooser = (function () {
     function StudyMetabolicMapChooser(userID, studyID, checkWithServerFirst, callback) {
         var _this = this;
@@ -81,7 +84,7 @@ var StudyMetabolicMapChooser = (function () {
         if (checkWithServerFirst) {
             // First check the metabolic map associated with this study.
             this._requestStudyMetabolicMap(function (map) {
-                if (map.id == -1) {
+                if (map.id === -1) {
                     // This study hasn't bound to a metabolic map yet. 
                     // Let's show a chooser for the metabolic map.
                     _this._chooseMetabolicMap(callback);
@@ -110,12 +113,11 @@ var StudyMetabolicMapChooser = (function () {
         this._requestMetabolicMapList(function (metabolicMaps) {
             // Display the list.
             _this._dialogBox.clearContents();
-            _this._dialogBox.addHTML('<div>Please choose an SBML file to get the biomass data from.<br>This is necessary to calculate carbon balance.<br><br></div>');
+            _this._dialogBox.addHTML('<div>Please choose an SBML file to get the biomass data from.' + '<br>This is necessary to calculate carbon balance.<br><br></div>');
             var table = new Utl.Table('metabolicMapChooser');
             table.table.setAttribute('cellspacing', '0');
             $(table.table).css('border-collapse', 'collapse');
-            for (var i = 0; i < metabolicMaps.length; i++) {
-                var map = metabolicMaps[i];
+            metabolicMaps.forEach(function (map) {
                 table.addRow();
                 var column = table.addColumn();
                 column.innerHTML = map.name;
@@ -124,7 +126,7 @@ var StudyMetabolicMapChooser = (function () {
                 $(column).css('border-bottom', '1px solid #000'); // make it look like a link
                 $(column).css('padding', '10px'); // make it look like a link
                 $(column).click(_this._onMetabolicMapChosen.bind(_this, map, callback));
-            }
+            });
             _this._dialogBox.addElement(table.table);
         }, function (err) {
             _this._dialogBox.showMessage(err, function () { return callback.call({}, err); });
@@ -137,9 +139,7 @@ var StudyMetabolicMapChooser = (function () {
         this._requestSetStudyMetabolicMap(this._studyID, map.id, function (err) {
             // Handle errors..
             if (err) {
-                _this._dialogBox.showMessage(err, function () {
-                    callback(err);
-                });
+                _this._dialogBox.showMessage(err, function () { return callback.call({}, err); });
                 return;
             }
             // Success! Close the dialog and return the result to our original caller.
@@ -174,9 +174,13 @@ var StudyMetabolicMapChooser = (function () {
             type: "POST",
             dataType: "json",
             url: "FormAjaxResp.cgi",
-            data: { "action": "setStudyMetabolicMap", studyID: studyID, metabolicMapID: metabolicMapID },
+            data: {
+                "action": "setStudyMetabolicMap",
+                "studyID": studyID,
+                "metabolicMapID": metabolicMapID
+            },
             success: function (response) {
-                if (response.type == "Success") {
+                if (response.type === "Success") {
                     callback(null);
                 }
                 else {
@@ -197,18 +201,18 @@ var BiomassCalculationUI = (function () {
         // First, have the user pick a biomass reaction.
         this._dialogBox.showWaitSpinner('Looking up biomass reactions...');
         this._requestBiomassReactionList(metabolicMapID, function (reactions) {
-            if (reactions.length == 0) {
+            var table;
+            if (!reactions.length) {
                 _this._dialogBox.showMessage('There are no biomass reactions in this metabolic map!');
             }
             else {
                 // Display the list of biomass reactions.
                 _this._dialogBox.clearContents();
-                _this._dialogBox.addHTML('<div>Please choose a biomass reaction to use for carbon balance.<br><br></div>');
-                var table = new Utl.Table('biomassReactionChooser');
+                _this._dialogBox.addHTML('<div>Please choose a biomass reaction to use for carbon balance.' + '<br><br></div>');
+                table = new Utl.Table('biomassReactionChooser');
                 table.table.setAttribute('cellspacing', '0');
                 $(table.table).css('border-collapse', 'collapse');
-                for (var i = 0; i < reactions.length; i++) {
-                    var reaction = reactions[i];
+                reactions.forEach(function (reaction) {
                     table.addRow();
                     var column = table.addColumn();
                     column.innerHTML = reaction.reactionName;
@@ -219,34 +223,34 @@ var BiomassCalculationUI = (function () {
                     $(column).click(function () {
                         _this._onBiomassReactionChosen(metabolicMapID, reaction, callback);
                     });
-                }
+                });
                 _this._dialogBox.addElement(table.table);
             }
         }, function (error) {
             _this._dialogBox.showMessage(error, function () { return callback.call({}, error); });
         });
     }
-    // The user chose a biomass reaction. Now we can show all the species in the reaction and match to EDD metabolites.
+    // The user chose a biomass reaction. Now we can show all the species in the reaction and
+    // match to EDD metabolites.
     BiomassCalculationUI.prototype._onBiomassReactionChosen = function (metabolicMapID, reaction, callback) {
         var _this = this;
         // Pull a list of all metabolites in this reaction.
         this._dialogBox.showWaitSpinner('Getting species list...');
         this._requestSpeciesListFromBiomassReaction(metabolicMapID, reaction.reactionID, function (speciesList) {
-            var table = new Utl.Table('biomassReactionChooser');
+            var table = new Utl.Table('biomassReactionChooser'), inputs = [];
             table.table.setAttribute('cellspacing', '0');
             $(table.table).css('border-collapse', 'collapse');
-            var inputs = [];
-            for (var i = 0; i < speciesList.length; i++) {
-                var species = speciesList[i];
+            speciesList.forEach(function (species, i) {
+                var speciesColumn, metaboliteColumn, autoCompContainer;
                 table.addRow();
-                var speciesColumn = table.addColumn();
+                speciesColumn = table.addColumn();
                 speciesColumn.innerHTML = species.sbmlSpeciesName;
-                var metaboliteColumn = table.addColumn();
-                var autoCompContainer = EDDAutoComplete.createAutoCompleteContainer("metabolite", 45, 'disamMType' + i, species.eddMetaboliteName, 0);
+                metaboliteColumn = table.addColumn();
+                autoCompContainer = EDDAutoComplete.createAutoCompleteContainer("metabolite", 45, 'disamMType' + i, species.eddMetaboliteName, 0);
                 metaboliteColumn.appendChild(autoCompContainer.inputElement);
                 metaboliteColumn.appendChild(autoCompContainer.hiddenInputElement);
                 inputs.push(autoCompContainer);
-            }
+            });
             _this._dialogBox.clearContents();
             _this._dialogBox.addHTML('<div>Please match SBML species to EDD metabolites.<br><br></div>');
             _this._dialogBox.addElement(table.table);
@@ -256,9 +260,7 @@ var BiomassCalculationUI = (function () {
             // Create an OK button at the bottom.
             var okButton = document.createElement('button');
             okButton.appendChild(document.createTextNode('OK'));
-            $(okButton).click(function () {
-                _this._onFinishedBiomassSpeciesEntry(speciesList, inputs, errorStringElement, metabolicMapID, reaction, callback);
-            });
+            $(okButton).click(function () { return _this._onFinishedBiomassSpeciesEntry(speciesList, inputs, errorStringElement, metabolicMapID, reaction, callback); });
             _this._dialogBox.addElement(okButton);
             for (var i = 0; i < inputs.length; i++) {
                 EDDAutoComplete.initializeElement(inputs[i].inputElement);
@@ -273,44 +275,41 @@ var BiomassCalculationUI = (function () {
     BiomassCalculationUI.prototype._onFinishedBiomassSpeciesEntry = function (speciesList, inputs, errorStringElement, metabolicMapID, reaction, callback) {
         var _this = this;
         // Are the inputs all filled in?
-        var numEmpty = 0;
-        for (var i = 0; i < inputs.length; i++) {
-            if (inputs[i].inputElement.value == '')
+        var numEmpty = 0, i = 0;
+        for (; i < inputs.length; i++) {
+            if (inputs[i].inputElement.value === '') {
                 ++numEmpty;
+            }
         }
-        if ($(errorStringElement).css('visibility') == 'hidden') {
-            // Show them an error message, but next time they click OK, just do the biomass calculation anyway.
+        if ($(errorStringElement).css('visibility') === 'hidden') {
+            // Show them an error message, but next time they click OK, just do the biomass
+            // calculation anyway.
             if (numEmpty > 0) {
                 $(errorStringElement).css('visibility', 'visible');
-                errorStringElement.innerHTML = '<br><br>There are ' + numEmpty.toString() + ' unmatched species. If you proceed, the biomass calculation will not include these. Click OK again to proceed anyway.<br><br>';
+                errorStringElement.innerHTML = '<br><br>There are ' + numEmpty.toString() + ' unmatched species. If you proceed, the biomass calculation will not' + ' include these. Click OK again to proceed anyway.<br><br>';
                 return;
             }
         }
         // Send everything to the server and get a biomass calculation back.
         this._dialogBox.showWaitSpinner('Calculating final biomass factor...');
         var matches = {};
-        for (var i = 0; i < inputs.length; i++) {
-            // This is super lame, but I don't see another way to recover an unsullied version of the
-            // metabolite name after Autocomplete has messed with it.
-            var dividerPos = inputs[i].inputElement.value.indexOf(' / ');
-            if (dividerPos == -1) {
-                matches[speciesList[i].sbmlSpeciesName] = inputs[i].inputElement.value;
+        for (i = 0; i < inputs.length; i++) {
+            // This is super lame, but I don't see another way to recover an unsullied version of
+            // the metabolite name after Autocomplete has messed with it.
+            var dividerPos = inputs[i].inputElement.value.indexOf(' / '), spName = speciesList[i].sbmlSpeciesName;
+            if (dividerPos === -1) {
+                matches[spName] = inputs[i].inputElement.value;
             }
             else {
-                matches[speciesList[i].sbmlSpeciesName] = inputs[i].inputElement.value.substring(0, dividerPos);
+                matches[spName] = inputs[i].inputElement.value.substring(0, dividerPos);
             }
         }
-        this._requestFinalBiomassComputation(metabolicMapID, reaction.reactionID, matches, function (err, finalBiomass) {
-            // Handle errors..
-            if (err) {
-                _this._dialogBox.showMessage(err, function () {
-                    callback(err);
-                });
-                return;
-            }
+        this._requestFinalBiomassComputation(metabolicMapID, reaction.reactionID, matches, function (finalBiomass) {
             // Finally, pass the biomass to our caller.
             _this._dialogBox.term();
             callback(null, finalBiomass);
+        }, function (error) {
+            _this._dialogBox.showMessage(error, function () { return callback.call({}, error); });
         });
     };
     // Get a list of biomass reactions in the specified metabolic map.
@@ -345,20 +344,17 @@ var BiomassCalculationUI = (function () {
             }
         });
     };
-    // This is where we pass all the species->metabolite matches to the server and ask it to finalize the 
-    BiomassCalculationUI.prototype._requestFinalBiomassComputation = function (metabolicMapID, reactionID, matches, callback) {
+    // This is where we pass all the species->metabolite matches to the server and ask it to
+    // finalize the 
+    BiomassCalculationUI.prototype._requestFinalBiomassComputation = function (metabolicMapID, reactionID, matches, callback, error) {
         $.ajax({
             type: "POST",
             dataType: "json",
-            url: "FormAjaxResp.cgi",
-            data: { "action": "requestFinalBiomassComputation", metabolicMapID: metabolicMapID, reactionID: reactionID, speciesMatches: JSON.stringify(matches) },
-            success: function (response) {
-                if (response.type == "Success") {
-                    callback(null, parseFloat(response.data.finalBiomass));
-                }
-                else {
-                    callback(response.message, null);
-                }
+            url: ["/data/sbml", metabolicMapID, "reactions", reactionID, "compute/"].join("/"),
+            data: { "species": matches },
+            success: callback,
+            error: function (jqXHR, status, errorText) {
+                error.call({}, status + " " + errorText);
             }
         });
     };
@@ -367,19 +363,21 @@ var BiomassCalculationUI = (function () {
 ;
 var FullStudyBiomassUI = (function () {
     function FullStudyBiomassUI(userID, studyID, callback) {
+        var chooser;
         // First, make sure a metabolic map is bound to the study.
-        new StudyMetabolicMapChooser(userID, studyID, true, function (err, metabolicMapID, metabolicMapFilename, biomassCalculation) {
+        chooser = new StudyMetabolicMapChooser(userID, studyID, true, function (err, metabolicMapID, metabolicMapFilename, biomassCalculation) {
+            var ui;
             // Handle errors.
             if (err) {
                 callback(err);
                 return;
             }
             // Now, make sure that this metabolic map has a biomass.
-            if (biomassCalculation == -1) {
+            if (biomassCalculation === -1) {
                 // The study has a metabolic map, but no biomass has been calculated for it yet.
                 // We need to match all metabolites so the server can calculation biomass.
-                new BiomassCalculationUI(metabolicMapID, function (biomassErr, finalBiomassCalculation) {
-                    callback(biomassErr, metabolicMapID, metabolicMapFilename, finalBiomassCalculation);
+                ui = new BiomassCalculationUI(metabolicMapID, function (biomassErr, finalBiomassCalculation) {
+                    callback.call({}, biomassErr, metabolicMapID, metabolicMapFilename, finalBiomassCalculation);
                 });
             }
             else {
