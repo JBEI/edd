@@ -772,6 +772,7 @@ def data_sbml_reaction_species(request, sbml_id, rxn_id):
             ]
         matched = MetaboliteSpecies.objects.filter(
                 species__in=all_species,
+                sbml_template_id=sbml_id,
             ).select_related(
                 'measurement_type',
             )
@@ -800,6 +801,47 @@ def data_sbml_reaction_species(request, sbml_id, rxn_id):
             encoder=JSONDecimalEncoder,
             safe=False,
             )
+    raise Http404("Could not find reaction")
+
+# /data/sbml/<sbml_id>/reactions/<rxn_id>/compute/ -- POST ONLY --
+def data_sbml_compute(request, sbml_id, rxn_id):
+    sbml = get_object_or_404(SBMLTemplate, pk=sbml_id)
+    rlist = sbml.load_reactions()
+    found = [ r for r in rlist if rxn_id == r.getId() ]
+    spp = request.POST.getlist('species', [])
+    if len(found):
+        def sumMetaboliteStoichiometries(species, info):
+            total = 0
+            for sp in species:
+                try:
+                    m = MetaboliteSpecies.objects.get(
+                            species=sp.getSpecies(),
+                            sbml_template_id=sbml_id,
+                        ).select_related('measurement_type__metabolite')
+                    total += sp.getStoichiometry() * m.measurement_type.metabolite.carbon_count
+                    info.push({
+                            "metaboliteName": sp.getSpecies(),
+                            "stoichiometry": sp.getStoichiometry(),
+                            "carbonCount": m.measurement_type.metabolite.carbon_count,
+                        })
+                except Exception, e:
+                    pass
+            return total
+        reactants = [ r for r in found[0].getListOfReactants() if r.getSpecies() in spp ]
+        products = [ r for r in found[0].getListOfProducts() if r.getSpecies() in spp ]
+        reactant_info = []
+        product_info = []
+        biomass = sumMetaboliteStoichiometries(reactants, reactant_info)
+        biomass -= sumMetaboliteStoichiometries(products, product_info)
+        info = json.dumps({
+                "reaction_id": rxn_id,
+                "reactants": reactant_info,
+                "products": product_info,
+            }, cls=JSONDecimalEncoder)
+        sbml.biomass_calculation = biomass
+        sbml.biomass_calculation_info = info
+        sbml.save()
+        return JsonResponse(biomass, encoder=JSONDecimalEncoder, safe=False)
     raise Http404("Could not find reaction")
 
 # /data/strains
