@@ -4,7 +4,7 @@ from django.core import serializers
 from django.core.exceptions import ObjectDoesNotExist, PermissionDenied, ValidationError
 from django.core.urlresolvers import reverse
 from django.db.models import Q
-from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse, Http404
 from django.http.response import HttpResponseForbidden, HttpResponseBadRequest
 from django.shortcuts import render, get_object_or_404, redirect, \
     render_to_response
@@ -737,7 +737,8 @@ def data_sbml(request):
     return JsonResponse(
         [ sbml.to_json() for sbml in all_sbml ],
         encoder=JSONDecimalEncoder,
-        safe=False)
+        safe=False,
+        )
 
 # /data/sbml/<sbml_id>/
 def data_sbml_info(request, sbml_id):
@@ -747,17 +748,7 @@ def data_sbml_info(request, sbml_id):
 # /data/sbml/<sbml_id>/reactions/
 def data_sbml_reactions(request, sbml_id):
     sbml = get_object_or_404(SBMLTemplate, pk=sbml_id)
-    # sbml_file is Attachment, file#1 is FileField, file#2 is File, read() returns data
-    contents = sbml.sbml_file.file.file.read()
-    import libsbml
-    read_sbml = libsbml.readSBMLFromString(contents)
-    if read_sbml.getNumErrors() > 0:
-        log = read_sbml.getErrorLog()
-        for i in range(read_sbml.getNumErrors()):
-            print("--- SBML ERROR --- " + log.getError(i).getMessage())
-        raise Exception("Could not load SBML")
-    model = read_sbml.getModel()
-    rlist = model.getListOfReactions()
+    rlist = sbml.load_reactions()
     return JsonResponse(
         [{
             "metabolicMapID": sbml_id,
@@ -765,9 +756,35 @@ def data_sbml_reactions(request, sbml_id):
             "reactionID": r.getId(),
         } for r in rlist if 'biomass' in r.getId() ],
         encoder=JSONDecimalEncoder,
-        safe=False
+        safe=False,
         )
 
+# /data/sbml/<sbml_id>/reactions/<rxn_id>/
+def data_sbml_reaction_species(request, sbml_id, rxn_id):
+    sbml = get_object_or_404(SBMLTemplate, pk=sbml_id)
+    rlist = sbml.load_reactions()
+    found = [ r for r in rlist if rxn_id == r.getId() ]
+    if len(found):
+        all_species = [
+            rxn.getSpecies() for rxn in found[0].getListOfReactants()
+            ] + [ 
+            rxn.getSpecies() for rxn in found[0].getListOfProducts()
+            ]
+        matched = MetaboliteSpecies.objects.filter(
+                species__in=all_species,
+            ).select_related(
+                'measurement_type',
+            )
+        matched_json = { m.species: m.measurement_type.to_json() for m in matched }
+        unmatched = [ s for s in all_species if s not in matched_json ]
+        # TODO old EDD tries to generate SBML species names for all metabolites and match
+        guessed_json = {}
+        return JsonResponse(
+            matched_json,
+            encoder=JSONDecimalEncoder,
+            safe=False,
+            )
+    raise Http404("Could not find reaction")
 
 # /data/strains
 def data_strains (request) :

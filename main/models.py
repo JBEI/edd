@@ -1253,9 +1253,24 @@ class SBMLTemplate(EDDObject):
     def xml_file(self):
         return self.sbml_file
 
+    def load_reactions(self):
+        read_sbml = self.parseSBML()
+        if read_sbml.getNumErrors() > 0:
+            log = read_sbml.getErrorLog()
+            for i in range(read_sbml.getNumErrors()):
+                # TODO setup logging
+                print("--- SBML ERROR --- " + log.getError(i).getMessage())
+            raise Exception("Could not load SBML")
+        model = read_sbml.getModel()
+        rlist = model.getListOfReactions()
+        return rlist
+
     def parseSBML(self):
-        import libsbml
-        return libsbml.readSBML(str(self.xml_file.file.path))
+        if not hasattr(self, '_sbml_model'):
+            contents = self.sbml_file.file.file.read()
+            import libsbml
+            self._sbml_model = libsbml.readSBMLFromString(contents)
+        return self._sbml_model
 
     def save(self, *args, **kwargs):
         # may need to do a post-save signal; get sbml attachment and save in sbml_file
