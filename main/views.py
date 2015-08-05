@@ -777,10 +777,26 @@ def data_sbml_reaction_species(request, sbml_id, rxn_id):
             )
         matched_json = { m.species: m.measurement_type.to_json() for m in matched }
         unmatched = [ s for s in all_species if s not in matched_json ]
-        # TODO old EDD tries to generate SBML species names for all metabolites and match
-        guessed_json = {}
+        # old EDD tries to generate SBML species names for all metabolites and match
+        # below is the inverse; take a species name, try to extract short_name, and search
+        guessed_json = { }
+        def sub_symbol(name):
+            name = re.sub(r'_DASH_', '-', name)
+            name = re.sub(r'_LPAREN_', '(', name)
+            name = re.sub(r'_RPAREN_', ')', name)
+            name = re.sub(r'_LSQBKT_', '[', name)
+            name = re.sub(r'_RSQBKT_', ']', name)
+            return name
+        for s in unmatched:
+            match = re.search(r'^(?:M_)?(\w+?)(?:_c_?)?$', s)
+            if match:
+                candidate_names = [ match.group(1), sub_symbol(match.group(1)), ]
+                guessed = Metabolite.objects.filter(short_name__in=candidate_names)
+                guessed_json.update({ s: m.to_json() for m in guessed })
+        # make sure actual matches take precedence
+        guessed_json.update(matched_json)
         return JsonResponse(
-            matched_json,
+            guessed_json,
             encoder=JSONDecimalEncoder,
             safe=False,
             )

@@ -80,24 +80,21 @@ var StudyMetabolicMapChooser = (function () {
         this._dialogBox.showWaitSpinner('Please wait...');
         if (checkWithServerFirst) {
             // First check the metabolic map associated with this study.
-            this._requestStudyMetabolicMap(function (err, map) {
-                if (err) {
-                    callback(err, 0);
+            this._requestStudyMetabolicMap(function (map) {
+                if (map.id == -1) {
+                    // This study hasn't bound to a metabolic map yet. 
+                    // Let's show a chooser for the metabolic map.
+                    _this._chooseMetabolicMap(callback);
                 }
                 else {
-                    if (map.id == -1) {
-                        // This study hasn't bound to a metabolic map yet. 
-                        // Let's show a chooser for the metabolic map.
-                        _this._chooseMetabolicMap(callback);
-                    }
-                    else {
-                        // Ok, everything is fine. This should only happen if someone else setup the
-                        // biomass calculation for this study in the background since the page was
-                        // originally loaded.
-                        _this._dialogBox.term();
-                        callback(null, map.id, map.name, map.biomassCalculation);
-                    }
+                    // Ok, everything is fine. This should only happen if someone else setup the
+                    // biomass calculation for this study in the background since the page was
+                    // originally loaded.
+                    _this._dialogBox.term();
+                    callback.call({}, null, map.id, map.name, map.biomassCalculation);
                 }
+            }, function (err) {
+                callback.call({}, err);
             });
         }
         else {
@@ -110,14 +107,7 @@ var StudyMetabolicMapChooser = (function () {
     // and it still requires biomass calculations, we'll go on to _matchMetabolites().
     StudyMetabolicMapChooser.prototype._chooseMetabolicMap = function (callback) {
         var _this = this;
-        this._requestMetabolicMapList(function (err, metabolicMaps) {
-            // Handle errors.
-            if (err) {
-                _this._dialogBox.showMessage(err, function () {
-                    callback(err);
-                });
-                return;
-            }
+        this._requestMetabolicMapList(function (metabolicMaps) {
             // Display the list.
             _this._dialogBox.clearContents();
             _this._dialogBox.addHTML('<div>Please choose an SBML file to get the biomass data from.<br>This is necessary to calculate carbon balance.<br><br></div>');
@@ -136,6 +126,8 @@ var StudyMetabolicMapChooser = (function () {
                 $(column).click(_this._onMetabolicMapChosen.bind(_this, map, callback));
             }
             _this._dialogBox.addElement(table.table);
+        }, function (err) {
+            _this._dialogBox.showMessage(err, function () { return callback.call({}, err); });
         });
     };
     // Called when they click on a biomass reaction.
@@ -156,36 +148,24 @@ var StudyMetabolicMapChooser = (function () {
         });
     };
     // Get info from the server..
-    StudyMetabolicMapChooser.prototype._requestStudyMetabolicMap = function (callback) {
+    StudyMetabolicMapChooser.prototype._requestStudyMetabolicMap = function (callback, error) {
         $.ajax({
-            type: "POST",
             dataType: "json",
-            url: "FormAjaxResp.cgi",
-            data: { "action": "requestStudyMetabolicMap", "studyID": this._studyID },
-            success: function (response) {
-                if (response.type == "Success") {
-                    callback(null, response.data.map);
-                }
-                else {
-                    callback(response.message, null);
-                }
+            url: "map/",
+            success: callback,
+            error: function (jqXHR, status, errorText) {
+                error.call({}, status + " " + errorText);
             }
         });
     };
     // Get a list of metabolic maps that we could use for this study.
-    StudyMetabolicMapChooser.prototype._requestMetabolicMapList = function (callback) {
+    StudyMetabolicMapChooser.prototype._requestMetabolicMapList = function (callback, error) {
         $.ajax({
-            type: "POST",
             dataType: "json",
-            url: "FormAjaxResp.cgi",
-            data: { "action": "requestMetabolicMapList" },
-            success: function (response) {
-                if (response.type == "Success") {
-                    callback(null, response.data.metabolicMaps);
-                }
-                else {
-                    callback(response.message, null);
-                }
+            url: "/data/sbml/",
+            success: callback,
+            error: function (jqXHR, status, errorText) {
+                error.call({}, status + " " + errorText);
             }
         });
     };
@@ -216,14 +196,7 @@ var BiomassCalculationUI = (function () {
         this._dialogBox = new DialogBox(500, 500);
         // First, have the user pick a biomass reaction.
         this._dialogBox.showWaitSpinner('Looking up biomass reactions...');
-        this._requestBiomassReactionList(metabolicMapID, function (err, reactions) {
-            // Handle errors..
-            if (err) {
-                _this._dialogBox.showMessage(err, function () {
-                    callback(err);
-                });
-                return;
-            }
+        this._requestBiomassReactionList(metabolicMapID, function (reactions) {
             if (reactions.length == 0) {
                 _this._dialogBox.showMessage('There are no biomass reactions in this metabolic map!');
             }
@@ -249,6 +222,8 @@ var BiomassCalculationUI = (function () {
                 }
                 _this._dialogBox.addElement(table.table);
             }
+        }, function (error) {
+            _this._dialogBox.showMessage(error, function () { return callback.call({}, error); });
         });
     }
     // The user chose a biomass reaction. Now we can show all the species in the reaction and match to EDD metabolites.
@@ -256,14 +231,7 @@ var BiomassCalculationUI = (function () {
         var _this = this;
         // Pull a list of all metabolites in this reaction.
         this._dialogBox.showWaitSpinner('Getting species list...');
-        this._requestSpeciesListFromBiomassReaction(metabolicMapID, reaction.reactionID, function (err, speciesList) {
-            // Handle errors..
-            if (err) {
-                _this._dialogBox.showMessage(err, function () {
-                    callback(err);
-                });
-                return;
-            }
+        this._requestSpeciesListFromBiomassReaction(metabolicMapID, reaction.reactionID, function (speciesList) {
             var table = new Utl.Table('biomassReactionChooser');
             table.table.setAttribute('cellspacing', '0');
             $(table.table).css('border-collapse', 'collapse');
@@ -297,6 +265,8 @@ var BiomassCalculationUI = (function () {
                 inputs[i].inputElement.autocompleter.setFromPrimaryElement();
                 inputs[i].initialized = 1;
             }
+        }, function (error) {
+            _this._dialogBox.showMessage(error, function () { return callback.call({}, error); });
         });
     };
     // Called when they click the OK button on the biomass species list.
@@ -344,36 +314,34 @@ var BiomassCalculationUI = (function () {
         });
     };
     // Get a list of biomass reactions in the specified metabolic map.
-    BiomassCalculationUI.prototype._requestSpeciesListFromBiomassReaction = function (metabolicMapID, reactionID, callback) {
+    BiomassCalculationUI.prototype._requestSpeciesListFromBiomassReaction = function (metabolicMapID, reactionID, callback, error) {
         $.ajax({
-            type: "POST",
             dataType: "json",
-            url: "FormAjaxResp.cgi",
-            data: { "action": "requestSpeciesListFromBiomassReaction", metabolicMapID: metabolicMapID, reactionID: reactionID },
-            success: function (response) {
-                if (response.type == "Success") {
-                    callback(null, response.data.speciesList);
-                }
-                else {
-                    callback(response.message, null);
-                }
+            url: ["/data/sbml", metabolicMapID, "reactions", reactionID, ""].join("/"),
+            // refactor: server returns object, existing code expects array, need to translate
+            success: function (data) {
+                var translated = [];
+                translated = $.map(data, function (value, key) {
+                    return $.extend(value, {
+                        "sbmlSpeciesName": key,
+                        "eddMetaboliteName": value.sn
+                    });
+                });
+                callback.call({}, translated);
+            },
+            error: function (jqXHR, status, errorText) {
+                error.call({}, status + " " + errorText);
             }
         });
     };
     // Get a list of biomass reactions in the specified metabolic map.
-    BiomassCalculationUI.prototype._requestBiomassReactionList = function (metabolicMapID, callback) {
+    BiomassCalculationUI.prototype._requestBiomassReactionList = function (metabolicMapID, callback, error) {
         $.ajax({
-            type: "POST",
             dataType: "json",
-            url: "FormAjaxResp.cgi",
-            data: { "action": "requestBiomassReactionList", metabolicMapID: metabolicMapID },
-            success: function (response) {
-                if (response.type == "Success") {
-                    callback(null, response.data.reactions);
-                }
-                else {
-                    callback(response.message, null);
-                }
+            url: "/data/sbml/" + metabolicMapID + "/reactions/",
+            success: callback,
+            error: function (jqXHR, status, errorText) {
+                error.call({}, status + " " + errorText);
             }
         });
     };

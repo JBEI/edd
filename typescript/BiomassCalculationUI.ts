@@ -265,14 +265,8 @@ class BiomassCalculationUI {
 		// First, have the user pick a biomass reaction.
 		this._dialogBox.showWaitSpinner('Looking up biomass reactions...');
 
-		this._requestBiomassReactionList(metabolicMapID, (err:string, reactions:ServerBiomassReaction[]) => {
+		this._requestBiomassReactionList(metabolicMapID, (reactions:ServerBiomassReaction[]):void => {
 			
-			// Handle errors..
-			if (err) {
-				this._dialogBox.showMessage(err, () => {callback(err);});				
-				return;
-			}
-
 			if (reactions.length == 0) {
 				this._dialogBox.showMessage('There are no biomass reactions in this metabolic map!');
 			} else {
@@ -301,24 +295,21 @@ class BiomassCalculationUI {
 				this._dialogBox.addElement(table.table);
 			}
 
+		}, (error:string):void => {
+			this._dialogBox.showMessage(error, () => callback.call({}, error));
 		});
 	}
 
 
 	// The user chose a biomass reaction. Now we can show all the species in the reaction and match to EDD metabolites.
-	private _onBiomassReactionChosen(metabolicMapID:number, reaction:ServerBiomassReaction, callback:BiomassResultsCallback) {
+	private _onBiomassReactionChosen(metabolicMapID:number, reaction:ServerBiomassReaction,
+			callback:BiomassResultsCallback) {
 
 		// Pull a list of all metabolites in this reaction.
 		this._dialogBox.showWaitSpinner('Getting species list...');
 
-		this._requestSpeciesListFromBiomassReaction(metabolicMapID, reaction.reactionID, (err:string, speciesList:ServerBiomassSpeciesEntry[]) => {
+		this._requestSpeciesListFromBiomassReaction(metabolicMapID, reaction.reactionID, (speciesList:ServerBiomassSpeciesEntry[]) => {
 			
-			// Handle errors..
-			if (err) {
-				this._dialogBox.showMessage(err, () => {callback(err);});				
-				return;
-			}
-
 			var table = new Utl.Table('biomassReactionChooser');
 			table.table.setAttribute('cellspacing', '0');
 			$(table.table).css('border-collapse', 'collapse');
@@ -360,6 +351,8 @@ class BiomassCalculationUI {
 				inputs[i].inputElement.autocompleter.setFromPrimaryElement();
 				inputs[i].initialized = 1;
 			}
+		}, (error:string):void => {
+			this._dialogBox.showMessage(error, ():void => callback.call({}, error));
 		});
 
 	}
@@ -417,18 +410,25 @@ class BiomassCalculationUI {
 
 
 	// Get a list of biomass reactions in the specified metabolic map.
-	private _requestSpeciesListFromBiomassReaction( metabolicMapID:number, reactionID:string, callback: (err:string, speciesList:ServerBiomassSpeciesEntry[]) => void ):void {
+	private _requestSpeciesListFromBiomassReaction(metabolicMapID:number, reactionID:string,
+			callback: (speciesList:ServerBiomassSpeciesEntry[]) => void,
+			error: (error:string) => void):void {
 		$.ajax({
-			type: "POST",
 			dataType: "json",
-	      	url: "FormAjaxResp.cgi", 
-	      	data: { "action":"requestSpeciesListFromBiomassReaction", metabolicMapID:metabolicMapID, reactionID:reactionID },
-	      	success: ( response:any ) => {
-	      		if (response.type == "Success") {
-	      			callback(null, response.data.speciesList);
-	      		} else {
-	      			callback(response.message, null);
-	      		}
+	      	url: [ "/data/sbml", metabolicMapID, "reactions", reactionID, "" ].join("/"),
+	      	// refactor: server returns object, existing code expects array, need to translate
+	      	success: (data:any):void => {
+	      		var translated:ServerBiomassSpeciesEntry[] = [];
+	      		translated = $.map(data, (value:any, key:string):ServerBiomassSpeciesEntry => {
+	      			return $.extend(value, {
+	      				"sbmlSpeciesName": key,
+	      				"eddMetaboliteName": value.sn
+	      			});
+      			});
+	      		callback.call({}, translated);
+	      	},
+	      	error: (jqXHR:JQueryXHR, status:string, errorText:string):void => {
+		    	error.call({}, status + " " + errorText);
 		    }
 		});
 	}
@@ -442,7 +442,7 @@ class BiomassCalculationUI {
 			dataType: "json",
 	      	url: "/data/sbml/" + metabolicMapID + "/reactions/",
 	      	success: callback,
-	      	error: (jqXHR, status, errorText) => {
+	      	error: (jqXHR:JQueryXHR, status:string, errorText:string):void => {
 		    	error.call({}, status + " " + errorText);
 		    }
 		});

@@ -33,8 +33,8 @@ declare class StudyMetabolicMapChooser {
     constructor(userID: number, studyID: number, checkWithServerFirst: boolean, callback: MetabolicMapChooserResult);
     private _chooseMetabolicMap(callback);
     private _onMetabolicMapChosen(map, callback);
-    private _requestStudyMetabolicMap(callback);
-    private _requestMetabolicMapList(callback);
+    private _requestStudyMetabolicMap(callback, error);
+    private _requestMetabolicMapList(callback, error);
     private _requestSetStudyMetabolicMap(studyID, metabolicMapID, callback);
     private _userID;
     private _studyID;
@@ -47,8 +47,8 @@ declare class BiomassCalculationUI {
     constructor(metabolicMapID: number, callback: BiomassResultsCallback);
     private _onBiomassReactionChosen(metabolicMapID, reaction, callback);
     private _onFinishedBiomassSpeciesEntry(speciesList, inputs, errorStringElement, metabolicMapID, reaction, callback);
-    private _requestSpeciesListFromBiomassReaction(metabolicMapID, reactionID, callback);
-    private _requestBiomassReactionList(metabolicMapID, callback);
+    private _requestSpeciesListFromBiomassReaction(metabolicMapID, reactionID, callback, error);
+    private _requestBiomassReactionList(metabolicMapID, callback, error);
     private _requestFinalBiomassComputation(metabolicMapID, reactionID, matches, callback);
     private _dialogBox;
 }
