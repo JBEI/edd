@@ -1076,21 +1076,21 @@ var StudyD;
         previousIDSet = buildGraphAssayIDSet(context);
         postFilteringMeasurements = buildFilteredMeasurements(context, previousIDSet);
         $.each(postFilteringMeasurements, function (i, measurementId) {
-            var measurement = EDDData.AssayMeasurements[measurementId], points = (measurement.values ? measurement.values.length : 0), assay, line, protocol, newSet;
+            var measure = EDDData.AssayMeasurements[measurementId], mtype = EDDData.MeasurementTypes[measure.type], points = (measure.values ? measure.values.length : 0), assay, line, protocol, newSet;
             dataPointsTotal += points;
             if (dataPointsDisplayed > 15000) {
                 return; // Skip the rest if we've hit our limit
             }
             dataPointsDisplayed += points;
-            assay = EDDData.Assays[measurement.assay] || {};
+            assay = EDDData.Assays[measure.assay] || {};
             line = EDDData.Lines[assay.lid] || {};
             protocol = EDDData.Protocols[assay.pid] || {};
             newSet = {
                 'label': 'dt' + measurementId,
-                'measurementname': Utl.EDD.resolveMeasurementRecordToName(measurement),
+                'measurementname': Utl.EDD.resolveMeasurementRecordToName(measure),
                 'name': [line.name, protocol.name, assay.name].join('-'),
-                'units': Utl.EDD.resolveMeasurementRecordToUnits(measurement),
-                'data': $.map(measurement.values, convert).sort(compare)
+                'units': Utl.EDD.resolveMeasurementRecordToUnits(measure),
+                'data': $.map(measure.values, convert).sort(compare)
             };
             if (line.control)
                 newSet.iscontrol = 1;
@@ -1098,11 +1098,11 @@ var StudyD;
                 // If the measurement is a metabolite, choose the axis by type. If it's any
                 // other subtype, choose the axis based on that subtype, with an offset to avoid
                 // colliding with the metabolite axes.
-                if (measurement.mst === 1) {
-                    newSet.yaxisByMeasurementTypeID = measurement.mt;
+                if (mtype.family === 'm') {
+                    newSet.yaxisByMeasurementTypeID = mtype.id;
                 }
                 else {
-                    newSet.yaxisByMeasurementTypeID = measurement.mst - 10;
+                    newSet.yaxisByMeasurementTypeID = mtype.family;
                 }
             }
             context.mainGraphObject.addNewSet(newSet);

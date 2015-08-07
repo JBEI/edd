@@ -9,7 +9,7 @@ declare module CarbonBalance {
     }
     class Display {
         calculateCarbonBalances(metabolicMapID: number, biomassCalculation: number): void;
-        getDebugTextForTime(metabolicMapID: number, biomassCalculation: number, lineID: number, timeStamp: string): string;
+        getDebugTextForTime(metabolicMapID: number, biomassCalculation: number, lineID: number, timeStamp: number): string;
         getNumberOfImbalances(): number;
         private _normalizedErrorThreshold;
         private _calcNormalizedError(carbonIn, carbonOut);

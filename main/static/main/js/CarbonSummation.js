@@ -4,6 +4,7 @@
 /// <reference path="StudyCarbonBalance.ts" />
 var CarbonBalance;
 (function (CarbonBalance) {
+    'use strict';
     // This is the client-side container for carbon balance data.
     // It combs through lines/assays/measurements to build a structure that is easy
     // to pull from when displaying carbon balance data.
@@ -11,15 +12,20 @@ var CarbonBalance;
     // This is purely a data class, NOT a display class.
     var Summation = (function () {
         function Summation() {
-            // Precalculated lookups to speed things up.		
-            this._validAssaysByLineID = {}; // An array of non-disabled assays for each line.
-            this._validMeasurementsByAssayID = {}; // An array of non-disabled measurements for each assay.
-            this._opticalDensityMeasurementIDByLineID = {}; // Lookup the OD measurement for each line.
-            this.lineDataByID = {}; // Data for each line of type Summation.LineData.
-            this.lastTimeInSeconds = 0; // The highest time value that any TimeSample has.
-            // to us into a hash by timestamp.
+            // Data for each line of type Summation.LineData.
+            this.lineDataByID = {};
+            // The highest time value that any TimeSample has.
+            this.lastTimeInSeconds = 0;
+            // Precalculated lookups to speed things up.
+            // An array of non-disabled assays for each line.
+            this._validAssaysByLineID = {};
+            // An array of non-disabled measurements for each assay.
+            this._validMeasurementsByAssayID = {};
+            // Lookup the OD measurement for each line.
+            this._opticalDensityMeasurementIDByLineID = {};
             this._debugLineID = 0;
-            this._debugOutputIndent = 0; // Auto tab on debug output.
+            // Auto tab on debug output.
+            this._debugOutputIndent = 0;
         }
         // Use this to create a summation object.
         Summation.create = function (biomassCalculation) {
@@ -29,7 +35,8 @@ var CarbonBalance;
         };
         // Use this to generate some debug text that describes all the calculations.
         Summation.generateDebugText = function (biomassCalculation, debugLineID, debugTimeStamp) {
-            // Create a Summation object but tell it to generate debug info while it does its timestamps.
+            // Create a Summation object but tell it to generate debug info while it does its
+            // timestamps.
             var sum = new Summation();
             sum._debugLineID = debugLineID;
             sum._debugTimeStamp = debugTimeStamp;
@@ -38,103 +45,6 @@ var CarbonBalance;
             // Return its debug info.
             return sum._debugOutput;
         };
-        // Internally, this is how we init the Summation object regardless of whether it's gonna be used later
-        // or whether it's just used to get some debug text.
-        Summation.prototype.init = function (biomassCalculation) {
-            this._precalculateValidLists();
-            // Convert to a hash on timestamp.
-            this._assayMeasurementDataByID = {};
-            for (var assayMeasurementID in EDDData.AssayMeasurements) {
-                var inData = EDDData.AssayMeasurements[assayMeasurementID].d;
-                var outData = {};
-                for (var i = 0; i < inData.length; i++) {
-                    outData[inData[i][0]] = inData[i][1];
-                }
-                this._assayMeasurementDataByID[assayMeasurementID] = outData;
-            }
-            // We need to prepare integrals of any mol/L/hr 
-            var integralsByMeasurementID = this._integrateAssayMeasurements(biomassCalculation);
-            // We're gonna keep a list of anything that we don't have molar mass for.
-            var needMolarMassByMeasurementTypeID = {};
-            for (var lineID in EDDData.Lines) {
-                var line = EDDData.Lines[lineID];
-                if (!line.active) {
-                    continue;
-                }
-                // Create the output LineData structure.
-                var outLine = new LineData(lineID);
-                var timeSamplesByTime = {};
-                var anyTimeSamplesAdded = false;
-                // Get all assays for this line.
-                var lineAssays = this._validAssaysByLineID[lineID];
-                for (var iAssay = 0; iAssay < lineAssays.length; iAssay++) {
-                    var assayID = lineAssays[iAssay];
-                    var assay = EDDData.Assays[assayID];
-                    var pid = assay.pid;
-                    var assayName = [line.name, EDDData.Protocols[pid].name, assay.name].join('-');
-                    this._writeDebugLine(lineID == this._debugLineID, "Assay " + assayName);
-                    this._debugOutputIndent++;
-                    // Create the AssayData output structure.
-                    var outAssay = new AssayData(assayID);
-                    var numValidMeasurements = 0;
-                    // Go through all measurements in this assay.
-                    var assayMeasurements = this._validMeasurementsByAssayID[assayID];
-                    for (var iMeasurement = 0; iMeasurement < assayMeasurements.length; iMeasurement++) {
-                        var measurementID = assayMeasurements[iMeasurement];
-                        var measurement = EDDData.AssayMeasurements[measurementID];
-                        // Skip this measurement altogether if we can't figure out carbon from it.
-                        if (!this._doesMeasurementContainCarbon(measurementID, needMolarMassByMeasurementTypeID)) {
-                            continue;
-                        }
-                        this._writeDebugLine(lineID == this._debugLineID, EDDData.MetaboliteTypes[measurement.mt].name);
-                        this._debugOutputIndent++;
-                        numValidMeasurements++;
-                        // Create the MetaboliteTimeline output structure.
-                        var outTimeline = new MetaboliteTimeline(outAssay, measurementID);
-                        outAssay.timelinesByMeasurementId[measurementID] = outTimeline;
-                        // Build a sorted list of timestamp/measurement.
-                        outTimeline.timeSamples = this._buildSortedMeasurementsForAssayMetabolite(outLine, measurementID, integralsByMeasurementID, biomassCalculation);
-                        // Keep track of the last time sample's time.
-                        if (outTimeline.timeSamples.length > 0) {
-                            anyTimeSamplesAdded = true;
-                            var highestLineTimeSample = outTimeline.timeSamples[outTimeline.timeSamples.length - 1].timeStamp;
-                            this.lastTimeInSeconds = Math.max(this.lastTimeInSeconds, parseFloat(highestLineTimeSample));
-                        }
-                        this._writeDebugLine(lineID == this._debugLineID, "");
-                        this._debugOutputIndent--;
-                    }
-                    // Store this assay.
-                    outLine.assaysByID[assayID] = outAssay;
-                    this._writeDebugLine(lineID == this._debugLineID, "");
-                    this._debugOutputIndent--;
-                }
-                // Keep track of this LineData if it has any data. Otherwise, forget about it.
-                if (anyTimeSamplesAdded) {
-                    this.lineDataByID[lineID] = outLine;
-                }
-            }
-        };
-        // Append the string to our _debugOutput string if shouldWrite=true.
-        // (Having shouldWrite there makes it easier to do a one-line debug output that includes the check of whether it should write).
-        Summation.prototype._writeDebugLine = function (shouldWrite, val) {
-            if (!shouldWrite) {
-                return;
-            }
-            var indent = '';
-            for (var i = 0; i < this._debugOutputIndent; i++) {
-                indent += "    ";
-            }
-            this._debugOutput += indent + val + "\n";
-        };
-        Summation.prototype._writeDebugLineWithHeader = function (shouldWrite, header, val) {
-            var str = Utl.JS.padStringLeft("[" + header + "] ", 30);
-            this._writeDebugLine(shouldWrite, str + val);
-        };
-        // Convert a number to a string for debug output. If all the code uses this, then 
-        // all the number formatting will be consistent.
-        Summation.prototype._numStr = function (value) {
-            return parseFloat(value).toFixed(5);
-        };
         // This just wraps the call to TimelineMerger.mergeAllLineSamples.
         Summation.prototype.mergeAllLineSamples = function (lineData) {
             return TimelineMerger.mergeAllLineSamples(lineData);
@@ -142,122 +52,191 @@ var CarbonBalance;
         Summation.prototype.getLineDataByID = function (lineID) {
             return this.lineDataByID[lineID];
         };
-        // This is used in a first pass on a measurement to decide if we should scan its measurements.
-        // If you update this, update calculateCmolPerLiter (and vice-versa).
-        Summation.prototype._doesMeasurementContainCarbon = function (measurementID, needMolarMassByMeasurementTypeID) {
-            var measurement = EDDData.AssayMeasurements[measurementID];
-            var measurementType = EDDData.MetaboliteTypes[measurement.mt];
-            if (!measurementType) {
+        // Internally, this is how we init the Summation object regardless of whether it's used
+        // later or whether it's just used to get some debug text.
+        Summation.prototype.init = function (biomassCalculation) {
+            var _this = this;
+            var integralsByMeasurementID;
+            this._precalculateValidLists();
+            // Convert to a hash on timestamp (x value)
+            this._assayMeasurementDataByID = {};
+            $.each(EDDData.AssayMeasurements, function (id, measure) {
+                var out = _this._assayMeasurementDataByID[id] = {};
+                $.each(measure.values, function (i, point) {
+                    // only do mapping for (x,y) points, won't make sense with higher dimensions
+                    if (point[0].length === 1 && point[1].length === 1) {
+                        out[point[0][0]] = point[1][0];
+                    }
+                });
+            });
+            // We need to prepare integrals of any mol/L/hr
+            integralsByMeasurementID = this._integrateAssayMeasurements(biomassCalculation);
+            // Iterate over lines.
+            $.each(EDDData.Lines, function (lineId, line) {
+                var out, anySamplesAdded = false;
+                if (!line.active) {
+                    return;
+                }
+                out = new LineData(line.id);
+                _this._validAssaysByLineID[line.id].forEach(function (assayId) {
+                    var assay = EDDData.Assays[assayId], protocol = EDDData.Protocols[assay.pid], name = [line.name, protocol.name, assay.name].join('-'), outAssay = new AssayData(assayId), valid = 0;
+                    _this._writeDebugLine(line.id === _this._debugLineID, "Assay " + name);
+                    _this._debugOutputIndent++;
+                    _this._validMeasurementsByAssayID[assayId].forEach(function (measureId) {
+                        var measure = EDDData.AssayMeasurements[measureId], timeline;
+                        if (!_this._doesMeasurementContainCarbon(measure)) {
+                            return;
+                        }
+                        _this._writeDebugLine(line.id === _this._debugLineID, EDDData.MetaboliteTypes[measure.type].name);
+                        _this._debugOutputIndent++;
+                        valid++;
+                        // Create MetaboliteTimeline output structure
+                        timeline = new MetaboliteTimeline(outAssay, measureId);
+                        // TODO why is this not in constructor?
+                        outAssay.timelinesByMeasurementId[measureId] = timeline;
+                        // Build a sorted list of timestamp/measurement
+                        timeline.timeSamples = _this._buildSortedMeasurementsForAssayMetabolite(out, measureId, integralsByMeasurementID, biomassCalculation);
+                        // Keep track of the last sample's time
+                        if (timeline.timeSamples) {
+                            anySamplesAdded = true;
+                            _this.lastTimeInSeconds = Math.max(_this.lastTimeInSeconds, timeline.timeSamples.slice(-1)[0].timeStamp);
+                        }
+                        _this._writeDebugLine(line.id === _this._debugLineID, "");
+                        _this._debugOutputIndent--;
+                    });
+                    // store the assay
+                    out.assaysByID[assayId] = outAssay;
+                    _this._writeDebugLine(line.id === _this._debugLineID, "");
+                    _this._debugOutputIndent--;
+                });
+                if (anySamplesAdded) {
+                    _this.lineDataByID[line.id] = out;
+                }
+            });
+        };
+        // Append the string to our _debugOutput string if shouldWrite=true.
+        // (Having shouldWrite there makes it easier to do a one-line debug output that includes
+        // the check of whether it should write).
+        Summation.prototype._writeDebugLine = function (shouldWrite, val) {
+            if (!shouldWrite) {
+                return;
+            }
+            var indent = [];
+            while (this._debugOutputIndent && this._debugOutputIndent > indent.push('    '))
+                ;
+            /* tslint:enable:curly */
+            this._debugOutput += indent.join('') + val + "\n";
+        };
+        Summation.prototype._writeDebugLineWithHeader = function (shouldWrite, header, val) {
+            var str = Utl.JS.padStringLeft("[" + header + "] ", 30);
+            this._writeDebugLine(shouldWrite, str + val);
+        };
+        // Convert a number to a string for debug output. If all the code uses this, then
+        // all the number formatting will be consistent.
+        Summation.prototype._numStr = function (value) {
+            return parseFloat(value).toFixed(5);
+        };
+        // This is used in a first pass on a measurement to decide if we should scan its
+        // measurements. If you update this, update calculateCmolPerLiter (and vice-versa).
+        Summation.prototype._doesMeasurementContainCarbon = function (measure) {
+            var mtype = EDDData.MetaboliteTypes[measure.type];
+            if (!mtype) {
                 return false;
             }
-            // OD measurements use the biomass factor to estimate the amount of carbon created or destroyed.
-            // There's no guarantee we hae a valid biomass factor, but we definitely know there is carbon here.
-            if (this._isOpticalDensityMeasurement(measurementType)) {
+            // OD measurements use the biomass factor to estimate the amount of carbon created
+            // or destroyed. There's no guarantee we hae a valid biomass factor, but we definitely
+            // know there is carbon here.
+            if (this._isOpticalDensityMeasurement(mtype)) {
                 return true;
             }
-            var uRecord = EDDData.UnitTypes[measurement.uid];
+            var uRecord = EDDData.UnitTypes[measure.y_units];
             var units = uRecord ? uRecord.name : '';
-            var carbonCount = measurementType.cc; // # carbons per mole
-            if (units == '' || units == 'n/a' || !carbonCount) {
+            var carbonCount = mtype.cc; // # carbons per mole
+            if (units === '' || units === 'n/a' || !carbonCount) {
                 return false;
             }
-            else if (units == 'g/L') {
+            else if (units === 'g/L') {
                 // g/L is fine if we have a molar mass so we can convert g->mol
-                if (!measurementType.mm) {
-                    // Make note that this metabolite is missing molar mass.
-                    if (needMolarMassByMeasurementTypeID) {
-                        needMolarMassByMeasurementTypeID[measurement.mt] = true;
-                    }
-                    return false;
-                }
-                else {
-                    return true;
-                }
+                return !!mtype.mm;
             }
             else {
                 // Anything using mols is fine as well.
-                return (units == 'mol/L/hr' || units == 'uM' || units == 'mM' || units == 'mol/L' || units == 'Cmol/L');
+                return (units === 'mol/L/hr' || units === 'uM' || units === 'mM' || units === 'mol/L' || units === 'Cmol/L');
             }
         };
         // Do unit conversions in order to get a Cmol/L value.
-        // ** NOTE: This is "C-moles", which is CARBON moles/liter (as opposed to CENTI moles/liter).
+        // ** NOTE: This is "C-moles", which is CARBON mol/L (as opposed to CENTI mol/L).
         Summation.prototype._calculateCmMolPerLiter = function (measurementID, timeStamp, integralsByMeasurementID, biomassCalculation, dOut) {
             // A measurement is the time series data for ONE metabolite
-            // measurement.data contains all the meaty stuff - its keys are the timestamps and its values are the actual readings
-            var measurement = EDDData.AssayMeasurements[measurementID];
-            var measurementType = EDDData.MetaboliteTypes[measurement.mt];
-            var uRecord = EDDData.UnitTypes[measurement.uid];
-            var units = uRecord ? uRecord.name : '';
-            var carbonCount = measurementType.cc; // # carbons per mole
-            var finalValue = 0;
-            var isValid = false;
-            var isOpticalDensity = this._isOpticalDensityMeasurement(measurementType);
-            // First, is this measurement something that we care about? 
+            // measurement.values contains all the meaty stuff - a 3-dimensional array with:
+            // first index selecting point value;
+            // second index 0 for x, 1 for y;
+            // third index subscripted values;
+            // e.g. measurement.values[2][0][1] is the x1 value of the third measurement value
+            var measurement = EDDData.AssayMeasurements[measurementID], measurementType = EDDData.MetaboliteTypes[measurement.type], uRecord = EDDData.UnitTypes[measurement.y_units], units = uRecord ? uRecord.name : '', carbonCount = measurementType.cc, finalValue = 0, isValid = false, isOpticalDensity = this._isOpticalDensityMeasurement(measurementType), value = this._assayMeasurementDataByID[measurementID][timeStamp];
+            // First, is this measurement something that we care about?
             //
             // We'll throw out anything that has multiple numbers per sample. Right now, we're
             // only handling one-dimensional numeric samples.
             //
-            // We'll also throw out anything that doesn't even have a carbon count, like CO2/O2 ratios.
+            // We'll also throw out anything without a carbon count, like CO2/O2 ratios.
             if (isOpticalDensity) {
-                // The OD readings will be used directly in _calculateCarbonDeltas to get a growth rate.
-                finalValue = this._assayMeasurementDataByID[measurementID][timeStamp];
+                // OD will be used directly in _calculateCarbonDeltas to get a growth rate.
+                finalValue = value;
                 isValid = true;
             }
-            else if (units == 'mol/L/hr') {
+            else if (units === 'mol/L/hr') {
                 var integrals = integralsByMeasurementID[measurementID];
                 if (integrals) {
                     finalValue = integrals[timeStamp] * 1000;
-                    isValid = (typeof finalValue != 'undefined');
+                    isValid = (typeof finalValue !== 'undefined');
                 }
             }
-            else if (units == '' || units == 'n/a' || !carbonCount) {
+            else if (units === '' || units === 'n/a' || !carbonCount) {
             }
             else {
                 // Check for various conversions that we might need to do.
-                var value = this._assayMeasurementDataByID[measurementID][timeStamp];
                 if (dOut) {
                     this._writeDebugLine(true, timeStamp + "h");
                     this._debugOutputIndent++;
                     this._writeDebugLineWithHeader(true, "raw value", this._numStr(value) + " " + units);
                 }
-                if (value == 0) {
+                if (value === 0) {
                     // Don't bother with all this work (and debug output) if the value is 0.
                     finalValue = value;
                     isValid = true;
                 }
-                else if (typeof value != 'undefined') {
+                else if (typeof value !== 'undefined') {
                     // Convert uM to mol/L. Note: even though it's not written as uM/L, these
                     // quantities should be treated as per-liter.
-                    if (units == 'uM') {
-                        var newValue = value / 1000;
-                        this._writeDebugLineWithHeader(dOut, "convert", " / 1000 = " + this._numStr(newValue) + " mol/L");
-                        value = newValue;
+                    if (units === 'uM') {
+                        value = value / 1000;
                         units = 'mMol/L';
+                        this._writeDebugLineWithHeader(dOut, "convert", " / 1000 = " + this._numStr(value) + " mol/L");
                     }
                     // Do molar mass conversions.
-                    if (units == 'g/L') {
-                        var molarMass = measurementType.mm;
-                        if (!molarMass) {
+                    if (units === 'g/L') {
+                        if (!measurementType.mm) {
                             // We should never get in here.
-                            this._writeDebugLine(dOut, "Trying to calculate carbon for a g/L metabolite with an unspecified molar mass! (The code should never get here).");
+                            this._writeDebugLine(dOut, "Trying to calculate carbon for a g/L " + "metabolite with an unspecified molar mass! " + "(The code should never get here).");
                         }
                         else {
-                            var newValue = value * 1000 / parseFloat(molarMass); // (g/L) * (mol/g) = (mol/L)
-                            this._writeDebugLineWithHeader(dOut, "divide by molar mass", " * 1000 / " + molarMass + " g/mol = " + this._numStr(newValue) + " mMol/L");
-                            value = newValue;
+                            // (g/L) * (mol/g) = (mol/L)
+                            value = value * 1000 / measurementType.mm;
+                            this._writeDebugLineWithHeader(dOut, "divide by molar mass", [" * 1000 /", measurementType.mm, "g/mol =", this._numStr(value), "mMol/L"].join(' '));
                             units = 'mMol/L';
                         }
                     }
                     // Convert mMol/L to CmMol/L.
-                    // ** NOTE: This is "C-moles", which is CARBON moles/liter (as opposed to CENTI moles/liter).
-                    if (units == 'mMol/L') {
-                        var newValue = value * carbonCount;
-                        this._writeDebugLineWithHeader(dOut, "multiply by carbon count", " * " + carbonCount + " = " + this._numStr(newValue) + " CmMol/L");
-                        value = newValue;
+                    // ** NOTE: This is "C-moles", which is CARBON mol/L
+                    // (as opposed to CENTI mol/L).
+                    if (units === 'mMol/L') {
+                        value *= carbonCount;
+                        this._writeDebugLineWithHeader(dOut, "multiply by carbon count", " * " + carbonCount + " = " + this._numStr(value) + " CmMol/L");
                         units = 'CmMol/L';
                     }
                     // Are we in our desired output format (Cmol/L)?
-                    if (units == 'CmMol/L') {
+                    if (units === 'CmMol/L') {
                         finalValue = value;
                         isValid = true;
                     }
@@ -274,211 +253,183 @@ var CarbonBalance;
             };
         };
         Summation.prototype._isOpticalDensityMeasurement = function (measurementType) {
-            return measurementType.name == 'Optical Density';
+            return measurementType.name === 'Optical Density';
         };
         // Returns a hash of assayMeasurementID->{time->integral} for any mol/L/hr measurements.
         Summation.prototype._integrateAssayMeasurements = function (biomassCalculation) {
+            var _this = this;
             var integralsByMeasurementID = {};
-            for (var measurementID in EDDData.AssayMeasurements) {
-                var measurement = EDDData.AssayMeasurements[measurementID];
-                if (measurement.dis) {
-                    continue;
+            $.each(EDDData.AssayMeasurements, function (measureId, measure) {
+                var mtype = EDDData.MetaboliteTypes[measure.type], carbonCount, uRecord, units, integral = {}, data, prevTime, total;
+                if (!mtype) {
+                    return;
                 }
-                var measurementType = EDDData.MetaboliteTypes[measurement.mt];
-                if (!measurementType) {
-                    continue;
-                }
-                var carbonCount = measurementType.cc; // # carbons per mole
+                carbonCount = mtype.cc;
+                uRecord = EDDData.UnitTypes[measure.y_units];
+                units = uRecord ? uRecord.name : '';
                 // See 'Optical Density Note' below.
-                var uRecord = EDDData.UnitTypes[measurement.uid];
-                var units = uRecord ? uRecord.name : '';
-                if (units != 'mol/L/hr' || !carbonCount) {
-                    continue;
+                if (units !== 'mol/L/hr' || !carbonCount) {
+                    return;
                 }
-                // Setup the output structure.
-                var integrals = {};
-                integralsByMeasurementID[measurementID] = integrals;
-                // Now sum over all its data.
-                var data = this._assayMeasurementDataByID[measurementID];
-                var sortedTime = this._getMeasurementTimestampsSorted(measurementID);
-                var prevTime = -1;
-                var total = 0;
-                var prevValue = 0;
-                for (var i in sortedTime) {
-                    var timeStamp = parseFloat(sortedTime[i]);
-                    var value = data[timeStamp];
-                    // First sample?
-                    if (prevTime == -1) {
-                        prevTime = timeStamp;
-                        prevValue = value;
-                        continue;
+                integralsByMeasurementID[measureId] = integral;
+                // sum over all data
+                data = _this._assayMeasurementDataByID[measureId];
+                total = 0;
+                _this._getMeasurementTimestampsSorted(measureId).forEach(function (time) {
+                    var value = data[time], dt;
+                    if (!prevTime) {
+                        prevTime = time;
+                        return;
                     }
-                    // Update the total and store it in the integral table.
-                    var dt = timeStamp - prevTime;
+                    dt = time - prevTime;
+                    // TODO should value below be dv = data[time] - data[prevTime] ??
                     total += dt * value * carbonCount;
-                    integrals[timeStamp] = total;
-                    prevTime = timeStamp;
-                    prevValue = value;
-                }
-            }
+                    integral[time] = total;
+                    prevTime = time;
+                });
+            });
             return integralsByMeasurementID;
-        };
-        // Get the line ID for a measurement.
-        Summation.prototype._getMeasurementLineID = function (measurement) {
-            var assay = EDDData.Assays[measurement.aid];
-            return assay.lid;
         };
         // Returns an array of timestamps for this assay sorted by time.
         Summation.prototype._getMeasurementTimestampsSorted = function (measurementID) {
-            if (!this._assayMeasurementDataByID.hasOwnProperty(measurementID.toString())) {
+            var data = this._assayMeasurementDataByID[measurementID];
+            if (!data) {
                 console.log('Warning: No sorted timestamp array for measurement ' + measurementID);
                 return [];
             }
-            var data = this._assayMeasurementDataByID[measurementID];
-            var sortedTime = Object.keys(data);
-            sortedTime.sort(function (a, b) {
-                return parseFloat(a) - parseFloat(b);
-            });
-            return sortedTime;
+            // jQuery map gives object indexes as string, so need to parseFloat before sorting
+            return $.map(data, function (value, time) { return parseFloat(time); }).sort();
         };
-        // Go through all measurements in this metabolite, figure out the carbon count, and return a sorted
-        // list of {timeStamp, value} objects. values are in Cmol/L.
+        // Go through all measurements in this metabolite, figure out the carbon count, and 
+        // return a sorted list of {timeStamp, value} objects. values are in Cmol/L.
         Summation.prototype._buildSortedMeasurementsForAssayMetabolite = function (line, measurementID, integralsByMeasurementID, biomassCalculation) {
-            var measurement = EDDData.AssayMeasurements[measurementID];
-            var measurementData = this._assayMeasurementDataByID[measurementID];
-            // Make a sorted array of timestamps.
-            var sortedTimestamps = Object.keys(measurementData);
-            sortedTimestamps.sort(function (a, b) {
-                return a - b;
-            });
-            var sortedMeasurements = [];
-            for (var i = 0; i < sortedTimestamps.length; i++) {
-                var timeStamp = sortedTimestamps[i];
-                // Write debug output for the timestamp we're interested in and the one before it
-                // (since the /hr term comes from the delta between the previous and the current timestamp).
-                var writeDebugOutput = false;
-                if (this._debugTimeStamp && line.getLineID() == this._debugLineID) {
-                    if (timeStamp == this._debugTimeStamp || (i + 1 < sortedTimestamps.length && sortedTimestamps[i + 1] == this._debugTimeStamp))
+            var _this = this;
+            var measurement = EDDData.AssayMeasurements[measurementID], sortedMeasurements = [];
+            this._getMeasurementTimestampsSorted(measurementID).forEach(function (time, i, a) {
+                var writeDebugOutput = false, result, sample;
+                if (_this._debugTimeStamp && line.getLineID() === _this._debugLineID) {
+                    // debug if current OR next time is the debug time
+                    if (time === _this._debugTimeStamp || (i + 1 < a.length && a[i + 1] === _this._debugTimeStamp)) {
                         writeDebugOutput = true;
+                    }
                 }
-                // Get a CmMol/L value.
-                var result = this._calculateCmMolPerLiter(measurementID, timeStamp, integralsByMeasurementID, biomassCalculation, writeDebugOutput);
+                result = _this._calculateCmMolPerLiter(measurementID, time, integralsByMeasurementID, biomassCalculation, writeDebugOutput);
                 if (!result.isValid) {
-                    continue;
+                    return;
                 }
-                // Add this 
-                var sample = new TimeSample();
-                sample.timeStamp = timeStamp;
+                sample = new TimeSample();
+                sample.timeStamp = time;
                 sample.carbonValue = result.value;
                 sortedMeasurements.push(sample);
-            }
+            });
             return this._calculateCarbonDeltas(sortedMeasurements, line, measurement, biomassCalculation);
         };
         // Go through the TimeSamples and calculate their carbonDelta value.
         Summation.prototype._calculateCarbonDeltas = function (sortedMeasurements, line, measurement, biomassCalculation) {
-            var measurementType = EDDData.MetaboliteTypes[measurement.mt];
-            var isOpticalDensity = this._isOpticalDensityMeasurement(measurementType);
-            for (var i = 1; i < sortedMeasurements.length; i++) {
-                var cur = sortedMeasurements[i];
-                var prev = sortedMeasurements[i - 1];
-                var writeDebugInfo = (this._debugTimeStamp && line.getLineID() == this._debugLineID && cur.timeStamp == this._debugTimeStamp);
-                var deltaTime = this._calcTimeDelta(prev.timeStamp, cur.timeStamp);
+            var _this = this;
+            var mtype = EDDData.MetaboliteTypes[measurement.type], isOpticalDensity = this._isOpticalDensityMeasurement(mtype), assay = EDDData.Assays[measurement.assay], lineRec = EDDData.Lines[assay.lid], protocol = EDDData.Protocols[assay.pid], name = [lineRec.name, protocol.name, assay.name].join('-');
+            // loop from second element, and use the index of shorter array to get previous
+            sortedMeasurements.slice(1).forEach(function (sample, i) {
+                var prev = sortedMeasurements[i], deltaTime = _this._calcTimeDelta(prev.timeStamp, sample.timeStamp), writeDebugInfo, growthRate, deltaCarbon, odFactor, cmMolPerLPerH, cmMolPerGdwPerH;
+                writeDebugInfo = (_this._debugTimeStamp && line.getLineID() === _this._debugLineID && sample.timeStamp === _this._debugTimeStamp);
                 if (isOpticalDensity) {
-                    // If this is the OD measurement, then we'll use the biomass factor to get biomass.
-                    var growthRate = Math.log(cur.carbonValue / prev.carbonValue) / deltaTime;
-                    cur.carbonDelta = growthRate * biomassCalculation;
+                    // If this is the OD measurement, then we'll use the biomass factor
+                    growthRate = (Math.log(sample.carbonValue / prev.carbonValue) / deltaTime);
+                    sample.carbonDelta = biomassCalculation * growthRate;
                     if (writeDebugInfo) {
-                        var assay = EDDData.Assays[measurement.aid];
-                        var lid = assay.lid;
-                        var pid = assay.pid;
-                        var assayName = [EDDData.Lines[lid].name, EDDData.Protocols[pid].name, assay.name].join('-');
-                        this._writeDebugLine(true, "Biomass Calculation for " + assayName);
-                        this._debugOutputIndent++;
-                        this._writeDebugLineWithHeader(true, "raw OD at " + prev.timeStamp + "h", this._numStr(prev.carbonValue));
-                        this._writeDebugLineWithHeader(true, "raw OD at " + cur.timeStamp + "h", this._numStr(cur.carbonValue));
-                        this._writeDebugLineWithHeader(true, "growth rate", "log(" + this._numStr(cur.carbonValue) + " / " + this._numStr(prev.carbonValue) + ") / " + this._numStr(deltaTime) + "h = " + this._numStr(growthRate));
-                        this._writeDebugLineWithHeader(true, "biomass factor", " * " + this._numStr(biomassCalculation) + " = " + this._numStr(cur.carbonDelta) + " CmMol/gdw/hr");
-                        this._writeDebugLine(true, "");
-                        this._debugOutputIndent--;
+                        _this._writeDebugLine(true, "Biomass Calculation for " + name);
+                        _this._debugOutputIndent++;
+                        _this._writeDebugLineWithHeader(true, "raw OD at " + prev.timeStamp + "h", _this._numStr(prev.carbonValue));
+                        _this._writeDebugLineWithHeader(true, "raw OD at " + sample.timeStamp + "h", _this._numStr(sample.carbonValue));
+                        _this._writeDebugLineWithHeader(true, "growth rate", "log(" + _this._numStr(sample.carbonValue) + " / " + _this._numStr(prev.carbonValue) + ") / " + _this._numStr(deltaTime) + "h = " + _this._numStr(growthRate));
+                        _this._writeDebugLineWithHeader(true, "biomass factor", " * " + _this._numStr(biomassCalculation) + " = " + _this._numStr(sample.carbonDelta) + " CmMol/gdw/hr");
+                        _this._writeDebugLine(true, "");
+                        _this._debugOutputIndent--;
                     }
                 }
                 else {
                     // Gather terms.
-                    var deltaCarbon = (cur.carbonValue - prev.carbonValue);
-                    var opticalDensityFactor = this._calculateOpticalDensityFactor(line, prev.timeStamp, writeDebugInfo);
+                    deltaCarbon = (sample.carbonValue - prev.carbonValue);
+                    odFactor = _this._calculateOpticalDensityFactor(line, prev.timeStamp, writeDebugInfo);
                     // CmMol/L -> CmMol/L/hr
-                    var CmMolPerLiterPerHour = (deltaCarbon / deltaTime);
+                    cmMolPerLPerH = (deltaCarbon / deltaTime);
                     // CmMol/L/hr * L/gdw -> CmMol/gdw/hr
-                    var CmMolPerGdwPerHour = CmMolPerLiterPerHour / opticalDensityFactor;
-                    cur.carbonDelta = CmMolPerGdwPerHour;
+                    cmMolPerGdwPerH = cmMolPerLPerH / odFactor;
+                    sample.carbonDelta = cmMolPerGdwPerH;
                     // Write some debug output for what we just did.
                     if (writeDebugInfo) {
-                        this._writeDebugLine(true, "Convert to CmMol/gdw/hr");
-                        this._debugOutputIndent++;
-                        this._writeDebugLineWithHeader(true, "delta from " + prev.timeStamp + "h to " + cur.timeStamp + "h", this._numStr(cur.carbonValue) + " CmMol/L - " + this._numStr(prev.carbonValue) + " CmMol/L = " + this._numStr(deltaCarbon) + " CmMol/L");
-                        this._writeDebugLineWithHeader(true, "delta time", " / " + this._numStr(deltaTime) + "h = " + this._numStr(CmMolPerLiterPerHour) + " CmMol/L/h");
-                        this._writeDebugLineWithHeader(true, "apply OD", " / " + this._numStr(opticalDensityFactor) + " L/gdw = " + this._numStr(CmMolPerGdwPerHour) + " CmMol/gdw/h");
-                        this._debugOutputIndent--;
+                        _this._writeDebugLine(true, "Convert to CmMol/gdw/hr");
+                        _this._debugOutputIndent++;
+                        _this._writeDebugLineWithHeader(true, "delta from " + prev.timeStamp + "h to " + sample.timeStamp + "h", _this._numStr(sample.carbonValue) + " CmMol/L - " + _this._numStr(prev.carbonValue) + " CmMol/L = " + _this._numStr(deltaCarbon) + " CmMol/L");
+                        _this._writeDebugLineWithHeader(true, "delta time", " / " + _this._numStr(deltaTime) + "h = " + _this._numStr(cmMolPerLPerH) + " CmMol/L/h");
+                        _this._writeDebugLineWithHeader(true, "apply OD", " / " + _this._numStr(odFactor) + " L/gdw = " + _this._numStr(cmMolPerGdwPerH) + " CmMol/gdw/h");
+                        _this._debugOutputIndent--;
                     }
                 }
-            }
+            });
             return sortedMeasurements;
         };
-        // Calculate the difference between two (string) timestamps.
+        // Calculate the difference between two timestamps.
         Summation.prototype._calcTimeDelta = function (fromTimeStamp, toTimeStamp) {
-            return parseFloat(toTimeStamp) - parseFloat(fromTimeStamp);
+            return (toTimeStamp) - (fromTimeStamp);
         };
         // Find where timeStamp fits in the timeline and interpolate.
         // Returns the index of the timeline and the interpolation amount.
         Summation.prototype._fitOnSortedTimeline = function (timeStamp, timeline) {
-            var timeStampNumber = parseFloat(timeStamp);
-            for (var i = 0; i < timeline.length; i++) {
-                var cur = parseFloat(timeline[i]);
-                if (timeStampNumber <= cur) {
-                    if (i == 0) {
-                        return { index: 0, t: 0 };
+            // if timeStamp is after last entry in timeline, return last entry
+            var inter = {
+                "index": timeline.length - 2,
+                "t": 1
+            };
+            timeline.some(function (time, i) {
+                var prev;
+                if (timeStamp <= time) {
+                    if (i) {
+                        inter.index = i - 1;
+                        prev = timeline[inter.index];
+                        inter.t = (timeStamp - prev) / (time - prev);
                     }
                     else {
-                        var prev = parseFloat(timeline[i - 1]);
-                        return { index: i - 1, t: (timeStampNumber - prev) / (cur - prev) };
+                        inter.index = 0;
+                        inter.t = 0;
                     }
+                    return true;
                 }
-            }
-            // timeStamp is after the last timestamp in the timeline, so let's just return that last one.
-            return { index: timeline.length - 2, t: 1 };
+                return false;
+            });
+            return inter;
         };
-        // Given a line and a timestamp, this function linearly interpolates as necessary to come up with
-        // an OD value, then it multiplies by a magic number to arrive at a gdw/L factor that
-        // can be factored into measurements.
+        // Given a line and a timestamp, this function linearly interpolates as necessary to come
+        // up with an OD value, then it multiplies by a magic number to arrive at a gdw/L factor
+        // that can be factored into measurements.
         Summation.prototype._calculateOpticalDensityFactor = function (line, timeStamp, writeDebugInfo) {
-            // Get the OD measurements. 
-            var measurementID = this._getOpticalDensityMeasurementForLine(line.getLineID());
+            // Get the OD measurements.
+            var odMeasureID = this._getOpticalDensityMeasurementForLine(line.getLineID()), 
             // Linearly interpolate on the OD measurement to get the desired factor.
-            var sortedTime = this._getMeasurementTimestampsSorted(measurementID);
-            var interpInfo = this._fitOnSortedTimeline(timeStamp, sortedTime);
+            sortedTime = this._getMeasurementTimestampsSorted(odMeasureID), interpInfo = this._fitOnSortedTimeline(timeStamp, sortedTime), 
             // This is the (linearly interpolated) OD600 measurement.
-            var data = this._assayMeasurementDataByID[measurementID];
-            var t = interpInfo.t;
-            var data1 = parseFloat(data[sortedTime[interpInfo.index]]);
-            var data2 = parseFloat(data[sortedTime[interpInfo.index + 1]]);
-            var odMeasurement = data1 + (data2 - data1) * t;
-            var odMagicFactor = 0.65; // A magic factor to give us gdw/L for an OD600 measurement.
+            data = this._assayMeasurementDataByID[odMeasureID], t = interpInfo.t, data1 = data[sortedTime[interpInfo.index]], data2 = data[sortedTime[interpInfo.index + 1]], odMeasurement = data1 + (data2 - data1) * t, 
+            // A magic factor to give us gdw/L for an OD600 measurement.
             // TODO: This can be customized in assay metadata so we should allow for that here.
-            var finalValue = odMeasurement * odMagicFactor;
+            odMagicFactor = 0.65, finalValue = odMeasurement * odMagicFactor, 
+            // declaring variables only assigned when writing debug logs
+            measure, assay, lineRec, protocol, name;
             // Spit out our calculations if requested.
             if (writeDebugInfo) {
-                var measurement = EDDData.AssayMeasurements[measurementID];
-                var assay = EDDData.Assays[measurement.aid];
-                var lid = assay.lid;
-                var pid = assay.pid;
-                var assayName = [EDDData.Lines[lid].name, EDDData.Protocols[pid].name, assay.name].join('-');
-                this._writeDebugLine(true, "Getting optical density from " + assayName);
+                measure = EDDData.AssayMeasurements[odMeasureID];
+                assay = EDDData.Assays[measure.assay];
+                lineRec = EDDData.Lines[assay.lid];
+                protocol = EDDData.Protocols[assay.pid];
+                name = [lineRec.name, protocol.name, assay.name].join('-');
+                this._writeDebugLine(true, "Getting optical density from " + name);
                 this._debugOutputIndent++;
-                if (t != 1)
+                if (t !== 1) {
                     this._writeDebugLineWithHeader(true, "raw value at " + sortedTime[interpInfo.index] + "h", this._numStr(data1));
-                if (t != 0)
+                }
+                if (t !== 0) {
                     this._writeDebugLineWithHeader(true, "raw value at " + sortedTime[interpInfo.index + 1] + "h", this._numStr(data2));
-                if (t != 0 && t != 1) {
+                }
+                if (t !== 0 && t !== 1) {
                     this._writeDebugLineWithHeader(true, "interpolate " + (t * 100).toFixed(2) + "%", this._numStr(data1) + " + (" + this._numStr(data2) + " - " + this._numStr(data1) + ")" + " * " + this._numStr(t) + " = " + this._numStr(odMeasurement) + " L/gdw");
                 }
                 this._writeDebugLineWithHeader(true, "empirical factor", " * " + this._numStr(odMagicFactor) + " = " + this._numStr(finalValue) + " L/gdw");
@@ -489,59 +440,40 @@ var CarbonBalance;
         };
         // Returns the assay measurement that represents OD for the specified line.
         Summation.prototype._getOpticalDensityMeasurementForLine = function (lineID) {
-            var measurementID = this._opticalDensityMeasurementIDByLineID[lineID];
-            if (typeof measurementID !== 'undefined') {
-                return measurementID;
+            var odMeasureID = this._opticalDensityMeasurementIDByLineID[lineID];
+            if (typeof odMeasureID !== 'undefined') {
+                return odMeasureID;
             }
             else {
                 console.log("Warning! Unable to find OD measurement for " + EDDData.Lines[lineID].name);
                 return -1;
             }
         };
-        // This calculates the _validAssaysByLineID and _validMeasurementsByAssayID lists, which reduces clutter in all our looping code.
+        // This calculates the _validAssaysByLineID and _validMeasurementsByAssayID lists,
+        // which reduces clutter in all our looping code.
         Summation.prototype._precalculateValidLists = function () {
-            for (var lineID in EDDData.Lines) {
-                var line = EDDData.Lines[lineID];
-                if (!line.active) {
-                    continue;
+            var _this = this;
+            $.each(EDDData.Lines, function (key, line) {
+                if (line.active) {
+                    _this._validAssaysByLineID[line.id] = [];
                 }
-                this._validAssaysByLineID[lineID] = [];
-            }
-            for (var assayID in EDDData.Assays) {
-                var assay = EDDData.Assays[assayID];
-                if (!assay.active) {
-                    continue;
+            });
+            $.each(EDDData.Assays, function (key, assay) {
+                var list = _this._validAssaysByLineID[assay.lid];
+                if (assay.active && list) {
+                    list.push(assay.id);
+                    _this._validMeasurementsByAssayID[assay.id] = [];
                 }
-                // TypeScript lies - JavaScript always turns property names into strings.
-                // Even if you do declare "var hash:{[id:number]:any[]}".
-                // So yes, this produces correct results.
-                if (!this._validAssaysByLineID.hasOwnProperty(assay.lid.toString())) {
-                    continue;
-                }
-                this._validAssaysByLineID[assay.lid].push(assayID);
-                this._validMeasurementsByAssayID[assayID] = [];
-            }
-            for (var measurementID in EDDData.AssayMeasurements) {
-                var measurement = EDDData.AssayMeasurements[measurementID];
-                if (measurement.dis) {
-                    continue;
-                }
-                if (!this._validMeasurementsByAssayID.hasOwnProperty(measurement.aid.toString())) {
-                    continue;
-                }
-                var assay = EDDData.Assays[measurement.aid];
-                if (!this._validAssaysByLineID.hasOwnProperty(assay.lid.toString())) {
-                    continue;
-                }
-                this._validMeasurementsByAssayID[measurement.aid].push(measurementID);
-                // Update our _opticalDensityMeasurementIDByLineID lookup.
-                var measurementType = EDDData.MetaboliteTypes[measurement.mt];
-                if (measurementType) {
-                    if (this._isOpticalDensityMeasurement(measurementType)) {
-                        this._opticalDensityMeasurementIDByLineID[assay.lid] = measurementID;
+            });
+            $.each(EDDData.AssayMeasurements, function (key, measure) {
+                var list = _this._validMeasurementsByAssayID[measure.assay], type = EDDData.MeasurementTypes[measure.type], assay = EDDData.Assays[measure.assay];
+                if (list) {
+                    list.push(measure.id);
+                    if (type && _this._isOpticalDensityMeasurement(type)) {
+                        _this._opticalDensityMeasurementIDByLineID[assay.lid] = measure.id;
                     }
                 }
-            }
+            });
         };
         return Summation;
     })();
@@ -560,48 +492,44 @@ var CarbonBalance;
         // (This will not return assays that don't have any metabolite data for this time stamp.)
         LineData.prototype.filterAssaysByTimeStamp = function (timeStamp) {
             var filteredAssays = [];
-            for (var assayID in this.assaysByID) {
-                var assay = this.assaysByID[assayID];
-                var timelinesByMeasurementId = {};
-                var numAdded = 0;
-                for (var measurementID in assay.timelinesByMeasurementId) {
-                    var timeline = assay.timelinesByMeasurementId[measurementID];
-                    var sample = timeline.findSampleByTimeStamp(timeStamp);
+            // jQuery each callback always gives string back for keys
+            $.each(this.assaysByID, function (akey, assay) {
+                var timelines = {}, numAdded = 0, outAssay;
+                $.each(assay.timelinesByMeasurementId, function (tkey, timeline) {
+                    var sample = timeline.findSampleByTimeStamp(timeStamp), measurement;
                     if (sample) {
-                        var measurement = new MetaboliteTimeline(assay, measurementID);
+                        measurement = new MetaboliteTimeline(assay, timeline.measureId);
                         measurement.timeSamples.push(sample);
-                        timelinesByMeasurementId[measurementID] = measurement;
+                        timelines[timeline.measureId] = measurement;
                         ++numAdded;
                     }
-                }
-                // If there were any measurements at this timestamp for this assay, then add this assay.
-                if (numAdded > 0) {
-                    var outAssay = new AssayData(assayID);
-                    outAssay.timelinesByMeasurementId = timelinesByMeasurementId;
+                });
+                if (numAdded) {
+                    outAssay = new AssayData(assay.assayId);
+                    outAssay.timelinesByMeasurementId = timelines;
                     filteredAssays.push(outAssay);
                 }
-            }
+            });
             return filteredAssays;
         };
         // Sum up all the in/out values across all metabolites at the specified timestamp.
         LineData.prototype.getInOutSumAtTime = function (timeStamp) {
             // Grab all the measurements.
-            var measurements = [];
-            var totalIn = 0;
-            var totalOut = 0;
-            for (var assayID in this.assaysByID) {
-                var assay = this.assaysByID[assayID];
-                for (var iTimeline in assay.timelinesByMeasurementId) {
-                    var measurement = new InOutSumMeasurement();
-                    measurement.timeline = assay.timelinesByMeasurementId[iTimeline];
-                    measurement.carbonDelta = measurement.timeline.interpolateCarbonDelta(timeStamp);
-                    if (measurement.carbonDelta > 0)
-                        totalOut += measurement.carbonDelta;
-                    else
-                        totalIn -= measurement.carbonDelta;
-                    measurements.push(measurement);
-                }
-            }
+            var measurements = [], totalIn = 0, totalOut = 0;
+            $.each(this.assaysByID, function (key, assay) {
+                $.each(assay.timelinesByMeasurementId, function (key, timeline) {
+                    var inout = new InOutSumMeasurement();
+                    inout.timeline = assay.timelinesByMeasurementId[timeline.measureId];
+                    inout.carbonDelta = inout.timeline.interpolateCarbonDelta(timeStamp);
+                    if (inout.carbonDelta > 0) {
+                        totalOut += inout.carbonDelta;
+                    }
+                    else {
+                        totalIn -= inout.carbonDelta;
+                    }
+                    measurements.push(inout);
+                });
+            });
             return new InOutSum(totalIn, totalOut, measurements);
         };
         return LineData;
@@ -621,7 +549,6 @@ var CarbonBalance;
     CarbonBalance.MergedLineSamples = MergedLineSamples;
     var MergedLineSample = (function () {
         function MergedLineSample(timeStamp) {
-            this.timeStamp = "";
             this.totalCarbonIn = 0;
             this.totalCarbonOut = 0;
             this.timeStamp = timeStamp;
@@ -649,69 +576,70 @@ var CarbonBalance;
     CarbonBalance.InOutSumMeasurement = InOutSumMeasurement;
     var AssayData = (function () {
         function AssayData(assayID) {
-            this.assayID = assayID;
             this.timelinesByMeasurementId = {};
+            this.assayId = assayID;
         }
         // Return a list of [measurementID, TimeSample] objects, one for each
         // measurement that has a sample at the specified time stamp.
         AssayData.prototype.getTimeSamplesByTimeStamp = function (timeStamp) {
-            var ret = [];
-            for (var iTimeline in this.timelinesByMeasurementId) {
-                var timeline = this.timelinesByMeasurementId[iTimeline];
+            return $.map(this.timelinesByMeasurementId, function (timeline) {
                 var sample = timeline.findSampleByTimeStamp(timeStamp);
                 if (sample) {
-                    ret.push({
-                        measurementID: timeline.measurementID,
-                        timeSample: sample
-                    });
+                    return {
+                        "measurementID": timeline.measureId,
+                        "timeSample": sample
+                    };
                 }
-            }
-            return ret;
+            });
         };
         return AssayData;
     })();
     CarbonBalance.AssayData = AssayData;
     var MetaboliteTimeline = (function () {
         function MetaboliteTimeline(assay, measurementID) {
-            this.assay = assay;
-            this.measurementID = measurementID;
             this.timeSamples = [];
             // Of type Summation.TimeSample. Sorted by timeStamp.
             // Note that sample 0's carbonDelta will be 0 since it has no previous measurement.
-            this.timeSamples = [];
+            this.assay = assay;
+            this.measureId = measurementID;
         }
         // This is the easiest function to call to get the carbon delta at a specific time.
         // If this timeline doesn't have a sample at that position, it'll interpolate between
         // the nearest two.
         MetaboliteTimeline.prototype.interpolateCarbonDelta = function (timeStamp) {
-            if (this.timeSamples.length == 0)
+            var prev, delta;
+            if (this.timeSamples.length === 0) {
                 return 0;
-            var timeStampNumber = parseFloat(timeStamp);
-            // If the time stamp is before all our samples, just return our first sample's carbon delta.
-            var prevSample = this.timeSamples[0];
-            var prevSampleTime = parseFloat(prevSample.timeStamp);
-            if (timeStampNumber <= prevSampleTime)
-                return this.timeSamples[0].carbonDelta;
-            for (var i = 1; i < this.timeSamples.length; i++) {
-                var curSample = this.timeSamples[i];
-                var curSampleTime = parseFloat(curSample.timeStamp);
-                // Exact match?
-                if (this.timeSamples[i].timeStamp == timeStamp)
-                    return this.timeSamples[i].carbonDelta;
-                // If this time sample is between the prev/cur sample, then interpolate the carbon delta.
-                if (timeStampNumber >= prevSampleTime && timeStampNumber <= curSampleTime)
-                    return Utl.JS.remapValue(timeStampNumber, prevSampleTime, curSampleTime, prevSample.carbonDelta, curSample.carbonDelta);
-                prevSampleTime = curSampleTime;
-                prevSample = curSample;
             }
-            // The time stamp they passed in must be past all our samples.
-            return this.timeSamples[this.timeSamples.length - 1].carbonDelta;
+            // If the time stamp is before all our samples, just return our first sample's
+            // carbon delta.
+            prev = this.timeSamples[0];
+            if (timeStamp <= prev.timeStamp) {
+                return this.timeSamples[0].carbonDelta;
+            }
+            this.timeSamples.some(function (sample) {
+                if (sample.timeStamp === timeStamp) {
+                    delta = sample.carbonDelta;
+                    return true;
+                }
+                if (timeStamp >= prev.timeStamp && timeStamp <= sample.timeStamp) {
+                    delta = Utl.JS.remapValue(timeStamp, prev.timeStamp, sample.timeStamp, prev.carbonDelta, sample.carbonDelta);
+                    return true;
+                }
+                prev = sample;
+            });
+            if (delta === undefined) {
+                // The time stamp they passed in must be past all our samples.
+                return this.timeSamples.slice(-1)[0].carbonDelta;
+            }
+            return delta;
         };
         // Return a TimeSample or null.
         MetaboliteTimeline.prototype.findSampleByTimeStamp = function (timeStamp) {
-            for (var i in this.timeSamples) {
-                if (this.timeSamples[i].timeStamp == timeStamp)
-                    return this.timeSamples[i];
+            var matched;
+            matched = this.timeSamples.filter(function (sample) { return sample.timeStamp === timeStamp; });
+            if (matched.length) {
+                return matched[0];
             }
             return null;
         };
@@ -721,14 +649,19 @@ var CarbonBalance;
     // Data for a single line for a single point in time.
     var TimeSample = (function () {
         function TimeSample() {
-            this.timeStamp = ""; // in hours
+            // in hours
+            this.timeStamp = 0;
             // ** NOTE: CmMol here means carbon milli-moles.
-            this.carbonValue = 0; // CmMol/L of carbon at this timestamp
-            this.carbonDelta = 0; // CmMol/gdw/hr
+            // CmMol/L of carbon at this timestamp
+            this.carbonValue = 0;
+            // CmMol/gdw/hr
+            // delta between this carbon value and the previous one (0 for the first entry):
+            // -- POSITIVE means output (in that the organism outputted this metabolite for the time
+            //      span in question)
+            // -- NEGATIVE means input  (in that the organism reduced the amount of this metabolite
+            //      for the time span)
+            this.carbonDelta = 0;
         }
-        // delta between this carbon value and the previous one (0 for the first entry)
-        // POSITIVE means output (in that the organism outputted this metabolite for the time span in question)
-        // NEGATIVE means input  (in that the organism reduced the amount of this metabolite for the time span)
         TimeSample.prototype.isInput = function () {
             return this.carbonDelta <= 0;
         };
@@ -744,64 +677,59 @@ var CarbonBalance;
     })();
     CarbonBalance.TimeSample = TimeSample;
     // Step 1 is where CarbonBalance.Summation builds a timeline for each line->assay->metabolite.
-    // Step 2 is where this class merges all the assay->metabolite timelines into one timeline for each line.
+    // Step 2 is where this class merges all the assay->metabolite timelines into one timeline
+    // for each line.
     var TimelineMerger = (function () {
         function TimelineMerger() {
         }
         // Take the input LineData and sum up all measurements across all assays/metabolites
         // into a list of {timeStamp, totalCarbonIn, totalCarbonOut} objects (sorted by timeStamp).
         TimelineMerger.mergeAllLineSamples = function (lineData) {
-            var mergedLineSamples = new MergedLineSamples();
+            var mergedLineSamples = new MergedLineSamples(), 
             // First, build a list of timestamps from "primary assays" (i.e. non-RAMOS assays).
-            var validTimeStamps = {};
-            for (var assayID in lineData.assaysByID) {
-                var assay = lineData.assaysByID[assayID];
-                for (var measurementID in assay.timelinesByMeasurementId) {
-                    var timeline = assay.timelinesByMeasurementId[measurementID];
-                    // Remember (in the MergedLineSamples structure that we're returning) that 
-                    // we're gonna use this metabolite's data for our CB sums.
+            // object is being used as a set
+            validTimeStamps = {}, mergedSamples = {};
+            $.each(lineData.assaysByID, function (akey, assay) {
+                $.each(assay.timelinesByMeasurementId, function (tkey, timeline) {
                     mergedLineSamples.metaboliteTimelines.push(timeline);
-                    // Only make new time stamp entries for "primary" assays.
                     if (TimelineMerger._isPrimaryAssay(assay)) {
-                        for (var i in timeline.timeSamples) {
-                            validTimeStamps[timeline.timeSamples[i].timeStamp] = 1;
-                        }
+                        timeline.timeSamples.forEach(function (sample) {
+                            validTimeStamps[sample.timeStamp] = sample.timeStamp;
+                        });
                     }
+                });
+            });
+            $.each(validTimeStamps, function (key, timeStamp) {
+                var outSample, timelines;
+                if (timeStamp === 0) {
+                    return;
                 }
-            }
-            var mergedSamples = {};
-            for (var timeStamp in validTimeStamps) {
-                // Don't include anything at t=0 because there won't be a carbon delta.
-                if (timeStamp == 0)
-                    continue;
-                var outSample = new MergedLineSample(timeStamp);
+                outSample = new MergedLineSample(timeStamp);
                 mergedSamples[timeStamp] = outSample;
-                for (var iTimeline in mergedLineSamples.metaboliteTimelines) {
-                    var timeline = mergedLineSamples.metaboliteTimelines[iTimeline];
+                timelines = mergedLineSamples.metaboliteTimelines;
+                timelines.forEach(function (timeline) {
                     var carbonDelta = timeline.interpolateCarbonDelta(timeStamp);
-                    if (carbonDelta > 0)
+                    if (carbonDelta > 0) {
                         outSample.totalCarbonOut += carbonDelta;
-                    else
-                        outSample.totalCarbonIn += -carbonDelta;
-                }
-            }
-            // Convert the hash into a sorted list.
-            var sortedSamples = Object.keys(mergedSamples).map(function (a) {
-                return mergedSamples[a];
+                    }
+                    else {
+                        outSample.totalCarbonIn -= carbonDelta;
+                    }
+                });
             });
-            sortedSamples.sort(function (a, b) {
-                return parseFloat(a.timeStamp) - parseFloat(b.timeStamp);
+            // sort the samples by timestamp
+            mergedLineSamples.mergedLineSamples = $.map(mergedSamples, function (sample) { return sample; }).sort(function (a, b) {
+                return a.timeStamp - b.timeStamp;
             });
-            mergedLineSamples.mergedLineSamples = sortedSamples;
             return mergedLineSamples;
         };
         // Returns true if this is a "primary" assay, which means that we'll use it to generate
-        // carbon balance time samples. A non-primary assay is something that generates a ton of 
+        // carbon balance time samples. A non-primary assay is something that generates a ton of
         // samples like RAMOS.
         TimelineMerger._isPrimaryAssay = function (assay) {
-            var serverAssayData = EDDData.Assays[assay.assayID];
-            var protocol = EDDData.Protocols[serverAssayData.pid];
-            return (protocol.name != 'O2/CO2'); // TODO: Fragile
+            var serverAssayData = EDDData.Assays[assay.assayId], protocol = EDDData.Protocols[serverAssayData.pid];
+            // TODO: Fragile
+            return (protocol.name !== 'O2/CO2');
         };
         return TimelineMerger;
     })();
