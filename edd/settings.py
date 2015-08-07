@@ -43,7 +43,7 @@ ALLOWED_HOSTS = []
 SITE_ID = 1
 LOGIN_REDIRECT_URL = '/'
 DEBUG_TOOLBAR_CONFIG = {
-    'JQUERY_URL': '/static/main/js/lib/jquery/jquery.js',
+    'JQUERY_URL': '/static/main/js/lib/jquery/jquery-2.1.4.min.js',
 }
 
 
