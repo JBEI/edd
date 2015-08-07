@@ -1420,13 +1420,19 @@ module StudyD {
 
 
     export function rebuildCarbonBalanceGraphs() {
-        var cellObjs:DataGridDataCell[];
+        var cellObjs:DataGridDataCell[],
+            group:DataGridColumnGroupSpec = this.linesDataGridSpec.carbonBalanceCol;
         if (this.carbonBalanceDisplayIsFresh) {
             return;
         }
         // Drop any previously created Carbon Balance SVG elements from the DOM.
         this.carbonBalanceData.removeAllCBGraphs();
-        cellObjs = this.linesDataGridSpec.carbonBalanceCol.getEntireIndex();
+        cellObjs = [];
+        // get all cells from all columns in the column group
+        group.memberColumns.forEach((col:DataGridColumnSpec):void => {
+            Array.prototype.push.apply(cellObjs, col.getEntireIndex());
+        });
+        // create carbon balance graph for each cell
         cellObjs.forEach((cell:DataGridDataCell) => {
             this.carbonBalanceData.createCBGraphForLine(cell.recordID, cell.cellElement);
         });
@@ -1435,18 +1441,22 @@ module StudyD {
 
 
     // They want to select a different metabolic map.
-    export function onClickedMetabolicMapName() {
-        var callback = (err, metabolicMapID, metabolicMapName, finalBiomass:number) => {
-            if ( err == null ) {
+    export function onClickedMetabolicMapName():void {
+        var ui:StudyMetabolicMapChooser,
+            callback:MetabolicMapChooserResult = (error:string,
+                metabolicMapID?:number,
+                metabolicMapName?:string,
+                finalBiomass?:number):void => {
+            if (!error) {
                 this.metabolicMapID = metabolicMapID;
                 this.metabolicMapName = metabolicMapName;
                 this.biomassCalculation = finalBiomass;
-
                 this.onChangedMetabolicMap();
+            } else {
+                console.log("onClickedMetabolicMapName error: " + error);
             }
         };
-        new StudyMetabolicMapChooser(EDDData.currentUserID, EDDData.currentStudyID, false,
-                callback);
+        ui = new StudyMetabolicMapChooser(false, callback);
     }
 };
 
@@ -1459,7 +1469,7 @@ class DataGridSpecLines extends DataGridSpecBase {
     groupIDsInOrder:any;
     groupIDsToGroupIndexes:any;
     groupIDsToGroupNames:any;
-    carbonBalanceCol:DataGridColumnSpec;
+    carbonBalanceCol:DataGridColumnGroupSpec;
     carbonBalanceWidget:DGShowCarbonBalanceWidget;
 
 
@@ -1802,7 +1812,7 @@ class DataGridSpecLines extends DataGridSpecBase {
             new DataGridColumnSpec(3, this.generateCarbonSourceCells),
             new DataGridColumnSpec(4, this.generateCarbonSourceLabelingCells),
             // The Carbon Balance cells are populated by a callback, triggered when first displayed
-            this.carbonBalanceCol = new DataGridColumnSpec(5, this.generateCarbonBalanceBlankCells)
+            new DataGridColumnSpec(5, this.generateCarbonBalanceBlankCells)
         ];
         metaDataCols = this.metaDataIDsUsedInLines.map((id, index) => {
             return new DataGridColumnSpec(6 + index, this.makeMetaDataCellsGeneratorFunction(id));
@@ -1823,7 +1833,7 @@ class DataGridSpecLines extends DataGridSpecBase {
             new DataGridColumnGroupSpec('Strain'),
             new DataGridColumnGroupSpec('Carbon Source(s)'),
             new DataGridColumnGroupSpec('Labeling'),
-            new DataGridColumnGroupSpec('Carbon Balance', {
+            this.carbonBalanceCol = new DataGridColumnGroupSpec('Carbon Balance', {
                 'showInVisibilityList': false,    // Has its own header widget
                 'hiddenByDefault': true,
                 'revealedCallback': StudyD.carbonBalanceColumnRevealedCallback
@@ -2047,19 +2057,24 @@ class DGShowCarbonBalanceWidget extends DataGridHeaderWidget {
     highlighted:boolean;
     checkboxEnabled:boolean;
 
+    // store more specific type of spec to get to carbonBalanceCol later
+    private _lineSpec:DataGridSpecLines;
 
-    constructor(dataGridOwnerObject:any, dataGridSpec:any) {
+    constructor(dataGridOwnerObject:DataGrid, dataGridSpec:DataGridSpecLines) {
         super(dataGridOwnerObject, dataGridSpec);
         this.checkboxEnabled = true;
         this.highlighted = false;
+        this._lineSpec = dataGridSpec;
     }
     
 
     createElements(uniqueID:any):void {
-        var cbID:string = this.dataGridSpec.tableSpec.id+'CarBal'+uniqueID;
+        var cbID:string = this.dataGridSpec.tableSpec.id + 'CarBal' + uniqueID;
         var cb:HTMLInputElement = this._createCheckbox(cbID, cbID, '1');
         cb.className = 'tableControl';
-        $(cb).click(this.clickHandler);
+        $(cb).click((ev:JQueryMouseEventObject):void => {
+            this.activateCarbonBalance();
+        });
 
         var label:HTMLElement = this._createLabel('Carbon Balance', cbID);
 
@@ -2074,7 +2089,6 @@ class DGShowCarbonBalanceWidget extends DataGridHeaderWidget {
         this.createdElements(true);
     }
 
-
     highlight(h:boolean):void {
         this.highlighted = h;
         if (this.checkboxEnabled) {
@@ -2085,7 +2099,6 @@ class DGShowCarbonBalanceWidget extends DataGridHeaderWidget {
             }
         }
     }
-
 
     enable(h:boolean):void {
         this.checkboxEnabled = h;
@@ -2098,29 +2111,34 @@ class DGShowCarbonBalanceWidget extends DataGridHeaderWidget {
         }
     }
 
-
-    clickHandler = (e) => {
-        // TODO: Untangle this a bit
-        var callback = (err, finalMetabolicMapID, finalMetabolicMapFilename,
-                finalBiomass:number) => {
-            StudyD.metabolicMapID = finalMetabolicMapID;
-            StudyD.metabolicMapName = finalMetabolicMapFilename;
-            StudyD.biomassCalculation = finalBiomass;
-            StudyD.onChangedMetabolicMap();
-        }
+    private activateCarbonBalance():void {
+        var ui:FullStudyBiomassUI,
+            callback:FullStudyBiomassUIResultsCallback;
+        callback = (error:string,
+                metabolicMapID?:number,
+                metabolicMapFilename?:string,
+                finalBiomass?:number):void => {
+            if (!error) {
+                StudyD.metabolicMapID = metabolicMapID;
+                StudyD.metabolicMapName = metabolicMapFilename;
+                StudyD.biomassCalculation = finalBiomass;
+                StudyD.onChangedMetabolicMap();
+                this.checkBoxElement.checked = true;
+                this.dataGridOwnerObject.showColumn(this._lineSpec.carbonBalanceCol);
+            }
+        };
         if (this.checkBoxElement.checked) {
-
             // We need to get a biomass calculation to multiply against OD.
             // Have they set this up yet?
-            if (!StudyD.biomassCalculation || StudyD.biomassCalculation == -1 ) {
+            if (!StudyD.biomassCalculation || StudyD.biomassCalculation === -1) {
                 this.checkBoxElement.checked = false;
-                // Must setup the biomass 
-                new FullStudyBiomassUI(EDDData.currentUserID, EDDData.currentStudyID, callback);
+                // Must setup the biomass
+                ui = new FullStudyBiomassUI(callback);
             } else {
-                this.dataGridOwnerObject.showColumn(5);
+                this.dataGridOwnerObject.showColumn(this._lineSpec.carbonBalanceCol);
             }
         } else {
-            this.dataGridOwnerObject.hideColumn(5);
+            this.dataGridOwnerObject.hideColumn(this._lineSpec.carbonBalanceCol);
         }
     }
 }

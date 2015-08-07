@@ -32,15 +32,14 @@ interface MetabolicMapChooserResult {
     (err: string, metabolicMapID?: number, metabolicMapFilename?: string, biomassCalculation?: number): void;
 }
 declare class StudyMetabolicMapChooser {
-    private _userID;
-    private _studyID;
     private _dialogBox;
-    constructor(userID: number, studyID: number, checkWithServerFirst: boolean, callback: MetabolicMapChooserResult);
+    constructor(checkWithServerFirst: boolean, callback: MetabolicMapChooserResult);
+    private _basePayload();
     private _chooseMetabolicMap(callback);
     private _onMetabolicMapChosen(map, callback);
     private _requestStudyMetabolicMap(callback, error);
     private _requestMetabolicMapList(callback, error);
-    private _requestSetStudyMetabolicMap(studyID, metabolicMapID, callback);
+    private _requestSetStudyMetabolicMap(metabolicMapID, callback);
 }
 interface BiomassResultsCallback {
     (err: string, finalBiomass?: number): void;
@@ -58,5 +57,5 @@ interface FullStudyBiomassUIResultsCallback {
     (err: string, metabolicMapID?: number, metabolicMapFilename?: string, finalBiomass?: number): void;
 }
 declare class FullStudyBiomassUI {
-    constructor(userID: number, studyID: number, callback: FullStudyBiomassUIResultsCallback);
+    constructor(callback: FullStudyBiomassUIResultsCallback);
 }

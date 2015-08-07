@@ -48,7 +48,7 @@ var DialogBox = (function () {
                 <table width="100%"> \
                 <tr><td align="center"> \
                     <div>' + caption + '<br><br> \
-                        <img src="images/loading_spinner.gif"></img> \
+                        <img src="/static/main/images/loading_spinner.gif"></img> \
                     </div> \
                 </td></tr> \
                 </table>\
@@ -75,10 +75,8 @@ var DialogBox = (function () {
 // This UI lets the user pick a metabolic map and a biomass reaction inside of it to use for the
 // specified study.
 var StudyMetabolicMapChooser = (function () {
-    function StudyMetabolicMapChooser(userID, studyID, checkWithServerFirst, callback) {
+    function StudyMetabolicMapChooser(checkWithServerFirst, callback) {
         var _this = this;
-        this._userID = userID;
-        this._studyID = studyID;
         this._dialogBox = new DialogBox(500, 500);
         this._dialogBox.showWaitSpinner('Please wait...');
         if (checkWithServerFirst) {
@@ -106,6 +104,10 @@ var StudyMetabolicMapChooser = (function () {
             this._chooseMetabolicMap(callback);
         }
     }
+    StudyMetabolicMapChooser.prototype._basePayload = function () {
+        var token = document.cookie.replace(/(?:(?:^|.*;\s*)csrftoken\s*\=\s*([^;]*).*$)|^.*$/, '$1');
+        return { 'csrfmiddlewaretoken': token };
+    };
     // Present the user with a list of SBML files to choose from. If they choose one
     // and it still requires biomass calculations, we'll go on to _matchMetabolites().
     StudyMetabolicMapChooser.prototype._chooseMetabolicMap = function (callback) {
@@ -136,15 +138,8 @@ var StudyMetabolicMapChooser = (function () {
     StudyMetabolicMapChooser.prototype._onMetabolicMapChosen = function (map, callback) {
         var _this = this;
         // Before we return to the caller, tell the server to store this association.
-        this._requestSetStudyMetabolicMap(this._studyID, map.id, function (err) {
-            // Handle errors..
-            if (err) {
-                _this._dialogBox.showMessage(err, function () { return callback.call({}, err); });
-                return;
-            }
-            // Success! Close the dialog and return the result to our original caller.
-            _this._dialogBox.term();
-            callback(null, map.id, map.name, map.biomassCalculation);
+        this._requestSetStudyMetabolicMap(map.id, function (error) {
+            _this._dialogBox.showMessage(error, function () { return callback.call({}, error); });
         });
     };
     // Get info from the server..
@@ -169,23 +164,14 @@ var StudyMetabolicMapChooser = (function () {
             }
         });
     };
-    StudyMetabolicMapChooser.prototype._requestSetStudyMetabolicMap = function (studyID, metabolicMapID, callback) {
+    StudyMetabolicMapChooser.prototype._requestSetStudyMetabolicMap = function (metabolicMapID, callback) {
         $.ajax({
             type: "POST",
             dataType: "json",
-            url: "FormAjaxResp.cgi",
-            data: {
-                "action": "setStudyMetabolicMap",
-                "studyID": studyID,
-                "metabolicMapID": metabolicMapID
-            },
-            success: function (response) {
-                if (response.type === "Success") {
-                    callback(null);
-                }
-                else {
-                    callback(response.message);
-                }
+            url: "map/",
+            data: $.extend({}, this._basePayload(), { "metabolicMapID": metabolicMapID }),
+            error: function (jqXHR, status, errorText) {
+                callback.call({}, status + " " + errorText);
             }
         });
     };
@@ -362,17 +348,14 @@ var BiomassCalculationUI = (function () {
 })();
 ;
 var FullStudyBiomassUI = (function () {
-    function FullStudyBiomassUI(userID, studyID, callback) {
-        var chooser;
-        // First, make sure a metabolic map is bound to the study.
-        chooser = new StudyMetabolicMapChooser(userID, studyID, true, function (err, metabolicMapID, metabolicMapFilename, biomassCalculation) {
+    function FullStudyBiomassUI(callback) {
+        var chooser, chooserHandler;
+        chooserHandler = function (error, metabolicMapID, metabolicMapFilename, biomassCalculation) {
             var ui;
-            // Handle errors.
-            if (err) {
-                callback(err);
+            if (error) {
+                callback.call({}, error);
                 return;
             }
-            // Now, make sure that this metabolic map has a biomass.
             if (biomassCalculation === -1) {
                 // The study has a metabolic map, but no biomass has been calculated for it yet.
                 // We need to match all metabolites so the server can calculation biomass.
@@ -383,7 +366,9 @@ var FullStudyBiomassUI = (function () {
             else {
                 callback(null, metabolicMapID, metabolicMapFilename, biomassCalculation);
             }
-        });
+        };
+        // First, make sure a metabolic map is bound to the study.
+        chooser = new StudyMetabolicMapChooser(true, chooserHandler);
     }
     return FullStudyBiomassUI;
 })();

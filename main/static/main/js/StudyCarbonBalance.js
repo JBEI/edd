@@ -142,7 +142,7 @@ var CarbonBalance;
         };
         // Lookup a metabolite's name by a measurement ID.
         Display.prototype._getMetaboliteNameByMeasurementID = function (measurementID) {
-            var measurementTypeID = EDDData.AssayMeasurements[measurementID].mt;
+            var measurementTypeID = EDDData.AssayMeasurements[measurementID].type;
             var metaboliteName = EDDData.MetaboliteTypes[measurementTypeID].name;
             return metaboliteName;
         };
@@ -286,7 +286,7 @@ var CarbonBalance;
             var yOffset = (this.POPUP_HEIGHT - svgSize[1]) / 2;
             var fontName = "Arial";
             // Create a link to copy debug text to the clipboard.
-            var debugTextLink = svg.appendChild(Utl.SVG.createText(0, 3, "data", fontName, 10, false, Utl.Color.rgb(150, 150, 150)));
+            var debugTextLink = svg.appendChild(Utl.SVG.createText(0, 10, "data", fontName, 10, false, Utl.Color.rgb(150, 150, 150)));
             debugTextLink.setAttribute('x', (svgSize[0] - 3).toString());
             debugTextLink.setAttribute('text-anchor', 'end');
             debugTextLink.setAttribute('alignment-baseline', 'hanging');

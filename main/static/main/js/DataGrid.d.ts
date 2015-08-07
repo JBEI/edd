@@ -55,8 +55,8 @@ declare class DataGrid {
     clickedOptionWidget(event: Event): void;
     clickedHeaderWidget(headerWidget: DataGridWidget): void;
     private _clickedColVisibilityControl(event);
-    showColumn(group: any): void;
-    hideColumn(group: any): void;
+    showColumn(group: DataGridColumnGroupSpec): void;
+    hideColumn(group: DataGridColumnGroupSpec): void;
     private _basePayload();
     private _columnSettingsKey();
     private _fetchSettings(propKey, callback, defaultValue?);

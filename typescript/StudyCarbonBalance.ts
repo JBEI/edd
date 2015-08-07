@@ -176,7 +176,7 @@ module CarbonBalance {
 
 		// Lookup a metabolite's name by a measurement ID.
 		private _getMetaboliteNameByMeasurementID(measurementID:number):string {
-			var measurementTypeID:number = EDDData.AssayMeasurements[measurementID].mt;
+			var measurementTypeID:number = EDDData.AssayMeasurements[measurementID].type;
 			var metaboliteName:string = EDDData.MetaboliteTypes[measurementTypeID].name;
 			return metaboliteName;
 		}
@@ -370,7 +370,7 @@ module CarbonBalance {
 			var fontName:string = "Arial";
 
 			// Create a link to copy debug text to the clipboard.
-			var debugTextLink = <SVGElement>svg.appendChild(Utl.SVG.createText(0, 3, "data", fontName, 10, false, Utl.Color.rgb(150,150,150)));
+			var debugTextLink = <SVGElement>svg.appendChild(Utl.SVG.createText(0, 10, "data", fontName, 10, false, Utl.Color.rgb(150,150,150)));
 			debugTextLink.setAttribute('x', (svgSize[0] - 3).toString());
    			debugTextLink.setAttribute('text-anchor', 'end');
    			debugTextLink.setAttribute('alignment-baseline', 'hanging');

@@ -92,7 +92,6 @@ var CarbonBalance;
                         valid++;
                         // Create MetaboliteTimeline output structure
                         timeline = new MetaboliteTimeline(outAssay, measureId);
-                        // TODO why is this not in constructor?
                         outAssay.timelinesByMeasurementId[measureId] = timeline;
                         // Build a sorted list of timestamp/measurement
                         timeline.timeSamples = _this._buildSortedMeasurementsForAssayMetabolite(out, measureId, integralsByMeasurementID, biomassCalculation);

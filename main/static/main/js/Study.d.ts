@@ -125,7 +125,7 @@ declare class DataGridSpecLines extends DataGridSpecBase {
     groupIDsInOrder: any;
     groupIDsToGroupIndexes: any;
     groupIDsToGroupNames: any;
-    carbonBalanceCol: DataGridColumnSpec;
+    carbonBalanceCol: DataGridColumnGroupSpec;
     carbonBalanceWidget: DGShowCarbonBalanceWidget;
     constructor();
     highlightCarbonBalanceWidget(v: boolean): void;
@@ -179,11 +179,12 @@ declare class DGShowCarbonBalanceWidget extends DataGridHeaderWidget {
     labelElement: any;
     highlighted: boolean;
     checkboxEnabled: boolean;
-    constructor(dataGridOwnerObject: any, dataGridSpec: any);
+    private _lineSpec;
+    constructor(dataGridOwnerObject: DataGrid, dataGridSpec: DataGridSpecLines);
     createElements(uniqueID: any): void;
     highlight(h: boolean): void;
     enable(h: boolean): void;
-    clickHandler: (e: any) => void;
+    private activateCarbonBalance();
 }
 declare class DataGridAssays extends DataGrid {
     sectionCurrentlyDisclosed: boolean;

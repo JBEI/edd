@@ -63,7 +63,7 @@ class DialogBox {
                 <table width="100%"> \
                 <tr><td align="center"> \
                     <div>' + caption + '<br><br> \
-                        <img src="images/loading_spinner.gif"></img> \
+                        <img src="/static/main/images/loading_spinner.gif"></img> \
                     </div> \
                 </td></tr> \
                 </table>\
@@ -126,15 +126,9 @@ interface MetabolicMapChooserResult {
 // specified study.
 class StudyMetabolicMapChooser {
 
-    private _userID:number;
-    private _studyID:number;
     private _dialogBox:DialogBox;
 
-    constructor(userID:number, studyID:number, checkWithServerFirst:boolean,
-            callback:MetabolicMapChooserResult) {
-        this._userID = userID;
-        this._studyID = studyID;
-
+    constructor(checkWithServerFirst:boolean, callback:MetabolicMapChooserResult) {
         this._dialogBox = new DialogBox( 500, 500 );
         this._dialogBox.showWaitSpinner('Please wait...');
 
@@ -162,10 +156,16 @@ class StudyMetabolicMapChooser {
         }
     }
 
+    private _basePayload():any {
+        var token:string = document.cookie.replace(
+            /(?:(?:^|.*;\s*)csrftoken\s*\=\s*([^;]*).*$)|^.*$/,
+            '$1');
+        return { 'csrfmiddlewaretoken': token };
+    }
 
     // Present the user with a list of SBML files to choose from. If they choose one
     // and it still requires biomass calculations, we'll go on to _matchMetabolites().
-    private _chooseMetabolicMap( callback:MetabolicMapChooserResult ):void {
+    private _chooseMetabolicMap(callback:MetabolicMapChooserResult):void {
         this._requestMetabolicMapList( (metabolicMaps:ServerMetabolicMap[]):void => {
             // Display the list.
             this._dialogBox.clearContents();
@@ -185,7 +185,7 @@ class StudyMetabolicMapChooser {
                 $(column).css('border-top', '1px solid #000'); // make it look like a link
                 $(column).css('border-bottom', '1px solid #000'); // make it look like a link
                 $(column).css('padding', '10px'); // make it look like a link
-                $(column).click( this._onMetabolicMapChosen.bind(this, map, callback) );
+                $(column).click(this._onMetabolicMapChosen.bind(this, map, callback));
             });
             this._dialogBox.addElement(table.table);
         }, (err:string):void => {
@@ -198,16 +198,11 @@ class StudyMetabolicMapChooser {
     private _onMetabolicMapChosen(map:ServerMetabolicMap,
             callback:MetabolicMapChooserResult):void {
         // Before we return to the caller, tell the server to store this association.
-        this._requestSetStudyMetabolicMap(this._studyID, map.id, (err?:string):void => {
-                // Handle errors..
-                if (err) {
-                    this._dialogBox.showMessage(err, ():void => callback.call({}, err));
-                    return;
-                }
-                // Success! Close the dialog and return the result to our original caller.
-                this._dialogBox.term();
-                callback(null, map.id, map.name, map.biomassCalculation);
-        });
+        this._requestSetStudyMetabolicMap(map.id,
+            (error:string):void => {
+                this._dialogBox.showMessage(error, ():void => callback.call({}, error));
+            }
+        );
     }
 
 
@@ -241,23 +236,15 @@ class StudyMetabolicMapChooser {
     }
 
 
-    private _requestSetStudyMetabolicMap(studyID:number, metabolicMapID:number,
+    private _requestSetStudyMetabolicMap(metabolicMapID:number,
             callback: (err:string) => void):void {
         $.ajax({
             type: "POST",
             dataType: "json",
-            url: "FormAjaxResp.cgi",
-            data: {
-                "action": "setStudyMetabolicMap",
-                "studyID": studyID,
-                "metabolicMapID": metabolicMapID
-            },
-            success: ( response:any ):void => {
-                if (response.type === "Success") {
-                    callback(null);
-                } else {
-                    callback(response.message);
-                }
+            url: "map/",
+            data: $.extend({}, this._basePayload(), { "metabolicMapID": metabolicMapID }),
+            error: (jqXHR:JQueryXHR, status:string, errorText:string):void => {
+                callback.call({}, status + " " + errorText);
             }
         });
     }
@@ -497,20 +484,17 @@ interface FullStudyBiomassUIResultsCallback {
 };
 
 class FullStudyBiomassUI {
-    constructor(userID:number, studyID:number, callback:FullStudyBiomassUIResultsCallback) {
-        var chooser:StudyMetabolicMapChooser;
-        // First, make sure a metabolic map is bound to the study.
-        chooser = new StudyMetabolicMapChooser(userID, studyID, true, (err:string,
+    constructor(callback:FullStudyBiomassUIResultsCallback) {
+        var chooser:StudyMetabolicMapChooser, chooserHandler:MetabolicMapChooserResult;
+        chooserHandler = (error:string,
                 metabolicMapID?:number,
                 metabolicMapFilename?:string,
                 biomassCalculation?:number):void => {
             var ui:BiomassCalculationUI;
-            // Handle errors.
-            if (err) {
-                callback(err);
+            if (error) {
+                callback.call({}, error);
                 return;
             }
-            // Now, make sure that this metabolic map has a biomass.
             if (biomassCalculation === -1) {
                 // The study has a metabolic map, but no biomass has been calculated for it yet.
                 // We need to match all metabolites so the server can calculation biomass.
@@ -522,8 +506,9 @@ class FullStudyBiomassUI {
             } else {
                 callback(null, metabolicMapID, metabolicMapFilename, biomassCalculation);
             }
-
-        });
+        };
+        // First, make sure a metabolic map is bound to the study.
+        chooser = new StudyMetabolicMapChooser(true, chooserHandler);
     }
 }
 

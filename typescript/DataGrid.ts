@@ -842,7 +842,7 @@ class DataGrid {
 
 
     // 'control' is a column visibility checkbox
-    showColumn(group):void {
+    showColumn(group:DataGridColumnGroupSpec):void {
         if (group.currentlyHidden) {
             group.currentlyHidden = false;
             if (group.revealedCallback) {
@@ -855,7 +855,7 @@ class DataGrid {
 
 
     // 'control' is a column visibility checkbox
-    hideColumn(group):void {
+    hideColumn(group:DataGridColumnGroupSpec):void {
         if (!group.currentlyHidden) {
             group.currentlyHidden = true;
             this.scheduleTimer('_updateColumnSettings', () => this._updateColumnSettings());
@@ -892,7 +892,7 @@ class DataGrid {
     // The server binds this. 'this' is a checkbox.
     private _updateColumnSettings():DataGrid {
         var propKey = this._columnSettingsKey(), setCol = [], unsetCol = [], delCol = [];
-        this._spec.tableColumnGroupSpec.forEach((col) => {
+        this._spec.tableColumnGroupSpec.forEach((col:DataGridColumnGroupSpec):void => {
             if (col.showInVisibilityList && col.checkboxElement) {
                 if (col.checkboxElement.checked) {
                     setCol.push(col.name);
