@@ -1363,17 +1363,13 @@ class DataGridDataCell {
 }
 
 
-
 // A placeholder cell when data is still loading
 class DataGridLoadingCell extends DataGridDataCell {
-
     constructor(gridSpec:DataGridSpecBase, id:string, opt?:{[index:string]:any}) {
         super(gridSpec, id, opt);
         this.contentString = '<span class="loading">Loading...</span>';
     }
-
 }
-
 
 
 // A general class that acts as a common repository for utility functions for DataGrid widgets.

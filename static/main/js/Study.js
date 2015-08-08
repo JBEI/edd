@@ -683,7 +683,7 @@ var StudyD;
                 $.each(EDDData.Protocols, function (id, protocol) {
                     var spec;
                     if (protocolsWithMeasurements[id]) {
-                        _this.assaysDataGridSpecs[id] = spec = new DataGridSpecAssays(id);
+                        _this.assaysDataGridSpecs[id] = spec = new DataGridSpecAssays(protocol.id);
                         _this.assaysDataGrids[id] = new DataGridAssays(spec);
                     }
                 });
@@ -863,10 +863,33 @@ var StudyD;
             });
         });
     }
+    function requestAssayData(assay) {
+        var _this = this;
+        $.ajax({
+            url: ['measurements', assay.pid, assay.id, ''].join('/'),
+            type: 'GET',
+            dataType: 'json',
+            error: function (xhr, status) {
+                console.log('Failed to fetch measurement data on ' + assay.name + '!');
+                console.log(status);
+            },
+            success: function (data) {
+                processMeasurementData(_this, data);
+            }
+        });
+    }
+    StudyD.requestAssayData = requestAssayData;
     function processMeasurementData(context, data) {
         var assaySeen = {}, filterIds = { 'm': [], 'p': [], 'g': [] }, protocolToAssay = {};
         EDDData.AssayMeasurements = EDDData.AssayMeasurements || {};
         EDDData.MeasurementTypes = $.extend(EDDData.MeasurementTypes || {}, data.types);
+        // attach measurement counts to each assay
+        $.each(data.total_measures, function (assayId, count) {
+            var assay = EDDData.Assays[assayId];
+            if (assay) {
+                assay.count = count;
+            }
+        });
         // loop over all downloaded measurements
         $.each(data.measures || {}, function (index, measurement) {
             var assay = EDDData.Assays[measurement.assay], line, mtype;
@@ -921,7 +944,7 @@ var StudyD;
             context.geneDataProcessed = true;
         }
         context.repopulateFilteringSection();
-        // invalidate assays on all DataGrids; I think this means they are initially hidden?
+        // invalidate assays on all DataGrids; redraws the affected rows
         $.each(context.assaysDataGrids, function (protocolId, dataGrid) {
             dataGrid.invalidateAssayRecords(Object.keys(protocolToAssay[protocolId] || {}));
         });
@@ -2012,12 +2035,12 @@ var DataGridSpecAssays = (function (_super) {
         this.assayIDsInProtocol = [];
         $.each(EDDData.Assays, function (assayId, assay) {
             var line;
-            if (_this.protocolID != assay.pid) {
+            if (_this.protocolID !== assay.pid) {
             }
             else if (!(line = EDDData.Lines[assay.lid]) || !line.active) {
             }
             else {
-                _this.assayIDsInProtocol.push(assayId);
+                _this.assayIDsInProtocol.push(assay.id);
             }
         });
     };
@@ -2176,7 +2199,8 @@ var DataGridSpecAssays = (function (_super) {
     };
     DataGridSpecAssays.prototype.generateAssayNameCells = function (gridSpec, index) {
         var record = EDDData.Assays[index], line = EDDData.Lines[record.lid], sideMenuItems = [
-            '<a href="#editassay" class="assay-edit-link">Edit Assay</a>',
+            '<a class="assay-edit-link">Edit Assay</a>',
+            '<a class="assay-reload-link">Reload Data</a>',
             '<a href="export?assaylevel=1&assay=' + index + '">Export Data as CSV/etc</a>'
         ];
         // TODO we probably don't want to special-case like this by name
@@ -2212,9 +2236,7 @@ var DataGridSpecAssays = (function (_super) {
         };
     };
     DataGridSpecAssays.prototype.generateMeasurementCells = function (gridSpec, index, opt) {
-        var record = EDDData.Assays[index], cells = [], factory = function () {
-            return new DataGridLoadingCell(gridSpec, index);
-        };
+        var record = EDDData.Assays[index], cells = [], factory = function () { return new DataGridDataCell(gridSpec, index); };
         if ((record.metabolites || []).length > 0) {
             if (EDDData.AssayMeasurements === undefined) {
                 cells.push(new DataGridLoadingCell(gridSpec, index, { 'rowspan': record.metabolites.length }));
@@ -2244,11 +2266,21 @@ var DataGridSpecAssays = (function (_super) {
         }
         // generate a loading cell if none created by measurements
         if (!cells.length) {
-            cells.push(factory());
+            if (record.count) {
+                // we have a count, but no data yet; still loading
+                cells.push(new DataGridLoadingCell(gridSpec, index));
+            }
+            else if (opt.empty) {
+                cells.push(opt.empty.call({}));
+            }
+            else {
+                cells.push(factory());
+            }
         }
         return cells;
     };
     DataGridSpecAssays.prototype.generateMeasurementNameCells = function (gridSpec, index) {
+        var record = EDDData.Assays[index];
         return gridSpec.generateMeasurementCells(gridSpec, index, {
             'metaboliteToValue': function (measureId) {
                 var measure = EDDData.AssayMeasurements[measureId] || {}, mtype = EDDData.MeasurementTypes[measure.type] || {};
@@ -2277,7 +2309,10 @@ var DataGridSpecAssays = (function (_super) {
                 return new DataGridDataCell(gridSpec, index, {
                     'contentString': 'Proteomics Data'
                 });
-            }
+            },
+            "empty": function () { return new DataGridDataCell(gridSpec, index, {
+                'contentString': '<i>No Measurements</i>'
+            }); }
         });
     };
     DataGridSpecAssays.prototype.generateUnitsCells = function (gridSpec, index) {
@@ -2445,6 +2480,12 @@ var DataGridSpecAssays = (function (_super) {
         // add click handler for menu on assay name cells
         $(this.tableElement).on('click', 'a.assay-edit-link', function (ev) {
             StudyD.editAssay($(ev.target).closest('.popupcell').find('input').val());
+            return false;
+        }).on('click', 'a.assay-reload-link', function (ev) {
+            var id = $(ev.target).closest('.popupcell').find('input').val(), assay = EDDData.Assays[id];
+            if (assay) {
+                StudyD.requestAssayData(assay);
+            }
             return false;
         });
         leftSide = [

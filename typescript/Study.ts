@@ -785,7 +785,7 @@ module StudyD {
                 $.each(EDDData.Protocols, (id, protocol) => {
                     var spec;
                     if (protocolsWithMeasurements[id]) {
-                        this.assaysDataGridSpecs[id] = spec = new DataGridSpecAssays(id);
+                        this.assaysDataGridSpecs[id] = spec = new DataGridSpecAssays(protocol.id);
                         this.assaysDataGrids[id] = new DataGridAssays(spec);
                     }
                 });
@@ -989,11 +989,31 @@ module StudyD {
         });
     }
 
+    export function requestAssayData(assay) {
+        $.ajax({
+            url: ['measurements', assay.pid, assay.id, ''].join('/'),
+            type: 'GET',
+            dataType: 'json',
+            error: (xhr, status) => {
+                console.log('Failed to fetch measurement data on ' + assay.name + '!');
+                console.log(status);
+            },
+            success: (data) => { processMeasurementData(this, data); }
+        });
+    }
+
 
     function processMeasurementData(context, data) {
         var assaySeen = {}, filterIds = { 'm': [], 'p': [], 'g': [] }, protocolToAssay = {};
         EDDData.AssayMeasurements = EDDData.AssayMeasurements || {};
         EDDData.MeasurementTypes = $.extend(EDDData.MeasurementTypes || {}, data.types);
+        // attach measurement counts to each assay
+        $.each(data.total_measures, (assayId:string, count:number):void => {
+            var assay = EDDData.Assays[assayId];
+            if (assay) {
+                assay.count = count;
+            }
+        });
         // loop over all downloaded measurements
         $.each(data.measures || {}, (index, measurement) => {
             var assay = EDDData.Assays[measurement.assay], line, mtype;
@@ -1044,7 +1064,7 @@ module StudyD {
             context.geneDataProcessed = true;
         }
         context.repopulateFilteringSection();
-        // invalidate assays on all DataGrids; I think this means they are initially hidden?
+        // invalidate assays on all DataGrids; redraws the affected rows
         $.each(context.assaysDataGrids, (protocolId, dataGrid) => {
             dataGrid.invalidateAssayRecords(Object.keys(protocolToAssay[protocolId] || {}));
         });
@@ -2286,7 +2306,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
 
     protocolID:any;
     protocolName:string;
-    assayIDsInProtocol:string[];
+    assayIDsInProtocol:number[];
     metaDataIDsUsedInAssays:any;
     maximumXValueInData:number;
 
@@ -2311,24 +2331,24 @@ class DataGridSpecAssays extends DataGridSpecBase {
     }
 
 
-    refreshIDList() {
+    refreshIDList():void {
         // Find out which protocols have assays with measurements - disabled or no
         this.assayIDsInProtocol = [];
-        $.each(EDDData.Assays, (assayId, assay) => {
-            var line;
-            if (this.protocolID != assay.pid) {
+        $.each(EDDData.Assays, (assayId:string, assay:AssayRecord):void => {
+            var line:LineRecord;
+            if (this.protocolID !== assay.pid) {
                 // skip assays for other protocols
             } else if (!(line = EDDData.Lines[assay.lid]) || !line.active) {
                 // skip assays without a valid line or with a disabled line
             } else {
-                this.assayIDsInProtocol.push(assayId);
+                this.assayIDsInProtocol.push(assay.id);
             }
         });
     }
 
 
     // An array of unique identifiers, used to identify the records in the data set being displayed
-    getRecordIDs() {
+    getRecordIDs():any[] {
         return this.assayIDsInProtocol;
     }
 
@@ -2531,7 +2551,8 @@ class DataGridSpecAssays extends DataGridSpecBase {
 
     generateAssayNameCells(gridSpec:DataGridSpecAssays, index:string):DataGridDataCell[] {
         var record = EDDData.Assays[index], line = EDDData.Lines[record.lid], sideMenuItems = [
-            '<a href="#editassay" class="assay-edit-link">Edit Assay</a>',
+            '<a class="assay-edit-link">Edit Assay</a>',
+            '<a class="assay-reload-link">Reload Data</a>',
             '<a href="export?assaylevel=1&assay=' + index + '">Export Data as CSV/etc</a>'
         ];
         // TODO we probably don't want to special-case like this by name
@@ -2571,7 +2592,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
     private generateMeasurementCells(gridSpec:DataGridSpecAssays, index:string,
             opt:any):DataGridDataCell[] {
         var record = EDDData.Assays[index], cells = [],
-            factory = () => { return new DataGridLoadingCell(gridSpec, index); };
+            factory = ():DataGridDataCell => new DataGridDataCell(gridSpec, index);
 
         if ((record.metabolites || []).length > 0) {
             if (EDDData.AssayMeasurements === undefined) {
@@ -2602,13 +2623,21 @@ class DataGridSpecAssays extends DataGridSpecBase {
         }
         // generate a loading cell if none created by measurements
         if (!cells.length) {
-            cells.push(factory());
+            if (record.count) {
+                // we have a count, but no data yet; still loading
+                cells.push(new DataGridLoadingCell(gridSpec, index));
+            } else if (opt.empty) {
+                cells.push(opt.empty.call({}));
+            } else {
+                cells.push(factory());
+            }
         }
         return cells;
     }
 
 
     generateMeasurementNameCells(gridSpec:DataGridSpecAssays, index:string):DataGridDataCell[] {
+        var record = EDDData.Assays[index];
         return gridSpec.generateMeasurementCells(gridSpec, index, {
             'metaboliteToValue': (measureId) => {
                 var measure:any = EDDData.AssayMeasurements[measureId] || {},
@@ -2636,7 +2665,10 @@ class DataGridSpecAssays extends DataGridSpecBase {
                 return new DataGridDataCell(gridSpec, index, {
                   'contentString': 'Proteomics Data'
                 });
-            }
+            },
+            "empty": () => new DataGridDataCell(gridSpec, index, {
+                'contentString': '<i>No Measurements</i>'
+            })
         });
     }
 
@@ -2826,6 +2858,13 @@ class DataGridSpecAssays extends DataGridSpecBase {
         // add click handler for menu on assay name cells
         $(this.tableElement).on('click', 'a.assay-edit-link', (ev) => {
             StudyD.editAssay($(ev.target).closest('.popupcell').find('input').val());
+            return false;
+        }).on('click', 'a.assay-reload-link', (ev:JQueryMouseEventObject):boolean => {
+            var id = $(ev.target).closest('.popupcell').find('input').val(),
+                assay:AssayRecord = EDDData.Assays[id];
+            if (assay) {
+                StudyD.requestAssayData(assay);
+            }
             return false;
         });
         leftSide = [

@@ -599,12 +599,6 @@ class Protocol(EDDObject):
     def __str__(self):
         return self.name
 
-    def to_json (self) :
-        return {
-            "name" : self.name,
-            "disabled" : not self.active,
-        }
-
     @classmethod
     def from_form (cls, name, user, variant_of_id=None) :
         all_protocol_names = set([ p.name for p in Protocol.objects.all() ])

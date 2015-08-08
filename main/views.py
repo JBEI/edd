@@ -3,7 +3,7 @@ from django.contrib import messages
 from django.core import serializers
 from django.core.exceptions import ObjectDoesNotExist, PermissionDenied, ValidationError
 from django.core.urlresolvers import reverse
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse, Http404
 from django.http.response import HttpResponseForbidden, HttpResponseBadRequest
 from django.shortcuts import render, get_object_or_404, redirect, \
@@ -300,14 +300,17 @@ def study_measurements(request, study, protocol):
         measurement__assay__line__study_id=study,
         measurement__assay__protocol_id=protocol,
         ).distinct()
-    # Limit the measurements returned to keep browser performant
-    measurements = Measurement.objects.filter(
+    # stash QuerySet to use in both measurements and total_measures below
+    qmeasurements = Measurement.objects.filter(
         assay__line__study_id=study,
         assay__protocol_id=protocol,
         active=True,
         assay__active=True,
         assay__line__active=True,
-        ).order_by('id')[:5000]
+        )
+    # Limit the measurements returned to keep browser performant
+    measurements = qmeasurements.order_by('id')[:5000]
+    total_measures = qmeasurements.values('assay_id').annotate(count=Count('assay_id'))
     measure_list = list(measurements)
     if len(measure_list):
         # only try to pull values when we have measurement objects
@@ -325,6 +328,9 @@ def study_measurements(request, study, protocol):
     for v in values:
         value_dict[v.measurement_id].append((v.x, v.y))
     payload = {
+        'total_measures': {
+            x['assay_id']: x.get('count', 0) for x in total_measures if 'assay_id' in x
+        },
         'types': { t.pk: t.to_json() for t in measure_types },
         'measures': [ m.to_json() for m in measure_list ],
         'data': value_dict,
@@ -339,15 +345,18 @@ def study_assay_measurements(request, study, protocol, assay):
         measurement__assay__protocol_id=protocol,
         measurement__assay=assay,
         ).distinct()
-    # Limit the measurements returned to keep browser performant
-    measurements = Measurement.objects.filter(
+    # stash QuerySet to use in both measurements and total_measures below
+    qmeasurements = Measurement.objects.filter(
         assay__line__study_id=study,
         assay__protocol_id=protocol,
         assay=assay,
         active=True,
         assay__active=True,
         assay__line__active=True,
-        ).order_by('id')[:5000]
+        )
+    # Limit the measurements returned to keep browser performant
+    measurements = qmeasurements.order_by('id')[:5000]
+    total_measures = qmeasurements.values('assay_id').annotate(count=Count('assay_id'))
     measure_list = list(measurements)
     values = MeasurementValue.objects.filter(
         measurement__assay__line__study_id=study,
@@ -362,6 +371,9 @@ def study_assay_measurements(request, study, protocol, assay):
     for v in values:
         value_dict[v.measurement_id].append((v.x, v.y))
     payload = {
+        'total_measures': {
+            x['assay_id']: x.get('count', 0) for x in total_measures if 'assay_id' in x
+        },
         'types': { t.pk: t.to_json() for t in measure_types },
         'measures': map(lambda m: m.to_json(), measure_list),
         'data': value_dict,

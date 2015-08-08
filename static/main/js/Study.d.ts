@@ -110,6 +110,7 @@ declare module StudyD {
     function repopulateFilteringSection(): void;
     function processCarbonBalanceData(): void;
     function prepareAfterLinesTable(): void;
+    function requestAssayData(assay: any): void;
     function carbonBalanceColumnRevealedCallback(spec: DataGridSpecLines, dataGridObj: DataGrid): void;
     function queueLinesActionPanelShow(): void;
     function queueAssaysActionPanelShow(): void;
@@ -202,7 +203,7 @@ declare class DataGridAssays extends DataGrid {
 declare class DataGridSpecAssays extends DataGridSpecBase {
     protocolID: any;
     protocolName: string;
-    assayIDsInProtocol: string[];
+    assayIDsInProtocol: number[];
     metaDataIDsUsedInAssays: any;
     maximumXValueInData: number;
     undisclosedSectionDiv: any;
@@ -211,7 +212,7 @@ declare class DataGridSpecAssays extends DataGridSpecBase {
     graphObject: any;
     constructor(protocolID: any);
     refreshIDList(): void;
-    getRecordIDs(): string[];
+    getRecordIDs(): any[];
     onDataReset(dataGrid: DataGrid): void;
     getTableElement(): HTMLElement;
     defineTableSpec(): DataGridTableSpec;
