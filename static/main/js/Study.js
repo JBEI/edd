@@ -858,13 +858,14 @@ var StudyD;
                     console.log(status);
                 },
                 success: function (data) {
-                    processMeasurementData(context, data);
+                    processMeasurementData(context, data, protocol);
                 }
             });
         });
     }
     function requestAssayData(assay) {
         var _this = this;
+        var protocol = EDDData.Protocols[assay.pid];
         $.ajax({
             url: ['measurements', assay.pid, assay.id, ''].join('/'),
             type: 'GET',
@@ -874,13 +875,13 @@ var StudyD;
                 console.log(status);
             },
             success: function (data) {
-                processMeasurementData(_this, data);
+                processMeasurementData(_this, data, protocol);
             }
         });
     }
     StudyD.requestAssayData = requestAssayData;
-    function processMeasurementData(context, data) {
-        var assaySeen = {}, filterIds = { 'm': [], 'p': [], 'g': [] }, protocolToAssay = {};
+    function processMeasurementData(context, data, protocol) {
+        var assaySeen = {}, filterIds = { 'm': [], 'p': [], 'g': [] }, protocolToAssay = {}, count_total = 0, count_rec = 0;
         EDDData.AssayMeasurements = EDDData.AssayMeasurements || {};
         EDDData.MeasurementTypes = $.extend(EDDData.MeasurementTypes || {}, data.types);
         // attach measurement counts to each assay
@@ -888,11 +889,13 @@ var StudyD;
             var assay = EDDData.Assays[assayId];
             if (assay) {
                 assay.count = count;
+                count_total += count;
             }
         });
         // loop over all downloaded measurements
         $.each(data.measures || {}, function (index, measurement) {
             var assay = EDDData.Assays[measurement.assay], line, mtype;
+            ++count_rec;
             if (!assay || !assay.active)
                 return;
             line = EDDData.Lines[assay.lid];
@@ -944,6 +947,8 @@ var StudyD;
             context.geneDataProcessed = true;
         }
         context.repopulateFilteringSection();
+        if (count_rec < count_total) {
+        }
         // invalidate assays on all DataGrids; redraws the affected rows
         $.each(context.assaysDataGrids, function (protocolId, dataGrid) {
             dataGrid.invalidateAssayRecords(Object.keys(protocolToAssay[protocolId] || {}));

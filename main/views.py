@@ -97,6 +97,7 @@ class StudyDetailView(generic.DetailView):
         context['new_comment'] = CreateCommentForm()
         context['new_line'] = LineForm(prefix='line')
         context['new_measurement'] = MeasurementForm(prefix='measurement')
+        context['writable'] = self.get_object().user_can_write(request.user)
         return context
 
     def handle_assay(self, request, context):

@@ -984,12 +984,13 @@ module StudyD {
                     console.log('Failed to fetch measurement data on ' + protocol.name + '!');
                     console.log(status);
                 },
-                success: (data) => { processMeasurementData(context, data); }
+                success: (data) => { processMeasurementData(context, data, protocol); }
             });
         });
     }
 
     export function requestAssayData(assay) {
+        var protocol = EDDData.Protocols[assay.pid];
         $.ajax({
             url: ['measurements', assay.pid, assay.id, ''].join('/'),
             type: 'GET',
@@ -998,13 +999,17 @@ module StudyD {
                 console.log('Failed to fetch measurement data on ' + assay.name + '!');
                 console.log(status);
             },
-            success: (data) => { processMeasurementData(this, data); }
+            success: (data) => { processMeasurementData(this, data, protocol); }
         });
     }
 
 
-    function processMeasurementData(context, data) {
-        var assaySeen = {}, filterIds = { 'm': [], 'p': [], 'g': [] }, protocolToAssay = {};
+    function processMeasurementData(context, data, protocol) {
+        var assaySeen = {},
+            filterIds = { 'm': [], 'p': [], 'g': [] },
+            protocolToAssay = {},
+            count_total:number = 0,
+            count_rec:number = 0;
         EDDData.AssayMeasurements = EDDData.AssayMeasurements || {};
         EDDData.MeasurementTypes = $.extend(EDDData.MeasurementTypes || {}, data.types);
         // attach measurement counts to each assay
@@ -1012,11 +1017,13 @@ module StudyD {
             var assay = EDDData.Assays[assayId];
             if (assay) {
                 assay.count = count;
+                count_total += count;
             }
         });
         // loop over all downloaded measurements
         $.each(data.measures || {}, (index, measurement) => {
             var assay = EDDData.Assays[measurement.assay], line, mtype;
+            ++count_rec;
             if (!assay || !assay.active) return;
             line = EDDData.Lines[assay.lid];
             if (!line || !line.active) return;
@@ -1064,6 +1071,10 @@ module StudyD {
             context.geneDataProcessed = true;
         }
         context.repopulateFilteringSection();
+        if (count_rec < count_total) {
+            // TODO not all measurements downloaded; display a message indicating this
+            // explain downloading individual assay measurements too
+        }
         // invalidate assays on all DataGrids; redraws the affected rows
         $.each(context.assaysDataGrids, (protocolId, dataGrid) => {
             dataGrid.invalidateAssayRecords(Object.keys(protocolToAssay[protocolId] || {}));

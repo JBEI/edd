@@ -78,11 +78,13 @@
                     {% include "main/include_attachments.html" %}
                 {% endwith %}
                 <div class="sectionActions">
+                    {% if writable %}
                     <form method="POST" enctype="multipart/form-data" class="attachments edd-form" action="">
                         {% csrf_token %}
                         {{ new_attach.as_p }}
                         <p><button type="submit" name="action" value="attach">Attach File</button></p>
                     </form>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -131,8 +133,8 @@
         </div>
     </div>
     
+    {% if writable %}
     <div class="pageSection minor disclose{% if not new_line.is_editing %} discloseHide{% endif %}" id="lineMain">
-        <!-- {{ new_line.instance }} {{ new_line.instance.pk }} {{ new_line.is_editing }} -->
         <div class="sectionHead">
             <span class="discloseLink"><a href="#">{% if new_line.is_editing %}Edit Line{% else %}Add A New Line{% endif %}</a></span>
             <div class="discloseAlt" style="float:right;">
@@ -156,6 +158,7 @@
             </form>
         </div>
     </div>
+    {% endif %}
 
     <form action="" class="line-action" method="POST">
         {% csrf_token %}
@@ -164,6 +167,7 @@
             <table id="studyLinesTable"></table>
             <div id="linesActionPanel" class="sectionActions off">
                 <span id="linesSelectedCell">0 selected</span>
+                {% if writable %}
                 <button id="cloneLineButton" type="submit" name="action" value="clone">Clone Line</button>
                 <button id="editLineButton">Edit Line</button>
                 <button id="groupLineButton" type="submit" name="action" value="group">Group As Replicates</button>
@@ -175,7 +179,10 @@
                         <option value="false">Enabled</option>
                     </select>
                 </label>
-                <input type="radio" id="line_action_export" name="line_action" value="export"/>
+                <input type="radio" id="line_action_export" name="line_action" value="export" />
+                {% else %}
+                <input type="hidden" id="line_action_export" name="line_action" value="export" />
+                {% endif %}
                 <label for="line_action_export">
                     <span>Export Data</span>
                     <select name="export">
@@ -186,7 +193,8 @@
                 <button type="submit" name="action" value="line_action">Take Action</button>
             </div>
         </div>
-    
+
+        {% if writable %}
         <div class="pageSection minor disclose{% if not new_assay.is_editing %} discloseHide{% endif %}" id="assayMain">
             <div class="sectionHead">
                 <span class="discloseLink"><a href="#">{% if new_assay.is_editing %}Edit Assay{% else %}Add Assays To Selected Lines{% endif %}</a></span>
@@ -196,6 +204,7 @@
                 <button type="submit" name="action" value="assay">{% if new_assay.is_editing %}Edit Assay{% else %}Add Assay{% endif %}</button>
             </div>
         </div>
+        {% endif %}
     </form>
 
     <form action="" class="assay-action" method="POST">
@@ -204,6 +213,7 @@
             <!-- individual protocol assay sections inserted here -->
             <div id="assaysActionPanel" class="sectionActions off">
                 <span id="assaysSelectedCell">0 selected</span>
+                {% if writable %}
                 <input id="assay_action_mark" type="radio" name="assay_action" value="mark" />
                 <label for="assay_action_mark">
                     <span>Mark as</span>
@@ -217,12 +227,16 @@
                 <input id="assay_action_edit" type="radio" name="assay_action" value="edit" />
                 <label for="assay_action_edit">Edit Measurements</label>
                 <input id="assay_action_export" type="radio" name="assay_action" value="export" />
+                {% else %}
+                <input id="assay_action_export" type="hidden" name="assay_action" value="export" />
+                {% endif %}
                 <label for="assay_action_export">Export Data</label>
                 <button name="action" type="submit" value="assay_action">Take Action</button>
                 <div class="clear"></div>
             </div>
         </div>
 
+        {% if writable %}
         <div class="pageSection minor disclose{% if not new_measurement.errors %} discloseHide{% endif %}" id="measurementMain">
             <div class="sectionHead">
                 <span class="discloseLink"><a href="#">Add Measurements To Selected Assays</a></span>
@@ -232,10 +246,13 @@
                 <button type="submit" name="action" value="measurement">Add Measurement</button>
             </div>
         </div>
+        {% endif %}
     </form>
 
+    {% if writable %}
     <div class="bare-header">
         <a href="/study/{{ study.id }}/import">Import tabular data...</a>
     </div>
+    {% endif %}
     
 {% endblock content %}
