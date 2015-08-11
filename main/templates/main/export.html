@@ -55,7 +55,11 @@ $(document).ready(function () {
     {% include "main/include_linetable.html" %}
   </div>
 </div>
-
+<div class="pageSection">
+  <div class="sectionContent exportOptions">
+    {{ export_form.as_p }}
+  </div>
+</div>
 
 <!-- start of main form -->
 <form method="post" id="exportForm" action="/study/{{ study.id }}/export">

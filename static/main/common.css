@@ -1467,4 +1467,17 @@ ol.comment-list > li {
 form.comments textarea {
     width: 100%;
 }
+
+.exportOptions > p {
+    clear: both;
+    margin: 0;
+}
+.exportOptions > ul {
+    clear: both;
+    list-style: none;
+}
+.exportOptions > ul > li {
+    float: left;
+    padding-right: 1em;
+}
 /* End of common styles */

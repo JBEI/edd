@@ -659,6 +659,7 @@ def study_export_table (request, study) :
             "error_message" : error_message,
             "formatted_table" : formatted_table,
             "assaylevel" : form.get("assaylevel", "0"),
+            "export_form": ExportForm(),
         },
         context_instance=RequestContext(request))
 

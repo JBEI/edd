@@ -480,3 +480,72 @@ class MeasurementForm(forms.ModelForm):
         if commit:
             [ m.save() for m in all_measures ]
         return all_measures
+
+
+class ExportForm(forms.Form):
+    DATA_COLUMN_BY_LINE = 'dbyl'
+    DATA_COLUMN_BY_POINT = 'dbyp'
+    LINE_COLUMN_BY_DATA = 'lbyd'
+    LAYOUT_CHOICE = (
+            (DATA_COLUMN_BY_LINE, _('columns of metadata types, and rows of lines/assays')),
+            (DATA_COLUMN_BY_POINT, _('columns of metadata types, and rows of single points')),
+            (LINE_COLUMN_BY_DATA, _('columns of lines/assays, and rows of metadata types')),
+        )
+    COMMA_SEPARATED = 'csv'
+    TAB_SEPARATED = 'tsv'
+    SEPARATOR_CHOICE = (
+            (COMMA_SEPARATED, _('Comma-separated (CSV)')),
+            (TAB_SEPARATED, _('Tab-separated')),
+        )
+    ALL_DATA = 'all'
+    SUMMARY_DATA = 'summary'
+    NONE_DATA = 'none'
+    FORMAT_CHOICE = (
+            (ALL_DATA, _('All')),
+            (SUMMARY_DATA, _('Summarize')),
+            (NONE_DATA, _('None')),
+        )
+
+    layout = forms.ChoiceField(
+        choices=LAYOUT_CHOICE,
+        label=_('Layout export with'),
+        )
+    separator = forms.ChoiceField(
+        choices=SEPARATOR_CHOICE,
+        label=_('Field separators'),
+        )
+    data_format = forms.ChoiceField(
+        choices=FORMAT_CHOICE,
+        label=_('Include measurement data'),
+        )
+    study_meta = forms.MultipleChoiceField(
+        choices=Study.export_choice_options(),
+        label=_('Study fields to include'),
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        )
+    line_meta = forms.MultipleChoiceField(
+        choices=Line.export_choice_options(),
+        label=_('Line fields to include'),
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        )
+    protocol_meta = forms.MultipleChoiceField(
+        choices=Protocol.export_choice_options(),
+        label=_('Protocol fields to include'),
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        )
+    assay_meta = forms.MultipleChoiceField(
+        choices=Assay.export_choice_options(),
+        label=_('Assay fields to include'),
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        )
+
+    def __init__(self, edd_object=[], measurement=[], *args, **kwargs):
+        # removes default hard-coded suffix of colon character on all labels
+        kwargs.setdefault('label_suffix', '')
+        self._edd_object = edd_object
+        self._measurement = measurement
+        super(ExportForm, self).__init__(*args, **kwargs)
