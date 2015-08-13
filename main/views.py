@@ -273,7 +273,7 @@ class StudyDetailView(generic.DetailView):
             if line_action == 'edit':
                 form_valid = self.handle_disable(request, context)
             elif line_action == 'export':
-                'TODO: export data'
+                return ExportView.as_view()(request, *args, **kwargs)
             else:
                 messages.error(request, 'Unknown line action %s' % (line_action))
         elif action == 'assay':
@@ -287,7 +287,7 @@ class StudyDetailView(generic.DetailView):
             elif assay_action == 'edit':
                 form_valid = self.handle_measurement_edit(request, context)
             elif assay_action == 'export':
-                pass
+                return ExportView.as_view()(request, *args, **kwargs)
             else:
                 messages.error(request, 'Unknown assay action %s' % (assay_action))
         if form_valid:
@@ -316,17 +316,28 @@ class ExportView(generic.TemplateView):
     """ Encapsulates functionality for exports. """
     template_name = 'main/export.html'
 
-    def __init__(self, *args, **kwargs):
-        super(ExportView, self).__init__(*args, **kwargs)
+    def get(self, request, *args, **kwargs):
+        """ Populates ExportSelectionForm from query/URL parameters and uses a default
+            ExportOptionForm. """
+        data = kwargs.copy()
+        data.update(request.GET)
+        initial = ExportOptionForm.initial_from_user_settings(request.user)
+        select = ExportSelectionForm(data=data, user=request.user)
+        option = ExportOptionForm(data=initial, initial=initial, selection=select)
+        return self.render_to_response(self.get_context_data(
+            select_form=select,
+            option_form=option,
+            ))
 
-    def get_context_data(self, **kwargs):
-        context = super(ExportView, self).get_context_data(**kwargs)
-        context['lines'] = None
-        context['n_meas'] = 0
-        context['n_assays'] = 0
-        context['n_lines'] = 0
-        context['select_form'] = ExportSelectForm()
-        return context
+    def post(self, request, *args, **kwargs):
+        """ Populates both ExportSelectionForm and ExportOptionForm from POST parameters. """
+        initial = ExportOptionForm.initial_from_user_settings(request.user)
+        select = ExportSelectionForm(data=request.POST, user=request.user)
+        option = ExportOptionForm(data=request.POST, initial=initial, selection=select)
+        return self.render_to_response(self.get_context_data(
+            select_form=select,
+            option_form=option,
+            ))
 
 
 # /study/<study_id>/export

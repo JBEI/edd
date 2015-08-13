@@ -702,8 +702,8 @@ class ExportOptionForm(forms.Form):
         # call self.is_valid() to make sure self.cleaned_data is populated
         self.is_valid()
         # check how tables are being sectioned
-        line_section = self.cleaned_data['line_section']
-        protocol_section = self.cleaned_data['protocol_section']
+        line_section = self.cleaned_data.get('line_section', False) 
+        protocol_section = self.cleaned_data.get('protocol_section', False) 
         # store tables
         tables = OrderedDict()
         if line_section:
@@ -723,11 +723,11 @@ class ExportOptionForm(forms.Form):
                 row = [] # resetting row
             else:
                 row = self._output_line_row(study, line)
-            for column in self.cleaned_data['protocol_meta']:
+            for column in self.cleaned_data.get('protocol_meta', []) :
                 row.append(protocol.export_option_value(column))
-            for column in self.cleaned_data['assay_meta']:
+            for column in self.cleaned_data.get('assay_meta', []) :
                 row.append(assay.export_option_value(column))
-            for column in self.cleaned_data['measure_meta']:
+            for column in self.cleaned_data.get('measure_meta', []) :
                 row.append(measurement.export_option_value(column))
             if protocol_section:
                 if protocol.id not in tables:
@@ -750,19 +750,25 @@ class ExportOptionForm(forms.Form):
         if self._selection and hasattr(self._selection, 'lines'):
             choices = Line.export_choice_options(self._selection.lines.values())
             self.fields['line_meta'].choices = choices
+        # we are using initial as default values if not provided, ensure self.data is mutable
+        mutable = self.data._mutable
+        self.data._mutable = True
         # set all _meta options if no list of options was passed in
         for meta in [ 'study_meta', 'line_meta', 'protocol_meta', 'assay_meta', 'measure_meta' ]:
             if self.initial.get(meta, None) == '__all__':
                 self.initial.update({
                     meta: [ choice[0] for choice in self.fields[meta].choices ],
                     })
+            # update incoming data with default initial if not already set
             if meta not in self.data:
-                self.data[meta] = self.initial.get(meta, [])
+                self.data.setlist(meta, self.initial.get(meta, []))
+        # reset mutable now that we are done
+        self.data._mutable = mutable
 
     def _output_line_row(self, study, line):
         row = []
-        for column in self.cleaned_data['study_meta']:
+        for column in self.cleaned_data.get('study_meta', []):
             row.append(study.export_option_value(column))
-        for column in self.cleaned_data['line_meta']:
+        for column in self.cleaned_data.get('line_meta', []):
             row.append(line.export_option_value(column))
         return row
