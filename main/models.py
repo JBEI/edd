@@ -447,7 +447,7 @@ class Study(EDDObject):
     def export_option_value(self, option):
         if option == (Study.__name__ + '.contact'):
             return self.get_contact()
-        return super(self, Study).export_option_value(option)
+        return super(Study, self).export_option_value(option)
 
     def to_solr_json(self):
         """
@@ -769,19 +769,22 @@ class Line(EDDObject):
         if option == (Line.__name__ + '.control'):
             return 'T' if self.control else 'F'
         elif option == (Line.__name__ + '.strain'):
+            strains = self.strains.all()
             # TODO export should handle multi-valued fields better than this kludge
-            return '|'.join([ s.name for s in self.strains.order_by('id') ])
+            return '|'.join([ s.name for s in strains ])
         elif option == (Line.__name__ + '.csource_name'):
+            carbon = self.carbon_source.all()
             # TODO export should handle multi-valued fields better than this kludge
-            return '|'.join([ c.name for c in self.carbon_source.order_by('id') ])
+            return '|'.join([ c.name for c in carbon ])
         elif option == (Line.__name__ + '.csource_label'):
+            carbon = self.carbon_source.all()
             # TODO export should handle multi-valued fields better than this kludge
-            return '|'.join([ c.labeling for c in self.carbon_source.order_by('id') ])
+            return '|'.join([ c.labeling for c in carbon ])
         elif option == (Line.__name__ + '.experimenter'):
             return self.experimenter.email if self.experimenter else ''
         elif option == (Line.__name__ + '.contact'):
             return self.contact.email if self.contact else ''
-        return super(self, Line).export_option_value(option)
+        return super(Line, self).export_option_value(option)
 
     def to_json(self):
         json_dict = super(Line, self).to_json()
@@ -1005,7 +1008,7 @@ class Metabolite(MeasurementType):
         })
 
     @property
-    def keywords_str (self) :
+    def keywords_str(self):
         return ", ".join([ str(k) for k in self.keywords.all() ])
 
     def add_keyword (self, keyword) :
@@ -1167,6 +1170,29 @@ class Measurement(models.Model):
     measurement_format = models.CharField(max_length=2,
         choices=MeasurementFormat.FORMAT_CHOICE,
         default=MeasurementFormat.SCALAR)
+
+    @classmethod
+    def export_choice_options(cls, instances=[]):
+        return (
+                (cls.__name__ + '.type', _('Measurement Type')),
+                (cls.__name__ + '.compartment', _('Compartment')),
+                (cls.__name__ + '.modified', _('Assay Last Modified')),
+                (cls.__name__ + '.x_units', _('X Units')),
+                (cls.__name__ + '.y_units', _('Y Units')),
+            )
+
+    def export_option_value(self, option):
+        if option == (self.__class__.__name__ + '.type'):
+            return self.measurement_type.type_name
+        elif option == (self.__class__.__name__ + '.compartment'):
+            return MeasurementCompartment.names[int(self.compartment)]
+        elif option == (self.__class__.__name__ + '.modified'):
+            return self.update_ref.mod_time
+        elif option == (self.__class__.__name__ + '.x_units'):
+            return self.x_units.unit_name if self.x_units.display else ''
+        elif option == (self.__class__.__name__ + '.y_units'):
+            return self.y_units.unit_name if self.y_units.display else ''
+        return ''
 
     def to_json(self):
         return {

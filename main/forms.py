@@ -1,18 +1,20 @@
+import json
+import logging
+
+from collections import OrderedDict
 from copy import deepcopy
 from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.contrib.postgres.forms import HStoreField
 from django.core.exceptions import ValidationError
+from django.db.models import Prefetch, Q
 from django.db.models.base import Model
 from django.db.models.manager import BaseManager
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 from main.ice import IceApi
 from main.models import *
-
-import json
-import logging
 
 
 User = get_user_model()
@@ -482,7 +484,118 @@ class MeasurementForm(forms.ModelForm):
         return all_measures
 
 
-class ExportForm(forms.Form):
+class ExportSelectionForm(forms.Form):
+    """ Form used for selecting objects to export. """
+    studyId = forms.ModelMultipleChoiceField(
+        queryset=Study.objects.filter(active=True),
+        required=False,
+        widget=forms.MultipleHiddenInput
+        )
+    lineId = forms.ModelMultipleChoiceField(
+        queryset=Line.objects.filter(active=True),
+        required=False,
+        widget=forms.MultipleHiddenInput
+        )
+    assayId = forms.ModelMultipleChoiceField(
+        queryset=Assay.objects.filter(active=True),
+        required=False,
+        widget=forms.MultipleHiddenInput
+        )
+    measurementId = forms.ModelMultipleChoiceField(
+        queryset=Measurement.objects.filter(active=True),
+        required=False,
+        widget=forms.MultipleHiddenInput
+        )
+
+    def __init__(self, *args, **kwargs):
+        # removes default hard-coded suffix of colon character on all labels
+        kwargs.setdefault('label_suffix', '')
+        self._user = kwargs.pop('user', None)
+        if self._user is None:
+            raise ValueError("ExportSelectionForm requires a user parameter")
+        super(ExportSelectionForm, self).__init__(*args, **kwargs)
+        self._init_export_objects()
+
+    def _init_export_objects(self):
+        # call self.is_valid() to make sure self.cleaned_data is populated
+        self.is_valid()
+        # incoming IDs
+        studyId = self.cleaned_data.get('studyId', [])
+        lineId = self.cleaned_data.get('lineId', [])
+        assayId = self.cleaned_data.get('assayId', [])
+        measureId = self.cleaned_data.get('measurementId', [])
+        # check studies linked to incoming IDs for permissions
+        matched_study = Study.objects.filter(
+                Q(pk__in=studyId, active=True) |
+                Q(line__in=lineId, line__active=True) |
+                Q(line__assay__in=assayId, line__assay__active=True) |
+                Q(line__assay__measurement__in=measureId, line__assay__measurement__active=True)
+            ).distinct(
+            ).prefetch_related(
+                'userpermission_set',
+                'grouppermission_set',
+            )
+        allowed_study = [ s for s in matched_study if s.user_can_read(self._user) ]
+        # load all matching measurements
+        self._measures = Measurement.objects.filter(
+                Q(assay__line__study__in=allowed_study), # all measurements are from visible study
+                # OR grouping finds measurements under one of passed-in parameters
+                Q(assay__line__study__in=studyId) |
+                Q(assay__line__in=lineId, assay__line__active=True) |
+                Q(assay__in=assayId, assay__active=True) |
+                Q(pk__in=measureId, active=True),
+            ).order_by(
+                'assay__protocol_id'
+            ).select_related(
+                'measurement_type',
+                'x_units',
+                'y_units',
+                'update_ref__mod_by',
+                'experimenter',
+            )
+        assays = Assay.objects.filter(
+            Q(line__study__in=allowed_study),
+            Q(line__in=lineId, line__active=True) |
+            Q(pk__in=assayId, active=True) |
+            Q(measurement__in=measureId, measurement__active=True),
+            ).distinct(
+            ).select_related(
+                'protocol',
+            )
+        self._assays = { a.id: a for a in assays }
+        lines = Line.objects.filter(
+            Q(study__in=allowed_study),
+            Q(study__in=studyId) |
+            Q(pk__in=lineId, active=True) |
+            Q(assay__in=assayId, assay__active=True) |
+            Q(assay__measurement__in=measureId, assay__measurement__active=True),
+            ).distinct(
+            ).prefetch_related(
+                Prefetch('strains', queryset=Strain.objects.order_by('id')),
+                Prefetch('carbon_source', queryset=CarbonSource.objects.order_by('id')),
+            )
+        self._lines = { l.id: l for l in lines }
+        self._studies = allowed_study
+
+    @property
+    def studies(self):
+        return self._studies
+    
+    @property
+    def lines(self):
+        return self._lines
+
+    @property
+    def assays(self):
+        return self._assays
+    
+    @property
+    def measurements(self):
+        return self._measures
+    
+    
+class ExportOptionForm(forms.Form):
+    """ Form used for changing options on exports. """
     DATA_COLUMN_BY_LINE = 'dbyl'
     DATA_COLUMN_BY_POINT = 'dbyp'
     LINE_COLUMN_BY_DATA = 'lbyd'
@@ -509,14 +622,25 @@ class ExportForm(forms.Form):
     layout = forms.ChoiceField(
         choices=LAYOUT_CHOICE,
         label=_('Layout export with'),
+        required=False,
         )
     separator = forms.ChoiceField(
         choices=SEPARATOR_CHOICE,
         label=_('Field separators'),
+        required=False,
         )
     data_format = forms.ChoiceField(
         choices=FORMAT_CHOICE,
         label=_('Include measurement data'),
+        required=False,
+        )
+    line_section = forms.BooleanField(
+        label=_('Include Lines in own section'),
+        required=False,
+        )
+    protocol_section = forms.BooleanField(
+        label=_('Include a section for each Protocol'),
+        required=False,
         )
     study_meta = forms.MultipleChoiceField(
         choices=Study.export_choice_options(),
@@ -542,10 +666,103 @@ class ExportForm(forms.Form):
         required=False,
         widget=forms.CheckboxSelectMultiple,
         )
+    measure_meta = forms.MultipleChoiceField(
+        choices=Measurement.export_choice_options(),
+        label=_('Measurement fields to include'),
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        )
 
-    def __init__(self, edd_object=[], measurement=[], *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         # removes default hard-coded suffix of colon character on all labels
         kwargs.setdefault('label_suffix', '')
-        self._edd_object = edd_object
-        self._measurement = measurement
-        super(ExportForm, self).__init__(*args, **kwargs)
+        self._selection = kwargs.pop('selection', None)
+        super(ExportOptionForm, self).__init__(*args, **kwargs)
+        self._init_options()
+
+    @classmethod
+    def initial_from_user_settings(cls, user):
+        """ Looks for preferences in user profile to set form choices; if found, apply, otherwise
+            sets all options. """
+        if hasattr(user, 'userprofile'):
+            prefs = user.userprofile.prefs
+            return {
+                "layout": prefs.get('export.csv.layout', cls.DATA_COLUMN_BY_LINE),
+                "separator": prefs.get('export.csv.separator', cls.COMMA_SEPARATED),
+                "data_format": prefs.get('export.csv.data_format', cls.ALL_DATA),
+                "study_meta": prefs.get('export.csv.study_meta', '__all__'),
+                "line_meta": prefs.get('export.csv.line_meta', '__all__'),
+                "protocol_meta": prefs.get('export.csv.protocol_meta', '__all__'),
+                "assay_meta": prefs.get('export.csv.assay_meta', '__all__'),
+                "measure_meta": prefs.get('export.csv.measure_meta', '__all__'),
+                }
+        return {}
+
+    def output(self):
+        # call self.is_valid() to make sure self.cleaned_data is populated
+        self.is_valid()
+        # check how tables are being sectioned
+        line_section = self.cleaned_data['line_section']
+        protocol_section = self.cleaned_data['protocol_section']
+        # store tables
+        tables = OrderedDict()
+        if line_section:
+            # TODO map self.cleaned_data['study_meta'] and self.cleaned_data['line_meta'] to headers
+            tables['line'] = OrderedDict()
+        elif not protocol_section:
+            tables['all'] = OrderedDict()
+        # add data from each exported measurement
+        for measurement in self._selection.measurements:
+            assay = self._selection.assays.get(measurement.assay_id, None)
+            protocol = assay.protocol
+            line = self._selection.lines.get(assay.line_id, None)
+            study = line.study
+            if line_section:
+                if line.id not in tables['line']:
+                    tables['line'][line.id] = self._output_line_row(study, line)
+                row = [] # resetting row
+            else:
+                row = self._output_line_row(study, line)
+            for column in self.cleaned_data['protocol_meta']:
+                row.append(protocol.export_option_value(column))
+            for column in self.cleaned_data['assay_meta']:
+                row.append(assay.export_option_value(column))
+            for column in self.cleaned_data['measure_meta']:
+                row.append(measurement.export_option_value(column))
+            if protocol_section:
+                if protocol.id not in tables:
+                    tables[protocol.id] = []
+                tables[protocol.id][measurement.id] = row
+            else:
+                tables['all'][measurement.id] = row
+        # TODO: MEASUREMENT VALUES!
+        # TODO: HEADERS!
+        return '\n\n'.join([
+            '\n'.join([
+                ','.join([
+                    str(cell) for cell in row
+                    ]) for rkey, row in table.items()
+                ]) for tkey, table in tables.items()
+            ])
+
+    def _init_options(self):
+        # update available choices based on instances in self._selection
+        if self._selection and hasattr(self._selection, 'lines'):
+            choices = Line.export_choice_options(self._selection.lines.values())
+            self.fields['line_meta'].choices = choices
+        # set all _meta options if no list of options was passed in
+        for meta in [ 'study_meta', 'line_meta', 'protocol_meta', 'assay_meta', 'measure_meta' ]:
+            if self.initial.get(meta, None) == '__all__':
+                self.initial.update({
+                    meta: [ choice[0] for choice in self.fields[meta].choices ],
+                    })
+            if meta not in self.data:
+                self.data[meta] = self.initial.get(meta, [])
+
+    def _output_line_row(self, study, line):
+        row = []
+        for column in self.cleaned_data['study_meta']:
+            row.append(study.export_option_value(column))
+        for column in self.cleaned_data['line_meta']:
+            row.append(line.export_option_value(column))
+        return row

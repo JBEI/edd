@@ -46,22 +46,16 @@ def lookup(dictionary, key):
     {{ obj.metadata|lookup:type }}
     {% endfor %}
     """
-    try:
-        return dictionary[key]
-    except:
-        return settings.TEMPLATE_STRING_IF_INVALID
+    return dictionary.get(key, settings.TEMPLATE_STRING_IF_INVALID)
 
 @register.filter(name='formula')
 def formula (molecular_formula) :
-    """
-    Convert the molecular formula to a list of dictionaries giving each
-    element and its count.  This is used in HTML views with <sub> tags.
-    """
-    # TODO this is wrong, will not match e.g. Fe2O3
-    elements = re.findall("([A-Z]{1,2})([1-9]{1}[0-9]*)", molecular_formula)
-    if (len(elements) == 0) :
-        return ""
-    return mark_safe("".join(["%s<sub>%s</sub>" % (e,c) for e,c in elements]))
+    """ Convert the molecular formula to a list of dictionaries giving each element and its count.
+        This is used in HTML views with <sub> tags. """
+    elements = re.findall("([A-Z][a-z]{0,2})([1-9][0-9]*)?", molecular_formula)
+    return mark_safe(
+        "".join([ '%s%s' % (e, '<sub>%s</sub>' % c if c != '' else c) for e,c in elements ])
+        )
 
 
 class StudyCreateView(generic.edit.CreateView):
@@ -90,14 +84,12 @@ class StudyDetailView(generic.DetailView):
     
     def get_context_data(self, **kwargs):
         context = super(StudyDetailView, self).get_context_data(**kwargs)
-        action = kwargs.pop('action', None)
-        request = kwargs.pop('request', None)
         context['new_assay'] = AssayForm(prefix='assay')
         context['new_attach'] = CreateAttachmentForm()
         context['new_comment'] = CreateCommentForm()
         context['new_line'] = LineForm(prefix='line')
         context['new_measurement'] = MeasurementForm(prefix='measurement')
-        context['writable'] = self.get_object().user_can_write(request.user)
+        context['writable'] = self.get_object().user_can_write(self.request.user)
         return context
 
     def handle_assay(self, request, context):
@@ -118,6 +110,23 @@ class StudyDetailView(generic.DetailView):
             form.save()
             return True
         return False
+
+    def handle_assay_mark(self, request, context):
+        ids = request.POST.getlist('assayId', [])
+        study = self.get_object()
+        disable = request.POST.get('disable', None)
+        if disable == 'true':
+            active = False
+        elif disable == 'false':
+            active = True
+        else:
+            messages.error(request, 'Invalid action specified, doing nothing')
+            return True
+        count = Assay.objects.filter(pk__in=ids, line__study=study).update(active=active)
+        messages.success(request, 'Updated %(count)s Assays' % {
+            'count': count,
+            })
+        return True
 
     def handle_attach(self, request, context):
         form = CreateAttachmentForm(request.POST, request.FILES, edd_object=self.get_object())
@@ -265,8 +274,22 @@ class StudyDetailView(generic.DetailView):
                 form_valid = self.handle_disable(request, context)
             elif line_action == 'export':
                 'TODO: export data'
+            else:
+                messages.error(request, 'Unknown line action %s' % (line_action))
         elif action == 'assay':
             form_valid = self.handle_assay(request, context)
+        elif action == 'assay_action':
+            assay_action = request.POST.get('assay_action', None)
+            if assay_action == 'mark':
+                form_valid = self.handle_assay_mark(request, context)
+            elif assay_action == 'delete':
+                form_valid = self.handle_measurement_delete(request, context)
+            elif assay_action == 'edit':
+                form_valid = self.handle_measurement_edit(request, context)
+            elif assay_action == 'export':
+                pass
+            else:
+                messages.error(request, 'Unknown assay action %s' % (assay_action))
         if form_valid:
             study_modified.send(sender=self.__class__, study=self.object)
             return HttpResponseRedirect(reverse('main:detail', kwargs={'pk':self.object.pk}))
@@ -288,6 +311,55 @@ class StudyDetailView(generic.DetailView):
             logger.warning('Failed to load line,study combo %s,%s' % (line_id, study.pk))
         return None
 
+
+class ExportView(generic.TemplateView):
+    """ Encapsulates functionality for exports. """
+    template_name = 'main/export.html'
+
+    def __init__(self, *args, **kwargs):
+        super(ExportView, self).__init__(*args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super(ExportView, self).get_context_data(**kwargs)
+        context['lines'] = None
+        context['n_meas'] = 0
+        context['n_assays'] = 0
+        context['n_lines'] = 0
+        context['select_form'] = ExportSelectForm()
+        return context
+
+
+# /study/<study_id>/export
+# FIXME should have trailing slash?
+def study_export_table (request, study) :
+    """ HTML view for exporting measurement data in table format (replaces StudyExport.cgi). """
+    model = Study.objects.get(pk=study)
+    initial = ExportOptionForm.initial_from_user_settings(request.user)
+    data = { 'lineId': [ request.GET.get('line', None), ], }
+    form = ExportSelectionForm(data, user=request.user)
+    # TODO this is hardcoding options, refactor to allow input
+    opt = ExportOptionForm(initial, initial=initial, selection=form)
+    if form.is_valid() and opt.is_valid():
+        return render_to_response("main/export.html",
+            dictionary={
+                "study" : model,
+                "lines" : form.lines,
+                "n_meas" : len(form.measurements),
+                "n_assays" : len(form.assays),
+                "n_lines" : len(form.lines),
+                "select_form": form,
+                "option_form": opt,
+            },
+            context_instance=RequestContext(request))
+    else:
+        for error in form.errors:
+            print('selection -- %s' % (error,))
+        for error in opt.errors:
+            print('option -- %s' % (error,))
+        return render_to_response("main/export.html",
+            dictionary={
+                "error_message": "Forms did not validate",
+            })
 
 # /study/<study_id>/lines/
 def study_lines(request, study):
@@ -607,61 +679,6 @@ def study_import_rnaseq_process (request, study) :
     else :
         return JsonResponse(result)
 
-# /study/<study_id>/export
-# FIXME should have trailing slash?
-def study_export_table (request, study) :
-    """
-    HTML view for exporting measurement data in table format (replaces
-    StudyExport.cgi).
-    """
-    model = Study.objects.get(pk=study)
-    form = None
-    if (request.method == "POST") :
-        form = request.POST
-    else :
-        form = request.GET
-    exports = main.data_export.select_objects_for_export(
-        study=model,
-        user=request.user, # FIXME
-        form=form)
-    column_info = list(main.data_export.column_info)
-    column_flags = main.data_export.extract_column_flags(form)
-    for col in column_info :
-        if (col['label'] in column_flags) :
-            col['checked'] = False
-    error_message = None
-    formatted_table = None
-    if (len(exports['measurements']) == 0) :
-        error_message = "No measurements selected for export!"
-    else :
-        formatted_table = main.data_export.table_view(export_data=exports,
-            form=form,
-            column_flags=column_flags)
-    if (form.get("download", None) == "1") and (formatted_table is not None) :
-        table_format = form.get("recordformat", "csv")
-        file_name = "edd_export_%s.%s" % (study, table_format)
-        response = HttpResponse(formatted_table,
-            content_type="text/plain")
-        response['Content-Disposition'] = 'attachment; filename="%s"'%file_name
-        return response
-    return render_to_response("main/export.html",
-        dictionary={
-            "study" : model,
-            "line_id_str" : ",".join([ str(l.id) for l in exports['lines'] ]),
-            "assay_id_str" : ",".join([ str(a.id) for a in exports['assays'] ]),
-            "measurement_id_str" : ",".join([ str(m.id) for m in
-                                              exports['measurements'] ]),
-            "column_info" : column_info,
-            "lines" : exports['lines'],
-            "n_meas" : len(exports['measurements']),
-            "n_assays" : len(exports['assays']),
-            "n_lines" : len(exports['lines']),
-            "error_message" : error_message,
-            "formatted_table" : formatted_table,
-            "assaylevel" : form.get("assaylevel", "0"),
-            "export_form": ExportForm(),
-        },
-        context_instance=RequestContext(request))
 
 # /study/<study_id>/export/data
 # FIXME should have trailing slash?
