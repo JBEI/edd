@@ -514,16 +514,14 @@ class ExportSelectionForm(forms.Form):
         if self._user is None:
             raise ValueError("ExportSelectionForm requires a user parameter")
         super(ExportSelectionForm, self).__init__(*args, **kwargs)
-        self._init_export_objects()
 
-    def _init_export_objects(self):
-        # call self.is_valid() to make sure self.cleaned_data is populated
-        self.is_valid()
+    def clean(self):
+        data = super(ExportSelectionForm, self).clean()
         # incoming IDs
-        studyId = self.cleaned_data.get('studyId', [])
-        lineId = self.cleaned_data.get('lineId', [])
-        assayId = self.cleaned_data.get('assayId', [])
-        measureId = self.cleaned_data.get('measurementId', [])
+        studyId = data.get('studyId', [])
+        lineId = data.get('lineId', [])
+        assayId = data.get('assayId', [])
+        measureId = data.get('measurementId', [])
         # check studies linked to incoming IDs for permissions
         matched_study = Study.objects.filter(
                 Q(pk__in=studyId, active=True) |
@@ -538,7 +536,8 @@ class ExportSelectionForm(forms.Form):
         allowed_study = [ s for s in matched_study if s.user_can_read(self._user) ]
         # load all matching measurements
         self._measures = Measurement.objects.filter(
-                Q(assay__line__study__in=allowed_study), # all measurements are from visible study
+                # all measurements are from visible study
+                Q(assay__line__study__in=allowed_study),
                 # OR grouping finds measurements under one of passed-in parameters
                 Q(assay__line__study__in=studyId) |
                 Q(assay__line__in=lineId, assay__line__active=True) |
@@ -576,6 +575,7 @@ class ExportSelectionForm(forms.Form):
             )
         self._lines = { l.id: l for l in lines }
         self._studies = allowed_study
+        return data
 
     @property
     def studies(self):
@@ -698,52 +698,11 @@ class ExportOptionForm(forms.Form):
                 }
         return {}
 
-    def output(self):
-        # call self.is_valid() to make sure self.cleaned_data is populated
-        self.is_valid()
-        # check how tables are being sectioned
-        line_section = self.cleaned_data.get('line_section', False) 
-        protocol_section = self.cleaned_data.get('protocol_section', False) 
-        # store tables
-        tables = OrderedDict()
-        if line_section:
-            # TODO map self.cleaned_data['study_meta'] and self.cleaned_data['line_meta'] to headers
-            tables['line'] = OrderedDict()
-        elif not protocol_section:
-            tables['all'] = OrderedDict()
-        # add data from each exported measurement
-        for measurement in self._selection.measurements:
-            assay = self._selection.assays.get(measurement.assay_id, None)
-            protocol = assay.protocol
-            line = self._selection.lines.get(assay.line_id, None)
-            study = line.study
-            if line_section:
-                if line.id not in tables['line']:
-                    tables['line'][line.id] = self._output_line_row(study, line)
-                row = [] # resetting row
-            else:
-                row = self._output_line_row(study, line)
-            for column in self.cleaned_data.get('protocol_meta', []) :
-                row.append(protocol.export_option_value(column))
-            for column in self.cleaned_data.get('assay_meta', []) :
-                row.append(assay.export_option_value(column))
-            for column in self.cleaned_data.get('measure_meta', []) :
-                row.append(measurement.export_option_value(column))
-            if protocol_section:
-                if protocol.id not in tables:
-                    tables[protocol.id] = []
-                tables[protocol.id][measurement.id] = row
-            else:
-                tables['all'][measurement.id] = row
-        # TODO: MEASUREMENT VALUES!
-        # TODO: HEADERS!
-        return '\n\n'.join([
-            '\n'.join([
-                ','.join([
-                    str(cell) for cell in row
-                    ]) for rkey, row in table.items()
-                ]) for tkey, table in tables.items()
-            ])
+    def get_separator(self):
+        choice = self.cleaned_data.get('separator', self.COMMA_SEPARATED)
+        if choice == self.TAB_SEPARATED:
+            return '\t'
+        return ','
 
     def _init_options(self):
         # update available choices based on instances in self._selection
@@ -764,11 +723,3 @@ class ExportOptionForm(forms.Form):
                 self.data.setlist(meta, self.initial.get(meta, []))
         # reset mutable now that we are done
         self.data._mutable = mutable
-
-    def _output_line_row(self, study, line):
-        row = []
-        for column in self.cleaned_data.get('study_meta', []):
-            row.append(study.export_option_value(column))
-        for column in self.cleaned_data.get('line_meta', []):
-            row.append(line.export_option_value(column))
-        return row

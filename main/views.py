@@ -322,22 +322,94 @@ class ExportView(generic.TemplateView):
         data = kwargs.copy()
         data.update(request.GET)
         initial = ExportOptionForm.initial_from_user_settings(request.user)
-        select = ExportSelectionForm(data=data, user=request.user)
-        option = ExportOptionForm(data=initial, initial=initial, selection=select)
+        self._select = ExportSelectionForm(data=data, user=request.user)
+        if self._select.is_valid():
+            self._option = ExportOptionForm(data=initial, initial=initial, selection=self._select)
+            if self._option.is_valid():
+                return self.render_to_response(self.get_context_data(
+                    select_form=self._select,
+                    option_form=self._option,
+                    ))
         return self.render_to_response(self.get_context_data(
-            select_form=select,
-            option_form=option,
+            select_form=self._select,
+            option_form=self._option,
+            error_message='Could not parse export request',
             ))
 
     def post(self, request, *args, **kwargs):
         """ Populates both ExportSelectionForm and ExportOptionForm from POST parameters. """
         initial = ExportOptionForm.initial_from_user_settings(request.user)
-        select = ExportSelectionForm(data=request.POST, user=request.user)
-        option = ExportOptionForm(data=request.POST, initial=initial, selection=select)
+        self._select = ExportSelectionForm(data=request.POST, user=request.user)
+        if self._select.is_valid():
+            self._option = ExportOptionForm(data=request.POST, initial=initial, selection=self._select)
+            if self._option.is_valid():
+                return self.render_to_response(self.get_context_data(
+                    select_form=self._select,
+                    option_form=self._option,
+                    ))
         return self.render_to_response(self.get_context_data(
-            select_form=select,
-            option_form=option,
+            select_form=self._select,
+            option_form=self._option,
+            error_message='Could not parse export request',
             ))
+
+    def export_output(self):
+        options = self._option.cleaned_data
+        # check how tables are being sectioned
+        line_section = options.get('line_section', False) 
+        protocol_section = options.get('protocol_section', False) 
+        # store tables
+        tables = OrderedDict()
+        if line_section:
+            # TODO map options['study_meta'] and options['line_meta'] to headers
+            tables['line'] = OrderedDict()
+        elif not protocol_section:
+            tables['all'] = OrderedDict()
+        # add data from each exported measurement
+        for measurement in self._select.measurements:
+            assay = self._select.assays.get(measurement.assay_id, None)
+            protocol = assay.protocol
+            line = self._select.lines.get(assay.line_id, None)
+            study = line.study
+            if line_section:
+                if line.id not in tables['line']:
+                    tables['line'][line.id] = self._output_line_row(study, line)
+                row = [] # resetting row
+            else:
+                row = self._output_line_row(study, line)
+            for column in options.get('protocol_meta', []) :
+                row.append(protocol.export_option_value(column))
+            for column in options.get('assay_meta', []) :
+                row.append(assay.export_option_value(column))
+            for column in options.get('measure_meta', []) :
+                row.append(measurement.export_option_value(column))
+            if protocol_section:
+                if protocol.id not in tables:
+                    tables[protocol.id] = []
+                tables[protocol.id][measurement.id] = row
+            else:
+                tables['all'][measurement.id] = row
+        # TODO: MEASUREMENT VALUES!
+        # TODO: HEADERS!
+        table_separator = '\n\n'
+        row_separator = '\n'
+        cell_separator = self._option.get_separator()
+        return table_separator.join([
+            row_separator.join([
+                cell_separator.join([
+                    str(cell) for cell in row
+                    ]) for rkey, row in table.items()
+                ]) for tkey, table in tables.items()
+            ])
+
+    def _output_line_row(self, study, line):
+        options = self._option.cleaned_data
+        row = []
+        for column in options.get('study_meta', []):
+            row.append(study.export_option_value(column))
+        for column in options.get('line_meta', []):
+            row.append(line.export_option_value(column))
+        return row
 
 
 # /study/<study_id>/export
