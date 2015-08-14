@@ -47,7 +47,7 @@
 </div>
 
 <!-- start of main form -->
-<form method="post" id="exportForm" action="/study/{{ study.id }}/export">
+<form method="post" id="exportForm" action="/export">
   {% csrf_token %}
   <div class="pageSection" id="mainModeDiv">
     <div class="sectionHead">Specify the layout of the data you wish to export.</div>

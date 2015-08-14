@@ -223,6 +223,14 @@ class MetadataType(models.Model):
     #   CarbonSource.objects.get(pk=value)
     type_class = models.CharField(max_length=255, blank=True, null=True)
 
+    @classmethod
+    def all_types_on_instances(cls, instances=[]):
+        # grab all the keys on each instance meta_store
+        all_ids = [ set(o.meta_store.keys()) for o in instances if isinstance(o, EDDObject) ]
+        # reduce all into a set to get only unique ids
+        ids = reduce(lambda a,b: a.union(b), all_ids, set())
+        return MetadataType.objects.filter(pk__in=ids).order_by('type_name')
+
     def for_line(self):
         return (self.for_context == self.LINE or
             self.for_context == self.LINE_OR_PROTOCOL or
@@ -748,12 +756,7 @@ class Line(EDDObject):
 
     @classmethod
     def export_choice_options(cls, instances=[]):
-        ids = reduce(
-            lambda a,b: a.union(b),
-            [ set(l.meta_store.keys()) for l in instances ],
-            set(),
-            )
-        types = MetadataType.objects.filter(pk__in=ids).order_by('type_name')
+        types = MetadataType.all_types_on_instances(instances)
         return super(Line, cls).export_choice_options(instances) + (
                 (Line.__name__ + '.control', _('Control')),
                 (Line.__name__ + '.strain', _('Strain')),
