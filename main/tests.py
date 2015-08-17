@@ -882,11 +882,11 @@ class ExportTests(TestCase) :
         self.assertTrue(
             hplc_data[0]['assays'][0]['measurements'][0]['n_points'] == 6)
         dp = hplc_data[0]['assays'][0]['measurements'][0]['data_points'][2]
-        self.assertTrue(dp['title'] == "0.22000 at 8h")
+        self.assertTrue(dp['title'] == "0.22 at 8h")
         self.assertTrue(data.n_lcms_measurements == 3)
         lcms_data = data.export_lcms_measurements()
         dp = lcms_data[0]['assays'][0]['measurements'][0]['data_points'][2]
-        self.assertTrue(dp['title'] == "0.20000 at 8h")
+        self.assertTrue(dp['title'] == "0.2 at 8h")
         self.assertTrue(data.n_ramos_measurements == 2)
         all_meas = data.processed_measurements()
         self.assertTrue(len(all_meas) == 8)
@@ -969,9 +969,8 @@ class UtilityTests (TestCase) :
         strains = main.utilities.get_edddata_strains()
         self.assertTrue(len(strains['EnabledStrainIDs']) == 1)
         misc = main.utilities.get_edddata_misc()
-        misc_keys = sorted(["UnitTypeIDs", "UnitTypes", "MediaTypes", "UserIDs",
-            "EnabledUserIDs", "Users", "MetaDataTypeIDs", "MetaDataTypes",
-            "MeasurementTypeCompartmentIDs", "MeasurementTypeCompartments"])
+        misc_keys = sorted(["UnitTypes", "MediaTypes", "Users", "MetaDataTypes",
+            "MeasurementTypeCompartments"])
         self.assertTrue(sorted(misc.keys()) == misc_keys)
         study = Study.objects.get(name="Test Study 1")
         data = main.utilities.get_edddata_study(study)
@@ -1008,16 +1007,14 @@ class UtilityTests (TestCase) :
         assay = Assay.objects.get(name="Assay 1")
         m = data._get_measurements(assay.id)
         self.assertTrue(len(m) == 2)
-        md = data._get_measurement_data(m[0].id)
-        self.assertTrue(len(md) == 6)
-        mt = data._get_measurement_type(m[0].id)
-        # FIXME for reasons unknown, this occasionally fails and returns
-        # Acetate instead.  this won't break the code that uses these methods,
-        # but we probably should avoid stochastic behavior if possible.
-        if mt.type_name != "D-Glucose" : # BUG?
-            print mt.type_name, m[0].id
-            print data._measurement_types[m[0].id]
-        self.assertTrue(mt.type_name=="D-Glucose" or mt.type_name=="Acetate")
+        m0d = data._get_measurement_data(m[0].id)
+        m1d = data._get_measurement_data(m[1].id)
+        self.assertEqual(len(m0d), 6)
+        self.assertEqual(len(m1d), 6)
+        mt = set()
+        mt.add(data._get_measurement_type(m[0].id).type_name)
+        mt.add(data._get_measurement_type(m[1].id).type_name)
+        self.assertEqual(mt, set(['D-Glucose', 'Acetate']))
         mu = data._get_y_axis_units_name(m[1].id)
         self.assertTrue(mu == "mM")
         met = data._get_metabolite_measurements(assay.id)

@@ -14,6 +14,7 @@
     "created": 1,
     "meta_store": {},
     "updates": [],
+    "active": true,
     "description": ""
   },
   "model": "main.eddobject",
@@ -26,6 +27,7 @@
     "created": 3,
     "meta_store": {},
     "updates": [],
+    "active": true,
     "description": null
   },
   "model": "main.eddobject",
@@ -38,6 +40,7 @@
     "created": 5,
     "meta_store": {},
     "updates": [],
+    "active": true,
     "description": ""
   },
   "model": "main.eddobject",
@@ -50,6 +53,7 @@
     "created": 7,
     "meta_store": {},
     "updates": [],
+    "active": true,
     "description": ""
   },
   "model": "main.eddobject",
@@ -62,6 +66,7 @@
     "created": 9,
     "meta_store": {},
     "updates": [],
+    "active": true,
     "description": "JBEI strain 1"
   },
   "model": "main.eddobject",
@@ -74,6 +79,7 @@
     "created": 11,
     "meta_store": {},
     "updates": [],
+    "active": false,
     "description": null
   },
   "model": "main.eddobject",
@@ -86,6 +92,7 @@
     "created": 13,
     "meta_store": {},
     "updates": [],
+    "active": true,
     "description": null
   },
   "model": "main.eddobject",
@@ -98,6 +105,7 @@
     "created": 15,
     "meta_store": {},
     "updates": [],
+    "active": true,
     "description": null
   },
   "model": "main.eddobject",
@@ -110,6 +118,7 @@
     "created": 17,
     "meta_store": {},
     "updates": [],
+    "active": true,
     "description": null
   },
   "model": "main.eddobject",
@@ -122,6 +131,7 @@
     "created": 19,
     "meta_store": {},
     "updates": [],
+    "active": true,
     "description": null
   },
   "model": "main.eddobject",
@@ -134,6 +144,7 @@
     "created": 21,
     "meta_store": {},
     "updates": [],
+    "active": true,
     "description": null
   },
   "model": "main.eddobject",
@@ -146,6 +157,7 @@
     "created": 23,
     "meta_store": {},
     "updates": [],
+    "active": true,
     "description": null
   },
   "model": "main.eddobject",
@@ -158,6 +170,7 @@
     "created": 25,
     "meta_store": {},
     "updates": [],
+    "active": true,
     "description": null
   },
   "model": "main.eddobject",
@@ -170,6 +183,7 @@
     "created": 27,
     "meta_store": {},
     "updates": [],
+    "active": true,
     "description": "GC-MS assay"
   },
   "model": "main.eddobject",
@@ -182,6 +196,7 @@
     "created": 29,
     "meta_store": {},
     "updates": [],
+    "active": true,
     "description": "GC-MS assay"
   },
   "model": "main.eddobject",
@@ -194,6 +209,7 @@
     "created": 31,
     "meta_store": {},
     "updates": [],
+    "active": true,
     "description": "OD measurement"
   },
   "model": "main.eddobject",
@@ -206,6 +222,7 @@
     "created": 33,
     "meta_store": {},
     "updates": [],
+    "active": true,
     "description": "HPLC measurement"
   },
   "model": "main.eddobject",
@@ -218,6 +235,7 @@
     "created": 35,
     "meta_store": {},
     "updates": [],
+    "active": true,
     "description": "O2/CO2 measurements"
   },
   "model": "main.eddobject",
@@ -230,6 +248,7 @@
     "created": 37,
     "meta_store": {},
     "updates": [],
+    "active": true,
     "description": "IC LC-MS measurements"
   },
   "model": "main.eddobject",
@@ -242,6 +261,7 @@
     "created": 40,
     "meta_store": {},
     "updates": [],
+    "active": true,
     "description": null
   },
   "model": "main.eddobject",
@@ -249,7 +269,6 @@
 },
 {
   "fields": {
-    "active": true,
     "registry_id": "ddfe51d0-4f7b-4625-8094-a1b51b509a72",
     "updates": [],
     "registry_url": "http://registry.jbei.org/strain/666"
@@ -259,7 +278,6 @@
 },
 {
   "fields": {
-    "active": false,
     "registry_id": "cc3cdabf-1871-4195-b08d-307b79345907",
     "updates": [],
     "registry_url": null
@@ -270,7 +288,6 @@
 {
   "fields": {
     "volume": "10.00000",
-    "active": true,
     "updates": [],
     "labeling": ""
   },
@@ -1465,7 +1482,6 @@
 },
 {
   "fields": {
-    "active": true,
     "contact_extra": "",
     "contact": null,
     "updates": []
@@ -1484,7 +1500,6 @@
 },
 {
   "fields": {
-    "active": true,
     "owned_by": 1,
     "variant_of": null,
     "updates": [],
@@ -1495,7 +1510,6 @@
 },
 {
   "fields": {
-    "active": true,
     "owned_by": 1,
     "variant_of": null,
     "updates": [],
@@ -1506,7 +1520,6 @@
 },
 {
   "fields": {
-    "active": true,
     "owned_by": 1,
     "variant_of": null,
     "updates": [],
@@ -1517,7 +1530,6 @@
 },
 {
   "fields": {
-    "active": true,
     "owned_by": 1,
     "variant_of": null,
     "updates": [],
@@ -1528,7 +1540,6 @@
 },
 {
   "fields": {
-    "active": true,
     "owned_by": 1,
     "variant_of": null,
     "updates": [],
@@ -1539,7 +1550,6 @@
 },
 {
   "fields": {
-    "active": true,
     "owned_by": 1,
     "variant_of": null,
     "updates": [],
@@ -1550,7 +1560,6 @@
 },
 {
   "fields": {
-    "active": true,
     "owned_by": 1,
     "variant_of": null,
     "updates": [],
@@ -1572,7 +1581,6 @@
     "contact": 1,
     "experimenter": 1,
     "updates": [],
-    "active": true,
     "replicate": null,
     "contact_extra": ""
   },
@@ -1590,7 +1598,6 @@
     "contact": 1,
     "experimenter": 1,
     "updates": [],
-    "active": true,
     "replicate": null,
     "contact_extra": ""
   },
@@ -1599,7 +1606,6 @@
 },
 {
   "fields": {
-    "active": true,
     "experimenter": 1,
     "line": 3,
     "protocol": 7,
@@ -1610,7 +1616,6 @@
 },
 {
   "fields": {
-    "active": true,
     "experimenter": 1,
     "line": 4,
     "protocol": 7,
@@ -1621,7 +1626,6 @@
 },
 {
   "fields": {
-    "active": true,
     "experimenter": 1,
     "line": 3,
     "protocol": 8,
@@ -1632,7 +1636,6 @@
 },
 {
   "fields": {
-    "active": true,
     "experimenter": 1,
     "line": 3,
     "protocol": 9,
@@ -1643,7 +1646,6 @@
 },
 {
   "fields": {
-    "active": true,
     "experimenter": 1,
     "line": 3,
     "protocol": 10,
@@ -1654,7 +1656,6 @@
 },
 {
   "fields": {
-    "active": true,
     "experimenter": 1,
     "line": 3,
     "protocol": 13,
