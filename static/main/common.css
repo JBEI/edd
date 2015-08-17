@@ -1394,13 +1394,15 @@ div.errorMessage > a.close {
 }
 .errorlist {
     background-color: #FFF0F0;
-    border:  2px solid red;
+    border:  2px solid red !important;
     border-radius: 6px;
     list-style: none;
     margin: 0;
     padding: 3px;
 }
-
+.errorlist > li {
+    float: none !important;
+}
 
 dl.infolist > dt {
     clear: left;
@@ -1465,6 +1467,24 @@ ol.comment-list > li {
     padding-left: 14px;
 }
 form.comments textarea {
+    width: 100%;
+}
+
+.exportOptions > p {
+    clear: both;
+    margin: 0;
+    padding-bottom: 0.2em;
+}
+.exportOptions > ul {
+    border-top: 1px dotted #CCCCCC;
+    clear: both;
+    list-style: none;
+}
+.exportOptions > ul > li {
+    float: left;
+    padding-right: 1em;
+}
+.exportDisplay textarea {
     width: 100%;
 }
 /* End of common styles */

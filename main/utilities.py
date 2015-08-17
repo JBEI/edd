@@ -253,7 +253,7 @@ class line_export_base (object) :
       id__in=list(set([ m.y_units_id for m in measurements ])))
     y_units_dict = { yu.id : yu for yu in y_units }
     #measurement_data.prefetch_related("y_units")
-    for m in measurements :
+    for m in measurements:
       self._measurements[m.assay_id].append(m)
       self._measurement_types[m.id] = mtypes_dict[m.measurement_type_id]
       if (m.measurement_type_id in metabolites_dict) :

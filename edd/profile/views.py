@@ -7,20 +7,26 @@ from django.http import (
 from django.shortcuts import render, render_to_response
 from django.template import RequestContext
 
+# /profile/
 def index(request):
-    return profile(request, request.user.username)
+    return profile_for_user(request, request.user)
 
+# /profile/~<username>/
 def profile(request, username):
     User = get_user_model()
     try:
         user = User.objects.get(username=username)
     except User.DoesNotExist, e:
         raise Http404("User does not exist")
+    return profile_for_user(request, user)
+
+def profile_for_user(request, user):
     return render_to_response("edd/profile/profile.html",
         dictionary={ 'profile_user': user, 'profile': user.userprofile, },
         context_instance=RequestContext(request),
         )
 
+# /profile/settings/
 def settings(request):
     user = request.user
     if hasattr(user, 'userprofile'):
@@ -48,6 +54,7 @@ def settings(request):
             return HttpResponseNotAllowed(['HEAD', 'GET', 'PUT', 'POST', 'DELETE', ])
     raise Http404("Could not find user settings")
 
+# /profile/settings/<key>
 def settings_key(request, key):
     user = request.user
     if hasattr(user, 'userprofile'):

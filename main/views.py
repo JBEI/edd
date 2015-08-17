@@ -29,7 +29,6 @@ import json
 import logging
 import main.models
 import main.sbml_export
-import main.data_export
 import main.data_import
 import operator
 
@@ -46,22 +45,16 @@ def lookup(dictionary, key):
     {{ obj.metadata|lookup:type }}
     {% endfor %}
     """
-    try:
-        return dictionary[key]
-    except:
-        return settings.TEMPLATE_STRING_IF_INVALID
+    return dictionary.get(key, settings.TEMPLATE_STRING_IF_INVALID)
 
 @register.filter(name='formula')
 def formula (molecular_formula) :
-    """
-    Convert the molecular formula to a list of dictionaries giving each
-    element and its count.  This is used in HTML views with <sub> tags.
-    """
-    # TODO this is wrong, will not match e.g. Fe2O3
-    elements = re.findall("([A-Z]{1,2})([1-9]{1}[0-9]*)", molecular_formula)
-    if (len(elements) == 0) :
-        return ""
-    return mark_safe("".join(["%s<sub>%s</sub>" % (e,c) for e,c in elements]))
+    """ Convert the molecular formula to a list of dictionaries giving each element and its count.
+        This is used in HTML views with <sub> tags. """
+    elements = re.findall("([A-Z][a-z]{0,2})([1-9][0-9]*)?", molecular_formula)
+    return mark_safe(
+        "".join([ '%s%s' % (e, '<sub>%s</sub>' % c if c != '' else c) for e,c in elements ])
+        )
 
 
 class StudyCreateView(generic.edit.CreateView):
@@ -90,14 +83,12 @@ class StudyDetailView(generic.DetailView):
     
     def get_context_data(self, **kwargs):
         context = super(StudyDetailView, self).get_context_data(**kwargs)
-        action = kwargs.pop('action', None)
-        request = kwargs.pop('request', None)
         context['new_assay'] = AssayForm(prefix='assay')
         context['new_attach'] = CreateAttachmentForm()
         context['new_comment'] = CreateCommentForm()
         context['new_line'] = LineForm(prefix='line')
         context['new_measurement'] = MeasurementForm(prefix='measurement')
-        context['writable'] = self.get_object().user_can_write(request.user)
+        context['writable'] = self.get_object().user_can_write(self.request.user)
         return context
 
     def handle_assay(self, request, context):
@@ -118,6 +109,23 @@ class StudyDetailView(generic.DetailView):
             form.save()
             return True
         return False
+
+    def handle_assay_mark(self, request, context):
+        ids = request.POST.getlist('assayId', [])
+        study = self.get_object()
+        disable = request.POST.get('disable', None)
+        if disable == 'true':
+            active = False
+        elif disable == 'false':
+            active = True
+        else:
+            messages.error(request, 'Invalid action specified, doing nothing')
+            return True
+        count = Assay.objects.filter(pk__in=ids, line__study=study).update(active=active)
+        messages.success(request, 'Updated %(count)s Assays' % {
+            'count': count,
+            })
+        return True
 
     def handle_attach(self, request, context):
         form = CreateAttachmentForm(request.POST, request.FILES, edd_object=self.get_object())
@@ -264,9 +272,23 @@ class StudyDetailView(generic.DetailView):
             if line_action == 'edit':
                 form_valid = self.handle_disable(request, context)
             elif line_action == 'export':
-                'TODO: export data'
+                return ExportView.as_view()(request, *args, **kwargs)
+            else:
+                messages.error(request, 'Unknown line action %s' % (line_action))
         elif action == 'assay':
             form_valid = self.handle_assay(request, context)
+        elif action == 'assay_action':
+            assay_action = request.POST.get('assay_action', None)
+            if assay_action == 'mark':
+                form_valid = self.handle_assay_mark(request, context)
+            elif assay_action == 'delete':
+                form_valid = self.handle_measurement_delete(request, context)
+            elif assay_action == 'edit':
+                form_valid = self.handle_measurement_edit(request, context)
+            elif assay_action == 'export':
+                return ExportView.as_view()(request, *args, **kwargs)
+            else:
+                messages.error(request, 'Unknown assay action %s' % (assay_action))
         if form_valid:
             study_modified.send(sender=self.__class__, study=self.object)
             return HttpResponseRedirect(reverse('main:detail', kwargs={'pk':self.object.pk}))
@@ -287,6 +309,184 @@ class StudyDetailView(generic.DetailView):
         except Line.DoesNotExist, e:
             logger.warning('Failed to load line,study combo %s,%s' % (line_id, study.pk))
         return None
+
+
+class ExportView(generic.TemplateView):
+    """ Encapsulates functionality for exports. """
+    template_name = 'main/export.html'
+
+    def get(self, request, *args, **kwargs):
+        """ Populates ExportSelectionForm from query/URL parameters and uses a default
+            ExportOptionForm. """
+        data = kwargs.copy()
+        data.update(request.GET)
+        initial = ExportOptionForm.initial_from_user_settings(request.user)
+        self._select = ExportSelectionForm(data=data, user=request.user)
+        if self._select.is_valid():
+            self._option = ExportOptionForm(data=initial, initial=initial, selection=self._select)
+            if self._option.is_valid():
+                return self.render_to_response(self.get_context_data(
+                    select_form=self._select,
+                    option_form=self._option,
+                    ))
+        return self.render_to_response(self.get_context_data(
+            select_form=self._select,
+            option_form=self._option,
+            error_message='Could not parse export request',
+            ))
+
+    def post(self, request, *args, **kwargs):
+        """ Populates both ExportSelectionForm and ExportOptionForm from POST parameters. """
+        initial = ExportOptionForm.initial_from_user_settings(request.user)
+        self._select = ExportSelectionForm(data=request.POST, user=request.user)
+        if self._select.is_valid():
+            self._option = ExportOptionForm(data=request.POST, initial=initial, selection=self._select)
+            if self._option.is_valid():
+                return self.render_to_response(self.get_context_data(
+                    select_form=self._select,
+                    option_form=self._option,
+                    ))
+        return self.render_to_response(self.get_context_data(
+            select_form=self._select,
+            option_form=self._option,
+            error_message='Could not parse export request',
+            ))
+
+    def export_output(self):
+        options = self._option.cleaned_data
+        # check how tables are being sectioned
+        line_section = options.get('line_section', False) 
+        protocol_section = options.get('protocol_section', False) 
+        layout = options.get('layout', ExportOptionForm.DATA_COLUMN_BY_LINE)
+        # store tables
+        tables = OrderedDict()
+        if line_section:
+            tables['line'] = OrderedDict()
+            tables['line']['header'] = self._output_line_header()
+        if not protocol_section:
+            tables['all'] = OrderedDict()
+            tables['all']['header'] = self._output_measure_header()
+        x_values = {}
+        value_str = lambda a: ':'.join(map(str, a))
+        # add data from each exported measurement; already sorted by protocol
+        for measurement in self._select.measurements:
+            assay = self._select.assays.get(measurement.assay_id, None)
+            protocol = assay.protocol
+            line = self._select.lines.get(assay.line_id, None)
+            study = line.study
+            row = self._output_line_row(study, line)
+            if line_section:
+                if line.id not in tables['line']:
+                    tables['line'][line.id] = row
+                # reset row after this point
+                row = [] 
+            row += self._output_measure_row(protocol, assay, measurement)
+            if protocol_section:
+                if protocol.id not in tables:
+                    tables[protocol.id] = OrderedDict()
+                    tables[protocol.id]['header'] = self._output_measure_header()
+                table_key = protocol.id
+            else:
+                table_key = 'all'
+            table = tables[table_key]
+            values = measurement.measurementvalue_set.all()
+            values = sorted(values, lambda a,b: cmp(a.x, b.x))
+            if layout == ExportOptionForm.DATA_COLUMN_BY_POINT:
+                for value in values:
+                    arow = row[:]
+                    arow.append(value_str(value.x))
+                    arow.append(value_str(value.y))
+                    table[value.id] = arow
+            else:
+                # keep track of all x values encountered in the table
+                xx = x_values[table_key] = x_values.get(table_key, {})
+                xx.update({ value_str(v.x): v.x for v in values })
+                squashed = { value_str(v.x): value_str(v.y) for v in values }
+                row.append(squashed)
+                table[measurement.id] = row
+        table_separator = '\n\n'
+        row_separator = '\n'
+        cell_separator = self._option.get_separator()
+        if layout == ExportOptionForm.DATA_COLUMN_BY_POINT:
+            # data is already in correct orientation, join and return
+            return table_separator.join([
+                row_separator.join([
+                    cell_separator.join([
+                        str(cell) for cell in row
+                        ]) for rkey, row in table.items()
+                    ]) for tkey, table in tables.items()
+                ])
+        # both LINE_COLUMN_BY_DATA and DATA_COLUMN_BY_LINE are constructed similarly
+        # each table in LINE_COLUMN_BY_DATA is transposed
+        out = []
+        for tkey, table in tables.items():
+            # sort x values by original numeric values
+            all_x = sorted(x_values.get(tkey, {}).items(), lambda a,b: cmp(a[1], b[1]))
+            # generate header row
+            rows = [ map(str, table['header'] + map(lambda x: x[0], all_x)) ]
+            # go through non-header rows; unsquash final column
+            for rkey, row in table.items()[1:]:
+                unsquash = self._output_unsquash(all_x, row[-1:][0])
+                rows.append(map(str, row[:-1] + unsquash))
+            # do the transpose here if needed
+            if layout == ExportOptionForm.LINE_COLUMN_BY_DATA:
+                rows = zip(*rows)
+            # join the cells
+            rows = [ cell_separator.join(row) for row in rows ]
+            # join the rows
+            out.append(row_separator.join(rows))
+        return table_separator.join(out)
+
+    def _output_line_header(self):
+        options = self._option.cleaned_data
+        row = []
+        choices = dict(self._option.fields['study_meta'].choices)
+        for column in options.get('study_meta', []):
+            row.append(choices.get(column, ''))
+        choices = dict(self._option.fields['line_meta'].choices)
+        for column in options.get('line_meta', []):
+            row.append(choices.get(column, ''))
+        return row
+
+    def _output_line_row(self, study, line):
+        options = self._option.cleaned_data
+        row = []
+        for column in options.get('study_meta', []):
+            row.append(study.export_option_value(column))
+        for column in options.get('line_meta', []):
+            row.append(line.export_option_value(column))
+        return row
+
+    def _output_measure_header(self):
+        options = self._option.cleaned_data
+        row = []
+        choices = dict(self._option.fields['protocol_meta'].choices)
+        for column in options.get('protocol_meta', []):
+            row.append(choices.get(column, ''))
+        choices = dict(self._option.fields['assay_meta'].choices)
+        for column in options.get('assay_meta', []):
+            row.append(choices.get(column, ''))
+        choices = dict(self._option.fields['measure_meta'].choices)
+        for column in options.get('measure_meta', []):
+            row.append(choices.get(column, ''))
+        return row        
+
+    def _output_measure_row(self, protocol, assay, measure):
+        options = self._option.cleaned_data
+        row = []
+        for column in options.get('protocol_meta', []) :
+            row.append(protocol.export_option_value(column))
+        for column in options.get('assay_meta', []) :
+            row.append(assay.export_option_value(column))
+        for column in options.get('measure_meta', []) :
+            row.append(measure.export_option_value(column))
+        return row
+
+    def _output_unsquash(self, all_x, squashed):
+        if isinstance(squashed, dict):
+            return map(lambda x: squashed.get(x[0], ''), all_x)
+        # expecting a list to be returned
+        return [ squashed ]
 
 
 # /study/<study_id>/lines/
@@ -607,78 +807,6 @@ def study_import_rnaseq_process (request, study) :
     else :
         return JsonResponse(result)
 
-# /study/<study_id>/export
-# FIXME should have trailing slash?
-def study_export_table (request, study) :
-    """
-    HTML view for exporting measurement data in table format (replaces
-    StudyExport.cgi).
-    """
-    model = Study.objects.get(pk=study)
-    form = None
-    if (request.method == "POST") :
-        form = request.POST
-    else :
-        form = request.GET
-    exports = main.data_export.select_objects_for_export(
-        study=model,
-        user=request.user, # FIXME
-        form=form)
-    column_info = list(main.data_export.column_info)
-    column_flags = main.data_export.extract_column_flags(form)
-    for col in column_info :
-        if (col['label'] in column_flags) :
-            col['checked'] = False
-    error_message = None
-    formatted_table = None
-    if (len(exports['measurements']) == 0) :
-        error_message = "No measurements selected for export!"
-    else :
-        formatted_table = main.data_export.table_view(export_data=exports,
-            form=form,
-            column_flags=column_flags)
-    if (form.get("download", None) == "1") and (formatted_table is not None) :
-        table_format = form.get("recordformat", "csv")
-        file_name = "edd_export_%s.%s" % (study, table_format)
-        response = HttpResponse(formatted_table,
-            content_type="text/plain")
-        response['Content-Disposition'] = 'attachment; filename="%s"'%file_name
-        return response
-    return render_to_response("main/export.html",
-        dictionary={
-            "study" : model,
-            "line_id_str" : ",".join([ str(l.id) for l in exports['lines'] ]),
-            "assay_id_str" : ",".join([ str(a.id) for a in exports['assays'] ]),
-            "measurement_id_str" : ",".join([ str(m.id) for m in
-                                              exports['measurements'] ]),
-            "column_info" : column_info,
-            "lines" : exports['lines'],
-            "n_meas" : len(exports['measurements']),
-            "n_assays" : len(exports['assays']),
-            "n_lines" : len(exports['lines']),
-            "error_message" : error_message,
-            "formatted_table" : formatted_table,
-            "assaylevel" : form.get("assaylevel", "0"),
-        },
-        context_instance=RequestContext(request))
-
-# /study/<study_id>/export/data
-# FIXME should have trailing slash?
-def study_export_table_data (request, study) :
-    model = Study.objects.get(pk=study)
-    form = None
-    if (request.method == "POST") :
-        form = request.POST
-    else :
-        form = request.GET
-    exports = main.data_export.select_objects_for_export(
-        study=model,
-        user=None, # FIXME
-        form=form)
-    if (len(exports['measurements']) == 0) :
-        raise RuntimeError("No measurements selected for export!")
-    else :
-        return main.data_export.export_table(exports, form)
 
 # /study/<study_id>/sbml
 # FIXME should have trailing slash?

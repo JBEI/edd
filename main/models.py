@@ -11,6 +11,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.db.models import Q
 from django.utils.encoding import python_2_unicode_compatible
+from django.utils.translation import ugettext_lazy as _
 from itertools import chain
 from threadlocals.threadlocals import get_current_request
 
@@ -222,6 +223,14 @@ class MetadataType(models.Model):
     #   CarbonSource.objects.get(pk=value)
     type_class = models.CharField(max_length=255, blank=True, null=True)
 
+    @classmethod
+    def all_types_on_instances(cls, instances=[]):
+        # grab all the keys on each instance meta_store
+        all_ids = [ set(o.meta_store.keys()) for o in instances if isinstance(o, EDDObject) ]
+        # reduce all into a set to get only unique ids
+        ids = reduce(lambda a,b: a.union(b), all_ids, set())
+        return MetadataType.objects.filter(pk__in=ids).order_by('type_name')
+
     def for_line(self):
         return (self.for_context == self.LINE or
             self.for_context == self.LINE_OR_PROTOCOL or
@@ -396,6 +405,20 @@ class EDDObject(models.Model):
         # must ensure EDDObject is saved *before* attempting to add to updates
         self.updates.add(self.updated)
 
+    @classmethod
+    def export_choice_options(cls, instances=[]):
+        return (
+                (cls.__name__ + '.id', _('ID')),
+                (cls.__name__ + '.name', _('Name')),
+            )
+
+    def export_option_value(self, option):
+        if option == (self.__class__.__name__ + '.id'):
+            return self.id
+        elif option == (self.__class__.__name__ + '.name'):
+            return self.name
+        return ''
+
     def to_json(self):
         return {
             'id': self.pk,
@@ -409,9 +432,7 @@ class EDDObject(models.Model):
 
 
 class Study(EDDObject):
-    """
-    A collection of items to be studied.
-    """
+    """ A collection of items to be studied. """
     class Meta:
         db_table = 'study'
         verbose_name_plural = 'Studies'
@@ -424,6 +445,17 @@ class Study(EDDObject):
                                 related_name='contact_study_set')
     contact_extra = models.TextField()
     metabolic_map = models.ForeignKey('SBMLTemplate', blank=True, null=True)
+
+    @classmethod
+    def export_choice_options(cls, instances=[]):
+        return super(Study, cls).export_choice_options(instances) + (
+                (Study.__name__ + '.contact', _('Contact')),
+            )
+
+    def export_option_value(self, option):
+        if option == (Study.__name__ + '.contact'):
+            return self.get_contact()
+        return super(Study, self).export_option_value(option)
 
     def to_solr_json(self):
         """
@@ -563,16 +595,14 @@ class GroupPermission(StudyPermission):
     group = models.ForeignKey('auth.Group', related_name='grouppermission_set')
 
     def applies_to_user(self, user):
-        return user.groups.contains(user)
+        return user.groups.contains(self.group)
 
     def __str__(self):
         return 'g:%(group)s' % {'group':self.group.name}
 
 
 class Protocol(EDDObject):
-    """
-    A defined method of examining a Line.
-    """
+    """ A defined method of examining a Line. """
     class Meta:
         db_table = 'protocol'
     object_ref = models.OneToOneField(EDDObject, parent_link=True)
@@ -651,9 +681,7 @@ def _n_studies (self) :
 
 
 class Strain(EDDObject):
-    """
-    A link to a strain/part in the JBEI ICE Registry.
-    """
+    """ A link to a strain/part in the JBEI ICE Registry. """
     class Meta:
         db_table = 'strain'
     object_ref = models.OneToOneField(EDDObject, parent_link=True)
@@ -682,9 +710,7 @@ class Strain(EDDObject):
 
 
 class CarbonSource(EDDObject):
-    """
-    Information about carbon sources, isotope labeling.
-    """
+    """ Information about carbon sources, isotope labeling. """
     class Meta:
         db_table = 'carbon_source'
     object_ref = models.OneToOneField(EDDObject, parent_link=True)
@@ -712,9 +738,7 @@ class CarbonSource(EDDObject):
 
 
 class Line(EDDObject):
-    """
-    A single item to be studied (contents of well, tube, dish, etc).
-    """
+    """ A single item to be studied (contents of well, tube, dish, etc). """
     class Meta:
         db_table = 'line'
     study = models.ForeignKey(Study)
@@ -729,6 +753,41 @@ class Line(EDDObject):
     carbon_source = models.ManyToManyField(CarbonSource, blank=True, db_table='line_carbon_source')
     protocols = models.ManyToManyField(Protocol, through='Assay')
     strains = models.ManyToManyField(Strain, blank=True, db_table='line_strain')
+
+    @classmethod
+    def export_choice_options(cls, instances=[]):
+        types = MetadataType.all_types_on_instances(instances)
+        return super(Line, cls).export_choice_options(instances) + (
+                (Line.__name__ + '.control', _('Control')),
+                (Line.__name__ + '.strain', _('Strain')),
+                (Line.__name__ + '.csource_name', _('Carbon Source')),
+                (Line.__name__ + '.csource_label', _('Carbon Labeling')),
+                (Line.__name__ + '.experimenter', _('Experimenter')),
+                (Line.__name__ + '.contact', _('Contact')),
+            ) + tuple(
+                (Line.__name__ + '.meta.' + str(t.id), t.type_name) for t in types
+            )
+
+    def export_option_value(self, option):
+        if option == (Line.__name__ + '.control'):
+            return 'T' if self.control else 'F'
+        elif option == (Line.__name__ + '.strain'):
+            strains = self.strains.all()
+            # TODO export should handle multi-valued fields better than this kludge
+            return '|'.join([ s.name for s in strains ])
+        elif option == (Line.__name__ + '.csource_name'):
+            carbon = self.carbon_source.all()
+            # TODO export should handle multi-valued fields better than this kludge
+            return '|'.join([ c.name for c in carbon ])
+        elif option == (Line.__name__ + '.csource_label'):
+            carbon = self.carbon_source.all()
+            # TODO export should handle multi-valued fields better than this kludge
+            return '|'.join([ c.labeling for c in carbon ])
+        elif option == (Line.__name__ + '.experimenter'):
+            return self.experimenter.email if self.experimenter else ''
+        elif option == (Line.__name__ + '.contact'):
+            return self.contact.email if self.contact else ''
+        return super(Line, self).export_option_value(option)
 
     def to_json(self):
         json_dict = super(Line, self).to_json()
@@ -952,7 +1011,7 @@ class Metabolite(MeasurementType):
         })
 
     @property
-    def keywords_str (self) :
+    def keywords_str(self):
         return ", ".join([ str(k) for k in self.keywords.all() ])
 
     def add_keyword (self, keyword) :
@@ -1114,6 +1173,29 @@ class Measurement(models.Model):
     measurement_format = models.CharField(max_length=2,
         choices=MeasurementFormat.FORMAT_CHOICE,
         default=MeasurementFormat.SCALAR)
+
+    @classmethod
+    def export_choice_options(cls, instances=[]):
+        return (
+                (cls.__name__ + '.type', _('Measurement Type')),
+                (cls.__name__ + '.compartment', _('Compartment')),
+                (cls.__name__ + '.modified', _('Assay Last Modified')),
+                (cls.__name__ + '.x_units', _('X Units')),
+                (cls.__name__ + '.y_units', _('Y Units')),
+            )
+
+    def export_option_value(self, option):
+        if option == (self.__class__.__name__ + '.type'):
+            return self.measurement_type.type_name
+        elif option == (self.__class__.__name__ + '.compartment'):
+            return MeasurementCompartment.names[int(self.compartment)]
+        elif option == (self.__class__.__name__ + '.modified'):
+            return self.update_ref.mod_time
+        elif option == (self.__class__.__name__ + '.x_units'):
+            return self.x_units.unit_name if self.x_units.display else ''
+        elif option == (self.__class__.__name__ + '.y_units'):
+            return self.y_units.unit_name if self.y_units.display else ''
+        return ''
 
     def to_json(self):
         return {

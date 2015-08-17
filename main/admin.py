@@ -173,7 +173,7 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
     def get_list_display(self, request):
         if issubclass(self.model, Metabolite):
             return ('type_name', 'short_name', 'molecular_formula', 'molar_mass', 'charge',
-                    'keywords', )
+                    '_keywords', )
         elif issubclass(self.model, GeneIdentifier):
             return ('type_name', 'location_in_genome', 'positive_strand', 'location_start',
                     'location_end', 'gene_length', )
@@ -186,6 +186,13 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
         if self.model == MeasurementType:
             q = q.filter(type_group=MeasurementGroup.GENERIC)
         return q
+
+    def _keywords(self, obj):
+        if issubclass(self.model, Metabolite):
+            return obj.keywords_str
+        return ''
+    _keywords.short_description = 'Keywords'
+
 
 class UserPermissionInline(admin.TabularInline):
     """ Inline submodel for editing user permissions """
