@@ -21,6 +21,9 @@ The Experiment Data Depot (EDD) is a web-based repository of processed data
 	   * [Configure LDAP SSL](#LDAP_SSL)
 	   * [Build Tools](#Build_Tools)
 	   * [Configure Database](#Configure_o)
+	   * [Install & Configure RabbitMQ backend](#Install_Config_RabbitMQ)
+	   * [Install Celery as a daemon](#InstallCeleryDaemon)
+	   * [Install Flower as a daemon](#InstallFlowerDaemon)
 	   * [Start EDD](#Start_EDD)
 	   * [Build Solr Indices](#Build_Indices)
    * [Debian (for deployment)](#Debian)
@@ -32,9 +35,16 @@ The Experiment Data Depot (EDD) is a web-based repository of processed data
 	   * [Django](#Django_Deb)
 	   * [Apache Setup](#Apache_Deb)
 	   * TODO: update TOC when Debian directions are complete
+	   * [Install & Configure RabbitMQ backend](#Install_Config_RabbitMQ_Deb)
+	   * [Install Requirements for Celery & Flower](#Install_Celery_Reqs_Deb)
+	   * [Configure Flower](#Configure_Flower_Deb)
+	   * [Test Celery & Flower from the command line](#Test_Celery_And_Flower_Deb)
+	   * [Configure Celery Worker(s) To Run as Daemon](#Configure_Celery_Daemon)
 * [Helpful Python Packages](#Helpful_Python)
 * [Build Tools](#BuildTools)
+* [Controlling EDD's Dependencies](#ControllingDependencies)
 * [Database Conversion](#Db_Conversion)
+* [Configure RabbitMQ for Celery and EDD](#ConfigureRabbitMQ)
 * [Solr Tests](#Solr_Test)
 * [Required Python Package Reference](#PythonPackages)
 
@@ -189,24 +199,25 @@ This section contains directions for setting up a development environment on EDD
  * Configure Database <a name="Configure_DB"/>
     * See [Database Conversion](#DbConversion) below for instructions that also apply to initial database creation
 	
- * Install & Configure RabbitMQ backend
-   * Install RabbitMQ.
-      * `brew install rabbitmq`
-	  * Note that homebrew's directions for installing rabbitmq as a daemon don't seem to work. We'll configure that later.
-   * Configure environment
-      * Update .bashrc or .bash_profile to add rabbitmq to the path for testing: `export PATH=$PATH:/usr/local/sbin:.`
-   * In a separate terminal, start RabbitMQ in the foreground to test
-      * `sudo rabbitmq-server`
-   * Configure RabbitMQ for Celery and EDD
-      * See [Configuration](#ConfigureRabbitMQ)
-   * Restart RabbitMQ to test configuration changes
+ * Install & Configure RabbitMQ backend <a name="Install_Config_RabbitMQ"></a>
+    * Install RabbitMQ.
+       * `brew install rabbitmq`
+	   * Note that homebrew's directions for installing rabbitmq as a daemon don't seem to work. We'll configure that later.
+    * Configure environment
+       * Update .bashrc or .bash_profile to add rabbitmq to the path for testing: `export PATH=$PATH:/usr/local/sbin:.`
+    * In a separate terminal, start RabbitMQ in the foreground to test
+       * `sudo rabbitmq-server`
+    * Configure RabbitMQ for Celery and EDD
+       * See [Configuration](#ConfigureRabbitMQ)
+    * Restart RabbitMQ to test configuration changes
       * `sudo rabbitmqctl stop`
 	  * `sudo rabbitmq-server` (leave off `-detached` at first to see error messages easily)
 	  * Launch Celery (installed via `pip`) to make sure it can connect to RabbitMQ 
 	     * See directions at <a href="#ControllingDependencies">Controlling EDD's Dependencies</a>
-  * Install RabbitMQ as a daemon
-     * Create an unprivileged OSX user account for running RabbitMQ as a daemon. Note that the RabbitMQ scripts are written to only tolerate being run as as user root or rabbitmq, so it's important to use the exact username rabbitmq.
-  	     cd edd/celery/osx
+    * Install RabbitMQ as a daemon
+       * Create an unprivileged OSX user account for running RabbitMQ as a daemon. Note that the RabbitMQ scripts are written to only tolerate being run as as user root or rabbitmq, so it's important to use the exact username rabbitmq.
+
+         cd edd/celery/osx
 	     sudo edd/celery/osx/add_system_user.sh rabbitmq 'RabbitMQ Message Broker'
      * Change the user's home directory from `/var/empty/` to `/var/lib/rabbitmq`, the directory we've chosen to store RabbitMQ's Erlang cookie (`.erlang.cookie`)
         * `sudo dscl /Local/Default -delete Users/_rabbitmq NFSHomeDirectory`
@@ -221,6 +232,7 @@ This section contains directions for setting up a development environment on EDD
 	     chown -R rabbitmq:rabbitmq /usr/local/var/lib/rabbitmq
 	     chown -R rabbitmq /usr/local/etc/rabbitmq/
 	 * Configure OSX to run RabbitMQ as a daemon. As long as this file exists, OSX will attempt to launch the daemon at startup.
+
   	     cd edd/celery/osx
          sudo cp com.rabbitmq.plist /Library/LaunchDaemons/
 	 * Test that permissions for the copied script match those of other files in LaunchDaemons/
@@ -237,7 +249,7 @@ This section contains directions for setting up a development environment on EDD
 		    export HOME=/var/lib/rabbitmq/
 			sudo -u rabbitmq rabbitmqctl status
 		 * If rabbitmqctl is accidentally run as root, rabbitmqctl status will mention "TCP connection succeeded but Erlang distribution failed". It looks for the .erlang.cookie in the current user's home directory.
-  * Install Celery as a daemon
+ * Install Celery as a daemon <a name="InstallCeleryDaemon">
      * Create a new unplivileged OSX system account to run Celery worker(s) 
 	    edd/celery/osx/add_system_user.sh celery
      * Replace the user's default shell, `/usr/bin/false`, with `/bin/bash` so we can run `sudo su celery` for testing. Other forms of login will remain disabled for this account.
@@ -273,11 +285,12 @@ This section contains directions for setting up a development environment on EDD
 	     sudo launchctl list | grep celery
 	 * See edd/edd/celeryconfig.py for reference
 	 * Test celery from the command line
-  * Install Flower as a daemon
+  * Install Flower as a daemon<a name="InstallFlowerDaemon"></a>
      * TODO:
 		  
  * Start and test EDD dependencies
     * See unified directions at <a href="#ControllingDependencies">Controlling EDD's Dependencies</a>
+	* TODO: add directions for testing a feature that depends on Celery
  
  * Start EDD <a name="Start_EDD"/>
 	* If not already running, start supporting services
@@ -333,7 +346,7 @@ This section contains directions for setting up a development environment on EDD
 	
  * Database : TODO
  
- * Install & Configure RabbitMQ backend
+ * Install & Configure RabbitMQ backend <a name="Install_Cosfig_RabbitMQ_Deb>"></a>
     * References: [RabbitMQ Debian Install](https://www.rabbitmq.com/install-debian.html), [RabbitMQ Production Checklist]()
     * Configure environment
        * Add the following to your `.bashrc ` or ``.bashprofile`` to simplify administation work for RabbitMQ
@@ -350,16 +363,16 @@ This section contains directions for setting up a development environment on EDD
    * Configure RabbitMQ for Celery and EDD
       * See [Configuration](#ConfigureRabbitMQ)
 	
- * Install requirements for Celery & Flower (included in requirements.txt)
+ * Install requirements for Celery & Flower (included in requirements.txt) <a name="Install_Celery_Reqs_Deb">
    * `workon edd-test.jbei.org`, followed by either of the following:
 	  
           cd /var/www/edd-test.jbei.org
 		  pip install -r edd/requirements.txt
 
- * Configure Flower
+ * Configure Flower<a name="#Configure_Flower"></a>
     * Depending on your deployment environment, consider [configurating Flower authentication](http://flower.readthedocs.org/en/latest/auth.html). The sample worker launch commands included in this document assume the use of basic authentication configured in the Flower run command
 		  
- * Test Celery & Flower from the command line (see [Controlling EDD's Dependencies](#ControllingDependencies))
+ * Test Celery & Flower from the command line (see [Controlling EDD's Dependencies](#ControllingDependencies))<a name="Test_Celery_And_Flower_Deb"></a>
     * Restart RabbitMQ if stopped
     * Run celery from the command line to test 
     * Run Flower from the commend line to test
@@ -413,10 +426,10 @@ This section contains directions for setting up a development environment on EDD
     * `sudo npm install -g grunt-cli`
     * `sudo npm install grunt`
 
- * EDD uses [TypeScript](http://typescriptlang.org) for its client-side
-    interface; you will want:
-    * `sudo npm install -g typescript`
-    * `sudo npm install grunt-typescript`
+ * EDD uses [TypeScript](http://typescriptlang.org) for its client-side interface; you will want:
+    * The following are included by default in the EDD codebase.
+	   * `sudo npm install -g typescript@1.3.0`
+	   * `sudo npm install grunt-typescript`
 
  * Compile changes in `*.ts` to `*.js` by simply running `grunt` from the edd base directory
  
@@ -451,7 +464,9 @@ EDD has a number of dependencies, all of which may need to be monitored/managed 
 * Celery / Flower
    * Sample Flower URL : [http://localhost:5555/](http://localhost:5555/)
    * Celery Worker: must run in base edd directory to detect celery config modules
-      * Development: `celery worker --app edd --queues=edd --hostname=edd-worker-1.%h --autoscale=10,1 --autoreload --loglevel=info`
+      * Development: 
+	     * Pre-demonazition: `celery worker --app edd --queues=edd --hostname=edd-worker-1.%h --autoscale=10,1 --autoreload --loglevel=info`
+		 * Post-demonization:  `sudo launchctl list | grep celery`, `sudo launchctl (un)load /Library/LaunchDaemons/org.celeryq.worker.plist`
 	  * Production / Test: `celery worker --app edd --queues=edd --hostname=edd-worker-1.%h --autoscale=10,1`
 	     * `service edd_celeryd {start|stop|force-reload|restart|try-restart|status}`
 	     * Note that in production, prefork() processes will have the same memory and file access as the user that launches this process

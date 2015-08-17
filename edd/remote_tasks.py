@@ -3,14 +3,25 @@
 # asychronous task to be remotely executed by Celery,
 # just define a funtion here and decorate it with @task_queue.task
 
-from celery import task_queue
+from __future__ import absolute_import
+from celery import shared_task
+
 # from main.ice import IceApi
 
-@task_queue.task
+@shared_task(bind=True)
+def debug_task(self):
+    print('Request: {0!r}'.format(self.request))
+    
+# def test_retry():
+#     raise Exception('testing retry')
+#     except:
+#         retry()
+
+@shared_task
 def add(x, y):
     return x + y
 
-@task_queue.task
+@shared_task
 def test_failure():
     raise Exception('testing exception case')
     
