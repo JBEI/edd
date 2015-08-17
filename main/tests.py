@@ -4,7 +4,6 @@ from main.models import * #Study, Update, UserPermission, GroupPermission
 from main.solr import StudySearch
 from edd.profile.models import UserProfile
 import arrow
-import main.data_export
 import main.data_import
 import main.sbml_export
 import main.utilities
@@ -348,8 +347,12 @@ class AssayDataTests(TestCase) :
         self.assertTrue(p1.categorization == "LCMS")
         self.assertTrue(p2.categorization == "OD")
         self.assertTrue(p3.categorization == "Unknown")
-        self.assertTrue(p1.to_json() == {'disabled': False, 'name': u'gc-ms'})
-        self.assertTrue(p3.to_json()=={'disabled':True,'name':u'New protocol'})
+        p1_json = p1.to_json()
+        self.assertTrue(p1_json.get('active', False))
+        self.assertTrue(p1_json.get('name', None) == 'gc-ms')
+        p3_json = p3.to_json()
+        self.assertFalse(p3_json.get('active', True))
+        self.assertTrue(p3_json.get('name', None) == 'New protocol')
         user1 = User.objects.get(username="admin")
         protocol4 = Protocol.from_form(
             name="Another protocol",
@@ -852,67 +855,15 @@ class ExportTests(TestCase) :
     """
     fixtures = ['export_data_1', ]
 
-    def test_data_export (self) :
-        study = Study.objects.get(name="Test Study 1")
-        lines = study.line_set.all()
-        assays = []
-        for line in lines :
-          assays.extend(list(line.assay_set.all()))
-        form = {
-            "line" : ",".join([ str(l.id) for l in lines ]),
-            "assay" : ",".join([ str(a.id) for a in assays ]),
-            "assaylevel" : "1",
-        }
-        user = User.objects.get(username="admin")
-        exports = main.data_export.select_objects_for_export(study, user, form)
-        table = main.data_export.assemble_table(**exports)
-        self.assertTrue(len(table) == 11)
-        self.assertTrue(len(table[0]) == 21)
-        self.assertTrue(table[0][-6:] == [ 0, 4, 8, 12, 18, 24 ]) # x1 in setUp
-        # XXX y3 in setUp
-        self.assertTrue(table[3][-6:] == [0.0, 0.2, 0.4, 0.8, 1.6, 3.2])
-        # TODO more checks for expected content
-        kwds = dict(exports)
-        kwds['dlayout_type'] = "lbyd"
-        t = main.data_export.assemble_table(**kwds)
-        self.assertTrue(len(t[0]) == 11)
-        #
-        kwds['dlayout_type'] = "dbya"
-        t = main.data_export.assemble_table(**kwds)
-        #print t
-        #
-        kwds = dict(exports)
-        kwds['column_flags'] = set([ "Line Contact", "Line Last Modified",
-            "Assay Last Modified" ])
-        t = main.data_export.assemble_table(**kwds)
-        #print t
-        self.assertTrue(len(t[0]) == 18)
-        self.assertTrue(not "Line Last Modified" in t[0])
-        kwds = dict(exports)
-        kwds['separate_lines'] = True
-        kwds['separate_protocols'] = True
-        t = main.data_export.assemble_table(**kwds)
-        #print t
-        # TODO check content
+    def test_data_export(self):
+        # TODO tests using main.forms.ExportSelectionForm, main.forms.ExportOptionForm, and
+        #   main.views.ExportView
+        pass
 
-    def test_user_permission (self) :
-        study = Study.objects.get(name="Test Study 1")
-        lines = study.line_set.all()
-        assays = []
-        for line in lines : assays.extend(list(line.assay_set.all()))
-        form = {
-            "line" : ",".join([ str(l.id) for l in lines ]),
-            "assay" : ",".join([ str(a.id) for a in assays ]),
-            "assaylevel" : "1",
-        }
-        user2 = User.objects.get(username="postdoc")
-        try :
-            exports = main.data_export.select_objects_for_export(study, user2,
-                form)
-        except RuntimeError :
-            pass
-        else :
-            raise Exception("Should have caught an exception here!")
+    def test_user_permission(self):
+        # TODO tests using main.forms.ExportSelectionForm, main.forms.ExportOptionForm, and
+        #   main.views.ExportView
+        pass
 
     # XXX this test does NOT depend on libsbml being available
     def test_data_export_setup (self) :

@@ -29,7 +29,6 @@ import json
 import logging
 import main.models
 import main.sbml_export
-import main.data_export
 import main.data_import
 import operator
 
@@ -490,38 +489,6 @@ class ExportView(generic.TemplateView):
         return [ squashed ]
 
 
-# /study/<study_id>/export
-# FIXME should have trailing slash?
-def study_export_table (request, study) :
-    """ HTML view for exporting measurement data in table format (replaces StudyExport.cgi). """
-    model = Study.objects.get(pk=study)
-    initial = ExportOptionForm.initial_from_user_settings(request.user)
-    data = { 'lineId': [ request.GET.get('line', None), ], }
-    form = ExportSelectionForm(data, user=request.user)
-    # TODO this is hardcoding options, refactor to allow input
-    opt = ExportOptionForm(initial, initial=initial, selection=form)
-    if form.is_valid() and opt.is_valid():
-        return render_to_response("main/export.html",
-            dictionary={
-                "study" : model,
-                "lines" : form.lines,
-                "n_meas" : len(form.measurements),
-                "n_assays" : len(form.assays),
-                "n_lines" : len(form.lines),
-                "select_form": form,
-                "option_form": opt,
-            },
-            context_instance=RequestContext(request))
-    else:
-        for error in form.errors:
-            print('selection -- %s' % (error,))
-        for error in opt.errors:
-            print('option -- %s' % (error,))
-        return render_to_response("main/export.html",
-            dictionary={
-                "error_message": "Forms did not validate",
-            })
-
 # /study/<study_id>/lines/
 def study_lines(request, study):
     """ Request information on lines in a study. """
@@ -840,24 +807,6 @@ def study_import_rnaseq_process (request, study) :
     else :
         return JsonResponse(result)
 
-
-# /study/<study_id>/export/data
-# FIXME should have trailing slash?
-def study_export_table_data (request, study) :
-    model = Study.objects.get(pk=study)
-    form = None
-    if (request.method == "POST") :
-        form = request.POST
-    else :
-        form = request.GET
-    exports = main.data_export.select_objects_for_export(
-        study=model,
-        user=None, # FIXME
-        form=form)
-    if (len(exports['measurements']) == 0) :
-        raise RuntimeError("No measurements selected for export!")
-    else :
-        return main.data_export.export_table(exports, form)
 
 # /study/<study_id>/sbml
 # FIXME should have trailing slash?

@@ -36,8 +36,6 @@ urlpatterns = patterns('',
         login_required(views.study_import_rnaseq_process)),
     url(r'^study/(?P<study>\d+)/import/rnaseq/edgepro$',
         login_required(views.study_import_rnaseq_edgepro)),
-    url(r'^study/(?P<study>\d+)/export$', login_required(views.study_export_table)),
-    url(r'^study/(?P<study>\d+)/export/data$', login_required(views.study_export_table_data)),
     url(r'^study/(?P<study>\d+)/sbml$', login_required(views.study_export_sbml)),
 
     url(r'^export', login_required(views.ExportView.as_view()), name='export'),
