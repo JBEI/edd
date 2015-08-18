@@ -9,7 +9,8 @@ from edd.celeryconfig import EDD_RABBITMQ_USERNAME, EDD_RABBITMQ_PASSWORD, RABBI
 # inform Celery it's operating in the context of our Django project
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'edd.settings')
 
-// set up a 
+# set up a Celery "app" for use by EDD. A Celery "app" is just an unfortunately-named instance of the Celery API,
+# This instance defines EDD's interface with Celery.
 task_exchange= Celery('edd', broker='amqp://' + EDD_RABBITMQ_USERNAME + ':' + EDD_RABBITMQ_PASSWORD + '@' + RABBITMQ_HOST + EDD_VHOST)
 
 # load configuration from celeryconfig.py file instead of hard-coding here
