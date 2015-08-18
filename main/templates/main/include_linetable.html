@@ -33,7 +33,7 @@ Table displaying selected lines; used for table and SBML export pages
   </th>
 </tr>
 
-{% for id, line in select_form.lines.items %}
+{% for id, line in selection.lines.items %}
 <!-- {{ id }} {{ line }} -->
 <tr class="stripeRowA" data-line-id="{{ line.id }}"><td>{{ line.name }}</td>
   <td>{{ line.strain_ids }}</td>

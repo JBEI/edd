@@ -26,7 +26,7 @@
 {% endblock head_title %}
 
 {% block body_title %}
-  Data Export For {% for study in selection.studies %}
+  Data Export For {% for study in selection.studies.values %}
    <a href="/study/{{ study.id }}">{{ study.name }}</a>{% if not forloop.last %},{% endif %}
   {% endfor %}
 {% endblock body_title %}
@@ -35,8 +35,8 @@
 
 {% if error_message %}
 <h3 style="color: #ff0000; font-weight: bold">{{ error_message }}</h3>
+{% endif %}
 
-{% else %}
 <div class="disclose discloseHide" id="existinglineshide">
   <div style="margin:10px">
     <a href="#" class="discloseLink">
@@ -71,6 +71,5 @@
     </p>
   </div>
 </div>
-{% endif %}
 
 {% endblock content %}

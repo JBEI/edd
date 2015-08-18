@@ -1,13 +1,24 @@
+# coding: utf-8
+
+import collections
+import csv
+import json
+import logging
+import main.models
+import main.sbml_export
+import main.data_import
+import operator
+import pprint
+
 from django.conf import settings
 from django.contrib import messages
 from django.core import serializers
 from django.core.exceptions import ObjectDoesNotExist, PermissionDenied, ValidationError
 from django.core.urlresolvers import reverse
 from django.db.models import Count, Q
-from django.http import HttpResponse, HttpResponseRedirect, JsonResponse, Http404
+from django.http import Http404, HttpResponse, HttpResponseRedirect, JsonResponse, QueryDict
 from django.http.response import HttpResponseForbidden, HttpResponseBadRequest
-from django.shortcuts import render, get_object_or_404, redirect, \
-    render_to_response
+from django.shortcuts import render, get_object_or_404, redirect, render_to_response
 from django.template import RequestContext
 from django.template.defaulttags import register
 from django.utils.safestring import mark_safe
@@ -23,15 +34,6 @@ from .models import *
 from .signals import study_modified
 from .solr import StudySearch, UserSearch
 from .utilities import *
-
-import collections
-import csv
-import json
-import logging
-import main.models
-import main.sbml_export
-import main.data_import
-import operator
 
 
 logger = logging.getLogger(__name__)
@@ -316,17 +318,30 @@ class ExportView(generic.TemplateView):
     """ Encapsulates functionality for exports. """
     template_name = 'main/export.html'
 
+    def __init__(self, *args, **kwargs):
+        super(ExportView, self).__init__(*args, **kwargs)
+        self._export = None
+
     def get(self, request, *args, **kwargs):
         """ Populates ExportSelectionForm from query/URL parameters and uses a default
             ExportOptionForm. """
-        data = kwargs.copy()
+        data = QueryDict(mutable=True)
+        data.update(kwargs)
         data.update(request.GET)
         initial = ExportOptionForm.initial_from_user_settings(request.user)
-        return self.handle_export(request, data, initial, initial)
+        opt_data = QueryDict(mutable=True)
+        print('$$$ ExportView get has $$$')
+        pprint.pprint(data)
+        pprint.pprint(initial)
+        pprint.pprint(opt_data)
+        return self.handle_export(request, data, initial, opt_data)
 
     def post(self, request, *args, **kwargs):
         """ Populates both ExportSelectionForm and ExportOptionForm from POST parameters. """
         initial = ExportOptionForm.initial_from_user_settings(request.user)
+        print('$$$ ExportView post has $$$')
+        pprint.pprint(request.POST)
+        pprint.pprint(initial)
         return self.handle_export(request, request.POST, initial, request.POST)
 
     def handle_export(self, request, select_data, option_initial, option_data):
@@ -340,6 +355,8 @@ class ExportView(generic.TemplateView):
                 selection=self._select)
             if option_form.is_valid():
                 self._export = table.TableExport(self._select, option_form.get_options())
+                print('$$$ valid handle_export has $$$')
+                pprint.pprint(self._select)
                 return self.render_to_response(self.get_context_data(
                     selection=self._select,
                     select_form=select_form,
@@ -348,6 +365,8 @@ class ExportView(generic.TemplateView):
         except Exception, e:
             logger.error("Failed to validate forms for export")
             raise
+        print('$$$ invalid handle_export has $$$')
+        pprint.pprint(self._select)
         return self.render_to_response(self.get_context_data(
             selection=self._select,
             select_form=select_form,
@@ -356,7 +375,9 @@ class ExportView(generic.TemplateView):
             ))
 
     def export_output(self):
-        return self._export.output()
+        if self._export is not None:
+            return self._export.output()
+        return ''
 
 # /study/<study_id>/lines/
 def study_lines(request, study):

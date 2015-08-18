@@ -2,6 +2,7 @@ import arrow
 import edd.settings
 import os.path
 import re
+
 from collections import defaultdict
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -14,6 +15,8 @@ from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 from itertools import chain
 from threadlocals.threadlocals import get_current_request
+
+from .export import table
 
 
 class UpdateManager(models.Manager):
@@ -406,18 +409,14 @@ class EDDObject(models.Model):
         self.updates.add(self.updated)
 
     @classmethod
-    def export_choice_options(cls, instances=[]):
-        return (
-                (cls.__name__ + '.id', _('ID')),
-                (cls.__name__ + '.name', _('Name')),
-            )
-
-    def export_option_value(self, option):
-        if option == (self.__class__.__name__ + '.id'):
-            return self.id
-        elif option == (self.__class__.__name__ + '.name'):
-            return self.name
-        return ''
+    def export_columns(cls, instances=[]):
+        # only do ID and Name here, allow overrides to include e.g. metadata
+        return [
+            table.ColumnChoice(cls, 'id', _('ID'), lambda x: x.id,
+                heading=cls.__name__ + ' ID'),
+            table.ColumnChoice(cls, 'name', _('Name'), lambda x: x.name,
+                heading=cls.__name__ + ' Name'),
+        ]
 
     def to_json(self):
         return {
@@ -447,15 +446,11 @@ class Study(EDDObject):
     metabolic_map = models.ForeignKey('SBMLTemplate', blank=True, null=True)
 
     @classmethod
-    def export_choice_options(cls, instances=[]):
-        return super(Study, cls).export_choice_options(instances) + (
-                (Study.__name__ + '.contact', _('Contact')),
-            )
-
-    def export_option_value(self, option):
-        if option == (Study.__name__ + '.contact'):
-            return self.get_contact()
-        return super(Study, self).export_option_value(option)
+    def export_columns(cls, instances=[]):
+        return super(Study, cls).export_columns(instances) + [
+            table.ColumnChoice(cls, 'contact', _('Contact'),
+                lambda x: x.get_contact(), heading='Study Contact'),
+        ]
 
     def to_solr_json(self):
         """
@@ -755,39 +750,31 @@ class Line(EDDObject):
     strains = models.ManyToManyField(Strain, blank=True, db_table='line_strain')
 
     @classmethod
-    def export_choice_options(cls, instances=[]):
+    def export_columns(cls, instances=[]):
         types = MetadataType.all_types_on_instances(instances)
-        return super(Line, cls).export_choice_options(instances) + (
-                (Line.__name__ + '.control', _('Control')),
-                (Line.__name__ + '.strain', _('Strain')),
-                (Line.__name__ + '.csource_name', _('Carbon Source')),
-                (Line.__name__ + '.csource_label', _('Carbon Labeling')),
-                (Line.__name__ + '.experimenter', _('Experimenter')),
-                (Line.__name__ + '.contact', _('Contact')),
-            ) + tuple(
-                (Line.__name__ + '.meta.' + str(t.id), t.type_name) for t in types
-            )
-
-    def export_option_value(self, option):
-        if option == (Line.__name__ + '.control'):
-            return 'T' if self.control else 'F'
-        elif option == (Line.__name__ + '.strain'):
-            strains = self.strains.all()
-            # TODO export should handle multi-valued fields better than this kludge
-            return '|'.join([ s.name for s in strains ])
-        elif option == (Line.__name__ + '.csource_name'):
-            carbon = self.carbon_source.all()
-            # TODO export should handle multi-valued fields better than this kludge
-            return '|'.join([ c.name for c in carbon ])
-        elif option == (Line.__name__ + '.csource_label'):
-            carbon = self.carbon_source.all()
-            # TODO export should handle multi-valued fields better than this kludge
-            return '|'.join([ c.labeling for c in carbon ])
-        elif option == (Line.__name__ + '.experimenter'):
-            return self.experimenter.email if self.experimenter else ''
-        elif option == (Line.__name__ + '.contact'):
-            return self.contact.email if self.contact else ''
-        return super(Line, self).export_option_value(option)
+        return super(Line, cls).export_columns(instances) + [
+            table.ColumnChoice(cls, 'control', _('Control'),
+                lambda x: 'T' if x.control else 'F'),
+            table.ColumnChoice(cls, 'strain', _('Strain'),
+                # TODO export should handle multi-valued fields better than this
+                lambda x: u'|'.join([ s.name for s in x.strains.all() ])),
+            table.ColumnChoice(cls, 'csource_name', _('Carbon Source'),
+                # TODO export should handle multi-valued fields better than this
+                lambda x: u'|'.join([ c.name for c in x.carbon_source.all() ])),
+            table.ColumnChoice(cls, 'csource_label', _('Carbon Labeling'),
+                # TODO export should handle multi-valued fields better than this
+                lambda x: u'|'.join([ c.labeling for c in x.carbon_source.all() ])),
+            table.ColumnChoice(cls, 'experimenter', _('Experimenter'),
+                lambda x: x.experimenter.email if x.experimenter else '',
+                heading=_('Line Experimenter')),
+            table.ColumnChoice(cls, 'contact', _('Contact'),
+                lambda x: x.contact.email if x.contact else '',
+                heading=_('Line Contact')),
+        ] + [
+            table.ColumnChoice(cls, 'meta.' + unicode(t.id), t.type_name,
+                lambda x: x.meta_store.get(unicode(t.id), ''))
+            for t in types
+        ]
 
     def to_json(self):
         json_dict = super(Line, self).to_json()
@@ -836,10 +823,6 @@ class Line(EDDObject):
         String representation of labeling (if any); used in views.
         """
         return ",".join([str(cs.labeling) for cs in self.carbon_source.all()])
-
-    @property
-    def media (self) :
-        return self.get_metadata_dict().get("Media", None)
 
     def new_assay_number (self, protocol) :
         """
@@ -1175,27 +1158,19 @@ class Measurement(models.Model):
         default=MeasurementFormat.SCALAR)
 
     @classmethod
-    def export_choice_options(cls, instances=[]):
-        return (
-                (cls.__name__ + '.type', _('Measurement Type')),
-                (cls.__name__ + '.compartment', _('Compartment')),
-                (cls.__name__ + '.modified', _('Assay Last Modified')),
-                (cls.__name__ + '.x_units', _('X Units')),
-                (cls.__name__ + '.y_units', _('Y Units')),
-            )
-
-    def export_option_value(self, option):
-        if option == (self.__class__.__name__ + '.type'):
-            return self.measurement_type.type_name
-        elif option == (self.__class__.__name__ + '.compartment'):
-            return MeasurementCompartment.names[int(self.compartment)]
-        elif option == (self.__class__.__name__ + '.modified'):
-            return self.update_ref.mod_time
-        elif option == (self.__class__.__name__ + '.x_units'):
-            return self.x_units.unit_name if self.x_units.display else ''
-        elif option == (self.__class__.__name__ + '.y_units'):
-            return self.y_units.unit_name if self.y_units.display else ''
-        return ''
+    def export_columns(cls):
+        return [
+            table.ColumnChoice(cls, 'type', _('Measurement Type'),
+                lambda x: x.name),
+            table.ColumnChoice(cls, 'comp', _('Compartment'),
+                lambda x: x.compartment_symbol),
+            table.ColumnChoice(cls, 'mod', _('Measurement Updated'),
+                lambda x: x.update_ref.mod_time),
+            table.ColumnChoice(cls, 'x_units', _('X Units'),
+                lambda x: x.x_units.unit_name if x.x_units.display else ''),
+            table.ColumnChoice(cls, 'y_units', _('Y Units'),
+                lambda x: x.y_units.unit_name if x.y_units.display else ''),
+        ]
 
     def to_json(self):
         return {

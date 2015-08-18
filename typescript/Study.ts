@@ -1721,7 +1721,7 @@ class DataGridSpecLines extends DataGridSpecBase {
                 'checkboxWithID': (id) => { return 'line' + id + 'include'; },
                 'sideMenuItems': [
                     '<a href="#editline" class="line-edit-link">Edit Line</a>',
-                    '<a href="export?line=' + index + '">Export Data as CSV/etc</a>'
+                    '<a href="/export?lineId=' + index + '">Export Data as CSV/etc</a>'
                 ],
                 'hoverEffect': true,
                 'nowrap': true,
@@ -2564,7 +2564,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
         var record = EDDData.Assays[index], line = EDDData.Lines[record.lid], sideMenuItems = [
             '<a class="assay-edit-link">Edit Assay</a>',
             '<a class="assay-reload-link">Reload Data</a>',
-            '<a href="export?assaylevel=1&assay=' + index + '">Export Data as CSV/etc</a>'
+            '<a href="/export?assayId=' + index + '">Export Data as CSV/etc</a>'
         ];
         // TODO we probably don't want to special-case like this by name
         if (gridSpec.protocolName == "Transcriptomics") {

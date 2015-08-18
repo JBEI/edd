@@ -11,11 +11,13 @@ from django.core.exceptions import ValidationError
 from django.db.models import Prefetch, Q
 from django.db.models.base import Model
 from django.db.models.manager import BaseManager
+from django.http import QueryDict
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
-from main.ice import IceApi
-from main.export import table
-from main.models import *
+
+from .ice import IceApi
+from .export import table
+from .models import *
 
 
 User = get_user_model()
@@ -585,31 +587,31 @@ class ExportOptionForm(forms.Form):
         required=False,
         )
     study_meta = forms.MultipleChoiceField(
-        choices=Study.export_choice_options(),
+        choices=map(table.ColumnChoice.get_field_choice, Study.export_columns()),
         label=_('Study fields to include'),
         required=False,
         widget=forms.CheckboxSelectMultiple,
         )
     line_meta = forms.MultipleChoiceField(
-        choices=Line.export_choice_options(),
+        choices=map(table.ColumnChoice.get_field_choice, Line.export_columns()),
         label=_('Line fields to include'),
         required=False,
         widget=forms.CheckboxSelectMultiple,
         )
     protocol_meta = forms.MultipleChoiceField(
-        choices=Protocol.export_choice_options(),
+        choices=map(table.ColumnChoice.get_field_choice, Protocol.export_columns()),
         label=_('Protocol fields to include'),
         required=False,
         widget=forms.CheckboxSelectMultiple,
         )
     assay_meta = forms.MultipleChoiceField(
-        choices=Assay.export_choice_options(),
+        choices=map(table.ColumnChoice.get_field_choice, Assay.export_columns()),
         label=_('Assay fields to include'),
         required=False,
         widget=forms.CheckboxSelectMultiple,
         )
     measure_meta = forms.MultipleChoiceField(
-        choices=Measurement.export_choice_options(),
+        choices=map(table.ColumnChoice.get_field_choice, Measurement.export_columns()),
         label=_('Measurement fields to include'),
         required=False,
         widget=forms.CheckboxSelectMultiple,
@@ -672,13 +674,13 @@ class ExportOptionForm(forms.Form):
         return ','
 
     def _init_options(self):
+        # sometimes self.data is a plain dict instead of a QueryDict
+        data = QueryDict(mutable=True)
+        data.update(self.data)
         # update available choices based on instances in self._selection
         if self._selection and hasattr(self._selection, 'lines'):
-            choices = Line.export_choice_options(self._selection.lines.values())
+            choices = map(table.ColumnChoice.get_field_choice, self._selection.line_columns)
             self.fields['line_meta'].choices = choices
-        # we are using initial as default values if not provided, ensure self.data is mutable
-        mutable = self.data._mutable
-        self.data._mutable = True
         # set all _meta options if no list of options was passed in
         for meta in [ 'study_meta', 'line_meta', 'protocol_meta', 'assay_meta', 'measure_meta' ]:
             if self.initial.get(meta, None) == '__all__':
@@ -686,7 +688,6 @@ class ExportOptionForm(forms.Form):
                     meta: [ choice[0] for choice in self.fields[meta].choices ],
                     })
             # update incoming data with default initial if not already set
-            if meta not in self.data:
-                self.data.setlist(meta, self.initial.get(meta, []))
-        # reset mutable now that we are done
-        self.data._mutable = mutable
+            if meta not in data:
+                data.setlist(meta, self.initial.get(meta, []))
+        self.data = data
