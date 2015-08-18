@@ -16,6 +16,7 @@ from django.views import generic
 from django.views.decorators.csrf import ensure_csrf_cookie
 from io import BytesIO
 
+from .export import table
 from .forms import *
 from .ice import IceApi
 from .models import *
@@ -321,181 +322,41 @@ class ExportView(generic.TemplateView):
         data = kwargs.copy()
         data.update(request.GET)
         initial = ExportOptionForm.initial_from_user_settings(request.user)
-        self._select = ExportSelectionForm(data=data, user=request.user)
-        if self._select.is_valid():
-            self._option = ExportOptionForm(data=initial, initial=initial, selection=self._select)
-            if self._option.is_valid():
-                return self.render_to_response(self.get_context_data(
-                    select_form=self._select,
-                    option_form=self._option,
-                    ))
-        return self.render_to_response(self.get_context_data(
-            select_form=self._select,
-            option_form=self._option,
-            error_message='Could not parse export request',
-            ))
+        return self.handle_export(request, data, initial, initial)
 
     def post(self, request, *args, **kwargs):
         """ Populates both ExportSelectionForm and ExportOptionForm from POST parameters. """
         initial = ExportOptionForm.initial_from_user_settings(request.user)
-        self._select = ExportSelectionForm(data=request.POST, user=request.user)
-        if self._select.is_valid():
-            self._option = ExportOptionForm(data=request.POST, initial=initial, selection=self._select)
-            if self._option.is_valid():
+        return self.handle_export(request, request.POST, initial, request.POST)
+
+    def handle_export(self, request, select_data, option_initial, option_data):
+        select_form = ExportSelectionForm(data=select_data, user=request.user)
+        option_form = None
+        try:
+            self._select = select_form.get_selection()
+            option_form = ExportOptionForm(
+                data=option_data,
+                initial=option_initial,
+                selection=self._select)
+            if option_form.is_valid():
+                self._export = table.TableExport(self._select, option_form.get_options())
                 return self.render_to_response(self.get_context_data(
-                    select_form=self._select,
-                    option_form=self._option,
+                    selection=self._select,
+                    select_form=select_form,
+                    option_form=option_form,
                     ))
+        except Exception, e:
+            logger.error("Failed to validate forms for export")
+            raise
         return self.render_to_response(self.get_context_data(
-            select_form=self._select,
-            option_form=self._option,
+            selection=self._select,
+            select_form=select_form,
+            option_form=option_form,
             error_message='Could not parse export request',
             ))
 
     def export_output(self):
-        options = self._option.cleaned_data
-        # check how tables are being sectioned
-        line_section = options.get('line_section', False) 
-        protocol_section = options.get('protocol_section', False) 
-        layout = options.get('layout', ExportOptionForm.DATA_COLUMN_BY_LINE)
-        # store tables
-        tables = OrderedDict()
-        if line_section:
-            tables['line'] = OrderedDict()
-            tables['line']['header'] = self._output_line_header()
-        if not protocol_section:
-            tables['all'] = OrderedDict()
-            tables['all']['header'] = self._output_measure_header()
-        x_values = {}
-        value_str = lambda a: ':'.join(map(str, a))
-        # add data from each exported measurement; already sorted by protocol
-        for measurement in self._select.measurements:
-            assay = self._select.assays.get(measurement.assay_id, None)
-            protocol = assay.protocol
-            line = self._select.lines.get(assay.line_id, None)
-            study = line.study
-            row = self._output_line_row(study, line)
-            if line_section:
-                if line.id not in tables['line']:
-                    tables['line'][line.id] = row
-                # reset row after this point
-                row = [] 
-            row += self._output_measure_row(protocol, assay, measurement)
-            if protocol_section:
-                if protocol.id not in tables:
-                    tables[protocol.id] = OrderedDict()
-                    tables[protocol.id]['header'] = self._output_measure_header()
-                table_key = protocol.id
-            else:
-                table_key = 'all'
-            table = tables[table_key]
-            values = measurement.measurementvalue_set.all()
-            values = sorted(values, lambda a,b: cmp(a.x, b.x))
-            if layout == ExportOptionForm.DATA_COLUMN_BY_POINT:
-                for value in values:
-                    arow = row[:]
-                    arow.append(value_str(value.x))
-                    arow.append(value_str(value.y))
-                    table[value.id] = arow
-            else:
-                # keep track of all x values encountered in the table
-                xx = x_values[table_key] = x_values.get(table_key, {})
-                xx.update({ value_str(v.x): v.x for v in values })
-                squashed = { value_str(v.x): value_str(v.y) for v in values }
-                row.append(squashed)
-                table[measurement.id] = row
-        table_separator = '\n\n'
-        row_separator = '\n'
-        cell_separator = self._option.get_separator()
-        if layout == ExportOptionForm.DATA_COLUMN_BY_POINT:
-            # data is already in correct orientation, join and return
-            return table_separator.join([
-                row_separator.join([
-                    cell_separator.join([
-                        str(cell) for cell in row
-                        ]) for rkey, row in table.items()
-                    ]) for tkey, table in tables.items()
-                ])
-        # both LINE_COLUMN_BY_DATA and DATA_COLUMN_BY_LINE are constructed similarly
-        # each table in LINE_COLUMN_BY_DATA is transposed
-        out = []
-        for tkey, table in tables.items():
-            # sort x values by original numeric values
-            all_x = sorted(x_values.get(tkey, {}).items(), lambda a,b: cmp(a[1], b[1]))
-            # generate header row
-            rows = [ map(str, table['header'] + map(lambda x: x[0], all_x)) ]
-            # go through non-header rows; unsquash final column
-            for rkey, row in table.items()[1:]:
-                unsquash = self._output_unsquash(all_x, row[-1:][0])
-                rows.append(map(str, row[:-1] + unsquash))
-            # do the transpose here if needed
-            if layout == ExportOptionForm.LINE_COLUMN_BY_DATA:
-                rows = zip(*rows)
-            # join the cells
-            rows = [ cell_separator.join(row) for row in rows ]
-            # join the rows
-            out.append(row_separator.join(rows))
-        return table_separator.join(out)
-
-    def _output_line_header(self):
-        options = self._option.cleaned_data
-        row = []
-        choices = dict(self._option.fields['study_meta'].choices)
-        for column in options.get('study_meta', []):
-            row.append(choices.get(column, ''))
-        choices = dict(self._option.fields['line_meta'].choices)
-        for column in options.get('line_meta', []):
-            row.append(choices.get(column, ''))
-        return row
-
-    def _output_line_row(self, study, line):
-        options = self._option.cleaned_data
-        row = []
-        for column in options.get('study_meta', []):
-            row.append(study.export_option_value(column))
-        for column in options.get('line_meta', []):
-            row.append(line.export_option_value(column))
-        return row
-
-    def _output_measure_header(self):
-        options = self._option.cleaned_data
-        fields = self._option.fields
-        layout = options.get('layout', ExportOptionForm.DATA_COLUMN_BY_LINE)
-        row = []
-        choices = dict(fields['protocol_meta'].choices)
-        for column in options.get('protocol_meta', []):
-            row.append(choices.get(column, ''))
-        choices = dict(fields['assay_meta'].choices)
-        for column in options.get('assay_meta', []):
-            row.append(choices.get(column, ''))
-        choices = dict(fields['measure_meta'].choices)
-        for column in options.get('measure_meta', []):
-            row.append(choices.get(column, ''))
-        # need to append header columns for X, Y for tall-and-skinny output
-        # others append all possible X values to header during o
-        if layout == ExportOptionForm.DATA_COLUMN_BY_POINT:
-            row.append('X')
-            row.append('Y')
-        return row        
-
-    def _output_measure_row(self, protocol, assay, measure):
-        options = self._option.cleaned_data
-        row = []
-        for column in options.get('protocol_meta', []) :
-            row.append(protocol.export_option_value(column))
-        for column in options.get('assay_meta', []) :
-            row.append(assay.export_option_value(column))
-        for column in options.get('measure_meta', []) :
-            row.append(measure.export_option_value(column))
-        return row
-
-    def _output_unsquash(self, all_x, squashed):
-        # all_x is list of 2-tuple from dict.items()
-        if isinstance(squashed, dict):
-            return map(lambda x: squashed.get(x[0], ''), all_x)
-        # expecting a list to be returned
-        return [ squashed ]
-
+        return self._export.output()
 
 # /study/<study_id>/lines/
 def study_lines(request, study):

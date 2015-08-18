@@ -14,6 +14,7 @@ from django.db.models.manager import BaseManager
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 from main.ice import IceApi
+from main.export import table
 from main.models import *
 
 
@@ -513,6 +514,7 @@ class ExportSelectionForm(forms.Form):
         self._user = kwargs.pop('user', None)
         if self._user is None:
             raise ValueError("ExportSelectionForm requires a user parameter")
+        self._selection = None
         super(ExportSelectionForm, self).__init__(*args, **kwargs)
 
     def clean(self):
@@ -522,76 +524,16 @@ class ExportSelectionForm(forms.Form):
         lineId = data.get('lineId', [])
         assayId = data.get('assayId', [])
         measureId = data.get('measurementId', [])
-        # check studies linked to incoming IDs for permissions
-        matched_study = Study.objects.filter(
-                Q(pk__in=studyId, active=True) |
-                Q(line__in=lineId, line__active=True) |
-                Q(line__assay__in=assayId, line__assay__active=True) |
-                Q(line__assay__measurement__in=measureId, line__assay__measurement__active=True)
-            ).distinct(
-            ).prefetch_related(
-                'userpermission_set',
-                'grouppermission_set',
-            )
-        allowed_study = [ s for s in matched_study if s.user_can_read(self._user) ]
-        # load all matching measurements
-        self._measures = Measurement.objects.filter(
-                # all measurements are from visible study
-                Q(assay__line__study__in=allowed_study),
-                # OR grouping finds measurements under one of passed-in parameters
-                Q(assay__line__study__in=studyId) |
-                Q(assay__line__in=lineId, assay__line__active=True) |
-                Q(assay__in=assayId, assay__active=True) |
-                Q(pk__in=measureId, active=True),
-            ).order_by(
-                'assay__protocol_id'
-            ).select_related(
-                'measurement_type',
-                'x_units',
-                'y_units',
-                'update_ref__mod_by',
-                'experimenter',
-            )
-        assays = Assay.objects.filter(
-            Q(line__study__in=allowed_study),
-            Q(line__in=lineId, line__active=True) |
-            Q(pk__in=assayId, active=True) |
-            Q(measurement__in=measureId, measurement__active=True),
-            ).distinct(
-            ).select_related(
-                'protocol',
-            )
-        self._assays = { a.id: a for a in assays }
-        lines = Line.objects.filter(
-            Q(study__in=allowed_study),
-            Q(study__in=studyId) |
-            Q(pk__in=lineId, active=True) |
-            Q(assay__in=assayId, assay__active=True) |
-            Q(assay__measurement__in=measureId, assay__measurement__active=True),
-            ).distinct(
-            ).prefetch_related(
-                Prefetch('strains', queryset=Strain.objects.order_by('id')),
-                Prefetch('carbon_source', queryset=CarbonSource.objects.order_by('id')),
-            )
-        self._lines = { l.id: l for l in lines }
-        self._studies = allowed_study
+        self._selection = table.ExportSelection(self._user, studyId, lineId, assayId, measureId)
         return data
 
-    @property
-    def studies(self):
-        return self._studies
-    
-    @property
-    def lines(self):
-        return self._lines
-
-    @property
-    def assays(self):
-        return self._assays
-    
-    @property
-    def measurements(self):
-        return self._measures
+    def get_selection(self):
+        if self._selection is None:
+            if self.is_valid():
+                return self._selection
+            else:
+                raise ValueError("Export Selection is invalid")
+        return self._selection
     
     
 class ExportOptionForm(forms.Form):
@@ -678,6 +620,7 @@ class ExportOptionForm(forms.Form):
         kwargs.setdefault('label_suffix', '')
         self._selection = kwargs.pop('selection', None)
         super(ExportOptionForm, self).__init__(*args, **kwargs)
+        self._options = None
         self._init_options()
 
     @classmethod
@@ -697,6 +640,30 @@ class ExportOptionForm(forms.Form):
                 "measure_meta": prefs.get('export.csv.measure_meta', '__all__'),
                 }
         return {}
+
+    def clean(self):
+        data = super(ExportOptionForm, self).clean()
+        meta = {
+            m: data.get(m, [])
+            for m in [ 'study_meta', 'line_meta', 'protocol_meta', 'assay_meta', 'measure_meta' ]
+        }
+        self._options = table.ExportOption(
+            layout=data.get('layout', table.ExportOption.DATA_COLUMN_BY_LINE),
+            separator=data.get('separator', table.ExportOption.COMMA_SEPARATED),
+            data_format=data.get('data_format', table.ExportOption.ALL_DATA),
+            line_section=data.get('line_section', False),
+            protocol_section=data.get('protocol_section', False),
+            meta=meta,
+            )
+        return data
+
+    def get_options(self):
+        if self._options is None:
+            if self.is_valid():
+                return self._options
+            else:
+                raise ValueError("Export options are invalid")
+        return self._options
 
     def get_separator(self):
         choice = self.cleaned_data.get('separator', self.COMMA_SEPARATED)

@@ -26,7 +26,9 @@
 {% endblock head_title %}
 
 {% block body_title %}
-  Data Export For <a href="/study/{{ study.id }}">{{ study.name }}</a>
+  Data Export For {% for study in selection.studies %}
+   <a href="/study/{{ study.id }}">{{ study.name }}</a>{% if not forloop.last %},{% endif %}
+  {% endfor %}
 {% endblock body_title %}
 
 {% block content %}
@@ -38,7 +40,7 @@
 <div class="disclose discloseHide" id="existinglineshide">
   <div style="margin:10px">
     <a href="#" class="discloseLink">
-      {{ select_form.measurements|length }} Measurements in {{ select_form.assays|length }} Assays in {{ select_form.lines|length }} Lines Selected
+      {{ selection.measurements|length }} Measurements in {{ selection.assays|length }} Assays in {{ selection.lines|length }} Lines Selected
     </a>
   </div>
   <div id="existingLinesSection" class="pageSection discloseBody" style="border-width:1px;margin:10px;">  
