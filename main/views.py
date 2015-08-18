@@ -459,16 +459,23 @@ class ExportView(generic.TemplateView):
 
     def _output_measure_header(self):
         options = self._option.cleaned_data
+        fields = self._option.fields
+        layout = options.get('layout', ExportOptionForm.DATA_COLUMN_BY_LINE)
         row = []
-        choices = dict(self._option.fields['protocol_meta'].choices)
+        choices = dict(fields['protocol_meta'].choices)
         for column in options.get('protocol_meta', []):
             row.append(choices.get(column, ''))
-        choices = dict(self._option.fields['assay_meta'].choices)
+        choices = dict(fields['assay_meta'].choices)
         for column in options.get('assay_meta', []):
             row.append(choices.get(column, ''))
-        choices = dict(self._option.fields['measure_meta'].choices)
+        choices = dict(fields['measure_meta'].choices)
         for column in options.get('measure_meta', []):
             row.append(choices.get(column, ''))
+        # need to append header columns for X, Y for tall-and-skinny output
+        # others append all possible X values to header during o
+        if layout == ExportOptionForm.DATA_COLUMN_BY_POINT:
+            row.append('X')
+            row.append('Y')
         return row        
 
     def _output_measure_row(self, protocol, assay, measure):
@@ -483,6 +490,7 @@ class ExportView(generic.TemplateView):
         return row
 
     def _output_unsquash(self, all_x, squashed):
+        # all_x is list of 2-tuple from dict.items()
         if isinstance(squashed, dict):
             return map(lambda x: squashed.get(x[0], ''), all_x)
         # expecting a list to be returned
