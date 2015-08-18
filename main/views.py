@@ -8,7 +8,6 @@ import main.models
 import main.sbml_export
 import main.data_import
 import operator
-import pprint
 
 from django.conf import settings
 from django.contrib import messages
@@ -330,18 +329,11 @@ class ExportView(generic.TemplateView):
         data.update(request.GET)
         initial = ExportOptionForm.initial_from_user_settings(request.user)
         opt_data = QueryDict(mutable=True)
-        print('$$$ ExportView get has $$$')
-        pprint.pprint(data)
-        pprint.pprint(initial)
-        pprint.pprint(opt_data)
         return self.handle_export(request, data, initial, opt_data)
 
     def post(self, request, *args, **kwargs):
         """ Populates both ExportSelectionForm and ExportOptionForm from POST parameters. """
         initial = ExportOptionForm.initial_from_user_settings(request.user)
-        print('$$$ ExportView post has $$$')
-        pprint.pprint(request.POST)
-        pprint.pprint(initial)
         return self.handle_export(request, request.POST, initial, request.POST)
 
     def handle_export(self, request, select_data, option_initial, option_data):
@@ -355,8 +347,6 @@ class ExportView(generic.TemplateView):
                 selection=self._select)
             if option_form.is_valid():
                 self._export = table.TableExport(self._select, option_form.get_options())
-                print('$$$ valid handle_export has $$$')
-                pprint.pprint(self._select)
                 return self.render_to_response(self.get_context_data(
                     selection=self._select,
                     select_form=select_form,
@@ -365,8 +355,6 @@ class ExportView(generic.TemplateView):
         except Exception, e:
             logger.error("Failed to validate forms for export")
             raise
-        print('$$$ invalid handle_export has $$$')
-        pprint.pprint(self._select)
         return self.render_to_response(self.get_context_data(
             selection=self._select,
             select_form=select_form,
