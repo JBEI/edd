@@ -150,10 +150,17 @@ echo "**************************************************************************
 echo "Loading production dump file into local the database..."
 echo "**************************************************************************************************************************"
 
+# NOTE: the sed commands to replace unicode errors REQUIRE bash to interpret the commands first.
 cat "$PRODUCTION_DUMP_FILE" | \
 sed 's#SET search_path = #SET search_path = old_edd, #g' | \
 sed 's#public\.#old_edd\.#g' | \
 sed 's#Schema: public;#Schema: old_edd;#g' | \
+sed 's#\\r\\n#\\n#g' | \
+sed $'s#\xc3\xa2\xc2\x88\xc2\x86#\xe2\x88\x86#g' | \
+sed $'s#\xc3\x82\xc2\xba#\xc2\xba#g' | \
+sed $'s#\xc3\x8e\xc2\x94#\xc3\x94#g' | \
+sed $'s#\xef\xbf\xbd#\xc2\xb5#g' | \
+sed $'s#\xc3\x82\xc2\xb5#\xc2\xb5#g' | \
 psql "$database"
 
 echo
