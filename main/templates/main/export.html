@@ -3,26 +3,40 @@
 
 {% block js_css %}
   {{ block.super }}
-  <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.js' %}"></script>
-  <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
-  <script type="text/javascript" src="{% static 'main/js/EDDEditing.js' %}"></script>
+  <script type="text/javascript" src="{% static 'edd_utils/js/lib/handsontable.full.min.js' %}"></script>
+  <link rel="stylesheet" media="screen" href="{% static 'edd_utils/css/lib/handsontable.full.min.css' %}" />
   <script type="text/javascript">
   //<![CDATA[
-  EDDData = { }; // Declaring the object for later use
-
   $(document).on('click', '.disclose .discloseLink', function (e) {
     $(e.target).closest('.disclose').toggleClass('discloseHide');
     return false;
   });
-
+  $(function () {
+    var dataArea, tables, sep, rsplit, ctrl;
+    dataArea = $('#textData').hide();
+    tables = dataArea.val().split('\n\n');
+    sep = $('#id_separator').val() === 'csv' ? ',' : '\t';
+    rsplit = function (row) { return row.split(sep); };
+    tables = $(tables.map(function (table) {
+      var rows, container, hot;
+      rows = table.split('\n');
+      container = $('<div>').addClass('hot-div').appendTo(dataArea.parent());
+      hot = new Handsontable(container[0], { 'data': rows.map(rsplit) });
+      return container[0];
+    }));
+    ctrl = $('<button>').text('Toggle View')
+      .appendTo(dataArea.closest('.pageSection').find('.sectionHead'))
+      .on('click', function () {
+        dataArea.toggle();
+        tables.toggle();
+      });
+  });
   //]]>
   </script>
-  <script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
-  <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
 {% endblock js_css %}
 
 {% block head_title %}
-  Data Export For {{ study.name }}
+  Data Export For {{ selection.studies.values.0.name }}
 {% endblock head_title %}
 
 {% block body_title %}

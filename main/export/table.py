@@ -220,9 +220,9 @@ class TableExport(object):
         if line_section:
             tables['line'] = OrderedDict()
             tables['line']['header'] = self._output_line_header()
-        if not protocol_section:
+        elif not protocol_section:
             tables['all'] = OrderedDict()
-            tables['all']['header'] = self._output_measure_header()
+            tables['all']['header'] = self._output_line_header() + self._output_measure_header()
         x_values = {}
         # used to format value lists to a colon-delimited (unicode) string
         # cast to float to remove 0-padding
@@ -243,7 +243,10 @@ class TableExport(object):
             if protocol_section:
                 if protocol.id not in tables:
                     tables[protocol.id] = OrderedDict()
-                    tables[protocol.id]['header'] = self._output_measure_header()
+                    tables[protocol.id]['header'] = []
+                    if not line_section:
+                        tables[protocol.id]['header'] += self._output_line_header()
+                    tables[protocol.id]['header'] += self._output_measure_header()
                 table_key = protocol.id
             else:
                 table_key = 'all'

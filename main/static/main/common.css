@@ -1487,4 +1487,8 @@ form.comments textarea {
 .exportDisplay textarea {
     width: 100%;
 }
+
+.hot-div {
+    padding: 1em 0;
+}
 /* End of common styles */
