@@ -6,7 +6,6 @@
 {% block js_css %}
     {{ block.super }}
     <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/EDDEditing.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.js' %}"></script>
@@ -17,20 +16,13 @@
     <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.threshold.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.orderbars.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.stack.js' %}"></script>
-    
     <script type="text/javascript" src="{% static 'main/js/lib/qtip/jquery.qtip.min.js' %}"></script>
     <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/qtip/jquery.qtip.min.css' %}" />
-
     <script type="text/javascript" src="{% static 'main/js/lib/jquery-ui/jquery-ui.min.js' %}"></script>
     <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/jquery-ui/jquery-ui.min.css' %}" />
-
     <script type="text/javascript" src="{% static 'main/js/EditableElement.js' %}"></script>
-
-    {# only used in PermissionsDialog.js, replace and remove #}
-    <script type="text/javascript" src="{% static 'main/js/lib/jquery.bind-first/jquery.bind-first.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/PermissionsDialog.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/BiomassCalculationUI.js' %}"></script>
-    
     <script type="text/javascript" src="{% static 'main/js/Study.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/StudyGraphing.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/CarbonSummation.js' %}"></script>

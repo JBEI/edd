@@ -13,7 +13,6 @@ FIXME far too much logic encoded in this template
 
 <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.js' %}"></script>
 <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
-<script type="text/javascript" src="{% static 'main/js/EDDEditing.js' %}"></script>
 
 <!-- Declare JS objects for later (will be fetched via AJAX) -->
 <script type="text/javascript">
@@ -34,10 +33,6 @@ $(window).load(function () {
 <script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
 <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
 <script type="text/javascript" src="{% static 'main/js/StudySBMLExport.js' %}"></script>
-<script type="text/javascript" src="{% static 'main/js/Autocomplete.js' %}"></script>
-<script type="text/javascript">
-EDDAutoComplete.initializeAllPageElements();
-</script>
 
 <!-- style for SVG graphics -->
 <style type="text/css">
