@@ -1037,12 +1037,9 @@ class GeneIdentifier(MeasurementType):
     gene_length = models.IntegerField(blank=True, null=True)
 
     @classmethod
-    def by_name (cls) :
-        """
-        Generate a dictionary of genes keyed by name.
-        """
-        genes = cls.objects.all().order_by("type_name")
-        return { g.type_name : g for g in genes }
+    def by_name (cls):
+        """ Generate a dictionary of genes keyed by name. """
+        return { g.type_name: g for g in cls.objects.order_by("type_name") }
 
 GeneIdentifier._meta.get_field('type_group').default = MeasurementGroup.GENEID
 

@@ -1,6 +1,7 @@
 /// <reference path="typescript-declarations.d.ts" />
 /// <reference path="lib/jqueryui.d.ts" />
 /// <reference path="Utl.d.ts" />
+declare var EDD_auto: any;
 declare class DialogBox {
     private _dialog;
     private _width;

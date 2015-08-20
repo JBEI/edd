@@ -1,18 +1,6 @@
 {% extends "edd_base.html" %}
 {% load staticfiles %}
 
-{% if post_contents %}
-
-<!--
-
-POSTed query:
-
-{{ post_contents }}
-
--->
-
-{% endif %}
-
 {% block js_css %}
     {{ block.super }}
   <link rel="stylesheet" type="text/css" href="{% static 'main/import.css' %}" />
@@ -59,12 +47,11 @@ var process_result = function (result) {
       }
       $("#rawdataformatp").val("csv");
       $("#textData").text(csv.join("\n"));
-      EDDATD.parseAndDisplayText(); // AssayTableData.ts
     } else {
       $("#rawdataformatp").val(result.file_type);
       $("#textData").text(result.file_data);
-      EDDATD.parseAndDisplayText(); // AssayTableData.ts
     }
+    EDDATD.parseAndDisplayText(); // AssayTableData.ts
   };
 $(window).load(function () {
     setupFileDrop("textData", url, process_result, false);
@@ -98,7 +85,7 @@ $(window).load(function () {
 
 
 {% block body_title %}
-    <h1>Data import for {{ study.name }}</h1>
+    <h1>Data import for <a href="/study/{{ study.id }}">{{ study.name }}</a></h1>
 {% endblock body_title %}
 
 {% block content %}

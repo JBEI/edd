@@ -530,11 +530,15 @@ def study_import_table (request, study) :
     protocols = Protocol.objects.all()
     messages = {}
     post_contents = []
-    if (request.method == "POST") :
-        for key in sorted(request.POST) :
-            if (not key in "jsondebugarea") :
-                print key, ":", request.POST[key]
-                post_contents.append("%s : %s" % (key, request.POST[key]))
+    if (request.method == "POST"):
+        # print stuff for debug
+        for key in sorted(request.POST):
+            print("%s : %s" % (key, request.POST[key]))
+        try:
+            result = main.data_import.import_assay_table_data(
+                    model, request.user, request.POST, Update.load_update())
+        except ValueError as e:
+            messages["error"] = unicode(e)
     return render_to_response("main/table_import.html",
         dictionary={
             "study" : model,

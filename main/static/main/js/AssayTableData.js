@@ -1,5 +1,5 @@
+/// <reference path="lib/jquery.d.ts" />
 /// <reference path="EDDDataInterface.ts" />
-/// <reference path="Autocomplete.ts" />
 var EDDATD;
 EDDATD = {
     // The Protocol for which we will be importing data.
@@ -173,7 +173,7 @@ EDDATD = {
         EDDATD.Grid.ignoreDataGaps = ignoreGapsEl.checked ? 1 : 0;
         EDDATD.Grid.transpose = transposeEl.checked ? 1 : 0;
         // Blanking this out is sufficient to re-enable all the flags
-        //	EDDATD.Table.activeFlags = [];
+        //  EDDATD.Table.activeFlags = [];
         EDDATD.parseAndDisplayText();
     },
     // This gets called when there is a paste event.
@@ -465,7 +465,7 @@ EDDATD = {
                         var cm = origRow[cl];
                         if (typeof cm != 'undefined') {
                             if (cm != null) {
-                                cm = cm.replace(/,/g, ''); //	No commas, please
+                                cm = cm.replace(/,/g, ''); //  No commas, please
                                 if (isNaN(parseFloat(cm))) {
                                     if (foundAnyFloat) {
                                         carbonMarkerParts.push('');
@@ -860,39 +860,19 @@ EDDATD = {
         }
         // Things we'll be counting to hazard a guess at the row contents
         var blankCt = 0;
-        var numberCt = 0;
         var stringCt = 0;
         var measurementsCt = 0;
         var uniqueMeasurementsCt = 0;
         var uniqueMeasurements = {};
-        var cRow = []; // A condensed version of the row, with no nulls or blank values
-        for (var i = 0; i < row.length; i++) {
-            var v = row[i];
-            if ((v == null) || (v == '')) {
-                blankCt++;
+        // A condensed version of the row, with no nulls or blank values
+        var cRow = row.filter(function (v) { return !!v; });
+        blankCt = row.length - cRow.length;
+        cRow.forEach(function (v) {
+            var vv = v.replace(/,/g, ''), m;
+            if (isNaN(parseFloat(vv))) {
+                ++stringCt;
             }
-            else {
-                cRow.push(v);
-            }
-        }
-        for (var i = 0; i < cRow.length; i++) {
-            var v = cRow[i];
-            var m = EDDAutoComplete.MetaboliteField.searchForClosestRecordMatchStatic(v);
-            if (m) {
-                measurementsCt++;
-                if (!uniqueMeasurements[m]) {
-                    uniqueMeasurements[m] = 1;
-                    uniqueMeasurementsCt++;
-                }
-            }
-            v = v.replace(/,/g, ''); //	No commas, please
-            if (isNaN(parseFloat(v))) {
-                stringCt++;
-            }
-            else {
-                numberCt++;
-            }
-        }
+        });
         // If the label parses into a number and the data contains no strings, call it a timsetamp for data
         if (!isNaN(parseFloat(label)) && (stringCt == 0)) {
             return 3;
@@ -904,9 +884,9 @@ EDDATD = {
             return 2;
         }
         // If the label matches a metadata type
-        if (EDDAutoComplete.MetaDataField.searchForClosestRecordMatchStatic(label)) {
-            return 4;
-        }
+        // if (EDDAutoComplete.MetaDataField.searchForClosestRecordMatchStatic(label)) {
+        //     return 4;
+        // }
         // No choice by default
         return 0;
     },
@@ -1102,7 +1082,7 @@ EDDATD = {
                         v = '';
                     }
                     if (p == 11) {
-                        v = v.replace(/,/g, ''); //	No commas, please
+                        v = v.replace(/,/g, ''); //  No commas, please
                         if (v != '') {
                             newSet.singleData = v;
                         }
@@ -1120,7 +1100,7 @@ EDDATD = {
                             continue;
                         }
                         n = parseFloat(n);
-                        v = v.replace(/,/g, ''); //	No commas, please
+                        v = v.replace(/,/g, ''); //  No commas, please
                         if (v == '') {
                             if (EDDATD.Grid.ignoreDataGaps) {
                                 continue;
@@ -1530,9 +1510,9 @@ EDDATD = {
                         aRow.appendChild(aTD);
                         aTD.appendChild(na.inputElement);
                         aTD.appendChild(na.hiddenInputElement);
-                        na.inputElement.callAfterAutoChange = EDDATD.userChangedMeasurementDisam;
-                        EDDAutoComplete.initializeElement(na.inputElement);
-                        na.inputElement.autocompleter.setFromPrimaryElement();
+                        // na.inputElement.callAfterAutoChange = EDDATD.userChangedMeasurementDisam;
+                        // EDDAutoComplete.initializeElement(na.inputElement);
+                        // na.inputElement.autocompleter.setFromPrimaryElement();
                         na.initialized = 1;
                         na.setByUser = 0; // For use here in AssayTableData
                     }
@@ -1603,10 +1583,10 @@ EDDATD = {
                     aTD.appendChild(metaAutocomplete.inputElement);
                     aTD.appendChild(metaAutocomplete.hiddenInputElement);
                     // Done with the autocomplete object
-                    EDDAutoComplete.initializeElement(metaAutocomplete.inputElement);
-                    // custom property needs to be accessed via index notation
-                    metaAutocomplete.inputElement['autocompleter'].setFromPrimaryElement();
-                    metaAutocomplete.initialized = 1;
+                    // EDDAutoComplete.initializeElement(metaAutocomplete.inputElement);
+                    // // custom property needs to be accessed via index notation
+                    // metaAutocomplete.inputElement['autocompleter'].setFromPrimaryElement();
+                    // metaAutocomplete.initialized = 1;
                     disamRow.metaObj = metaAutocomplete;
                     // Done with the td obect
                     // Done with the tr object
@@ -1980,7 +1960,7 @@ EDDATD = {
         }
         $('#ignoreGaps').click(EDDATD.clickedOnIgnoreDataGaps);
         $('#transpose').click(EDDATD.clickedOnTranspose);
-        EDDATD.changedMasterProtocol(); //	Since the initial masterProtocol value is zero, we need to manually trigger this:
+        EDDATD.changedMasterProtocol(); //  Since the initial masterProtocol value is zero, we need to manually trigger this:
         EDDATD.queueProcessImportSettings();
     }
 };

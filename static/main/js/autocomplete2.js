@@ -190,6 +190,7 @@ $(window).load(function () {
         new AutoOpts('.autocomp_reg',     'Strain',          'Strains'),
         new AutoOpts('.autocomp_carbon',  'CarbonSource',    'CSources'),
         new AutoOpts('.autocomp_type',    'MetadataType',    'MetaDataTypes'),
+        new AutoOpts('.autocomp_metabol', 'Metabolite',      'MetaboliteTypes'),
         new AutoOpts('.autocomp_measure', 'MeasurementType', 'MeasurementTypes')
     ];
     setup_info.forEach(function (item) {
