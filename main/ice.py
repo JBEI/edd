@@ -7,11 +7,24 @@ import hashlib
 import hmac
 import json
 import requests
+import os
 
+#############################################################
+# Load system-dependent settings from server.cfg
+#############################################################
+BASE_DIR = os.path.dirname(os.path.dirname('__file__'))
+try:
+    with open(os.path.join(BASE_DIR, 'server.cfg')) as server_cfg:
+        config = json.load(server_cfg)
+except IOError:
+    print "Required configuration file server.cfg is missing. " \
+          "Copy from server.cfg-example and fill in appropriate values"
+    raise
 
 class HmacAuth(AuthBase):
-    # TODO this value needs to be pulled out into a server.cfg key
-    edd_key = 'yJwU0chpercYs/R4YmCUxhbRZBHM4WqpO3ZH0ZW6+4X+/aTodSGTI2w5jeBxWgJXNN1JNQIg02Ic3ZnZtSEVYA=='
+    # TODO regenerate key. Value currently in server.cfg has been promoted to Git.
+    # TODO: also replace the value in server.cfg.example with a placeholder
+    edd_key = config['ice'].get('edd_key', '')
 
     def __init__(self, ident=None, settings_key='default'):
         self.ident = ident

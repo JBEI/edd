@@ -18,11 +18,16 @@ from django.conf.global_settings import LOGIN_REDIRECT_URL
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 
 
+#############################################################
+# Load system-dependent settings from server.cfg
+#############################################################
+BASE_DIR = os.path.dirname(os.path.dirname('__file__'))
 try:
     with open(os.path.join(BASE_DIR, 'server.cfg')) as server_cfg:
         config = json.load(server_cfg)
 except IOError:
-    print "Must have a server.cfg, copy from server.cfg-example and fill in appropriate values"
+    print "Required configuration file server.cfg is missing. " \
+          "Copy from server.cfg-example and fill in appropriate values"
     raise
 
 
@@ -33,19 +38,24 @@ except IOError:
 # default quote from http://thedoomthatcametopuppet.tumblr.com/
 SECRET_KEY = config['site'].get('secret', 'I was awake and dreaming at the same time, which is why \
                                             this only works for local variables')
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 TEMPLATE_DEBUG = True
-ADMINS = MANAGERS = (('William', 'wcmorrell@lbl.gov'),
-          ('Nat', 'nechols@lbl.gov'),)
-EMAIL_SUBJECT_PREFIX = '[EDD] '
+# convert dictionary required by JSON format to tuple of tuples required by Django
+admins_dict_temp = config['site'].get('admins', [])
+admins_list_temp = []
+for name in admins_dict_temp:
+    email = admins_dict_temp[name]
+    admins_list_temp.append((name, email))
+ADMINS = MANAGERS = tuple(admins_list_temp)
+EMAIL_SUBJECT_PREFIX = config['email'].get('subject_prefix', '')
 ALLOWED_HOSTS = []
 SITE_ID = 1
 LOGIN_REDIRECT_URL = '/'
 DEBUG_TOOLBAR_CONFIG = {
     'JQUERY_URL': '/static/main/js/lib/jquery/jquery-2.1.4.min.js',
 }
-
 
 # Application definition
 INSTALLED_APPS = (
@@ -184,8 +194,8 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'static', '')
 STATIC_URL = '/static/'
 
 # File upload location
-MEDIA_ROOT = '/var/www/uploads'
-MEDIA_URL = '/uploads/'
+MEDIA_ROOT = config['site'].get('media_root', '/var/www/uploads')
+MEDIA_URL = config['site'].get('media_url', '/uploads/')
 
 try:
     from .local_settings import *

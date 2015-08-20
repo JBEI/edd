@@ -54,7 +54,8 @@ The Experiment Data Depot (EDD) is a web-based repository of processed data
  * Passwords <a name="Passwords"/>
     Get required passwords from a teammate
     * JBEI_AUTH - to configure LDAP SSL handling and EDD's server.cfg
-    * edduser - the password to the production EDD instance. You'll need this to copy its data for local development work. See [Database Conversion](#DbConversion)
+    * edduser - the password to the production EDD database instance. You'll need this to copy its data for local development work. See [Database Conversion](#DbConversion
+	* edd ice key - used by edd to authorize REST API calls to ICE
    
 ### Mac OS X
 This section contains directions for setting up a development environment on EDD in OSX.
@@ -163,10 +164,13 @@ This section contains directions for setting up a development environment on EDD
 	* Add the workaround specified in [django-threadlocals](#django-threadlocals) to make this package Python 2 compliant
  
  * Update EDD Configuration Files <a name="EDD_Config"/>
-    Use EDD's `server.cfg-example` as a template to create a `server.cfg` file
-   * Need to put in appropriate values for `site.secret`, `db.pass`, and `ldap.pass`
-		* db.pass is the password you created for your local edduser account
+    Use EDD's `server.cfg-example` as a template to create a `server.cfg` file, replacing values for: 
+        * `site.secret`
+		* `db.pass`: the password you created for your local edduser Postgres account
 		* ldap.pass in the JBEI_AUTH password
+		* ice.edd_key is the key used by EDD send REST API calls to ICE
+		* `site.admins`: use your email address to receive Celery failure messages as a debugging aid, but limit spam to other team members during development
+		* `email.host`: aspmx.l.google.com will work if you have a GMail account 
     * Update `site`, `db`, `solr`, `ldap`, and `ice` for appropriate connection parameters
     * _*DO NOT CHECK THIS FILE INTO SOURCE CONTROL*_ ! This file is included by default in EDD's `.gitignore` file, so you should have to work hard to commit it to Git by mistake.
  
@@ -362,12 +366,6 @@ This section contains directions for setting up a development environment on EDD
    
    * Configure RabbitMQ for Celery and EDD
       * See [Configuration](#ConfigureRabbitMQ)
-	
- * Install requirements for Celery & Flower (included in requirements.txt) <a name="Install_Celery_Reqs_Deb">
-   * `workon edd-test.jbei.org`, followed by either of the following:
-	  
-          cd /var/www/edd-test.jbei.org
-		  pip install -r edd/requirements.txt
 
  * Configure Flower<a name="#Configure_Flower"></a>
     * Depending on your deployment environment, consider [configurating Flower authentication](http://flower.readthedocs.org/en/latest/auth.html). The sample worker launch commands included in this document assume the use of basic authentication configured in the Flower run command
@@ -375,6 +373,7 @@ This section contains directions for setting up a development environment on EDD
  * Test Celery & Flower from the command line (see [Controlling EDD's Dependencies](#ControllingDependencies))<a name="Test_Celery_And_Flower_Deb"></a>
     * Restart RabbitMQ if stopped
     * Run celery from the command line to test 
+	   * For Celery 3.1, the final message should end with'celery@yourhostname ready.'
     * Run Flower from the commend line to test
 	* Access flower from the web interface
 	   * Note that Flower only shows tasks that ran *while Flower was running*
@@ -473,24 +472,11 @@ EDD has a number of dependencies, all of which may need to be monitored/managed 
 		 * Worker daemon config file: /etc/default/edd_celeryd
    * Flower  - Development / Production / Test
       * TODO: experiment further with getting password out of the command
-      * `celery flower -A edd.flowerconfig.flower_mgmt_interface --basic_auth=flower:FLOWER_WEB_INTERFACE_PASSWORD_DEFINED_HERE`
+      * `celery flower -A edd.flowerconfig.flower_mgmt_interface --basic_auth=flower:FLOWER_WEB_INTERFACE_PASSWORD_DEFINED_HERE`, replacing the password with the desired one
 	  * `-basic_auth` can likely be left out for development
-	  * Though little documentation exists, it appears that the `--persistent=True` flag is required to make Flower display the same task list following a restart of Flower only (not Celery or RabbitMQ).
-	  * Note that as of Flower 0.9, Flower is not reporting tasks that were submitted to Celery while Flower was down. 
----------
-TODO: reviset this block
-	* Before starting EDD, from the EDD base directory:
-	   * Start a celery worker
-   	      
-   	      * For Celery 3.1, the final message should end with'celery@yourhostname ready.'
-   * Start flower
-      * For development, use `celery -app edd flower -conf=edd/celeryconfig.py`
-	  * For production, use `celery -app edd flower -conf=edd/celeryconfig.py --broker_api=http://bunny:PASSWORD:15672/a/ --broker=amqp://edd_user:PASSWORD@localhost:5672//edd --basic_auth=flower:PASSWORD`, replacing the placeholder passwords with production values
-	     * For installations on an unsafe network, consider alternate [authentication](https://github.com/mher/flower/wiki/Authentication) for Flower 
-	     * Note that the `-conf` option doesn't seem to work according to the sample in the instructions, or via attempted variations on that [example](http://flower.readthedocs.org/en/latest/config.html)
-	  * Access the web app via http://localhost:5555 to confirm it's working
-TODO: clean up this block
------------
+	  * Though little documentation exists, it appears that the `--persistent=True` flag is required to make Flower display the same task list following a restart of Flower only (not Celery or RabbitMQ). It appears best for Flower 0.9 to omit this flag and treat Flower as a real-time monitoring tool only.
+     * For installations on an unsafe network, consider alternate [authentication](https://github.com/mher/flower/wiki/Authentication) flags for Flower 
+     * Note that the `-conf` option doesn't seem to work according to the sample in the instructions, or via attempted variations on that [example](http://flower.readthedocs.org/en/latest/config.html)
 
 <a name="DbConversion"></a>
 ## Database Conversion
@@ -548,13 +534,13 @@ populating a new deployment with existing data.
 	      * 'sudo rabbitmqctl delete_user guest'
  * Create a RabbitMQ account with limited permissions for EDD
     * Create a password for the EDD's RabbitMQ account. Avoid special characters since the password must be provided to the Celery worker via a URL.
-       * Update edd/celeryconfig.py to replace the 'edd_user' account password in the EDD_RABBITMQ_PASSWORD variable
+       * Update edd/server.cfg to enter the password in `rabbitmq.edd_pass` 
        * 'sudo rabbitmqctl add_user edd_user EDD_RABBITMQ_PASSWORD', replacing the password with your value
  	* Grant appropriate permissions to edd_user on the "/edd" virtual host
  	   * `sudo rabbitmqctl set_permissions -p /edd edd_user ".*" ".*" ".*"`
  	   * TODO: consider tighter [Access Controls](https://www.rabbitmq.com/access-control.html) to determine controls needed for EDD virtual environment
  * Create an administrative RabbitMQ account for Flower to use in accessing Celery's RabbitMQ management API (same password special character limitations as above)
-    * Update RABBIT_MQ_MGMT_PASSWORD for this user in celeryconfig.py
+    * Update edd/server.cfg to enter the password in `rabbitmq.mgmt_pass` 
     * `sudo rabbitmqctl add_user bunny 'RABBITMQ_MGMT_PASSWORD'`, replacing the password with your value
     * `sudo rabbitmqctl set_permissions -p / bunny ".*" ".*" ".*"`
     * `sudo rabbitmqctl set_permissions -p /edd bunny ".*" ".*" ".*"`

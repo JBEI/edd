@@ -3,6 +3,17 @@
         "root": "http://localhost/edd/",
         "host": "localhost",
         "secret": "GENERATE SOME RANDOM TEXT HERE"
+        "admins": { "William": "wcmorrell@lbl.gov" },
+        "media_root": "/var/www/uploads",
+        "media_url": "/uploads/"
+    },
+
+    "email": {
+        "host": "localhost",
+        "user": "",
+        "password": "",
+        "port" : "25",
+        "subject_prefix": "[EDD]"
     },
 
     "db": {
@@ -29,6 +40,22 @@
 
     "ice": {
         "url": "https://registry-test.jbei.org/",
-        "cert": "./certs/registry-test.pem"
+        "cert": "./certs/registry-test.pem",
+        "edd_key": "yJwU0chpercYs/R4YmCUxhbRZBHM4WqpO3ZH0ZW6+4X+/aTodSGTI2w5jeBxWgJXNN1JNQIg02Ic3ZnZtSEVYA=="
+    }
+
+    "rabbitmq": {
+        "hostname": "localhost",
+        "edd_user": "edd_user",
+        "edd_pass": "PASSWORD FOR EDD_USER",
+        "edd_vhost": "/edd",
+        "port": "5672",
+        "mgmt_user": "bunny",
+        "mgmt_pass": "PASSWORD FOR BUNNY USER",
+        "mgmt_port": "15672"
+    },
+
+    "celery": {
+        "send_task_error_emails": true
     }
 }

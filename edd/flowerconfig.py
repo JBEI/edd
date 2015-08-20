@@ -2,14 +2,33 @@
 This file contains configuration data for EDD's Celery Flower monitoring & management web application.
 For a full description of options available here, see http://flower.readthedocs.org/en/latest/config.html
 """
-
+import os
+import json
 from celery import Celery
-from edd.celeryconfig import EDD_RABBITMQ_USERNAME, EDD_RABBITMQ_PASSWORD, RABBITMQ_HOST, RABBITMQ_PORT, EDD_VHOST # TODO put this shared data in server.cfg instead
+
+#############################################################
+# Load system-dependent settings from server.cfg
+#############################################################
+BASE_DIR = os.path.dirname(os.path.dirname('__file__'))
+try:
+    with open(os.path.join(BASE_DIR, 'server.cfg')) as server_cfg:
+        config = json.load(server_cfg)
+except IOError:
+    print "Required configuration file server.cfg is missing. " \
+          "Copy from server.cfg-example and fill in appropriate values"
+    raise
+
 
 ## Broker Settings
-RABBITMQ_MGMT_USERNAME='bunny'
-RABBITMQ_MGMT_PASSWORD='PASSWORD_GOES_HERE' # TODO: consider moving to server.cfg
-RABBITMQ_MGMT_PORT = '15672'
+RABBITMQ_HOST = config['rabbitmq'].get('hostname')
+EDD_RABBITMQ_USERNAME = config['rabbitmq'].get('edd_user')
+EDD_RABBITMQ_PASSWORD = config['rabbitmq'].get('edd_pass')
+RABBITMQ_PORT = config['rabbitmq'].get('port')
+EDD_VHOST = config['rabbitmq'].get('edd_vhost')
+
+RABBITMQ_MGMT_USERNAME = config['rabbitmq'].get('mgmt_user', 'bunny')
+RABBITMQ_MGMT_PASSWORD = config['rabbitmq'].get('mgmt_pass', '')
+RABBITMQ_MGMT_PORT = config['rabbitmq'].get('mgmt_port', 15672)
 
 # Set up a separate Celery "app" (instance of the Celery API) for Flower use. This is essentially just a workaround for
 # flower not allowing broker_url to be configure via the config file. This appears to be configurable via line only as
@@ -20,7 +39,8 @@ RABBITMQ_MGMT_PORT = '15672'
 # TODO: we should investigate improving on this by allowing limited RabbitMQ managament access to edd_user for the edd vhost only.
 # that may allow us to avoid providing the account password on the command line (what this workaround avoids), and also allow
 # us to avoid creating a secord Celery 'app' instance here
-flower_mgmt_interface = Celery('flower', broker='amqp://' + RABBITMQ_MGMT_USERNAME + ':' + RABBITMQ_MGMT_PASSWORD + '@' + RABBITMQ_HOST + '/' + EDD_VHOST)
+flower_mgmt_interface = Celery('flower',
+                               broker='amqp://' + RABBITMQ_MGMT_USERNAME + ':' + RABBITMQ_MGMT_PASSWORD + '@' + RABBITMQ_HOST + '/' + EDD_VHOST)
 
 # NOTE: Flower 0.9 doesn't support these via config file (only lower case via command line). See comments above.
 # BROKER_URL = 'amqp://' + RABBITMQ_MGMT_USERNAME +':' + RABBITMQ_MGMT_PASSWORD + '@' + RABBITMQ_HOST + ':'+ RABBITMQ_PORT + '/' + EDD_VHOST
@@ -29,7 +49,7 @@ flower_mgmt_interface = Celery('flower', broker='amqp://' + RABBITMQ_MGMT_USERNA
 
 # general flower options
 # TODO: downgrade to WARNING after some initial experience with Flower
-logging='DEBUG'
+logging = 'DEBUG'
 
 # Web interface access control
 # TODO: this appears to work on the command line, but not via configuration file
