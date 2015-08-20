@@ -233,8 +233,8 @@ var BiomassCalculationUI = (function () {
                 speciesColumn = table.addColumn();
                 speciesColumn.innerHTML = species.sbmlSpeciesName;
                 metaboliteColumn = table.addColumn();
-                autoComp = $('<input type="text"/>').addClass('autocomp autocomp_metabol').appendTo(metaboliteColumn);
-                $('<input type="hidden"/>').appendTo(metaboliteColumn);
+                autoComp = EDD_auto.create_autocomplete(metaboliteColumn);
+                autoComp.addClass('autocomp_metabol');
                 inputs.push(autoComp);
             });
             _this._dialogBox.clearContents();
@@ -249,7 +249,7 @@ var BiomassCalculationUI = (function () {
             $(okButton).click(function () { return _this._onFinishedBiomassSpeciesEntry(speciesList, inputs, errorStringElement, metabolicMapID, reaction, callback); });
             _this._dialogBox.addElement(okButton);
             inputs.forEach(function (input) {
-                EDD_auto.setup_field_autocomplete(input, 'Metabolite', 'MetaboliteTypes');
+                EDD_auto.setup_field_autocomplete(input, 'Metabolite', EDDData.MetaboliteTypes || {});
             });
         }, function (error) {
             _this._dialogBox.showMessage(error, function () { return callback.call({}, error); });

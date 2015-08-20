@@ -3,6 +3,7 @@
 
 declare var ATData:any; // Setup by the server.
 declare var EDDATDGraphing:any;
+declare var EDD_auto:any;
 
 
 var EDDATD:any;
@@ -87,6 +88,13 @@ Disam:{
     metadataObjSets:{},
     // To give unique ID values to each autocomplete entity we create
     autoCompUID:0
+},
+
+AutoCache: {
+    comp: {},
+    meta: {},
+    unit: {},
+    metabolite: {}
 },
 
 
@@ -1696,100 +1704,50 @@ remakeInfoTable:function() {
         aTable.appendChild(aTBody);
 
         // Headers for the table
-        var aRow = document.createElement("tr");
-        aTBody.appendChild(aRow);
+        var aTr = aTBody.insertRow();
             var aTH = document.createElement("th");
             aTH.colSpan = 2;    // http://www.w3schools.com/jsref/prop_tabledata_colspan.asp
             aTH.setAttribute('colspan', "2");
             aTH.style.textAlign = "right";
             aTH.appendChild(document.createTextNode('Compartment'));
-            aRow.appendChild(aTH);
+            aTr.appendChild(aTH);
             aTH = document.createElement("th");
             aTH.appendChild(document.createTextNode('Type'));
-            aRow.appendChild(aTH);
+            aTr.appendChild(aTH);
             aTH = document.createElement("th");
             if (EDDATD.interpretationMode == "std") {
                 aTH.appendChild(document.createTextNode('Units'));
             }
-            aRow.appendChild(aTH);
+            aTr.appendChild(aTH);
         // Done with headers row
 
         EDDATD.Disam.currentlyVisibleMeasurementObjSets = [];   // For use in cascading user settings
 
-        for (var i=0; i < EDDATD.Sets.uniqueMeasurementNames.length; i++) {
-            var uName = EDDATD.Sets.uniqueMeasurementNames[i];
-
-            // Find a pre-existing collection of objects that corresponds to this unique string
-            var disamRow = EDDATD.Disam.measurementObjSets[uName];
-            // If none exists, we'll have to build one
+        EDDATD.Sets.uniqueMeasurementNames.forEach((uName, i) => {
+            var disamRow = EDDATD.Disam.measurementObjSets[uName], aRow, aTd, aDiv;
             if (disamRow) {
-                aTBody.appendChild(disamRow.rowObj);    // Add the row to the document
+                aTBody.appendChild(disamRow.rowObj);
             } else {
                 disamRow = {};
-                // First make a table row, and save a reference to it
-                aRow = document.createElement("tr");
-                aTBody.appendChild(aRow);   // Rows must be in the DOM so initilization calls for their automcomplete elements work
-                disamRow.rowObj = aRow;
-                    // Next, add a table cell with the string we are disambiguating
-                    var aTD = document.createElement("td");
-                    aRow.appendChild(aTD);
-                        var aDIV = document.createElement("div");
-                        aDIV.appendChild(document.createTextNode(uName));
-                        aTD.appendChild(aDIV);
-                    // Now build another table cell that will contain the autocomplete elements
-                    var compAutocomplete = EDDAutoComplete.createAutoCompleteContainer(
-                        "measurementcompartment", 4, 'disamMComp' + EDDATD.Disam.autoCompUID, uName, 0);
-                    var typeAutocomplete = EDDAutoComplete.createAutoCompleteContainer(
-                        "metabolite", 45, 'disamMType' + EDDATD.Disam.autoCompUID+1, uName, 0);
-                    var unitsAutocomplete = EDDAutoComplete.createAutoCompleteContainer(
-                        "units", 15, 'disamMUnits' + EDDATD.Disam.autoCompUID+2, uName, 0);
-                    EDDATD.Disam.autoCompUID += 3;
-
-                    // Perform these operations on all new autocomplete units
-                    var newAutos = [compAutocomplete, typeAutocomplete, unitsAutocomplete];
-                    for (var n=0; n < newAutos.length; n++) {
-                        var na:any = newAutos[n];
-                        aTD = document.createElement("td");
-                        aTD.className = 'disamDataCell';
-                        aRow.appendChild(aTD);
-                        aTD.appendChild(na.inputElement);
-                        aTD.appendChild(na.hiddenInputElement);
-
-                        // na.inputElement.callAfterAutoChange = EDDATD.userChangedMeasurementDisam;
-                        // EDDAutoComplete.initializeElement(na.inputElement);
-                        // na.inputElement.autocompleter.setFromPrimaryElement();
-
-                        na.initialized = 1;
-                        na.setByUser = 0;   // For use here in AssayTableData
-                    }
-                    // Done with the td objects
-                    disamRow.compObj = compAutocomplete;
-                    disamRow.typeObj = typeAutocomplete;
-                    disamRow.unitsObj = unitsAutocomplete;
-                // Done with the tr object
-                EDDATD.Disam.measurementObjSets[uName] = disamRow;  // Store the row for later reference
+                aRow = aTBody.insertRow();
+                aTd = aRow.insertCell();
+                aDiv = $('<div>').text(uName).appendTo(aTd);
+                ['compObj', 'typeObj', 'unitsObj'].forEach((auto) => {
+                    var cell = $(aTd.insertCell()).addClass('disamDataCell');
+                    disamRow[auto] = EDD_auto.create_autocomplete(cell);
+                });
+                EDDATD.Disam.measurementObjSets[uName] = disamRow;
             }
-
-            // Set or re-set the names of the inputs so they correlate with the uniqueMeasurementNames indexes
-            disamRow.compObj.inputElement.setAttribute('name', 'disamMComp' + (i + 1));
-            disamRow.compObj.inputElement.setAttribute('visibleIndex', i);
-            disamRow.compObj.hiddenInputElement.setAttribute('name', 'disamMCompHidden' + (i + 1));
-            disamRow.typeObj.inputElement.setAttribute('name', 'disamMType' + (i + 1));
-            disamRow.typeObj.inputElement.setAttribute('visibleIndex', i);
-            disamRow.typeObj.hiddenInputElement.setAttribute('name', 'disamMTypeHidden' + (i + 1));
-            disamRow.unitsObj.inputElement.setAttribute('name', 'disamMUnits' + (i + 1));
-            disamRow.unitsObj.inputElement.setAttribute('visibleIndex', i);
-            disamRow.unitsObj.hiddenInputElement.setAttribute('name', 'disamMUnitsHidden' + (i + 1));
+            // TODO sizing should be handled in CSS
+            disamRow.compObj.attr({ 'name': 'disamMComp' + (i + 1), 'visibleIndex': i, 'size': 4 });
+            EDD_auto.setup_field_autocomplete(disamRow.compObj, 'MeasurementCompartment', EDDATD.AutoCache.comp);
+            disamRow.typeObj.attr({ 'name': 'disamMType' + (i + 1), 'visibleIndex': i, 'size': 45 });
+            EDD_auto.setup_field_autocomplete(disamRow.typeObj, 'Metabolite', EDDATD.AutoCache.metabolite);
+            disamRow.unitsObj.attr({ 'name': 'disamMUnits' + (i + 1), 'visibleIndex': i, 'size': 10 });
+            EDD_auto.setup_field_autocomplete(disamRow.unitsObj, 'MeasurementUnit', EDDATD.AutoCache.unit);
             // If we're in MDV mode, the units pulldowns are irrelevant.
-            if (EDDATD.interpretationMode == "mdv") {
-                $(disamRow.unitsObj.inputElement).addClass('off');
-            } else {
-                $(disamRow.unitsObj.inputElement).removeClass('off');
-            }
-
-            // Used in userChangedMeasurementDisam to cascade changes in one input to subsequent inputs
-            EDDATD.Disam.currentlyVisibleMeasurementObjSets.push(disamRow);
-        }
+            disamRow.unitsObj.toggleClass('off', EDDATD.interpretationMode === 'mdv');
+        });
         EDDATD.checkAllMeasurementCompartmentDisam();
     }
 
@@ -1831,12 +1789,8 @@ remakeInfoTable:function() {
                     aTD = document.createElement("td");
                     aTD.className = 'disamDataCell';
                     aRow.appendChild(aTD);
-                        var metaAutocomplete = EDDAutoComplete.createAutoCompleteContainer(
-                            "metadatatype", 23, 'disamMeta' + EDDATD.Disam.autoCompUID, uName, 0);
-                        EDDATD.Disam.autoCompUID++;
-                        aTD.appendChild(metaAutocomplete.inputElement);
-                        aTD.appendChild(metaAutocomplete.hiddenInputElement);
-                        // Done with the autocomplete object
+                    var metaAutocomplete = EDD_auto.create_autocomplete(aTD).val(uName);
+                    // Done with the autocomplete object
                     // EDDAutoComplete.initializeElement(metaAutocomplete.inputElement);
                     // // custom property needs to be accessed via index notation
                     // metaAutocomplete.inputElement['autocompleter'].setFromPrimaryElement();
@@ -1848,8 +1802,10 @@ remakeInfoTable:function() {
             }
 
             // Set or re-set the names of the inputs so they correlate with the uniqueMetadataNames indexes
-            disamRow.metaObj.inputElement.setAttribute('name', 'disamMeta' + (i+1));
-            disamRow.metaObj.hiddenInputElement.setAttribute('name', 'disamMetaHidden' + (i+1));
+            disamRow.metaObj.attr('name', 'disamMeta' + (i+1)).addClass('autocomp_type')
+                .next().attr('name', 'disamMetaHidden' + (i+1));
+            EDD_auto.setup_field_autocomplete(disamRow.metaObj, 'MetadataType', EDDATD.AutoCache.meta);
+
         }
     }
 

@@ -2,6 +2,8 @@
 /// <reference path="lib/jquery.d.ts" />
 /// <reference path="Utl.ts" />
 
+declare var EDD_auto:any;
+
 module EditableElements {
 
 	// Declare the LiveTextEdit class
@@ -341,20 +343,20 @@ module EditableElements {
 
 			this.setUpCommittingIndicator();
 
-			$.ajax({
-				type: "POST",
-				dataType: "json",
-				url: "FormAjaxResp.cgi", 
-				data: formData,
-				success: function( response ) {
-					if (response.type == "Success") {
-						pThis.setValueFn(pThis, value);
-					} else {
-						alert("Error: " + response.message);
-					}
-					pThis.cancelEditing();
-				}
-			});
+			// $.ajax({
+			// 	type: "POST",
+			// 	dataType: "json",
+			// 	url: "FormAjaxResp.cgi", 
+			// 	data: formData,
+			// 	success: function( response ) {
+			// 		if (response.type == "Success") {
+			// 			pThis.setValueFn(pThis, value);
+			// 		} else {
+			// 			alert("Error: " + response.message);
+			// 		}
+			// 		pThis.cancelEditing();
+			// 	}
+			// });
 		}
 
 
@@ -403,8 +405,9 @@ module EditableElements {
 		// Override this with your specific autocomplete type
 		createAutoCompleteObject() {
 			// Create an input field that the user can edit with.
-			var auto = EDDAutoComplete.createAutoCompleteContainer(
-				"email", 45, 'editElem' + EditableElement._uniqueIndex, this.getValueFn(this), 0);
+			var auto = EDD_auto.create_autocomplete(this.element);
+			auto.attr('name', 'editElem' + EditableElement._uniqueIndex).val(this.getValueFn(this));
+			EDD_auto.setup_field_autocomplete(auto, 'User', EDDData.Users || {});
 			return auto;
 		}
 
@@ -417,18 +420,11 @@ module EditableElements {
 			}
 			var auto = this.createAutoCompleteObject();
 			EditableElement._uniqueIndex += 1;
-
-			EDDAutoComplete.initializeElement(auto.inputElement);
-
 			// Copy font attributes from our underlying control.
-			$(auto.inputElement).css({
+			$(auto).css({
                 "font-family": this.$element.css("font-family"),
                 "font-size": this.$element.css("font-size")
             });
-			//auto.inputElement.callAfterAutoChange = EDDATD.userChangedMeasurementDisam;
-
-			// Set width and height.
-			auto.inputElement.style.width = "100%";
 			this.autoCompleteObject = auto;
 			return auto;
 		}
@@ -436,65 +432,47 @@ module EditableElements {
 
 		setUpEditingMode() {
 			var pThis = this;
-
-			this.$element.removeClass('inactive saving').addClass('active');
-
 			var auto = this.getAutoCompleteObject();	// Calling this may set it up for the first time
-			this.inputElement = auto.inputElement;
-
+			this.$element.removeClass('inactive saving').addClass('active');
+			this.inputElement = auto[0];
 			this.clearElementForEditing();
-			this.element.appendChild(auto.inputElement);
-			this.element.appendChild(auto.hiddenInputElement);
-			auto.inputElement.value = this.getValueFn(this);
-			auto.inputElement.autocompleter.setFromPrimaryElement();
-
+			auto.val(this.getValueFn(this));
 			// Remember what we're editing in case they cancel or move to another element
 			EditableElement._prevEditableElement = this;
-
 			// Set focus to the new input element ASAP after the click handler.
 			// We can't just do this in here because the browser won't actually set the focus,
 			// presumably because it thinks the focus should be in what was just clicked on.
-			window.setTimeout(function() {
-				pThis.inputElement.focus();
-			}, 0);
+			window.setTimeout(auto.focus.bind(auto), 0);
 			this.setUpESCHandler();
-
-			// Handle special keys like enter and escape.
-			this.inputElement.onkeydown = function(e) {
-				if (e.which == 13) {
-					// ENTER key. Commit the changes.
-					pThis.commitEdit();
+			// Handle special keys like enter
+			auto.on('keydown', (e:JQueryKeyEventObject) => {
+				if (e.which == 13) { // 13 === ENTER
+					this.commitEdit();
 				}
-			};
-			// TODO: Handle losing focus (in which case we should commit changes?).
+			}).on('blur', () => this.commitEdit());
 		}
 
 
-		getEditedValue():any {
-			var auto = this.getAutoCompleteObject();			
-			return auto.inputElement.value;
+		getEditedValue():any {			
+			return this.getAutoCompleteObject().val();
 		}
 
 
 		setEditedFieldContent():any {
-			var e = this.element;
-			while (e.firstChild) {
-				e.removeChild(e.firstChild);
-			}
-			var newValueStr = this.getEditedValue();
-			e.appendChild(document.createTextNode(newValueStr));
+			var value = this.getEditedValue();
+			$(this.element).empty().text(value);
 		}
 	}
 
 
 
 	export class EditableEmail extends EditableAutocomplete {
-
 		// Override this with your specific autocomplete type
 		createAutoCompleteObject() {
 			// Create an input field that the user can edit with.
-			var auto = EDDAutoComplete.createAutoCompleteContainer(
-				"email", 27, 'editElem' + EditableElement._uniqueIndex, this.getValueFn(this), 0);
+			var auto = EDD_auto.create_autocomplete(this.element);
+			auto.attr('name', 'editElem' + EditableElement._uniqueIndex).val(this.getValueFn(this));
+			EDD_auto.setup_field_autocomplete(auto, 'User', EDDData.Users || {});
 			return auto;
 		}
 	}
@@ -502,12 +480,12 @@ module EditableElements {
 
 
 	export class EditableStrain extends EditableAutocomplete {
-
 		// Override this with your specific autocomplete type
 		createAutoCompleteObject() {
 			// Create an input field that the user can edit with.
-			var auto = EDDAutoComplete.createAutoCompleteContainer(
-				"strain", 74, 'editElem' + EditableElement._uniqueIndex, this.getValueFn(this), 0);
+			var auto = EDD_auto.create_autocomplete(this.element);
+			auto.attr('name', 'editElem' + EditableElement._uniqueIndex).val(this.getValueFn(this));
+			EDD_auto.setup_field_autocomplete(auto, 'Strain', EDDData.Strains || {});
 			return auto;
 		}
 	}

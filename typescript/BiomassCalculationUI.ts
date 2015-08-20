@@ -322,16 +322,13 @@ class BiomassCalculationUI {
             $(table.table).css('border-collapse', 'collapse');
 
             speciesList.forEach((species:ServerBiomassSpeciesEntry, i:number):void => {
-                var speciesColumn:HTMLElement, metaboliteColumn:HTMLElement, autoComp:any;
+                var speciesColumn:HTMLElement, metaboliteColumn:HTMLElement, autoComp:JQuery;
                 table.addRow();
                 speciesColumn = table.addColumn();
                 speciesColumn.innerHTML = species.sbmlSpeciesName;
                 metaboliteColumn = table.addColumn();
-                autoComp = $('<input type="text"/>')
-                    .addClass('autocomp autocomp_metabol')
-                    .appendTo(metaboliteColumn);
-                $('<input type="hidden"/>')
-                    .appendTo(metaboliteColumn);
+                autoComp = EDD_auto.create_autocomplete(metaboliteColumn);
+                autoComp.addClass('autocomp_metabol');
                 inputs.push(autoComp);
             });
 
@@ -353,7 +350,7 @@ class BiomassCalculationUI {
             this._dialogBox.addElement(okButton);
 
             inputs.forEach((input) => {
-                EDD_auto.setup_field_autocomplete(input, 'Metabolite', 'MetaboliteTypes');
+                EDD_auto.setup_field_autocomplete(input, 'Metabolite', EDDData.MetaboliteTypes || {});
             });
         }, (error:string):void => {
             this._dialogBox.showMessage(error, ():void => callback.call({}, error));

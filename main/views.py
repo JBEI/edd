@@ -976,6 +976,9 @@ def search (request) :
         results = ice.search_for_part(term)
         rows = [ match.get('entryInfo', dict()) for match in results.get('results', []) ]
         return JsonResponse({ "rows": rows })
+    elif model_name == "MeasurementCompartment":
+        # Always return the full set of options; no search needed
+        return [ { 'id': c[0], 'name': c[1] } for c in MeasurementCompartment.GROUP_CHOICE ]
     else:
         Model = getattr(main.models, model_name)
         # gets all the direct field names that can be filtered by terms

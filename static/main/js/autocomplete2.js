@@ -108,6 +108,14 @@ $(window).load(function () {
 });
 
 
+EDD_auto.create_autocomplete = function create_autocomplete(container) {
+    var autoInput, hideInput;
+    autoInput = $('<input type="text"/>').addClass('autocomp').appendTo(container);
+    hideInput = $('<input type="hidden"/>').appendTo(container);
+    return autoInput;
+}
+
+
 // Sets up the multicolumn autocomplete widget.  Must be called after the
 // $(window).load handler above.
 EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(selector, model_name, cache) {

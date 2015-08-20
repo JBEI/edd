@@ -1,6 +1,7 @@
 /// <reference path="typescript-declarations.d.ts" />
 /// <reference path="lib/jquery.d.ts" />
 /// <reference path="Utl.d.ts" />
+declare var EDD_auto: any;
 declare module EditableElements {
     class EditableElement {
         options: any;
@@ -45,44 +46,17 @@ declare module EditableElements {
         autoCompleteObject: any;
         constructor(inputElement: HTMLElement);
         setUpMainElement(): void;
-        createAutoCompleteObject(): {
-            type: any;
-            initialized: number;
-            setByUser: number;
-            startString: any;
-            startIndex: any;
-            name: any;
-            inputElement: HTMLInputElement;
-            hiddenInputElement: HTMLInputElement;
-        };
+        createAutoCompleteObject(): any;
         getAutoCompleteObject(): any;
         setUpEditingMode(): void;
         getEditedValue(): any;
         setEditedFieldContent(): any;
     }
     class EditableEmail extends EditableAutocomplete {
-        createAutoCompleteObject(): {
-            type: any;
-            initialized: number;
-            setByUser: number;
-            startString: any;
-            startIndex: any;
-            name: any;
-            inputElement: HTMLInputElement;
-            hiddenInputElement: HTMLInputElement;
-        };
+        createAutoCompleteObject(): any;
     }
     class EditableStrain extends EditableAutocomplete {
-        createAutoCompleteObject(): {
-            type: any;
-            initialized: number;
-            setByUser: number;
-            startString: any;
-            startIndex: any;
-            name: any;
-            inputElement: HTMLInputElement;
-            hiddenInputElement: HTMLInputElement;
-        };
+        createAutoCompleteObject(): any;
     }
     function initializeElement(options: any): void;
     function initializeElements(optionSet: any): void;
