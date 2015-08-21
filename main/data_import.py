@@ -59,7 +59,7 @@ def import_assay_table_data(study, user, post_data, update):
         assay_index = u['assay']
         if (not assay_index) :
             continue
-        assay_id = post_data.get("disamAssay" + assay_index, None)
+        assay_id = post_data.get("disamAssay%s" % assay_index, None)
         if not assay_id:
             continue
         # At this point we know there is at least one attempt to link an
@@ -86,7 +86,7 @@ def import_assay_table_data(study, user, post_data, update):
             continue
         # Now we know the Assay element is set to 'new', so we need the value
         # of the corresponding Line element.
-        line_id = post_data.get("disamLine" + assay_index, None)
+        line_id = post_data.get("disamLine%s" % assay_index, None)
         if not line_id:
             continue
         line = None
