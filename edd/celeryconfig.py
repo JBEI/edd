@@ -126,12 +126,37 @@ CELERY_TASK_RESULT_EXPIRES = timedelta(days=30)
 #############################################################
 # Configure email notifications for task errors
 #############################################################
-# CELERY_TASK_RESULT_EXPIRES=3600, #TODO
-# TODO: get values from server.cfg`
+
 CELERY_SEND_TASK_ERROR_EMAILS = config['celery'].get('send_task_error_emails', True)
-SERVER_EMAIL = "celery@" + socket.gethostname()
-EMAIL_HOST = config['email'].get('host', 'localhost')
 EMAIL_HOST_USER = config['email'].get('user', '')
 EMAIL_HOST_PASSWORD = config['email'].get('pass', '')
-EMAIL_PORT = config['email'].get('port', "25")
-ADMINS = [("Mark Forrer", "mark.forrer@lbl.gov"), ]  # TODO: replace with jbei-edd-admin@lists.lbl.gov for production
+CELERY_SEND_TASK_ERROR_EMAILS = config['celery'].get('send_task_error_emails', True)
+EMAIL_HOST = config['email'].get('host', 'localhost')
+EMAIL_PORT = config['email'].get('port', 25)
+SERVER_EMAIL = "celery@" + socket.gethostname()
+
+
+# only define user/password if provided
+# user = config['email'].get('user', '')
+# password = config['email'].get('pass', '')
+# if user:
+#     EMAIL_HOST_USER = user
+# if password:
+#     EMAIL_HOST_PASSWORD = password
+
+# convert dictionary required by JSON-formatted server.cfg to list of (name, email) tuples required by Celery,
+# also converting from the JSON Unicode to ASCII to avoid problems with sending email.
+admins_dict_temp = config['site'].get('admins', [])
+recipients_tuple_list = []
+force_ascii=True
+for raw_name in admins_dict_temp:
+    raw_email = admins_dict_temp[raw_name]
+
+    formatted_email = ''
+    if force_ascii:
+        ascii_name = raw_name.encode('ascii', 'replace')
+        ascii_email = raw_email.encode('ascii', 'replace')
+        recipients_tuple_list.append((ascii_name, ascii_email))
+    else:
+        recipients_tuple_list.append((raw_name, raw_email))
+ADMINS = recipients_tuple_list  # set value required by Celery (caps!)

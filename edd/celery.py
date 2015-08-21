@@ -28,8 +28,13 @@ RABBITMQ_PORT = config['rabbitmq'].get('port')
 EDD_VHOST = config['rabbitmq'].get('edd_vhost')
 BROKER_URL = 'amqp://' + EDD_RABBITMQ_USERNAME + ':' + EDD_RABBITMQ_PASSWORD + '@' + RABBITMQ_HOST + ':' + RABBITMQ_PORT + '/' + EDD_VHOST
 
-# inform Celery it's operating in the context of our Django project
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'edd.settings')
+# CONTRARY to the documentation, DON'T inform Celery it's operating in the context of our Django project...
+# For unknown reasons, this prevents error emails from getting through...event when the conflicted ADMINS
+# parameter is undefined in the Django settings.py (though possible still getting a default value from Django and silently causing a problem).
+# With our configuration files separated out from the Django ones (again, contrary to the recommendation), it's unclear
+# in the docementation whether this setting would provide any other benefit anyway. If ADMIN is the problem, its value is displayed
+# identically in Flower either way (working or broken).
+# os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'edd.settings')
 
 # set up a Celery "app" for use by EDD. A Celery "app" is just an unfortunately-named instance of the Celery API,
 # This instance defines EDD's interface will use to interface with Celery.
