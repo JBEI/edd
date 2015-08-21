@@ -79,13 +79,17 @@ class MultiAutocompleteWidget(AutocompleteWidget):
         if isinstance(value, BaseManager):
             # delegate decompress for individual items
             values = map(super(MultiAutocompleteWidget, self).decompress, value.all())
-            # zip together into array of two values
+            # zip together into array of two value-arrays
             values = zip(*values)
-            # join by the separator string
-            return [
-                self._separator.join(map(str, values[0])),
-                self._separator.join(map(str, values[1])),
-                ]
+            if len(values):
+                # join by the separator string
+                return [
+                    self._separator.join(map(str, values[0])),
+                    self._separator.join(map(str, values[1])),
+                    ]
+            else:
+                # there are no values, return "empty" structure
+                return [ '', None ]
         return super(MultiAutocompleteWidget, self).decompress(value)
 
     def render(self, name, value, attrs=None):
