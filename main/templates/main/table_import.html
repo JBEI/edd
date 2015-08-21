@@ -7,6 +7,8 @@
     <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/lib/jquery-ui/jquery-ui.min.js' %}"></script>
+    <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/jquery-ui/jquery-ui.min.css' %}" />
     <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.crosshair.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.resize.js' %}"></script>
@@ -22,7 +24,7 @@
 <!-- some page-specific code -->
 <script type="text/javascript">
 var ATData = {}; // this needs to be declared before loading AssayTableData.js!
-var EDDData = { }; // this needs to be declared before loading Autocomplete.js!
+var EDDData = {};
 EDDData.currentUserID = {{ user.pk }};
 var atdata_url = "/study/{{ study.id }}/assaydata";
 
@@ -56,21 +58,17 @@ $(window).load(function () {
     $('.disclose').find('a.discloseLink').on('click', disclose);
     // Populate ATData and EDDData objects via AJAX calls
     jQuery.ajax(atdata_url, {
-        "success" : function (data, textStatus, response) {
+        "success": function(data) {
             ATData = data.ATData;
-            for (var keyname in data.EDDData) {
-                EDDData[keyname] = data.EDDData[keyname];
-            }
+            $.extend(EDDData, data.EDDData);
             EDDATD.prepareIt();
-            EDDAutoComplete.initializeAllPageElements();
         }
     }).fail(function (x, s, e) {
         alert(s);
     });
 });
 </script>
- 
-  <script type="text/javascript" src="{% static 'main/js/Autocomplete.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/autocomplete2.js' %}"></script>
   <script type="text/javascript" src="{% static 'main/js/AssayTableData.js' %}"></script>
   <script type="text/javascript" src="{% static 'main/js/AssayTableDataGraphing.js' %}"></script>
 
@@ -87,8 +85,6 @@ $(window).load(function () {
 {% endblock body_title %}
 
 {% block content %}
-
-{% include "main/include_messages.html" %}
 
 <form method="post" id="assayTableForm" action="/study/{{ study.id }}/import">
 {% csrf_token %}
@@ -396,32 +392,15 @@ at how the pulldowns should be set, but you may need to tweak it.</p>
       <td>
         <p>Metabolite Type for all data:</p>
       </td><td>
-        <input  class="autocomplete" type="text" autocomplete="off"
-            autocompletetype="measurementcompartment"
-            size="4"
-            autocompletevalue="masterMCompValue"
-            name="masterMComp"
-            id="masterMComp"
-            value=""
-            style="margin-right: 2px; ">
+        <input class="autocomp" type="text" size="4" name="masterMComp" id="masterMComp"
+            value="" style="margin-right: 2px;">
         <input type="hidden" id="masterMCompValue" name="masterMCompValue" value="0">
       </td><td>
-        <input  class="autocomplete" type="text" autocomplete="off"
-            autocompletetype="metabolite"
-            size="45"
-            autocompletevalue="masterMTypeValue"
-            name="masterMType"
-            id="masterMType"
-            value=""
-            style="margin-right: 2px;">
+        <input class="autocomp" type="text" size="45" name="masterMType" id="masterMType"
+            value="" style="margin-right: 2px;">
         <input type="hidden" id="masterMTypeValue" name="masterMTypeValue" value="0">
       </td><td>
-        <input  class="autocomplete" type="text" autocomplete="off"
-            autocompletetype="units"
-            size="15"
-            autocompletevalue="masterMUnitsValue"
-            name="masterMUnits"
-            id="masterMUnits"
+        <input class="autocomp" type="text" size="15" name="masterMUnits" id="masterMUnits"
             value="">
         <input type="hidden" id="masterMUnitsValue" name="masterMUnitsValue" value="0">
       </td>
@@ -455,10 +434,10 @@ at how the pulldowns should be set, but you may need to tweak it.</p>
 </div>
 
 <input type="hidden" id="jsonoutput" name="jsonoutput" />
-
-  <textarea class="dataTextArea" rows="5" style="width:98%;margin:10px;" id="jsondebugarea" name="jsondebugarea"></textarea>
-
 <input type="hidden" name="studyID" value="{{ study.id }}"/>
 </form>
+
+
+  <textarea class="dataTextArea" rows="5" style="width:98%;margin:10px;" id="jsondebugarea" name="jsondebugarea"></textarea>
 
 {% endblock content %}

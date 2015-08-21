@@ -16,21 +16,22 @@ def import_assay_table_data(study, user, post_data, update):
     """
     assert study.user_can_write(user)
     assert (user.id == update.mod_by.id)
-    json_data = post_data["jsonoutput"]
+    json_data = post_data.get("jsonoutput", '[]')
     data_series = json.loads(json_data)
-    data_layout = post_data['datalayout']
-    master_protocol = post_data['masterProtocol']
+    data_layout = post_data.get('datalayout', None)
+    master_protocol = post_data.get('masterProtocol', None)
     protocol = Protocol.objects.get(pk=master_protocol)
-    replace = (post_data['writemode'] == "r")
+    replace = (post_data.get('writemode', None) == "r")
     n_added = 0
     found_usable_index = 0
-    master_compartment_id = post_data['masterMCompValue']
-    master_meas_type_id = post_data['masterMTypeValue']
-    master_meas_units_id = post_data['masterMUnitsValue']
+    master_compartment_id = post_data.get('masterMCompValue', None)
+    master_meas_type_id = post_data.get('masterMTypeValue', None)
+    master_meas_units_id = post_data.get('masterMUnitsValue', None)
     valid_master_timestamp = False
-    master_timestamp = post_data['masterTimestamp']
+    master_timestamp = post_data.get('masterTimestamp')
     if (master_timestamp.isdigit()) :
         valid_master_timestamp = True
+    print("import_assay_table_data got to init stage")
     # Attepmt to set a 'hasNothingToImport' flag for later reference.
     for u in data_series:
         udata = u.get('data', [])
@@ -41,6 +42,7 @@ def import_assay_table_data(study, user, post_data, update):
         umeta = u.get('metadata', {})
         if len(udata) == 0 and len(umeta) == 0:
             u['nothing_to_import'] = True
+    print("import_assay_table_data got to first pass through data")
     # If the list of parsed data sets contains even one valid reference to an
     # assay ID or a 'new' Assay keyword, we should not use the master Assay
     # value, and instead report errors if any data set contains a blank Assay
@@ -57,7 +59,7 @@ def import_assay_table_data(study, user, post_data, update):
     lines_for_assays = {}
     for u in data_series:
         assay_index = u['assay']
-        if (not assay_index) :
+        if not assay_index:
             continue
         assay_id = post_data.get("disamAssay%s" % assay_index, None)
         if not assay_id:
@@ -114,15 +116,16 @@ def import_assay_table_data(study, user, post_data, update):
             new_assay_name = line.name + "-" + str(line.assay_set.count() + 1)
         assay = line.assay_set.create(
             name=new_assay_name,
-            protocol=master_protocol,
+            protocol=protocol,
             experimenter=user)
         # Finally we've got everything resolved
         resolved_disambiguation_assays[assay_index] = assay
         lines_for_assays[assay.id] = line
+    print("import_assay_table_data got to second pass through data")
     master_assay_id = post_data.get('masterAssay', None)
     master_assay = None
     if use_master_assay:
-        master_line_id = post_data['masterLine']
+        master_line_id = post_data.get('masterLine', None)
         if not master_assay_id:
             raise UserWarning("Did you forget to specify a master assay?")
         elif master_assay_id == "new":
@@ -170,12 +173,11 @@ def import_assay_table_data(study, user, post_data, update):
             meta_type_id = post_data.get("disamMetaHidden" + md_label, None)
             if meta_type_id:
                 all_seen_metadata_types[md_label] = meta_type_id
+    print("import_assay_table_data got to third pass through data")
     # Now we take our last trek through the sets and import the data...
-    current_genes_by_name = GeneIdentifier.by_name()
-    current_proteins_by_name = MeasurementType.proteins_by_name()
     # This is used to display a number in the log, for each data set being
     # imported
-    fake_index = 1
+    fake_index = 0
     # XXX INPUTROW block in AssayTableData.cgi
     mu_t = MeasurementUnit.objects.get(unit_name="hours")
     for u in data_series:
@@ -188,10 +190,11 @@ def import_assay_table_data(study, user, post_data, update):
             setname = "set %s" % (parsing_index + 1)
         fake_index += 1
         data = u.get('data', [])
+        print("import_assay_table_data processing item #%s" % fake_index)
         # If we saw no array of data, check and see if 'singleData' is set,
         # and if so, push it onto the array along with the master timestamp
         # (if sensibly defined).
-        if len(data) < 1 and u['singleData']:
+        if len(data) == 0 and u['singleData']:
             if valid_master_timestamp:
                 data.append( [ master_timestamp, u['singleData'] ] )
             elif not warn_about_master_timsetamp:
@@ -214,7 +217,7 @@ def import_assay_table_data(study, user, post_data, update):
         for (x,y) in data:
             # If even one of the values looks like a carbon ratio, treat them
             # all as such.
-            if (y is not None) and ("/" in y):
+            if (y is not None) and ("/" in y or ":" in y):
                 mtype_format = 1
                 break
         if data_layout == "mdv":
@@ -249,6 +252,7 @@ def import_assay_table_data(study, user, post_data, update):
                 if md_type:
                     assay.meta_store[md_type.pk] = mdval
             assay.save()
+    print("import_assay_table_data is done")
     return n_added
 
 def iatd_handle_data(data, layout, meas_type_id, setname, meas_units_id, assay,
@@ -270,8 +274,7 @@ def iatd_handle_data(data, layout, meas_type_id, setname, meas_units_id, assay,
             meas_type = MeasurementType.objects.get(id=meas_type_id)
         except MeasurementType.DoesNotExist:
             warnings.warn(("Cannot add %d data points from %s because "+
-                "measurement type %s does not exist.") % (len(data),
-                setname))
+                "measurement type %s does not exist.") % (len(data), setname, meas_type_id))
             return n_added
     elif layout == "tr":
         # If we're in transcription mode, we first attempt to look up the

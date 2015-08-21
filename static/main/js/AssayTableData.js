@@ -1492,7 +1492,7 @@ EDDATD = {
                     aTd = aRow.insertCell();
                     aDiv = $('<div>').text(uName).appendTo(aTd);
                     ['compObj', 'typeObj', 'unitsObj'].forEach(function (auto) {
-                        var cell = $(aTd.insertCell()).addClass('disamDataCell');
+                        var cell = $(aRow.insertCell()).addClass('disamDataCell');
                         disamRow[auto] = EDD_auto.create_autocomplete(cell);
                     });
                     EDDATD.Disam.measurementObjSets[uName] = disamRow;
@@ -1906,19 +1906,17 @@ EDDATD = {
         // For example, a user should be free to change "merge" to "replace" without having
         // their edits in Step 2 erased.
         $("#masterProtocol").change(EDDATD.changedMasterProtocol);
-        var reProcessOnClick = ['#stdlayout', '#trlayout', , '#prlayout', '#mdvlayout', '#rawdataformatp'];
+        var reProcessOnClick = ['#stdlayout', '#trlayout', '#prlayout', '#mdvlayout', '#rawdataformatp'];
         // Using "change" for these because it's more efficient AND because it works around an irritating Chrome inconsistency
         // For some of these, changing them shouldn't actually affect processing until we implement
         // an overwrite-checking feature or something similar
         var reDoLastStepOnChange = ['#masterAssay', '#masterLine', '#masterMComp', '#masterMType', '#masterMUnits'];
-        for (var x = 0; x < reProcessOnClick.length; x++) {
-            var n = reProcessOnClick[x];
-            $(n).click(EDDATD.queueProcessImportSettings);
-        }
-        for (var x = 0; x < reDoLastStepOnChange.length; x++) {
-            var n = reDoLastStepOnChange[x];
-            $(n).change(EDDATD.changedAMasterPulldown);
-        }
+        $(reProcessOnClick.join(',')).on('click', EDDATD.queueProcessImportSettings);
+        $(reDoLastStepOnChange.join(',')).on('change', EDDATD.changedAMasterPulldown);
+        // enable autocomplete on statically defined fields
+        EDD_auto.setup_field_autocomplete('#masterMComp', 'MeasurementCompartment');
+        EDD_auto.setup_field_autocomplete('#masterMType', 'Metabolite', EDDData.MetaboliteTypes || {});
+        EDD_auto.setup_field_autocomplete('#masterMUnits', 'MeasurementUnit');
         $('#ignoreGaps').click(EDDATD.clickedOnIgnoreDataGaps);
         $('#transpose').click(EDDATD.clickedOnTranspose);
         EDDATD.changedMasterProtocol(); //  Since the initial masterProtocol value is zero, we need to manually trigger this:

@@ -1121,15 +1121,16 @@ class Assay(EDDObject):
         return json_dict
 
 
-class MeasurementCompartment (object) :
+class MeasurementCompartment(object):
     UNKNOWN, INTRACELLULAR, EXTRACELLULAR = range(3)
     short_names = ["", "IC", "EC"]
     names = ["", "Intracellular/Cytosol (Cy)", "Extracellular"]
-    GROUP_CHOICE = ( (str(i), cn) for (i,cn) in enumerate(names) )
+    GROUP_CHOICE = [ (str(i), cn) for (i,cn) in enumerate(names) ]
 
-class MeasurementFormat (object) :
-    FORMAT_CHOICE = ( str(i) for i in range(3) )
-    SCALAR, VECTOR, GRID = FORMAT_CHOICE
+class MeasurementFormat(object):
+    SCALAR, VECTOR, GRID = range(3)
+    names = [ 'scalar', 'vector', 'grid', ]
+    FORMAT_CHOICE = [ (str(i), n) for i,n in enumerate(names) ]
 
 class Measurement(models.Model):
     """

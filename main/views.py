@@ -528,7 +528,6 @@ def study_import_table (request, study) :
     model = Study.objects.get(pk=study)
     # FIXME filter protocols?
     protocols = Protocol.objects.all()
-    messages = {}
     post_contents = []
     if (request.method == "POST"):
         # print stuff for debug
@@ -538,12 +537,12 @@ def study_import_table (request, study) :
             result = main.data_import.import_assay_table_data(
                     model, request.user, request.POST, Update.load_update())
         except ValueError as e:
-            messages["error"] = unicode(e)
+            print("ERROR!!! %s" % e)
+            messages.error(request, e)
     return render_to_response("main/table_import.html",
         dictionary={
             "study" : model,
             "protocols" : protocols,
-            "message" : messages,
             "post_contents" : "\n".join(post_contents), # XXX DEBUG
         },
         context_instance=RequestContext(request))
@@ -978,7 +977,8 @@ def search (request) :
         return JsonResponse({ "rows": rows })
     elif model_name == "MeasurementCompartment":
         # Always return the full set of options; no search needed
-        return [ { 'id': c[0], 'name': c[1] } for c in MeasurementCompartment.GROUP_CHOICE ]
+        rows = [ { 'id': c[0], 'name': c[1] } for c in MeasurementCompartment.GROUP_CHOICE ]
+        return JsonResponse({ "rows": rows })
     else:
         Model = getattr(main.models, model_name)
         # gets all the direct field names that can be filtered by terms
