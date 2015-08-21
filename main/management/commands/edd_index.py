@@ -17,8 +17,12 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         User = get_user_model()
+        print("Clearing user index")
+        self.user_solr.clear()
         print("Indexing users")
         self.user_solr.update(map(self._copy_groups, User.objects.select_related('userprofile')))
+        print("Clearing studies index")
+        self.study_solr.clear()
         print("Indexing studies")
         self.study_solr.update(Study.objects.select_related(
             'updated__mod_by__userprofile',
