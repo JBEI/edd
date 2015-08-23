@@ -15,19 +15,18 @@ EDDATD = {
         w: 0,
         l: 0,
         transpose: 0,
-        // If the user deliberately chose to transpose or not transpose, disable the attempt to auto-determine transposition.
+        // If the user deliberately chose to transpose or not transpose, disable the attempt
+        // to auto-determine transposition.
         userClickedOnTranspose: 0,
-        // Whether to interpret the pasted data row-wise or column-wise, when importing either measurements or metadata.
+        // Whether to interpret the pasted data row-wise or column-wise, when importing
+        // either measurements or metadata.
         ignoreDataGaps: 0,
         userClickedOnIgnoreDataGaps: 0
     },
     // Used to assemble and display the table components in Step 3
     Table: {
-        cornerCells: [],
-        rowPulldownCells: [],
         rowLabelCells: [],
         colCheckboxCells: [],
-        rowCheckboxCells: [],
         colObjects: [],
         dataCells: [],
         // We keep a single flag for each data point [y,x]
@@ -37,28 +36,32 @@ EDDATD = {
         activeRowFlags: [],
         activeFlags: [],
         // Arrays for the pulldown menus on the left side of the table.
-        // These pulldowns are used to specify the data type - or types - contained in each row of the pasted data.
+        // These pulldowns are used to specify the data type - or types - contained in each
+        // row of the pasted data.
         pulldownObjects: [],
         pulldownSettings: [],
-        // We also keep a set of flags to track whether a pulldown was changed by a user and will not be recalculated.
+        // We also keep a set of flags to track whether a pulldown was changed by a user and
+        // will not be recalculated.
         pulldownUserChangedFlags: []
     },
     graphEnabled: 1,
     graphRefreshTimerID: 0,
-    // Data structures pulled from the grid and composed into sets suitable for handing to the EDD server
+    // Data structures pulled from the grid and composed into sets suitable for handing to
+    // the EDD server
     Sets: {
         parsedSets: [],
         uniqueLineAssayNames: [],
         uniqueMeasurementNames: [],
         uniqueMetadataNames: [],
-        seenAnyTimestamps: 0 // A flag to indicate whether we have seen any timestamps specified in the import data
+        // A flag to indicate whether we have seen any timestamps specified in the import data
+        seenAnyTimestamps: 0
     },
     // Storage area for disambiguation-related UI widgets and information
     Disam: {
         // These objects hold string keys that correspond to unique names found during parsing.
-        // The string keys point to existing autocomplete objects created specifically for those strings.
-        // As the disambiguation section is destroyed and remade, any selections the user has already set
-        // will persevere.
+        // The string keys point to existing autocomplete objects created specifically for
+        // those strings. As the disambiguation section is destroyed and remade, any selections
+        // the user has already set will persevere.
         // For disambuguating Assays/Lines
         assayLineObjSets: {},
         currentlyVisibleAssayLineObjSets: [],
@@ -77,504 +80,324 @@ EDDATD = {
         metabolite: {}
     },
     changedMasterProtocol: function () {
-        var masterProtocolEl = document.getElementById("masterProtocol");
-        if (masterProtocolEl == null) {
+        var protocolIn, assayIn, currentAssays;
+        // check master protocol
+        protocolIn = $('#masterProtocol');
+        if (protocolIn.length === 0) {
             return;
         }
-        var mp = masterProtocolEl.value;
-        // If EDDATD.masterProtocol is not set, we need to run through this configuration
-        // regardless of the value of the pulldown.
-        if (!EDDATD.masterProtocol) {
-            EDDATD.masterProtocol = mp;
-        }
-        else if (EDDATD.masterProtocol == mp) {
+        if (EDDATD.masterProtocol === protocolIn.val()) {
+            // no change
             return;
         }
-        EDDATD.masterProtocol = mp;
-        var masterAssayEl = document.getElementById("masterAssay");
-        if (masterAssayEl == null) {
+        EDDATD.masterProtocol = protocolIn.val();
+        // check for master assay
+        assayIn = $('#masterAssay').empty();
+        if (assayIn.length === 0) {
             return;
         }
-        while (masterAssayEl.firstChild) {
-            masterAssayEl.removeChild(masterAssayEl.firstChild);
+        $('<option>').text('(Create New)').appendTo(assayIn).val('new').prop('selected', true);
+        currentAssays = ATData.existingAssays[protocolIn.val()] || [];
+        currentAssays.forEach(function (id) {
+            var assay = EDDData.Assays[id], line = EDDData.Lines[assay.lid], protocol = EDDData.Protocols[assay.pid];
+            $('<option>').appendTo(assayIn).val('' + id).text([
+                line.name,
+                protocol.name,
+                assay.name
+            ].join('-'));
+        });
+        if ($('#masterLineSpan').removeClass('off').length > 0) {
+            EDDATD.queueProcessImportSettings();
         }
-        var aOPT = document.createElement("option");
-        aOPT.setAttribute('value', 'new');
-        // We'll always start with the Create New option when changing Protocols
-        aOPT.appendChild(document.createTextNode('(Create New)'));
-        aOPT.setAttribute('selected', 'selected');
-        masterAssayEl.appendChild(aOPT);
-        for (var o in ATData.existingAssays[mp]) {
-            var id = ATData.existingAssays[mp][o];
-            aOPT = document.createElement("option");
-            aOPT.setAttribute('value', id);
-            var lid = EDDData.Assays[id].lid;
-            var pid = EDDData.Assays[id].pid;
-            var n = [
-                EDDData.Lines[lid].name,
-                EDDData.Protocols[pid].name,
-                EDDData.Assays[id].name
-            ].join('-');
-            aOPT.appendChild(document.createTextNode(n));
-            masterAssayEl.appendChild(aOPT);
-        }
-        var masterLineSpan = document.getElementById('masterLineSpan');
-        if (masterLineSpan == null) {
-            return;
-        }
-        $(masterLineSpan).removeClass('off');
-        EDDATD.queueProcessImportSettings();
     },
     queueProcessImportSettings: function () {
         // Start a timer to wait before calling the routine that reparses the import settings.
-        // This way we're calling the reparse just once, even when we get multiple cascaded events that require it.
+        // This way we're calling the reparse just once, even when we get multiple cascaded
+        // events that require it.
         if (EDDATD.processImportSettingsTimerID) {
             clearTimeout(EDDATD.processImportSettingsTimerID);
         }
-        EDDATD.processImportSettingsTimerID = setTimeout("EDDATD.processImportSettings()", 5);
+        EDDATD.processImportSettingsTimerID = setTimeout(EDDATD.processImportSettings.bind(EDDATD), 5);
     },
     processImportSettings: function () {
-        var mainRadioSTD = document.getElementById("stdlayout");
-        var mainRadioTR = document.getElementById("trlayout");
-        var mainRadioPR = document.getElementById("prlayout");
-        var mainRadioMDV = document.getElementById("mdvlayout");
-        var ignoreGapsEl = document.getElementById("ignoreGaps");
-        var transposeEl = document.getElementById("transpose");
-        var graphDiv = document.getElementById("graphDiv");
-        var rawdataformatp = document.getElementById("rawdataformatp");
-        // We need all of these, or the page is b0rken.
-        if (!mainRadioSTD || !mainRadioTR || !mainRadioMDV || !ignoreGapsEl || !transposeEl || !graphDiv || !rawdataformatp) {
+        var stdLayout, trLayout, prLayout, mdvLayout, ignoreGaps, transpose, graph, rawFormat;
+        stdLayout = $('#stdlayout');
+        trLayout = $('#trlayout');
+        prLayout = $('#prlayout');
+        mdvLayout = $('#mdvlayout');
+        ignoreGaps = $('#ignoreGaps');
+        transpose = $('#transpose');
+        graph = $('#graphDiv');
+        rawFormat = $('#rawdataformatp');
+        // all need to exist, or page is broken
+        if ([stdLayout, trLayout, prLayout, mdvLayout, ignoreGaps, transpose, graph, rawFormat].every(function (item) { return item.length !== 0; })) {
             return;
         }
-        if (mainRadioSTD.checked) {
+        if (stdLayout.prop('checked')) {
             EDDATD.interpretationMode = 'std';
-            $(graphDiv).removeClass('off'); // By default we will attempt to show a graph
+            graph.removeClass('off'); // By default we will attempt to show a graph
             EDDATD.graphEnabled = 1;
         }
-        else if (mainRadioTR.checked) {
+        else if (trLayout.prop('checked')) {
             EDDATD.interpretationMode = 'tr';
-            $(graphDiv).addClass('off');
+            graph.addClass('off');
             EDDATD.graphEnabled = 0;
         }
-        else if (mainRadioPR.checked) {
+        else if (prLayout.prop('checked')) {
             EDDATD.interpretationMode = 'pr';
-            $(graphDiv).addClass('off');
+            graph.addClass('off');
             EDDATD.graphEnabled = 0;
         }
-        else if (mainRadioMDV.checked) {
+        else if (mdvLayout.prop('checked')) {
             EDDATD.interpretationMode = 'mdv';
-            $(graphDiv).addClass('off');
+            graph.addClass('off');
             EDDATD.graphEnabled = 0;
             // We neither ignore gaps, nor transpose, for MDV documents
-            ignoreGapsEl.checked = false;
-            transposeEl.checked = false;
+            ignoreGaps.prop('checked', false);
+            transpose.prop('checked', false);
             // JBEI MDV format documents are always pasted in from Excel, so they're always tab-separated
-            rawdataformatp.selectedIndex = 0;
+            rawFormat.val('tab');
             EDDATD.Table.pulldownSettings = [1, 5]; // A default set of pulldown settings for this mode
         }
         else {
             // If none of them are checked - WTF?  Don't parse or change anything.
             return;
         }
-        EDDATD.Grid.ignoreDataGaps = ignoreGapsEl.checked ? 1 : 0;
-        EDDATD.Grid.transpose = transposeEl.checked ? 1 : 0;
-        // Blanking this out is sufficient to re-enable all the flags
-        //  EDDATD.Table.activeFlags = [];
+        EDDATD.Grid.ignoreDataGaps = ignoreGaps.prop('checked');
+        EDDATD.Grid.transpose = transpose.prop('checked');
         EDDATD.parseAndDisplayText();
     },
     // This gets called when there is a paste event.
     pastedRawData: function () {
         // We do this using a timeout so the rest of the paste events fire, and get the pasted result.
         window.setTimeout(function () {
-            if (EDDATD.interpretationMode == "mdv") {
-                return;
-            }
-            var textData = document.getElementById("textData");
-            var val = textData.value;
-            var rawdataformatp = document.getElementById("rawdataformatp");
-            if (!rawdataformatp) {
-                return;
-            }
-            // If there are more tab characters than commas in the text
-            if (val.split("\t").length >= val.split(",").length) {
-                rawdataformatp.selectedIndex = 0;
-            }
-            else {
-                rawdataformatp.selectedIndex = 1;
+            if (EDDATD.interpretationMode !== "mdv") {
+                var text = $('#textData').val() || '', test;
+                test = text.split('\t').length >= text.split(',').length;
+                $('#rawdataformatp').val(test ? 'tab' : 'csv');
             }
         }, 1);
     },
-    parseAndDisplayText: function () {
-        EDDATD.Grid.data = [];
-        EDDATD.Grid.rowMarkers = [];
-        var iMode = EDDATD.interpretationMode;
-        var delimiter = "\t";
-        var rawdataformatp = document.getElementById("rawdataformatp");
-        if (!rawdataformatp) {
-            console.log("Can't find data format pulldown");
-            return;
-        }
-        // If we're in "mdv" mode, lock the delimiter to tabs
-        if (iMode == "mdv") {
-            rawdataformatp.selectedIndex = 0;
-        }
-        if (rawdataformatp.selectedIndex == 1) {
-            delimiter = ",";
-        }
-        var widestRow = 0;
-        var rowCount = 0;
-        var textData = document.getElementById("textData");
-        var data = textData.value;
-        var unfilteredrows = data.split("\n");
-        var rows = [];
-        var longestInitialRow = 0;
-        for (var y in unfilteredrows) {
-            var cells = unfilteredrows[y].split(delimiter);
-            if (cells.length > longestInitialRow) {
-                longestInitialRow = cells.length;
+    parseRawInput: function (delimiter, mode) {
+        var rawText, longestRow, rows, multiColumn;
+        rawText = $('#textData').val();
+        rows = [];
+        // find the highest number of columns in a row
+        longestRow = rawText.split(/[ \r]*\n/).reduce(function (prev, rawRow) {
+            var row;
+            if (rawRow !== '') {
+                row = rawRow.split(delimiter);
+                rows.push(row);
+                return Math.max(prev, row.length);
             }
-        }
-        // If we have only one column of data - no separators anywhere - we should
-        // assume that the contents of the column is data, not a bunch of empty labels.
-        // This will affect how we process things later on.
-        var multiColumn = 0;
-        if (longestInitialRow > 1) {
-            multiColumn = 1;
-        }
-        for (var y in unfilteredrows) {
-            if (unfilteredrows[y] != "") {
-                var cells = unfilteredrows[y].split(delimiter);
-                // Only use the row if it has at least one value on it.
-                var c = cells.length;
-                if (c > 0) {
-                    rows.push(unfilteredrows[y]);
+            return prev;
+        }, 0);
+        // pad out rows so it is rectangular
+        if (mode === 'std' || mode === 'tr' || mode === 'pr') {
+            rows.forEach(function (row) {
+                while (row.length < longestRow) {
+                    row.push('');
                 }
-                if (c > widestRow) {
-                    widestRow = c;
-                }
+            });
+        }
+        return {
+            'input': rows,
+            'columns': longestRow
+        };
+    },
+    inferTransposeSetting: function (rows) {
+        // The most straightforward method is to take the top row, and the first column,
+        // and analyze both to see which one most likely contains a run of timestamps.
+        // We'll also do the same for the second row and the second column, in case the
+        // timestamps are underneath some other header.
+        var arraysToAnalyze, arraysScores, setTranspose;
+        // Note that with empty or too-small source data, these arrays will either remain
+        // empty, or become 'null'
+        arraysToAnalyze = [
+            rows[0] || [],
+            rows[1] || [],
+            (rows || []).map(function (row) { return row[0]; }),
+            (rows || []).map(function (row) { return row[1]; })
+        ];
+        arraysScores = arraysToAnalyze.map(function (row, i) {
+            var score = 0, prev, nnPrev;
+            if (!row || row.length === 0) {
+                return 0;
             }
+            prev = nnPrev = undefined;
+            row.forEach(function (value, j, r) {
+                var t;
+                if (value) {
+                    t = parseFloat(value.replace(/,/g, ''));
+                }
+                if (!isNaN(t)) {
+                    if (!isNaN(prev) && t > prev) {
+                        score += 2;
+                    }
+                    else if (!isNaN(nnPrev) && t > nnPrev) {
+                        score += 1;
+                    }
+                    nnPrev = t;
+                }
+                prev = t;
+            });
+            return score / row.length;
+        });
+        // If the first row and column scored differently, judge based on them.
+        // Only if they scored the same do we judge based on the second row and second column.
+        if (arraysScores[0] !== arraysScores[2]) {
+            setTranspose = arraysScores[0] > arraysScores[2];
         }
-        if (iMode == 'std' || iMode == 'tr' || iMode == 'pr') {
-            // The first thing we're going to do is turn the text into a big grid of data.
-            // We're not going to respect the transposition setting here - we may be trying to
-            // auto-set it later.
-            var tempData = [];
-            for (var ri = 0; ri < rows.length; ri++) {
-                var cells = rows[ri].split(delimiter);
-                for (var ci = 0; ci < (widestRow - cells.length); ci++) {
-                    cells.push(null);
-                }
-                tempData.push(cells);
-            }
-            rowCount = tempData.length;
-            // If the user hasn't deliberately chosen a setting for 'transpose', we will
-            // do some analysis to attempt to guess which orientation the data needs to have.
-            if (!EDDATD.Grid.userClickedOnTranspose) {
-                // The most straightforward method is to take the top row, and the first column,
-                // and analyze both to see which one most likely contains a run of timestamps.
-                // We'll also do the same for the second row and the second column, in case the
-                // timestamps are underneath some other header.
-                var arraysToAnalyze = [[], [], [], []];
-                var arraysScores = [0, 0, 0, 0];
-                // Note that with empty or too-small source data, these arrays will either remain empty, or become 'null'
-                arraysToAnalyze[0] = rows[0]; // First row
-                arraysToAnalyze[1] = rows[1]; // Second row
-                for (var ri = 0; ri < rowCount; ri++) {
-                    arraysToAnalyze[2].push(rows[ri][0]); // First column
-                    arraysToAnalyze[3].push(rows[ri][1]); // Second column
-                }
-                for (var ai = 0; ai < arraysToAnalyze.length; ai++) {
-                    var oneArray = arraysToAnalyze[ai];
-                    var score = 0;
-                    if (!oneArray) {
-                        continue;
-                    }
-                    if (oneArray.length < 1) {
-                        continue;
-                    }
-                    var previous = null;
-                    var previousNonNull = null;
-                    for (var i = 0; i < oneArray.length; i++) {
-                        var current = oneArray[i];
-                        if (current != null) {
-                            current = current.replace(/,/g, '');
-                            if (isNaN(parseFloat(current))) {
-                                current = null;
-                            }
-                            current = parseFloat(current);
-                        }
-                        if ((current != null) && (previous != null)) {
-                            // If the value increases relative to the one immediately before, award a point
-                            if (current > previous) {
-                                score++;
-                            }
-                        }
-                        else if ((current != null) && (previousNonNull != null)) {
-                            // Or, if the value increases after a gap, award half a point
-                            if (current > previous) {
-                                score = score + 0.5;
-                            }
-                        }
-                        previous = current;
-                        if (current != null) {
-                            previousNonNull = current;
-                        }
-                    }
-                    arraysScores[ai] = score / oneArray.length;
-                }
-                var transposeEl = document.getElementById("transpose");
-                // If the first row and column scored differently, judge based on them.
-                if (arraysScores[0] != arraysScores[2]) {
-                    if (arraysScores[0] > arraysScores[2]) {
-                        transposeEl.checked = true;
-                    }
-                    else {
-                        transposeEl.checked = false;
-                    }
-                }
-                else if (arraysScores[1] > arraysScores[3]) {
-                    transposeEl.checked = true;
+        else {
+            setTranspose = arraysScores[1] > arraysScores[3];
+        }
+        $('#transpose').prop('checked', setTranspose);
+        EDDATD.Grid.transpose = setTranspose;
+    },
+    inferGapsSetting: function () {
+        // Count the number of blank values at the end of each column
+        // Count the number of blank values in between non-blank data
+        // If more than three times as many as at the end, default to ignore gaps
+        var intra = 0, extra = 0;
+        EDDATD.Grid.data.forEach(function (row) {
+            var notNull = false;
+            // copy and reverse to loop from the end
+            row.slice(0).reverse().forEach(function (value) {
+                if (!value) {
+                    notNull ? ++extra : ++intra;
                 }
                 else {
-                    transposeEl.checked = false;
+                    notNull = true;
                 }
-                EDDATD.Grid.transpose = transposeEl.checked ? 1 : 0;
+            });
+        });
+        EDDATD.Grid.ignoreDataGaps = extra > (intra * 3);
+        $('#ignoreGaps').prop('checked', EDDATD.Grid.ignoreDataGaps);
+    },
+    inferActiveFlags: function () {
+        // An important thing to note here is that this data is in [y][x] format -
+        // that is, it goes by row, then by column, when referencing.
+        // This matches Grid.data and Table.dataCells.
+        var x, y;
+        for (x = 0; x < EDDATD.Grid.data[0].length; ++x) {
+            if (typeof EDDATD.Table.activeColFlags[x] === 'undefined') {
+                EDDATD.Table.activeColFlags[x] = true;
             }
-            // Now that that's done, move the data into Grid.data,
-            // splitting off a row or column into Grid.rowMarkers as needed,
-            // according to the Grid.transpose setting.
-            if (EDDATD.Grid.transpose) {
-                // The first row becomes the Y-markers as-is
-                EDDATD.Grid.rowMarkers = tempData.shift();
-                rowCount--;
-                for (var ci = 0; ci < widestRow; ci++) {
-                    EDDATD.Grid.data[ci] = [];
-                    for (var ri = 0; ri < rowCount; ri++) {
-                        EDDATD.Grid.data[ci][ri] = tempData[ri][ci];
-                    }
+        }
+        for (y = 0; y < EDDATD.Grid.data.length; ++y) {
+            if (typeof EDDATD.Table.activeRowFlags[y] === 'undefined') {
+                EDDATD.Table.activeRowFlags[y] = true;
+            }
+            if (typeof EDDATD.Table.activeFlags[y] === 'undefined') {
+                EDDATD.Table.activeFlags[y] = [];
+            }
+            for (x = 0; x < EDDATD.Grid.data[0].length; ++x) {
+                if (typeof EDDATD.Table.activeFlags[y][x] === 'undefined') {
+                    EDDATD.Table.activeFlags[y][x] = true;
                 }
-                // Don't forget to swap these!
-                widestRow = rowCount;
-                rowCount = EDDATD.Grid.data.length;
             }
-            else {
-                for (var ri = 0; ri < rowCount; ri++) {
-                    EDDATD.Grid.rowMarkers[ri] = tempData[ri][0];
-                    EDDATD.Grid.data[ri] = [];
-                    for (var ci = 1; ci < widestRow; ci++) {
-                        EDDATD.Grid.data[ri][ci - 1] = tempData[ri][ci];
-                    }
+        }
+    },
+    processMdv: function (input) {
+        var rows, colLabels, compounds, orderedComp;
+        rows = input.slice(0); // copy
+        // If this word fragment is in the first row, drop the whole row.
+        // (Ignoring a Q of unknown capitalization)
+        if (rows[0].join('').match(/uantitation/g)) {
+            rows.shift();
+        }
+        compounds = {};
+        rows.forEach(function (row) {
+            var first, marked, name, index;
+            first = row.shift();
+            // If we happen to encounter an occurrence of a row with 'Compound' in
+            // the first column, we treat it as a row of column identifiers.
+            if (first === 'Compound') {
+                colLabels = row;
+                return;
+            }
+            marked = first.split(' M = ');
+            if (marked.length === 2) {
+                name = marked[0];
+                index = parseInt(marked[1]);
+                if (!compounds[name]) {
+                    compounds[name] = { 'originalRows': {}, 'processedAssayCols': {} };
+                    orderedComp.push(name);
                 }
-                widestRow--; // Now every row is shorter by one column.
+                compounds[name].originalRows[index] = row.slice(0);
             }
-            // If the user hasn't deliberately chosen to ignore, or accept, gaps in the data,
-            // we will do a crude statistical analysis to try and guess which setting makes more sense.
-            if (!EDDATD.Grid.userClickedOnIgnoreDataGaps) {
-                // What we're going to do is try and count the number of blank values hanging off the
-                // end of each column, and count the number of blank values in between non-blank data
-                // in each column.  If we get more than three times as many hanging off the end, we'll
-                // choose to ignore gaps by default.  It's not an ideal analysis, but it's better than none.
-                // Note that this approach suffers a fair amount if we chose the wrong transposition orientation
-                // earlier.  (We're relying on sequences of data being oriented vertically here, not horizontally.)
-                var intraDataGaps = 0;
-                var extraDataGaps = 0;
-                for (var ri = 0; ri < rowCount; ri++) {
-                    var foundNonNullValue = 0;
-                    for (var ci = widestRow; ci > 0; ci--) {
-                        var v = EDDATD.Grid.data[ri][ci - 1];
-                        if ((v == null) || (v == '')) {
-                            if (!foundNonNullValue) {
-                                extraDataGaps++;
-                            }
-                            else {
-                                intraDataGaps++;
+        });
+        $.each(compounds, function (name, value) {
+            var indices;
+            // First gather up all the marker indexes given for this compound
+            indices = $.map(value.originalRows, function (_, index) { return parseInt(index); });
+            indices.sort(function (a, b) { return a - b; }); // sort ascending
+            // Run through the set of columnLabels above, assembling a marking number for each,
+            // by drawing - in order - from this collected row data.
+            colLabels.forEach(function (label, index) {
+                var parts, anyFloat;
+                parts = [];
+                anyFloat = false;
+                indices.forEach(function (ri) {
+                    var original, cell;
+                    original = value.originalRows[ri];
+                    cell = original[index];
+                    if (cell) {
+                        cell = cell.replace(/,/g, '');
+                        if (isNaN(parseFloat(cell))) {
+                            if (anyFloat) {
+                                parts.push('');
                             }
                         }
                         else {
-                            foundNonNullValue = 1;
+                            parts.push(cell);
                         }
                     }
-                }
-                var ignoreGapsEl = document.getElementById("ignoreGaps");
-                if (extraDataGaps > (intraDataGaps * 3)) {
-                    ignoreGapsEl.checked = true;
-                }
-                else {
-                    ignoreGapsEl.checked = false;
-                }
-                EDDATD.Grid.ignoreDataGaps = ignoreGapsEl.checked ? 1 : 0;
+                });
+                // Assembled a full carbon marker number, grab the column label, and place
+                // the marker in the appropriate section.
+                value.processedAssayCols[index] = parts.join('/');
+            });
+        });
+        // Start the set of row markers with a generic label
+        EDDATD.Grid.rowMarkers = ['Assay'];
+        // The first row is our label collection
+        EDDATD.Grid.data[0] = colLabels.slice(0);
+        // push the rest of the rows generated from ordered list of compounds
+        Array.prototype.push.apply(EDDATD.Grid.data, orderedComp.map(function (name) {
+            var compound, row, colLookup;
+            EDDATD.Grid.rowMarkers.push(name);
+            compound = compounds[name];
+            row = [];
+            colLookup = compound.procesedAssayCols;
+            // generate row cells by mapping column labels to processed columns
+            Array.prototype.push.apply(row, colLabels.map(function (_, index) { return colLookup[index] || ''; }));
+            return row;
+        }));
+    },
+    // A recursive function to populate a pulldown with optional optiongroups,
+    // and a default selection
+    // TODO options typed as RowPulldownOption[]
+    populatePulldown: function (select, options, value) {
+        options.forEach(function (option) {
+            if (typeof option[1] === 'number') {
+                $('<option>').text(option[0]).val(option[1]).prop('selected', option[1] === value).appendTo(select);
             }
-            for (var mi = 0; mi < rowCount; mi++) {
-                if (!EDDATD.Grid.rowMarkers[mi]) {
-                    EDDATD.Grid.rowMarkers[mi] = '?';
-                }
+            else {
+                EDDATD.populatePulldown($('<optgroup>').attr('label', option[0]).appendTo(select), option[1], value);
             }
-            for (var ri = 0; ri < rowCount; ri++) {
-                if (EDDATD.Table.pulldownUserChangedFlags[ri]) {
-                    continue;
-                }
-                EDDATD.Table.pulldownSettings[ri] = EDDATD.figureOutThisRowsDataType(EDDATD.Grid.rowMarkers[ri], EDDATD.Grid.data[ri]);
-            }
-        }
-        else if ((iMode == "mdv") && (rows.length > 1) && multiColumn) {
-            var fr = rows[0];
-            // If this word fragment is in the first row, drop the whole row. (Ignoring a Q of unknown capitalization)
-            if (fr.match('uantitation')) {
-                rows.shift();
-            }
-            var columnLabels = [];
-            var compoundsSeen = {};
-            var compoundNamesInOrderSeen = [];
-            for (var y in rows) {
-                var cells = rows[y].split(delimiter);
-                var first = cells.shift(); // Steal off the first cell
-                // If we happen to encounter an occurrence of a row with 'Compound' in the first column,
-                // we treat it as a row of column identifiers.
-                if (first == 'Compound') {
-                    columnLabels = cells;
-                    continue;
-                }
-                var firstBits = first.split(' M = ');
-                // We need exactly two pieces to come out of this split, or we can't parse the line.
-                if (firstBits.length != 2) {
-                    continue;
-                }
-                var compName = firstBits[0];
-                var markerNumber = parseInt(firstBits[1]);
-                if (typeof compoundsSeen[compName] == 'undefined') {
-                    var cStructure = {
-                        originalRows: {},
-                        processedAssayCols: {}
-                    };
-                    compoundsSeen[compName] = cStructure;
-                    compoundNamesInOrderSeen.push(compName);
-                }
-                compoundsSeen[compName].originalRows[markerNumber] = cells;
-            }
-            for (var c in compoundsSeen) {
-                var oneComp = compoundsSeen[c];
-                var origRows = oneComp.originalRows;
-                // First we'll gather up all the marker indexes we were given for this compound
-                var origRowIndexes = [];
-                for (var r in origRows) {
-                    origRowIndexes.push(r);
-                }
-                origRowIndexes.sort(function (a, b) {
-                    return a - b;
-                }); // Sort ascending
-                for (var cl = 0; cl < columnLabels.length; cl++) {
-                    var carbonMarkerParts = [];
-                    var foundAnyFloat = 0;
-                    for (var ri = 0; ri < origRowIndexes.length; ri++) {
-                        var rowIndex = origRowIndexes[ri];
-                        var origRow = origRows[rowIndex];
-                        var cm = origRow[cl];
-                        if (typeof cm != 'undefined') {
-                            if (cm != null) {
-                                cm = cm.replace(/,/g, ''); //  No commas, please
-                                if (isNaN(parseFloat(cm))) {
-                                    if (foundAnyFloat) {
-                                        carbonMarkerParts.push('');
-                                    }
-                                }
-                                else {
-                                    carbonMarkerParts.push(parseFloat(cm));
-                                    foundAnyFloat = 1;
-                                }
-                            }
-                        }
-                    }
-                    var carbonMarker = carbonMarkerParts.join('/');
-                    // Now that we've assembled a full carbon marker number, we grab the column label,
-                    // so we can place the marker in the appropriate section.
-                    oneComp.processedAssayCols[cl] = carbonMarker;
-                }
-            }
-            // Start the set of row markers with a generic label
-            EDDATD.Grid.rowMarkers = [];
-            EDDATD.Grid.rowMarkers[0] = 'Assay';
-            EDDATD.Grid.data[0] = [];
-            for (var cl = 0; cl < columnLabels.length; cl++) {
-                EDDATD.Grid.data[0][cl] = columnLabels[cl];
-            }
-            for (var cni = 0; cni < compoundNamesInOrderSeen.length; cni++) {
-                EDDATD.Grid.data[cni + 1] = [];
-                var cn = compoundNamesInOrderSeen[cni];
-                EDDATD.Grid.rowMarkers[cni + 1] = cn;
-                var oneComp = compoundsSeen[cn];
-                for (var cl = 0; cl < columnLabels.length; cl++) {
-                    EDDATD.Grid.data[cni + 1][cl] = oneComp.processedAssayCols[cl];
-                }
-                if (EDDATD.Table.pulldownSettings.length < (cni + 2)) {
-                    // If the pulldown array hasn't reached this far, give this row a default of 5
-                    EDDATD.Table.pulldownSettings[cni + 1] = 5;
-                }
-            }
-            widestRow = columnLabels.length;
-            rowCount = EDDATD.Grid.data.length;
-        }
-        EDDATD.Grid.w = widestRow;
-        EDDATD.Grid.l = rowCount;
-        for (var x = 0; x < widestRow; x++) {
-            if (typeof EDDATD.Table.activeColFlags[x] == 'undefined') {
-                EDDATD.Table.activeColFlags[x] = 1;
-            }
-        }
-        for (var y = 0; y < rowCount; y++) {
-            if (typeof EDDATD.Table.activeRowFlags[y] == 'undefined') {
-                EDDATD.Table.activeRowFlags[y] = 1;
-            }
-            if (typeof EDDATD.Table.activeFlags[y] == 'undefined') {
-                EDDATD.Table.activeFlags[y] = [];
-            }
-            for (var x = 0; x < widestRow; x++) {
-                if (typeof EDDATD.Table.activeFlags[y][x] == 'undefined') {
-                    EDDATD.Table.activeFlags[y][x] = 1;
-                }
-            }
-        }
-        // Construct table cell objects for the page, based on our extracted data
+        });
+    },
+    constructDataTable: function (mode) {
+        var controlCols, pulldownOptions, table, colgroup, body, row;
         EDDATD.Table.dataCells = [];
-        EDDATD.Table.cornerCells = [];
         EDDATD.Table.colCheckboxCells = [];
+        EDDATD.Table.colObjects = [];
         EDDATD.Table.rowLabelCells = [];
-        EDDATD.Table.rowPulldownCells = [];
         EDDATD.Table.rowCheckboxCells = [];
-        // The corner cells that fit in the upper left at the top of the Y column
-        var aTD;
-        for (var i = 0; i < 3; i++) {
-            // x and y are set to 0 because these cells are off the highlight grid
-            aTD = EDDATD.makeGridTD('ulCell' + i, '', 0, 0);
-            EDDATD.Table.cornerCells.push(aTD);
-        }
-        for (var i = 0; i < widestRow; i++) {
-            aTD = EDDATD.makeGridTD('colCBCell' + i, 'checkBoxCell', 1 + i, 0);
-            var aCB = document.createElement("input");
-            aCB.setAttribute('type', "checkbox");
-            aCB.setAttribute('id', "enableColumn" + i);
-            aCB.setAttribute('name', "enableColumn" + i);
-            aCB.setAttribute('value', (i + 1).toString());
-            if (EDDATD.Table.activeColFlags[i]) {
-                aCB.setAttribute('checked', "true");
-            }
-            aCB.setAttribute('onclick', "EDDATD.toggleTableColumn(this);");
-            aTD.appendChild(aCB);
-            EDDATD.Table.colCheckboxCells[i] = aTD;
-        }
-        var tablePulldownOptions = [
-            ['--', 0],
-            ['Entire Row Is...', [
-                ['Assay/Line Names', 1],
-                ['Metabolite Names', 2]
-            ]],
-            ['First Column Is...', [
-                ['Timestamp', 3],
-                ['Metadata Name', 4],
-                ['Metabolite Name', 5]
-            ]]
-        ];
-        if (iMode == 'tr') {
-            tablePulldownOptions = [
+        controlCols = ['checkbox', 'pulldown', 'label'];
+        if (mode === 'tr') {
+            pulldownOptions = [
                 ['--', 0],
                 ['Entire Row Is...', [
                     ['Gene Names', 10],
@@ -582,8 +405,8 @@ EDDATD = {
                 ]]
             ];
         }
-        if (iMode == 'pr') {
-            tablePulldownOptions = [
+        else if (mode === 'pr') {
+            pulldownOptions = [
                 ['--', 0],
                 ['Entire Row Is...', [
                     ['Assay/Line Names', 1],
@@ -593,129 +416,156 @@ EDDATD = {
                 ]]
             ];
         }
-        EDDATD.Table.pulldownObjects = []; // We don't want any lingering old objects in this
-        for (var i = 0; i < rowCount; i++) {
-            // A cell that will contain a pulldown for describing the data
-            aTD = EDDATD.makeGridTD('rowPCell' + i, 'pulldownCell', 0, 1 + i);
-            EDDATD.Table.rowPulldownCells[i] = aTD;
-            // The pulldown for the cell
-            var aSEL = document.createElement("select");
-            aSEL.setAttribute('name', 'row' + i + 'type');
-            aSEL.setAttribute('id', 'row' + i + 'type');
-            // An onclick callback to update the relevant piece of the data structure
-            var oc = "EDDATD.changedRowDataTypePulldown(" + i + ", this.value);";
-            aSEL.setAttribute('onchange', oc);
-            EDDATD.Table.pulldownObjects[i] = aSEL;
-            aTD.appendChild(aSEL);
-            // A recursive function to populate a pulldown with optional optiongroups,
-            // and a default selection
-            var populatePulldown = function (el, arr, selection) {
-                for (var o = 0; o < arr.length; o++) {
-                    var p = arr[o];
-                    if (toString.call(p[1]) === "[object Array]") {
-                        var aGrp = document.createElement("optgroup");
-                        aGrp.setAttribute('label', p[0]);
-                        el.appendChild(aGrp);
-                        populatePulldown(aGrp, p[1], selection);
-                    }
-                    else {
-                        var aOPT = document.createElement("option");
-                        aOPT.setAttribute('value', p[1]);
-                        if (p[1] == selection) {
-                            aOPT.setAttribute('selected', 'selected');
-                        }
-                        aOPT.appendChild(document.createTextNode(p[0]));
-                        el.appendChild(aOPT);
-                    }
-                }
-            };
-            // The options for the pulldown
-            var pulldownValue = EDDATD.Table.pulldownSettings[i] || 0;
-            populatePulldown(aSEL, tablePulldownOptions, pulldownValue);
-            // A checkbox that goes next to the row label cell
-            aTD = EDDATD.makeGridTD('rowCBCell' + i, 'checkBoxCell', 0, 1 + i);
-            var aCB = document.createElement("input");
-            aCB.setAttribute('type', "checkbox");
-            aCB.setAttribute('id', "enableRow" + i);
-            aCB.setAttribute('name', "enableRow" + i);
-            aCB.setAttribute('value', (i + 1).toString());
-            if (EDDATD.Table.activeRowFlags[i]) {
-                aCB.setAttribute('checked', "true");
-            }
-            aCB.setAttribute('onclick', "EDDATD.toggleTableRow(this);");
-            aTD.appendChild(aCB);
-            EDDATD.Table.rowCheckboxCells[i] = aTD;
-            // A header cell for the row label
-            aTD = EDDATD.makeGridTD('rowMCell' + i, '', 0, 1 + i, EDDATD.Grid.rowMarkers[i]);
-            EDDATD.Table.rowLabelCells[i] = aTD;
-        }
-        for (var y = 0; y < rowCount; y++) {
-            EDDATD.Table.dataCells[y] = [];
-            for (var x = 0; x < EDDATD.Grid.data[y].length; x++) {
-                var val = EDDATD.Grid.data[y][x];
-                if ((typeof val == 'undefined') || (val == null)) {
-                    val = '';
-                }
-                var shortVal = val;
-                if (val.length > 32) {
-                    shortVal = val.substr(0, 31) + String.fromCharCode(0x2026); // An ellipsis, or &hellip;;
-                }
-                aTD = EDDATD.makeGridTD('valCell' + x + '-' + y, '', 1 + x, 1 + y, shortVal);
-                aTD.setAttribute('title', val);
-                if (val == '') {
-                    aTD.setAttribute('isblank', 1);
-                }
-                EDDATD.Table.dataCells[y][x] = aTD;
-            }
-        }
-        EDDATD.applyTableDataTypeStyling();
-        // Construct a table from the data cell objects,
-        var tableObject = document.createElement("table");
-        tableObject.setAttribute('cellspacing', "0");
-        var tBodyObject = document.createElement("tbody");
-        // One of the objects here will be a column group, with col objects in it.
-        // This is an interesting twist on DOM behavior that you should probably google.
-        var colGroupObject = document.createElement("colgroup");
-        EDDATD.Table.colObjects = [];
-        tableObject.appendChild(colGroupObject);
-        tableObject.appendChild(tBodyObject);
-        for (var i = 0; i < 3; i++) {
-            var aCol = document.createElement("col");
-            colGroupObject.appendChild(aCol);
-        }
-        for (var i = 0; i < widestRow; i++) {
-            var aCol = document.createElement("col");
-            EDDATD.Table.colObjects[i] = aCol; // Save these for later manipulation
-            colGroupObject.appendChild(aCol);
-        }
-        // The first row: The spacer cells, then a row of checkbox cells for the data columns
-        var aRow = document.createElement("tr");
-        tBodyObject.appendChild(aRow);
-        for (var i = 0; i < EDDATD.Table.cornerCells.length; i++) {
-            aRow.appendChild(EDDATD.Table.cornerCells[i]);
-        }
-        for (var j = 0; j < widestRow; j++) {
-            aRow.appendChild(EDDATD.Table.colCheckboxCells[j]);
-        }
-        for (var y = 0; y < rowCount; y++) {
-            aRow = document.createElement("tr");
-            tBodyObject.appendChild(aRow);
-            // The space for the pulldown where the data type will be selected by the client
-            aRow.appendChild(EDDATD.Table.rowPulldownCells[y]);
-            // The cell with the checkbox for enabling/disabling the row
-            aRow.appendChild(EDDATD.Table.rowCheckboxCells[y]);
-            // The row label, extracted from the header of the pasted data
-            aRow.appendChild(EDDATD.Table.rowLabelCells[y]);
-            for (var x = 0; x < widestRow; x++) {
-                aRow.appendChild(EDDATD.Table.dataCells[y][x]);
-            }
+        else {
+            pulldownOptions = [
+                ['--', 0],
+                ['Entire Row Is...', [
+                    ['Assay/Line Names', 1],
+                    ['Metabolite Names', 2]
+                ]],
+                ['First Column Is...', [
+                    ['Timestamp', 3],
+                    ['Metadata Name', 4],
+                    ['Metabolite Name', 5]
+                ]]
+            ];
         }
         // Remove and replace the table in the document
-        var dataTableDiv = document.getElementById("dataTableDiv");
-        while (dataTableDiv.firstChild) {
-            dataTableDiv.removeChild(dataTableDiv.firstChild);
+        // attach all event handlers to the table itself
+        table = $('<table>').attr('cellspacing', '0').appendTo($('#dataTableDiv').empty()).on('click', '[name=enableColumn]', function (ev) {
+            EDDATD.toggleTableColumn(ev.target);
+        }).on('click', '[name=enableRow]', function (ev) {
+            EDDATD.toggleTableRow(ev.target);
+        }).on('change', '.pulldownCell > select', function (ev) {
+            var targ = $(ev.target);
+            EDDATD.changedRowDataTypePulldown(targ.attr('i'), targ.val());
+        })[0];
+        // One of the objects here will be a column group, with col objects in it.
+        // This is an interesting twist on DOM behavior that you should probably google.
+        colgroup = $('<colgroup>').appendTo(table);
+        body = $('<tbody>').appendTo(table)[0];
+        // Start with three columns, for the checkboxes, pulldowns, and labels.
+        // (These will not be tracked in Table.colObjects.)
+        controlCols.forEach(function () {
+            $('<col>').appendTo(colgroup);
+        });
+        // add col elements for each data column
+        EDDATD.Grid.data[0].forEach(function () {
+            EDDATD.Table.colObjects.push($('<col>').appendTo(colgroup)[0]);
+        });
+        // First row: spacer cells, followed by checkbox cells for each data column
+        row = body.insertRow();
+        // spacer cells have x and y set to 0 to remove from highlight grid
+        controlCols.forEach(function () {
+            $(row.insertCell()).attr({ 'x': '0', 'y': 0 });
+        });
+        EDDATD.Grid.data[0].forEach(function (_, i) {
+            var cell, box;
+            cell = $(row.insertCell()).attr({ 'id': 'colCBCell' + i, 'x': 1 + i, 'y': 0 }).addClass('checkBoxCell');
+            box = $('<input type="checkbox"/>').appendTo(cell).val(i.toString()).attr({ 'id': 'enableColumn' + i, 'name': 'enableColumn' }).prop('checked', EDDATD.Table.activeColFlags[i]);
+            EDDATD.Table.colCheckboxCells.push(cell[0]);
+        });
+        // The rest of the rows: A pulldown, a checkbox, a row label, and a row of data.
+        EDDATD.Grid.data.forEach(function (values, i) {
+            var cell;
+            row = body.insertRow();
+            // checkbox cell
+            cell = $(row.insertCell()).addClass('checkBoxCell').attr({ 'id': 'rowCBCell' + i, 'x': 0, 'y': i + 1 });
+            $('<input type="checkbox"/>').attr({ 'id': 'enableRow' + i, 'name': 'enableRow' }).val(i.toString()).prop('checked', EDDATD.Table.activeRowFlags[i]).appendTo(cell);
+            EDDATD.Table.rowCheckboxCells.push(cell[0]);
+            // pulldown cell
+            cell = $(row.insertCell()).addClass('pulldownCell').attr({ 'id': 'rowPCell' + i, 'x': 0, 'y': i + 1 });
+            EDDATD.populatePulldown($('<select>').attr({ 'id': 'row' + i + 'type', 'name': 'row' + i + 'type', 'i': i }), pulldownOptions, EDDATD.Table.pulldownSettings[i] || 0);
+            // label cell
+            cell = $(row.insertCell()).attr({ 'id': 'rowMCell' + i, 'x': 0, 'y': i + 1 }).text(EDDATD.Grid.rowMarkers[i]);
+            EDDATD.Table.rowLabelCells.push(cell[0]);
+            // the table data itself
+            EDDATD.Table.dataCells[i] = [];
+            values.forEach(function (value, x) {
+                var short;
+                value = short = value || '';
+                if (value.length > 32) {
+                    short = value.substr(0, 31) + '…';
+                }
+                cell = $(row.insertCell()).attr({
+                    'id': 'valCell' + x + '-' + i,
+                    'x': x + 1,
+                    'y': i + 1,
+                    'title': value,
+                    'isblank': value === '' ? 1 : undefined
+                });
+                $('<div>').text(short).appendTo(cell);
+                EDDATD.Table.dataCells[i].push(cell[0]);
+            });
+        });
+        EDDATD.applyTableDataTypeStyling();
+    },
+    parseAndDisplayText: function () {
+        var mode, delimiter, rawFormat, input;
+        mode = EDDATD.interpretationMode;
+        delimiter = '\t';
+        EDDATD.Grid.data = [];
+        EDDATD.Grid.rowMarkers = [];
+        rawFormat = $('#rawdataformatp');
+        if (rawFormat.length === 0) {
+            console.log("Can't find data format pulldown");
+            return;
         }
-        dataTableDiv.appendChild(tableObject);
+        // If we're in "mdv" mode, lock the delimiter to tabs
+        if (mode === 'mdv') {
+            rawFormat.val('tab');
+        }
+        if (rawFormat.val() === 'csv') {
+            delimiter = ',';
+        }
+        input = EDDATD.parseRawInput(delimiter, mode);
+        if (mode === 'std' || mode === 'tr' || mode === 'pr') {
+            // If the user hasn't deliberately chosen a setting for 'transpose', we will do
+            // some analysis to attempt to guess which orientation the data needs to have.
+            if (!EDDATD.Grid.userClickedOnTranspose) {
+                EDDATD.inferTransposeSetting(input.input);
+            }
+            // Now that that's done, move the data into Grid.data
+            if (EDDATD.Grid.transpose) {
+                // first row becomes Y-markers as-is
+                EDDATD.Grid.rowMarkers = input.input.shift();
+                EDDATD.Grid.data = (input.input[0] || []).map(function (_, i) {
+                    return input.input.map(function (row) { return row[i] || ''; });
+                });
+            }
+            else {
+                EDDATD.Grid.rowMarkers = [];
+                EDDATD.Grid.data = (input.input || []).map(function (row) {
+                    EDDATD.Grid.rowMarkers.push(row.shift());
+                    return row;
+                });
+            }
+            // If the user hasn't deliberately chosen to ignore, or accept, gaps in the data,
+            // do a basic analysis to guess which setting makes more sense.
+            if (!EDDATD.Grid.userClickedOnIgnoreDataGaps) {
+                EDDATD.inferGapsSetting();
+            }
+            // Give labels to any header positions that got 'null' for a value.
+            EDDATD.Grid.rowMarkers = EDDATD.Grid.rowMarkers.map(function (value) { return value || '?'; });
+            // Attempt to auto-set any type pulldowns that haven't been deliberately set by the user
+            EDDATD.Grid.rowMarkers.forEach(function (value, i) {
+                var type;
+                if (!EDDATD.Table.pulldownUserChangedFlags[i]) {
+                    type = EDDATD.figureOutThisRowsDataType(value, EDDATD.Grid.data[i]);
+                    EDDATD.Table.pulldownSettings[i] = type;
+                }
+            });
+        }
+        else if ((mode === "mdv") && (input.input.length > 1) && (input.columns > 1)) {
+            EDDATD.processMdv(input.input);
+        }
+        EDDATD.Grid.w = EDDATD.Grid.data[0].length;
+        EDDATD.Grid.l = EDDATD.Grid.data.length;
+        // Create a map of enabled/disabled flags for our data,
+        // but only fill the areas that do not already exist.
+        EDDATD.inferActiveFlags();
+        // Construct table cell objects for the page, based on our extracted data
+        EDDATD.constructDataTable(mode);
         // Interpret the data in Step 3,
         // which involves skipping disabled rows or columns,
         // optionally ignoring blank values,
@@ -734,64 +584,30 @@ EDDATD = {
         // where the user can link unknown items to pre-existing EDD data.
         EDDATD.remakeInfoTable();
     },
-    // Support function for making table cells in the grid display
-    makeGridTD: function (id, className, x, y, text) {
-        var td = document.createElement("td");
-        td.setAttribute('id', id);
-        td.setAttribute('x', x);
-        td.setAttribute('y', y);
-        td.className = className;
-        if (typeof text != 'undefined') {
-            if (text != null) {
-                var d = document.createElement("div");
-                d.appendChild(document.createTextNode(text));
-                td.appendChild(d);
-            }
-        }
-        return td;
-    },
     // This routine does a bit of additional styling to the Step 3 data table.
     // It removes and re-adds the dataTypeCell css classes according to the pulldown settings for each row.
     applyTableDataTypeStyling: function () {
-        for (var y = 0; y < EDDATD.Grid.l; y++) {
-            var pulldownValue = EDDATD.Table.pulldownSettings[y] || 0;
-            var highlightLabel = 0;
-            var highlightRestOfRow = 0;
-            if ((pulldownValue == 1) || (pulldownValue == 2)) {
-                highlightRestOfRow = 1;
+        EDDATD.Grid.data.forEach(function (row, index) {
+            var pulldown, hlLabel, hlRow;
+            pulldown = EDDATD.Table.pulldownSettings[index] || 0;
+            hlLabel = hlRow = false;
+            if (pulldown === 1 || pulldown === 2) {
+                hlRow = true;
             }
-            else if ((pulldownValue >= 3) && (pulldownValue <= 5)) {
-                highlightLabel = 1;
+            else if (3 <= pulldown && pulldown <= 5) {
+                hlLabel = true;
             }
-            var rowLabel = EDDATD.Table.rowLabelCells[y];
-            $(rowLabel).removeClass('dataTypeCell');
-            if (highlightLabel) {
-                $(rowLabel).addClass('dataTypeCell');
-            }
-            for (var x = 0; x < EDDATD.Grid.w; x++) {
-                var cell = EDDATD.Table.dataCells[y][x];
-                $(cell).removeClass('dataTypeCell');
-                if (highlightRestOfRow) {
-                    $(cell).addClass('dataTypeCell');
-                }
-            }
-        }
+            $(EDDATD.Table.rowLabelCells[index]).toggleClass('dataTypeCell', hlLabel);
+            row.forEach(function (_, col) {
+                $(EDDATD.Table.dataCells[index][col]).toggleClass('dataTypeCell', hlRow);
+            });
+        });
     },
     // We call this when any of the 'master' pulldowns are changed in Step 4.
     // Such changes may affect the available contents of some of the pulldowns in the step.
     changedAMasterPulldown: function () {
-        var masterAssayEl = document.getElementById("masterAssay");
-        if (masterAssayEl == null) {
-            return;
-        }
-        var masterLineSpan = document.getElementById('masterLineSpan');
-        if (masterLineSpan == null) {
-            return;
-        }
-        $(masterLineSpan).addClass('off');
-        if (!masterAssayEl.selectedIndex) {
-            $(masterLineSpan).removeClass('off');
-        }
+        // hide master line dropdown if master assay dropdown is set to new
+        $('#masterLineSpan').toggleClass('off', $('#masterAssay').val() === 'new');
         EDDATD.remakeInfoTable();
     },
     clickedOnIgnoreDataGaps: function () {
@@ -897,27 +713,16 @@ EDDATD = {
         return 0;
     },
     redrawIgnoredValueMarkers: function () {
-        for (var j = 0; j < EDDATD.Table.dataCells.length; j++) {
-            for (var i = 0; i < EDDATD.Table.dataCells[j].length; i++) {
-                var aTD = EDDATD.Table.dataCells[j][i];
-                aTD.className = aTD.className.replace(" ignoredLine", "");
-                if (EDDATD.Grid.ignoreDataGaps && aTD.getAttribute('isblank')) {
-                    aTD.className = aTD.className + " ignoredLine";
-                }
-            }
-        }
+        EDDATD.Table.dataCells.forEach(function (row) {
+            row.forEach(function (cell) {
+                var toggle = !!EDDATD.Grid.ignoreDataGaps && !!cell.getAttribute('isblank');
+                $(cell).toggleClass('ignoredline', toggle);
+            });
+        });
     },
     toggleTableRow: function (box) {
-        var val = parseInt(box.getAttribute('value'));
-        if (!val) {
-            return;
-        }
-        if (box.checked) {
-            EDDATD.Table.activeRowFlags[val - 1] = 1;
-        }
-        else {
-            EDDATD.Table.activeRowFlags[val - 1] = 0;
-        }
+        var value = parseInt($(box).val(), 10);
+        EDDATD.Table.activeRowFlags[value] = $(box).prop('checked');
         EDDATD.interpretDataTable();
         EDDATD.queueGraphRemake();
         EDDATD.redrawEnabledFlagMarkers();
@@ -925,20 +730,8 @@ EDDATD = {
         EDDATD.remakeInfoTable();
     },
     toggleTableColumn: function (box) {
-        var val = parseInt(box.getAttribute('value'));
-        if (!val) {
-            return;
-        }
-        var col = EDDATD.Table.colObjects[val - 1];
-        if (!col) {
-            return;
-        }
-        if (box.checked) {
-            EDDATD.Table.activeColFlags[val - 1] = 1;
-        }
-        else {
-            EDDATD.Table.activeColFlags[val - 1] = 0;
-        }
+        var value = parseInt($(box).val(), 10);
+        EDDATD.Table.activeColFlags[value] = $(box).prop('checked');
         EDDATD.interpretDataTable();
         EDDATD.queueGraphRemake();
         EDDATD.redrawEnabledFlagMarkers();
@@ -946,57 +739,38 @@ EDDATD = {
         EDDATD.remakeInfoTable();
     },
     resetEnabledFlagMarkers: function () {
-        for (var y = 0; y < EDDATD.Grid.l; y++) {
-            EDDATD.Table.activeFlags[y] = [];
-            for (var x = 0; x < EDDATD.Grid.w; x++) {
-                EDDATD.Table.activeFlags[y][x] = 1;
-            }
-        }
-        for (var x = 0; x < EDDATD.Grid.w; x++) {
-            EDDATD.Table.activeColFlags[x] = 1;
-        }
-        for (var y = 0; y < EDDATD.Grid.l; y++) {
-            EDDATD.Table.activeRowFlags[y] = 1;
-        }
-        for (var i = 0; i < EDDATD.Grid.w; i++) {
-            var aCB = document.getElementById("enableColumn" + i);
-            if (aCB != null) {
-                aCB.checked = true;
-            }
-        }
-        for (var i = 0; i < EDDATD.Grid.l; i++) {
-            var aCB = document.getElementById("enableRow" + i);
-            if (aCB != null) {
-                aCB.checked = true;
-            }
-        }
+        EDDATD.Grid.data.forEach(function (row, y) {
+            EDDATD.Table.activeFlags[y] = EDDATD.Table.activeFlags[y] || [];
+            row.forEach(function (_, x) {
+                EDDATD.Table.activeFlags[y][x] = true;
+            });
+            EDDATD.Table.activeRowFlags[y] = true;
+        });
+        EDDATD.Grid.data[0].forEach(function (_, x) {
+            EDDATD.Table.activeColFlags[x] = true;
+        });
+        // Flip all the checkboxes on in the header cells for the data columns
+        $('#dataTableDiv').find('[name=enableColumn]').prop('checked', true);
+        // Same for the checkboxes in the row label cells
+        $('#dataTableDiv').find('[name=enableRow]').prop('checked', true);
         EDDATD.interpretDataTable();
         EDDATD.queueGraphRemake();
         EDDATD.redrawEnabledFlagMarkers();
         EDDATD.remakeInfoTable();
     },
     redrawEnabledFlagMarkers: function () {
-        for (var x = 0; x < EDDATD.Grid.w; x++) {
-            var aTD = EDDATD.Table.colCheckboxCells[x];
-            aTD.className = aTD.className.replace(" disabledLine", "");
-            if (!EDDATD.Table.activeColFlags[x]) {
-                aTD.className = aTD.className + " disabledLine";
-            }
-            for (var y = 0; y < EDDATD.Grid.l; y++) {
-                aTD = EDDATD.Table.dataCells[y][x];
-                aTD.className = aTD.className.replace(" disabledLine", "");
-                if (!EDDATD.Table.activeFlags[y][x] || !EDDATD.Table.activeColFlags[x] || !EDDATD.Table.activeRowFlags[y]) {
-                    aTD.className = aTD.className + " disabledLine";
-                }
-            }
-        }
-        for (var y = 0; y < EDDATD.Grid.l; y++) {
-            var aTD = EDDATD.Table.rowLabelCells[y];
-            aTD.className = aTD.className.replace(" disabledLine", "");
-            if (!EDDATD.Table.activeRowFlags[y]) {
-                aTD.className = aTD.className + " disabledLine";
-            }
-        }
+        EDDATD.Table.dataCells.forEach(function (row, y) {
+            var toggle = !EDDATD.Table.activeRowFlags[y];
+            $(EDDATD.Table.rowLabelCells[y]).toggleClass('disabledLine', toggle);
+            row.forEach(function (cell, x) {
+                toggle = !EDDATD.Table.activeFlags[y][x] || !EDDATD.Table.activeColFlags[x] || !EDDATD.Table.activeRowFlags[y];
+                $(cell).toggleClass('disabledLine', toggle);
+            });
+        });
+        EDDATD.Table.colCheckboxCells.forEach(function (box, x) {
+            var toggle = !EDDATD.Table.activeColFlags[x];
+            $(box).toggleClass('disabledLine', toggle);
+        });
     },
     interpretDataTable: function () {
         EDDATD.Sets.parsedSets = [];
