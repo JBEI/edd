@@ -1,5 +1,11 @@
+/// <reference path="typescript-declarations.d.ts" />
+/// <reference path="lib/jqueryui.d.ts" />
 /// <reference path="Utl.d.ts" />
 declare class DialogBox {
+    private _dialog;
+    private _width;
+    private _height;
+    private _contentsDiv;
     constructor(width: number, height: number);
     term(): void;
     addHTML(html: string): void;
@@ -7,10 +13,6 @@ declare class DialogBox {
     clearContents(): void;
     showWaitSpinner(caption: string, offset?: number): void;
     showMessage(message: string, onOK?: () => void): void;
-    private _dialog;
-    private _width;
-    private _height;
-    private _contentsDiv;
 }
 interface ServerMetabolicMap {
     name: string;
@@ -30,31 +32,30 @@ interface MetabolicMapChooserResult {
     (err: string, metabolicMapID?: number, metabolicMapFilename?: string, biomassCalculation?: number): void;
 }
 declare class StudyMetabolicMapChooser {
-    constructor(userID: number, studyID: number, checkWithServerFirst: boolean, callback: MetabolicMapChooserResult);
+    private _dialogBox;
+    constructor(checkWithServerFirst: boolean, callback: MetabolicMapChooserResult);
+    private _basePayload();
     private _chooseMetabolicMap(callback);
     private _onMetabolicMapChosen(map, callback);
-    private _requestStudyMetabolicMap(callback);
-    private _requestMetabolicMapList(callback);
-    private _requestSetStudyMetabolicMap(studyID, metabolicMapID, callback);
-    private _userID;
-    private _studyID;
-    private _dialogBox;
+    private _requestStudyMetabolicMap(callback, error);
+    private _requestMetabolicMapList(callback, error);
+    private _requestSetStudyMetabolicMap(metabolicMapID, callback);
 }
 interface BiomassResultsCallback {
     (err: string, finalBiomass?: number): void;
 }
 declare class BiomassCalculationUI {
+    private _dialogBox;
     constructor(metabolicMapID: number, callback: BiomassResultsCallback);
     private _onBiomassReactionChosen(metabolicMapID, reaction, callback);
     private _onFinishedBiomassSpeciesEntry(speciesList, inputs, errorStringElement, metabolicMapID, reaction, callback);
-    private _requestSpeciesListFromBiomassReaction(metabolicMapID, reactionID, callback);
-    private _requestBiomassReactionList(metabolicMapID, callback);
-    private _requestFinalBiomassComputation(metabolicMapID, reactionID, matches, callback);
-    private _dialogBox;
+    private _requestSpeciesListFromBiomassReaction(metabolicMapID, reactionID, callback, error);
+    private _requestBiomassReactionList(metabolicMapID, callback, error);
+    private _requestFinalBiomassComputation(metabolicMapID, reactionID, matches, callback, error);
 }
 interface FullStudyBiomassUIResultsCallback {
     (err: string, metabolicMapID?: number, metabolicMapFilename?: string, finalBiomass?: number): void;
 }
 declare class FullStudyBiomassUI {
-    constructor(userID: number, studyID: number, callback: FullStudyBiomassUIResultsCallback);
+    constructor(callback: FullStudyBiomassUIResultsCallback);
 }

@@ -1,32 +1,40 @@
 from django.conf import settings
 from django.contrib import messages
 from django.core import serializers
-from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
+from django.core.exceptions import ObjectDoesNotExist, PermissionDenied, ValidationError
 from django.core.urlresolvers import reverse
-from django.db.models import Q
-from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
+from django.db.models import Count, Q
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse, Http404
 from django.http.response import HttpResponseForbidden, HttpResponseBadRequest
 from django.shortcuts import render, get_object_or_404, redirect, \
     render_to_response
 from django.template import RequestContext
 from django.template.defaulttags import register
 from django.utils.safestring import mark_safe
+from django.utils.translation import ugettext_lazy as _
 from django.views import generic
 from django.views.decorators.csrf import ensure_csrf_cookie
 from io import BytesIO
-from main.forms import *
-from main.ice import IceApi
-from main.models import *
-from main.solr import StudySearch, UserSearch
-from main.utilities import *
+
+from .forms import *
+from .ice import IceApi
+from .models import *
+from .signals import study_modified
+from .solr import StudySearch, UserSearch
+from .utilities import *
 
 import collections
 import csv
 import json
+import logging
 import main.models
 import main.sbml_export
 import main.data_export
 import main.data_import
+import operator
+
+
+logger = logging.getLogger(__name__)
 
 
 @register.filter(name='lookup')
@@ -84,94 +92,202 @@ class StudyDetailView(generic.DetailView):
         context = super(StudyDetailView, self).get_context_data(**kwargs)
         action = kwargs.pop('action', None)
         request = kwargs.pop('request', None)
+        context['new_assay'] = AssayForm(prefix='assay')
         context['new_attach'] = CreateAttachmentForm()
         context['new_comment'] = CreateCommentForm()
-        context['new_line'] = LineForm()
+        context['new_line'] = LineForm(prefix='line')
+        context['new_measurement'] = MeasurementForm(prefix='measurement')
+        context['writable'] = self.get_object().user_can_write(request.user)
         return context
+
+    def handle_assay(self, request, context):
+        assay_id = request.POST.get('assay-assay_id', None)
+        assay = self._get_assay(assay_id) if assay_id else None
+        if assay:
+            form = AssayForm(request.POST, instance=assay, lines=[ assay.line_id ], prefix='assay')
+        else:
+            ids = request.POST.getlist('lineId', [])
+            form = AssayForm(request.POST, lines=ids, prefix='assay')
+            if len(ids) == 0:
+                form.add_error(None, ValidationError(
+                    _('Must select at least one line to add Assay'),
+                    code='no-lines-selected'
+                    ))
+        context['new_assay'] = form
+        if form.is_valid():
+            form.save()
+            return True
+        return False
 
     def handle_attach(self, request, context):
         form = CreateAttachmentForm(request.POST, request.FILES, edd_object=self.get_object())
         if form.is_valid():
             form.save()
+            return True
         else:
             context['new_attach'] = form
+        return False
+
+    def handle_clone(self, request, context):
+        ids = request.POST.getlist('lineId', [])
+        study = self.get_object()
+        cloned = 0
+        for line_id in ids:
+            line = self._get_line(line_id)
+            if line:
+                # easy way to clone is just pretend to fill out add line form
+                initial = LineForm.initial_from_model(line)
+                # update name to indicate which is the clone
+                initial['name'] = initial['name'] + ' clone'
+                clone = LineForm(initial, study=study)
+                if clone.is_valid():
+                    clone.save()
+                    cloned += 1
+        messages.success(request, 'Cloned %(cloned)s of %(total)s Lines' % {
+            'cloned': cloned,
+            'total': len(ids),
+            })
+        return True
 
     def handle_comment(self, request, context):
         form = CreateCommentForm(request.POST, edd_object=self.get_object())
         if form.is_valid():
             form.save()
+            return True
         else:
             context['new_comment'] = form
+        return False
+
+    def handle_disable(self, request, context):
+        ids = request.POST.getlist('lineId', [])
+        study = self.get_object()
+        disable = request.POST.get('disable', 'true')
+        active = disable == 'false'
+        count = Line.objects.filter(study=self.object, id__in=ids).update(active=active)
+        messages.success(request, '%s %s Lines' % ('Enabled' if active else 'Disabled', count))
+        return True
+
+    def handle_group(self, request, context):
+        ids = request.POST.getlist('lineId', [])
+        study = self.get_object()
+        if len(ids) > 1:
+            first = ids[0]
+            count = Line.objects.filter(study=study, pk__in=ids).update(replicate_id=first)
+            messages.success(request, 'Grouped %s Lines' % count)
+            return True
+        messages.error(request, 'Must select more than one Line to group.')
+        return False
 
     def handle_line(self, request, context):
-        form = LineForm(request.POST, study=self.get_object())
-        ids = [ v for v in (form['ids'].data or '').split(',') if v.strip() != '' ]
+        ids = [ v for v in request.POST.get('line-ids', '').split(',') if v.strip() != '' ]
         if len(ids) == 0:
-            self.handle_line_new(request, context, form)
+            return self.handle_line_new(request, context)
         elif len(ids) == 1:
-            self.handle_line_edit(request, context, ids[0])
+            return self.handle_line_edit(request, context, ids[0])
         else:
-            self.handle_line_bulk(request, context, ids)
+            return self.handle_line_bulk(request, context, ids)
+        return False
 
     def handle_line_bulk(self, request, context, ids):
         study = self.get_object()
         total = len(ids)
         saved = 0
         for value in ids:
-            line = Line.objects.get(pk=value, study=study)
-            form = LineForm(request.POST, instance=line, study=study)
-            form.check_bulk_edit() # removes fields having disabled bulk edit checkbox
-            if form.is_valid():
-                form.save()
-                saved += 1
+            line = self._get_line(value)
+            if line:
+                form = LineForm(request.POST, instance=line, prefix='line', study=study)
+                form.check_bulk_edit() # removes fields having disabled bulk edit checkbox
+                if form.is_valid():
+                    form.save()
+                    saved += 1
         messages.success(request, 'Saved %(saved)s of %(total)s Lines' % {
             'saved': saved,
-            'total': total })
+            'total': total,
+            })
+        return True
 
     def handle_line_edit(self, request, context, pk):
         study = self.get_object()
-        line = Line.objects.get(pk=pk, study=study)
-        form = LineForm(request.POST, instance=line, study=study)
-        if form.is_valid():
-            form.save()
-            messages.success("Saved Line '%(name)s'" % { 'name': form.name.value() })
+        line = self._get_line(pk)
+        if line:
+            form = LineForm(request.POST, instance=line, prefix='line', study=study)
+            context['new_line'] = form
+            if form.is_valid():
+                form.save()
+                messages.success(request, "Saved Line '%(name)s'" % { 'name': form['name'].value() })
+                return True
+        else:
+            messages.error(request, 'Failed to load line for editing.')
+        return False
 
-    def handle_line_new(self, request, context, form):
+    def handle_line_new(self, request, context):
+        form = LineForm(request.POST, prefix='line', study=self.get_object())
         if form.is_valid():
             form.save()
-            messages.success("Added Line '%(name)s" % { 'name': form.name.value() })
+            messages.success(request, "Added Line '%(name)s" % { 'name': form['name'].value() })
+            return True
         else:
             context['new_line'] = form
+        return False
+
+    def handle_measurement(self, request, context):
+        ids = request.POST.getlist('assayId', [])
+        form = MeasurementForm(request.POST, assays=ids, prefix='measurement')
+        if len(ids) == 0:
+            form.add_error(None, ValidationError(
+                _('Must select at least one assay to add Measurement'),
+                code='no-assays-selected'
+                ))
+        context['new_measurement'] = form
+        if form.is_valid():
+            form.save()
+            return True
+        return False
 
     def post(self, request, *args, **kwargs):
         self.object = self.get_object()
         action = request.POST.get('action', None)
         context = self.get_context_data(object=self.object, action=action, request=request)
-        # TODO these should probably do a redirect
+        form_valid = False
         if action == 'comment':
-            self.handle_comment(request, context)
+            form_valid = self.handle_comment(request, context)
         elif action == 'attach':
-            self.handle_attach(request, context)
+            form_valid = self.handle_attach(request, context)
         elif action == 'line':
-            self.handle_line(request, context)
+            form_valid = self.handle_line(request, context)
+        elif action == 'clone':
+            form_valid = self.handle_clone(request, context)
+        elif action == 'group':
+            form_valid = self.handle_group(request, context)
+        elif action == 'line_action':
+            line_action = request.POST.get('line_action', None)
+            if line_action == 'edit':
+                form_valid = self.handle_disable(request, context)
+            elif line_action == 'export':
+                'TODO: export data'
+        elif action == 'assay':
+            form_valid = self.handle_assay(request, context)
+        if form_valid:
+            study_modified.send(sender=self.__class__, study=self.object)
+            return HttpResponseRedirect(reverse('main:detail', kwargs={'pk':self.object.pk}))
         return self.render_to_response(context)
 
+    def _get_assay(self, assay_id):
+        study = self.get_object()
+        try:
+            return Assay.objects.get(pk=assay_id, line__study=study)
+        except Assay.DoesNotExist, e:
+            logger.warning('Failed to load assay,study combo %s,%s' % (assay_id, study.pk))
+        return None
 
-# /study/<study_id>/attach/
-def study_attach(request, study):
-    """ Attach a file to a study. """
-    model = Study.objects.get(pk=study)
-    form = CreateAttachmentForm(request.POST, request.FILES, edd_object=model)
-    form.save()
-    return redirect(reverse('main:detail', kwargs={ 'pk': study }))
+    def _get_line(self, line_id):
+        study = self.get_object()
+        try:
+            return Line.objects.get(pk=line_id, study=study)
+        except Line.DoesNotExist, e:
+            logger.warning('Failed to load line,study combo %s,%s' % (line_id, study.pk))
+        return None
 
-# /study/<study_id>/comment/
-def study_comment(request, study):
-    """ Add a comment to a study. """
-    model = Study.objects.get(pk=study)
-    form = CreateCommentForm(request.POST, edd_object=model)
-    form.save()
-    return redirect(reverse('main:detail', kwargs={ 'pk': study }))
 
 # /study/<study_id>/lines/
 def study_lines(request, study):
@@ -185,29 +301,39 @@ def study_measurements(request, study, protocol):
         measurement__assay__line__study_id=study,
         measurement__assay__protocol_id=protocol,
         ).distinct()
-    # Limit the measurements returned to keep browser performant
-    measurements = Measurement.objects.filter(
+    # stash QuerySet to use in both measurements and total_measures below
+    qmeasurements = Measurement.objects.filter(
         assay__line__study_id=study,
         assay__protocol_id=protocol,
         active=True,
         assay__active=True,
         assay__line__active=True,
-        ).order_by('id')[:5000]
-    measure_list = list(measurements)
-    values = MeasurementValue.objects.filter(
-        measurement__assay__line__study_id=study,
-        measurement__assay__protocol_id=protocol,
-        measurement__active=True,
-        measurement__assay__active=True,
-        measurement__assay__line__active=True,
-        measurement__range=(measure_list[0].id, measure_list[-1].id),
         )
+    # Limit the measurements returned to keep browser performant
+    measurements = qmeasurements.order_by('id')[:5000]
+    total_measures = qmeasurements.values('assay_id').annotate(count=Count('assay_id'))
+    measure_list = list(measurements)
+    if len(measure_list):
+        # only try to pull values when we have measurement objects
+        values = MeasurementValue.objects.filter(
+            measurement__assay__line__study_id=study,
+            measurement__assay__protocol_id=protocol,
+            measurement__active=True,
+            measurement__assay__active=True,
+            measurement__assay__line__active=True,
+            measurement__range=(measure_list[0].id, measure_list[-1].id),
+            )
+    else:
+        values = []
     value_dict = collections.defaultdict(list)
     for v in values:
         value_dict[v.measurement_id].append((v.x, v.y))
     payload = {
+        'total_measures': {
+            x['assay_id']: x.get('count', 0) for x in total_measures if 'assay_id' in x
+        },
         'types': { t.pk: t.to_json() for t in measure_types },
-        'measures': map(lambda m: m.to_json(), measure_list),
+        'measures': [ m.to_json() for m in measure_list ],
         'data': value_dict,
     }
     return JsonResponse(payload, encoder=JSONDecimalEncoder)
@@ -220,15 +346,18 @@ def study_assay_measurements(request, study, protocol, assay):
         measurement__assay__protocol_id=protocol,
         measurement__assay=assay,
         ).distinct()
-    # Limit the measurements returned to keep browser performant
-    measurements = Measurement.objects.filter(
+    # stash QuerySet to use in both measurements and total_measures below
+    qmeasurements = Measurement.objects.filter(
         assay__line__study_id=study,
         assay__protocol_id=protocol,
         assay=assay,
         active=True,
         assay__active=True,
         assay__line__active=True,
-        ).order_by('id')[:5000]
+        )
+    # Limit the measurements returned to keep browser performant
+    measurements = qmeasurements.order_by('id')[:5000]
+    total_measures = qmeasurements.values('assay_id').annotate(count=Count('assay_id'))
     measure_list = list(measurements)
     values = MeasurementValue.objects.filter(
         measurement__assay__line__study_id=study,
@@ -243,6 +372,9 @@ def study_assay_measurements(request, study, protocol, assay):
     for v in values:
         value_dict[v.measurement_id].append((v.x, v.y))
     payload = {
+        'total_measures': {
+            x['assay_id']: x.get('count', 0) for x in total_measures if 'assay_id' in x
+        },
         'types': { t.pk: t.to_json() for t in measure_types },
         'measures': map(lambda m: m.to_json(), measure_list),
         'data': value_dict,
@@ -290,6 +422,23 @@ def study_assay_table_data (request, study) :
             },
             "EDDData" : get_edddata_study(model),
         }, encoder=JSONDecimalEncoder)
+
+# /study/<study_id>/map/
+def study_map(request, study):
+    """ Request information on metabolic map associated with a study. """
+    try:
+        mmap = SBMLTemplate.objects.get(study=study)
+        return JsonResponse({
+                "name": mmap.name,
+                "id": mmap.pk,
+                "biomassCalculation": mmap.biomass_calculation,
+                },
+            encoder=JSONDecimalEncoder
+            )
+    except SBMLTemplate.DoesNotExist, e:
+        return JsonResponse({ "name": "", "biomassCalculation": -1, }, encoder=JSONDecimalEncoder)
+    except Exception, e:
+        raise e
 
 # /study/<study_id>/import
 # FIXME should have trailing slash?
@@ -580,114 +729,6 @@ def study_export_sbml (request, study) :
             },
             context_instance=RequestContext(request))
 
-# /admin
-# FIXME fold into default admin site
-def admin_home (request) :
-    if (not request.user.is_staff) :
-        return HttpResponseForbidden("You do not have administrative access.")
-    return render(request, "main/admin.html")
-
-# /admin/measurements
-# TODO this view is probably at the top of my list of things we should refactor
-# once the port is more or less complete
-def admin_measurements (request) :
-    if (not request.user.is_staff) :
-        return HttpResponseForbidden("You do not have administrative access.")
-    messages = {}
-    if (request.method == "POST") :
-        action = request.POST.get("action", None)
-        # multiple forms on one page
-        try :
-            # FIXME this is inelegant...
-            if (action == "addKeyword") :
-                kw = MetaboliteKeyword.objects.create(
-                    name=request.POST["keywordname"],
-                    mod_by=request.user)
-                messages['success'] = "Keyword '%s' added." % kw.name
-            elif (action == "addUnit") :
-                unit = MeasurementUnit.objects.create(
-                    unit_name=request.POST["unit_name"],
-                    type_group=request.POST["type_group"],
-                    alternate_names=request.POST["alternate_names"])
-                messages['success'] = "Measurement unit '%s' added." % \
-                    unit.unit_name
-            else : # TODO
-                pass
-        except ValueError as e :
-            messages['error'] = str(e)
-    metabolites = Metabolite.all_sorted_by_short_name()#.prefetch_related(
-        #"keywords")
-    return render_to_response("main/admin_measurements.html",
-        dictionary={
-            "messages" : messages,
-            "metabolites" : metabolites,
-            "keywords" : MetaboliteKeyword.all_with_metabolite_ids,
-            "units" : MeasurementUnit.all_sorted,
-            "mtype_groups" : MeasurementGroup.GROUP_CHOICE,
-        },
-        context_instance=RequestContext(request))
-
-# /admin/metadata
-def admin_metadata (request) :
-    if (not request.user.is_staff) :
-        return HttpResponseForbidden("You do not have administrative access.")
-    messages = {}
-    if (request.method == "POST") :
-        # FIXME can we do better than this mess?
-        form = request.POST
-        try :
-            old_id = request.POST.get("typeidtoedit", None)
-            new_group_name = form.get("newgroupname", "").strip()
-            group = None
-            if (new_group_name != "") :
-                group = MetadataGroup.objects.create(group_name=new_group_name)
-            if (old_id is not None) :
-                mdtype = MetadataType.objects.get(pk=old_id)
-                type_name = form.get("typename", "").strip()
-                if (type_name == "") :
-                    raise ValueError("Name field must not be blank.")
-                if (group is None) :
-                    group_id = form.get("typegroup")
-                    mdtype.group = MetadataGroup.objects.get(pk=group_id)
-                mdtype.type_name = type_name
-                mdtype.input_size = int(form.get("typeinputsize", "6"))
-                mdtype.default_value = form.get("typedefaultvalue")
-                mdtype.prefix = form.get("typeprefix")
-                mdtype.postfix = form.get("typepostfix")
-                mdtype.for_context = form.get("typecontext")
-                mdtype.save()
-                messages['success'] = "Metadata type updated."
-            else :
-                type_name = form.get("newtypename", "").strip()
-                if (type_name == "") :
-                    raise ValueError("Name field must not be blank.")
-                if (group is None) :
-                    group_id = form.get("newtypegroup")
-                    group = MetadataGroup.objects.get(pk=group_id)
-                new_type = MetadataType.objects.create(
-                    type_name=type_name,
-                    group=group,
-                    input_size=form.get("newtypeinputsize", None),
-                    default_value=form.get("newtypedefaultvalue"),
-                    prefix=form.get("newtypeprefix"),
-                    postfix=form.get("newtypepostfix"),
-                    for_context=form.get("newtypecontext"))
-                messages['success'] = """Metadata type "%s" created.""" % \
-                    new_type.type_name
-        except ValueError as e :
-            messages['error'] = str(e)
-    metadata_types = MetadataType.all_with_groups()
-    return render_to_response("main/admin_metadata.html",
-        dictionary={
-            "messages" : messages,
-            "metadata_types" : metadata_types,
-            "metadata_context" : MetadataType.CONTEXT_SET,
-            "line_frequencies" : Line.metadata_type_frequencies(),
-            "assay_frequencies" : Assay.metadata_type_frequencies(),
-            "metadata_groups" : MetadataGroup.objects.all(),
-        },
-        context_instance=RequestContext(request))
-
 # /data/users
 def data_users (request) :
     return JsonResponse({ "EDDData" : get_edddata_users() }, encoder=JSONDecimalEncoder)
@@ -702,6 +743,119 @@ def data_measurements (request) :
     data_misc = get_edddata_misc()
     data_meas.update(data_misc)
     return JsonResponse({ "EDDData" : data_meas }, encoder=JSONDecimalEncoder)
+
+# /data/sbml/
+def data_sbml(request):
+    all_sbml = SBMLTemplate.objects.all()
+    return JsonResponse(
+        [ sbml.to_json() for sbml in all_sbml ],
+        encoder=JSONDecimalEncoder,
+        safe=False,
+        )
+
+# /data/sbml/<sbml_id>/
+def data_sbml_info(request, sbml_id):
+    sbml = get_object_or_404(SBMLTemplate, pk=sbml_id)
+    return JsonResponse(sbml.to_json(), encoder=JSONDecimalEncoder)
+
+# /data/sbml/<sbml_id>/reactions/
+def data_sbml_reactions(request, sbml_id):
+    sbml = get_object_or_404(SBMLTemplate, pk=sbml_id)
+    rlist = sbml.load_reactions()
+    return JsonResponse(
+        [{
+            "metabolicMapID": sbml_id,
+            "reactionName": r.getName(),
+            "reactionID": r.getId(),
+        } for r in rlist if 'biomass' in r.getId() ],
+        encoder=JSONDecimalEncoder,
+        safe=False,
+        )
+
+# /data/sbml/<sbml_id>/reactions/<rxn_id>/
+def data_sbml_reaction_species(request, sbml_id, rxn_id):
+    sbml = get_object_or_404(SBMLTemplate, pk=sbml_id)
+    rlist = sbml.load_reactions()
+    found = [ r for r in rlist if rxn_id == r.getId() ]
+    if len(found):
+        all_species = [
+            rxn.getSpecies() for rxn in found[0].getListOfReactants()
+            ] + [ 
+            rxn.getSpecies() for rxn in found[0].getListOfProducts()
+            ]
+        matched = MetaboliteSpecies.objects.filter(
+                species__in=all_species,
+                sbml_template_id=sbml_id,
+            ).select_related(
+                'measurement_type',
+            )
+        matched_json = { m.species: m.measurement_type.to_json() for m in matched }
+        unmatched = [ s for s in all_species if s not in matched_json ]
+        # old EDD tries to generate SBML species names for all metabolites and match
+        # below is the inverse; take a species name, try to extract short_name, and search
+        guessed_json = { }
+        def sub_symbol(name):
+            name = re.sub(r'_DASH_', '-', name)
+            name = re.sub(r'_LPAREN_', '(', name)
+            name = re.sub(r'_RPAREN_', ')', name)
+            name = re.sub(r'_LSQBKT_', '[', name)
+            name = re.sub(r'_RSQBKT_', ']', name)
+            return name
+        for s in unmatched:
+            match = re.search(r'^(?:M_)?(\w+?)(?:_c_?)?$', s)
+            if match:
+                candidate_names = [ match.group(1), sub_symbol(match.group(1)), ]
+                guessed = Metabolite.objects.filter(short_name__in=candidate_names)
+                guessed_json.update({ s: m.to_json() for m in guessed })
+        # make sure actual matches take precedence
+        guessed_json.update(matched_json)
+        return JsonResponse(
+            guessed_json,
+            encoder=JSONDecimalEncoder,
+            safe=False,
+            )
+    raise Http404("Could not find reaction")
+
+# /data/sbml/<sbml_id>/reactions/<rxn_id>/compute/ -- POST ONLY --
+def data_sbml_compute(request, sbml_id, rxn_id):
+    sbml = get_object_or_404(SBMLTemplate, pk=sbml_id)
+    rlist = sbml.load_reactions()
+    found = [ r for r in rlist if rxn_id == r.getId() ]
+    spp = request.POST.getlist('species', [])
+    if len(found):
+        def sumMetaboliteStoichiometries(species, info):
+            total = 0
+            for sp in species:
+                try:
+                    m = MetaboliteSpecies.objects.get(
+                            species=sp.getSpecies(),
+                            sbml_template_id=sbml_id,
+                        ).select_related('measurement_type__metabolite')
+                    total += sp.getStoichiometry() * m.measurement_type.metabolite.carbon_count
+                    info.push({
+                            "metaboliteName": sp.getSpecies(),
+                            "stoichiometry": sp.getStoichiometry(),
+                            "carbonCount": m.measurement_type.metabolite.carbon_count,
+                        })
+                except Exception, e:
+                    pass
+            return total
+        reactants = [ r for r in found[0].getListOfReactants() if r.getSpecies() in spp ]
+        products = [ r for r in found[0].getListOfProducts() if r.getSpecies() in spp ]
+        reactant_info = []
+        product_info = []
+        biomass = sumMetaboliteStoichiometries(reactants, reactant_info)
+        biomass -= sumMetaboliteStoichiometries(products, product_info)
+        info = json.dumps({
+                "reaction_id": rxn_id,
+                "reactants": reactant_info,
+                "products": product_info,
+            }, cls=JSONDecimalEncoder)
+        sbml.biomass_calculation = biomass
+        sbml.biomass_calculation_info = info
+        sbml.save()
+        return JsonResponse(biomass, encoder=JSONDecimalEncoder, safe=False)
+    raise Http404("Could not find reaction")
 
 # /data/strains
 def data_strains (request) :
@@ -810,28 +964,22 @@ def search (request) :
     elif model_name == "Strain":
         ice = IceApi(ident=request.user)
         results = ice.search_for_part(term)
-        rows = [ match.entryInfo for match in results['results'] ]
+        rows = [ match.get('entryInfo', dict()) for match in results.get('results', []) ]
         return JsonResponse({ "rows": rows })
     else:
-        # if desired, limit to specific search keys
-        valid_keys = request.GET.get("keys", "all").split(",")
-        use_all_keys = (valid_keys == ["all"])
-        models = getattr(main.models, model_name).objects.all()
-        terms = term.split()
-        for item in models :
-            json_dict = item.to_json()
-            keys = valid_keys
-            if (use_all_keys) :
-                keys = json_dict.keys()
-            for key in keys :
-                value = json_dict[key]
-                if (not isinstance(value, basestring)) :
-                    continue
-                for term in terms :
-                    if (term in value) :
-                        results.append(json_dict)
-                        break
-                else :
-                    continue
-                break
+        Model = getattr(main.models, model_name)
+        # gets all the direct field names that can be filtered by terms
+        ifields = [ f.get_attname() 
+                    for f in Model._meta.get_fields()
+                    if hasattr(f, 'get_attname') and (
+                        f.get_internal_type() == 'TextField' or
+                        f.get_internal_type() == 'CharField')
+                    ]
+        term_filters = []
+        # construct a Q object for each term/field combination
+        for term in term.split():
+            term_filters.extend([ Q(**{ f+'__iregex': term }) for f in ifields ])
+        # run search with each Q object OR'd together; limit to 20
+        found = Model.objects.filter(reduce(operator.or_, term_filters, Q()))[:20]
+        results = [ item.to_json() for item in found ]
     return JsonResponse({ "rows": results })

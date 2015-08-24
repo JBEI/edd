@@ -32,13 +32,17 @@ module IndexPage {
         });
 	}
 
-	// This creates an EditableElement object for each Study description that the user is allowed to edit.
+	// This creates an EditableElement object for each Study description that the user is allowed
+    // to edit.
 	export function initDescriptionEditFields() {
-		// Since we've already created the table, we can look into the spec and find the other objects created in the process.
-		// Under the specification for the "description" column, we find all the DataGridDataCell objects that belong to that column.
-		var descriptionCells = this.studiesDataGrid.getDataCellObjectsForColumnIndex(1);
-        var data = this.studiesDataGridSpec.data();
-        descriptionCells.forEach((cell) => {
+		// Since we've already created the table, we can look into the spec and find the other
+        // objects created in the process.
+		// Under the specification for the "description" column, we find all the
+        // DataGridDataCell objects that belong to that column.
+		var descriptionCells:DataGridDataCell[], data:any;
+        descriptionCells = this.studiesDataGridSpec.descriptionCol.getEntireIndex();
+        data = this.studiesDataGridSpec.data();
+        descriptionCells.forEach((cell:DataGridDataCell):void => {
             if (data[cell.recordID].write) {
                 EditableElements.initializeElement({
                     'studyID': cell.recordID,
@@ -73,6 +77,7 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
     private _pageSize:number = 50;
     private _query:string = '';
     private _searchOpt = {};
+    descriptionCol:DataGridColumnSpec;
 
 	// Specification for the table as a whole
 	defineTableSpec():DataGridTableSpec {
@@ -186,7 +191,7 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
         var self:DataGridSpecStudies = this;
 		return [
             new DataGridColumnSpec(1, this.generateStudyNameCells),
-            new DataGridColumnSpec(2, this.generateDescriptionCells),
+            this.descriptionCol = new DataGridColumnSpec(2, this.generateDescriptionCells),
             new DataGridColumnSpec(3, this.generateOwnerInitialsCells),
             new DataGridColumnSpec(4, this.generateOwnerNameCells),
             new DataGridColumnSpec(5, this.generateInstitutionCells),

@@ -42,6 +42,9 @@ class SolrSearch(object):
 
     def search(self, queryopt={'q':'*:*','wt':'json'}):
         """ Runs query with raw Solr parameters """
+        # single character queries will never return results as smallest ngram is 2 characters
+        if len(queryopt['q']) == 1:
+            queryopt['q'] = queryopt['q'] + '*'
         response = requests.get(self.url + '/select', params=queryopt)
         if response.status_code == requests.codes.ok:
             return response.json()

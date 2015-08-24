@@ -50,8 +50,7 @@ var DataGrid = (function () {
             tableBody.append(tableHeaderRow);
         }
         // Apply the default column visibility settings.
-        // TODO: Read in the user-defined column visibility hash and apply it before first rendering the table
-        this.prepareColumnVisibility(null);
+        this.prepareColumnVisibility();
         var headerRows = this._headerRows = this._buildTableHeaders();
         this._headerRows.forEach(function (v) { return tableBody.append(v); });
         setTimeout(function () { return _this._initializeTableData(); }, 1);
@@ -229,18 +228,32 @@ var DataGrid = (function () {
             // Add each hide-able group to the menu.
             // Note: We have to walk through this anew, because we're going to make use of the index 'i'.
             this._spec.tableColumnGroupSpec.forEach(function (group, index) {
-                if (!group.showInVisibilityList) {
-                    return;
+                var item, checkbox, id;
+                if (group.showInVisibilityList) {
+                    item = $('<li>').appendTo(menuColList);
+                    id = mainID + 'ColumnCheck' + index;
+                    checkbox = $('<input type="checkbox">').appendTo(item).attr('id', id).data('column', group).click(group, function (e) { return _this._clickedColVisibilityControl(e); });
+                    group.checkboxElement = checkbox[0];
+                    $('<label>').attr('for', id).text(group.name).appendTo(item);
+                    if (!group.currentlyHidden) {
+                        checkbox.prop('checked', true);
+                    }
                 }
-                var item = $(document.createElement("li")).appendTo(menuColList);
-                var id = mainID + 'ColumnCheckbox' + (index + 1);
-                var checkbox = $(group.checkboxElement = document.createElement("input")).appendTo(item).attr({ 'id': id, 'name': id, 'value': index + 1 }).click(function (e) { return _this._clickedColVisibilityControl(e); });
-                group.checkboxElement.type = 'checkbox'; // cannot set this via jQuery
-                if (!group.currentlyHidden) {
-                    checkbox.prop('checked', true);
-                }
-                $(document.createElement("label")).appendTo(item).attr('for', id).text(group.name);
             });
+            // update checks based on settings
+            this._fetchSettings(this._columnSettingsKey(), function (data) {
+                menuColList.find('li').find(':input').each(function (i, box) {
+                    var $box = $(box), col = $box.data('column');
+                    if ((data.indexOf(col.name) === -1 && !!col.hiddenByDefault) || data.indexOf('-' + col.name) > -1) {
+                        $box.prop('checked', false);
+                        _this.hideColumn(col);
+                    }
+                    else {
+                        $box.prop('checked', true);
+                        _this.showColumn(col);
+                    }
+                });
+            }, []);
         }
         return this;
     };
@@ -257,22 +270,14 @@ var DataGrid = (function () {
         return this;
     };
     // Prepare the column visibility state for the table.
-    // If given a flagHash object, look in the object for attributes matching the column group IDs,
-    // and enable or disable the column groups accordingly.
     // This function should be called during instantiation, since it initializes the column visibility
     // variables that are referred to throughout the rest of the DataGrid class.
-    // TODO: Call the 'made visible' spec callback for any columns that are initially visible
-    DataGrid.prototype.prepareColumnVisibility = function (flagHash) {
+    DataGrid.prototype.prepareColumnVisibility = function () {
         var _this = this;
         // First, run through a sequence of checks to set the 'currentlyHidden' attribute to a reasonable value.
-        this._spec.tableColumnGroupSpec.forEach(function (group, index) {
+        this._spec.tableColumnGroupSpec.forEach(function (group) {
             // Establish what the default is, before checking any passed-in column flags
             group.currentlyHidden = !!group.hiddenByDefault;
-            if (flagHash) {
-                // Column groups are numbered starting from 1, so when we prepare the 0th group,
-                // we need to check in the hash for the attribute 1.
-                group.currentlyHidden = !flagHash[index + 1];
-            }
             // Ensure that the necessary arrays are present to keep track of group members
             group.memberHeaders = group.memberHeaders || [];
             group.memberColumns = group.memberColumns || [];
@@ -311,13 +316,6 @@ var DataGrid = (function () {
             });
         });
         return this;
-    };
-    // Return a copy of the array of DataGridDataCell objects, for the column at the given index in the spec.
-    DataGrid.prototype.getDataCellObjectsForColumnIndex = function (i) {
-        if (this._spec.tableColumnSpec[i]) {
-            return this._spec.tableColumnSpec[i].getEntireIndex();
-        }
-        return [];
     };
     // Get the list of IDs, then filter it down to what's visible,
     // then search the visible rows for spec-mandated checkbox elements,
@@ -676,69 +674,98 @@ var DataGrid = (function () {
     };
     // 'control' is a column visibility checkbox
     DataGrid.prototype._clickedColVisibilityControl = function (event) {
-        var control = event.target; // Grab the checkbox that sent the event
-        // Acquire the value in a way that doesn't make Typescript throw a hissy-fit
-        var val = parseInt(control.getAttribute('value'), 10) - 1;
-        if (control.checked) {
-            this.showColumn(val);
+        var check = $(event.target), col = event.data;
+        if (check.prop('checked')) {
+            this.showColumn(col);
         }
         else {
-            this.hideColumn(val);
+            this.hideColumn(col);
         }
         return this;
     };
     // 'control' is a column visibility checkbox
-    DataGrid.prototype.showColumn = function (columnIndex) {
+    DataGrid.prototype.showColumn = function (group) {
         var _this = this;
-        // The value points to an entry in the column groups specification
-        if (!this._spec.tableColumnGroupSpec[columnIndex]) {
-            return;
-        }
-        var group = this._spec.tableColumnGroupSpec[columnIndex];
         if (group.currentlyHidden) {
             group.currentlyHidden = false;
             if (group.revealedCallback) {
-                group.revealedCallback(columnIndex, this._spec, this);
+                group.revealedCallback(this._spec, this);
             }
             this.scheduleTimer('_updateColumnSettings', function () { return _this._updateColumnSettings(); });
             this.scheduleTimer('_applyColumnVisibility', function () { return _this._applyColumnVisibility(); });
         }
     };
     // 'control' is a column visibility checkbox
-    DataGrid.prototype.hideColumn = function (columnIndex) {
+    DataGrid.prototype.hideColumn = function (group) {
         var _this = this;
-        // The value points to an entry in the column groups specification
-        if (!this._spec.tableColumnGroupSpec[columnIndex]) {
-            return;
-        }
-        var group = this._spec.tableColumnGroupSpec[columnIndex];
         if (!group.currentlyHidden) {
             group.currentlyHidden = true;
             this.scheduleTimer('_updateColumnSettings', function () { return _this._updateColumnSettings(); });
             this.scheduleTimer('_applyColumnVisibility', function () { return _this._applyColumnVisibility(); });
         }
     };
+    DataGrid.prototype._basePayload = function () {
+        var token = document.cookie.replace(/(?:(?:^|.*;\s*)csrftoken\s*\=\s*([^;]*).*$)|^.*$/, '$1');
+        return { 'csrfmiddlewaretoken': token };
+    };
+    DataGrid.prototype._columnSettingsKey = function () {
+        return ['datagrid', this._spec.tableSpec.id, 'column'].join('.');
+    };
+    DataGrid.prototype._fetchSettings = function (propKey, callback, defaultValue) {
+        $.ajax('/profile/settings/' + propKey, {
+            'dataType': 'json',
+            'success': function (data) {
+                data = data || defaultValue;
+                if (typeof data === 'string') {
+                    try {
+                        data = JSON.parse(data);
+                    }
+                    catch (e) {
+                    }
+                }
+                callback.call({}, data);
+            }
+        });
+    };
     // The server binds this. 'this' is a checkbox.
     DataGrid.prototype._updateColumnSettings = function () {
-        // Fetch the all-important pagename attribute
-        var id = this._spec.tableSpec.id;
-        // Build an AJAX URL containing the required action and the pagename
-        var url = "PreferencesAjaxResp.cgi?action=_updateColumnSettings&pagename=" + encodeURIComponent(id);
-        // Query every checkbox in the column visibility pulldown
-        // and send its name and checked status back as part of the query.
-        this._spec.tableColumnGroupSpec.forEach(function (group, index) {
-            if (!group.showInVisibilityList || !group.checkboxElement) {
-                return;
-            }
-            var j = group.checkboxElement;
-            url += "&" + (index + 1) + "=" + encodeURIComponent(j.checked.toString());
-        });
-        $.ajax({
-            url: url,
-            dataTypeString: "json",
-            success: function (data, textStatus, jqXHR) {
+        var _this = this;
+        var propKey = this._columnSettingsKey(), setCol = [], unsetCol = [], delCol = [];
+        this._spec.tableColumnGroupSpec.forEach(function (col) {
+            if (col.showInVisibilityList && col.checkboxElement) {
+                if (col.checkboxElement.checked) {
+                    setCol.push(col.name);
+                }
+                else {
+                    unsetCol.push(col.name);
+                    if (!col.hiddenByDefault) {
+                        delCol.push('-' + col.name);
+                    }
+                }
             }
         });
+        this._fetchSettings(propKey, function (data) {
+            var inData = function (name) { return data.indexOf(name) === -1; };
+            // filter out all the unset boxes
+            data = data.filter(function (name) { return unsetCol.indexOf(name) === -1; });
+            // filter out all excluded that are now set
+            data = data.filter(function (name) {
+                return !(setCol.indexOf(name.substring(1)) !== -1 && name.indexOf('-') === 0);
+            });
+            // filter out all the set boxes already in the settings list
+            setCol = setCol.filter(inData);
+            // filter out dupes in delCol
+            delCol = delCol.filter(inData);
+            // add any missing items
+            Array.prototype.push.apply(data, setCol);
+            // mark non-default hide (i.e. default show) as explicitly excluded
+            Array.prototype.push.apply(data, delCol);
+            // store new setting value
+            $.ajax('/profile/settings/' + propKey, {
+                'data': $.extend({}, _this._basePayload(), { 'data': JSON.stringify(data) }),
+                'type': 'POST'
+            });
+        }, []);
         return this;
     };
     // Schedule a call to the given function in the near future, and save the timer under the given identifier.
@@ -968,36 +995,31 @@ var DataGridDataRow = (function () {
 // passing in a reference to the DataGridSpecBase and a unique identifier for a data record.
 var DataGridDataCell = (function () {
     function DataGridDataCell(gridSpec, id, opt) {
+        var defaults;
         this.gridSpec = gridSpec;
         this.recordID = id;
         this.hidden = false;
         this.createdElement = false;
-        opt = opt || {};
-        this.contentFunction = opt['contentFunction'] || function (e, index) {
+        defaults = {
+            'contentFunction': function (e, index) {
+            },
+            'contentString': '',
+            'align': 'left',
+            'rowspan': 1,
+            'colspan': 1
         };
-        this.contentString = opt['contentString'] || '';
-        opt = $.extend({ 'align': 'left' }, opt);
-        this.rowspan = opt['rowspan'] || 1;
-        this.colspan = opt['colspan'] || 1;
-        this.align = opt['align'];
-        this.valign = opt['valign'];
-        this.maxWidth = opt['maxWidth'];
-        this.minWidth = opt['minWidth'];
-        this.nowrap = opt['nowrap'];
-        this.hoverEffect = opt['hoverEffect'];
-        this.checkboxWithID = opt['checkboxWithID'];
-        this.customID = opt['customID'];
-        this.sideMenuItems = opt['sideMenuItems'];
+        $.extend(this, defaults, opt || {});
     }
     DataGridDataCell.prototype.createElement = function () {
-        var id = this.recordID, c = document.createElement("td"), checkId, menu;
+        var id = this.recordID, c = document.createElement("td"), checkId, checkName, menu;
         if (this.checkboxWithID) {
             checkId = this.checkboxWithID.call(this.gridSpec, id);
+            checkName = this.checkboxName || checkId;
             this.checkboxElement = document.createElement('input');
             this.checkboxElement.setAttribute('type', 'checkbox');
             $(this.checkboxElement).attr({
                 'id': checkId,
-                'name': checkId,
+                'name': checkName,
                 'value': id.toString()
             }).appendTo(c);
             this.contentContainerElement = $('<label>').attr('for', checkId).appendTo(c)[0];
@@ -1049,9 +1071,6 @@ var DataGridDataCell = (function () {
         }
         this.cellElement = c;
         this.cellElementJQ = $(c);
-        if (this.hidden) {
-            this.cellElementJQ.addClass('off');
-        }
         this.createdElement = true;
     };
     DataGridDataCell.prototype.getElement = function () {
@@ -1514,9 +1533,8 @@ var DataGridColumnSpec = (function () {
         for (var key in this.createdDataCellObjects) {
             var a = this.createdDataCellObjects[key];
             if (a) {
-                a.forEach(function (b) {
-                    cells.push(b);
-                }); // Much faster than repeated concats
+                // Much faster than repeated concats
+                Array.prototype.push.apply(cells, a);
             }
         }
         return cells;

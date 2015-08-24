@@ -214,7 +214,7 @@ declare module EDDAutoComplete {
         searchFunction(queries: string[], callback: (data: UnitsFieldValue[]) => void): void;
         formatItemFunction(rtr: any, row: any, i: number, num: number): any;
         searchForClosestRecordMatch(v: string): number;
-        resolveRecordIDToSelectString(id: number): any;
+        resolveRecordIDToSelectString(id: number): string;
         static prepareSourceData(force: boolean): void;
     }
     interface LabelingFieldValue extends InputFieldValue {

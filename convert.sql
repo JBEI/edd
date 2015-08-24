@@ -16,8 +16,8 @@ INSERT INTO public.auth_user(
 SELECT setval('public.auth_user_id_seq', max(id)) FROM public.auth_user;
 INSERT INTO public.profile_institution(institution_name)
     VALUES ('Lawrence Berkeley National Lab');
-INSERT INTO public.profile_user(initials, user_id)
-    SELECT u.initials, u.id
+INSERT INTO public.profile_user(initials, user_id, prefs)
+    SELECT u.initials, u.id, ''
     FROM old_edd.accounts u;
 -- Add everyone to LBNL, copy ldap ID if there
 INSERT INTO public.profile_institution_user(identifier, profile_id, institution_id)
@@ -667,6 +667,12 @@ INSERT INTO public.measurement_type_to_species(
     FROM old_edd.measurement_types_to_species ms
     INNER JOIN public.edd_object o ON o.sbml_template_id = ms.metabolic_map_id
     ORDER BY ms.id;
+-- link up studies with SBML
+UPDATE public.study s SET metabolic_map_id = sbml.id
+    FROM public.edd_object sobj, old_edd.studies old, public.edd_object sbml
+    WHERE sobj.id = s.object_ref_id
+        AND old.id = sobj.study_id
+        AND sbml.sbml_template_id = old.metabolic_map_id;
 
 
 -- add permissions needed for migrating attachments

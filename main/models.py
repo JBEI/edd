@@ -53,6 +53,7 @@ class Update(models.Model):
                          mod_by=None,
                          path=None,
                          origin='localhost')
+            # TODO this save may be too early?
             update.save()
         else:
             update = cls.load_request_update(request)
@@ -63,15 +64,16 @@ class Update(models.Model):
         rhost = '%s; %s' % (
             request.META.get('REMOTE_ADDR', None),
             request.META.get('REMOTE_HOST', ''))
-        if not hasattr(request, 'update_key'):
+        if not hasattr(request, 'update_obj'):
             update = cls(mod_time=arrow.utcnow(),
                          mod_by=request.user,
                          path=request.get_full_path(),
                          origin=rhost)
+            # TODO this save may be too early?
             update.save()
-            request.update_key = update.pk
+            request.update_obj = update
         else:
-            update = cls.objects.get(pk=request.update_key)
+            update = request.update_obj
         return update
 
     @property
@@ -113,7 +115,7 @@ class Comment(models.Model):
         db_table = 'comment'
     object_ref = models.ForeignKey('EDDObject', related_name='comments')
     body = models.TextField()
-    created = models.ForeignKey(Update, related_name='+')
+    created = models.ForeignKey(Update)
 
     def save(self, *args, **kwargs):
         if self.created_id is None:
@@ -129,7 +131,7 @@ class Attachment(models.Model):
     object_ref = models.ForeignKey('EDDObject', related_name='files')
     file = models.FileField(max_length=255)
     filename = models.CharField(max_length=255)
-    created = models.ForeignKey(Update, related_name='+')
+    created = models.ForeignKey(Update)
     description = models.TextField(blank=True, null=False)
     mime_type = models.CharField(max_length=255, blank=True, null=True)
     file_size = models.IntegerField(default=0)
@@ -281,8 +283,8 @@ class EDDObject(models.Model):
     active = models.BooleanField(default=True)
     updates = models.ManyToManyField(Update, db_table='edd_object_update', related_name='+')
     # these are used often enough we should save extra queries by including as fields
-    created = models.ForeignKey(Update, related_name='+', editable=False)
-    updated = models.ForeignKey(Update, related_name='+', editable=False)
+    created = models.ForeignKey(Update, related_name='object_created', editable=False)
+    updated = models.ForeignKey(Update, related_name='object_updated', editable=False)
     # store arbitrary metadata as a dict with hstore extension
     meta_store = HStoreField(blank=True, default=dict)
 
@@ -421,6 +423,7 @@ class Study(EDDObject):
     contact = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True,
                                 related_name='contact_study_set')
     contact_extra = models.TextField()
+    metabolic_map = models.ForeignKey('SBMLTemplate', blank=True, null=True)
 
     def to_solr_json(self):
         """
@@ -450,15 +453,15 @@ class Study(EDDObject):
         }
 
     def user_can_read(self, user):
-        return any(p.is_read() for p in chain(
+        return user.is_superuser or user.is_staff or any(p.is_read() for p in chain(
                 self.userpermission_set.filter(user=user),
-                self.grouppermission_set.filter(group=user.groups.all())
+                self.grouppermission_set.filter(group__user=user)
         ))
 
     def user_can_write(self, user):
-        return any(p.is_write() for p in chain(
+        return user.is_superuser or any(p.is_write() for p in chain(
                 self.userpermission_set.filter(user=user),
-                self.grouppermission_set.filter(group=user.groups.all())
+                self.grouppermission_set.filter(group__user=user)
         ))
 
     def get_combined_permission(self):
@@ -596,12 +599,6 @@ class Protocol(EDDObject):
     def __str__(self):
         return self.name
 
-    def to_json (self) :
-        return {
-            "name" : self.name,
-            "disabled" : not self.active,
-        }
-
     @classmethod
     def from_form (cls, name, user, variant_of_id=None) :
         all_protocol_names = set([ p.name for p in Protocol.objects.all() ])
@@ -737,7 +734,7 @@ class Line(EDDObject):
         json_dict = super(Line, self).to_json()
         json_dict.update({
             'control': self.control,
-            'replicate': self.replicate.pk if self.replicate else None,
+            'replicate': self.replicate_id,
             'contact': { 'user_id': self.contact_id, 'text': self.contact_extra },
             'experimenter': self.experimenter_id,
             'strain': [s.pk for s in self.strains.all()],
@@ -1108,7 +1105,7 @@ class Measurement(models.Model):
     measurement_type = models.ForeignKey(MeasurementType)
     x_units = models.ForeignKey(MeasurementUnit, related_name='+')
     y_units = models.ForeignKey(MeasurementUnit, related_name='+')
-    update_ref = models.ForeignKey(Update, related_name='+')
+    update_ref = models.ForeignKey(Update)
     active = models.BooleanField(default=True)
     compartment = models.CharField(max_length=1,
                                    choices=MeasurementCompartment.GROUP_CHOICE,
@@ -1210,7 +1207,7 @@ class MeasurementValue(models.Model):
     measurement = models.ForeignKey(Measurement)
     x = ArrayField(models.DecimalField(max_digits=16, decimal_places=5))
     y = ArrayField(models.DecimalField(max_digits=16, decimal_places=5))
-    updated = models.ForeignKey(Update, related_name='+')
+    updated = models.ForeignKey(Update)
 
     def __str__(self):
         return '(%s, %s)' % (self.x, self.y)
@@ -1250,13 +1247,35 @@ class SBMLTemplate(EDDObject):
     def xml_file(self):
         return self.sbml_file
 
+    def load_reactions(self):
+        read_sbml = self.parseSBML()
+        if read_sbml.getNumErrors() > 0:
+            log = read_sbml.getErrorLog()
+            for i in range(read_sbml.getNumErrors()):
+                # TODO setup logging
+                print("--- SBML ERROR --- " + log.getError(i).getMessage())
+            raise Exception("Could not load SBML")
+        model = read_sbml.getModel()
+        rlist = model.getListOfReactions()
+        return rlist
+
     def parseSBML(self):
-        import libsbml
-        return libsbml.readSBML(str(self.xml_file.file.path))
+        if not hasattr(self, '_sbml_model'):
+            contents = self.sbml_file.file.file.read()
+            import libsbml
+            self._sbml_model = libsbml.readSBMLFromString(contents)
+        return self._sbml_model
 
     def save(self, *args, **kwargs):
         # may need to do a post-save signal; get sbml attachment and save in sbml_file
         super(SBMLTemplate, self).save(*args, **kwargs)
+
+    def to_json(self):
+        return {
+            "id": self.pk,
+            "name": self.name,
+            "biomassCalculation": self.biomass_calculation,
+        }
 
 
 class MetaboliteExchange (models.Model) :
@@ -1300,6 +1319,12 @@ def User_institution (self) :
     except ObjectDoesNotExist as e :
         return None
 
+def User_institutions(self):
+    try:
+        return self.userprofile.institutions.all()
+    except ObjectDoesNotExist, e:
+        return []
+
 def User_to_json(self):
     # FIXME this may be excessive - how much does the frontend actually need?
     return {
@@ -1317,16 +1342,15 @@ def User_to_json(self):
     }
 
 def User_to_solr_json(self):
-    p = self.userprofile
     format_string = '%Y-%m-%dT%H:%M:%SZ'
     return {
         'id': self.pk,
         'username': self.username,
         'name': [ self.first_name, self.last_name ],
         'email': self.email,
-        'initials': p.initials,
+        'initials': self.initials,
         'group': ['@'.join((str(g.pk), g.name)) for g in self.groups.all()],
-        'institution': ['@'.join((str(i.pk), i.institution_name)) for i in p.institutions.all()],
+        'institution': ['@'.join((str(i.pk), i.institution_name)) for i in self.institutions],
         'date_joined': self.date_joined.strftime(format_string),
         'last_login': self.last_login.strftime(format_string),
         'is_active': self.is_active,
@@ -1343,3 +1367,4 @@ def patch_user_model () :
     User.add_to_class("to_solr_json", User_to_solr_json)
     User.add_to_class("initials", property(User_initials))
     User.add_to_class("institution", property(User_institution))
+    User.add_to_class("institutions", property(User_institutions))

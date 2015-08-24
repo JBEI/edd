@@ -1,3 +1,4 @@
+/// <reference path="typescript-declarations.d.ts" />
 /// <reference path="EDDDataInterface.ts" />
 /// <reference path="Utl.ts" />
 /// <reference path="Dragboxes.ts" />
@@ -406,9 +407,9 @@ module StudyD {
                 // assign unique ID to every encountered carbon source name
                 (line.carbon || []).forEach((carbonId:string) => {
                     var src = EDDData.CSources[carbonId];
-                    if (src && src.carbon) {
-                        uniqueNamesId[src.carbon] = uniqueNamesId[src.carbon] || ++unique;
-                        this.filterHash[assayId].push(uniqueNamesId[src.carbon]);
+                    if (src && src.name) {
+                        uniqueNamesId[src.name] = uniqueNamesId[src.name] || ++unique;
+                        this.filterHash[assayId].push(uniqueNamesId[src.name]);
                     }
                 });
             });
@@ -784,11 +785,43 @@ module StudyD {
                 $.each(EDDData.Protocols, (id, protocol) => {
                     var spec;
                     if (protocolsWithMeasurements[id]) {
-                        this.assaysDataGridSpecs[id] = spec = new DataGridSpecAssays(id);
+                        this.assaysDataGridSpecs[id] = spec = new DataGridSpecAssays(protocol.id);
                         this.assaysDataGrids[id] = new DataGridAssays(spec);
                     }
                 });
             }
+        });
+
+        $('form.line-edit').on('change', '.line-meta > :input', (ev) => {
+            // watch for changes to metadata values, and serialize to the meta_store field
+            var form = $(ev.target).closest('form'),
+                metaIn = form.find('[name=line-meta_store]'),
+                meta = JSON.parse(metaIn.val() || '{}');
+            form.find('.line-meta > :input').each((i, input) => {
+                var key = $(input).attr('id').match(/-(\d+)$/)[1];
+                meta[key] = $(input).val();
+            });
+            metaIn.val(JSON.stringify(meta));
+        }).on('click', '.line-meta-add', (ev:JQueryMouseEventObject) => {
+            // make metadata Add Value button work and not submit the form
+            var addrow = $(ev.target).closest('.line-edit-meta'), type, value;
+            type = addrow.find('.line-meta-type').val();
+            value = addrow.find('.line-meta-value').val();
+            addrow.find(':input').val(''); // clear out inputs so another value can be entered
+            if (EDDData.MetaDataTypes[type]) {
+                insertLineMetadataRow(addrow, type, value).find(':input').trigger('change');
+            }
+            return false;
+        }).on('click', '.meta-remove', (ev:JQueryMouseEventObject) => {
+            // remove metadata row and insert null value for the metadata key
+            var form = $(ev.target).closest('form'),
+                metaRow = $(ev.target).closest('.line-meta'),
+                metaIn = form.find('[name=line-meta_store]'),
+                meta = JSON.parse(metaIn.val() || '{}'),
+                key = metaRow.attr('id').match(/-(\d+)$/)[1];
+            meta[key] = null;
+            metaIn.val(JSON.stringify(meta));
+            metaRow.remove();
         });
     }
 
@@ -913,18 +946,26 @@ module StudyD {
                 .on('keydown', (e) => filterTableKeyDown(this, e));
         $('#separateAxesCheckbox').on('change', () => this.queueMainGraphRemake(true));
 
-        // Read in the initial set of Carbon Source selections, if any, and create the proper
-        // number of table row elements.
-        this.cSourceEntries = [];
-        // try to load hidden field value, if empty use a string zero value forcing one row
-        // csIDs = ($('#initialcarbonsources').val() || '0').split(',');
-        // $.each(csIDs, (i, sourceId) => this.addCarbonSourceRow(sourceId));
-
-        this.mTypeEntries = [];
-        // this.addMetaboliteRow();
-
-        // Initialize the description edit fields.
-        this.initDescriptionEditFields();
+        // Enable edit lines button
+        $('#editLineButton').on('click', (ev:JQueryMouseEventObject):boolean => {
+            var button = $(ev.target), data = button.data(), form = clearLineForm(),
+                allMeta = {}, metaRow;
+            if (data.ids.length === 1) {
+                fillLineForm(form, EDDData.Lines[data.ids[0]]);
+            } else {
+                // compute used metadata fields on all data.ids, insert metadata rows?
+                data.ids.map((id:number) => EDDData.Lines[id] || {}).forEach((line:LineRecord) => {
+                    $.extend(allMeta, line.meta || {});
+                });
+                metaRow = form.find('.line-edit-meta');
+                // Run through the collection of metadata, and add a form element entry for each
+                $.each(allMeta, (key) => insertLineMetadataRow(metaRow, key, ''));
+            }
+            updateUILineForm(form, data.count > 1);
+            scrollToForm(form);
+            form.find('[name=line-ids]').val(data.ids.join(','));
+            return false;
+        });
 
         // Hacky button for changing the metabolic map
         $("#metabolicMapName").click( () => this.onClickedMetabolicMapName() );
@@ -943,19 +984,46 @@ module StudyD {
                     console.log('Failed to fetch measurement data on ' + protocol.name + '!');
                     console.log(status);
                 },
-                success: (data) => { processMeasurementData(context, data); }
+                success: (data) => { processMeasurementData(context, data, protocol); }
             });
         });
     }
 
+    export function requestAssayData(assay) {
+        var protocol = EDDData.Protocols[assay.pid];
+        $.ajax({
+            url: ['measurements', assay.pid, assay.id, ''].join('/'),
+            type: 'GET',
+            dataType: 'json',
+            error: (xhr, status) => {
+                console.log('Failed to fetch measurement data on ' + assay.name + '!');
+                console.log(status);
+            },
+            success: (data) => { processMeasurementData(this, data, protocol); }
+        });
+    }
 
-    function processMeasurementData(context, data) {
-        var assaySeen = {}, filterIds = { 'm': [], 'p': [], 'g': [] }, protocolToAssay = {};
+
+    function processMeasurementData(context, data, protocol) {
+        var assaySeen = {},
+            filterIds = { 'm': [], 'p': [], 'g': [] },
+            protocolToAssay = {},
+            count_total:number = 0,
+            count_rec:number = 0;
         EDDData.AssayMeasurements = EDDData.AssayMeasurements || {};
         EDDData.MeasurementTypes = $.extend(EDDData.MeasurementTypes || {}, data.types);
+        // attach measurement counts to each assay
+        $.each(data.total_measures, (assayId:string, count:number):void => {
+            var assay = EDDData.Assays[assayId];
+            if (assay) {
+                assay.count = count;
+                count_total += count;
+            }
+        });
         // loop over all downloaded measurements
         $.each(data.measures || {}, (index, measurement) => {
             var assay = EDDData.Assays[measurement.assay], line, mtype;
+            ++count_rec;
             if (!assay || !assay.active) return;
             line = EDDData.Lines[assay.lid];
             if (!line || !line.active) return;
@@ -1003,7 +1071,11 @@ module StudyD {
             context.geneDataProcessed = true;
         }
         context.repopulateFilteringSection();
-        // invalidate assays on all DataGrids; I think this means they are initially hidden?
+        if (count_rec < count_total) {
+            // TODO not all measurements downloaded; display a message indicating this
+            // explain downloading individual assay measurements too
+        }
+        // invalidate assays on all DataGrids; redraws the affected rows
         $.each(context.assaysDataGrids, (protocolId, dataGrid) => {
             dataGrid.invalidateAssayRecords(Object.keys(protocolToAssay[protocolId] || {}));
         });
@@ -1013,9 +1085,9 @@ module StudyD {
     }
 
 
-    export function carbonBalanceColumnRevealedCallback(index:any, spec:DataGridSpecLines,
+    export function carbonBalanceColumnRevealedCallback(spec:DataGridSpecLines,
             dataGridObj:DataGrid) {
-        StudyD.rebuildCarbonBalanceGraphs(index);
+        StudyD.rebuildCarbonBalanceGraphs();
     }
 
 
@@ -1037,6 +1109,13 @@ module StudyD {
         checkedLen = checkedBoxes.length;
         linesActionPanel = $('#linesActionPanel').toggleClass('off', !checkedLen);
         $('#linesSelectedCell').empty().text(checkedLen + ' selected');
+        // enable singular/plural changes
+        $('#cloneLineButton').text('Clone Line' + (checkedLen > 1 ? 's' : ''));
+        $('#editLineButton').text('Edit Line' + (checkedLen > 1 ? 's' : '')).data({
+            'count': checkedLen,
+            'ids': checkedBoxes.map((box:HTMLInputElement) => box.value)
+        });
+        $('#groupLineButton').toggleClass('off', checkedLen < 2);
     }
 
 
@@ -1065,7 +1144,7 @@ module StudyD {
         checkedMeasure = $(checkedBoxes).filter(':not([id^=assay])').size();
         panel.toggleClass('off', !checkedAssays && !checkedMeasure);
         if (checkedAssays || checkedMeasure) {
-            infobox = $('#assaysMeasSelectedTD').empty();
+            infobox = $('#assaysSelectedCell').empty();
             if (checkedAssays) {
                 $("<p>").appendTo(infobox).text((checkedAssays > 1) ?
                         (checkedAssays + " Assays selected") : "1 Assay selected");
@@ -1168,33 +1247,34 @@ module StudyD {
         postFilteringMeasurements = buildFilteredMeasurements(context, previousIDSet);
 
         $.each(postFilteringMeasurements, (i, measurementId) => {
-            var measurement = EDDData.AssayMeasurements[measurementId],
-                points = (measurement.values ? measurement.values.length : 0),
+            var measure:AssayMeasurementRecord = EDDData.AssayMeasurements[measurementId],
+                mtype:MeasurementTypeRecord = EDDData.MeasurementTypes[measure.type],
+                points = (measure.values ? measure.values.length : 0),
                 assay, line, protocol, newSet;
             dataPointsTotal += points;
             if (dataPointsDisplayed > 15000) {
                 return; // Skip the rest if we've hit our limit
             }
             dataPointsDisplayed += points;
-            assay = EDDData.Assays[measurement.assay] || {};
+            assay = EDDData.Assays[measure.assay] || {};
             line = EDDData.Lines[assay.lid] || {};
             protocol = EDDData.Protocols[assay.pid] || {};
             newSet = {
                 'label': 'dt' + measurementId,
-                'measurementname': Utl.EDD.resolveMeasurementRecordToName(measurement),
+                'measurementname': Utl.EDD.resolveMeasurementRecordToName(measure),
                 'name': [line.name, protocol.name, assay.name].join('-'),
-                'units': Utl.EDD.resolveMeasurementRecordToUnits(measurement),
-                'data': $.map(measurement.values, convert).sort(compare)
+                'units': Utl.EDD.resolveMeasurementRecordToUnits(measure),
+                'data': $.map(measure.values, convert).sort(compare)
             };
             if (line.control) newSet.iscontrol = 1;
             if (separateAxes) {
                 // If the measurement is a metabolite, choose the axis by type. If it's any
                 // other subtype, choose the axis based on that subtype, with an offset to avoid
                 // colliding with the metabolite axes.
-                if (measurement.mst === 1) {
-                    newSet.yaxisByMeasurementTypeID = measurement.mt;
+                if (mtype.family === 'm') {
+                    newSet.yaxisByMeasurementTypeID = mtype.id;
                 } else {
-                    newSet.yaxisByMeasurementTypeID = measurement.mst - 10;
+                    newSet.yaxisByMeasurementTypeID = mtype.family;
                 }
             }
             context.mainGraphObject.addNewSet(newSet);
@@ -1210,395 +1290,143 @@ module StudyD {
     }
 
 
-    // TODO: this is gross, do it better
-    export function addCarbonSourceRow(carbonId) {
-
-        // Search for an old row that's been disabled, and if we find one,
-        // re-enable it and stick it on the end of the array.
-        var turnedOffIndex = -1;
-        for (var j=0; j < this.cSourceEntries.length; j++) {
-
-            if (this.cSourceEntries[j].disabled == true) {
-                turnedOffIndex = j;
-                break;
-            }
-        }
-
-        if (turnedOffIndex > -1) {
-    
-            var toAdd = this.cSourceEntries.splice(turnedOffIndex, 1);
-            toAdd[0].disabled = false;
-            if (carbonId) {
-                toAdd[0].hiddeninput.value = carbonId;
-            }
-            toAdd[0].input.autocompleter.setFromHiddenElement();
-            this.cSourceEntries.push(toAdd[0]);
-    
-        } else {
-
-            var firstRow = false;
-            // If this is the first row we're creating, we create it a little differently
-            if (this.cSourceEntries.length == 0) {
-                firstRow = true;
-            }
-            var order = this.cSourceEntries.length;
-
-            var rtr = document.createElement("tr");
-            rtr.className = "multientrybuttonrow";
-
-            var rtd = document.createElement("td");
-            if (firstRow) {
-                rtd.innerHTML = '<input type="checkbox" id="lineCSCheckbox" class="off" ' +
-                        'name="lineCSCheckbox" value="1" />';
-            }
-            rtr.appendChild(rtd);
-
-            rtd = document.createElement("td");
-            rtr.appendChild(rtd);
-            if (firstRow) {
-                var aL = document.createElement("label");
-                aL.setAttribute('for', "lineCSCheckbox");
-                rtd.appendChild(aL);
-
-                var p = document.createElement("p");
-                aL.appendChild(p);
-
-                p.appendChild(document.createTextNode("Carbon Source(s):"));
-            }        
-        
-            rtd = document.createElement("td");
-            rtr.appendChild(rtd);
-
-            var aCI = document.createElement("input");
-            aCI.setAttribute('type', "text");
-            aCI.setAttribute('id', "linecs" + order);
-            aCI.setAttribute('name', "linecs" + order);
-            aCI.setAttribute('autocomplete', "off");
-            aCI.setAttribute('autocompletetype', "carbonsource");
-            aCI.setAttribute('autocompletevalue', "linecsvalue" + order);
-            aCI.setAttribute('size', "61");
-            aCI.className = "autocomplete";
-            aCI.style.marginRight = "2px";
-            rtd.appendChild(aCI);
-
-            var aCHI = document.createElement("input");
-            aCHI.setAttribute('type', "hidden");
-            aCHI.setAttribute('id', "linecsvalue" + order);
-            aCHI.setAttribute('name', "linecsvalue" + order);
-            aCHI.setAttribute('value', carbonId);
-            rtd.appendChild(aCHI);
-
-            rtd = document.createElement("td");
-            rtr.appendChild(rtd);
-
-            var buttonSpan = document.createElement("div");
-            buttonSpan.className = "multientrybutton";
-            rtd.appendChild(buttonSpan);
-
-            if (firstRow) {
-                var buttonImg = document.createElement("img");
-                buttonImg.setAttribute('src', "/static/main/images/plus.png");
-                buttonImg.style.marginTop = "1px";
-                var oc = "StudyD.addCarbonSourceRow();";
-                buttonImg.setAttribute('onclick', oc);
-                buttonSpan.appendChild(buttonImg);
-            } else {
-                var buttonImg = document.createElement("img");
-                buttonImg.setAttribute('src', "/static/main/images/minus.png");
-                buttonImg.style.marginTop = "1px";
-                var oc = "StudyD.removeCarbonSourceRow(" + order + ");";
-                buttonImg.setAttribute('onclick', oc);
-                buttonSpan.appendChild(buttonImg);        
-            }
-        
-            var newRowRecord = {
-                row: rtr,
-                input: aCI,
-                hiddeninput: aCHI,
-                label: order,
-                initialized: false,
-                disabled: false
-            };
-
-            this.cSourceEntries.push(newRowRecord);
-        }
-
-        this.redrawCarbonSourceRows();
+    function clearAssayForm():JQuery {
+        var form:JQuery = $('#id_assay-assay_id').closest('.disclose');
+        form.find('[name^=assay-]').val('').end().find('.cancel-link').remove();
+        form.find('.errorlist').remove();
+        return form;
     }
 
-
-    export function removeCarbonSourceRow(order) {
-        for (var j=0; j < this.cSourceEntries.length; j++) {
-            if (this.cSourceEntries[j].label == order) {
-                this.cSourceEntries[j].disabled = true;
-                break;
-            }
-        }
-        this.redrawCarbonSourceRows();
+    function clearLineForm() {
+        var form = $('#id_line-ids').closest('.disclose');
+        form.find('.line-meta').remove();
+        form.find(':input').filter('[name^=line-]').val('');
+        form.find('.errorlist').remove();
+        form.find('.cancel-link').remove();
+        form.find('.bulk').addClass('off');
+        form.off('change.bulk');
+        return form;
     }
 
-
-    export function disableAllButFirstCarbonSourceRow() {
-        for (var j=1; j < this.cSourceEntries.length; j++) {
-            this.cSourceEntries[j].disabled = true;
-        }
-        this.redrawCarbonSourceRows();
+    function fillAssayForm(form, record) {
+        form.find('[name=assay-assay_id]').val(record.id);
+        form.find('[name=assay-name]').val(record.name);
+        form.find('[name=assay-description]').val(record.description);
+        form.find('[name=assay-protocol]').val(record.pid);
+        form.find('[name=assay-experimenter_0]').val((EDDData.Users[record.experimenter] || {}).uid || '--');
+        form.find('[name=assay-experimenter_1]').val(record.experimenter);
     }
 
-
-    export function redrawCarbonSourceRows() {
-        var carbonSourceTableBody = <any>document.getElementById("carbonSourceTableBody");
-        if (!carbonSourceTableBody)
-            return;
-
-        while (carbonSourceTableBody.firstChild) {
-            carbonSourceTableBody.removeChild(carbonSourceTableBody.firstChild);
-        }
-
-        for (var j=0; j < this.cSourceEntries.length; j++) {
-            if (this.cSourceEntries[j].disabled == false) {
-                carbonSourceTableBody.appendChild(this.cSourceEntries[j].row);
-                if (this.cSourceEntries[j].initialized == false) {
-                    this.cSourceEntries[j].initialized = true;
-                    EDDAutoComplete.initializeElement(this.cSourceEntries[j].input);
-                }
-            }
-        }
-    }
-
-
-    export function editLine(linkelement, index) {
-
-        var record = EDDData.Lines[index];
-    
-        if (!record) {
-            console.log('Invalid record for editing: ' + index);
-            return;
-        }
-
-        // Create a mapping from the JSON record to the form elements
-        var formInfo = {
-            lineidtoedit: index,
-            linename: record.name,
-            lineiscontrol: record.control,
-            linestrainvalue: record.strain,
-            lineexperimentervalue: record.experimenter,
-            linecontact: record.contact
-        };
-
+    function fillLineForm(form, record) {
+        var metaRow;
+        form.find('[name=line-ids]').val(record.id);
+        form.find('[name=line-name]').val(record.name);
+        form.find('[name=line-description]').val(record.description);
+        form.find('[name=line-control]').prop('checked', record.control);
+        form.find('[name=line-contact_0]').val(record.contact.text || (EDDData.Users[record.contact.user_id] || {}).uid || '--');
+        form.find('[name=line-contact_1]').val(record.contact.user_id);
+        form.find('[name=line-experimenter_0]').val((EDDData.Users[record.experimenter] || {}).uid || '--');
+        form.find('[name=line-experimenter_1]').val(record.experimenter);
+        form.find('[name=line-carbon_source_0]').val(
+                record.carbon.map((v) => (EDDData.CSources[v] || {}).name || '--').join(','));
+        form.find('[name=line-carbon_source_1]').val(record.carbon.join(','));
+        form.find('[name=line-strains_0]').val(
+                record.strain.map((v) => (EDDData.Strains[v] || {}).name || '--').join(','));
+        form.find('[name=line-strains_1]').val(
+                record.strain.map((v) => (EDDData.Strains[v] || {}).registry_id || '--').join(','));
+        metaRow = form.find('.line-edit-meta');
         // Run through the collection of metadata, and add a form element entry for each
         $.each(record.meta, (key, value) => {
-            formInfo['linemeta' + key] = value;
-            formInfo['linemeta' + key + 'include'] = 1;
+            insertLineMetadataRow(metaRow, key, value);
         });
-
-        // TODO need to re-implement the form take-over
-        // var cs = record.carbon || [];    // We need to do something special with the Carbon Sources array
-
-        // Either show just enough carbon source boxes for the entry in question,
-        // or if there is no carbon source set, show one box (which will be defaulted to blank)
-        // var sourcesToShow = 1;
-        // if (cs.length > 1) {
-        //     sourcesToShow = cs.length;
-        // }
-
-        // this.disableAllButFirstCarbonSourceRow();
-        // for (var i:any=1; i < sourcesToShow; i++) {
-        //     this.addCarbonSourceRow(0);
-        // }
-
-        // // Run through the set of carbon sources, creating a form entry for each
-        // for (var i:any=0; i < cs.length; i++) {
-        //     var c = cs[i];
-        //     var field = "linecsvalue" + this.cSourceEntries[i].label;
-        //     formInfo[field] = c;
-        // }
-
-        // TODO: WHY IS THIS TAKING GIGANTIC HARDCODED STRINGS
-        // EDDEdit.prepareForm(formInfo, 'lineMain,editLineBanner,lineNameRow,editLineButtons',
-        //         ['addNewLineShow','addNewLineBanner','bulkEditLineBanner','addNewLineButtons',
-        //          'bulkEditLineButtons','lineStrainCheckbox','lineMediaCheckbox',
-        //          'lineControlCheckbox','lineCSCheckbox','lineExpCheckbox','lineContactCheckbox',
-        //          'importLinesButton'].join(','));
+        // store original metadata in initial- field
+        form.find('[name=line-meta_store]').val(JSON.stringify(record.meta));
+        form.find('[name=initial-line-meta_store]').val(JSON.stringify(record.meta));
     }
 
+    function scrollToForm(form) {
+        // make sure form is disclosed
+        var top = form.toggleClass('discloseHide', false).offset().top;
+        $('html').animate({ 'scrollTop': top }, 'slow');
+    }
 
-    export function editAssay(linkelement, index) {
+    function updateUIAssayForm(form) {
+        var title, button;
+        // Update the disclose title to read Edit
+        title = form.find('.discloseLink > a').text('Edit Assay');
+        // Update the button to read Edit
+        button = form.find('[name=action][value=assay]').text('Edit Assay');
+        // Add link to revert back to 'Add Line' form
+        $('<a href="#">Cancel</a>').addClass('cancel-link').on('click', (ev) => {
+            clearAssayForm();
+            title.text('Add Assays To Selected Lines');
+            button.text('Add Assay');
+            return false;
+        }).insertAfter(button);
+    }
 
-        var record = EDDData.Assays[index];
-    
+    function updateUILineForm(form, plural?) {
+        var title, button, text = 'Edit Line' + (plural ? 's' : '');
+        // Update the disclose title to read 'Edit Line'
+        title = form.find('.discloseLink > a').text(text);
+        // Update the button to read 'Edit Line'
+        button = form.find('[name=action][value=line]').text(text);
+        if (plural) {
+            form.find('.bulk').prop('checked', false).removeClass('off');
+            form.on('change.bulk', ':input', (ev:JQueryEventObject) => {
+                $(ev.target).siblings('label').find('.bulk').prop('checked', true);
+            });
+        }
+        // Add link to revert back to 'Add Line' form
+        $('<a href="#">Cancel</a>').addClass('cancel-link').on('click', (ev) => {
+            clearLineForm();
+            title.text('Add A New Line');
+            button.text('Add Line');
+            return false;
+        }).insertAfter(button);
+    }
+
+    function insertLineMetadataRow(refRow, key, value) {
+        var row, type, label, input, id = 'line-meta-' + key;
+        row = $('<p>').attr('id', 'row_' + id).addClass('line-meta').insertBefore(refRow);
+        type = EDDData.MetaDataTypes[key];
+        label = $('<label>').attr('for', 'id_' + id).text(type.name).appendTo(row);
+        // bulk checkbox?
+        input = $('<input type="text">').attr('id', 'id_' + id).val(value).appendTo(row);
+        if (type.pre) {
+            $('<span>').addClass('meta-prefix').text(type.pre).insertBefore(input);
+        }
+        $('<span>').addClass('meta-remove').text('Remove').insertAfter(input);
+        if (type.postfix) {
+            $('<span>').addClass('meta-postfix').text(type.postfix).insertAfter(input);
+        }
+        return row;
+    }
+
+    export function editAssay(index:number):void {
+        var record = EDDData.Assays[index], form;
         if (!record) {
             console.log('Invalid record for editing: ' + index);
             return;
         }
 
-        // Create a mapping from the JSON record to the form elements
-        var formInfo = {
-            assayidtoedit: index,
-            assayname: record.name,
-            assayprotocol: record.pid,
-            assaydescription: record.description,
-            assayexperimentervalue: record.exp,
-        };
-        // Set the checkbox of the Line this Assay belongs to
-        formInfo['line'+record.lid+'include'] = 1;
-
-        EDDEdit.prepareForm(formInfo, 'studyLinesTable,assayMain,editAssayBanner,editAssayButtons',
-                'addNewAssayCover,newAssayBanner,newAssayButtons');
+        form = clearAssayForm(); // "form" is actually the disclose block
+        fillAssayForm(form, record);
+        updateUIAssayForm(form);
+        scrollToForm(form);
     }
 
-
-    export function addMetaboliteRow() {
-
-        // Search for an old row that's been disabled, and if we find one,
-        // re-enable it and stick it on the end of the array.
-        var turnedOffIndex = -1;
-        for (var j=0; j < this.mTypeEntries.length; j++) {
-
-            if (this.mTypeEntries[j].disabled == true) {
-                turnedOffIndex = j;
-                break;
-            }
-        }
-
-        if (turnedOffIndex > -1) {
-    
-            var toAddArray = this.mTypeEntries.splice(turnedOffIndex, 1);
-            var toAdd = toAddArray[0];
-            toAdd.disabled = false;
-            this.mTypeEntries.push(toAdd);
-    
-        } else {
-
-            var firstRow = false;
-            // If this is the first row we're creating, we create it a little differently
-            if (this.mTypeEntries.length == 0) {
-                firstRow = true;
-            }
-            var order = this.mTypeEntries.length;
-
-            var rtr = document.createElement("tr");
-            rtr.className = "multientrybuttonrow";
-
-            var aTD = document.createElement("td");
-            rtr.appendChild(aTD);
-            if (firstRow) {
-                var p = document.createElement("p");
-                aTD.appendChild(p);
-
-                p.appendChild(document.createTextNode("Metabolite Type(s):"));
-            }        
-
-            var mQAutocomplete = EDDAutoComplete.createAutoCompleteContainer(
-                    "measurementcompartment", 4, "assaycomp" + order, '', 0);
-            aTD = document.createElement("td");
-            rtr.appendChild(aTD);
-            mQAutocomplete.inputElement.style.marginRight = "2px";
-            aTD.appendChild(mQAutocomplete.inputElement);
-            aTD.appendChild(mQAutocomplete.hiddenInputElement);
-
-            var mTypeAutocomplete = EDDAutoComplete.createAutoCompleteContainer(
-                    "metabolite", 45, "assaymt" + order, '', 0);
-            aTD = document.createElement("td");
-            rtr.appendChild(aTD);
-            mTypeAutocomplete.inputElement.style.marginRight = "2px";
-            aTD.appendChild(mTypeAutocomplete.inputElement);
-            aTD.appendChild(mTypeAutocomplete.hiddenInputElement);
-
-            var unitsAutocomplete = EDDAutoComplete.createAutoCompleteContainer(
-                    "units", 15, "assayunits" + order, '', 0);
-            aTD = document.createElement("td");
-            rtr.appendChild(aTD);
-            aTD.appendChild(unitsAutocomplete.inputElement);
-            aTD.appendChild(unitsAutocomplete.hiddenInputElement);
-
-            aTD = document.createElement("td");
-            rtr.appendChild(aTD);
-
-            var buttonSpan = document.createElement("div");
-            buttonSpan.className = "multientrybutton";
-            aTD.appendChild(buttonSpan);
-
-            if (firstRow) {
-                var buttonImg = document.createElement("img");
-                buttonImg.setAttribute('src', "/static/main/images/plus.png");
-                buttonImg.style.marginTop = "1px";
-                var oc = "StudyD.addMetaboliteRow();";
-                buttonImg.setAttribute('onclick', oc);
-                buttonSpan.appendChild(buttonImg);
-            } else {
-                var buttonImg = document.createElement("img");
-                buttonImg.setAttribute('src', "/static/main/images/minus.png");
-                buttonImg.style.marginTop = "1px";
-                var oc = "StudyD.removeMeasurementTypeRow(" + order + ");";
-                buttonImg.setAttribute('onclick', oc);
-                buttonSpan.appendChild(buttonImg);        
-            }
-        
-            var newRowRecord = {
-                row: rtr,
-                mQAutocomplete: mQAutocomplete,
-                mTypeAutocomplete: mTypeAutocomplete,
-                unitsAutocomplete: unitsAutocomplete,
-                label: order,
-                initialized: false,
-                disabled: false
-            };
-
-            this.mTypeEntries.push(newRowRecord);
-        }
-
-        this.redrawMeasurementTypeRows();
-    }
-
-
-    export function removeMeasurementTypeRow(order) {
-        for (var j=0; j < this.mTypeEntries.length; j++) {
-            if (this.mTypeEntries[j].label == order) {
-                this.mTypeEntries[j].disabled = true;
-                break;
-            }
-        }
-        this.redrawMeasurementTypeRows();
-    }
-
-
-    export function redrawMeasurementTypeRows() {
-        var measurementTypeTableBody = <any>document.getElementById("measurementTypeTableBody");
-        if (!measurementTypeTableBody)
+    export function editLine(index:number):void {
+        var record = EDDData.Lines[index], form;
+        if (!record) {
+            console.log('Invalid record for editing: ' + index);
             return;
-
-        while (measurementTypeTableBody.firstChild) {
-            measurementTypeTableBody.removeChild(measurementTypeTableBody.firstChild);
         }
 
-        for (var j=0; j < this.mTypeEntries.length; j++) {
-            var mte = this.mTypeEntries[j];
-            if (mte.disabled == false) {
-                measurementTypeTableBody.appendChild(mte.row);
-                if (mte.initialized == false) {
-                    mte.initialized = true;
-                    EDDAutoComplete.initializeElement(mte.mQAutocomplete.inputElement);
-                    mte.mQAutocomplete.initialized = 1;
-                    EDDAutoComplete.initializeElement(mte.mTypeAutocomplete.inputElement);
-                    mte.mTypeAutocomplete.initialized = 1;
-                    EDDAutoComplete.initializeElement(mte.unitsAutocomplete.inputElement);
-                    mte.unitsAutocomplete.initialized = 1;
-                }
-            }
-        }
-    }
-
-
-    // This is called by the LiveTextEdit control to set a new description for an attachemnt.
-    export function setAttachmentDescription(element, attachmentID, newDescription) {
-        // TODO: call correct new URL for update
-    }
-
-
-    // This creates a LiveTextEdit object for each attachment description.
-    export function initDescriptionEditFields() {
-        this.descriptionEditFields = [];
+        form = clearLineForm(); // "form" is actually the disclose block
+        fillLineForm(form, record);
+        updateUILineForm(form);
+        scrollToForm(form);
     }
 
 
@@ -1617,117 +1445,50 @@ module StudyD {
 
             // Rebuild the CB graphs.
             this.carbonBalanceDisplayIsFresh = false;
-            this.rebuildCarbonBalanceGraphs(5);
+            this.rebuildCarbonBalanceGraphs();
         }
     }
 
 
-    // TODO: Use a special variable in the spec to get the right column object, not a lousy magic
-    // index number.
-    export function rebuildCarbonBalanceGraphs(columnIndex:number) {
+    export function rebuildCarbonBalanceGraphs() {
+        var cellObjs:DataGridDataCell[],
+            group:DataGridColumnGroupSpec = this.linesDataGridSpec.carbonBalanceCol;
         if (this.carbonBalanceDisplayIsFresh) {
             return;
         }
         // Drop any previously created Carbon Balance SVG elements from the DOM.
         this.carbonBalanceData.removeAllCBGraphs();
-        var cellObjs = this.linesDataGrid.getDataCellObjectsForColumnIndex(columnIndex);
-         for (var i=0; i < cellObjs.length; i++) {
-             var lineID = cellObjs[i].recordID;
-            var element = cellObjs[i].cellElement;
-            this.carbonBalanceData.createCBGraphForLine(lineID, element);
-        }
+        cellObjs = [];
+        // get all cells from all columns in the column group
+        group.memberColumns.forEach((col:DataGridColumnSpec):void => {
+            Array.prototype.push.apply(cellObjs, col.getEntireIndex());
+        });
+        // create carbon balance graph for each cell
+        cellObjs.forEach((cell:DataGridDataCell) => {
+            this.carbonBalanceData.createCBGraphForLine(cell.recordID, cell.cellElement);
+        });
         this.carbonBalanceDisplayIsFresh = true;
     }
 
 
     // They want to select a different metabolic map.
-    export function onClickedMetabolicMapName() {
-        var callback = (err, metabolicMapID, metabolicMapName, finalBiomass:number) => {
-            if ( err == null ) {
+    export function onClickedMetabolicMapName():void {
+        var ui:StudyMetabolicMapChooser,
+            callback:MetabolicMapChooserResult = (error:string,
+                metabolicMapID?:number,
+                metabolicMapName?:string,
+                finalBiomass?:number):void => {
+            if (!error) {
                 this.metabolicMapID = metabolicMapID;
                 this.metabolicMapName = metabolicMapName;
                 this.biomassCalculation = finalBiomass;
-
                 this.onChangedMetabolicMap();
+            } else {
+                console.log("onClickedMetabolicMapName error: " + error);
             }
         };
-        new StudyMetabolicMapChooser(EDDData.currentUserID, EDDData.currentStudyID, false,
-                callback);
+        ui = new StudyMetabolicMapChooser(false, callback);
     }
-
-
-    // // Direct the form to submit to the Study.cgi page
-    // export function submitToStudy(action) {
-    //     var form = <any>document.getElementById("assaysForm");
-    //     var formAction = <any>document.getElementById("assaysFormActionElement");
-    //     if (!form) {
-    //         console.log('Cannot find assaysForm form!');
-    //         return;
-    //     }
-    //     if (action && !formAction) {
-    //         console.log('Cannot find formAction input to embed action!');
-    //         return;
-    //     } else {
-    //         formAction.value = action;    
-    //     }
-    //     form.action = "Study.cgi";
-    //     form.submit();
-    // }
-
-
-    // // Direct the Study page to act on Lines with the information submitted
-    // export function takeLinesAction() {
-    //     var leForm = <any>document.getElementById("assaysForm");
-    //     var leActOn = <any>document.getElementById("actOn");
-    //     var leEARadioButton = <any>document.getElementById("exportlbutton");
-    //     var lePulldown = <any>document.getElementById("exportLinesAs");
-    //     if (!lePulldown || !leEARadioButton || !leForm || !leActOn) {
-    //         console.log("Page elements missing!");
-    //         return;
-    //     }
-
-    //     if (leEARadioButton.checked) {
-    //         if (lePulldown.value == 'csv') {
-    //             leForm.action = "StudyExport.cgi";
-    //         } else {
-    //             leForm.action = "StudySBMLExport.cgi";
-    //         }
-    //         leForm.submit();
-    //         return;
-    //     }
-    //     leActOn.value = "lines";
-    //     this.submitToStudy('Take Action');
-    // }
-
-
-    // // Direct the Study page to act on Assays with the information submitted
-    // export function takeAssaysAction() {
-    //     var leForm = <any>document.getElementById("assaysForm");
-    //     var leActOn = <any>document.getElementById("actOn");
-    //     if (!leForm || !leActOn) {
-    //         return;
-    //     }
-    //     leActOn.value = "assays";
-        
-    //     var leEARadioButton = <any>document.getElementById("exportAssaysButton");
-    //     // Direct the form to submit to the StudyExport.cgi page.
-    //     if (leEARadioButton.checked) {
-    //         var assayLevelInput = <HTMLInputElement>document.getElementById("assaylevelElement");
-    //         if (assayLevelInput) {
-    //             assayLevelInput.value = "1";
-    //         }
-    //         leForm.action = "StudyExport.cgi";
-    //         leForm.submit();
-    //         return;
-    //     }
-    //     var leEMRadioButton = <any>document.getElementById("editMeasurementsButton");
-    //     if (leEMRadioButton.checked) {
-    //         leForm.action = "AssayTableDataEdit.cgi";
-    //         leForm.submit();
-    //         return;
-    //     }
-    //     this.submitToStudy('Take Action');
-    // }
 };
 
 
@@ -1739,6 +1500,7 @@ class DataGridSpecLines extends DataGridSpecBase {
     groupIDsInOrder:any;
     groupIDsToGroupIndexes:any;
     groupIDsToGroupNames:any;
+    carbonBalanceCol:DataGridColumnGroupSpec;
     carbonBalanceWidget:DGShowCarbonBalanceWidget;
 
 
@@ -1843,7 +1605,7 @@ class DataGridSpecLines extends DataGridSpecBase {
     private loadCarbonSource(index:string):string {
         var source = this.loadFirstCarbonSource(index);
         if (source) {
-            return source.carbon.toUpperCase();
+            return source.name.toUpperCase();
         }
         return '?';
     }
@@ -1953,9 +1715,9 @@ class DataGridSpecLines extends DataGridSpecBase {
 
     generateLineNameCells(gridSpec:DataGridSpecLines, index:string):DataGridDataCell[] {
         var line = EDDData.Lines[index];
-        // TODO get rid of onclick, check that URL for export is OK
         return [
             new DataGridDataCell(gridSpec, index, {
+                'checkboxName': 'lineId',
                 'checkboxWithID': (id) => { return 'line' + id + 'include'; },
                 'sideMenuItems': [
                     '<a href="#editline" class="line-edit-link">Edit Line</a>',
@@ -1991,7 +1753,7 @@ class DataGridSpecLines extends DataGridSpecBase {
         var line, strings = ['--'];
         if ((line = EDDData.Lines[index])) {
             if (line.carbon && line.carbon.length) {
-                strings = line.carbon.map((id) => { return EDDData.CSources[id].carbon; });
+                strings = line.carbon.map((id) => { return EDDData.CSources[id].name; });
             }
         }
         return strings.map((name) => {
@@ -2072,7 +1834,7 @@ class DataGridSpecLines extends DataGridSpecBase {
             rightSide:DataGridColumnSpec[];
         // add click handler for menu on line name cells
         $(this.tableElement).on('click', 'a.line-edit-link', (ev) => {
-            StudyD.editLine(ev.target, $(ev.target).closest('.popupcell').find('input').val());
+            StudyD.editLine($(ev.target).closest('.popupcell').find('input').val());
             return false;
         });
         leftSide = [
@@ -2102,7 +1864,7 @@ class DataGridSpecLines extends DataGridSpecBase {
             new DataGridColumnGroupSpec('Strain'),
             new DataGridColumnGroupSpec('Carbon Source(s)'),
             new DataGridColumnGroupSpec('Labeling'),
-            new DataGridColumnGroupSpec('Carbon Balance', {
+            this.carbonBalanceCol = new DataGridColumnGroupSpec('Carbon Balance', {
                 'showInVisibilityList': false,    // Has its own header widget
                 'hiddenByDefault': true,
                 'revealedCallback': StudyD.carbonBalanceColumnRevealedCallback
@@ -2326,19 +2088,24 @@ class DGShowCarbonBalanceWidget extends DataGridHeaderWidget {
     highlighted:boolean;
     checkboxEnabled:boolean;
 
+    // store more specific type of spec to get to carbonBalanceCol later
+    private _lineSpec:DataGridSpecLines;
 
-    constructor(dataGridOwnerObject:any, dataGridSpec:any) {
+    constructor(dataGridOwnerObject:DataGrid, dataGridSpec:DataGridSpecLines) {
         super(dataGridOwnerObject, dataGridSpec);
         this.checkboxEnabled = true;
         this.highlighted = false;
+        this._lineSpec = dataGridSpec;
     }
     
 
     createElements(uniqueID:any):void {
-        var cbID:string = this.dataGridSpec.tableSpec.id+'CarBal'+uniqueID;
+        var cbID:string = this.dataGridSpec.tableSpec.id + 'CarBal' + uniqueID;
         var cb:HTMLInputElement = this._createCheckbox(cbID, cbID, '1');
         cb.className = 'tableControl';
-        $(cb).click(this.clickHandler);
+        $(cb).click((ev:JQueryMouseEventObject):void => {
+            this.activateCarbonBalance();
+        });
 
         var label:HTMLElement = this._createLabel('Carbon Balance', cbID);
 
@@ -2353,7 +2120,6 @@ class DGShowCarbonBalanceWidget extends DataGridHeaderWidget {
         this.createdElements(true);
     }
 
-
     highlight(h:boolean):void {
         this.highlighted = h;
         if (this.checkboxEnabled) {
@@ -2364,7 +2130,6 @@ class DGShowCarbonBalanceWidget extends DataGridHeaderWidget {
             }
         }
     }
-
 
     enable(h:boolean):void {
         this.checkboxEnabled = h;
@@ -2377,29 +2142,34 @@ class DGShowCarbonBalanceWidget extends DataGridHeaderWidget {
         }
     }
 
-
-    clickHandler = (e) => {
-        // TODO: Untangle this a bit
-        var callback = (err, finalMetabolicMapID, finalMetabolicMapFilename,
-                finalBiomass:number) => {
-            StudyD.metabolicMapID = finalMetabolicMapID;
-            StudyD.metabolicMapName = finalMetabolicMapFilename;
-            StudyD.biomassCalculation = finalBiomass;
-            StudyD.onChangedMetabolicMap();
-        }
+    private activateCarbonBalance():void {
+        var ui:FullStudyBiomassUI,
+            callback:FullStudyBiomassUIResultsCallback;
+        callback = (error:string,
+                metabolicMapID?:number,
+                metabolicMapFilename?:string,
+                finalBiomass?:number):void => {
+            if (!error) {
+                StudyD.metabolicMapID = metabolicMapID;
+                StudyD.metabolicMapName = metabolicMapFilename;
+                StudyD.biomassCalculation = finalBiomass;
+                StudyD.onChangedMetabolicMap();
+                this.checkBoxElement.checked = true;
+                this.dataGridOwnerObject.showColumn(this._lineSpec.carbonBalanceCol);
+            }
+        };
         if (this.checkBoxElement.checked) {
-
             // We need to get a biomass calculation to multiply against OD.
             // Have they set this up yet?
-            if (!StudyD.biomassCalculation || StudyD.biomassCalculation == -1 ) {
+            if (!StudyD.biomassCalculation || StudyD.biomassCalculation === -1) {
                 this.checkBoxElement.checked = false;
-                // Must setup the biomass 
-                new FullStudyBiomassUI(EDDData.currentUserID, EDDData.currentStudyID, callback);
+                // Must setup the biomass
+                ui = new FullStudyBiomassUI(callback);
             } else {
-                this.dataGridOwnerObject.showColumn(5);
+                this.dataGridOwnerObject.showColumn(this._lineSpec.carbonBalanceCol);
             }
         } else {
-            this.dataGridOwnerObject.hideColumn(5);
+            this.dataGridOwnerObject.hideColumn(this._lineSpec.carbonBalanceCol);
         }
     }
 }
@@ -2547,7 +2317,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
 
     protocolID:any;
     protocolName:string;
-    assayIDsInProtocol:string[];
+    assayIDsInProtocol:number[];
     metaDataIDsUsedInAssays:any;
     maximumXValueInData:number;
 
@@ -2572,24 +2342,24 @@ class DataGridSpecAssays extends DataGridSpecBase {
     }
 
 
-    refreshIDList() {
+    refreshIDList():void {
         // Find out which protocols have assays with measurements - disabled or no
         this.assayIDsInProtocol = [];
-        $.each(EDDData.Assays, (assayId, assay) => {
-            var line;
-            if (this.protocolID != assay.pid) {
+        $.each(EDDData.Assays, (assayId:string, assay:AssayRecord):void => {
+            var line:LineRecord;
+            if (this.protocolID !== assay.pid) {
                 // skip assays for other protocols
             } else if (!(line = EDDData.Lines[assay.lid]) || !line.active) {
                 // skip assays without a valid line or with a disabled line
             } else {
-                this.assayIDsInProtocol.push(assayId);
+                this.assayIDsInProtocol.push(assay.id);
             }
         });
     }
 
 
     // An array of unique identifiers, used to identify the records in the data set being displayed
-    getRecordIDs() {
+    getRecordIDs():any[] {
         return this.assayIDsInProtocol;
     }
 
@@ -2791,25 +2561,23 @@ class DataGridSpecAssays extends DataGridSpecBase {
 
 
     generateAssayNameCells(gridSpec:DataGridSpecAssays, index:string):DataGridDataCell[] {
-        var record = EDDData.Assays[index];
-        var line = EDDData.Lines[record.lid];
-        var sideMenuItems = [
-            '<a href="#" onclick="StudyD.editAssay(this, ' + index + ');">Edit Assay</a>',
+        var record = EDDData.Assays[index], line = EDDData.Lines[record.lid], sideMenuItems = [
+            '<a class="assay-edit-link">Edit Assay</a>',
+            '<a class="assay-reload-link">Reload Data</a>',
             '<a href="export?assaylevel=1&assay=' + index + '">Export Data as CSV/etc</a>'
         ];
+        // TODO we probably don't want to special-case like this by name
         if (gridSpec.protocolName == "Transcriptomics") {
             sideMenuItems.push('<a href="import/rnaseq/edgepro?assay='+index+'">Import RNA-seq data from EDGE-pro</a>');
         }
-        // TODO get rid of onclick, check export URL
         return [
             new DataGridDataCell(gridSpec, index, {
+                'checkboxName': 'assayId',
                 'checkboxWithID': (id) => { return 'assay' + id + 'include'; },
                 'sideMenuItems': sideMenuItems,
                 'hoverEffect': true,
                 'nowrap': true,
                 'rowspan': gridSpec.rowSpanForRecord(index),
-                // In a typical EDDData.Assays record this string is currently pre-assembled and
-                // stored in 'fn'. But we're not relying on that for now.
                 'contentString': [line.name, gridSpec.protocolName, record.name].join('-')
             })
         ];
@@ -2835,7 +2603,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
     private generateMeasurementCells(gridSpec:DataGridSpecAssays, index:string,
             opt:any):DataGridDataCell[] {
         var record = EDDData.Assays[index], cells = [],
-            factory = () => { return new DataGridLoadingCell(gridSpec, index); };
+            factory = ():DataGridDataCell => new DataGridDataCell(gridSpec, index);
 
         if ((record.metabolites || []).length > 0) {
             if (EDDData.AssayMeasurements === undefined) {
@@ -2866,13 +2634,21 @@ class DataGridSpecAssays extends DataGridSpecBase {
         }
         // generate a loading cell if none created by measurements
         if (!cells.length) {
-            cells.push(factory());
+            if (record.count) {
+                // we have a count, but no data yet; still loading
+                cells.push(new DataGridLoadingCell(gridSpec, index));
+            } else if (opt.empty) {
+                cells.push(opt.empty.call({}));
+            } else {
+                cells.push(factory());
+            }
         }
         return cells;
     }
 
 
     generateMeasurementNameCells(gridSpec:DataGridSpecAssays, index:string):DataGridDataCell[] {
+        var record = EDDData.Assays[index];
         return gridSpec.generateMeasurementCells(gridSpec, index, {
             'metaboliteToValue': (measureId) => {
                 var measure:any = EDDData.AssayMeasurements[measureId] || {},
@@ -2886,6 +2662,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
             'metaboliteValueToCell': (value) => {
                 return new DataGridDataCell(gridSpec, index, {
                     'hoverEffect': true,
+                    'checkboxName': 'measurementId',
                     'checkboxWithID': () => { return 'measurement' + value.id + 'include'; },
                     'contentString': value.name
                 });
@@ -2899,7 +2676,10 @@ class DataGridSpecAssays extends DataGridSpecBase {
                 return new DataGridDataCell(gridSpec, index, {
                   'contentString': 'Proteomics Data'
                 });
-            }
+            },
+            "empty": () => new DataGridDataCell(gridSpec, index, {
+                'contentString': '<i>No Measurements</i>'
+            })
         });
     }
 
@@ -3083,16 +2863,31 @@ class DataGridSpecAssays extends DataGridSpecBase {
 
     // Specification for each of the data columns that will make up the body of the table
     defineColumnSpec():DataGridColumnSpec[] {
-        var leftSide:DataGridColumnSpec[] = [
+        var leftSide:DataGridColumnSpec[],
+            metaDataCols:DataGridColumnSpec[],
+            rightSide:DataGridColumnSpec[];
+        // add click handler for menu on assay name cells
+        $(this.tableElement).on('click', 'a.assay-edit-link', (ev) => {
+            StudyD.editAssay($(ev.target).closest('.popupcell').find('input').val());
+            return false;
+        }).on('click', 'a.assay-reload-link', (ev:JQueryMouseEventObject):boolean => {
+            var id = $(ev.target).closest('.popupcell').find('input').val(),
+                assay:AssayRecord = EDDData.Assays[id];
+            if (assay) {
+                StudyD.requestAssayData(assay);
+            }
+            return false;
+        });
+        leftSide = [
             new DataGridColumnSpec(1, this.generateAssayNameCells)
            ];
 
-        var metaDataCols:DataGridColumnSpec[] = this.metaDataIDsUsedInAssays.map((id, index) => {
+        metaDataCols = this.metaDataIDsUsedInAssays.map((id, index) => {
             var mdType = EDDData.MetaDataTypes[id];
             return new DataGridColumnSpec(2 + index, this.makeMetaDataCellsGeneratorFunction(id));
         });
 
-        var rightSide:DataGridColumnSpec[] = [
+        rightSide = [
             new DataGridColumnSpec(2 + metaDataCols.length, this.generateMeasurementNameCells),
             new DataGridColumnSpec(3 + metaDataCols.length, this.generateUnitsCells),
             new DataGridColumnSpec(4 + metaDataCols.length, this.generateCountCells),

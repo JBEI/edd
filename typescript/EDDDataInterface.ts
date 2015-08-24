@@ -1,4 +1,5 @@
-// This file is nothing but Typescript declarations, and doesn't technically need to be passed to client browsers.
+// This file is nothing but Typescript declarations, and doesn't technically need to be passed
+// to client browsers.
 
 
 interface UpdateRecord {
@@ -19,14 +20,14 @@ interface EDDRecord {
 
 // This is what we expect in EDDData.Lines
 interface LineRecord extends EDDRecord {
-    active:boolean;     // Active line
-    control:boolean;    // Is Control
-    replicate:any;      // Line ID of replicate parent Line, or undefined/null
-    contact:any;        // Contact Info structure (user_id, text)
-    experimenter:number;// Experimenter user ID
-    strain:number[];    // Strain ID array
-	carbon:number[];    // Carbon Sources ID array
-	exp:number;		    // Experimenter ID
+    active:boolean;      // Active line
+    control:boolean;     // Is Control
+    replicate:any;       // Line ID of replicate parent Line, or undefined/null
+    contact:any;         // Contact Info structure (user_id, text)
+    experimenter:number; // Experimenter user ID
+    strain:number[];     // Strain ID array
+    carbon:number[];     // Carbon Sources ID array
+    exp:number;          // Experimenter ID
 }
 
 
@@ -34,36 +35,39 @@ interface LineRecord extends EDDRecord {
 // This is what we expect in EDDData.Assays
 interface AssayRecord extends EDDRecord {
     active:boolean;     // Active assay
-	lid:number;         // Line ID
-	pid:number;         // Protocol ID
-	mod:number;         // Modification epoch
-	exp:number;         // Experimenter ID
-	measures:number[];	// All collected measurements associated with Assay
-	metabolites:number[];		// Metabolite measurements associated with Assay
-	transcriptions:number[];	// Transcription measurements associated with Assay
-	proteins:number[];			// Proteins measurements associated with Assay
+    lid:number;         // Line ID
+    pid:number;         // Protocol ID
+    mod:number;         // Modification epoch
+    exp:number;         // Experimenter ID
+    measures:number[];  // All collected measurements associated with Assay
+    metabolites:number[];       // Metabolite measurements associated with Assay
+    transcriptions:number[];    // Transcription measurements associated with Assay
+    proteins:number[];          // Proteins measurements associated with Assay
 }
 
 
 
 // This is what we expect in EDDData.AssayMeasurements
 interface AssayMeasurementRecord {
-    id:number;      // Measurement ID
-    assay:number;   // Assay ID
-    type:number;    // MeasurementTypeRecord ID
-    compartment:string;
-    values:any[];   // array of data values
+    id:number;             // Measurement ID
+    assay:number;          // Assay ID
+    type:number;           // MeasurementTypeRecord ID
+    comp:string;           // see main/models.py:MeasurementCompartment for enum choices
+    format:string;         // see main/models.py:MeasurementFormat for enum choices
+    values:number[][][];   // array of data values
+    x_units:number;
+    y_units:number;
     /////// BELOW ARE DEPRECATED ////////
-	aid:number;		// Assay ID
-	dis:boolean;	// Disabled
-	lid:number;		// Line ID
-	mf:number;		// Measurement Type Format
-	mt:number;		// Measurement Type ID
-	mst:number;		// Measurement Subtype
-	mq:number;		// Measurement Type Compartment
-	mtdf:number;	// Display Format
-	uid:number;		// Y Axis Units ID
-	d:any[];		// Data (array of x,y pairs)
+    aid:number;     // Assay ID
+    dis:boolean;    // Disabled
+    lid:number;     // Line ID
+    mf:number;      // Measurement Type Format
+    mt:number;      // Measurement Type ID
+    mst:number;     // Measurement Subtype
+    mq:number;      // Measurement Type Compartment
+    mtdf:number;    // Display Format
+    uid:number;     // Y Axis Units ID
+    d:any[];        // Data (array of x,y pairs)
 }
 
 
@@ -77,16 +81,18 @@ interface MeasurementTypeRecord {
 
 // This is what we expect in EDDData.MetaboliteTypes
 interface MetaboliteTypeRecord extends MeasurementTypeRecord {
-	ans:string[];	// Altername Names
-	f:string;		// Molecular Formula
-	mm:number;		// Molar Mass As Number
-	cc:number;		// Carbon Count As Number
-	chgn:number;	// Charge As Number
-	kstr:string;	// Keywords string (used in autocomplete.ts, prepared in UtilitiesMeta.pm)
-	// Structure made by autocomplete.ts that prepares lowercase versions of every other value for every other key in the object.
-	_l:any;
-	// Made and used by autocomplete.ts.  Both this and _l should be described in an interface derived from this instead.
-	selectString:string;
+    ans:string[];   // Altername Names
+    f:string;       // Molecular Formula
+    mm:number;      // Molar Mass As Number
+    cc:number;      // Carbon Count As Number
+    chgn:number;    // Charge As Number
+    kstr:string;    // Keywords string (used in autocomplete.ts, prepared in UtilitiesMeta.pm)
+    // Structure made by autocomplete.ts that prepares lowercase versions of every other value
+    // for every other key in the object.
+    _l:any;
+    // Made and used by autocomplete.ts.  Both this and _l should be described in an interface
+    // derived from this instead.
+    selectString:string;
 }
 
 
@@ -102,73 +108,68 @@ interface GeneTypeRecord extends MeasurementTypeRecord {
 }
 
 
+interface UnitType {
+    name:string;
+
+    /////// BELOW ARE DEPRECATED ////////
+    altnames:string;
+    selectString:string;
+}
+
+
 
 // Declare interface and EDDData variable for highlight support
 interface EDDData {
 
-	currentStudyID:number;
-	currentUserID:number;
-	parsedPermissions:any[];
-	currentUserHasPageWriteAccess:boolean;
-
-    EnabledUserIDs:number[];
-    UserIDs:number[];
+    currentUserID:number;
+    AssayMeasurements:{[id:number]:AssayMeasurementRecord};
+    Assays:{[id:number]:AssayRecord};
+    CSources:{[id:number]:any};
+    GeneTypes:{[id:number]:ProteinTypeRecord};
+    Lines:{[id:number]:LineRecord};
+    MeasurementTypeCompartments:{[id:number]:any};
+    MeasurementTypes:{[id:number]:MeasurementTypeRecord};
+    MediaTypes:{[shortform:string]:string};
+    MetaboliteTypes:{[id:number]:MetaboliteTypeRecord};
+    MetaDataTypes:{[id:number]:any};
+    ProteinTypes:{[id:number]:ProteinTypeRecord};
+    Protocols:{[id:number]:any};
+    Strains:{[id:number]:any};
+    UnitTypes:{[id:number]:UnitType};
     Users:{[id:number]:any};
 
-	Protocols:{[id:number]:any};
 
-    MeasurementTypes:{[id:number]:MeasurementTypeRecord};
+    /////// BELOW ARE DEPRECATED ////////
+    currentStudyID:number;
+    parsedPermissions:any[];
+    currentUserHasPageWriteAccess:boolean;
+    EnabledUserIDs:number[];
+    UserIDs:number[];
     MetaboliteTypeIDs:number[];
-    MetaboliteTypes:{[id:number]:MetaboliteTypeRecord};
     ProteinTypeIDs:number[];
-    ProteinTypes:{[id:number]:ProteinTypeRecord};
     GeneTypeIDs:number[];
-    GeneTypes:{[id:number]:ProteinTypeRecord};
-
     MetaDataTypeIDs:number[];
-    MetaDataTypes:{[id:number]:any};
-
     MeasurementTypeCompartmentIDs:number[];
-    MeasurementTypeCompartments:{[id:number]:any};
-
     UnitTypeIDs:number[];
-    UnitTypes:{[id:number]:any};
-
     Labelings:any[];
-
-    Strains:{[id:number]:any};
-
     EnabledCSourceIDs:number[];
     CSourceIDs:number[];
-    CSources:{[id:number]:any};
-
     ExchangeIDs:number[];
     Exchanges:{[id:number]:any};
-
     SpeciesIDs:number[];
     Species:any[];
-
     Studies:{[id:number]:any};
-	StudiesSize:number;			// Used in index.ts
- 	StudiesStart:number;
-
-	// LineIDs:number[];
-	// TODO comment out; won't be using
+    StudiesSize:number;         // Used in index.ts
+    StudiesStart:number;
     EnabledLineIDs:number[];
-	Lines:{[id:number]:LineRecord};
-
-	// AssayIDs:number[];
-    // TODO comment out; won't be using
-	EnabledAssayIDs:number[];
-	Assays:{[id:number]:AssayRecord};
-
-	AssayMeasurementIDs:number[];
-	AssayMeasurements:{[id:number]:AssayMeasurementRecord};
-
-	// Used in LineTableData.ts.  Should eliminate.
-	MetaDataTypesRelevant:any[];
-	startMetaData:any[];
+    EnabledAssayIDs:number[];
+    AssayMeasurementIDs:number[];
+    // Used in LineTableData.ts.  Should eliminate.
+    MetaDataTypesRelevant:any[];
+    startMetaData:any[];
 };
 
 
+/* tslint:disable:no-unused-variable */
 declare var EDDData:EDDData;
+/* tslint:enable:no-unused-variable */

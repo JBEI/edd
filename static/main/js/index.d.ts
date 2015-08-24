@@ -18,6 +18,7 @@ declare class DataGridSpecStudies extends DataGridSpecBase implements DGPageData
     private _pageSize;
     private _query;
     private _searchOpt;
+    descriptionCol: DataGridColumnSpec;
     defineTableSpec(): DataGridTableSpec;
     defineHeaderSpec(): DataGridHeaderSpec[];
     generateStudyNameCells(gridSpec: DataGridSpecStudies, index: string): DataGridDataCell[];

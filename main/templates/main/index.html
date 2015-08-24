@@ -21,6 +21,7 @@
     {% if form.errors %}
     {{ form.errors }}
     {% endif %}
+    {{ block.super }}
 {% endblock status %}
 
 
@@ -30,7 +31,7 @@
             <span class="discloseLink"><a href="#">Add A New Study</a></span>
         </div>
         <div class="sectionContent discloseBody">
-            <form action="{% url 'main:create_study' %}" method="POST">
+            <form action="{% url 'main:create_study' %}" class="edd-form" method="POST">
                 {% csrf_token %}
                 {{ form.as_p }}
                 <button type="submit">Add Study</button>

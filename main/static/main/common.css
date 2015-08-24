@@ -153,7 +153,7 @@ div.topBanner > div.siteLogo {
 div.topBanner > div.pageName {
     color: #6c6c6c;
     font-size: 20pt;
-    line-height: 70px;
+    padding-top: 20px;
 }
 div.topBanner > div.userMenu {
     float: right;
@@ -381,6 +381,12 @@ table.dataTable tr.columnLabels > th {
 	background: -moz-linear-gradient(top, rgba(230,230,230,0.8) 0%, rgba(255,255,255,0.8) 60%, rgba(255,255,255,1) 100%);
 	background: -webkit-linear-gradient(top, rgba(230,230,230,0.8) 0%, rgba(255,255,255,0.8) 60%, rgba(255,255,255,1) 100%);
 	background: -ms-linear-gradient(top, rgba(230,230,230,0.8) 0%, rgba(255,255,255,0.8) 60%, rgba(255,255,255,1) 100%);
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 }
 table.dataTable tr.columnLabels > th:last-child {
     border-right-width: 0;
@@ -710,13 +716,13 @@ div.pageSectionTabs > div {
 	padding-right:7px;
 }
 div.pageSectionTabs > div.active {
-	border-width:2px 2px 0px 2px;
-	padding-bottom:2px;
+	border-width:1px 1px 0px 1px;
+	padding-bottom:1px;
 	z-index:4;
 }
 div.pageSectionTabs > div.inactive {
 	cursor: pointer;
-	border-width:2px 2px 2px 2px;
+	border-width:1px;
 	padding-bottom:0px;
 }
 div.pageSectionTabs > div.inactive:hover {
@@ -744,7 +750,7 @@ div.pageSectionTabs > div.inactive:hover {
      Finally, the "active" tab is given a higher z-index, so its borders are always on top. 
 */
 div.pageSectionTabs > div.absoverlay {
-	padding-top:2px;
+	padding-top:1px;
 	position:absolute;
 	padding-left:10px;
 	padding-right:10px;
@@ -1429,5 +1435,36 @@ form.attachments > * {
 
 ol.comment-list > li {
     margin-left: 2em;
+}
+
+.edd-form > p > label,
+.edd-form > p > .label {
+    display: inline-block;
+    vertical-align: top;
+    width: 8em;
+}
+.edd-form > p > label {
+    line-height: 20px; /* bare text looks too offset compared to text boxes, so tweak line-height */
+}
+.edd-form > a.cancel-link {
+    font-size: 12px;
+    margin-left: 1em;
+}
+.helptext {
+    color: gray;
+    font-size: 11px;
+}
+.meta-remove {
+    background-color: transparent;
+    background-image: url("./images/edit-cancel.png");
+    background-position: 0 50%;
+    background-repeat: no-repeat;
+    cursor: pointer;
+    font-size: 11px;
+    margin-left: 6px;
+    padding-left: 14px;
+}
+form.comments textarea {
+    width: 100%;
 }
 /* End of common styles */

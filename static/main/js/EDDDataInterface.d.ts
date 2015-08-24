@@ -35,8 +35,11 @@ interface AssayMeasurementRecord {
     id: number;
     assay: number;
     type: number;
-    compartment: string;
-    values: any[];
+    comp: string;
+    format: string;
+    values: number[][][];
+    x_units: number;
+    y_units: number;
     aid: number;
     dis: boolean;
     lid: number;
@@ -68,55 +71,72 @@ interface ProteinTypeRecord extends MeasurementTypeRecord {
 }
 interface GeneTypeRecord extends MeasurementTypeRecord {
 }
+interface UnitType {
+    name: string;
+    altnames: string;
+    selectString: string;
+}
 interface EDDData {
-    currentStudyID: number;
     currentUserID: number;
-    parsedPermissions: any[];
-    currentUserHasPageWriteAccess: boolean;
-    EnabledUserIDs: number[];
-    UserIDs: number[];
-    Users: {
+    AssayMeasurements: {
+        [x: number]: AssayMeasurementRecord;
+    };
+    Assays: {
+        [x: number]: AssayRecord;
+    };
+    CSources: {
         [x: number]: any;
     };
-    Protocols: {
+    GeneTypes: {
+        [x: number]: ProteinTypeRecord;
+    };
+    Lines: {
+        [x: number]: LineRecord;
+    };
+    MeasurementTypeCompartments: {
         [x: number]: any;
     };
     MeasurementTypes: {
         [x: number]: MeasurementTypeRecord;
     };
-    MetaboliteTypeIDs: number[];
+    MediaTypes: {
+        [x: string]: string;
+    };
     MetaboliteTypes: {
         [x: number]: MetaboliteTypeRecord;
     };
-    ProteinTypeIDs: number[];
-    ProteinTypes: {
-        [x: number]: ProteinTypeRecord;
-    };
-    GeneTypeIDs: number[];
-    GeneTypes: {
-        [x: number]: ProteinTypeRecord;
-    };
-    MetaDataTypeIDs: number[];
     MetaDataTypes: {
         [x: number]: any;
     };
-    MeasurementTypeCompartmentIDs: number[];
-    MeasurementTypeCompartments: {
+    ProteinTypes: {
+        [x: number]: ProteinTypeRecord;
+    };
+    Protocols: {
         [x: number]: any;
     };
-    UnitTypeIDs: number[];
-    UnitTypes: {
-        [x: number]: any;
-    };
-    Labelings: any[];
     Strains: {
         [x: number]: any;
     };
-    EnabledCSourceIDs: number[];
-    CSourceIDs: number[];
-    CSources: {
+    UnitTypes: {
+        [x: number]: UnitType;
+    };
+    Users: {
         [x: number]: any;
     };
+    currentStudyID: number;
+    parsedPermissions: any[];
+    currentUserHasPageWriteAccess: boolean;
+    EnabledUserIDs: number[];
+    UserIDs: number[];
+    MetaboliteTypeIDs: number[];
+    ProteinTypeIDs: number[];
+    GeneTypeIDs: number[];
+    MetaDataTypeIDs: number[];
+    MeasurementTypeCompartmentIDs: number[];
+    UnitTypeIDs: number[];
+    Labelings: any[];
+    EnabledCSourceIDs: number[];
+    CSourceIDs: number[];
     ExchangeIDs: number[];
     Exchanges: {
         [x: number]: any;
@@ -129,17 +149,8 @@ interface EDDData {
     StudiesSize: number;
     StudiesStart: number;
     EnabledLineIDs: number[];
-    Lines: {
-        [x: number]: LineRecord;
-    };
     EnabledAssayIDs: number[];
-    Assays: {
-        [x: number]: AssayRecord;
-    };
     AssayMeasurementIDs: number[];
-    AssayMeasurements: {
-        [x: number]: AssayMeasurementRecord;
-    };
     MetaDataTypesRelevant: any[];
     startMetaData: any[];
 }

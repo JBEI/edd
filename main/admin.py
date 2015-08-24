@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin
 from django.db.models import Count
 from django.utils.translation import ugettext_lazy as _
+from django_auth_ldap.backend import LDAPBackend
 from main.forms import UserAutocompleteWidget
 from main.models import *
 from main.sbml_export import validate_sbml_attachment
@@ -304,7 +305,7 @@ class SBMLTemplateAdmin(EDDObjectAdmin):
 class EDDUserAdmin(UserAdmin):
     """ Definition for admin-edit of user accounts """
     # actions is a list
-    actions = UserAdmin.actions + ['solr_index', ]
+    actions = UserAdmin.actions + ['solr_index', 'update_groups_from_ldap', ]
     # list_display is a tuple
     list_display = UserAdmin.list_display + ('date_joined', 'last_login', )
 
@@ -314,9 +315,19 @@ class EDDUserAdmin(UserAdmin):
         # queries for group/institutions instead of one per record
         q = queryset.select_related('userprofile')
         q = q.prefetch_related('groups', 'userprofile__institutions')
-        print q.query
         solr.update(q)
     solr_index.short_description = 'Index in Solr'
+
+    def update_groups_from_ldap(self, request, queryset):
+        backend = LDAPBackend()
+        for user in queryset:
+            ldap_user = backend.get_user(user.pk)
+            try:
+                ldap_user.ldap_user._mirror_groups()
+            except Exception, e:
+                # _mirror_groups fails when ldap_user is not Active, so delete all groups
+                user.groups.clear()
+    update_groups_from_ldap.short_description = 'Update Groups from LDAP'
 
 
 admin.site.register(MetadataGroup, MetadataGroupAdmin)

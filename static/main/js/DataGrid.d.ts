@@ -8,7 +8,7 @@ declare class DataGrid {
     private _tableBody;
     private _tableHeaderCell;
     private _waitBadge;
-    tableTitleSpan: HTMLElement;
+    private tableTitleSpan;
     private _headerRows;
     private _totalColumnCount;
     private _recordElements;
@@ -29,10 +29,9 @@ declare class DataGrid {
     reconstructSingleRecord(recordID: string): DataGrid;
     private _createOptionsMenu();
     private _createHeaderWidgets();
-    prepareColumnVisibility(flagHash: {}): void;
+    prepareColumnVisibility(): void;
     private _applyColumnVisibility();
     private _applyColumnVisibilityToOneRecord(recordID);
-    getDataCellObjectsForColumnIndex(i: number): DataGridDataCell[];
     getSelectedCheckboxElements(): HTMLInputElement[];
     applySortIndicators(): void;
     arrangeTableDataRows(): DataGrid;
@@ -56,8 +55,11 @@ declare class DataGrid {
     clickedOptionWidget(event: Event): void;
     clickedHeaderWidget(headerWidget: DataGridWidget): void;
     private _clickedColVisibilityControl(event);
-    showColumn(columnIndex: number): void;
-    hideColumn(columnIndex: number): void;
+    showColumn(group: DataGridColumnGroupSpec): void;
+    hideColumn(group: DataGridColumnGroupSpec): void;
+    private _basePayload();
+    private _columnSettingsKey();
+    private _fetchSettings(propKey, callback, defaultValue?);
     private _updateColumnSettings();
     scheduleTimer(uid: string, func: () => any): DataGrid;
     applyToRecordSet(func: (rows: DataGridDataRow[], id: string, spec: DataGridSpecBase, grid: DataGrid) => void, ids: string[]): DataGrid;
@@ -113,6 +115,7 @@ declare class DataGridDataCell {
     contentFunction: (e: HTMLElement, index: number) => void;
     contentString: string;
     checkboxWithID: (index: number) => string;
+    checkboxName: string;
     customID: (index: number) => string;
     sideMenuItems: string[];
     cellElement: HTMLElement;
@@ -278,7 +281,7 @@ declare class DataGridColumnGroupSpec {
     name: string;
     showInVisibilityList: boolean;
     hiddenByDefault: boolean;
-    revealedCallback: (index: number, spec: DataGridSpecBase, grid: DataGrid) => void;
+    revealedCallback: (spec: DataGridSpecBase, grid: DataGrid) => void;
     currentlyHidden: boolean;
     memberHeaders: DataGridHeaderSpec[];
     memberColumns: DataGridColumnSpec[];

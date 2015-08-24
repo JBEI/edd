@@ -51,6 +51,7 @@ def get_edddata_study(study):
         line__study=study,
       ).select_related(
         'line__name',
+        'created__mod_by',
         'updated__mod_by',
       )
       # This could be nice, but slows down the query by an order of magnitude

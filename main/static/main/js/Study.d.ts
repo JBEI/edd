@@ -1,3 +1,4 @@
+/// <reference path="typescript-declarations.d.ts" />
 /// <reference path="EDDDataInterface.d.ts" />
 /// <reference path="Utl.d.ts" />
 /// <reference path="Dragboxes.d.ts" />
@@ -109,23 +110,15 @@ declare module StudyD {
     function repopulateFilteringSection(): void;
     function processCarbonBalanceData(): void;
     function prepareAfterLinesTable(): void;
-    function carbonBalanceColumnRevealedCallback(index: any, spec: DataGridSpecLines, dataGridObj: DataGrid): void;
+    function requestAssayData(assay: any): void;
+    function carbonBalanceColumnRevealedCallback(spec: DataGridSpecLines, dataGridObj: DataGrid): void;
     function queueLinesActionPanelShow(): void;
     function queueAssaysActionPanelShow(): void;
     function queueMainGraphRemake(force?: boolean): void;
-    function addCarbonSourceRow(carbonId: any): void;
-    function removeCarbonSourceRow(order: any): void;
-    function disableAllButFirstCarbonSourceRow(): void;
-    function redrawCarbonSourceRows(): void;
-    function editLine(linkelement: any, index: any): void;
-    function editAssay(linkelement: any, index: any): void;
-    function addMetaboliteRow(): void;
-    function removeMeasurementTypeRow(order: any): void;
-    function redrawMeasurementTypeRows(): void;
-    function setAttachmentDescription(element: any, attachmentID: any, newDescription: any): void;
-    function initDescriptionEditFields(): void;
+    function editAssay(index: number): void;
+    function editLine(index: number): void;
     function onChangedMetabolicMap(): void;
-    function rebuildCarbonBalanceGraphs(columnIndex: number): void;
+    function rebuildCarbonBalanceGraphs(): void;
     function onClickedMetabolicMapName(): void;
 }
 declare class DataGridSpecLines extends DataGridSpecBase {
@@ -133,6 +126,7 @@ declare class DataGridSpecLines extends DataGridSpecBase {
     groupIDsInOrder: any;
     groupIDsToGroupIndexes: any;
     groupIDsToGroupNames: any;
+    carbonBalanceCol: DataGridColumnGroupSpec;
     carbonBalanceWidget: DGShowCarbonBalanceWidget;
     constructor();
     highlightCarbonBalanceWidget(v: boolean): void;
@@ -186,11 +180,12 @@ declare class DGShowCarbonBalanceWidget extends DataGridHeaderWidget {
     labelElement: any;
     highlighted: boolean;
     checkboxEnabled: boolean;
-    constructor(dataGridOwnerObject: any, dataGridSpec: any);
+    private _lineSpec;
+    constructor(dataGridOwnerObject: DataGrid, dataGridSpec: DataGridSpecLines);
     createElements(uniqueID: any): void;
     highlight(h: boolean): void;
     enable(h: boolean): void;
-    clickHandler: (e: any) => void;
+    private activateCarbonBalance();
 }
 declare class DataGridAssays extends DataGrid {
     sectionCurrentlyDisclosed: boolean;
@@ -208,7 +203,7 @@ declare class DataGridAssays extends DataGrid {
 declare class DataGridSpecAssays extends DataGridSpecBase {
     protocolID: any;
     protocolName: string;
-    assayIDsInProtocol: string[];
+    assayIDsInProtocol: number[];
     metaDataIDsUsedInAssays: any;
     maximumXValueInData: number;
     undisclosedSectionDiv: any;
@@ -217,7 +212,7 @@ declare class DataGridSpecAssays extends DataGridSpecBase {
     graphObject: any;
     constructor(protocolID: any);
     refreshIDList(): void;
-    getRecordIDs(): string[];
+    getRecordIDs(): any[];
     onDataReset(dataGrid: DataGrid): void;
     getTableElement(): HTMLElement;
     defineTableSpec(): DataGridTableSpec;

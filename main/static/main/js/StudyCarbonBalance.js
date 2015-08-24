@@ -98,7 +98,7 @@ var CarbonBalance;
                     var clr = Utl.Color.red;
                     clr.a = 35 + (normalizedError * 220);
                     var interpolatedColor = clr;
-                    var xCoord = 470 * (parseFloat(timeSample.timeStamp) / this.carbonSum.lastTimeInSeconds);
+                    var xCoord = 470 * (timeSample.timeStamp / this.carbonSum.lastTimeInSeconds);
                     var yCoord = Math.floor(5);
                     var tickWidth = 8;
                     var tickMark = Utl.SVG.createVerticalLinePath(xCoord, yCoord, tickWidth, 10, interpolatedColor, svgElement);
@@ -142,7 +142,7 @@ var CarbonBalance;
         };
         // Lookup a metabolite's name by a measurement ID.
         Display.prototype._getMetaboliteNameByMeasurementID = function (measurementID) {
-            var measurementTypeID = EDDData.AssayMeasurements[measurementID].mt;
+            var measurementTypeID = EDDData.AssayMeasurements[measurementID].type;
             var metaboliteName = EDDData.MetaboliteTypes[measurementTypeID].name;
             return metaboliteName;
         };
@@ -166,13 +166,13 @@ var CarbonBalance;
                 for (var i = 0; i < list.length; i++) {
                     var measurement = list[i];
                     // Get a padded name string for the metabolite
-                    var name = this._getMetaboliteNameByMeasurementID(measurement.timeline.measurementID);
+                    var name = this._getMetaboliteNameByMeasurementID(measurement.timeline.measureId);
                     // Rename "Optical Density" to biomass, since that's what we use it for.
                     if (name == 'Optical Density')
                         name = 'Biomass';
                     name = Utl.JS.padStringRight(name, padding);
                     // Get the assay's name
-                    var assayRecord = EDDData.Assays[measurement.timeline.assay.assayID];
+                    var assayRecord = EDDData.Assays[measurement.timeline.assay.assayId];
                     var lid = assayRecord.lid;
                     var pid = assayRecord.pid;
                     var assayName = [EDDData.Lines[lid].name, EDDData.Protocols[pid].name, assayRecord.name].join('-');
@@ -195,7 +195,7 @@ var CarbonBalance;
                 return a.carbonDelta - b.carbonDelta;
             });
             var prevTimeStamp = this._getPreviousMergedTimestamp(lineID, timeStamp);
-            var title = EDDData.Lines[lineID].name + " from " + parseFloat(prevTimeStamp).toFixed(1) + "h to " + parseFloat(timeStamp).toFixed(1) + "h";
+            var title = EDDData.Lines[lineID].name + " from " + prevTimeStamp.toFixed(1) + "h to " + timeStamp.toFixed(1) + "h";
             var divider = "========================================\n";
             var text = title + "\n" + divider + "\n";
             text += this._printCarbonBalanceList("== Inputs", sortedList.filter(function (x) { return x.carbonDelta < 0; }), true) + "\n";
@@ -259,7 +259,7 @@ var CarbonBalance;
         // This is used to show the range that an imbalance occurred over (since we don't display it
         // anywhere on the timelines).
         Display.prototype._getPreviousMergedTimestamp = function (lineID, timeStamp) {
-            var prevTimeStamp = "0";
+            var prevTimeStamp = 0;
             var samples = this.mergedTimelinesByLineID[lineID].mergedLineSamples;
             for (var i = 0; i < samples.length; i++) {
                 if (samples[i].timeStamp == timeStamp)
@@ -272,7 +272,7 @@ var CarbonBalance;
         // Generates the title bar string for a carbon balance popup display.
         Display.prototype._generatePopupTitleForImbalance = function (lineID, timeStamp) {
             var prevTimeStamp = this._getPreviousMergedTimestamp(lineID, timeStamp);
-            return EDDData.Lines[lineID].name + " from " + parseFloat(prevTimeStamp).toFixed(1) + "h to " + parseFloat(timeStamp).toFixed(1) + "h";
+            return EDDData.Lines[lineID].name + " from " + prevTimeStamp.toFixed(1) + "h to " + timeStamp.toFixed(1) + "h";
         };
         // When they hover over a tick mark, we should display all the carbon in/out data for all 
         // assays that have an imbalance at this time point.
@@ -286,7 +286,7 @@ var CarbonBalance;
             var yOffset = (this.POPUP_HEIGHT - svgSize[1]) / 2;
             var fontName = "Arial";
             // Create a link to copy debug text to the clipboard.
-            var debugTextLink = svg.appendChild(Utl.SVG.createText(0, 3, "data", fontName, 10, false, Utl.Color.rgb(150, 150, 150)));
+            var debugTextLink = svg.appendChild(Utl.SVG.createText(0, 10, "data", fontName, 10, false, Utl.Color.rgb(150, 150, 150)));
             debugTextLink.setAttribute('x', (svgSize[0] - 3).toString());
             debugTextLink.setAttribute('text-anchor', 'end');
             debugTextLink.setAttribute('alignment-baseline', 'hanging');
@@ -363,7 +363,7 @@ var CarbonBalance;
                 var round = Math.min(2, Math.abs(y2 - y1));
                 Utl.SVG.makeRectRounded(rect, round, round);
                 // Add a tiny label showing the name of the metabolite.
-                var measurementTypeID = EDDData.AssayMeasurements[measurement.timeline.measurementID].mt;
+                var measurementTypeID = EDDData.AssayMeasurements[measurement.timeline.measureId].type;
                 var metaboliteName = EDDData.MetaboliteTypes[measurementTypeID].name;
                 // Rename "Optical Density" to biomass, since that's what we use it for.
                 if (metaboliteName == 'Optical Density')

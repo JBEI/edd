@@ -29,7 +29,7 @@ module CarbonBalance {
 		}
 
 
-		getDebugTextForTime(metabolicMapID:number, biomassCalculation:number, lineID:number, timeStamp:string):string {
+		getDebugTextForTime(metabolicMapID:number, biomassCalculation:number, lineID:number, timeStamp:number):string {
 			return CarbonBalance.Summation.generateDebugText(biomassCalculation, lineID, timeStamp);
 		}
 
@@ -121,7 +121,7 @@ module CarbonBalance {
 		    		clr.a = 35 + (normalizedError * 220);
 		    		var interpolatedColor = clr;
 
-		    		var xCoord:number = 470 * (parseFloat(timeSample.timeStamp) / this.carbonSum.lastTimeInSeconds);
+		    		var xCoord:number = 470 * (timeSample.timeStamp / this.carbonSum.lastTimeInSeconds);
 		    		var yCoord:number = Math.floor(5);
 		    		var tickWidth:number = 8;
 		    		var tickMark = <any>Utl.SVG.createVerticalLinePath(xCoord, yCoord, tickWidth, 10, interpolatedColor, svgElement);
@@ -176,7 +176,7 @@ module CarbonBalance {
 
 		// Lookup a metabolite's name by a measurement ID.
 		private _getMetaboliteNameByMeasurementID(measurementID:number):string {
-			var measurementTypeID:number = EDDData.AssayMeasurements[measurementID].mt;
+			var measurementTypeID:number = EDDData.AssayMeasurements[measurementID].type;
 			var metaboliteName:string = EDDData.MetaboliteTypes[measurementTypeID].name;
 			return metaboliteName;
 		}
@@ -207,7 +207,7 @@ module CarbonBalance {
 					var measurement = list[i];
 
 					// Get a padded name string for the metabolite
-					var name:string = this._getMetaboliteNameByMeasurementID(measurement.timeline.measurementID);
+					var name:string = this._getMetaboliteNameByMeasurementID(measurement.timeline.measureId);
 	
 					// Rename "Optical Density" to biomass, since that's what we use it for.
 					if (name == 'Optical Density')
@@ -216,7 +216,7 @@ module CarbonBalance {
 					name = Utl.JS.padStringRight(name, padding);
 
 					// Get the assay's name
-					var assayRecord = EDDData.Assays[measurement.timeline.assay.assayID];
+					var assayRecord = EDDData.Assays[measurement.timeline.assay.assayId];
 			    	var lid = assayRecord.lid;
 			    	var pid = assayRecord.pid;
 					var assayName:string = [EDDData.Lines[lid].name, EDDData.Protocols[pid].name, assayRecord.name].join('-');
@@ -231,7 +231,7 @@ module CarbonBalance {
 
 		// This is shown when they click the 'data' link in a carbon balance popup. It's intended
 		// to show all the data that the assessment was based on.
-		private _generateDebugTextForPopup(lineID:number, timeStamp:string, balance:LineSampleBalance):HTMLElement {
+		private _generateDebugTextForPopup(lineID:number, timeStamp:number, balance:LineSampleBalance):HTMLElement {
 			var el = document.createElement('textarea');
 			$(el).css('font-family', '"Lucida Console", Monaco, monospace');
 			$(el).css('font-size', '8pt');
@@ -240,8 +240,8 @@ module CarbonBalance {
 			var sortedList:InOutSumMeasurement[] = balance.measurements.slice(0);
 			sortedList.sort( (a,b) => {return a.carbonDelta - b.carbonDelta;} )
 
-			var prevTimeStamp:string = this._getPreviousMergedTimestamp(lineID, timeStamp);
-			var title:string = EDDData.Lines[lineID].name + " from " + parseFloat(prevTimeStamp).toFixed(1) + "h to " + parseFloat(timeStamp).toFixed(1) + "h";
+			var prevTimeStamp:number = this._getPreviousMergedTimestamp(lineID, timeStamp);
+			var title:string = EDDData.Lines[lineID].name + " from " + prevTimeStamp.toFixed(1) + "h to " + timeStamp.toFixed(1) + "h";
 
 			var divider = "========================================\n";
 			var text = title + "\n" + divider + "\n";
@@ -332,8 +332,8 @@ module CarbonBalance {
 		// Get the previous merged timestamp for the given line.
 		// This is used to show the range that an imbalance occurred over (since we don't display it
 		// anywhere on the timelines).
-		private _getPreviousMergedTimestamp(lineID:number, timeStamp:string) {
-			var prevTimeStamp:string = "0";
+		private _getPreviousMergedTimestamp(lineID:number, timeStamp:number) {
+			var prevTimeStamp:number = 0;
 			
 			var samples:MergedLineSample[] = this.mergedTimelinesByLineID[lineID].mergedLineSamples;
 			for (var i:number=0; i < samples.length; i++) {
@@ -348,9 +348,9 @@ module CarbonBalance {
 
 
 		// Generates the title bar string for a carbon balance popup display.
-		private _generatePopupTitleForImbalance(lineID, timeStamp) {
-			var prevTimeStamp:string = this._getPreviousMergedTimestamp(lineID, timeStamp);
-			return EDDData.Lines[lineID].name + " from " + parseFloat(prevTimeStamp).toFixed(1) + "h to " + parseFloat(timeStamp).toFixed(1) + "h";
+		private _generatePopupTitleForImbalance(lineID, timeStamp:number) {
+			var prevTimeStamp:number = this._getPreviousMergedTimestamp(lineID, timeStamp);
+			return EDDData.Lines[lineID].name + " from " + prevTimeStamp.toFixed(1) + "h to " + timeStamp.toFixed(1) + "h";
 		}
 
 
@@ -370,7 +370,7 @@ module CarbonBalance {
 			var fontName:string = "Arial";
 
 			// Create a link to copy debug text to the clipboard.
-			var debugTextLink = <SVGElement>svg.appendChild(Utl.SVG.createText(0, 3, "data", fontName, 10, false, Utl.Color.rgb(150,150,150)));
+			var debugTextLink = <SVGElement>svg.appendChild(Utl.SVG.createText(0, 10, "data", fontName, 10, false, Utl.Color.rgb(150,150,150)));
 			debugTextLink.setAttribute('x', (svgSize[0] - 3).toString());
    			debugTextLink.setAttribute('text-anchor', 'end');
    			debugTextLink.setAttribute('alignment-baseline', 'hanging');
@@ -467,7 +467,7 @@ module CarbonBalance {
 				Utl.SVG.makeRectRounded(rect, round, round);
 
 				// Add a tiny label showing the name of the metabolite.
-				var measurementTypeID = EDDData.AssayMeasurements[measurement.timeline.measurementID].mt;
+				var measurementTypeID = EDDData.AssayMeasurements[measurement.timeline.measureId].type;
 				var metaboliteName = EDDData.MetaboliteTypes[measurementTypeID].name;
 
 				// Rename "Optical Density" to biomass, since that's what we use it for.
