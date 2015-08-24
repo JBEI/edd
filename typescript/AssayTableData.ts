@@ -81,7 +81,7 @@ Sets:{
     uniqueMeasurementNames:[],
     uniqueMetadataNames:[],
     // A flag to indicate whether we have seen any timestamps specified in the import data
-    seenAnyTimestamps:0
+    seenAnyTimestamps: false
 },
 
 // Storage area for disambiguation-related UI widgets and information
@@ -906,10 +906,32 @@ redrawEnabledFlagMarkers:function() {
 },
 
 
-interpretDataTable:function() {
+interpretDataTableRows: (): [boolean, number] => {
+    var single: number = 0, nonSingle: number = 0, earliestName: number;
+    // Look for the presence of "single measurement type" rows, and rows of all other single-item types
+    EDDATD.Grid.data.forEach((_, y: number): void => {
+        var pulldown: number;
+        if (EDDATD.Table.activeRowFlags[y]) {
+            pulldown = EDDATD.Table.pulldownSettings[y];
+            if (pulldown === 5 || pulldown === 12) {
+                single++; // Single Measurement Name or Single Protein Name
+            } else if (pulldown === 4 || pulldown === 3) {
+                nonSingle++;
+            } else if (pulldown === 1 && earliestName !== undefined) {
+                earliestName = y;
+            }
+        }
+    });
+    // Only use this mode if the table is entirely free of single-timestamp and
+    // single-metadata rows, and has at least one "single measurement" row, and at
+    // least one "Assay/Line names" row.
+    // Note: requirement of an "Assay/Line names" row prevents this mode from being
+    // enabled when the page is in 'Transcription' mode.
+    return [(single > 0 && nonSingle === 0 && earliestName !== undefined), 0];
+},
 
-    EDDATD.Sets.parsedSets = [];
 
+interpretDataTable: (): void => {
     // We'll be accumulating these for disambiguation.
     // Each unique key will get a distinct value, placing it in the order first seen
     var seenAssayLineNames = {};
@@ -920,355 +942,251 @@ interpretDataTable:function() {
     var measurementNamesCount = 0;
     var metadataNamesCount = 0;
     // Here are the arrays we will use later
+    EDDATD.Sets.parsedSets = [];
     EDDATD.Sets.uniqueLineAssayNames = [];
     EDDATD.Sets.uniqueMeasurementNames = [];
     EDDATD.Sets.uniqueMetadataNames = [];
+    EDDATD.Sets.seenAnyTimestamps = false;
 
-    EDDATD.Sets.seenAnyTimestamps = 0;
-
-    // This mode means we make a new "set" for each cell in the table,
-    // rather than the standard method of making a new "set" for each column in the table.
-    var usingSingleMeasurementNameRows = 0;
-
-    // Look for the presence of "single measurement type" rows, and rows of all other single-item types
-    var foundSingleMeasurementNameRow = 0;
-    var foundNonSingleMeasurementNameRow = 0;
-    var earliestAssayLineNamesRow = 0;
-    for (var r=0; r < EDDATD.Grid.l; r++) {
-        if (!EDDATD.Table.activeRowFlags[r]) { continue; }
-        var p = EDDATD.Table.pulldownSettings[r];   // The value of the current pulldown
-        if ((p == 5) || (p == 12)) {    // Single Measurement Name or Single Protein Name
-            foundSingleMeasurementNameRow++;
-        }
-        if ((p == 4) || (p == 3)) {
-            foundNonSingleMeasurementNameRow++;
-        }
-        if ((p == 1) && !earliestAssayLineNamesRow) {
-            earliestAssayLineNamesRow = r+1;
-        }
-    }
-    
-    // Only use this mode if the table is entirely free of single-timestamp and single-metadata rows,
-    // and if we've found at least one "single measurement" row, and at least one "Assay/Line names" row.
-    // Note that the requirement of an "Assay/Line names" row prevents this mode from being enabled when
-    // the page is in 'Transcription' mode.
-    if (foundSingleMeasurementNameRow && !foundNonSingleMeasurementNameRow && earliestAssayLineNamesRow) {
-        usingSingleMeasurementNameRows = 1;
-    }
+    // This mode means we make a new "set" for each cell in the table, rather than
+    // the standard method of making a new "set" for each column in the table.
+    var interpretMode = EDDATD.interpretDataTableRows();
 
     // The standard method: Make a "set" for each column of the table
-    if (!usingSingleMeasurementNameRows) {
-
-        for (var c=0; c < EDDATD.Grid.w; c++) {
+    if (!interpretMode[0]) {
+        EDDATD.Table.colObjects.forEach((_, c: number): void => {
+            var set: any, uniqueTimes: number[], times: any, foundMeta: boolean;
             // Skip it if the whole column is deactivated
             if (!EDDATD.Table.activeColFlags[c]) {
-                continue;
+                return;
             }
-
-            var newSet = {
+            set = {
                 // For the graphing module
-                label: 'Column ' + c,
-                name: 'Column ' + c,
-                units: 'units',
+                'label': 'Column ' + c,
+                'name': 'Column ' + c,
+                'units': 'units',
                 // For submission to the database
-                parsingIndex: c,
-                assay: null,
-                assayName: null,
-                measurementType: null,
-                metadata: {},
-                singleData: null,
+                'parsingIndex': c,
+                'assay': null,
+                'assayName': null,
+                'measurementType': null,
+                'metadata': {},
+                'singleData': null,
                 // For both
-                data: []
+                'data': []
             };
-
-            var uniqueTimes = [];
-            var timestamps = {};
-
-            var foundMetaDataCount = 0;
-
-            for (var r=0; r < EDDATD.Grid.l; r++) {
-                if (!EDDATD.Table.activeRowFlags[r]) { continue; }
-                if (!EDDATD.Table.activeFlags[r][c]) { continue; }
-
-                var p = EDDATD.Table.pulldownSettings[r];   // The value of the current pulldown
-                var n = EDDATD.Grid.rowMarkers[r];          // The row label
-                var v = EDDATD.Grid.data[r][c];             // The value in the current cell
-
-                if (!p) { continue; }   // If the pulldown is not set to anything, skip this value
-
-                if ((typeof n == 'undefined') || (n == null)) { n = ''; }
-                if ((typeof v == 'undefined') || (v == null)) { v = ''; }
-
-                if (p == 11) {  // Transcriptomics: RPKM values
-                    v = v.replace(/,/g, '');    //  No commas, please
-                    if (v != '') {
-                        newSet.singleData = v;
-                    }
-                    continue;
+            uniqueTimes = [];
+            times = {};
+            foundMeta = false;
+            EDDATD.Grid.data.forEach((row: string[], r: number): void => {
+                var pulldown: number, label: string, value: string, timestamp: number;
+                if (!EDDATD.Table.activeRowFlags[r] || !EDDATD.Table.activeFlags[r][c]) {
+                    return;
                 }
-                if (p == 10) {  // Transcriptomics: Gene names
-                    if (v != '') {
-                        newSet.name = v;
+                pulldown = EDDATD.Table.pulldownSettings[r];
+                label = EDDATD.Grid.rowMarkers[r] || '';
+                value = row[c] || '';
+                if (!pulldown) {
+                    return;
+                } else if (pulldown === 11) {  // Transcriptomics: RPKM values
+                    value = value.replace(/,/g, '');
+                    if (value) {
+                        set.singleData = value;
                     }
-                    continue;
-                }
-
-                if (p == 3) {   // Timestamps
-                    n = n.replace(/,/g, '');
-                    if (isNaN(parseFloat(n))) { // If we can't parse the timestamp indicator, we're sunk
-                        continue;
+                    return;
+                } else if (pulldown === 10) {  // Transcriptomics: Gene names
+                    if (value) {
+                        set.name = value;
                     }
-                    n = parseFloat(n);
-                    v = v.replace(/,/g, '');    //  No commas, please
-                    if (v == '') {
-                        if (EDDATD.Grid.ignoreDataGaps) {
+                    return;
+                } else if (pulldown === 3) {   // Timestamps
+                    label = label.replace(/,/g, '');
+                    timestamp = parseFloat(label);
+                    if (!isNaN(timestamp)) {
+                        if (!value) {
                             // If we're ignoring gaps, skip out on recording this value
-                            continue;
+                            if (EDDATD.Grid.ignoreDataGaps) {
+                                return;
+                            }
+                            // We actually prefer null here, to indicate a placeholder value
+                            value = null;
                         }
-                        v = null;   // We actually prefer null here, to indicate a placeholder value
+                        if (!times[timestamp]) {
+                            times[timestamp] = value;
+                            uniqueTimes.push(timestamp);
+                            EDDATD.Sets.seenAnyTimestamps = true;
+                        }
                     }
-
-                    // Note that we're deliberately avoiding parsing v with parseFloat.
-                    // It will remain as a string, which the graph module will accept with no problems,
-                    // and will also preserve a carbon ratio if that's what this is.
-                    if (!timestamps[n]) {   // If we haven't seen it before,
-                        timestamps[n] = v;
-                        uniqueTimes.push(n);        // Save it as a unique value
-                        EDDATD.Sets.seenAnyTimestamps = 1;
+                    return;
+                } else if (label === '' || value === '') {
+                    // Now that we've dealt with timestamps, we proceed on to other data types.
+                    // All the other data types do not accept a blank value, so we weed them out now.
+                    return;
+                } else if (pulldown === 1) {   // Assay/Line Names
+                    // If haven't seen value before, increment and store uniqueness index
+                    if (!seenAssayLineNames[value]) {
+                        seenAssayLineNames[value] = ++assayLineNamesCount;
+                        EDDATD.Sets.uniqueLineAssayNames.push(value);
                     }
-                    continue;
+                    set.assay = seenAssayLineNames[value];
+                    set.assayName = value;
+                    return;
+                } else if (pulldown === 2) {   // Metabolite Names
+                    // If haven't seen value before, increment and store uniqueness index
+                    if (!seenMeasurementNames[value]) {
+                        seenMeasurementNames[value] = ++measurementNamesCount;
+                        EDDATD.Sets.uniqueMeasurementNames.push(value);
+                    }
+                    set.measurementType = seenMeasurementNames[value];
+                    return;
+                } else if (pulldown === 4) {   // Metadata
+                    if (!seenMetadataNames[label]) {
+                        seenMetadataNames[label] = ++metadataNamesCount;
+                        EDDATD.Sets.uniqueMetadataNames.push(label);
+                    }
+                    set.metadata[seenMetadataNames[label]] = value;
+                    foundMeta = true;
                 }
-
-                // Now that we've dealt with timestamps, we proceed on to other data types.
-                // All the other data types do not accept a blank value, so we weed them out now.
-                if (n == '') { continue; }
-                if (v == '') { continue; }
-
-                if (p == 1) {   // Assay/Line Names
-                    if (!seenAssayLineNames[v]) {                       // If we haven't seen it before,
-                        assayLineNamesCount++;                          // Increment the unique index by 1
-                        seenAssayLineNames[v] = assayLineNamesCount;    // Store a key of v with a value of the index
-                        EDDATD.Sets.uniqueLineAssayNames.push(v);       // And push it into the array (at that index-1)
-                    }
-                    newSet.assay = seenAssayLineNames[v];
-                    newSet.assayName = v;
-                    continue;
-                }
-                if (p == 2) {   // Metabolite Names
-                    if (!seenMeasurementNames[v]) {
-                        measurementNamesCount++;
-                        seenMeasurementNames[v] = measurementNamesCount;
-                        EDDATD.Sets.uniqueMeasurementNames.push(v);
-                    }
-                    newSet.measurementType = seenMeasurementNames[v];
-                    continue;
-                }
-                if (p == 4) {   // Metadata
-                    if (!seenMetadataNames[n]) {    // Note that we're working with the LABEL (n) here, not the value in the cell (v)
-                        metadataNamesCount++;       // Incrementing before adding, so the effective start index is 1, not 0
-                        seenMetadataNames[n] = metadataNamesCount;
-                        EDDATD.Sets.uniqueMetadataNames.push(n);
-                    }
-                    newSet.metadata[seenMetadataNames[n]] = v;
-                    foundMetaDataCount++;
-                }
+            });
+            uniqueTimes.sort((a, b) => a - b).forEach((time: number): void => {
+                set.data.push([time, times[time]]);
+            });
+            // only save if accumulated some data or metadata
+            if (uniqueTimes.length || foundMeta || set.singleData !== null) {
+                EDDATD.Sets.parsedSets.push(set);
             }
-
-            // Sort the timestamps we found and build an array of time/value tuples
-            uniqueTimes.sort(function(a,b){return a - b}); // Sort ascending
-            for (var x = 0; x < uniqueTimes.length; x++) {
-                newSet.data.push([uniqueTimes[x], timestamps[uniqueTimes[x]]]);
-            }
-
-            // Only save this set if we actually accumulated some data or metadata to store.
-            if ((uniqueTimes.length > 0) || foundMetaDataCount || (newSet.singleData != null)) {
-                EDDATD.Sets.parsedSets.push(newSet);
-            }
-        }
-
-    // The alternate method: A "set" for every cell of the table, with the timestamp to be determined later.
+        });
+    // The alternate method: A "set" for every cell of the table, with the timestamp
+    // to be determined later.
     } else {
-
-        var parsingIndex = 0;
-        for (var c=0; c < EDDATD.Grid.w; c++) {
+        EDDATD.Table.colObjects.forEach((_, c: number): void => {
+            var cellValue: string, set: any;
             if (!EDDATD.Table.activeColFlags[c]) {
-                continue;
+                return;
             }
-
-            var a = EDDATD.Grid.data[earliestAssayLineNamesRow-1][c];
-            // Weed out blank, undefined, and null values.
-            if ((typeof a == 'undefined') || (a == null)) { a = ''; }
-            if (a == '') { continue; }
-
-            if (!seenAssayLineNames[a]) {                       // If we haven't seen it before,
-                assayLineNamesCount++;                          // Increment the unique index by 1
-                seenAssayLineNames[a] = assayLineNamesCount;    // Store a key of v with a value of the index
-                EDDATD.Sets.uniqueLineAssayNames.push(a);       // And push it into the array (at that index-1)
-            }
-
-            for (var r=0; r < EDDATD.Grid.l; r++) {
-                if (!EDDATD.Table.activeRowFlags[r]) { continue; }
-                if (!EDDATD.Table.activeFlags[r][c]) { continue; }
-
-                var p = EDDATD.Table.pulldownSettings[r];   // The value of the current pulldown
-                var n = EDDATD.Grid.rowMarkers[r];          // The row label
-                var v = EDDATD.Grid.data[r][c];             // The value in the current cell
-
-                if (!p) { continue; }   // If the pulldown is not set to anything, skip this value
-                if ((p != 5) && (p != 12)) {    // Single Metabolite Name or Single Protein Name are the only types we will accept
-                    continue;
+            cellValue = EDDATD.Grid.data[interpretMode[1]][c] || '';
+            if (cellValue) {
+                // If haven't seen cellValue before, increment and store uniqueness index
+                if (!seenAssayLineNames[cellValue]) {
+                    seenAssayLineNames[cellValue] = ++assayLineNamesCount;
+                    EDDATD.Sets.uniqueLineAssayNames.push(cellValue);
                 }
-
-                if ((typeof n == 'undefined') || (n == null)) { n = ''; }
-                if ((typeof v == 'undefined') || (v == null)) { v = ''; }
-
-                // Weed out blank, undefined, and null values.
-                if (n == '') { continue; }
-                if (v == '') { continue; }
-
-                var newSet2 = {
-                    // For the graphing module (which we won't be using in this mode, actually)
-                    label: 'Column ' + c + ' row ' + r,
-                    name: 'Column ' + c + ' row ' + r,
-                    units: 'units',
-                    // For submission to the database
-                    parsingIndex: parsingIndex,
-                    assay: seenAssayLineNames[a],
-                    assayName: a,
-                    measurementType: null,
-                    metadata: {},
-                    singleData: v,
-                    // For both
-                    data: []
-                };
-
-                if (p == 5) {   // Single Metabolite Name
-                    if (!seenMeasurementNames[n]) {
-                        measurementNamesCount++;
-                        seenMeasurementNames[n] = measurementNamesCount;
-                        EDDATD.Sets.uniqueMeasurementNames.push(n);
+                EDDATD.Grid.data.forEach((row: string[], r: number): void => {
+                    var pulldown: number, label: string, value: string, timestamp: number;
+                    if (!EDDATD.Table.activeRowFlags[r] || !EDDATD.Table.activeFlags[r][c]) {
+                        return;
                     }
-                    newSet2.measurementType = seenMeasurementNames[n];
-                } else if (p == 12) {   // Single Protein Name are the only types we will accept
-                    // We process this on the back end
-                    newSet2.name = n;
-                }
-                parsingIndex++;
-                EDDATD.Sets.parsedSets.push(newSet2);
+                    pulldown = EDDATD.Table.pulldownSettings[r];
+                    label = EDDATD.Grid.rowMarkers[r] || '';
+                    value = row[c] || '';
+                    if (!pulldown || !(pulldown === 5 || pulldown === 12) || !label || !value) {
+                        return;
+                    }
+                    set = {
+                        // For the graphing module (which we won't be using in this mode, actually)
+                        'label': 'Column ' + c + ' row ' + r,
+                        'name': 'Column ' + c + ' row ' + r,
+                        'units': 'units',
+                        // For submission to the database
+                        'parsingIndex': EDDATD.Sets.parsedSets.length,
+                        'assay': seenAssayLineNames[cellValue],
+                        'assayName': cellValue,
+                        'measurementType': null,
+                        'metadata': {},
+                        'singleData': value,
+                        // For both
+                        'data': []
+                    };
+                    if (pulldown === 5) {
+                        if (!seenMeasurementNames[label]) {
+                            seenMeasurementNames[label] = ++measurementNamesCount;
+                            EDDATD.Sets.uniqueMeasurementNames.push(label);
+                        }
+                        set.measurementType = seenMeasurementNames[label];
+                    } else if (pulldown === 12) {
+                        set.name = label;
+                    }
+                    EDDATD.Sets.parsedSets.push(set);
+                });
             }
-        }
+        });
     }
 },
 
 
-queueGraphRemake:function() {
+queueGraphRemake: (): void => {
     // Start a timer to wait before calling the routine that remakes the graph.
     // This way we're not bothering the user with the long redraw process when
     // they are making fast edits.
-
     if (EDDATD.graphRefreshTimerID) {
-        clearTimeout ( EDDATD.graphRefreshTimerID );
+        clearTimeout(EDDATD.graphRefreshTimerID);
     }
     if (EDDATD.graphEnabled) {
-        EDDATD.graphRefreshTimerID = setTimeout ( "EDDATD.remakeGraphArea()", 700 );
+        EDDATD.graphRefreshTimerID = setTimeout(EDDATD.remakeGraphArea.bind(EDDATD), 700);
     }
 },
 
 
-remakeGraphArea:function() {
+remakeGraphArea: (): void => {
     EDDATD.graphRefreshTimerID = 0; 
-
-    if (!EDDATDGraphing) {
+    if (!EDDATDGraphing || !EDDATD.graphEnabled) {
         return;
     }
-    if (!EDDATD.graphEnabled) {
-        return
-    }
-    
     EDDATDGraphing.clearAllSets();
-
     // If we're not in this mode, drawing a graph is nonsensical.
-    if (EDDATD.interpretationMode == "std") {
-        for (var i=0; i < EDDATD.Sets.parsedSets.length; i++) {
-            EDDATDGraphing.addNewSet(EDDATD.Sets.parsedSets[i]);
-        }
+    if (EDDATD.interpretationMode === "std") {
+        EDDATD.Sets.parsedSets.forEach((set) => EDDATDGraphing.addNewSet(set));
     }
-
     EDDATDGraphing.drawSets();
 },
 
 
-resetInfoTableFields:function() {
-
+resetInfoTableFields: (): void => {
     // TOTALLY STUBBED
-
 },
 
 
 // Create the Step 4 table:  A set of rows, one for each y-axis column of data,
 // where the user can fill out additional information for the pasted table.
 
-remakeInfoTable:function() {
-
-    var masterMTypeDiv = document.getElementById('masterMTypeDiv');
-    var masterAssayLineDiv = document.getElementById('masterAssayLineDiv');
-
-    var disambiguateLinesAssaysSection = document.getElementById('disambiguateLinesAssaysSection');
-    var disambiguateMeasurementsSection = document.getElementById('disambiguateMeasurementsSection');
-    var disambiguateMetadataSection = document.getElementById('disambiguateMetadataSection');
-
-    var disabledStepLabel = document.getElementById('emptyDisambiguationLabel');
-
+remakeInfoTable: (): void => {
+    var masterP = EDDATD.masterProtocol;    // Shout-outs to a mid-grade rapper
     // Initially hide all the Step 4 master pulldowns so we can reveal just the ones we need later
-    $(masterAssayLineDiv).addClass('off');
-    $(masterMTypeDiv).addClass('off');
-    $(disambiguateLinesAssaysSection).addClass('off');
-    $(disambiguateMeasurementsSection).addClass('off');
-    $(disambiguateMetadataSection).addClass('off');
-
-    var dATable = document.getElementById('disambiguateAssaysTable');
-    if (dATable) {dATable.parentNode.removeChild(dATable);}
-    var dMTable = document.getElementById('disambiguateMeasurementsTable');
-    if (dMTable) {dMTable.parentNode.removeChild(dMTable);}
-    var dMdTable = document.getElementById('disambiguateMetadataTable');
-    if (dMdTable) {dMdTable.parentNode.removeChild(dMdTable);}
-
-    // If we have no sets to show, leave the area blank and show the 'enter some data!' banner
-    if (EDDATD.Sets.parsedSets.length == 0) {   
-        $(disabledStepLabel).removeClass('off');
+    $('#masterAssayLineDiv').addClass('off');
+    $('#masterMTypeDiv').addClass('off');
+    $('#disambiguateLinesAssaysSection').addClass('off');
+    $('#disambiguateMeasurementsSection').addClass('off');
+    $('#disambiguateMetadataSection').addClass('off');
+    $('#disambiguateAssaysTable').remove();
+    $('#disambiguateMeasurementsTable').remove();
+    $('#disambiguateMetadataTable').remove();
+    // If no sets to show, leave the area blank and show the 'enter some data!' banner
+    if (EDDATD.Sets.parsedSets.length === 0) {   
+        $('#emptyDisambiguationLabel').removeClass('off');
         return;
     }
-    $(disabledStepLabel).addClass('off');
-
-    // If we've got parsed data to deal with, but haven't seen a single timestamp, show the "master timestamp" UI.
-    var mTimestampDiv = document.getElementById('masterTimestampDiv');
-    $(mTimestampDiv).removeClass('off');
-    if (EDDATD.Sets.seenAnyTimestamps) {
-        $(mTimestampDiv).addClass('off');
-    }
-
-    var masterP = EDDATD.masterProtocol;    // Shout-outs to a mid-grade rapper
+    $('#emptyDisambiguationLabel').addClass('off');
+    // If parsed data exists, but haven't seen a single timestamp show the "master timestamp" UI.
+    $('#masterTimestampDiv').toggleClass('off', EDDATD.Sets.seenAnyTimestamps);
 
     // If we have no Assays/Lines detected for disambiguation, ask the user to select one.
-    if (EDDATD.Sets.uniqueLineAssayNames.length == 0) {
-        $(masterAssayLineDiv).removeClass('off');
+    if (EDDATD.Sets.uniqueLineAssayNames.length === 0) {
+        $('#masterAssayLineDiv').removeClass('off');
     } else {
         // Otherwise, put together a disambiguation section for Assays/Lines
-
-        // We need to keep a separate set of correlations between string and pulldowns for each Protocol,
-        // since the same string can match different Assays, and the pulldowns will have different content,
-        // in each Protocol.
-        if (typeof EDDATD.Disam.assayLineObjSets[masterP] == 'undefined') {
+        // Keep a separate set of correlations between string and pulldowns for each
+        // Protocol, since same string can match different Assays, and the pulldowns
+        // will have different content, in each Protocol.
+        if (EDDATD.Disam.assayLineObjSets[masterP] === undefined) {
             EDDATD.Disam.assayLineObjSets[masterP] = {};
         }
-
         EDDATD.Disam.currentlyVisibleAssayLineObjSets = [];
-
-        $(disambiguateLinesAssaysSection).removeClass('off');
+        $('#disambiguateLinesAssaysSection').removeClass('off');
+        //// !!!!!!!!!!!!!!!!!!!!!! ////
         var aTable = document.createElement("table");
         aTable.setAttribute('cellspacing', "0");
         aTable.setAttribute('id', 'disambiguateAssaysTable');
-        disambiguateLinesAssaysSection.appendChild(aTable);
+        $('#disambiguateLinesAssaysSection').append(aTable);
         var aTBody = document.createElement("tbody");
         aTable.appendChild(aTBody);
 
@@ -1385,18 +1303,18 @@ remakeInfoTable:function() {
 
     // If we've detected no measurement types for disambiguation, but we do have timestamp data, ask the user to select one.
     } else if ((EDDATD.Sets.uniqueMeasurementNames.length == 0) && (EDDATD.Sets.seenAnyTimestamps)) {
-        $(masterMTypeDiv).removeClass('off');
+        $('#masterMTypeDiv').removeClass('off');
 
     // In this case, we have measurement types, and we're in an appropriate mode.
     } else {
 
         // Otherwise, put together a disambiguation section for measurement types
 
-        $(disambiguateMeasurementsSection).removeClass('off');
+        $('#disambiguateMeasurementsSection').removeClass('off');
         var aTable = document.createElement("table");
         aTable.setAttribute('cellspacing', "0");
         aTable.setAttribute('id', 'disambiguateMeasurementsTable');
-        disambiguateMeasurementsSection.appendChild(aTable);
+        $('#disambiguateMeasurementsSection').append(aTable);
         var aTBody = document.createElement("tbody");
         aTable.appendChild(aTBody);
 
@@ -1452,11 +1370,11 @@ remakeInfoTable:function() {
 
     if (EDDATD.Sets.uniqueMetadataNames.length > 0) {
 
-        $(disambiguateMetadataSection).removeClass('off');
+        $('#disambiguateMetadataSection').removeClass('off');
         var aTable = document.createElement("table");
         aTable.setAttribute('cellspacing', "0");
         aTable.setAttribute('id', 'disambiguateMetadataTable');
-        disambiguateMetadataSection.appendChild(aTable);
+        $('#disambiguateMetadataSection').append(aTable);
         var aTBody = document.createElement("tbody");
         aTable.appendChild(aTBody);
 
