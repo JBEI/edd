@@ -536,8 +536,7 @@ URL's to interact with them.
         * Sample monitoring interface URL: [http://localhost:8983/](http://localhost:8983/)
         * `solr start` / `solr stop`
 * RabbitMQ
-    * Sample monitoring interface URL: [http//localhost:5672/](http://localhost:5672/)
-        * Uses AMQP protocol, not usable in normal HTTP web browser
+    * Sample monitoring interface URL: [http//localhost:15672/](http://localhost:15672/)
     * Development (OSX) 
         * Manual operation (as user rabbitmq)
             * `rabbitmq-server start -detached`. Leave off the `-detached` option to get better
@@ -660,7 +659,7 @@ For reference, see:
  * Create an administrative RabbitMQ account for Flower to use in accessing Celery's RabbitMQ
    management API (same password special character limitations as above)
     * Update edd/server.cfg to enter the password in `rabbitmq.mgmt_pass`
-    * `sudo rabbitmqctl add_user bunny RABBITMQ_MGMT_PASSWORD`
+    * `sudo rabbitmqctl add_user bunny 'RABBITMQ_MGMT_PASSWORD'`. Note that single-quotes prevent the shell from interpreting special characters in the password.
         * replacing the password with your value
     * `sudo rabbitmqctl set_permissions -p / bunny ".*" ".*" ".*"`
     * `sudo rabbitmqctl set_permissions -p /edd bunny ".*" ".*" ".*"`
