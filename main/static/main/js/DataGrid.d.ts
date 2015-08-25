@@ -1,4 +1,3 @@
-/// <reference path="typescript-declarations.d.ts" />
 /// <reference path="Utl.d.ts" />
 /// <reference path="Dragboxes.d.ts" />
 /// <reference path="lib/jquery.d.ts" />

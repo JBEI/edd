@@ -117,11 +117,11 @@ changedMasterProtocol: ():void => {
     if (protocolIn.length === 0) {
         return;
     }
-    if (EDDATD.masterProtocol === protocolIn.val()) {
+    if (EDDATD.masterProtocol === parseInt(protocolIn.val(), 10)) {
         // no change
         return;
     }
-    EDDATD.masterProtocol = protocolIn.val();
+    EDDATD.masterProtocol = parseInt(protocolIn.val(), 10);
     // check for master assay
     assayIn = $('#masterAssay').empty();
     if (assayIn.length === 0) {
@@ -320,24 +320,22 @@ inferActiveFlags: (): void => {
     // that is, it goes by row, then by column, when referencing.
     // This matches Grid.data and Table.dataCells.
     var x: number, y: number;
-    for (x = 0; x < EDDATD.Grid.data[0].length; ++x) {
-        if (typeof EDDATD.Table.activeColFlags[x] === 'undefined') {
+    EDDATD.Grid.data[0].forEach((_, x: number): void => {
+        if (EDDATD.Table.activeColFlags[x] === undefined) {
             EDDATD.Table.activeColFlags[x] = true;
         }
-    }
-    for (y = 0; y < EDDATD.Grid.data.length; ++y) {
-        if (typeof EDDATD.Table.activeRowFlags[y] === 'undefined') {
+    });
+    EDDATD.Grid.data.forEach((row: string[], y: number): void => {
+        if (EDDATD.Table.activeRowFlags[y] === undefined) {
             EDDATD.Table.activeRowFlags[y] = true;
         }
-        if (typeof EDDATD.Table.activeFlags[y] === 'undefined') {
-            EDDATD.Table.activeFlags[y] = [];
-        }
-        for (x = 0; x < EDDATD.Grid.data[0].length; ++x) {
-            if (typeof EDDATD.Table.activeFlags[y][x] === 'undefined') {
+        EDDATD.Table.activeFlags[y] = EDDATD.Table.activeFlags[y] || [];
+        row.forEach((_, x: number) => {
+            if (EDDATD.Table.activeFlags[y][x] === undefined) {
                 EDDATD.Table.activeFlags[y][x] = true;
             }
-        }
-    }
+        });
+    });
 },
 
 
@@ -426,9 +424,8 @@ processMdv: (input: RawInput): void => {
 
 // A recursive function to populate a pulldown with optional optiongroups,
 // and a default selection
-// TODO options typed as RowPulldownOption[]
-populatePulldown: (select: JQuery, options: any[], value: number):void => {
-    options.forEach((option: any[]): void => {
+populatePulldown: (select: JQuery, options: RowPulldownOption[], value: number): void => {
+    options.forEach((option: RowPulldownOption): void => {
         if (typeof option[1] === 'number') {
             $('<option>').text(option[0]).val(option[1])
                 .prop('selected', option[1] === value)
@@ -766,7 +763,8 @@ changedRowDataTypePulldown:function(index, value) {
 },
 
 
-figureOutThisRowsDataType:function(label:string, row:string[]) {
+figureOutThisRowsDataType: (label: string, row: string[]) => {
+    var blank: number, strings: number, condensed: string[];
     if (EDDATD.interpretationMode == 'tr') {
         if (label.match(/gene/i)) {
             return 10;
@@ -775,7 +773,6 @@ figureOutThisRowsDataType:function(label:string, row:string[]) {
             return 11;
         }
         // If we can't match to the above two, set the row to 'undefined' so it's ignored by default
-        // TODO: Attempt to match with embedded gene names
         return 0;
     }
     // Take care of some braindead guesses
@@ -787,54 +784,29 @@ figureOutThisRowsDataType:function(label:string, row:string[]) {
             return 12;
         }
         // No point in continuing, only line and protein are relevant
-        // TODO: Attempt to match with embedded protein names
         return 0;
     }
     // Things we'll be counting to hazard a guess at the row contents
-    var blankCt = 0;
-    var stringCt = 0;
-    var measurementsCt = 0;
-    var uniqueMeasurementsCt = 0;
-    var uniqueMeasurements = {};
+    blank = strings = 0;
     // A condensed version of the row, with no nulls or blank values
-    var cRow = row.filter((v:string):boolean => !!v);
-    blankCt = row.length - cRow.length;
-    cRow.forEach((v:string):void => {
-        var vv:string = v.replace(/,/g, ''), m:any;
-        if (isNaN(parseFloat(vv))) {
-            ++stringCt;
-            // TODO previously was trying to match up with metabolites
-            // we no longer send full metabolite lists, so cannot do this client-side
-            // m = EDDAutoComplete.MetaboliteField.searchForClosestRecordMatchStatic(v);
-            // if (m) {
-            //     measurementsCt++;
-            //     if (!uniqueMeasurements[m]) {
-            //         uniqueMeasurements[m] = 1;
-            //         ++uniqueMeasurementsCt;
-            //     }
-            // }
+    condensed = row.filter((v: string): boolean => !!v);
+    blank = row.length - condensed.length;
+    condensed.forEach((v: string): void => {
+        v = v.replace(/,/g, '');
+        if (isNaN(parseFloat(v))) {
+            ++strings;
         }
     });
     // If the label parses into a number and the data contains no strings, call it a timsetamp for data
-    if (!isNaN(parseFloat(label)) && (stringCt == 0)) {
+    if (!isNaN(parseFloat(label)) && (strings === 0)) {
         return 3;
     }
-    // If we found at least two different measurement types,
-    // and the total detections is more than 3/5 the non-empty values,
-    // call it a measurement type.
-    if ((uniqueMeasurementsCt > 2) && ((cRow.length / measurementsCt) > 0.6)) {
-        return 2;
-    }
-    // If the label matches a metadata type
-    // if (EDDAutoComplete.MetaDataField.searchForClosestRecordMatchStatic(label)) {
-    //     return 4;
-    // }
     // No choice by default
     return 0;
 },
 
 
-redrawIgnoredValueMarkers:function() {
+redrawIgnoredValueMarkers: (): void => {
     EDDATD.Table.dataCells.forEach((row: HTMLElement[]): void => {
         row.forEach((cell: HTMLElement): void => {
             var toggle: boolean = !!EDDATD.Grid.ignoreDataGaps && !!cell.getAttribute('isblank');
@@ -844,9 +816,11 @@ redrawIgnoredValueMarkers:function() {
 },
 
 
-toggleTableRow:function(box) {
-    var value: number = parseInt($(box).val(), 10);
-    EDDATD.Table.activeRowFlags[value] = $(box).prop('checked');
+toggleTableRow: (box: HTMLElement): void => {
+    var value: number, input: JQuery;
+    input = $(box);
+    value = parseInt(input.val(), 10);
+    EDDATD.Table.activeRowFlags[value] = input.prop('checked');
     EDDATD.interpretDataTable();
     EDDATD.queueGraphRemake();
     EDDATD.redrawEnabledFlagMarkers();
@@ -855,9 +829,11 @@ toggleTableRow:function(box) {
 },
 
 
-toggleTableColumn: function(box) {
-    var value: number = parseInt($(box).val(), 10);
-    EDDATD.Table.activeColFlags[value] = $(box).prop('checked');
+toggleTableColumn: (box: HTMLElement): void => {
+    var value: number, input: JQuery;
+    input = $(box);
+    value = parseInt(input.val(), 10);
+    EDDATD.Table.activeColFlags[value] = input.prop('checked');
     EDDATD.interpretDataTable();
     EDDATD.queueGraphRemake();
     EDDATD.redrawEnabledFlagMarkers();
@@ -866,7 +842,7 @@ toggleTableColumn: function(box) {
 },
 
 
-resetEnabledFlagMarkers:function() {
+resetEnabledFlagMarkers: (): void => {
     EDDATD.Grid.data.forEach((row: string[], y: number): void => {
         EDDATD.Table.activeFlags[y] = EDDATD.Table.activeFlags[y] || [];
         row.forEach((_, x: number): void => {
@@ -888,7 +864,7 @@ resetEnabledFlagMarkers:function() {
 },
 
 
-redrawEnabledFlagMarkers:function() {
+redrawEnabledFlagMarkers: (): void => {
     EDDATD.Table.dataCells.forEach((row: HTMLElement[], y: number): void => {
         var toggle: boolean = !EDDATD.Table.activeRowFlags[y];
         $(EDDATD.Table.rowLabelCells[y]).toggleClass('disabledLine', toggle);
@@ -1146,9 +1122,150 @@ resetInfoTableFields: (): void => {
 },
 
 
+remakeInfoTableAssayLineSection: (masterP: number): void => {
+    var table: HTMLTableElement, body: HTMLTableElement;
+    if (EDDATD.Sets.uniqueLineAssayNames.length === 0) {
+        $('#masterAssayLineDiv').removeClass('off');
+    } else {
+        // Otherwise, put together a disambiguation section for Assays/Lines
+        // Keep a separate set of correlations between string and pulldowns for each
+        // Protocol, since same string can match different Assays, and the pulldowns
+        // will have different content, in each Protocol.
+        EDDATD.Disam.assayLineObjSets[masterP] = EDDATD.Disam.assayLineObjSets[masterP] || {};
+        EDDATD.Disam.currentlyVisibleAssayLineObjSets = [];
+        table = <HTMLTableElement> $('<table>')
+            .attr({ 'id': 'disambiguateAssaysTable', 'cellspacing': 0 })
+            .appendTo($('#disambiguateLinesAssaysSection').removeClass('off'))
+            .on('change', 'select', (ev: JQueryInputEventObject): void => {
+                EDDATD.userChangedAssayLineDisam(ev.target);
+            })[0];
+        body = <HTMLTableElement> $('<tbody>').appendTo(table)[0];
+        EDDATD.Sets.uniqueLineAssayNames.forEach((name: string, i: number): void => {
+            var disam: any, row: HTMLTableRowElement, defaultSel: any,
+                cell: JQuery, aSelect: JQuery, lSelect: JQuery;
+            disam = EDDATD.Disam.assayLineObjSets[masterP][name];
+            if (!disam) {
+                disam = {};
+                defaultSel = EDDATD.disambiguateAnAssayOrLine(name, i);
+                // First make a table row, and save a reference to it
+                disam.rowObj = row = <HTMLTableRowElement> body.insertRow();
+                // Next, add a table cell with the string we are disambiguating
+                $('<div>').text(name).appendTo(row.insertCell());
+                // Now build another table cell that will contain the pulldowns
+                cell = $(row.insertCell()).css('text-align', 'left');
+                aSelect = $('<select>').appendTo(cell)
+                    .data({ 'setByUser': false, 'visibleIndex': i })
+                    .attr('name', 'disamAssay' + (i + 1));
+                disam.assayObj = aSelect[0];
+                $('<option>').text('(Create New)').appendTo(aSelect).val('new')
+                    .prop('selected', !defaultSel.assayID);
+                ATData.existingAssays[masterP].forEach((id: string): void => {
+                    var assay: AssayRecord, line: LineRecord, protocol: any;
+                    assay = EDDData.Assays[id];
+                    line = EDDData.Lines[assay.lid];
+                    protocol = EDDData.Protocols[assay.pid];
+                    $('<option>').text([line.name, protocol.name, assay.name].join('-'))
+                        .appendTo(aSelect).val(id)
+                        .prop('selected', defaultSel.assayID === id);
+                });
+                // a span to contain the text label for the Line pulldown, and the pulldown itself
+                $('<span>').text('for Line:').toggleClass('off', !!defaultSel.assayID)
+                    .appendTo(cell);
+                lSelect = $('<select>').appendTo(cell).data('setByUser', false)
+                    .attr('name', 'disamLine' + (i + 1));
+                disam.lineObj = lSelect[0];
+                $('<option>').text('(Create New)').appendTo(lSelect).val('new')
+                    .prop('selected', !defaultSel.lineID);
+                ATData.existingLines.forEach((line: LineRecord) => {
+                    $('<option>').text(line.name).appendTo(lSelect).val(line.id.toString())
+                        .prop('selected', defaultSel.lineID === line.id);
+                });
+                EDDATD.Disam.assayLineObjSets[masterP][name] = disam;
+            }
+            EDDATD.Disam.currentlyVisibleAssayLineObjSets.push(disam);
+        });
+    }
+},
+
+
+remakeInfoTableMeasurementSection: (): void => {
+    var table: HTMLTableElement, body: HTMLTableElement, row: HTMLTableRowElement;
+    // put together a disambiguation section for measurement types
+    table = <HTMLTableElement> $('<table>')
+        .attr({ 'id': 'disambiguateMeasurementsTable', 'cellspacing': 0 })
+        .appendTo($('#disambiguateMeasurementsSection').removeClass('off'))
+        .on('change', 'input[type=hidden]', (ev: JQueryInputEventObject): void => {
+            // only watch for changes on the hidden portion, let autocomplete work
+            EDDATD.userChangedMeasurementDisam(ev.target);
+        })[0];
+    body = <HTMLTableElement> $('<tbody>').appendTo(table)[0];
+    // Headers for the table
+    row = <HTMLTableRowElement> body.insertRow();
+    $('<th>').attr({ 'colspan': 2 }).css('text-align', 'right').text('Compartment').appendTo(row);
+    $('<th>').text('Type').appendTo(row);
+    $('<th>').text(EDDATD.interpretationMode === 'std' ? 'Units' : '').appendTo(row);
+    // Done with headers row
+    EDDATD.Disam.currentlyVisibleMeasurementObjSets = [];   // For use in cascading user settings
+    EDDATD.Sets.uniqueMeasurementNames.forEach((name: string, i: number): void => {
+        var disam: any;
+        disam = EDDATD.Disam.measurementObjSets[name];
+        if (disam && disam.rowObj) {
+            $(disam.rowObj).appendTo(body);
+        } else {
+            disam = {};
+            disam.rowObj = row = <HTMLTableRowElement> body.insertRow();
+            $('<div>').text(name).appendTo(row.insertCell());
+            ['compObj', 'typeObj', 'unitsObj'].forEach((auto: string): void => {
+                var cell: JQuery = $(row.insertCell()).addClass('disamDataCell');
+                disam[auto] = EDD_auto.create_autocomplete(cell).data('type', auto);
+            });
+            EDDATD.Disam.measurementObjSets[name] = disam;
+        }
+        // TODO sizing should be handled in CSS
+        disam.compObj.attr({ 'name': 'disamMComp' + (i + 1), 'visibleIndex': i, 'size': 4 });
+        EDD_auto.setup_field_autocomplete(disam.compObj, 'MeasurementCompartment', EDDATD.AutoCache.comp);
+        disam.typeObj.attr({ 'name': 'disamMType' + (i + 1), 'visibleIndex': i, 'size': 45 });
+        EDD_auto.setup_field_autocomplete(disam.typeObj, 'Metabolite', EDDATD.AutoCache.metabolite);
+        disam.unitsObj.attr({ 'name': 'disamMUnits' + (i + 1), 'visibleIndex': i, 'size': 10 });
+        EDD_auto.setup_field_autocomplete(disam.unitsObj, 'MeasurementUnit', EDDATD.AutoCache.unit);
+        // If we're in MDV mode, the units pulldowns are irrelevant.
+        disam.unitsObj.toggleClass('off', EDDATD.interpretationMode === 'mdv');
+    });
+    EDDATD.checkAllMeasurementCompartmentDisam();
+},
+
+
+remakeInfoTableMetadataSection: (): void => {
+    var table: HTMLTableElement, body: HTMLTableElement, row: HTMLTableRowElement;
+    // put together a disambiguation section for metadata
+    table = <HTMLTableElement> $('<table>')
+        .attr({ 'id': 'disambiguateMetadataTable', 'cellspacing': 0 })
+        .appendTo($('#disambiguateMetadataSection').removeClass('off'))
+        .on('change', 'input', (ev: JQueryInputEventObject): void => {
+            // should there be event handling here ?
+        })[0];
+    body = <HTMLTableElement> $('<tbody>').appendTo(table)[0];
+    EDDATD.Sets.uniqueMetadataNames.forEach((name: string, i: number): void => {
+        var disam: any;
+        disam = EDDATD.Disam.metadataObjSets[name];
+        if (disam && disam.rowObj) {
+            $(disam.rowObj).appendTo(body);
+        } else {
+            disam = {};
+            disam.rowObj = row = <HTMLTableRowElement> body.insertRow();
+            $('<div>').text(name).appendTo(row.insertCell());
+            disam.metaObj = EDD_auto.create_autocomplete(row.insertCell()).val(name);
+            EDDATD.Disam.metadataObjSets[name] = disam;
+        }
+        disam.metaObj.attr('name', 'disamMeta' + (i + 1)).addClass('autocomp_type')
+            .next().attr('name', 'disamMetaHidden' + (i + 1));
+        EDD_auto.setup_field_autocomplete(disam.metaObj, 'MetadataType', EDDATD.AutoCache.meta);
+    });
+},
+
+
 // Create the Step 4 table:  A set of rows, one for each y-axis column of data,
 // where the user can fill out additional information for the pasted table.
-
 remakeInfoTable: (): void => {
     var masterP = EDDATD.masterProtocol;    // Shout-outs to a mid-grade rapper
     // Initially hide all the Step 4 master pulldowns so we can reveal just the ones we need later
@@ -1168,335 +1285,76 @@ remakeInfoTable: (): void => {
     $('#emptyDisambiguationLabel').addClass('off');
     // If parsed data exists, but haven't seen a single timestamp show the "master timestamp" UI.
     $('#masterTimestampDiv').toggleClass('off', EDDATD.Sets.seenAnyTimestamps);
-
     // If we have no Assays/Lines detected for disambiguation, ask the user to select one.
-    if (EDDATD.Sets.uniqueLineAssayNames.length === 0) {
-        $('#masterAssayLineDiv').removeClass('off');
-    } else {
-        // Otherwise, put together a disambiguation section for Assays/Lines
-        // Keep a separate set of correlations between string and pulldowns for each
-        // Protocol, since same string can match different Assays, and the pulldowns
-        // will have different content, in each Protocol.
-        if (EDDATD.Disam.assayLineObjSets[masterP] === undefined) {
-            EDDATD.Disam.assayLineObjSets[masterP] = {};
-        }
-        EDDATD.Disam.currentlyVisibleAssayLineObjSets = [];
-        $('#disambiguateLinesAssaysSection').removeClass('off');
-        //// !!!!!!!!!!!!!!!!!!!!!! ////
-        var aTable = document.createElement("table");
-        aTable.setAttribute('cellspacing', "0");
-        aTable.setAttribute('id', 'disambiguateAssaysTable');
-        $('#disambiguateLinesAssaysSection').append(aTable);
-        var aTBody = document.createElement("tbody");
-        aTable.appendChild(aTBody);
-
-        for (var i=0; i < EDDATD.Sets.uniqueLineAssayNames.length; i++) {
-            var uName = EDDATD.Sets.uniqueLineAssayNames[i];
-            // Find a pre-existing collection of objects that corresponds to this unique string
-            var disamRow = EDDATD.Disam.assayLineObjSets[masterP][uName];
-            // If none exists, we'll have to build one
-            if (!disamRow) {
-                disamRow = {};
-                // We'll call into another subroutine to do the job of guessing how to first set this pulldown
-                var defaultSelections = EDDATD.disambiguateAnAssayOrLine(uName, i);
-                // First make a table row, and save a reference to it
-                var aRow = document.createElement("tr");
-                disamRow.rowObj = aRow;
-                    // Next, add a table cell with the string we are disambiguating
-                    var aTD = document.createElement("td");
-                    aRow.appendChild(aTD);
-                        var aDIV = document.createElement("div");
-                        aDIV.appendChild(document.createTextNode(uName));
-                        aTD.appendChild(aDIV);
-                    // Now build another table cell that will contain the pulldowns
-                    aTD = document.createElement("td");
-                    aTD.style.textAlign="left";
-                    aRow.appendChild(aTD);
-                        // First, the Assay pulldown
-                        var aSEL = <any>document.createElement("select");
-                        disamRow.assayObj = aSEL;
-                        aTD.appendChild(aSEL);
-                        // An onclick callback to show/hide the Line pulldown as required
-                        aSEL.setAttribute('onclick', "EDDATD.userChangedAssayLineDisam(this);");
-                            // Assay pulldowns always start with a Create New option
-                            var aOPT = document.createElement("option");
-                            aOPT.setAttribute('value', 'new');
-                            aOPT.appendChild(document.createTextNode('(Create New)'));
-                            if (!defaultSelections.assayID) {
-                                aOPT.setAttribute('selected', 'selected');
-                            }
-                            aSEL.setByUser = 0; // For use in userChangedAssayLineDisam
-                            aSEL.appendChild(aOPT);
-                            for (var ea in ATData.existingAssays[masterP]) {
-                                var id = ATData.existingAssays[masterP][ea];
-                                aOPT = document.createElement("option");
-                                aOPT.setAttribute('value', id);
-                                if (defaultSelections.assayID == id) {
-                                    aOPT.setAttribute('selected', 'selected');
-                                }
-                                var lid = EDDData.Assays[id].lid;
-                                var pid = EDDData.Assays[id].pid;
-                                var fullN = [
-                                    EDDData.Lines[lid].name,
-                                    EDDData.Protocols[pid].name,
-                                    EDDData.Assays[id].name
-                                ].join('-');
-                                aOPT.appendChild(document.createTextNode(fullN));
-                                aSEL.appendChild(aOPT);
-                            }
-                            // Done with the pulldown selection options
-                        // Done with the pulldown
-
-                        // Next in the td, a span to contain the text label announcing the Line pulldown, and the pulldown itself
-                        var aSP = document.createElement("span");
-                        aSP.appendChild(document.createTextNode('for Line:'));
-                        if (defaultSelections.assayID) {    // If an actual Assay is chosen, hide this span for now
-                            aSP.className = 'off';
-                        }
-                        aTD.appendChild(aSP);
-
-                            // The Line pulldown
-                            aSEL = document.createElement("select");
-                            // Save a direct reference to it for later
-                            disamRow.lineObj = aSEL;
-                            aSP.appendChild(aSEL);
-                            aOPT = document.createElement("option");
-                            aOPT.setAttribute('value', 'new');
-                            aOPT.appendChild(document.createTextNode('(Create New)'));
-                            if (!defaultSelections.lineID) {
-                                aOPT.setAttribute('selected', 'selected');
-                            }
-                            aSEL.setByUser = 0; // For use in userChangedAssayLineDisam
-                            aSEL.appendChild(aOPT);
-
-                                for (var li=0; li < ATData.existingLines.length; li++) {
-                                    var line = ATData.existingLines[li];
-                                    aOPT = document.createElement("option");
-                                    aOPT.setAttribute('value', line.id);
-                                    if (defaultSelections.lineID == line.id) {
-                                        aOPT.setAttribute('selected', 'selected');
-                                    }
-                                    aOPT.appendChild(document.createTextNode(line.n));
-                                    aSEL.appendChild(aOPT);
-                                }
-                                // Done with the pulldown selection options
-                            // Done with the pulldown object
-                        // Done with the span object
-                    // Done with the last td object
-                // Done with the tr object
-                EDDATD.Disam.assayLineObjSets[masterP][uName] = disamRow;   // Store the row for later reference
-            }
-
-            // Set or re-set the name and id attributes of the pulldowns since we're adding it to the document
-            disamRow.assayObj.setAttribute('name', 'disamAssay' + (i + 1));
-            disamRow.lineObj.setAttribute('name', 'disamLine' + (i + 1));
-            disamRow.assayObj.setAttribute('visibleIndex', i);
-            aTBody.appendChild(disamRow.rowObj);    // Add the row to the document
-            // Used in userChangedAssayLineDisam to cascade changes in one input to subsequent inputs
-            EDDATD.Disam.currentlyVisibleAssayLineObjSets.push(disamRow);
-        }   // Done for each Assay/Line we are disambiguating
-    }
-
-    // If we're in 'Transcription' or 'Proteomics' mode, there are no measurement types involved.
-    // So we skip the measurement section, and instead provide some statistics about the gathered records.
-    if (EDDATD.interpretationMode == "tr" || EDDATD.interpretationMode == "pr") {
-
-    // If we've detected no measurement types for disambiguation, but we do have timestamp data, ask the user to select one.
-    } else if ((EDDATD.Sets.uniqueMeasurementNames.length == 0) && (EDDATD.Sets.seenAnyTimestamps)) {
+    EDDATD.remakeInfoTableAssayLineSection(EDDATD.masterProtocol);
+    // If in 'Transcription' or 'Proteomics' mode, there are no measurement types involved.
+    // skip the measurement section, and provide statistics about the gathered records.
+    if (EDDATD.interpretationMode === "tr" || EDDATD.interpretationMode === "pr") {
+        // no-op
+    } else if (EDDATD.Sets.uniqueMeasurementNames.length === 0 && EDDATD.Sets.seenAnyTimestamps) {
+        // no measurements for disambiguation, have timestamp data => ask the user to select one
         $('#masterMTypeDiv').removeClass('off');
-
-    // In this case, we have measurement types, and we're in an appropriate mode.
     } else {
-
-        // Otherwise, put together a disambiguation section for measurement types
-
-        $('#disambiguateMeasurementsSection').removeClass('off');
-        var aTable = document.createElement("table");
-        aTable.setAttribute('cellspacing', "0");
-        aTable.setAttribute('id', 'disambiguateMeasurementsTable');
-        $('#disambiguateMeasurementsSection').append(aTable);
-        var aTBody = document.createElement("tbody");
-        aTable.appendChild(aTBody);
-
-        // Headers for the table
-        var aTr = aTBody.insertRow();
-            var aTH = document.createElement("th");
-            aTH.colSpan = 2;    // http://www.w3schools.com/jsref/prop_tabledata_colspan.asp
-            aTH.setAttribute('colspan', "2");
-            aTH.style.textAlign = "right";
-            aTH.appendChild(document.createTextNode('Compartment'));
-            aTr.appendChild(aTH);
-            aTH = document.createElement("th");
-            aTH.appendChild(document.createTextNode('Type'));
-            aTr.appendChild(aTH);
-            aTH = document.createElement("th");
-            if (EDDATD.interpretationMode == "std") {
-                aTH.appendChild(document.createTextNode('Units'));
-            }
-            aTr.appendChild(aTH);
-        // Done with headers row
-
-        EDDATD.Disam.currentlyVisibleMeasurementObjSets = [];   // For use in cascading user settings
-
-        EDDATD.Sets.uniqueMeasurementNames.forEach((uName, i) => {
-            var disamRow = EDDATD.Disam.measurementObjSets[uName], aRow, aTd, aDiv;
-            if (disamRow) {
-                aTBody.appendChild(disamRow.rowObj);
-            } else {
-                disamRow = {};
-                aRow = aTBody.insertRow();
-                aTd = aRow.insertCell();
-                aDiv = $('<div>').text(uName).appendTo(aTd);
-                ['compObj', 'typeObj', 'unitsObj'].forEach((auto) => {
-                    var cell = $(aRow.insertCell()).addClass('disamDataCell');
-                    disamRow[auto] = EDD_auto.create_autocomplete(cell);
-                });
-                EDDATD.Disam.measurementObjSets[uName] = disamRow;
-            }
-            // TODO sizing should be handled in CSS
-            disamRow.compObj.attr({ 'name': 'disamMComp' + (i + 1), 'visibleIndex': i, 'size': 4 });
-            EDD_auto.setup_field_autocomplete(disamRow.compObj, 'MeasurementCompartment', EDDATD.AutoCache.comp);
-            disamRow.typeObj.attr({ 'name': 'disamMType' + (i + 1), 'visibleIndex': i, 'size': 45 });
-            EDD_auto.setup_field_autocomplete(disamRow.typeObj, 'Metabolite', EDDATD.AutoCache.metabolite);
-            disamRow.unitsObj.attr({ 'name': 'disamMUnits' + (i + 1), 'visibleIndex': i, 'size': 10 });
-            EDD_auto.setup_field_autocomplete(disamRow.unitsObj, 'MeasurementUnit', EDDATD.AutoCache.unit);
-            // If we're in MDV mode, the units pulldowns are irrelevant.
-            disamRow.unitsObj.toggleClass('off', EDDATD.interpretationMode === 'mdv');
-        });
-        EDDATD.checkAllMeasurementCompartmentDisam();
+        // have measurement types, in approprate mode, remake measurement section
+        EDDATD.remakeInfoTableMeasurementSection();
     }
-
     // If we've detected any metadata types for disambiguation, create a section
-
     if (EDDATD.Sets.uniqueMetadataNames.length > 0) {
-
-        $('#disambiguateMetadataSection').removeClass('off');
-        var aTable = document.createElement("table");
-        aTable.setAttribute('cellspacing', "0");
-        aTable.setAttribute('id', 'disambiguateMetadataTable');
-        $('#disambiguateMetadataSection').append(aTable);
-        var aTBody = document.createElement("tbody");
-        aTable.appendChild(aTBody);
-
-    //  Disam.metadataObjSets:{},
-
-        for (var i=0; i < EDDATD.Sets.uniqueMetadataNames.length; i++) {
-            var uName = EDDATD.Sets.uniqueMetadataNames[i];
-
-            // Find a pre-existing collection of objects that corresponds to this unique string
-            var disamRow = EDDATD.Disam.metadataObjSets[uName];
-            // If none exists, we'll have to build one
-            if (disamRow) {
-                aTBody.appendChild(disamRow.rowObj);    // Add the row to the document
-            } else {
-                disamRow = {};
-                // First make a table row, and save a reference to it
-                aRow = document.createElement("tr");
-                aTBody.appendChild(aRow);   // Rows must be in the DOM so initilization calls for their automcomplete elements work
-                disamRow.rowObj = aRow;
-                    // Next, add a table cell with the string we are disambiguating
-                    var aTD = document.createElement("td");
-                    aRow.appendChild(aTD);
-                        var aDIV = document.createElement("div");
-                        aDIV.appendChild(document.createTextNode(uName));
-                        aTD.appendChild(aDIV);
-                    // Now build another table cell that will contain the autocomplete element
-                    aTD = document.createElement("td");
-                    aTD.className = 'disamDataCell';
-                    aRow.appendChild(aTD);
-                    var metaAutocomplete = EDD_auto.create_autocomplete(aTD).val(uName);
-                    // Done with the autocomplete object
-                    // EDDAutoComplete.initializeElement(metaAutocomplete.inputElement);
-                    // // custom property needs to be accessed via index notation
-                    // metaAutocomplete.inputElement['autocompleter'].setFromPrimaryElement();
-                    // metaAutocomplete.initialized = 1;
-                    disamRow.metaObj = metaAutocomplete;
-                    // Done with the td obect
-                // Done with the tr object
-                EDDATD.Disam.metadataObjSets[uName] = disamRow; // Store the row for later reference
-            }
-
-            // Set or re-set the names of the inputs so they correlate with the uniqueMetadataNames indexes
-            disamRow.metaObj.attr('name', 'disamMeta' + (i+1)).addClass('autocomp_type')
-                .next().attr('name', 'disamMetaHidden' + (i+1));
-            EDD_auto.setup_field_autocomplete(disamRow.metaObj, 'MetadataType', EDDATD.AutoCache.meta);
-
-        }
+        EDDATD.remakeInfoTableMetadataSection();
     }
-
-    var debugArea = <any>document.getElementById("jsondebugarea");
-    if (debugArea) {
-        debugArea.value = JSON.stringify(EDDATD.Sets.parsedSets);
-    }
-
-    return;
+    // if the debug area is there, set its value to JSON of parsed sets
+    $('#jsondebugarea').val(JSON.stringify(EDDATD.Sets.parsedSets));
 },
 
 
 // This function serves two purposes.
-// 1. If the given Assay disambiguation pulldown is being set to 'new', reveal the adjacent Line pulldown, otherwise hide it.
-// 2. If the pulldown is being set to 'new', walk down the remaining pulldowns in the section, in order, setting
-// them to 'new' as well, stopping just before any pulldown marked as being 'set by the user'.
-userChangedAssayLineDisam:function(assayEl) {
-    var s = assayEl.nextSibling;    // The span with the corresponding Line pulldown is always right next to the Assay pulldown
-    $(s).removeClass('off');
-    assayEl.setByUser = 1;
-    if (assayEl.value != "new") {
-        $(s).addClass('off');
-        // If we're setting something other than 'new', we stop here.  Only 'new' cascades to subsequent pulldowns.
-        return;
+// 1. If the given Assay disambiguation pulldown is being set to 'new', reveal the adjacent
+//    Line pulldown, otherwise hide it.
+// 2. If the pulldown is being set to 'new', walk down the remaining pulldowns in the section,
+//    in order, setting them to 'new' as well, stopping just before any pulldown marked as
+//    being 'set by the user'.
+userChangedAssayLineDisam: (assayEl: HTMLElement): boolean => {
+    var changed: JQuery, v: number;
+    changed = $(assayEl).data('setByUser', true);
+    // The span with the corresponding Line pulldown is always right next to the Assay pulldown
+    changed.next().toggleClass('off', changed.val() !== 'new');
+    if (changed.val() !== 'new') {
+        // stop here for anything other than 'new'; only 'new' cascades to following pulldowns
+        return false;
     }
-
-    var vALOS = EDDATD.Disam.currentlyVisibleAssayLineObjSets;
-    var visibleIndex = parseInt(assayEl.getAttribute('visibleIndex'));
-    for (var v = visibleIndex+1; v < vALOS.length; v++) {
-        var a = vALOS[v].assayObj;
-        // As soon as we encounter another pulldown set by the user, stop
-        if (a.setByUser == 1) {
-            break;
+    v = changed.data('visibleIndex') || 0;
+    EDDATD.Disam.currentlyVisibleAssayLineObjSets.slice(v).forEach((obj: any): void => {
+        var select: JQuery = $(obj.assayObj);
+        if (select.data('setByUser')) {
+            return;
         }
-        a.selectedIndex = 0;    // The first index is always 'new'
-        s = a.nextSibling;      // Reveal the corresponding Line pulldown span
-        $(s).removeClass('off');
-    }
+        // set dropdown to 'new' and reveal the line pulldown
+        select.val('new').next().removeClass('off');
+    });
     return false;
 },
 
 
-userChangedMeasurementDisam:function(autoCompObject) {
-    var disamInputElement = autoCompObject.inputElement;
-    var vMOS = EDDATD.Disam.currentlyVisibleMeasurementObjSets;
-    var autoType = disamInputElement.getAttribute('autocompletetype');
-    var visibleIndex = parseInt(disamInputElement.getAttribute('visibleIndex'));
-    var sourceObj = null;
-    if (autoType == 'measurementcompartment') {
-        sourceObj = vMOS[visibleIndex].compObj;
-    } else if (autoType == 'units') {
-        sourceObj = vMOS[visibleIndex].unitsObj;
+userChangedMeasurementDisam: (element: HTMLElement): void => {
+    var hidden: JQuery, auto: JQuery, type: string, i: number;
+    hidden = $(element);
+    auto = hidden.prev();
+    type = auto.data('type');
+    if (type === 'compObj' || type === 'unitsObj') {
+        i = auto.data('setByUser', true).data('visibleIndex') || 0;
+        EDDATD.Disam.currentlyVisibleMeasurementObjSets.slice(i).some((obj: any): boolean => {
+            var following: JQuery = $(obj[type]);
+            if (following.length === 0 || following.data('setByUser')) {
+                return true;  // break; for the Array.some() loop
+            }
+            // using placeholder instead of val to avoid triggering autocomplete change
+            following.attr('placeholder', auto.val());
+            following.next().val(hidden.val());
+            return false;
+        });
     }
-    if (!sourceObj) {
-        return;
-    }
-    sourceObj.setByUser = 1;
-    for (var v = visibleIndex+1; v < vMOS.length; v++) {
-        var a = null;
-        if (autoType == 'measurementcompartment') {
-            a = vMOS[v].compObj;
-        } else if (autoType == 'units') {
-            a = vMOS[v].unitsObj;
-        }
-        if (!a) {
-            break;
-        }
-        // As soon as we encounter another pulldown set by the user, stop
-        if (a.setByUser == 1) {
-            break;
-        }
-        a.inputElement.value = sourceObj.inputElement.value;
-        a.hiddenInputElement.value = sourceObj.hiddenInputElement.value;
-    }
+    // TODO not checking typeObj at all???
     EDDATD.checkAllMeasurementCompartmentDisam();
-    return false;
 },
 
 
@@ -1504,327 +1362,199 @@ userChangedMeasurementDisam:function(autoCompObject) {
 // checking to see if any of the 'compartment' elements are set to a non-blank value.
 // If any are, and we're in MDV document mode, display a warning that the user should
 // specify compartments for all their measurements.
-checkAllMeasurementCompartmentDisam:function() {
-    var vMOS = EDDATD.Disam.currentlyVisibleMeasurementObjSets;
-    var allAreSet = 1;
-    for (var v = 0; v < vMOS.length; v++) {
-        var a = vMOS[v].compObj;
-        if (!a) {
-            break;
+checkAllMeasurementCompartmentDisam: (): void => {
+    var allSet: boolean;
+    allSet = EDDATD.Disam.currentlyVisibleMeasurementObjSets.every((obj: any): boolean => {
+        var hidden: JQuery = obj.compObj.next();
+        if (obj.compObj.data('setByUser') || (hidden.val() && hidden.val() !== '0')) {
+            return true;
         }
-        // If any values have been deliberately set (even to zero) don't count them
-        if (a.setByUser == 1) {
-            continue;
-        }
-        if (!a.hiddenInputElement.value || a.hiddenInputElement.value == "0") {
-            allAreSet = 0;
-        }
-    }
-    var warnDiv = document.getElementById("noCompartmentWarning");
-    $(warnDiv).addClass('off');
-    if ((EDDATD.interpretationMode == "mdv") && !allAreSet) {
-        $(warnDiv).removeClass('off');
-    }
-    return false;
+        return false;
+    });
+    $('#noCompartmentWarning').toggleClass('off', EDDATD.interpretationMode !== 'mdv' && allSet);
 },
 
 
-disambiguateAnAssayOrLine:function(assayOrLine, currentIndex) {
-    var masterP = EDDATD.masterProtocol;    // More shout-outs to a mid-grade rapper
-    var selections = {
+disambiguateAnAssayOrLine: (assayOrLine: string, currentIndex: number): any => {
+    var selections: any, highest: number;
+    selections = {
         lineID:0,
         assayID:0
     };
-    var highestMatchQuality = 0;
-
-    for (var ea in ATData.existingAssays[masterP]) {
-        var id = ATData.existingAssays[masterP][ea];
-        var assay = EDDData.Assays[id];
-        var lid = assay.lid;
-        var ln = EDDData.Lines[lid].name;
-        var pid = assay.pid;
-        var fn = [ln, EDDData.Protocols[pid].name, assay.name].join('-');
-        // The full Assay name, even case-insensitive, is the best match
-        if (assayOrLine.toLowerCase() == fn.toLowerCase()) {
-            selections.assayID = id;
-            break;
+    highest = 0;
+    // ATData.existingAssays is type {[index: number]: string[]}
+    ATData.existingAssays[EDDATD.masterProtocol].every((id: string, i: number): boolean => {
+        var assay: AssayRecord, line: LineRecord, protocol: any, name: string;
+        assay = EDDData.Assays[id];
+        line = EDDData.Lines[assay.lid];
+        protocol = EDDData.Protocols[assay.pid];
+        name = [line.name, protocol.name, assay.name].join('-');
+        if (assayOrLine.toLowerCase() === name.toLowerCase()) {
+            // The full Assay name, even case-insensitive, is the best match
+            selections.assayID = parseInt(id, 10);
+            return false;  // do not need to continue
+        } else if (highest < 0.8 && assayOrLine === assay.name) {
+            // An exact-case match with the Assay name fragment alone is second-best.
+            highest = 0.8;
+            selections.assayID = parseInt(id, 10);
+        } else if (highest < 0.7 && assay.name.indexOf(assayOrLine) >= 0) {
+            // Finding the whole string inside the Assay name fragment is pretty good
+            highest = 0.7;
+            selections.assayID = parseInt(id, 10);
+        } else if (highest < 0.6 && line.name.indexOf(assayOrLine) >= 0) {
+            // Finding the whole string inside the originating Line name is good too.
+            // It means that the user may intend to pair with this Assay even though the
+            // Assay name is different.  
+            highest = 0.6;
+            selections.assayID = parseInt(id, 10);
+        } else if (highest < 0.4 &&
+                (new RegExp('(^|\\W)' + assay.name + '(\\W|$)', 'g')).test(assayOrLine)) {
+            // Finding the Assay name fragment within the whole string, as a whole word, is our
+            // last option.
+            highest = 0.4;
+            selections.assayID = parseInt(id, 10);
+        } else if (highest < 0.3 && currentIndex === i) {
+            // If all else fails, choose Assay of current index in sorted order.
+            highest = 0.3;
+            selections.assayID = parseInt(id, 10);
         }
-        if (highestMatchQuality >= 0.8) {continue;}
-        // An exact-case match with the Assay name fragment alone is second-best.
-        if (assayOrLine == assay.name) {
-            highestMatchQuality = 0.8;
-            selections.assayID = id;
-            continue;
-        }
-        // Finding the whole string inside the Assay name fragment is pretty good
-        if (highestMatchQuality >= 0.7) {continue;}
-        if (assay.name.indexOf(assayOrLine) >= 0) {
-            highestMatchQuality = 0.7;
-            selections.assayID = id;
-            continue;
-        }
-        if (highestMatchQuality >= 0.6) {continue;}
-        // Finding the whole string inside the originating Line name is good too.
-        // It means that the user may intend to pair with this Assay even though the Assay name is different.  
-        if (ln.indexOf(assayOrLine) >= 0) {
-            highestMatchQuality = 0.6;
-            selections.assayID = id;
-            continue;
-        }
-        if (highestMatchQuality >= 0.4) {continue;}
-        // Finding the Assay name fragment within the whole string, as a whole word, is our last option.
-        var reg = new RegExp('(^|\\W)' + assay.name + '(\\W|$)', 'g');
-        if (reg.test(assayOrLine)) {
-            highestMatchQuality = 0.4;
-            selections.assayID = id;
-            continue;
-        }
-        // If all else fails, just choose the Assay that matches the current index in sorted order.
-        if (highestMatchQuality >= 0.3) {continue;}
-        if (currentIndex == ea) {
-            highestMatchQuality = 0.3;
-            selections.assayID = id;
-        }
-    }
-
+        return true;
+    });
     // Now we repeat the practice, separately, for the Line pulldown.
-    highestMatchQuality = 0;
-
-    for (var li=0; li < ATData.existingLines.length; li++) {
-        var line = ATData.existingLines[li];
-
-        // The Line name, case-sensitive, is the best match
-        if (assayOrLine == line.n) {
-            selections.lineID = line.id;
-            break;
+    highest = 0;
+    // ATData.existingLines is type {id: string; n: string;}[]
+    ATData.existingLines.every((line: any, i: number): boolean => {
+        if (assayOrLine === line.n) {
+            // The Line name, case-sensitive, is the best match
+            selections.lineID = parseInt(line.id, 10);
+            return false;  // do not need to continue
+        } else if (highest < 0.8 && assayOrLine.toLowerCase() === line.n.toLowerCase()) {
+            // The same thing case-insensitive is second best.
+            highest = 0.8;
+            selections.lineID = parseInt(line.id, 10);
+        } else if (highest < 0.7 && assayOrLine.indexOf(line.n) >= 0) {
+            // Finding the Line name within the string is odd, but good.
+            highest = 0.7;
+            selections.lineID = parseInt(line.id, 10);
+        } else if (highest < 0.6 && line.n.indexOf(assayOrLine) >= 0) {
+            // Finding the string within the Line name is also good.
+            highest = 0.6;
+            selections.lineID = parseInt(line.id, 10);
+        } else if (highest < 0.5 && currentIndex === i) {
+            // Again, if all else fails, just choose the Line that matches the current index
+            // in sorted order, in a loop.
+            highest = 0.5;
+            selections.lineID = parseInt(line.id, 10);
         }
-        if (highestMatchQuality >= 0.8) {continue;}
-        // The same thing case-insensitive is second best.
-        if (assayOrLine.toLowerCase() == line.n.toLowerCase()) {
-            highestMatchQuality = 0.8;
-            selections.lineID = line.id;
-            continue;
-        }
-        if (highestMatchQuality >= 0.7) {continue;}
-        // Finding the Line name within the string is odd, but good.
-        if (assayOrLine.indexOf(line.n) >= 0) {
-            highestMatchQuality = 0.7;
-            selections.lineID = line.id;
-            continue;
-        }
-        if (highestMatchQuality >= 0.6) {continue;}
-        // Finding the string within the Line name is also good.
-        if (line.n.indexOf(assayOrLine) >= 0) {
-            highestMatchQuality = 0.6;
-            selections.lineID = line.id;
-            continue;
-        }
-        // Again, if all else fails, just choose the Line that matches the current index in sorted order, in a loop.
-        if (highestMatchQuality >= 0.5) {continue;}
-        if (currentIndex % ATData.existingLines.length == li) {
-            highestMatchQuality = 0.5;
-            selections.lineID = line.id;
-        }
-    }
-
+    });
     return selections;
 },
 
 
-highlighterF:function(e) {
-
-    var e = e || window.event;
-    var obj = e.srcElement || e.target;
-    var tn = (obj.nodeType == 1) ? obj.tagName.toLowerCase() : 'x';
+highlighterF: (e: JQueryMouseEventObject): void => {
+    var cell: JQuery, x: number, y: number;
     // Walk up the item tree until we arrive at a table cell,
     // so we can get the index of the table cell in the table.
-    while (tn != "td" && tn != "tbody") {
-        obj = obj.parentNode || obj.parentElement;
-        if (!obj) {
-            break;
+    cell = $(e.target).closest('td');
+    if (cell.length) {
+        x = parseInt(cell.attr('x'), 10);
+        y = parseInt(cell.attr('y'), 10);
+        if (x) {
+            $(EDDATD.Table.colObjects[x - 1]).toggleClass('hoverLines', e.type === 'mouseover');
         }
-        if (obj.nodeType == 9) {
-            break;
-        }
-        if (obj.tagName) {
-            tn = obj.tagName.toLowerCase();
+        if (y) {
+            cell.closest('tr').toggleClass('hoverLines', e.type === 'mouseover');
         }
     }
-    if (tn == "td") {
+},
 
-        var x = obj.getAttribute('x');
-        var y = obj.getAttribute('y');
 
-        // When we hit the fringes of the div, we walk upwards and end up in
-        // a cell of the enclosing table (not the graph table inside the div).
-        // By fetching the x and y attributes, we ensure that we are looking
-        // at a cell from the right table.
-        if (x != null && y != null) {
-
-            x = parseInt(x);
-            y = parseInt(y);
-
-            if (x != 0 || y != 0) {
-
-                var row = obj.parentNode;
-
-                switch (e.type) {
-                    case 'mouseover':
-                        if (x != 0) {
-                            var col = EDDATD.Table.colObjects[x-1];
-                            col.className = col.className + " hoverLines";
-                        }
-                        if (y != 0) {
-                            row.className = row.className + " hoverLines";
-                        }
-                        break;
-                    case 'mouseout':
-                        if (x != 0) {
-                            var col = EDDATD.Table.colObjects[x-1];
-                            col.className = col.className.replace(" hoverLines", "");
-                        }
-                        if (y != 0) {
-                            row.className = row.className.replace(" hoverLines", "");
-                        }
-                        break;
-                }
+singleValueDisablerF: (e: JQueryMouseEventObject): void => {
+    var cell: JQuery, x: number, y: number;
+    // Walk up the item tree until we arrive at a table cell,
+    // so we can get the index of the table cell in the table.
+    cell = $(e.target).closest('td');
+    if (cell.length) {
+        x = parseInt(cell.attr('x'), 10);
+        y = parseInt(cell.attr('y'), 10);
+        if (x && y && x > 0 && y > 0) {
+            --x;
+            --y;
+            if (EDDATD.Table.activeFlags[y][x]) {
+                EDDATD.Table.activeFlags[y][x] = false;
+            } else {
+                EDDATD.Table.activeFlags[y][x] = true;
             }
+            EDDATD.interpretDataTable();
+            EDDATD.queueGraphRemake();
+            EDDATD.redrawEnabledFlagMarkers();
         }
     }
 },
 
 
-singleValueDisablerF:function(e) {
-
-    var e = e || window.event;
-    var obj = e.srcElement || e.target;
-    var tn = (obj.nodeType == 1) ? obj.tagName.toLowerCase() : 'x';
-    // Walk up the item tree until we arrive at a table cell,
-    // so we can get the index of the table cell in the table.
-    while (tn != "td" && tn != "tbody") {
-            obj = obj.parentNode || obj.parentElement;
-            tn = obj.tagName.toLowerCase();
-    }
-    if (tn != "td") {
-        return;
-    }
-    var x = obj.getAttribute('x');
-    var y = obj.getAttribute('y');
-    // When we hit the fringes of the div, we walk upwards and end up in
-    // a cell of the enclosing table (not the graph table inside the div).
-    // By fetching the x and y attributes, we ensure that we are looking
-    // at a cell from the right table.
-    if (!x || !y) {
-        return;
-    }
-    x = parseInt(x);
-    y = parseInt(y);
-
-    // We also want both the coordinates to be 1 or greater
-    if ((x<1) || (y<1)) {
-        return;
-    }
-    x = x - 1;
-    y = y - 1;
-    
-    if (EDDATD.Table.activeFlags[y][x]) {   // Exists and nonzero
-        EDDATD.Table.activeFlags[y][x] = 0;
-    } else {
-        EDDATD.Table.activeFlags[y][x] = 1;
-    }
-    EDDATD.interpretDataTable();
-    EDDATD.queueGraphRemake();
-    EDDATD.redrawEnabledFlagMarkers();
-},
-
-
-generateFormSubmission:function() {
-
-    // Run through the data sets one more time,
-    // pulling out any values in the pulldowns and autocomplete elements in Step 4
-    // and embedding them in their respective data sets.
-
-    var dest = <any>document.getElementById("jsonoutput");
-    if (!dest) {
-        return false;
-    }
-    dest.value = JSON.stringify(EDDATD.Sets.parsedSets);
-
-    var debugArea = <any>document.getElementById("jsondebugarea");
-    if (debugArea) {
-        debugArea.value = JSON.stringify(EDDATD.Sets.parsedSets);
-    }
+generateFormSubmission: (): void => {
+    var json: string;
+    // Run through the data sets one more time, pulling out any values in the pulldowns and
+    // autocomplete elements in Step 4 and embedding them in their respective data sets.
+    json = JSON.stringify(EDDATD.Sets.parsedSets);
+    $('#jsonoutput').val(json);
+    $('#jsondebugarea').val(json);
 },
 
 
 // This handles insertion of a tab into the textarea.
 // May be glitchy.
-suppressNormalTab:function(e) {
-    var e = e || window.event;
-    var obj = e.srcElement || e.target;
-
-    if (e.keyCode === 9) { // tab was pressed
-        // prevent the loss fo focus.
-        e.preventDefault();
-
-        // get caret position/selection
-        var start = obj.selectionStart;
-        var end = obj.selectionEnd;
-
-        // set textarea value to: text before caret + tab + text after caret
-        var s = obj.value.substring(0, start);
-        var e = obj.value.substring(end);
-
-        obj.value = s + "\t" + e;
-
+suppressNormalTab: (e: JQueryKeyEventObject): boolean => {
+    var input: HTMLInputElement, text: string;
+    if (e.which === 9) {
+        input = <HTMLInputElement> e.target;
+        text = $(input).val();
+        // set value to itself with selection replaced by a tab character
+        $(input).val([
+            text.substring(0, input.selectionStart),
+            text.substring(input.selectionEnd)
+            ].join('\t'));
         // put caret at right position again
-        obj.selectionStart = obj.selectionEnd = start + 1;
+        input.selectionStart = input.selectionEnd = input.selectionStart + 1;
+        return false;
     }
+    return true;
 },
 
 
-prepareIt:function() {
-
-    var textData = document.getElementById("textData");
-    textData.addEventListener("paste", EDDATD.pastedRawData);
-    textData.addEventListener("keyup", EDDATD.parseAndDisplayText);
-    textData.addEventListener("keydown", EDDATD.suppressNormalTab);
-
-    var dataTableDiv = document.getElementById("dataTableDiv");
-    dataTableDiv.addEventListener("mouseover", EDDATD.highlighterF);
-    dataTableDiv.addEventListener("mouseout", EDDATD.highlighterF);
-    dataTableDiv.addEventListener("dblclick", EDDATD.singleValueDisablerF);
-
+prepareIt: (): void => {
+    var reProcessOnClick: string[], reDoLastStepOnChange: string[];
+    reProcessOnClick = ['#stdlayout', '#trlayout', '#prlayout', '#mdvlayout', '#rawdataformatp'];
+    reDoLastStepOnChange = ['#masterAssay', '#masterLine', '#masterMComp', '#masterMType',
+            '#masterMUnits'];
+    $('#textData')
+        .on('paste', EDDATD.pastedRawData)
+        .on('keyup', EDDATD.parseAndDisplayText)
+        .on('keydown', EDDATD.suppressNormalTab);
+    $('#dataTableDiv')
+        .on('mouseover mouseout', 'td', EDDATD.highlighterF)
+        .on('dblclick', 'td', EDDATD.singleValueDisablerF);
     // This is rather a lot of callbacks, but we need to make sure we're
     // tracking the minimum number of elements with this call, since the
     // function called has such strong effects on the rest of the page.
     // For example, a user should be free to change "merge" to "replace" without having
     // their edits in Step 2 erased.
-
     $("#masterProtocol").change(EDDATD.changedMasterProtocol);
-
-    var reProcessOnClick = ['#stdlayout','#trlayout','#prlayout','#mdvlayout','#rawdataformatp'];
-    // Using "change" for these because it's more efficient AND because it works around an irritating Chrome inconsistency
+    // Using "change" for these because it's more efficient AND because it works around an
+    // irritating Chrome inconsistency
     // For some of these, changing them shouldn't actually affect processing until we implement
     // an overwrite-checking feature or something similar
-    var reDoLastStepOnChange = ['#masterAssay','#masterLine',
-            '#masterMComp','#masterMType','#masterMUnits'];
-
     $(reProcessOnClick.join(',')).on('click', EDDATD.queueProcessImportSettings);
     $(reDoLastStepOnChange.join(',')).on('change', EDDATD.changedAMasterPulldown);
     // enable autocomplete on statically defined fields
     EDD_auto.setup_field_autocomplete('#masterMComp', 'MeasurementCompartment');
     EDD_auto.setup_field_autocomplete('#masterMType', 'Metabolite', EDDData.MetaboliteTypes || {});
     EDD_auto.setup_field_autocomplete('#masterMUnits', 'MeasurementUnit');
-
     $('#ignoreGaps').click(EDDATD.clickedOnIgnoreDataGaps);
     $('#transpose').click(EDDATD.clickedOnTranspose);
-
     EDDATD.changedMasterProtocol(); //  Since the initial masterProtocol value is zero, we need to manually trigger this:
     EDDATD.queueProcessImportSettings();
 }
 
 };
-
-// XXX this won't work if we decide to load ATData via AJAX
-//window.addEventListener('load', EDDATD.prepareIt, false);
