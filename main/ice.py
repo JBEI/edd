@@ -1,7 +1,3 @@
-from django.conf import settings
-from django.core.urlresolvers import reverse
-from requests.auth import AuthBase
-from requests.compat import urlparse
 import base64
 import hashlib
 import hmac
@@ -9,17 +5,12 @@ import json
 import requests
 import os
 
-#############################################################
-# Load system-dependent settings from server.cfg
-#############################################################
-BASE_DIR = os.path.dirname(os.path.dirname('__file__'))
-try:
-    with open(os.path.join(BASE_DIR, 'server.cfg')) as server_cfg:
-        config = json.load(server_cfg)
-except IOError:
-    print "Required configuration file server.cfg is missing. " \
-          "Copy from server.cfg-example and fill in appropriate values"
-    raise
+from django.conf import settings
+from django.core.urlresolvers import reverse
+from edd.settings import config
+from requests.auth import AuthBase
+from requests.compat import urlparse
+
 
 class HmacAuth(AuthBase):
     # TODO regenerate key. Value currently in server.cfg has been promoted to Git.
