@@ -223,6 +223,8 @@ This section contains directions for setting up a development environment on EDD
         * `brew install rabbitmq`
         * Note that homebrew's directions for installing rabbitmq as a daemon don't seem to work.
           We'll configure that later.
+    * For an existing EDD install without Celery, do a `pip install -r requirements.txt` to add
+      Celery packages to the virtualenv
     * Configure environment
         * Update .bashrc or .bash_profile to add rabbitmq to the path for testing:
           `export PATH=$PATH:/usr/local/sbin:.`
@@ -241,7 +243,7 @@ This section contains directions for setting up a development environment on EDD
           `rabbitmq`, so it's important to use the exact username `rabbitmq`.
         * 
             cd edd/celery/osx
-            sudo edd/celery/osx/add_system_user.sh rabbitmq 'RabbitMQ Message Broker'
+            sudo ./add_system_user.sh rabbitmq 'RabbitMQ Message Broker'
 
     * Change the user's home directory from `/var/empty/` to `/var/lib/rabbitmq`, the directory
       we've chosen to store RabbitMQ's Erlang cookie (`.erlang.cookie`)
@@ -286,6 +288,7 @@ This section contains directions for setting up a development environment on EDD
             rabbitmqctl status
 
         * TODO: above should be using `sudo su - rabbitmq`?
+            * Make sure `PATH` in `.bashrc` includes `/usr/local/sbin`
         * If running the command via a sudo one-liner, you'll have to set the HOME variable first,
           since RabbitMQ uses it to locate the Erlang cookie. It's probably easier to just use
           `sudo su rabbitmq`.
@@ -299,12 +302,13 @@ This section contains directions for setting up a development environment on EDD
  * Install Celery as a daemon <a name="InstallCeleryDaemon">
     * Create a new unplivileged OSX system account to run Celery worker(s)
 
-        edd/celery/osx/add_system_user.sh celery
+        cd edd/celery/osx
+        sudo ./add_system_user.sh celery
 
     * Replace the user's default shell, `/usr/bin/false`, with `/bin/bash` so we can run
       `sudo su celery` for testing. Other forms of login will remain disabled for this account.
-        * `dscl /Local/Default -delete Users/_celery UserShell`
-        * `dscl /Local/Default -create Users/_celery UserShell /bin/bash`
+        * `sudo dscl /Local/Default -delete Users/_celery UserShell`
+        * `sudo dscl /Local/Default -create Users/_celery UserShell /bin/bash`
     * Give the celery user access to the EDD codebase. This can be accomplished in several ways,
       but directions below assume you'll keep the files under your home directory for
       convenience.
@@ -328,6 +332,8 @@ This section contains directions for setting up a development environment on EDD
             chmod g+rx /Users/shes_a_witch/Documents/code/
             chmod -R g+rx /Users/shes_a_witch/Documents/code/edd
 
+    * Alternate, easier method: add celery to group owner of home directory (`staff` on my machine)
+        * `sudo dseditgroup -o edit -a celery -t user staff`
     * Verify that the celery user has read permissions on the EDD codebase
 
         sudo -u celery ls -l path/to/edd/
@@ -653,7 +659,7 @@ For reference, see:
  * Create an administrative RabbitMQ account for Flower to use in accessing Celery's RabbitMQ
    management API (same password special character limitations as above)
     * Update edd/server.cfg to enter the password in `rabbitmq.mgmt_pass`
-    * `sudo rabbitmqctl add_user bunny 'RABBITMQ_MGMT_PASSWORD'`
+    * `sudo rabbitmqctl add_user bunny RABBITMQ_MGMT_PASSWORD`
         * replacing the password with your value
     * `sudo rabbitmqctl set_permissions -p / bunny ".*" ".*" ".*"`
     * `sudo rabbitmqctl set_permissions -p /edd bunny ".*" ".*" ".*"`
