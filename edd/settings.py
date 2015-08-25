@@ -9,13 +9,13 @@ https://docs.djangoproject.com/en/1.7/ref/settings/
 """
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
-import os
 import json
 import ldap
+import os
+
 from django_auth_ldap.config import LDAPSearch, GroupOfUniqueNamesType
 from django.conf.global_settings import TEMPLATE_CONTEXT_PROCESSORS as TCP
 from django.conf.global_settings import LOGIN_REDIRECT_URL
-BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 
 
 #############################################################

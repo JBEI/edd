@@ -7,22 +7,13 @@ for Celery and http://flower.readthedocs.org/en/latest/config.html#conf for the 
 where most of the flower configuration data are.
 """
 
-from datetime import timedelta
-import socket
-import os
 import json
+import os
+import socket
 
-#############################################################
-# Load system-dependent settings from server.cfg
-#############################################################
-BASE_DIR = os.path.dirname(os.path.dirname('__file__'))
-try:
-    with open(os.path.join(BASE_DIR, 'server.cfg')) as server_cfg:
-        config = json.load(server_cfg)
-except IOError:
-    print "Required configuration file server.cfg is missing. " \
-          "Copy from server.cfg-example and fill in appropriate values"
-    raise
+from datetime import timedelta
+from edd.settings import config
+
 
 #############################################################
 # General settings for celery
