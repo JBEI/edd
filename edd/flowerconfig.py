@@ -2,21 +2,12 @@
 This file contains configuration data for EDD's Celery Flower monitoring & management web application.
 For a full description of options available here, see http://flower.readthedocs.org/en/latest/config.html
 """
-import os
-import json
-from celery import Celery
 
-#############################################################
-# Load system-dependent settings from server.cfg
-#############################################################
-BASE_DIR = os.path.dirname(os.path.dirname('__file__'))
-try:
-    with open(os.path.join(BASE_DIR, 'server.cfg')) as server_cfg:
-        config = json.load(server_cfg)
-except IOError:
-    print "Required configuration file server.cfg is missing. " \
-          "Copy from server.cfg-example and fill in appropriate values"
-    raise
+import json
+import os
+
+from celery import Celery
+from edd.settings import config
 
 
 ## Broker Settings

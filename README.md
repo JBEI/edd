@@ -536,7 +536,8 @@ URL's to interact with them.
         * Sample monitoring interface URL: [http://localhost:8983/](http://localhost:8983/)
         * `solr start` / `solr stop`
 * RabbitMQ
-    * Sample monitoring interface URL : [http//localhost:5672/](http://localhost:5672/)
+    * Sample monitoring interface URL: [http//localhost:5672/](http://localhost:5672/)
+        * Uses AMQP protocol, not usable in normal HTTP web browser
     * Development (OSX) 
         * Manual operation (as user rabbitmq)
             * `rabbitmq-server start -detached`. Leave off the `-detached` option to get better
@@ -554,7 +555,7 @@ URL's to interact with them.
         * Config file is in `/etc/rabbitmq/rabbitmq.config`
     * Other useful management commands are in the [docs](https://www.rabbitmq.com/man/rabbitmqctl.1.man.html)
 * Celery / Flower
-    * Sample Flower URL : [http://localhost:5555/](http://localhost:5555/)
+    * Sample Flower URL: [http://localhost:5555/](http://localhost:5555/)
     * Celery Worker: must run in base edd directory to detect celery config modules
         * Development: 
             * Pre-demonazition: `celery worker --app edd --queues=edd --hostname=edd-worker-1.%h

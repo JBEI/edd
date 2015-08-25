@@ -6,19 +6,7 @@ from __future__ import absolute_import
 import os
 import json
 from celery import Celery
-
-
-#############################################################
-# Load system-dependent settings from server.cfg
-#############################################################
-BASE_DIR = os.path.dirname(os.path.dirname('__file__'))
-try:
-    with open(os.path.join(BASE_DIR, 'server.cfg')) as server_cfg:
-        config = json.load(server_cfg)
-except IOError:
-    print "Required configuration file server.cfg is missing. " \
-          "Copy from server.cfg-example and fill in appropriate values"
-    raise
+from edd.settings import config
 
 # extract values for easy reference
 RABBITMQ_HOST = config['rabbitmq'].get('hostname')
