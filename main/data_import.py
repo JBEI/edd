@@ -64,6 +64,10 @@ def import_assay_table_data(study, user, post_data, update):
         assay_id = post_data.get("disamAssay%s" % assay_index, None)
         if not assay_id:
             continue
+        assay = resolved_disambiguation_assays.get(assay_index, None)
+        if assay is not None:
+            # already loaded assay, skip to next
+            continue
         # At this point we know there is at least one attempt to link an
         # individual set with an individual disambiguation pulldown, so we
         # clear the flag
@@ -73,18 +77,16 @@ def import_assay_table_data(study, user, post_data, update):
         if u.get("nothing_to_import") :
             continue
         if assay_id != "new":
-            assay = resolved_disambiguation_assays.get(assay_index, None)
-            if assay is None:
-                try:
-                    assay = Assay.objects.get(pk=assay_id)
-                except Assay.DoesNotExist:
-                    pass
-                else:
-                    assert assay.line.study.id == study.id
-                    # If the disambiguation element value is nonzero and not 'new',
-                    # and points to a valid Assay, note and move on.
-                    resolved_disambiguation_assays[assay_index] = assay_id
-                    lines_for_assays[assay_id] = assay.line
+            try:
+                assay = Assay.objects.get(pk=assay_id)
+            except Assay.DoesNotExist:
+                pass
+            else:
+                assert assay.line.study.id == study.id
+                # If the disambiguation element value is nonzero and not 'new',
+                # and points to a valid Assay, note and move on.
+                resolved_disambiguation_assays[assay_index] = assay_id
+                lines_for_assays[assay_index] = assay.line
             # If we didn't resolve it, we didn't populate the hash.
             # That's all the error reporting we need for now.
             continue
@@ -108,7 +110,7 @@ def import_assay_table_data(study, user, post_data, update):
                 control=False)
             line_id = line.id
         else:
-            line = lines_for_assays.get(line_id, None)
+            line = lines_for_assays.get(assay_index, None)
             if line is None:
                 try:
                     line = Line.objects.get(pk=line_id)
@@ -127,7 +129,7 @@ def import_assay_table_data(study, user, post_data, update):
             experimenter=user)
         # Finally we've got everything resolved
         resolved_disambiguation_assays[assay_index] = assay
-        lines_for_assays[assay.id] = line
+        lines_for_assays[assay_index] = line
     print("import_assay_table_data got to second pass through data")
     master_assay_id = post_data.get('masterAssay', None)
     master_assay = None
