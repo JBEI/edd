@@ -50,12 +50,12 @@ class Update(models.Model):
         return '%s by %s' % (time, self.mod_by)
 
     @classmethod
-    def load_update(cls):
+    def load_update(cls, user=None, path=None):
         request = get_current_request()
         if request is None:
             update = cls(mod_time=arrow.utcnow(),
-                         mod_by=None,
-                         path=None,
+                         mod_by=user,
+                         path=path,
                          origin='localhost')
             # TODO this save may be too early?
             update.save()
@@ -123,7 +123,10 @@ class Comment(models.Model):
 
     def save(self, *args, **kwargs):
         if self.created_id is None:
-            self.created = Update.load_update()
+            update = kwargs.get('update', None)
+            if update is None:
+                update = Update.load_update()
+            self.created = update
         super(Comment, self).save(*args, **kwargs)
 
 
@@ -177,7 +180,10 @@ class Attachment(models.Model):
 
     def save(self, *args, **kwargs):
         if self.created_id is None:
-            self.created = Update.load_update()
+            update = kwargs.get('update', None)
+            if update is None:
+                update = Update.load_update()
+            self.created = update
         self.filename = self.file.name
         self.file_size = self.file.size
         # self.file is the db field; self.file.file is the actual file
@@ -401,9 +407,12 @@ class EDDObject(models.Model):
         self.name = name
 
     def save(self, *args, **kwargs):
+        update = kwargs.get('update', None)
+        if update is None:
+            update = Update.load_update()
         if self.created_id is None:
-            self.created = Update.load_update()
-        self.updated = Update.load_update()
+            self.created = update
+        self.updated = update
         super(EDDObject, self).save(*args, **kwargs)
         # must ensure EDDObject is saved *before* attempting to add to updates
         self.updates.add(self.updated)
@@ -1068,7 +1077,7 @@ class MeasurementUnit(models.Model):
                                   default=MeasurementGroup.GENERIC)
 
     def to_json (self) :
-        return { "name" : self.unit_name }
+        return { "id": self.pk, "name" : self.unit_name }
 
     @property
     def group_name (self) :
@@ -1254,6 +1263,14 @@ class Measurement(models.Model):
         return (self.y_axis_units_name in
                 ["mg/L", "g/L", "mol/L", "mM", "uM", "Cmol/L"])
 
+    def save(self, *args, **kwargs):
+        update = kwargs.get('update', None)
+        # only call Update.load_update() if an update was *not* explicitly passed in
+        if update is None:
+            update = Update.load_update()
+        self.update_ref = update
+        super(Measurement, self).save(*args, **kwargs)
+
 
 class MeasurementValue(models.Model):
     """ Pairs of ((x0, x1, ... , xn), (y0, y1, ... , ym)) values as part of a measurement """
@@ -1284,6 +1301,14 @@ class MeasurementValue(models.Model):
 
     def is_defined(self):
         return (self.y is not None and len(self.y) > 0)
+
+    def save(self, *args, **kwargs):
+        update = kwargs.get('update', None)
+        # only call Update.load_update() if an update was *not* explicitly passed in
+        if update is None:
+            update = Update.load_update()
+        self.updated = update
+        super(MeasurementValue, self).save(*args, **kwargs)
 
 
 class SBMLTemplate(EDDObject):

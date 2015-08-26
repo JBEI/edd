@@ -526,14 +526,14 @@ def study_import_table(request, study):
     model = Study.objects.get(pk=study)
     # FIXME filter protocols?
     protocols = Protocol.objects.order_by('name')
-    post_contents = []
     if (request.method == "POST"):
         # print stuff for debug
         for key in sorted(request.POST):
             print("%s : %s" % (key, request.POST[key]))
         try:
-            result = main.data_import.import_assay_table_data(
-                    model, request.user, request.POST, Update.load_update())
+            table = main.data_import.TableImport(model, request.user)
+            added = table.import_data(request.POST)
+            messages.success(request, 'Imported %s measurements' % added)
         except ValueError as e:
             print("ERROR!!! %s" % e)
             messages.error(request, e)
@@ -541,7 +541,6 @@ def study_import_table(request, study):
         dictionary={
             "study" : model,
             "protocols" : protocols,
-            "post_contents" : "\n".join(post_contents), # XXX DEBUG
         },
         context_instance=RequestContext(request))
 
