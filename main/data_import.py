@@ -73,16 +73,18 @@ def import_assay_table_data(study, user, post_data, update):
         if u.get("nothing_to_import") :
             continue
         if assay_id != "new":
-            try:
-                assay = Assay.objects.get(pk=assay_id)
-            except ObjectDoesNotExist as e:
-                pass
-            else:
-                assert assay.line.study.id == study.id
-                # If the disambiguation element value is nonzero and not 'new',
-                # and points to a valid Assay, note and move on.
-                resolved_disambiguation_assays[assay_index] = assay_id
-                lines_for_assays[assay_id] = assay.line.id
+            assay = resolved_disambiguation_assays.get(assay_id, None)
+            if assay is None:
+                try:
+                    assay = Assay.objects.get(pk=assay_id)
+                except Assay.DoesNotExist:
+                    pass
+                else:
+                    assert assay.line.study.id == study.id
+                    # If the disambiguation element value is nonzero and not 'new',
+                    # and points to a valid Assay, note and move on.
+                    resolved_disambiguation_assays[assay_index] = assay_id
+                    lines_for_assays[assay_id] = assay.line
             # If we didn't resolve it, we didn't populate the hash.
             # That's all the error reporting we need for now.
             continue
@@ -106,8 +108,13 @@ def import_assay_table_data(study, user, post_data, update):
                 control=False)
             line_id = line.id
         else:
-            line = Line.objects.get(pk=line_id)
-        if line_id == "new":
+            line = lines_for_assays.get(line_id, None)
+            if line is None:
+                try:
+                    line = Line.objects.get(pk=line_id)
+                except Line.DoesNotExist:
+                    pass
+        if line_id == "new" or line is None:
             # If we didn't change $lID to a valid record, we failed to create a
             # Line, so we can't create an Assay.
             continue
@@ -231,9 +238,9 @@ def import_assay_table_data(study, user, post_data, update):
         meas_type_id = master_meas_type_id
         meas_units_id = master_meas_units_id
         if meas_idx:
-            compartment_id = post_data.get("disamMCompHidden"+str(meas_idx), 0)
-            meas_type_id = post_data.get("disamMTypeHidden" + str(meas_idx), 0)
-            meas_units_id = post_data.get("disamMUnitsHidden"+str(meas_idx), 1)
+            compartment_id = post_data.get("disamMComp"+str(meas_idx), 0)
+            meas_type_id = post_data.get("disamMType" + str(meas_idx), 0)
+            meas_units_id = post_data.get("disamMUnits"+str(meas_idx), 1)
         if data_layout == "mdv":
             meas_units_id = 1 # MDV values don't have units
         # refactored function, takes lots of parameters; should be a class?

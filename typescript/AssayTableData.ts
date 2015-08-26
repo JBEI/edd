@@ -1163,13 +1163,13 @@ remakeInfoTableAssayLineSection: (masterP: number): void => {
                 disam.assayObj = aSelect[0];
                 $('<option>').text('(Create New)').appendTo(aSelect).val('new')
                     .prop('selected', !defaultSel.assayID);
-                ATData.existingAssays[masterP].forEach((id: string): void => {
+                (ATData.existingAssays[masterP] || []).forEach((id: number): void => {
                     var assay: AssayRecord, line: LineRecord, protocol: any;
                     assay = EDDData.Assays[id];
                     line = EDDData.Lines[assay.lid];
                     protocol = EDDData.Protocols[assay.pid];
                     $('<option>').text([line.name, protocol.name, assay.name].join('-'))
-                        .appendTo(aSelect).val(id)
+                        .appendTo(aSelect).val(id.toString())
                         .prop('selected', defaultSel.assayID === id);
                 });
                 // a span to contain the text label for the Line pulldown, and the pulldown itself
@@ -1180,8 +1180,9 @@ remakeInfoTableAssayLineSection: (masterP: number): void => {
                 disam.lineObj = lSelect[0];
                 $('<option>').text('(Create New)').appendTo(lSelect).val('new')
                     .prop('selected', !defaultSel.lineID);
-                ATData.existingLines.forEach((line: LineRecord) => {
-                    $('<option>').text(line.name).appendTo(lSelect).val(line.id.toString())
+                // ATData.existingLines is of type {id: number; n: string;}[]
+                (ATData.existingLines || []).forEach((line: any) => {
+                    $('<option>').text(line.n).appendTo(lSelect).val(line.id.toString())
                         .prop('selected', defaultSel.lineID === line.id);
                 });
                 EDDATD.Disam.assayLineObjSets[masterP][name] = disam;
@@ -1384,14 +1385,15 @@ checkAllMeasurementCompartmentDisam: (): void => {
 
 
 disambiguateAnAssayOrLine: (assayOrLine: string, currentIndex: number): any => {
-    var selections: any, highest: number;
+    var selections: any, highest: number, assays: number[];
     selections = {
         lineID:0,
         assayID:0
     };
     highest = 0;
-    // ATData.existingAssays is type {[index: number]: string[]}
-    ATData.existingAssays[EDDATD.masterProtocol].every((id: string, i: number): boolean => {
+    // ATData.existingAssays is type {[index: string]: number[]}
+    assays = ATData.existingAssays[EDDATD.masterProtocol] || [];
+    assays.every((id: number, i: number): boolean => {
         var assay: AssayRecord, line: LineRecord, protocol: any, name: string;
         assay = EDDData.Assays[id];
         line = EDDData.Lines[assay.lid];
@@ -1399,61 +1401,62 @@ disambiguateAnAssayOrLine: (assayOrLine: string, currentIndex: number): any => {
         name = [line.name, protocol.name, assay.name].join('-');
         if (assayOrLine.toLowerCase() === name.toLowerCase()) {
             // The full Assay name, even case-insensitive, is the best match
-            selections.assayID = parseInt(id, 10);
+            selections.assayID = id;
             return false;  // do not need to continue
         } else if (highest < 0.8 && assayOrLine === assay.name) {
             // An exact-case match with the Assay name fragment alone is second-best.
             highest = 0.8;
-            selections.assayID = parseInt(id, 10);
+            selections.assayID = id;
         } else if (highest < 0.7 && assay.name.indexOf(assayOrLine) >= 0) {
             // Finding the whole string inside the Assay name fragment is pretty good
             highest = 0.7;
-            selections.assayID = parseInt(id, 10);
+            selections.assayID = id;
         } else if (highest < 0.6 && line.name.indexOf(assayOrLine) >= 0) {
             // Finding the whole string inside the originating Line name is good too.
             // It means that the user may intend to pair with this Assay even though the
             // Assay name is different.  
             highest = 0.6;
-            selections.assayID = parseInt(id, 10);
+            selections.assayID = id;
         } else if (highest < 0.4 &&
                 (new RegExp('(^|\\W)' + assay.name + '(\\W|$)', 'g')).test(assayOrLine)) {
             // Finding the Assay name fragment within the whole string, as a whole word, is our
             // last option.
             highest = 0.4;
-            selections.assayID = parseInt(id, 10);
+            selections.assayID = id;
         } else if (highest < 0.3 && currentIndex === i) {
             // If all else fails, choose Assay of current index in sorted order.
             highest = 0.3;
-            selections.assayID = parseInt(id, 10);
+            selections.assayID = id;
         }
         return true;
     });
     // Now we repeat the practice, separately, for the Line pulldown.
     highest = 0;
-    // ATData.existingLines is type {id: string; n: string;}[]
-    ATData.existingLines.every((line: any, i: number): boolean => {
+    // ATData.existingLines is type {id: number; n: string;}[]
+    (ATData.existingLines || []).every((line: any, i: number): boolean => {
         if (assayOrLine === line.n) {
             // The Line name, case-sensitive, is the best match
-            selections.lineID = parseInt(line.id, 10);
+            selections.lineID = line.id;
             return false;  // do not need to continue
         } else if (highest < 0.8 && assayOrLine.toLowerCase() === line.n.toLowerCase()) {
             // The same thing case-insensitive is second best.
             highest = 0.8;
-            selections.lineID = parseInt(line.id, 10);
+            selections.lineID = line.id;
         } else if (highest < 0.7 && assayOrLine.indexOf(line.n) >= 0) {
             // Finding the Line name within the string is odd, but good.
             highest = 0.7;
-            selections.lineID = parseInt(line.id, 10);
+            selections.lineID = line.id;
         } else if (highest < 0.6 && line.n.indexOf(assayOrLine) >= 0) {
             // Finding the string within the Line name is also good.
             highest = 0.6;
-            selections.lineID = parseInt(line.id, 10);
+            selections.lineID = line.id;
         } else if (highest < 0.5 && currentIndex === i) {
             // Again, if all else fails, just choose the Line that matches the current index
             // in sorted order, in a loop.
             highest = 0.5;
-            selections.lineID = parseInt(line.id, 10);
+            selections.lineID = line.id;
         }
+        return true;
     });
     return selections;
 },

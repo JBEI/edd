@@ -2,38 +2,38 @@
 {% load staticfiles %}
 
 {% block js_css %}
-    {{ block.super }}
+  {{ block.super }}
   <link rel="stylesheet" type="text/css" href="{% static 'main/import.css' %}" />
-    <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/lib/jquery-ui/jquery-ui.min.js' %}"></script>
-    <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/jquery-ui/jquery-ui.min.css' %}" />
-    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.crosshair.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.resize.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.navigate.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.dashes.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.threshold.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.orderbars.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.stack.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.cookie.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/lib/filedrop-min.js' %}"></script>
-<script type="text/javascript" src="{% static 'main/js/util2.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/lib/jquery-ui/jquery-ui.min.js' %}"></script>
+  <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/jquery-ui/jquery-ui.min.css' %}" />
+  <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.crosshair.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.resize.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.navigate.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.dashes.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.threshold.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.orderbars.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.stack.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.cookie.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/lib/filedrop-min.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/util2.js' %}"></script>
 
-<!-- some page-specific code -->
-<script type="text/javascript">
-var ATData = {}; // this needs to be declared before loading AssayTableData.js!
-var EDDData = {};
-EDDData.currentUserID = {{ user.pk }};
-var atdata_url = "/study/{{ study.id }}/assaydata";
+  <!-- some page-specific code -->
+  <script type="text/javascript">
+  var ATData = {}; // this needs to be declared before loading AssayTableData.js!
+  var EDDData = {};
+  EDDData.currentUserID = {{ user.pk }};
+  var atdata_url = "/study/{{ study.id }}/assaydata";
 
-function disclose() {
-  $(this).closest('.disclose').toggleClass('discloseHide');
-  return false;
-}
-var url = "/utilities/parsefile";
-var process_result = function (result) {
+  function disclose() {
+    $(this).closest('.disclose').toggleClass('discloseHide');
+    return false;
+  }
+  var url = "/utilities/parsefile";
+  var process_result = function (result) {
     if (result.file_type == "xlsx") {
       var ws = result.file_data["worksheets"][0];
       console.log(ws);
@@ -53,21 +53,21 @@ var process_result = function (result) {
     }
     EDDATD.parseAndDisplayText(); // AssayTableData.ts
   };
-$(window).load(function () {
-    setupFileDrop("textData", url, process_result, false);
-    $('.disclose').find('a.discloseLink').on('click', disclose);
-    // Populate ATData and EDDData objects via AJAX calls
-    jQuery.ajax(atdata_url, {
+  $(window).load(function () {
+      setupFileDrop("textData", url, process_result, false);
+      $('.disclose').find('a.discloseLink').on('click', disclose);
+      // Populate ATData and EDDData objects via AJAX calls
+      jQuery.ajax(atdata_url, {
         "success": function(data) {
-            ATData = data.ATData;
-            $.extend(EDDData, data.EDDData);
-            EDDATD.prepareIt();
+          ATData = data.ATData;
+          $.extend(EDDData, data.EDDData);
+          EDDATD.prepareIt();
         }
-    }).fail(function (x, s, e) {
+      }).fail(function (x, s, e) {
         alert(s);
-    });
-});
-</script>
+      });
+  });
+  </script>
   <script type="text/javascript" src="{% static 'main/js/autocomplete2.js' %}"></script>
   <script type="text/javascript" src="{% static 'main/js/AssayTableData.js' %}"></script>
   <script type="text/javascript" src="{% static 'main/js/AssayTableDataGraphing.js' %}"></script>

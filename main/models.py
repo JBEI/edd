@@ -516,11 +516,11 @@ class Study(EDDObject):
     def get_assays (self) :
         return list(Assay.objects.filter(line__study=self))
 
-    def get_assays_by_protocol (self) :
-        protocols = Protocol.objects.all()
-        assays_by_protocol = { p.id : [] for p in protocols }
-        for assay in self.get_assays() :
-            assays_by_protocol[assay.protocol.id].append(assay.id)
+    def get_assays_by_protocol(self):
+        assays_by_protocol = defaultdict(list)
+        assays = Assay.objects.filter(line__study=self)
+        for assay in assays:
+            assays_by_protocol[assay.protocol_id].append(assay.id)
         return assays_by_protocol
 
 

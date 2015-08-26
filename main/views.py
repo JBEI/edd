@@ -521,13 +521,11 @@ def study_map(request, study):
 # /study/<study_id>/import
 # FIXME should have trailing slash?
 @ensure_csrf_cookie
-def study_import_table (request, study) :
-    """
-    View for importing tabular assay data (replaces AssayTableData.cgi).
-    """
+def study_import_table(request, study):
+    """ View for importing tabular assay data (replaces AssayTableData.cgi). """
     model = Study.objects.get(pk=study)
     # FIXME filter protocols?
-    protocols = Protocol.objects.all()
+    protocols = Protocol.objects.order_by('name')
     post_contents = []
     if (request.method == "POST"):
         # print stuff for debug
