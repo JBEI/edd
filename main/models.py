@@ -1124,7 +1124,7 @@ class Assay(EDDObject):
 class MeasurementCompartment(object):
     UNKNOWN, INTRACELLULAR, EXTRACELLULAR = range(3)
     short_names = ["", "IC", "EC"]
-    names = ["", "Intracellular/Cytosol (Cy)", "Extracellular"]
+    names = ["N/A", "Intracellular/Cytosol (Cy)", "Extracellular"]
     GROUP_CHOICE = [ (str(i), cn) for (i,cn) in enumerate(names) ]
 
 class MeasurementFormat(object):

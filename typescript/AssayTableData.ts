@@ -1135,7 +1135,7 @@ remakeInfoTableAssayLineSection: (masterP: number): void => {
         // Keep a separate set of correlations between string and pulldowns for each
         // Protocol, since same string can match different Assays, and the pulldowns
         // will have different content, in each Protocol.
-        EDDATD.Disam.assayLineObjSets[masterP] = EDDATD.Disam.assayLineObjSets[masterP] || {};
+        EDDATD.Disam.assayLineObjSets[masterP] = {};
         EDDATD.Disam.currentlyVisibleAssayLineObjSets = [];
         table = <HTMLTableElement> $('<table>')
             .attr({ 'id': 'disambiguateAssaysTable', 'cellspacing': 0 })

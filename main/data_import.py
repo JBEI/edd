@@ -73,7 +73,7 @@ def import_assay_table_data(study, user, post_data, update):
         if u.get("nothing_to_import") :
             continue
         if assay_id != "new":
-            assay = resolved_disambiguation_assays.get(assay_id, None)
+            assay = resolved_disambiguation_assays.get(assay_index, None)
             if assay is None:
                 try:
                     assay = Assay.objects.get(pk=assay_id)
@@ -265,11 +265,16 @@ def import_assay_table_data(study, user, post_data, update):
 def iatd_handle_data(data, layout, meas_type_id, setname, meas_units_id, assay,
         replace, update, compartment_id, mu_t):
     # XXX HANDLEDATA block in AssayTableData.cgi
+    print('iatd_handle_data', data, layout, meas_type_id, setname, meas_units_id, assay, replace, update, compartment_id, mu_t)
     n_added = 0
     if len(data) == 0:
         return n_added
     meas_type = None
     if layout in ['std', 'mdv']:
+        if compartment_id == '':
+            compartment_id = 0
+        if meas_units_id == '':
+            meas_units_id = 1
         # For these modes, the measurement type must already be present in
         # the database
         if not meas_type_id:
