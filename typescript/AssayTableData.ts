@@ -714,14 +714,19 @@ changedRowDataTypePulldown: (index: number, value: number): void => {
         // "Timestamp", "Metadata", or other single-table-cell types
         // Set all the rest of the pulldowns to this,
         // based on the assumption that the first is followed by many others
-        EDDATD.Grid.data.slice(index + 1).every((_, i: number): boolean => {
-            if (EDDATD.Table.pulldownUserChangedFlags[i]
-                    && EDDATD.Table.pulldownSettings[i] !== 0) {
-                return false; // false for break
-            }
-            EDDATD.Table.pulldownObjects[i].selectedIndex = selected;
-            EDDATD.Table.pulldownSettings[i] = value;
-        });
+        EDDATD.Table.pulldownObjects.slice(index + 1).every(
+            (pulldown: HTMLSelectElement): boolean => {
+                var select: JQuery, i: number;
+                select = $(pulldown);
+                i = parseInt(select.attr('i'), 10);
+                if (EDDATD.Table.pulldownUserChangedFlags[i]
+                        && EDDATD.Table.pulldownSettings[i] !== 0) {
+                    return false; // false for break
+                }
+                select.val(value.toString());
+                EDDATD.Table.pulldownSettings[i] = value;
+                return true;
+            });
         // In addition to the above action, we also need to do some checking on the entire set of
         // pulldowns, to enforce a division between the "Metabolite Name" single data type and the
         // other single data types. If the user uses even one "Metabolite Name" pulldown, we can't
