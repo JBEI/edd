@@ -373,11 +373,12 @@ at how the pulldowns should be set, but you may need to tweak it.</p>
             </select>
           </span>
           <span id="masterLineSpan">
-            for Line:<select name="masterLine" id="masterLine">
-<option value="new">(Create New)</option>
-<option value="431" selected="selected">I-1</option>
-<option value="432">I-2</option>
-</select>
+            for Line: <select name="masterLine" id="masterLine">
+              <option value="new">(Create New)</option>
+              {% for line in study.line_set.all %}
+              <option value="{{ line.pk }}">{{ line.name }}</option>
+              {% endfor %}
+            </select>
           </span>
         </td>
       </tr>
