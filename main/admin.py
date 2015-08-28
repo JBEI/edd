@@ -24,6 +24,29 @@ class AttachmentInline(admin.TabularInline):
     extra = 1
 
 
+class AssayAdmin(admin.ModelAdmin):
+    """ Definition for admin-edit of Assays """
+    fields = ('name', 'description', )
+    list_display = ('name', 'study_name', 'line_name', 'protocol_name', )
+    search_fields = ('name', 'line__name', 'protocol__name', 'line__study__name')
+
+    def get_queryset(self, request):
+        q = super(AssayAdmin, self).get_queryset(request)
+        return q.select_related('line__study', 'protocol')
+
+    def line_name(self, instance):
+        return instance.line.name
+    line_name.short_description = _('Line')
+
+    def protocol_name(self, instance):
+        return instance.protocol.name
+    protocol_name.short_description = _('Protocol')
+
+    def study_name(self, instance):
+        return instance.line.study.name
+    study_name.short_description = _('Study')
+
+
 class MetadataGroupAdmin(admin.ModelAdmin):
     """ Definition for admin-edit of Metadata Groups """
     fields = ['group_name']
@@ -345,6 +368,7 @@ admin.site.register(Metabolite, MeasurementTypeAdmin)
 admin.site.register(GeneIdentifier, MeasurementTypeAdmin)
 admin.site.register(ProteinIdentifier, MeasurementTypeAdmin)
 admin.site.register(Study, StudyAdmin)
+admin.site.register(Assay, AssayAdmin)
 admin.site.register(SBMLTemplate, SBMLTemplateAdmin)
 admin.site.unregister(get_user_model())
 admin.site.register(get_user_model(), EDDUserAdmin)
