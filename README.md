@@ -241,9 +241,9 @@ This section contains directions for setting up a development environment on EDD
         * Create an unprivileged OSX user account for running RabbitMQ as a daemon. Note that the
           RabbitMQ scripts are written to only tolerate being run as as user `root` or
           `rabbitmq`, so it's important to use the exact username `rabbitmq`.
-        * 
-            cd edd/celery/osx
-            sudo ./add_system_user.sh rabbitmq 'RabbitMQ Message Broker'
+        * From the project directory:
+            `cd celery/osx`
+            `sudo ./add_system_user.sh rabbitmq 'RabbitMQ Message Broker'`
 
     * Change the user's home directory from `/var/empty/` to `/var/lib/rabbitmq`, the directory
       we've chosen to store RabbitMQ's Erlang cookie (`.erlang.cookie`)
@@ -251,27 +251,40 @@ This section contains directions for setting up a development environment on EDD
         * `sudo dscl /Local/Default -create Users/_rabbitmq NFSHomeDirectory /var/lib/rabbitmq/`
     * Replace the user's default shell, `/usr/bin/false`, with `/bin/bash` so we can run
       `sudo rabbitmq` for testing. Other forms of login will remain disabled for this account.
-        * `dscl /Local/Default -delete Users/_rabbitmq UserShell`
-        * `dscl /Local/Default -create Users/_rabbitmq UserShell /bin/bash`
+        * `sudo dscl /Local/Default -delete Users/_rabbitmq UserShell`
+        * `sudo dscl /Local/Default -create Users/_rabbitmq UserShell /bin/bash`
     * *After* finishing with initial command-line testing, change permissions to allow the
       `rabbitmq` user access to relevant files. Note that any subsequent use of
       `sudo rabbitmq-server` can create permissions errors for the service we're configuring.
 
-        chown -R rabbitmq /usr/local/etc/rabbitmq/
+        sudo chown -R rabbitmq /usr/local/etc/rabbitmq/
         sudo chown rabbitmq:rabbitmq /var/lib/rabbitmq/
         sudo chown rabbitmq:rabbitmq /usr/local/var/log/rabbitmq
-        chown -R rabbitmq:rabbitmq /usr/local/var/lib/rabbitmq
-        chown -R rabbitmq /usr/local/etc/rabbitmq/
+        sudo chown -R rabbitmq:rabbitmq /usr/local/var/lib/rabbitmq
+        sudo chown -R rabbitmq /usr/local/etc/rabbitmq/
 
     * Configure OSX to run RabbitMQ as a daemon. As long as this file exists, OSX will attempt to
       launch the daemon at startup.
 
-        cd edd/celery/osx
+        cd celery/osx
         sudo cp com.rabbitmq.plist /Library/LaunchDaemons/
 
     * Test that permissions for the copied script match those of other files in `LaunchDaemons/`
 
-        ls -l /Library/LaunchDaemons/
+        `
+        foundperms=$(ls -l /Library/LaunchDaemons/ | grep -v 'com.rabbitmq.plist' | awk 'NR > 1 {print $3 ":" $4 "\n" }' | sort | uniq );
+        if [ $( echo $foundperms | wc -w ) = 1 ];
+        then
+          echo $foundperms /Library/LaunchDaemons/com.rabbitmq.plist | awk '{print "chown " $1 " " $2 }' | sh;
+        else
+          echo 'ERROR: mixed credential types';
+        fi 
+        `
+
+        * If you get a 'mixed credential types' error, then check the permissions manually.
+
+            ls -l /Library/LaunchDaemons/
+            sudo chown <user>:<group> /Library/LaunchDaemons/com.rabbitmq.plist
 
     * Load the daemon and test that it's working
         * You may want to tail the system log in `/var/log/system.log` and/or rabbitmq logs in
