@@ -129,6 +129,9 @@ class TableImport(object):
                 warnings.warn('Skipped %s because it does not reference a valid Assay.' % name)
                 continue
             (comp, mtype, unit_id) = self._mtype(item.get('measurementType', None))
+            if mtype == 0:
+                warnings.warn('Skipped %s because it does not reference a known measurement.' % name)
+                continue
             records = assay.measurement_set.filter(
                 measurement_type_id=mtype,
                 compartment=str(comp),)
@@ -220,6 +223,21 @@ class TableImport(object):
         return self._meta_lookup.get(label, None)
 
     def _mtype(self, label):
+        layout = self._layout()
+        if layout == 'tr':
+            gene_ids = GeneIdentifier.objects.filter(type_name=label).values_list('id')
+            if len(gene_ids) == 1:
+                return (0, ) + gene_ids[0] + (1, )
+            else:
+                warnings.warn('Found %s GeneIdentifier instances for %s' % (len(gene_ids), label))
+            return (0, 0, 1)
+        elif layout == 'pr':
+            protein_ids = ProteinIdentifer.objects.filter(type_name=label).values_list('id')
+            if len(protein_ids) == 1:
+                return (0, ) + protein_ids[0] + (1, )
+            else:
+                warnings.warn('Found %s ProteinIdentifer instances for %s' % (len(protein_ids), label))
+            return (0, 0, 1)
         if label not in self._type_lookup:
             if label is None:
                 self._type_lookup[label] = (

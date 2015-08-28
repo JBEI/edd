@@ -163,7 +163,7 @@ processImportSettings: ():void => {
     graph = $('#graphDiv');
     rawFormat = $('#rawdataformatp');
     // all need to exist, or page is broken
-    if ([ stdLayout, trLayout, prLayout, mdvLayout, ignoreGaps, transpose, graph, rawFormat
+    if (![ stdLayout, trLayout, prLayout, mdvLayout, ignoreGaps, transpose, graph, rawFormat
             ].every((item):boolean => item.length !== 0)) {
         return;
     }
@@ -982,6 +982,7 @@ interpretDataTable: (): void => {
                 } else if (pulldown === 10) {  // Transcriptomics: Gene names
                     if (value) {
                         set.name = value;
+                        set.measurementType = value;
                     }
                     return;
                 } else if (pulldown === 3) {   // Timestamps
@@ -1090,6 +1091,7 @@ interpretDataTable: (): void => {
                         set.measurementType = seenMeasurementNames[label];
                     } else if (pulldown === 12) {
                         set.name = label;
+                        set.measurementType = label;
                     }
                     EDDATD.Sets.parsedSets.push(set);
                 });

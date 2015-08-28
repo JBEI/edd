@@ -128,7 +128,7 @@ EDDATD = {
         graph = $('#graphDiv');
         rawFormat = $('#rawdataformatp');
         // all need to exist, or page is broken
-        if ([stdLayout, trLayout, prLayout, mdvLayout, ignoreGaps, transpose, graph, rawFormat].every(function (item) { return item.length !== 0; })) {
+        if (![stdLayout, trLayout, prLayout, mdvLayout, ignoreGaps, transpose, graph, rawFormat].every(function (item) { return item.length !== 0; })) {
             return;
         }
         if (stdLayout.prop('checked')) {
@@ -873,6 +873,7 @@ EDDATD = {
                     else if (pulldown === 10) {
                         if (value) {
                             set.name = value;
+                            set.measurementType = value;
                         }
                         return;
                     }
@@ -986,6 +987,7 @@ EDDATD = {
                         }
                         else if (pulldown === 12) {
                             set.name = label;
+                            set.measurementType = label;
                         }
                         EDDATD.Sets.parsedSets.push(set);
                     });
