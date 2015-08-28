@@ -134,13 +134,13 @@ EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(selector, 
     });
     // TODO add flag(s) to handle multiple inputs
     // TODO possibly also use something like https://github.com/xoxco/jQuery-Tags-Input
-    $(selector).mcautocomplete({
+    $(selector).addClass('autocomp').mcautocomplete({
         // These next two options are what this plugin adds to the autocomplete widget.
         // FIXME these will need to vary depending on record type
-        showHeader: true,
-        columns: columns,
+        'showHeader': true,
+        'columns': columns,
         // Event handler for when a list item is selected.
-        select: function (event, ui) {
+        'select': function (event, ui) {
             var cacheKey, record, display, value;
             if (ui.item) {
                 cacheKey = ui.item[value_key];
@@ -155,8 +155,8 @@ EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(selector, 
         },
     
         // The rest of the options are for configuring the ajax webservice call.
-        minLength: 0,
-        source: function (request, response) {
+        'minLength': 0,
+        'source': function (request, response) {
             $.ajax({
                 'url': '/search',
                 'dataType': 'json',
@@ -175,6 +175,12 @@ EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(selector, 
                     response(result);
                 }
             });
+        },
+        'search': function (ev, ui) {
+            $(ev.target).addClass('wait');
+        },
+        'response': function (ev, ui) {
+            $(ev.target).removeClass('wait');
         }
     }).on('blur', function (ev) {
         var hiddenId = $(this).next('input[type=hidden]').val(),
@@ -208,6 +214,11 @@ $(window).load(function () {
         };
         $(item.selector).each(setup_func);
     });
+    // this makes the autocomplete work like a dropdown box
+    // fires off a search as soon as the element gains focus
+    $(document).on('focus', '.autocomp', function (ev) {
+        $(ev.target).addClass('autocomp_search').mcautocomplete('search');
+    })
 });
 
 }(jQuery));
