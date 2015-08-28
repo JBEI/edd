@@ -238,23 +238,6 @@ class StudyAdmin(EDDObjectAdmin):
     solr_index.short_description = 'Index in Solr'
 
 
-class SBMLTemplateCreateAdmin(forms.Form):
-    """
-    TODO !!!
-    Want only a file upload field and a description field
-    Save attachment without object_ref … may need to set blank=True, null=True
-    Attachment.objects.create(
-        file=upload,
-        filename=upload.name,
-        file_size=upload.size,
-        mime_type=upload.content_type, 
-        description=description)
-    Create SBMLTemplate referencing saved attachment
-    Update attachment to have object_ref pointing to SBMLTemplate
-    """
-    pass
-
-
 class SBMLTemplateAdmin(EDDObjectAdmin):
     """ Definition fro admin-edit of SBML Templates """
     fields = ('name', 'description', 'sbml_file', 'biomass_calculation', )
@@ -275,9 +258,14 @@ class SBMLTemplateAdmin(EDDObjectAdmin):
     def get_form(self, request, obj=None, **kwargs):
         # save model for later
         self._obj = obj
-        if not obj:
-            return SBMLTemplateCreateAdmin()
         return super(SBMLTemplateAdmin, self).get_form(request, obj, **kwargs)
+
+    def get_formsets_with_inlines(self, request, obj=None):
+        for inline in self.get_inline_instances(request, obj):
+            if isinstance(inline, AttachmentInline) and obj is None:
+                inline.extra = 1
+                inline.max_num = 1
+            yield inline.get_formset(request, obj), inline
 
     def get_queryset(self, request):
         q = super(SBMLTemplateAdmin, self).get_queryset(request)
@@ -286,7 +274,7 @@ class SBMLTemplateAdmin(EDDObjectAdmin):
 
     def save_model(self, request, obj, form, change):
         if change:
-            sbml = Attachment.objects.get(pk=obj.sbml_file).file
+            sbml = obj.sbml_file.file
             sbml_data = validate_sbml_attachment(sbml.read())
             obj.biomass_exchange_name = self._extract_biomass_exchange_name(sbml_data.getModel())
         elif len(form.files) == 1:
@@ -294,8 +282,18 @@ class SBMLTemplateAdmin(EDDObjectAdmin):
             sbml_data = validate_sbml_attachment(sbml.read())
             sbml_model = sbml_data.getModel()
             obj.biomass_exchange_name = self._extract_biomass_exchange_name(sbml_model)
-            # FIXME need to set obj.sbml_file at some point (after save?)
+            obj.name = obj.biomass_exchange_name
+            # stash the object so save_related can set obj.sbml_file
+            self._obj = obj
         super(SBMLTemplateAdmin, self).save_model(request, obj, form, change)
+
+    def save_related(self, request, form, formsets, change):
+        super(SBMLTemplateAdmin, self).save_related(request, form, formsets, change)
+        if not change and len(form.files) == 1:
+            # there will only be one file at this point
+            self._obj.sbml_file = self._obj.files.all()[0]
+            self._obj.description = self._obj.sbml_file.description
+            self._obj.save()
 
     def _extract_biomass_exchange_name(self, sbml_model):
         possible_exchange_ids = set()
