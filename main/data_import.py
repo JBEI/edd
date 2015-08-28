@@ -149,13 +149,13 @@ class TableImport(object):
                     x_units=hours,
                     y_units=unit)
             for x,y in points:
-                value = re.split('/|:', y)
+                (xvalue, yvalue) = (self._extract_value(x), self._extract_value(y))
                 try:
-                    point = record.measurementvalue_set.get(x__0=x)
+                    point = record.measurementvalue_set.get(x=xvalue)
                 except MeasurementValue.DoesNotExist:
-                    point = record.measurementvalue_set.create(x=[x],y=value)
+                    point = record.measurementvalue_set.create(x=xvalue,y=yvalue)
                 else:
-                    point.y = value
+                    point.y = yvalue
                     point.save()
                 added += 1
             if len(meta) > 0:
@@ -188,6 +188,14 @@ class TableImport(object):
 
     def _assay_id(self, label):
         return self._data.get('disamAssay%s' % label, None)
+
+    def _extract_value(self, value):
+        # make sure input is string first, split on slash or colon, and give back array of numbers
+        try:
+            return map(float, re.split('/|:', unicode(value)))
+        except ValueError:
+            warnings.warn('Value %s could not be interpreted as a number' % value)
+        return []
 
     def _layout(self):
         return self._data.get('datalayout', None)
