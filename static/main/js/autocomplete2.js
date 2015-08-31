@@ -114,7 +114,41 @@ EDD_auto.create_autocomplete = function create_autocomplete(container) {
     autoInput = $('<input type="text"/>').addClass('autocomp').appendTo(container);
     hideInput = $('<input type="hidden"/>').appendTo(container);
     return autoInput;
-}
+};
+
+
+EDD_auto.initial_search = function initial_search(selector, term) {
+    var autoInput = $(selector), data = autoInput.data('EDD_auto'), oldResponse;
+    oldResponse = autoInput.mcautocomplete('option', 'response');
+    autoInput.mcautocomplete('option', 'response', function (ev, ui) {
+        var highest = 0, best, termLower = term.toLowerCase();
+        autoInput.mcautocomplete('option', 'response', oldResponse);
+        oldResponse.call({}, ev, ui);
+        ui.content.every(function (item) {
+            var val = item[data.display_key], valLower = val.toLowerCase();
+            if (val === term) {
+                best = item;
+                return false;  // do not need to continue
+            } else if (highest < 8 && valLower === termLower) {
+                highest = 8;
+                best = item;
+            } else if (highest < 7 && valLower.indexOf(termLower) >= 0) {
+                highest = 7;
+                best = item;
+            } else if (highest < 6 && termLower.indexOf(valLower) >= 0) {
+                highest = 6;
+                best = item;
+            }
+        });
+        if (best) {
+            autoInput.mcautocomplete('instance')._trigger('select', 'autocompleteselect', {
+                'item': best
+            });
+        }
+    });
+    autoInput.mcautocomplete('search', term);
+    autoInput.mcautocomplete('close');
+};
 
 
 // Sets up the multicolumn autocomplete widget.  Must be called after the
@@ -135,7 +169,10 @@ EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(selector, 
     });
     // TODO add flag(s) to handle multiple inputs
     // TODO possibly also use something like https://github.com/xoxco/jQuery-Tags-Input
-    $(selector).addClass('autocomp').mcautocomplete({
+    $(selector).addClass('autocomp').data('EDD_auto', {
+        'display_key': display_key,
+        'value_key': value_key
+    }).mcautocomplete({
         // These next two options are what this plugin adds to the autocomplete widget.
         // FIXME these will need to vary depending on record type
         'showHeader': true,

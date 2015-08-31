@@ -1246,6 +1246,7 @@ remakeInfoTableMeasurementSection: (): void => {
         disam.typeObj.attr('size', 45).data('visibleIndex', i)
             .next().attr('name', 'disamMType' + (i + 1));
         EDD_auto.setup_field_autocomplete(disam.typeObj, 'Metabolite', EDDATD.AutoCache.metabolite);
+        EDD_auto.initial_search(disam.typeObj, name);
         disam.unitsObj.attr('size', 10).data('visibleIndex', i)
             .next().attr('name', 'disamMUnits' + (i + 1));
         EDD_auto.setup_field_autocomplete(disam.unitsObj, 'MeasurementUnit', EDDATD.AutoCache.unit);
