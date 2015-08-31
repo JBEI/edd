@@ -1,4 +1,3 @@
-/// <reference path="typescript-declarations.d.ts" />
 /// <reference path="EDDDataInterface.ts" />
 /// <reference path="Utl.ts" />
 /// <reference path="Dragboxes.ts" />
