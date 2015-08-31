@@ -529,7 +529,7 @@ EDDATD = {
             // Now that that's done, move the data into Grid.data
             if (EDDATD.Grid.transpose) {
                 // first row becomes Y-markers as-is
-                EDDATD.Grid.rowMarkers = input.input.shift();
+                EDDATD.Grid.rowMarkers = input.input.shift() || [];
                 EDDATD.Grid.data = (input.input[0] || []).map(function (_, i) {
                     return input.input.map(function (row) { return row[i] || ''; });
                 });

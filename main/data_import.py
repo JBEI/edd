@@ -243,12 +243,22 @@ class TableImport(object):
                     len(gene_ids), label))
             return (0, 0, 1)
         elif layout == 'pr':
-            protein_ids = ProteinIdentifer.objects.filter(type_name=label).values_list('id')
+            # TODO Protein import should be re-worked to get types from a label/session-id combo
+            protein_ids = ProteinIdentifier.objects.filter(type_name=label).values_list('id')
             if len(protein_ids) == 1:
                 return (0, ) + protein_ids[0] + (1, )
             else:
                 logger.warning('Found %s ProteinIdentifer instances for %s' % (
                     len(protein_ids), label))
+                if len(protein_ids) > 1:
+                    return (0, ) + protein_ids[0] + (1, )
+                else:
+                    try:
+                        p = ProteinIdentifer.objects.create(type_name=label)
+                    except:
+                        logger.error('Failed to create ProteinIdentifer %s' % label)
+                    else:
+                        return (0, ) + p.pk + (1, )
             return (0, 0, 1)
         if label not in self._type_lookup:
             if label is None:

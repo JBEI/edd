@@ -613,7 +613,7 @@ parseAndDisplayText: (): void => {
         // Now that that's done, move the data into Grid.data
         if (EDDATD.Grid.transpose) {
             // first row becomes Y-markers as-is
-            EDDATD.Grid.rowMarkers = input.input.shift();
+            EDDATD.Grid.rowMarkers = input.input.shift() || [];
             EDDATD.Grid.data = (input.input[0] || []).map((_, i: number): string[] => {
                 return input.input.map((row: string[]): string => row[i] || '');
             });
