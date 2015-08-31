@@ -1,10 +1,14 @@
 
 import json
+import logging
 import re
 import warnings
 
 from django.core.exceptions import PermissionDenied
 from main.models import *
+
+
+logger = logging.getLogger(__name__)
 
 
 class TableImport(object):
@@ -50,15 +54,14 @@ class TableImport(object):
         for item in series:
             label = item.get('assay', None)
             if label is None or self._assay_id(label) is None or self._assay(label) is not None:
-                continue # skip wien no label, no ID, or already looked up assay
-            # TODO need to set user_master_assay here, or can just check len(self._assay_lookup) ?
-            # TODO old code skips if no data; this can be a general line/assay/data import though
+                continue # skip when no label, no ID, or already looked up assay
             assay_id = self._assay_id(label)
             if assay_id != 'new':
                 try:
                     assay = Assay.objects.get(pk=assay_id, line__study_id=self._study.pk)
                 except Assay.DoesNotExist:
-                    pass # TODO logging
+                    logger.warning('Failed to load assay,study combo %s,%s' % (
+                        assay_id, self._study.pk))
                 else:
                     self._assay_lookup[label] = assay
                 continue # skip to next, created assay
@@ -71,12 +74,14 @@ class TableImport(object):
                     name=name,
                     contact=self._user,
                     experimenter=self._user)
+                logger.info('Created import line %s:%s' % (line.id, name))
                 line_id = line.id
             else:
                 try:
                     line = Line.objects.get(pk=line_id, study_id=self._study.pk)
                 except Line.DoesNotExist:
-                    pass # TODO logging
+                    logger.warning('Failed to load line,study combo %s,%s' % (
+                        line_id, self._study.pk))
             if line_id == 'new' or line is None:
                 continue # skip to next, cannot create the assay
             name = item.get('assayName', None)
@@ -99,17 +104,21 @@ class TableImport(object):
                         name='Imported %s' % (self._study.line_set.count() + 1),
                         contact=self._user,
                         experimenter=self._user)
+                    logger.info('Created import master line %s:%s' % (line.id, line.name))
                 else:
                     line = Line.objects.get(pk=master_line)
                 self._master = line.assay_set.create(
                     name='%s-%s' % (line.name, line.assay_set.count() + 1),
                     protocol=self._protocol(),
                     experimenter=self._user)
+                logger.info('Created import master assay %s:%s' % (
+                    self._master.id, self._master.name))
             else:
                 try:
                     self._master = Assay.objects.get(pk=master_assay, line__study_id=self._study.pk)
                 except Assay.DoesNotExist:
-                    pass # TODO logging
+                    logger.warning('Failed to load master assay,study combo %s,%s' % (
+                        assay_id, self._study.pk))
 
     def create_measurements(self, series):
         added = 0
@@ -132,6 +141,7 @@ class TableImport(object):
             if mtype == 0:
                 warnings.warn('Skipped %s because it does not reference a known measurement.' % name)
                 continue
+            logger.info('Loading measurements for %s:%s' % (str(comp), mtype))
             records = assay.measurement_set.filter(
                 measurement_type_id=mtype,
                 compartment=str(comp),)
@@ -219,7 +229,7 @@ class TableImport(object):
                 try:
                     self._meta_lookup[label] = MetadataType.objects.get(pk=meta_id)
                 except MetadataType.DoesNotExist:
-                    pass # TODO logging
+                    logger.warning('No MetadataType found for %s' % meta_id)
         return self._meta_lookup.get(label, None)
 
     def _mtype(self, label):
@@ -229,26 +239,28 @@ class TableImport(object):
             if len(gene_ids) == 1:
                 return (0, ) + gene_ids[0] + (1, )
             else:
-                warnings.warn('Found %s GeneIdentifier instances for %s' % (len(gene_ids), label))
+                logger.warning('Found %s GeneIdentifier instances for %s' % (
+                    len(gene_ids), label))
             return (0, 0, 1)
         elif layout == 'pr':
             protein_ids = ProteinIdentifer.objects.filter(type_name=label).values_list('id')
             if len(protein_ids) == 1:
                 return (0, ) + protein_ids[0] + (1, )
             else:
-                warnings.warn('Found %s ProteinIdentifer instances for %s' % (len(protein_ids), label))
+                logger.warning('Found %s ProteinIdentifer instances for %s' % (
+                    len(protein_ids), label))
             return (0, 0, 1)
         if label not in self._type_lookup:
             if label is None:
                 self._type_lookup[label] = (
                     self._data.get('masterMCompValue', 0),
                     self._data.get('masterMTypeValue', 0),
-                    self._data.get('masterMUnitsValue', 1),)
+                    self._data.get('masterMUnitsValue', 1) if layout == 'std' else 1,)
             else:
                 self._type_lookup[label] = (
                     self._data.get('disamMComp%s' % label, 0),
                     self._data.get('disamMType%s' % label, 0),
-                    self._data.get('disamMUnits%s' % label, 1),)
+                    self._data.get('disamMUnits%s' % label, 1) if layout == 'std' else 1,)
         return self._type_lookup.get(label)
 
     def _mtype_format(self, points):
@@ -277,7 +289,10 @@ class TableImport(object):
 
     def _unit(self, unit_id):
         if unit_id not in self._unit_lookup:
-            self._unit_lookup[unit_id] = MeasurementUnit.objects.get(id=unit_id)
+            try:
+                self._unit_lookup[unit_id] = MeasurementUnit.objects.get(id=unit_id)
+            except MeasurementUnit.DoesNotExist:
+                logger.warning('No MeasurementUnit found for %s' % unit_id)
         return self._unit_lookup[unit_id]
 
     def _valid_time(self):
