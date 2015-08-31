@@ -5,7 +5,7 @@ EDDATD = {
     // The Protocol for which we will be importing data.
     masterProtocol: 0,
     // The main mode we are interpreting data in.
-    // Valid values sofar are "std", and "mdv".
+    // Valid values sofar are "std", "mdv", "tr", "pr".
     interpretationMode: "std",
     processImportSettingsTimerID: 0,
     // Used to parse the Step 2 data into a null-padded rectangular grid
@@ -303,6 +303,7 @@ EDDATD = {
             rows.shift();
         }
         compounds = {};
+        orderedComp = [];
         rows.forEach(function (row) {
             var first, marked, name, index;
             first = row.shift();
@@ -315,7 +316,7 @@ EDDATD = {
             marked = first.split(' M = ');
             if (marked.length === 2) {
                 name = marked[0];
-                index = parseInt(marked[1]);
+                index = parseInt(marked[1], 10);
                 if (!compounds[name]) {
                     compounds[name] = { 'originalRows': {}, 'processedAssayCols': {} };
                     orderedComp.push(name);
@@ -326,7 +327,7 @@ EDDATD = {
         $.each(compounds, function (name, value) {
             var indices;
             // First gather up all the marker indexes given for this compound
-            indices = $.map(value.originalRows, function (_, index) { return parseInt(index); });
+            indices = $.map(value.originalRows, function (_, index) { return parseInt(index, 10); });
             indices.sort(function (a, b) { return a - b; }); // sort ascending
             // Run through the set of columnLabels above, assembling a marking number for each,
             // by drawing - in order - from this collected row data.
@@ -365,7 +366,7 @@ EDDATD = {
             EDDATD.Grid.rowMarkers.push(name);
             compound = compounds[name];
             row = [];
-            colLookup = compound.procesedAssayCols;
+            colLookup = compound.processedAssayCols;
             // generate row cells by mapping column labels to processed columns
             Array.prototype.push.apply(row, colLabels.map(function (_, index) { return colLookup[index] || ''; }));
             return row;
@@ -471,7 +472,9 @@ EDDATD = {
             EDDATD.Table.rowCheckboxCells.push(cell[0]);
             // pulldown cell
             cell = $(row.insertCell()).addClass('pulldownCell').attr({ 'id': 'rowPCell' + i, 'x': 0, 'y': i + 1 });
-            EDDATD.populatePulldown(cell = $('<select>').attr({ 'id': 'row' + i + 'type', 'name': 'row' + i + 'type', 'i': i }).appendTo(cell), pulldownOptions, EDDATD.Table.pulldownSettings[i] || 0);
+            // use existing setting, or use the last if rows.length > settings.length, or blank
+            EDDATD.Table.pulldownSettings[i] = EDDATD.Table.pulldownSettings[i] || EDDATD.Table.pulldownSettings.slice(-1)[0] || 0;
+            EDDATD.populatePulldown(cell = $('<select>').attr({ 'id': 'row' + i + 'type', 'name': 'row' + i + 'type', 'i': i }).appendTo(cell), pulldownOptions, EDDATD.Table.pulldownSettings[i]);
             EDDATD.Table.pulldownObjects.push(cell[0]);
             // label cell
             cell = $(row.insertCell()).attr({ 'id': 'rowMCell' + i, 'x': 0, 'y': i + 1 });
@@ -795,7 +798,7 @@ EDDATD = {
                 else if (pulldown === 4 || pulldown === 3) {
                     nonSingle++;
                 }
-                else if (pulldown === 1 && earliestName !== undefined) {
+                else if (pulldown === 1 && earliestName === undefined) {
                     earliestName = y;
                 }
             }
@@ -805,7 +808,7 @@ EDDATD = {
         // least one "Assay/Line names" row.
         // Note: requirement of an "Assay/Line names" row prevents this mode from being
         // enabled when the page is in 'Transcription' mode.
-        return [(single > 0 && nonSingle === 0 && earliestName !== undefined), 0];
+        return [(single > 0 && nonSingle === 0 && earliestName !== undefined), earliestName];
     },
     interpretDataTable: function () {
         // We'll be accumulating these for disambiguation.
