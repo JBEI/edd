@@ -33,13 +33,13 @@ var EDDData = EDDData || {};
         "Strain" : [
             new AutoColumn('Part ID', '100px', 'partId'),
             new AutoColumn('Name', '150px', 'name'),
-            new AutoColumn('Description', '200px', 'shortDescription')
+            new AutoColumn('Description', '250px', 'shortDescription')
             ],
         "CarbonSource" : [
             new AutoColumn('Name', '150px', 'name'),
             new AutoColumn('Volume', '60px', 'volume'),
             new AutoColumn('Labeling', '100px', 'labeling'),
-            new AutoColumn('Description', '150px', 'description'),
+            new AutoColumn('Description', '250px', 'description'),
             new AutoColumn('Initials', '60px', 'initials')
             ]
     });
@@ -58,6 +58,7 @@ var EDDData = EDDData || {};
         "Strain": 'recordId',
         "CarbonSource": 'id'
     });
+    EDD_auto.request_cache = {};
 
 /*
  * jQuery UI Multicolumn Autocomplete Widget Plugin 2.1
@@ -157,6 +158,12 @@ EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(selector, 
         // The rest of the options are for configuring the ajax webservice call.
         'minLength': 0,
         'source': function (request, response) {
+            var result, terms;
+            terms = EDD_auto.request_cache[model_name] = EDD_auto.request_cache[model_name] || {};
+            if (terms[request.term]) {
+                response(terms[request.term]);
+                return;
+            }
             $.ajax({
                 'url': '/search',
                 'dataType': 'json',
@@ -166,12 +173,12 @@ EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(selector, 
                 },
                 // The success event handler will display "No match found" if no items are returned.
                 'success': function (data) {
-                    var result;
                     if (!data || !data.rows || data.rows.length === 0) {
                         result = [ empty ];
                     } else {
                         result = data.rows;
                     }
+                    terms[request.term] = result;
                     response(result);
                 }
             });
