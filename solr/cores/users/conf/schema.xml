@@ -100,6 +100,8 @@
         <field name="id" type="string" indexed="true" stored="true" required="true" />
         <!-- login of the user -->
         <field name="username" type="text_lower" indexed="true" stored="true" />
+        <!-- fullname of the user; search with name -->
+        <field name="fullname" type="text_lower" indexed="false" stored="true" />
         <!-- name(s) of the user -->
         <field name="name" type="text_lower" indexed="true" stored="true" multiValued="true" />
         <!-- user email(s) -->

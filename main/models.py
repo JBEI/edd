@@ -1384,25 +1384,25 @@ class MetaboliteSpecies (models.Model) :
 
 
 # XXX MONKEY PATCHING
-def User_initials (self) :
-    try :
+def User_initials(self):
+    try:
         return self.userprofile.initials
-    except ObjectDoesNotExist as e :
+    except ObjectDoesNotExist:
         return None
 
-def User_institution (self) :
-    try :
+def User_institution(self):
+    try:
         institutions = self.userprofile.institutions.all()
-        if (len(institutions) > 0) :
+        if len(institutions) > 0:
             return institutions[0].institution_name
         return None
-    except ObjectDoesNotExist as e :
+    except ObjectDoesNotExist:
         return None
 
 def User_institutions(self):
     try:
         return self.userprofile.institutions.all()
-    except ObjectDoesNotExist, e:
+    except ObjectDoesNotExist:
         return []
 
 def User_to_json(self):
@@ -1426,13 +1426,15 @@ def User_to_solr_json(self):
     return {
         'id': self.pk,
         'username': self.username,
+        # TODO add full name to profile, to override default first+[SPACE]+last
+        'fullname': self.get_full_name(),
         'name': [ self.first_name, self.last_name ],
         'email': self.email,
         'initials': self.initials,
         'group': ['@'.join((str(g.pk), g.name)) for g in self.groups.all()],
         'institution': ['@'.join((str(i.pk), i.institution_name)) for i in self.institutions],
         'date_joined': self.date_joined.strftime(format_string),
-        'last_login': self.last_login.strftime(format_string),
+        'last_login': None if self.last_login is None else self.last_login.strftime(format_string),
         'is_active': self.is_active,
         'is_staff': self.is_staff,
         'is_superuser': self.is_superuser,
@@ -1440,7 +1442,7 @@ def User_to_solr_json(self):
 
 # this will get replaced by the actual model as soon as the app is initialized
 User = None
-def patch_user_model () :
+def patch_user_model():
     global User
     User = get_user_model()
     User.add_to_class("to_json", User_to_json)

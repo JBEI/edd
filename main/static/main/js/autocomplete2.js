@@ -26,7 +26,7 @@ var EDDData = EDDData || {};
     // somewhere.)
     EDD_auto.column_layouts = $.extend(EDD_auto.column_layouts || {}, {
         "User" : [
-            new AutoColumn('User', '150px', 'name'),
+            new AutoColumn('User', '150px', 'fullname'),
             new AutoColumn('Initials', '60px', 'initials'),
             new AutoColumn('E-mail', '150px', 'email')
             ],
