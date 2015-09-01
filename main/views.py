@@ -612,7 +612,7 @@ def permissions(request, study):
 @ensure_csrf_cookie
 def study_import_table(request, study):
     """ View for importing tabular assay data (replaces AssayTableData.cgi). """
-    model = load_study(request, study, permision_type=['W',])
+    model = load_study(request, study, permission_type=['W',])
     # FIXME filter protocols?
     protocols = Protocol.objects.order_by('name')
     if (request.method == "POST"):
