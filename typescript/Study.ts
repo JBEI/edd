@@ -822,6 +822,54 @@ module StudyD {
             metaIn.val(JSON.stringify(meta));
             metaRow.remove();
         });
+        $(window).load(preparePermissions);
+    }
+
+    function preparePermissions() {
+        var user: JQuery, group: JQuery;
+        // TODO the DOM traversing and filtering here is very hacky, do it better later
+        user = EDD_auto.create_autocomplete($('#permission_user_box'));
+        group = EDD_auto.create_autocomplete($('#permission_group_box'));
+        EDD_auto.setup_field_autocomplete(user, 'User');
+        EDD_auto.setup_field_autocomplete(group, 'Group');
+        $('form.permissions')
+            .on('change', ':radio', (ev:JQueryInputEventObject):void => {
+                var radio: JQuery = $(ev.target);
+                $('.permissions').find(':radio').each((i: number, r: Element): void => {
+                    $(r).closest('span').find('.autocomp').prop('disabled', !$(r).prop('checked'));
+                });
+                if (radio.prop('checked')) {
+                    radio.closest('span').find('.autocomp:visible').focus();
+                }
+            })
+            .on('submit', (ev:JQueryEventObject): boolean => {
+                var perm: any = {}, klass: string, auto: JQuery;
+                auto = $('form.permissions').find('[name=class]:checked');
+                klass = auto.val();
+                perm.type = $('form.permissions').find('[name=type]').val();
+                perm[klass.toLowerCase()] = { 'id': auto.closest('span').find('input:hidden').val() };
+                $.ajax({
+                    'url': 'permissions/',
+                    'type': 'POST',
+                    'data': {
+                        'data': JSON.stringify([perm]),
+                        'csrfmiddlewaretoken': $('form.permissions').find('[name=csrfmiddlewaretoken]').val()
+                    },
+                    'success': (): void => {
+                        console.log(['Set permission: ', JSON.stringify(perm)].join(''));
+                        $('<div>').text('Set Permission').addClass('success')
+                            .appendTo($('form.permissions')).delay(5000).fadeOut(2000);
+                    },
+                    'error': (xhr, status, err): void => {
+                        console.log(['Setting permission failed: ', status, ';', err].join(''));
+                        $('<div>').text('Server Error: ' + err).addClass('bad')
+                            .appendTo($('form.permissions')).delay(5000).fadeOut(2000);
+                    }
+                });
+                return false;
+            })
+            .find(':radio').trigger('change').end()
+            .removeClass('off');
     }
 
 

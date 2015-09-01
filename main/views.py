@@ -11,6 +11,7 @@ import operator
 
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth.models import Group
 from django.core import serializers
 from django.core.exceptions import ObjectDoesNotExist, PermissionDenied, ValidationError
 from django.core.urlresolvers import reverse
@@ -282,8 +283,41 @@ class StudyDetailView(generic.DetailView):
         action = request.POST.get('action', None)
         context = self.get_context_data(object=self.object, action=action, request=request)
         form_valid = False
+        can_write = self.object.user_can_write(request.user)
+        # allow any who can view to comment
         if action == 'comment':
             form_valid = self.handle_comment(request, context)
+        elif action == 'line_action':
+            line_action = request.POST.get('line_action', None)
+            # allow any who can view to export
+            if line_action == 'export':
+                return ExportView.as_view()(request, *args, **kwargs)
+            # but not edit
+            elif not can_write:
+                messages.error(request, 'You do not have permission to modify this study.')
+            elif line_action == 'edit':
+                form_valid = self.handle_disable(request, context)
+            else:
+                messages.error(request, 'Unknown line action %s' % (line_action))
+        elif action == 'assay_action':
+            assay_action = request.POST.get('assay_action', None)
+            # allow any who can view to export
+            if assay_action == 'export':
+                return ExportView.as_view()(request, *args, **kwargs)
+            # but not edit
+            elif not can_write:
+                messages.error(request, 'You do not have permission to modify this study.')
+            elif assay_action == 'mark':
+                form_valid = self.handle_assay_mark(request, context)
+            elif assay_action == 'delete':
+                form_valid = self.handle_measurement_delete(request, context)
+            elif assay_action == 'edit':
+                form_valid = self.handle_measurement_edit(request, context)
+            else:
+                messages.error(request, 'Unknown assay action %s' % (assay_action))
+        # all following require write permissions
+        elif not can_write:
+            messages.error(request, 'You do not have permission to modify this study.')
         elif action == 'attach':
             form_valid = self.handle_attach(request, context)
         elif action == 'line':
@@ -292,28 +326,8 @@ class StudyDetailView(generic.DetailView):
             form_valid = self.handle_clone(request, context)
         elif action == 'group':
             form_valid = self.handle_group(request, context)
-        elif action == 'line_action':
-            line_action = request.POST.get('line_action', None)
-            if line_action == 'edit':
-                form_valid = self.handle_disable(request, context)
-            elif line_action == 'export':
-                return ExportView.as_view()(request, *args, **kwargs)
-            else:
-                messages.error(request, 'Unknown line action %s' % (line_action))
         elif action == 'assay':
             form_valid = self.handle_assay(request, context)
-        elif action == 'assay_action':
-            assay_action = request.POST.get('assay_action', None)
-            if assay_action == 'mark':
-                form_valid = self.handle_assay_mark(request, context)
-            elif assay_action == 'delete':
-                form_valid = self.handle_measurement_delete(request, context)
-            elif assay_action == 'edit':
-                form_valid = self.handle_measurement_edit(request, context)
-            elif assay_action == 'export':
-                return ExportView.as_view()(request, *args, **kwargs)
-            else:
-                messages.error(request, 'Unknown assay action %s' % (assay_action))
         if form_valid:
             study_modified.send(sender=self.__class__, study=self.object)
             return HttpResponseRedirect(reverse('main:detail', kwargs={'pk':self.object.pk}))
@@ -562,14 +576,20 @@ def permissions(request, study):
                 group = perm.get('group', None)
                 ptype = perm.get('type', StudyPermission.NONE)
                 manager = None
+                lookup = {}
                 if group is not None:
-                    manager = obj.grouppermission_set.filter(group_id=group.get('id', 0))
+                    lookup = { 'group_id': group.get('id', 0), 'study_id': study }
+                    manager = obj.grouppermission_set.filter(**lookup)
                 elif user is not None:
-                    manager = obj.userpermission_set.filter(user_id=user.get('id', 0))
-                if ptype == StudyPermission.NONE:
+                    lookup = { 'user_id': user.get('id', 0), 'study_id': study }
+                    manager = obj.userpermission_set.filter(**lookup)
+                if manager is None:
+                    logger.warning('Invalid permission type for add')
+                elif ptype == StudyPermission.NONE:
                     manager.delete()
                 else:
-                    manager.update(permission_type=ptype)
+                    lookup['permission_type'] = ptype
+                    manager.update_or_create(**lookup)
         except Exception, e:
             logger.error('Error modifying study (%s) permissions: %s' % (study, str(e)))
             return HttpResponse(status=500)
@@ -949,6 +969,7 @@ def download(request, file_id):
     response['Content-Disposition'] = 'attachment; filename="%s"' % model.filename
     return response
 
+# TODO should only delete on POST, write a confirm delete page with a form to resubmit as POST
 def delete_file(request, file_id):
     redirect_url = request.GET.get("redirect", None)
     if (redirect_url is None) :
@@ -1003,17 +1024,9 @@ def utilities_parse_table(request):
 
 # /search
 def search(request):
-    """
-    Naive implementation of model-independent server-side autocomplete backend,
-    paired with autocomplete2.js on the client side.  This is probably too
-    inefficient to be suitable for production use due to the overhead of
-    pulling out all instances of a model and exporting dictionaries each time
-    it is called, but it provides a template for something smarter (to be
-    determined), and a proof-of-concept for the frontend.
-    """
-    # XXX actually, the overhead for searching User entries isn't awful,
-    # maybe 150ms per query on average on my laptop.  it will probably scale
-    # less well for metabolites.
+    """ Naive implementation of model-independent server-side autocomplete backend,
+        paired with autocomplete2.js on the client side. Call out to Solr or ICE where
+        needed. """
     term = request.GET["term"]
     model_name = request.GET["model"]
     results = []
@@ -1026,6 +1039,9 @@ def search(request):
         results = ice.search_for_part(term)
         rows = [ match.get('entryInfo', dict()) for match in results.get('results', []) ]
         return JsonResponse({ "rows": rows })
+    elif model_name == "Group":
+        found = Group.objects.filter(name__iregex=term).order_by('name')
+        results = [ { 'id': item.pk, 'name': item.name } for item in found ]
     elif model_name == "MeasurementCompartment":
         # Always return the full set of options; no search needed
         rows = [ { 'id': c[0], 'name': c[1] } for c in MeasurementCompartment.GROUP_CHOICE ]

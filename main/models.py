@@ -557,6 +557,12 @@ class StudyPermission(models.Model):
         """
         return False;
 
+    def get_type_label(self):
+        return dict(self.TYPE_CHOICE).get(self.permission_type, '?')
+
+    def get_who_label(self):
+        return '?'
+
     def is_read(self):
         """
         Test if the permission grants read privileges.
@@ -584,6 +590,9 @@ class UserPermission(StudyPermission):
     def applies_to_user(self, user):
         return self.user == user
 
+    def get_who_label(self):
+        return self.user.get_full_name()
+
     def to_json(self):
         return {
             'user': {
@@ -604,6 +613,9 @@ class GroupPermission(StudyPermission):
 
     def applies_to_user(self, user):
         return user.groups.contains(self.group)
+
+    def get_who_label(self):
+        return self.group.name
 
     def to_json(self):
         return {

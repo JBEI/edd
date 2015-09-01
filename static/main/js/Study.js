@@ -713,8 +713,49 @@ var StudyD;
             metaIn.val(JSON.stringify(meta));
             metaRow.remove();
         });
+        $(window).load(preparePermissions);
     }
     StudyD.prepareIt = prepareIt;
+    function preparePermissions() {
+        var user, group;
+        // TODO the DOM traversing and filtering here is very hacky, do it better later
+        user = EDD_auto.create_autocomplete($('#permission_user_box'));
+        group = EDD_auto.create_autocomplete($('#permission_group_box'));
+        EDD_auto.setup_field_autocomplete(user, 'User');
+        EDD_auto.setup_field_autocomplete(group, 'Group');
+        $('form.permissions').on('change', ':radio', function (ev) {
+            var radio = $(ev.target);
+            $('.permissions').find(':radio').each(function (i, r) {
+                $(r).closest('span').find('.autocomp').prop('disabled', !$(r).prop('checked'));
+            });
+            if (radio.prop('checked')) {
+                radio.closest('span').find('.autocomp:visible').focus();
+            }
+        }).on('submit', function (ev) {
+            var perm = {}, klass, auto;
+            auto = $('form.permissions').find('[name=class]:checked');
+            klass = auto.val();
+            perm.type = $('form.permissions').find('[name=type]').val();
+            perm[klass.toLowerCase()] = { 'id': auto.closest('span').find('input:hidden').val() };
+            $.ajax({
+                'url': 'permissions/',
+                'type': 'POST',
+                'data': {
+                    'data': JSON.stringify([perm]),
+                    'csrfmiddlewaretoken': $('form.permissions').find('[name=csrfmiddlewaretoken]').val()
+                },
+                'success': function () {
+                    console.log(['Set permission: ', JSON.stringify(perm)].join(''));
+                    $('<div>').text('Set Permission').addClass('success').appendTo($('form.permissions')).delay(5000).fadeOut(2000);
+                },
+                'error': function (xhr, status, err) {
+                    console.log(['Setting permission failed: ', status, ';', err].join(''));
+                    $('<div>').text('Server Error: ' + err).addClass('bad').appendTo($('form.permissions')).delay(5000).fadeOut(2000);
+                }
+            });
+            return false;
+        }).find(':radio').trigger('change').end().removeClass('off');
+    }
     // Read through the Lines, Assays, and AssayMeasurements data and prepare a secondary data
     // structure for filtering according to unique criteria, then remake the filtering section under
     // the main graph area with columns of labeled checkboxes.

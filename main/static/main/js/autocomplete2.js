@@ -217,6 +217,9 @@ EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(selector, 
                     }
                     terms[request.term] = result;
                     response(result);
+                },
+                'error': function (jqXHR, status, err) {
+                    response([ '<i>Server Error</i>' ]);
                 }
             });
         },
