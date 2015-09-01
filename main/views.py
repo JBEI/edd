@@ -43,20 +43,33 @@ def lookup(dictionary, key):
     """
     Utility template filter, as Django forbids argument passing in templates. Used for filtering
     out values, e.g. for metadata, of list has EDDObject items and type is a MetadataType:
-    {% for obj in list %}
+    {%% for obj in list %%}
     {{ obj.metadata|lookup:type }}
-    {% endfor %}
+    {%% endfor %%}
     """
     return dictionary.get(key, settings.TEMPLATE_STRING_IF_INVALID)
 
 @register.filter(name='formula')
-def formula (molecular_formula) :
+def formula(molecular_formula):
     """ Convert the molecular formula to a list of dictionaries giving each element and its count.
         This is used in HTML views with <sub> tags. """
     elements = re.findall("([A-Z][a-z]{0,2})([1-9][0-9]*)?", molecular_formula)
     return mark_safe(
         "".join([ '%s%s' % (e, '<sub>%s</sub>' % c if c != '' else c) for e,c in elements ])
         )
+
+def load_study(request, study_id, permission_type=['R','W']):
+    """ Loads a study as a request user; throws a 404 if the study does not exist OR if no valid 
+        permissions are set for the user on the study. """
+    if request.user.is_superuser:
+        return get_object_or_404(Study, pk=study_id)
+    return get_object_or_404(
+        Study,
+        Q(userpermission__user=request.user,
+          userpermission__permission_type__in=permission_type) |
+        Q(grouppermission__group__user=request.user,
+          grouppermission__permission_type__in=permission_type),
+        pk=study_id)
 
 
 class StudyCreateView(generic.edit.CreateView):
@@ -92,6 +105,16 @@ class StudyDetailView(generic.DetailView):
         context['new_measurement'] = MeasurementForm(prefix='measurement')
         context['writable'] = self.get_object().user_can_write(self.request.user)
         return context
+
+    def get_queryset(self):
+        qs = super(StudyDetailView, self).get_queryset()
+        if self.request.user.is_superuser:
+            return qs
+        return qs.filter(
+            Q(userpermission__user=self.request.user,
+              userpermission__permission_type__in=['R','W']) |
+            Q(grouppermission__group__user=self.request.user,
+              grouppermission__permission_type__in=['R','W'])).distinct()
 
     def handle_assay(self, request, context):
         assay_id = request.POST.get('assay-assay_id', None)
@@ -370,11 +393,13 @@ class ExportView(generic.TemplateView):
 # /study/<study_id>/lines/
 def study_lines(request, study):
     """ Request information on lines in a study. """
-    return JsonResponse(Line.objects.filter(study=study), encoder=JSONDecimalEncoder)
+    obj = load_study(request, study)
+    return JsonResponse(Line.objects.filter(study=obj), encoder=JSONDecimalEncoder)
 
 # /study/<study_id>/measurements/<protocol_id>/
 def study_measurements(request, study, protocol):
     """ Request measurement data in a study. """
+    obj = load_study(request, study)
     measure_types = MeasurementType.objects.filter(
         measurement__assay__line__study_id=study,
         measurement__assay__protocol_id=protocol,
@@ -419,6 +444,7 @@ def study_measurements(request, study, protocol):
 # /study/<study_id>/measurements/<protocol_id>/<assay_id>/
 def study_assay_measurements(request, study, protocol, assay):
     """ Request measurement data in a study, for a single assay. """
+    obj = load_study(request, study)
     measure_types = MeasurementType.objects.filter(
         measurement__assay__line__study_id=study,
         measurement__assay__protocol_id=protocol,
@@ -474,21 +500,21 @@ def study_search(request):
     return JsonResponse(query_response, encoder=JSONDecimalEncoder)
 
 # /study/<study_id>/edddata/
-def study_edddata (request, study) :
+def study_edddata(request, study):
     """
     Various information (both global and study-specific) that populates the
     EDDData JS object on the client.
     """
-    model = Study.objects.get(pk=study)
+    model = load_study(request, study)
     data_misc = get_edddata_misc()
     data_study = get_edddata_study(model)
     data_study.update(data_misc)
     return JsonResponse(data_study, encoder=JSONDecimalEncoder)
 
 # /study/<study_id>/assaydata/
-def study_assay_table_data (request, study) :
+def study_assay_table_data(request, study):
     """ Request information on assays associated with a study. """
-    model = Study.objects.get(pk=study)
+    model = load_study(request, study)
     # FIXME filter protocols?
     protocols = Protocol.objects.all()
     lines = model.line_set.all()
@@ -504,6 +530,7 @@ def study_assay_table_data (request, study) :
 # /study/<study_id>/map/
 def study_map(request, study):
     """ Request information on metabolic map associated with a study. """
+    obj = load_study(request, study)
     try:
         mmap = SBMLTemplate.objects.get(study=study)
         return JsonResponse({
@@ -518,12 +545,54 @@ def study_map(request, study):
     except Exception, e:
         raise e
 
+# /study/<study_id>/permissions/
+def permissions(request, study):
+    obj = load_study(request, study)
+    if request.method == 'HEAD':
+        return HttpResponse(status=200)
+    elif request.method == 'GET':
+        return JsonResponse([ p.to_json() for p in obj.get_combined_permission() ])
+    elif request.method == 'PUT' or request.method == 'POST':
+        if not obj.user_can_write(request.user):
+            return HttpResponseForbidden("You do not have permission to modify this study.")
+        try:
+            perms = json.loads(request.POST['data'])
+            for perm in perms:
+                user = perm.get('user', None)
+                group = perm.get('group', None)
+                ptype = perm.get('type', StudyPermission.NONE)
+                manager = None
+                if group is not None:
+                    manager = obj.grouppermission_set.filter(group_id=group.get('id', 0))
+                elif user is not None:
+                    manager = obj.userpermission_set.filter(user_id=user.get('id', 0))
+                if ptype == StudyPermission.NONE:
+                    manager.delete()
+                else:
+                    manager.update(permission_type=ptype)
+        except Exception, e:
+            logger.error('Error modifying study (%s) permissions: %s' % (study, str(e)))
+            return HttpResponse(status=500)
+        return HttpResponse(status=204)
+    elif request.method == 'DELETE':
+        if not obj.user_can_write(request.user):
+            return HttpResponseForbidden("You do not have permission to modify this study.")
+        try:
+            obj.grouppermission_set.all().delete()
+            obj.userpermission_set.all().delete()
+        except Exception, e:
+            logger.error('Error deleting study (%s) permissions: %s' % (study, str(e)))
+            return HttpResponse(status=500)
+        return HttpResponse(status=204)
+    else:
+        return HttpResponseNotAllowed(['HEAD', 'GET', 'PUT', 'POST', 'DELETE', ])
+
 # /study/<study_id>/import
 # FIXME should have trailing slash?
 @ensure_csrf_cookie
 def study_import_table(request, study):
     """ View for importing tabular assay data (replaces AssayTableData.cgi). """
-    model = Study.objects.get(pk=study)
+    model = load_study(request, study, permision_type=['W',])
     # FIXME filter protocols?
     protocols = Protocol.objects.order_by('name')
     if (request.method == "POST"):
@@ -547,23 +616,19 @@ def study_import_table(request, study):
 # /study/<study_id>/import/rnaseq
 # FIXME should have trailing slash?
 @ensure_csrf_cookie
-def study_import_rnaseq (request, study) :
-    """
-    View for importing multiple sets of RNA-seq measurements in various simple
-    tabular formats defined by us.  Handles both GET and POST.
-    """
+def study_import_rnaseq(request, study):
+    """ View for importing multiple sets of RNA-seq measurements in various simple tabular formats
+        defined by us.  Handles both GET and POST. """
     messages = {}
-    model = Study.objects.get(pk=study)
+    model = load_study(request, study, permission_type=['W',])
     lines = model.line_set.all()
-    if (request.method == "POST") :
-        try :
+    if request.method == "POST":
+        try:
             result = main.data_import.import_rna_seq.from_form(request, model)
-            messages["success"] = "Added %d measurements in %d assays." %\
-                (result.n_assay, result.n_meas)
-        except ValueError as e :
+            messages["success"] = "Added %d measurements in %d assays." % (
+                result.n_assay, result.n_meas)
+        except ValueError as e:
             messages["error"] = str(e)
-        #else :
-        #    return redirect("/study/%s" % study)
     return render_to_response("main/import_rnaseq.html",
         dictionary={
             "messages" : messages,
@@ -575,35 +640,37 @@ def study_import_rnaseq (request, study) :
 # /study/<study_id>/import/rnaseq/edgepro
 # FIXME should have trailing slash?
 @ensure_csrf_cookie
-def study_import_rnaseq_edgepro (request, study) :
-    """
-    View for importing a single set of RNA-seq measurements from the EDGE-pro
-    pipeline, attached to an existing Assay.  Handles both GET and POST.
-    """
+def study_import_rnaseq_edgepro(request, study):
+    """ View for importing a single set of RNA-seq measurements from the EDGE-pro pipeline,
+        attached to an existing Assay.  Handles both GET and POST. """
     messages = {}
-    model = Study.objects.get(pk=study)
+    model = load_study(request, study, permission_type=['W',])
     assay_id = None
-    if (request.method == "GET") :
+    if request.method == "GET":
         assay_id = request.POST.get("assay", None)
-    elif (request.method == "POST") :
+    elif request.method == "POST":
         assay_id = request.POST.get("assay", None)
-        try :
-            if (assay_id is None) or (assay_id == "") :
+        try:
+            if assay_id is None or assay_id == "":
                 raise ValueError("Assay ID required for form submission.")
             result = main.data_import.import_rnaseq_edgepro.from_form(
                 request=request,
                 study=model)
             messages["success"] = result.format_message()
-        except ValueError as e :
+        except ValueError as e:
             messages["error"] = str(e)
-        #else :
-        #    return redirect("/study/%s" % study)
     protocol = Protocol.objects.get(name="Transcriptomics")
-    assays_ = Assay.objects.filter(protocol=protocol,
-        line__study=study).prefetch_related(
-        "measurement_set").select_related("line").select_related("protocol")
+    assays_ = Assay.objects.filter(
+            protocol=protocol,
+            line__study=study
+        ).prefetch_related(
+            "measurement_set"
+        ).select_related(
+            "line",
+            "protocol"
+        )
     assay_info = []
-    for assay in assays_ :
+    for assay in assays_:
         assay_info.append({
             "id" : assay.id,
             "long_name" : assay.long_name,
@@ -611,54 +678,48 @@ def study_import_rnaseq_edgepro (request, study) :
         })
     return render_to_response("main/import_rnaseq_edgepro.html",
         dictionary={
-            "selected_assay_id" : assay_id,
-            "assays" : assay_info,
-            "messages" : messages,
-            "study" : model,
+            "selected_assay_id": assay_id,
+            "assays": assay_info,
+            "messages": messages,
+            "study": model,
         },
         context_instance=RequestContext(request))
 
 # /study/<study_id>/import/rnaseq/parse
 # FIXME should have trailing slash?
-def study_import_rnaseq_parse (request, study) :
-    """
-    Parse raw data from an uploaded text file, and return JSON object of
-    processed result.  Result is identical to study_import_rnaseq_process,
-    but this method is invoked by drag-and-drop of a file (via filedrop.js).
-    """
-    model = Study.objects.get(pk=study)
+def study_import_rnaseq_parse(request, study):
+    """ Parse raw data from an uploaded text file, and return JSON object of processed result.
+        Result is identical to study_import_rnaseq_process, but this method is invoked by
+        drag-and-drop of a file (via filedrop.js). """
+    model = load_study(request, study, permission_type=['W',])
     referrer = request.META['HTTP_REFERER']
     result = None
     # XXX slightly gross: using HTTP_REFERER to dictate choice of parsing
     # functions
-    try :
-        if ("edgepro" in referrer) :
-            result = main.data_import.interpret_edgepro_data(
-                raw_data=request.read())
+    try:
+        if "edgepro" in referrer:
+            result = main.data_import.interpret_edgepro_data(raw_data=request.read())
             result['format'] = "edgepro"
-        else :
+        else:
             result = main.data_import.interpret_raw_rna_seq_data(
-                raw_data=request.read(),
-                study=model)
+                raw_data=request.read(), study=model)
             result['format'] = "generic"
-    except ValueError as e :
+    except ValueError as e:
         return JsonResponse({ "python_error" : str(e) })
-    else :
+    else:
         return JsonResponse(result)
 
 # /study/<study_id>/import/rnaseq/process
 # FIXME should have trailing slash?
 def study_import_rnaseq_process (request, study) :
-    """
-    Process form submission containing either a file or text field, and
-    return JSON object of processed result.
-    """
-    model = Study.objects.get(pk=study)
-    assert (request.method == "POST")
-    try :
+    """ Process form submission containing either a file or text field, and return JSON object of
+        processed result. """
+    model = load_study(request, study, permission_type=['W',])
+    assert(request.method == "POST")
+    try:
         data = request.POST.get("data", "").strip()
         file_name = None
-        if (data == "") :
+        if data == "":
             data_file = request.FILES.get("file_name", None)
             if (data_file is None) :
                 raise ValueError("Either a text file or pasted table is "+
@@ -666,65 +727,64 @@ def study_import_rnaseq_process (request, study) :
             data = data_file.read()
             file_name = data_file.name
         result = None
-        if (request.POST.get("format") == "htseq-combined") :
+        if request.POST.get("format") == "htseq-combined":
             result = main.data_import.interpret_raw_rna_seq_data(
                 raw_data=data,
                 study=model,
                 file_name=file_name)
-        elif (request.POST.get("format") == "edgepro") :
+        elif request.POST.get("format") == "edgepro":
             result = main.data_import.interpret_edgepro_data(
                 raw_data=data,
                 study=model,
                 file_name=file_name)
-        else :
+        else:
             raise ValueError("Format needs to be specified!")
-    except ValueError as e :
+    except ValueError as e:
         return JsonResponse({ "python_error" : str(e) })
-    except Exception as e :
+    except Exception as e:
         print e
-    else :
+    else:
         return JsonResponse(result)
 
 
 # /study/<study_id>/sbml
 # FIXME should have trailing slash?
-def study_export_sbml (request, study) :
-    model = Study.objects.get(pk=study)
-    if (request.method == "POST") :
+def study_export_sbml(request, study):
+    model = load_study(request, study)
+    if request.method == "POST":
         form = request.POST
-    else :
+    else:
         form = request.GET
-    try :
+    try:
         lines = get_selected_lines(form, model)
         manager = main.sbml_export.line_sbml_export(
             study=model,
             lines=lines,
             form=form,
             debug=True)
-    except ValueError as e :
+    except ValueError as e:
         return render(request, "main/error.html", {
           "error_source" : "SBML export for %s" % model.name,
           "error_message" : str(e),
         })
-    else :
+    else:
         # two levels of exception handling allow us to view whatever steps
         # were completed successfully even if a later step fails
         error_message = None
-        try :
+        try:
             manager.run()
-        except ValueError as e :
+        except ValueError as e:
             error_message = str(e)
-        else :
-            if form.get("download", None) :
+        else:
+            if form.get("download", None):
                 timestamp_str = form["timestamp"]
-                if (timestamp_str != "") :
+                if timestamp_str != "":
                     timestamp = float(timestamp_str)
                     sbml = manager.as_sbml(timestamp)
                     response = HttpResponse(sbml,
                     content_type="application/sbml+xml")
                     file_name = manager.output_file_name(timestamp)
-                    response['Content-Disposition'] = \
-                        'attachment; filename="%s"' % file_name
+                    response['Content-Disposition'] = 'attachment; filename="%s"' % file_name
                     return response
         return render_to_response("main/sbml_export.html",
             dictionary={
@@ -736,15 +796,15 @@ def study_export_sbml (request, study) :
             context_instance=RequestContext(request))
 
 # /data/users
-def data_users (request) :
+def data_users(request):
     return JsonResponse({ "EDDData" : get_edddata_users() }, encoder=JSONDecimalEncoder)
 
 # /data/misc
-def data_misc (request) :
+def data_misc(request):
     return JsonResponse({ "EDDData" : get_edddata_misc() }, encoder=JSONDecimalEncoder)
 
 # /data/measurements
-def data_measurements (request) :
+def data_measurements(request):
     data_meas = get_edddata_measurement()
     data_misc = get_edddata_misc()
     data_meas.update(data_misc)
@@ -864,11 +924,11 @@ def data_sbml_compute(request, sbml_id, rxn_id):
     raise Http404("Could not find reaction")
 
 # /data/strains
-def data_strains (request) :
+def data_strains(request):
     return JsonResponse({ "EDDData" : get_edddata_strains() }, encoder=JSONDecimalEncoder)
 
 # /data/metadata
-def data_metadata (request) :
+def data_metadata(request):
     return JsonResponse({
             "EDDData" : {
                 "MetadataTypes" :
@@ -877,78 +937,72 @@ def data_metadata (request) :
         }, encoder=JSONDecimalEncoder)
 
 # /data/carbonsources
-def data_carbonsources (request) :
+def data_carbonsources(request):
     return JsonResponse({ "EDDData" : get_edddata_carbon_sources() }, encoder=JSONDecimalEncoder)
 
 # /download/<file_id>
-def download (request, file_id) :
+def download(request, file_id):
     model = Attachment.objects.get(pk=file_id)
-    if (not model.user_can_read(request.user)) :
-        return HttpResponseForbidden("You do not have access to data "+
-            "associated with this study.")
-    response = HttpResponse(model.file.read(),
-        content_type=model.mime_type)
-    response['Content-Disposition'] = 'attachment; filename="%s"' % \
-        model.filename
+    if not model.user_can_read(request.user):
+        return HttpResponseForbidden("You do not have access to data associated with this study.")
+    response = HttpResponse(model.file.read(), content_type=model.mime_type)
+    response['Content-Disposition'] = 'attachment; filename="%s"' % model.filename
     return response
 
-def delete_file (request, file_id) :
+def delete_file(request, file_id):
     redirect_url = request.GET.get("redirect", None)
     if (redirect_url is None) :
         return HttpResponseBadRequest("Missing redirect URL.")
     model = Attachment.objects.get(pk=file_id)
-    if (not model.user_can_delete(request.user)) :
+    if not model.user_can_delete(request.user):
         return HttpResponseForbidden("You do not have permission to remove "+
             "files associated with this study.")
     model.delete()
     return redirect(redirect_url)
 
 # /utilities/parsefile
-def utilities_parse_table (request) :
-    """
-    Attempt to process posted data as either a TSV or CSV file or Excel
-    spreadsheet and extract a table of data automatically.
-    """
+def utilities_parse_table(request):
+    """ Attempt to process posted data as either a TSV or CSV file or Excel spreadsheet and
+        extract a table of data automatically. """
     default_error = JsonResponse({"python_error" : "The uploaded file "+
         "could not be interpreted as either an Excel spreadsheet or a "+
         "CSV/TSV file.  Please check that the contents are formatted "+
         "correctly.  (Word documents are not allowed!)" })
     data = request.read()
-    try :
+    try:
         parsed = csv.reader(data, delimiter='\t')
-        assert (len(parsed[0]) > 1)
+        assert(len(parsed[0]) > 1)
         return JsonResponse({
             "file_type" : "tab",
             "file_data" : data,
         })
-    except Exception as e :
-        try :
+    except Exception as e:
+        try:
             parsed = csv.reader(data, delimiter=',')
-            assert (len(parsed[0]) > 1)
+            assert(len(parsed[0]) > 1)
             return JsonResponse({
                 "file_type" : "csv",
                 "file_data" : data,
             })
-        except Exception as e :
-            try :
+        except Exception as e:
+            try:
                 from edd_utils.parsers import excel
-                result = excel.import_xlsx_tables(
-                    file=BytesIO(data))
+                result = excel.import_xlsx_tables(file=BytesIO(data))
                 return JsonResponse({
                     "file_type" : "xlsx",
                     "file_data" : result,
                 })
-            except ImportError as e :
+            except ImportError as e:
                 return JsonResponse({ "python_error" :
                     "jbei_tools module required to handle Excel table input."
                 })
-            except ValueError as e :
+            except ValueError as e:
                 return JsonResponse({ "python_error" : str(e) })
-            except Exception as e :
+            except Exception as e:
                 return default_error
 
 # /search
-def search (request) :
+def search(request):
     """
     Naive implementation of model-independent server-side autocomplete backend,
     paired with autocomplete2.js on the client side.  This is probably too

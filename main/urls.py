@@ -26,6 +26,7 @@ urlpatterns = patterns('',
         login_required(views.study_assay_measurements),
         ),
     url(r'^study/(?P<study>\d+)/map/$', login_required(views.study_map)),
+    #url(r'^study/(?P<study>\d+)/permission/$', login_required(views.study_permission)),
     # FIXME make a module/app just for import?
     # url(r'^study/(?P<study>\d+)/import/$', include('main.import.urls', namespace='edd-import'))
     url(r'^study/(?P<study>\d+)/import$', login_required(views.study_import_table)),

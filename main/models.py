@@ -508,11 +508,6 @@ class Study(EDDObject):
             return self.contact_extra
         return self.contact.email
 
-    def get_line_metadata_types(self):
-        # TODO: add in strain, carbon source here? IFF exists a line with at least one
-        # TODO: cannot go through non-existant Metadata object mapping now
-        return list()
-
     def get_metabolite_types_used(self):
         return list(Metabolite.objects.filter(measurement__assay__line__study=self).distinct())
 
@@ -522,7 +517,7 @@ class Study(EDDObject):
     def get_strains_used(self):
         return list(Strain.objects.filter(line__study=self).distinct())
 
-    def get_assays (self) :
+    def get_assays(self):
         return list(Assay.objects.filter(line__study=self))
 
     def get_assays_by_protocol(self):
@@ -589,6 +584,15 @@ class UserPermission(StudyPermission):
     def applies_to_user(self, user):
         return self.user == user
 
+    def to_json(self):
+        return {
+            'user': {
+                'id': self.user.pk,
+                'name': self.user.username,
+            },
+            'type': self.permission_type
+        }
+
     def __str__(self):
         return 'u:%(user)s' % {'user':self.user.username}
 
@@ -600,6 +604,15 @@ class GroupPermission(StudyPermission):
 
     def applies_to_user(self, user):
         return user.groups.contains(self.group)
+
+    def to_json(self):
+        return {
+            'user': {
+                'id': self.group.pk,
+                'name': self.group.name,
+            },
+            'type': self.permission_type
+        }
 
     def __str__(self):
         return 'g:%(group)s' % {'group':self.group.name}
