@@ -287,6 +287,7 @@ This section contains directions for setting up a development environment on EDD
             sudo chown <user>:<group> /Library/LaunchDaemons/com.rabbitmq.plist
 
     * Load the daemon and test that it's working
+        * Note: launchctl run as non-root appears to work, but only returns results relevant to the user who ran it. Always run this as root.
         * You may want to tail -f the system log in `/var/log/system.log` and/or rabbitmq logs in
           `/usr/local/var/log/rabbitmq/` in case of problems
         * `sudo launchctl load /Library/LaunchDaemons/com.rabbitmq.plist`
@@ -294,7 +295,7 @@ This section contains directions for setting up a development environment on EDD
           non-zero integer indicating RabbitMQ's process ID
         * In case of problems, use
           `sudo launchctl unload /Library/LaunchDaemons/com.rabbitmq.plist`
-        * From this point on, all manual commands should be run as user `rabbitmq`, and omitting
+        * From this point on, all commands (other the launchctl) should be run as user `rabbitmq`, and omitting
           the `sudo` from earlier testing.
 
             sudo su rabbitmq
@@ -312,7 +313,7 @@ This section contains directions for setting up a development environment on EDD
         * If `rabbitmqctl` is accidentally run as `root`, `rabbitmqctl` status will mention
           "TCP connection succeeded but Erlang distribution failed". It looks for the
           `.erlang.cookie` in the current user's home directory.
-        * If a 'mkdir: /usr/local/var/lib/rabbitmq/mnesia: Permission denied' error occours when you run `sudo -u rabbitmq rabbitmq-server`, then one of the files/directories in that path has its write/execute permissions set too restrictively. To fix this, use `ls -ld` starting at the bottom of that path, until you find the file with restrictive permissions, something like this: drwx------. Then `chmod +rx` the offending file. 
+        * If a 'mkdir: /usr/local/var/lib/rabbitmq/mnesia: Permission denied' error occours when you run `sudo -u rabbitmq rabbitmq-server`, then one of the files/directories in that path has its write/execute permissions set too restrictively. To fix this, use `ls -ld` starting at the bottom of that path, until you find the file with restrictive permissions, something like this: drwx------. Then `chmod +rx ` the offending file. 
  * Install Celery as a daemon <a name="InstallCeleryDaemon">
     * Create a new unplivileged OSX system account to run Celery worker(s)
 
