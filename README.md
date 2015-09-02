@@ -312,7 +312,11 @@ This section contains directions for setting up a development environment on EDD
         * If `rabbitmqctl` is accidentally run as `root`, `rabbitmqctl` status will mention
           "TCP connection succeeded but Erlang distribution failed". It looks for the
           `.erlang.cookie` in the current user's home directory.
-        * If a 'mkdir: /usr/local/var/lib/rabbitmq/mnesia: Permission denied' error occours when you run `sudo -u rabbitmq rabbitmq-server`, then one of the files/directories in that path has its write/execute permissions set too restrictively. To fix this, use `ls -ld` starting at the bottom of that path, until you find the file with restrictive permissions, something like this: drwx------. Then `chmod +rx` the offending file. 
+        * If a 'mkdir: /usr/local/var/lib/rabbitmq/mnesia: Permission denied' error occours when
+          you run `sudo -u rabbitmq rabbitmq-server`, then one of the files/directories in that
+          path has its write/execute permissions set too restrictively. To fix this, use `ls -ld`
+          starting at the bottom of that path, until you find the file with restrictive
+          permissions, something like this: drwx------. Then `chmod +rx` the offending file. 
  * Install Celery as a daemon <a name="InstallCeleryDaemon">
     * Create a new unplivileged OSX system account to run Celery worker(s)
 
@@ -356,7 +360,7 @@ This section contains directions for setting up a development environment on EDD
       RabbitMQ service
 
         cd edd
-        celery worker --app edd --queues=edd --hostname=edd-worker-1.%h --autoscale=10,1 --autoreload --loglevel=info
+        celery worker --app=edd --queues=edd --hostname=edd-worker-1.%h --autoscale=10,1 --autoreload --loglevel=info
 
     * Create log directory for the daemon
 
