@@ -145,20 +145,37 @@ Unless specified otherwise, all commands should be run from the repository root 
 * Install Celery as a daemon
     * Create `celery` user account
         * `sudo ./celery/osx/add_system_user.sh celery`
+        * `sudo mkdir -p /var/lib/celery`
+        * `sudo chown celery:celery /var/lib/celery`
+        * `sudo dscl /Local/Default -delete Users/_celery NFSHomeDirectory`
+        * `sudo dscl /Local/Default -create Users/_celery NFSHomeDirectory /var/lib/celery/`
         * `sudo dscl /Local/Default -delete Users/_celery UserShell`
         * `sudo dscl /Local/Default -create Users/_celery UserShell /bin/bash`
-        * Ensure user `celery` has access to EDD codebase
+        * Ensure user `celery` has access to EDD codebase (and EDD virtualenv!)
             * Easy way: add `celery` to group owning home directory (`staff`, usually)
                 * `sudo dseditgroup -o edit -a celery -t user staff`
             * Other ways are left as an exercise to the reader
             * Test: `sudo -u celery ls -l /path/to/edd`
-        * Run a test worker with:
+        * Ensure the `celery` user environment is minimally configured
+            * Get your local virtualenv path by running `which celery` from own local account
+                * e.g. output of `/Users/alice/.virtualenvs/synbio/bin/celery` means the path is
+                  `/Users/alice/.virtualenvs/synbio/bin`
+            * has a `.bashrc` with (using your own virtualenv path and name) :
+
+                export WORKON_HOME=/Users/alice/.virtualenvs
+                export PATH=/usr/local/sbin:$PATH
+                source /usr/local/bin/virtualenvwrapper.sh
+                workon synbio
+
+            * has a `.bash_profile` with `source .bashrc`
+        * Create `edd` and `venv` symlinks to EDD repository root and virtualenv
+            * `ln -s /Users/alice/code/edd edd`
+            * `ln -s /Users/alice/.virtualenvs/synbio venv`
+        * Run a test worker (as user `celery`, from EDD repository root) with:
             * `celery worker -A edd -Q edd -n edd-worker-1.%h -l info`
         * Ensure log directory exists and is writable
             * `sudo mkdir -p /var/log/celery`
             * `sudo chown celery:celery /var/log/celery`
-    * TODO: need to modify below to remove hard-code path to EDD code; create celery homedir in
-      /usr/local/celery with shell script and `export EDD_HOME=/path/to/edd` in .bashrc?
     * Configure Celery to run as a daemon
         * `sudo cp ./celery/osx/org.celeryq.worker.plist /Library/LaunchDaemons/`
         * `sudo launchctl load /Library/LaunchDaemons/org.celeryq.worker.plist`
