@@ -631,7 +631,7 @@ INSERT INTO public.edd_object(sbml_template_id, name, description, created_id, u
 -- copy over attachments
 --
 INSERT INTO public.attachment(
-      object_ref_id, filename, file, description, created_id, mime_type, file_size
+        object_ref_id, filename, file, description, created_id, mime_type, file_size
     ) SELECT o.id, a.filename, a.filename, a.description, m.id, a.mime_type, a.file_size
     FROM old_edd.attachments a
     INNER JOIN public.edd_object o ON o.study_id = a.study_id
@@ -643,6 +643,22 @@ INSERT INTO public.attachment(
         date_trunc('second', a.creation_time)
         AND m.mod_by_id = a.created_by
     ORDER BY a.id;
+
+
+--
+-- copy over comments
+--
+INSERT INTO public.comment(
+        object_ref_id, body, created_id
+    ) SELECT o.id, c.body, m.id
+    FROM old_edd.comments c
+    INNER JOIN public.edd_object o ON o.study_id = c.study_id
+        OR o.line_id = c.line_id
+        OR o.assay_id = c.assay_id
+    LEFT JOIN public.update_info m ON date_trunc('second', m.mod_time) =
+        date_trunc('second', c.creation_time)
+        AND m.mod_by_id = c.created_by
+    ORDER BY c.id;
 
 
 -- continue SBML Template conversion
