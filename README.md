@@ -211,13 +211,14 @@ This section contains directions for setting up a development environment on EDD
 ### Debian (for deployment) <a name="Debian_Packages"/>
 
  * Required `.deb` packages
-    * `sudo apt-get install pip` for PyPI/pip python package manager
+    * `sudo apt-get install python-pip` for PyPI/pip python package manager
+    * `sudo apt-get install postgresql-client` for commands used to copy database
     * `sudo apt-get install libpq-dev` for headers required by psycopg2
-    * `sudo apt-get install libldap2-dev libsasl2-dev libssl-dev` for headers required by python-ldap
+    * `sudo apt-get install libldap2-dev libsasl2-dev libssl-dev` for headers required by
+      python-ldap
     * `sudo apt-get install python-dev libffi-dev` for headers required by cryptography
     * `sudo apt-get install libatlas-dev liblapack-dev gfortran` for packages required by SciPy
     * `sudo apt-get install libbz2-dev` for packages required by libsmbl
-
  
  * Configure LDAP SSL handling in `/etc/ldap/ldap.conf` <a name="Configure_LDAP"/>
     * Add line `TLS_CACERTDIR   /etc/ssl/certs`
@@ -227,27 +228,30 @@ This section contains directions for setting up a development environment on EDD
  
  * Python packages <a name="Python_Packages_Deb"/>
     * `sudo pip install virtualenvwrapper`
+    * `mkdir -p /usr/local/virtualenvs`
+        * TODO: should look into permissions on directory containing virtualenvs
     * Add to your shell startup (e.g. `~/.bashrc`) and `source` your startup file
 
-            export WORKON_HOME=/usr/local/virtualenvs
-            source /usr/local/bin/virtualenvwrapper.sh
+            if [ -f /usr/local/bin/virtualenvwrapper.sh ]; then
+                export WORKON_HOME=/usr/local/virtualenvs
+                source /usr/local/bin/virtualenvwrapper.sh
+            fi
 
-	* Test your work by launching a new Terminal and running `echo $WORKON_HOME`
-			* If no value is printed, consider adding a ``~/.bash_profile`` file to force your .bashrc to be executed. See [explanation](http://apple.stackexchange.com/questions/119711/why-mac-os-x-dont-source-bashrc)
-				
-				[[ -r ~/.bashrc ]] && . ~/.bashrc
-
+	* Test your work by launching a new Terminal and running `workon`
+        * If nothing happens, it works!
+        * If you get `command not found`, virtualenvwrapper is not properly set up.
     * `mkvirtualenv edd.jbei.org` or `workon edd.jbei.org`
     * `pip install -r /path/to/project/requirements.txt` to install python packages to virtualenv
+        * See note about changes to `threadlocals` package below
  
  * \(_optional_\) `sudo apt-get install tomcat7` for Tomcat/Solr <a name="Solr_Tomcat_Deb"/>
     * Download [Solr](http://lucene.apache.org/solr/) and copy WAR to webapps folder
  
- * Django setup <a name = "Django_Deb"/>
+ * Django setup <a name="Django_Deb"/>
     * See section Database Conversion below if migrating from CGI EDD database
     * `./manage.py collectstatic` to ensure that all static files are in one spot
  
- * Apache setup <a name = "Apache_Deb"/>
+ * Apache setup <a name="Apache_Deb"/>
     * mod_wsgi: `sudo apt-get install libapache2-mod-wsgi`
     * Add inside `VirtualHost` config:
 
@@ -260,9 +264,10 @@ This section contains directions for setting up a development environment on EDD
             WSGIProcessGroup    edd
             WSGIScriptAlias     /       /var/www/${SITE}/edd/wsgi.py
 
+    * Ensure that `/var/www/uploads/` exists and is writable by user `www-data`
  * TODO complete Debian instructions
  
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------
 
 <a name="Helpful_Python"></a>
 ## Helpful Python Packages 
@@ -327,60 +332,45 @@ populating a new deployment with existing data.
 
 <a name="PythonPackages"></a>
 ## Required Python Package Reference 
-This section describes required Python packages for EDD. This listing is for reference only, since EDD's requirements.txt
-should normally be used to install required packages.
+This section describes required Python packages for EDD. This listing is for reference only,
+since EDD's requirements.txt should normally be used to install required packages.
 
- * N.B. probably need to re-install `cryptography` to compile in correct OpenSSL
- * [Arrow](http://crsmithdev.com/arrow/)
+* On JBEI Debian servers, home directories are NFS-mounted, and `pip` can be slow, especially
+  with `scikit-learn` and `scipy`
+    * run `pip install` with `-b /path/to/local/disk` to use a non-NFS directory
+* N.B. probably need to re-install `cryptography` to compile in correct OpenSSL (on OS X)
+* [Arrow](http://crsmithdev.com/arrow/)
       * "Arrow is a Python library that offers a sensible, human-friendly approach to creating,
         manipulating, formatting and converting dates, times, and timestamps."
       * `sudo pip install arrow`
- * [cryptography](https://cryptography.io/en/latest/)
+* [cryptography](https://cryptography.io/en/latest/)
     * Adds some crypto libraries to help play nice with TLS certificates
     * Needs additional env flags to ensure using Brew-installed OpenSSL
     * `env ARCHFLAGS="-arch x86_64" LDFLAGS="-L/usr/local/opt/openssl/lib"
         CFLAGS="-I/usr/local/opt/openssl/include" pip install cryptography`
         * May need to include `--upgrade --force-reinstall` flags after `install` in prior
           command
- * [Django](https://www.djangoproject.com/)
+* [Django](https://www.djangoproject.com/)
     * MVC web framework used to develop EDD.
     * `sudo pip install Django`
- * [django-auth-ldap](https://pythonhosted.org/django-auth-ldap/index.html)
+* [django-auth-ldap](https://pythonhosted.org/django-auth-ldap/index.html)
     * A Django application providing authentication with an LDAP backend.
     * `sudo pip install django-auth-ldap`
- * [django-extensions](https://django-extensions.readthedocs.org/en/latest/)
+* [django-extensions](https://django-extensions.readthedocs.org/en/latest/)
     * Adds additional management extensions to the Django management script.
     * `sudo pip install django-extensions`
- * [django-hstore](https://github.com/djangonauts/django-hstore)
-    * Supports the PostgreSQL HStore extension for key-value store columns.
-    * `sudo pip install django-hstore`
-    * Ensure that the hstore extension is enabled on the PostgreSQL template1 database before
-      use; details in django-hstore documentation, and command provided in PostgreSQL setup
-      above.
-    * Requires running `python manage.py collectstatic` to copy static files in all apps to a
-      common location; this may need to be run every deploy.
- * [django-registration](http://django-registration-redux.readthedocs.org/en/latest/index.html)
-    * A Django application allowing for local-account registration and creation.
-    * `sudo pip install django-registration-redux`
-    * Version 1.1 used with Django 1.8+ results in a warning at server startup; to patch:
-        * locate _`ENV`_`/site-packages/registration/models.py`
-        * edit line 187 `user = models.ForeignKey(…` to read `user = models.OneToOneField(…`
-        * change results in no model changes, merely removes the warning
-    * [django-threadlocals](https://pypi.python.org/pypi/django-threadlocals/) <a name="django-threadlocals"></a>
-	   * A Django middleware for storing the current request in a thread.local
-	      * Version on PyPI is Python2 incompatible! It only needs one-liner import change to work.
-          * Open in vim `vi ${venv}/lib/python2.7/site-packages/threadlocals/middleware.py`, for example `/usr/local/lib/python2.7/site-packages/`
-		     * In vim: `s/^from threadlocals\.threadlocals import/from .threadlocals import/)`
-			      
-				 cd /Users/YOURUSERNAME/.virtualenvs/edd/lib/python2.7/site-packages/threadlocals/
-				 vim middleware.py
-
- * [requests](http://docs.python-requests.org/en/latest/)
+* [django-threadlocals](https://pypi.python.org/pypi/django-threadlocals/) <a name="django-threadlocals"></a>
+    * A Django middleware for storing the current request in a thread.local
+        * Version on PyPI is Python2 incompatible! It only needs one-liner import change to work.
+        * Find `vim ${venv}/lib/python2.7/site-packages/threadlocals/middleware.py`
+        * Edit line `from threadlocals.threadlocals import set_thread_variable` to read
+          `from .threadlocals import set_thread_variable`
+* [requests](http://docs.python-requests.org/en/latest/)
     * "Requests is an Apache2 Licensed HTTP library, written in Python, for human beings."
     * `sudo pip install requests[security]`
- * [psycopg2](http://initd.org/psycopg/)
+* [psycopg2](http://initd.org/psycopg/)
     * Database driver/adapter for PostgreSQL in Python.
     * `sudo pip install psycopg2`
- * [python-ldap](http://www.python-ldap.org/)
+* [python-ldap](http://www.python-ldap.org/)
     * Object-oriented client API for accessing LDAP directories.
     * `sudo pip install python-ldap`
