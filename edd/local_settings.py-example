@@ -1,0 +1,46 @@
+""" This is an example of modifications to settings to use for local development. You can use this
+    example by renaming the file and removing the -example suffix, and the local version will use
+    these modified settings.
+"""
+
+import os
+
+# Use everything in the common settings file
+from .settings import *
+
+# Store attachments inside the project directory, under 'uploads'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'uploads', '')
+MEDIA_URL = '/uploads/'
+
+# Add the Django Debug Toolbar to local instance
+INSTALLED_APPS = INSTALLED_APPS + (
+    'debug_toolbar',
+    )
+
+# Log all queries to the console
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'filters': {
+        'require_debug_true': {
+            '()': 'django.utils.log.RequireDebugTrue',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'DEBUG',
+            'filters': ['require_debug_true', ],
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django.db.backends': {
+            'level': 'DEBUG',
+            'handlers': ['console', ],
+        },
+        'main': {
+            'level': 'INFO',
+            'handlers': ['console', ],
+        },
+    },
+}
