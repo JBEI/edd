@@ -1,5 +1,4 @@
 /// <reference path="EDDDataInterface.ts" />
-/// <reference path="EditableElement.ts" />
 /// <reference path="DataGrid.ts" />
 /// <reference path="Utl.ts" />
 /// <reference path="lib/jquery.d.ts" />
@@ -29,38 +28,6 @@ module IndexPage {
 		this.studiesDataGrid = new DataGrid(this.studiesDataGridSpec);
         this.studiesDataGridSpec.requestPageOfData((success) => {
             if (success) this.studiesDataGrid.triggerDataReset();
-        });
-	}
-
-	// This creates an EditableElement object for each Study description that the user is allowed
-    // to edit.
-	export function initDescriptionEditFields() {
-		// Since we've already created the table, we can look into the spec and find the other
-        // objects created in the process.
-		// Under the specification for the "description" column, we find all the
-        // DataGridDataCell objects that belong to that column.
-		var descriptionCells:DataGridDataCell[], data:any;
-        descriptionCells = this.studiesDataGridSpec.descriptionCol.getEntireIndex();
-        data = this.studiesDataGridSpec.data();
-        descriptionCells.forEach((cell:DataGridDataCell):void => {
-            if (data[cell.recordID].write) {
-                EditableElements.initializeElement({
-                    'studyID': cell.recordID,
-                    'element': cell.cellElement,
-                    'type': 'text',
-                    'editAllowed': () => { return true; },
-                    'getValue': (self) => { return data[cell.recordID].des; },
-                    'setValue': (self, value) => data[cell.recordID].des = value,
-                    // TODO edit this to provide proper URL to EditableElement.ts
-                    'makeFormData': (self, value) => {
-                        return {
-                            'action': 'Update Study Description',
-                            'studyID': cell.recordID,
-                            'desc': value
-                        };
-                    }
-                });
-            }
         });
 	}
 };
@@ -380,8 +347,6 @@ class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
 
 	// This is called after everything is initialized, including the creation of the table content.
 	onInitialized(dataGrid:DataGrid):void {
-		// Wire-in our custom edit fields for the Studies page
-		IndexPage.initDescriptionEditFields();
 	}
 
     data():any;
