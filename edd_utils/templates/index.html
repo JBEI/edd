@@ -1,10 +1,8 @@
 {% extends "edd_base.html" %}
 
 {% block js_css %}
-<style>
-li {
-  margin-left: 40px;
-}
+<style type="text/css">
+li { margin-left: 40px; }
 </style>
 {% endblock %}
 
@@ -19,15 +17,24 @@ EDD utilities
 {% block content %}
 
 <p>These tools provide additional data-processing functionality for handling
-non-standard formats that will eventually be imported into EDD.
-  <ul>
-    <li><a href="gc_ms">GC-MS report extraction</a>: this tool streamlines
-    parsing and extracting peaks from reports output by Agilent's
-    MSDChemStation software.</li>
-    <li><a href="proteomics">Skyline reformatting</a>: condense tabular output
-    from the MS data analysis app <a href="http://skyline.gs.washington.edu">
-    Skyline</a>.</li>
-  </ul>
-</p>
+non-standard formats that will eventually be imported into EDD.</p>
+<ul>
+    <li>
+        <a href="{% url 'edd_utils:gc_ms_home' %}">GC-MS report extraction</a>: this tool
+        streamlines parsing and extracting peaks from reports output by Agilent's
+        MSDChemStation software.
+    </li>
+    <li>
+        <a href="{% url 'edd_utils:proteomics_home' %}">Skyline reformatting</a>: condense tabular
+        output from the MS data analysis app
+        <a href="http://skyline.gs.washington.edu">Skyline</a>.
+    </li>
+    {% if user.is_authenticated %}
+    <li>
+        <a href="{% url 'edd_utils:cytometry_home' %}">Cytometer Import</a>: Data import wizard
+        for cytometer data.
+    </li>
+    {% endif %}
+</ul>
 
 {% endblock content %}

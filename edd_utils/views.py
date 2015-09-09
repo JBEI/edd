@@ -72,3 +72,10 @@ def skyline_parse (request) :
     result = skyline.ParseCSV(data.splitlines())
     assert (result is not None)
     return JsonResponse(result.export())
+
+
+########################################################################
+# CYTOMETRY
+#
+def cytometry_home(request):
+    return render(request, 'cytometry.html', {})
