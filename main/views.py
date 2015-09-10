@@ -1042,6 +1042,12 @@ def search(request):
     elif model_name == "Group":
         found = Group.objects.filter(name__iregex=term).order_by('name')
         results = [ { 'id': item.pk, 'name': item.name } for item in found ]
+    elif model_name == "StudyWrite":
+        found = Study.objects.distinct().filter(
+            Q(name__iregex=term) | Q(description__iregex=term),
+            Q(userpermission__user=request.user, userpermission__permission_type='W') |
+            Q(grouppermission__group__user=request.user, grouppermission__permission_type='W'))
+        results = [ item.to_json() for item in found ]
     elif model_name == "MeasurementCompartment":
         # Always return the full set of options; no search needed
         rows = [ { 'id': c[0], 'name': c[1] } for c in MeasurementCompartment.GROUP_CHOICE ]

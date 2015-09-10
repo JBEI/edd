@@ -6,7 +6,7 @@
 <link rel="stylesheet" type="text/css" href="{% static 'edd_utils/css/style.css' %}"/>
 <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.cookie.js' %}"></script>
 <script src="{% static 'edd_utils/js/lib/dropzone.js' %}"></script>
-<script src="{% static 'edd_utils/js/conversions.js' %}"></script>
+<script src="{% static 'edd_utils/js/cytometry.js' %}"></script>
 {% endblock js_css %}
 
 
@@ -19,13 +19,49 @@ Cytometry Import
 {% endblock body_title %}
 
 {% block content %}
+<form action="{% url 'edd_util:cytometry_import' %}" class="edd-form" id="import_form" method="POST">
+    {% csrf_token %}
+    <fieldset id="import_step_1">
+        <legend>Step 1 &mdash; Select Study</legend>
+        <p>Use this page to import data from Flow Cytometry experiments into EDD. First, select a
+            Study to save the data. You may create a new Study from the
+            <a href="{% url 'main:index' %}">homepage</a>. You must have write permissions for the
+            Study saving the imported data, contact the Study creator to get permissions added.</p>
+        <label for="id_study_0">
+            <span>Select Study</span>
+            <input class="autocomp autocomp_study" id="id_study_0" name="study_0" type="text"/>
+            <input id="id_study_1" name="study_1" type="hidden"/>
+        </label>
+    </fieldset>
+    <fieldset id="import_step_2">
+        <legend>Step 2 &mdash; Provide Import Data</legend>
+        <p>Next, add a table of data for import. You may drop a spreadsheet in the indicated area,
+            or paste a CSV or spreadsheet in the text area below. The data should have rows of
+            samples and columns of flow cytometer aggregate data.</p>
+        <label for="id_rawtext">
+            <span>Import Data</span>
+            <textarea id="id_rawtext" style="width:100%"></textarea>
+        </label>
+    </fieldset>
+    <fieldset id="import_step_3">
+        <legend>Step 3 &mdash; Explain Import Data</legend>
+        <p>To complete the data import, EDD needs a timepoint for the data, and definitions for
+            how each data column is classified.</p>
+        <label for="id_time">
+            <span>Timepoint (hours)</span>
+            <input id="id_time" name="time" type="text"/>
+        </label>
+        <p>TODO: parse table from step 2, add dropdown lists to match first column label to
+            line/assay, and first row label to measurement types</p>
+    </fieldset>
+</form>
 <div class="dropzone-wrapper dz-default" style="padding: 20px;">
 <form action="/utilities/proteomics/parse"
-    class="dropzone"
-    enctype="multipart/form-data"
-    id="cytometryDropzone"
-    style="width: 100%; height: 100%;">
-  {% csrf_token %}
+        class="dropzone"
+        enctype="multipart/form-data"
+        id="cytometryDropzone"
+        style="width: 100%; height: 100%;">
+    {% csrf_token %}
 </form>
 </div>
 {% endblock content %}

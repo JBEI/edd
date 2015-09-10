@@ -85,3 +85,6 @@ def skyline_parse(request):
 #
 def cytometry_home(request):
     return render(request, 'cytometry.html', {})
+
+def cytometry_import(request):
+    return render(request, 'cytometry.html', {})
