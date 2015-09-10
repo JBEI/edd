@@ -205,7 +205,7 @@ class TableImport(object):
     def _extract_value(self, value):
         # make sure input is string first, split on slash or colon, and give back array of numbers
         try:
-            return map(float, re.split('/|:', unicode(value.replace(',', ''))))
+            return map(float, re.split('/|:', unicode(value).replace(',', '')))
         except ValueError:
             warnings.warn('Value %s could not be interpreted as a number' % value)
         return []
