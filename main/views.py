@@ -65,7 +65,7 @@ def load_study(request, study_id, permission_type=['R','W']):
     if request.user.is_superuser:
         return get_object_or_404(Study, pk=study_id)
     return get_object_or_404(
-        Study,
+        Study.objects.distinct(),
         Q(userpermission__user=request.user,
           userpermission__permission_type__in=permission_type) |
         Q(grouppermission__group__user=request.user,
