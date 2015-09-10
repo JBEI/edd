@@ -361,10 +361,6 @@ since EDD's requirements.txt should normally be used to install required package
     * `sudo pip install django-extensions`
 * [django-threadlocals](https://pypi.python.org/pypi/django-threadlocals/) <a name="django-threadlocals"></a>
     * A Django middleware for storing the current request in a thread.local
-        * Version on PyPI is Python2 incompatible! It only needs one-liner import change to work.
-        * Find `vim ${venv}/lib/python2.7/site-packages/threadlocals/middleware.py`
-        * Edit line `from threadlocals.threadlocals import set_thread_variable` to read
-          `from .threadlocals import set_thread_variable`
 * [requests](http://docs.python-requests.org/en/latest/)
     * "Requests is an Apache2 Licensed HTTP library, written in Python, for human beings."
     * `sudo pip install requests[security]`
