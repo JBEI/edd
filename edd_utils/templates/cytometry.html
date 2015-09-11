@@ -19,7 +19,7 @@ Cytometry Import
 {% endblock body_title %}
 
 {% block content %}
-<form action="{% url 'edd_util:cytometry_import' %}" class="edd-form" id="import_form" method="POST">
+<form action="{% url 'edd_utils:cytometry_import' %}" class="edd-form" id="import_form" method="POST">
     {% csrf_token %}
     <fieldset id="import_step_1">
         <legend>Step 1 &mdash; Select Study</legend>
@@ -40,7 +40,7 @@ Cytometry Import
             samples and columns of flow cytometer aggregate data.</p>
         <label for="id_rawtext">
             <span>Import Data</span>
-            <textarea id="id_rawtext" style="width:100%"></textarea>
+            <textarea id="id_rawtext" rows="20" style="width:100%"></textarea>
         </label>
     </fieldset>
     <fieldset id="import_step_3">
@@ -55,13 +55,4 @@ Cytometry Import
             line/assay, and first row label to measurement types</p>
     </fieldset>
 </form>
-<div class="dropzone-wrapper dz-default" style="padding: 20px;">
-<form action="/utilities/proteomics/parse"
-        class="dropzone"
-        enctype="multipart/form-data"
-        id="cytometryDropzone"
-        style="width: 100%; height: 100%;">
-    {% csrf_token %}
-</form>
-</div>
 {% endblock content %}

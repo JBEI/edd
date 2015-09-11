@@ -136,7 +136,7 @@ class Attachment(models.Model):
     class Meta:
         db_table = 'attachment'
     object_ref = models.ForeignKey('EDDObject', related_name='files')
-    file = models.FileField(max_length=255)
+    file = models.FileField(max_length=255, upload_to='%Y/%m/%d')
     filename = models.CharField(max_length=255)
     created = models.ForeignKey(Update)
     description = models.TextField(blank=True, null=False)
@@ -146,37 +146,25 @@ class Attachment(models.Model):
     def __str__(self):
         return self.filename
 
+
     @property
-    def user_initials (self) :
+    def user_initials(self):
         return self.created.initials
 
     @property
-    def icon (self) :
+    def icon(self):
         from main.utilities import extensions_to_icons
         base, ext = os.path.splitext(self.filename)
         return extensions_to_icons.get(ext, "icon-generic.png")
 
-    # TODO can we make this more general?
-    def user_can_delete (self, user) :
-        """
-        Verify that a user has the appropriate permissions to delete an
-        attachment.  This only applies to files attached to a Study.
-        """
-        if (self.object_ref.__class__ is Study) :
-            return self.object_ref.user_can_write(user)
-        else :
-            return user.is_staff
+    def user_can_delete(self, user):
+        """ Verify that a user has the appropriate permissions to delete an attachment. """
+        return object_ref.user_can_write(user)
 
-    # TODO can we make this more general?
-    def user_can_read (self, user) :
-        """
-        Verify that a user has the appropriate permissions to see (that is,
-        download) an attachment.  This only applies to files attached to a
-        Study.
-        """
-        if (self.object_ref.__class__ is Study) :
-            return self.object_ref.user_can_read(user)
-        return True # XXX is this wise?
+    def user_can_read(self, user):
+        """ Verify that a user has the appropriate permissions to see (that is, download) an
+            attachment. """
+        return object_ref.user_can_read(user)
 
     def save(self, *args, **kwargs):
         if self.created_id is None:
@@ -438,6 +426,12 @@ class EDDObject(models.Model):
             'created': self.created.to_json() if self.created else None,
         }
 
+    def user_can_read(self, user):
+        return True
+
+    def user_can_write(self, user):
+        return user.is_superuser
+
 
 class Study(EDDObject):
     """ A collection of items to be studied. """
@@ -495,7 +489,7 @@ class Study(EDDObject):
         ))
 
     def user_can_write(self, user):
-        return user.is_superuser or any(p.is_write() for p in chain(
+        return super(Study, self).user_can_write(user) or any(p.is_write() for p in chain(
                 self.userpermission_set.filter(user=user),
                 self.grouppermission_set.filter(group__user=user)
         ))
@@ -880,6 +874,13 @@ class Line(EDDObject):
             assay_start_id = max(existing_assay_numbers) + 1
         return assay_start_id
 
+    def user_can_read(self, user):
+        return study.user_can_read(user)
+
+    def user_can_write(self, user):
+        return study.user_can_write(user)
+
+
 class MeasurementGroup(object):
     """
     Does not need its own table in database, but multiple models will reference measurements that
@@ -1153,6 +1154,12 @@ class Assay(EDDObject):
             'experimenter': self.experimenter_id,
             })
         return json_dict
+
+    def user_can_read(self, user):
+        return line.user_can_read(user)
+
+    def user_can_write(self, user):
+        return line.user_can_write(user)
 
 
 class MeasurementCompartment(object):

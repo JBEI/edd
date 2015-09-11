@@ -12,5 +12,6 @@ urlpatterns = patterns('',
     url(r'^proteomics$', views.skyline_home, name='proteomics_home'),
     url(r'^proteomics/parse$', views.skyline_parse, name='parse_skyline'),
     url(r'^cytometry/$', login_required(views.cytometry_home), name='cytometry_home'),
+    url(r'^cytometry/parse/$', login_required(views.cytometry_parse), name="cytometry_parse"),
     url(r'^cytometry/import/$', login_required(views.cytometry_import), name="cytometry_import"),
 )

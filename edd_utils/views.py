@@ -76,8 +76,7 @@ def skyline_parse(request):
         assert (result is not None)
         return JsonResponse(result.export())
     except Exception as e:
-        messages.error(request, "Skyline parse failed: %s" % e)
-        return HttpResponse(status=500)
+        return JsonResponse({ 'python_error': str(e) })
 
 
 ########################################################################
@@ -85,6 +84,19 @@ def skyline_parse(request):
 #
 def cytometry_home(request):
     return render(request, 'cytometry.html', {})
+
+def cytometry_parse(request):
+    upload = request.FILES.get('file', None)
+    try:
+        content_type = upload.content_type
+        if content_type == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
+            # read in all cells, replace all whitespace with a single space, output tab-delimited
+            return JsonResponse({ 'data': 'xls data' })
+        else:
+            # try to parse as plain text
+            return JsonResponse({ 'data': upload.read() })
+    except Exception as e:
+        return JsonResponse({ 'python_error': str(e) })
 
 def cytometry_import(request):
     return render(request, 'cytometry.html', {})
