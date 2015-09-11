@@ -2,15 +2,17 @@
 """ Miscellaneous data-processing utilities. """
 
 import json
+import re
 
 from django.contrib import messages
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.views.decorators.csrf import ensure_csrf_cookie
+from functools import partial
 from io import BytesIO
 
 from . import gc_ms_workbench
-from .parsers import skyline
+from .parsers import excel, skyline
 
 
 def utilities_index (request) :
@@ -91,7 +93,18 @@ def cytometry_parse(request):
         content_type = upload.content_type
         if content_type == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
             # read in all cells, replace all whitespace with a single space, output tab-delimited
-            return JsonResponse({ 'data': 'xls data' })
+            parsed = excel.import_xlsx_tables(upload)
+            pattern = re.compile('\s+')
+            replace = partial(pattern.sub, ' ')
+            tables = []
+            for sheet in parsed.get('worksheets', []):
+                for ws in sheet:
+                    header = ws.get('headers', [])
+                    table = [ u'\t'.join(map(replace, map(unicode, header))) ] if header else []
+                    for row in ws.get('values', []):
+                        table.append(u'\t'.join(map(replace, map(unicode, row))))
+                    tables.append(u'\n'.join(table))
+            return JsonResponse({ 'data': u'\n\n'.join(tables) })
         else:
             # try to parse as plain text
             return JsonResponse({ 'data': upload.read() })
