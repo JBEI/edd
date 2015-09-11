@@ -221,6 +221,19 @@ class CreateStudyForm(forms.ModelForm):
         kwargs.setdefault('label_suffix', '')
         super(CreateStudyForm, self).__init__(*args, **kwargs)
 
+    def save(self, commit=True, force_insert=False, force_update=False, *args, **kwargs):
+        # save the study
+        s = super(CreateStudyForm, self).save(commit=commit, *args, **kwargs)
+        # make sure the creator has write permission, and ESE has read
+        s.userpermission_set.update_or_create(
+            user=s.created.mod_by,
+            permission_type=StudyPermission.WRITE)
+        # XXX hard-coding the ID is gross, do it better
+        s.grouppermission_set.update_or_create(
+            group_id=1,
+            permission_type=StudyPermission.READ)
+        return s
+
 
 class CreateAttachmentForm(forms.ModelForm):
     """ Form to create a new attachment. """
