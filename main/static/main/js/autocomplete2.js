@@ -71,7 +71,7 @@ var EDDData = EDDData || {};
  * http://www.opensource.org/licenses/mit-license.php
  * http://www.gnu.org/licenses/gpl.html
  */
-$(window).load(function () {
+$(function () {
     $.widget('custom.mcautocomplete', $.ui.autocomplete, {
         _create: function () {
             this._super();
@@ -105,7 +105,6 @@ $(window).load(function () {
             return result;
         }
     });
-
 });
 
 

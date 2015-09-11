@@ -16,4 +16,5 @@ jQuery(function ($) {
             _textarea.val(response.data);
         }
     });
+    EDD_auto.setup_field_autocomplete($('#id_study_0'), 'StudyWrite');
 });

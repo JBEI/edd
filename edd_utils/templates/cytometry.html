@@ -2,11 +2,14 @@
 {% load staticfiles %}
 
 {% block js_css %}
-{{ block.super }}
-<link rel="stylesheet" type="text/css" href="{% static 'edd_utils/css/style.css' %}"/>
-<script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.cookie.js' %}"></script>
-<script src="{% static 'edd_utils/js/lib/dropzone.js' %}"></script>
-<script src="{% static 'edd_utils/js/cytometry.js' %}"></script>
+    {{ block.super }}
+    <link rel="stylesheet" type="text/css" href="{% static 'edd_utils/css/style.css' %}"/>
+    <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/jquery-ui/jquery-ui.min.css' %}" />
+    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.cookie.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/lib/jquery-ui/jquery-ui.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/autocomplete2.js' %}"></script>
+    <script type="text/javascript" src="{% static 'edd_utils/js/lib/dropzone.js' %}"></script>
+    <script type="text/javascript" src="{% static 'edd_utils/js/cytometry.js' %}"></script>
 {% endblock js_css %}
 
 
@@ -33,6 +36,7 @@ Cytometry Import
             <input id="id_study_1" name="study_1" type="hidden"/>
         </label>
     </fieldset>
+    <br/>
     <fieldset id="import_step_2">
         <legend>Step 2 &mdash; Provide Import Data</legend>
         <p>Next, add a table of data for import. You may drop a spreadsheet in the indicated area,
@@ -43,6 +47,7 @@ Cytometry Import
             <textarea id="id_rawtext" rows="20" style="width:100%"></textarea>
         </label>
     </fieldset>
+    <br/>
     <fieldset id="import_step_3">
         <legend>Step 3 &mdash; Explain Import Data</legend>
         <p>To complete the data import, EDD needs a timepoint for the data, and definitions for
@@ -52,7 +57,10 @@ Cytometry Import
             <input id="id_time" name="time" type="text"/>
         </label>
         <p>TODO: parse table from step 2, add dropdown lists to match first column label to
-            line/assay, and first row label to measurement types</p>
+            line/assay, and first row label(s) to measurement types. e.g. column labeled "FL1-H"
+            and column labeled "FL1-SD" combined as measure and std deviation of GFP.</p>
+        <p>TODO: optional? step to select one or more wells to use as reference/standard for each
+            measurement type above.</p>
     </fieldset>
 </form>
 {% endblock content %}
