@@ -37,7 +37,7 @@ Cytometry Import
         </label>
     </fieldset>
     <br/>
-    <fieldset id="import_step_2">
+    <fieldset id="import_step_2" class="">
         <legend>Step 2 &mdash; Provide Import Data</legend>
         <p>Next, add a table of data for import. You may drop a spreadsheet in the indicated area,
             or paste a CSV or spreadsheet in the text area below. The data should have rows of
@@ -48,7 +48,7 @@ Cytometry Import
         </label>
     </fieldset>
     <br/>
-    <fieldset id="import_step_3">
+    <fieldset id="import_step_3" class="">
         <legend>Step 3 &mdash; Explain Import Data</legend>
         <p>To complete the data import, EDD needs a timepoint for the data, and definitions for
             how each data column is classified.</p>
@@ -56,6 +56,12 @@ Cytometry Import
             <span>Timepoint (hours)</span>
             <input id="id_time" name="time" type="text"/>
         </label>
+        <dl>
+            <dt>Interpret First Row</dt>
+            <dd id="id_first_row"></dd>
+            <dt>Interpret First Column</dt>
+            <dd id="id_first_col"></dd>
+        </dl>
         <p>TODO: parse table from step 2, add dropdown lists to match first column label to
             line/assay, and first row label(s) to measurement types. e.g. column labeled "FL1-H"
             and column labeled "FL1-SD" combined as measure and std deviation of GFP.</p>
