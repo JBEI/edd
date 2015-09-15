@@ -1113,7 +1113,7 @@ EDDATD = {
             disam.compObj.attr('size', 4).data('visibleIndex', i).next().attr('name', 'disamMComp' + (i + 1));
             EDD_auto.setup_field_autocomplete(disam.compObj, 'MeasurementCompartment', EDDATD.AutoCache.comp);
             disam.typeObj.attr('size', 45).data('visibleIndex', i).next().attr('name', 'disamMType' + (i + 1));
-            EDD_auto.setup_field_autocomplete(disam.typeObj, 'Metabolite', EDDATD.AutoCache.metabolite);
+            EDD_auto.setup_field_autocomplete(disam.typeObj, 'GenericOrMetabolite', EDDATD.AutoCache.metabolite);
             EDD_auto.initial_search(disam.typeObj, name);
             disam.unitsObj.attr('size', 10).data('visibleIndex', i).next().attr('name', 'disamMUnits' + (i + 1));
             EDD_auto.setup_field_autocomplete(disam.unitsObj, 'MeasurementUnit', EDDATD.AutoCache.unit);
@@ -1419,7 +1419,7 @@ EDDATD = {
         $(reDoLastStepOnChange.join(',')).on('change', EDDATD.changedAMasterPulldown);
         // enable autocomplete on statically defined fields
         EDD_auto.setup_field_autocomplete('#masterMComp', 'MeasurementCompartment');
-        EDD_auto.setup_field_autocomplete('#masterMType', 'Metabolite', EDDData.MetaboliteTypes || {});
+        EDD_auto.setup_field_autocomplete('#masterMType', 'GenericOrMetabolite', EDDData.MetaboliteTypes || {});
         EDD_auto.setup_field_autocomplete('#masterMUnits', 'MeasurementUnit');
         $('#ignoreGaps').click(EDDATD.clickedOnIgnoreDataGaps);
         $('#transpose').click(EDDATD.clickedOnTranspose);
