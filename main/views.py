@@ -8,6 +8,7 @@ import main.models
 import main.sbml_export
 import main.data_import
 import operator
+import re
 
 from django.conf import settings
 from django.contrib import messages
@@ -1028,24 +1029,30 @@ def search(request):
         paired with autocomplete2.js on the client side. Call out to Solr or ICE where
         needed. """
     term = request.GET["term"]
+    re_term = re.escape(term)
     model_name = request.GET["model"]
     results = []
     if model_name == "User":
         solr = UserSearch()
-        results = solr.query(query=term, options={'edismax':True})
-        return JsonResponse({ "rows": results['response']['docs'] })
+        found = solr.query(query=term, options={'edismax':True})
+        results = found['response']['docs']
     elif model_name == "Strain":
         ice = IceApi(ident=request.user)
-        results = ice.search_for_part(term)
-        rows = [ match.get('entryInfo', dict()) for match in results.get('results', []) ]
-        return JsonResponse({ "rows": rows })
+        found = ice.search_for_part(term)
+        results = [ match.get('entryInfo', dict()) for match in found.get('results', []) ]
     elif model_name == "Group":
-        found = Group.objects.filter(name__iregex=term).order_by('name')
+        found = Group.objects.filter(name__iregex=re_term).order_by('name')[:20]
         results = [ { 'id': item.pk, 'name': item.name } for item in found ]
     elif model_name == "MeasurementCompartment":
         # Always return the full set of options; no search needed
-        rows = [ { 'id': c[0], 'name': c[1] } for c in MeasurementCompartment.GROUP_CHOICE ]
-        return JsonResponse({ "rows": rows })
+        results = [ { 'id': c[0], 'name': c[1] } for c in MeasurementCompartment.GROUP_CHOICE ]
+    elif model_name == "GenericOrMetabolite":
+        # searching for EITHER a generic measurement OR a metabolite
+        found = MeasurementType.objects.filter(
+                Q(type_group__in=(MeasurementGroup.GENERIC, MeasurementGroup.METABOLITE, )) &
+                (Q(type_name__iregex=re_term) | Q(short_name__iregex=re_term)),
+            )[:20]
+        results = [ item.to_json() for item in found ]
     else:
         Model = getattr(main.models, model_name)
         # gets all the direct field names that can be filtered by terms
@@ -1055,10 +1062,11 @@ def search(request):
                         f.get_internal_type() == 'TextField' or
                         f.get_internal_type() == 'CharField')
                     ]
-        term_filters = []
+        # term_filters = []
+        term_filters = [ Q(**{ f+'__iregex': re_term }) for f in ifields ]
         # construct a Q object for each term/field combination
-        for term in term.split():
-            term_filters.extend([ Q(**{ f+'__iregex': term }) for f in ifields ])
+        # for term in term.split():
+        #     term_filters.extend([ Q(**{ f+'__iregex': term }) for f in ifields ])
         # run search with each Q object OR'd together; limit to 20
         found = Model.objects.filter(reduce(operator.or_, term_filters, Q()))[:20]
         results = [ item.to_json() for item in found ]
