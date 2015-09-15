@@ -189,6 +189,10 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
         elif issubclass(self.model, GeneIdentifier):
             return ('type_name', ('location_in_genome', 'positive_strand', 'location_start',
                     'location_end', 'gene_length'), )
+        elif issubclass(self.model, Phosphor):
+            return ('type_name', 'short_name', ('excitation_wavelength', 'emission_wavelength', ),
+                    'reference_type', )
+        # always keep check for MeasurementType last
         elif issubclass(self.model, MeasurementType):
             return ('type_name', 'short_name', )
         return ('type_name', 'short_name', )
@@ -200,6 +204,10 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
         elif issubclass(self.model, GeneIdentifier):
             return ('type_name', 'location_in_genome', 'positive_strand', 'location_start',
                     'location_end', 'gene_length', )
+        elif issubclass(self.model, Phosphor):
+            return ('type_name', 'short_name', 'excitation_wavelength', 'emission_wavelength',
+                    'reference_type', )
+        # always keep check for MeasurementType last
         elif issubclass(self.model, MeasurementType):
             return ('type_name', 'short_name', )
         return ('type_name', 'short_name', )
@@ -367,6 +375,7 @@ admin.site.register(MeasurementType, MeasurementTypeAdmin)
 admin.site.register(Metabolite, MeasurementTypeAdmin)
 admin.site.register(GeneIdentifier, MeasurementTypeAdmin)
 admin.site.register(ProteinIdentifier, MeasurementTypeAdmin)
+admin.site.register(Phosphor, MeasurementTypeAdmin)
 admin.site.register(Study, StudyAdmin)
 admin.site.register(Assay, AssayAdmin)
 admin.site.register(SBMLTemplate, SBMLTemplateAdmin)

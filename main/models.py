@@ -890,11 +890,13 @@ class MeasurementGroup(object):
     METABOLITE = 'm'
     GENEID = 'g'
     PROTEINID = 'p'
+    PHOSPHOR = 'h'
     GROUP_CHOICE = (
         (GENERIC, 'Generic'),
         (METABOLITE, 'Metabolite'),
         (GENEID, 'Gene Identifier'),
         (PROTEINID, 'Protein Identifer'),
+        (PHOSPHOR, 'Phosphor'),
     )
 
 class MeasurementType(models.Model):
@@ -933,6 +935,9 @@ class MeasurementType(models.Model):
     def is_gene (self) :
         return self.type_group == MeasurementGroup.GENEID
 
+    def is_phosphor(self):
+        return self.type_group == MeasurementGroup.PHOSPHOR
+
     @classmethod
     def proteins (cls) :
         """
@@ -965,7 +970,7 @@ class MeasurementType(models.Model):
             select={'lower_name':'lower(short_name)'}).order_by('lower_name')
 
 
-class MetaboliteKeyword (models.Model) :
+class MetaboliteKeyword(models.Model):
     class Meta:
         db_table = "metabolite_keyword"
     name = models.CharField(max_length=255, unique=True)
@@ -1086,6 +1091,20 @@ class ProteinIdentifier(MeasurementType):
     pass
 
 ProteinIdentifier._meta.get_field('type_group').default = MeasurementGroup.PROTEINID
+
+
+class Phosphor(MeasurementType):
+    """ Defines metadata for phosphorescent measurements """
+    class Meta:
+        db_table = 'phosphor_type'
+    excitation_wavelength = models.DecimalField(max_digits=16, decimal_places=5, blank=True,
+        null=True)
+    emission_wavelength = models.DecimalField(max_digits=16, decimal_places=5, blank=True,
+        null=True)
+    reference_type = models.ForeignKey(MeasurementType, blank=True, null=True,
+        related_name='phosphor_set')
+
+Phosphor._meta.get_field('type_group').default = MeasurementGroup.PHOSPHOR
 
 
 @python_2_unicode_compatible
