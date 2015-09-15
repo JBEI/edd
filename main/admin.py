@@ -200,22 +200,23 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
     def get_list_display(self, request):
         if issubclass(self.model, Metabolite):
             return ('type_name', 'short_name', 'molecular_formula', 'molar_mass', 'charge',
-                    '_keywords', )
+                    '_keywords', '_study_count', )
         elif issubclass(self.model, GeneIdentifier):
             return ('type_name', 'location_in_genome', 'positive_strand', 'location_start',
-                    'location_end', 'gene_length', )
+                    'location_end', 'gene_length', '_study_count', )
         elif issubclass(self.model, Phosphor):
             return ('type_name', 'short_name', 'excitation_wavelength', 'emission_wavelength',
-                    'reference_type', )
+                    'reference_type', '_study_count', )
         # always keep check for MeasurementType last
         elif issubclass(self.model, MeasurementType):
-            return ('type_name', 'short_name', )
-        return ('type_name', 'short_name', )
+            return ('type_name', 'short_name', '_study_count', )
+        return ('type_name', 'short_name', '_study_count', )
 
     def get_queryset(self, request):
         q = super(MeasurementTypeAdmin, self).get_queryset(request)
         if self.model == MeasurementType:
             q = q.filter(type_group=MeasurementGroup.GENERIC)
+        q = q.annotate(num_studies=Count('measurement__assay__line__study', distinct=True))
         return q
 
     def _keywords(self, obj):
@@ -223,6 +224,10 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
             return obj.keywords_str
         return ''
     _keywords.short_description = 'Keywords'
+
+    def _study_count(self, obj):
+        return obj.num_studies
+    _study_count.short_description = '# Studies'
 
 
 class UserPermissionInline(admin.TabularInline):
