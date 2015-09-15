@@ -4,6 +4,7 @@
 {% block js_css %}
     {{ block.super }}
     <link rel="stylesheet" type="text/css" href="{% static 'edd_utils/css/style.css' %}"/>
+    <link rel="stylesheet" type="text/css" href="{% static 'main/import.css' %}"/>
     <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/jquery-ui/jquery-ui.min.css' %}" />
     <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.cookie.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/lib/jquery-ui/jquery-ui.min.js' %}"></script>
@@ -24,7 +25,7 @@ Cytometry Import
 {% block content %}
 <form action="{% url 'edd_utils:cytometry_import' %}" class="edd-form" id="import_form" method="POST">
     {% csrf_token %}
-    <fieldset id="import_step_1">
+    <fieldset id="import_step_1" class="import_step">
         <legend>Step 1 &mdash; Select Study</legend>
         <p>Use this page to import data from Flow Cytometry experiments into EDD. First, select a
             Study to save the data. You may create a new Study from the
@@ -37,7 +38,7 @@ Cytometry Import
         </label>
     </fieldset>
     <br/>
-    <fieldset id="import_step_2" class="">
+    <fieldset id="import_step_2" class="import_step off">
         <legend>Step 2 &mdash; Provide Import Data</legend>
         <p>Next, add a table of data for import. You may drop a spreadsheet in the indicated area,
             or paste a CSV or spreadsheet in the text area below. The data should have rows of
@@ -48,7 +49,7 @@ Cytometry Import
         </label>
     </fieldset>
     <br/>
-    <fieldset id="import_step_3" class="">
+    <fieldset id="import_step_3" class="import_step off">
         <legend>Step 3 &mdash; Explain Import Data</legend>
         <p>To complete the data import, EDD needs a timepoint for the data, and definitions for
             how each data column is classified.</p>

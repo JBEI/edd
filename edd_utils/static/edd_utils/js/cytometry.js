@@ -1,5 +1,24 @@
 (function ($) {
 
+    var EDDData = EDDData || {};
+
+    function fetchStudyInfo(id) {
+        $.ajax({
+            'url': [ '/study', id, 'edddata/' ].join('/'),
+            'type': 'GET',
+            'error': function (xhr, status, e) {
+                console.log(['Loading EDDData failed: ', status, ';', e].join(''));
+                // Hide all following steps
+                $('#import_step_1').nextAll('.import_step').addClass('off');
+            },
+            'success': function (data) {
+                EDDData = data;
+                // Show step 2
+                $('#import_step_2').removeClass('off');
+            }
+        });
+    }
+
     function parseRawText(ev) {
         var rows, delim, comma, tab, inter_row, inter_col, table;
         rows = $(ev.target).val().split(/[ \r]*\n/);
@@ -17,8 +36,30 @@
                     td = tr.insertCell();
                     $('<div>').attr('i', i).text(label).appendTo(td);
                     td = tr.insertCell();
-                    sel = EDD_auto.create_autocomplete(td);
+                    sel = $('<select>').attr('name', 'column' + i).addClass('column_disam')
+                        .appendTo(td);
+                    [ [ '-- Ignore Column --', '' ],
+                        [ 'Signal Average for …', 'avg' ],
+                        [ 'Signal Std Deviation for …', 'std' ],
+                        [ 'Count', 'count' ],
+                        [ 'Metadata', 'meta' ]
+                        // TODO (histogram bin?, other statistics?)
+                    ].forEach(function (item) {
+                        $('<option>').text(item[0]).appendTo(sel).val(item[1]);
+                    });
+                    td = tr.insertCell(); // this cell gets filled depending on previous select
+                }
+            });
+            table.on('change', 'select.column_disam', function (ev) {
+                var target = $(ev.target), val = target.val(), sel;
+                if (val === 'meta') {
+                    sel = EDD_auto.create_autocomplete(target.closest('td').next('td').empty());
+                    EDD_auto.setup_field_autocomplete(sel, 'MetadataType');
+                    sel.focus();
+                } else if (val === 'avg' || val === 'std') {
+                    sel = EDD_auto.create_autocomplete(target.closest('td').next('td').empty());
                     EDD_auto.setup_field_autocomplete(sel, 'Phosphor');
+                    sel.focus();
                 }
             });
             inter_col = $('#id_first_col');
@@ -40,14 +81,18 @@
                     // TODO select lines if assay is new
                 }
             });
+            // Show step 3
+            $('#import_step_3').removeClass('off');
+        } else {
+            $('#import_step_2').nextAll('.import_step').addClass('off');
         }
     }
 
     $(function () {
-        var _dropzone, _textarea;
+        var _dropzone, _textarea, _auto;
         // http://stackoverflow.com/questions/22063612
         $.ajaxPrefilter(function (options, originalOptions, jqXHR) {
-          jqXHR.setRequestHeader('X-CSRFToken', jQuery.cookie('csrftoken'));
+            jqXHR.setRequestHeader('X-CSRFToken', jQuery.cookie('csrftoken'));
         });
         _textarea = $('#id_rawtext');
         _dropzone = new Dropzone(_textarea[0], {
@@ -63,7 +108,12 @@
                 _textarea.val(response.data).trigger('change');
             }
         });
-        EDD_auto.setup_field_autocomplete($('#id_study_0'), 'StudyWrite');
+        _auto = $('#id_study_0');
+        EDD_auto.setup_field_autocomplete(_auto, 'StudyWrite');
+        _auto.on('mcautocompleteselect', function (ev, ui) {
+            ui.item && fetchStudyInfo(ui.item.id);
+            _auto.blur();
+        });
         _textarea.on('change', parseRawText);
     });
 
