@@ -136,6 +136,9 @@ a:hover {
     cursor:pointer;
     color: #606060;
 }
+.top {
+    vertical-align: top !important;
+}
 
 /* Top banner styling */
 div.topBanner {

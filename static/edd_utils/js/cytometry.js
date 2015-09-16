@@ -54,30 +54,36 @@
         labels.forEach(function (label, i) {
             var tr, td;
             if (label.length) {
-                tr = table[0].insertRow();
+                $(tr = table[0].insertRow()).data('i', i);
                 td = tr.insertCell();
-                $('<div>').attr('i', i).text(label).appendTo(td);
+                $('<div>').text(label).appendTo(td);
                 td = tr.insertCell();
-                sel.clone().attr('name', 'column' + i).appendTo(td);
+                sel.clone().attr('name', 'column' + i).data('i', i).appendTo(td);
                 td = tr.insertCell(); // this cell gets filled depending on previous select
             }
         });
         table.on('change', 'select.column_disam', function (ev) {
-            var target = $(ev.target), val = target.val(), auto;
+            var target, colId, val, auto;
+            target = $(ev.target);
+            colId = target.data('i');
+            val = target.val();
+            auto = target.closest('td').next('td').empty();
             if (val === 'meta') {
-                auto = EDD_auto.create_autocomplete(target.closest('td').next('td').empty());
+                auto = EDD_auto.create_autocomplete(auto);
+                auto.next().attr('name', 'meta' + colId);
                 EDD_auto.setup_field_autocomplete(auto, 'MetadataType');
                 auto.focus();
             } else if (val === 'avg' || val === 'std') {
-                auto = EDD_auto.create_autocomplete(target.closest('td').next('td').empty());
+                auto = EDD_auto.create_autocomplete(auto);
+                auto.next().attr('name', 'type' + colId);
                 EDD_auto.setup_field_autocomplete(auto, 'Phosphor');
-                auto.focus();
+                auto.focus().toggleClass('autocomp_signal', val === 'avg');
             }
         });
     }
 
     function interpretFirstColumn(rows, delim) {
-        var inter_col, table, assaySel, lineSel;
+        var inter_col, table, assaySel, lineSel, stdSel, stdRows;
         inter_col = $('#id_first_col');
         table = $('<table>').appendTo(inter_col).wrap('<div class="disambiguationSection"></div>');
         assaySel = $('<select>').addClass('disamAssay');
@@ -96,14 +102,16 @@
         $.each(EDDData.Lines, function (id, line) {
             $('<option>').text(line.name).appendTo(lineSel).val(id.toString());
         });
+        stdSel = $('<select>').prop('multiple', true).attr('size', 8).addClass('disamStd');
         rows.forEach(function (row, i) {
             var index, label, tr, td;
             index = row.search(delim);
             if (index > 0) {
                 label = row.substring(0, index);
-                tr = table[0].insertRow();
+                $('<option>').text(label).val(i.toString()).appendTo(stdSel);
+                $(tr = table[0].insertRow()).data('i', i);
                 td = tr.insertCell();
-                $('<div>').attr('i', i).text(label).appendTo(td);
+                $('<div>').text(label).appendTo(td);
                 td = tr.insertCell();
                 assaySel.clone().attr('name', 'assay' + i).appendTo(td);
                 td = $('<span>').text('for Line: ').appendTo(td);
@@ -116,6 +124,25 @@
             target = $(ev.target);
             val = target.val();
             target.next().toggleClass('off', val !== 'new');
+        });
+        // Add a standard selection row for every column with type 'avg' + valid measurement type
+        stdRows = {};
+        $('#id_first_row').on('mcautocompleteselect', '.autocomp_signal', function (ev, ui) {
+            var target, targRow, rowId, table, tr, td, label;
+            // there is enough to import at this point, make sure all steps are shown
+            $('.import_step').removeClass('off');
+            target = $(ev.target);
+            targRow = target.closest('tr');
+            rowId = targRow.data('i');
+            table = $('#id_std_table');
+            // if this row was previously added, remove the old one
+            $(stdRows[rowId]).remove();
+            tr = stdRows[rowId] = table[0].insertRow();
+            $(td = tr.insertCell()).addClass('top');
+            label = [ ui.item.name, targRow.find('td > div').text() ].join(' - ');
+            $('<div>').text(label).appendTo(td);
+            td = tr.insertCell();
+            stdSel.clone().attr('name', 'std' + rowId).appendTo(td);
         });
     }
 

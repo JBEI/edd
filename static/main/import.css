@@ -196,4 +196,6 @@ div.disambiguationSection table tr > td input[type="text"] {
 
 
 /* The Step 4 disambiguation section */
-
+select.disamStd {
+	min-width: 10em;
+}

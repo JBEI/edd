@@ -45,7 +45,7 @@ Cytometry Import
             samples and columns of flow cytometer aggregate data.</p>
         <label for="id_rawtext">
             <span>Import Data</span>
-            <textarea id="id_rawtext" rows="20" style="width:100%"></textarea>
+            <textarea id="id_rawtext" name="rawdata" rows="20" style="width:100%"></textarea>
         </label>
     </fieldset>
     <br/>
@@ -73,7 +73,17 @@ Cytometry Import
     <fieldset id="import_step_4" class="import_step off">
         <legend>Step 4 &mdash; Select Standards (optional)</legend>
         <p>For each signal column, you may optionally select a set of samples to serve as a
-            standard for the signal.</p>
+            standard/control for the signal.</p>
+        <dl>
+            <dt>Standards per Channel</dt>
+            <dd>
+                <div class="disambiguationSection">
+                    <table id="id_std_table">
+                    </table>
+                </div>
+            </dd>
+        </dl>
     </fieldset>
+    <button id="import_step_submit" type="submit" class="off">Import Data</button>
 </form>
 {% endblock content %}
