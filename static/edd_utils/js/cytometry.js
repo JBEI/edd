@@ -26,66 +26,97 @@
             comma = /\s*,\s*/;
             tab = /\t/;
             delim = (rows[0].split(comma).length > rows[0].split(tab).length) ? comma : tab;
-            inter_row = $('#id_first_row');
-            table = $('<table>').appendTo(inter_row)
-                .wrap('<div class="disambiguationSection"></div>');
-            rows[0].split(delim).slice(1).forEach(function (label, i) {
-                var tr, td, sel;
-                if (label.length) {
-                    tr = table[0].insertRow();
-                    td = tr.insertCell();
-                    $('<div>').attr('i', i).text(label).appendTo(td);
-                    td = tr.insertCell();
-                    sel = $('<select>').attr('name', 'column' + i).addClass('column_disam')
-                        .appendTo(td);
-                    [ [ '-- Ignore Column --', '' ],
-                        [ 'Signal Average for …', 'avg' ],
-                        [ 'Signal Std Deviation for …', 'std' ],
-                        [ 'Count', 'count' ],
-                        [ 'Metadata', 'meta' ]
-                        // TODO (histogram bin?, other statistics?)
-                    ].forEach(function (item) {
-                        $('<option>').text(item[0]).appendTo(sel).val(item[1]);
-                    });
-                    td = tr.insertCell(); // this cell gets filled depending on previous select
-                }
-            });
-            table.on('change', 'select.column_disam', function (ev) {
-                var target = $(ev.target), val = target.val(), sel;
-                if (val === 'meta') {
-                    sel = EDD_auto.create_autocomplete(target.closest('td').next('td').empty());
-                    EDD_auto.setup_field_autocomplete(sel, 'MetadataType');
-                    sel.focus();
-                } else if (val === 'avg' || val === 'std') {
-                    sel = EDD_auto.create_autocomplete(target.closest('td').next('td').empty());
-                    EDD_auto.setup_field_autocomplete(sel, 'Phosphor');
-                    sel.focus();
-                }
-            });
-            inter_col = $('#id_first_col');
-            table = $('<table>').appendTo(inter_col)
-                .wrap('<div class="disambiguationSection"></div>');
-            rows.slice(1).forEach(function (row, i) {
-                var index, label, tr, td, sel;
-                index = row.search(delim);
-                if (index > 0) {
-                    label = row.substring(0, index);
-                    tr = table[0].insertRow();
-                    td = tr.insertCell();
-                    $('<div>').attr('i', i).text(label).appendTo(td);
-                    td = tr.insertCell();
-                    sel = $('<select>').attr('name', 'assay' + i).appendTo(td);
-                    $('<option>').text('(Create New)').appendTo(sel).val('new')
-                        .prop('selected', true);
-                    // TODO grab cytometry protocol, get all matching assays, add options
-                    // TODO select lines if assay is new
-                }
-            });
+            interpretFirstRow(rows[0].split(delim).slice(1));
+            interpretFirstColumn(rows.slice(1), delim);
             // Show step 3
             $('#import_step_3').removeClass('off');
         } else {
+            // Hide all following steps if no data found
             $('#import_step_2').nextAll('.import_step').addClass('off');
         }
+    }
+
+    function interpretFirstRow(labels) {
+        var inter_row, table, sel;
+        inter_row = $('#id_first_row');
+        table = $('<table>').appendTo(inter_row)
+            .wrap('<div class="disambiguationSection"></div>');
+        sel = $('<select>').addClass('column_disam');
+        [ [ '-- Ignore Column --', '' ],
+            [ 'Signal Average for …', 'avg' ],
+            [ 'Signal Std Deviation for …', 'std' ],
+            [ 'Count', 'count' ],
+            [ 'Metadata', 'meta' ]
+            // TODO (histogram bin?, other statistics?)
+        ].forEach(function (item) {
+            $('<option>').text(item[0]).appendTo(sel).val(item[1]);
+        });
+        labels.forEach(function (label, i) {
+            var tr, td;
+            if (label.length) {
+                tr = table[0].insertRow();
+                td = tr.insertCell();
+                $('<div>').attr('i', i).text(label).appendTo(td);
+                td = tr.insertCell();
+                sel.clone().attr('name', 'column' + i).appendTo(td);
+                td = tr.insertCell(); // this cell gets filled depending on previous select
+            }
+        });
+        table.on('change', 'select.column_disam', function (ev) {
+            var target = $(ev.target), val = target.val(), auto;
+            if (val === 'meta') {
+                auto = EDD_auto.create_autocomplete(target.closest('td').next('td').empty());
+                EDD_auto.setup_field_autocomplete(auto, 'MetadataType');
+                auto.focus();
+            } else if (val === 'avg' || val === 'std') {
+                auto = EDD_auto.create_autocomplete(target.closest('td').next('td').empty());
+                EDD_auto.setup_field_autocomplete(auto, 'Phosphor');
+                auto.focus();
+            }
+        });
+    }
+
+    function interpretFirstColumn(rows, delim) {
+        var inter_col, table, assaySel, lineSel;
+        inter_col = $('#id_first_col');
+        table = $('<table>').appendTo(inter_col).wrap('<div class="disambiguationSection"></div>');
+        assaySel = $('<select>').addClass('disamAssay');
+        $('<option>').text('(Create New)').appendTo(assaySel).val('new').prop('selected', true);
+        $.each(EDDData.Assays, function (id, assay) {
+            var line, protocol;
+            line = EDDData.Lines[assay.lid];
+            protocol = EDDData.Protocols[assay.pid];
+            if (assay.pid === 42) { // TODO change to Cytometry protocol ID
+                $('<option>').text([line.name, protocol.name, assay.name].join('-'))
+                    .appendTo(assaySel).val(id.toString());
+            }
+        });
+        lineSel = $('<select>').addClass('disamLine');
+        $('<option>').text('(Create New)').appendTo(lineSel).val('new').prop('selected', true);
+        $.each(EDDData.Lines, function (id, line) {
+            $('<option>').text(line.name).appendTo(lineSel).val(id.toString());
+        });
+        rows.forEach(function (row, i) {
+            var index, label, tr, td;
+            index = row.search(delim);
+            if (index > 0) {
+                label = row.substring(0, index);
+                tr = table[0].insertRow();
+                td = tr.insertCell();
+                $('<div>').attr('i', i).text(label).appendTo(td);
+                td = tr.insertCell();
+                assaySel.clone().attr('name', 'assay' + i).appendTo(td);
+                td = $('<span>').text('for Line: ').appendTo(td);
+                lineSel.clone().attr('name', 'line' + i).appendTo(td);
+            }
+        });
+        // Only show the line selection if assay selection is "new"
+        table.on('change', '.disamAssay', function (ev) {
+            var target, val;
+            target = $(ev.target);
+            val = target.val();
+            target.next().toggleClass('off', val !== 'new');
+        });
     }
 
     $(function () {

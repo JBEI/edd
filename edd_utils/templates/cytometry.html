@@ -53,21 +53,27 @@ Cytometry Import
         <legend>Step 3 &mdash; Explain Import Data</legend>
         <p>To complete the data import, EDD needs a timepoint for the data, and definitions for
             how each data column is classified.</p>
-        <label for="id_time">
-            <span>Timepoint (hours)</span>
-            <input id="id_time" name="time" type="text"/>
-        </label>
         <dl>
+            <dt>Specify Timepoint for Imported Values</dt>
+            <dd>
+                <div class="disambiguationSection">
+                    <label for="id_time">
+                        <span>Timepoint (hours)</span>
+                        <input id="id_time" name="time" type="text"/>
+                    </label>
+                </div>
+            </dd>
             <dt>Interpret First Row</dt>
             <dd id="id_first_row"></dd>
             <dt>Interpret First Column</dt>
             <dd id="id_first_col"></dd>
         </dl>
-        <p>TODO: parse table from step 2, add dropdown lists to match first column label to
-            line/assay, and first row label(s) to measurement types. e.g. column labeled "FL1-H"
-            and column labeled "FL1-SD" combined as measure and std deviation of GFP.</p>
-        <p>TODO: optional? step to select one or more wells to use as reference/standard for each
-            measurement type above.</p>
+    </fieldset>
+    <br/>
+    <fieldset id="import_step_4" class="import_step off">
+        <legend>Step 4 &mdash; Select Standards (optional)</legend>
+        <p>For each signal column, you may optionally select a set of samples to serve as a
+            standard for the signal.</p>
     </fieldset>
 </form>
 {% endblock content %}
