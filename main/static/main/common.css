@@ -139,6 +139,9 @@ a:hover {
 .top {
     vertical-align: top !important;
 }
+:disabled {
+    background-color: #eeeeee;
+}
 
 /* Top banner styling */
 div.topBanner {

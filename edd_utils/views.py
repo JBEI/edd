@@ -13,6 +13,7 @@ from io import BytesIO
 
 from . import gc_ms_workbench
 from .parsers import excel, skyline
+from main.forms import CreateStudyForm
 
 
 def utilities_index (request) :
@@ -85,7 +86,10 @@ def skyline_parse(request):
 # CYTOMETRY
 #
 def cytometry_home(request):
-    return render(request, 'cytometry.html', {})
+    study_form = CreateStudyForm(prefix='study')
+    return render(request, 'cytometry.html', {
+        'study_form': study_form,
+        })
 
 def cytometry_parse(request):
     upload = request.FILES.get('file', None)

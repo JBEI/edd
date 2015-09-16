@@ -88,7 +88,7 @@
         table = $('<table>').appendTo(inter_col).wrap('<div class="disambiguationSection"></div>');
         assaySel = $('<select>').addClass('disamAssay');
         $('<option>').text('(Create New)').appendTo(assaySel).val('new').prop('selected', true);
-        $.each(EDDData.Assays, function (id, assay) {
+        $.each(EDDData.Assays || {}, function (id, assay) {
             var line, protocol;
             line = EDDData.Lines[assay.lid];
             protocol = EDDData.Protocols[assay.pid];
@@ -99,7 +99,7 @@
         });
         lineSel = $('<select>').addClass('disamLine');
         $('<option>').text('(Create New)').appendTo(lineSel).val('new').prop('selected', true);
-        $.each(EDDData.Lines, function (id, line) {
+        $.each(EDDData.Lines || {}, function (id, line) {
             $('<option>').text(line.name).appendTo(lineSel).val(id.toString());
         });
         stdSel = $('<select>').prop('multiple', true).attr('size', 8).addClass('disamStd');
@@ -166,14 +166,23 @@
                 _textarea.val(response.data).trigger('change');
             }
         });
+        // set up study selection input
         _auto = $('#id_study_0');
         EDD_auto.setup_field_autocomplete(_auto, 'StudyWrite');
         _auto.on('mcautocompleteselect', function (ev, ui) {
             ui.item && fetchStudyInfo(ui.item.id);
             _auto.blur();
         });
+        // unhide the study creation form and toggle box
+        $('#import_step_1').find('.off').removeClass('off');
+        $('#id_create_study').change(function (ev) {
+            var checked = $(ev.target).prop('checked');
+            $('#import_step_1').find('.edd-form :input').prop('disabled', !checked);
+            $('#id_study_0').prop('disabled', checked);
+            $('#import_step_2').toggleClass('off', !(checked || (!checked && EDDData.Lines)));
+        }).trigger('change');
+        // watch the input textarea for changes
         _textarea.on('change', parseRawText);
     });
 
 }(jQuery));
-

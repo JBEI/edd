@@ -28,14 +28,20 @@ Cytometry Import
     <fieldset id="import_step_1" class="import_step">
         <legend>Step 1 &mdash; Select Study</legend>
         <p>Use this page to import data from Flow Cytometry experiments into EDD. First, select a
-            Study to save the data. You may create a new Study from the
-            <a href="{% url 'main:index' %}">homepage</a>. You must have write permissions for the
-            Study saving the imported data, contact the Study creator to get permissions added.</p>
-        <label for="id_study_0">
+            Study to save the data. You must have write permissions for the Study saving the
+            imported data, contact the Study creator to get permissions added.</p>
+        <label for="id_study_0" style="float:left;">
             <span>Select Study</span>
             <input class="autocomp autocomp_study" id="id_study_0" name="study_0" type="text"/>
             <input id="id_study_1" name="study_1" type="hidden"/>
         </label>
+        <label for="id_create_study" style="float:left;margin:0 4em;" class="off">
+            <b>OR</b>
+            <input id="id_create_study" type="checkbox"/>
+            <span>Check to Create Study</span>
+        </label>
+        <span class="edd-form off" style="display:inline-block;">{{ study_form.as_p }}</span>
+        <div class="clear"></div>
     </fieldset>
     <br/>
     <fieldset id="import_step_2" class="import_step off">
