@@ -38,7 +38,7 @@
 
     function interpretFirstRow(labels) {
         var inter_row, table, sel;
-        inter_row = $('#id_first_row');
+        inter_row = $('#id_first_row').empty();
         table = $('<table>').appendTo(inter_row)
             .wrap('<div class="disambiguationSection"></div>');
         sel = $('<select>').addClass('column_disam');
@@ -84,7 +84,7 @@
 
     function interpretFirstColumn(rows, delim) {
         var inter_col, table, assaySel, lineSel, stdSel, stdRows;
-        inter_col = $('#id_first_col');
+        inter_col = $('#id_first_col').empty();
         table = $('<table>').appendTo(inter_col).wrap('<div class="disambiguationSection"></div>');
         assaySel = $('<select>').addClass('disamAssay');
         $('<option>').text('(Create New)').appendTo(assaySel).val('new').prop('selected', true);
