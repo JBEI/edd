@@ -1,18 +1,50 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-## Read in data from a spreadsheet
-
+## Read in data from a spreadsheet.
 
 import openpyxl as px
 import numpy as np
 
-# API:
-# 
-#  datablocks = process_spreadsheet(excel_file_path)
-#
+
+# Datablock dimesions for 96 well plate
+DATA_BLOCK_SIZE_ROW = 12
+DATA_BLOCK_SIZE_COL = 8
+
+def process_spreadsheet(input_file_path):
+	"""Processes a spreadsheet at a given path, returning the datablocks found.
+
+	Datablocks come in the form (study,label,data_block)
+
+	study is a string identifying which study the block is associated with
+	label is a string identifying the type of metadata block
+		Data - A 96 well plate grid of measurements.
+		Metadata - A list of key-value pairs, applying globally to the study.
+		other - A 96 well plate grid of some well-specific metadata item - label.
+	datablock - A 1D List or Dictionary
+
+	"""
+	W = px.load_workbook(input_file_path, use_iterators = True, read_only=True)
+
+	# p = W.get_sheet_by_name(name = 'Sheet1')
+
+	data_blocks = []
+	for sheet in W:
+		data_block_indices = _locate_data_blocks(sheet)
+		for index in data_block_indices:
+			data_blocks.append( _collect_data_block(sheet, index))
+
+	return data_blocks
+
+
+
+
+
+""" *** *** *** Internals *** *** *** """
+
 
 def _locate_data_blocks(sheet):
+	"""Scans a sheet for a data_block tag (Study_*) and returns all such indices"""
 	data_block_indices = []
 	#data_block_indicator = u"Temperature(°C)"
 	#data_block_indicator = u"Table_1"
@@ -38,6 +70,7 @@ def _locate_data_blocks(sheet):
 # Convert from letter(s) to a number
 # ORIG did not deal with multiletter #column = ord(data_block_index[1])-ord('A')+1 
 def _convert_column_letters_to_integer(letters):
+	"""converts excel column letters to index number"""
 	number = 0
 
 	# TODO: REFACTOR: reduce
@@ -51,10 +84,8 @@ def _convert_column_letters_to_integer(letters):
 		number = ord(letters)-ord('A')+1 
 	return number
 
-
-DATA_BLOCK_SIZE_ROW = 12
-DATA_BLOCK_SIZE_COL = 8
 def _collect_data_block(sheet, data_block_index):
+	"""Collects the data associated with each datablock index"""
 	data = []
 	row = data_block_index[0]
 	column = _convert_column_letters_to_integer(data_block_index[1])
@@ -95,19 +126,6 @@ def _collect_data_block(sheet, data_block_index):
 	# IPython.embed()
 	# exit()
 	return (study,label,data_block)
-
-def process_spreadsheet(input_file_path):
-	W = px.load_workbook(input_file_path, use_iterators = True, read_only=True)
-
-	# p = W.get_sheet_by_name(name = 'Sheet1')
-
-	data_blocks = []
-	for sheet in W:
-		data_block_indices = _locate_data_blocks(sheet)
-		for index in data_block_indices:
-			data_blocks.append( _collect_data_block(sheet, index))
-
-	return data_blocks
 
 if __name__ == "__main__":
 	# input_file_path = "input/template_with_one_plate.xlsx"
