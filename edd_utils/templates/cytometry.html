@@ -37,7 +37,7 @@ Cytometry Import
         </label>
         <label for="id_create_study" style="float:left;margin:0 4em;" class="off">
             <b>OR</b>
-            <input id="id_create_study" type="checkbox"/>
+            <input id="id_create_study" name="create_study" type="checkbox" value="1"/>
             <span>Check to Create Study</span>
         </label>
         <span class="edd-form off" style="display:inline-block;">{{ study_form.as_p }}</span>
@@ -52,6 +52,7 @@ Cytometry Import
         <label for="id_rawtext">
             <span>Import Data</span>
             <textarea id="id_rawtext" name="rawdata" rows="20" style="width:100%"></textarea>
+            <input id="id_data" type="hidden" name="data"/>
         </label>
     </fieldset>
     <br/>
@@ -90,6 +91,6 @@ Cytometry Import
             </dd>
         </dl>
     </fieldset>
-    <button id="import_step_submit" type="submit" class="off">Import Data</button>
+    <button id="import_step_submit" type="submit" class="import_step off">Import Data</button>
 </form>
 {% endblock content %}

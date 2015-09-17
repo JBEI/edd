@@ -1,6 +1,6 @@
 (function ($) {
 
-    var EDDData = EDDData || {};
+    var EDDData = EDDData || {}, import_data = {}, stdSel = $('<div>');
 
     function fetchStudyInfo(id) {
         $.ajax({
@@ -26,6 +26,11 @@
             comma = /\s*,\s*/;
             tab = /\t/;
             delim = (rows[0].split(comma).length > rows[0].split(tab).length) ? comma : tab;
+            // pick out the data to a 2D array without label row/column
+            import_data = rows.slice(1).map(function (row) {
+                return row.split(delim).slice(1);
+            });
+            $('#id_data').val(JSON.stringify(import_data));
             interpretFirstRow(rows[0].split(delim).slice(1));
             interpretFirstColumn(rows.slice(1), delim);
             // Show step 3
@@ -83,7 +88,7 @@
     }
 
     function interpretFirstColumn(rows, delim) {
-        var inter_col, table, assaySel, lineSel, stdSel, stdRows;
+        var inter_col, table, assaySel, lineSel;
         inter_col = $('#id_first_col').empty();
         table = $('<table>').appendTo(inter_col).wrap('<div class="disambiguationSection"></div>');
         assaySel = $('<select>').addClass('disamAssay');
@@ -125,29 +130,10 @@
             val = target.val();
             target.next().toggleClass('off', val !== 'new');
         });
-        // Add a standard selection row for every column with type 'avg' + valid measurement type
-        stdRows = {};
-        $('#id_first_row').on('mcautocompleteselect', '.autocomp_signal', function (ev, ui) {
-            var target, targRow, rowId, table, tr, td, label;
-            // there is enough to import at this point, make sure all steps are shown
-            $('.import_step').removeClass('off');
-            target = $(ev.target);
-            targRow = target.closest('tr');
-            rowId = targRow.data('i');
-            table = $('#id_std_table');
-            // if this row was previously added, remove the old one
-            $(stdRows[rowId]).remove();
-            tr = stdRows[rowId] = table[0].insertRow();
-            $(td = tr.insertCell()).addClass('top');
-            label = [ ui.item.name, targRow.find('td > div').text() ].join(' - ');
-            $('<div>').text(label).appendTo(td);
-            td = tr.insertCell();
-            stdSel.clone().attr('name', 'std' + rowId).appendTo(td);
-        });
     }
 
     $(function () {
-        var _dropzone, _textarea, _auto;
+        var _dropzone, _textarea, _auto, stdRows;
         // http://stackoverflow.com/questions/22063612
         $.ajaxPrefilter(function (options, originalOptions, jqXHR) {
             jqXHR.setRequestHeader('X-CSRFToken', jQuery.cookie('csrftoken'));
@@ -181,8 +167,28 @@
             $('#id_study_0').prop('disabled', checked);
             $('#import_step_2').toggleClass('off', !(checked || (!checked && EDDData.Lines)));
         }).trigger('change');
-        // watch the input textarea for changes
-        _textarea.on('change', parseRawText);
+        // watch the input textarea for changes; delay call on paste events by 10ms
+        _textarea.on('change', parseRawText)
+            .on('paste', window.setTimeout.bind(window, parseRawText, 10));
+        // Add a standard selection row for every column with type 'avg' + valid measurement type
+        stdRows = {};
+        $('#id_first_row').on('mcautocompleteselect', '.autocomp_signal', function (ev, ui) {
+            var target, targRow, rowId, table, tr, td, label;
+            // there is enough to import at this point, make sure all steps are shown
+            $('.import_step').removeClass('off');
+            target = $(ev.target);
+            targRow = target.closest('tr');
+            rowId = targRow.data('i');
+            table = $('#id_std_table');
+            // if this row was previously added, remove the old one
+            $(stdRows[rowId]).remove();
+            tr = stdRows[rowId] = table[0].insertRow();
+            $(td = tr.insertCell()).addClass('top');
+            label = [ ui.item.name, targRow.find('td > div').text() ].join(' - ');
+            $('<div>').text(label).appendTo(td);
+            td = tr.insertCell();
+            stdSel.clone().attr('name', 'std' + rowId).appendTo(td);
+        });
     });
 
 }(jQuery));

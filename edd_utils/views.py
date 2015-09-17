@@ -5,8 +5,9 @@ import json
 import re
 
 from django.contrib import messages
+from django.core.urlresolvers import reverse
 from django.http import HttpResponse, JsonResponse
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.views.decorators.csrf import ensure_csrf_cookie
 from functools import partial
 from io import BytesIO
@@ -116,4 +117,18 @@ def cytometry_parse(request):
         return JsonResponse({ 'python_error': str(e) })
 
 def cytometry_import(request):
-    return render(request, 'cytometry.html', {})
+    if (request.method != "POST"):
+        return redirect(reverse('edd_utils:cytometry_home'))
+    if request.POST.get('create_study', None):
+        study_form = CreateStudyForm(request.POST, prefix='study')
+        if study_form.is_valid():
+            study = study_form.save()
+    else:
+        study_form = CreateStudyForm(prefix='study')
+        study = Study.objects.get(pk=request.POST.get('study_1', None))
+    rawdata = request.POST.get('rawdata', '')
+    print(request.POST)
+    # use main.data_import.TableImport or similar
+    return render(request, 'cytometry.html', {
+        'study_form': study_form,
+        })
