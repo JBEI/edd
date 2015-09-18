@@ -2,6 +2,7 @@
 """ Miscellaneous data-processing utilities. """
 
 import json
+import logging
 import re
 
 from django.contrib import messages
@@ -12,9 +13,12 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from functools import partial
 from io import BytesIO
 
-from . import gc_ms_workbench
+from . import cytometry, gc_ms_workbench
 from .parsers import excel, skyline
 from main.forms import CreateStudyForm
+
+
+logger = logging.getLogger(__name__)
 
 
 def utilities_index (request) :
@@ -125,10 +129,15 @@ def cytometry_import(request):
             study = study_form.save()
     else:
         study_form = CreateStudyForm(prefix='study')
+        from main.models import Study
         study = Study.objects.get(pk=request.POST.get('study_1', None))
-    rawdata = request.POST.get('rawdata', '')
-    print(request.POST)
+    data = json.loads(request.POST.get('data', '[]'))
+    obj = cytometry.CytometerImport(request)
+    for (i, row) in enumerate(data):
+        assay = cytometry.load_assay_for(request, i, study)
+        obj.process_row(i, row)
     # use main.data_import.TableImport or similar
     return render(request, 'cytometry.html', {
         'study_form': study_form,
         })
+

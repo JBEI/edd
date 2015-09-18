@@ -50,7 +50,9 @@
         [ [ '-- Ignore Column --', '' ],
             [ 'Signal Average for …', 'avg' ],
             [ 'Signal Std Deviation for …', 'std' ],
+            [ 'Coefficient of Variance % for …', 'cv' ],
             [ 'Count', 'count' ],
+            [ 'Viable %', 'viab' ],
             [ 'Metadata', 'meta' ]
             // TODO (histogram bin?, other statistics?)
         ].forEach(function (item) {
@@ -78,34 +80,43 @@
                 auto.next().attr('name', 'meta' + colId);
                 EDD_auto.setup_field_autocomplete(auto, 'MetadataType');
                 auto.focus();
-            } else if (val === 'avg' || val === 'std') {
+            } else if (val === 'avg') {
                 auto = EDD_auto.create_autocomplete(auto);
                 auto.next().attr('name', 'type' + colId);
                 EDD_auto.setup_field_autocomplete(auto, 'Phosphor');
                 auto.focus().toggleClass('autocomp_signal', val === 'avg');
+            } else if (val === 'std' || val === 'cv') {
+                auto = $('<select>').addClass('column_std_disam')
+                    .attr('name', val + colId).appendTo(auto);
+                labels.forEach(function (label, i) {
+                    i !== colId && $('<option>').text(label).appendTo(auto).val(i);
+                });
             }
         });
     }
 
     function interpretFirstColumn(rows, delim) {
-        var inter_col, table, assaySel, lineSel;
+        var inter_col, table, assaySel, lineSel, optgroup;
         inter_col = $('#id_first_col').empty();
         table = $('<table>').appendTo(inter_col).wrap('<div class="disambiguationSection"></div>');
         assaySel = $('<select>').addClass('disamAssay');
-        $('<option>').text('(Create New)').appendTo(assaySel).val('new').prop('selected', true);
+        $('<option>').text('(Create New Assay)').appendTo(assaySel).val('new').prop('selected', true);
+        $('<option>').text('Ignore').appendTo(assaySel).val('ignore');
+        optgroup = $('<optgroup>').attr('label', 'Existing Assays').appendTo(assaySel);
         $.each(EDDData.Assays || {}, function (id, assay) {
             var line, protocol;
             line = EDDData.Lines[assay.lid];
             protocol = EDDData.Protocols[assay.pid];
             if (assay.pid === 42) { // TODO change to Cytometry protocol ID
                 $('<option>').text([line.name, protocol.name, assay.name].join('-'))
-                    .appendTo(assaySel).val(id.toString());
+                    .appendTo(optgroup).val(id.toString());
             }
         });
         lineSel = $('<select>').addClass('disamLine');
-        $('<option>').text('(Create New)').appendTo(lineSel).val('new').prop('selected', true);
+        $('<option>').text('(Create New Line)').appendTo(lineSel).val('new').prop('selected', true);
+        optgroup = $('<optgroup>').attr('label', 'Existing Lines').appendTo(lineSel);
         $.each(EDDData.Lines || {}, function (id, line) {
-            $('<option>').text(line.name).appendTo(lineSel).val(id.toString());
+            $('<option>').text(line.name).appendTo(optgroup).val(id.toString());
         });
         stdSel = $('<select>').prop('multiple', true).attr('size', 8).addClass('disamStd');
         rows.forEach(function (row, i) {
@@ -118,6 +129,7 @@
                 td = tr.insertCell();
                 $('<div>').text(label).appendTo(td);
                 td = tr.insertCell();
+                $('<input type="hidden">').attr('name', 'sample' + i).val(label).appendTo(td);
                 assaySel.clone().attr('name', 'assay' + i).appendTo(td);
                 td = $('<span>').text('for Line: ').appendTo(td);
                 lineSel.clone().attr('name', 'line' + i).appendTo(td);
@@ -187,7 +199,7 @@
             label = [ ui.item.name, targRow.find('td > div').text() ].join(' - ');
             $('<div>').text(label).appendTo(td);
             td = tr.insertCell();
-            stdSel.clone().attr('name', 'std' + rowId).appendTo(td);
+            stdSel.clone().attr('name', 'standard' + rowId).appendTo(td);
         });
     });
 
