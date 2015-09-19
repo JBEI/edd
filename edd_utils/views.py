@@ -131,12 +131,8 @@ def cytometry_import(request):
         study_form = CreateStudyForm(prefix='study')
         from main.models import Study
         study = Study.objects.get(pk=request.POST.get('study_1', None))
-    data = json.loads(request.POST.get('data', '[]'))
     obj = cytometry.CytometerImport(request)
-    for (i, row) in enumerate(data):
-        assay = cytometry.load_assay_for(request, i, study)
-        obj.process_row(i, row)
-    # use main.data_import.TableImport or similar
+    obj.process(study)
     return render(request, 'cytometry.html', {
         'study_form': study_form,
         })

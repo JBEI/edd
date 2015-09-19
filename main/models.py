@@ -1188,8 +1188,8 @@ class MeasurementCompartment(object):
     GROUP_CHOICE = [ (str(i), cn) for (i,cn) in enumerate(names) ]
 
 class MeasurementFormat(object):
-    SCALAR, VECTOR, GRID = range(3)
-    names = [ 'scalar', 'vector', 'grid', ]
+    SCALAR, VECTOR, GRID, SIGMA, HISTOGRAM = range(5)
+    names = [ 'scalar', 'vector', 'grid', 'sigma', 'histogram', ]
     FORMAT_CHOICE = [ (str(i), n) for i,n in enumerate(names) ]
 
 class Measurement(models.Model):

@@ -107,7 +107,7 @@
             var line, protocol;
             line = EDDData.Lines[assay.lid];
             protocol = EDDData.Protocols[assay.pid];
-            if (assay.pid === 42) { // TODO change to Cytometry protocol ID
+            if (protocol.name === 'Flow Cytometry Characterization') {
                 $('<option>').text([line.name, protocol.name, assay.name].join('-'))
                     .appendTo(optgroup).val(id.toString());
             }

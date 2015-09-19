@@ -121,10 +121,8 @@ class ProtocolAdminForm(forms.ModelForm):
 
     def clean(self):
         super(ProtocolAdminForm, self).clean()
-        print self.cleaned_data
-        c_id = self.cleaned_data.get('owned_by', None)
-        if c_id is not None:
-            c_user = User.objects.get(pk=c_id)
+        c_user = self.cleaned_data.get('owned_by', None)
+        if c_user is not None:
             self.instance.owner = c_user
 
 
