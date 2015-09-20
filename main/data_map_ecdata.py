@@ -9,19 +9,22 @@ from models import EDDObject, MetadataType, Study, Line, Assay, Measurement, Mea
 #
 
 def map_datablocks(datablocks):
-	"""Maps datablocks to the database schema, and updates the database."""
+	"""Maps datablocks to the database schema, and then updates the database."""
 
-	studies = {}
+	""" Make sure all the data associated with a read is collected together """
+	wellplate_reads = {}
 	for block in datablocks:
-		study = block[0]
-		label = block[1]
+		wellplate_read  = block[0]
+		block_type = block[1]
 		data  = block[2]
-		if not studies.has_key(study):
-			studies[study] = []
-		studies[study] += block
+		if not wellplate_reads.has_key(wellplate_read):
+			wellplate_reads[wellplate_read] = []
+		wellplate_reads[wellplate_read] += block
 
-	for study_blocks in studies:
-		process_study(study, study_blocks)
+	""" Process the data for each read """
+	for read in wellplate_reads.keys():
+		datablock = wellplate_reads[read]
+		_process_read(read, datablock)
 
 
 
@@ -77,17 +80,17 @@ def _ensure_metadata_types_available():
 	device_name.group_id = group.id
 	device_name.save()
 
-def _collect_metadata_object_for_key(study_label, metadata_entries, key, Model_Class):
+def _collect_metadata_object_for_key(read_label, metadata_entries, key, Model_Class):
 	model = None
 	if metadata_entries.has_key(key):
 		#TODO: handle multi case
 		model = Database_Class.objects.get(name=metadata_entries[key])
 		if not model:
-			raise Exception("The %s referenced by \"%s\" is not known" % (key, study_label))
+			raise Exception("The %s referenced by \"%s\" is not known" % (key, read_label))
 	return model
 
 # TODO: complexity analysis
-def _update_line_or_assay_metastore(study_label, index, row, column, model, Model_Class, metadatablocks, known_enzymes):
+def _update_line_or_assay_metastore(read_label, index, row, column, model, Model_Class, metadatablocks, known_enzymes):
 	""" Update the metastore of a line or assay """
 	label = metadatablock[0]
 	value = metadatablock[1][x]
@@ -100,25 +103,26 @@ def _update_line_or_assay_metastore(study_label, index, row, column, model, Mode
 			if type(Model_Class) != type(Line):
 				continue
 			elif value not in known_enzymes:
-				raise Exception("Unspecified Enzyme type \"%s\" in study \"%s\"" % (value,study_label)
+				raise Exception("Unspecified Enzyme type \"%s\" in read \"%s\"" % (value,read_label)
 			else:
 				model.strains.add(known_enzymes[value])
 				#TODO: does the strain_id need to be added?
 		else:
-			raise Exception("Unknown metadata block type \"%s\" found in study \"%s\"" % (label,study_label))
+			raise Exception("Unknown metadata block type \"%s\" found in read \"%s\"" % (label,read_label))
 
 
 #TODO: rename 'Study_*' in spreadsheet to something non-conflicting, like 'Grid_*'
 #TODO: add associated study to spreadsheet and logic.
 
-def _process_study(study_label, study_blocks):
+def _process_read(read_label, raw_datablocks):
 	_ensure_metadata_types_available()
 
 	datablock = None
 	metadata_entries = {}
 	metadatablocks = []
 
-	for block in study_blocks:
+	""" Categorize each type of datablock """
+	for block in raw_datablocks:
 		label = block[1]
 		data  = block[2]
 		is_control = False
@@ -127,7 +131,7 @@ def _process_study(study_label, study_blocks):
 			"""Read in a 96 well grid of some measurments"""
 			datablock = block
 		elif label == 'ControlData':
-			#TODO: Add in an example
+			#TODO: Add in example
 			datablock = block
 			is_control = True
 		elif label == 'Metadata':
@@ -137,7 +141,9 @@ def _process_study(study_label, study_blocks):
 			"""Read in a 96 well grid of some metadata item"""
 			metadatablocks += (label,data)
 
-	# Get the needed hookups
+
+
+	""" Get the user identity """
 	if not metadata_entries['experimenter_ID']:
 		raise Exception("An experimenter_ID that matches your EDD username is required to submit a sheet.")
 	experimenter = User.objects.get(username=metadata_entries['experimenter_ID'])
@@ -147,26 +153,36 @@ def _process_study(study_label, study_blocks):
 		if experimenter.email != metadata_entries['experimenter_email']:
 			raise Exception("User email \"%s\" did not match the email in the database." % metadata_entries['experimenter_email'])
 
-	# generate study
-	study = Study()
-	study.contact = experimenter.id
-	study.contact_extra = metadata_entries['extra_contact_information']
 
-	# TODO: allow merging into existing studies!
-	if  metadata_entries.has_key('Study_name') or EDDObject.objects.get(name=metadata_entries['Study_name']:
-		raise Exception("A study named \"%s\" already exists in the database." % metadata_entries['Study_name'])
 
-	if 	metadata_entries.has_key('Study_name'):
-		study.name = metadata_entries['Study_name']
-	else:
-		raise Exception("Study must be named!")
+	""" Generate or collect Study """
+
+	if not metadata_entries.has_key('Study_name'):
+		raise Exception("Study_name must be given!")
+
+	study_name = metadata_entries['Study_name']
+	study = Study.objects.get(name==study_name)
+	if not study:
+		study = Study()
+		study.contact = experimenter.id
+	elif study.contact_id != experimenter.id:
+		raise Exception("The existing study \"%s\" is not associated with the experimenter \"%s\"" % (study_name,experimenter.username))
+	if metadata_entries['extra_contact_information']:
+		study.contact_extra = metadata_entries['extra_contact_information']
+		# TODO: warning, replacing description
 
 	if metadata_entries.has_key('Study_description'):
 		study.study_description = metadata_entries['Study_description']
+		# TODO: warning, replacing description
 
-	#TODO: Expand exception text support better feedback to handle multiple studies (study_label)
+	# TODO: Expand exception text support better feedback to handle multiple reads (read_label)
+
+
+
+
 
 	""" Add metadata to study hstore """
+	# TODO: move some of these to Line after disambiguation
 
 	if  metadata_entries['machine_internal_temperature_unit']:
 		if MetadataType.objects.get(type_name='Machine internal temperature').postfix != metadata_entries['machine_internal_temperature_unit']:
@@ -181,8 +197,7 @@ def _process_study(study_label, study_blocks):
 
 	if  metadata_entries['well_reaction_temperature_unit']:
 		if MetadataType.objects.get(type_name='Well reaction temperature').postfix != metadata_entries['well_reaction_temperature_unit']:
-			raise Exception("Well reaction temperature given in unknown unit \"%s\", expected unit \"%s\"" % (metadata_entries['well_reaction_temperature_unit'], MetadataType.objects.get(type_name='Well reaction temperature').postfix))
-	
+			raise Exception("Well reaction temperature given in unknown unit \"%s\", expected unit \"%s\"" % (metadata_entries['well_reaction_temperature_unit'], MetadataType.objects.get(type_name='Well reaction temperature').postfix))	
 
 	if MetadataType.objects.get(type_name='Reaction temperature').postfix != metadata_entries['well_reaction_temperature_unit']:
 		raise Exception("Reaction temperature given in unknown unit \"%s\", expected unit \"%s\"" % (metadata_entries['shaking_speed_unit'], MetadataType.objects.get(type_name='Reaction temperature').postfix))
@@ -197,11 +212,11 @@ def _process_study(study_label, study_blocks):
 	study.save()
 
 
-	protocol = _collect_metadata_object_for_key(study_label, metadata_entries, 'protocol_name', Protocol)
-	measurement_type = _collect_metadata_object_for_key(study_label, metadata_entries, 'measurement_type_ID', MeasurementType)
-	measurement_unit = _collect_metadata_object_for_key(study_label, metadata_entries, 'measurement_unit', MeasurementUnit)
+	protocol = _collect_metadata_object_for_key(read_label, metadata_entries, 'protocol_name', Protocol)
+	measurement_type = _collect_metadata_object_for_key(read_label, metadata_entries, 'measurement_type_ID', MeasurementType)
+	measurement_unit = _collect_metadata_object_for_key(read_label, metadata_entries, 'measurement_unit', MeasurementUnit)
 	if not measurement_unit:
-		raise Exception("measurement_unit not specified in study \"%s\"" % (study_label))
+		raise Exception("measurement_unit not specified in read \"%s\"" % (read_label))
 
 	# TODO: ALL ENZYES
 	known_enzymes = {}
@@ -209,7 +224,7 @@ def _process_study(study_label, study_blocks):
 		if key.startswith('Enzyme_'):
 			strain = Strain.objects.get(registry_id=metadata_entries[key])
 			if not strain:
-				raise Exception("The PartID for Enzyme \"%s\" was not recognized in study \"%s\"" % (key,study_label))
+				raise Exception("The PartID for Enzyme \"%s\" was not recognized in read \"%s\"" % (key,read_label))
 			# TODO: deal with multi case
 			known_enzymes[key]=strain
 
@@ -232,16 +247,18 @@ def _process_study(study_label, study_blocks):
 			line.control = True
 		else
 			line.control = False
-		_update_line_or_assay_metastore(study_label, x, row, column, line, Line, metadatablocks, known_enzymes):
+		_update_line_or_assay_metastore(read_label, x, row, column, line, Line, metadatablocks, known_enzymes):
 		line.save()
+
 
 		assay = Assay()
 		assay.line_id = line.object_ref_id
 		assay.name = 'assay %s%s in Study %i: %s' % (row,column,study.object_ref_id,study.name)
 		if protocol:
 			assay.protocol_id = protocol.object_ref_id
-		_update_line_or_assay_metastore(study_label, x, row, column, assay, Assay, metadatablocks, known_enzymes):
+		_update_line_or_assay_metastore(read_label, x, row, column, assay, Assay, metadatablocks, known_enzymes):
 		assay.save()
+
 
 		measurement = Measurement()
 		measurement.active = True
@@ -256,7 +273,6 @@ def _process_study(study_label, study_blocks):
 		measurement.y_units_id = measurement_unit
 		measurement.assay_id = assay.id
 		measurement.save()
-
 
 
 		measurement_value = MeasurementValue()

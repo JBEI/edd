@@ -14,12 +14,13 @@ DATA_BLOCK_SIZE_COL = 8
 def process_spreadsheet(input_file_path):
 	"""Processes a spreadsheet at a given path, returning the datablocks found.
 
-	Datablocks come in the form (study,label,data_block)
+	Datablocks come in the form (read,block_type,data_block)
 
-	study is a string identifying which study the block is associated with
-	label is a string identifying the type of metadata block
+	read is a string identifying which data set the block is associated with
+	block_type is a string identifying the type of metadata block
 		Data - A 96 well plate grid of measurements.
-		Metadata - A list of key-value pairs, applying globally to the study.
+		ControlData - A 96 well plate grid of measurements, for a control read.
+		Metadata - A list of key-value pairs, applying globally to the read.
 		other - A 96 well plate grid of some well-specific metadata item - label.
 	datablock - A 1D List or Dictionary
 
@@ -44,11 +45,11 @@ def process_spreadsheet(input_file_path):
 
 
 def _locate_data_blocks(sheet):
-	"""Scans a sheet for a data_block tag (Study_*) and returns all such indices"""
+	"""Scans a sheet for a data_block tag (96_wellplate_read_*) and returns all such indices"""
 	data_block_indices = []
 	#data_block_indicator = u"Temperature(°C)"
 	#data_block_indicator = u"Table_1"
-	data_block_indicator_prefix = u"Study_"
+	data_block_indicator_prefix = u"96_wellplate_read_"
 
 	for row in sheet.rows:
 		for cell in row:
@@ -91,9 +92,9 @@ def _collect_data_block(sheet, data_block_index):
 	column = _convert_column_letters_to_integer(data_block_index[1])
 	x = y = 0
 
-	study = sheet.cell( row=row,   column=column ).value
+	wellplate_read = sheet.cell( row=row,   column=column ).value
 	label = sheet.cell( row=row+1, column=column ).value
-	print('study: ' + str(study))
+	print('wellplate_read: ' + str(wellplate_read))
 	print('label: ' + str(label))
 
 	if(label==u'Metadata'):
@@ -125,10 +126,12 @@ def _collect_data_block(sheet, data_block_index):
 	# import IPython
 	# IPython.embed()
 	# exit()
-	return (study,label,data_block)
+	return (wellplate_read,label,data_block)
 
 if __name__ == "__main__":
 	# input_file_path = "input/template_with_one_plate.xlsx"
 	# input_file_path = "input/template_with_eight_plate.xlsx"
 	input_file_path = "input/example_with_one_plate.xlsx"
-	process_spreadsheet( input_file_path )
+	data_blocks = process_spreadsheet( input_file_path )
+	print( data_blocks )
+
