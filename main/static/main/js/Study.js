@@ -1,7 +1,6 @@
 /// <reference path="EDDDataInterface.ts" />
 /// <reference path="Utl.ts" />
 /// <reference path="Dragboxes.ts" />
-/// <reference path="EditableElement.ts" />
 /// <reference path="BiomassCalculationUI.ts" />
 var __extends = this.__extends || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -952,7 +951,7 @@ var StudyD;
             // handle measurement data based on type
             mtype = data.types[measurement.type] || {};
             (assay.measures = assay.measures || []).push(measurement.id);
-            if (mtype.family === 'm' || mtype.family === '_') {
+            if (mtype.family === 'm') {
                 (assay.metabolites = assay.metabolites || []).push(measurement.id);
                 filterIds.m.push(measurement.id);
             }
@@ -963,6 +962,10 @@ var StudyD;
             else if (mtype.family === 'g') {
                 (assay.transcriptions = assay.transcriptions || []).push(measurement.id);
                 filterIds.g.push(measurement.id);
+            }
+            else {
+                // throw everything else in a general area
+                (assay.general = assay.general || []).push(measurement.id);
             }
         });
         if (filterIds.m.length) {
@@ -2289,6 +2292,15 @@ var DataGridSpecAssays = (function (_super) {
             else {
                 // convert IDs to measurements, sort by name, then convert to cell objects
                 cells = record.metabolites.map(opt.metaboliteToValue).sort(opt.metaboliteValueSort).map(opt.metaboliteValueToCell);
+            }
+        }
+        if ((record.general || []).length > 0) {
+            if (EDDData.AssayMeasurements === undefined) {
+                cells.push(new DataGridLoadingCell(gridSpec, index, { 'rowspan': record.general.length }));
+            }
+            else {
+                // convert IDs to measurements, sort by name, then convert to cell objects
+                cells = record.general.map(opt.metaboliteToValue).sort(opt.metaboliteValueSort).map(opt.metaboliteValueToCell);
             }
         }
         // generate only one cell if there is any transcriptomics data

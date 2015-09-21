@@ -30,6 +30,7 @@ interface AssayRecord extends EDDRecord {
     metabolites: number[];
     transcriptions: number[];
     proteins: number[];
+    general: number[];
 }
 interface AssayMeasurementRecord {
     id: number;

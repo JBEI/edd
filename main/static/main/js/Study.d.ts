@@ -1,7 +1,6 @@
 /// <reference path="EDDDataInterface.d.ts" />
 /// <reference path="Utl.d.ts" />
 /// <reference path="Dragboxes.d.ts" />
-/// <reference path="EditableElement.d.ts" />
 /// <reference path="BiomassCalculationUI.d.ts" />
 declare var EDDData: EDDData;
 declare module StudyD {

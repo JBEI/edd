@@ -1665,8 +1665,6 @@ var DataGridSpecBase = (function () {
     };
     // This is called after everything is initialized, including the creation of the table content.
     DataGridSpecBase.prototype.onInitialized = function (dataGrid) {
-        // Wire-in our custom edit fields for the Studies page
-        IndexPage.initDescriptionEditFields();
     };
     // This is called when a data reset is triggered, but before the table rows are rebuilt.
     DataGridSpecBase.prototype.onDataReset = function (dataGrid) {

@@ -1,5 +1,4 @@
 /// <reference path="EDDDataInterface.ts" />
-/// <reference path="EditableElement.ts" />
 /// <reference path="DataGrid.ts" />
 /// <reference path="Utl.ts" />
 /// <reference path="lib/jquery.d.ts" />
@@ -36,42 +35,6 @@ var IndexPage;
         });
     }
     IndexPage.prepareTable = prepareTable;
-    // This creates an EditableElement object for each Study description that the user is allowed
-    // to edit.
-    function initDescriptionEditFields() {
-        // Since we've already created the table, we can look into the spec and find the other
-        // objects created in the process.
-        // Under the specification for the "description" column, we find all the
-        // DataGridDataCell objects that belong to that column.
-        var descriptionCells, data;
-        descriptionCells = this.studiesDataGridSpec.descriptionCol.getEntireIndex();
-        data = this.studiesDataGridSpec.data();
-        descriptionCells.forEach(function (cell) {
-            if (data[cell.recordID].write) {
-                EditableElements.initializeElement({
-                    'studyID': cell.recordID,
-                    'element': cell.cellElement,
-                    'type': 'text',
-                    'editAllowed': function () {
-                        return true;
-                    },
-                    'getValue': function (self) {
-                        return data[cell.recordID].des;
-                    },
-                    'setValue': function (self, value) { return data[cell.recordID].des = value; },
-                    // TODO edit this to provide proper URL to EditableElement.ts
-                    'makeFormData': function (self, value) {
-                        return {
-                            'action': 'Update Study Description',
-                            'studyID': cell.recordID,
-                            'desc': value
-                        };
-                    }
-                });
-            }
-        });
-    }
-    IndexPage.initDescriptionEditFields = initDescriptionEditFields;
 })(IndexPage || (IndexPage = {}));
 ;
 // The spec object that will be passed to DataGrid to create the Studies table
@@ -376,8 +339,6 @@ var DataGridSpecStudies = (function (_super) {
     };
     // This is called after everything is initialized, including the creation of the table content.
     DataGridSpecStudies.prototype.onInitialized = function (dataGrid) {
-        // Wire-in our custom edit fields for the Studies page
-        IndexPage.initDescriptionEditFields();
     };
     DataGridSpecStudies.prototype.data = function (replacement, totalSize, totalOffset) {
         if (replacement === undefined) {

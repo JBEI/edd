@@ -2186,8 +2186,6 @@ class DataGridSpecBase {
 
     // This is called after everything is initialized, including the creation of the table content.
     onInitialized(dataGrid:DataGrid):void {
-        // Wire-in our custom edit fields for the Studies page
-        IndexPage.initDescriptionEditFields();
     }
 
 
