@@ -149,10 +149,10 @@
         if ($('#id_create_study').prop('checked')) {
             ok &= checkHasValue($('#id_study-name'));
         } else {
-            ok &= checkHasValue($('id_study_1'));
+            ok &= checkHasValue($('#id_study_1'));
         }
-        ok &= checkHasValue($('id_data'), 'Could not parse this input! Email jbei-help@lbl.gov');
-        ok &= checkHasValue($('id_time'));
+        ok &= checkHasValue($('#id_data'), 'Could not parse this input! Email jbei-help@lbl.gov');
+        ok &= checkHasValue($('#id_time'));
         return !!ok;
     }
 
