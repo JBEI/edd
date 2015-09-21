@@ -144,6 +144,27 @@
         });
     }
 
+    function checkSubmit() {
+        var ok = true;
+        if ($('#id_create_study').prop('checked')) {
+            ok &= checkHasValue($('#id_study-name'));
+        } else {
+            ok &= checkHasValue($('id_study_1'));
+        }
+        ok &= checkHasValue($('id_data'), 'Could not parse this input! Email jbei-help@lbl.gov');
+        ok &= checkHasValue($('id_time'));
+        return !!ok;
+    }
+
+    function checkHasValue(jq, message) {
+        if (!jq.val() || !jq.val().trim()) {
+            $('<div>').addClass('errorMessage').text(message || 'This field is required.')
+                .appendTo(jq).wrap('<span>');
+            return false;
+        }
+        return true;
+    }
+
     $(function () {
         var _dropzone, _textarea, _auto, stdRows;
         // http://stackoverflow.com/questions/22063612
@@ -201,6 +222,8 @@
             td = tr.insertCell();
             stdSel.clone().attr('name', 'standard' + rowId).appendTo(td);
         });
+        // Do basic validation before submit
+        $('#import_form').on('submit', checkSubmit);
     });
 
 }(jQuery));

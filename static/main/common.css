@@ -1396,4 +1396,19 @@ form.comments textarea {
 .hot-div {
     padding: 1em 0;
 }
+
+div.footer {
+    border-top: 1px solid #6CA5E9;
+    color: #CCC;
+    font-size: 0.85em;
+    margin-top: 2em;
+    padding: 1em;
+}
+div.footer > div.footer-text {
+    margin: 0px auto;
+    text-align: center;
+}
+div.footer > div.footer-text > span {
+    margin: 0 2em;
+}
 /* End of common styles */
