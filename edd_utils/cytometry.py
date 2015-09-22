@@ -13,20 +13,20 @@ from main.models import (
 
 logger = logging.getLogger(__name__)
 
+
 class CytometerImport(object):
     """ Object to handle processing of data POSTed to /utilities/cytometry/import view and add
         measurements to the database. """
-
-    # this should be unique
-    protocol = Protocol.objects.filter(
-        name='Flow Cytometry Characterization',
-        owned_by__is_superuser=True,
-        )[0]
 
     def __init__(self, request):
         self._request = request
         self._qd = request.POST
         self._rows = {}
+        # this should be unique
+        self._protocol = Protocol.objects.filter(
+            name='Flow Cytometry Characterization',
+            owned_by__is_superuser=True,
+            )[0]
 
     def load_assay_for(self, i, study):
         qd = self._qd
