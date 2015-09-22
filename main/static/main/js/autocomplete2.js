@@ -44,7 +44,7 @@ var EDDData = EDDData || {};
             ]
     });
     EDD_auto.display_keys = $.extend(EDD_auto.display_keys || {}, {
-        "User": 'name',
+        "User": 'fullname',
         "Strain": 'name',
         "CarbonSource": 'name'
     });
