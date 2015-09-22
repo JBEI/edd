@@ -121,6 +121,8 @@ var CarbonBalance;
                 return;
             }
             var indent = [];
+            // keep adding indents until reach length of _debugOutputIndent
+            /* tslint:disable:curly */
             while (this._debugOutputIndent && this._debugOutputIndent > indent.push('    '))
                 ;
             /* tslint:enable:curly */
@@ -160,7 +162,11 @@ var CarbonBalance;
             }
             else {
                 // Anything using mols is fine as well.
-                return (units === 'mol/L/hr' || units === 'uM' || units === 'mM' || units === 'mol/L' || units === 'Cmol/L');
+                return (units === 'mol/L/hr' ||
+                    units === 'uM' ||
+                    units === 'mM' ||
+                    units === 'mol/L' ||
+                    units === 'Cmol/L');
             }
         };
         // Do unit conversions in order to get a Cmol/L value.
@@ -217,12 +223,15 @@ var CarbonBalance;
                     if (units === 'g/L') {
                         if (!measurementType.mm) {
                             // We should never get in here.
-                            this._writeDebugLine(dOut, "Trying to calculate carbon for a g/L " + "metabolite with an unspecified molar mass! " + "(The code should never get here).");
+                            this._writeDebugLine(dOut, "Trying to calculate carbon for a g/L " +
+                                "metabolite with an unspecified molar mass! " +
+                                "(The code should never get here).");
                         }
                         else {
                             // (g/L) * (mol/g) = (mol/L)
                             value = value * 1000 / measurementType.mm;
-                            this._writeDebugLineWithHeader(dOut, "divide by molar mass", [" * 1000 /", measurementType.mm, "g/mol =", this._numStr(value), "mMol/L"].join(' '));
+                            this._writeDebugLineWithHeader(dOut, "divide by molar mass", [" * 1000 /", measurementType.mm, "g/mol =",
+                                this._numStr(value), "mMol/L"].join(' '));
                             units = 'mMol/L';
                         }
                     }
@@ -308,7 +317,8 @@ var CarbonBalance;
                 var writeDebugOutput = false, result, sample;
                 if (_this._debugTimeStamp && line.getLineID() === _this._debugLineID) {
                     // debug if current OR next time is the debug time
-                    if (time === _this._debugTimeStamp || (i + 1 < a.length && a[i + 1] === _this._debugTimeStamp)) {
+                    if (time === _this._debugTimeStamp ||
+                        (i + 1 < a.length && a[i + 1] === _this._debugTimeStamp)) {
                         writeDebugOutput = true;
                     }
                 }
@@ -330,7 +340,9 @@ var CarbonBalance;
             // loop from second element, and use the index of shorter array to get previous
             sortedMeasurements.slice(1).forEach(function (sample, i) {
                 var prev = sortedMeasurements[i], deltaTime = _this._calcTimeDelta(prev.timeStamp, sample.timeStamp), writeDebugInfo, growthRate, deltaCarbon, odFactor, cmMolPerLPerH, cmMolPerGdwPerH;
-                writeDebugInfo = (_this._debugTimeStamp && line.getLineID() === _this._debugLineID && sample.timeStamp === _this._debugTimeStamp);
+                writeDebugInfo = (_this._debugTimeStamp
+                    && line.getLineID() === _this._debugLineID
+                    && sample.timeStamp === _this._debugTimeStamp);
                 if (isOpticalDensity) {
                     // If this is the OD measurement, then we'll use the biomass factor
                     growthRate = (Math.log(sample.carbonValue / prev.carbonValue) / deltaTime);
@@ -340,8 +352,13 @@ var CarbonBalance;
                         _this._debugOutputIndent++;
                         _this._writeDebugLineWithHeader(true, "raw OD at " + prev.timeStamp + "h", _this._numStr(prev.carbonValue));
                         _this._writeDebugLineWithHeader(true, "raw OD at " + sample.timeStamp + "h", _this._numStr(sample.carbonValue));
-                        _this._writeDebugLineWithHeader(true, "growth rate", "log(" + _this._numStr(sample.carbonValue) + " / " + _this._numStr(prev.carbonValue) + ") / " + _this._numStr(deltaTime) + "h = " + _this._numStr(growthRate));
-                        _this._writeDebugLineWithHeader(true, "biomass factor", " * " + _this._numStr(biomassCalculation) + " = " + _this._numStr(sample.carbonDelta) + " CmMol/gdw/hr");
+                        _this._writeDebugLineWithHeader(true, "growth rate", "log(" +
+                            _this._numStr(sample.carbonValue) + " / " +
+                            _this._numStr(prev.carbonValue) +
+                            ") / " + _this._numStr(deltaTime) + "h = " +
+                            _this._numStr(growthRate));
+                        _this._writeDebugLineWithHeader(true, "biomass factor", " * " + _this._numStr(biomassCalculation) + " = " +
+                            _this._numStr(sample.carbonDelta) + " CmMol/gdw/hr");
                         _this._writeDebugLine(true, "");
                         _this._debugOutputIndent--;
                     }
@@ -359,9 +376,13 @@ var CarbonBalance;
                     if (writeDebugInfo) {
                         _this._writeDebugLine(true, "Convert to CmMol/gdw/hr");
                         _this._debugOutputIndent++;
-                        _this._writeDebugLineWithHeader(true, "delta from " + prev.timeStamp + "h to " + sample.timeStamp + "h", _this._numStr(sample.carbonValue) + " CmMol/L - " + _this._numStr(prev.carbonValue) + " CmMol/L = " + _this._numStr(deltaCarbon) + " CmMol/L");
-                        _this._writeDebugLineWithHeader(true, "delta time", " / " + _this._numStr(deltaTime) + "h = " + _this._numStr(cmMolPerLPerH) + " CmMol/L/h");
-                        _this._writeDebugLineWithHeader(true, "apply OD", " / " + _this._numStr(odFactor) + " L/gdw = " + _this._numStr(cmMolPerGdwPerH) + " CmMol/gdw/h");
+                        _this._writeDebugLineWithHeader(true, "delta from " + prev.timeStamp + "h to " + sample.timeStamp + "h", _this._numStr(sample.carbonValue) + " CmMol/L - " +
+                            _this._numStr(prev.carbonValue) + " CmMol/L = " +
+                            _this._numStr(deltaCarbon) + " CmMol/L");
+                        _this._writeDebugLineWithHeader(true, "delta time", " / " + _this._numStr(deltaTime) + "h = " +
+                            _this._numStr(cmMolPerLPerH) + " CmMol/L/h");
+                        _this._writeDebugLineWithHeader(true, "apply OD", " / " + _this._numStr(odFactor) + " L/gdw = " +
+                            _this._numStr(cmMolPerGdwPerH) + " CmMol/gdw/h");
                         _this._debugOutputIndent--;
                     }
                 }
@@ -429,9 +450,12 @@ var CarbonBalance;
                     this._writeDebugLineWithHeader(true, "raw value at " + sortedTime[interpInfo.index + 1] + "h", this._numStr(data2));
                 }
                 if (t !== 0 && t !== 1) {
-                    this._writeDebugLineWithHeader(true, "interpolate " + (t * 100).toFixed(2) + "%", this._numStr(data1) + " + (" + this._numStr(data2) + " - " + this._numStr(data1) + ")" + " * " + this._numStr(t) + " = " + this._numStr(odMeasurement) + " L/gdw");
+                    this._writeDebugLineWithHeader(true, "interpolate " + (t * 100).toFixed(2) + "%", this._numStr(data1) + " + (" + this._numStr(data2) + " - " +
+                        this._numStr(data1) + ")" + " * " + this._numStr(t) + " = " +
+                        this._numStr(odMeasurement) + " L/gdw");
                 }
-                this._writeDebugLineWithHeader(true, "empirical factor", " * " + this._numStr(odMagicFactor) + " = " + this._numStr(finalValue) + " L/gdw");
+                this._writeDebugLineWithHeader(true, "empirical factor", " * " + this._numStr(odMagicFactor) + " = " +
+                    this._numStr(finalValue) + " L/gdw");
                 this._writeDebugLine(true, "");
                 this._debugOutputIndent--;
             }
@@ -444,7 +468,8 @@ var CarbonBalance;
                 return odMeasureID;
             }
             else {
-                console.log("Warning! Unable to find OD measurement for " + EDDData.Lines[lineID].name);
+                console.log("Warning! Unable to find OD measurement for " +
+                    EDDData.Lines[lineID].name);
                 return -1;
             }
         };

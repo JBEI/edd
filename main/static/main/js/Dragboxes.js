@@ -42,7 +42,10 @@ var Dragboxes;
     }
     Dragboxes.dragStart = dragStart;
     function initTable(table) {
-        $(table).filter('.dragboxes').on('mousedown.dragboxes', 'td :checkbox', dragStart).on('mousedown.dragboxes', 'td label', dragStart).on('click.dragboxes', 'td :checkbox', function () { return false; });
+        $(table).filter('.dragboxes')
+            .on('mousedown.dragboxes', 'td :checkbox', dragStart)
+            .on('mousedown.dragboxes', 'td label', dragStart)
+            .on('click.dragboxes', 'td :checkbox', function () { return false; });
     }
     Dragboxes.initTable = initTable;
 })(Dragboxes || (Dragboxes = {}));

@@ -1,4 +1,4 @@
-/// <reference path="typescript-declarations.d.ts" />
+/// <reference path="../../../../typescript/typescript-declarations.d.ts" />
 /// <reference path="EDDDataInterface.d.ts" />
 declare module Utl {
     class EDD {

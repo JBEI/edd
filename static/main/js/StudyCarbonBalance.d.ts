@@ -1,4 +1,4 @@
-/// <reference path="typescript-declarations.d.ts" />
+/// <reference path="../../../../typescript/typescript-declarations.d.ts" />
 /// <reference path="Utl.d.ts" />
 /// <reference path="CarbonSummation.d.ts" />
 declare module CarbonBalance {
@@ -35,8 +35,8 @@ declare module CarbonBalance {
         static graphDiv: any;
         allCBGraphs: any[];
         mergedTimelinesByLineID: {
-            [x: number]: MergedLineSamples;
+            [lineID: number]: MergedLineSamples;
         };
-        carbonSum: Summation;
+        carbonSum: CarbonBalance.Summation;
     }
 }

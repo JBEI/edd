@@ -1,9 +1,9 @@
-/// <reference path="lib/jquery.d.ts" />
+/// <reference path="../../../../typescript/lib/jquery.d.ts" />
 /// <reference path="EDDDataInterface.d.ts" />
 declare var ATData: any;
 declare var EDDATDGraphing: any;
 declare var EDD_auto: any;
-interface RawInput extends Array<Array<string>> {
+interface RawInput extends Array<string[]> {
 }
 interface RawInputStat {
     input: RawInput;
