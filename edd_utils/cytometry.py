@@ -134,6 +134,8 @@ class CytometerRow(object):
             else:
                 point.y = y
                 point.save()
+        # make sure metadata set gets saved
+        self._assay.save()
 
     def define_count(self, value):
         try:

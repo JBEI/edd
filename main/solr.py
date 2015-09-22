@@ -40,6 +40,24 @@ class SolrSearch(object):
             log.error('%s == %s' % (url, response.text))
             raise Exception('Commit to Solr failed')
 
+    def remove(self, docs=[]):
+        """
+        Update Solr with a list of objects to remove from the index.
+
+        Arguments:
+            docs: an iterable of objects with an id property
+        """
+        # Does no permissions checking; permissions already valid if called from Study pre_delete
+        # signal, but other clients must do own checks on permissions.
+        url = self.url + '/update/json'
+        command = '{"delete":{"query":"id:%s"},"commit":{}}'
+        headers = {'content-type': 'application/json'}
+        for doc in docs:
+            response = requests.post(url, data=command % (doc.id,), headers=headers)
+            if response.status_code != requests.codes.ok:
+                log.error('%s == %s' % (url, response.text))
+                raise Exception('Commit to Solr failed')        
+
     def search(self, queryopt={'q':'*:*','wt':'json'}):
         """ Runs query with raw Solr parameters """
         # single character queries will never return results as smallest ngram is 2 characters
@@ -58,7 +76,8 @@ class SolrSearch(object):
         Arguments:
             docs: an iterable of objects with a to_solr_json method to update in Solr
         """
-        # TODO: do some additional checking to ensure current user has write access before updating
+        # Does no permissions checking; permissions already valid if called from Study post_save
+        # signal, but other clients must do own checks on permissions.
         url = self.url + '/update/json'
         payload = map(lambda d: d.to_solr_json(), docs)
         headers = {'content-type': 'application/json'}
