@@ -12,18 +12,16 @@ from main.models import (
 
 
 logger = logging.getLogger(__name__)
-# this should be unique
-protocol = Protocol.objects.get(
-    name='Flow Cytometry Characterization',
-    owned_by__username='wcmorrell',
-    )
-hours = MeasurementUnit.objects.get(unit_name='hours')
-na = MeasurementUnit.objects.get(unit_name='n/a') # FIXME probably don't want to use n/a
 
 class CytometerImport(object):
     """ Object to handle processing of data POSTed to /utilities/cytometry/import view and add
         measurements to the database. """
 
+    # this should be unique
+    protocol = Protocol.objects.filter(
+        name='Flow Cytometry Characterization',
+        owned_by__is_superuser=True,
+        )[0]
 
     def __init__(self, request):
         self._request = request
@@ -48,7 +46,7 @@ class CytometerImport(object):
             if line:
                 assay = line.assay_set.create(
                     name='%s-%s' % (line.name, sample_name),
-                    protocol=protocol,
+                    protocol=self.protocol,
                     experimenter=self._request.user,
                     )
             else:
@@ -97,6 +95,9 @@ class CytometerImport(object):
 
 
 class CytometerRow(object):
+    hours = MeasurementUnit.objects.get(unit_name='hours')
+    na = MeasurementUnit.objects.get(unit_name='n/a') # FIXME probably don't want to use n/a
+
     def __init__(self, assay):
         self._assay = assay
         self._measure_data = defaultdict(dict)
@@ -121,8 +122,8 @@ class CytometerRow(object):
                     measurement_type_id=ptype,
                     measurement_format=MeasurementFormat.SIGMA,
                     compartment=MeasurementCompartment.UNKNOWN,
-                    x_units=hours,
-                    y_units=na,
+                    x_units=self.hours,
+                    y_units=self.na,
                     )
             x = map(float, [ time, ])
             y = map(float, [ value, variance, self._count, ])
