@@ -46,7 +46,7 @@ class CytometerImport(object):
             if line:
                 assay = line.assay_set.create(
                     name='%s-%s' % (line.name, sample_name),
-                    protocol=self.protocol,
+                    protocol=self._protocol,
                     experimenter=self._request.user,
                     )
             else:
