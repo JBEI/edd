@@ -19,8 +19,8 @@ class SolrSearch(object):
             self.settings = django_settings.EDD_MAIN_SOLR[settings_key]
         else:
             log.warning('Using default fallback Solr configuration, no setting key for %s'
-                    % (settings_key))
-            self.settings = { 'URL': 'http://localhost:8080/' }
+                        % (settings_key))
+            self.settings = {'URL': 'http://localhost:8080/', }
         if url is not None:
             self.settings['URL'] = url
 
@@ -56,9 +56,9 @@ class SolrSearch(object):
             response = requests.post(url, data=command % (doc.id,), headers=headers)
             if response.status_code != requests.codes.ok:
                 log.error('%s == %s' % (url, response.text))
-                raise Exception('Commit to Solr failed')        
+                raise Exception('Commit to Solr failed')
 
-    def search(self, queryopt={'q':'*:*','wt':'json'}):
+    def search(self, queryopt={'q': '*:*', 'wt': 'json', }):
         """ Runs query with raw Solr parameters """
         # single character queries will never return results as smallest ngram is 2 characters
         if len(queryopt['q']) == 1:
@@ -72,7 +72,7 @@ class SolrSearch(object):
     def update(self, docs=[]):
         """
         Update Solr with given list of objects.
-        
+
         Arguments:
             docs: an iterable of objects with a to_solr_json method to update in Solr
         """
@@ -92,18 +92,17 @@ class SolrSearch(object):
                 raise Exception('Commit to Solr failed')
         else:
             raise Exception('Adding studies to Solr failed: %s' % response.json()['error']['msg'])
-    
+
     @property
     def url(self):
         return self.settings['URL'] + self.core
-    
 
 
 class StudySearch(SolrSearch):
     """
     A more-or-less straight port of the StudySearch.pm module from the EDD perl code. Makes requests
     to the custom Solr schema created to search EDD studies.
-    
+
     Arguments:
         ident: User object from django.contrib.auth.models
         url: Base URL for Solr instance (default: None; overrides settings value if not None)
@@ -120,7 +119,7 @@ class StudySearch(SolrSearch):
     def build_acl_filter(ident):
         """
         Create a fq (filter query) string based on an ident (django.contrib.auth.models.User).
-        
+
         Arguments:
             ident: User object from django.contrib.auth.models
         Returns:
@@ -140,11 +139,11 @@ class StudySearch(SolrSearch):
     def query(self, query='', options={}):
         """
         Run a query against Solr index.
-        
+
         Arguments:
             query: Solr query string (default: 'active:true')
             options: dict containing optional query parameters
-                - edismax: boolean to run query as term in edismax query (default: False) 
+                - edismax: boolean to run query as term in edismax query (default: False)
                 - i: starting index of results to fetch (default: 0)
                 - size: maximum fetch size (default: 50)
                 - sort: comma-delimited string of "field (asc|desc)" (default: None)
@@ -164,7 +163,7 @@ class StudySearch(SolrSearch):
         if self.ident is None:
             raise RuntimeError('No user defined for query')
         (readable, writable) = StudySearch.build_acl_filter(self.ident)
-        fq = [ readable, ]
+        fq = [readable, ]
         queryopt = {
             'indent': True,
             'q': query,
@@ -183,8 +182,10 @@ class StudySearch(SolrSearch):
                                        'part_name',
                                        ])
             queryopt['q.alt'] = '*:*'
-        if not options.get('showDisabled', False): fq.append('active:true')
-        if options.get('showMine', False): fq.append('creator:%s' % (self.ident.pk))
+        if not options.get('showDisabled', False):
+            fq.append('active:true')
+        if options.get('showMine', False):
+            fq.append('creator:%s' % (self.ident.pk))
         queryopt['fq'] = fq
         return self.search(queryopt=queryopt)
 

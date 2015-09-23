@@ -1,7 +1,6 @@
 
 import json
 import logging
-import re
 
 from collections import defaultdict
 
@@ -64,7 +63,7 @@ class CytometerImport(object):
         for (i, row) in enumerate(data):
             assay = self.load_assay_for(i, study)
             self.process_row(i, row, assay)
-        # check for any standards rows 
+        # check for any standards rows
         # TODO modify measurements based on selected standard rows
         # compose rows of data into Measurements to add to assay
         for row in self._rows.values():
@@ -96,7 +95,7 @@ class CytometerImport(object):
 
 class CytometerRow(object):
     hours = MeasurementUnit.objects.get(unit_name='hours')
-    na = MeasurementUnit.objects.get(unit_name='n/a') # FIXME probably don't want to use n/a
+    na = MeasurementUnit.objects.get(unit_name='n/a')  # FIXME probably don't want to use n/a
 
     def __init__(self, assay):
         self._assay = assay
@@ -125,8 +124,8 @@ class CytometerRow(object):
                     x_units=self.hours,
                     y_units=self.na,
                     )
-            x = map(float, [ time, ])
-            y = map(float, [ value, variance, self._count, ])
+            x = map(float, [time, ])
+            y = map(float, [value, variance, self._count, ])
             try:
                 point = obj.measurementvalue_set.get(x=x)
             except MeasurementValue.DoesNotExist:
@@ -165,7 +164,7 @@ class CytometerRow(object):
                 })
 
     def define_metadata(self, meta_type, value):
-        if self._assay: # could be an ignored row without an assay
+        if self._assay:  # could be an ignored row without an assay
             self._assay.meta_store[meta_type] = value
 
     def define_variance(self, seq, value):
