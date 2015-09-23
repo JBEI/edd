@@ -2,6 +2,7 @@
 import json
 import logging
 
+from builtins import str as unicode
 from collections import defaultdict
 
 from main.models import (
