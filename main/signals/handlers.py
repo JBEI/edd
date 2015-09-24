@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
 from django.contrib.auth import get_user_model
 from django.db.models.signals import post_save, pre_delete
 from django.dispatch import receiver
@@ -11,19 +14,20 @@ users = UserSearch()
 
 
 @receiver(post_save, sender=Study)
-def study_saved(sender, instance, created, raw, **kwargs):
-    if not raw:
+def study_saved(sender, instance, created, raw, using, **kwargs):
+    if not raw and using == 'default':
         study_modified.send(sender=sender, study=instance)
 
 
 @receiver(pre_delete, sender=Study)
 def study_delete(sender, instance, using, **kwargs):
-    study_removed.send(sender=sender, study=instance)
+    if using == 'default':
+        study_removed.send(sender=sender, study=instance)
 
 
 @receiver(post_save, sender=get_user_model())
-def user_saved(sender, instance, created, raw, **kwargs):
-    if not raw:
+def user_saved(sender, instance, created, raw, using, **kwargs):
+    if not raw and using == 'default':
         user_modified.send(sender=sender, user=instance)
 
 

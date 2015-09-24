@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Django settings for edd project.
 
@@ -14,7 +15,6 @@ import json
 import ldap
 from django_auth_ldap.config import LDAPSearch, GroupOfUniqueNamesType
 from django.conf.global_settings import TEMPLATE_CONTEXT_PROCESSORS as TCP
-from django.conf.global_settings import LOGIN_REDIRECT_URL
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 
 
@@ -22,7 +22,7 @@ try:
     with open(os.path.join(BASE_DIR, 'server.cfg')) as server_cfg:
         config = json.load(server_cfg)
 except IOError:
-    print "Must have a server.cfg, copy from server.cfg-example and fill in appropriate values"
+    print("Must have a server.cfg, copy from server.cfg-example and fill in appropriate values")
     raise
 
 
@@ -52,7 +52,7 @@ DEBUG_TOOLBAR_CONFIG = {
 INSTALLED_APPS = (
     'django.contrib.admin',
     'django.contrib.auth',
-    'django.contrib.sites', # recommended for registration app
+    'django.contrib.sites',  # recommended for registration app
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
