@@ -2,10 +2,11 @@
 from __future__ import unicode_literals
 
 import arrow
-import warnings
 import os.path
+import warnings
 
 from django.contrib.auth.models import User, Group
+from django.core.exceptions import PermissionDenied
 from django.test import TestCase
 from edd.profile.models import UserProfile
 
@@ -215,10 +216,12 @@ class LineTests (TestCase):  # XXX also Strain, CarbonSource
 
     def test_line_metadata(self):
         line1 = Line.objects.get(name="Line 1")
-        line1.set_metadata_item("Media", "M9")
-        self.assertTrue(line1.media == "M9")
+        media = MetadataType.objects.get(type_name="Media")
+        sv = MetadataType.objects.get(type_name="Sample volume")
+        line1.metadata_add(media, "M9")
+        self.assertTrue(line1.metadata_get(media) == "M9")
         try:
-            line1.set_metadata_item("Sample volume", 1.5)
+            line1.metadata_add(sv, 1.5)
         except ValueError:
             pass
         else:
@@ -227,7 +230,7 @@ class LineTests (TestCase):  # XXX also Strain, CarbonSource
     def test_line_json(self):
         line1 = Line.objects.get(name="Line 1")
         md = MetadataType.objects.get(type_name="Media")
-        line1.meta_store[md.pk] = "M9"
+        line1.meta_store['%s' % md.pk] = "M9"
         json_dict = line1.to_json()
         self.assertTrue(json_dict['meta'] == {"%s" % md.pk: "M9"})
 
@@ -260,13 +263,13 @@ class LineTests (TestCase):  # XXX also Strain, CarbonSource
         self.assertTrue(cs2.n_lines == 1)
         self.assertTrue(cs2.n_studies == 1)
         json_dict = cs1.to_json()
-        self.assertTrue(json_dict['labeling'] == "100%% unlabeled")
-        self.assertTrue(line1.carbon_source_labeling == "100%% unlabeled")
+        self.assertTrue(json_dict['labeling'] == "100% unlabeled")
+        self.assertTrue(line1.carbon_source_labeling == "100% unlabeled")
         self.assertTrue(line1.carbon_source_name == "Carbon source 1")
-        self.assertTrue(line1.carbon_source_info == "Carbon source 1 (100%% unlabeled)")
+        self.assertTrue(line1.carbon_source_info == "Carbon source 1 (100% unlabeled)")
         self.assertTrue(
             line3.carbon_source_info ==
-            "Carbon source 1 (100%% unlabeled),Carbon source 3 (40%% 14C)")
+            "Carbon source 1 (100% unlabeled),Carbon source 3 (40% 14C)")
 
 
 # XXX because there's so much overlap in functionality and the necessary setup
@@ -348,12 +351,12 @@ class AssayDataTests(TestCase):
         user1 = User.objects.get(username="admin")
         Protocol.objects.create(
             name="Another protocol",
-            user=user1,
+            owned_by=user1,
             variant_of_id=p3.id)
         try:
             Protocol.objects.create(
                 name="Another protocol",
-                user=user1,
+                owned_by=user1,
                 variant_of_id=p3.id)
         except ValueError as e:
             self.assertTrue('%s' % e == "There is already a protocol named 'Another protocol'.")
@@ -362,7 +365,7 @@ class AssayDataTests(TestCase):
         try:
             Protocol.objects.create(
                 name="",
-                user=user1)
+                owned_by=user1)
         except ValueError as e:
             self.assertTrue('%s' % e == "Protocol name required.")
         else:
@@ -396,8 +399,6 @@ class AssayDataTests(TestCase):
             'kstr': 'GCMS,HPLC'})
         keywords = MetaboliteKeyword.all_with_metabolite_ids()
         self.assertTrue(len(keywords[1]['metabolites']) == 2)
-        mts = Metabolite.all_sorted_by_short_name()
-        self.assertTrue([m.type_name for m in mts] == [u'Acetate', u'D-Glucose', u'Mevalonate'])
 
     def test_measurement_unit(self):
         mu = MeasurementUnit.objects.get(unit_name="mM")
@@ -499,18 +500,12 @@ class ImportTests(TestCase):
         return {
             'action': "Submit Data",
             'datalayout': "std",
-            'disamMComp1': "IC",
-            'disamMComp2': "IC",
-            'disamMCompHidden1': 1,
-            'disamMCompHidden2': 1,
-            'disamMType1': "ac / Acetate",
-            'disamMType2': "glc-D / D-Glucose",
-            'disamMTypeHidden1': Metabolite.objects.get(short_name="ac").pk,
-            'disamMTypeHidden2': Metabolite.objects.get(short_name="glc-D").pk,
-            'disamMUnits1': "mM",
-            'disamMUnits2': "mM",
-            'disamMUnitsHidden1': mu.pk,
-            'disamMUnitsHidden2': mu.pk,
+            'disamMComp1': 1,
+            'disamMComp2': 1,
+            'disamMType1': Metabolite.objects.get(short_name="ac").pk,
+            'disamMType2': Metabolite.objects.get(short_name="glc-D").pk,
+            'disamMUnits1': mu.pk,
+            'disamMUnits2': mu.pk,
             'enableColumn0': 1,
             'enableColumn1': 2,
             'enableRow0': 1,
@@ -542,14 +537,11 @@ class ImportTests(TestCase):
         }
 
     def test_import_gc_ms_metabolites(self):
-        update = Update.objects.create(
-            mod_time=arrow.utcnow(),
-            mod_by=User.objects.get(username="admin"))
-        data_import.import_assay_table_data(
-            study=Study.objects.get(name="Test Study 1"),
-            user=User.objects.get(username="admin"),
-            post_data=self.get_form(),
-            update=update)
+        table = data_import.TableImport(
+            Study.objects.get(name="Test Study 1"),
+            User.objects.get(username="admin"))
+        added = table.import_data(self.get_form())
+        self.assertEqual(added, 10)
         data_literal = ("""[[(0.0, 0.1), (1.0, 0.2), (2.0, 0.4), (4.0, 1.7), (8.0, 5.9)], """
                         """[(0.0, 0.2), (1.0, 0.4), (2.0, 0.6), (4.0, 0.8), (8.0, 1.2)]]""")
         assays = Line.objects.get(name="L1").assay_set.all()
@@ -562,19 +554,15 @@ class ImportTests(TestCase):
         self.assertTrue('%s' % data == data_literal)
 
     def test_error(self):
-        update = Update.objects.create(
-            mod_time=arrow.utcnow(),
-            mod_by=User.objects.get(username="admin"))
         try:  # failed user permissions check
-            data_import.import_assay_table_data(
-                study=Study.objects.get(name="Test Study 1"),
-                user=User.objects.get(username="postdoc"),
-                post_data=self.get_form(),
-                update=update)
-        except AssertionError:
+            table = data_import.TableImport(
+                Study.objects.get(name="Test Study 1"),
+                User.objects.get(username="postdoc"))
+            table.import_data(self.get_form())
+        except PermissionDenied:
             pass
         else:
-            raise Exception("Expected an AssertionError here")
+            raise Exception("Expected a PermissionDenied here")
 
     def test_import_rna_seq(self):
         line1 = Line.objects.get(name="L1")

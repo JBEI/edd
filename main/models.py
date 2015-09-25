@@ -2,8 +2,10 @@
 from __future__ import unicode_literals
 
 import arrow
+import json
 import os.path
 import re
+import warnings
 
 from collections import defaultdict
 from django.conf import settings
@@ -224,6 +226,23 @@ class MetadataType(models.Model):
                 Func(F('type_name'), function='LOWER'),
             )
 
+    def decode_value(self, value):
+        """ A postgres HStore column only supports string keys and string values. This method uses
+            the definition of the MetadataType to convert a string from the database into an
+            appropriate Python object. """
+        if self.type_class is None:
+            try:
+                return json.loads(value)
+            except ValueError:
+                return value
+
+    def encode_value(self, value):
+        """ A postgres HStore column only supports string keys and string values. This method uses
+            the definition of the MetadataType to convert a Python object into a string to be
+            saved in the database. """
+        if self.type_class is None:
+            return json.dumps(value)
+
     def for_line(self):
         return (self.for_context == self.LINE or
                 self.for_context == self.LINE_OR_PROTOCOL or
@@ -265,13 +284,13 @@ class MetadataType(models.Model):
     def is_allowed_object(self, obj):
         """ Indicate whether this metadata type can be associated with the given object based on
             the for_context attribute. """
-        if (obj.__class__ is Study):
+        if isinstance(obj, Study):
             return self.for_study()
-        elif (obj.__class__ is Line):
+        elif isinstance(obj, Line):
             return self.for_line()
-        elif (obj.__class__ is Protocol):
+        elif isinstance(obj, Protocol):
             return self.for_protocol()
-        elif (obj.__class__ is Assay):
+        elif isinstance(obj, Assay):
             return self.for_protocol()
         else:
             return (self.for_context == self.ALL)
@@ -340,12 +359,12 @@ class EDDObject(models.Model):
         assert ([pk, key].count(None) == 1)
         if pk is None:
             pk = MetadataType.objects.get(type_name=key)
-        return self.meta_store.get(str(pk.id))
+        return self.meta_store.get('%s' % pk.id)
 
     def get_metadata_dict(self):
         """ Return a Python dictionary of metadata with the keys replaced by the
             string representations of the corresponding MetadataType records. """
-        metadata_types = {str(mt.id): mt for mt in self.get_metadata_types()}
+        metadata_types = {'%s' % mt.id: mt for mt in self.get_metadata_types()}
         metadata = {}
         for pk, value in self.meta_store.iteritems():
             metadata_type = metadata_types[pk]
@@ -353,17 +372,64 @@ class EDDObject(models.Model):
                 value = metadata_type.prefix + " " + value
             if metadata_type.postfix:
                 value = value + " " + metadata_type.postfix
-            metadata[str(metadata_types[pk])] = value
+            metadata['%s' % metadata_types[pk]] = value
         return metadata
 
     def set_metadata_item(self, key, value, defer_save=False):
+        warnings.warn('Call to deprecated function EDDObject.set_metadata_item with: %s, %s; '
+                      'the function uses a non-unique key to look up values. Clients should use '
+                      'their own lookup to find a MetadataType instance and store to '
+                      'EDDObject.meta_store directly using MetadataType.pk as a key; or use '
+                      'metadata_add, metadata_clear, metadata_get, metadata_remove'
+                      % (key, value, ),
+                      category=DeprecationWarning)
         mdtype = MetadataType.objects.get(type_name=key)
         if (not mdtype.is_allowed_object(self)):
             raise ValueError("The metadata type '%s' does not apply to %s objects." % (
                 mdtype.type_name, self.__class__.__name__, ))
-        self.meta_store[str(mdtype.id)] = value
+        self.meta_store['%s' % mdtype.id] = value
         if (not defer_save):
             self.save()
+
+    def metadata_add(self, metatype, value, append=True):
+        """ Adds metadata to the object; by default, if there is already metadata of the same type,
+            the value is appended to a list with previous value(s). Set kwarg `append` to False to
+            overwrite previous values. """
+        if not metatype.is_allowed_object(self):
+            raise ValueError("The metadata type '%s' does not apply to %s objects." % (
+                metatype.type_name, type(self)))
+        if append:
+            prev = self.metadata_get(metatype)
+            if hasattr(prev, 'append'):
+                prev.append(value)
+                value = prev
+            elif prev is not None:
+                value = [prev, value, ]
+        self.meta_store['%s' % metatype.pk] = metatype.encode_value(value)
+
+    def metadata_clear(self, metatype):
+        """ Removes all metadata of the type from this object. """
+        del self.meta_store['%s' % metatype.pk]
+
+    def metadata_get(self, metatype, default=None):
+        """ Returns the metadata on this object matching the type. """
+        value = self.meta_store.get('%s' % metatype.pk, None)
+        if value is None:
+            return default
+        return metatype.decode_value(value)
+
+    def metadata_remove(self, metatype, value):
+        """ Removes metadata with a value matching the argument for the type. """
+        prev = self.metadata_get(metatype)
+        if prev:
+            if value == prev:
+                self.metadata_clear(metatype)
+            else:
+                try:
+                    prev.remove(value)
+                    self.meta_store['%s' % metatype.pk] = prev
+                except ValueError:
+                    pass
 
     def __str__(self):
         return self.name
@@ -624,6 +690,15 @@ class Protocol(EDDObject):
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        if self.name in ['', None, ]:
+            raise ValueError("Protocol name required.")
+        p = Protocol.objects.filter(name=self.name)
+        if ((self.id is not None and p.count() > 1) or
+                (self.id is None and p.count() > 0)):
+            raise ValueError("There is already a protocol named '%s'." % self.name)
+        return super(Protocol, self).save(*args, **kwargs)
 
     @property
     def categorization(self):
@@ -1185,7 +1260,7 @@ class Measurement(models.Model):
         return [md for md in mdata if md.is_defined()]
 
     def is_extracellular(self):
-        return self.compartment == str(MeasurementCompartment.EXTRACELLULAR)
+        return self.compartment == '%s' % MeasurementCompartment.EXTRACELLULAR
 
     def data(self):
         """ Return the data associated with this measurement. """
@@ -1401,8 +1476,8 @@ def User_to_solr_json(self):
         'name': [self.first_name, self.last_name, ],
         'email': self.email,
         'initials': self.initials,
-        'group': ['@'.join((str(g.pk), g.name)) for g in self.groups.all()],
-        'institution': ['@'.join((str(i.pk), i.institution_name)) for i in self.institutions],
+        'group': ['@'.join(('%s' % g.pk, g.name)) for g in self.groups.all()],
+        'institution': ['@'.join(('%s' % i.pk, i.institution_name)) for i in self.institutions],
         'date_joined': self.date_joined.strftime(format_string),
         'last_login': None if self.last_login is None else self.last_login.strftime(format_string),
         'is_active': self.is_active,
