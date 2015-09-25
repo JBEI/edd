@@ -112,35 +112,25 @@ This section contains directions for setting up a development environment on EDD
     * `brew install homebrew/versions/solr4`
     * Link to easily access tomcat and solr install directories:
         * `ln -s /usr/local/Cellar/tomcat/(VERSION)/libexec/ /usr/local/tomcat`
-        * `ln -s /usr/local/Cellar/ solr4/(VERSION)/ /usr/local/solr`
+        * `ln -s /usr/local/Cellar/solr4/(VERSION)/ /usr/local/solr`
     * Copy Solr libraries to Tomcat lib:
-        * For solr 4.x:
-          `cp /usr/local/solr/example/lib/ext/* /usr/local/tomcat/lib/`
-        * For solr 5.x: Copy Solr libraries to Tomcat lib. Complete directions for this version may
-          not be known.
-          `cp /usr/local/solr/server/lib/ext/* /usr/local/tomcat/lib/`
+        * `cp /usr/local/solr/example/lib/ext/* /usr/local/tomcat/lib/`
     * Create Solr directories: `mkdir -p /usr/local/var/solr/data`.
         * Note that `data/` must exist for Solr to work, but files are purposefully copied to its
           parent, `/usr/local/var/solr/` in subsequent steps.
     * Copy Solr configuration from `edd-django/solr` to `/usr/local/var/solr/`
-    * `cp /usr/local/solr/libexec/dist/solr-(VERSION).war /usr/local/tomcat/webapps/solr.war`
-
-
+    * Modify `/usr/local/tomcat/conf/server.xml` to only listen on localhost
+        * find `<Connector port="8080" ...`
+        * add attribute `address="localhost"`
+    * Modify `/usr/local/tomcat/conf/Catalina/localhost/ROOT.xml` to point docbase to the Solr WAR
+      at `/usr/local/solr/example/webapps/solr.war`
     * Add a `setenv.sh` to `/usr/local/tomcat/bin/` and `chmod +x /usr/local/tomcat/bin/setenv.sh`
     
             #!/bin/bash
             JAVA_OPTS="$JAVA_OPTS -Dsolr.solr.home=/usr/local/var/solr"
 
-    * Modify `/usr/local/tomcat/conf/server.xml` to only listen on localhost
-        * find `<Connector port="8080" ...`
-        * add attribute `address="localhost"`
     * Service is controlled with `catalina` command; `catalina start` and `catalina stop`
-    * Access admin interface via <http://localhost:8080/solr>
-     * TROUBLESHOOTING:
-        * If you reinstall Solr, delete the contents of the solr cache
-            * `rm -r /usr/local/var/solr/data/*`
-        * Also make sure there is not another cache in your EDD directory
-            * `rm -r (EDD DIRECTORY)/solr/data/*`
+    * Access admin interface via <http://localhost:8080/>
 
 <a name="Solr"/>
 * Solr (For versions 5.0+. Optional if using non-local server for Solr)
