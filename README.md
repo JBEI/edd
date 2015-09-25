@@ -123,7 +123,8 @@ This section contains directions for setting up a development environment on EDD
         * Note that `data/` must exist for Solr to work, but files are purposefully copied to its
           parent, `/usr/local/var/solr/` in subsequent steps.
     * Copy Solr configuration from `edd-django/solr` to `/usr/local/var/solr/`
-    * `cp /usr/local/solr/server/webapps/solr.war /usr/local/tomcat/webapps/solr.war`
+    * `cp /usr/local/solr/libexec/dist/solr-(VERSION).war /usr/local/tomcat/webapps/solr.war`
+
 
     * Add a `setenv.sh` to `/usr/local/tomcat/bin/` and `chmod +x /usr/local/tomcat/bin/setenv.sh`
     
@@ -134,7 +135,12 @@ This section contains directions for setting up a development environment on EDD
         * find `<Connector port="8080" ...`
         * add attribute `address="localhost"`
     * Service is controlled with `catalina` command; `catalina start` and `catalina stop`
-    * Access admin interface via <http://localhost:8080/>
+    * Access admin interface via <http://localhost:8080/solr>
+     * TROUBLESHOOTING:
+        * If you reinstall Solr, delete the contents of the solr cache
+            * `rm -r /usr/local/var/solr/data/*`
+        * Also make sure there is not another cache in your EDD directory
+            * `rm -r (EDD DIRECTORY)/solr/data/*`
 
 <a name="Solr"/>
 * Solr (For versions 5.0+. Optional if using non-local server for Solr)
