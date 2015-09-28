@@ -119,7 +119,7 @@ class sbml_info (object) :
     sbml = None
     if (sbml_file is not None) :
       import libsbml
-      sbml = libsbml.readSBML(sbml_file)
+      sbml = libsbml.readSBML(sbml_file.encode('utf-8'))
     else :
       if (self._chosen_template is None) :
         raise RuntimeError("You must call self._select_template(i) before "+
@@ -871,7 +871,7 @@ def create_sbml_notes_object (notes) :
   token2 = libsbml.XMLToken(triple2, att, ns)
   for header in notes_dict.keys() :
     for line in notes_dict[header] :
-      tt = libsbml.XMLToken(header + ":" + str(line))
+      tt = libsbml.XMLToken(('%s:%s' % (header, line)).encode('utf-8'))
       n = libsbml.XMLNode(tt)
       node = libsbml.XMLNode(token2)
       node.addChild(n)

@@ -99,10 +99,7 @@ EDDATD = {
         currentAssays.forEach(function (id) {
             var assay = EDDData.Assays[id], line = EDDData.Lines[assay.lid], protocol = EDDData.Protocols[assay.pid];
             $('<option>').appendTo(assayIn).val('' + id).text([
-                line.name,
-                protocol.name,
-                assay.name
-            ].join('-'));
+                line.name, protocol.name, assay.name].join('-'));
         });
         if ($('#masterLineSpan').removeClass('off').length > 0) {
             EDDATD.queueProcessImportSettings();
@@ -128,7 +125,8 @@ EDDATD = {
         graph = $('#graphDiv');
         rawFormat = $('#rawdataformatp');
         // all need to exist, or page is broken
-        if (![stdLayout, trLayout, prLayout, mdvLayout, ignoreGaps, transpose, graph, rawFormat].every(function (item) { return item.length !== 0; })) {
+        if (![stdLayout, trLayout, prLayout, mdvLayout, ignoreGaps, transpose, graph, rawFormat
+        ].every(function (item) { return item.length !== 0; })) {
             return;
         }
         if (stdLayout.prop('checked')) {
@@ -215,7 +213,7 @@ EDDATD = {
             rows[0] || [],
             rows[1] || [],
             (rows || []).map(function (row) { return row[0]; }),
-            (rows || []).map(function (row) { return row[1]; })
+            (rows || []).map(function (row) { return row[1]; }) // Second column
         ];
         arraysScores = arraysToAnalyze.map(function (row, i) {
             var score = 0, prev, nnPrev;
@@ -377,7 +375,9 @@ EDDATD = {
     populatePulldown: function (select, options, value) {
         options.forEach(function (option) {
             if (typeof option[1] === 'number') {
-                $('<option>').text(option[0]).val(option[1]).prop('selected', option[1] === value).appendTo(select);
+                $('<option>').text(option[0]).val(option[1])
+                    .prop('selected', option[1] === value)
+                    .appendTo(select);
             }
             else {
                 EDDATD.populatePulldown($('<optgroup>').attr('label', option[0]).appendTo(select), option[1], value);
@@ -396,39 +396,46 @@ EDDATD = {
             pulldownOptions = [
                 ['--', 0],
                 ['Entire Row Is...', [
-                    ['Gene Names', 10],
-                    ['RPKM Values', 11]
-                ]]
+                        ['Gene Names', 10],
+                        ['RPKM Values', 11]
+                    ]
+                ]
             ];
         }
         else if (mode === 'pr') {
             pulldownOptions = [
                 ['--', 0],
                 ['Entire Row Is...', [
-                    ['Assay/Line Names', 1],
-                ]],
+                        ['Assay/Line Names', 1],
+                    ]
+                ],
                 ['First Column Is...', [
-                    ['Protein Name', 12]
-                ]]
+                        ['Protein Name', 12]
+                    ]
+                ]
             ];
         }
         else {
             pulldownOptions = [
                 ['--', 0],
                 ['Entire Row Is...', [
-                    ['Assay/Line Names', 1],
-                    ['Metabolite Names', 2]
-                ]],
+                        ['Assay/Line Names', 1],
+                        ['Metabolite Names', 2]
+                    ]
+                ],
                 ['First Column Is...', [
-                    ['Timestamp', 3],
-                    ['Metadata Name', 4],
-                    ['Metabolite Name', 5]
-                ]]
+                        ['Timestamp', 3],
+                        ['Metadata Name', 4],
+                        ['Metabolite Name', 5]
+                    ]
+                ]
             ];
         }
         // Remove and replace the table in the document
         // attach all event handlers to the table itself
-        table = $('<table>').attr('cellspacing', '0').appendTo($('#dataTableDiv').empty()).on('click', '[name=enableColumn]', function (ev) {
+        table = $('<table>').attr('cellspacing', '0')
+            .appendTo($('#dataTableDiv').empty())
+            .on('click', '[name=enableColumn]', function (ev) {
             EDDATD.toggleTableColumn(ev.target);
         }).on('click', '[name=enableRow]', function (ev) {
             EDDATD.toggleTableRow(ev.target);
@@ -457,8 +464,12 @@ EDDATD = {
         });
         (EDDATD.Grid.data[0] || []).forEach(function (_, i) {
             var cell, box;
-            cell = $(row.insertCell()).attr({ 'id': 'colCBCell' + i, 'x': 1 + i, 'y': 0 }).addClass('checkBoxCell');
-            box = $('<input type="checkbox"/>').appendTo(cell).val(i.toString()).attr({ 'id': 'enableColumn' + i, 'name': 'enableColumn' }).prop('checked', EDDATD.Table.activeColFlags[i]);
+            cell = $(row.insertCell()).attr({ 'id': 'colCBCell' + i, 'x': 1 + i, 'y': 0 })
+                .addClass('checkBoxCell');
+            box = $('<input type="checkbox"/>').appendTo(cell)
+                .val(i.toString())
+                .attr({ 'id': 'enableColumn' + i, 'name': 'enableColumn' })
+                .prop('checked', EDDATD.Table.activeColFlags[i]);
             EDDATD.Table.colCheckboxCells.push(cell[0]);
         });
         EDDATD.Table.pulldownObjects = []; // We don't want any lingering old objects in this
@@ -467,14 +478,23 @@ EDDATD = {
             var cell;
             row = body.insertRow();
             // checkbox cell
-            cell = $(row.insertCell()).addClass('checkBoxCell').attr({ 'id': 'rowCBCell' + i, 'x': 0, 'y': i + 1 });
-            $('<input type="checkbox"/>').attr({ 'id': 'enableRow' + i, 'name': 'enableRow' }).val(i.toString()).prop('checked', EDDATD.Table.activeRowFlags[i]).appendTo(cell);
+            cell = $(row.insertCell()).addClass('checkBoxCell')
+                .attr({ 'id': 'rowCBCell' + i, 'x': 0, 'y': i + 1 });
+            $('<input type="checkbox"/>')
+                .attr({ 'id': 'enableRow' + i, 'name': 'enableRow' })
+                .val(i.toString())
+                .prop('checked', EDDATD.Table.activeRowFlags[i])
+                .appendTo(cell);
             EDDATD.Table.rowCheckboxCells.push(cell[0]);
             // pulldown cell
-            cell = $(row.insertCell()).addClass('pulldownCell').attr({ 'id': 'rowPCell' + i, 'x': 0, 'y': i + 1 });
+            cell = $(row.insertCell()).addClass('pulldownCell')
+                .attr({ 'id': 'rowPCell' + i, 'x': 0, 'y': i + 1 });
             // use existing setting, or use the last if rows.length > settings.length, or blank
-            EDDATD.Table.pulldownSettings[i] = EDDATD.Table.pulldownSettings[i] || EDDATD.Table.pulldownSettings.slice(-1)[0] || 0;
-            EDDATD.populatePulldown(cell = $('<select>').attr({ 'id': 'row' + i + 'type', 'name': 'row' + i + 'type', 'i': i }).appendTo(cell), pulldownOptions, EDDATD.Table.pulldownSettings[i]);
+            EDDATD.Table.pulldownSettings[i] = EDDATD.Table.pulldownSettings[i]
+                || EDDATD.Table.pulldownSettings.slice(-1)[0] || 0;
+            EDDATD.populatePulldown(cell = $('<select>')
+                .attr({ 'id': 'row' + i + 'type', 'name': 'row' + i + 'type', 'i': i })
+                .appendTo(cell), pulldownOptions, EDDATD.Table.pulldownSettings[i]);
             EDDATD.Table.pulldownObjects.push(cell[0]);
             // label cell
             cell = $(row.insertCell()).attr({ 'id': 'rowMCell' + i, 'x': 0, 'y': i + 1 });
@@ -631,7 +651,8 @@ EDDATD = {
                 var select, i;
                 select = $(pulldown);
                 i = parseInt(select.attr('i'), 10);
-                if (EDDATD.Table.pulldownUserChangedFlags[i] && EDDATD.Table.pulldownSettings[i] !== 0) {
+                if (EDDATD.Table.pulldownUserChangedFlags[i]
+                    && EDDATD.Table.pulldownSettings[i] !== 0) {
                     return false; // false for break
                 }
                 select.val(value.toString());
@@ -776,7 +797,9 @@ EDDATD = {
             var toggle = !EDDATD.Table.activeRowFlags[y];
             $(EDDATD.Table.rowLabelCells[y]).toggleClass('disabledLine', toggle);
             row.forEach(function (cell, x) {
-                toggle = !EDDATD.Table.activeFlags[y][x] || !EDDATD.Table.activeColFlags[x] || !EDDATD.Table.activeRowFlags[y];
+                toggle = !EDDATD.Table.activeFlags[y][x]
+                    || !EDDATD.Table.activeColFlags[x]
+                    || !EDDATD.Table.activeRowFlags[y];
                 $(cell).toggleClass('disabledLine', toggle);
             });
         });
@@ -1036,7 +1059,10 @@ EDDATD = {
             // will have different content, in each Protocol.
             EDDATD.Disam.assayLineObjSets[masterP] = {};
             EDDATD.Disam.currentlyVisibleAssayLineObjSets = [];
-            table = $('<table>').attr({ 'id': 'disambiguateAssaysTable', 'cellspacing': 0 }).appendTo($('#disambiguateLinesAssaysSection').removeClass('off')).on('change', 'select', function (ev) {
+            table = $('<table>')
+                .attr({ 'id': 'disambiguateAssaysTable', 'cellspacing': 0 })
+                .appendTo($('#disambiguateLinesAssaysSection').removeClass('off'))
+                .on('change', 'select', function (ev) {
                 EDDATD.userChangedAssayLineDisam(ev.target);
             })[0];
             body = $('<tbody>').appendTo(table)[0];
@@ -1052,24 +1078,33 @@ EDDATD = {
                     $('<div>').text(name).appendTo(row.insertCell());
                     // Now build another table cell that will contain the pulldowns
                     cell = $(row.insertCell()).css('text-align', 'left');
-                    aSelect = $('<select>').appendTo(cell).data({ 'setByUser': false, 'visibleIndex': i }).attr('name', 'disamAssay' + (i + 1));
+                    aSelect = $('<select>').appendTo(cell)
+                        .data({ 'setByUser': false, 'visibleIndex': i })
+                        .attr('name', 'disamAssay' + (i + 1));
                     disam.assayObj = aSelect[0];
-                    $('<option>').text('(Create New)').appendTo(aSelect).val('new').prop('selected', !defaultSel.assayID);
+                    $('<option>').text('(Create New)').appendTo(aSelect).val('new')
+                        .prop('selected', !defaultSel.assayID);
                     (ATData.existingAssays[masterP] || []).forEach(function (id) {
                         var assay, line, protocol;
                         assay = EDDData.Assays[id];
                         line = EDDData.Lines[assay.lid];
                         protocol = EDDData.Protocols[assay.pid];
-                        $('<option>').text([line.name, protocol.name, assay.name].join('-')).appendTo(aSelect).val(id.toString()).prop('selected', defaultSel.assayID === id);
+                        $('<option>').text([line.name, protocol.name, assay.name].join('-'))
+                            .appendTo(aSelect).val(id.toString())
+                            .prop('selected', defaultSel.assayID === id);
                     });
                     // a span to contain the text label for the Line pulldown, and the pulldown itself
-                    cell = $('<span>').text('for Line:').toggleClass('off', !!defaultSel.assayID).appendTo(cell);
-                    lSelect = $('<select>').appendTo(cell).data('setByUser', false).attr('name', 'disamLine' + (i + 1));
+                    cell = $('<span>').text('for Line:').toggleClass('off', !!defaultSel.assayID)
+                        .appendTo(cell);
+                    lSelect = $('<select>').appendTo(cell).data('setByUser', false)
+                        .attr('name', 'disamLine' + (i + 1));
                     disam.lineObj = lSelect[0];
-                    $('<option>').text('(Create New)').appendTo(lSelect).val('new').prop('selected', !defaultSel.lineID);
+                    $('<option>').text('(Create New)').appendTo(lSelect).val('new')
+                        .prop('selected', !defaultSel.lineID);
                     // ATData.existingLines is of type {id: number; n: string;}[]
                     (ATData.existingLines || []).forEach(function (line) {
-                        $('<option>').text(line.n).appendTo(lSelect).val(line.id.toString()).prop('selected', defaultSel.lineID === line.id);
+                        $('<option>').text(line.n).appendTo(lSelect).val(line.id.toString())
+                            .prop('selected', defaultSel.lineID === line.id);
                     });
                     EDDATD.Disam.assayLineObjSets[masterP][name] = disam;
                 }
@@ -1081,7 +1116,10 @@ EDDATD = {
     remakeInfoTableMeasurementSection: function () {
         var table, body, row;
         // put together a disambiguation section for measurement types
-        table = $('<table>').attr({ 'id': 'disambiguateMeasurementsTable', 'cellspacing': 0 }).appendTo($('#disambiguateMeasurementsSection').removeClass('off')).on('change', 'input[type=hidden]', function (ev) {
+        table = $('<table>')
+            .attr({ 'id': 'disambiguateMeasurementsTable', 'cellspacing': 0 })
+            .appendTo($('#disambiguateMeasurementsSection').removeClass('off'))
+            .on('change', 'input[type=hidden]', function (ev) {
             // only watch for changes on the hidden portion, let autocomplete work
             EDDATD.userChangedMeasurementDisam(ev.target);
         })[0];
@@ -1110,12 +1148,15 @@ EDDATD = {
                 EDDATD.Disam.measurementObjSets[name] = disam;
             }
             // TODO sizing should be handled in CSS
-            disam.compObj.attr('size', 4).data('visibleIndex', i).next().attr('name', 'disamMComp' + (i + 1));
+            disam.compObj.attr('size', 4).data('visibleIndex', i)
+                .next().attr('name', 'disamMComp' + (i + 1));
             EDD_auto.setup_field_autocomplete(disam.compObj, 'MeasurementCompartment', EDDATD.AutoCache.comp);
-            disam.typeObj.attr('size', 45).data('visibleIndex', i).next().attr('name', 'disamMType' + (i + 1));
+            disam.typeObj.attr('size', 45).data('visibleIndex', i)
+                .next().attr('name', 'disamMType' + (i + 1));
             EDD_auto.setup_field_autocomplete(disam.typeObj, 'GenericOrMetabolite', EDDATD.AutoCache.metabolite);
             EDD_auto.initial_search(disam.typeObj, name);
-            disam.unitsObj.attr('size', 10).data('visibleIndex', i).next().attr('name', 'disamMUnits' + (i + 1));
+            disam.unitsObj.attr('size', 10).data('visibleIndex', i)
+                .next().attr('name', 'disamMUnits' + (i + 1));
             EDD_auto.setup_field_autocomplete(disam.unitsObj, 'MeasurementUnit', EDDATD.AutoCache.unit);
             // If we're in MDV mode, the units pulldowns are irrelevant.
             disam.unitsObj.toggleClass('off', EDDATD.interpretationMode === 'mdv');
@@ -1125,7 +1166,10 @@ EDDATD = {
     remakeInfoTableMetadataSection: function () {
         var table, body, row;
         // put together a disambiguation section for metadata
-        table = $('<table>').attr({ 'id': 'disambiguateMetadataTable', 'cellspacing': 0 }).appendTo($('#disambiguateMetadataSection').removeClass('off')).on('change', 'input', function (ev) {
+        table = $('<table>')
+            .attr({ 'id': 'disambiguateMetadataTable', 'cellspacing': 0 })
+            .appendTo($('#disambiguateMetadataSection').removeClass('off'))
+            .on('change', 'input', function (ev) {
             // should there be event handling here ?
         })[0];
         body = $('<tbody>').appendTo(table)[0];
@@ -1142,7 +1186,8 @@ EDDATD = {
                 disam.metaObj = EDD_auto.create_autocomplete(row.insertCell()).val(name);
                 EDDATD.Disam.metadataObjSets[name] = disam;
             }
-            disam.metaObj.attr('name', 'disamMeta' + (i + 1)).addClass('autocomp_type').next().attr('name', 'disamMetaHidden' + (i + 1));
+            disam.metaObj.attr('name', 'disamMeta' + (i + 1)).addClass('autocomp_type')
+                .next().attr('name', 'disamMetaHidden' + (i + 1));
             EDD_auto.setup_field_autocomplete(disam.metaObj, 'MetadataType', EDDATD.AutoCache.meta);
         });
     },
@@ -1287,7 +1332,8 @@ EDDATD = {
                 highest = 0.6;
                 selections.assayID = id;
             }
-            else if (highest < 0.4 && (new RegExp('(^|\\W)' + assay.name + '(\\W|$)', 'g')).test(assayOrLine)) {
+            else if (highest < 0.4 &&
+                (new RegExp('(^|\\W)' + assay.name + '(\\W|$)', 'g')).test(assayOrLine)) {
                 // Finding the Assay name fragment within the whole string, as a whole word, is our
                 // last option.
                 highest = 0.4;
@@ -1402,9 +1448,15 @@ EDDATD = {
     prepareIt: function () {
         var reProcessOnClick, reDoLastStepOnChange;
         reProcessOnClick = ['#stdlayout', '#trlayout', '#prlayout', '#mdvlayout', '#rawdataformatp'];
-        reDoLastStepOnChange = ['#masterAssay', '#masterLine', '#masterMComp', '#masterMType', '#masterMUnits'];
-        $('#textData').on('paste', EDDATD.pastedRawData).on('keyup', EDDATD.parseAndDisplayText).on('keydown', EDDATD.suppressNormalTab);
-        $('#dataTableDiv').on('mouseover mouseout', 'td', EDDATD.highlighterF).on('dblclick', 'td', EDDATD.singleValueDisablerF);
+        reDoLastStepOnChange = ['#masterAssay', '#masterLine', '#masterMComp', '#masterMType',
+            '#masterMUnits'];
+        $('#textData')
+            .on('paste', EDDATD.pastedRawData)
+            .on('keyup', EDDATD.parseAndDisplayText)
+            .on('keydown', EDDATD.suppressNormalTab);
+        $('#dataTableDiv')
+            .on('mouseover mouseout', 'td', EDDATD.highlighterF)
+            .on('dblclick', 'td', EDDATD.singleValueDisablerF);
         // This is rather a lot of callbacks, but we need to make sure we're
         // tracking the minimum number of elements with this call, since the
         // function called has such strong effects on the rest of the page.

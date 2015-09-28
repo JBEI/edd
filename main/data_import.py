@@ -4,8 +4,12 @@ import logging
 import re
 import warnings
 
+from collections import defaultdict
 from django.core.exceptions import PermissionDenied
-from main.models import *
+from main.models import (
+    Assay, GeneIdentifier, Line, Measurement, MeasurementCompartment, MeasurementGroup,
+    MeasurementUnit, MeasurementValue, MetadataType, ProteinIdentifier, Protocol, Update
+    )
 
 
 logger = logging.getLogger(__name__)
@@ -40,21 +44,21 @@ class TableImport(object):
             # if no array of data, check for 'singleData' and add to data array
             # with master_timestamp (if validly defined)
             if len(points) == 0 and 'singleData' in item and self._valid_time():
-                points.append([ self._time(), item['singleData'] ])
+                points.append([self._time(), item['singleData']])
             meta = item.get('metadata', {})
             for label in meta:
-                self._metatype(label) # don't care about return value here
+                self._metatype(label)  # don't care about return value here
             if len(points) == 0 and len(meta) == 0:
                 item['nothing_to_import'] = True
 
     def init_lines_and_assays(self, series):
         """ Client-side code detects labels for assays/lines, and allows the user to select
-            an "ID" for each label; this initializes a mapping from client-side label to 
+            an "ID" for each label; this initializes a mapping from client-side label to
             actual Line and Assay instances. """
         for item in series:
             label = item.get('assay', None)
             if label is None or self._assay_id(label) is None or self._assay(label) is not None:
-                continue # skip when no label, no ID, or already looked up assay
+                continue  # skip when no label, no ID, or already looked up assay
             assay_id = self._assay_id(label)
             if assay_id != 'new':
                 try:
@@ -64,7 +68,7 @@ class TableImport(object):
                         assay_id, self._study.pk))
                 else:
                     self._assay_lookup[label] = assay
-                continue # skip to next, created assay
+                continue  # skip to next, created assay
             line_id = self._line_id(label)
             if line_id == 'new':
                 name = item.get('assayName', None)
@@ -83,7 +87,7 @@ class TableImport(object):
                     logger.warning('Failed to load line,study combo %s,%s' % (
                         line_id, self._study.pk))
             if line_id == 'new' or line is None:
-                continue # skip to next, cannot create the assay
+                continue  # skip to next, cannot create the assay
             name = item.get('assayName', None)
             if name is None:
                 name = '%s-%s' % (line.name, line.assay_set.count() + 1)
@@ -139,9 +143,10 @@ class TableImport(object):
                 continue
             (comp, mtype, unit_id) = self._mtype(item.get('measurementType', None))
             if mtype == 0:
-                warnings.warn('Skipped %s because it does not reference a known measurement.' % name)
+                warnings.warn('Skipped %s because it does not reference a known measurement.' %
+                              name)
                 continue
-            logger.info('Loading measurements for %s:%s' % (str(comp), mtype))
+            logger.info('Loading measurements for %s:%s' % (comp, mtype))
             records = assay.measurement_set.filter(
                 measurement_type_id=mtype,
                 compartment=str(comp),)
@@ -152,7 +157,7 @@ class TableImport(object):
                     records.delete()
                 else:
                     record = records[0]
-                    record.save() # force refresh of Update
+                    record.save()  # force refresh of Update
             if record is None:
                 record = assay.measurement_set.create(
                     measurement_type_id=mtype,
@@ -161,12 +166,12 @@ class TableImport(object):
                     experimenter=self._user,
                     x_units=hours,
                     y_units=unit)
-            for x,y in points:
+            for x, y in points:
                 (xvalue, yvalue) = (self._extract_value(x), self._extract_value(y))
                 try:
                     point = record.measurementvalue_set.get(x=xvalue)
                 except MeasurementValue.DoesNotExist:
-                    point = record.measurementvalue_set.create(x=xvalue,y=yvalue)
+                    point = record.measurementvalue_set.create(x=xvalue, y=yvalue)
                 else:
                     point.y = yvalue
                     point.save()
@@ -205,7 +210,7 @@ class TableImport(object):
     def _extract_value(self, value):
         # make sure input is string first, split on slash or colon, and give back array of numbers
         try:
-            return map(float, re.split('/|:', unicode(value).replace(',', '')))
+            return map(float, re.split('/|:', ('%s' % value).replace(',', '')))
         except ValueError:
             warnings.warn('Value %s could not be interpreted as a number' % value)
         return []
@@ -281,7 +286,7 @@ class TableImport(object):
             return 0    # always single values
         else:
             # if any value looks like carbon ratio (vector), treat all as vector
-            for (x,y) in points:
+            for (x, y) in points:
                 if y is not None and ('/' in y or ':' in y):
                     return 1
             return 0
@@ -313,7 +318,7 @@ class TableImport(object):
 # RNA-SEQ DATA IMPORT
 #
 # TODO this should be able to work with existing assays!
-class import_rna_seq (object) :
+class import_rna_seq(object):
     """
     Import a set of RNA-Seq measurements all at once.  These may be any
     combination of lines, biological replicates, technical replications,
@@ -330,7 +335,7 @@ class import_rna_seq (object) :
     This functionality is implemented as a class to facilitate tracking of new
     record creation, but the resulting object is essentially disposable.
     """
-    def __init__ (self, study, user, update, **kwds) :
+    def __init__(self, study, user, update, **kwds):
         self.n_meas = self.n_meas_data = self.n_assay = self.n_meas_type = 0
         assert study.user_can_write(user)
         assert (user.id == update.mod_by.id)
