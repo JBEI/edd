@@ -160,7 +160,7 @@ def _update_line_metastore(read_label, index, row, column, line, metadatablocks,
 				line.save()
 				line.carbon_source.add(carbon_source)
 			except ObjectDoesNotExist:
-				raise Exception("Carbon source \"%s\" not found in database")
+				raise Exception("Error: Carbon source not found in database")
 		# elif label == ''
 		else:
 			pass
@@ -177,7 +177,13 @@ def _update_assay_metastore(read_label, index, row, column, assay, metadatablock
 		# print( "block %s" % str(block) )
 
 		if label == 'well_temperature':
-			assay.meta_store[label] = unicode(value)
+			try:
+				model = MetadataType.objects.get(type_name='Well reaction temperature')
+				# print("** ** ** : " + unicode(value))
+				assay.meta_store[unicode(model.id)] = unicode(value)
+				# assay.meta_store[u'Well reaction temperature'] = unicode(value)
+			except ObjectDoesNotExist:
+				raise Exception("Error: Well temperature type not found in database")
 		else:
 			pass
 			# raise Exception("Unknown metadata block type \"%s\" found in read \"%s\"" % (label,read_label))
@@ -249,10 +255,12 @@ def _process_read(read_label, raw_datablocks):
 		study.name = study_name
 	if metadata_entries['extra_contact_information']:
 		study.contact_extra = metadata_entries['extra_contact_information']
+		pass
 		# TODO: warning, replacing description
 
 	if metadata_entries.has_key('Study_description'):
 		study.study_description = metadata_entries['Study_description']
+		# pass
 		# TODO: warning, replacing description
 
 	# TODO: Expand exception text support better feedback to handle multiple reads (read_label)
@@ -272,19 +280,21 @@ def _process_read(read_label, raw_datablocks):
 		except ObjectDoesNotExist:
 			raise Exception("ERROR: 'Machine internal temperature' MetadataType not found in database.")
 	if metadata_entries['machine_internal_temperature']:
-		study.meta_store['machine_internal_temperature'] = unicode(metadata_entries['machine_internal_temperature'])
+		# study.meta_store['machine_internal_temperature'] = unicode(metadata_entries['machine_internal_temperature'])
+		pass
 
 	# TODO: CONSIDER: Migrate to Line
 	if metadata_entries.has_key('device_name'):
-		study.meta_store['device_name'] = unicode(metadata_entries['device_name'])
+		# study.meta_store['device_name'] = unicode(metadata_entries['device_name'])
+		pass
 	else:
 		raise Exception("Device name not given!")
 
 	try:
-		reaction_temp = MetadataType.objects.get(type_name='Well reaction temperature')
+		reaction_temp_type = MetadataType.objects.get(type_name='Well reaction temperature')
 		if metadata_entries.has_key('well_reaction_temperature_unit'):
-			if reaction_temp.postfix != metadata_entries['well_reaction_temperature_unit']:
-				raise Exception("Well reaction temperature given in unknown unit \"%s\", expected unit \"%s\"" % (metadata_entries['well_reaction_temperature_unit'], reaction_temp.postfix))
+			if reaction_temp_type.postfix != metadata_entries['well_reaction_temperature_unit']:
+				raise Exception("Well reaction temperature given in unknown unit \"%s\", expected unit \"%s\"" % (metadata_entries['well_reaction_temperature_unit'], reaction_temp_type.postfix))
 	except ObjectDoesNotExist:
 		raise Exception("ERROR: MetadataType 'Well reaction temperature' not found in database")
 
@@ -294,7 +304,8 @@ def _process_read(read_label, raw_datablocks):
 			if not metadata_entries['shaking_speed_unit'] == shaking_speed.postfix:
 				raise Exception("Shaking speed given in unknown unit \"%s\"" % metadata_entries['shaking_speed_unit'])
 		if metadata_entries.has_key('shaking_speed'):
-			study.meta_store['shaking_speed'] = unicode(metadata_entries['shaking_speed'])
+			# study.meta_store['shaking_speed'] = unicode(metadata_entries['shaking_speed'])
+			pass
 		## Commented out. No shaking speed should not imply it was shaked at default speed, but that it might not have been shaked.
 		# else:
 		# 	study.meta_store['shaking_speed'] = MetadataType.objects.get(type_name='Shaking speed').default_value;
@@ -354,6 +365,7 @@ def _process_read(read_label, raw_datablocks):
 		assay = Assay()
 		assay.line_id = line.object_ref_id
 		assay.name = 'assay %s%s from read %s' % (row,column,read_label)
+		assay.experimenter_id = experimenter.id
 		print(assay.name)
 		if protocol:
 			assay.protocol_id = protocol.object_ref_id
@@ -375,7 +387,7 @@ def _process_read(read_label, raw_datablocks):
 		measurement.assay_id = assay.id
 		measurement.save()
 
-		print("DBLOCK **** : " + str(datablock[2][x]))
+		# print("DBLOCK **** : " + str(datablock[2][x]))
 		measurement_value = MeasurementValue()
 		measurement_value.x = [0.0]
 		measurement_value.y = [datablock[2][x]]
