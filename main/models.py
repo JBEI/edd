@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 
 import arrow
 import json
+import logging
 import os.path
 import re
 import warnings
@@ -17,9 +18,13 @@ from django.db.models import F, Func
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 from itertools import chain
+from six import string_types
 from threadlocals.threadlocals import get_current_request
 
 from .export import table
+
+
+logger = logging.getLogger(__name__)
 
 
 class UpdateManager(models.Manager):
@@ -226,22 +231,47 @@ class MetadataType(models.Model):
                 Func(F('type_name'), function='LOWER'),
             )
 
+    def load_type_class(self):
+        if self.type_class is not None:
+            try:
+                # TODO support models outside of this module?
+                mod = __import__('main.models', fromlist=[self.type_class, ])
+                return getattr(mod, self.type_class)
+            except AttributeError:
+                warnings.warn('MetadataType %s has unknown type_class %s' %
+                              (self, self.type_class, ))
+        return None
+
     def decode_value(self, value):
         """ A postgres HStore column only supports string keys and string values. This method uses
             the definition of the MetadataType to convert a string from the database into an
             appropriate Python object. """
-        if self.type_class is None:
-            try:
+        try:
+            if self.type_class is None:
+                return value  # for compatibility, bare strings used on None types
+            MetaModel = self.load_type_class()
+            if MetaModel is None:
                 return json.loads(value)
-            except ValueError:
-                return value
+            return MetaModel.objects.get(pk=value)
+        except Exception:
+            logger.warning('Failed to decode metadata %s, returning raw value' % self)
+        return value
 
     def encode_value(self, value):
         """ A postgres HStore column only supports string keys and string values. This method uses
             the definition of the MetadataType to convert a Python object into a string to be
             saved in the database. """
-        if self.type_class is None:
-            return json.dumps(value)
+        try:
+            if isinstance(value, string_types) and self.type_class is None:
+                return value  # for compatibility, store strings bare
+            MetaModel = self.load_type_class()
+            if MetaModel is None:
+                return json.dumps(value)
+            elif isinstance(value, MetaModel):
+                return '%s' % value.pk
+        except Exception:
+            logger.warning('Failed to encode metadata %s, storing string representation' % self)
+        return '%s' % value
 
     def for_line(self):
         return (self.for_context == self.LINE or

@@ -230,7 +230,7 @@ class LineTests (TestCase):  # XXX also Strain, CarbonSource
     def test_line_json(self):
         line1 = Line.objects.get(name="Line 1")
         md = MetadataType.objects.get(type_name="Media")
-        line1.meta_store['%s' % md.pk] = "M9"
+        line1.metadata_add(md, 'M9')
         json_dict = line1.to_json()
         self.assertTrue(json_dict['meta'] == {"%s" % md.pk: "M9"})
 
