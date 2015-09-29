@@ -4,6 +4,7 @@
 import json
 import logging
 import re
+import os
 
 from django.contrib import messages
 from django.core.urlresolvers import reverse
@@ -16,6 +17,10 @@ from io import BytesIO
 from . import cytometry, gc_ms_workbench
 from .parsers import excel, skyline
 from main.forms import CreateStudyForm
+from .net_smb import SMBController
+
+import data_excelreader
+import data_map_ecdata
 
 
 logger = logging.getLogger(__name__)
@@ -136,4 +141,57 @@ def cytometry_import(request):
     return render(request, 'cytometry.html', {
         'study_form': study_form,
         })
+
+
+########################################################################
+# ENZYME CHARACTERIZATION
+#
+
+MAX_PATH_LENGTH = 260
+
+def ec_import(request):
+    return render(request, 'ec_import.html', {})
+
+def ec_import_action(request, target, path):
+    data = {'result':'success'}
+    if len(target) > MAX_PATH_LENGTH:
+        data['result'] = 'error'
+        data['message'] = 'Path length max size exceeded.'
+    # TODO: sanatize to prevent injections!
+    
+    else:
+        #TODO: Check if samba drive is mounted first
+
+        # remote_folder_path = "/SPMAX-M2-02/Jason/"
+        # remote_file_path = "/SPMAX-M2-02/ktran/HTP-Pre/cellulase dispensing/cell_disp_60uL_4_25_13_kt.xlsx"
+        
+        # TODO: local file path must be non-colliding
+        volume = "instrumentdata"
+        remote_file_path = path
+        local_file_path = "output/%s" % os.path.split(path)[1]
+
+        try:
+            os.mkdir('output')
+        except OSError:
+            pass # already exists
+        #TODO: IOError
+        
+        #TODO try: except:
+        smb = SMBController()
+        smb.retrieve_file(volume, remote_file_path, local_file_path)
+
+        # print 'downloaded file'
+
+        datablocks = data_excelreader.process_spreadsheet(local_file_path)
+
+        # print 'indexed sheet'
+
+        data_map_ecdata.map_datablocks(datablocks)
+
+        # print 'updated database'
+
+    # TODO: kickback any EDD-specific exceptions
+    return JsonResponse(data)
+
+
 
