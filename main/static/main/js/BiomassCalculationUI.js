@@ -116,7 +116,8 @@ var StudyMetabolicMapChooser = (function () {
         this._requestMetabolicMapList(function (metabolicMaps) {
             // Display the list.
             _this._dialogBox.clearContents();
-            _this._dialogBox.addHTML('<div>Please choose an SBML file to get the biomass data from.' + '<br>This is necessary to calculate carbon balance.<br><br></div>');
+            _this._dialogBox.addHTML('<div>Please choose an SBML file to get the biomass data from.' +
+                '<br>This is necessary to calculate carbon balance.<br><br></div>');
             var table = new Utl.Table('metabolicMapChooser');
             table.table.setAttribute('cellspacing', '0');
             $(table.table).css('border-collapse', 'collapse');
@@ -195,7 +196,8 @@ var BiomassCalculationUI = (function () {
             else {
                 // Display the list of biomass reactions.
                 _this._dialogBox.clearContents();
-                _this._dialogBox.addHTML('<div>Please choose a biomass reaction to use for carbon balance.' + '<br><br></div>');
+                _this._dialogBox.addHTML('<div>Please choose a biomass reaction to use for carbon balance.' +
+                    '<br><br></div>');
                 table = new Utl.Table('biomassReactionChooser');
                 table.table.setAttribute('cellspacing', '0');
                 $(table.table).css('border-collapse', 'collapse');
@@ -265,7 +267,9 @@ var BiomassCalculationUI = (function () {
             // calculation anyway.
             if (numEmpty > 0) {
                 $(errorStringElement).css('visibility', 'visible');
-                errorStringElement.innerHTML = '<br><br>There are ' + numEmpty.toString() + ' unmatched species. If you proceed, the biomass calculation will not' + ' include these. Click OK again to proceed anyway.<br><br>';
+                errorStringElement.innerHTML = '<br><br>There are ' + numEmpty.toString() +
+                    ' unmatched species. If you proceed, the biomass calculation will not' +
+                    ' include these. Click OK again to proceed anyway.<br><br>';
                 return;
             }
         }

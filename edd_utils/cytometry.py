@@ -1,8 +1,10 @@
+# coding: utf-8
+from __future__ import unicode_literals
 
 import json
 import logging
-import re
 
+from builtins import str as unicode
 from collections import defaultdict
 
 from main.models import (
@@ -14,6 +16,21 @@ from main.models import (
 logger = logging.getLogger(__name__)
 
 
+def cytometry_constants():
+    if not hasattr(cytometry_constants, 'const'):
+        cytometry_constants.const = {
+            # this should be unique
+            'protocol': Protocol.objects.filter(
+                name='Flow Cytometry Characterization',
+                owned_by__is_superuser=True,
+                )[0],
+            'hours': MeasurementUnit.objects.get(unit_name='hours'),
+            # FIXME probably don't want to use n/a
+            'na': MeasurementUnit.objects.get(unit_name='n/a'),
+        }
+    return cytometry_constants.const
+
+
 class CytometerImport(object):
     """ Object to handle processing of data POSTed to /utilities/cytometry/import view and add
         measurements to the database. """
@@ -22,11 +39,7 @@ class CytometerImport(object):
         self._request = request
         self._qd = request.POST
         self._rows = {}
-        # this should be unique
-        self._protocol = Protocol.objects.filter(
-            name='Flow Cytometry Characterization',
-            owned_by__is_superuser=True,
-            )[0]
+        self._protocol = cytometry_constants().get('protocol', None)
 
     def load_assay_for(self, i, study):
         qd = self._qd
@@ -64,7 +77,7 @@ class CytometerImport(object):
         for (i, row) in enumerate(data):
             assay = self.load_assay_for(i, study)
             self.process_row(i, row, assay)
-        # check for any standards rows 
+        # check for any standards rows
         # TODO modify measurements based on selected standard rows
         # compose rows of data into Measurements to add to assay
         for row in self._rows.values():
@@ -95,14 +108,15 @@ class CytometerImport(object):
 
 
 class CytometerRow(object):
-    hours = MeasurementUnit.objects.get(unit_name='hours')
-    na = MeasurementUnit.objects.get(unit_name='n/a') # FIXME probably don't want to use n/a
+    """ Object to handle an individual row of data in an import. """
 
     def __init__(self, assay):
         self._assay = assay
         self._measure_data = defaultdict(dict)
         self._count = None
         self._viable = None
+        self._hours = cytometry_constants().get('hours', None)
+        self._na = cytometry_constants().get('na', None)
 
     def compose(self, time):
         if self._viable and self._count:
@@ -122,11 +136,11 @@ class CytometerRow(object):
                     measurement_type_id=ptype,
                     measurement_format=MeasurementFormat.SIGMA,
                     compartment=MeasurementCompartment.UNKNOWN,
-                    x_units=self.hours,
-                    y_units=self.na,
+                    x_units=self._hours,
+                    y_units=self._na,
                     )
-            x = map(float, [ time, ])
-            y = map(float, [ value, variance, self._count, ])
+            x = map(float, [time, ])
+            y = map(float, [value, variance, self._count, ])
             try:
                 point = obj.measurementvalue_set.get(x=x)
             except MeasurementValue.DoesNotExist:
@@ -134,6 +148,8 @@ class CytometerRow(object):
             else:
                 point.y = y
                 point.save()
+        # make sure metadata set gets saved
+        self._assay.save()
 
     def define_count(self, value):
         try:
@@ -163,7 +179,7 @@ class CytometerRow(object):
                 })
 
     def define_metadata(self, meta_type, value):
-        if self._assay: # could be an ignored row without an assay
+        if self._assay:  # could be an ignored row without an assay
             self._assay.meta_store[meta_type] = value
 
     def define_variance(self, seq, value):

@@ -1,11 +1,11 @@
-/// <reference path="typescript-declarations.d.ts" />
+/// <reference path="../../../../typescript/typescript-declarations.d.ts" />
 /// <reference path="Utl.d.ts" />
 /// <reference path="EDDDataInterface.d.ts" />
 /// <reference path="StudyCarbonBalance.d.ts" />
 declare module CarbonBalance {
     class Summation {
         lineDataByID: {
-            [x: number]: LineData;
+            [lineID: number]: LineData;
         };
         lastTimeInSeconds: number;
         private _validAssaysByLineID;

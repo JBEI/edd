@@ -1,7 +1,7 @@
 /// <reference path="Utl.ts" />
 /// <reference path="Dragboxes.ts" />
 /// <reference path="lib/jquery.d.ts" />
-var __extends = this.__extends || function (d, b) {
+var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
     __.prototype = b.prototype;
@@ -21,7 +21,8 @@ var DataGrid = (function () {
         this._sequence = {};
         // Use !! double-not operator to coerce truth-y/false-y values to booleans
         Utl.JS.assert(!!dataGridSpec, "DataGrid needs to be supplied with a DataGridSpecBase-derived object.");
-        Utl.JS.assert(!!(dataGridSpec.tableElement && dataGridSpec.tableSpec && dataGridSpec.tableHeaderSpec && dataGridSpec.tableColumnSpec), "DataGridSpecBase-derived object does not have enough to work with.");
+        Utl.JS.assert(!!(dataGridSpec.tableElement && dataGridSpec.tableSpec &&
+            dataGridSpec.tableHeaderSpec && dataGridSpec.tableColumnSpec), "DataGridSpecBase-derived object does not have enough to work with.");
         //
         // Member variable declarations
         //
@@ -34,13 +35,18 @@ var DataGrid = (function () {
         this._timers = {};
         var tableBody = $(this._tableBody = document.createElement("tbody"));
         // First step: Blow away the old contents of the table
-        $(this._table).empty().attr({ 'cellpadding': 0, 'cellspacing': 0 }).addClass('dataTable sortable dragboxes hastablecontrols').append(tableBody);
+        $(this._table).empty()
+            .attr({ 'cellpadding': 0, 'cellspacing': 0 })
+            .addClass('dataTable sortable dragboxes hastablecontrols')
+            .append(tableBody);
         var tableHeaderRow = $(document.createElement("tr")).addClass('header');
-        var tableHeaderCell = $(this._tableHeaderCell = document.createElement("th")).appendTo(tableHeaderRow);
+        var tableHeaderCell = $(this._tableHeaderCell = document.createElement("th"))
+            .appendTo(tableHeaderRow);
         if (dataGridSpec.tableSpec.name) {
             $(this.tableTitleSpan = document.createElement("span")).text(dataGridSpec.tableSpec.name).appendTo(tableHeaderCell);
         }
-        var waitBadge = $(this._waitBadge = document.createElement("span")).addClass('waitbadge wait').appendTo(tableHeaderCell);
+        var waitBadge = $(this._waitBadge = document.createElement("span"))
+            .addClass('waitbadge wait').appendTo(tableHeaderCell);
         if ((this._totalColumnCount = this.countTotalColumns()) > 1) {
             tableHeaderCell.attr('colspan', this._totalColumnCount);
         }
@@ -62,7 +68,12 @@ var DataGrid = (function () {
     DataGrid.prototype._initializeTableData = function () {
         var hCell = this._tableHeaderCell;
         Dragboxes.initTable(this._table);
-        this._buildAllTableSorters()._buildTableSortSequences()._allocateTableRowRecords()._buildRowGroupTitleRows()._createOptionsMenu()._createHeaderWidgets();
+        this._buildAllTableSorters()
+            ._buildTableSortSequences()
+            ._allocateTableRowRecords()
+            ._buildRowGroupTitleRows()
+            ._createOptionsMenu()
+            ._createHeaderWidgets();
         // First, append the header widgets that should to appear "after" the pulldown.
         // (Since all widgets are styled to float right, they will appear from right to left.)
         this._headerWidgets.forEach(function (widget, index) {
@@ -101,7 +112,8 @@ var DataGrid = (function () {
         });
         this._spec.onDataReset(this);
         // Rebuild rows.
-        this._buildTableSortSequences()._allocateTableRowRecords().arrangeTableDataRows();
+        this._buildTableSortSequences()._allocateTableRowRecords()
+            .arrangeTableDataRows();
         // Call the support function in each widget, to apply styling to all the data rows of the table.
         this._optionsMenuWidgets.forEach(function (widget) {
             _this._spec.getRecordIDs().forEach(function (id) {
@@ -196,12 +208,17 @@ var DataGrid = (function () {
                 });
             });
         }
-        var mainSpan = $(this._optionsMenuElement = document.createElement("span")).attr('id', mainID + 'ColumnChooser').addClass('pulldownMenu');
-        var menuLabel = $(this._optionsLabel = document.createElement("div")).addClass('pulldownMenuLabelOff').text('View\u25BE').click(function () {
-            if (menuLabel.hasClass('pulldownMenuLabelOff'))
-                _this._showOptMenu();
-        }).appendTo(mainSpan);
-        var menuBlock = $(this._optionsMenuBlockElement = document.createElement("div")).addClass('pulldownMenuMenuBlock off').appendTo(mainSpan);
+        var mainSpan = $(this._optionsMenuElement = document.createElement("span"))
+            .attr('id', mainID + 'ColumnChooser').addClass('pulldownMenu');
+        var menuLabel = $(this._optionsLabel = document.createElement("div"))
+            .addClass('pulldownMenuLabelOff')
+            .text('View\u25BE')
+            .click(function () { if (menuLabel.hasClass('pulldownMenuLabelOff'))
+            _this._showOptMenu(); })
+            .appendTo(mainSpan);
+        var menuBlock = $(this._optionsMenuBlockElement = document.createElement("div"))
+            .addClass('pulldownMenuMenuBlock off')
+            .appendTo(mainSpan);
         // event handlers to hide menu if clicking outside menu block or pressing ESC
         $(document).click(function (ev) {
             var t = $(ev.target);
@@ -231,7 +248,11 @@ var DataGrid = (function () {
                 if (group.showInVisibilityList) {
                     item = $('<li>').appendTo(menuColList);
                     id = mainID + 'ColumnCheck' + index;
-                    checkbox = $('<input type="checkbox">').appendTo(item).attr('id', id).data('column', group).click(group, function (e) { return _this._clickedColVisibilityControl(e); });
+                    checkbox = $('<input type="checkbox">')
+                        .appendTo(item)
+                        .attr('id', id)
+                        .data('column', group)
+                        .click(group, function (e) { return _this._clickedColVisibilityControl(e); });
                     group.checkboxElement = checkbox[0];
                     $('<label>').attr('for', id).text(group.name).appendTo(item);
                     if (!group.currentlyHidden) {
@@ -243,7 +264,8 @@ var DataGrid = (function () {
             this._fetchSettings(this._columnSettingsKey(), function (data) {
                 menuColList.find('li').find(':input').each(function (i, box) {
                     var $box = $(box), col = $box.data('column');
-                    if ((data.indexOf(col.name) === -1 && !!col.hiddenByDefault) || data.indexOf('-' + col.name) > -1) {
+                    if ((data.indexOf(col.name) === -1 && !!col.hiddenByDefault) ||
+                        data.indexOf('-' + col.name) > -1) {
                         $box.prop('checked', false);
                         _this.hideColumn(col);
                     }
@@ -323,9 +345,7 @@ var DataGrid = (function () {
         var _this = this;
         var sequence = this._getSequence(this._sort[0]);
         // Verify that the row sets referred to by the IDs actually exist
-        var filteredSequence = sequence.filter(function (v) {
-            return !!_this._recordElements[v];
-        });
+        var filteredSequence = sequence.filter(function (v) { return !!_this._recordElements[v]; });
         filteredSequence = this.applyAllWidgetFiltering(filteredSequence);
         var checkedBoxes = [];
         filteredSequence.forEach(function (v) {
@@ -361,9 +381,7 @@ var DataGrid = (function () {
         this.applySortIndicators();
         var sequence = this._getSequence(this._sort[0]);
         // Verify that the row sets referred to by the IDs actually exist
-        var filteredSequence = sequence.filter(function (v) {
-            return !!_this._recordElements[v];
-        });
+        var filteredSequence = sequence.filter(function (v) { return !!_this._recordElements[v]; });
         var unfilteredSequence = filteredSequence.slice(0);
         // Remove all the grouping title rows from the table as well, if they were there
         var rowGroupSpec = this._spec.tableRowGroupSpec;
@@ -422,7 +440,8 @@ var DataGrid = (function () {
                 }
                 striping = 1 - striping;
                 if (_this._spec.tableSpec.applyStriping) {
-                    rowGroup.undisclosedTitleRowJQ.add(rowGroup.disclosedTitleRowJQ).removeClass(stripeStylesJoin).addClass(stripeStyles[striping]).end();
+                    rowGroup.undisclosedTitleRowJQ.add(rowGroup.disclosedTitleRowJQ)
+                        .removeClass(stripeStylesJoin).addClass(stripeStyles[striping]).end();
                 }
                 if (!rowGroup.disclosed) {
                     // If the group is not disclosed, just print the "undisclosed" title row, and skip the
@@ -553,9 +572,7 @@ var DataGrid = (function () {
     };
     DataGrid.prototype._buildTableHeaders = function () {
         // Find the minimum number of rows we need to create to contain all the headers
-        var maxheaderRow = this._spec.tableHeaderSpec.reduce(function (prev, v) {
-            return Math.max(prev, v.headerRow || 0);
-        }, 1);
+        var maxheaderRow = this._spec.tableHeaderSpec.reduce(function (prev, v) { return Math.max(prev, v.headerRow || 0); }, 1);
         // Create enough rows to contain the headers (usually just 1)
         var rowElements = [];
         for (var i = 0; i < maxheaderRow; i++) {
@@ -565,7 +582,9 @@ var DataGrid = (function () {
         // Run through each individual header, create it according to the specs, and add it to the appropriate row.
         this._spec.tableHeaderSpec.forEach(function (header, i, src) {
             var commonCss = {
-                'width': header.width ? (header.width.substr(-1) !== '%' ? header.width + 'px' : header.width) : undefined
+                'width': header.width ?
+                    (header.width.substr(-1) !== '%' ? header.width + 'px' : header.width) :
+                    undefined
             };
             var css = $.extend({
                 'text-align': header.align,
@@ -583,7 +602,8 @@ var DataGrid = (function () {
                 cell.addClass('sortheader');
             }
             if (header.name) {
-                $(document.createElement("div")).appendTo(cell).text(header.name).attr({ 'class': header.nowrap ? 'nowrap' : undefined }).css(commonCss);
+                $(document.createElement("div")).appendTo(cell).text(header.name)
+                    .attr({ 'class': header.nowrap ? 'nowrap' : undefined }).css(commonCss);
             }
         });
         // Remove the right-side border line from the last element of each row
@@ -612,13 +632,15 @@ var DataGrid = (function () {
         this._spec.tableRowGroupSpec.forEach(function (oneGroup, index) {
             oneGroup.disclosed = true;
             oneGroup.memberRecords = [];
-            var row = oneGroup.disclosedTitleRowJQ = $(oneGroup.disclosedTitleRow = document.createElement("tr")).addClass('groupHeader').click(function () { return _this._collapseRowGroup(index); });
+            var row = oneGroup.disclosedTitleRowJQ = $(oneGroup.disclosedTitleRow = document.createElement("tr"))
+                .addClass('groupHeader').click(function () { return _this._collapseRowGroup(index); });
             var cell = $(document.createElement("td")).appendTo(row);
             $(document.createElement("div")).appendTo(cell).text("\u25BA " + oneGroup.name);
             if (_this._totalColumnCount > 1) {
                 cell.attr('colspan', _this._totalColumnCount);
             }
-            row = oneGroup.undisclosedTitleRowJQ = $(oneGroup.undisclosedTitleRow = document.createElement("tr")).addClass('groupHeader').click(function () { return _this._expandRowGroup(index); });
+            row = oneGroup.undisclosedTitleRowJQ = $(oneGroup.undisclosedTitleRow = document.createElement("tr"))
+                .addClass('groupHeader').click(function () { return _this._expandRowGroup(index); });
             cell = $(document.createElement("td")).appendTo(row);
             $(document.createElement("div")).appendTo(cell).text("\u25BC " + oneGroup.name);
             if (_this._totalColumnCount > 1) {
@@ -719,8 +741,7 @@ var DataGrid = (function () {
                     try {
                         data = JSON.parse(data);
                     }
-                    catch (e) {
-                    }
+                    catch (e) { }
                 }
                 callback.call({}, data);
             }
@@ -879,6 +900,9 @@ var DataGridRecord = (function () {
         var addingForRow = 0;
         var moreToAdd = true;
         var cells = [];
+        // Pull cells off the bottom of the arrays, left to right, assembling the rows one at a time,
+        // skipping columns based on the rowspan or colspan of previous cells.  We expect the client of
+        // this class to ensure they are declaring a nicely fitted rectangular structure - we don't validate it.
         while (moreToAdd) {
             moreToAdd = false;
             cells = [];
@@ -902,9 +926,7 @@ var DataGridRecord = (function () {
             this.dataGridDataRows.push(r);
             this.rowElements.push(r.getElement());
             // keep going if current row is less than highest rowspan
-            moreToAdd = (++addingForRow < currentRowHeights.reduce(function (a, b) {
-                return Math.max(a, b);
-            }, 0));
+            moreToAdd = (++addingForRow < currentRowHeights.reduce(function (a, b) { return Math.max(a, b); }, 0));
         }
         this.createdElements = true;
     };
@@ -1000,8 +1022,7 @@ var DataGridDataCell = (function () {
         this.hidden = false;
         this.createdElement = false;
         defaults = {
-            'contentFunction': function (e, index) {
-            },
+            'contentFunction': function (e, index) { },
             'contentString': '',
             'align': 'left',
             'rowspan': 1,
@@ -1017,9 +1038,7 @@ var DataGridDataCell = (function () {
             this.checkboxElement = document.createElement('input');
             this.checkboxElement.setAttribute('type', 'checkbox');
             $(this.checkboxElement).attr({
-                'id': checkId,
-                'name': checkName,
-                'value': id.toString()
+                'id': checkId, 'name': checkName, 'value': id.toString()
             }).appendTo(c);
             this.contentContainerElement = $('<label>').attr('for', checkId).appendTo(c)[0];
         }
@@ -1241,7 +1260,9 @@ var DataGridHeaderWidget = (function (_super) {
     // when creating input element labels or other things requiring an ID.
     DataGridHeaderWidget.prototype.createElements = function (uniqueID) {
         var tBoxID = this.dataGridSpec.tableSpec.id + 'text' + uniqueID;
-        var tBox = $(this.element = document.createElement("input")).attr({ 'id': tBoxID, 'name': tBoxID, 'size': '20' }).addClass('tableControl');
+        var tBox = $(this.element = document.createElement("input"))
+            .attr({ 'id': tBoxID, 'name': tBoxID, 'size': '20' })
+            .addClass('tableControl');
     };
     // This is called to append the widget elements beneath the given element.
     // If the elements have not been created yet, they are created, and the uniqueID is passed along.
@@ -1291,7 +1312,9 @@ var DGSelectAllWidget = (function (_super) {
         var _this = this;
         var buttonID = this.dataGridSpec.tableSpec.id + 'SelAll' + uniqueID;
         var button = $(this.element = document.createElement("input"));
-        button.attr({ 'id': buttonID, 'name': buttonID, 'value': 'Select All' }).addClass('tableControl').click(function () { return _this.clickHandler(); });
+        button.attr({ 'id': buttonID, 'name': buttonID, 'value': 'Select All' })
+            .addClass('tableControl')
+            .click(function () { return _this.clickHandler(); });
         this.element.setAttribute('type', 'button'); // JQuery attr cannot do this
     };
     DGSelectAllWidget.prototype.clickHandler = function () {
@@ -1349,7 +1372,9 @@ var DGSearchWidget = (function (_super) {
     DGSearchWidget.prototype.createElements = function (uniqueID) {
         var _this = this;
         var sBoxID = this.dataGridSpec.tableSpec.id + 'SearchBox' + uniqueID;
-        var sBox = $(this.element = document.createElement("input")).attr({ 'id': sBoxID, 'name': sBoxID, 'size': this.fieldSize, 'placeholder': this.placeHolder }).addClass('tableControl searchBox').keydown(function (e) { return _this.inputKeyDownHandler(e); });
+        var sBox = $(this.element = document.createElement("input"))
+            .attr({ 'id': sBoxID, 'name': sBoxID, 'size': this.fieldSize, 'placeholder': this.placeHolder })
+            .addClass('tableControl searchBox').keydown(function (e) { return _this.inputKeyDownHandler(e); });
         this.element.setAttribute('type', 'text'); // JQuery .attr() cannot set this
         if (this.getsFocus) {
             sBox.attr('autofocus', 'autofocus');
@@ -1393,9 +1418,7 @@ var DGSearchWidget = (function (_super) {
         v = v.replace(/\s\s*/, ' '); // Replace internal whitespace with single spaces
         // If there are multiple words, we match each separately.
         // We will not attempt to match against empty strings, so we filter those out if any slipped through
-        var queryStrs = v.split(' ').filter(function (one) {
-            return one.length > 0;
-        });
+        var queryStrs = v.split(' ').filter(function (one) { return one.length > 0; });
         var filteredIDs = [];
         this.dataGridOwnerObject.applyToRecordSet(function (rows, id) {
             rows.forEach(function (row) {
@@ -1441,13 +1464,23 @@ var DGPagingWidget = (function (_super) {
     DGPagingWidget.prototype.appendElements = function (container, uniqueID) {
         var _this = this;
         if (!this.createdElements()) {
-            $(this.widgetElement = document.createElement('div')).appendTo(container);
-            $(this.labelElement = document.createElement('span')).appendTo(this.widgetElement);
-            $(this.prevElement = document.createElement('a')).attr('href', '#').css('margin', '0 5px').text('< Previous').prop('disabled', true).appendTo(this.widgetElement).click(function () {
+            $(this.widgetElement = document.createElement('div'))
+                .appendTo(container);
+            $(this.labelElement = document.createElement('span'))
+                .appendTo(this.widgetElement);
+            $(this.prevElement = document.createElement('a'))
+                .attr('href', '#').css('margin', '0 5px')
+                .text('< Previous').prop('disabled', true)
+                .appendTo(this.widgetElement)
+                .click(function () {
                 _this.source.pageDelta(-1).requestPageOfData(_this.requestDone);
                 return false;
             });
-            $(this.nextElement = document.createElement('a')).attr('href', '#').css('margin', '0 5px').text('Next >').prop('disabled', true).appendTo(this.widgetElement).click(function () {
+            $(this.nextElement = document.createElement('a'))
+                .attr('href', '#').css('margin', '0 5px')
+                .text('Next >').prop('disabled', true)
+                .appendTo(this.widgetElement)
+                .click(function () {
                 _this.source.pageDelta(1).requestPageOfData(_this.requestDone);
                 return false;
             });

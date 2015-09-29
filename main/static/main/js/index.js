@@ -2,7 +2,7 @@
 /// <reference path="DataGrid.ts" />
 /// <reference path="Utl.ts" />
 /// <reference path="lib/jquery.d.ts" />
-var __extends = this.__extends || function (d, b) {
+var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
     __.prototype = b.prototype;
@@ -61,33 +61,26 @@ var DataGridSpecStudies = (function (_super) {
             new DataGridHeaderSpec(1, 'hStudyName', {
                 'name': 'Study Name',
                 'nowrap': true,
-                'sortId': 'name_s'
-            }),
+                'sortId': 'name_s' }),
             new DataGridHeaderSpec(2, 'hStudyDesc', {
                 'name': 'Description',
-                'sortId': 'desc_s'
-            }),
+                'sortId': 'desc_s' }),
             new DataGridHeaderSpec(3, 'hStudyOwnerInitials', {
                 'name': 'Owner',
-                'sortId': 'initials'
-            }),
+                'sortId': 'initials' }),
             new DataGridHeaderSpec(4, 'hStudyOwnerFullName', {
                 'name': 'Owner Full Name',
                 'nowrap': true,
-                'sortId': 'creator_s'
-            }),
+                'sortId': 'creator_s' }),
             new DataGridHeaderSpec(5, 'hStudyOwnerInstitute', {
                 'name': 'Institute',
-                'nowrap': true
-            }),
+                'nowrap': true }),
             new DataGridHeaderSpec(6, 'hStudyCreated', {
                 'name': 'Created',
-                'sortId': 'created'
-            }),
+                'sortId': 'created' }),
             new DataGridHeaderSpec(7, 'hStudyMod', {
                 'name': 'Last Modified',
-                'sortId': 'modified'
-            })
+                'sortId': 'modified' })
         ];
     };
     DataGridSpecStudies.prototype.generateStudyNameCells = function (gridSpec, index) {
@@ -113,9 +106,7 @@ var DataGridSpecStudies = (function (_super) {
         return [
             new DataGridDataCell(gridSpec, index, {
                 'maxWidth': '400',
-                'customID': function (id) {
-                    return 'editableDescriptionField' + id;
-                },
+                'customID': function (id) { return 'editableDescriptionField' + id; },
                 'contentString': gridSpec.dataObj[index].des || ''
             })
         ];
@@ -205,12 +196,8 @@ var DataGridSpecStudies = (function (_super) {
     DataGridSpecStudies.prototype.columnSort = function (grid, header, ev) {
         var sort = grid.sortCols(), oldSort, newSort, sortOpt;
         if (ev.shiftKey || ev.ctrlKey || ev.metaKey) {
-            newSort = sort.filter(function (v) {
-                return v.spec.sortId === header.sortId;
-            });
-            oldSort = sort.filter(function (v) {
-                return v.spec.sortId !== header.sortId;
-            });
+            newSort = sort.filter(function (v) { return v.spec.sortId === header.sortId; });
+            oldSort = sort.filter(function (v) { return v.spec.sortId !== header.sortId; });
             // if column already sorted, flip asc; move column to front of sort list
             if (newSort.length) {
                 newSort[0].asc = !newSort[0].asc;
@@ -357,7 +344,11 @@ var DataGridSpecStudies = (function (_super) {
         this.recordIds = docs.map(function (doc) {
             var match = new ResultMatcher(_this._query);
             // straightforward matching on name, description, contact, creator_name, initials
-            match.findAndSet('name', doc.name).findAndSet('description', doc.description).findAndSet('contact', doc.contact).findAndSet('creator', doc.creator_name).findAndSet('initials', doc.initials);
+            match.findAndSet('name', doc.name)
+                .findAndSet('description', doc.description)
+                .findAndSet('contact', doc.contact)
+                .findAndSet('creator', doc.creator_name)
+                .findAndSet('initials', doc.initials);
             // strip the "ID@" portion before matching on metabolite, protocol, part
             (doc.metabolite || []).forEach(function (metabolite) {
                 match.findAndSet('metabolite', metabolite.slice(metabolite.indexOf('@') + 1));
