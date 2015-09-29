@@ -17,6 +17,7 @@ psycopg2==2.6.1
 pyasn1==0.1.8
 pycparser==2.14
 pyOpenSSL==0.15.1
+pysmb==1.1.16
 python-dateutil==2.4.2
 python-ldap==2.4.20
 python-libsbml==5.11.4
@@ -25,4 +26,3 @@ scikit-learn==0.16.1
 scipy==0.16.0
 six==1.9.0
 sqlparse==0.1.16
-pysmb==1.1.16
