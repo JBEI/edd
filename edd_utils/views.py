@@ -137,3 +137,30 @@ def cytometry_import(request):
         'study_form': study_form,
         })
 
+
+########################################################################
+# ENZYME CHARACTERIZATION
+#
+
+MAX_PATH_LENGTH = 260
+
+def ec_import(request):
+    return render(request, 'ec_import.html', {})
+
+def ec_import_action(request, target, path):
+    data = {'result':'success'}
+    if len(target) > MAX_PATH_LENGTH:
+        data['result'] = 'error'
+        data['message'] = 'Path length max size exceeded.'
+    # TODO: sanatize to prevent injections!
+    
+
+
+    # TODO call out!
+    
+
+    # TODO: kickback any EDD-specific exceptions
+    return JsonResponse()
+
+
+
