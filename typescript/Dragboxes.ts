@@ -44,7 +44,9 @@ module Dragboxes {
         return false;
     }
 
-    export function initTable(table:HTMLElement):void {
+    export function initTable(table: JQuery);
+    export function initTable(table: HTMLElement);
+    export function initTable(table: any):void {
         $(table).filter('.dragboxes')
             // watch for mousedown on checkboxes
             .on('mousedown.dragboxes', 'td :checkbox', dragStart)
