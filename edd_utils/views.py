@@ -180,13 +180,13 @@ def ec_import_action(request, target, path):
         smb = SMBController()
         smb.retrieve_file(volume, remote_file_path, local_file_path)
 
-        print 'downloaded file'
+        # print 'downloaded file'
 
         datablocks = data_excelreader.process_spreadsheet(local_file_path)
 
-        print 'indexed sheet'
+        # print 'indexed sheet'
 
-        # data_map_ecdata.map_datablocks(datablocks)
+        data_map_ecdata.map_datablocks(datablocks)
 
         # print 'updated database'
 
