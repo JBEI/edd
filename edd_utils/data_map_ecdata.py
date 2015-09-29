@@ -5,7 +5,7 @@
 #excel.process_spreadsheet()
 
 from django.conf import settings
-from models import EDDObject, MetadataType, MetadataGroup, User, Study, Line, Assay, Strain, Measurement, MeasurementValue, MeasurementType, MeasurementUnit, Protocol, CarbonSource
+from main.models import EDDObject, MetadataType, MetadataGroup, User, Study, Line, Assay, Strain, Measurement, MeasurementValue, MeasurementType, MeasurementUnit, Protocol, CarbonSource
 from django.core.exceptions import ObjectDoesNotExist
 #
 #
