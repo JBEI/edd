@@ -22,6 +22,8 @@ module StudyD {
     var proteinDataProcessed:boolean;
     var geneFilteringWidgets:GenericFilterSection[];
     var geneDataProcessed:boolean;
+    var measurementFilteringWidgets: GenericFilterSection[];
+    var genericDataProcessed: boolean;
 
     var mainGraphRefreshTimerID:any;
 
@@ -627,7 +629,7 @@ module StudyD {
         loadPending: boolean;
 
         configure(): void {
-            this.sectionTitle = 'Measurements';
+            this.sectionTitle = 'Measurement';
             this.sectionShortLabel = 'mm';
             this.loadPending = true;
         }
@@ -786,6 +788,8 @@ module StudyD {
         this.proteinDataProcessed = false;
         this.geneFilteringWidgets = [];
         this.geneDataProcessed = false;
+        this.measurementFilteringWidgets = [];
+        this.genericDataProcessed = false;
 
         this.carbonBalanceData = null;
         this.carbonBalanceDisplayIsFresh = false;
@@ -977,11 +981,15 @@ module StudyD {
         this.geneFilteringWidgets = [];
         this.geneFilteringWidgets.push(new GeneFilterSection());
 
+        this.measurementFilteringWidgets = [];
+        this.measurementFilteringWidgets.push(new MeasurementFilterSection());
+
         this.allFilteringWidgets = [].concat(
             assayFilters,
             this.metaboliteFilteringWidgets,
             this.proteinFilteringWidgets,
-            this.geneFilteringWidgets);
+            this.geneFilteringWidgets,
+            this.measurementFilteringWidgets);
         this.repopulateFilteringSection();
     }
 
@@ -1111,10 +1119,11 @@ module StudyD {
 
     function processMeasurementData(context, data, protocol) {
         var assaySeen = {},
-            filterIds = { 'm': [], 'p': [], 'g': [] },
+            filterIds = { 'm': [], 'p': [], 'g': [], '_': [] },
             protocolToAssay = {},
             count_total:number = 0,
-            count_rec:number = 0;
+            count_rec:number = 0,
+            process: (ids: string[], i: number, widget: GenericFilterSection) => void;
         EDDData.AssayMeasurements = EDDData.AssayMeasurements || {};
         EDDData.MeasurementTypes = $.extend(EDDData.MeasurementTypes || {}, data.types);
         // attach measurement counts to each assay
@@ -1155,29 +1164,28 @@ module StudyD {
             } else {
                 // throw everything else in a general area
                 (assay.general = assay.general || []).push(measurement.id);
-                // TODO filtering on everything else?
+                filterIds._.push(measurement.id);
             }
         });
+        process = (ids: string[], i: number, widget: GenericFilterSection): void => {
+            widget.processFilteringData(ids);
+            widget.populateTable();
+        };
         if (filterIds.m.length) {
-            $.each(context.metaboliteFilteringWidgets, (i, widget) => {
-                widget.processFilteringData(filterIds.m);
-                widget.populateTable();
-            });
+            $.each(context.metaboliteFilteringWidgets, process.bind({}, filterIds.m));
             context.metaboliteDataProcessed = true;
         }
         if (filterIds.p.length) {
-            $.each(context.proteinFilteringWidgets, (i, widget) => {
-                widget.processFilteringData(filterIds.p);
-                widget.populateTable();
-            });
+            $.each(context.proteinFilteringWidgets, process.bind({}, filterIds.p));
             context.proteinDataProcessed = true;
         }
         if (filterIds.g.length) {
-            $.each(context.geneFilteringWidgets, (i, widget) => {
-                widget.processFilteringData(filterIds.g);
-                widget.populateTable();
-            });
+            $.each(context.geneFilteringWidgets, process.bind({}, filterIds.g));
             context.geneDataProcessed = true;
+        }
+        if (filterIds._.length) {
+            $.each(context.measurementFilteringWidgets, process.bind({}, filterIds._));
+            context.genericDataProcessed = true;
         }
         context.repopulateFilteringSection();
         if (count_rec < count_total) {
@@ -1333,6 +1341,9 @@ module StudyD {
         }
         if (context.geneDataProcessed) {
             $.each(context.geneFilteringWidgets, widgetFilter);
+        }
+        if (context.genericDataProcessed) {
+            $.each(context.measurementFilteringWidgets, widgetFilter);
         }
         return measurements;
     }
