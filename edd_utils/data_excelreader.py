@@ -100,7 +100,18 @@ def _collect_data_block(sheet, data_block_index):
 	if(label==u'Metadata'):
 		# print 'metadata...'
 		x += 2
-		while type( sheet.cell( row=row+x, column=column+y ) )!= type(None):
+		while True:
+			# print "x:%d  y:%d" % (row+x,column+y)
+			if sheet.cell( row=row+x, column=column+y ).value == 'MetadataEnd':
+				break
+			# try:
+			# if type( sheet.cell( row=row+x, column=column+y ) ) == type(None):
+			# 	break
+			# else:
+			# 	print str(type( sheet.cell( row=row+x, column=column+y ) ))
+			# except IndexError as e:
+			# 	continue
+
 			# data.append( sheet.cell( row=row+x, column=column+y   ).value )
 			# data.append( sheet.cell( row=row+x, column=column+y+1 ).value )
 			data.append( (sheet.cell( row=row+x, column=column+y   ).value, \
