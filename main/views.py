@@ -1,23 +1,22 @@
 # coding: utf-8
+from __future__ import unicode_literals
 
 import collections
 import csv
 import json
 import logging
-import main.models
-import main.sbml_export
-import main.data_import
 import operator
 import re
 
+from builtins import str
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.models import Group
-from django.core import serializers
-from django.core.exceptions import ObjectDoesNotExist, PermissionDenied, ValidationError
+from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django.db.models import Count, Q
-from django.http import Http404, HttpResponse, HttpResponseRedirect, JsonResponse, QueryDict
+from django.http import (
+    Http404, HttpResponse, HttpResponseNotAllowed, HttpResponseRedirect, JsonResponse, QueryDict)
 from django.http.response import HttpResponseForbidden, HttpResponseBadRequest
 from django.shortcuts import render, get_object_or_404, redirect, render_to_response
 from django.template import RequestContext
@@ -26,15 +25,24 @@ from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 from django.views import generic
 from django.views.decorators.csrf import ensure_csrf_cookie
+from functools import reduce
 from io import BytesIO
 
+from . import data_import, models, sbml_export
 from .export import table
-from .forms import *
+from .forms import (
+    AssayForm, CreateAttachmentForm, CreateCommentForm, CreateStudyForm, ExportOptionForm,
+    ExportSelectionForm, LineForm, MeasurementForm, )
 from .ice import IceApi
-from .models import *
+from .models import (
+    Assay, Attachment, Line, Measurement, MeasurementCompartment, MeasurementGroup, MeasurementType,
+    MeasurementValue, Metabolite, MetaboliteSpecies, MetadataType, Protocol, SBMLTemplate, Study,
+    StudyPermission, Update, )
 from .signals import study_modified
 from .solr import StudySearch, UserSearch
-from .utilities import *
+from .utilities import (
+    JSONDecimalEncoder, get_edddata_carbon_sources, get_edddata_measurement, get_edddata_misc,
+    get_edddata_strains, get_edddata_study, get_edddata_users, get_selected_lines)
 
 
 logger = logging.getLogger(__name__)
@@ -51,17 +59,19 @@ def lookup(dictionary, key):
     """
     return dictionary.get(key, settings.TEMPLATE_STRING_IF_INVALID)
 
+
 @register.filter(name='formula')
 def formula(molecular_formula):
     """ Convert the molecular formula to a list of dictionaries giving each element and its count.
         This is used in HTML views with <sub> tags. """
     elements = re.findall("([A-Z][a-z]{0,2})([1-9][0-9]*)?", molecular_formula)
     return mark_safe(
-        "".join([ '%s%s' % (e, '<sub>%s</sub>' % c if c != '' else c) for e,c in elements ])
+        "".join(['%s%s' % (e, '<sub>%s</sub>' % c if c != '' else c) for e, c in elements])
         )
 
-def load_study(request, study_id, permission_type=['R','W']):
-    """ Loads a study as a request user; throws a 404 if the study does not exist OR if no valid 
+
+def load_study(request, study_id, permission_type=['R', 'W', ]):
+    """ Loads a study as a request user; throws a 404 if the study does not exist OR if no valid
         permissions are set for the user on the study. """
     if request.user.is_superuser:
         return get_object_or_404(Study, pk=study_id)
@@ -80,7 +90,7 @@ class StudyCreateView(generic.edit.CreateView):
     """
     form_class = CreateStudyForm
     template_name = 'main/index.html'
-    
+
     def form_valid(self, form):
         update = Update.load_request_update(self.request)
         study = form.instance
@@ -88,16 +98,16 @@ class StudyCreateView(generic.edit.CreateView):
         study.created = update
         study.updated = update
         return generic.edit.CreateView.form_valid(self, form)
-    
+
     def get_success_url(self):
-        return reverse('main:detail', kwargs={'pk':self.object.pk})
+        return reverse('main:detail', kwargs={'pk': self.object.pk})
 
 
 class StudyDetailView(generic.DetailView):
     """ Study details page, displays line/assay data. """
     model = Study
     template_name = 'main/detail.html'
-    
+
     def get_context_data(self, **kwargs):
         context = super(StudyDetailView, self).get_context_data(**kwargs)
         context['new_assay'] = AssayForm(prefix='assay')
@@ -114,15 +124,15 @@ class StudyDetailView(generic.DetailView):
             return qs
         return qs.filter(
             Q(userpermission__user=self.request.user,
-              userpermission__permission_type__in=['R','W']) |
+              userpermission__permission_type__in=['R', 'W', ]) |
             Q(grouppermission__group__user=self.request.user,
-              grouppermission__permission_type__in=['R','W'])).distinct()
+              grouppermission__permission_type__in=['R', 'W', ])).distinct()
 
     def handle_assay(self, request, context):
         assay_id = request.POST.get('assay-assay_id', None)
         assay = self._get_assay(assay_id) if assay_id else None
         if assay:
-            form = AssayForm(request.POST, instance=assay, lines=[ assay.line_id ], prefix='assay')
+            form = AssayForm(request.POST, instance=assay, lines=[assay.line_id], prefix='assay')
         else:
             ids = request.POST.getlist('lineId', [])
             form = AssayForm(request.POST, lines=ids, prefix='assay')
@@ -198,7 +208,7 @@ class StudyDetailView(generic.DetailView):
         study = self.get_object()
         disable = request.POST.get('disable', 'true')
         active = disable == 'false'
-        count = Line.objects.filter(study=self.object, id__in=ids).update(active=active)
+        count = Line.objects.filter(study=study, id__in=ids).update(active=active)
         messages.success(request, '%s %s Lines' % ('Enabled' if active else 'Disabled', count))
         return True
 
@@ -214,7 +224,7 @@ class StudyDetailView(generic.DetailView):
         return False
 
     def handle_line(self, request, context):
-        ids = [ v for v in request.POST.get('line-ids', '').split(',') if v.strip() != '' ]
+        ids = [v for v in request.POST.get('line-ids', '').split(',') if v.strip() != '']
         if len(ids) == 0:
             return self.handle_line_new(request, context)
         elif len(ids) == 1:
@@ -231,7 +241,7 @@ class StudyDetailView(generic.DetailView):
             line = self._get_line(value)
             if line:
                 form = LineForm(request.POST, instance=line, prefix='line', study=study)
-                form.check_bulk_edit() # removes fields having disabled bulk edit checkbox
+                form.check_bulk_edit()  # removes fields having disabled bulk edit checkbox
                 if form.is_valid():
                     form.save()
                     saved += 1
@@ -249,7 +259,7 @@ class StudyDetailView(generic.DetailView):
             context['new_line'] = form
             if form.is_valid():
                 form.save()
-                messages.success(request, "Saved Line '%(name)s'" % { 'name': form['name'].value() })
+                messages.success(request, "Saved Line '%(name)s'" % {'name': form['name'].value()})
                 return True
         else:
             messages.error(request, 'Failed to load line for editing.')
@@ -259,7 +269,7 @@ class StudyDetailView(generic.DetailView):
         form = LineForm(request.POST, prefix='line', study=self.get_object())
         if form.is_valid():
             form.save()
-            messages.success(request, "Added Line '%(name)s" % { 'name': form['name'].value() })
+            messages.success(request, "Added Line '%(name)s" % {'name': form['name'].value()})
             return True
         else:
             context['new_line'] = form
@@ -331,14 +341,14 @@ class StudyDetailView(generic.DetailView):
             form_valid = self.handle_assay(request, context)
         if form_valid:
             study_modified.send(sender=self.__class__, study=self.object)
-            return HttpResponseRedirect(reverse('main:detail', kwargs={'pk':self.object.pk}))
+            return HttpResponseRedirect(reverse('main:detail', kwargs={'pk': self.object.pk}))
         return self.render_to_response(context)
 
     def _get_assay(self, assay_id):
         study = self.get_object()
         try:
             return Assay.objects.get(pk=assay_id, line__study=study)
-        except Assay.DoesNotExist, e:
+        except Assay.DoesNotExist:
             logger.warning('Failed to load assay,study combo %s,%s' % (assay_id, study.pk))
         return None
 
@@ -346,7 +356,7 @@ class StudyDetailView(generic.DetailView):
         study = self.get_object()
         try:
             return Line.objects.get(pk=line_id, study=study)
-        except Line.DoesNotExist, e:
+        except Line.DoesNotExist:
             logger.warning('Failed to load line,study combo %s,%s' % (line_id, study.pk))
         return None
 
@@ -390,7 +400,7 @@ class ExportView(generic.TemplateView):
                     select_form=select_form,
                     option_form=option_form,
                     ))
-        except Exception, e:
+        except Exception:
             logger.error("Failed to validate forms for export")
             raise
         return self.render_to_response(self.get_context_data(
@@ -405,23 +415,25 @@ class ExportView(generic.TemplateView):
             return self._export.output()
         return ''
 
+
 # /study/<study_id>/lines/
 def study_lines(request, study):
     """ Request information on lines in a study. """
     obj = load_study(request, study)
     return JsonResponse(Line.objects.filter(study=obj), encoder=JSONDecimalEncoder)
 
+
 # /study/<study_id>/measurements/<protocol_id>/
 def study_measurements(request, study, protocol):
     """ Request measurement data in a study. """
     obj = load_study(request, study)
     measure_types = MeasurementType.objects.filter(
-        measurement__assay__line__study_id=study,
+        measurement__assay__line__study=obj,
         measurement__assay__protocol_id=protocol,
         ).distinct()
     # stash QuerySet to use in both measurements and total_measures below
     qmeasurements = Measurement.objects.filter(
-        assay__line__study_id=study,
+        assay__line__study=obj,
         assay__protocol_id=protocol,
         active=True,
         assay__active=True,
@@ -434,7 +446,7 @@ def study_measurements(request, study, protocol):
     if len(measure_list):
         # only try to pull values when we have measurement objects
         values = MeasurementValue.objects.filter(
-            measurement__assay__line__study_id=study,
+            measurement__assay__line__study=obj,
             measurement__assay__protocol_id=protocol,
             measurement__active=True,
             measurement__assay__active=True,
@@ -450,18 +462,19 @@ def study_measurements(request, study, protocol):
         'total_measures': {
             x['assay_id']: x.get('count', 0) for x in total_measures if 'assay_id' in x
         },
-        'types': { t.pk: t.to_json() for t in measure_types },
-        'measures': [ m.to_json() for m in measure_list ],
+        'types': {t.pk: t.to_json() for t in measure_types},
+        'measures': [m.to_json() for m in measure_list],
         'data': value_dict,
     }
     return JsonResponse(payload, encoder=JSONDecimalEncoder)
+
 
 # /study/<study_id>/measurements/<protocol_id>/<assay_id>/
 def study_assay_measurements(request, study, protocol, assay):
     """ Request measurement data in a study, for a single assay. """
     obj = load_study(request, study)
     measure_types = MeasurementType.objects.filter(
-        measurement__assay__line__study_id=study,
+        measurement__assay__line__study=obj,
         measurement__assay__protocol_id=protocol,
         measurement__assay=assay,
         ).distinct()
@@ -494,11 +507,12 @@ def study_assay_measurements(request, study, protocol, assay):
         'total_measures': {
             x['assay_id']: x.get('count', 0) for x in total_measures if 'assay_id' in x
         },
-        'types': { t.pk: t.to_json() for t in measure_types },
+        'types': {t.pk: t.to_json() for t in measure_types},
         'measures': map(lambda m: m.to_json(), measure_list),
         'data': value_dict,
     }
     return JsonResponse(payload, encoder=JSONDecimalEncoder)
+
 
 # /study/search/
 def study_search(request):
@@ -511,8 +525,9 @@ def study_search(request):
     # loop through results and attach URL to each
     query_response = data['response']
     for doc in query_response['docs']:
-        doc['url'] = reverse('main:detail', kwargs={'pk':doc['id']})
+        doc['url'] = reverse('main:detail', kwargs={'pk': doc['id']})
     return JsonResponse(query_response, encoder=JSONDecimalEncoder)
+
 
 # /study/<study_id>/edddata/
 def study_edddata(request, study):
@@ -526,6 +541,7 @@ def study_edddata(request, study):
     data_study.update(data_misc)
     return JsonResponse(data_study, encoder=JSONDecimalEncoder)
 
+
 # /study/<study_id>/assaydata/
 def study_assay_table_data(request, study):
     """ Request information on assays associated with a study. """
@@ -534,20 +550,21 @@ def study_assay_table_data(request, study):
     protocols = Protocol.objects.all()
     lines = model.line_set.all()
     return JsonResponse({
-            "ATData" : {
-                "existingProtocols" : { p.id : p.name for p in protocols },
-                "existingLines" : [ {"n":l.name,"id":l.id} for l in lines ],
-                "existingAssays" : model.get_assays_by_protocol(),
+            "ATData": {
+                "existingProtocols": {p.id: p.name for p in protocols},
+                "existingLines": [{"n": l.name, "id": l.id} for l in lines],
+                "existingAssays": model.get_assays_by_protocol(),
             },
-            "EDDData" : get_edddata_study(model),
+            "EDDData": get_edddata_study(model),
         }, encoder=JSONDecimalEncoder)
+
 
 # /study/<study_id>/map/
 def study_map(request, study):
     """ Request information on metabolic map associated with a study. """
     obj = load_study(request, study)
     try:
-        mmap = SBMLTemplate.objects.get(study=study)
+        mmap = SBMLTemplate.objects.get(study=obj)
         return JsonResponse({
                 "name": mmap.name,
                 "id": mmap.pk,
@@ -555,10 +572,11 @@ def study_map(request, study):
                 },
             encoder=JSONDecimalEncoder
             )
-    except SBMLTemplate.DoesNotExist, e:
-        return JsonResponse({ "name": "", "biomassCalculation": -1, }, encoder=JSONDecimalEncoder)
-    except Exception, e:
+    except SBMLTemplate.DoesNotExist as e:
+        return JsonResponse({"name": "", "biomassCalculation": -1, }, encoder=JSONDecimalEncoder)
+    except Exception as e:
         raise e
+
 
 # /study/<study_id>/permissions/
 def permissions(request, study):
@@ -566,7 +584,7 @@ def permissions(request, study):
     if request.method == 'HEAD':
         return HttpResponse(status=200)
     elif request.method == 'GET':
-        return JsonResponse([ p.to_json() for p in obj.get_combined_permission() ])
+        return JsonResponse([p.to_json() for p in obj.get_combined_permission()])
     elif request.method == 'PUT' or request.method == 'POST':
         if not obj.user_can_write(request.user):
             return HttpResponseForbidden("You do not have permission to modify this study.")
@@ -579,10 +597,10 @@ def permissions(request, study):
                 manager = None
                 lookup = {}
                 if group is not None:
-                    lookup = { 'group_id': group.get('id', 0), 'study_id': study }
+                    lookup = {'group_id': group.get('id', 0), 'study_id': study}
                     manager = obj.grouppermission_set.filter(**lookup)
                 elif user is not None:
-                    lookup = { 'user_id': user.get('id', 0), 'study_id': study }
+                    lookup = {'user_id': user.get('id', 0), 'study_id': study}
                     manager = obj.userpermission_set.filter(**lookup)
                 if manager is None:
                     logger.warning('Invalid permission type for add')
@@ -591,7 +609,7 @@ def permissions(request, study):
                 else:
                     lookup['permission_type'] = ptype
                     manager.update_or_create(**lookup)
-        except Exception, e:
+        except Exception as e:
             logger.error('Error modifying study (%s) permissions: %s' % (study, str(e)))
             return HttpResponse(status=500)
         return HttpResponse(status=204)
@@ -601,19 +619,20 @@ def permissions(request, study):
         try:
             obj.grouppermission_set.all().delete()
             obj.userpermission_set.all().delete()
-        except Exception, e:
+        except Exception as e:
             logger.error('Error deleting study (%s) permissions: %s' % (study, str(e)))
             return HttpResponse(status=500)
         return HttpResponse(status=204)
     else:
         return HttpResponseNotAllowed(['HEAD', 'GET', 'PUT', 'POST', 'DELETE', ])
 
+
 # /study/<study_id>/import
 # FIXME should have trailing slash?
 @ensure_csrf_cookie
 def study_import_table(request, study):
     """ View for importing tabular assay data (replaces AssayTableData.cgi). """
-    model = load_study(request, study, permission_type=['W',])
+    model = load_study(request, study, permission_type=['W', ])
     # FIXME filter protocols?
     protocols = Protocol.objects.order_by('name')
     if (request.method == "POST"):
@@ -621,18 +640,20 @@ def study_import_table(request, study):
         for key in sorted(request.POST):
             print("%s : %s" % (key, request.POST[key]))
         try:
-            table = main.data_import.TableImport(model, request.user)
+            table = data_import.TableImport(model, request.user)
             added = table.import_data(request.POST)
             messages.success(request, 'Imported %s measurements' % added)
         except ValueError as e:
             print("ERROR!!! %s" % e)
             messages.error(request, e)
-    return render_to_response("main/table_import.html",
+    return render_to_response(
+        "main/table_import.html",
         dictionary={
-            "study" : model,
-            "protocols" : protocols,
+            "study": model,
+            "protocols": protocols,
         },
         context_instance=RequestContext(request))
+
 
 # /study/<study_id>/import/rnaseq
 # FIXME should have trailing slash?
@@ -641,22 +662,24 @@ def study_import_rnaseq(request, study):
     """ View for importing multiple sets of RNA-seq measurements in various simple tabular formats
         defined by us.  Handles both GET and POST. """
     messages = {}
-    model = load_study(request, study, permission_type=['W',])
+    model = load_study(request, study, permission_type=['W', ])
     lines = model.line_set.all()
     if request.method == "POST":
         try:
-            result = main.data_import.import_rna_seq.from_form(request, model)
+            result = data_import.import_rna_seq.from_form(request, model)
             messages["success"] = "Added %d measurements in %d assays." % (
                 result.n_assay, result.n_meas)
         except ValueError as e:
             messages["error"] = str(e)
-    return render_to_response("main/import_rnaseq.html",
+    return render_to_response(
+        "main/import_rnaseq.html",
         dictionary={
-            "messages" : messages,
-            "study" : model,
-            "lines" : lines,
+            "messages": messages,
+            "study": model,
+            "lines": lines,
         },
         context_instance=RequestContext(request))
+
 
 # /study/<study_id>/import/rnaseq/edgepro
 # FIXME should have trailing slash?
@@ -665,7 +688,7 @@ def study_import_rnaseq_edgepro(request, study):
     """ View for importing a single set of RNA-seq measurements from the EDGE-pro pipeline,
         attached to an existing Assay.  Handles both GET and POST. """
     messages = {}
-    model = load_study(request, study, permission_type=['W',])
+    model = load_study(request, study, permission_type=['W', ])
     assay_id = None
     if request.method == "GET":
         assay_id = request.POST.get("assay", None)
@@ -674,7 +697,7 @@ def study_import_rnaseq_edgepro(request, study):
         try:
             if assay_id is None or assay_id == "":
                 raise ValueError("Assay ID required for form submission.")
-            result = main.data_import.import_rnaseq_edgepro.from_form(
+            result = data_import.import_rnaseq_edgepro.from_form(
                 request=request,
                 study=model)
             messages["success"] = result.format_message()
@@ -693,11 +716,12 @@ def study_import_rnaseq_edgepro(request, study):
     assay_info = []
     for assay in assays_:
         assay_info.append({
-            "id" : assay.id,
-            "long_name" : assay.long_name,
-            "n_meas" : assay.measurement_set.count(),
+            "id": assay.id,
+            "long_name": assay.long_name,
+            "n_meas": assay.measurement_set.count(),
         })
-    return render_to_response("main/import_rnaseq_edgepro.html",
+    return render_to_response(
+        "main/import_rnaseq_edgepro.html",
         dictionary={
             "selected_assay_id": assay_id,
             "assays": assay_info,
@@ -706,64 +730,66 @@ def study_import_rnaseq_edgepro(request, study):
         },
         context_instance=RequestContext(request))
 
+
 # /study/<study_id>/import/rnaseq/parse
 # FIXME should have trailing slash?
 def study_import_rnaseq_parse(request, study):
     """ Parse raw data from an uploaded text file, and return JSON object of processed result.
         Result is identical to study_import_rnaseq_process, but this method is invoked by
         drag-and-drop of a file (via filedrop.js). """
-    model = load_study(request, study, permission_type=['W',])
+    model = load_study(request, study, permission_type=['W', ])
     referrer = request.META['HTTP_REFERER']
     result = None
     # XXX slightly gross: using HTTP_REFERER to dictate choice of parsing
     # functions
     try:
         if "edgepro" in referrer:
-            result = main.data_import.interpret_edgepro_data(raw_data=request.read())
+            result = data_import.interpret_edgepro_data(raw_data=request.read())
             result['format'] = "edgepro"
         else:
-            result = main.data_import.interpret_raw_rna_seq_data(
+            result = data_import.interpret_raw_rna_seq_data(
                 raw_data=request.read(), study=model)
             result['format'] = "generic"
     except ValueError as e:
-        return JsonResponse({ "python_error" : str(e) })
+        return JsonResponse({"python_error": str(e)})
     else:
         return JsonResponse(result)
 
+
 # /study/<study_id>/import/rnaseq/process
 # FIXME should have trailing slash?
-def study_import_rnaseq_process (request, study) :
+def study_import_rnaseq_process(request, study):
     """ Process form submission containing either a file or text field, and return JSON object of
         processed result. """
-    model = load_study(request, study, permission_type=['W',])
+    model = load_study(request, study, permission_type=['W', ])
     assert(request.method == "POST")
     try:
         data = request.POST.get("data", "").strip()
         file_name = None
         if data == "":
             data_file = request.FILES.get("file_name", None)
-            if (data_file is None) :
-                raise ValueError("Either a text file or pasted table is "+
-                    "required as input.")
+            if (data_file is None):
+                raise ValueError("Either a text file or pasted table is "
+                                 "required as input.")
             data = data_file.read()
             file_name = data_file.name
         result = None
         if request.POST.get("format") == "htseq-combined":
-            result = main.data_import.interpret_raw_rna_seq_data(
+            result = data_import.interpret_raw_rna_seq_data(
                 raw_data=data,
                 study=model,
                 file_name=file_name)
         elif request.POST.get("format") == "edgepro":
-            result = main.data_import.interpret_edgepro_data(
+            result = data_import.interpret_edgepro_data(
                 raw_data=data,
                 study=model,
                 file_name=file_name)
         else:
             raise ValueError("Format needs to be specified!")
     except ValueError as e:
-        return JsonResponse({ "python_error" : str(e) })
+        return JsonResponse({"python_error": str(e)})
     except Exception as e:
-        print e
+        logger.error('Exception in RNASeq import process: %s', e)
     else:
         return JsonResponse(result)
 
@@ -778,15 +804,15 @@ def study_export_sbml(request, study):
         form = request.GET
     try:
         lines = get_selected_lines(form, model)
-        manager = main.sbml_export.line_sbml_export(
+        manager = sbml_export.line_sbml_export(
             study=model,
             lines=lines,
             form=form,
             debug=True)
     except ValueError as e:
         return render(request, "main/error.html", {
-          "error_source" : "SBML export for %s" % model.name,
-          "error_message" : str(e),
+          "error_source": "SBML export for %s" % model.name,
+          "error_message": str(e),
         })
     else:
         # two levels of exception handling allow us to view whatever steps
@@ -802,48 +828,55 @@ def study_export_sbml(request, study):
                 if timestamp_str != "":
                     timestamp = float(timestamp_str)
                     sbml = manager.as_sbml(timestamp)
-                    response = HttpResponse(sbml,
-                    content_type="application/sbml+xml")
+                    response = HttpResponse(
+                        sbml, content_type="application/sbml+xml")
                     file_name = manager.output_file_name(timestamp)
                     response['Content-Disposition'] = 'attachment; filename="%s"' % file_name
                     return response
-        return render_to_response("main/sbml_export.html",
+        return render_to_response(
+            "main/sbml_export.html",
             dictionary={
-                "data" : manager,
-                "study" : model,
-                "lines" : lines,
-                "error_message" : error_message,
+                "data": manager,
+                "study": model,
+                "lines": lines,
+                "error_message": error_message,
             },
             context_instance=RequestContext(request))
 
+
 # /data/users
 def data_users(request):
-    return JsonResponse({ "EDDData" : get_edddata_users() }, encoder=JSONDecimalEncoder)
+    return JsonResponse({"EDDData": get_edddata_users()}, encoder=JSONDecimalEncoder)
+
 
 # /data/misc
 def data_misc(request):
-    return JsonResponse({ "EDDData" : get_edddata_misc() }, encoder=JSONDecimalEncoder)
+    return JsonResponse({"EDDData": get_edddata_misc()}, encoder=JSONDecimalEncoder)
+
 
 # /data/measurements
 def data_measurements(request):
     data_meas = get_edddata_measurement()
     data_misc = get_edddata_misc()
     data_meas.update(data_misc)
-    return JsonResponse({ "EDDData" : data_meas }, encoder=JSONDecimalEncoder)
+    return JsonResponse({"EDDData": data_meas}, encoder=JSONDecimalEncoder)
+
 
 # /data/sbml/
 def data_sbml(request):
     all_sbml = SBMLTemplate.objects.all()
     return JsonResponse(
-        [ sbml.to_json() for sbml in all_sbml ],
+        [sbml.to_json() for sbml in all_sbml],
         encoder=JSONDecimalEncoder,
         safe=False,
         )
+
 
 # /data/sbml/<sbml_id>/
 def data_sbml_info(request, sbml_id):
     sbml = get_object_or_404(SBMLTemplate, pk=sbml_id)
     return JsonResponse(sbml.to_json(), encoder=JSONDecimalEncoder)
+
 
 # /data/sbml/<sbml_id>/reactions/
 def data_sbml_reactions(request, sbml_id):
@@ -854,20 +887,21 @@ def data_sbml_reactions(request, sbml_id):
             "metabolicMapID": sbml_id,
             "reactionName": r.getName(),
             "reactionID": r.getId(),
-        } for r in rlist if 'biomass' in r.getId() ],
+        } for r in rlist if 'biomass' in r.getId()],
         encoder=JSONDecimalEncoder,
         safe=False,
         )
+
 
 # /data/sbml/<sbml_id>/reactions/<rxn_id>/
 def data_sbml_reaction_species(request, sbml_id, rxn_id):
     sbml = get_object_or_404(SBMLTemplate, pk=sbml_id)
     rlist = sbml.load_reactions()
-    found = [ r for r in rlist if rxn_id == r.getId() ]
+    found = [r for r in rlist if rxn_id == r.getId()]
     if len(found):
         all_species = [
             rxn.getSpecies() for rxn in found[0].getListOfReactants()
-            ] + [ 
+            ] + [
             rxn.getSpecies() for rxn in found[0].getListOfProducts()
             ]
         matched = MetaboliteSpecies.objects.filter(
@@ -876,11 +910,12 @@ def data_sbml_reaction_species(request, sbml_id, rxn_id):
             ).select_related(
                 'measurement_type',
             )
-        matched_json = { m.species: m.measurement_type.to_json() for m in matched }
-        unmatched = [ s for s in all_species if s not in matched_json ]
+        matched_json = {m.species: m.measurement_type.to_json() for m in matched}
+        unmatched = [s for s in all_species if s not in matched_json]
         # old EDD tries to generate SBML species names for all metabolites and match
         # below is the inverse; take a species name, try to extract short_name, and search
-        guessed_json = { }
+        guessed_json = {}
+
         def sub_symbol(name):
             name = re.sub(r'_DASH_', '-', name)
             name = re.sub(r'_LPAREN_', '(', name)
@@ -891,9 +926,9 @@ def data_sbml_reaction_species(request, sbml_id, rxn_id):
         for s in unmatched:
             match = re.search(r'^(?:M_)?(\w+?)(?:_c_?)?$', s)
             if match:
-                candidate_names = [ match.group(1), sub_symbol(match.group(1)), ]
+                candidate_names = [match.group(1), sub_symbol(match.group(1)), ]
                 guessed = Metabolite.objects.filter(short_name__in=candidate_names)
-                guessed_json.update({ s: m.to_json() for m in guessed })
+                guessed_json.update({s: m.to_json() for m in guessed})
         # make sure actual matches take precedence
         guessed_json.update(matched_json)
         return JsonResponse(
@@ -903,11 +938,12 @@ def data_sbml_reaction_species(request, sbml_id, rxn_id):
             )
     raise Http404("Could not find reaction")
 
+
 # /data/sbml/<sbml_id>/reactions/<rxn_id>/compute/ -- POST ONLY --
 def data_sbml_compute(request, sbml_id, rxn_id):
     sbml = get_object_or_404(SBMLTemplate, pk=sbml_id)
     rlist = sbml.load_reactions()
-    found = [ r for r in rlist if rxn_id == r.getId() ]
+    found = [r for r in rlist if rxn_id == r.getId()]
     spp = request.POST.getlist('species', [])
     if len(found):
         def sumMetaboliteStoichiometries(species, info):
@@ -924,11 +960,11 @@ def data_sbml_compute(request, sbml_id, rxn_id):
                             "stoichiometry": sp.getStoichiometry(),
                             "carbonCount": m.measurement_type.metabolite.carbon_count,
                         })
-                except Exception, e:
+                except Exception:
                     pass
             return total
-        reactants = [ r for r in found[0].getListOfReactants() if r.getSpecies() in spp ]
-        products = [ r for r in found[0].getListOfProducts() if r.getSpecies() in spp ]
+        reactants = [r for r in found[0].getListOfReactants() if r.getSpecies() in spp]
+        products = [r for r in found[0].getListOfProducts() if r.getSpecies() in spp]
         reactant_info = []
         product_info = []
         biomass = sumMetaboliteStoichiometries(reactants, reactant_info)
@@ -944,22 +980,26 @@ def data_sbml_compute(request, sbml_id, rxn_id):
         return JsonResponse(biomass, encoder=JSONDecimalEncoder, safe=False)
     raise Http404("Could not find reaction")
 
+
 # /data/strains
 def data_strains(request):
-    return JsonResponse({ "EDDData" : get_edddata_strains() }, encoder=JSONDecimalEncoder)
+    return JsonResponse({"EDDData": get_edddata_strains()}, encoder=JSONDecimalEncoder)
+
 
 # /data/metadata
 def data_metadata(request):
     return JsonResponse({
-            "EDDData" : {
-                "MetadataTypes" :
-                    { m.id:m.to_json() for m in MetadataType.objects.all() },
+            "EDDData": {
+                "MetadataTypes":
+                    {m.id: m.to_json() for m in MetadataType.objects.all()},
             }
         }, encoder=JSONDecimalEncoder)
 
+
 # /data/carbonsources
 def data_carbonsources(request):
-    return JsonResponse({ "EDDData" : get_edddata_carbon_sources() }, encoder=JSONDecimalEncoder)
+    return JsonResponse({"EDDData": get_edddata_carbon_sources()}, encoder=JSONDecimalEncoder)
+
 
 # /download/<file_id>
 def download(request, file_id):
@@ -970,58 +1010,61 @@ def download(request, file_id):
     response['Content-Disposition'] = 'attachment; filename="%s"' % model.filename
     return response
 
+
 # TODO should only delete on POST, write a confirm delete page with a form to resubmit as POST
 def delete_file(request, file_id):
     redirect_url = request.GET.get("redirect", None)
-    if (redirect_url is None) :
+    if redirect_url is None:
         return HttpResponseBadRequest("Missing redirect URL.")
     model = Attachment.objects.get(pk=file_id)
     if not model.user_can_delete(request.user):
-        return HttpResponseForbidden("You do not have permission to remove "+
-            "files associated with this study.")
+        return HttpResponseForbidden(
+            "You do not have permission to remove files associated with this study.")
     model.delete()
     return redirect(redirect_url)
+
 
 # /utilities/parsefile
 def utilities_parse_table(request):
     """ Attempt to process posted data as either a TSV or CSV file or Excel spreadsheet and
         extract a table of data automatically. """
-    default_error = JsonResponse({"python_error" : "The uploaded file "+
-        "could not be interpreted as either an Excel spreadsheet or a "+
-        "CSV/TSV file.  Please check that the contents are formatted "+
-        "correctly.  (Word documents are not allowed!)" })
+    default_error = JsonResponse({
+        "python_error": "The uploaded file could not be interpreted as either an Excel "
+                        "spreadsheet or a CSV/TSV file.  Please check that the contents are "
+                        "formatted correctly. (Word documents are not allowed!)"})
     data = request.read()
     try:
         parsed = csv.reader(data, delimiter='\t')
         assert(len(parsed[0]) > 1)
         return JsonResponse({
-            "file_type" : "tab",
-            "file_data" : data,
+            "file_type": "tab",
+            "file_data": data,
         })
     except Exception as e:
         try:
             parsed = csv.reader(data, delimiter=',')
             assert(len(parsed[0]) > 1)
             return JsonResponse({
-                "file_type" : "csv",
-                "file_data" : data,
+                "file_type": "csv",
+                "file_data": data,
             })
         except Exception as e:
             try:
                 from edd_utils.parsers import excel
                 result = excel.import_xlsx_tables(file=BytesIO(data))
                 return JsonResponse({
-                    "file_type" : "xlsx",
-                    "file_data" : result,
+                    "file_type": "xlsx",
+                    "file_data": result,
                 })
             except ImportError as e:
-                return JsonResponse({ "python_error" :
-                    "jbei_tools module required to handle Excel table input."
+                return JsonResponse({
+                    "python_error": "jbei_tools module required to handle Excel table input."
                 })
             except ValueError as e:
-                return JsonResponse({ "python_error" : str(e) })
+                return JsonResponse({"python_error": str(e)})
             except Exception as e:
                 return default_error
+
 
 # /search
 def search(request):
@@ -1034,46 +1077,46 @@ def search(request):
     results = []
     if model_name == "User":
         solr = UserSearch()
-        found = solr.query(query=term, options={'edismax':True})
+        found = solr.query(query=term, options={'edismax': True})
         results = found['response']['docs']
     elif model_name == "Strain":
         ice = IceApi(ident=request.user)
         found = ice.search_for_part(term)
-        results = [ match.get('entryInfo', dict()) for match in found.get('results', []) ]
+        results = [match.get('entryInfo', dict()) for match in found.get('results', [])]
     elif model_name == "Group":
         found = Group.objects.filter(name__iregex=re_term).order_by('name')[:20]
-        results = [ { 'id': item.pk, 'name': item.name } for item in found ]
+        results = [{'id': item.pk, 'name': item.name} for item in found]
     elif model_name == "StudyWrite":
         found = Study.objects.distinct().filter(
             Q(name__iregex=term) | Q(description__iregex=term),
             Q(userpermission__user=request.user, userpermission__permission_type='W') |
             Q(grouppermission__group__user=request.user, grouppermission__permission_type='W'))
-        results = [ item.to_json() for item in found ]
+        results = [item.to_json() for item in found]
     elif model_name == "MeasurementCompartment":
         # Always return the full set of options; no search needed
-        results = [ { 'id': c[0], 'name': c[1] } for c in MeasurementCompartment.GROUP_CHOICE ]
+        results = [{'id': c[0], 'name': c[1]} for c in MeasurementCompartment.GROUP_CHOICE]
     elif model_name == "GenericOrMetabolite":
         # searching for EITHER a generic measurement OR a metabolite
         found = MeasurementType.objects.filter(
                 Q(type_group__in=(MeasurementGroup.GENERIC, MeasurementGroup.METABOLITE, )) &
                 (Q(type_name__iregex=re_term) | Q(short_name__iregex=re_term)),
             )[:20]
-        results = [ item.to_json() for item in found ]
+        results = [item.to_json() for item in found]
     else:
-        Model = getattr(main.models, model_name)
+        Model = getattr(models, model_name)
         # gets all the direct field names that can be filtered by terms
-        ifields = [ f.get_attname() 
-                    for f in Model._meta.get_fields()
-                    if hasattr(f, 'get_attname') and (
+        ifields = [f.get_attname()
+                   for f in Model._meta.get_fields()
+                   if hasattr(f, 'get_attname') and (
                         f.get_internal_type() == 'TextField' or
                         f.get_internal_type() == 'CharField')
-                    ]
+                   ]
         # term_filters = []
-        term_filters = [ Q(**{ f+'__iregex': re_term }) for f in ifields ]
+        term_filters = [Q(**{f+'__iregex': re_term}) for f in ifields]
         # construct a Q object for each term/field combination
         # for term in term.split():
         #     term_filters.extend([ Q(**{ f+'__iregex': term }) for f in ifields ])
         # run search with each Q object OR'd together; limit to 20
         found = Model.objects.filter(reduce(operator.or_, term_filters, Q()))[:20]
-        results = [ item.to_json() for item in found ]
-    return JsonResponse({ "rows": results })
+        results = [item.to_json() for item in found]
+    return JsonResponse({"rows": results})
