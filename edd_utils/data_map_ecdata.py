@@ -5,8 +5,7 @@ import logging
 from collections import defaultdict
 from django.contrib.auth import get_user_model
 from main.models import (
-    Assay, CarbonSource, EDDObject, Line, Measurement, MeasurementType, MeasurementUnit,
-    MeasurementValue, MetadataGroup, MetadataType, Protocol, Strain, Study,
+    CarbonSource, MeasurementType, MeasurementUnit, MetadataType, Protocol, Strain, Study,
     )
 
 
