@@ -395,6 +395,12 @@ class ExportView(generic.TemplateView):
                 selection=self._select)
             if option_form.is_valid():
                 self._export = table.TableExport(self._select, option_form.get_options())
+                if request.POST.get('action', None) == "download":
+                    response = HttpResponse(self._export.output(), content_type='text/csv')
+                    # set download filename as the first name in the exported studies
+                    study = self._export.selection.studies.values()[0]
+                    response['Content-Disposition'] = 'attachment; filename="%s.csv"' % study.name
+                    return response
                 return self.render_to_response(self.get_context_data(
                     selection=self._select,
                     select_form=select_form,
