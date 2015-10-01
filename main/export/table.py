@@ -1,15 +1,22 @@
 # coding: utf-8
+from __future__ import unicode_literals
 
 import logging
 
+from builtins import str as unicode
 from collections import OrderedDict
 from django.db.models import Prefetch, Q
 from django.utils.translation import ugettext_lazy as _
+from past.builtins import cmp
+
+
+logger = logging.getLogger(__name__)
+
 
 class ColumnChoice(object):
     def __init__(self, model, key, label, lookup, heading=None, lookup_kwargs={}):
         self._model = model
-        self._key = u'.'.join([ model.__name__, key, ])
+        self._key = u'.'.join([model.__name__, key, ])
         self._label = label
         self._lookup = lookup
         self._heading = heading if heading is not None else label
@@ -26,6 +33,7 @@ class ColumnChoice(object):
 
     def get_value(self, instance):
         return self._lookup(instance, **self._lookup_kwargs)
+
 
 class EmptyChoice(ColumnChoice):
     """ Always inserts an empty value on lookup callback. """
@@ -49,7 +57,7 @@ class ExportSelection(object):
                 'userpermission_set',
                 'grouppermission_set',
             )
-        allowed_study = [ s for s in matched_study if s.user_can_read(user) ]
+        allowed_study = [s for s in matched_study if s.user_can_read(user)]
         # load all matching measurements
         self._measures = Measurement.objects.filter(
                 # all measurements are from visible study
@@ -77,7 +85,7 @@ class ExportSelection(object):
             ).select_related(
                 'protocol',
             )
-        self._assays = { a.id: a for a in assays }
+        self._assays = {a.id: a for a in assays}
         lines = Line.objects.filter(
             Q(study__in=allowed_study),
             Q(study__in=studyId) |
@@ -89,8 +97,8 @@ class ExportSelection(object):
                 Prefetch('strains', queryset=Strain.objects.order_by('id')),
                 Prefetch('carbon_source', queryset=CarbonSource.objects.order_by('id')),
             )
-        self._lines = { l.id: l for l in lines }
-        self._studies = { s.id: s for s in allowed_study }
+        self._lines = {l.id: l for l in lines}
+        self._studies = {s.id: s for s in allowed_study}
 
     @property
     def studies(self):
@@ -102,7 +110,7 @@ class ExportSelection(object):
     def study_columns(self):
         from main.models import Study
         return Study.export_columns(self._studies.values())
-    
+
     @property
     def lines(self):
         """ A dict mapping Line.pk to Line for those lines included in the export. """
@@ -122,12 +130,13 @@ class ExportSelection(object):
     def assay_columns(self):
         from main.models import Assay
         return Assay.export_columns(self._assays.values())
-    
+
     @property
     def measurements(self):
         """ A dict mapping Measurement.pk to Measurement for those measurements included in
             the export. """
         return self._measures
+
 
 class ExportOption(object):
     """ Object used for options on a table export. """
@@ -155,7 +164,7 @@ class ExportOption(object):
         )
 
     def __init__(self, layout=DATA_COLUMN_BY_LINE, separator=COMMA_SEPARATED, data_format=ALL_DATA,
-            line_section=False, protocol_section=False, meta={}):
+                 line_section=False, protocol_section=False, meta={}):
         self._layout = layout
         self._separator = separator
         self._data_format = data_format
@@ -166,11 +175,11 @@ class ExportOption(object):
     @property
     def layout(self):
         return self._layout
-    
+
     @property
     def separator(self):
         return self._separator
-    
+
     @property
     def data_format(self):
         return self._data_format
@@ -178,7 +187,7 @@ class ExportOption(object):
     @property
     def line_section(self):
         return self._line_section
-    
+
     @property
     def protocol_section(self):
         return self._protocol_section
@@ -202,8 +211,14 @@ class ExportOption(object):
     @property
     def measure_meta(self):
         return self._meta.get('measure_meta', [])
-    
-    
+
+
+def value_str(value):
+    """ used to format value lists to a colon-delimited (unicode) string """
+    # cast to float to remove 0-padding
+    return ':'.join(map(unicode, map(float, value)))
+
+
 class TableExport(object):
     """ Outputs tables for export of EDD objects. """
     def __init__(self, selection, options):
@@ -224,9 +239,6 @@ class TableExport(object):
             tables['all'] = OrderedDict()
             tables['all']['header'] = self._output_line_header() + self._output_measure_header()
         x_values = {}
-        # used to format value lists to a colon-delimited (unicode) string
-        # cast to float to remove 0-padding
-        value_str = lambda a: u':'.join(map(unicode, map(float, a)))
         # add data from each exported measurement; already sorted by protocol
         for measurement in self.selection.measurements:
             assay = self.selection.assays.get(measurement.assay_id, None)
@@ -238,7 +250,7 @@ class TableExport(object):
                 if line.id not in tables['line']:
                     tables['line'][line.id] = row
                 # reset row after this point
-                row = [] 
+                row = []
             row += self._output_measure_row(protocol, assay, measurement)
             if protocol_section:
                 if protocol.id not in tables:
@@ -252,7 +264,7 @@ class TableExport(object):
                 table_key = 'all'
             table = tables[table_key]
             values = measurement.measurementvalue_set.all()
-            values = sorted(values, lambda a,b: cmp(a.x, b.x))
+            values = sorted(values, lambda a, b: cmp(a.x, b.x))
             if layout == ExportOption.DATA_COLUMN_BY_POINT:
                 for value in values:
                     arow = row[:]
@@ -263,8 +275,8 @@ class TableExport(object):
                 # keep track of all x values encountered in the table
                 xx = x_values[table_key] = x_values.get(table_key, {})
                 # do value_str to the float-casted version of x to eliminate 0-padding
-                xx.update({ value_str(v.x): v.x for v in values })
-                squashed = { value_str(v.x): value_str(v.y) for v in values }
+                xx.update({value_str(v.x): v.x for v in values})
+                squashed = {value_str(v.x): value_str(v.y) for v in values}
                 row.append(squashed)
                 table[measurement.id] = row
         table_separator = u'\n\n'
@@ -284,9 +296,9 @@ class TableExport(object):
         out = []
         for tkey, table in tables.items():
             # sort x values by original numeric values
-            all_x = sorted(x_values.get(tkey, {}).items(), lambda a,b: cmp(a[1], b[1]))
+            all_x = sorted(x_values.get(tkey, {}).items(), lambda a, b: cmp(a[1], b[1]))
             # generate header row
-            rows = [ map(unicode, table['header'] + map(lambda x: x[0], all_x)) ]
+            rows = [map(unicode, table['header'] + map(lambda x: x[0], all_x))]
             # go through non-header rows; unsquash final column
             for rkey, row in table.items()[1:]:
                 unsquash = self._output_unsquash(all_x, row[-1:][0])
@@ -295,17 +307,17 @@ class TableExport(object):
             if layout == ExportOption.LINE_COLUMN_BY_DATA:
                 rows = zip(*rows)
             # join the cells
-            rows = [ cell_separator.join(row) for row in rows ]
+            rows = [cell_separator.join(row) for row in rows]
             # join the rows
             out.append(row_separator.join(rows))
         return table_separator.join(out)
 
     def _output_line_header(self):
         row = []
-        choices = { col.get_key(): col.get_heading() for col in self.selection.study_columns }
+        choices = {col.get_key(): col.get_heading() for col in self.selection.study_columns}
         for column in self.options.study_meta:
             row.append(choices.get(column, ''))
-        choices = { col.get_key(): col.get_heading() for col in self.selection.line_columns }
+        choices = {col.get_key(): col.get_heading() for col in self.selection.line_columns}
         for column in self.options.line_meta:
             row.append(choices.get(column, ''))
         return row
@@ -313,10 +325,10 @@ class TableExport(object):
     def _output_line_row(self, study, line):
         row = []
         empty = EmptyChoice()
-        choices = { col.get_key(): col for col in self.selection.study_columns }
+        choices = {col.get_key(): col for col in self.selection.study_columns}
         for column in self.options.study_meta:
             row.append(choices.get(column, empty).get_value(study))
-        choices = { col.get_key(): col for col in self.selection.line_columns }
+        choices = {col.get_key(): col for col in self.selection.line_columns}
         for column in self.options.line_meta:
             row.append(choices.get(column, empty).get_value(line))
         return row
@@ -325,13 +337,13 @@ class TableExport(object):
         from main.models import Measurement, Protocol
         layout = self.options.layout
         row = []
-        choices = { col.get_key(): col.get_heading() for col in Protocol.export_columns() }
+        choices = {col.get_key(): col.get_heading() for col in Protocol.export_columns()}
         for column in self.options.protocol_meta:
             row.append(choices.get(column, ''))
-        choices = { col.get_key(): col.get_heading() for col in self.selection.assay_columns }
+        choices = {col.get_key(): col.get_heading() for col in self.selection.assay_columns}
         for column in self.options.assay_meta:
             row.append(choices.get(column, ''))
-        choices = { col.get_key(): col.get_heading() for col in Measurement.export_columns() }
+        choices = {col.get_key(): col.get_heading() for col in Measurement.export_columns()}
         for column in self.options.measure_meta:
             row.append(choices.get(column, ''))
         # need to append header columns for X, Y for tall-and-skinny output
@@ -339,19 +351,19 @@ class TableExport(object):
         if layout == ExportOption.DATA_COLUMN_BY_POINT:
             row.append(_('X'))
             row.append(_('Y'))
-        return row        
+        return row
 
     def _output_measure_row(self, protocol, assay, measure):
         from main.models import Measurement, Protocol
         row = []
         empty = EmptyChoice()
-        choices = { col.get_key(): col for col in Protocol.export_columns() }
+        choices = {col.get_key(): col for col in Protocol.export_columns()}
         for column in self.options.protocol_meta:
             row.append(choices.get(column, empty).get_value(protocol))
-        choices = { col.get_key(): col for col in self.selection.assay_columns }
+        choices = {col.get_key(): col for col in self.selection.assay_columns}
         for column in self.options.assay_meta:
             row.append(choices.get(column, empty).get_value(assay))
-        choices = { col.get_key(): col for col in Measurement.export_columns() }
+        choices = {col.get_key(): col for col in Measurement.export_columns()}
         for column in self.options.measure_meta:
             row.append(choices.get(column, empty).get_value(measure))
         return row
@@ -361,4 +373,4 @@ class TableExport(object):
         if isinstance(squashed, dict):
             return map(lambda x: squashed.get(x[0], ''), all_x)
         # expecting a list to be returned
-        return [ squashed ]
+        return [squashed]

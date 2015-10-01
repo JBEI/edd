@@ -4,5 +4,6 @@ declare module Dragboxes {
     function dragEnd(event: JQueryMouseEventObject): void;
     function dragOver(event: JQueryMouseEventObject): void;
     function dragStart(event: JQueryMouseEventObject): boolean;
-    function initTable(table: HTMLElement): void;
+    function initTable(table: JQuery): any;
+    function initTable(table: HTMLElement): any;
 }
