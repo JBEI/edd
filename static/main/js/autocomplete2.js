@@ -72,6 +72,19 @@ var EDDData = EDDData || {};
  * http://www.gnu.org/licenses/gpl.html
  */
 $(function () {
+    var valOrNbsp, createCell;
+    valOrNbsp = function valOrNbsp(jQ, value) {
+        if (value && value.trim()) {
+            jQ.text(value);
+        } else {
+            jQ.html('&nbsp;');
+        }
+    };
+    createCell = function createCell(parent, width, label) {
+        var cell = $('<span>').addClass('ac_column').css('width', width).appendTo(parent);
+        valOrNbsp(cell, label);
+        return cell;
+    }
     $.widget('custom.mcautocomplete', $.ui.autocomplete, {
         _create: function () {
             this._super();
@@ -83,9 +96,9 @@ $(function () {
             if (this.options.showHeader) {
                 table = $('<div class="ui-widget-header" style="width:100%"></div>');
                 $.each(this.options.columns, function (index, item) {
-                    table.append('<span style="padding:0 4px;float:left;width:' + item.width + ';">' + item.name + '</span>');
+                    createCell(table, item.width, item.name);
                 });
-                table.append('<div style="clear: both;"></div>');
+                $('<div>').addClass('clear').appendTo(table);
                 ul.append(table);
             }
             $.each(items, function (index, item) {
@@ -93,15 +106,14 @@ $(function () {
             });
         },
         _renderItem: function (ul, item) {
-            var t = '',
-                result = '';
+            var result, anchor;
+            result = $('<li>').data('ui-autocomplete-item', item).appendTo(ul);
+            anchor = $('<a>').addClass('mcacAnchor').appendTo(result);
             $.each(this.options.columns, function (index, column) {
-                t += '<span style="padding:0 4px;float:left;width:' + column.width + ';">' + item[column.valueField ? column.valueField : index] + '</span>'
+                var value = item[column.valueField ? column.valueField : index];
+                createCell(anchor, column.width, value);
             });
-            result = $('<li></li>')
-                .data('ui-autocomplete-item', item)
-                .append('<a class="mcacAnchor">' + t + '<div style="clear: both;"></div></a>')
-                .appendTo(ul);
+            $('<div>').addClass('clear').appendTo(result);
             return result;
         }
     });
@@ -229,9 +241,15 @@ EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(selector, 
             $(ev.target).removeClass('wait');
         }
     }).on('blur', function (ev) {
-        var hiddenId = $(this).next('input[type=hidden]').val(),
-            old = cache[hiddenId] || {};
-        $(this).val(old[display_key] || '');
+        var auto = $(this), hidden = auto.next('input[type=hidden]'), hiddenId = hidden.val(),
+            old = cache[hiddenId] || {}, current = auto.val();
+        if (current.trim() === '') {
+            // User cleared value in autocomplete, remove value from hidden ID
+            hidden.val('');
+        } else {
+            // User modified value in autocomplete without selecting new one, restore previous
+            auto.val(old[display_key] || '');
+        }
     });
 };
 

@@ -1383,7 +1383,13 @@ module StudyD {
         form.find('[name=line-strains_0]').val(
                 record.strain.map((v) => (EDDData.Strains[v] || {}).name || '--').join(','));
         form.find('[name=line-strains_1]').val(
-                record.strain.map((v) => (EDDData.Strains[v] || {}).registry_id || '--').join(','));
+                record.strain.map((v) => (EDDData.Strains[v] || {}).registry_id || '').join(','));
+        if (record.strain.length && form.find('[name=line-strains_1]').val() === '') {
+            $('<li>').text('Strain does not have a linked ICE entry! ' +
+                    'Saving the line without linking to ICE will remove the strain.')
+                .wrap('<ul>').parent().addClass('errorlist')
+                .appendTo(form.find('[name=line-strains_0]').parent());
+        }
         metaRow = form.find('.line-edit-meta');
         // Run through the collection of metadata, and add a form element entry for each
         $.each(record.meta, (key, value) => {

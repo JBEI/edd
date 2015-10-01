@@ -1,14 +1,12 @@
 import json
 import logging
 
-from collections import OrderedDict
 from copy import deepcopy
 from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.contrib.postgres.forms import HStoreField
 from django.core.exceptions import ValidationError
-from django.db.models import Prefetch, Q
 from django.db.models.base import Model
 from django.db.models.manager import BaseManager
 from django.http import QueryDict
@@ -17,7 +15,9 @@ from django.utils.translation import ugettext_lazy as _
 
 from .ice import IceApi
 from .export import table
-from .models import *
+from .models import (
+    Assay, Attachment, CarbonSource, Comment, Line, Measurement, MeasurementType, MetadataType,
+    Protocol, Strain, Study, StudyPermission, Update, )
 
 
 User = get_user_model()
@@ -50,19 +50,19 @@ class AutocompleteWidget(forms.widgets.MultiWidget):
     def decompress(self, value):
         # if the value is the actual model instance, don't try to look up model
         if isinstance(value, Model):
-            return [ self.display_value(value), value.pk ]
+            return [self.display_value(value), value.pk]
         elif value:
             SelfModel = self.get_model()
             o = SelfModel.objects.get(pk=value)
-            return [ self.display_value(o), value ]
-        return [ '', None ]
+            return [self.display_value(o), value]
+        return ['', None]
 
     def display_value(self, value):
         return str(value)
 
     def value_from_datadict(self, data, files, name):
         widgets = enumerate(self.widgets)
-        v = [ w.value_from_datadict(data, files, name + '_%s' % i) for i, w in widgets ]
+        v = [w.value_from_datadict(data, files, name + '_%s' % i) for i, w in widgets]
         # v[0] is text of field, v[1] is hidden ID
         return v[1]
 
@@ -86,10 +86,10 @@ class MultiAutocompleteWidget(AutocompleteWidget):
                 return [
                     self._separator.join(map(str, values[0])),
                     self._separator.join(map(str, values[1])),
-                    ]
+                   ]
             else:
                 # there are no values, return "empty" structure
-                return [ '', None ]
+                return ['', None]
         return super(MultiAutocompleteWidget, self).decompress(value)
 
     def render(self, name, value, attrs=None):
@@ -119,30 +119,30 @@ class MultiAutocompleteWidget(AutocompleteWidget):
 class UserAutocompleteWidget(AutocompleteWidget):
     """ Autocomplete widget for Users """
     def __init__(self, attrs=None, opt={}):
-        opt.update({ 'text_attr': { 'class': 'autocomp autocomp_user', }, })
+        opt.update({'text_attr': {'class': 'autocomp autocomp_user', }, })
         super(UserAutocompleteWidget, self).__init__(attrs=attrs, model=User, opt=opt)
 
 
 class GroupAutocompleteWidget(AutocompleteWidget):
     """ Autocomplete widget for Groups """
     def __init__(self, attrs=None, opt={}):
-        opt.update({ 'text_attr': { 'class': 'autocomp autocomp_group', }, })
+        opt.update({'text_attr': {'class': 'autocomp autocomp_group', }, })
         super(GroupAutocompleteWidget, self).__init__(attrs=attrs, model=Group, opt=opt)
 
 
 class RegistryAutocompleteWidget(AutocompleteWidget):
     """ Autocomplete widget for Registry strains """
     def __init__(self, attrs=None, opt={}):
-        opt.update({ 'text_attr': { 'class': 'autocomp autocomp_reg', }, })
+        opt.update({'text_attr': {'class': 'autocomp autocomp_reg', }, })
         super(RegistryAutocompleteWidget, self).__init__(attrs=attrs, model=Strain, opt=opt)
 
     def validate_strain(self, value):
         try:
             Strain.objects.get(registry_id=value)
             return value
-        except ValueError, e:
-            logger.error('Failed to load Strain with registry_id %s: %s' % (value, str(e), ))
-        except Strain.DoesNotExist, e:
+        except ValueError as e:
+            logger.error('Failed to load Strain with registry_id %s: %s' % (value, e, ))
+        except Strain.DoesNotExist as e:
             logger.warning('No Strain found with registry_id %s, searching ICE' % (value, ))
             try:
                 up = Update.load_update()
@@ -158,13 +158,14 @@ class RegistryAutocompleteWidget(AutocompleteWidget):
                     strain.save()
                     return value
                 logger.error('No strain in ICE with registry_id %s' % (value, ))
-            except Exception, e:
+            except Exception as e:
                 logger.error('Failed to load strain %s from ICE: %s' % (value, str(e)))
         return None
 
     def value_from_datadict(self, data, files, name):
         value = super(RegistryAutocompleteWidget, self).value_from_datadict(data, files, name)
         return self.validate_strain(value)
+
 
 class MultiRegistryAutocompleteWidget(MultiAutocompleteWidget, RegistryAutocompleteWidget):
     def value_from_datadict(self, data, files, name):
@@ -178,11 +179,13 @@ class MultiRegistryAutocompleteWidget(MultiAutocompleteWidget, RegistryAutocompl
 class CarbonSourceAutocompleteWidget(AutocompleteWidget):
     """ Autocomplete widget for carbon sources """
     def __init__(self, attrs=None, opt={}):
-        opt.update({ 'text_attr': { 'class': 'autocomp autocomp_carbon', }, })
-        super(CarbonSourceAutocompleteWidget, self).__init__(attrs=attrs, model=CarbonSource, opt=opt)
+        opt.update({'text_attr': {'class': 'autocomp autocomp_carbon', }, })
+        super(CarbonSourceAutocompleteWidget, self).__init__(
+            attrs=attrs, model=CarbonSource, opt=opt)
 
     def display_value(self, value):
         return value.name
+
 
 class MultiCarbonSourceAutocompleteWidget(MultiAutocompleteWidget, CarbonSourceAutocompleteWidget):
     pass
@@ -191,15 +194,17 @@ class MultiCarbonSourceAutocompleteWidget(MultiAutocompleteWidget, CarbonSourceA
 class MetadataTypeAutocompleteWidget(AutocompleteWidget):
     """ Autocomplete widget for types of metadata """
     def __init__(self, attrs=None, opt={}):
-        opt.update({ 'text_attr': { 'class': 'autocomp autocomp_meta', }, })
-        super(MetadataTypeAutocompleteWidget, self).__init__(attrs=attrs, model=MetadataType, opt=opt)
+        opt.update({'text_attr': {'class': 'autocomp autocomp_meta', }, })
+        super(MetadataTypeAutocompleteWidget, self).__init__(
+            attrs=attrs, model=MetadataType, opt=opt)
 
 
 class MeasurementTypeAutocompleteWidget(AutocompleteWidget):
     """ Autocomplete widget for types of metadata """
     def __init__(self, attrs=None, opt={}):
-        opt.update({ 'text_attr': { 'class': 'autocomp autocomp_measure', }, })
-        super(MeasurementTypeAutocompleteWidget, self).__init__(attrs=attrs, model=MeasurementType, opt=opt)
+        opt.update({'text_attr': {'class': 'autocomp autocomp_measure', }, })
+        super(MeasurementTypeAutocompleteWidget, self).__init__(
+            attrs=attrs, model=MeasurementType, opt=opt)
 
 
 class CreateStudyForm(forms.ModelForm):
@@ -286,6 +291,7 @@ class CreateCommentForm(forms.ModelForm):
             c.save()
         return c
 
+
 class EDDHStoreField(HStoreField):
     def to_python(self, value):
         if not value:
@@ -299,10 +305,12 @@ class EDDHStoreField(HStoreField):
             )
         return value
 
+
 class LineForm(forms.ModelForm):
     """ Form to create/edit a line. """
     # include hidden field for applying form changes to multiple Line instances by ID
     ids = forms.CharField(required=False, widget=forms.HiddenInput())
+
     class Meta:
         model = Line
         fields = (
@@ -319,7 +327,7 @@ class LineForm(forms.ModelForm):
             'strains': _('Strains'),
         }
         widgets = {
-            'description': forms.Textarea(attrs={ 'rows': 2 }),
+            'description': forms.Textarea(attrs={'rows': 2}),
             'contact': UserAutocompleteWidget(),
             'experimenter': UserAutocompleteWidget(),
             'carbon_source': MultiCarbonSourceAutocompleteWidget(),
@@ -373,7 +381,7 @@ class LineForm(forms.ModelForm):
         # Look for "bulk-edit" checkboxes for each field
         for field in self.visible_fields():
             check = '_bulk_%s' % (field.name)
-            if not self.data.has_key(check):
+            if check not in self.data:
                 exclude.append(field.name)
         # remove fields without a check from self, preventing processing
         for fieldname in exclude:
@@ -406,7 +414,7 @@ class LineForm(forms.ModelForm):
             self.add_error(None, e)
 
     def is_editing(self):
-        return self.instance.pk != None
+        return self.instance.pk is not None
 
     def save(self, commit=True, force_insert=False, force_update=False, *args, **kwargs):
         line = super(LineForm, self).save(commit=False, *args, **kwargs)
@@ -422,10 +430,11 @@ class AssayForm(forms.ModelForm):
     """ Form to create/edit an assay. """
     # include hidden field for applying form changes to an Assay instance by ID
     assay_id = forms.CharField(required=False, widget=forms.HiddenInput())
+
     class Meta:
         model = Assay
         fields = (
-            'name', 'description', 'protocol', 'experimenter', 
+            'name', 'description', 'protocol', 'experimenter',
         )
         help_texts = {
             'name': _('If left blank, a name in form [Line]-[Protocol]-[#] will be generated. '),
@@ -437,7 +446,7 @@ class AssayForm(forms.ModelForm):
             'experimenter': _('Experimenter'),
         }
         widgets = {
-            'description': forms.Textarea(attrs={ 'rows': 2 }),
+            'description': forms.Textarea(attrs={'rows': 2}),
             'experimenter': UserAutocompleteWidget(),
         }
 
@@ -450,10 +459,11 @@ class AssayForm(forms.ModelForm):
         self.fields['protocol'].queryset = Protocol.objects.order_by('name')
 
     def is_editing(self):
-        return self.instance.pk != None
+        return self.instance.pk is not None
 
     def save(self, commit=True, force_insert=False, force_update=False, *args, **kwargs):
         assay = super(AssayForm, self).save(commit=False, *args, **kwargs)
+
         # quick function to copy assay instance from form, and set to correct line
         def link_assay(line_id):
             clone = deepcopy(assay)
@@ -461,7 +471,7 @@ class AssayForm(forms.ModelForm):
             return clone
         all_assays = map(link_assay, self._lines)
         if commit:
-            [ a.save() for a in all_assays ]
+            [a.save() for a in all_assays]
         return all_assays
 
 
@@ -473,7 +483,8 @@ class MeasurementForm(forms.ModelForm):
         help_texts = {
             'measurement_type': _(''),
             'y_units': _('Select the units used for these measurements'),
-            'compartment': _('(optional) Select if the measurement is inside or outside the organism')
+            'compartment': _('(optional) Select if the measurement is inside or outside'
+                             ' the organism')
         }
         labels = {
             'measurement_type': _('Type'),
@@ -493,6 +504,7 @@ class MeasurementForm(forms.ModelForm):
 
     def save(self, commit=True, force_insert=False, force_update=False, *args, **kwargs):
         measure = super(MeasurementForm, self).save(commit=False, *args, **kwargs)
+
         # quick function to copy measurement instance from form, and set to correct assay
         def link_measure(assay_id):
             clone = deepcopy(measure)
@@ -500,7 +512,7 @@ class MeasurementForm(forms.ModelForm):
             return clone
         all_measures = map(link_measure, self._assays)
         if commit:
-            [ m.save() for m in all_measures ]
+            [m.save() for m in all_measures]
         return all_measures
 
 
@@ -553,8 +565,8 @@ class ExportSelectionForm(forms.Form):
             else:
                 raise ValueError("Export Selection is invalid")
         return self._selection
-    
-    
+
+
 class ExportOptionForm(forms.Form):
     """ Form used for changing options on exports. """
     DATA_COLUMN_BY_LINE = 'dbyl'
@@ -664,7 +676,7 @@ class ExportOptionForm(forms.Form):
         data = super(ExportOptionForm, self).clean()
         meta = {
             m: data.get(m, [])
-            for m in [ 'study_meta', 'line_meta', 'protocol_meta', 'assay_meta', 'measure_meta' ]
+            for m in ['study_meta', 'line_meta', 'protocol_meta', 'assay_meta', 'measure_meta']
         }
         self._options = table.ExportOption(
             layout=data.get('layout', table.ExportOption.DATA_COLUMN_BY_LINE),
@@ -699,10 +711,10 @@ class ExportOptionForm(forms.Form):
             choices = map(table.ColumnChoice.get_field_choice, self._selection.line_columns)
             self.fields['line_meta'].choices = choices
         # set all _meta options if no list of options was passed in
-        for meta in [ 'study_meta', 'line_meta', 'protocol_meta', 'assay_meta', 'measure_meta' ]:
+        for meta in ['study_meta', 'line_meta', 'protocol_meta', 'assay_meta', 'measure_meta']:
             if self.initial.get(meta, None) == '__all__':
                 self.initial.update({
-                    meta: [ choice[0] for choice in self.fields[meta].choices ],
+                    meta: [choice[0] for choice in self.fields[meta].choices],
                     })
             # update incoming data with default initial if not already set
             if meta not in data:
