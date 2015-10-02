@@ -1,7 +1,8 @@
 # Defines remote tasks to be executed asynchronously
 # by the Celery distributed task queue. To implement an
 # asychronous task to be remotely executed by Celery,
-# just define a funtion here and decorate it with @task_queue.task
+# define a carefully-defined function here and decorate it with @task_queue.task.
+# See JBEI documentation on Celery task implementation.
 
 from __future__ import absolute_import
 from celery import shared_task
