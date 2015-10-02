@@ -41,15 +41,17 @@ experimentation.  See the deployed version at [edd.jbei.org][1].
 ---------------------------------------------------------------------------------------------------
 
 ## System Pre-requisites
+
  * Passwords <a name="Passwords"/>
-    Get required passwords from a teammate or JBEI sysadmin.
-    * JBEI_AUTH - to configure LDAP binding and EDD's server.cfg
-    * edduser - the password to the production EDD database instance. You'll need this to copy its
-      data for local development work. See [Database Conversion](#DbConversion)
-    * edd ice key - used by edd to authorize REST API calls to ICE
+    * Get required passwords from a teammate or JBEI sysadmin.
+        * JBEI_AUTH - to configure LDAP binding and EDD's server.cfg
+        * edduser - the password to the production EDD database instance. You'll need this to copy
+          its data for local development work. See [Database Conversion](#DbConversion)
+        * edd ice key - used by edd to authorize REST API calls to ICE
    
 ### Mac OS X
 This section contains directions for setting up a development environment on EDD in OSX.
+
 * XCode <a name="XCode"/>
     Install XCode (and associated Developer Tools) via the App Store
     * As of OS X 10.9 "Mavericks": `xcode-select --install` to just get command-line tools
@@ -277,10 +279,12 @@ This section contains directions for setting up a development environment on EDD
 ---------------------------------------------------------------------------------------------------
 
 ## Helpful Python Packages <a name="Helpful_Python"/>
+
 * django-debug-toolbar `pip install django-debug-toolbar`
     * Include `debug_toolbar` in local_settings.py INSTALLED_APPS
 
 ## Build Tools <a name="BuildTools"/>
+
 * The EDD makes use of Node.js and grunt for builds; it would be a good idea to:
     * `brew install node`
     * `sudo npm install -g grunt-cli`
@@ -364,7 +368,7 @@ populating a new deployment with existing data.
  
         pg_dump -i -h postgres.jbei.org -U edduser -F p -b -v -f edddb.sql edddb
 
- * Enter remote `edduser` password (NOT the one you created for your local instance)
+* Enter remote `edduser` password (NOT the one you created for your local instance)
  
 * Create a database for the django application
     * `psql -c 'create database edddjango;'` to create the database
@@ -387,6 +391,7 @@ populating a new deployment with existing data.
       'YOUR_USERNAME'"`
 
 ## Solr Tests <a name="Solr_Test"/>
+
 * Tests in this project make use of a `test` core, which will need to be created
     * Create a new data directory `mkdir -p /usr/local/var/solr/data/test`
     * Add new line to `solr.xml` using same studies `instanceDir` and new data directory
