@@ -191,9 +191,7 @@ var CarbonBalance;
             $(el).css('font-size', '8pt');
             el.setAttribute('wrap', 'off');
             var sortedList = balance.measurements.slice(0);
-            sortedList.sort(function (a, b) {
-                return a.carbonDelta - b.carbonDelta;
-            });
+            sortedList.sort(function (a, b) { return a.carbonDelta - b.carbonDelta; });
             var prevTimeStamp = this._getPreviousMergedTimestamp(lineID, timeStamp);
             var title = EDDData.Lines[lineID].name + " from " + prevTimeStamp.toFixed(1) + "h to " + timeStamp.toFixed(1) + "h";
             var divider = "========================================\n";
@@ -247,7 +245,10 @@ var CarbonBalance;
                 var entry = theList[i];
                 if (entry.metaboliteName) {
                     var contribution = entry.stoichiometry * entry.carbonCount;
-                    ret += "    " + Utl.JS.padStringRight(entry.speciesName, 15) + ": [" + Utl.JS.padStringLeft(contribution.toFixed(4), 9) + "]" + "  { metabolite: " + entry.metaboliteName + ", stoichiometry: " + entry.stoichiometry + ", carbonCount: " + entry.carbonCount + " }" + "\n";
+                    ret += "    " + Utl.JS.padStringRight(entry.speciesName, 15) + ": [" + Utl.JS.padStringLeft(contribution.toFixed(4), 9) + "]" +
+                        "  { metabolite: " + entry.metaboliteName +
+                        ", stoichiometry: " + entry.stoichiometry +
+                        ", carbonCount: " + entry.carbonCount + " }" + "\n";
                 }
                 else {
                     ret += "    " + Utl.JS.padStringRight(entry.speciesName, 15) + ": [         ]" + "\n";
@@ -358,7 +359,8 @@ var CarbonBalance;
                     y2 = y1 - 2;
                 // The color just interpolates through this bar's color range.
                 var clr = (bar.numBars <= 1) ? bar.startColor : Utl.Color.interpolate(bar.startColor, bar.endColor, bar.curBar / (bar.numBars - 1));
-                var rect = svg.appendChild(Utl.SVG.createRect(bar.left, y1, bar.right - bar.left, y2 - y1, clr, 1, Utl.Color.black));
+                var rect = svg.appendChild(Utl.SVG.createRect(bar.left, y1, bar.right - bar.left, y2 - y1, clr, 1, Utl.Color.black // stroke info
+                ));
                 // Make it a rounded rectangle.
                 var round = Math.min(2, Math.abs(y2 - y1));
                 Utl.SVG.makeRectRounded(rect, round, round);

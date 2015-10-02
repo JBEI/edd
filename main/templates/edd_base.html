@@ -25,15 +25,19 @@
         </div>
         <div class="userMenu">
             {% if user.is_authenticated %}
-            <div>
-                <span class="user_welcome">{{ user.first_name }} {{ user.last_name }}</span>
-            </div>
-            <div>
-                <a href="{% url 'django.contrib.auth.views.logout' %}">Logout</a>
-            </div>
-              {% if user.is_staff %}
-            <div><a href="/admin">Data types</a></div>
-              {% endif %}
+                <div>
+                    <span class="user_welcome">{{ user.first_name }} {{ user.last_name }}</span>
+                </div>
+                <div>
+                    <a href="{% url 'django.contrib.auth.views.logout' %}">Logout</a>
+                </div>
+                {% if user.is_staff %}
+                    <div><a href="/admin">Data types</a></div>
+                {% endif %}
+            {% else %}
+                <div>
+                    <a href="{% url 'django.contrib.auth.views.login' %}">Login</a>
+                </div>
             {% endif %}
             <div><a href="/utilities">Utilities</a></div>
             <div>
@@ -60,6 +64,12 @@
     <div class="content">
     {% block content %}
     {% endblock content %}
+    </div>
+    <div class="footer">
+        <div class="footer-text">
+            <span class="footer-text-app">JBEI Experiment Data Depot</span>
+            <span class="footer-text-contact"><a href="mailto:jbei-help@lbl.gov?subject=EDD">Contact</a></span>
+        </div>
     </div>
 </body>
 </html>

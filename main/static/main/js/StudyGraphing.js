@@ -163,25 +163,9 @@ StudyDGraphing = {
         // 17 intermediate spots on the color wheel, adjusted for visibility,
         // with the 18th a clone of the 1st.
         var lineColors = [
-            [0, 136, 132],
-            [10, 136, 109],
-            [13, 143, 45],
-            [20, 136, 10],
-            [72, 136, 10],
-            [125, 136, 0],
-            [136, 108, 10],
-            [136, 73, 11],
-            [136, 43, 14],
-            [136, 14, 43],
-            [136, 11, 88],
-            [118, 13, 136],
-            [89, 23, 136],
-            [43, 20, 136],
-            [14, 23, 136],
-            [12, 44, 136],
-            [13, 107, 136],
-            [0, 136, 132]
-        ];
+            [0, 136, 132], [10, 136, 109], [13, 143, 45], [20, 136, 10], [72, 136, 10], [125, 136, 0],
+            [136, 108, 10], [136, 73, 11], [136, 43, 14], [136, 14, 43], [136, 11, 88], [118, 13, 136],
+            [89, 23, 136], [43, 20, 136], [14, 23, 136], [12, 44, 136], [13, 107, 136], [0, 136, 132]];
         // Range of 0 is just unacceptable
         if (r < 1) {
             return '#888';
@@ -291,9 +275,7 @@ StudyDGraphing = {
             return res;
         }
         // width varies a lot; one character is about 7px, so compute the widest label
-        stepSize = tickArray.reduce(function (p, v) {
-            return Math.max(p, v[1].toString().length * 7);
-        }, stepSize);
+        stepSize = tickArray.reduce(function (p, v) { return Math.max(p, v[1].toString().length * 7); }, stepSize);
         // tickArrayLength is the number of ticks on the axis we have to choose from
         var tickArrayLength = tickArray.length;
         if (tickArrayLength < 1) {
@@ -305,6 +287,8 @@ StudyDGraphing = {
         var apertureLeftEdge = 0;
         var i = 0;
         var prevI = -1;
+        // Hint: If this gives bizarre results, make sure you have everything
+        // casted to floats or ints, instead of strings.
         do {
             var tickArrayStepSize = (tickArrayLength - i) / 2;
             var i = tickArrayStepSize + i;
@@ -347,14 +331,16 @@ StudyDGraphing = {
     },
     hoverFunction: function (event, pos, item) {
         if (item) {
-            if ((StudyDGraphing.previousHoverPoint != item.dataIndex) || (StudyDGraphing.previousHoverPointSeries != item.series)) {
+            if ((StudyDGraphing.previousHoverPoint != item.dataIndex) ||
+                (StudyDGraphing.previousHoverPointSeries != item.series)) {
                 StudyDGraphing.previousHoverPoint = item.dataIndex;
                 StudyDGraphing.previousHoverPointSeries = item.series;
                 if (StudyDGraphing.hoverWidget) {
                     StudyDGraphing.hoverWidget.remove();
                     StudyDGraphing.hoverWidget = null;
                 }
-                if ((StudyDGraphing.previousClickPoint != StudyDGraphing.previousHoverPoint) || (StudyDGraphing.previousClickPointSeries != StudyDGraphing.previousHoverPointSeries)) {
+                if ((StudyDGraphing.previousClickPoint != StudyDGraphing.previousHoverPoint) ||
+                    (StudyDGraphing.previousClickPointSeries != StudyDGraphing.previousHoverPointSeries)) {
                     StudyDGraphing.hoverWidget = StudyDGraphing.createWidget('graphHoverWidget', item);
                 }
             }
@@ -371,7 +357,8 @@ StudyDGraphing = {
     plotClickFunction: function (event, pos, item) {
         if (item) {
             // If we're re-clicking a current item
-            if ((StudyDGraphing.previousClickPoint == item.dataIndex) && (StudyDGraphing.previousClickPointSeries == item.series)) {
+            if ((StudyDGraphing.previousClickPoint == item.dataIndex) &&
+                (StudyDGraphing.previousClickPointSeries == item.series)) {
                 StudyDGraphing.previousClickPoint = null;
                 StudyDGraphing.previousClickPointSeries = null;
                 if (StudyDGraphing.clickWidget) {
@@ -404,7 +391,18 @@ StudyDGraphing = {
         if (item.series.color) {
             ptColor = $.color.parse(item.series.color).scale('a', 0.5).toString();
         }
-        var svgString = '<svg id="' + widgetStyle + 'p" xmlns="http://www.w3.org/2000/svg" version="1.2"' + ' width="12px" height="12px" viewBox="0 0 12 12" preserveAspectRatio="none"' + ' style="position: absolute;top:' + ty + ';left:' + tx + ';">' + '<defs>' + '<radialGradient id="g1" cx="50%" cy="50%" r="50%">' + '<stop stop-color="' + ptColor + '" offset="0%" />' + '<stop stop-color="white" offset="100%" />' + '</radialGradient>' + '</defs>' + '<line x1="6.5" y1="6.5" x2="11.5" y2="11.5" stroke="black" stroke-width="2" />' + '<circle id="c1" cx="6.5" cy="6.5" r="5" stroke="black" stroke-width="1" fill="url(#g1)" />' + '</svg>';
+        var svgString = '<svg id="' + widgetStyle + 'p" xmlns="http://www.w3.org/2000/svg" version="1.2"' +
+            ' width="12px" height="12px" viewBox="0 0 12 12" preserveAspectRatio="none"' +
+            ' style="position: absolute;top:' + ty + ';left:' + tx + ';">' +
+            '<defs>' +
+            '<radialGradient id="g1" cx="50%" cy="50%" r="50%">' +
+            '<stop stop-color="' + ptColor + '" offset="0%" />' +
+            '<stop stop-color="white" offset="100%" />' +
+            '</radialGradient>' +
+            '</defs>' +
+            '<line x1="6.5" y1="6.5" x2="11.5" y2="11.5" stroke="black" stroke-width="2" />' +
+            '<circle id="c1" cx="6.5" cy="6.5" r="5" stroke="black" stroke-width="1" fill="url(#g1)" />' +
+            '</svg>';
         var newPt = $(svgString);
         newPt.appendTo("body");
         return newPt;

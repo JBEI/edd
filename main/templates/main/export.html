@@ -3,52 +3,58 @@
 
 {% block js_css %}
   {{ block.super }}
-<script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.js' %}"></script>
-<script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
-<script type="text/javascript" src="{% static 'main/js/EDDEditing.js' %}"></script>
-<script type="text/javascript">
-//<![CDATA[
-EDDData = { }; // Declaring the object for later use
-
-EDDData.currentUserID = {{ user.pk }};
-
-function onDownload (evt) {
-  $("#download-flag").val("1");
-  $("#exportForm").submit();
-  $("#download-flag").val("0");
-};
-function disclose() {
-  $(this).closest('.disclose').toggleClass('discloseHide');
-  return false;
-}
-$(document).ready(function () {
-  $('.disclose').find('a.discloseLink').on('click', disclose);
-});
-
-//]]>
-</script>
-<script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
-<script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
+  <script type="text/javascript" src="{% static 'edd_utils/js/lib/handsontable.full.min.js' %}"></script>
+  <link rel="stylesheet" media="screen" href="{% static 'edd_utils/css/lib/handsontable.full.min.css' %}" />
+  <script type="text/javascript">
+  //<![CDATA[
+  $(document).on('click', '.disclose .discloseLink', function (e) {
+    $(e.target).closest('.disclose').toggleClass('discloseHide');
+    return false;
+  });
+  $(function () {
+    var dataArea, tables, sep, rsplit, ctrl;
+    dataArea = $('#textData').hide();
+    tables = dataArea.val().split('\n\n');
+    sep = $('#id_separator').val() === 'csv' ? ',' : '\t';
+    rsplit = function (row) { return row.split(sep); };
+    tables = $(tables.map(function (table) {
+      var rows, container, hot;
+      rows = table.split('\n');
+      container = $('<div>').addClass('hot-div').appendTo(dataArea.parent());
+      hot = new Handsontable(container[0], { 'data': rows.map(rsplit) });
+      return container[0];
+    }));
+    ctrl = $('<button>').text('Toggle View')
+      .appendTo(dataArea.closest('.pageSection').find('.sectionHead'))
+      .on('click', function () {
+        dataArea.toggle();
+        tables.toggle();
+      });
+  });
+  //]]>
+  </script>
 {% endblock js_css %}
 
 {% block head_title %}
-  Data Export For {{ study.name }}
+  Data Export For {{ selection.studies.values.0.name }}
 {% endblock head_title %}
 
 {% block body_title %}
-  Data Export For <a href="/study/{{ study.id }}">{{ study.name }}</a>
+  Data Export For {% for study in selection.studies.values %}
+   <a href="/study/{{ study.id }}">{{ study.name }}</a>{% if not forloop.last %},{% endif %}
+  {% endfor %}
 {% endblock body_title %}
 
 {% block content %}
 
 {% if error_message %}
 <h3 style="color: #ff0000; font-weight: bold">{{ error_message }}</h3>
+{% endif %}
 
-{% else %}
 <div class="disclose discloseHide" id="existinglineshide">
   <div style="margin:10px">
     <a href="#" class="discloseLink">
-      {{ n_meas }} Measurements in {{ n_assays }} Assays in {{ n_lines }} Lines Selected
+      {{ selection.measurements|length }} Measurements in {{ selection.assays|length }} Assays in {{ selection.lines|length }} Lines Selected
     </a>
   </div>
   <div id="existingLinesSection" class="pageSection discloseBody" style="border-width:1px;margin:10px;">  
@@ -56,124 +62,28 @@ $(document).ready(function () {
   </div>
 </div>
 
-
 <!-- start of main form -->
-<form method="post" id="exportForm" action="/study/{{ study.id }}/export">
-{% csrf_token %}
-<div class="pageSection" style="margin:10px;" id="mainModeDiv">
-<div class="sectionHead">Specify the layout of the data you wish to export.</div>
-
-<div class="sectionContent">
-
-<ul style="font-size:13px;list-style-type:none;">
-<li>
-  <div class="disclose discloseHide" id="exampleHide">
-  A table of <b>metadata and lines</b>, with
-  <select name="dlayouttype" id="dlayoutp">
-    <option value="dbyl" >
-      columns of metadata types, and rows of lines/assays
-    </option>
-    <option value="dbya" >
-      columns of metadata types, and rows of single measurement points
-    </option>
-    <option value="lbyd">
-      columns of lines/assays, and rows of metadata types
-    </option>
-  </select>
-    <a href="#" class="discloseLink">Example</a>
-    <div class="discloseBody" style="color:#44D;font-size:12px;">
-      <img SRC="{% static 'main/images/excel_example-d.png' %}" style="border:2px solid #44D;padding:5px;">
-      <p>
-        The data will be for multiple Lines, providing values for multiple
-        kinds of metadata.  Depending on the options you choose, the first row
-        will become a set of metadata types, and the first column will become a
-        set of Line names, or vice-versa.
-      </p>
+<form method="post" id="exportForm" action="/export">
+  {% csrf_token %}
+  <div class="pageSection" id="mainModeDiv">
+    <div class="sectionHead">Specify the layout of the data you wish to export.</div>
+    <div class="sectionContent exportOptions">
+      {{ select_form.as_p }}
+      {{ option_form.as_p }}
+      <button type="submit" name="action" value="apply">Apply</button>
+      <button type="submit" name="action" value="download">Download</button>
     </div>
   </div>
-</li>
-</ul>
-  <div style="font-size:13px;">
-    <p style="border-bottom:1px dotted #CCCCCC;
-          padding:0px 0px 3px 0px;
-          margin:0px 0px 3px 0px;">Metadata to include:</p>
-    {% for column in column_info %}
-    <div style="width:160px;display:inline-block;padding:0px 0px 0px 5px;">
-      <input type="checkbox" name="col{{ column.name }}include"
-        {% if column.checked %}
-             checked="checked"
-        {% endif %}
-             id="col{{ column.name }}include" value="1"/>
-      <label for="col{{ column.name }}include">
-        <span>{{ column.label }}</span>
-      </label>
-    </div>
-    {% endfor %}<!-- column_info -->
-  </div>
-</div>
-<div class="sectionContent" style="border-top:1px solid #6CA5E9;" id="dmodeoptions">
-
-  <table style="width:100%;font-size:13px;">
-  <tr>
-    <td style="padding:2px;">
-      Record Separators:
-      <select name="recordformat" id="recordformatp">
-        <option value="csv" >Comma-separated (CSV)</option> 
-        <option value="tsv" >Tab-separated</option>
-      </select> 
-    </td>
-    <td style="padding:2px;">
-      <!-- FIXME this is not currently used
-      <input type="checkbox" name="separatelines" value="1" id="cseparatelines" />
-      <label for="cseparatelines">Lines / Assays in separate sections</label>
-      -->
-    </td>
-    <td>
-    </td>
-  </tr>
-  <tr style="padding:2px;">
-    <td style="padding:2px;">
-      Include Measurement Data:
-      <select name="mdataformat" id="mdataformatp">
-        <option value="all"  selected="selected">All</option> 
-        <option value="sum" >Summarize</option>
-        <option value="none" >None</option>
-      </select> 
-    </td>
-    <td style="padding:2px;">
-      <input type="checkbox" name="separateprotocols" value="1" id="cseparateprotocols" />
-      <label for="cseparateprotocols">Each Protocol in its own section</label>
-    </td>
-    <td style="vertical-align:bottom;text-align:right;margin-right:1em;">
-      <input type="submit" name="action" value="Apply" />
-    </td>
-  </tr>
-  </table>
-
-</div>
-
-<input type="hidden" name="form_submit" value="1"/>
-<input type="hidden" name="assaylevel" value="{{ assaylevel }}"/>
-<input type="hidden" name="line" value="{{ line_id_str }}"/>
-<input type="hidden" name="assay" value="{{ assay_id_str }}"/>
-<input type="hidden" name="meas" value="{{ measurement_id_str }}"/>
-<input type="hidden" name="study" value="{{ study.id }}"/>
-
-</div>
-<input type="hidden" name="download" value="0" id="download-flag"/>
 </form>
 
 <!-- display section -->
-<div class="pageSection" style="margin:10px;">
-    <div class="sectionHead">View the current output here, or
-      <a href="#" onclick="onDownload();">click this link</a>
-      to download it as a file.</div>
-    <div class="sectionContent" style="padding:0em;text-align:center;">
-        <textarea class="dataTextArea" rows="32" style="width:98.5%;margin:2px;" id="textData" name="textData">
-{{ formatted_table }}
-</textarea>
-    </div>
+<div class="pageSection">
+  <div class="sectionHead">View the current output here</div>
+  <div class="sectionContent exportDisplay">
+    <p>
+      <textarea class="dataTextArea" rows="32" id="textData" name="textData">{{ view.export_output }}</textarea>
+    </p>
+  </div>
 </div>
-{% endif %}
 
 {% endblock content %}

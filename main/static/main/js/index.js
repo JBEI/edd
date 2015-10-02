@@ -1,9 +1,8 @@
 /// <reference path="EDDDataInterface.ts" />
-/// <reference path="EditableElement.ts" />
 /// <reference path="DataGrid.ts" />
 /// <reference path="Utl.ts" />
 /// <reference path="lib/jquery.d.ts" />
-var __extends = this.__extends || function (d, b) {
+var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
     __.prototype = b.prototype;
@@ -36,42 +35,6 @@ var IndexPage;
         });
     }
     IndexPage.prepareTable = prepareTable;
-    // This creates an EditableElement object for each Study description that the user is allowed
-    // to edit.
-    function initDescriptionEditFields() {
-        // Since we've already created the table, we can look into the spec and find the other
-        // objects created in the process.
-        // Under the specification for the "description" column, we find all the
-        // DataGridDataCell objects that belong to that column.
-        var descriptionCells, data;
-        descriptionCells = this.studiesDataGridSpec.descriptionCol.getEntireIndex();
-        data = this.studiesDataGridSpec.data();
-        descriptionCells.forEach(function (cell) {
-            if (data[cell.recordID].write) {
-                EditableElements.initializeElement({
-                    'studyID': cell.recordID,
-                    'element': cell.cellElement,
-                    'type': 'text',
-                    'editAllowed': function () {
-                        return true;
-                    },
-                    'getValue': function (self) {
-                        return data[cell.recordID].des;
-                    },
-                    'setValue': function (self, value) { return data[cell.recordID].des = value; },
-                    // TODO edit this to provide proper URL to EditableElement.ts
-                    'makeFormData': function (self, value) {
-                        return {
-                            'action': 'Update Study Description',
-                            'studyID': cell.recordID,
-                            'desc': value
-                        };
-                    }
-                });
-            }
-        });
-    }
-    IndexPage.initDescriptionEditFields = initDescriptionEditFields;
 })(IndexPage || (IndexPage = {}));
 ;
 // The spec object that will be passed to DataGrid to create the Studies table
@@ -98,33 +61,26 @@ var DataGridSpecStudies = (function (_super) {
             new DataGridHeaderSpec(1, 'hStudyName', {
                 'name': 'Study Name',
                 'nowrap': true,
-                'sortId': 'name_s'
-            }),
+                'sortId': 'name_s' }),
             new DataGridHeaderSpec(2, 'hStudyDesc', {
                 'name': 'Description',
-                'sortId': 'desc_s'
-            }),
+                'sortId': 'desc_s' }),
             new DataGridHeaderSpec(3, 'hStudyOwnerInitials', {
                 'name': 'Owner',
-                'sortId': 'initials'
-            }),
+                'sortId': 'initials' }),
             new DataGridHeaderSpec(4, 'hStudyOwnerFullName', {
                 'name': 'Owner Full Name',
                 'nowrap': true,
-                'sortId': 'creator_s'
-            }),
+                'sortId': 'creator_s' }),
             new DataGridHeaderSpec(5, 'hStudyOwnerInstitute', {
                 'name': 'Institute',
-                'nowrap': true
-            }),
+                'nowrap': true }),
             new DataGridHeaderSpec(6, 'hStudyCreated', {
                 'name': 'Created',
-                'sortId': 'created'
-            }),
+                'sortId': 'created' }),
             new DataGridHeaderSpec(7, 'hStudyMod', {
                 'name': 'Last Modified',
-                'sortId': 'modified'
-            })
+                'sortId': 'modified' })
         ];
     };
     DataGridSpecStudies.prototype.generateStudyNameCells = function (gridSpec, index) {
@@ -150,9 +106,7 @@ var DataGridSpecStudies = (function (_super) {
         return [
             new DataGridDataCell(gridSpec, index, {
                 'maxWidth': '400',
-                'customID': function (id) {
-                    return 'editableDescriptionField' + id;
-                },
+                'customID': function (id) { return 'editableDescriptionField' + id; },
                 'contentString': gridSpec.dataObj[index].des || ''
             })
         ];
@@ -242,12 +196,8 @@ var DataGridSpecStudies = (function (_super) {
     DataGridSpecStudies.prototype.columnSort = function (grid, header, ev) {
         var sort = grid.sortCols(), oldSort, newSort, sortOpt;
         if (ev.shiftKey || ev.ctrlKey || ev.metaKey) {
-            newSort = sort.filter(function (v) {
-                return v.spec.sortId === header.sortId;
-            });
-            oldSort = sort.filter(function (v) {
-                return v.spec.sortId !== header.sortId;
-            });
+            newSort = sort.filter(function (v) { return v.spec.sortId === header.sortId; });
+            oldSort = sort.filter(function (v) { return v.spec.sortId !== header.sortId; });
             // if column already sorted, flip asc; move column to front of sort list
             if (newSort.length) {
                 newSort[0].asc = !newSort[0].asc;
@@ -376,8 +326,6 @@ var DataGridSpecStudies = (function (_super) {
     };
     // This is called after everything is initialized, including the creation of the table content.
     DataGridSpecStudies.prototype.onInitialized = function (dataGrid) {
-        // Wire-in our custom edit fields for the Studies page
-        IndexPage.initDescriptionEditFields();
     };
     DataGridSpecStudies.prototype.data = function (replacement, totalSize, totalOffset) {
         if (replacement === undefined) {
@@ -396,7 +344,11 @@ var DataGridSpecStudies = (function (_super) {
         this.recordIds = docs.map(function (doc) {
             var match = new ResultMatcher(_this._query);
             // straightforward matching on name, description, contact, creator_name, initials
-            match.findAndSet('name', doc.name).findAndSet('description', doc.description).findAndSet('contact', doc.contact).findAndSet('creator', doc.creator_name).findAndSet('initials', doc.initials);
+            match.findAndSet('name', doc.name)
+                .findAndSet('description', doc.description)
+                .findAndSet('contact', doc.contact)
+                .findAndSet('creator', doc.creator_name)
+                .findAndSet('initials', doc.initials);
             // strip the "ID@" portion before matching on metabolite, protocol, part
             (doc.metabolite || []).forEach(function (metabolite) {
                 match.findAndSet('metabolite', metabolite.slice(metabolite.indexOf('@') + 1));

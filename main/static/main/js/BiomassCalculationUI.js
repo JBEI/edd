@@ -1,6 +1,7 @@
 /// <reference path="typescript-declarations.d.ts" />
 /// <reference path="lib/jqueryui.d.ts" />
 /// <reference path="Utl.ts" />
+var EDD_auto = EDD_auto || {};
 // At this point, this class is experimental. It's supposed to make modal dialog boxes
 // easier to create and configure.
 var DialogBox = (function () {
@@ -115,7 +116,8 @@ var StudyMetabolicMapChooser = (function () {
         this._requestMetabolicMapList(function (metabolicMaps) {
             // Display the list.
             _this._dialogBox.clearContents();
-            _this._dialogBox.addHTML('<div>Please choose an SBML file to get the biomass data from.' + '<br>This is necessary to calculate carbon balance.<br><br></div>');
+            _this._dialogBox.addHTML('<div>Please choose an SBML file to get the biomass data from.' +
+                '<br>This is necessary to calculate carbon balance.<br><br></div>');
             var table = new Utl.Table('metabolicMapChooser');
             table.table.setAttribute('cellspacing', '0');
             $(table.table).css('border-collapse', 'collapse');
@@ -194,7 +196,8 @@ var BiomassCalculationUI = (function () {
             else {
                 // Display the list of biomass reactions.
                 _this._dialogBox.clearContents();
-                _this._dialogBox.addHTML('<div>Please choose a biomass reaction to use for carbon balance.' + '<br><br></div>');
+                _this._dialogBox.addHTML('<div>Please choose a biomass reaction to use for carbon balance.' +
+                    '<br><br></div>');
                 table = new Utl.Table('biomassReactionChooser');
                 table.table.setAttribute('cellspacing', '0');
                 $(table.table).css('border-collapse', 'collapse');
@@ -227,15 +230,14 @@ var BiomassCalculationUI = (function () {
             table.table.setAttribute('cellspacing', '0');
             $(table.table).css('border-collapse', 'collapse');
             speciesList.forEach(function (species, i) {
-                var speciesColumn, metaboliteColumn, autoCompContainer;
+                var speciesColumn, metaboliteColumn, autoComp;
                 table.addRow();
                 speciesColumn = table.addColumn();
                 speciesColumn.innerHTML = species.sbmlSpeciesName;
                 metaboliteColumn = table.addColumn();
-                autoCompContainer = EDDAutoComplete.createAutoCompleteContainer("metabolite", 45, 'disamMType' + i, species.eddMetaboliteName, 0);
-                metaboliteColumn.appendChild(autoCompContainer.inputElement);
-                metaboliteColumn.appendChild(autoCompContainer.hiddenInputElement);
-                inputs.push(autoCompContainer);
+                autoComp = EDD_auto.create_autocomplete(metaboliteColumn);
+                autoComp.addClass('autocomp_metabol');
+                inputs.push(autoComp);
             });
             _this._dialogBox.clearContents();
             _this._dialogBox.addHTML('<div>Please match SBML species to EDD metabolites.<br><br></div>');
@@ -248,11 +250,9 @@ var BiomassCalculationUI = (function () {
             okButton.appendChild(document.createTextNode('OK'));
             $(okButton).click(function () { return _this._onFinishedBiomassSpeciesEntry(speciesList, inputs, errorStringElement, metabolicMapID, reaction, callback); });
             _this._dialogBox.addElement(okButton);
-            for (var i = 0; i < inputs.length; i++) {
-                EDDAutoComplete.initializeElement(inputs[i].inputElement);
-                inputs[i].inputElement.autocompleter.setFromPrimaryElement();
-                inputs[i].initialized = 1;
-            }
+            inputs.forEach(function (input) {
+                EDD_auto.setup_field_autocomplete(input, 'Metabolite', EDDData.MetaboliteTypes || {});
+            });
         }, function (error) {
             _this._dialogBox.showMessage(error, function () { return callback.call({}, error); });
         });
@@ -261,35 +261,27 @@ var BiomassCalculationUI = (function () {
     BiomassCalculationUI.prototype._onFinishedBiomassSpeciesEntry = function (speciesList, inputs, errorStringElement, metabolicMapID, reaction, callback) {
         var _this = this;
         // Are the inputs all filled in?
-        var numEmpty = 0, i = 0;
-        for (; i < inputs.length; i++) {
-            if (inputs[i].inputElement.value === '') {
-                ++numEmpty;
-            }
-        }
+        var numEmpty = inputs.filter(function (input) { return input.val() === ''; }).length;
         if ($(errorStringElement).css('visibility') === 'hidden') {
             // Show them an error message, but next time they click OK, just do the biomass
             // calculation anyway.
             if (numEmpty > 0) {
                 $(errorStringElement).css('visibility', 'visible');
-                errorStringElement.innerHTML = '<br><br>There are ' + numEmpty.toString() + ' unmatched species. If you proceed, the biomass calculation will not' + ' include these. Click OK again to proceed anyway.<br><br>';
+                errorStringElement.innerHTML = '<br><br>There are ' + numEmpty.toString() +
+                    ' unmatched species. If you proceed, the biomass calculation will not' +
+                    ' include these. Click OK again to proceed anyway.<br><br>';
                 return;
             }
         }
         // Send everything to the server and get a biomass calculation back.
         this._dialogBox.showWaitSpinner('Calculating final biomass factor...');
         var matches = {};
-        for (i = 0; i < inputs.length; i++) {
-            // This is super lame, but I don't see another way to recover an unsullied version of
-            // the metabolite name after Autocomplete has messed with it.
-            var dividerPos = inputs[i].inputElement.value.indexOf(' / '), spName = speciesList[i].sbmlSpeciesName;
-            if (dividerPos === -1) {
-                matches[spName] = inputs[i].inputElement.value;
-            }
-            else {
-                matches[spName] = inputs[i].inputElement.value.substring(0, dividerPos);
-            }
-        }
+        inputs.forEach(function (input, i) {
+            var spName = speciesList[i].sbmlSpeciesName, id, met;
+            id = input.next('input[type=hidden]').val();
+            met = EDDData.MetaboliteTypes[id] || {};
+            matches[spName] = met.name || '';
+        });
         this._requestFinalBiomassComputation(metabolicMapID, reaction.reactionID, matches, function (finalBiomass) {
             // Finally, pass the biomass to our caller.
             _this._dialogBox.term();

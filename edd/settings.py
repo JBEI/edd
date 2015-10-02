@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Django settings for edd project.
 
@@ -16,6 +17,7 @@ import os
 from django_auth_ldap.config import LDAPSearch, GroupOfUniqueNamesType
 from django.conf.global_settings import TEMPLATE_CONTEXT_PROCESSORS as TCP
 from django.conf.global_settings import LOGIN_REDIRECT_URL
+BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 
 
 #############################################################
@@ -61,14 +63,13 @@ DEBUG_TOOLBAR_CONFIG = {
 INSTALLED_APPS = (
     'django.contrib.admin',
     'django.contrib.auth',
-    'django.contrib.sites', # recommended for registration app
+    'django.contrib.sites',  # recommended for registration app
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.postgres',
     'django_extensions',
-    'debug_toolbar',
     'main',
     'edd_utils',
     'edd.profile',
@@ -131,35 +132,6 @@ AUTH_LDAP_PROFILE_ATTR_MAP = {
 EDD_MAIN_SOLR = {
     'default': {
         'URL': config['solr'].get('url', 'http://localhost:8080/'),
-    },
-}
-
-
-# Logging -- uncomment to see all queries sent to database
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'filters': {
-        'require_debug_true': {
-            '()': 'django.utils.log.RequireDebugTrue',
-        },
-    },
-    'handlers': {
-        'console': {
-            'level': 'DEBUG',
-            'filters': ['require_debug_true', ],
-            'class': 'logging.StreamHandler',
-        },
-    },
-    'loggers': {
-        'django.db.backends': {
-            'level': 'DEBUG',
-            'handlers': ['console', ],
-        },
-        'main': {
-            'level': 'INFO',
-            'handlers': ['console', ],
-        },
     },
 }
 

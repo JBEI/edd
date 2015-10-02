@@ -5,8 +5,12 @@
 
 {% block js_css %}
     {{ block.super }}
+    <script type="text/javascript" src="{% static 'main/js/lib/jquery-ui/jquery-ui.min.js' %}"></script>
+    <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/jquery-ui/jquery-ui.min.css' %}" />
+    <script type="text/javascript" src="{% static 'main/js/lib/qtip/jquery.qtip.min.js' %}"></script>
+    <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/qtip/jquery.qtip.min.css' %}" />
+    <script type="text/javascript" src="{% static 'main/js/autocomplete2.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/EDDEditing.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.js' %}"></script>
@@ -17,27 +21,12 @@
     <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.threshold.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.orderbars.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.stack.js' %}"></script>
-    
-    <script type="text/javascript" src="{% static 'main/js/lib/qtip/jquery.qtip.min.js' %}"></script>
-    <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/qtip/jquery.qtip.min.css' %}" />
-
-    <script type="text/javascript" src="{% static 'main/js/lib/jquery-ui/jquery-ui.min.js' %}"></script>
-    <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/jquery-ui/jquery-ui.min.css' %}" />
-
-    <script type="text/javascript" src="{% static 'main/js/EditableElement.js' %}"></script>
-
-    {# only used in PermissionsDialog.js, replace and remove #}
-    <script type="text/javascript" src="{% static 'main/js/lib/jquery.bind-first/jquery.bind-first.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/PermissionsDialog.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/BiomassCalculationUI.js' %}"></script>
-    
     <script type="text/javascript" src="{% static 'main/js/Study.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/StudyGraphing.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/CarbonSummation.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/StudyCarbonBalance.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/StudySBMLExport.js' %}"></script>
-    <!-- Autocomplete code found by Nat -->
-    <script type="text/javascript" src="{% static 'main/js/autocomplete2.js' %}"></script>
 {% endblock js_css %}
 
 
@@ -69,6 +58,54 @@
                 </dd>
             </dl>
         </div>
+        {% if writable %}
+        <div class="disclose discloseHide" id="permissions">
+            <div class="sectionChapter" id="permissionsBanner">
+                <span class="discloseLink">Permissions</span>
+            </div>
+            <div class="sectionActions discloseBody">
+                {% with perms=study.get_combined_permission %}
+                    {% if perms %}
+                    <table cellpadding="0" cellspacing="0" class="dataTable sortable">
+                        <tr class="columnLabels">
+                            <th class="sortheader smaller">Who</th>
+                            <th class="sortheader smaller">Level</th>
+                        </tr>
+                        {% for perm in perms %}
+                        <tr class="stripeRow{% cycle 'A' 'B' %}">
+                            <td>{{ perm.get_who_label }}</td>
+                            <td>{{ perm.get_type_label }}</td>
+                        </tr>
+                        {% endfor %}
+                    </table>
+                    {% endif %}
+                {% endwith %}
+                <div class="sectionActions">
+                    <form method="POST" enctype="multipart/form-data" class="permissions edd-form off" action="">
+                        {% csrf_token %}
+                        <span id="permission_user_box">
+                        <label for="permission_user">
+                            <input type="radio" id="permission_user" name="class" value="User" checked="checked"/>
+                            <span>User</span>
+                        </label>
+                        </span>
+                        <span id="permission_group_box">
+                        <label for="permission_group">
+                            <input type="radio" id="permission_group" name="class" value="Group"/>
+                            <span>Group</span>
+                        </label>
+                        </span>
+                        <select name="type">
+                            <option value="N">None</option>
+                            <option value="R">Read</option>
+                            <option value="W">Write</option>
+                        </select>
+                        <button id="set_permission">Set Permission</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endif %}
         <div class="disclose{% if not new_attach.errors %} discloseHide{% endif %}" id="attachments">
             <div class="sectionChapter" id="attachmentsBanner">
                 <span class="discloseLink">Attachments ({{ study.attachments|length }})</span>
@@ -133,13 +170,14 @@
         </div>
     </div>
     
+
     {% if writable %}
+    <div class="bare-header">
+        <a href="/study/{{ study.id }}/import">Import tabular data...</a>
+    </div>
     <div class="pageSection minor disclose{% if not new_line.is_editing %} discloseHide{% endif %}" id="lineMain">
         <div class="sectionHead">
             <span class="discloseLink"><a href="#">{% if new_line.is_editing %}Edit Line{% else %}Add A New Line{% endif %}</a></span>
-            <div class="discloseAlt" style="float:right;">
-                <button>Import Lines</button>
-            </div>
             <div class="clear"></div>
         </div>
         <div class="sectionContent discloseBody">
@@ -248,11 +286,5 @@
         </div>
         {% endif %}
     </form>
-
-    {% if writable %}
-    <div class="bare-header">
-        <a href="/study/{{ study.id }}/import">Import tabular data...</a>
-    </div>
-    {% endif %}
     
 {% endblock content %}

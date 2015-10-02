@@ -1,5 +1,7 @@
 from django.conf.urls import patterns, url
-from edd_utils import views
+from django.contrib.auth.decorators import login_required
+
+from . import views
 
 urlpatterns = patterns('',
     url(r'^$', views.utilities_index, name='utilities_index'),
@@ -9,4 +11,10 @@ urlpatterns = patterns('',
     url(r'^gc_ms/export$', views.gcms_export, name='export_gc_ms'),
     url(r'^proteomics$', views.skyline_home, name='proteomics_home'),
     url(r'^proteomics/parse$', views.skyline_parse, name='parse_skyline'),
+    url(r'^cytometry/$', login_required(views.cytometry_home), name='cytometry_home'),
+    url(r'^cytometry/parse/$', login_required(views.cytometry_parse), name="cytometry_parse"),
+    url(r'^cytometry/import/$', login_required(views.cytometry_import), name="cytometry_import"),
+    url(r'^ec/import/$', login_required(views.ec_import), name="ec_import"),
+    url(r'^ec/import/action/(?P<target>[a-z0-9]+)/(?P<path>.*)$',
+        login_required(views.ec_import_action), name="ec_import_action"),
 )

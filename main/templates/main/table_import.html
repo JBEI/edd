@@ -1,51 +1,39 @@
 {% extends "edd_base.html" %}
 {% load staticfiles %}
 
-{% if post_contents %}
-
-<!--
-
-POSTed query:
-
-{{ post_contents }}
-
--->
-
-{% endif %}
-
 {% block js_css %}
-    {{ block.super }}
+  {{ block.super }}
   <link rel="stylesheet" type="text/css" href="{% static 'main/import.css' %}" />
-    <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/lib/jquery-ui/jquery-ui.min.js' %}"></script>
+  <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/jquery-ui/jquery-ui.min.css' %}" />
+  <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.crosshair.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.resize.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.navigate.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.dashes.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.threshold.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.orderbars.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.stack.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.cookie.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/lib/filedrop-min.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/util2.js' %}"></script>
 
-    <script type="text/javascript" src="{% static 'main/js/EDDEditing.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.crosshair.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.resize.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.navigate.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.dashes.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.threshold.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.orderbars.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.stack.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.cookie.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/lib/filedrop-min.js' %}"></script>
-<script type="text/javascript" src="{% static 'main/js/util2.js' %}"></script>
+  <!-- some page-specific code -->
+  <script type="text/javascript">
+  var ATData = {}; // this needs to be declared before loading AssayTableData.js!
+  var EDDData = {};
+  EDDData.currentUserID = {{ user.pk }};
+  var atdata_url = "/study/{{ study.id }}/assaydata";
 
-<!-- some page-specific code -->
-<script type="text/javascript">
-var ATData = {}; // this needs to be declared before loading AssayTableData.js!
-var EDDData = { }; // this needs to be declared before loading Autocomplete.js!
-EDDData.currentUserID = {{ user.pk }};
-var atdata_url = "/study/{{ study.id }}/assaydata";
-
-function disclose() {
-  $(this).closest('.disclose').toggleClass('discloseHide');
-  return false;
-}
-var url = "/utilities/parsefile";
-var process_result = function (result) {
+  function disclose() {
+    $(this).closest('.disclose').toggleClass('discloseHide');
+    return false;
+  }
+  var url = "/utilities/parsefile";
+  var process_result = function (result) {
     if (result.file_type == "xlsx") {
       var ws = result.file_data["worksheets"][0];
       console.log(ws);
@@ -59,33 +47,28 @@ var process_result = function (result) {
       }
       $("#rawdataformatp").val("csv");
       $("#textData").text(csv.join("\n"));
-      EDDATD.parseAndDisplayText(); // AssayTableData.ts
     } else {
       $("#rawdataformatp").val(result.file_type);
       $("#textData").text(result.file_data);
-      EDDATD.parseAndDisplayText(); // AssayTableData.ts
     }
+    EDDATD.parseAndDisplayText(); // AssayTableData.ts
   };
-$(window).load(function () {
-    setupFileDrop("textData", url, process_result, false);
-    $('.disclose').find('a.discloseLink').on('click', disclose);
-    // Populate ATData and EDDData objects via AJAX calls
-    jQuery.ajax(atdata_url, {
-        "success" : function (data, textStatus, response) {
-            ATData = data.ATData;
-            for (var keyname in data.EDDData) {
-                EDDData[keyname] = data.EDDData[keyname];
-            }
-            EDDATD.prepareIt();
-            EDDAutoComplete.initializeAllPageElements();
+  $(window).load(function () {
+      setupFileDrop("textData", url, process_result, false);
+      $('.disclose').find('a.discloseLink').on('click', disclose);
+      // Populate ATData and EDDData objects via AJAX calls
+      jQuery.ajax(atdata_url, {
+        "success": function(data) {
+          ATData = data.ATData;
+          $.extend(EDDData, data.EDDData);
+          EDDATD.prepareIt();
         }
-    }).fail(function (x, s, e) {
+      }).fail(function (x, s, e) {
         alert(s);
-    });
-});
-</script>
- 
-  <script type="text/javascript" src="{% static 'main/js/Autocomplete.js' %}"></script>
+      });
+  });
+  </script>
+  <script type="text/javascript" src="{% static 'main/js/autocomplete2.js' %}"></script>
   <script type="text/javascript" src="{% static 'main/js/AssayTableData.js' %}"></script>
   <script type="text/javascript" src="{% static 'main/js/AssayTableDataGraphing.js' %}"></script>
 
@@ -98,12 +81,10 @@ $(window).load(function () {
 
 
 {% block body_title %}
-    <h1>Data import for {{ study.name }}</h1>
+    <h1>Data import for <a href="/study/{{ study.id }}">{{ study.name }}</a></h1>
 {% endblock body_title %}
 
 {% block content %}
-
-{% include "main/include_messages.html" %}
 
 <form method="post" id="assayTableForm" action="/study/{{ study.id }}/import">
 {% csrf_token %}
@@ -392,11 +373,12 @@ at how the pulldowns should be set, but you may need to tweak it.</p>
             </select>
           </span>
           <span id="masterLineSpan">
-            for Line:<select name="masterLine" id="masterLine">
-<option value="new">(Create New)</option>
-<option value="431" selected="selected">I-1</option>
-<option value="432">I-2</option>
-</select>
+            for Line: <select name="masterLine" id="masterLine">
+              <option value="new">(Create New)</option>
+              {% for line in study.line_set.all %}
+              <option value="{{ line.pk }}">{{ line.name }}</option>
+              {% endfor %}
+            </select>
           </span>
         </td>
       </tr>
@@ -411,32 +393,15 @@ at how the pulldowns should be set, but you may need to tweak it.</p>
       <td>
         <p>Metabolite Type for all data:</p>
       </td><td>
-        <input  class="autocomplete" type="text" autocomplete="off"
-            autocompletetype="measurementcompartment"
-            size="4"
-            autocompletevalue="masterMCompValue"
-            name="masterMComp"
-            id="masterMComp"
-            value=""
-            style="margin-right: 2px; ">
+        <input class="autocomp" type="text" size="4" name="masterMComp" id="masterMComp"
+            value="" style="margin-right: 2px;">
         <input type="hidden" id="masterMCompValue" name="masterMCompValue" value="0">
       </td><td>
-        <input  class="autocomplete" type="text" autocomplete="off"
-            autocompletetype="metabolite"
-            size="45"
-            autocompletevalue="masterMTypeValue"
-            name="masterMType"
-            id="masterMType"
-            value=""
-            style="margin-right: 2px;">
+        <input class="autocomp" type="text" size="45" name="masterMType" id="masterMType"
+            value="" style="margin-right: 2px;">
         <input type="hidden" id="masterMTypeValue" name="masterMTypeValue" value="0">
       </td><td>
-        <input  class="autocomplete" type="text" autocomplete="off"
-            autocompletetype="units"
-            size="15"
-            autocompletevalue="masterMUnitsValue"
-            name="masterMUnits"
-            id="masterMUnits"
+        <input class="autocomp" type="text" size="15" name="masterMUnits" id="masterMUnits"
             value="">
         <input type="hidden" id="masterMUnitsValue" name="masterMUnitsValue" value="0">
       </td>
@@ -470,10 +435,10 @@ at how the pulldowns should be set, but you may need to tweak it.</p>
 </div>
 
 <input type="hidden" id="jsonoutput" name="jsonoutput" />
-
-  <textarea class="dataTextArea" rows="5" style="width:98%;margin:10px;" id="jsondebugarea" name="jsondebugarea"></textarea>
-
 <input type="hidden" name="studyID" value="{{ study.id }}"/>
 </form>
+
+
+  <textarea class="dataTextArea" rows="5" style="width:98%;margin:10px;" id="jsondebugarea" name="jsondebugarea"></textarea>
 
 {% endblock content %}

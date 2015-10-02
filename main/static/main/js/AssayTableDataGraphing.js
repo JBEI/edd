@@ -95,25 +95,9 @@ EDDATDGraphing = {
         // 17 intermediate spots on the color wheel, adjusted for visibility,
         // with the 18th a clone of the 1st.
         var lineColors = [
-            [0, 136, 132],
-            [10, 136, 109],
-            [13, 143, 45],
-            [20, 136, 10],
-            [72, 136, 10],
-            [125, 136, 0],
-            [136, 108, 10],
-            [136, 73, 11],
-            [136, 43, 14],
-            [136, 14, 43],
-            [136, 11, 88],
-            [118, 13, 136],
-            [89, 23, 136],
-            [43, 20, 136],
-            [14, 23, 136],
-            [12, 44, 136],
-            [13, 107, 136],
-            [0, 136, 132]
-        ];
+            [0, 136, 132], [10, 136, 109], [13, 143, 45], [20, 136, 10], [72, 136, 10], [125, 136, 0],
+            [136, 108, 10], [136, 73, 11], [136, 43, 14], [136, 14, 43], [136, 11, 88], [118, 13, 136],
+            [89, 23, 136], [43, 20, 136], [14, 23, 136], [12, 44, 136], [13, 107, 136], [0, 136, 132]];
         // Range of 0 is just unacceptable
         if (r < 1) {
             return '#888';
@@ -226,6 +210,8 @@ EDDATDGraphing = {
         // (the left edge of the region we are trying to place a tick in)
         var windowLeftWave = axis.min;
         var prevI = -1;
+        // Hint: If this gives bizarre results, make sure you have everything
+        // casted to floats or ints, instead of strings.
         do {
             var sScale = largestScale / 2;
             var i = sScale;
@@ -267,7 +253,8 @@ EDDATDGraphing = {
     },
     hoverFunction: function (event, pos, item) {
         if (item) {
-            if ((EDDATDGraphing.previousPoint != item.dataIndex) || (EDDATDGraphing.previousPointSeries != item.series.name)) {
+            if ((EDDATDGraphing.previousPoint != item.dataIndex) ||
+                (EDDATDGraphing.previousPointSeries != item.series.name)) {
                 EDDATDGraphing.previousPoint = item.dataIndex;
                 EDDATDGraphing.previousPointSeries = item.series.name;
                 $("#tooltip").remove();

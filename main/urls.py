@@ -5,7 +5,8 @@ from django.views.generic.base import RedirectView
 from main import views
 
 
-urlpatterns = patterns('',
+urlpatterns = patterns(
+    '',
     url(r'^$', login_required(views.StudyCreateView.as_view()), name='index'),
     url(r'^study/$',
         login_required(views.StudyCreateView.as_view()),
@@ -26,6 +27,7 @@ urlpatterns = patterns('',
         login_required(views.study_assay_measurements),
         ),
     url(r'^study/(?P<study>\d+)/map/$', login_required(views.study_map)),
+    url(r'^study/(?P<study>\d+)/permissions/$', login_required(views.permissions)),
     # FIXME make a module/app just for import?
     # url(r'^study/(?P<study>\d+)/import/$', include('main.import.urls', namespace='edd-import'))
     url(r'^study/(?P<study>\d+)/import$', login_required(views.study_import_table)),
@@ -36,9 +38,10 @@ urlpatterns = patterns('',
         login_required(views.study_import_rnaseq_process)),
     url(r'^study/(?P<study>\d+)/import/rnaseq/edgepro$',
         login_required(views.study_import_rnaseq_edgepro)),
-    url(r'^study/(?P<study>\d+)/export$', login_required(views.study_export_table)),
-    url(r'^study/(?P<study>\d+)/export/data$', login_required(views.study_export_table_data)),
     url(r'^study/(?P<study>\d+)/sbml$', login_required(views.study_export_sbml)),
+
+    url(r'^export', login_required(views.ExportView.as_view()), name='export'),
+
     url(r'^file/download/(?P<file_id>\d+)$', login_required(views.download)),
     url(r'^file/delete/(?P<file_id>\d+)$', login_required(views.delete_file)),
     url(r'^utilities/parsefile$', login_required(views.utilities_parse_table)),

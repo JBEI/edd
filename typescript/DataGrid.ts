@@ -1,4 +1,3 @@
-/// <reference path="typescript-declarations.d.ts" />
 /// <reference path="Utl.ts" />
 /// <reference path="Dragboxes.ts" />
 /// <reference path="lib/jquery.d.ts" />
@@ -1633,7 +1632,9 @@ class DGSelectAllWidget extends DataGridHeaderWidget {
                 // each cell in row
                 row.dataGridDataCells.forEach((cell) => {
                     // if the cell has a checkbox, check it
-                    cell.checkboxElement && (cell.checkboxElement.checked = true);
+                    cell.checkboxElement &&
+                        (cell.checkboxElement.checked = true) &&
+                        $(cell.checkboxElement).trigger('change');
                 });
             });
         }, sequence);
@@ -2187,8 +2188,6 @@ class DataGridSpecBase {
 
     // This is called after everything is initialized, including the creation of the table content.
     onInitialized(dataGrid:DataGrid):void {
-        // Wire-in our custom edit fields for the Studies page
-        IndexPage.initDescriptionEditFields();
     }
 
 

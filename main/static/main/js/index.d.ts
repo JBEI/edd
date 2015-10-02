@@ -1,14 +1,12 @@
 /// <reference path="EDDDataInterface.d.ts" />
-/// <reference path="EditableElement.d.ts" />
 /// <reference path="DataGrid.d.ts" />
 /// <reference path="Utl.d.ts" />
-/// <reference path="lib/jquery.d.ts" />
+/// <reference path="../../../../typescript/lib/jquery.d.ts" />
 declare var EDDData: EDDData;
 declare module IndexPage {
     function prepareIt(): void;
     function disclose(): boolean;
     function prepareTable(): void;
-    function initDescriptionEditFields(): void;
 }
 declare class DataGridSpecStudies extends DataGridSpecBase implements DGPageDataSource {
     private dataObj;

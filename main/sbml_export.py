@@ -119,7 +119,7 @@ class sbml_info (object) :
     sbml = None
     if (sbml_file is not None) :
       import libsbml
-      sbml = libsbml.readSBML(sbml_file)
+      sbml = libsbml.readSBML(sbml_file.encode('utf-8'))
     else :
       if (self._chosen_template is None) :
         raise RuntimeError("You must call self._select_template(i) before "+
@@ -871,7 +871,7 @@ def create_sbml_notes_object (notes) :
   token2 = libsbml.XMLToken(triple2, att, ns)
   for header in notes_dict.keys() :
     for line in notes_dict[header] :
-      tt = libsbml.XMLToken(header + ":" + str(line))
+      tt = libsbml.XMLToken(('%s:%s' % (header, line)).encode('utf-8'))
       n = libsbml.XMLNode(tt)
       node = libsbml.XMLNode(token2)
       node.addChild(n)
@@ -1525,13 +1525,14 @@ class line_assay_data (line_export_base) :
         meas_type = self._get_measurement_type(m.id).type_group
         is_checked = self._metabolites_checked[m.id]
         data_points = []
-        for md in self._get_measurement_data(m.id) :
+        mdata = self._get_measurement_data(m.id)
+        for md in sorted(mdata, lambda a,b: cmp(a.fx, b.fx)):
           x = md.fx
           if (x > max_x) : continue
           data_points.append({
             "rx" : ((x / max_x) * 450) + 10,
-            "y" : md.y,
-            "title" : "%s at %gh" % (md.y, x)
+            "y" : md.fy,
+            "title" : "%s at %gh" % (md.fy, x)
           })
         measurements.append({
           "name" : m.full_name,
@@ -1581,7 +1582,8 @@ class line_assay_data (line_export_base) :
     min_x, max_x = self._measurement_ranges["OD"]
     for m in self._od_measurements :
       data_points = []
-      for md in self._get_measurement_data(m.id) :
+      mdata = self._get_measurement_data(m.id)
+      for md in sorted(mdata, lambda a,b: cmp(a.fx, b.fx)):
         x = md.fx
         if (x > max_x) : continue
         data_points.append({

@@ -1,27 +1,41 @@
-/// <reference path="typescript-declarations.d.ts" />
 /// <reference path="EDDDataInterface.d.ts" />
 /// <reference path="Utl.d.ts" />
 /// <reference path="Dragboxes.d.ts" />
-/// <reference path="EditableElement.d.ts" />
 /// <reference path="BiomassCalculationUI.d.ts" />
+/// <reference path="CarbonSummation.d.ts" />
+/// <reference path="DataGrid.d.ts" />
+/// <reference path="StudyGraphing.d.ts" />
 declare var EDDData: EDDData;
 declare module StudyD {
     var metabolicMapID: any;
     var metabolicMapName: any;
     var biomassCalculation: number;
+    interface ValueToUniqueID {
+        [index: string]: number;
+    }
+    interface ValueToUniqueList {
+        [index: string]: number[];
+    }
+    interface UniqueIDToValue {
+        [index: number]: string;
+    }
     class GenericFilterSection {
-        uniqueValues: any;
-        uniqueValuesOrder: any;
-        filterHash: any;
-        checkboxes: any;
-        previousCheckboxState: any;
-        tableRows: any;
-        filterColumnDiv: any;
-        titleElement: any;
+        uniqueValues: UniqueIDToValue;
+        uniqueValuesOrder: number[];
+        filterHash: ValueToUniqueList;
+        checkboxes: {
+            [index: number]: JQuery;
+        };
+        previousCheckboxState: UniqueIDToValue;
+        tableRows: {
+            [index: number]: HTMLTableRowElement;
+        };
+        filterColumnDiv: HTMLElement;
+        titleElement: HTMLElement;
         searchBoxElement: HTMLInputElement;
-        scrollZoneDiv: any;
-        filteringTable: any;
-        tableBodyElement: any;
+        scrollZoneDiv: HTMLElement;
+        filteringTable: JQuery;
+        tableBodyElement: HTMLTableElement;
         typingTimeout: number;
         typingDelay: number;
         currentSearchSelection: string;
@@ -34,7 +48,7 @@ declare module StudyD {
         configure(): void;
         createContainerObjects(): void;
         processFilteringData(ids: string[]): void;
-        buildUniqueValuesHash(ids: string[]): any;
+        buildUniqueValuesHash(ids: string[]): ValueToUniqueID;
         isFilterUseful(): boolean;
         addToParent(parentDiv: any): void;
         applyBackgroundStyle(darker: number): void;
@@ -48,27 +62,27 @@ declare module StudyD {
     }
     class StrainFilterSection extends GenericFilterSection {
         configure(): void;
-        buildUniqueValuesHash(ids: string[]): any;
+        buildUniqueValuesHash(ids: string[]): ValueToUniqueID;
     }
     class CarbonSourceFilterSection extends GenericFilterSection {
         configure(): void;
-        buildUniqueValuesHash(ids: string[]): any;
+        buildUniqueValuesHash(ids: string[]): ValueToUniqueID;
     }
     class CarbonLabelingFilterSection extends GenericFilterSection {
         configure(): void;
-        buildUniqueValuesHash(ids: string[]): any;
+        buildUniqueValuesHash(ids: string[]): ValueToUniqueID;
     }
     class LineNameFilterSection extends GenericFilterSection {
         configure(): void;
-        buildUniqueValuesHash(ids: string[]): any;
+        buildUniqueValuesHash(ids: string[]): ValueToUniqueID;
     }
     class ProtocolFilterSection extends GenericFilterSection {
         configure(): void;
-        buildUniqueValuesHash(ids: string[]): any;
+        buildUniqueValuesHash(ids: string[]): ValueToUniqueID;
     }
     class AssaySuffixFilterSection extends GenericFilterSection {
         configure(): void;
-        buildUniqueValuesHash(ids: string[]): any;
+        buildUniqueValuesHash(ids: string[]): ValueToUniqueID;
     }
     class MetaDataFilterSection extends GenericFilterSection {
         metaDataID: string;
@@ -78,32 +92,38 @@ declare module StudyD {
         configure(): void;
     }
     class LineMetaDataFilterSection extends MetaDataFilterSection {
-        buildUniqueValuesHash(ids: string[]): any;
+        buildUniqueValuesHash(ids: string[]): ValueToUniqueID;
     }
     class AssayMetaDataFilterSection extends MetaDataFilterSection {
-        buildUniqueValuesHash(ids: string[]): any;
+        buildUniqueValuesHash(ids: string[]): ValueToUniqueID;
     }
     class MetaboliteCompartmentFilterSection extends GenericFilterSection {
         configure(): void;
-        buildUniqueValuesHash(amIDs: string[]): any;
+        buildUniqueValuesHash(amIDs: string[]): ValueToUniqueID;
+    }
+    class MeasurementFilterSection extends GenericFilterSection {
+        loadPending: boolean;
+        configure(): void;
+        isFilterUseful(): boolean;
+        buildUniqueValuesHash(mIds: string[]): ValueToUniqueID;
     }
     class MetaboliteFilterSection extends GenericFilterSection {
         loadPending: boolean;
         configure(): void;
         isFilterUseful(): boolean;
-        buildUniqueValuesHash(amIDs: string[]): any;
+        buildUniqueValuesHash(amIDs: string[]): ValueToUniqueID;
     }
     class ProteinFilterSection extends GenericFilterSection {
         loadPending: boolean;
         configure(): void;
         isFilterUseful(): boolean;
-        buildUniqueValuesHash(amIDs: string[]): any;
+        buildUniqueValuesHash(amIDs: string[]): ValueToUniqueID;
     }
     class GeneFilterSection extends GenericFilterSection {
         loadPending: boolean;
         configure(): void;
         isFilterUseful(): boolean;
-        buildUniqueValuesHash(amIDs: string[]): any;
+        buildUniqueValuesHash(amIDs: string[]): ValueToUniqueID;
     }
     function prepareIt(): void;
     function prepareFilteringSection(): void;

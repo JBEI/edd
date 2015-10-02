@@ -1,7 +1,6 @@
-/// <reference path="typescript-declarations.d.ts" />
 /// <reference path="Utl.d.ts" />
 /// <reference path="Dragboxes.d.ts" />
-/// <reference path="lib/jquery.d.ts" />
+/// <reference path="../../../../typescript/lib/jquery.d.ts" />
 declare class DataGrid {
     private _spec;
     private _table;
@@ -125,7 +124,7 @@ declare class DataGridDataCell {
     hidden: boolean;
     createdElement: boolean;
     constructor(gridSpec: DataGridSpecBase, id: string, opt?: {
-        [x: string]: any;
+        [index: string]: any;
     });
     createElement(): void;
     getElement(): HTMLElement;
@@ -135,7 +134,7 @@ declare class DataGridDataCell {
 }
 declare class DataGridLoadingCell extends DataGridDataCell {
     constructor(gridSpec: DataGridSpecBase, id: string, opt?: {
-        [x: string]: any;
+        [index: string]: any;
     });
 }
 declare class DataGridWidget {
@@ -238,7 +237,7 @@ declare class DataGridTableSpec {
     showHeader: boolean;
     applyStriping: boolean;
     constructor(id: string, opt?: {
-        [x: string]: any;
+        [index: string]: any;
     });
 }
 declare class DataGridHeaderSpec {
@@ -262,14 +261,14 @@ declare class DataGridHeaderSpec {
     sortFunc: (a: number, b: number) => number;
     sorted: boolean;
     constructor(group: number, id: string, opt?: {
-        [x: string]: any;
+        [index: string]: any;
     });
 }
 declare class DataGridColumnSpec {
     columnGroup: number;
     generateCellsFunction: (gridSpec: DataGridSpecBase, index: string) => DataGridDataCell[];
     createdDataCellObjects: {
-        [x: string]: DataGridDataCell[];
+        [id: string]: DataGridDataCell[];
     };
     constructor(group: number, generateCells: (gridSpec: DataGridSpecBase, index: string) => DataGridDataCell[]);
     generateCells(gridSpec: DataGridSpecBase, index: string): DataGridDataCell[];
@@ -287,7 +286,7 @@ declare class DataGridColumnGroupSpec {
     memberColumns: DataGridColumnSpec[];
     checkboxElement: HTMLInputElement;
     constructor(label: string, opt?: {
-        [x: string]: any;
+        [index: string]: any;
     });
 }
 declare class DataGridRowGroupSpec {

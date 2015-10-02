@@ -2,6 +2,8 @@
 /// <reference path="lib/jqueryui.d.ts" />
 /// <reference path="Utl.ts" />
 
+var EDD_auto = EDD_auto || {};
+
 // At this point, this class is experimental. It's supposed to make modal dialog boxes
 // easier to create and configure.
 class DialogBox {
@@ -320,16 +322,14 @@ class BiomassCalculationUI {
             $(table.table).css('border-collapse', 'collapse');
 
             speciesList.forEach((species:ServerBiomassSpeciesEntry, i:number):void => {
-                var speciesColumn:HTMLElement, metaboliteColumn:HTMLElement, autoCompContainer:any;
+                var speciesColumn:HTMLElement, metaboliteColumn:HTMLElement, autoComp:JQuery;
                 table.addRow();
                 speciesColumn = table.addColumn();
                 speciesColumn.innerHTML = species.sbmlSpeciesName;
                 metaboliteColumn = table.addColumn();
-                autoCompContainer = EDDAutoComplete.createAutoCompleteContainer(
-                    "metabolite", 45, 'disamMType' + i, species.eddMetaboliteName, 0);
-                metaboliteColumn.appendChild(autoCompContainer.inputElement);
-                metaboliteColumn.appendChild(autoCompContainer.hiddenInputElement);
-                inputs.push(autoCompContainer);
+                autoComp = EDD_auto.create_autocomplete(metaboliteColumn);
+                autoComp.addClass('autocomp_metabol');
+                inputs.push(autoComp);
             });
 
             this._dialogBox.clearContents();
@@ -349,12 +349,9 @@ class BiomassCalculationUI {
                 errorStringElement, metabolicMapID, reaction, callback));
             this._dialogBox.addElement(okButton);
 
-            // TODO use autocomplete2.js instead of Autocomplete.ts
-            for (var i:number = 0; i < inputs.length; i++) {
-                EDDAutoComplete.initializeElement(inputs[i].inputElement);
-                inputs[i].inputElement.autocompleter.setFromPrimaryElement();
-                inputs[i].initialized = 1;
-            }
+            inputs.forEach((input) => {
+                EDD_auto.setup_field_autocomplete(input, 'Metabolite', EDDData.MetaboliteTypes || {});
+            });
         }, (error:string):void => {
             this._dialogBox.showMessage(error, ():void => callback.call({}, error));
         });
@@ -368,13 +365,7 @@ class BiomassCalculationUI {
         callback:BiomassResultsCallback):void {
 
         // Are the inputs all filled in?
-        var numEmpty:number = 0,
-            i:number = 0;
-        for (; i < inputs.length; i++) {
-            if (inputs[i].inputElement.value === '') {
-                ++numEmpty;
-            }
-        }
+        var numEmpty:number = inputs.filter((input:JQuery):boolean => input.val() === '').length;
 
         if ($(errorStringElement).css('visibility') === 'hidden') {
             // Show them an error message, but next time they click OK, just do the biomass
@@ -392,17 +383,12 @@ class BiomassCalculationUI {
         this._dialogBox.showWaitSpinner('Calculating final biomass factor...');
 
         var matches:any = {};
-        for (i = 0; i < inputs.length; i++) {
-            // This is super lame, but I don't see another way to recover an unsullied version of
-            // the metabolite name after Autocomplete has messed with it.
-            var dividerPos:number = inputs[i].inputElement.value.indexOf(' / '),
-                spName:string = speciesList[i].sbmlSpeciesName;
-            if (dividerPos === -1) {
-                matches[spName] = inputs[i].inputElement.value;
-            } else {
-                matches[spName] = inputs[i].inputElement.value.substring(0, dividerPos);
-            }
-        }
+        inputs.forEach((input:JQuery, i:number):void => {
+            var spName:string = speciesList[i].sbmlSpeciesName, id:string, met:any;
+            id = input.next('input[type=hidden]').val();
+            met = EDDData.MetaboliteTypes[id] || {};
+            matches[spName] = met.name || '';
+        });
 
         this._requestFinalBiomassComputation(metabolicMapID, reaction.reactionID, matches,
                 (finalBiomass:number):void => {

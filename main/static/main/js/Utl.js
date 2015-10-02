@@ -179,9 +179,7 @@ var Utl;
             }
         };
         JS.convertHashToList = function (hash) {
-            return Object.keys(hash).map(function (a) {
-                return hash[a];
-            });
+            return Object.keys(hash).map(function (a) { return hash[a]; });
         };
         // Returns a string of length numChars, padding the right side
         // with spaces if str is shorter than numChars.
@@ -239,7 +237,8 @@ var Utl;
             if ((year == nyear) && (mon == nmon) && (mday == nmday)) {
                 day_str = 'Today';
             }
-            else if ((now - (nsec + (60 * (nmin + (60 * (nhour + 24)))))) == (timestamp - (sec + (60 * (min + (60 * hour)))))) {
+            else if ((now - (nsec + (60 * (nmin + (60 * (nhour + 24)))))) ==
+                (timestamp - (sec + (60 * (min + (60 * hour)))))) {
                 day_str = 'Yesterday';
             }
             else {
@@ -270,9 +269,7 @@ var Utl;
             m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})\.?(\d{1,6})?Z$/.exec(utc);
             if (m) {
                 m.shift(); // get rid of overall match, we don't care
-                m.map(function (v) {
-                    return parseInt(v, 10);
-                }); // convert strings to numbers
+                m.map(function (v) { return parseInt(v, 10); }); // convert strings to numbers
                 m[1]--; // Date uses 0-based months, so decrement month
                 timestamp = Date.UTC(m[0], m[1], m[2], m[3], m[4], m[5]);
                 timestamp /= 1000; // the timestampToTodayString expects seconds, not milliseconds
@@ -303,10 +300,8 @@ var Utl;
         // This is useful for looking at DOM elements in a popup that would normally go away when
         // you moved the mouse away from it.
         JS.enableF12Trap = function () {
-            $(window).keydown(function (e) {
-                if (e.keyCode == 123)
-                    debugger;
-            });
+            $(window).keydown(function (e) { if (e.keyCode == 123)
+                debugger; });
         };
         return JS;
     })();

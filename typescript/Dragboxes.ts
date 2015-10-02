@@ -23,26 +23,30 @@ module Dragboxes {
     }
 
     export function dragStart(event:JQueryMouseEventObject):boolean {
-        var $this:JQuery = $(this), table:JQuery;
+        var $this:JQuery = $(this), checkbox: JQuery, table:JQuery;
         // ignore mouse events not using the left mouse button
         if (event.which !== 1) {
             return true;
         }
         // mousedown toggles the clicked checkbox value and stores new value in globalChecked
         if (globalChecked === null) {
+            // may have clicked label, so go to parent TD and find the checkbox
+            checkbox = $this.closest('td').find(':checkbox');
             // have to check for null to prevent double event from clicking label
-            $this.prop('checked', (i:number, value:boolean):boolean => {
+            checkbox.prop('checked', (i:number, value:boolean):boolean => {
                 return (globalChecked = !value);
             }).trigger('change');
         }
         // also attaches mouseover event to all cells in parent table
-        table = $(this).closest('.dragboxes').on('mouseover.dragboxes', 'td', dragOver);
+        table = $this.closest('.dragboxes').on('mouseover.dragboxes', 'td', dragOver);
         // wait for mouse to go up anywhere, then end drag events
         $(document).one('mouseup.dragboxes', { 'table': table }, dragEnd);
         return false;
     }
 
-    export function initTable(table:HTMLElement):void {
+    export function initTable(table: JQuery);
+    export function initTable(table: HTMLElement);
+    export function initTable(table: any):void {
         $(table).filter('.dragboxes')
             // watch for mousedown on checkboxes
             .on('mousedown.dragboxes', 'td :checkbox', dragStart)

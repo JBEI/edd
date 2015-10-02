@@ -30,6 +30,7 @@ interface AssayRecord extends EDDRecord {
     metabolites: number[];
     transcriptions: number[];
     proteins: number[];
+    general: number[];
 }
 interface AssayMeasurementRecord {
     id: number;
@@ -79,49 +80,49 @@ interface UnitType {
 interface EDDData {
     currentUserID: number;
     AssayMeasurements: {
-        [x: number]: AssayMeasurementRecord;
+        [id: number]: AssayMeasurementRecord;
     };
     Assays: {
-        [x: number]: AssayRecord;
+        [id: number]: AssayRecord;
     };
     CSources: {
-        [x: number]: any;
+        [id: number]: any;
     };
     GeneTypes: {
-        [x: number]: ProteinTypeRecord;
+        [id: number]: ProteinTypeRecord;
     };
     Lines: {
-        [x: number]: LineRecord;
+        [id: number]: LineRecord;
     };
     MeasurementTypeCompartments: {
-        [x: number]: any;
+        [id: number]: any;
     };
     MeasurementTypes: {
-        [x: number]: MeasurementTypeRecord;
+        [id: number]: MeasurementTypeRecord;
     };
     MediaTypes: {
-        [x: string]: string;
+        [shortform: string]: string;
     };
     MetaboliteTypes: {
-        [x: number]: MetaboliteTypeRecord;
+        [id: number]: MetaboliteTypeRecord;
     };
     MetaDataTypes: {
-        [x: number]: any;
+        [id: number]: any;
     };
     ProteinTypes: {
-        [x: number]: ProteinTypeRecord;
+        [id: number]: ProteinTypeRecord;
     };
     Protocols: {
-        [x: number]: any;
+        [id: number]: any;
     };
     Strains: {
-        [x: number]: any;
+        [id: number]: any;
     };
     UnitTypes: {
-        [x: number]: UnitType;
+        [id: number]: UnitType;
     };
     Users: {
-        [x: number]: any;
+        [id: number]: any;
     };
     currentStudyID: number;
     parsedPermissions: any[];
@@ -139,12 +140,12 @@ interface EDDData {
     CSourceIDs: number[];
     ExchangeIDs: number[];
     Exchanges: {
-        [x: number]: any;
+        [id: number]: any;
     };
     SpeciesIDs: number[];
     Species: any[];
     Studies: {
-        [x: number]: any;
+        [id: number]: any;
     };
     StudiesSize: number;
     StudiesStart: number;
