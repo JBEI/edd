@@ -136,6 +136,14 @@ class RegistryAutocompleteWidget(AutocompleteWidget):
         opt.update({'text_attr': {'class': 'autocomp autocomp_reg', }, })
         super(RegistryAutocompleteWidget, self).__init__(attrs=attrs, model=Strain, opt=opt)
 
+    def decompress(self, value):
+        if isinstance(value, Strain):
+            return [self.display_value(value), value.registry_id, ]
+        elif value:
+            o = Strain.objects.get(registry_id=value)
+            return [self.display_value(o), value, ]
+        return ['', None, ]
+
     def validate_strain(self, value):
         try:
             Strain.objects.get(registry_id=value)
