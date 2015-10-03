@@ -111,6 +111,9 @@ $(function () {
             anchor = $('<a>').addClass('mcacAnchor').appendTo(result);
             $.each(this.options.columns, function (index, column) {
                 var value = item[column.valueField ? column.valueField : index];
+                if (value instanceof Array) {
+                    value = value[0] || '';
+                }
                 createCell(anchor, column.width, value);
             });
             $('<div>').addClass('clear').appendTo(result);
