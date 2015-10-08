@@ -69,7 +69,8 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.postgres',
-    'django_extensions',
+    'django_extensions',  # django-extensions in pip
+    'form_utils',  # django-form-utils in pip
     'main',
     'edd_utils',
     'edd.profile',

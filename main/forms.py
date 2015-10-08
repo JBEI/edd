@@ -12,12 +12,13 @@ from django.db.models.manager import BaseManager
 from django.http import QueryDict
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
+from form_utils.forms import BetterModelForm
 
 from .ice import IceApi
 from .export import table
 from .models import (
-    Assay, Attachment, CarbonSource, Comment, Line, Measurement, MeasurementType, MetadataType,
-    Protocol, Strain, Study, StudyPermission, Update, )
+    Assay, Attachment, CarbonSource, Comment, Line, Measurement, MeasurementType,
+    MeasurementValue, MetadataType, Protocol, Strain, Study, StudyPermission, Update, )
 
 
 User = get_user_model()
@@ -506,7 +507,7 @@ class MeasurementForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         # removes default hard-coded suffix of colon character on all labels
         kwargs.setdefault('label_suffix', '')
-        # store the parent Line
+        # store the parent Assays
         self._assays = kwargs.pop('assays', [])
         super(MeasurementForm, self).__init__(*args, **kwargs)
 
@@ -522,6 +523,22 @@ class MeasurementForm(forms.ModelForm):
         if commit:
             [m.save() for m in all_measures]
         return all_measures
+
+
+class MeasurementValueForm(BetterModelForm):
+    """ Form for an individual measurement value. """
+    class Meta:
+        fields = ('x', 'y', )
+        fieldsets = [('', {'fields': ['x', 'y', ], }), ]
+        model = MeasurementValue
+        widgets = {
+            'x': forms.widgets.NumberInput(),
+            'y': forms.widgets.NumberInput(),
+        }
+
+
+MeasurementValueFormSet = forms.models.inlineformset_factory(
+    Measurement, MeasurementValue, can_delete=False, extra=0, form=MeasurementValueForm, )
 
 
 class ExportSelectionForm(forms.Form):

@@ -13,8 +13,8 @@
 
 {% block content %}
     <p>Are you an LBL Employee or Affiliate (i.e. you have an @lbl.gov email)? If so, you do not
-        need to register, and can <a href="{% url 'django.contrib.auth.views.login' %}">Log in</a>
-        with your LBL LDAP username and password.</p>
+        need to register, and can <a href="{% url 'auth:login' %}">Log in</a> with your LBL LDAP
+        username and password.</p>
     <form class="register_form" method="POST" action=".">
         {% csrf_token %}
         <fieldset>

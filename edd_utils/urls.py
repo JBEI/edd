@@ -3,8 +3,9 @@ from django.contrib.auth.decorators import login_required
 
 from . import views
 
-urlpatterns = patterns('',
-    url(r'^$', views.utilities_index, name='utilities_index'),
+urlpatterns = patterns(
+    '',
+    url(r'^$', views.utilities_index, name='index'),
     url(r'^gc_ms$', views.gcms_home, name='gc_ms_home'),
     url(r'^gc_ms/parse$', views.gcms_parse, name='parse_gc_ms'),
     url(r'^gc_ms/merge$', views.gcms_merge, name='merge_gc_ms'),

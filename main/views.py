@@ -14,7 +14,7 @@ from django.contrib import messages
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
-from django.db.models import Count, Q
+from django.db.models import Count, Prefetch, Q
 from django.http import (
     Http404, HttpResponse, HttpResponseNotAllowed, HttpResponseRedirect, JsonResponse, QueryDict)
 from django.http.response import HttpResponseForbidden, HttpResponseBadRequest
@@ -32,7 +32,7 @@ from . import data_import, models, sbml_export
 from .export import table
 from .forms import (
     AssayForm, CreateAttachmentForm, CreateCommentForm, CreateStudyForm, ExportOptionForm,
-    ExportSelectionForm, LineForm, MeasurementForm, )
+    ExportSelectionForm, LineForm, MeasurementForm, MeasurementValueFormSet, )
 from .ice import IceApi
 from .models import (
     Assay, Attachment, Line, Measurement, MeasurementCompartment, MeasurementGroup, MeasurementType,
@@ -147,7 +147,7 @@ class StudyDetailView(generic.DetailView):
             return True
         return False
 
-    def handle_assay_mark(self, request, context):
+    def handle_assay_mark(self, request):
         ids = request.POST.getlist('assayId', [])
         study = self.get_object()
         disable = request.POST.get('disable', None)
@@ -173,7 +173,7 @@ class StudyDetailView(generic.DetailView):
             context['new_attach'] = form
         return False
 
-    def handle_clone(self, request, context):
+    def handle_clone(self, request):
         ids = request.POST.getlist('lineId', [])
         study = self.get_object()
         cloned = 0
@@ -203,7 +203,7 @@ class StudyDetailView(generic.DetailView):
             context['new_comment'] = form
         return False
 
-    def handle_disable(self, request, context):
+    def handle_disable(self, request):
         ids = request.POST.getlist('lineId', [])
         study = self.get_object()
         disable = request.POST.get('disable', 'true')
@@ -212,7 +212,7 @@ class StudyDetailView(generic.DetailView):
         messages.success(request, '%s %s Lines' % ('Enabled' if active else 'Disabled', count))
         return True
 
-    def handle_group(self, request, context):
+    def handle_group(self, request):
         ids = request.POST.getlist('lineId', [])
         study = self.get_object()
         if len(ids) > 1:
@@ -230,10 +230,10 @@ class StudyDetailView(generic.DetailView):
         elif len(ids) == 1:
             return self.handle_line_edit(request, context, ids[0])
         else:
-            return self.handle_line_bulk(request, context, ids)
+            return self.handle_line_bulk(request, ids)
         return False
 
-    def handle_line_bulk(self, request, context, ids):
+    def handle_line_bulk(self, request, ids):
         study = self.get_object()
         total = len(ids)
         saved = 0
@@ -289,6 +289,54 @@ class StudyDetailView(generic.DetailView):
             return True
         return False
 
+    def handle_measurement_delete(self, request):
+        assay_ids = request.POST.getlist('assayId', [])
+        measure_ids = request.POST.getlist('meaurementId', [])
+        # "deleting" by setting active to False
+        Measurement.objects.filter(
+                Q(assay_id__in=assay_ids) | Q(pk__in=measure_ids)
+            ).update(
+                active=False
+            )
+        return True
+
+    def handle_measurement_edit(self, request):
+        assay_ids = request.POST.getlist('assayId', [])
+        measure_ids = request.POST.getlist('meaurementId', [])
+        measures = Measurement.objects.filter(
+                Q(assay_id__in=assay_ids) | Q(id__in=measure_ids),
+            ).select_related(
+                'assay__line', 'measurement_type',
+            ).order_by(
+                'assay__line_id', 'assay_id',
+            ).prefetch_related(
+                Prefetch('measurementvalue_set', queryset=MeasurementValue.objects.order_by('x'))
+            )
+        # map sequence of measurements to structure of unique lines/assays
+        lines = {}
+        for m in measures:
+            a = m.assay
+            l = a.line
+            line_dict = lines.setdefault(l.id, {'line': l, 'assays': {}, })
+            assay_dict = line_dict['assays'].setdefault(a.id, {
+                'assay': a,
+                'measures': collections.OrderedDict(),
+                })
+            assay_dict['measures'][m.id] = {
+                'measure': m,
+                'form': MeasurementValueFormSet(
+                    instance=m, prefix=str(m.id), queryset=m.measurementvalue_set.order_by('x')),
+                }
+        return render_to_response(
+            'main/edit_measurement.html',
+            dictionary={
+                'lines': lines,
+                'measures': measures,
+                'study': self.object,
+            },
+            context=RequestContext(request),
+            )
+
     def post(self, request, *args, **kwargs):
         self.object = self.get_object()
         action = request.POST.get('action', None)
@@ -307,7 +355,7 @@ class StudyDetailView(generic.DetailView):
             elif not can_write:
                 messages.error(request, 'You do not have permission to modify this study.')
             elif line_action == 'edit':
-                form_valid = self.handle_disable(request, context)
+                form_valid = self.handle_disable(request)
             else:
                 messages.error(request, 'Unknown line action %s' % (line_action))
         elif action == 'assay_action':
@@ -319,11 +367,11 @@ class StudyDetailView(generic.DetailView):
             elif not can_write:
                 messages.error(request, 'You do not have permission to modify this study.')
             elif assay_action == 'mark':
-                form_valid = self.handle_assay_mark(request, context)
+                form_valid = self.handle_assay_mark(request)
             elif assay_action == 'delete':
-                form_valid = self.handle_measurement_delete(request, context)
+                form_valid = self.handle_measurement_delete(request)
             elif assay_action == 'edit':
-                form_valid = self.handle_measurement_edit(request, context)
+                return self.handle_measurement_edit(request)
             else:
                 messages.error(request, 'Unknown assay action %s' % (assay_action))
         # all following require write permissions
@@ -334,11 +382,13 @@ class StudyDetailView(generic.DetailView):
         elif action == 'line':
             form_valid = self.handle_line(request, context)
         elif action == 'clone':
-            form_valid = self.handle_clone(request, context)
+            form_valid = self.handle_clone(request)
         elif action == 'group':
-            form_valid = self.handle_group(request, context)
+            form_valid = self.handle_group(request)
         elif action == 'assay':
             form_valid = self.handle_assay(request, context)
+        elif action == 'measurement':
+            form_valid = self.handle_measurement(request, context)
         if form_valid:
             study_modified.send(sender=self.__class__, study=self.object)
             return HttpResponseRedirect(reverse('main:detail', kwargs={'pk': self.object.pk}))

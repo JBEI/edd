@@ -29,17 +29,17 @@
                     <span class="user_welcome">{{ user.first_name }} {{ user.last_name }}</span>
                 </div>
                 <div>
-                    <a href="{% url 'django.contrib.auth.views.logout' %}">Logout</a>
+                    <a href="{% url 'auth:logout' %}">Logout</a>
                 </div>
                 {% if user.is_staff %}
-                    <div><a href="/admin">Data types</a></div>
+                    <div><a href="{% url 'admin:index' %}">Data types</a></div>
                 {% endif %}
             {% else %}
                 <div>
-                    <a href="{% url 'django.contrib.auth.views.login' %}">Login</a>
+                    <a href="{% url 'auth:login' %}">Login</a>
                 </div>
             {% endif %}
-            <div><a href="/utilities">Utilities</a></div>
+            <div><a href="{% url 'edd_utils:index' %}">Utilities</a></div>
             <div>
             {% block top_help %}
             <a href="{% static 'main/help/index.html' %}">Help</a>

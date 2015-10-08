@@ -1,0 +1,53 @@
+{% extends "edd_base.html" %}
+{% load form_utils %}
+{% load staticfiles %}
+{% load firstof from future %}
+
+
+{% block js_css %}
+    {{ block.super }}
+    <style type="text/css">
+    ul.edd-measurement-edit, ul.edd-measurement-edit * {
+        list-style: none;
+    }
+    ul.edd-measurement-edit li {
+        padding-left: 4em;
+    }
+    </style>
+{% endblock js_css %}
+
+
+{% block head_title %}
+    Edit Measurements &ndash; {{ study.name }} &ndash; Experiment Data Depot
+{% endblock head_title %}
+
+
+{% block body_title %}
+    <h1>Edit Measurements &ndash; <a href="{% url 'main:detail' study.pk %}">{{ study.name }}</a></h1>
+{% endblock body_title %}
+
+
+{% block content %}
+    <ul class="edd-measurement-edit">
+    {% for l in lines.values %}
+        <li>
+            <span>{{ l.line.name }} &ndash; {{ l.line.meta_store }}</span>
+            <ul>
+            {% for a in l.assays.values %}
+                <li>
+                    <span>{{ a.assay.name }} &ndash; {{ a.assay.meta_store }}</span>
+                    <ul>
+                    {% for m in a.measures.values %}
+                        <li>
+                            <span>{{ m.measure.measurement_type.type_name }}</span>
+                            {{ m.form|render }}
+                        </li>
+                    {% endfor %}
+                    </ul>
+                </li>
+            {% endfor %}
+            </ul>
+        </li>
+    {% endfor %}
+    </ul>
+{% endblock content %}

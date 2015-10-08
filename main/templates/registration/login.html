@@ -12,7 +12,7 @@
 {% endblock status %}
 
 {% block content %}
-    <form class="login_form" method="POST" action="{% url 'django.contrib.auth.views.login' %}">
+    <form class="login_form" method="POST" action="{% url 'auth:login' %}">
         {% csrf_token %}
         <fieldset>
             <legend>Login</legend>
