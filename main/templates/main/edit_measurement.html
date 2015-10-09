@@ -28,18 +28,21 @@
 
 
 {% block content %}
-    <ul class="edd-measurement-edit">
-    {% for l in lines.values %}
-        <li>
-            <span>{{ l.line.name }} &ndash; {{ l.line.meta_store }}</span>
-            <ul>
+    <form action="" method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="measureId" value="{{ measures }}"/>
+        {% for l in lines.values %}
+        <fieldset>
+            <legend>{{ l.line.name }}</legend>
+            <ul class="edd-measurement-edit">
             {% for a in l.assays.values %}
                 <li>
-                    <span>{{ a.assay.name }} &ndash; {{ a.assay.meta_store }}</span>
+                    <span>{{ a.assay.protocol.name }} &ndash; {{ a.assay.name }}</span>
                     <ul>
                     {% for m in a.measures.values %}
                         <li>
                             <span>{{ m.measure.measurement_type.type_name }}</span>
+                            {{ m.form.management_form }}
                             {{ m.form|render }}
                         </li>
                     {% endfor %}
@@ -47,7 +50,9 @@
                 </li>
             {% endfor %}
             </ul>
-        </li>
-    {% endfor %}
-    </ul>
+        </fieldset>
+        {% endfor %}
+        <input type="hidden" name="action" value="assay_action"/>
+        <button type="submit" name="assay_action" value="update">Update</button>
+    </form>
 {% endblock content %}

@@ -302,11 +302,11 @@ class StudyDetailView(generic.DetailView):
 
     def handle_measurement_edit(self, request):
         assay_ids = request.POST.getlist('assayId', [])
-        measure_ids = request.POST.getlist('meaurementId', [])
+        measure_ids = request.POST.getlist('measurementId', [])
         measures = Measurement.objects.filter(
                 Q(assay_id__in=assay_ids) | Q(id__in=measure_ids),
             ).select_related(
-                'assay__line', 'measurement_type',
+                'assay__line', 'assay__protocol__name', 'measurement_type',
             ).order_by(
                 'assay__line_id', 'assay_id',
             ).prefetch_related(
@@ -327,15 +327,58 @@ class StudyDetailView(generic.DetailView):
                 'form': MeasurementValueFormSet(
                     instance=m, prefix=str(m.id), queryset=m.measurementvalue_set.order_by('x')),
                 }
+        return self.handle_measurement_edit_response(request, lines, measures)
+
+    def handle_measurement_edit_response(self, request, lines, measures):
         return render_to_response(
             'main/edit_measurement.html',
             dictionary={
                 'lines': lines,
-                'measures': measures,
+                'measures': ','.join(['%s' % m.pk for m in measures]),
                 'study': self.object,
             },
-            context=RequestContext(request),
+            context_instance=RequestContext(request),
             )
+
+    def handle_measurement_update(self, request, context):
+        measure_ids = request.POST.get('measureId', '')
+        measures = Measurement.objects.filter(
+                id__in=measure_ids.split(',')
+            ).select_related(
+                'assay__line', 'assay__protocol__name', 'measurement_type',
+            ).order_by(
+                'assay__line_id', 'assay_id',
+            ).prefetch_related(
+                Prefetch('measurementvalue_set', queryset=MeasurementValue.objects.order_by('x'))
+            )
+        is_valid = True
+        # map sequence of measurements to structure of unique lines/assays
+        lines = {}
+        for m in measures:
+            a = m.assay
+            l = a.line
+            line_dict = lines.setdefault(l.id, {'line': l, 'assays': {}, })
+            assay_dict = line_dict['assays'].setdefault(a.id, {
+                'assay': a,
+                'measures': collections.OrderedDict(),
+                })
+            aform = MeasurementValueFormSet(
+                request.POST or None,
+                instance=m,
+                prefix=str(m.id),
+                queryset=m.measurementvalue_set.order_by('x'),
+                )
+            if aform.is_valid():
+                aform.save()
+            else:
+                is_valid = False
+            assay_dict['measures'][m.id] = {
+                'measure': m,
+                'form': aform,
+                }
+        if not is_valid:
+            return self.handle_measurement_edit_response(request, lines, measures)
+        return self.post_response(request, context, True)
 
     def post(self, request, *args, **kwargs):
         self.object = self.get_object()
@@ -372,6 +415,8 @@ class StudyDetailView(generic.DetailView):
                 form_valid = self.handle_measurement_delete(request)
             elif assay_action == 'edit':
                 return self.handle_measurement_edit(request)
+            elif assay_action == 'update':
+                return self.handle_measurement_update(request, context)
             else:
                 messages.error(request, 'Unknown assay action %s' % (assay_action))
         # all following require write permissions
@@ -389,6 +434,9 @@ class StudyDetailView(generic.DetailView):
             form_valid = self.handle_assay(request, context)
         elif action == 'measurement':
             form_valid = self.handle_measurement(request, context)
+        return self.post_response(request, context, form_valid)
+
+    def post_response(self, request, context, form_valid):
         if form_valid:
             study_modified.send(sender=self.__class__, study=self.object)
             return HttpResponseRedirect(reverse('main:detail', kwargs={'pk': self.object.pk}))
