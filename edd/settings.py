@@ -16,7 +16,6 @@ import os
 
 from django_auth_ldap.config import LDAPSearch, GroupOfUniqueNamesType
 from django.conf.global_settings import TEMPLATE_CONTEXT_PROCESSORS as TCP
-from django.conf.global_settings import LOGIN_REDIRECT_URL
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 
 
@@ -28,8 +27,8 @@ try:
     with open(os.path.join(BASE_DIR, 'server.cfg')) as server_cfg:
         config = json.load(server_cfg)
 except IOError:
-    print "Required configuration file server.cfg is missing. " \
-          "Copy from server.cfg-example and fill in appropriate values"
+    print("Required configuration file server.cfg is missing. "
+          "Copy from server.cfg-example and fill in appropriate values")
     raise
 
 

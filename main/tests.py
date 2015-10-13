@@ -13,12 +13,22 @@ from edd.profile.models import UserProfile
 from . import data_import
 from . import sbml_export
 from . import utilities
+from .forms import (
+    LineForm,
+    )
 from .models import (
     Assay, CarbonSource, GeneIdentifier, GroupPermission, Line, MeasurementType, MeasurementUnit,
     Metabolite, MetaboliteKeyword, MetadataGroup, MetadataType, Protocol, SBMLTemplate, Strain,
     Study, Update, UserPermission,
     )
 from .solr import StudySearch
+
+
+# Everything running in this file is a test, but Django only handles test instances of a
+#   database; there is no concept of a Solr test instance as far as test framework is
+#   concerned. Tests should be run with:
+#       python manage.py test --settings test_settings main
+#   Otherwise, tests will pollute the search index with several entries for testing data.
 
 
 class UserTests(TestCase):
@@ -233,6 +243,9 @@ class LineTests (TestCase):  # XXX also Strain, CarbonSource
         line1.metadata_add(md, 'M9')
         json_dict = line1.to_json()
         self.assertTrue(json_dict['meta'] == {"%s" % md.pk: "M9"})
+
+    def test_line_form(self):
+        pass
 
     def test_strain(self):
         strain1 = Strain.objects.get(name="Strain 1")
