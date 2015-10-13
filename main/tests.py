@@ -201,7 +201,8 @@ class LineTests (TestCase):  # XXX also Strain, CarbonSource
             name="Carbon source 3", labeling="40% 14C", volume=100.0)
         strain1 = Strain.objects.create(
             name="Strain 1", description="JBEI strain 1",
-            registry_url="http://registry.jbei.org/strain/666")
+            registry_url="http://registry.jbei.org/strain/666",
+            registry_id="00000000-0000-0000-0000-000000000000", )
         strain2 = Strain.objects.create(name="Strain 2")
         line1 = study1.line_set.create(
             name="Line 1", description="mutant 1", experimenter=user1, contact=user1)
@@ -245,7 +246,17 @@ class LineTests (TestCase):  # XXX also Strain, CarbonSource
         self.assertTrue(json_dict['meta'] == {"%s" % md.pk: "M9"})
 
     def test_line_form(self):
-        pass
+        line1 = Line.objects.select_related('study').get(name="Line 1")
+        # default form to existing data
+        data = LineForm.initial_from_model(line1, prefix='line')
+        # flip the checkbox for control
+        data['line-control'] = True
+        form = LineForm(data, instance=line1, prefix='line', study=line1.study)
+        # verify the form validates
+        self.assertTrue(form.is_valid(), '%s' % form._errors)
+        line2 = form.save()
+        # verify the saved line is now a control
+        self.assertTrue(line1.control != line2.control)
 
     def test_strain(self):
         strain1 = Strain.objects.get(name="Strain 1")
