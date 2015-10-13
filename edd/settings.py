@@ -37,8 +37,8 @@ except IOError:
 
 # SECURITY WARNING: keep the secret key used in production secret!
 # default quote from http://thedoomthatcametopuppet.tumblr.com/
-SECRET_KEY = config['site'].get('secret', 'I was awake and dreaming at the same time, which is why \
-                                            this only works for local variables')
+SECRET_KEY = config['site'].get('secret', 'I was awake and dreaming at the same time, which is '
+                                          'why this only works for local variables')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
