@@ -110,6 +110,7 @@ class StudyDetailView(generic.DetailView):
 
     def get_context_data(self, **kwargs):
         context = super(StudyDetailView, self).get_context_data(**kwargs)
+        context['edit_study'] = CreateStudyForm(instance=self.get_object(), prefix='study')
         context['new_assay'] = AssayForm(prefix='assay')
         context['new_attach'] = CreateAttachmentForm()
         context['new_comment'] = CreateCommentForm()
@@ -289,6 +290,14 @@ class StudyDetailView(generic.DetailView):
             return True
         return False
 
+    def handle_update(self, request, context):
+        study = self.get_object()
+        form = CreateStudyForm(request.POST or None, instance=study, prefix='study')
+        if form.is_valid():
+            self.object = form.save()  # make sure we're updating the view object
+            return True
+        return False
+
     def post(self, request, *args, **kwargs):
         self.object = self.get_object()
         action = request.POST.get('action', None)
@@ -339,6 +348,8 @@ class StudyDetailView(generic.DetailView):
             form_valid = self.handle_group(request, context)
         elif action == 'assay':
             form_valid = self.handle_assay(request, context)
+        elif action == 'update':
+            form_valid = self.handle_update(request, context)
         if form_valid:
             study_modified.send(sender=self.__class__, study=self.object)
             return HttpResponseRedirect(reverse('main:detail', kwargs={'pk': self.object.pk}))

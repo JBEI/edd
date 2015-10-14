@@ -221,12 +221,14 @@ class CreateStudyForm(forms.ModelForm):
         model = Study
         fields = ['name', 'description', 'contact', ]
         labels = {
-            'name': _('Study'),
-            'contact': _('Contact'),
+            'name': _('Study Name'),
             'description': _('Description'),
+            'contact': _('Contact'),
         }
         widgets = {
-            'contact': UserAutocompleteWidget()
+            'name': forms.widgets.TextInput(attrs={'size': 50}),
+            'description': forms.widgets.Textarea(attrs={'cols': 100}),
+            'contact': UserAutocompleteWidget(),
         }
 
     def __init__(self, *args, **kwargs):
