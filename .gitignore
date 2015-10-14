@@ -12,4 +12,6 @@ edd/local_settings.py
 /media
 /upload
 /uploads
+# and ignore local log directory
+/log
 

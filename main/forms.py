@@ -354,8 +354,8 @@ class LineForm(forms.ModelForm):
         # initially hidden via "off" class
         for fieldname, field in self.fields.items():
             field.label = mark_safe(
-                '<input type="checkbox" class="off bulk" name="_bulk_%s" checked="checked"/>%s' %
-                (fieldname, field.label)
+                '<input type="checkbox" class="off bulk" name="%s" checked="checked" '
+                'value/>%s' % (self.add_prefix('_bulk_%s' % fieldname), field.label)
                 )
         # make sure strain is keyed by registry_id instead of pk
         self.fields['strains'].to_field_name = 'registry_id'
@@ -372,16 +372,17 @@ class LineForm(forms.ModelForm):
         for fieldname in cls._meta.fields:
             widget = cls._meta.widgets.get(fieldname, None)
             value = getattr(line, fieldname)
+            fieldkey = '%s-%s' % (prefix, fieldname) if prefix else fieldname
             # need to split MultiWidget values into each widget value
             if isinstance(widget, forms.widgets.MultiWidget):
                 for i, part in enumerate(widget.decompress(value)):
-                    initial[fieldname + '_%s' % i] = part
+                    initial['%s_%s' % (fieldkey, i)] = part
             # HStoreField gives back a dict; must serialize to json
             elif isinstance(value, dict):
-                initial[fieldname] = json.dumps(value)
+                initial[fieldkey] = json.dumps(value)
             # everything else shove value into fieldname
             else:
-                initial[fieldname] = value
+                initial[fieldkey] = value
         return initial
 
     def check_bulk_edit(self):
@@ -389,7 +390,7 @@ class LineForm(forms.ModelForm):
         exclude = []
         # Look for "bulk-edit" checkboxes for each field
         for field in self.visible_fields():
-            check = '_bulk_%s' % (field.name)
+            check = self.add_prefix('_bulk_%s' % field.name)
             if check not in self.data:
                 exclude.append(field.name)
         # remove fields without a check from self, preventing processing

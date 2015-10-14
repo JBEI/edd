@@ -2,7 +2,7 @@
     "site": {
         "root": "http://localhost/edd/",
         "host": "localhost",
-        "secret": "GENERATE SOME RANDOM TEXT HERE"
+        "secret": "GENERATE SOME RANDOM TEXT HERE",
         "admins": { "William": "wcmorrell@lbl.gov" },
         "media_root": "/var/www/uploads",
         "media_url": "/uploads/"
