@@ -1,15 +1,21 @@
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
 import base64
 import hashlib
 import hmac
 import json
+import logging
 import requests
-import os
 
-from django.conf import settings
 from django.core.urlresolvers import reverse
 from edd.settings import config
 from requests.auth import AuthBase
 from requests.compat import urlparse
+
+
+logger = logging.getLogger(__name__)
+timeout = (10, 10)  # tuple for request connection and read timeouts, respectively, in seconds
 
 
 class HmacAuth(AuthBase):
@@ -52,8 +58,9 @@ class HmacAuth(AuthBase):
 
 
 class IceApi(object):
-    """
-    """
+    """ TODO: extremely basic interface to ICE API; should eventually expand to cover more
+        of the API, modularize (i.e. so others can just import jbei.ice), and document. """
+
     def __init__(self, ident=None, url=None, settings_key='default'):
         self.ident = ident
         if url is not None:
@@ -61,44 +68,71 @@ class IceApi(object):
         else:
             self.url = 'https://registry-test.jbei.org/'
 
-    def fetch_part(self, record_id):
-        url = self.url + 'rest/parts/' + record_id
+    def fetch_part(self, record_id, raise_error=False):
+        """ Retrieves a part using any of the unique identifiers: part number, synthetic id, or
+            GUID. Returns a tuple of a dict containing ICE JSON representation of a part and the
+            URL for the part; or a tuple of None and the URL if there was a non-success HTTP
+            result; or None if there were errors making the request. """
+        url = '%srest/parts/%s' % (self.url, record_id)
         auth = HmacAuth(ident=self.ident)
-        response = requests.request('GET', url, auth=auth)
-        if response.status_code == requests.codes.ok:
-            return (response.json(), url, )
+        try:
+            response = requests.get(url=url, auth=auth, timeout=timeout)
+        except requests.exceptions.Timeout as e:
+            logger.error("Timeout requesting part %s: %s", record_id, e)
+            if raise_error:
+                raise e
+        else:
+            if response.status_code == requests.codes.ok:
+                return (response.json(), url, )
+            return (None, url, )
         return None
 
-    def link_study_to_part(self, study, strain):
-        url = self.url + 'rest/parts/' + strain.registry_id + '/experiments'
+    def link_study_to_part(self, study, strain, raise_error=False):
+        url = '%srest/parts/%s/experiments' % (self.url, strain.registry_id)
         auth = HmacAuth(ident=self.ident)
-        response = requests.request('GET', url, auth=auth)
-        study_url = reverse('main:detail', kwargs={'pk':study.pk})
-        data = { 'url': study_url, 'label': study.name, 'created': study.created().mod_time }
-        found = False
-        if response.status_code == requests.codes.ok:
-            for exp in response.json():
-                if exp.url == study_url:
-                    found = True
-        if not found:
-            requests.request('POST', url, auth=auth,
-                             data=json.dumps(data),
-                             headers={ 'Content-Type': 'application/json; charset=utf8' },
-                             )
+        try:
+            response = requests.get(url=url, auth=auth, timeout=timeout)
+        except requests.exceptions.Timeout as e:
+            logger.error("Timeout requesting part %s experiments: %s", strain.registry_id, e)
+            if raise_error:
+                raise e
+        else:
+            study_url = reverse('main:detail', kwargs={'pk': study.pk})
+            data = {
+                'url': study_url,
+                'label': study.name,
+                'created': study.created().mod_time,
+                }
+            found = (response.status_code == requests.codes.ok and
+                     any(map(lambda exp: exp.get('url', None) == study_url, response.json())))
+            if not found:
+                try:
+                    requests.post(
+                        url=url, auth=auth, data=json.dumps(data), timeout=timeout,
+                        headers={'Content-Type': 'application/json; charset=utf8'},
+                        )
+                except requests.exceptions.Timeout as e:
+                    logger.error("Timeout posting study to part: %s", e)
+                    if raise_error:
+                        raise e
 
-    def search_for_part(self, query):
+    def search_for_part(self, query, raise_error=False):
         if self.ident is None:
             raise RuntimeError('No user defined for ICE search')
-        url = self.url + 'rest/search'
+        url = '%srest/search' % self.url
         auth = HmacAuth(ident=self.ident)
-        data = { 'queryString': query }
-        headers = { 'Content-Type': 'application/json; charset=utf8' }
-        response = requests.request('POST', url,
-                                    auth=auth,
-                                    data=json.dumps(data),
-                                    headers=headers,
-                                    )
-        if response.status_code == requests.codes.ok:
-            return response.json()
-        else:
-            raise Exception('Searching ICE failed')
+        data = {'queryString': query}
+        headers = {'Content-Type': 'application/json; charset=utf8'}
+        try:
+            response = requests.post(
+                url=url, auth=auth, data=json.dumps(data), headers=headers, timeout=timeout)
+            if response.status_code == requests.codes.ok:
+                return response.json()
+            elif raise_error:
+                raise Exception('Searching ICE failed')
+            else:
+                return None
+        except requests.exceptions.Timeout as e:
+            logger.error("Timeout searching ICE: %s", e)
+            if raise_error:
+                raise e
