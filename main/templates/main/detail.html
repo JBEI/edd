@@ -43,6 +43,23 @@
 {% block content %}
     <div class="pageSection">
         <div class="sectionHead" id="genInfoViewBanner">General Information</div>
+        {% if writable %}
+        <div class="disclose">
+            <div class="sectionChapter">
+                <span class="discloseLink">Edit Details</span>
+            </div>
+            <div class="sectionActions discloseBody">
+                <form action="" class="edd-form" enctype="multipart/form-data" method="POST">
+                    {% csrf_token %}
+                    {{ edit_study.as_p }}
+                    <p>
+                        <label></label>
+                        <button id="update_study" name="action" value="update">Update Study</button>
+                    </p>
+                </form>
+            </div>
+        </div>
+        {% else %}
         <div class="sectionContent" id="genInfoView">
             <dl class="infolist">
                 <dt>Description</dt>
@@ -58,6 +75,7 @@
                 </dd>
             </dl>
         </div>
+        {% endif %}
         {% if writable %}
         <div class="disclose discloseHide" id="permissions">
             <div class="sectionChapter" id="permissionsBanner">
