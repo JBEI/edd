@@ -191,11 +191,18 @@ class MetadataGroup(models.Model):
 
 class MetadataType(models.Model):
     """ Type information for arbitrary key-value data stored on EDDObject instances. """
-    STUDY = 'S'
-    LINE = 'L'
-    PROTOCOL = 'P'
-    LINE_OR_PROTOCOL = 'LP'
-    ALL = 'LPS'
+
+    # defining values to use in the for_context field
+    STUDY = 'S'  # metadata stored in a Study meta_store
+    STUDY_FIELD = 'SF'  # metadata stored in a Study field
+    LINE = 'L'  # metadata stored in a Line meta_store
+    LINE_FIELD = 'LF'  # metadata stored in a Line field
+    # TODO: these are not named well
+    PROTOCOL = 'P'  # FIXME metadata stored in an Assay meta_store
+    ASSAY_FIELD = 'AF'  # metadata stored in an Assay field
+    LINE_OR_PROTOCOL = 'LP'  # FIXME these should be split into distinct Line and Assay types
+    ALL = 'LPS'  # FIXME these should be split into distict types
+    # TODO: support metadata on other EDDObject types (Protocol, Strain, Carbon Source, etc)
     CONTEXT_SET = (
         (STUDY, 'Study'),
         (LINE, 'Line'),
@@ -206,17 +213,24 @@ class MetadataType(models.Model):
 
     class Meta:
         db_table = 'metadata_type'
+    # optionally link several metadata types into a common group
     group = models.ForeignKey(MetadataGroup)
+    # a default label for the type; should normally use i18n lookup for display
     type_name = models.CharField(max_length=255, unique=True)
+    # an i18n lookup for type label; for types that are 'field', is also be the object property
+    # e.g. the 'Description' metadata type for Studies would use 'Study.description' as i18n key
     type_i18n = models.CharField(max_length=255, blank=True, null=True)
+    # size of input text field; TODO support more input classes
     input_size = models.IntegerField(default=6)
+    # a default value to use if the field is left blank
     default_value = models.CharField(max_length=255, blank=True)
+    # label used to prefix values
     prefix = models.CharField(max_length=255, blank=True)
+    # label used to postfix values (e.g. unit specifier)
     postfix = models.CharField(max_length=255, blank=True)
+    # target object for metadata
     for_context = models.CharField(max_length=8, choices=CONTEXT_SET)
-    # TODO: add a type_class field and utility method to take a Metadata.data_value and return
-    #   a model instance; e.g. type_class = 'CarbonSource' would do a
-    #   CarbonSource.objects.get(pk=value)
+    # type of data saved, None defaults to a bare string
     type_class = models.CharField(max_length=255, blank=True, null=True)
 
     @classmethod
