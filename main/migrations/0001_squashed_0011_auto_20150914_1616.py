@@ -9,8 +9,6 @@ import django.contrib.postgres.fields.hstore
 
 class Migration(migrations.Migration):
 
-    replaces = [(b'main', '0001_initial'), (b'main', '0002_measurementvalue'), (b'main', '0003_auto_20150707_1759'), (b'main', '0004_auto_20150714_1553'), (b'main', '0005_auto_20150728_1817'), (b'main', '0006_study_metabolic_map'), (b'main', '0007_auto_20150820_1813'), (b'main', '0008_auto_20150826_1631'), (b'main', '0009_auto_20150910_1630'), (b'main', '0010_auto_20150914_1555'), (b'main', '0011_auto_20150914_1616')]
-
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
         ('auth', '0006_require_contenttypes_0002'),
