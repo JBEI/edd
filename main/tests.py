@@ -87,7 +87,7 @@ class StudyTests(TestCase):
         MetadataType.objects.create(
             type_name="Some key 3",
             group=mdg1,
-            for_context=MetadataType.PROTOCOL)
+            for_context=MetadataType.ASSAY)
 
     def tearDown(self):
         TestCase.tearDown(self)
@@ -223,7 +223,7 @@ class LineTests (TestCase):  # XXX also Strain, CarbonSource
             type_name="Media", group=mdg1, for_context=MetadataType.LINE)
         mdg2 = MetadataGroup.objects.create(group_name="Assay metadata")
         MetadataType.objects.create(
-            type_name="Sample volume", group=mdg2, for_context=MetadataType.PROTOCOL)
+            type_name="Sample volume", group=mdg2, for_context=MetadataType.ASSAY)
 
     def test_line_metadata(self):
         line1 = Line.objects.get(name="Line 1")

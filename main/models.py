@@ -193,35 +193,33 @@ class MetadataType(models.Model):
     """ Type information for arbitrary key-value data stored on EDDObject instances. """
 
     # defining values to use in the for_context field
-    STUDY = 'S'  # metadata stored in a Study meta_store
-    STUDY_FIELD = 'SF'  # metadata stored in a Study field
-    LINE = 'L'  # metadata stored in a Line meta_store
-    LINE_FIELD = 'LF'  # metadata stored in a Line field
-    # TODO: these are not named well
-    PROTOCOL = 'P'  # FIXME metadata stored in an Assay meta_store
-    ASSAY_FIELD = 'AF'  # metadata stored in an Assay field
-    LINE_OR_PROTOCOL = 'LP'  # FIXME these should be split into distinct Line and Assay types
-    ALL = 'LPS'  # FIXME these should be split into distict types
+    STUDY = 'S'  # metadata stored in a Study
+    LINE = 'L'  # metadata stored in a Line
+    ASSAY = 'A'  # metadata stored in an Assay
     # TODO: support metadata on other EDDObject types (Protocol, Strain, Carbon Source, etc)
     CONTEXT_SET = (
         (STUDY, 'Study'),
         (LINE, 'Line'),
-        (PROTOCOL, 'Protocol'),
-        (LINE_OR_PROTOCOL, 'Line or Protocol'),
-        (ALL, 'All'),
+        (ASSAY, 'Assay'),
     )
 
     class Meta:
         db_table = 'metadata_type'
+        unique_together = (('type_name', 'for_context', ), )
     # optionally link several metadata types into a common group
-    group = models.ForeignKey(MetadataGroup)
+    group = models.ForeignKey(MetadataGroup, blank=True, null=True)
     # a default label for the type; should normally use i18n lookup for display
-    type_name = models.CharField(max_length=255, unique=True)
-    # an i18n lookup for type label; for types that are 'field', is also be the object property
-    # e.g. the 'Description' metadata type for Studies would use 'Study.description' as i18n key
+    type_name = models.CharField(max_length=255)
+    # an i18n lookup for type label
+    # NOTE: migration 0005_SYNBIO-1120_linked_metadata adds a partial unique index to this field
+    # i.e. CREATE UNIQUE INDEX … ON metadata_type(type_i18n) WHERE type_i18n IS NOT NULL
     type_i18n = models.CharField(max_length=255, blank=True, null=True)
-    # size of input text field; TODO support more input classes
+    # field to store metadata, or None if stored in meta_store
+    type_field = models.CharField(max_length=255, blank=True, null=True, default=None)
+    # size of input text field
     input_size = models.IntegerField(default=6)
+    # type of the input; support checkboxes, autocompletes, etc
+    input_type = models.CharField(max_length=255, blank=True, null=True)
     # a default value to use if the field is left blank
     default_value = models.CharField(max_length=255, blank=True)
     # label used to prefix values
@@ -391,13 +389,21 @@ class EDDObject(models.Model):
 
     @classmethod
     def metadata_type_frequencies(cls):
+        return dict(
+            MetadataType.objects.extra(select={
+                'count': 'SELECT COUNT(1) FROM edd_object o '
+                         'INNER JOIN %s x ON o.id = x.object_ref_id '
+                         'WHERE o.meta_store ? metadata_type.id::varchar'
+                         % cls._meta.db_table
+                }).values_list('id', 'count')
+            )
         # TODO should be able to do this in the database
-        freqs = defaultdict(int)
-        for obj in cls.objects.all():
-            mdtype_keys = obj.meta_store.keys()
-            for mdtype_id in mdtype_keys:
-                freqs[int(mdtype_id)] += 1
-        return freqs
+        # freqs = defaultdict(int)
+        # for obj in cls.objects.all():
+        #     mdtype_keys = obj.meta_store.keys()
+        #     for mdtype_id in mdtype_keys:
+        #         freqs[int(mdtype_id)] += 1
+        # return freqs
 
     def get_metadata_item(self, key=None, pk=None):
         assert ([pk, key].count(None) == 1)
@@ -442,25 +448,44 @@ class EDDObject(models.Model):
         if not metatype.is_allowed_object(self):
             raise ValueError("The metadata type '%s' does not apply to %s objects." % (
                 metatype.type_name, type(self)))
-        if append:
-            prev = self.metadata_get(metatype)
-            if hasattr(prev, 'append'):
-                prev.append(value)
-                value = prev
-            elif prev is not None:
-                value = [prev, value, ]
-        self.meta_store['%s' % metatype.pk] = metatype.encode_value(value)
+        if metatype.type_field is None:
+            if append:
+                prev = self.metadata_get(metatype)
+                if hasattr(prev, 'append'):
+                    prev.append(value)
+                    value = prev
+                elif prev is not None:
+                    value = [prev, value, ]
+            self.meta_store['%s' % metatype.pk] = metatype.encode_value(value)
+        else:
+            temp = getattr(self, metatype.type_field)
+            if hasattr(temp, 'add'):
+                if append:
+                    temp.add(value)
+                else:
+                    setattr(self, metatype.type_field, [value, ])
+            else:
+                setattr(self, metatype.type_field, value)
 
     def metadata_clear(self, metatype):
         """ Removes all metadata of the type from this object. """
-        del self.meta_store['%s' % metatype.pk]
+        if metatype.type_field is None:
+            del self.meta_store['%s' % metatype.pk]
+        else:
+            temp = getattr(self, metatype.type_field)
+            if hasattr(temp, 'clear'):
+                temp.clear()
+            else:
+                setattr(self, metatype.type_field, None)
 
     def metadata_get(self, metatype, default=None):
         """ Returns the metadata on this object matching the type. """
-        value = self.meta_store.get('%s' % metatype.pk, None)
-        if value is None:
-            return default
-        return metatype.decode_value(value)
+        if metatype.type_field is None:
+            value = self.meta_store.get('%s' % metatype.pk, None)
+            if value is None:
+                return default
+            return metatype.decode_value(value)
+        return getattr(self, metatype.type_field)
 
     def metadata_remove(self, metatype, value):
         """ Removes metadata with a value matching the argument for the type. """

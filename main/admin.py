@@ -7,10 +7,15 @@ from django.contrib.auth.admin import UserAdmin
 from django.db.models import Count
 from django.utils.translation import ugettext_lazy as _
 from django_auth_ldap.backend import LDAPBackend
-from main.forms import UserAutocompleteWidget
-from main.models import *
-from main.sbml_export import validate_sbml_attachment
-from main.solr import *
+
+from .forms import UserAutocompleteWidget
+from .models import (
+    Assay, Attachment, CarbonSource, GeneIdentifier, GroupPermission, Line, MeasurementGroup,
+    MeasurementType, Metabolite, MetadataGroup, MetadataType, Phosphor, ProteinIdentifier,
+    Protocol, SBMLTemplate, Strain, Study, Update, UserPermission,
+    )
+from .sbml_export import validate_sbml_attachment
+from main.solr import StudySearch, UserSearch
 
 
 class AttachmentInline(admin.TabularInline):
@@ -66,7 +71,7 @@ class MetadataTypeAdmin(admin.ModelAdmin):
         q = super(MetadataTypeAdmin, self).get_queryset(request)
         self._num_lines = Line.metadata_type_frequencies()
         self._num_assay = Assay.metadata_type_frequencies()
-        #q = q.annotate(num_lines=Count('line'), num_studies=Count('line__study', distinct=True))
+        # q = q.annotate(num_lines=Count('line'), num_studies=Count('line__study', distinct=True))
         return q
 
     def is_line(self, instance):
@@ -77,7 +82,7 @@ class MetadataTypeAdmin(admin.ModelAdmin):
     def is_protocol(self, instance):
         return instance.for_protocol()
     is_protocol.boolean = True
-    is_protocol.short_description = 'Protocols/Assays?'
+    is_protocol.short_description = 'Assays?'
 
     def num_lines(self, instance):
         return self._num_lines.get(instance.pk, 0)
@@ -104,8 +109,8 @@ class ProtocolAdminForm(forms.ModelForm):
         fields = ('name', 'variant_of', 'active', 'owned_by', 'description', 'default_units', )
         help_texts = {
             'owned_by': _('(A user who is allowed to edit this protocol, even if not an Admin.)'),
-            'default_units': _('(When measurement data are imported without units, this will ' +
-                    'automatically be assigned.)'),
+            'default_units': _('(When measurement data are imported without units, this will '
+                               'automatically be assigned.)'),
         }
         labels = {
             'name': _('Protocol'),
@@ -129,7 +134,7 @@ class ProtocolAdminForm(forms.ModelForm):
 class ProtocolAdmin(EDDObjectAdmin):
     """ Definition for admin-edit of Protocols """
     form = ProtocolAdminForm
-    list_display = ['name', 'description', 'active', 'variant_of', 'owner',]
+    list_display = ['name', 'description', 'active', 'variant_of', 'owner', ]
     inlines = (AttachmentInline, )
 
     def save_model(self, request, obj, form, change):
@@ -238,6 +243,7 @@ class UserPermissionInline(admin.TabularInline):
             kwargs['widget'] = UserAutocompleteWidget()
         return db_field.formfield(**kwargs)
 
+
 class GroupPermissionInline(admin.TabularInline):
     """ Inline submodel for editing group permissions """
     model = GroupPermission
@@ -285,7 +291,7 @@ class SBMLTemplateAdmin(EDDObjectAdmin):
 
     def get_fields(self, request, obj=None):
         if obj:
-            return ('name', 'description', 'sbml_file', 'biomass_calculation' ,)
+            return ('name', 'description', 'sbml_file', 'biomass_calculation',)
         # Only show attachment inline for NEW templates
         return ((), )
 
@@ -350,7 +356,7 @@ class EDDUserAdmin(UserAdmin):
 
     def solr_index(self, request, queryset):
         solr = UserSearch()
-        # optimize queryset to fetch profile with JOIN, and single 
+        # optimize queryset to fetch profile with JOIN, and single
         # queries for group/institutions instead of one per record
         q = queryset.select_related('userprofile')
         q = q.prefetch_related('groups', 'userprofile__institutions')
@@ -363,7 +369,7 @@ class EDDUserAdmin(UserAdmin):
             ldap_user = backend.get_user(user.pk)
             try:
                 ldap_user.ldap_user._mirror_groups()
-            except Exception, e:
+            except Exception:
                 # _mirror_groups fails when ldap_user is not Active, so delete all groups
                 user.groups.clear()
     update_groups_from_ldap.short_description = 'Update Groups from LDAP'
