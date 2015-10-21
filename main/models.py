@@ -286,34 +286,30 @@ class MetadataType(models.Model):
         return '%s' % value
 
     def for_line(self):
-        return (self.for_context == self.LINE or
-                self.for_context == self.LINE_OR_PROTOCOL or
-                self.for_context == self.ALL)
+        return (self.for_context == self.LINE)
 
-    def for_protocol(self):
-        return (self.for_context == self.PROTOCOL or
-                self.for_context == self.LINE_OR_PROTOCOL or
-                self.for_context == self.ALL)
+    def for_assay(self):
+        return (self.for_context == self.ASSAY)
 
     def for_study(self):
-        return (self.for_context == self.STUDY or
-                self.for_context == self.ALL)
+        return (self.for_context == self.STUDY)
 
     def __str__(self):
         return self.type_name
 
     def to_json(self):
+        # TODO: refactor to have sane names in EDDDataInterface.ts
         return {
             "id": self.pk,
-            "gn": self.group.group_name,
-            "gid": self.group.id,
+            "gn": self.group.group_name if self.group else None,
+            "gid": self.group.id if self.group else None,
             "name": self.type_name,
             "is": self.input_size,
             "pre": self.prefix,
             "postfix": self.postfix,
             "default": self.default_value,
             "ll": self.for_line(),
-            "pl": self.for_protocol(),
+            "pl": self.for_assay(),
             "context": self.for_context,
         }
 
