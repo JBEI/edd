@@ -3,17 +3,12 @@
 // XXX obtained from http://jsfiddle.net/alforno/g4stL/
 // see copyright notice below
 //
-// TODO this is basically just a proof-of-concept - it is only used for the
-// user field in a single view, but it has been confirmed to work with the
-// (very crude) generic search function in edd.main.views.  A production
-// version should use SOLR instead of Django to execute the search.
-//
 
-var EDD_auto = EDD_auto || {};
-var EDDData = EDDData || {};
+var EDD_auto = EDD_auto || {}, EDDData = EDDData || {};
 (function ($) { // immediately invoked function to bind jQuery to $
 
-    var AutoColumn = function AutoColumn(name, width, valueField) {
+    var AutoColumn, meta_columns;
+    AutoColumn = function AutoColumn(name, width, valueField) {
         this.name = name;
         this.width = width;
         this.valueField = valueField;
@@ -24,24 +19,35 @@ var EDDData = EDDData || {};
     // Static specification of column layout for each model in EDD that we want to
     // make searchable.  (This might be better done as a static JSON file
     // somewhere.)
+    meta_columns = [
+        new AutoColumn('Name', '200px', 'name'),
+        new AutoColumn('For', '50px', function (item, column, index) {
+            var con = item.context;
+            return $('<span>').addClass('tag').text(
+                con === 'L' ? 'Line' : con === 'A' ? 'Assay' : con === 'S' ? 'Study' : '?');
+        })
+    ];
     EDD_auto.column_layouts = $.extend(EDD_auto.column_layouts || {}, {
-        "User" : [
+        "User": [
             new AutoColumn('User', '150px', 'fullname'),
             new AutoColumn('Initials', '60px', 'initials'),
             new AutoColumn('E-mail', '150px', 'email')
             ],
-        "Strain" : [
+        "Strain": [
             new AutoColumn('Part ID', '100px', 'partId'),
             new AutoColumn('Name', '150px', 'name'),
             new AutoColumn('Description', '250px', 'shortDescription')
             ],
-        "CarbonSource" : [
+        "CarbonSource": [
             new AutoColumn('Name', '150px', 'name'),
             new AutoColumn('Volume', '60px', 'volume'),
             new AutoColumn('Labeling', '100px', 'labeling'),
             new AutoColumn('Description', '250px', 'description'),
             new AutoColumn('Initials', '60px', 'initials')
-            ]
+            ],
+        // when it's ambiguous what metadata is targetting, include the 'for' column
+        "MetadataType": meta_columns,
+        "AssayLineMetadataType": meta_columns
     });
     EDD_auto.display_keys = $.extend(EDD_auto.display_keys || {}, {
         "User": 'fullname',
@@ -74,7 +80,9 @@ var EDDData = EDDData || {};
 $(function () {
     var valOrNbsp, createCell;
     valOrNbsp = function valOrNbsp(jQ, value) {
-        if (value && value.trim()) {
+        if (typeof value === 'object') {
+            jQ.append(value);
+        } else if (value && value.trim()) {
             jQ.text(value);
         } else {
             jQ.html('&nbsp;');
@@ -110,7 +118,16 @@ $(function () {
             result = $('<li>').data('ui-autocomplete-item', item).appendTo(ul);
             anchor = $('<a>').addClass('mcacAnchor').appendTo(result);
             $.each(this.options.columns, function (index, column) {
-                var value = item[column.valueField ? column.valueField : index];
+                var value;
+                if (column.valueField) {
+                    if (typeof column.valueField === 'function') {
+                        value = column.valueField.call({}, item, column, index);
+                    } else {
+                        value = item[column.valueField];
+                    }
+                } else {
+                    value = item[index];
+                }
                 if (value instanceof Array) {
                     value = value[0] || '';
                 }
@@ -267,12 +284,16 @@ $(window).load(function () {
         return this;
     };
     setup_info = [
-        new AutoOpts('.autocomp_user',    'User',            'Users'),
-        new AutoOpts('.autocomp_reg',     'Strain',          'Strains'),
-        new AutoOpts('.autocomp_carbon',  'CarbonSource',    'CSources'),
-        new AutoOpts('.autocomp_type',    'MetadataType',    'MetaDataTypes'),
-        new AutoOpts('.autocomp_metabol', 'Metabolite',      'MetaboliteTypes'),
-        new AutoOpts('.autocomp_measure', 'MeasurementType', 'MeasurementTypes')
+        new AutoOpts('.autocomp_user',    'User',                  'Users'),
+        new AutoOpts('.autocomp_reg',     'Strain',                'Strains'),
+        new AutoOpts('.autocomp_carbon',  'CarbonSource',          'CSources'),
+        new AutoOpts('.autocomp_type',    'MetadataType',          'MetaDataTypes'),
+        new AutoOpts('.autocomp_atype',   'AssayMetadataType',     'MetaDataTypes'),
+        new AutoOpts('.autocomp_altype',  'AssayLineMetadataType', 'MetaDataTypes'),
+        new AutoOpts('.autocomp_ltype',   'LineMetadataType',      'MetaDataTypes'),
+        new AutoOpts('.autocomp_stype',   'StudyMetadataType',     'MetaDataTypes'),
+        new AutoOpts('.autocomp_metabol', 'Metabolite',            'MetaboliteTypes'),
+        new AutoOpts('.autocomp_measure', 'MeasurementType',       'MeasurementTypes')
     ];
     setup_info.forEach(function (item) {
         var setup_func = function () {

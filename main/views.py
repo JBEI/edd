@@ -1181,6 +1181,9 @@ def utilities_parse_table(request):
                 return default_error
 
 
+meta_pattern = re.compile(r'(\w*)MetadataType$')
+
+
 # /search
 def search(request):
     """ Naive implementation of model-independent server-side autocomplete backend,
@@ -1203,7 +1206,7 @@ def search(request):
         results = [{'id': item.pk, 'name': item.name} for item in found]
     elif model_name == "StudyWrite":
         found = Study.objects.distinct().filter(
-            Q(name__iregex=term) | Q(description__iregex=term),
+            Q(name__iregex=re_term) | Q(description__iregex=re_term),
             Q(userpermission__user=request.user, userpermission__permission_type='W') |
             Q(grouppermission__group__user=request.user, grouppermission__permission_type='W'))
         results = [item.to_json() for item in found]
@@ -1215,6 +1218,27 @@ def search(request):
         found = MeasurementType.objects.filter(
                 Q(type_group__in=(MeasurementGroup.GENERIC, MeasurementGroup.METABOLITE, )) &
                 (Q(type_name__iregex=re_term) | Q(short_name__iregex=re_term)),
+            )[:20]
+        results = [item.to_json() for item in found]
+    elif meta_pattern.match(model_name):
+        # add appropriate filters for Assay, AssayLine, Line, Study
+        match = meta_pattern.match(model_name)
+        type_filters = []
+        if match.group(1) == 'Study':
+            type_filters.append(Q(for_context='S'))
+        elif match.group(1) == 'Line':
+            type_filters.append(Q(for_context='L'))
+        elif match.group(1) == 'Assay':
+            type_filters.append(Q(for_context='A'))
+        elif match.group(1) == 'AssayLine':
+            type_filters.append(Q(for_context='L'))
+            type_filters.append(Q(for_context='A'))
+        # TODO: search core that will also search resolved i18n values
+        term_filters = [Q(type_name__iregex=re_term), Q(group__group_name__iregex=re_term)]
+        found = MetadataType.objects.filter(
+            reduce(operator.or_, type_filters, Q())
+            ).filter(
+            reduce(operator.or_, term_filters, Q())
             )[:20]
         results = [item.to_json() for item in found]
     else:
