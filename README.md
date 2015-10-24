@@ -299,8 +299,10 @@ This section contains directions for setting up a development environment on EDD
 
 * Apache setup <a name="Apache_Deb"/>
     * mod_wsgi: `sudo apt-get install libapache2-mod-wsgi`
+    * Make sure the apache modules are enabled, with `a2enmod ssl`, and `a2enmod wsgi`
     * See `apache.conf-sample` for example of how to configure Apache
     * Ensure that `/var/www/uploads/` exists and is writable by user `www-data`
+
 * TODO complete Debian instructions
  
 ---------------------------------------------------------------------------------------------------

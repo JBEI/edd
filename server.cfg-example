@@ -42,7 +42,7 @@
         "url": "https://registry-test.jbei.org/",
         "cert": "./certs/registry-test.pem",
         "edd_key": "yJwU0chpercYs/R4YmCUxhbRZBHM4WqpO3ZH0ZW6+4X+/aTodSGTI2w5jeBxWgJXNN1JNQIg02Ic3ZnZtSEVYA=="
-    }
+    },
 
     "rabbitmq": {
         "hostname": "localhost",
