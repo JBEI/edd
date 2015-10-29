@@ -9,7 +9,7 @@ import errno
 import os
 
 from django.core.management.base import BaseCommand
-from edd.settings import MEDIA_ROOT
+from edd.local_settings import MEDIA_ROOT
 from main.models import Attachment
 from optparse import make_option
 

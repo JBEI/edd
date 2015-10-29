@@ -7,7 +7,7 @@ import json
 import os
 
 from celery import Celery
-from edd.settings import config
+from edd.local_settings import config
 
 
 ## Broker Settings

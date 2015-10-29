@@ -7,6 +7,8 @@ from collections import defaultdict
 from decimal import Decimal
 from uuid import UUID
 import json
+from django.contrib.sites.models import Site
+from threadlocals.threadlocals import get_current_request
 import os.path
 
 
@@ -314,6 +316,20 @@ class line_export_base (object) :
     return self._get_measurements_by_type_group(assay_id,
       group_flag=MeasurementGroup.PROTEINID,
       sort_by_name=sort_by_name)
+
+
+def get_absolute_url(relative_url):
+    """
+    Computes the absolute URL for the specified relative URL.
+    :param relative_url: the relative URL
+    :return: the absolute URL
+    """
+
+    current_request = get_current_request()
+    protocol = 'https://'
+    if current_request and not current_request.is_secure():
+        protocol = 'http://'
+    return protocol + Site.objects.get_current().domain + relative_url
 
 extensions_to_icons = {
     '.zip' : 'icon-zip.png',

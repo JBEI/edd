@@ -44,6 +44,8 @@ from .utilities import (
     JSONDecimalEncoder, get_edddata_carbon_sources, get_edddata_measurement, get_edddata_misc,
     get_edddata_strains, get_edddata_study, get_edddata_users, get_selected_lines)
 
+from edd.local_settings import ICE_URL
+
 
 logger = logging.getLogger(__name__)
 
@@ -1195,8 +1197,8 @@ def search(request):
         found = solr.query(query=term, options={'edismax': True})
         results = found['response']['docs']
     elif model_name == "Strain":
-        ice = IceApi(ident=request.user)
-        found = ice.search_for_part(term)
+        ice = IceApi(base_url=ICE_URL, user_email=request.user.email)
+        found = ice.search_for_part(term, suppress_errors=True)
         results = [match.get('entryInfo', dict()) for match in found.get('results', [])]
     elif model_name == "Group":
         found = Group.objects.filter(name__iregex=re_term).order_by('name')[:20]
