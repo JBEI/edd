@@ -8,6 +8,7 @@ import os.path
 import re
 import warnings
 
+from builtins import str
 from collections import defaultdict
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -17,6 +18,7 @@ from django.db import models
 from django.db.models import F, Func
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
+from functools import reduce
 from itertools import chain
 from six import string_types
 from threadlocals.threadlocals import get_current_request
@@ -159,12 +161,12 @@ class Attachment(models.Model):
 
     def user_can_delete(self, user):
         """ Verify that a user has the appropriate permissions to delete an attachment. """
-        return object_ref.user_can_write(user)
+        return self.object_ref.user_can_write(user)
 
     def user_can_read(self, user):
         """ Verify that a user has the appropriate permissions to see (that is, download) an
             attachment. """
-        return object_ref.user_can_read(user)
+        return self.object_ref.user_can_read(user)
 
     def save(self, *args, **kwargs):
         if self.created_id is None:
@@ -238,10 +240,10 @@ class MetadataType(models.Model):
         # reduce all into a set to get only unique ids
         ids = reduce(lambda a, b: a.union(b), all_ids, set())
         return MetadataType.objects.filter(
-                pk__in=ids,
-            ).order_by(
-                Func(F('type_name'), function='LOWER'),
-            )
+            pk__in=ids,
+        ).order_by(
+            Func(F('type_name'), function='LOWER'),
+        )
 
     def load_type_class(self):
         if self.type_class is not None:
@@ -316,8 +318,8 @@ class MetadataType(models.Model):
     @classmethod
     def all_with_groups(cls):
         return cls.objects.select_related("group").order_by(
-                Func(F('type_name'), function='LOWER'),
-            )
+            Func(F('type_name'), function='LOWER'),
+        )
 
     def is_allowed_object(self, obj):
         """ Indicate whether this metadata type can be associated with the given object based on
@@ -601,14 +603,14 @@ class Study(EDDObject):
 
     def user_can_read(self, user):
         return user.is_superuser or user.is_staff or any(p.is_read() for p in chain(
-                self.userpermission_set.filter(user=user),
-                self.grouppermission_set.filter(group__user=user)
+            self.userpermission_set.filter(user=user),
+            self.grouppermission_set.filter(group__user=user)
         ))
 
     def user_can_write(self, user):
         return super(Study, self).user_can_write(user) or any(p.is_write() for p in chain(
-                self.userpermission_set.filter(user=user),
-                self.grouppermission_set.filter(group__user=user)
+            self.userpermission_set.filter(user=user),
+            self.grouppermission_set.filter(group__user=user)
         ))
 
     def get_combined_permission(self):
@@ -822,10 +824,12 @@ class Strain(EDDObject):
         return json_dict
 
     @property
-    def n_lines(self): return _n_lines(self)
+    def n_lines(self):
+        return _n_lines(self)
 
     @property
-    def n_studies(self): return _n_studies(self)
+    def n_studies(self):
+        return _n_studies(self)
 
 
 class CarbonSource(EDDObject):
@@ -847,10 +851,12 @@ class CarbonSource(EDDObject):
         return json_dict
 
     @property
-    def n_lines(self): return _n_lines(self)
+    def n_lines(self):
+        return _n_lines(self)
 
     @property
-    def n_studies(self): return _n_studies(self)
+    def n_studies(self):
+        return _n_studies(self)
 
     def __str__(self):
         return "%s (%s)" % (self.name, self.labeling)
@@ -948,7 +954,7 @@ class Line(EDDObject):
             into integers, and return the next highest integer for creating a new assay.  (This
             will result in duplication of names for Assays of different protocols under the same
             Line, but the frontend displays Assay.long_name, which should be unique.) """
-        if isinstance(protocol, basestring):  # assume Protocol.name
+        if isinstance(protocol, str):  # assume Protocol.name
             protocol = Protocol.objects.get(name=protocol)
         assays = self.assay_set.filter(protocol=protocol)
         existing_assay_numbers = []
@@ -961,12 +967,6 @@ class Line(EDDObject):
         if len(existing_assay_numbers) > 0:
             assay_start_id = max(existing_assay_numbers) + 1
         return assay_start_id
-
-    def user_can_read(self, user):
-        return study.user_can_read(user)
-
-    def user_can_write(self, user):
-        return study.user_can_write(user)
 
 
 class MeasurementGroup(object):
@@ -1233,12 +1233,6 @@ class Assay(EDDObject):
             'experimenter': self.experimenter_id,
             })
         return json_dict
-
-    def user_can_read(self, user):
-        return line.user_can_read(user)
-
-    def user_can_write(self, user):
-        return line.user_can_write(user)
 
 
 class MeasurementCompartment(object):

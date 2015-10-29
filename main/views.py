@@ -295,24 +295,24 @@ class StudyDetailView(generic.DetailView):
         measure_ids = request.POST.getlist('meaurementId', [])
         # "deleting" by setting active to False
         Measurement.objects.filter(
-                Q(assay_id__in=assay_ids) | Q(pk__in=measure_ids)
-            ).update(
-                active=False
-            )
+            Q(assay_id__in=assay_ids) | Q(pk__in=measure_ids)
+        ).update(
+            active=False
+        )
         return True
 
     def handle_measurement_edit(self, request):
         assay_ids = request.POST.getlist('assayId', [])
         measure_ids = request.POST.getlist('measurementId', [])
         measures = Measurement.objects.filter(
-                Q(assay_id__in=assay_ids) | Q(id__in=measure_ids),
-            ).select_related(
-                'assay__line', 'assay__protocol__name', 'measurement_type',
-            ).order_by(
-                'assay__line_id', 'assay_id',
-            ).prefetch_related(
-                Prefetch('measurementvalue_set', queryset=MeasurementValue.objects.order_by('x'))
-            )
+            Q(assay_id__in=assay_ids) | Q(id__in=measure_ids),
+        ).select_related(
+            'assay__line', 'assay__protocol__name', 'measurement_type',
+        ).order_by(
+            'assay__line_id', 'assay_id',
+        ).prefetch_related(
+            Prefetch('measurementvalue_set', queryset=MeasurementValue.objects.order_by('x'))
+        )
         # map sequence of measurements to structure of unique lines/assays
         lines = {}
         for m in measures:
@@ -344,14 +344,14 @@ class StudyDetailView(generic.DetailView):
     def handle_measurement_update(self, request, context):
         measure_ids = request.POST.get('measureId', '')
         measures = Measurement.objects.filter(
-                id__in=measure_ids.split(',')
-            ).select_related(
-                'assay__line', 'assay__protocol__name', 'measurement_type',
-            ).order_by(
-                'assay__line_id', 'assay_id',
-            ).prefetch_related(
-                Prefetch('measurementvalue_set', queryset=MeasurementValue.objects.order_by('x'))
-            )
+            id__in=measure_ids.split(',')
+        ).select_related(
+            'assay__line', 'assay__protocol__name', 'measurement_type',
+        ).order_by(
+            'assay__line_id', 'assay_id',
+        ).prefetch_related(
+            Prefetch('measurementvalue_set', queryset=MeasurementValue.objects.order_by('x'))
+        )
         is_valid = True
         # map sequence of measurements to structure of unique lines/assays
         lines = {}
@@ -665,13 +665,13 @@ def study_assay_table_data(request, study):
     protocols = Protocol.objects.all()
     lines = model.line_set.all()
     return JsonResponse({
-            "ATData": {
-                "existingProtocols": {p.id: p.name for p in protocols},
-                "existingLines": [{"n": l.name, "id": l.id} for l in lines],
-                "existingAssays": model.get_assays_by_protocol(),
-            },
-            "EDDData": get_edddata_study(model),
-        }, encoder=JSONDecimalEncoder)
+        "ATData": {
+            "existingProtocols": {p.id: p.name for p in protocols},
+            "existingLines": [{"n": l.name, "id": l.id} for l in lines],
+            "existingAssays": model.get_assays_by_protocol(),
+        },
+        "EDDData": get_edddata_study(model),
+    }, encoder=JSONDecimalEncoder)
 
 
 # /study/<study_id>/map/
@@ -680,13 +680,14 @@ def study_map(request, study):
     obj = load_study(request, study)
     try:
         mmap = SBMLTemplate.objects.get(study=obj)
-        return JsonResponse({
+        return JsonResponse(
+            {
                 "name": mmap.name,
                 "id": mmap.pk,
                 "biomassCalculation": mmap.biomass_calculation,
-                },
-            encoder=JSONDecimalEncoder
-            )
+            },
+            encoder=JSONDecimalEncoder,
+        )
     except SBMLTemplate.DoesNotExist as e:
         return JsonResponse({"name": "", "biomassCalculation": -1, }, encoder=JSONDecimalEncoder)
     except Exception as e:
@@ -820,14 +821,14 @@ def study_import_rnaseq_edgepro(request, study):
             messages["error"] = str(e)
     protocol = Protocol.objects.get(name="Transcriptomics")
     assays_ = Assay.objects.filter(
-            protocol=protocol,
-            line__study=study
-        ).prefetch_related(
-            "measurement_set"
-        ).select_related(
-            "line",
-            "protocol"
-        )
+        protocol=protocol,
+        line__study=study,
+    ).prefetch_related(
+        "measurement_set",
+    ).select_related(
+        "line",
+        "protocol",
+    )
     assay_info = []
     for assay in assays_:
         assay_info.append({
@@ -926,8 +927,8 @@ def study_export_sbml(request, study):
             debug=True)
     except ValueError as e:
         return render(request, "main/error.html", {
-          "error_source": "SBML export for %s" % model.name,
-          "error_message": str(e),
+            "error_source": "SBML export for %s" % model.name,
+            "error_message": str(e),
         })
     else:
         # two levels of exception handling allow us to view whatever steps
@@ -1020,11 +1021,11 @@ def data_sbml_reaction_species(request, sbml_id, rxn_id):
             rxn.getSpecies() for rxn in found[0].getListOfProducts()
             ]
         matched = MetaboliteSpecies.objects.filter(
-                species__in=all_species,
-                sbml_template_id=sbml_id,
-            ).select_related(
-                'measurement_type',
-            )
+            species__in=all_species,
+            sbml_template_id=sbml_id,
+        ).select_related(
+            'measurement_type',
+        )
         matched_json = {m.species: m.measurement_type.to_json() for m in matched}
         unmatched = [s for s in all_species if s not in matched_json]
         # old EDD tries to generate SBML species names for all metabolites and match
@@ -1066,11 +1067,12 @@ def data_sbml_compute(request, sbml_id, rxn_id):
             for sp in species:
                 try:
                     m = MetaboliteSpecies.objects.get(
-                            species=sp.getSpecies(),
-                            sbml_template_id=sbml_id,
-                        ).select_related('measurement_type__metabolite')
+                        species=sp.getSpecies(),
+                        sbml_template_id=sbml_id,
+                    ).select_related('measurement_type__metabolite')
                     total += sp.getStoichiometry() * m.measurement_type.metabolite.carbon_count
-                    info.push({
+                    info.push(
+                        {
                             "metaboliteName": sp.getSpecies(),
                             "stoichiometry": sp.getStoichiometry(),
                             "carbonCount": m.measurement_type.metabolite.carbon_count,
@@ -1084,11 +1086,13 @@ def data_sbml_compute(request, sbml_id, rxn_id):
         product_info = []
         biomass = sumMetaboliteStoichiometries(reactants, reactant_info)
         biomass -= sumMetaboliteStoichiometries(products, product_info)
-        info = json.dumps({
+        info = json.dumps(
+            {
                 "reaction_id": rxn_id,
                 "reactants": reactant_info,
                 "products": product_info,
-            }, cls=JSONDecimalEncoder)
+            },
+            cls=JSONDecimalEncoder)
         sbml.biomass_calculation = biomass
         sbml.biomass_calculation_info = info
         sbml.save()
@@ -1103,12 +1107,14 @@ def data_strains(request):
 
 # /data/metadata
 def data_metadata(request):
-    return JsonResponse({
+    return JsonResponse(
+        {
             "EDDData": {
                 "MetadataTypes":
                     {m.id: m.to_json() for m in MetadataType.objects.all()},
             }
-        }, encoder=JSONDecimalEncoder)
+        },
+        encoder=JSONDecimalEncoder)
 
 
 # /data/carbonsources
@@ -1216,9 +1222,9 @@ def search(request):
     elif model_name == "GenericOrMetabolite":
         # searching for EITHER a generic measurement OR a metabolite
         found = MeasurementType.objects.filter(
-                Q(type_group__in=(MeasurementGroup.GENERIC, MeasurementGroup.METABOLITE, )) &
-                (Q(type_name__iregex=re_term) | Q(short_name__iregex=re_term)),
-            )[:20]
+            Q(type_group__in=(MeasurementGroup.GENERIC, MeasurementGroup.METABOLITE, )) &
+            (Q(type_name__iregex=re_term) | Q(short_name__iregex=re_term)),
+        )[:20]
         results = [item.to_json() for item in found]
     elif meta_pattern.match(model_name):
         # add appropriate filters for Assay, AssayLine, Line, Study
@@ -1244,12 +1250,14 @@ def search(request):
     else:
         Model = getattr(models, model_name)
         # gets all the direct field names that can be filtered by terms
-        ifields = [f.get_attname()
-                   for f in Model._meta.get_fields()
-                   if hasattr(f, 'get_attname') and (
-                        f.get_internal_type() == 'TextField' or
-                        f.get_internal_type() == 'CharField')
-                   ]
+        ifields = [
+            f.get_attname()
+            for f in Model._meta.get_fields()
+            if hasattr(f, 'get_attname') and (
+                f.get_internal_type() == 'TextField' or
+                f.get_internal_type() == 'CharField'
+                )
+            ]
         # term_filters = []
         term_filters = [Q(**{f+'__iregex': re_term}) for f in ifields]
         # construct a Q object for each term/field combination
