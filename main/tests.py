@@ -83,11 +83,11 @@ class StudyTests(TestCase):
         MetadataType.objects.create(
             type_name="Some key 2",
             group=mdg1,
-            for_context=MetadataType.ALL)
+            for_context=MetadataType.LINE)
         MetadataType.objects.create(
             type_name="Some key 3",
             group=mdg1,
-            for_context=MetadataType.PROTOCOL)
+            for_context=MetadataType.ASSAY)
 
     def tearDown(self):
         TestCase.tearDown(self)
@@ -144,9 +144,8 @@ class StudyTests(TestCase):
     def test_study_metadata(self):
         study = Study.objects.get(name='Test Study 1')
         study.set_metadata_item("Some key", "1.234")
-        study.set_metadata_item("Some key 2", "5.678")
         self.assertTrue(study.get_metadata_item("Some key") == "1.234")
-        self.assertTrue(study.get_metadata_dict() == {'Some key 2': '5.678', 'Some key': '1.234'})
+        self.assertTrue(study.get_metadata_dict() == {'Some key': '1.234'})
         try:
             study.set_metadata_item("Some key 3", "9.876")
         except ValueError:
@@ -223,7 +222,7 @@ class LineTests (TestCase):  # XXX also Strain, CarbonSource
             type_name="Media", group=mdg1, for_context=MetadataType.LINE)
         mdg2 = MetadataGroup.objects.create(group_name="Assay metadata")
         MetadataType.objects.create(
-            type_name="Sample volume", group=mdg2, for_context=MetadataType.PROTOCOL)
+            type_name="Sample volume", group=mdg2, for_context=MetadataType.ASSAY)
 
     def test_line_metadata(self):
         line1 = Line.objects.get(name="Line 1")

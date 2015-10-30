@@ -420,9 +420,9 @@ var StudyD;
             var uniqueNamesId = {}, unique = 0;
             this.filterHash = this.filterHash || {};
             ids.forEach(function (assayId) {
-                var protocol = _this._assayIdToProtocol(assayId) || {};
+                var protocol = _this._assayIdToProtocol(assayId);
                 _this.filterHash[assayId] = _this.filterHash[assayId] || [];
-                if (protocol.name) {
+                if (protocol && protocol.name) {
                     uniqueNamesId[protocol.name] = uniqueNamesId[protocol.name] || ++unique;
                     _this.filterHash[assayId].push(uniqueNamesId[protocol.name]);
                 }
@@ -1274,22 +1274,25 @@ var StudyD;
         return form;
     }
     function fillAssayForm(form, record) {
+        var user = EDDData.Users[record.experimenter];
         form.find('[name=assay-assay_id]').val(record.id);
         form.find('[name=assay-name]').val(record.name);
         form.find('[name=assay-description]').val(record.description);
         form.find('[name=assay-protocol]').val(record.pid);
-        form.find('[name=assay-experimenter_0]').val((EDDData.Users[record.experimenter] || {}).uid || '--');
+        form.find('[name=assay-experimenter_0]').val(user && user.uid ? user.uid : '--');
         form.find('[name=assay-experimenter_1]').val(record.experimenter);
     }
     function fillLineForm(form, record) {
-        var metaRow;
+        var metaRow, experimenter, contact;
+        experimenter = EDDData.Users[record.experimenter];
+        contact = EDDData.Users[record.contact.user_id];
         form.find('[name=line-ids]').val(record.id);
         form.find('[name=line-name]').val(record.name);
         form.find('[name=line-description]').val(record.description);
         form.find('[name=line-control]').prop('checked', record.control);
-        form.find('[name=line-contact_0]').val(record.contact.text || (EDDData.Users[record.contact.user_id] || {}).uid || '--');
+        form.find('[name=line-contact_0]').val(record.contact.text || (contact && contact.uid ? contact.uid : '--'));
         form.find('[name=line-contact_1]').val(record.contact.user_id);
-        form.find('[name=line-experimenter_0]').val((EDDData.Users[record.experimenter] || {}).uid || '--');
+        form.find('[name=line-experimenter_0]').val(experimenter && experimenter.uid ? experimenter.uid : '--');
         form.find('[name=line-experimenter_1]').val(record.experimenter);
         form.find('[name=line-carbon_source_0]').val(record.carbon.map(function (v) { return (EDDData.CSources[v] || {}).name || '--'; }).join(','));
         form.find('[name=line-carbon_source_1]').val(record.carbon.join(','));

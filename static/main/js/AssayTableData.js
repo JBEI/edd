@@ -1186,9 +1186,9 @@ EDDATD = {
                 disam.metaObj = EDD_auto.create_autocomplete(row.insertCell()).val(name);
                 EDDATD.Disam.metadataObjSets[name] = disam;
             }
-            disam.metaObj.attr('name', 'disamMeta' + (i + 1)).addClass('autocomp_type')
+            disam.metaObj.attr('name', 'disamMeta' + (i + 1)).addClass('autocomp_altype')
                 .next().attr('name', 'disamMetaHidden' + (i + 1));
-            EDD_auto.setup_field_autocomplete(disam.metaObj, 'MetadataType', EDDATD.AutoCache.meta);
+            EDD_auto.setup_field_autocomplete(disam.metaObj, 'AssayLineMetadataType', EDDATD.AutoCache.meta);
         });
     },
     // Create the Step 4 table:  A set of rows, one for each y-axis column of data,
