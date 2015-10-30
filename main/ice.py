@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 import base64
 import hashlib
 import hmac
@@ -8,7 +10,7 @@ import logging
 
 from requests.auth import AuthBase
 from requests.compat import urlparse
-from edd.local_settings import ICE_SECRET_HMAC_KEY, ICE_REQUEST_TIMEOUT
+from edd.local_settings import ICE_URL, ICE_SECRET_HMAC_KEY, ICE_REQUEST_TIMEOUT
 
 """
     Defines classes and utility methods used to communicate with the Index of Composable Elements (ICE), a.k.a. the
@@ -52,10 +54,17 @@ class HmacAuth(AuthBase):
     """
     Implements Hash-based Message Authentication Codes (HMAC). HMAC guarantees that: A) a message has been generated
     by a holder of the secret key, and B) that its contents haven't been altered since the auth code was generated.
+    :param user_email the email address of the user who messages will be attributed to. Overrides the value provided by
+    user_auth if both are present. At least one is required.
+    :param user_auth an object that encapsulates information for the user that messages will be attributed to. Either
+    user_auth or user_email is required.
+    :raises ValueError if no user email address is provided.
     """
 
-    def __init__(self, user_email=None, settings_key='default'):
-        self._USER_EMAIL = user_email
+    def __init__(self, user_email=None, user_auth=None, settings_key='default'):
+        if not user_email or (user_auth and user_auth.email):
+            raise ValueError("At least one source of email address is required")
+        self._USER_EMAIL = user_email if not None else user_auth.email
         self._SETTINGS_KEY = settings_key
 
     def __call__(self, request):
@@ -106,7 +115,7 @@ class IceApi(object):
 
     """
 
-    def __init__(self, base_url, user_email, timeout=ICE_REQUEST_TIMEOUT):
+    def __init__(self, user_email, base_url=ICE_URL, timeout=ICE_REQUEST_TIMEOUT):
         """
         Creates a new instance of IceApi
         :param user_email: the email address of the user who persistent ICE changes will be attributed to.
@@ -152,7 +161,7 @@ class IceApi(object):
     def search_for_part(self, query, suppress_errors=False):
         if self.user_email is None:
             raise RuntimeError('No user defined for ICE search')
-        url = self.base_url + '/rest/search'
+        url = '%s/rest/search' % self.base_url
         auth = HmacAuth(user_email=self.user_email)
         data = {'queryString': query}
         headers = {'Content-Type': 'application/json; charset=utf8'}

@@ -10,7 +10,8 @@ flowerconfig.py where most of the flower configuration data are.
 import socket
 
 from datetime import timedelta
-from edd.local_settings import config
+from django.conf import settings
+from edd.settings import config
 from edd_utils.parsers.json_encoders import *
 
 #######################################################################################################################
@@ -18,11 +19,14 @@ from edd_utils.parsers.json_encoders import *
 #######################################################################################################################
 
 CELERY_SEND_TASK_ERROR_EMAILS = True  # controls both initial retry warning email and the subsequent failure/resolution message
-EMAIL_HOST_USER = config['email'].get('user', '')
-EMAIL_HOST_PASSWORD = config['email'].get('pass', '')
-EMAIL_HOST = config['email'].get('host', 'localhost')
-EMAIL_PORT = config['email'].get('port', 25)
 SERVER_EMAIL = "celery@" + socket.gethostname()
+
+# identically-named settings from Django...this way we at least have an explicit  list of what's inherited
+EMAIL_HOST_USER = settings.EMAIL_HOST_USER
+EMAIL_HOST_PASSWORD = settings.EMAIL_HOST_PASSWORD
+EMAIL_HOST = settings.EMAIL_HOST
+EMAIL_PORT = settings.EMAIL_PORT
+
 
 #######################################################################################################################
 # EDD-specific configuration for Celery (NOT Celery-defined constants as in the rest of the file

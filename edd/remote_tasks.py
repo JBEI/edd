@@ -27,7 +27,7 @@ from celery import shared_task
 from celery.utils.log import get_task_logger
 from celery.exceptions import SoftTimeLimitExceeded
 
-from edd.local_settings import *
+from edd.settings import *
 
 from django.db import transaction
 
@@ -165,20 +165,9 @@ def link_ice_entry_to_study(self, edd_user_email, line_pk, strain_pk, study_pk, 
         # configuration) while EDD is still running. This significant potential delay creates the possibility for this
         # task to have cached stale EDD data from the time at which it was submitted.
 
-        # results = Strain.objects.filter(pk=study_pk, created=study_creation_datetime, line__pk=line_pk,
-        #                                line__created=line_creation_datetime, line__study__pk=study_pk,
-        #                                line__study__created=study_creation_datetime).values('registry_url')
-        # registry_url = results.get() # throws DoesNotExist, MultipleObjectsReturned
-
         strain = None
         with transaction.atomic():  # using=config['db'].get('database', 'edddjango')
             # Note: we query from line since it has the strain and study links
-
-            # line = Line.objects.filter(pk=line_pk, created__mod_time=line_creation_utc, strains__pk=strain_pk,
-            #                            strains__created__mod_time=strain_creation_utc, study__pk=study_pk,
-            #                            study__created__mod_time=study_creation_utc).select_related('study',
-            #                                                                                        'study__created') \
-            #     .prefetch_related('strains').get()
 
             line = Line.objects.filter(study__pk=study_pk, study__created__mod_time=study_creation_datetime,
                                        strains__pk=strain_pk, strains__created__mod_time=strain_creation_datetime, ) \
@@ -199,7 +188,7 @@ def link_ice_entry_to_study(self, edd_user_email, line_pk, strain_pk, study_pk, 
         # this method.
         # TODO: after removing the workaround, use, ice_strain_id = strain.registry_id.__str__(), or if using
         # Python 3, maybe strain.registry_id.to_python()
-        strain_entry_id = parse_entry_id(strain.registry_url)
+        workaround_strain_entry_id = parse_entry_id(strain.registry_url)
 
         # finish early if we don't have enough information to find the ICE entry for this strain
         if (not registry_url) or (not registry_id):
@@ -209,11 +198,11 @@ def link_ice_entry_to_study(self, edd_user_email, line_pk, strain_pk, study_pk, 
 
         # make a request via ICE's REST API to link the ICE strain to the EDD study that references it
         study = line.study
-        ice = IceApi(base_url=ICE_URL, user_email=edd_user_email)
-        ice.link_entry_to_study(strain_entry_id.__str__(), study.pk, study_url, study.name, logger=celery_logger,
+        ice = IceApi(user_email=edd_user_email)
+        ice.link_entry_to_study(workaround_strain_entry_id.__str__(), study.pk, study_url, study.name, logger=celery_logger,
                                 old_study_name=old_study_name)
 
-    # catch and re-raise Exceptions that indicate the database relationships have changed
+    # catch Exceptions that indicate the database relationships have changed
     except (Line.DoesNotExist, Strain.DoesNotExist) as d:
         celery_logger.warning(
             "Marking task " + self.request.id + " as complete without taking any action since its inputs are stale."
@@ -313,7 +302,7 @@ def unlink_ice_entry_from_study(self, edd_user_email, study_pk, study_url, study
                 return _STALE_OR_ERR_INPUT  # succeed after sending the warning
 
         # remove the study link from ICE
-        ice = IceApi(base_url=ICE_URL, user_email=edd_user_email)
+        ice = IceApi(user_email=edd_user_email)
         removed = ice.unlink_entry_from_study(strain_registry_id, study_pk, study_url, celery_logger)
 
         # if no link existed to remove, send a warning email, since something may have gone wrong. seems likely that

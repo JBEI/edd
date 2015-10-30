@@ -195,6 +195,43 @@ DATABASES = {
     },
 }
 
+# Default logging configuration -- for production
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'simple': {
+            'format': '%(asctime)s Thread %(thread)d %(name)-12s %(levelname)-8s %(message)s',
+        },
+    },
+    'filters': {
+        'require_debug_true': {
+            '()': 'django.utils.log.RequireDebugTrue',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+    },
+    'loggers': {
+        'django.db.backends': {
+            'level': 'WARNING',
+            'handlers': ['console', ],
+        },
+        'main': {
+            'level': 'INFO',
+            'handlers': ['console', ],
+        },
+        'edd': {
+            'level': 'INFO',
+            'handlers': ['console', ],
+        },
+    },
+}
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/1.7/topics/i18n/

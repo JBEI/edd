@@ -20,8 +20,6 @@ from .models import (
     Assay, Attachment, CarbonSource, Comment, Line, Measurement, MeasurementType,
     MeasurementValue, MetadataType, Protocol, Strain, Study, StudyPermission, Update, )
 
-from edd.local_settings import ICE_URL
-
 User = get_user_model()
 logger = logging.getLogger(__name__)
 
@@ -156,7 +154,7 @@ class RegistryAutocompleteWidget(AutocompleteWidget):
             logger.warning('No Strain found with registry_id %s, searching ICE' % (value, ))
             try:
                 update = Update.load_update()
-                ice = IceApi(base_url=ICE_URL, user_email=update.mod_by.email)
+                ice = IceApi(user_email=update.mod_by.email)
                 (part, url) = ice.fetch_part(value, suppress_errors=True)
                 if part:
                     strain = Strain(
