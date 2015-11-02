@@ -27,7 +27,7 @@ from edd_utils.parsers.json_encoders import datetime_dumps, datetime_loads, EXTE
 #######################################################################################################################
 # Load urls and authentication credentials from server.cfg (TODO: some other stuff in there should be moved here)
 #######################################################################################################################
-BASE_DIR = os.path.dirname(os.path.dirname('__file__'))
+BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 try:
     with open(os.path.join(BASE_DIR, 'server.cfg')) as server_cfg:
         config = json.load(server_cfg)
