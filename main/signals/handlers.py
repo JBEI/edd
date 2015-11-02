@@ -1,25 +1,25 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
-from django.contrib.auth import get_user_model
-from django.db import transaction
-from django.db.models.signals import pre_save, post_save, pre_delete, post_delete, m2m_changed
-from django.dispatch import receiver
-from main.models import Study, Line, Strain, Update
-from main.solr import StudySearch, UserSearch
-from django.core.urlresolvers import reverse as urlreverse
-from django.db import connection
-from edd.local_settings import ICE_URL, USE_CELERY
-from main.ice import parse_entry_id
 import logging
 
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.core.urlresolvers import reverse as urlreverse
+from django.db import connection, transaction
+from django.db.models.signals import m2m_changed, post_delete, post_save, pre_save, pre_delete
+from django.dispatch import receiver
+
 from . import study_modified, study_removed, user_modified
-from main.utilities import get_absolute_url
+from ..ice import parse_entry_id
+from ..models import Line, Strain, Study, Update
+from ..solr import StudySearch, UserSearch
+from ..utilities import get_absolute_url
 
 solr = StudySearch()
 users = UserSearch()
 logger = logging.getLogger(__name__)
 
-if USE_CELERY:
+if settings.USE_CELERY:
     from edd.remote_tasks import link_ice_entry_to_study, unlink_ice_entry_from_study
 else:
     from main.ice import IceApi
@@ -64,6 +64,9 @@ def index_study(sender, study, **kwargs):
 def unindex_study(sender, study, **kwargs):
     solr.remove([study, ])
 
+@receiver(user_modified)
+def index_user(sender, user, **kwargs):
+    users.update([user, ])
 
 def log_update_warning_msg(study_id):
     logger.warning("ICE URL is not configured. Skipping attempt to link ICE parts to EDD study \"" + study_id + "\"")
@@ -71,7 +74,7 @@ def log_update_warning_msg(study_id):
 
 @receiver(pre_save, sender=Study, dispatch_uid="main.signals.handlers_study_pre_save")
 def handle_study_pre_save(sender, instance, **kwargs):
-    if not ICE_URL:
+    if not settings.ICE_URL:
         logger.warning('ICE URL is not configured. Skipping ICE experiment link updates.')
         return
 
@@ -90,13 +93,13 @@ def handle_study_post_save(sender, instance, created, **kwargs):
     If it has, and if the study is associated with any ICE strains, updates the corresponding ICE entry(ies) to label
     links to this study with its new name.
     """
-    if not ICE_URL:
+    if not settings.ICE_URL:
         logger.warning('ICE URL is not configured. Skipping ICE experiment link updates.')
         return
 
     logger.info("Start " + handle_study_post_save.__name__ + "()")
 
-    if not ICE_URL:
+    if not settings.ICE_URL:
         logger.warning('ICE URL is not configured. Skipping ICE experiment link updates.')
         return
 
@@ -119,7 +122,7 @@ def handle_study_post_save(sender, instance, created, **kwargs):
         user_email = update.mod_by.email
 
         try:
-            ice = IceApi(user_email) if not USE_CELERY else None
+            ice = IceApi(user_email) if not settings.USE_CELERY else None
 
             # filter out strains that don't have enough information to link to ICE
             strains_to_link = []
@@ -133,14 +136,13 @@ def handle_study_post_save(sender, instance, created, **kwargs):
                 strains_to_link.append(strain)
 
             # schedule ICE updates as soon as the database changes commit
-            connection.on_commit(lambda: _post_commit_link_ice_entry_to_study(user_email, study,
-                                                                              None, None, strains_to_link))
+            connection.on_commit(lambda: _post_commit_link_ice_entry_to_study(user_email, study, None, strains_to_link))
             logger.info("Scheduled post-commit work to update labels for %d of %d strains associated with study %d"
                         % (len(strains_to_link), strains.count(), study.pk))
 
         # if an error occurs, print a helpful log message, then re-raise it so Django will email administrators
         except RuntimeError as rte:
-            if USE_CELERY:
+            if settings.USE_CELERY:
                 logger.exception("Error submitting study link rename task(s) to Celery for study id= %d" % study.pk,
                                  rte)
             else:
@@ -157,7 +159,7 @@ def handle_line_pre_delete(sender, instance, **kwargs):
     """
     logger.debug("Start " + handle_line_pre_delete.__name__ + "()")
 
-    if not ICE_URL:
+    if not settings.ICE_URL:
         logger.warning('ICE URL is not configured. Skipping ICE experiment link updates.')
         return
 
@@ -179,7 +181,7 @@ def handle_line_post_delete(sender, instance, **kwargs):
     """
     logger.debug("Start " + handle_line_post_delete.__name__ + "()")
 
-    if not ICE_URL:
+    if not settings.ICE_URL:
         logger.warning('ICE URL is not configured. Skipping ICE experiment link updates.')
         return
 
@@ -219,7 +221,7 @@ def _post_commit_unlink_ice_entry_from_study(user_email, study_pk, study_creatio
     """
     logger.info('Start ' + _post_commit_unlink_ice_entry_from_study.__name__ + '()')
 
-    ice = IceApi(user_email) if not USE_CELERY else None
+    ice = IceApi(user_email) if not settings.USE_CELERY else None
 
     study_url = get_abs_study_url(study_pk)
 
@@ -247,9 +249,8 @@ def _post_commit_unlink_ice_entry_from_study(user_email, study_pk, study_creatio
             # Python 3, maybe strain.registry_id.to_python(). Note that the JSON lib has no built-in support for UUIDs
             workaround_strain_id = parse_entry_id(strain.registry_url)
 
-            if USE_CELERY:
-                async_result = unlink_ice_entry_from_study.delay(user_email, study_pk, study_url,
-                                                                 study_creation_datetime, strain.registry_url,
+            if settings.USE_CELERY:
+                async_result = unlink_ice_entry_from_study.delay(user_email, study_pk, study_url, strain.registry_url,
                                                                  workaround_strain_id)
                 track_celery_task_submission(async_result)
             else:
@@ -257,22 +258,21 @@ def _post_commit_unlink_ice_entry_from_study(user_email, study_pk, study_creatio
             change_count += 1
             index += 1
 
-        if USE_CELERY:
+        if settings.USE_CELERY:
             logger.info("Submitted %d jobs to Celery" % change_count)
         else:
             logger.info("Updated %d links via direct HTTP requests" % change_count)
 
     # if an error occurs, print a helpful log message, then re-raise it so Django will email administrators
     except RuntimeError as rte:
-        if USE_CELERY:
+        if settings.USE_CELERY:
             logger.exception("Exception submitting job to Celery (index=%d)" % index, rte)
         else:
             logger.exception("Exception updating ICE links via HTTP requests (index=%d)" % index, rte)
         raise rte
 
 
-def _post_commit_link_ice_entry_to_study(user_email, study, line_pk,
-                                         line_creation_datetime, linked_strains):
+def _post_commit_link_ice_entry_to_study(user_email, study, line_pk, linked_strains):
     """
     Helper method to do the final work in scheduling a Celery task or ICE REST API call to add a link from ICE AFTER
     the database transaction that implements the EDD portion of the linking has committed.
@@ -280,7 +280,7 @@ def _post_commit_link_ice_entry_to_study(user_email, study, line_pk,
     method be passed to the post-commit hook.
     :param linked_strains cached strain information
     """
-    ice = IceApi(user_email) if not USE_CELERY else None
+    ice = IceApi(user_email) if not settings.USE_CELERY else None
 
     index = 0
 
@@ -291,11 +291,8 @@ def _post_commit_link_ice_entry_to_study(user_email, study, line_pk,
         for strain in linked_strains:
             # If Celery is configured, use it to perform the communication with ICE,
             # along with retries/failure notifications, etc.
-            if USE_CELERY:
-                async_result = link_ice_entry_to_study.delay(user_email, line_pk, strain.pk, study.pk,
-                                                             study_url, line_creation_datetime,
-                                                             study.created.mod_time,
-                                                             strain.created.mod_time)
+            if settings.USE_CELERY:
+                async_result = link_ice_entry_to_study.delay(user_email, line_pk, strain.pk, study.pk, study_url)
                 track_celery_task_submission(async_result)
             # Otherwise, communicate with ICE synchronously during signal processing
             else:
@@ -314,7 +311,7 @@ def _post_commit_link_ice_entry_to_study(user_email, study, line_pk,
 
     # if an error occurs, print a helpful log message, then re-raise it so Django will email administrators
     except RuntimeError as rte:
-        if USE_CELERY:
+        if settings.USE_CELERY:
             logger.exception("Error submitting jobs to Celery (index=%d)" % index, rte)
         else:
             logger.exception("Error updating ICE links via direct HTTP request (index=%d)" % index, rte)
@@ -352,7 +349,7 @@ def handle_line_strain_changed(sender, instance, action, reverse, model, pk_set,
     logger.info("Start " + handle_line_strain_changed.__name__ + "():" + action + ". Line = \"" + instance.name +
                 "\", reverse = " + reverse.__str__() + ", pk_set = " + pk_set.__str__())
 
-    if not ICE_URL:
+    if not settings.ICE_URL:
         logger.warning('ICE URL is not configured. Skipping ICE experiment link updates.')
         return
 
@@ -410,7 +407,7 @@ def handle_line_strain_changed(sender, instance, action, reverse, model, pk_set,
             logger.debug("update performed by user " + user_email)
 
             # create a direct interface to ICE if not using Celery
-            ice = IceApi(user_email) if not USE_CELERY else None
+            ice = IceApi(user_email) if not settings.USE_CELERY else None
 
             # narrow down the list of lines that are no longer associated with this strain to just those
             # we want to take action on in ICE.
@@ -468,7 +465,6 @@ def handle_line_strain_changed(sender, instance, action, reverse, model, pk_set,
                 # Note that if we don't wait, the Celery task can run before it commits, at which point its initial DB
                 # query will indicate an inconsistent database state. This happened repeatably during testing.
                 connection.on_commit(lambda: _post_commit_link_ice_entry_to_study(user_email, study, line.pk,
-                                                                                  line.created.mod_time,
                                                                                   add_on_commit_strains))
 
             actual_count = added_count + removed_count
@@ -477,7 +473,7 @@ def handle_line_strain_changed(sender, instance, action, reverse, model, pk_set,
                 logger.info("No strain association changes...no ICE updates are required.")
 
             else:
-                if USE_CELERY:
+                if settings.USE_CELERY:
                     logger.info("Done post-commit work to submit jobs to Celery: submitting jobs for %d of %d strains."
                                 % (actual_count, exp_change_count))
                 else:

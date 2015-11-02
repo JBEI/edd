@@ -18,6 +18,7 @@ from edd_utils.celery_utils import send_resolution_message
 from edd_utils.celery_utils import make_standard_email_subject, email_admins
 from main.ice import IceApi, parse_entry_id
 from main.models import Line, Strain
+from builtins import str
 
 # use smtplib directly since Celery doesn't seem to expose an API to help with this,
 # and it's unclear whether the Django libraries will be available/functional to remote Celery workers
@@ -26,8 +27,6 @@ from main.models import Line, Strain
 from celery import shared_task
 from celery.utils.log import get_task_logger
 from celery.exceptions import SoftTimeLimitExceeded
-
-from edd.settings import *
 
 from django.db import transaction
 
@@ -120,8 +119,8 @@ def test_repeated_retry_failure(self, fail_for_outdated_input=False, succeed_on_
 
 
 @shared_task(bind=True, default_retry_delay=CELERY_INITIAL_ICE_RETRY_DELAY, max_retries=CELERY_MAX_ICE_RETRIES)
-def link_ice_entry_to_study(self, edd_user_email, line_pk, strain_pk, study_pk, study_url, line_creation_datetime,
-                            study_creation_datetime, strain_creation_datetime, old_study_name=None, **kwargs):
+def link_ice_entry_to_study(self, edd_user_email, line_pk, strain_pk, study_pk, study_url, old_study_name=None,
+                            **kwargs):
     """
     Contacts ICE to link an ICE part referenced by an EDD strain an EDD study that uses it. In the anticipated
     common case, this is triggered by creation of a single cell line within the confines of an EDD study. However, to
@@ -141,12 +140,6 @@ def link_ice_entry_to_study(self, edd_user_email, line_pk, strain_pk, study_pk, 
     :param strain_pk: primary key of the EDD strain whose link to to the line/study motivated the change
     :param study_pk: primary key of the EDD study
     :param study_url: the absolute url of the EDD study
-    :param line_creation_datetime: the time at which the EDD line was initially created (prevents primary key reuse from
-     being misinterpreted as a lack of change)
-    :param study_creation_datetime: the time at which the EDD study was initially created (prevents primary key reuse
-    from being misinterpreted as a lack of change)
-    :param strain_creation_datetime: the time at which the EDD strain was initially created (prevents primary key reuse
-    from being misinterpreted as a lack of change)
     :param old_study_name: optional previous name of the edd study (if recently renamed). TODO: remove if ICE behavior
     unchanged for SYNBIO-1196
     """
@@ -169,10 +162,9 @@ def link_ice_entry_to_study(self, edd_user_email, line_pk, strain_pk, study_pk, 
         with transaction.atomic():  # using=config['db'].get('database', 'edddjango')
             # Note: we query from line since it has the strain and study links
 
-            line = Line.objects.filter(study__pk=study_pk, study__created__mod_time=study_creation_datetime,
-                                       strains__pk=strain_pk, strains__created__mod_time=strain_creation_datetime, ) \
-                                .select_related('study', 'study__created') \
-                                .prefetch_related('strains').first()
+            line = (Line.objects.filter(study__pk=study_pk, strains__pk=strain_pk)
+                                .select_related('study__created')
+                                .first())
 
             if line is None:
                 raise Line.DoesNotExist("No lines found linking strain id %s to study id %d" % (strain_pk, study_pk))
@@ -186,30 +178,30 @@ def link_ice_entry_to_study(self, edd_user_email, line_pk, strain_pk, study_pk, 
         # be the locally-unique numeric ID visible from the ICE UI. Not certain what recent
         # EDD changes have done to new strain creation, but at least some pre-existing strains will work better with
         # this method.
-        # TODO: after removing the workaround, use, ice_strain_id = strain.registry_id.__str__(), or if using
+        # TODO: after removing the workaround, use, ice_strain_id = str(strain.registry_id.), or if using
         # Python 3, maybe strain.registry_id.to_python()
         workaround_strain_entry_id = parse_entry_id(strain.registry_url)
 
         # finish early if we don't have enough information to find the ICE entry for this strain
         if (not registry_url) or (not registry_id):
             celery_logger.warning("Registry URL and registry ID must both be entered in order to create push an EDD "
-                              "study ID to ICE. Cannot create a link for strain with id " + strain)
+                                  "study ID to ICE. Cannot create a link for strain with id %s" % strain.name)
             return 'EDD strain contains insufficient data'
 
         # make a request via ICE's REST API to link the ICE strain to the EDD study that references it
         study = line.study
         ice = IceApi(user_email=edd_user_email)
-        ice.link_entry_to_study(workaround_strain_entry_id.__str__(), study.pk, study_url, study.name, logger=celery_logger,
-                                old_study_name=old_study_name)
+        ice.link_entry_to_study(str(workaround_strain_entry_id), study.pk, study_url, study.name,
+                                logger=celery_logger, old_study_name=old_study_name)
 
     # catch Exceptions that indicate the database relationships have changed
-    except (Line.DoesNotExist, Strain.DoesNotExist) as d:
+    except (Line.DoesNotExist, Strain.DoesNotExist):
         celery_logger.warning(
-            "Marking task " + self.request.id + " as complete without taking any action since its inputs are stale."
+            "Marking task %s as complete without taking any action since its inputs are stale."
                                                 " One or more relationships that motivated task submission been "
-                                                "removed.")
-        specific_cause = "No (strain, line, study) relationship was found in the EDD database matching the one " \
-                         "implied by inputs"
+                                                "removed." % self.request.id)
+        specific_cause = ("No (strain, line, study) relationship was found in the EDD database matching the one "
+                         "implied by inputs")
         send_stale_input_warning(self, specific_cause, est_execution_time, uses_exponential_backoff, celery_logger)
 
         return _STALE_OR_ERR_INPUT  # succeed after sending the warning
@@ -235,7 +227,7 @@ def link_ice_entry_to_study(self, edd_user_email, line_pk, strain_pk, study_pk, 
         if retry_delay == INVALID_DELAY:
             raise exc
 
-        celery_logger.info(__name__ + ": retrying again in %d seconds" % retry_delay)
+        celery_logger.info("%s: retrying again in %d seconds" % (__name__ , retry_delay))
         raise self.retry(exc=exc, countdown=retry_delay)
 
     # on success, publish a resolution message if a warning message was previously published.
@@ -248,15 +240,13 @@ def link_ice_entry_to_study(self, edd_user_email, line_pk, strain_pk, study_pk, 
 
 
 @shared_task(bind=True, default_retry_delay=CELERY_INITIAL_ICE_RETRY_DELAY, max_retries=CELERY_MAX_ICE_RETRIES)
-def unlink_ice_entry_from_study(self, edd_user_email, study_pk, study_url, study_creation_datetime, strain_registry_url,
-                                strain_registry_id, **wkargs):
+def unlink_ice_entry_from_study(self, edd_user_email, study_pk, study_url, strain_registry_url, strain_registry_id,
+                                **kwargs):
     """
     Removes the link information that associates an ICE part with the specified EDD study.
     :param edd_user_email: the email address of the EDD user that the ICE change will be attributed to
     :param study_pk: the primary key of the EDD study (which may have just been deleted)
     :param study_url: the absolute URL of the EDD study whose link(s) should be removed from the ICE part
-    :param study_creation_datetime: the time at which the EDD study was initially created (prevents primary key reuse
-    from being misinterpreted as a lack of change)
     :param strain_registry_url: the URL of the ICE strain (which may have just been deleted from the EDD database)
     :param strain_registry_id: the UUID of the ICE strain (which may have just been deleted from the EDD database)
     """
@@ -270,10 +260,8 @@ def unlink_ice_entry_from_study(self, edd_user_email, study_pk, study_url, study
         # verify that no lines exist that link this study to an ICE strain with the provided URL
         with transaction.atomic():
 
-            lines = Line.objects.filter(strains__registry_url=strain_registry_url,
-                                        study__pk=study_pk, study__created__mod_time=study_creation_datetime) \
-                .select_related('study', 'study__created') \
-                .prefetch_related('strains').select_related('object_ref')
+            lines = (Line.objects.filter(strains__registry_url=strain_registry_url, study__pk=study_pk)
+                                        .prefetch_related('strains').select_related('object_ref'))
 
             # if any lines were found linking the study to the strain, send a warning email to admins, then succeed
             if lines:
@@ -284,7 +272,7 @@ def unlink_ice_entry_from_study(self, edd_user_email, study_pk, study_url, study
                     strains_str = ''
                     for strain in line.strains.all():
                         strains_str = ', '.join(('\"%s\" (id=%d)' % (strain.name, strain.id)))
-                    line_refs_str = 'Line \"%s\" (id=%d) references strain(s) {%s}' % (line.name, line.pk, strains_str)
+                    line_refs_str = 'Line "%s" (id=%d) references strain(s) {%s}' % (line.name, line.pk, strains_str)
                     if msg:
                         msg = ', '.join([msg, line_refs_str])
                     else:
@@ -292,10 +280,9 @@ def unlink_ice_entry_from_study(self, edd_user_email, study_pk, study_url, study
                 specific_cause = msg
 
                 # warn administrators that this occurred
-                celery_logger.warning(
-                    "Marking task " + self.request.id + " as complete without taking any action since its inputs are "
-                                                        "stale.  One or more relationships that motivated task "
-                                                        "submission have been modified.")
+                celery_logger.warning("Marking task %s as complete without taking any action since its inputs are "
+                                      "stale.  One or more relationships that motivated task submission have been "
+                                      "modified." % self.request.id)
                 use_exponential_backoff = True
                 send_stale_input_warning(self, specific_cause, est_execution_time, use_exponential_backoff,
                                          celery_logger)
@@ -309,15 +296,12 @@ def unlink_ice_entry_from_study(self, edd_user_email, study_pk, study_url, study
         # this task should never have been scheduled in the first place
         if not removed:
             subject = make_standard_email_subject(self, 'No link to remove', _WARNING_IMPORTANCE)
-            message = 'Warning: Task ' + self.name + ' couldn\'t remove study link \"%s\" from part \"%s\" because ' \
-                                                     'there was no such link to remove. No known error has occurred, ' \
-                                                     'but this situation shouldn\'t occur during normal operation. ' \
-                                                     '\n\n' \
-                                                     'You may need to investigate why ICE\'s state didn\'t match ' \
-                                                     'EDD\'s in this instance. Note that the links are user-editable ' \
-                                                     'in ICE, so it\'s possible that  the link was manually deleted ' \
-                                                     '(verifiable via the GUI). '\
-                                                      % (study_url, strain_registry_url)
+            message = ('''Warning: Task %s couldn't remove study link "%s" from part "%s" because '''
+                      '''there was no such link to remove. No known error has occurred, but this situation shouldn't '''
+                      'occur during normal operation.\n\n'
+                      '''You may need to investigate why ICE's state didn't match EDD's in this instance. Note that '''
+                      '''the links are user-editable in ICE, so it's possible that  the link was manually deleted '''
+                      '(verifiable via the GUI). ' % (self.name, study_url, strain_registry_url))
             email_admins(subject, message, celery_logger)
             return 'Non-existent link'
 

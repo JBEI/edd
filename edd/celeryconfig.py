@@ -52,8 +52,13 @@ EDD_RABBITMQ_USERNAME = config['rabbitmq'].get('edd_user')
 EDD_RABBITMQ_PASSWORD = config['rabbitmq'].get('edd_pass')
 RABBITMQ_PORT = config['rabbitmq'].get('port')
 EDD_VHOST = config['rabbitmq'].get('edd_vhost')
-BROKER_URL = 'amqp://' + EDD_RABBITMQ_USERNAME + ':' + EDD_RABBITMQ_PASSWORD + '@' + RABBITMQ_HOST + ':' \
-             + RABBITMQ_PORT + '/' + EDD_VHOST
+BROKER_URL = 'amqp://%(user)s:%(pass)s@%(host)s:%(port)s/%(vhost)s' % {
+             'user': EDD_RABBITMQ_USERNAME,
+             'pass': EDD_RABBITMQ_PASSWORD,
+             'host': RABBITMQ_HOST,
+             'port': RABBITMQ_PORT,
+             'vhost': EDD_VHOST,
+             }
 
 # CELERY_TASK_SERIALIZER = 'auth' #TODO
 # CELERY_RESULT_SERIALIZER = 'auth'
