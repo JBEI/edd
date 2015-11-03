@@ -10,9 +10,7 @@ from django.core.exceptions import PermissionDenied
 from django.test import TestCase
 from edd.profile.models import UserProfile
 
-from . import data_import
-from . import sbml_export
-from . import utilities
+from . import data_import, sbml_export, utilities
 from .forms import (
     LineForm,
     )
@@ -426,7 +424,7 @@ class AssayDataTests(TestCase):
     def test_measurement_unit(self):
         mu = MeasurementUnit.objects.get(unit_name="mM")
         self.assertTrue(mu.group_name == "Metabolite")
-        all_units = [mu.unit_name for mu in MeasurementUnit.all_sorted()]
+        all_units = [u.unit_name for u in MeasurementUnit.all_sorted()]
         self.assertTrue(all_units == [u'abcd', u'Cmol/L', u'hours', u'mM'])
 
     def test_measurement(self):
@@ -809,9 +807,9 @@ class SBMLUtilTests(TestCase):
     """ Unit tests for various utilities used in SBML export """
     def setUp(self):
         SBMLTemplate.objects.create(
-          name="R_Ec_biomass_iJO1366_core_53p95M",
-          biomass_calculation=33.19037,
-          biomass_exchange_name="R_Ec_biomass_iJO1366_core_53p95M")
+            name="R_Ec_biomass_iJO1366_core_53p95M",
+            biomass_calculation=33.19037,
+            biomass_exchange_name="R_Ec_biomass_iJO1366_core_53p95M")
         Metabolite.objects.create(
             type_name="Optical Density", short_name="OD", type_group="m", charge=0, carbon_count=0,
             molecular_formula="", molar_mass=0)
@@ -831,15 +829,16 @@ class SBMLUtilTests(TestCase):
         else:
             libsbml.SBML_DOCUMENT  # check to make sure it loaded
             notes = sbml_export.create_sbml_notes_object({
-              "CONCENTRATION_CURRENT": [0.5, ],
-              "CONCENTRATION_HIGHEST": [1.0, ],
-              "CONCENTRATION_LOWEST": [0.01, ],
+                "CONCENTRATION_CURRENT": [0.5, ],
+                "CONCENTRATION_HIGHEST": [1.0, ],
+                "CONCENTRATION_LOWEST": [0.01, ],
             })
             notes_dict = sbml_export.parse_sbml_notes_to_dict(notes)
             self.assertTrue(dict(notes_dict) == {
-              'CONCENTRATION_CURRENT': ['0.5'],
-              'CONCENTRATION_LOWEST': ['0.01'],
-              'CONCENTRATION_HIGHEST': ['1.0'], })
+                'CONCENTRATION_CURRENT': ['0.5'],
+                'CONCENTRATION_LOWEST': ['0.01'],
+                'CONCENTRATION_HIGHEST': ['1.0'],
+            })
 
     def test_sbml_setup(self):
         try:
@@ -901,8 +900,8 @@ class ExportTests(TestCase):
         meas = all_meas[0]
         self.assertTrue(meas.n_errors == 0)
         self.assertTrue(meas.n_warnings == 1)
-        self.assertTrue(meas.warnings[0] == 'Start OD of 0 means nothing physically present  (and '
-                        'a potential division-by-zero error).  Skipping...')
+        self.assertTrue(meas.warnings[0] == 'Start OD of 0 means nothing physically present (and '
+                        'a potential division-by-zero error). Skipping...')
         # for md in meas.data :
         #   print md
         # for fd in meas.flux_data :

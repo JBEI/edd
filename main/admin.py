@@ -15,7 +15,7 @@ from .models import (
     Protocol, SBMLTemplate, Strain, Study, Update, UserPermission,
     )
 from .sbml_export import validate_sbml_attachment
-from main.solr import StudySearch, UserSearch
+from .solr import StudySearch, UserSearch
 
 
 class AttachmentInline(admin.TabularInline):
@@ -268,12 +268,12 @@ class StudyAdmin(EDDObjectAdmin):
         solr = StudySearch(ident=request.user)
         # optimize queryset to fetch several related fields
         q = queryset.select_related(
-                'updated__mod_by__userprofile',
-                'created__mod_by__userprofile',
-            ).prefetch_related(
-                'userpermission_set__user',
-                'grouppermission_set__group',
-            )
+            'updated__mod_by__userprofile',
+            'created__mod_by__userprofile',
+        ).prefetch_related(
+            'userpermission_set__user',
+            'grouppermission_set__group',
+        )
         solr.update(list(q))
     solr_index.short_description = 'Index in Solr'
 
