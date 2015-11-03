@@ -791,17 +791,19 @@ class Protocol(EDDObject):
             return "Unknown"
 
 
-# methods used both in Strain and CarbonSource
-def _n_lines(self):
-    return self.line_set.count()
+class LineProperty(object):
+    """ Base class for EDDObject instances tied to a Line. """
+    @property
+    def n_lines(self):
+        return self.line_set.count()
+
+    @property
+    def n_studies(self):
+        lines = self.line_set.all()
+        return len(set([l.study_id for l in lines]))
 
 
-def _n_studies(self):
-    lines = self.line_set.all()
-    return len(set([l.study_id for l in lines]))
-
-
-class Strain(EDDObject):
+class Strain(EDDObject, LineProperty):
     """ A link to a strain/part in the JBEI ICE Registry. """
     class Meta:
         db_table = 'strain'
@@ -823,16 +825,8 @@ class Strain(EDDObject):
             })
         return json_dict
 
-    @property
-    def n_lines(self):
-        return _n_lines(self)
 
-    @property
-    def n_studies(self):
-        return _n_studies(self)
-
-
-class CarbonSource(EDDObject):
+class CarbonSource(EDDObject, LineProperty):
     """ Information about carbon sources, isotope labeling. """
     class Meta:
         db_table = 'carbon_source'
@@ -849,14 +843,6 @@ class CarbonSource(EDDObject):
             'initials': self.created.initials,
             })
         return json_dict
-
-    @property
-    def n_lines(self):
-        return _n_lines(self)
-
-    @property
-    def n_studies(self):
-        return _n_studies(self)
 
     def __str__(self):
         return "%s (%s)" % (self.name, self.labeling)
