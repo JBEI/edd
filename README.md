@@ -289,8 +289,44 @@ This section contains directions for setting up a development environment on EDD
         * `sudo apt-get install libsasl2-dev` and install the requirements again.
     * Use `deactivate` to exit the virtual environment but retain your shell session.
 
-* \(_optional_\) `sudo apt-get install tomcat7` for Tomcat/Solr <a name="Solr_Tomcat_Deb"/>
-    * Download [Solr][23] and copy WAR to webapps folder
+* Set up Tomcat/Solr (these instructions are for version 4 of Solr)
+    * Install Tomcat 7:
+	* `sudo apt-get install tomcat7`
+	* This will automatically create a “tomcat7” user.
+    * Force the server to only listen on localhost:
+	* Edit ‘/etc/tomcat7/server.xml’ and change the line:
+	    <Connector port="8080" protocol="HTTP/1.1"
+		to:
+	    <Connector port="8080" protocol="HTTP/1.1" address="localhost"
+    * Download solr v4 and unzip to [solr download]
+	* http://archive.apache.org/dist/lucene/solr/4.10.4/
+    * Copy Solr main war file:
+	* `cp [solr download]/dist/solr-4.10.4.war /var/lib/tomcat7/webapps/solr.war`
+	* `sudo chown tomcat7:tomcat7 /var/lib/tomcat7/webapps/solr.war`
+	* `sudo chmod 644 /var/lib/tomcat7/webapps/solr.war`
+    * Copy Solr libraries to Tomcat lib and set proper permissions:
+	* `sudo cp [solr download]/example/lib/ext/*.jar /usr/share/tomcat7/lib/`
+	* `sudo cp [solr download]/dist/solrj-lib/*.jar /usr/share/tomcat7/lib/`
+	* `sudo chmod a+rx /usr/share/tomcat7/lib/*.jar`
+	* `sudo cp [solr download]/example/resources/log4j.properties /etc/tomcat7/log4j.properties`
+	* `sudo chgrp tomcat7 /etc/tomcat7/log4j.properties`
+    * Create a home folder for Solr within tomcat7:
+	`sudo mkdir /var/lib/tomcat7/solr`
+	`sudo mkdir /var/lib/tomcat7/solr/data`
+    * Copy in edd-django solr config files:
+	`sudo cp -R [edd download]/solr/* /var/lib/tomcat7/solr/``
+	`sudo chown -R tomcat7:tomcat7 /var/lib/tomcat7/solr`
+    * Set up the Solr config file:
+	* `sudo pico /etc/tomcat7/Catalina/localhost/solr.xml` and enter the following:
+	<Context docBase="/var/lib/tomcat7/webapps/solr.war" debug="0" crossContext="true">
+	  <Environment name="solr/home" type="java.lang.String" value="/var/lib/tomcat7/solr" override="true" />
+	</Context>
+    * Start Tomcat/Solr:
+	* `sudo /etc/init.d/tomcat7 start`
+    * Optional:
+	* Install the tomcat admin page with `sudo apt-get install tomcat7-admin`
+	* Add a user capable of accessing the admin page by editing `/etc/tomcat7/tomcat-users.xml`.  Instructions are in the file.
+	* Diagnose startup issues by inspecting `/var/log/tomcat7/catalina.out`
 
 * Django setup <a name="Django_Deb"/>
     * See section Database Conversion below if migrating from CGI EDD database
