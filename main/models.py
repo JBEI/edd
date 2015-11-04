@@ -15,8 +15,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import ArrayField, HStoreField
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
-from django.db.models import F, Func
-from django.utils.encoding import python_2_unicode_compatible
+from django.db.models import F, Func, Q
 from django.utils.translation import ugettext_lazy as _
 from functools import reduce
 from itertools import chain
@@ -395,13 +394,6 @@ class EDDObject(models.Model):
                          % cls._meta.db_table
                 }).values_list('id', 'count')
             )
-        # TODO should be able to do this in the database
-        # freqs = defaultdict(int)
-        # for obj in cls.objects.all():
-        #     mdtype_keys = obj.meta_store.keys()
-        #     for mdtype_id in mdtype_keys:
-        #         freqs[int(mdtype_id)] += 1
-        # return freqs
 
     def get_metadata_item(self, key=None, pk=None):
         assert ([pk, key].count(None) == 1)
@@ -566,6 +558,11 @@ class Study(EDDObject):
                                 related_name='contact_study_set')
     contact_extra = models.TextField()
     metabolic_map = models.ForeignKey('SBMLTemplate', blank=True, null=True)
+    # NOTE: this is NOT a field for a definitive list of Protocols on a Study; it is for Protocols
+    #   which may not have been paired with a Line in an Assay. e.g. when creating a blank Study
+    #   pre-filled with the Protocols to be used. Get definitive list by doing union of this field
+    #   and Protocols linked via Assay-Line-Study chain.
+    protocols = models.ManyToManyField('Protocol', blank=True, db_table='study_protocol')
 
     @classmethod
     def export_columns(cls, instances=[]):
@@ -575,9 +572,7 @@ class Study(EDDObject):
         ]
 
     def to_solr_json(self):
-        """
-        Convert the Study model to a dict structure formatted for Solr JSON.
-        """
+        """ Convert the Study model to a dict structure formatted for Solr JSON. """
         created = self.created
         updated = self.updated
         return {
@@ -602,41 +597,52 @@ class Study(EDDObject):
         }
 
     def user_can_read(self, user):
+        """ Utility method testing if a user has read access to a Study. """
         return user.is_superuser or user.is_staff or any(p.is_read() for p in chain(
             self.userpermission_set.filter(user=user),
             self.grouppermission_set.filter(group__user=user)
         ))
 
     def user_can_write(self, user):
+        """ Utility method testing if a user has write access to a Study. """
         return super(Study, self).user_can_write(user) or any(p.is_write() for p in chain(
             self.userpermission_set.filter(user=user),
             self.grouppermission_set.filter(group__user=user)
         ))
 
     def get_combined_permission(self):
+        """ Returns a chained iterator over all user and group permissions on a Study. """
         return chain(self.userpermission_set.all(), self.grouppermission_set.all())
 
     def get_contact(self):
+        """ Returns the contact email, or supplementary contact information if no contact user is
+            set. """
         if self.contact is None:
             return self.contact_extra
         return self.contact.email
 
     def get_metabolite_types_used(self):
-        return list(Metabolite.objects.filter(measurement__assay__line__study=self).distinct())
+        """ Returns a QuerySet of all Metabolites used in the Study. """
+        return Metabolite.objects.filter(assay__line__study=self).distinct()
 
     def get_protocols_used(self):
-        return list(Protocol.objects.filter(assay__line__study=self).distinct())
+        """ Returns a QuerySet of all Protocols used in the Study. """
+        return Protocol.objects.filter(
+            Q(assay__line__study=self) | Q(study=self)
+        ).distinct()
 
     def get_strains_used(self):
-        return list(Strain.objects.filter(line__study=self).distinct())
+        """ Returns a QuerySet of all Strains used in the Study. """
+        return Strain.objects.filter(line__study=self).distinct()
 
     def get_assays(self):
-        return list(Assay.objects.filter(line__study=self))
+        """ Returns a QuerySet of all Assays contained in the Study. """
+        return Assay.objects.filter(line__study=self)
 
     def get_assays_by_protocol(self):
+        """ Returns a dict mapping Protocol ID to all Assays in Study using that Protocol. """
         assays_by_protocol = defaultdict(list)
-        assays = Assay.objects.filter(line__study=self)
-        for assay in assays:
+        for assay in self.get_assays():
             assays_by_protocol[assay.protocol_id].append(assay.id)
         return assays_by_protocol
 
@@ -742,6 +748,7 @@ class Protocol(EDDObject):
     variant_of = models.ForeignKey('self', blank=True, null=True, related_name='derived_set')
     default_units = models.ForeignKey(
         'MeasurementUnit', blank=True, null=True, related_name="protocol_set")
+    metadata_template = models.ManyToManyField(MetadataType, through="MetadataTemplate")
 
     def creator(self):
         return self.created.mod_by
@@ -789,6 +796,16 @@ class Protocol(EDDObject):
             return "TPOMICS"
         else:
             return "Unknown"
+
+
+class MetadataTemplate(models.Model):
+    """ Defines sets of metadata to use as a template on a Protocol. """
+    class Meta:
+        db_table = 'metadata_template'
+    protocol = models.ForeignKey(Protocol)
+    meta_type = models.ForeignKey(MetadataType)
+    # potentially override the default value in templates?
+    default_value = models.CharField(max_length=255, blank=True)
 
 
 class LineProperty(object):
@@ -1157,7 +1174,6 @@ class Phosphor(MeasurementType):
 Phosphor._meta.get_field('type_group').default = MeasurementGroup.PHOSPHOR
 
 
-@python_2_unicode_compatible
 class MeasurementUnit(models.Model):
     """ Defines a unit type and metadata on measurement values. """
     class Meta:

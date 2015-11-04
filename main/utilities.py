@@ -49,28 +49,24 @@ media_types = {
 
 
 def get_edddata_study(study):
-    """
-    Dump of selected database contents used to populate EDDData object on the
-    client.  Although this includes some data types like Strain and
-    CarbonSource that are not "children" of a Study, they have been filtered
-    to include only those that are used by the given study.
-    """
-    metab_types = Metabolite.objects.prefetch_related("keywords").filter(
-        assay__line__study=study).distinct()
+    """ Dump of selected database contents used to populate EDDData object on the client.
+        Although this includes some data types like Strain and CarbonSource that are not
+        "children" of a Study, they have been filtered to include only those that are used by
+        the given study. """
+
+    metab_types = study.get_metabolite_types_used().prefetch_related("keywords",)
     gene_types = GeneIdentifier.objects.filter(assay__line__study=study).distinct()
     protein_types = ProteinIdentifier.objects.filter(assay__line__study=study).distinct()
-    protocols = Protocol.objects.filter(assay__line__study=study).distinct()
+    protocols = study.get_protocols_used()
     carbon_sources = CarbonSource.objects.filter(line__study=study).distinct()
-    assays = Assay.objects.filter(
-        line__study=study,
-    ).select_related(
-        'line__name',
-        'created__mod_by',
-        'updated__mod_by',
+    assays = study.get_assays().select_related(
+        'line__name', 'created__mod_by', 'updated__mod_by',
     )
-    # This could be nice, but slows down the query by an order of magnitude
+    # This could be nice, but slows down the query by an order of magnitude:
+    #
     # from django.db.models import Case, Count, Value, When
-    # .annotate(
+    # …
+    # assays = assays.annotate(
     #     metabolites=Count(Case(When(
     #         measurement__measurement_type__type_group=MeasurementGroup.METABOLITE,
     #         then=Value(1)))),
@@ -82,8 +78,11 @@ def get_edddata_study(study):
     #         then=Value(1)))),
     # )
     strains = study.get_strains_used()
-    lines = study.line_set.all().select_related('created', 'updated').prefetch_related(
-        "carbon_source", "strains")
+    lines = study.line_set.all().select_related(
+        'created', 'updated',
+    ).prefetch_related(
+        'carbon_source', 'strains',
+    )
     return {
         # measurement types
         "MetaboliteTypes": {mt.id: mt.to_json() for mt in metab_types},
