@@ -244,6 +244,7 @@ class LineTests (TestCase):  # XXX also Strain, CarbonSource
 
     def test_line_form(self):
         line1 = Line.objects.select_related('study').get(name="Line 1")
+        self.assertFalse(line1.control)
         # default form to existing data
         data = LineForm.initial_from_model(line1, prefix='line')
         # flip the checkbox for control
@@ -251,9 +252,9 @@ class LineTests (TestCase):  # XXX also Strain, CarbonSource
         form = LineForm(data, instance=line1, prefix='line', study=line1.study)
         # verify the form validates
         self.assertTrue(form.is_valid(), '%s' % form._errors)
-        line2 = form.save()
+        form.save()
         # verify the saved line is now a control
-        self.assertTrue(line1.control != line2.control)
+        self.assertTrue(line1.control)
 
     def test_strain(self):
         strain1 = Strain.objects.get(name="Strain 1")
