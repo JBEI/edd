@@ -9,8 +9,8 @@ import os
 from django.test import TestCase
 import json
 import os.path
-from edd_utils.celery_utils import to_human_relevant_delta, time_until_retry, compute_exp_retry_delay, \
-    send_retry_warning
+from edd_utils.celery_utils import compute_exp_retry_delay, send_retry_warning, time_until_retry, \
+    to_human_relevant_delta
 import logging
 
 test_dir = os.path.join(os.path.dirname(__file__), "fixtures", "misc_data")
@@ -290,13 +290,12 @@ def decode_test_task(dict, require_soft_time_limit=True, require_max_retries=Tru
 
 class CeleryUtilsTests(TestCase):
     """
-    Defines unit tests for a subset of the methods in the celery.utils module. More testing is clearly possible there,
-    but the initial implementation covers the low-hanging fruit.
+    Defines unit tests for a subset of the methods in the celery.utils module. More testing is
+    clearly possible there, but the initial implementation covers the low-hanging fruit.
     """
 
     _BASE_DIR = os.path.dirname(__file__)
     _TEST_DATA_FILE = os.path.join(_BASE_DIR, "fixtures", "misc_data", "celery_test_data.json")
-
 
     def test_compute_exp_retry_delay(self):
         """
@@ -322,14 +321,13 @@ class CeleryUtilsTests(TestCase):
                         self.fail("Expected ValueError but got a " + result)
 
                     self.assertEquals(int(exp_result), result)
-
                     print ('\tResult = % s  = ' % result) + to_human_relevant_delta(result)
 
                 except ValueError:
                     if "ValueError" != exp_result:
-                        self.fail("Expected a result (%d), but got a ValueError" % float(exp_result))
+                        self.fail("Expected a result (%d), but got a ValueError"
+                                  % float(exp_result))
                     print '\t Expected and got a ValueError'
-
 
     def test_time_until_retry_num(self):
         """
@@ -354,11 +352,12 @@ class CeleryUtilsTests(TestCase):
                 est_execution_time = 0
                 if est_execution_time_key in test_case:
                     est_execution_time = float(test_case[est_execution_time_key])
-                default_retry_delay = int(test_case['default_retry_delay']) # TODO: retry casting to float instead
+                default_retry_delay = int(test_case['default_retry_delay'])
 
                 # assert that computed results match the reference results
                 try:
-                    result = time_until_retry(start_retry_num, goal_retry_num, est_execution_time, default_retry_delay)
+                    result = time_until_retry(start_retry_num, goal_retry_num, est_execution_time,
+                                              default_retry_delay)
                     if 'ValueError' == exp_result:
                         self.fail("Expected ValueError but got a result (%f)" % result)
 
@@ -370,7 +369,8 @@ class CeleryUtilsTests(TestCase):
 
     def test_send_retry_warning_before_failure(self):
         """
-        Reads in test data and expected results from the reference file and compares them to computed results
+        Reads in test data and expected results from the reference file and compares them to
+        computed results
         """
         with open(self._TEST_DATA_FILE) as test_fixture:
             test_data = json.load(test_fixture)['send_retry_warning_before_failure']
@@ -382,9 +382,9 @@ class CeleryUtilsTests(TestCase):
                 exp_result = test_case['expected_result'] == True
                 notify_on_retry_num = test_case['notify_on_retry_num']
 
-                result = send_retry_warning(task, est_task_execution_time, notify_on_retry_num, logger)
+                result = send_retry_warning(task, est_task_execution_time, notify_on_retry_num,
+                                            logger)
                 self.assertEquals(exp_result, result)
-
 
     def test_to_human_relevant_delta(self):
         """
@@ -400,5 +400,3 @@ class CeleryUtilsTests(TestCase):
                 exp_result = test_data[key]
                 result = to_human_relevant_delta(decimal_seconds)
                 self.assertEquals(result, exp_result)
-
-

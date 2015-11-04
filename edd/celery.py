@@ -19,18 +19,20 @@ BROKER_URL = 'amqp://%(user)s:%(pass)s@%(host)s:%(port)s/%(vhost)s' % {
              'host': RABBITMQ_HOST,
              'port': RABBITMQ_PORT,
              'vhost': EDD_VHOST,
-             }
+}
 
-# CONTRARY to the documentation, DON'T inform Celery it's operating in the context of our Django project...
-# For unknown reasons, this prevents error emails from getting through...event when the conflicted ADMINS
-# parameter is undefined in the Django settings.py (though possible still getting a default value from Django and
-# silently causing a problem).
-# With our configuration files separated out from the Django ones (again, contrary to the recommendation), it's unclear
-# in the documentation whether this setting would provide any other benefit anyway. If ADMIN is the problem, its value
-# is displayed identically in Flower either way (working or broken).
+# CONTRARY to the documentation, DON'T inform Celery it's operating in the context of our Django
+# project... For unknown reasons, this prevents error emails from getting through...event when
+# the conflicted ADMINS parameter is undefined in the Django settings.py (though possible still
+# getting a default value from Django and silently causing a problem).
+# With our configuration files separated out from the Django ones (again, contrary to the
+# recommendation), it's unclear in the documentation whether this setting would provide any other
+# benefit anyway. If ADMIN is the problem, its value is displayed identically in Flower either
+# way (working or broken).
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'edd.local_settings')
 
-# set up a Celery "app" for use by EDD. A Celery "app" is just an unfortunately-named instance of the Celery API,
+# set up a Celery "app" for use by EDD. A Celery "app" is just an unfortunately-named instance of
+# the Celery API,
 # This instance defines EDD's interface will use to interface with Celery.
 task_exchange = Celery('edd', broker=BROKER_URL)
 

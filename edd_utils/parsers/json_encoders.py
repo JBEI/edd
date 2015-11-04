@@ -7,10 +7,11 @@ _TYPE = '__type__'
 _VALUE = 'value'
 _DATE_TIME_TYPE = '__datetime__'
 
+
 class DateTimeEncoder(json.JSONEncoder):
     """
-    Defines a simple JSON encoder for Python datetime objects. Allows non-datetime objects to pass through
-    and use the default JSON serialization, which doesn't support datetime objects.
+    Defines a simple JSON encoder for Python datetime objects. Allows non-datetime objects to pass
+    through and use the default JSON serialization, which doesn't support datetime objects.
     """
     def default(self, obj):
         if isinstance(obj, datetime):

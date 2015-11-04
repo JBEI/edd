@@ -12,7 +12,6 @@ https://docs.djangoproject.com/en/1.7/ref/settings/
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 import json
 import os
-import socket
 
 import ldap
 from django_auth_ldap.config import LDAPSearch, GroupOfUniqueNamesType
@@ -20,25 +19,28 @@ from django.conf.global_settings import TEMPLATE_CONTEXT_PROCESSORS as TCP
 from kombu.serialization import register
 import psycopg2.extensions
 
-from edd_utils.parsers.json_encoders import datetime_dumps, datetime_loads, EXTENDED_JSON_CONTENT_TYPE
+from edd_utils.parsers.json_encoders import datetime_dumps, datetime_loads, \
+    EXTENDED_JSON_CONTENT_TYPE
 
 
-#######################################################################################################################
-# Load urls and authentication credentials from server.cfg (TODO: some other stuff in there should be moved here)
-#######################################################################################################################
+####################################################################################################
+# Load urls and authentication credentials from server.cfg (TODO: some other stuff in there should
+# be moved here)
+####################################################################################################
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 try:
     with open(os.path.join(BASE_DIR, 'server.cfg')) as server_cfg:
         config = json.load(server_cfg)
 except IOError:
-    print "Required configuration file server.cfg is missing from " + BASE_DIR + \
-          "Copy from server.cfg-example and fill in appropriate values"
+    print("Required configuration file server.cfg is missing from %s"
+          "Copy from server.cfg-example and fill in appropriate values" % BASE_DIR)
     raise
 
 
-#######################################################################################################################
-# Register custom serialization code to allow us to serialize datetime objects as JSON (just datetimes, for starters)
-#######################################################################################################################
+####################################################################################################
+# Register custom serialization code to allow us to serialize datetime objects as JSON (just
+# datetimes, for starters)
+####################################################################################################
 register(EXTENDED_JSON_CONTENT_TYPE, datetime_dumps, datetime_loads,
          content_type='application/x-' + EXTENDED_JSON_CONTENT_TYPE,
          content_encoding='UTF-8')
@@ -53,35 +55,32 @@ TEMPLATE_DEBUG = True
 
 # SECURITY WARNING: keep the secret key used in production secret!
 # default quote from http://thedoomthatcametopuppet.tumblr.com/
-SECRET_KEY = config['site'].get('secret', 'I was awake and dreaming at the same time, which is why \
-                                            this only works for local variables')
+SECRET_KEY = config['site'].get('secret', 'I was awake and dreaming at the same time, which is why'
+                                          ' this only works for local variables')
 
-#######################################################################################################################
-# Set ICE configuration used in multiple places, or that we want to be able to override in local_settings.py
-#######################################################################################################################
+####################################################################################################
+# Set ICE configuration used in multiple places, or that we want to be able to override in
+# local_settings.py
+####################################################################################################
 ICE_SECRET_HMAC_KEY = config['ice'].get('edd_key', '')
 ICE_URL = config['ice'].get('url', None)
-ICE_REQUEST_TIMEOUT = (10, 10)  # HTTP request connection and read timeouts, respectively, in seconds
+ICE_REQUEST_TIMEOUT = (10, 10)  # HTTP request connection and read timeouts, respectively (seconds)
 
-#######################################################################################################################
-# Defines whether or not EDD uses Celery. All other Celery-related configuration is in celeryconfig.py)
-#######################################################################################################################
+####################################################################################################
+# Defines whether or not EDD uses Celery. All other Celery-related configuration is in
+# celeryconfig.py)
+####################################################################################################
 USE_CELERY = False
 
-#######################################################################################################################
+####################################################################################################
 # Configure Django email variables
 # Note: Some of these are also referenced by
 # Celery and custom Celery-related code
-#######################################################################################################################
-# convert dictionary required by JSON format to tuple of tuples required by Django
-admins_dict_temp = config['site'].get('admins', [])
-_admins_list_temp = []
-for name in admins_dict_temp:
-    email = admins_dict_temp[name]
-    _admins_list_temp.append((name, email))
-ADMINS = MANAGERS = tuple(_admins_list_temp)
+####################################################################################################
+ADMINS = MANAGERS = tuple(config['site'].get('admins', {}).items())
 
-# most of these just explicitly set the Django defaults, but since  affect Django, Celery, and custom Celery support
+# most of these just explicitly set the Django defaults, but since  affect Django, Celery, and
+# custom Celery support
 # code, we enforce them here for consistency
 EMAIL_SUBJECT_PREFIX = '[EDD]'
 EMAIL_TIMEOUT = 60  # in seconds
@@ -90,7 +89,7 @@ EMAIL_HOST_USER = config['email'].get('user', '')
 EMAIL_HOST_PASSWORD = config['email'].get('password', '')
 EMAIL_PORT = 25
 
-#######################################################################################################################
+####################################################################################################
 
 
 ALLOWED_HOSTS = []
@@ -104,7 +103,8 @@ DEBUG_TOOLBAR_CONFIG = {
 INSTALLED_APPS = (
     'django.contrib.admin',
     'django.contrib.auth',
-    'django.contrib.sites',  # recommended for registration app + useful for computing URLs from signal handlers
+    'django.contrib.sites',     # recommended for registration app +
+                                # useful for computing URLs from signal handlers
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
