@@ -28,7 +28,7 @@ _JSON_CONTENT_TYPE_HEADER = {'Content-Type': 'application/json; charset=utf8'}
 # not currently used, but implemented/tested based on an earlier set of assumptions...hopefully useful at some point!
 _PROTOCOL = 'http|https'
 _BASE_ICE_URL_REGEX = r'.+'
-_IDENTIFIER = r'[\w-]+'  # TODO: better to check for format of UUID. it's: 8 chars - 4 chars - 4 chars - 4 chars - 12 chars
+_IDENTIFIER = r'[\w-]+'  # TODO: better to check for format of UUID. it's: 8 chars -4 chars -4 chars -4 chars -12 chars
 _ICE_ENTRY_URL_REGEX = '(' + _PROTOCOL + ')://(' + _BASE_ICE_URL_REGEX + ')' + '/entry/(' + _IDENTIFIER + ')/?'
 ICE_ENTRY_URL_PATTERN = re.compile('^' + _ICE_ENTRY_URL_REGEX + '$', re.IGNORECASE)
 
@@ -133,7 +133,6 @@ class IceApi(object):
         self.user_email = user_email
         self.timeout = timeout
 
-
     def fetch_part(self, entry_id, suppress_errors=False):
         """
         Retrieves a part using any of the unique identifiers: part number, synthetic id, or
@@ -147,9 +146,9 @@ class IceApi(object):
         try:
             response = requests.get(url=url, auth=auth, timeout=self.timeout)
         except requests.exceptions.Timeout as e:
-           logger.error("Timeout requesting part %s: %s", entry_id, e)
-           if not suppress_errors:
-            raise e
+            logger.error("Timeout requesting part %s: %s", entry_id, e)
+            if not suppress_errors:
+                raise e
         else:
             if response.status_code == requests.codes.ok:
                 return (response.json(), url,)
@@ -244,7 +243,8 @@ class IceApi(object):
         logger.debug("Existing links response: " + json_dict.__str__())
 
         if not study_links:
-            logger.warning('No existing links found for (entry %s, study %d). Nothing to remove!' % (ice_entry_id, study_id))
+            logger.warning('No existing links found for (entry %s, study %d). Nothing to remove!'
+                           % (ice_entry_id, study_id))
             return False
 
         # Delete all links that reference this study URL
@@ -291,35 +291,32 @@ class IceApi(object):
             response.raise_for_status()
 
         # inspect results to find the unique ID's for any pre-existing links referencing the study's URL
+        label_key = 'label'
+        url_key = 'url'
         existing_links = response.json()
-        matches_study_url = lambda link: study_url == link.get('url')
-        matches_current_study_name = lambda link: study_name == link.get('label')
-        matches_old_study_name = lambda link: old_study_name == link.get('label')
-
         current_study_links = [link for link in existing_links if
-                               (matches_study_url(link) and matches_current_study_name(link))]
+                               ((study_url == link.get(url_key)) and (study_name == link.get(label_key)))]
         outdated_study_links = []
         if old_study_name:
             outdated_study_links = [link for link in existing_links if
-                                    (matches_study_url(link) and matches_old_study_name(link))]
+                                    ((study_url == link.get(url_key)) and (old_study_name == link.get(label_key)))]
 
-        logger.debug('Existing links: ' + existing_links.__str__())
-        logger.debug('Current study links:' + current_study_links.__str__())
-        logger.debug('Outdated study links: ' + outdated_study_links.__str__())
+        logger.debug('Existing links: ' + str(existing_links))
+        logger.debug('Current study links:' + str(current_study_links))
+        logger.debug('Outdated study links: ' + str(outdated_study_links))
 
         # if there's at least one up-to-date link to the study, and there are no outdated links to it, just return
         # without making any changes
         if current_study_links and not outdated_study_links:
             return
 
-        # create or update study linksgr
+        # create or update study links
         if outdated_study_links:
             for outdated_link in outdated_study_links:
                 self._create_or_update_link(study_name, study_url, entry_experiments_rest_url,
                                             auth=auth, link_id=outdated_link.get('id'))
         else:
             self._create_or_update_link(study_name, study_url, entry_experiments_rest_url, auth)
-
 
     def set_timeout(self, timeout):
         """

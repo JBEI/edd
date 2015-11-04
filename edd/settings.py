@@ -17,7 +17,6 @@ import socket
 import ldap
 from django_auth_ldap.config import LDAPSearch, GroupOfUniqueNamesType
 from django.conf.global_settings import TEMPLATE_CONTEXT_PROCESSORS as TCP
-from django.conf.global_settings import LOGIN_REDIRECT_URL
 from kombu.serialization import register
 import psycopg2.extensions
 
@@ -85,7 +84,7 @@ ADMINS = MANAGERS = tuple(_admins_list_temp)
 # most of these just explicitly set the Django defaults, but since  affect Django, Celery, and custom Celery support
 # code, we enforce them here for consistency
 EMAIL_SUBJECT_PREFIX = '[EDD]'
-EMAIL_TIMEOUT = 60 # in seconds
+EMAIL_TIMEOUT = 60  # in seconds
 EMAIL_HOST = config['email'].get('host', 'localhost')
 EMAIL_HOST_USER = config['email'].get('user', '')
 EMAIL_HOST_PASSWORD = config['email'].get('password', '')

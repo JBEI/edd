@@ -90,6 +90,10 @@ def _validate_delay(default_retry_delay):
         raise ValueError("default_retry_delay must be > 1 in order to use exponential backoff")
 
 
+# TODO: either remove test code, or make email formatting configurable (ASCII vs UNICODE, HTML vs plaintext).
+FORCE_ASCII = True
+
+
 def email_admins(subject, message, logger):
     """
     Emails administrators on demand from within a running Celery task. This is a custom supplement to the failure
@@ -99,7 +103,6 @@ def email_admins(subject, message, logger):
     :param message: the message body
     """
 
-    # TODO: either remove test code, or make email formatting configurable (ASCII vs UNICODE, HTML vs plaintext).
     # Initial use of this library was surprisingly painful, so only make changes if you have time!
 
     # extract recipient data from the required Celery dictionary format
@@ -112,7 +115,7 @@ def email_admins(subject, message, logger):
     logger.debug("sender email: " + SERVER_EMAIL)
     logger.debug("email user = " + EMAIL_HOST_USER)
     logger.debug("email password = " + EMAIL_HOST_PASSWORD)
-    logger.debug( "End raw configuration values")
+    logger.debug("End raw configuration values")
 
     # return early if task error emails have been silenced
     if not CELERY_SEND_TASK_ERROR_EMAILS:
@@ -136,9 +139,7 @@ def email_admins(subject, message, logger):
     # 2 ) list of (name, email) tuples required by Celery,
 
     # TODO: also converting from the JSON Unicode to ASCII to avoid potential problems with sending email.
-
     # help prevent problems by forcing usernames & emails to ASCII as listed
-    FORCE_ASCII = True
 
     recipients_str_list = []
     ascii_recipients_tuple_list = []
@@ -170,7 +171,6 @@ def email_admins(subject, message, logger):
     logger.debug("email user = " + EMAIL_HOST_USER)
     logger.debug("email password = " + EMAIL_HOST_PASSWORD)
     logger.debug("End values in use.")
-
 
     # build message headers
     msg = MIMEText(message, 'plain')
@@ -238,7 +238,7 @@ def test_time_limit_consistency(task, est_execution_time=0, use_exp_backoff=True
     est_execution_time = 0
     max_execution_time = 0
     if max_retries > 0:
-        max_execution_time = time_until_retry(0, task.max_retries, est_execution_time)
+        max_execution_time = time_until_retry(0, task.max_retries, est_execution_time, task.default_retry_delay)
 
     bunk_time_limits = soft_time_limit > hard_time_limit
     bunk_retries = (max_execution_time >= soft_time_limit) or (max_execution_time >= hard_time_limit)
@@ -249,11 +249,11 @@ def test_time_limit_consistency(task, est_execution_time=0, use_exp_backoff=True
 
     # build message content (resembles failure notifications from Celery)
     subject = make_standard_email_subject(task, "Inconsistent time limits", _WARNING_IMPORTANCE)
-    message = 'Warning: Task ' + task.name + ' ( ' + task.request.id + ') is improperly configured with ' + \
-               'inconsistent time limits.\n\n The task will still attempt to run, but may terminate unexpectedly. ' + \
-               'Time limits should be configured as follows: max_retry_time (determined by max_retries) < soft_time_' +\
-               'limit < time_limit. Actual configured limits are:\n\n' \
-              'max_retry_time = %f\n soft_time_limit: %f' % (est_execution_time, task.soft_time_limit)
+    message = ('Warning: Task ' + task.name + ' ( ' + task.request.id + ') is improperly configured with '
+               'inconsistent time limits.\n\n The task will still attempt to run, but may terminate unexpectedly. '
+               'Time limits should be configured as follows: max_retry_time (determined by max_retries) < soft_time_'
+               'limit < time_limit. Actual configured limits are:\n\n'
+               'max_retry_time = %f\n soft_time_limit: %f' % (est_execution_time, task.soft_time_limit))
 
     # TODO: complete implementation and use this method ot the beginning of each task to help catch configuration errors
 
@@ -299,11 +299,11 @@ def send_retry_warning_if_applicable(task, est_execution_time, warn_after_retry_
     # don't bother sending the warning if the task will fail and generate a separate failure message before anyone
     # can intervene
     if not send_retry_warning(task, est_execution_time, warn_after_retry_num, celery_logger,
-                                             skip_moot_warnings):
+                              skip_moot_warnings):
         return
 
     # for consistency, build message content  to resemble failure notifications from Celery
-    subject = make_standard_email_subject(task, "Multiple failed retries", _WARNING_IMPORTANCE)  # build message content (resembles failure notifications from Celery)
+    subject = make_standard_email_subject(task, "Multiple failed retries", _WARNING_IMPORTANCE)
 
     initial_retry_delay = task.default_retry_delay
     current_retry_num = task.request.retries
@@ -311,22 +311,21 @@ def send_retry_warning_if_applicable(task, est_execution_time, warn_after_retry_
     est_elapsed_seconds = 0
     if current_retry_num != 0:
         est_elapsed_seconds = time_until_retry(0, current_retry_num, est_execution_time,
-                                                   initial_retry_delay) + est_execution_time
+                                               initial_retry_delay) + est_execution_time
 
     est_elapsed_time = to_human_relevant_delta(est_elapsed_seconds)
     seconds_to_final_attempt = time_until_retry(current_retry_num, task.max_retries, est_execution_time,
-                                                    initial_retry_delay)
+                                                initial_retry_delay)
     est_remaining_time = to_human_relevant_delta(seconds_to_final_attempt)
 
-    message = 'Warning: Task ' + task.name + ' ( ' + task.request.id + ' ) has failed to complete after ' + (
-    task.request.retries + 1).__str__() + \
-              ' attempts (~' + est_elapsed_time.__str__() + ').\n\n' + \
-              'This task will be automatically retried over the next ' + est_remaining_time + ', with increasing ' \
-              'delay between attempts. If no known problem exists that is preventing EDD from communicating with ICE,' \
-              ' consider trying to identify and resolve the issue now. If a temporary communication failure is ' \
-              'expected, this message is an indication that EDD is functioning as intended! You should get a follow-' \
-              'up email when this task finally succeeds or fails.\n\n' \
-              + build_task_summary_and_traceback(task)
+    message = ('Warning: Task %s ( %s ) has failed to complete after %s attempts (~%s).\n\n'
+               'This task will be automatically retried over the next %s, with increasing delay between attempts. If '
+               'no known problem exists that is preventing EDD from communicating with ICE, consider trying to identify'
+               ' and resolve the issue now. If a temporary communication failure is expected, this message is an '
+               'indication that EDD is functioning as intended! You should get a follow-up email when this task '
+               'finally succeeds or fails.\n\n' % (task.name, task.request.id, (task.request.retries + 1),
+                                                   est_elapsed_time, est_remaining_time)) + \
+        build_task_summary_and_traceback(task)
 
     email_admins(subject, message, celery_logger)
 
@@ -343,13 +342,12 @@ def send_resolution_message(task, est_execution_time, celery_logger):
     subject = '[' + task.request.hostname + "] Resolved: Task " + task.name + " ( " + task.request.id + ")"
 
     est_ellapsed_seconds = time_until_retry(0, task.request.retries, est_execution_time,
-                                                task.default_retry_delay) + est_execution_time
-    est_ellapsed_time = to_human_relevant_delta(est_ellapsed_seconds)
+                                            task.default_retry_delay) + est_execution_time
+    est_elapsed_time = to_human_relevant_delta(est_ellapsed_seconds)
 
-    message = 'Resolved: Task ' + task.name + ' ( ' + task.request.id + ' ) completed successfully after ' + (
-    task.request.retries + 1).__str__() + \
-              ' attempts (~' + est_ellapsed_time + ').\n\n' + \
-              build_task_arg_summary(task) + '\n\n'
+    message = ('Resolved: Task %s ( %s ) completed successfully after %d attempts (~%s).\n\n' +
+               build_task_arg_summary(task) + '\n\n') % (task.name, task.request.id, task.request.retries + 1,
+                                                         est_elapsed_time)
 
     email_admins(subject, message, celery_logger)
 
@@ -361,13 +359,14 @@ SECONDS_PER_MONTH = SECONDS_PER_HOUR * HOURS_PER_DAY * 30
 SECONDS_PER_YEAR = SECONDS_PER_MONTH * 12  # NOTE: this causes years to have 360 days, but it's consistent good enough
 SECONDS_PER_DAY = SECONDS_PER_HOUR * HOURS_PER_DAY
 
+
 def to_human_relevant_delta(seconds):
     """
     Converts the input to a human-readable time duration, with only applicable units displayed, and with precision
-    limited to a level where humans are likely to take interest based on the largest time increment present in the input.
-    Daylight savings time, leap years, etc are not taken into account, months are assumed to have 30 days, and years have
-    12 months (=360 days). The minimum time increment displayed for any value is milliseconds. The output of this method
-    is intended exclusively for human use, e.g. for displaying task execution time in the GUI and/
+    limited to a level where humans are likely to take interest based on the largest time increment present in the
+    input. Daylight savings time, leap years, etc are not taken into account, months are assumed to have 30 days, and
+    years have 12 months (=360 days). The minimum time increment displayed for any value is milliseconds. The output of
+    this method is intended exclusively for human use, e.g. for displaying task execution time in the GUI and/
     or logs. If you care about precise formatting of the output, this probably isn't the method for you.
 
     Note that the result is designed to be most useful at lower time increments, and probably needs additional
@@ -500,8 +499,7 @@ def send_stale_input_warning(task, specific_cause, est_execution_time, uses_expo
         if current_retry_num > 0:
             time_to_this_retry = time_until_retry(0, current_retry_num, est_execution_time, initial_retry_delay)
         elapsed_time_str = to_human_relevant_delta(time_to_this_retry)
-        message += "(estimated to be approximately " + elapsed_time_str + " since its " + \
-                      "initial execution attempt). "
+        message += "(estimated to be approximately " + elapsed_time_str + " since its initial execution attempt). "
 
     message += "Also note that this message is generated by input consistency checks within each Celery task, so a " \
                "lack of warnings from other tasks may indicate a coding error (an omission) in the silent tasks.\n\n" \

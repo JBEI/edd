@@ -1030,6 +1030,7 @@ class UtilityTests(TestCase):
         met = data._get_metabolite_measurements(assay.id)
         self.assertTrue(len(met) == 2)
 
+
 class IceTests(TestCase):
 
     def test_entry_uri_pattern(self):
@@ -1048,4 +1049,3 @@ class IceTests(TestCase):
         self.assertEquals('https', match.group(1))
         self.assertEquals('registry-test.jbei.org', match.group(2))
         self.assertEquals('761ec36a-cd17-41b8-a348-45d7552d4f4f', match.group(3))
-

@@ -18,7 +18,7 @@ from edd_utils.parsers.json_encoders import *
 # Configure email notifications for task errors
 #######################################################################################################################
 
-CELERY_SEND_TASK_ERROR_EMAILS = True  # controls both initial retry warning email and the subsequent failure/resolution message
+CELERY_SEND_TASK_ERROR_EMAILS = True  # controls initial retry warning email & subsequent failure/resolution message
 SERVER_EMAIL = "celery@" + socket.gethostname()
 
 # identically-named settings from Django...this way we at least have an explicit  list of what's inherited
@@ -39,7 +39,7 @@ CELERY_MIN_WARNING_GRACE_PERIOD_MIN = 30  # buffer around the final retry during
 # run time_until_retry() or compute_exp_retry_delay() in celery_utils.py from the command line.
 
 CELERY_INITIAL_ICE_RETRY_DELAY = 2  # delay in seconds before first retry attempt. assumption is exponential backoff.
-CELERY_WARN_AFTER_RETRY_NUM_FOR_ICE = 3  # ~= 14 seconds total wait after initial failure (task execution/timeout time is extra)
+CELERY_WARN_AFTER_RETRY_NUM_FOR_ICE = 3  # ~= 14 seconds total wait after initial failure (execution+timeout are extra)
 CELERY_MAX_ICE_RETRIES = 19  # ~= 2 weeks total wait...plenty of overhead for outages without intervention/data loss
 
 
@@ -111,8 +111,8 @@ CELERY_DEFAULT_ROUTING_KEY = 'edd'
 #######################################################################################################################
 # Task configuration
 #######################################################################################################################
-CELERYD_TASK_SOFT_TIME_LIMIT = 270  # time limit in seconds after which a task is notified that it'll be killed soon (5 min)
-CELERYD_TASK_TIME_LIMIT = 300  # upper limit in seconds that a task may take before its host process is terminated (5 min 30 sec)
+CELERYD_TASK_SOFT_TIME_LIMIT = 270  # seconds after which a task is notified that it'll be killed soon (5 min)
+CELERYD_TASK_TIME_LIMIT = 300   # upper limit in seconds a run can take before host process is terminated (5 min 30 sec)
 
 # List of modules to import when celery worker starts.
 # Note: alternatively, we could have Celery auto-discover all
@@ -154,7 +154,7 @@ CELERY_REDIRECT_STDOUTS_LEVEL = 'WARN'  # override the default setting of 'WARN'
 # also converting from the JSON Unicode to ASCII to avoid problems with sending email.
 admins_dict_temp = config['site'].get('admins', [])
 recipients_tuple_list = []
-force_ascii=True
+force_ascii = True
 for raw_name in admins_dict_temp:
     raw_email = admins_dict_temp[raw_name]
 

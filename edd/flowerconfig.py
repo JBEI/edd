@@ -39,8 +39,7 @@ flower_mgmt_interface = Celery('flower',
 # broker_api='http://' + RABBITMQ_MGMT_USERNAME +':' + RABBITMQ_MGMT_PASSWORD + '@' + RABBITMQ_HOST + ':' + RABBITMQ_MGMT_PORT + '/api/' # used only by Flower
 
 # general flower options
-# TODO: downgrade to WARNING after some initial experience with Flower
-logging = 'DEBUG'
+logging = 'INFO'
 
 # Web interface access control
 # TODO: this appears to work on the command line, but not via configuration file

@@ -119,8 +119,7 @@ def test_repeated_retry_failure(self, fail_for_outdated_input=False, succeed_on_
 
 
 @shared_task(bind=True, default_retry_delay=CELERY_INITIAL_ICE_RETRY_DELAY, max_retries=CELERY_MAX_ICE_RETRIES)
-def link_ice_entry_to_study(self, edd_user_email, line_pk, strain_pk, study_pk, study_url, old_study_name=None,
-                            **kwargs):
+def link_ice_entry_to_study(self, edd_user_email, strain_pk, study_pk, study_url, old_study_name=None, **kwargs):
     """
     Contacts ICE to link an ICE part referenced by an EDD strain an EDD study that uses it. In the anticipated
     common case, this is triggered by creation of a single cell line within the confines of an EDD study. However, to
@@ -136,7 +135,6 @@ def link_ice_entry_to_study(self, edd_user_email, line_pk, strain_pk, study_pk, 
     method, but that could significantly complicate the retry and/or post-task-failure cleanup scenarios...we we should
     think more about those cases and optimize later if needed after initial functionality is working.
     :param edd_user_email: email address of the edd user who the change will be attributed to
-    :param line_pk: EDD primary key of the line whose link to this strain motivated the change
     :param strain_pk: primary key of the EDD strain whose link to to the line/study motivated the change
     :param study_pk: primary key of the EDD study
     :param study_url: the absolute url of the EDD study
@@ -196,12 +194,11 @@ def link_ice_entry_to_study(self, edd_user_email, line_pk, strain_pk, study_pk, 
 
     # catch Exceptions that indicate the database relationships have changed
     except (Line.DoesNotExist, Strain.DoesNotExist):
-        celery_logger.warning(
-            "Marking task %s as complete without taking any action since its inputs are stale."
-                                                " One or more relationships that motivated task submission been "
-                                                "removed." % self.request.id)
+        celery_logger.warning("Marking task %s as complete without taking any action since its inputs are stale."
+                              " One or more relationships that motivated task submission been removed."
+                              % self.request.id)
         specific_cause = ("No (strain, line, study) relationship was found in the EDD database matching the one "
-                         "implied by inputs")
+                          "implied by inputs")
         send_stale_input_warning(self, specific_cause, est_execution_time, uses_exponential_backoff, celery_logger)
 
         return _STALE_OR_ERR_INPUT  # succeed after sending the warning
@@ -227,7 +224,7 @@ def link_ice_entry_to_study(self, edd_user_email, line_pk, strain_pk, study_pk, 
         if retry_delay == INVALID_DELAY:
             raise exc
 
-        celery_logger.info("%s: retrying again in %d seconds" % (__name__ , retry_delay))
+        celery_logger.info("%s: retrying again in %d seconds" % (__name__, retry_delay))
         raise self.retry(exc=exc, countdown=retry_delay)
 
     # on success, publish a resolution message if a warning message was previously published.
@@ -261,7 +258,7 @@ def unlink_ice_entry_from_study(self, edd_user_email, study_pk, study_url, strai
         with transaction.atomic():
 
             lines = (Line.objects.filter(strains__registry_url=strain_registry_url, study__pk=study_pk)
-                                        .prefetch_related('strains').select_related('object_ref'))
+                     .prefetch_related('strains').select_related('object_ref'))
 
             # if any lines were found linking the study to the strain, send a warning email to admins, then succeed
             if lines:
@@ -297,11 +294,11 @@ def unlink_ice_entry_from_study(self, edd_user_email, study_pk, study_url, strai
         if not removed:
             subject = make_standard_email_subject(self, 'No link to remove', _WARNING_IMPORTANCE)
             message = ('''Warning: Task %s couldn't remove study link "%s" from part "%s" because '''
-                      '''there was no such link to remove. No known error has occurred, but this situation shouldn't '''
-                      'occur during normal operation.\n\n'
-                      '''You may need to investigate why ICE's state didn't match EDD's in this instance. Note that '''
-                      '''the links are user-editable in ICE, so it's possible that  the link was manually deleted '''
-                      '(verifiable via the GUI). ' % (self.name, study_url, strain_registry_url))
+                       '''there was no such link to remove. No known error has occurred, but this situation '''
+                       '''shouldn't occur during normal operation.\n\n'''
+                       '''You may need to investigate why ICE's state didn't match EDD's in this instance. Note that '''
+                       '''the links are user-editable in ICE, so it's possible that  the link was manually deleted '''
+                       '(verifiable via the GUI). ' % (self.name, study_url, strain_registry_url))
             email_admins(subject, message, celery_logger)
             return 'Non-existent link'
 

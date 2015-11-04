@@ -64,9 +64,11 @@ def index_study(sender, study, **kwargs):
 def unindex_study(sender, study, **kwargs):
     solr.remove([study, ])
 
+
 @receiver(user_modified)
 def index_user(sender, user, **kwargs):
     users.update([user, ])
+
 
 def log_update_warning_msg(study_id):
     logger.warning("ICE URL is not configured. Skipping attempt to link ICE parts to EDD study \"" + study_id + "\"")
@@ -80,7 +82,8 @@ def handle_study_pre_save(sender, instance, **kwargs):
 
     # if the study was already saved, cache its name as stored in the database so we can detect renaming
     if instance.pk:
-        instance.pre_save_name = Study.objects.filter(pk=instance.pk).select_related('object_ref').values('name')[0]['name']
+        instance.pre_save_name = (Study.objects.filter(pk=instance.pk).select_related('object_ref')
+                                  .values('name')[0]['name'])
     # if the study is new
     else:
         instance.pre_save_name = None
@@ -118,7 +121,7 @@ def handle_study_post_save(sender, instance, created, **kwargs):
 
     if strains:
         study_url = get_abs_study_url(study.pk)
-        update = Update.load_update() # find which user made the update that caused this signal
+        update = Update.load_update()  # find which user made the update that caused this signal
         user_email = update.mod_by.email
 
         try:
@@ -128,9 +131,10 @@ def handle_study_post_save(sender, instance, created, **kwargs):
             strains_to_link = []
             for strain in strains.all():
                 if not _is_linkable(strain):
-                    logger.warning("Strain with id %d is no longer linked to study id %d, but doesn't have enough data to "
-                               "link to ICE. It's possible (though unlikely) that the EDD strain has been modified "
-                               "since an ICE link was created for it." % (strain.pk, study.pk))
+                    logger.warning(
+                        "Strain with id %d is no longer linked to study id %d, but doesn't have enough data to "
+                        "link to ICE. It's possible (though unlikely) that the EDD strain has been modified "
+                        "since an ICE link was created for it." % (strain.pk, study.pk))
                     continue
 
                 strains_to_link.append(strain)
@@ -224,14 +228,14 @@ def _post_commit_unlink_ice_entry_from_study(user_email, study_pk, study_creatio
     ice = IceApi(user_email) if not settings.USE_CELERY else None
 
     study_url = get_abs_study_url(study_pk)
+    index = 0
 
     try:
         # loop over strain data cached prior to line deletion. note that the strains themselves may have been deleted
         # at this point, so safest to use cached data instead
-        index = 0
         change_count = 0
-        for strain in removed_strains:   # Note: even though only a single line was deleted,
-                                         # possible it links to multiple strains
+        for strain in removed_strains:      # Note: even though only a single line was deleted,
+                                            # possible it links to multiple strains
 
             # print a warning and skip any strains that didn't include enough data for a link to ICE
             if not _is_linkable(strain):
@@ -292,7 +296,7 @@ def _post_commit_link_ice_entry_to_study(user_email, study, line_pk, linked_stra
             # If Celery is configured, use it to perform the communication with ICE,
             # along with retries/failure notifications, etc.
             if settings.USE_CELERY:
-                async_result = link_ice_entry_to_study.delay(user_email, line_pk, strain.pk, study.pk, study_url)
+                async_result = link_ice_entry_to_study.delay(user_email, strain.pk, study.pk, study_url)
                 track_celery_task_submission(async_result)
             # Otherwise, communicate with ICE synchronously during signal processing
             else:
@@ -316,6 +320,7 @@ def _post_commit_link_ice_entry_to_study(user_email, study, line_pk, linked_stra
         else:
             logger.exception("Error updating ICE links via direct HTTP request (index=%d)" % index, rte)
         raise rte
+
 
 def _is_linkable(strain):
     return _is_strain_linkable(strain.registry_url, strain.registry_id)
@@ -369,7 +374,7 @@ def handle_line_strain_changed(sender, instance, action, reverse, model, pk_set,
         return
 
     elif "post_add" == action:
-        current_strain_pks  = line.strains.values_list('pk', flat=True).all()
+        current_strain_pks = line.strains.values_list('pk', flat=True).all()
         added_strains = []
         removed_strains = []
 
@@ -389,15 +394,18 @@ def handle_line_strain_changed(sender, instance, action, reverse, model, pk_set,
         else:
             added_strains = line.strains.all()
 
-        logger.debug("pre_clear_strain_pks = " + instance.pre_clear_strain_pks.__str__())
-        logger.debug("current_strain_pks = " + current_strain_pks.__str__())
-        logger.debug("added_strains = " + added_strains.__str__())
-        logger.debug("removed_strains = " + removed_strains.__str__())
+        logger.debug("pre_clear_strain_pks = " + str(instance.pre_clear_strain_pks))
+        logger.debug("current_strain_pks = " + str(current_strain_pks))
+        logger.debug("added_strains = " + str(added_strains))
+        logger.debug("removed_strains = " + str(removed_strains))
 
         # schedule asynchronous work to maintain ICE strain links to this study, failing if any
         # job submission fails (probably because our link to Celery or RabbitMQ is down, and isn't
         # likely to come back up for subsequently attempted task submissions in the loop)
         study = line.study
+
+        added_count = 0
+        removed_count = 0
 
         try:
             # find which user made the update that caused this signal
@@ -411,7 +419,6 @@ def handle_line_strain_changed(sender, instance, action, reverse, model, pk_set,
 
             # narrow down the list of lines that are no longer associated with this strain to just those
             # we want to take action on in ICE.
-            removed_count = 0
             remove_on_commit = []
             for strain in removed_strains:
 
@@ -446,7 +453,6 @@ def handle_line_strain_changed(sender, instance, action, reverse, model, pk_set,
                                                                                       study.created.mod_time,
                                                                                       remove_on_commit))
 
-            added_count = 0
             add_on_commit_strains = []
             for strain in added_strains:
 
@@ -492,7 +498,8 @@ def handle_line_strain_changed(sender, instance, action, reverse, model, pk_set,
 
 
 def get_abs_study_url(study_pk):
-    study_relative_url = urlreverse('main:detail', kwargs={'pk': study_pk})  # alias reverse() to avoid conflict with named parameter
+    # Note: urlreverse is an alias for reverse() to avoid conflict with named parameter
+    study_relative_url = urlreverse('main:detail', kwargs={'pk': study_pk})
     return get_absolute_url(study_relative_url)
 
 
@@ -512,5 +519,5 @@ def track_celery_task_submission(async_result):
     :param async_result:
     :return:
     """
-    logger.warning( "TODO: track status of tasks submitted to the Celery library, but maybe not yet communicated to "
-                    "the server (SYNBIO-1204)")
+    logger.warning("TODO: track status of tasks submitted to the Celery library, but maybe not yet communicated to "
+                   "the server (SYNBIO-1204)")
