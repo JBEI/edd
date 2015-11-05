@@ -308,8 +308,10 @@ class AssayDataTests(TestCase):
         study1 = Study.objects.create(name='Test Study 1', description='')
         line1 = study1.line_set.create(
             name="WT1", description="", experimenter=user1, contact=user1)
-        protocol1 = Protocol.objects.create(name="gc-ms", owned_by=user1)
-        protocol2 = Protocol.objects.create(name="OD600", owned_by=user1)
+        protocol1 = Protocol.objects.create(
+            name="gc-ms", categorization=Protocol.CATEGORY_LCMS, owned_by=user1)
+        protocol2 = Protocol.objects.create(
+            name="OD600", categorization=Protocol.CATEGORY_OD, owned_by=user1)
         Protocol.objects.create(name="New protocol", owned_by=user1, active=False)
         mt1 = Metabolite.objects.create(
             type_name="Mevalonate", short_name="Mev", type_group="m", charge=-1, carbon_count=6,
@@ -361,9 +363,9 @@ class AssayDataTests(TestCase):
         p2 = Protocol.objects.get(name="OD600")
         p3 = Protocol.objects.filter(active=False)[0]
         self.assertTrue('%s' % p1 == "gc-ms")
-        self.assertTrue(p1.categorization == "LCMS")
-        self.assertTrue(p2.categorization == "OD")
-        self.assertTrue(p3.categorization == "Unknown")
+        self.assertTrue(p1.categorization == Protocol.CATEGORY_LCMS)
+        self.assertTrue(p2.categorization == Protocol.CATEGORY_OD)
+        self.assertTrue(p3.categorization == Protocol.CATEGORY_NONE)
         p1_json = p1.to_json()
         self.assertTrue(p1_json.get('active', False))
         self.assertTrue(p1_json.get('name', None) == 'gc-ms')

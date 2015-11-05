@@ -743,12 +743,29 @@ class Protocol(EDDObject):
     """ A defined method of examining a Line. """
     class Meta:
         db_table = 'protocol'
+    CATEGORY_NONE = 'NA'
+    CATEGORY_OD = 'OD'
+    CATEGORY_HPLC = 'HPLC'
+    CATEGORY_LCMS = 'LCMS'
+    CATEGORY_RAMOS = 'RAMOS'
+    CATEGORY_TPOMICS = 'TPOMICS'
+    CATEGORY_CHOICE = (
+        (CATEGORY_NONE, 'None'),
+        (CATEGORY_OD, 'Optical Density'),
+        (CATEGORY_HPLC, 'HPLC'),
+        (CATEGORY_LCMS, 'LCMS'),
+        (CATEGORY_RAMOS, 'RAMOS'),
+        (CATEGORY_TPOMICS, 'Transcriptomics / Proteomics'),
+    )
+
     object_ref = models.OneToOneField(EDDObject, parent_link=True)
     owned_by = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='protocol_set')
     variant_of = models.ForeignKey('self', blank=True, null=True, related_name='derived_set')
     default_units = models.ForeignKey(
         'MeasurementUnit', blank=True, null=True, related_name="protocol_set")
     metadata_template = models.ManyToManyField(MetadataType, through="MetadataTemplate")
+    categorization = models.CharField(
+        max_length=8, choices=CATEGORY_CHOICE, default=CATEGORY_NONE)
 
     def creator(self):
         return self.created.mod_by
@@ -774,29 +791,6 @@ class Protocol(EDDObject):
             raise ValueError("There is already a protocol named '%s'." % self.name)
         return super(Protocol, self).save(*args, **kwargs)
 
-    @property
-    def categorization(self):
-        """ The 'categorization' determines what broad category the Protocol falls into with
-            respect to how its Metabolite data should be processed internally.  The categorizations
-            used so far are the strings 'OD', 'HPLC', 'LCMS', and 'RAMOS', and the catch-all
-            'Unknown'. """
-        # FIXME This is not the best way of doing it, depending as it does
-        # on the arbitrary naming conventions used by scientists creating new
-        # Protocols, so it will probably need replacing later on.
-        name = self.name.upper()
-        if name == "OD600":
-            return "OD"
-        elif "HPLC" in name:
-            return "HPLC"
-        elif re.match("^LC[\-\/]?", name) or re.match("^GC[\-\/]?", name):
-            return "LCMS"
-        elif re.match("O2\W+CO2", name):
-            return "RAMOS"
-        elif ("TRANSCRIPTOMICS" in name) or ("PROTEOMICS" in name):
-            return "TPOMICS"
-        else:
-            return "Unknown"
-
 
 class MetadataTemplate(models.Model):
     """ Defines sets of metadata to use as a template on a Protocol. """
@@ -805,7 +799,7 @@ class MetadataTemplate(models.Model):
     protocol = models.ForeignKey(Protocol)
     meta_type = models.ForeignKey(MetadataType)
     # potentially override the default value in templates?
-    default_value = models.CharField(max_length=255, blank=True)
+    default_value = models.CharField(max_length=255, blank=True, null=True)
 
 
 class LineProperty(object):

@@ -53,10 +53,8 @@ from collections import defaultdict, OrderedDict
 from six import string_types
 
 from .models import (
-    Assay, Attachment, GeneIdentifier, Line, Measurement, MeasurementCompartment,
-    MeasurementGroup, MeasurementType, MeasurementUnit, MeasurementValue, Metabolite,
-    MetaboliteExchange, MetaboliteSpecies, MetadataType, ProteinIdentifier, Protocol,
-    SBMLTemplate, Update
+    Attachment, MeasurementType, MeasurementUnit, Metabolite, MetaboliteExchange,
+    MetaboliteSpecies, Protocol, SBMLTemplate,
     )
 from .utilities import interpolate_at, line_export_base
 
@@ -1012,10 +1010,7 @@ class line_assay_data (line_export_base):
         return self
 
     def _get_protocols_by_category(self, category_name):
-        protocols = []
-        for p in self.protocols:
-            if (p.categorization == category_name):
-                protocols.append(p)
+        protocols = [p for p in self.protocols if p.categorization == category_name]
         self._protocols_by_category[category_name] = protocols
         return protocols
 
@@ -1049,7 +1044,7 @@ class line_assay_data (line_export_base):
         """
         if self.debug:
             print("STEP 2: filter OD data")
-        od_protocols = self._get_protocols_by_category("OD")
+        od_protocols = self._get_protocols_by_category(Protocol.CATEGORY_OD)
         if (len(od_protocols) == 0):
             raise ValueError("Cannot find the OD600 protocol by name!")
         assert (len(od_protocols) == 1)
@@ -1193,7 +1188,7 @@ class line_assay_data (line_export_base):
         """private method"""
         if self.debug:
             print("STEP 3: get HPLC data")
-        self._process_multi_purpose_protocol("HPLC")
+        self._process_multi_purpose_protocol(Protocol.CATEGORY_HPLC)
 
     # this function is used to extract data for HPLC, LC-MS, and transcriptomics
     # or proteomics protocols.  most of these are handled identically, except
@@ -1325,13 +1320,16 @@ class line_assay_data (line_export_base):
         """private method"""
         if self.debug:
             print("STEP 4: get LCMS data")
-        self._process_multi_purpose_protocol("LCMS", process_carbon_ratios_separately=True)
+        self._process_multi_purpose_protocol(
+            Protocol.CATEGORY_LCMS,
+            process_carbon_ratios_separately=True,
+        )
 
     def _step_5_get_ramos_data(self):
         """private method"""
         if self.debug:
             print("STEP 5: get RAMOS data")
-        ramos_protocols = self._get_protocols_by_category("RAMOS")
+        ramos_protocols = self._get_protocols_by_category(Protocol.CATEGORY_RAMOS)
         if (len(ramos_protocols) == 0):
             return
         for protocol in ramos_protocols:
@@ -1379,7 +1377,7 @@ class line_assay_data (line_export_base):
         """private method"""
         if self.debug:
             print("STEP 6: get transcriptomics/proteomics data")
-        self._process_multi_purpose_protocol("TPOMICS")
+        self._process_multi_purpose_protocol(Protocol.CATEGORY_TPOMICS)
 
     # FIXME too spaghetti-like; refactor?
     def _step_7_calculate_fluxes(self):
