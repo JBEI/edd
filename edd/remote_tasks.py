@@ -13,7 +13,8 @@ from django.core.exceptions import MultipleObjectsReturned
 
 from edd.celeryconfig import CELERY_INITIAL_ICE_RETRY_DELAY, CELERY_WARN_AFTER_RETRY_NUM_FOR_ICE, \
     CELERY_MAX_ICE_RETRIES
-from edd_utils.celery_utils import send_retry_warning_if_applicable, INVALID_DELAY
+from edd_utils.celery_utils import send_retry_warning_if_applicable, INVALID_DELAY, \
+    test_time_limit_consistency
 from edd_utils.celery_utils import compute_exp_retry_delay
 from edd_utils.celery_utils import send_stale_input_warning
 from edd_utils.celery_utils import send_resolution_message
@@ -79,6 +80,10 @@ def test_repeated_retry_failure(self, fail_for_outdated_input=False, succeed_on_
     warn_at_retry_num = 3
     est_execution_time = 0
     use_exponential_backoff = True
+
+    # verify that dynamically-configurable time limits are self-consistent, and email administrators
+    # if they aren't
+    test_time_limit_consistency(self, celery_logger, est_execution_time, use_exponential_backoff)
 
     if fail_for_outdated_input:
         raise LookupError('Task inputs were detected to be stale')
@@ -161,6 +166,11 @@ def link_ice_entry_to_study(self, edd_user_email, strain_pk, study_pk, study_url
     uses_exponential_backoff = True
 
     try:
+        # verify that dynamically-configurable time limits are self-consistent, and email
+        # administrators if they aren't
+        test_time_limit_consistency(self, celery_logger, est_execution_time,
+                                    uses_exponential_backoff)
+
         # Verify that the EDD study->line->strain relationship that motivated this ICE push is still
         #  valid. Since execution of this task may be delayed due to high load, or since the task
         # may have been retried multiple times over the course of a significant time period, it's
@@ -174,7 +184,7 @@ def link_ice_entry_to_study(self, edd_user_email, strain_pk, study_pk, study_url
         # task to have cached stale EDD data from the time at which it was submitted.
 
         strain = None
-        with transaction.atomic():  # using=config['db'].get('database', 'edddjango')
+        with transaction.atomic(savepoint=False):  # using=config['db'].get('database', 'edddjango')
             # Note: we query from line since it has the strain and study links
 
             line = (Line.objects.filter(study__pk=study_pk, strains__pk=strain_pk)
@@ -278,11 +288,17 @@ def unlink_ice_entry_from_study(self, edd_user_email, study_pk, study_url, strai
     celery_logger.info("Start unlink_part_from_study()")
 
     est_execution_time = 0.025
+    use_exponential_backoff = True
 
     try:
 
+        # verify that dynamically-configurable time limits are self-consistent, and email
+        # administrators if they aren't
+        test_time_limit_consistency(self, celery_logger, est_execution_time,
+                                    use_exponential_backoff)
+
         # verify that no lines exist that link this study to an ICE strain with the provided URL
-        with transaction.atomic():
+        with transaction.atomic(savepoint=False):
 
             lines = (Line.objects.filter(strains__registry_url=strain_registry_url,
                                          study__pk=study_pk)
@@ -312,7 +328,6 @@ def unlink_ice_entry_from_study(self, edd_user_email, study_pk, study_url, strai
                                       "its inputs are stale.  One or more relationships that "
                                       "motivated task submission have been modified."
                                       % self.request.id)
-                use_exponential_backoff = True
                 send_stale_input_warning(self, specific_cause, est_execution_time,
                                          use_exponential_backoff, celery_logger)
                 return _STALE_OR_ERR_INPUT  # succeed after sending the warning

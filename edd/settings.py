@@ -189,6 +189,17 @@ DATABASES = {
         'HOST': config['db'].get('host', 'localhost'),
         'PORT': config['db'].get('port', '5432'),
         'OPTIONS': {
+            # prevent non-repeatable and phantom reads, which are possible with default 'read
+            # committed' level. The serializable level matches typical developer expectations for
+            # how the DB works, and keeps code relatively simple (though at a computational cost,
+            # and with a small chance of requiring repeated client requests if unlikely
+            # serialization errors occur).
+            #
+            # Seems unlikely that the costs of greater consistency will be significant issues
+            # unless EDD gets very high load, at which point we can consider additional resulting
+            # code complexity / development time as justified. Ideally, Django will eventually
+            # support READ_ONLY transactions, which we should use by default to help mitigate the
+            # computational burden.
             'isolation_level': psycopg2.extensions.ISOLATION_LEVEL_SERIALIZABLE,
         },
     },

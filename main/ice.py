@@ -10,7 +10,7 @@ import logging
 
 from requests.auth import AuthBase
 from requests.compat import urlparse
-from edd.local_settings import ICE_URL, ICE_SECRET_HMAC_KEY, ICE_REQUEST_TIMEOUT
+from edd.settings import ICE_URL, ICE_SECRET_HMAC_KEY, ICE_REQUEST_TIMEOUT
 
 """
 Defines classes and utility methods used to communicate with the Index of Composable Elements

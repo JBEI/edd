@@ -1,5 +1,8 @@
 
 from __future__ import division
+
+import arrow
+
 from edd_utils.parsers.excel import *
 from edd_utils.form_utils import *
 from edd_utils.parsers import gc_ms
@@ -321,7 +324,8 @@ class CeleryUtilsTests(TestCase):
                         self.fail("Expected ValueError but got a " + result)
 
                     self.assertEquals(int(exp_result), result)
-                    print ('\tResult = % s  = ' % result) + to_human_relevant_delta(result)
+                    print ('\tResult delay = % s  = ' % result) + arrow.utcnow().replace(
+                        seconds=+result)
 
                 except ValueError:
                     if "ValueError" != exp_result:
@@ -361,7 +365,7 @@ class CeleryUtilsTests(TestCase):
                     if 'ValueError' == exp_result:
                         self.fail("Expected ValueError but got a result (%f)" % result)
 
-                    print ('\tResult = % s  = ' % result) + to_human_relevant_delta(result)
+                    print ('\tResult = % s  = ' % result) + arrow.utcnow().replace(seconds=+result)
                     self.assertEquals(float(exp_result), result)
 
                 except ValueError:
@@ -385,18 +389,3 @@ class CeleryUtilsTests(TestCase):
                 result = send_retry_warning(task, est_task_execution_time, notify_on_retry_num,
                                             logger)
                 self.assertEquals(exp_result, result)
-
-    def test_to_human_relevant_delta(self):
-        """
-        Reads in test data and expected results from the reference file and compares
-        them to computed results.
-        """
-
-        with open(self._TEST_DATA_FILE) as test_fixture:
-            test_data = json.load(test_fixture)['to_human_relevant_delta']
-
-            for key in test_data:
-                decimal_seconds = float(key)
-                exp_result = test_data[key]
-                result = to_human_relevant_delta(decimal_seconds)
-                self.assertEquals(result, exp_result)

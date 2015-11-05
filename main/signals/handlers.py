@@ -149,7 +149,7 @@ def handle_study_post_save(sender, instance, created, **kwargs):
 
 
 @receiver(pre_delete, sender=Line, dispatch_uid="main.signals.handlers.handle_line_pre_delete")
-@transaction.atomic
+@transaction.atomic(savepoint=False)
 def handle_line_pre_delete(sender, instance, **kwargs):
     """
     Caches study <-> strain associations prior to deletion of a line and/or study so we can remove
@@ -172,7 +172,7 @@ def handle_line_pre_delete(sender, instance, **kwargs):
 
 
 @receiver(post_delete, sender=Line, dispatch_uid="main.signals.handlers.handle_line_post_delete")
-@transaction.atomic
+@transaction.atomic(savepoint=False)
 def handle_line_post_delete(sender, instance, **kwargs):
     """
     Checks study <-> strain associations following line deletion and removes study links from ICE
@@ -354,7 +354,7 @@ def _is_strain_linkable(registry_url, registry_id):
 
 @receiver(m2m_changed, sender=Line.strains.through, dispatch_uid=("%s.handle_line_strain_changed"
                                                                   % __name__))
-@transaction.atomic()
+@transaction.atomic(savepoint=False)
 def handle_line_strain_changed(sender, instance, action, reverse, model, pk_set, using, **kwargs):
     """
     Handles changes to the Line <-> Strain relationship caused by adding/removing/changing the

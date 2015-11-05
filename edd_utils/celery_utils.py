@@ -4,22 +4,20 @@ A collection of utility functions used to support common Celery task use cases
 
 from __future__ import absolute_import
 
-import traceback
+import arrow
+# use the same email configuration for custom emails as Celery and Django are using in other parts
+# of EDD. if deployed to a separate server, we can just copy over the other config files
+from edd.settings import *
+from edd.celeryconfig import SERVER_EMAIL, CELERY_MIN_WARNING_GRACE_PERIOD_MIN, \
+    CELERY_SEND_TASK_ERROR_EMAILS, CELERYD_TASK_TIME_LIMIT, CELERYD_TASK_SOFT_TIME_LIMIT
+from email.mime.text import MIMEText
+from email.utils import formataddr
 # use smtplib directly to send mail since Celery doesn't seem to expose an API to help with this,
 # and it's unclear whether the Django libraries will be available/functional to remote Celery
 # workers running outside the context of the EDD Django app (though probably within the context
 # of its codebase)
 import smtplib
-from email.mime.text import MIMEText
-from email.utils import formataddr
-# use the same email configuration for custom emails as Celery and Django are using in other parts
-# of EDD. if deployed to a separate server, we can just copy over the other config files
-from edd.local_settings import *
-from edd.celeryconfig import SERVER_EMAIL, CELERY_MIN_WARNING_GRACE_PERIOD_MIN, \
-    CELERY_SEND_TASK_ERROR_EMAILS
-
-# import server email address, which is dynamically computed and can't be included in the config
-# file. ADMINS has to be reformatted from JSON, so just reference that too
+import traceback
 
 INVALID_DELAY = -1
 
@@ -118,8 +116,8 @@ def email_admins(subject, message, logger):
     """
 
     # Initial use of this library was surprisingly painful, so only make changes if you have time!
-    # extract recipient data from the required Celery dictionary format
 
+    # extract recipient data from the required Celery dictionary format
     logger.debug("Raw configuration values on following lines:")
     logger.debug("send error emails: " + CELERY_SEND_TASK_ERROR_EMAILS.__str__())
     logger.debug("host: " + EMAIL_HOST)
@@ -142,7 +140,7 @@ def email_admins(subject, message, logger):
     unformatted_recipients_list = []
     for recipient in ADMINS:
         name = recipient[0]
-        email_addr = recipient[0]
+        email_addr = recipient[1]
         formatted = formataddr((name, email_addr))
         formatted_recipients_list.append(formatted)
         unformatted_recipients_list.append(email_addr)
@@ -156,19 +154,17 @@ def email_admins(subject, message, logger):
 
     recipients_str_list = []
     ascii_recipients_tuple_list = []
-    for recipient in ADMINS:
-        raw_name = recipient[0]
-        raw_email = recipient[1]
 
-        formatted_email = ''
-        if FORCE_ASCII:
-            ascii_name = raw_name.encode('ascii', 'replace')
-            ascii_email = raw_email.encode('ascii', 'replace')
-            formatted_email = _format_email_address(ascii_name, ascii_email)
-            ascii_recipients_tuple_list.append((ascii_name, ascii_email))
-        else:
-            formatted_email = _format_email_address(raw_name, raw_email)
-        recipients_str_list.append(formatted_email)
+    if FORCE_ASCII:
+        # ascii_email_recipients_tuple_list = [(admin[0].encode('ascii', 'replace'),
+        #                                      admin[1].encode('ascii', 'replace'))
+        #                                      for admin in ADMINS]
+
+        recipients_str_list = [_format_email_address(admin[0].encode('ascii', 'replace'),
+                               admin[1].encode('ascii', 'replace'))
+                               for admin in ADMINS]
+    else:
+        recipients_str_list = [_format_email_address(admin[0], admin[1]) for admin in ADMINS]
 
     sender_name = ' Program'  # non-Celery
     formatted_sender_email = _format_email_address(sender_name, SERVER_EMAIL)
@@ -199,17 +195,17 @@ def email_admins(subject, message, logger):
     server.set_debuglevel(1)
 
     try:
+        # log into the server if credentials are configured
         if EMAIL_HOST_USER:
             server.login(EMAIL_HOST_USER, EMAIL_HOST_PASSWORD)
-        # .debug("calling sendmail()")
-        server.sendmail(formatted_sender_email, recipients_str_list,
-                        msg.as_string())
+        server.sendmail(formatted_sender_email, recipients_str_list, msg.as_string())
         logger.debug("sendmail() returned")
+
     except Exception as exc:
         # just log the exception since the email was most likely generated as an indication of error
         logger.exception(exc)
     finally:
-        logger.debug("calling quit()")
+        logger.debug("calling sendmail's quit()")
         server.quit()
 
     logger.debug("Done.")
@@ -225,56 +221,67 @@ def _format_email_address(name, address):
 
 def make_standard_email_subject(task, subject_text, importance):
     """
-    Constructs an email subject line with standard formatting to include helful context for messages
-    from Custom Celery tasks.
+    Constructs an email subject line with standard formatting to include helpful context for
+    messages from Custom Celery tasks.
     :param task: the task whose execution prompted the message
     :param subject_text: the context-specific text for the email subject
     :param importance: the importance of the email
     :return: the formatted subject text
     """
     # build subject to resemble failure notifications from Celery
-    return '[%s] %s: Task %s ( %s ): %s' % (task.request.hostname, importance, task.name,
-                                            task.request.id, subject_text)
+    return '[%(hostname)s] %(importance)s: Task %(task_name)s ( %(task_id)s ): %(subject_text)s' % {
+        'hostname': task.request.hostname,
+        'importance': importance,
+        'task_name': task.name,
+        'task_id': task.request.id,
+        'subject_text': subject_text,
+    }
 
 
-def test_time_limit_consistency(task, est_execution_time=0, use_exp_backoff=True):
+def test_time_limit_consistency(task, celery_logger, est_execution_time=0, use_exp_backoff=True):
     """
     Tests time limits for the task parameter and if needed, sends an email to system administrators
     to inform them that a task's time limits are configured inconsistently. Once configuration is
     set, this check won't add much value, but since many limits are configurable in server.cfg,
     we'll want to check them dynamically and get some indication that they don't make sense.
+    Celery should do most of this work for us, but doesn't seem to have a lot of consistency checks.
+    :param est_execution_time: the estimated execution time in seconds for each attempt to run the
+    task
     """
 
-    hard_time_limit = task.time_limit
-    soft_time_limit = task.soft_time_limit
-    max_retries = task.max_retries
+    hard_time_limit = task.time_limit if task.time_limit is not None else CELERYD_TASK_TIME_LIMIT
+    soft_time_limit = (task.soft_time_limit if task.soft_time_limit is not None
+                       else CELERYD_TASK_SOFT_TIME_LIMIT)
+    est_final_retry_time = time_until_retry(0, task.max_retries, est_execution_time,
+                                            task.default_retry_delay)
 
-    est_execution_time = 0
-    max_execution_time = 0
-    if max_retries > 0:
-        max_execution_time = time_until_retry(0, task.max_retries, est_execution_time,
-                                              task.default_retry_delay)
-
-    bunk_time_limits = soft_time_limit > hard_time_limit
-    bunk_retries = (max_execution_time >= soft_time_limit) or (max_execution_time >=
-                                                               hard_time_limit)
+    bunk_time_limits = soft_time_limit >= hard_time_limit or est_execution_time >= soft_time_limit
 
     # if time limits are good, return without attempting to send a warning email
-    if not (bunk_time_limits or bunk_retries):
+    if not bunk_time_limits:
         return
 
     # build message content (resembles failure notifications from Celery)
     subject = make_standard_email_subject(task, "Inconsistent time limits", _WARNING_IMPORTANCE)
-    message = ('Warning: Task ' + task.name + ' ( ' + task.request.id + ') is improperly configured'
-               ' with inconsistent time limits.\n\n The task will still attempt to run, but may '
-               'terminate unexpectedly. Time limits should be configured as follows: max_retry_time'
-               ' (determined by max_retries) < soft_time_limit < time_limit. Actual configured '
-               'limits are:\n\n'
-               'max_retry_time = %f\n soft_time_limit: %f'
-               % (est_execution_time, task.soft_time_limit))
+    message = ('Warning: Task %(task_name)s ( %(task_id)s) is improperly configured with '
+               'inconsistent time limits.\n\n '
+               'The task will still attempt to run, but may terminate unexpectedly. Time limits '
+               'should be configured as follows: exp_run_time << soft_time_limit <  '
+               'hard_time_limit. Actual configured values (in seconds) are:\n\n'
+               'est_execution_time: %(est_execution_time)d\n'
+               'soft_time_limit: %(soft_time_limit)d\n'
+               'hard_time_limit: %(hard_time_limit)d\n'
+               'max retry period: = %(max_retry_time)f\n ' % {
+                    'task_name': task.name,
+                    'task_id': task.request.id,
+                    'est_execution_time': est_execution_time,
+                    'soft_time_limit': soft_time_limit,
+                    'hard_time_limit': hard_time_limit,
+                    'max_retry_time': est_final_retry_time
+                    })
 
-    # TODO: complete implementation and use this method ot the beginning of each task to help catch
-    #  configuration errors
+    # send the message
+    email_admins(subject, message, celery_logger)
 
 
 def build_task_arg_summary(task):
@@ -336,20 +343,28 @@ def send_retry_warning_if_applicable(task, est_execution_time, warn_after_retry_
         est_elapsed_seconds = time_until_retry(0, current_retry_num, est_execution_time,
                                                initial_retry_delay) + est_execution_time
 
-    est_elapsed_time = to_human_relevant_delta(est_elapsed_seconds)
+    est_time_since_initial_attempt = arrow.utcnow().replace(seconds=-est_elapsed_seconds).humanize()
     seconds_to_final_attempt = time_until_retry(current_retry_num, task.max_retries,
                                                 est_execution_time, initial_retry_delay)
-    est_remaining_time = to_human_relevant_delta(seconds_to_final_attempt)
+    est_time_to_final_attempt = arrow.utcnow().replace(seconds=+seconds_to_final_attempt).humanize()
 
-    message = ('Warning: Task %s ( %s ) has failed to complete after %s attempts (~%s).\n\n'
-               'This task will be automatically retried over the next %s, with increasing delay '
-               'between attempts. If no known problem exists that is preventing EDD from '
-               'communicating with ICE, consider trying to identify and resolve the issue now. If '
-               'a temporary communication failure is expected, this message is an indication that '
-               'EDD is functioning as intended! You should get a follow-up email when this task '
-               'finally succeeds or fails.\n\n%s'
-               % (task.name, task.request.id, (task.request.retries + 1),
-                  est_elapsed_time, est_remaining_time, build_task_summary_and_traceback(task)))
+    message = ('Warning: Task %(task_name)s (%(task_id)s) has failed to complete after '
+               '%(attempt_count)s attempts. The first attempt is estimated to have been '
+               'roughly %(first_attempt_delta)s.\n\n'
+               'This task will be automatically retried until the final attempt %('
+               'final_attempt_delta)s, with increasing delay between attempts. If no known problem '
+               'exists that is '
+               'preventing EDD from  communicating with ICE, consider trying to identify and '
+               'resolve the issue now. If  a temporary communication failure is expected, '
+               'this message is an indication that EDD is functioning as intended! You should get '
+               'a follow-up email when this task finally succeeds or fails.\n\n'
+               '%(summary_and_traceback)s' % {
+                   'task_name': task.name,
+                   'task_id': task.request.id,
+                   'attempt_count': (task.request.retries + 1),
+                   'first_attempt_delta': est_time_since_initial_attempt,
+                   'final_attempt_delta': est_time_to_final_attempt,
+                   'summary_and_traceback': build_task_summary_and_traceback(task)})
     email_admins(subject, message, celery_logger)
 
 
@@ -364,14 +379,15 @@ def send_resolution_message(task, est_execution_time, celery_logger):
     # for consistency, build message content  to resemble failure notifications from Celery
     subject = '[%s] Resolved: Task %s (%s)' % (task.request.hostname, task.name, task.request.id)
 
-    est_ellapsed_seconds = time_until_retry(0, task.request.retries, est_execution_time,
-                                            task.default_retry_delay) + est_execution_time
-    est_elapsed_time = to_human_relevant_delta(est_ellapsed_seconds)
+    est_elapsed_seconds = time_until_retry(0, task.request.retries, est_execution_time,
+                                           task.default_retry_delay) + est_execution_time
+    est_start_time_str = arrow.utcnow().replace(seconds=-est_elapsed_seconds).humanize()
 
-    message = ('Resolved: Task %s ( %s ) completed successfully after %d attempts (~%s).\n\n' +
+    message = ('Resolved: Task %s ( %s ) completed successfully after %d attempts. The initial '
+               'attempt was roughly %s\n\n' +
                build_task_arg_summary(task) + '\n\n') % (task.name, task.request.id,
                                                          task.request.retries + 1,
-                                                         est_elapsed_time)
+                                                         est_start_time_str)
 
     email_admins(subject, message, celery_logger)
 
@@ -383,107 +399,6 @@ SECONDS_PER_MONTH = SECONDS_PER_HOUR * HOURS_PER_DAY * 30
 SECONDS_PER_YEAR = SECONDS_PER_MONTH * 12  # causes years to have 360 days, but consistent/good
 # enough
 SECONDS_PER_DAY = SECONDS_PER_HOUR * HOURS_PER_DAY
-
-
-def to_human_relevant_delta(seconds):
-    """
-    Converts the input to a human-readable time duration, with only applicable units displayed, and
-    with precision limited to a level where humans are likely to take interest based on the
-    largest time increment present in the input. Daylight savings time, leap years, etc are not
-    taken into account, months are assumed to have 30 days, and years have 12 months (=360 days).
-    The minimum time increment displayed for any value is milliseconds. The output of this method is
-    intended exclusively for human use, e.g. for displaying task execution time in the GUI and/or
-    logs. If you care about precise formatting of the output, this probably isn't the method for
-    you.
-
-    Note that the result is designed to be most useful at lower time increments, and probably needs
-    additional formatting (e.g. more liberal and/or configurable use of abbreviations and max.
-    precision) for use at longer time intervals. As the output is intended for human use, no
-    guarantee is made that the output will be constant over time, though changes can be
-    reasonably expected to make the output more relevant and/or readable.
-
-    NOTE: a Java port of this method also exists in edd-analytics-java. Consider maintaining that
-    implementation and its unit tests along with this one.
-
-    :param seconds: time in seconds
-    :return:
-    """
-
-    def _pluralize(str, quantity):
-        if quantity > 1:
-            return str + 's'
-        return str
-
-    def _append(formatted_duration, part_str):
-        if formatted_duration:
-            return ' '.join([formatted_duration, part_str])
-        else:
-            return part_str
-
-    formatted_duration = ''
-
-    # compute years
-    if seconds >= SECONDS_PER_YEAR:
-        years = seconds // SECONDS_PER_YEAR
-        seconds %= SECONDS_PER_YEAR
-        years_str = '%d year' % years
-        formatted_duration = _append(formatted_duration, years_str)
-        formatted_duration = _pluralize(formatted_duration, years)
-
-    # compute months
-    if seconds >= SECONDS_PER_MONTH:
-        months = seconds // SECONDS_PER_MONTH
-        seconds %= SECONDS_PER_MONTH
-
-        months_str = '%d month' % months
-        formatted_duration = _append(formatted_duration, months_str)
-        formatted_duration = _pluralize(formatted_duration, months)
-
-    # compute days
-    if seconds >= SECONDS_PER_DAY:
-        days = seconds // SECONDS_PER_DAY
-        seconds %= SECONDS_PER_DAY
-        days_str = '%d day' % days
-        formatted_duration = _append(formatted_duration, days_str)
-        formatted_duration = _pluralize(formatted_duration, days)
-
-    # compute hours
-    if seconds >= SECONDS_PER_HOUR:
-        hours = seconds // SECONDS_PER_HOUR
-        seconds %= SECONDS_PER_HOUR
-        hours_str = '%d hour' % hours
-        formatted_duration = _append(formatted_duration, hours_str)
-        formatted_duration = _pluralize(formatted_duration, hours)
-
-    # store results so far so we can detect later whether the time has any increment greater
-    # than minutes
-    larger_than_minutes = formatted_duration
-    minutes = 0
-
-    # compute minutes
-    if seconds >= SECONDS_PER_MINUTE:
-        minutes = seconds // SECONDS_PER_MINUTE
-        seconds %= SECONDS_PER_MINUTE
-        minutes_str = '%d minute' % minutes
-        formatted_duration = _append(formatted_duration, minutes_str)
-        formatted_duration = _pluralize(formatted_duration, minutes)
-
-    # don't compute fractional seconds if humans are unlikely to care
-    show_fractional_seconds = (not larger_than_minutes) and (minutes < 10)
-
-    if (seconds > 0) or (not formatted_duration):
-        # show ms if no greater time increment exists in the data
-        if (seconds < 1) and not formatted_duration:
-            formatted_duration = '%d ms' % round(seconds * 1000)
-        # otherwise, append either fractional or rounded seconds
-        elif show_fractional_seconds:
-            decimal_sec_str = '%.2f s' % seconds
-            formatted_duration = _append(formatted_duration, decimal_sec_str)
-        else:
-            int_sec_str = '%d s' % round(seconds)
-            formatted_duration = _append(formatted_duration, int_sec_str)
-
-    return formatted_duration
 
 
 def send_stale_input_warning(task, specific_cause, est_execution_time, uses_exponential_backoff,
@@ -535,9 +450,9 @@ def send_stale_input_warning(task, specific_cause, est_execution_time, uses_expo
         if current_retry_num > 0:
             time_to_this_retry = time_until_retry(0, current_retry_num, est_execution_time,
                                                   initial_retry_delay)
-        elapsed_time_str = to_human_relevant_delta(time_to_this_retry)
-        message += ("(estimated to be approximately %s since its initial execution attempt). "
-                    % elapsed_time_str)
+        initial_attempt_delta = arrow.utcnow().replace(seconds=-time_to_this_retry).humanize()
+        message += ("(initial execution attpmet is estimated to be approximately %s). "
+                    % initial_attempt_delta)
 
     message += ("Also note that this message is generated by input consistency checks within each "
                 "Celery task, so a lack of warnings from other tasks may indicate a coding error "

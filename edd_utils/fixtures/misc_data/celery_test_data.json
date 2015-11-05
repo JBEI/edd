@@ -1,15 +1,4 @@
 {
-  "to_human_relevant_delta": {
-    "31104000": "1 year",
-    "2592000": "1 month",
-    "3600": "1 hour",
-    "60": "1 minute",
-    "1": "1.00 s",
-    ".005": "5 ms",
-    "123.5": "2 minutes 3.50 s",
-    "70347967": "2 years 3 months 4 days 5 hours 6 minutes 7 s",
-    "0": "0 ms"
-  },
   "time_until_retry": {
     "unity_delay (invalid)": {
       "start_retry_num": "0",

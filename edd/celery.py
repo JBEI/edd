@@ -5,7 +5,7 @@ Defines the Celery "app" used by EDD to asynchronously execute tasks on the Cele
 from __future__ import absolute_import
 import os
 from celery import Celery
-from edd.local_settings import config
+from edd.settings import config
 
 # extract values for easy reference
 RABBITMQ_HOST = config['rabbitmq'].get('hostname')

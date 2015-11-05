@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 
-from edd.local_settings import USE_CELERY
+from edd.settings import USE_CELERY
 import logging
 
 logger = logging.getLogger(__name__)

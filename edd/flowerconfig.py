@@ -5,7 +5,7 @@ http://flower.readthedocs.org/en/latest/config.html
 """
 
 from celery import Celery
-from edd.local_settings import config
+from edd.settings import config
 
 
 # Broker Settings
