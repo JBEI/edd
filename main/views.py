@@ -402,7 +402,12 @@ class StudyDetailView(generic.DetailView):
             line_action = request.POST.get('line_action', None)
             # allow any who can view to export
             if line_action == 'export':
-                return ExportView.as_view()(request, *args, **kwargs)
+                export_type = request.POST.get('export', 'csv')
+                if export_type == 'sbml':
+                    return HttpResponseRedirect(
+                        reverse('main:sbml_export', kwargs={'study': self.object.pk}))
+                else:
+                    return ExportView.as_view()(request, *args, **kwargs)
             # but not edit
             elif not can_write:
                 messages.error(request, 'You do not have permission to modify this study.')
@@ -414,7 +419,12 @@ class StudyDetailView(generic.DetailView):
             assay_action = request.POST.get('assay_action', None)
             # allow any who can view to export
             if assay_action == 'export':
-                return ExportView.as_view()(request, *args, **kwargs)
+                export_type = request.POST.get('export', 'csv')
+                if export_type == 'sbml':
+                    return HttpResponseRedirect(
+                        reverse('main:sbml_export', kwargs={'study': self.object.pk}))
+                else:
+                    return ExportView.as_view()(request, *args, **kwargs)
             # but not edit
             elif not can_write:
                 messages.error(request, 'You do not have permission to modify this study.')
