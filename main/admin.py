@@ -1,4 +1,5 @@
 # coding: utf-8
+from __future__ import unicode_literals
 
 from django import forms
 from django.contrib import admin
@@ -106,11 +107,15 @@ class EDDObjectAdmin(admin.ModelAdmin):
 class ProtocolAdminForm(forms.ModelForm):
     class Meta:
         model = Protocol
-        fields = ('name', 'variant_of', 'active', 'owned_by', 'description', 'default_units', )
+        fields = (
+            'name', 'variant_of', 'active', 'owned_by', 'description', 'default_units',
+            'categorization',
+        )
         help_texts = {
             'owned_by': _('(A user who is allowed to edit this protocol, even if not an Admin.)'),
             'default_units': _('(When measurement data are imported without units, this will '
                                'automatically be assigned.)'),
+            'categorization': _('(Determines the handling of data in SBML exports.)'),
         }
         labels = {
             'name': _('Protocol'),
@@ -119,6 +124,7 @@ class ProtocolAdminForm(forms.ModelForm):
             'owned_by': _('Owner'),
             'description': _('Description'),
             'default_units': _('Default Units'),
+            'categorization': _('Categorization'),
         }
         widgets = {
             'owned_by': UserAutocompleteWidget()
@@ -134,7 +140,7 @@ class ProtocolAdminForm(forms.ModelForm):
 class ProtocolAdmin(EDDObjectAdmin):
     """ Definition for admin-edit of Protocols """
     form = ProtocolAdminForm
-    list_display = ['name', 'description', 'active', 'variant_of', 'owner', ]
+    list_display = ['name', 'description', 'active', 'variant_of', 'categorization', 'owner', ]
     inlines = (AttachmentInline, )
 
     def save_model(self, request, obj, form, change):

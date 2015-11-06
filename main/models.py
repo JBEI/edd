@@ -5,7 +5,6 @@ import arrow
 import json
 import logging
 import os.path
-import re
 import warnings
 
 from builtins import str
@@ -16,6 +15,7 @@ from django.contrib.postgres.fields import ArrayField, HStoreField
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.db.models import F, Func, Q
+from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 from functools import reduce
 from itertools import chain
@@ -33,6 +33,7 @@ class UpdateManager(models.Manager):
         return super(UpdateManager, self).get_queryset().select_related('mod_by')
 
 
+@python_2_unicode_compatible
 class Update(models.Model):
     """ A user update; referenced from other models that track creation and/or modification.
         Views get an Update object by calling main.models.Update.load_request_update(request) to
@@ -116,6 +117,7 @@ class Update(models.Model):
         return arrow.get(self.mod_time).to('local').strftime(format_string)
 
 
+@python_2_unicode_compatible
 class Comment(models.Model):
     """ Text blob attached to an EDDObject by a given user at a given time/Update. """
     class Meta:
@@ -123,6 +125,9 @@ class Comment(models.Model):
     object_ref = models.ForeignKey('EDDObject', related_name='comments')
     body = models.TextField()
     created = models.ForeignKey(Update)
+
+    def __str__(self):
+        return self.body
 
     def save(self, *args, **kwargs):
         if self.created_id is None:
@@ -133,6 +138,7 @@ class Comment(models.Model):
         super(Comment, self).save(*args, **kwargs)
 
 
+@python_2_unicode_compatible
 class Attachment(models.Model):
     """ File uploads attached to an EDDObject; include MIME, file name, and description. """
     class Meta:
@@ -180,6 +186,7 @@ class Attachment(models.Model):
         super(Attachment, self).save(*args, **kwargs)
 
 
+@python_2_unicode_compatible
 class MetadataGroup(models.Model):
     """ Group together types of metadata with a label. """
     class Meta:
@@ -190,6 +197,7 @@ class MetadataGroup(models.Model):
         return self.group_name
 
 
+@python_2_unicode_compatible
 class MetadataType(models.Model):
     """ Type information for arbitrary key-value data stored on EDDObject instances. """
 
@@ -335,6 +343,7 @@ class MetadataType(models.Model):
             return (self.for_context == self.ALL)
 
 
+@python_2_unicode_compatible
 class EDDObject(models.Model):
     """ A first-class EDD object, with update trail, comments, attachments. """
     class Meta:
@@ -647,6 +656,7 @@ class Study(EDDObject):
         return assays_by_protocol
 
 
+@python_2_unicode_compatible
 class StudyPermission(models.Model):
     """ Access given for a *specific* study instance, rather than for object types provided by
         Django. """
@@ -689,6 +699,9 @@ class StudyPermission(models.Model):
             Returns:
                 True if permission grants write """
         return self.permission_type == self.WRITE
+
+    def __str__(self):
+        return self.get_who_label()
 
 
 class UserPermission(StudyPermission):
@@ -792,6 +805,7 @@ class Protocol(EDDObject):
         return super(Protocol, self).save(*args, **kwargs)
 
 
+@python_2_unicode_compatible
 class MetadataTemplate(models.Model):
     """ Defines sets of metadata to use as a template on a Protocol. """
     class Meta:
@@ -800,6 +814,9 @@ class MetadataTemplate(models.Model):
     meta_type = models.ForeignKey(MetadataType)
     # potentially override the default value in templates?
     default_value = models.CharField(max_length=255, blank=True, null=True)
+
+    def __str__(self):
+        return str(self.meta_type)
 
 
 class LineProperty(object):
@@ -824,9 +841,6 @@ class Strain(EDDObject, LineProperty):
 
     def to_solr_value(self):
         return '%(id)s@%(name)s' % {'id': self.registry_id, 'name': self.name}
-
-    def __str__(self):
-        return self.name
 
     def to_json(self):
         json_dict = super(Strain, self).to_json()
@@ -983,6 +997,7 @@ class MeasurementGroup(object):
     )
 
 
+@python_2_unicode_compatible
 class MeasurementType(models.Model):
     """ Defines the type of measurement being made. A generic measurement only has name and short
         name; if the type is a metabolite, the metabolite attribute will contain additional
@@ -1039,6 +1054,7 @@ class MeasurementType(models.Model):
             type_group=MeasurementGroup.PROTEINID)
 
 
+@python_2_unicode_compatible
 class MetaboliteKeyword(models.Model):
     class Meta:
         db_table = "metabolite_keyword"
@@ -1168,6 +1184,7 @@ class Phosphor(MeasurementType):
 Phosphor._meta.get_field('type_group').default = MeasurementGroup.PHOSPHOR
 
 
+@python_2_unicode_compatible
 class MeasurementUnit(models.Model):
     """ Defines a unit type and metadata on measurement values. """
     class Meta:
@@ -1244,6 +1261,7 @@ class MeasurementFormat(object):
     FORMAT_CHOICE = [('%s' % i, n) for i, n in enumerate(names)]
 
 
+@python_2_unicode_compatible
 class Measurement(models.Model):
     """ A plot of data points for an (assay, measurement type) pair. """
     class Meta:
@@ -1372,6 +1390,7 @@ class Measurement(models.Model):
         super(Measurement, self).save(*args, **kwargs)
 
 
+@python_2_unicode_compatible
 class MeasurementValue(models.Model):
     """ Pairs of ((x0, x1, ... , xn), (y0, y1, ... , ym)) values as part of a measurement """
     class Meta:
@@ -1458,6 +1477,7 @@ class SBMLTemplate(EDDObject):
         }
 
 
+@python_2_unicode_compatible
 class MetaboliteExchange(models.Model):
     """ Mapping for a metabolite to an exchange defined by a SBML template. """
     class Meta:
@@ -1468,7 +1488,11 @@ class MetaboliteExchange(models.Model):
     reactant_name = models.CharField(max_length=255)
     exchange_name = models.CharField(max_length=255)
 
+    def __str__(self):
+        return self.exchange_name
 
+
+@python_2_unicode_compatible
 class MetaboliteSpecies(models.Model):
     """ Mapping for a metabolite to an species defined by a SBML template. """
     class Meta:
@@ -1477,6 +1501,9 @@ class MetaboliteSpecies(models.Model):
     sbml_template = models.ForeignKey(SBMLTemplate)
     measurement_type = models.ForeignKey(MeasurementType)
     species = models.TextField()
+
+    def __str__(self):
+        return self.species
 
 
 # XXX MONKEY PATCHING
