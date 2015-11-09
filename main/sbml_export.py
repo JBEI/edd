@@ -98,7 +98,8 @@ class sbml_info(object):
         self.biomass_exchange = None  # XXX accessed directly by HTML template
         self._all_metabolites = sorted(Metabolite.objects.all(), key=lambda x: x.short_name)
         self._metabolites_by_id = {m.id: m for m in self._all_metabolites}
-        self._biomass_metab = Metabolite.objects.get(short_name="OD")
+        # TODO: there must be a better way; short_name is not guaranteed to be unique
+        self._biomass_metab = MeasurementType.objects.get(short_name="OD")
         self._modified = set()  # track altered DB records - mostly for testing
         # these are populated later from assay data
         self._gene_transcription_values = {}
@@ -1628,7 +1629,7 @@ class line_assay_data (line_export_base):
         Provide data structure for display of OD600 measurements in HTML template.
         """
         meas_list = []
-        min_x, max_x = self._measurement_ranges["OD"]
+        min_x, max_x = self._measurement_ranges.get("OD", (0, 0))
         for m in self._od_measurements:
             data_points = []
             mdata = self._get_measurement_data(m.id)
@@ -1655,7 +1656,8 @@ class line_assay_data (line_export_base):
         n = 0
         if not self.have_gcdw_metadata:
             n += 1
-        if self.used_generic_GCDW_in_assays:
+        # TODO this could be called before "step 2"?
+        if hasattr(self, 'used_generic_GCDW_in_assays') and self.used_generic_GCDW_in_assays:
             n += 1
         return n
 
@@ -1720,7 +1722,9 @@ class line_assay_data (line_export_base):
 
     @property
     def available_timepoints(self):
-        return self._comprehensive_valid_OD_times
+        if hasattr(self, '_comprehensive_valid_OD_times'):
+            return self._comprehensive_valid_OD_times
+        return []
 
     @property
     def n_warnings(self):
