@@ -1,14 +1,23 @@
 
 from __future__ import division
+
+import arrow
+
 from edd_utils.parsers.excel import *
 from edd_utils.form_utils import *
 from edd_utils.parsers import gc_ms
 from edd_utils.parsers import skyline
-from django.test import TestCase
 from cStringIO import StringIO
 import os
+from django.test import TestCase
+import json
+import os.path
+from edd_utils.celery_utils import compute_exp_retry_delay, send_retry_warning, time_until_retry, \
+    to_human_relevant_delta
+import logging
 
 test_dir = os.path.join(os.path.dirname(__file__), "fixtures", "misc_data")
+logger = logging.getLogger(__name__)
 
 ########################################################################
 # GC-MS
@@ -235,3 +244,148 @@ class UtilsTests (TestCase) :
                 return_none_if_missing=True) is None)
         assert (extract_floats_from_form(form, 'float4',
                 return_none_if_missing=True) is None)
+
+# _INITIAL_ICE_RETRY_DELAY = config['ice'].get('initial_retry_delay_seconds', 2)
+# _MAX_ICE_RETRIES = config['ice'].get('max_retries', 19)
+# _RETRY_NUMBER_FOR_ICE_NOTIFICATION = config['ice'].get('notify_after_retry', 3)
+
+class TestCeleryRequest:
+        def __init__(self, retries):
+            self.retries = retries
+
+class TestTask:
+    """
+    Defines a minimal subset of data members that approximates Celery's Task class for testing purposes.
+    Duck typing! :-)
+    """
+    def __init__(self, retry_num, default_retry_delay, soft_time_limit=None, max_retries=None):
+        self.request = TestCeleryRequest(retry_num)
+        self.default_retry_delay = default_retry_delay
+        self.soft_time_limit = soft_time_limit
+        self.max_retries = max_retries
+
+
+def decode_test_task(dict, require_soft_time_limit=True, require_max_retries=True):
+    """
+    A JSON decoder for TestTask
+    :param dict: a dictionary containing the data for a TestTask
+    :return: the TestTask
+    """
+    retries = int(dict['retries'])
+    default_retry_delay = float(dict['default_retry_delay'])
+
+    # optionally read soft time limit
+    soft_time_limit = None
+    key = 'soft_time_limit'
+    if require_soft_time_limit or key in dict:
+        soft_limit_str = dict[key]
+        soft_time_limit = int(soft_limit_str)
+
+    # optionally read max retries
+    max_retries = None
+    key = 'max_retries'
+    if require_max_retries or key in dict:
+        max_retries_str = dict['max_retries']
+        max_retries = int(max_retries_str)
+
+    return TestTask(retries, default_retry_delay, soft_time_limit, max_retries)
+
+
+class CeleryUtilsTests(TestCase):
+    """
+    Defines unit tests for a subset of the methods in the celery.utils module. More testing is
+    clearly possible there, but the initial implementation covers the low-hanging fruit.
+    """
+
+    _BASE_DIR = os.path.dirname(__file__)
+    _TEST_DATA_FILE = os.path.join(_BASE_DIR, "fixtures", "misc_data", "celery_test_data.json")
+
+    def test_compute_exp_retry_delay(self):
+        """
+        Reads in test data and expected results from the reference file and compares
+        them to computed results.
+        """
+
+        with open(self._TEST_DATA_FILE) as test_fixture:
+            test_data = json.load(test_fixture)['compute_exp_retry_delay']
+
+            for test_case_name in test_data:
+                print test_case_name
+
+                # extract useful data from the JSON dictionary
+                test_case = test_data[test_case_name]
+                task = decode_test_task(test_case['task'], require_max_retries=False)
+                exp_result = test_case['expected_result']
+
+                # assert that computed results match the reference results
+                try:
+                    result = compute_exp_retry_delay(task)
+                    if 'ValueError' == exp_result:
+                        self.fail("Expected ValueError but got a " + result)
+
+                    self.assertEquals(int(exp_result), result)
+                    print ('\tResult delay = % s  = ' % result) + arrow.utcnow().replace(
+                        seconds=+result)
+
+                except ValueError:
+                    if "ValueError" != exp_result:
+                        self.fail("Expected a result (%d), but got a ValueError"
+                                  % float(exp_result))
+                    print '\t Expected and got a ValueError'
+
+    def test_time_until_retry_num(self):
+        """
+        Reads in test data and expected results from the reference file and compares
+        them to computed results.
+        """
+
+        with open(self._TEST_DATA_FILE) as test_fixture:
+            test_data = json.load(test_fixture)['time_until_retry']
+
+            for test_case_name in test_data:
+                print test_case_name
+
+                # extract useful data from the JSON dictionary
+                test_case = test_data[test_case_name]
+                exp_result = test_case['expected_result']
+                start_retry_num = int(test_case['start_retry_num'])
+                goal_retry_num = int(test_case['goal_retry_num'])
+
+                # get estimated execution time, or assume it's zero if not provided
+                est_execution_time_key = 'est_execution_time'
+                est_execution_time = 0
+                if est_execution_time_key in test_case:
+                    est_execution_time = float(test_case[est_execution_time_key])
+                default_retry_delay = int(test_case['default_retry_delay'])
+
+                # assert that computed results match the reference results
+                try:
+                    result = time_until_retry(start_retry_num, goal_retry_num, est_execution_time,
+                                              default_retry_delay)
+                    if 'ValueError' == exp_result:
+                        self.fail("Expected ValueError but got a result (%f)" % result)
+
+                    print ('\tResult = % s  = ' % result) + arrow.utcnow().replace(seconds=+result)
+                    self.assertEquals(float(exp_result), result)
+
+                except ValueError:
+                    self.assertEquals("ValueError", exp_result)
+
+    def test_send_retry_warning_before_failure(self):
+        """
+        Reads in test data and expected results from the reference file and compares them to
+        computed results
+        """
+        with open(self._TEST_DATA_FILE) as test_fixture:
+            test_data = json.load(test_fixture)['send_retry_warning_before_failure']
+
+            for test_case_name in test_data:
+                test_case = test_data[test_case_name]
+                task = decode_test_task(test_case['task'], require_soft_time_limit=False)
+                est_task_execution_time = float(test_case['est_execution_time'])
+                exp_result = test_case['expected_result'] == True
+                notify_on_retry_num = test_case['notify_on_retry_num']
+
+                result = send_retry_warning(task, est_task_execution_time, notify_on_retry_num,
+                                            logger)
+                self.assertEquals(exp_result, result)

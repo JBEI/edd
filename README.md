@@ -399,8 +399,8 @@ URL's to interact with them.
               error messages during configuration.
             * `rabbitmqctl stop/status`
         * Daemon
-            * `launchctl un/load /Library/LaunchDaemons/com.rabbitmq.plist`
-            * `launchctl list com.rabbitmq`
+            * `sudo launchctl un/load /Library/LaunchDaemons/com.rabbitmq.plist`
+            * `sudo launchctl list com.rabbitmq`
         * Config files are in `/etc/rabbitmq/` and `/usr/local/etc/rabbitmq/rabbitmq-env.conf`
         * Logs are in `/usr/local/var/log/rabbitmq/`
     * Production / Test (Debian)
@@ -411,7 +411,7 @@ URL's to interact with them.
     * Other useful management commands are in the [docs][20]
 * Celery / Flower
     * Sample Flower URL: <http://localhost:5555/>
-    * Celery Worker: must run in base edd directory to detect celery config modules
+    * Celery Worker: must run in base edd directory to detect celery config modules.
         * Development: 
             * Pre-demonazition: `celery worker --app edd --queues=edd --hostname=edd-worker-1.%h
               --autoscale=10,1 --autoreload --loglevel=info`
@@ -437,6 +437,12 @@ URL's to interact with them.
           for Flower
         * Note that the `-conf` option doesn't seem to work according to the sample in the
           instructions, or via attempted variations on that [example][22]
+        * Known error modes: basic testing has revealed several failure modes of interest to administrators
+           * Celery doesn't seem to do a good job of detecting changes to code or configuration files. Celery worker(s) need to be restarted frequently during development or when deploying a new version of EDD.
+           * If Celery goes down while RabbitMQ is up, client tasks requested via the celery API will be enqueued at RabbitMQ and will execute normally after Celery comes back up
+           * If Celery is up but RabbitMQ is down for more than a few seconds when clients request that a task be executed, task requests will generate a client-side Exception
+ 	       * During a brief transition period as RabbitMQ is going down with Celery still up, client task requests will NOT generate an Exception, and will stay perpetually in the PENDING state regardless of whether RabbitMQ comes back up.  Client code needs to check for this case, but Celery 3.1.18 isn't known to provide helpful hooks (for instance, to help client code decide how long to wait). Celery has before_task_publish and after_task_publish signals that combined with the database backend may provide reasonable guarantees of data integrity.
+
 
 ## Database Conversion <a name="DbConversion"/>
 

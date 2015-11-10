@@ -20,7 +20,6 @@ from .models import (
     Assay, Attachment, CarbonSource, Comment, Line, Measurement, MeasurementType,
     MeasurementValue, MetadataType, Protocol, Strain, Study, StudyPermission, Update, )
 
-
 User = get_user_model()
 logger = logging.getLogger(__name__)
 
@@ -154,21 +153,22 @@ class RegistryAutocompleteWidget(AutocompleteWidget):
         except Strain.DoesNotExist as e:
             logger.warning('No Strain found with registry_id %s, searching ICE' % (value, ))
             try:
-                up = Update.load_update()
-                ice = IceApi(ident=up.mod_by)
-                (part, url) = ice.fetch_part(value)
+                update = Update.load_update()
+                ice = IceApi(user_email=update.mod_by.email)
+                (part, url) = ice.fetch_part(value, suppress_errors=True)
                 if part:
                     strain = Strain(
                         name=part['name'],
                         description=part['shortDescription'],
                         registry_id=part['recordId'],
-                        registry_url=''.join((ice.url, 'entry/', str(part['id']), )),
+                        registry_url=''.join((ice.base_url, '/entry/', str(part['id']), )),
                         )
                     strain.save()
                     return value
                 logger.error('No strain in ICE with registry_id %s' % (value, ))
             except Exception as e:
                 logger.error('Failed to load strain %s from ICE: %s' % (value, str(e)))
+
         return None
 
     def value_from_datadict(self, data, files, name):

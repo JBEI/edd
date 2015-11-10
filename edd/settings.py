@@ -11,46 +11,87 @@ https://docs.djangoproject.com/en/1.7/ref/settings/
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 import json
-import ldap
 import os
 
+import ldap
 from django_auth_ldap.config import LDAPSearch, GroupOfUniqueNamesType
 from django.conf.global_settings import TEMPLATE_CONTEXT_PROCESSORS as TCP
+from kombu.serialization import register
+import psycopg2.extensions
+
+from edd_utils.parsers.json_encoders import datetime_dumps, datetime_loads, \
+    EXTENDED_JSON_CONTENT_TYPE
+
+
+####################################################################################################
+# Load urls and authentication credentials from server.cfg (TODO: some other stuff in there should
+# be moved here)
+####################################################################################################
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
-
-
-#############################################################
-# Load system-dependent settings from server.cfg
-#############################################################
-BASE_DIR = os.path.dirname(os.path.dirname('__file__'))
 try:
     with open(os.path.join(BASE_DIR, 'server.cfg')) as server_cfg:
         config = json.load(server_cfg)
 except IOError:
-    print("Required configuration file server.cfg is missing. "
-          "Copy from server.cfg-example and fill in appropriate values")
+    print("Required configuration file server.cfg is missing from %s"
+          "Copy from server.cfg-example and fill in appropriate values" % BASE_DIR)
     raise
+
+
+####################################################################################################
+# Register custom serialization code to allow us to serialize datetime objects as JSON (just
+# datetimes, for starters)
+####################################################################################################
+register(EXTENDED_JSON_CONTENT_TYPE, datetime_dumps, datetime_loads,
+         content_type='application/x-' + EXTENDED_JSON_CONTENT_TYPE,
+         content_encoding='UTF-8')
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.7/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-# default quote from http://thedoomthatcametopuppet.tumblr.com/
-SECRET_KEY = config['site'].get('secret', 'I was awake and dreaming at the same time, which is '
-                                          'why this only works for local variables')
-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 TEMPLATE_DEBUG = True
-# convert dictionary required by JSON format to tuple of tuples required by Django
-admins_dict_temp = config['site'].get('admins', [])
-admins_list_temp = []
-for name in admins_dict_temp:
-    email = admins_dict_temp[name]
-    admins_list_temp.append((name, email))
-ADMINS = MANAGERS = tuple(admins_list_temp)
-EMAIL_SUBJECT_PREFIX = config['email'].get('subject_prefix', '')
+
+# SECURITY WARNING: keep the secret key used in production secret!
+# default quote from http://thedoomthatcametopuppet.tumblr.com/
+SECRET_KEY = config['site'].get('secret', 'I was awake and dreaming at the same time, which is why'
+                                          ' this only works for local variables')
+
+####################################################################################################
+# Set ICE configuration used in multiple places, or that we want to be able to override in
+# local_settings.py
+####################################################################################################
+ICE_SECRET_HMAC_KEY = config['ice'].get('edd_key', '')
+ICE_URL = config['ice'].get('url', None)
+ICE_REQUEST_TIMEOUT = (10, 10)  # HTTP request connection and read timeouts, respectively (seconds)
+
+####################################################################################################
+# Defines whether or not EDD uses Celery. All other Celery-related configuration is in
+# celeryconfig.py)
+####################################################################################################
+USE_CELERY = False
+
+####################################################################################################
+# Configure Django email variables
+# Note: Some of these are also referenced by
+# Celery and custom Celery-related code
+####################################################################################################
+ADMINS = MANAGERS = tuple(config['site'].get('admins', {}).items())
+
+# most of these just explicitly set the Django defaults, but since  affect Django, Celery, and
+# custom Celery support
+# code, we enforce them here for consistency
+EMAIL_SUBJECT_PREFIX = '[EDD]'
+EMAIL_TIMEOUT = 60  # in seconds
+EMAIL_HOST = config['email'].get('host', 'localhost')
+EMAIL_HOST_USER = config['email'].get('user', '')
+EMAIL_HOST_PASSWORD = config['email'].get('password', '')
+EMAIL_PORT = 25
+
+####################################################################################################
+
+
 ALLOWED_HOSTS = []
 SITE_ID = 1
 LOGIN_REDIRECT_URL = '/'
@@ -62,7 +103,8 @@ DEBUG_TOOLBAR_CONFIG = {
 INSTALLED_APPS = (
     'django.contrib.admin',
     'django.contrib.auth',
-    'django.contrib.sites',  # recommended for registration app
+    'django.contrib.sites',     # recommended for registration app +
+                                # useful for computing URLs from signal handlers
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
@@ -140,12 +182,63 @@ EDD_MAIN_SOLR = {
 # https://docs.djangoproject.com/en/1.7/ref/settings/#databases
 DATABASES = {
     'default': {
-        'ENGINE': config['db'].get('driver', 'django.db.backends.postgresql_psycopg2'),
+        'ENGINE': config['db'].get('driver', 'transaction_hooks.backends.postgresql_psycopg2'),
         'NAME': config['db'].get('database', 'edd'),
         'USER': config['db'].get('user', 'edduser'),
         'PASSWORD': config['db'].get('pass', ''),
         'HOST': config['db'].get('host', 'localhost'),
         'PORT': config['db'].get('port', '5432'),
+        'OPTIONS': {
+            # prevent non-repeatable and phantom reads, which are possible with default 'read
+            # committed' level. The serializable level matches typical developer expectations for
+            # how the DB works, and keeps code relatively simple (though at a computational cost,
+            # and with a small chance of requiring repeated client requests if unlikely
+            # serialization errors occur).
+            #
+            # Seems unlikely that the costs of greater consistency will be significant issues
+            # unless EDD gets very high load, at which point we can consider additional resulting
+            # code complexity / development time as justified. Ideally, Django will eventually
+            # support READ_ONLY transactions, which we should use by default to help mitigate the
+            # computational burden.
+            'isolation_level': psycopg2.extensions.ISOLATION_LEVEL_SERIALIZABLE,
+        },
+    },
+}
+
+# Default logging configuration -- for production
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'simple': {
+            'format': '%(asctime)s Thread %(thread)d %(name)-12s %(levelname)-8s %(message)s',
+        },
+    },
+    'filters': {
+        'require_debug_true': {
+            '()': 'django.utils.log.RequireDebugTrue',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+    },
+    'loggers': {
+        'django.db.backends': {
+            'level': 'WARNING',
+            'handlers': ['console', ],
+        },
+        'main': {
+            'level': 'INFO',
+            'handlers': ['console', ],
+        },
+        'edd': {
+            'level': 'INFO',
+            'handlers': ['console', ],
+        },
     },
 }
 

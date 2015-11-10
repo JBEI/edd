@@ -1214,8 +1214,8 @@ def search(request):
         found = solr.query(query=term, options={'edismax': True})
         results = found['response']['docs']
     elif model_name == "Strain":
-        ice = IceApi(ident=request.user)
-        found = ice.search_for_part(term)
+        ice = IceApi(user_email=request.user.email)
+        found = ice.search_for_part(term, suppress_errors=True)
         results = [match.get('entryInfo', dict()) for match in found.get('results', [])]
     elif model_name == "Group":
         found = Group.objects.filter(name__iregex=re_term).order_by('name')[:20]

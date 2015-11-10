@@ -17,7 +17,7 @@
     },
 
     "db": {
-        "driver": "django.db.backends.postgresql_psycopg2",
+        "driver": "transaction_hooks.backends.postgresql_psycopg2",
         "user": "edduser",
         "pass": "PASSWORD FOR EDDUSER",
         "host": "localhost",
@@ -53,9 +53,5 @@
         "mgmt_user": "bunny",
         "mgmt_pass": "PASSWORD FOR BUNNY USER",
         "mgmt_port": "15672"
-    },
-
-    "celery": {
-        "send_task_error_emails": true
     }
 }
