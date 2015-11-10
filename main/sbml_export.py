@@ -37,23 +37,21 @@
 # pseudo-"private" attributes and methods; it looks gross but it helps
 # clarify the intent (at least in my own mind).
 
-"""
-Backend for exporting SBML files.
-"""
+""" Backend for exporting SBML files. """
 
 from __future__ import division
 
 import json
-import time
 import math
 import re
 import sys
+import time
 
 from collections import defaultdict, OrderedDict
 from six import string_types
 
 from .models import (
-    Attachment, MeasurementType, MeasurementUnit, Metabolite, MetaboliteExchange,
+    Assay, Attachment, MeasurementType, MeasurementUnit, Metabolite, MetaboliteExchange,
     MetaboliteSpecies, Protocol, SBMLTemplate,
     )
 from .utilities import interpolate_at, line_export_base
@@ -66,17 +64,15 @@ from .utilities import interpolate_at, line_export_base
 ########################################################################
 # adapted from UtilitiesSBML.pm:parseSBML
 class sbml_info(object):
-    """
-    Base class for processing an SBML template and extracting
-    information for display in a view and/or further processing w.r.t. assay
-    data.  In the production environment (e.g. as used within line_sbml_data)
-    this would normally be instantiated without arguments, but optional keywords
-    are allowed to facilitate testing.
+    """ Base class for processing an SBML template and extracting information for display in a
+        view and/or further processing w.r.t. assay data. In the production environment (e.g. as
+        used within line_sbml_data) this would normally be instantiated without arguments, but
+        optional keywords are allowed to facilitate testing.
 
-    :param i_template: index of SBMLTemplate to select (starting at 0) - TESTING ONLY
-    :param template_id: database key for SBMLTemplate to select - TESTING ONLY
-    :param sbml_file: SBML file to parse directly instead of pulling this from
-        the SBMLTemplate object - TESTING ONLY
+        :param i_template: index of SBMLTemplate to select (starting at 0) - TESTING ONLY
+        :param template_id: database key for SBMLTemplate to select - TESTING ONLY
+        :param sbml_file: SBML file to parse directly instead of pulling this from
+            the SBMLTemplate object - TESTING ONLY
     """
     def __init__(self, i_template=None, template_id=None, sbml_file=None):
         self._sbml_templates = list(SBMLTemplate.objects.all())
@@ -927,11 +923,9 @@ def create_sbml_notes_object(notes):
 # LAYER 2: ASSAY DATA PROCESSING
 #
 ########################################################################
-class line_assay_data (line_export_base):
-    """
-    Manager for processing assay measurements and calculating metabolite fluxes,
-    which merges all functionality of parent classes.
-    """
+class line_assay_data(line_export_base):
+    """ Manager for processing assay measurements and calculating metabolite fluxes, which merges
+        all functionality of parent classes. """
 
     def __init__(self, study, lines, form, debug=False):
         if (len(lines) == 0):
@@ -991,10 +985,7 @@ class line_assay_data (line_export_base):
         self._biomass_data = defaultdict(list)
 
     def run(self):
-        """
-        Run the series of processing steps.  Right now this is only used for
-        testing purposes.
-        """
+        """ Run the series of processing steps. """
         # Okay, ready to extract data!
         t1 = time.time()
         self._step_0_pre_fetch_data()
@@ -1063,7 +1054,7 @@ class line_assay_data (line_export_base):
         od_assays.sort(key=lambda a: a.name)
         od_assays.sort(key=lambda a: a.line.name)
         for assay in od_assays:
-            all_meas = self._get_metabolite_measurements(assay.id)
+            all_meas = self._get_measurements(assay.id)
             assay_meas = [m for m in all_meas if m.measurement_type_id == mt_meas_type.id]
             self._od_measurements.extend(assay_meas)
             if (len(assay_meas) > 0):
@@ -1433,7 +1424,8 @@ class line_assay_data (line_export_base):
                     measurement=m,
                     measurement_data=self._measurement_data[m.id],
                     measurement_type=self._measurement_types[m.id],
-                    assay_name=self._assay_names[assay.id])
+                    assay_name=self._assay_names[assay.id],
+                )
                 self._processed_carbon_ratio_data.append(crm)
                 for t in crm.mtimes:
                     if crm.metabolite_name not in self._carbon_data_by_metabolite[t]:
@@ -1442,7 +1434,8 @@ class line_assay_data (line_export_base):
                         if (value is not None):
                             self._carbon_data_by_metabolite[t][crm.metabolite_id] = value
             else:
-                metabolite = self._metabolites[m.id]
+                metabolite = m.measurement_type
+                metabolite = self._metabolites.get(m.id, metabolite)
                 # XXX This is a hack to adapt two RAMOS-specific metabolites from their
                 # "produced" and "-consumed" variants to their ordinary names.  It's
                 # needed here because the original variants are considered "rates",
@@ -1760,7 +1753,7 @@ class measurement_datum_converted_units (object):
         if (metabolite.short_name == "OD"):
             pass
         elif (units in ["mg/L", "g/L"]):
-            if (metabolite.molar_mass == 0):
+            if not hasattr(metabolite, 'molar_mass') or metabolite.molar_mass == 0:
                 raise ValueError("Cannot convert units from mg/L without knowing the molar mass "
                                  "of this metabolite. Skipping all intervals.")
             mm = float(metabolite.molar_mass)

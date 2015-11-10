@@ -228,15 +228,12 @@ def get_selected_lines(form, study):
 # XXX I suspect some of this could be replaced by smarter use of
 # prefetch_related and select_related
 class line_export_base(object):
-    """
-    Helper class for extracting various data associated with a set of lines.
-    Although Django models allow us to traverse a tree-like structure of objects
-    starting from the Study down to individual measurement data, which enables
-    relatively clean, object-oriented code, this can result in tens of thousands
-    of database queries for a large dataset.  This class pulls down as many of
-    the required objects out of the database as possible in advance, and tracks
-    them in dictionaries.
-    """
+    """ Helper class for extracting various data associated with a set of lines. Although Django
+        models allow us to traverse a tree-like structure of objects starting from the Study down
+        to individual measurement data, which enables relatively clean, object-oriented code, this
+        can result in tens of thousands of database queries for a large dataset. This class pulls
+        down as many of the required objects out of the database as possible in advance, and tracks
+        them in dictionaries. """
     def __init__(self, study, lines):
         self.study = study
         self.lines = lines
@@ -251,28 +248,35 @@ class line_export_base(object):
         self._metabolites = {}  # keyed by measurement.id
 
     def _fetch_cache_data(self):
-        assays = list(Assay.objects.filter(line__in=self.lines).prefetch_related(
-            "measurement_set").select_related("protocol", "line"))
+        assays = Assay.objects.filter(
+            line__in=self.lines, line__study=self.study,
+        ).select_related(
+            "line", "protocol",
+        )
         for assay in assays:
             self._assays[assay.protocol_id].append(assay)
             self._assay_names[assay.id] = "%s-%s-%s" % (
                 assay.line.name, assay.protocol.name, assay.name)
-        measurements = list(Measurement.objects.filter(
-            assay__line__in=self.lines
+        measurements = Measurement.objects.filter(
+            assay__line__in=self.lines, assay__line__study=self.study,
         ).select_related(
             'assay', 'measurement_type', 'y_units',
-        ))
-        # measurements.select_related("assay")
-        # measurements.prefetch_related("meaurement_type")
-        # measurements.prefetch_related("meaurementdatum_set")
-        mtype_ids = list(set([m.measurement_type_id for m in measurements]))
-        measurement_types = MeasurementType.objects.filter(id__in=mtype_ids)
-        metabolites = Metabolite.objects.filter(id__in=mtype_ids)
+        )
+        measurement_types = MeasurementType.objects.filter(
+            measurement__assay__line__in=self.lines,
+            measurement__assay__line__study=self.study,
+        ).distinct()
+        metabolites = Metabolite.objects.filter(
+            measurement__assay__line__in=self.lines,
+            measurement__assay__line__study=self.study,
+        ).distinct()
         mtypes_dict = {mt.id: mt for mt in measurement_types}
         metabolites_dict = {mt.id: mt for mt in metabolites}
         # FIXME this is a huge bottleneck!  can it be made more efficient?
         measurement_data = MeasurementValue.objects.filter(
-            measurement__assay__line__in=self.lines)
+            measurement__assay__line__in=self.lines,
+            measurement__assay__line__study=self.study,
+        )
         # XXX I think the reason for this is that the old EDD stores the line and
         # study IDs directly in various other tables, and selects on these instead
         # of a huge list of measurements.
