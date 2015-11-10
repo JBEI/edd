@@ -1,3 +1,5 @@
+# coding: utf-8
+from __future__ import unicode_literals
 
 import json
 import logging
@@ -6,7 +8,8 @@ import warnings
 
 from collections import defaultdict
 from django.core.exceptions import PermissionDenied
-from main.models import (
+
+from .models import (
     Assay, GeneIdentifier, Line, Measurement, MeasurementCompartment, MeasurementGroup,
     MeasurementUnit, MeasurementValue, MetadataType, ProteinIdentifier, Protocol, Update
     )

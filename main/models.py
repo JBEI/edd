@@ -5,18 +5,19 @@ import arrow
 import json
 import logging
 import os.path
-import re
 import warnings
 
+from builtins import str
 from collections import defaultdict
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import ArrayField, HStoreField
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
-from django.db.models import F, Func
+from django.db.models import F, Func, Q
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
+from functools import reduce
 from itertools import chain
 from six import string_types
 from threadlocals.threadlocals import get_current_request
@@ -32,6 +33,7 @@ class UpdateManager(models.Manager):
         return super(UpdateManager, self).get_queryset().select_related('mod_by')
 
 
+@python_2_unicode_compatible
 class Update(models.Model):
     """ A user update; referenced from other models that track creation and/or modification.
         Views get an Update object by calling main.models.Update.load_request_update(request) to
@@ -115,6 +117,7 @@ class Update(models.Model):
         return arrow.get(self.mod_time).to('local').strftime(format_string)
 
 
+@python_2_unicode_compatible
 class Comment(models.Model):
     """ Text blob attached to an EDDObject by a given user at a given time/Update. """
     class Meta:
@@ -122,6 +125,9 @@ class Comment(models.Model):
     object_ref = models.ForeignKey('EDDObject', related_name='comments')
     body = models.TextField()
     created = models.ForeignKey(Update)
+
+    def __str__(self):
+        return self.body
 
     def save(self, *args, **kwargs):
         if self.created_id is None:
@@ -132,6 +138,7 @@ class Comment(models.Model):
         super(Comment, self).save(*args, **kwargs)
 
 
+@python_2_unicode_compatible
 class Attachment(models.Model):
     """ File uploads attached to an EDDObject; include MIME, file name, and description. """
     class Meta:
@@ -159,12 +166,12 @@ class Attachment(models.Model):
 
     def user_can_delete(self, user):
         """ Verify that a user has the appropriate permissions to delete an attachment. """
-        return object_ref.user_can_write(user)
+        return self.object_ref.user_can_write(user)
 
     def user_can_read(self, user):
         """ Verify that a user has the appropriate permissions to see (that is, download) an
             attachment. """
-        return object_ref.user_can_read(user)
+        return self.object_ref.user_can_read(user)
 
     def save(self, *args, **kwargs):
         if self.created_id is None:
@@ -179,6 +186,7 @@ class Attachment(models.Model):
         super(Attachment, self).save(*args, **kwargs)
 
 
+@python_2_unicode_compatible
 class MetadataGroup(models.Model):
     """ Group together types of metadata with a label. """
     class Meta:
@@ -189,34 +197,47 @@ class MetadataGroup(models.Model):
         return self.group_name
 
 
+@python_2_unicode_compatible
 class MetadataType(models.Model):
     """ Type information for arbitrary key-value data stored on EDDObject instances. """
-    STUDY = 'S'
-    LINE = 'L'
-    PROTOCOL = 'P'
-    LINE_OR_PROTOCOL = 'LP'
-    ALL = 'LPS'
+
+    # defining values to use in the for_context field
+    STUDY = 'S'  # metadata stored in a Study
+    LINE = 'L'  # metadata stored in a Line
+    ASSAY = 'A'  # metadata stored in an Assay
+    # TODO: support metadata on other EDDObject types (Protocol, Strain, Carbon Source, etc)
     CONTEXT_SET = (
         (STUDY, 'Study'),
         (LINE, 'Line'),
-        (PROTOCOL, 'Protocol'),
-        (LINE_OR_PROTOCOL, 'Line or Protocol'),
-        (ALL, 'All'),
+        (ASSAY, 'Assay'),
     )
 
     class Meta:
         db_table = 'metadata_type'
-    group = models.ForeignKey(MetadataGroup)
-    type_name = models.CharField(max_length=255, unique=True)
+        unique_together = (('type_name', 'for_context', ), )
+    # optionally link several metadata types into a common group
+    group = models.ForeignKey(MetadataGroup, blank=True, null=True)
+    # a default label for the type; should normally use i18n lookup for display
+    type_name = models.CharField(max_length=255)
+    # an i18n lookup for type label
+    # NOTE: migration 0005_SYNBIO-1120_linked_metadata adds a partial unique index to this field
+    # i.e. CREATE UNIQUE INDEX … ON metadata_type(type_i18n) WHERE type_i18n IS NOT NULL
     type_i18n = models.CharField(max_length=255, blank=True, null=True)
+    # field to store metadata, or None if stored in meta_store
+    type_field = models.CharField(max_length=255, blank=True, null=True, default=None)
+    # size of input text field
     input_size = models.IntegerField(default=6)
+    # type of the input; support checkboxes, autocompletes, etc
+    input_type = models.CharField(max_length=255, blank=True, null=True)
+    # a default value to use if the field is left blank
     default_value = models.CharField(max_length=255, blank=True)
+    # label used to prefix values
     prefix = models.CharField(max_length=255, blank=True)
+    # label used to postfix values (e.g. unit specifier)
     postfix = models.CharField(max_length=255, blank=True)
+    # target object for metadata
     for_context = models.CharField(max_length=8, choices=CONTEXT_SET)
-    # TODO: add a type_class field and utility method to take a Metadata.data_value and return
-    #   a model instance; e.g. type_class = 'CarbonSource' would do a
-    #   CarbonSource.objects.get(pk=value)
+    # type of data saved, None defaults to a bare string
     type_class = models.CharField(max_length=255, blank=True, null=True)
 
     @classmethod
@@ -226,10 +247,10 @@ class MetadataType(models.Model):
         # reduce all into a set to get only unique ids
         ids = reduce(lambda a, b: a.union(b), all_ids, set())
         return MetadataType.objects.filter(
-                pk__in=ids,
-            ).order_by(
-                Func(F('type_name'), function='LOWER'),
-            )
+            pk__in=ids,
+        ).order_by(
+            Func(F('type_name'), function='LOWER'),
+        )
 
     def load_type_class(self):
         if self.type_class is not None:
@@ -274,42 +295,38 @@ class MetadataType(models.Model):
         return '%s' % value
 
     def for_line(self):
-        return (self.for_context == self.LINE or
-                self.for_context == self.LINE_OR_PROTOCOL or
-                self.for_context == self.ALL)
+        return (self.for_context == self.LINE)
 
-    def for_protocol(self):
-        return (self.for_context == self.PROTOCOL or
-                self.for_context == self.LINE_OR_PROTOCOL or
-                self.for_context == self.ALL)
+    def for_assay(self):
+        return (self.for_context == self.ASSAY)
 
     def for_study(self):
-        return (self.for_context == self.STUDY or
-                self.for_context == self.ALL)
+        return (self.for_context == self.STUDY)
 
     def __str__(self):
         return self.type_name
 
     def to_json(self):
+        # TODO: refactor to have sane names in EDDDataInterface.ts
         return {
             "id": self.pk,
-            "gn": self.group.group_name,
-            "gid": self.group.id,
+            "gn": self.group.group_name if self.group else None,
+            "gid": self.group.id if self.group else None,
             "name": self.type_name,
             "is": self.input_size,
             "pre": self.prefix,
             "postfix": self.postfix,
             "default": self.default_value,
             "ll": self.for_line(),
-            "pl": self.for_protocol(),
+            "pl": self.for_assay(),
             "context": self.for_context,
         }
 
     @classmethod
     def all_with_groups(cls):
         return cls.objects.select_related("group").order_by(
-                Func(F('type_name'), function='LOWER'),
-            )
+            Func(F('type_name'), function='LOWER'),
+        )
 
     def is_allowed_object(self, obj):
         """ Indicate whether this metadata type can be associated with the given object based on
@@ -326,6 +343,7 @@ class MetadataType(models.Model):
             return (self.for_context == self.ALL)
 
 
+@python_2_unicode_compatible
 class EDDObject(models.Model):
     """ A first-class EDD object, with update trail, comments, attachments. """
     class Meta:
@@ -377,13 +395,14 @@ class EDDObject(models.Model):
 
     @classmethod
     def metadata_type_frequencies(cls):
-        # TODO should be able to do this in the database
-        freqs = defaultdict(int)
-        for obj in cls.objects.all():
-            mdtype_keys = obj.meta_store.keys()
-            for mdtype_id in mdtype_keys:
-                freqs[int(mdtype_id)] += 1
-        return freqs
+        return dict(
+            MetadataType.objects.extra(select={
+                'count': 'SELECT COUNT(1) FROM edd_object o '
+                         'INNER JOIN %s x ON o.id = x.object_ref_id '
+                         'WHERE o.meta_store ? metadata_type.id::varchar'
+                         % cls._meta.db_table
+                }).values_list('id', 'count')
+            )
 
     def get_metadata_item(self, key=None, pk=None):
         assert ([pk, key].count(None) == 1)
@@ -428,25 +447,44 @@ class EDDObject(models.Model):
         if not metatype.is_allowed_object(self):
             raise ValueError("The metadata type '%s' does not apply to %s objects." % (
                 metatype.type_name, type(self)))
-        if append:
-            prev = self.metadata_get(metatype)
-            if hasattr(prev, 'append'):
-                prev.append(value)
-                value = prev
-            elif prev is not None:
-                value = [prev, value, ]
-        self.meta_store['%s' % metatype.pk] = metatype.encode_value(value)
+        if metatype.type_field is None:
+            if append:
+                prev = self.metadata_get(metatype)
+                if hasattr(prev, 'append'):
+                    prev.append(value)
+                    value = prev
+                elif prev is not None:
+                    value = [prev, value, ]
+            self.meta_store['%s' % metatype.pk] = metatype.encode_value(value)
+        else:
+            temp = getattr(self, metatype.type_field)
+            if hasattr(temp, 'add'):
+                if append:
+                    temp.add(value)
+                else:
+                    setattr(self, metatype.type_field, [value, ])
+            else:
+                setattr(self, metatype.type_field, value)
 
     def metadata_clear(self, metatype):
         """ Removes all metadata of the type from this object. """
-        del self.meta_store['%s' % metatype.pk]
+        if metatype.type_field is None:
+            del self.meta_store['%s' % metatype.pk]
+        else:
+            temp = getattr(self, metatype.type_field)
+            if hasattr(temp, 'clear'):
+                temp.clear()
+            else:
+                setattr(self, metatype.type_field, None)
 
     def metadata_get(self, metatype, default=None):
         """ Returns the metadata on this object matching the type. """
-        value = self.meta_store.get('%s' % metatype.pk, None)
-        if value is None:
-            return default
-        return metatype.decode_value(value)
+        if metatype.type_field is None:
+            value = self.meta_store.get('%s' % metatype.pk, None)
+            if value is None:
+                return default
+            return metatype.decode_value(value)
+        return getattr(self, metatype.type_field)
 
     def metadata_remove(self, metatype, value):
         """ Removes metadata with a value matching the argument for the type. """
@@ -529,6 +567,11 @@ class Study(EDDObject):
                                 related_name='contact_study_set')
     contact_extra = models.TextField()
     metabolic_map = models.ForeignKey('SBMLTemplate', blank=True, null=True)
+    # NOTE: this is NOT a field for a definitive list of Protocols on a Study; it is for Protocols
+    #   which may not have been paired with a Line in an Assay. e.g. when creating a blank Study
+    #   pre-filled with the Protocols to be used. Get definitive list by doing union of this field
+    #   and Protocols linked via Assay-Line-Study chain.
+    protocols = models.ManyToManyField('Protocol', blank=True, db_table='study_protocol')
 
     @classmethod
     def export_columns(cls, instances=[]):
@@ -538,9 +581,7 @@ class Study(EDDObject):
         ]
 
     def to_solr_json(self):
-        """
-        Convert the Study model to a dict structure formatted for Solr JSON.
-        """
+        """ Convert the Study model to a dict structure formatted for Solr JSON. """
         created = self.created
         updated = self.updated
         return {
@@ -565,45 +606,57 @@ class Study(EDDObject):
         }
 
     def user_can_read(self, user):
+        """ Utility method testing if a user has read access to a Study. """
         return user.is_superuser or user.is_staff or any(p.is_read() for p in chain(
-                self.userpermission_set.filter(user=user),
-                self.grouppermission_set.filter(group__user=user)
+            self.userpermission_set.filter(user=user),
+            self.grouppermission_set.filter(group__user=user)
         ))
 
     def user_can_write(self, user):
+        """ Utility method testing if a user has write access to a Study. """
         return super(Study, self).user_can_write(user) or any(p.is_write() for p in chain(
-                self.userpermission_set.filter(user=user),
-                self.grouppermission_set.filter(group__user=user)
+            self.userpermission_set.filter(user=user),
+            self.grouppermission_set.filter(group__user=user)
         ))
 
     def get_combined_permission(self):
+        """ Returns a chained iterator over all user and group permissions on a Study. """
         return chain(self.userpermission_set.all(), self.grouppermission_set.all())
 
     def get_contact(self):
+        """ Returns the contact email, or supplementary contact information if no contact user is
+            set. """
         if self.contact is None:
             return self.contact_extra
         return self.contact.email
 
     def get_metabolite_types_used(self):
-        return list(Metabolite.objects.filter(measurement__assay__line__study=self).distinct())
+        """ Returns a QuerySet of all Metabolites used in the Study. """
+        return Metabolite.objects.filter(assay__line__study=self).distinct()
 
     def get_protocols_used(self):
-        return list(Protocol.objects.filter(assay__line__study=self).distinct())
+        """ Returns a QuerySet of all Protocols used in the Study. """
+        return Protocol.objects.filter(
+            Q(assay__line__study=self) | Q(study=self)
+        ).distinct()
 
     def get_strains_used(self):
-        return list(Strain.objects.filter(line__study=self).distinct())
+        """ Returns a QuerySet of all Strains used in the Study. """
+        return Strain.objects.filter(line__study=self).distinct()
 
     def get_assays(self):
-        return list(Assay.objects.filter(line__study=self))
+        """ Returns a QuerySet of all Assays contained in the Study. """
+        return Assay.objects.filter(line__study=self)
 
     def get_assays_by_protocol(self):
+        """ Returns a dict mapping Protocol ID to all Assays in Study using that Protocol. """
         assays_by_protocol = defaultdict(list)
-        assays = Assay.objects.filter(line__study=self)
-        for assay in assays:
+        for assay in self.get_assays():
             assays_by_protocol[assay.protocol_id].append(assay.id)
         return assays_by_protocol
 
 
+@python_2_unicode_compatible
 class StudyPermission(models.Model):
     """ Access given for a *specific* study instance, rather than for object types provided by
         Django. """
@@ -646,6 +699,9 @@ class StudyPermission(models.Model):
             Returns:
                 True if permission grants write """
         return self.permission_type == self.WRITE
+
+    def __str__(self):
+        return self.get_who_label()
 
 
 class UserPermission(StudyPermission):
@@ -700,11 +756,29 @@ class Protocol(EDDObject):
     """ A defined method of examining a Line. """
     class Meta:
         db_table = 'protocol'
+    CATEGORY_NONE = 'NA'
+    CATEGORY_OD = 'OD'
+    CATEGORY_HPLC = 'HPLC'
+    CATEGORY_LCMS = 'LCMS'
+    CATEGORY_RAMOS = 'RAMOS'
+    CATEGORY_TPOMICS = 'TPOMICS'
+    CATEGORY_CHOICE = (
+        (CATEGORY_NONE, 'None'),
+        (CATEGORY_OD, 'Optical Density'),
+        (CATEGORY_HPLC, 'HPLC'),
+        (CATEGORY_LCMS, 'LCMS'),
+        (CATEGORY_RAMOS, 'RAMOS'),
+        (CATEGORY_TPOMICS, 'Transcriptomics / Proteomics'),
+    )
+
     object_ref = models.OneToOneField(EDDObject, parent_link=True)
     owned_by = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='protocol_set')
     variant_of = models.ForeignKey('self', blank=True, null=True, related_name='derived_set')
     default_units = models.ForeignKey(
         'MeasurementUnit', blank=True, null=True, related_name="protocol_set")
+    metadata_template = models.ManyToManyField(MetadataType, through="MetadataTemplate")
+    categorization = models.CharField(
+        max_length=8, choices=CATEGORY_CHOICE, default=CATEGORY_NONE)
 
     def creator(self):
         return self.created.mod_by
@@ -730,41 +804,34 @@ class Protocol(EDDObject):
             raise ValueError("There is already a protocol named '%s'." % self.name)
         return super(Protocol, self).save(*args, **kwargs)
 
+
+@python_2_unicode_compatible
+class MetadataTemplate(models.Model):
+    """ Defines sets of metadata to use as a template on a Protocol. """
+    class Meta:
+        db_table = 'metadata_template'
+    protocol = models.ForeignKey(Protocol)
+    meta_type = models.ForeignKey(MetadataType)
+    # potentially override the default value in templates?
+    default_value = models.CharField(max_length=255, blank=True, null=True)
+
+    def __str__(self):
+        return str(self.meta_type)
+
+
+class LineProperty(object):
+    """ Base class for EDDObject instances tied to a Line. """
     @property
-    def categorization(self):
-        """ The 'categorization' determines what broad category the Protocol falls into with
-            respect to how its Metabolite data should be processed internally.  The categorizations
-            used so far are the strings 'OD', 'HPLC', 'LCMS', and 'RAMOS', and the catch-all
-            'Unknown'. """
-        # FIXME This is not the best way of doing it, depending as it does
-        # on the arbitrary naming conventions used by scientists creating new
-        # Protocols, so it will probably need replacing later on.
-        name = self.name.upper()
-        if name == "OD600":
-            return "OD"
-        elif "HPLC" in name:
-            return "HPLC"
-        elif re.match("^LC[\-\/]?", name) or re.match("^GC[\-\/]?", name):
-            return "LCMS"
-        elif re.match("O2\W+CO2", name):
-            return "RAMOS"
-        elif ("TRANSCRIPTOMICS" in name) or ("PROTEOMICS" in name):
-            return "TPOMICS"
-        else:
-            return "Unknown"
+    def n_lines(self):
+        return self.line_set.count()
+
+    @property
+    def n_studies(self):
+        lines = self.line_set.all()
+        return len(set([l.study_id for l in lines]))
 
 
-# methods used both in Strain and CarbonSource
-def _n_lines(self):
-    return self.line_set.count()
-
-
-def _n_studies(self):
-    lines = self.line_set.all()
-    return len(set([l.study_id for l in lines]))
-
-
-class Strain(EDDObject):
+class Strain(EDDObject, LineProperty):
     """ A link to a strain/part in the JBEI ICE Registry. """
     class Meta:
         db_table = 'strain'
@@ -775,9 +842,6 @@ class Strain(EDDObject):
     def to_solr_value(self):
         return '%(id)s@%(name)s' % {'id': self.registry_id, 'name': self.name}
 
-    def __str__(self):
-        return self.name
-
     def to_json(self):
         json_dict = super(Strain, self).to_json()
         json_dict.update({
@@ -786,14 +850,8 @@ class Strain(EDDObject):
             })
         return json_dict
 
-    @property
-    def n_lines(self): return _n_lines(self)
 
-    @property
-    def n_studies(self): return _n_studies(self)
-
-
-class CarbonSource(EDDObject):
+class CarbonSource(EDDObject, LineProperty):
     """ Information about carbon sources, isotope labeling. """
     class Meta:
         db_table = 'carbon_source'
@@ -810,12 +868,6 @@ class CarbonSource(EDDObject):
             'initials': self.created.initials,
             })
         return json_dict
-
-    @property
-    def n_lines(self): return _n_lines(self)
-
-    @property
-    def n_studies(self): return _n_studies(self)
 
     def __str__(self):
         return "%s (%s)" % (self.name, self.labeling)
@@ -913,7 +965,7 @@ class Line(EDDObject):
             into integers, and return the next highest integer for creating a new assay.  (This
             will result in duplication of names for Assays of different protocols under the same
             Line, but the frontend displays Assay.long_name, which should be unique.) """
-        if isinstance(protocol, basestring):  # assume Protocol.name
+        if isinstance(protocol, str):  # assume Protocol.name
             protocol = Protocol.objects.get(name=protocol)
         assays = self.assay_set.filter(protocol=protocol)
         existing_assay_numbers = []
@@ -926,12 +978,6 @@ class Line(EDDObject):
         if len(existing_assay_numbers) > 0:
             assay_start_id = max(existing_assay_numbers) + 1
         return assay_start_id
-
-    def user_can_read(self, user):
-        return study.user_can_read(user)
-
-    def user_can_write(self, user):
-        return study.user_can_write(user)
 
 
 class MeasurementGroup(object):
@@ -951,6 +997,7 @@ class MeasurementGroup(object):
     )
 
 
+@python_2_unicode_compatible
 class MeasurementType(models.Model):
     """ Defines the type of measurement being made. A generic measurement only has name and short
         name; if the type is a metabolite, the metabolite attribute will contain additional
@@ -1007,6 +1054,7 @@ class MeasurementType(models.Model):
             type_group=MeasurementGroup.PROTEINID)
 
 
+@python_2_unicode_compatible
 class MetaboliteKeyword(models.Model):
     class Meta:
         db_table = "metabolite_keyword"
@@ -1199,12 +1247,6 @@ class Assay(EDDObject):
             })
         return json_dict
 
-    def user_can_read(self, user):
-        return line.user_can_read(user)
-
-    def user_can_write(self, user):
-        return line.user_can_write(user)
-
 
 class MeasurementCompartment(object):
     UNKNOWN, INTRACELLULAR, EXTRACELLULAR = range(3)
@@ -1219,6 +1261,7 @@ class MeasurementFormat(object):
     FORMAT_CHOICE = [('%s' % i, n) for i, n in enumerate(names)]
 
 
+@python_2_unicode_compatible
 class Measurement(models.Model):
     """ A plot of data points for an (assay, measurement type) pair. """
     class Meta:
@@ -1347,6 +1390,7 @@ class Measurement(models.Model):
         super(Measurement, self).save(*args, **kwargs)
 
 
+@python_2_unicode_compatible
 class MeasurementValue(models.Model):
     """ Pairs of ((x0, x1, ... , xn), (y0, y1, ... , ym)) values as part of a measurement """
     class Meta:
@@ -1433,6 +1477,7 @@ class SBMLTemplate(EDDObject):
         }
 
 
+@python_2_unicode_compatible
 class MetaboliteExchange(models.Model):
     """ Mapping for a metabolite to an exchange defined by a SBML template. """
     class Meta:
@@ -1443,7 +1488,11 @@ class MetaboliteExchange(models.Model):
     reactant_name = models.CharField(max_length=255)
     exchange_name = models.CharField(max_length=255)
 
+    def __str__(self):
+        return self.exchange_name
 
+
+@python_2_unicode_compatible
 class MetaboliteSpecies(models.Model):
     """ Mapping for a metabolite to an species defined by a SBML template. """
     class Meta:
@@ -1452,6 +1501,9 @@ class MetaboliteSpecies(models.Model):
     sbml_template = models.ForeignKey(SBMLTemplate)
     measurement_type = models.ForeignKey(MeasurementType)
     species = models.TextField()
+
+    def __str__(self):
+        return self.species
 
 
 # XXX MONKEY PATCHING

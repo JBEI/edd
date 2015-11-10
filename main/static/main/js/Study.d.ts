@@ -57,7 +57,7 @@ declare module StudyD {
         applyProgressiveFiltering(ids: any[]): any;
         _assayIdToAssay(assayId: string): any;
         _assayIdToLine(assayId: string): LineRecord;
-        _assayIdToProtocol(assayId: string): any;
+        _assayIdToProtocol(assayId: string): ProtocolRecord;
         getIdMapToValues(): (id: string) => any[];
     }
     class StrainFilterSection extends GenericFilterSection {

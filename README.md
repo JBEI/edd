@@ -79,14 +79,14 @@ This section contains directions for setting up a development environment on EDD
             export WORKON_HOME=$HOME/.virtualenvs
             source /usr/local/bin/virtualenvwrapper.sh
 
-    * Make a new virtualenv, e.g. `mkvirtualenv edd`
+    * Make a new virtualenv, e.g. `mkvirtualenv edd.jbei.org`
         * `deactivate` to return to regular global python environment
-        * `workon edd` to switch back to edd python environment
-        * run under `workon edd` for the remainder of the pip installs in this document. This
+        * `workon edd.jbei.org` to switch back to edd python environment
+        * run under `workon edd.jbei.org` for the remainder of the pip installs in this document. This
           will isolate your EDD Python configuration from any other changes you make to your
           system.
 * PostgreSQL <a name="PostgreSQL"/>
-    * required for installing psycopg2 driver, do not need to rum database locally
+    * required for installing psycopg2 driver, do not need to run database locally
     * `brew install postgresql`
     * Following PostgreSQL steps are optional if using external database server
     * Instructions on startup can be found with `brew info postgresql`
@@ -96,9 +96,9 @@ This section contains directions for setting up a development environment on EDD
     * `createdb edddjango`
     * `createuser postgres`
     * `psql edddjango` and
-
             CREATE USER edduser WITH PASSWORD 'somegoodpassword'
                 NOSUPERUSER INHERIT CREATEDB NOCREATEROLE NOREPLICATION;
+    * ctrl-d to exit
 
 * Solr / Tomcat <a name="Solr_Tomcat"/>
     * For older 4.X Solr. Skip this item for Solr 5.0+
@@ -241,6 +241,30 @@ This section contains directions for setting up a development environment on EDD
 
 * Check out code to `/var/www/${SITE}` <a name="Check_Out"/>
 
+* PostgreSQL <a name="PostgreSQL"/>
+    * Required for installing psycopg2 driver, even if you don’t need to run database locally
+        * If you want a more recent postgresql, you can use the Postgresql 3rd-party repository with apt-get:
+        * `wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -`
+        * `sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg main" >> /etc/apt/sources.list.d/postgresql.list’`
+        * `sudo apt-get update`
+        * `sudo apt-get install postgresql`
+    * `sudo apt-get install postgresql-contrib` (for hstore extension)
+    * Postgres user should already exist.  Let’s su to that user for the rest of these postgres commands:
+        * `sudo su postgres`
+    * `psql -d template1 -c 'create extension hstore;’` (to enable hstore)
+    * `createdb edddjango`
+    * `createuser postgres`
+    * `psql edddjango` and
+            CREATE USER edduser WITH PASSWORD 'somegoodpassword'
+                NOSUPERUSER INHERIT CREATEDB NOCREATEROLE NOREPLICATION;
+    * ctrl-d to exit
+    * `exit` to stop being postgres
+
+* [Pip][3] <a name="Pip"/>
+    * Should be installed as part of standard Python (note: setuptools may not be up-to-date)
+	    * For latest version: `sudo pip install --upgrade --no-use-wheel pip`
+    * A good idea to: `sudo pip install --upgrade setuptools`
+
 * Python packages <a name="Python_Packages_Deb"/>
     * `sudo pip install virtualenvwrapper`
     * `mkdir -p /usr/local/virtualenvs`
@@ -261,9 +285,48 @@ This section contains directions for setting up a development environment on EDD
     * `mkvirtualenv edd.jbei.org`
     * `workon edd.jbei.org`
     * `pip install -r /path/to/project/requirements.txt` to install python packages to virtualenv
+        * If you get a compiler error complaining about “missing sasl.h” when installing ldap,
+        * `sudo apt-get install libsasl2-dev` and install the requirements again.
+    * Use `deactivate` to exit the virtual environment but retain your shell session.
 
-* \(_optional_\) `sudo apt-get install tomcat7` for Tomcat/Solr <a name="Solr_Tomcat_Deb"/>
-    * Download [Solr][23] and copy WAR to webapps folder
+* Set up Tomcat/Solr (these instructions are for version 4 of Solr)
+    * Install Tomcat 7:
+        * `sudo apt-get install tomcat7`
+        * This will automatically create a “tomcat7” user.
+    * Force the server to only listen on localhost:
+        * Edit ‘/etc/tomcat7/server.xml’ and change the line:
+            <Connector port="8080" protocol="HTTP/1.1"
+                to:
+            <Connector port="8080" protocol="HTTP/1.1" address="localhost"
+    * Download solr v4 and unzip to [solr download]
+        * http://archive.apache.org/dist/lucene/solr/4.10.4/
+    * Copy Solr main war file:
+        * `cp [solr download]/dist/solr-4.10.4.war /var/lib/tomcat7/webapps/solr.war`
+        * `sudo chown tomcat7:tomcat7 /var/lib/tomcat7/webapps/solr.war`
+        * `sudo chmod 644 /var/lib/tomcat7/webapps/solr.war`
+    * Copy Solr libraries to Tomcat lib and set proper permissions:
+        * `sudo cp [solr download]/example/lib/ext/*.jar /usr/share/tomcat7/lib/`
+        * `sudo cp [solr download]/dist/solrj-lib/*.jar /usr/share/tomcat7/lib/`
+        * `sudo chmod a+rx /usr/share/tomcat7/lib/*.jar`
+        * `sudo cp [solr download]/example/resources/log4j.properties /etc/tomcat7/log4j.properties`
+        * `sudo chgrp tomcat7 /etc/tomcat7/log4j.properties`
+    * Create a home folder for Solr within tomcat7:
+        `sudo mkdir /var/lib/tomcat7/solr`
+        `sudo mkdir /var/lib/tomcat7/solr/data`
+    * Copy in edd-django solr config files:
+        `sudo cp -R [edd download]/solr/* /var/lib/tomcat7/solr/``
+        `sudo chown -R tomcat7:tomcat7 /var/lib/tomcat7/solr`
+    * Set up the Solr config file:
+        * `sudo pico /etc/tomcat7/Catalina/localhost/solr.xml` and enter the following:
+        <Context docBase="/var/lib/tomcat7/webapps/solr.war" debug="0" crossContext="true">
+          <Environment name="solr/home" type="java.lang.String" value="/var/lib/tomcat7/solr" override="true" />
+        </Context>
+    * Start Tomcat/Solr:
+        * `sudo /etc/init.d/tomcat7 start`
+    * Optional:
+        * Install the tomcat admin page with `sudo apt-get install tomcat7-admin`
+        * Add a user capable of accessing the admin page by editing `/etc/tomcat7/tomcat-users.xml`.  Instructions are in the file.
+        * Diagnose startup issues by inspecting `/var/log/tomcat7/catalina.out`
 
 * Django setup <a name="Django_Deb"/>
     * See section Database Conversion below if migrating from CGI EDD database
@@ -272,8 +335,10 @@ This section contains directions for setting up a development environment on EDD
 
 * Apache setup <a name="Apache_Deb"/>
     * mod_wsgi: `sudo apt-get install libapache2-mod-wsgi`
+    * Make sure the apache modules are enabled, with `a2enmod ssl`, and `a2enmod wsgi`
     * See `apache.conf-sample` for example of how to configure Apache
     * Ensure that `/var/www/uploads/` exists and is writable by user `www-data`
+
 * TODO complete Debian instructions
  
 ---------------------------------------------------------------------------------------------------
@@ -286,9 +351,22 @@ This section contains directions for setting up a development environment on EDD
 ## Build Tools <a name="BuildTools"/>
 
 * The EDD makes use of Node.js and grunt for builds; it would be a good idea to:
-    * `brew install node`
-    * `sudo npm install -g grunt-cli`
-    * `sudo npm install grunt`
+    * OS X:
+        * `brew install node`
+        * `sudo npm install -g grunt-cli`
+        * `sudo npm install grunt`
+    * Debian:
+        * `sudo apt-get install node`
+        * This will install nodejs.  It might be convenient for you to link this to ‘node’
+          on the command line, but there is sometimes already a program
+          ’/usr/sbin/ax25-node’ linked to node.
+          This is the “Amateur Packet Radio Node program” and is probably not useful to you.
+          (https://packages.debian.org/sid/ax25-node)
+          Check on this link with `ls -al /usr/sbin/n*` and `rm /usr/sbin/node` if necessary, then
+          `sudo ln -s /usr/bin/nodejs /usr/bin/node`
+        * `sudo apt-get install npm`
+        * `sudo npm install -g grunt-cli`
+        * `sudo npm install grunt`
 
 * EDD uses [TypeScript][19] for its client-side interface
     * dependencies are already loaded into the git repo
@@ -304,7 +382,9 @@ URL's to interact with them.
 
 * PostgreSQL: installed as a daemon by default on all OS's. You probably won't need to mess
   with it.
-* Solr 
+    * Stop/start with `/etc/init.d/postgresql stop` and `/etc/init.d/postgresql start`
+    * Configuration file for port etc is at /etc/postgresql/9.x/main/postgresql.conf .
+* Solr
     * Solr 4.X / Tomcat
         * Sample monitoring interface URL: <http://localhost:8080/>
         * `catalina start` / `catalina stop`

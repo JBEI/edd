@@ -1503,7 +1503,8 @@
     "owned_by": 1,
     "variant_of": null,
     "updates": [],
-    "default_units": null
+    "default_units": null,
+    "categorization": "LCMS"
   },
   "model": "main.protocol",
   "pk": 7
@@ -1513,7 +1514,8 @@
     "owned_by": 1,
     "variant_of": null,
     "updates": [],
-    "default_units": null
+    "default_units": null,
+    "categorization": "OD"
   },
   "model": "main.protocol",
   "pk": 8
@@ -1523,7 +1525,8 @@
     "owned_by": 1,
     "variant_of": null,
     "updates": [],
-    "default_units": null
+    "default_units": null,
+    "categorization": "HPLC"
   },
   "model": "main.protocol",
   "pk": 9
@@ -1533,7 +1536,8 @@
     "owned_by": 1,
     "variant_of": null,
     "updates": [],
-    "default_units": null
+    "default_units": null,
+    "categorization": "RAMOS"
   },
   "model": "main.protocol",
   "pk": 10
@@ -1543,7 +1547,8 @@
     "owned_by": 1,
     "variant_of": null,
     "updates": [],
-    "default_units": null
+    "default_units": null,
+    "categorization": "TPOMICS"
   },
   "model": "main.protocol",
   "pk": 11
@@ -1553,7 +1558,8 @@
     "owned_by": 1,
     "variant_of": null,
     "updates": [],
-    "default_units": null
+    "default_units": null,
+    "categorization": "TPOMICS"
   },
   "model": "main.protocol",
   "pk": 12
@@ -1563,7 +1569,8 @@
     "owned_by": 1,
     "variant_of": null,
     "updates": [],
-    "default_units": null
+    "default_units": null,
+    "categorization": "LCMS"
   },
   "model": "main.protocol",
   "pk": 13
