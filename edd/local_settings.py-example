@@ -18,29 +18,7 @@ INSTALLED_APPS = INSTALLED_APPS + (
     )
 
 # Log all queries to the console
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'filters': {
-        'require_debug_true': {
-            '()': 'django.utils.log.RequireDebugTrue',
-        },
-    },
-    'handlers': {
-        'console': {
-            'level': 'DEBUG',
-            'filters': ['require_debug_true', ],
-            'class': 'logging.StreamHandler',
-        },
-    },
-    'loggers': {
-        'django.db.backends': {
-            'level': 'DEBUG',
-            'handlers': ['console', ],
-        },
-        'main': {
-            'level': 'INFO',
-            'handlers': ['console', ],
-        },
-    },
-}
+LOGGING['handlers']['console']['level'] = 'DEBUG'
+LOGGING['loggers']['django.db.backends']['level']='DEBUG'
+LOGGING['loggers']['main']['level']='DEBUG'
+LOGGING['loggers']['edd']['level']='DEBUG'
