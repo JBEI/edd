@@ -10,9 +10,7 @@ from django.core.exceptions import PermissionDenied
 from django.test import TestCase
 from edd.profile.models import UserProfile
 
-from . import data_import
-from . import sbml_export
-from . import utilities
+from . import data_import, sbml_export, utilities
 from .forms import (
     LineForm,
     )
@@ -83,11 +81,11 @@ class StudyTests(TestCase):
         MetadataType.objects.create(
             type_name="Some key 2",
             group=mdg1,
-            for_context=MetadataType.ALL)
+            for_context=MetadataType.LINE)
         MetadataType.objects.create(
             type_name="Some key 3",
             group=mdg1,
-            for_context=MetadataType.PROTOCOL)
+            for_context=MetadataType.ASSAY)
 
     def tearDown(self):
         TestCase.tearDown(self)
@@ -144,9 +142,8 @@ class StudyTests(TestCase):
     def test_study_metadata(self):
         study = Study.objects.get(name='Test Study 1')
         study.set_metadata_item("Some key", "1.234")
-        study.set_metadata_item("Some key 2", "5.678")
         self.assertTrue(study.get_metadata_item("Some key") == "1.234")
-        self.assertTrue(study.get_metadata_dict() == {'Some key 2': '5.678', 'Some key': '1.234'})
+        self.assertTrue(study.get_metadata_dict() == {'Some key': '1.234'})
         try:
             study.set_metadata_item("Some key 3", "9.876")
         except ValueError:
@@ -223,7 +220,7 @@ class LineTests (TestCase):  # XXX also Strain, CarbonSource
             type_name="Media", group=mdg1, for_context=MetadataType.LINE)
         mdg2 = MetadataGroup.objects.create(group_name="Assay metadata")
         MetadataType.objects.create(
-            type_name="Sample volume", group=mdg2, for_context=MetadataType.PROTOCOL)
+            type_name="Sample volume", group=mdg2, for_context=MetadataType.ASSAY)
 
     def test_line_metadata(self):
         line1 = Line.objects.get(name="Line 1")
@@ -247,6 +244,7 @@ class LineTests (TestCase):  # XXX also Strain, CarbonSource
 
     def test_line_form(self):
         line1 = Line.objects.select_related('study').get(name="Line 1")
+        self.assertFalse(line1.control)
         # default form to existing data
         data = LineForm.initial_from_model(line1, prefix='line')
         # flip the checkbox for control
@@ -254,9 +252,9 @@ class LineTests (TestCase):  # XXX also Strain, CarbonSource
         form = LineForm(data, instance=line1, prefix='line', study=line1.study)
         # verify the form validates
         self.assertTrue(form.is_valid(), '%s' % form._errors)
-        line2 = form.save()
+        form.save()
         # verify the saved line is now a control
-        self.assertTrue(line1.control != line2.control)
+        self.assertTrue(line1.control)
 
     def test_strain(self):
         strain1 = Strain.objects.get(name="Strain 1")
@@ -310,8 +308,10 @@ class AssayDataTests(TestCase):
         study1 = Study.objects.create(name='Test Study 1', description='')
         line1 = study1.line_set.create(
             name="WT1", description="", experimenter=user1, contact=user1)
-        protocol1 = Protocol.objects.create(name="gc-ms", owned_by=user1)
-        protocol2 = Protocol.objects.create(name="OD600", owned_by=user1)
+        protocol1 = Protocol.objects.create(
+            name="gc-ms", categorization=Protocol.CATEGORY_LCMS, owned_by=user1)
+        protocol2 = Protocol.objects.create(
+            name="OD600", categorization=Protocol.CATEGORY_OD, owned_by=user1)
         Protocol.objects.create(name="New protocol", owned_by=user1, active=False)
         mt1 = Metabolite.objects.create(
             type_name="Mevalonate", short_name="Mev", type_group="m", charge=-1, carbon_count=6,
@@ -363,9 +363,9 @@ class AssayDataTests(TestCase):
         p2 = Protocol.objects.get(name="OD600")
         p3 = Protocol.objects.filter(active=False)[0]
         self.assertTrue('%s' % p1 == "gc-ms")
-        self.assertTrue(p1.categorization == "LCMS")
-        self.assertTrue(p2.categorization == "OD")
-        self.assertTrue(p3.categorization == "Unknown")
+        self.assertTrue(p1.categorization == Protocol.CATEGORY_LCMS)
+        self.assertTrue(p2.categorization == Protocol.CATEGORY_OD)
+        self.assertTrue(p3.categorization == Protocol.CATEGORY_NONE)
         p1_json = p1.to_json()
         self.assertTrue(p1_json.get('active', False))
         self.assertTrue(p1_json.get('name', None) == 'gc-ms')
@@ -427,7 +427,7 @@ class AssayDataTests(TestCase):
     def test_measurement_unit(self):
         mu = MeasurementUnit.objects.get(unit_name="mM")
         self.assertTrue(mu.group_name == "Metabolite")
-        all_units = [mu.unit_name for mu in MeasurementUnit.all_sorted()]
+        all_units = [u.unit_name for u in MeasurementUnit.all_sorted()]
         self.assertTrue(all_units == [u'abcd', u'Cmol/L', u'hours', u'mM'])
 
     def test_measurement(self):
@@ -810,9 +810,9 @@ class SBMLUtilTests(TestCase):
     """ Unit tests for various utilities used in SBML export """
     def setUp(self):
         SBMLTemplate.objects.create(
-          name="R_Ec_biomass_iJO1366_core_53p95M",
-          biomass_calculation=33.19037,
-          biomass_exchange_name="R_Ec_biomass_iJO1366_core_53p95M")
+            name="R_Ec_biomass_iJO1366_core_53p95M",
+            biomass_calculation=33.19037,
+            biomass_exchange_name="R_Ec_biomass_iJO1366_core_53p95M")
         Metabolite.objects.create(
             type_name="Optical Density", short_name="OD", type_group="m", charge=0, carbon_count=0,
             molecular_formula="", molar_mass=0)
@@ -832,15 +832,16 @@ class SBMLUtilTests(TestCase):
         else:
             libsbml.SBML_DOCUMENT  # check to make sure it loaded
             notes = sbml_export.create_sbml_notes_object({
-              "CONCENTRATION_CURRENT": [0.5, ],
-              "CONCENTRATION_HIGHEST": [1.0, ],
-              "CONCENTRATION_LOWEST": [0.01, ],
+                "CONCENTRATION_CURRENT": [0.5, ],
+                "CONCENTRATION_HIGHEST": [1.0, ],
+                "CONCENTRATION_LOWEST": [0.01, ],
             })
             notes_dict = sbml_export.parse_sbml_notes_to_dict(notes)
             self.assertTrue(dict(notes_dict) == {
-              'CONCENTRATION_CURRENT': ['0.5'],
-              'CONCENTRATION_LOWEST': ['0.01'],
-              'CONCENTRATION_HIGHEST': ['1.0'], })
+                'CONCENTRATION_CURRENT': ['0.5'],
+                'CONCENTRATION_LOWEST': ['0.01'],
+                'CONCENTRATION_HIGHEST': ['1.0'],
+            })
 
     def test_sbml_setup(self):
         try:
@@ -902,8 +903,8 @@ class ExportTests(TestCase):
         meas = all_meas[0]
         self.assertTrue(meas.n_errors == 0)
         self.assertTrue(meas.n_warnings == 1)
-        self.assertTrue(meas.warnings[0] == 'Start OD of 0 means nothing physically present  (and '
-                        'a potential division-by-zero error).  Skipping...')
+        self.assertTrue(meas.warnings[0] == 'Start OD of 0 means nothing physically present (and '
+                        'a potential division-by-zero error). Skipping...')
         # for md in meas.data :
         #   print md
         # for fd in meas.flux_data :

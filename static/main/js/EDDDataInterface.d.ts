@@ -77,6 +77,42 @@ interface UnitType {
     altnames: string;
     selectString: string;
 }
+interface MetadataTypeRecord {
+    id: number;
+    name: string;
+    postfix: string;
+    default: string;
+    context: string;
+    gn: string;
+    gid: number;
+    is: number;
+    pre: string;
+    ll: boolean;
+    pl: boolean;
+}
+interface ProtocolRecord extends EDDRecord {
+}
+interface StrainRecord extends EDDRecord {
+    registry_id: string;
+    registry_url: string;
+}
+interface CarbonSourceRecord extends EDDRecord {
+    labeling: string;
+    volume: number;
+    initials: string;
+}
+interface UserRecord {
+    id: number;
+    uid: string;
+    email: string;
+    initials: string;
+    name: string;
+    institution: string;
+    description: string;
+    lastname: string;
+    firstname: string;
+    disabled: boolean;
+}
 interface EDDData {
     currentUserID: number;
     AssayMeasurements: {
@@ -86,7 +122,7 @@ interface EDDData {
         [id: number]: AssayRecord;
     };
     CSources: {
-        [id: number]: any;
+        [id: number]: CarbonSourceRecord;
     };
     GeneTypes: {
         [id: number]: ProteinTypeRecord;
@@ -100,59 +136,29 @@ interface EDDData {
     MeasurementTypes: {
         [id: number]: MeasurementTypeRecord;
     };
-    MediaTypes: {
-        [shortform: string]: string;
-    };
     MetaboliteTypes: {
         [id: number]: MetaboliteTypeRecord;
     };
     MetaDataTypes: {
-        [id: number]: any;
+        [id: number]: MetadataTypeRecord;
     };
     ProteinTypes: {
         [id: number]: ProteinTypeRecord;
     };
     Protocols: {
-        [id: number]: any;
+        [id: number]: ProtocolRecord;
     };
     Strains: {
-        [id: number]: any;
+        [id: number]: StrainRecord;
     };
     UnitTypes: {
         [id: number]: UnitType;
     };
     Users: {
-        [id: number]: any;
+        [id: number]: UserRecord;
     };
-    currentStudyID: number;
-    parsedPermissions: any[];
-    currentUserHasPageWriteAccess: boolean;
-    EnabledUserIDs: number[];
-    UserIDs: number[];
-    MetaboliteTypeIDs: number[];
-    ProteinTypeIDs: number[];
-    GeneTypeIDs: number[];
-    MetaDataTypeIDs: number[];
-    MeasurementTypeCompartmentIDs: number[];
-    UnitTypeIDs: number[];
-    Labelings: any[];
-    EnabledCSourceIDs: number[];
-    CSourceIDs: number[];
-    ExchangeIDs: number[];
-    Exchanges: {
-        [id: number]: any;
+    MediaTypes: {
+        [shortform: string]: string;
     };
-    SpeciesIDs: number[];
-    Species: any[];
-    Studies: {
-        [id: number]: any;
-    };
-    StudiesSize: number;
-    StudiesStart: number;
-    EnabledLineIDs: number[];
-    EnabledAssayIDs: number[];
-    AssayMeasurementIDs: number[];
-    MetaDataTypesRelevant: any[];
-    startMetaData: any[];
 }
 declare var EDDData: EDDData;
