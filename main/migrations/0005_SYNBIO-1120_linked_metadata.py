@@ -128,7 +128,7 @@ def digest_names(*args):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('main', '0004_auto_20150929_1632'),
+        ('main', '0005_auto_20151019_1428'),
     ]
 
     operations = [
