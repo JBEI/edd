@@ -37,6 +37,7 @@ experimentation.  See the deployed version at [edd.jbei.org][1].
 * [Database Conversion](#Db_Conversion)
 * [Solr Tests](#Solr_Test)
 * [Required Python Package Reference](#PythonPackages)
+* [Setting up multiple Apache VHOST](#Apache_VHOST)
 
 ---------------------------------------------------------------------------------------------------
 
@@ -522,6 +523,23 @@ since EDD's requirements.txt should normally be used to install required package
 * [python-ldap][18]
     * Object-oriented client API for accessing LDAP directories.
     * `sudo pip install python-ldap`
+
+## Setting up multiple Apache VHOST <a name="Apache_VHOST"/>
+* Clone code into a new directory
+    * Create `server.cfg` and `edd/local_settings.py` based on example files
+* Create a new virtualenv for the virtual host
+    * easiest to just `pip install -r requirements.txt` in new virtualenv
+    * remember there is a separate requriements.txt for Celery dependencies
+* Clone a new database
+    * depending on code version of 'donor' database and target code version, `./manage.py migrate`
+* In the VirtualHost directive:
+    * Set the hostname to the correct host
+    * Update the WSGI Process Group
+    * Update the python-path for the WSGI process to reference new directory and virtualenv
+    * Set the logging for error.log and access.log to vhost-specific files
+* TODO: punting on handling multiple solr indexes
+* TODO: nail down exactly what config is necessary to have VirtualHosts be hostname-specific
+
 
 [1]:    https://edd.jbei.org
 [2]:    http://brew.sh
