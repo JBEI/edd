@@ -341,6 +341,16 @@ This section contains directions for setting up a development environment on EDD
     * Ensure that `/var/www/uploads/` exists and is writable by user `www-data`
 
 * TODO complete Debian instructions
+
+### Deploying code changes (debian)
+
+* `sudo su username_tbd`
+* `git branch`
+* `git pull`
+* `git checkout`
+* `manage.py migrate`
+* `service apache2 restart`
+* `service edd_celeryd restart`
  
 ---------------------------------------------------------------------------------------------------
 
