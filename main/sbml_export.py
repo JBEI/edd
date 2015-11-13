@@ -92,7 +92,7 @@ class sbml_info(object):
         self._resolved_species = OrderedDict()
         self._resolved_exchanges = OrderedDict()
         self.biomass_exchange = None  # XXX accessed directly by HTML template
-        self._all_metabolites = sorted(Metabolite.objects.all(), key=lambda x: x.short_name)
+        self._all_metabolites = Metabolite.objects.order_by('short_name')
         self._metabolites_by_id = {m.id: m for m in self._all_metabolites}
         # TODO: there must be a better way; short_name is not guaranteed to be unique
         self._biomass_metab = MeasurementType.objects.get(short_name="OD")
@@ -331,15 +331,6 @@ class sbml_info(object):
         }
         for met in self._all_metabolites:
             mname = met.short_name  # first we grab the unaltered name
-            # FIXME hack to handle RAMOS measurements - these are treated as
-            # synonymous with "co2" and "o2" but the dictionary mapping for species
-            # to metabolites is ignorant of this, so we substitue the metabolite
-            # elsewhere.  (It is still unclear why the old EDD doesn't have this
-            # problem - could it be an artifact of Postgres table order?)
-            if (met.short_name in ["CO2p", "O2c"]):
-                continue
-            if (mname == "OD"):
-                continue  # deal with this below
             # Then we create a version using the standard symbol substitutions.
             mname_transcoded = generate_transcoded_metabolite_name(mname)
             # The first thing we check for is the presence of a pre-defined pairing,
@@ -408,25 +399,27 @@ class sbml_info(object):
     # string if None.
     # TODO this needs testing for sure!
     def _reassign_metabolite_to_species(self, metabolite, species_id):
-        species_id = str(species_id)
         if (species_id is not None):
             # If the value is defined as an empty string, we should take that as a
             # signal to delete any 'custom' connections between the given measurement
             # and any reactant, and then return the default.
-            if (species_id == ""):
-                record = MetaboliteSpecies.objects.get(
-                    sbml_template_id=self._chosen_template.id,
-                    measurement_type_id=metabolite.id)
+            if (str(species_id) == ""):
                 print("DELETING RECORD: %d:%d" % (self._chosen_template.id, metabolite.id))
-                record.delete()
-                self._modified.add(species_id)
+                MetaboliteSpecies.objects.filter(
+                    sbml_template_id=self._chosen_template.id,
+                    measurement_type_id=metabolite.id
+                ).delete()
+                self._modified.add(str(species_id))
         else:
             species_id = ""
+        print("\treassign 1: %s : %s" % (metabolite.id, species_id))
         # If the given species ID doesn't resolve to anything, it's got to be an
         # erroneous value entered by a user, and we should return the current
         # association with the measurement type if there is one.
-        if (self._species_by_id.get(species_id, None) is None):
+        temp_species = self._species_by_id.get(species_id, None)
+        if (temp_species is None):
             sp = self._resolved_species.get(metabolite.id, None)
+            print('\tresolved %s to %s' % (metabolite.id, sp))
             if (sp is None):
                 return ""
             return sp.id
@@ -439,20 +432,21 @@ class sbml_info(object):
         # update/create it.  (We know the species ID is valid by now.)
         # First, clear out the old record:
         try:
-            record = MetaboliteSpecies.objects.get(
-                sbml_template_id=self._chosen_template.id,
-                measurement_type_id=metabolite.id)
             print("DELETING RECORD 2: %d:%d" % (self._chosen_template.id, metabolite.id))
-            record.delete()
+            MetaboliteSpecies.objects.filter(
+                sbml_template_id=self._chosen_template.id,
+                measurement_type_id=metabolite.id
+            ).delete()
             self._modified.add(species_id)
         except Exception as e:
             print(e)
         # insert the new record
-        record = MetaboliteSpecies.objects.create(
+        print("CREATING RECORD %s:%s" % (metabolite.short_name, species_id))
+        MetaboliteSpecies.objects.create(
             sbml_template=self._chosen_template,
             measurement_type=metabolite,
-            species=species_id)
-        print("CREATING RECORD %s:%s" % (metabolite.short_name, species_id))
+            species=species_id
+        )
         # Alter the internal hashes to reflect the change
         self._resolved_species[metabolite.id] = self._species_by_id[species_id]
         self._species_to_metabolites[species_id] = metabolite
@@ -464,11 +458,11 @@ class sbml_info(object):
         exchange_id = str(exchange_id)
         if (exchange_id is not None):
             if (exchange_id == ""):
-                record = MetaboliteExchange(
+                print("DELETING EXCHANGE RECORD")
+                MetaboliteExchange(
                     sbml_template_id=self._chosen_template.id,
-                    measurement_type_id=metabolite.id)
-                print("DELETING RECORD")
-                record.delete()
+                    measurement_type_id=metabolite.id
+                ).delete()
                 self._modified.add(exchange_id)
         else:
             exchange_id = ""
@@ -481,27 +475,28 @@ class sbml_info(object):
         if (old_met is not None) and (old_met.id == metabolite.id):
             return exchange_id
         try:
-            record = MetaboliteExchange.objects.get(
+            print("DELETING EXCHANGE RECORD 2")
+            MetaboliteExchange.objects.get(
                 sbml_template_id=self._chosen_template.id,
-                measurement_type_id=metabolite.id)
-            print("DELETING RECORD 2")
-            record.delete()
+                measurement_type_id=metabolite.id
+            ).delete()
         except Exception as e:
             print(e)
         print("CREATING RECORD %s:%s" % (metabolite.short_name, exchange_id))
-        record = MetaboliteExchange.objects.create(
+        MetaboliteExchange.objects.create(
             sbml_template=self._chosen_template,
             measurement_type=metabolite,
             reactant_name=self._exchanges_by_id[exchange_id].re_id,
-            exchange_name=exchange_id)
+            exchange_name=exchange_id
+        )
         self._resolved_exchanges[metabolite.id] = self._exchanges_by_id[exchange_id]
         self._exchanges_to_metabolites[exchange_id] = metabolite
         self._modified.add(exchange_id)
 
     def _assign_concentration_to_species(self, mid, minimum, maximum, values):
-        if mid not in self._resolved_species:
+        species = self._resolved_species.get(mid, None)
+        if species is None:
             raise ValueError("no matching species")
-        species = self._resolved_species[mid]
         species.assign_concentration(minimum, maximum, values)
 
     def _assign_value_to_flux(self, mid, values):
@@ -983,6 +978,7 @@ class line_assay_data(line_export_base):
         self._flux_data_types_available = set()
         # biomass gets its own
         self._biomass_data = defaultdict(list)
+        self._ramos_conversion = {}
 
     def run(self):
         """ Run the series of processing steps. """
@@ -1273,12 +1269,19 @@ class line_assay_data(line_export_base):
         self._metabolite_is_input[m.id] = m_is_input
         return True
 
+    def _get_counts_unit_id(self):
+        if not hasattr(self, '_counts_unit'):
+            try:
+                self._counts_unit = MeasurementUnit.objects.filter(
+                    unit_name='counts'
+                ).values_list('pk')[:1][0][0]
+            except MeasurementUnit.DoesNotExist:
+                self._counts_unit = None
+        return self._counts_unit
+
     def _process_transcription_measurements(self, assay):
         """private method"""
-        try:
-            counts_id = MeasurementUnit.objects.get(unit_name="counts").pk
-        except MeasurementUnit.DoesNotExist:
-            counts_id = None
+        counts_id = self._get_counts_unit_id()
         transcriptions = self._get_gene_measurements(assay.id)
         # filter out measurements that are read counts (not F/RPKM)
         transcriptions = [t for t in transcriptions if t.y_units_id != counts_id]
@@ -1371,6 +1374,14 @@ class line_assay_data(line_export_base):
             print("STEP 6: get transcriptomics/proteomics data")
         self._process_multi_purpose_protocol(Protocol.CATEGORY_TPOMICS)
 
+    def _get_ramos_conversion(self, short_name):
+        metabolite = self._ramos_conversion.get(short_name, None)
+        if metabolite is None:
+            metabolite = self._ramos_conversion[short_name] = Metabolite.objects.get(
+                short_name=short_name
+            )
+        return metabolite
+
     # FIXME too spaghetti-like; refactor?
     def _step_7_calculate_fluxes(self):
         """private method"""
@@ -1441,9 +1452,9 @@ class line_assay_data(line_export_base):
                 # needed here because the original variants are considered "rates",
                 # while the metabolites we're matching to are not.
                 if (metabolite.short_name == "CO2p"):
-                    metabolite = Metabolite.objects.get(short_name="co2")
+                    metabolite = self._get_ramos_conversion(short_name="co2")
                 elif (metabolite.short_name == "O2c"):
-                    metabolite = Metabolite.objects.get(short_name="o2")
+                    metabolite = self._get_ramos_conversion(short_name="o2")
                 pm = processed_measurement(
                     measurement=m,
                     measurement_data=self._measurement_data[m.id],
@@ -2185,12 +2196,15 @@ class line_sbml_export (line_assay_data, sbml_info):
             # by passing a defined value, even if just an empty string, instead of
             # 'undef', for any spmatch# element that was on the previous incarnation
             # of the page.
+            print("\tAll species matches: %s" % species_matches)
             for mid in sorted(list(self._species_data_types_available)):
                 metabolite = self._metabolites_by_id[mid]
                 form_element_id = "spmatch%d" % mid
                 species_match = self._reassign_metabolite_to_species(
                     metabolite=metabolite,
-                    species_id=species_matches.get(form_element_id, None))
+                    species_id=species_matches.get(form_element_id, None)
+                )
+                print("\tAssigned %s to %s" % (mid, species_match))
                 # We pass in the contents of the relevant form element here, and the
                 # code in the sbml_info class checks to see if it matches a known
                 # species.   If it does, the measurement type is reassigned to the
