@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
+
 import logging
 
+from builtins import str
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse as urlreverse
@@ -64,23 +66,24 @@ def log_update_warning_msg(study_id):
 
 
 @receiver(pre_save, sender=Study, dispatch_uid="main.signals.handlers_study_pre_save")
-def handle_study_pre_save(sender, instance, **kwargs):
+def handle_study_pre_save(sender, instance, raw, using, **kwargs):
     if not settings.ICE_URL:
         logger.warning('ICE URL is not configured. Skipping ICE experiment link updates.')
+        return
+    elif raw:
         return
 
     # if the study was already saved, cache its name as stored in the database so we can detect
     # renaming
     if instance.pk:
-        instance.pre_save_name = (Study.objects.filter(pk=instance.pk).select_related('object_ref')
-                                  .values('name')[0]['name'])
+        instance.pre_save_name = Study.objects.filter(pk=instance.pk).values('name')[0]['name']
     # if the study is new
     else:
         instance.pre_save_name = None
 
 
 @receiver(post_save, sender=Study, dispatch_uid="main.signals.handlers_study_post_save")
-def handle_study_post_save(sender, instance, created, **kwargs):
+def handle_study_post_save(sender, instance, created, raw, using, **kwargs):
     """
     Checks whether the study has been renamed by comparing its current name with the one set in
     handle_study_pre_save. If it has, and if the study is associated with any ICE strains, updates
@@ -89,12 +92,10 @@ def handle_study_post_save(sender, instance, created, **kwargs):
     if not settings.ICE_URL:
         logger.warning('ICE URL is not configured. Skipping ICE experiment link updates.')
         return
+    elif raw:
+        return
 
     logger.info("Start " + handle_study_post_save.__name__ + "()")
-
-    if not settings.ICE_URL:
-        logger.warning('ICE URL is not configured. Skipping ICE experiment link updates.')
-        return
 
     study = instance
 
@@ -350,6 +351,11 @@ def _is_strain_linkable(registry_url, registry_id):
     return registry_url and registry_id
 
 
+class ChangeFromFixture(Exception):
+    """ Exception to use when change from fixture is detected. """
+    pass
+
+
 @receiver(m2m_changed, sender=Line.strains.through, dispatch_uid=("%s.handle_line_strain_changed"
                                                                   % __name__))
 @transaction.atomic(savepoint=False)
@@ -364,15 +370,24 @@ def handle_line_strain_changed(sender, instance, action, reverse, model, pk_set,
     # presently have implemented. Even if the data member is added later, we don't want to
     # process the same strain/line link twice from both perspectives...
     # it's currently Line that links back to Study and impacts which data we want to push to ICE.
+    log_format = {
+        'method': handle_line_strain_changed.__name__,
+        'action': action,
+        'name': instance.name,
+        'reverse': reverse,
+        'pk_set': pk_set,
+    }
     if reverse:
         logger.info(
-            "Start " + handle_line_strain_changed.__name__ + "():" + action + ". Strain = \"" +
-            instance.name + "\", reverse = " + reverse.__str__() + ", pk_set = " + pk_set.__str__())
+            'Start %(method)s():%(action)s. Strain = "%(name)s", reverse = %(reverse)s, '
+            'pk_set = %(pk_set)s' % log_format
+        )
         return
 
     logger.info(
-        "Start " + handle_line_strain_changed.__name__ + "():" + action + ". Line = \"" +
-        instance.name + "\", reverse = " + reverse.__str__() + ", pk_set = " + pk_set.__str__())
+        'Start %(method)s():%(action)s. Line = "%(name)s", reverse = %(reverse)s, '
+        'pk_set = %(pk_set)s' % log_format
+    )
 
     if not settings.ICE_URL:
         logger.warning('ICE URL is not configured. Skipping ICE experiment link updates.')
@@ -397,9 +412,8 @@ def handle_line_strain_changed(sender, instance, action, reverse, model, pk_set,
         return
 
     elif "post_add" == action:
-
         added_strains = [strain for strain in line.strains.filter(pk__in=pk_set)]
-        logger.debug(u"added_strains = %s" % unicode(added_strains))
+        logger.debug("added_strains = %s" % str(added_strains))
 
         # schedule asynchronous work to maintain ICE strain links to this study, failing if any
         # job submission fails (probably because our link to Celery or RabbitMQ is down, and isn't
@@ -410,6 +424,8 @@ def handle_line_strain_changed(sender, instance, action, reverse, model, pk_set,
         try:
             # find which user made the update that caused this signal
             update = Update.load_update()
+            if update.mod_by is None:
+                raise ChangeFromFixture("No user initiated change, aborting ICE update.")
             user_email = update.mod_by.email
             logger.debug("update performed by user " + user_email)
 
@@ -450,12 +466,13 @@ def handle_line_strain_changed(sender, instance, action, reverse, model, pk_set,
                     "Done scheduling post-commit work for direct HTTP request(s) to ICE: "
                     "requested a job to sequentially create links for %d of %d added "
                     "strains via direct HTTP request(s)." % (linkable_count, exp_add_count))
+        except ChangeFromFixture:
+            logger.warning("Detected changes from fixtures, skipping ICE signal handling.")
         # if an error occurs, print a helpful log message, then re-raise it so Django will email
         # administrators
-        except RuntimeError as rte:
-            logger.exception("Exception scheduling post-commit work. Failed on strain id %d" %
+        except RuntimeError:
+            logger.exception("Exception scheduling post-commit work. Failed on strain with id %d" %
                              strain_pk)
-            raise rte
     elif 'pre_remove' == action:
         # cache data associated with this strain so we have enough info to remove some or all of
         # ICE's link(s) to this study if appropriate after line -> strain relationship change is
@@ -463,7 +480,7 @@ def handle_line_strain_changed(sender, instance, action, reverse, model, pk_set,
         line.removed_strains = Strain.objects.filter(pk__in=pk_set)
     elif 'post_remove' == action:
         removed_strains = line.removed_strains
-        logger.debug(u"removed_strains = %s" % unicode(removed_strains))
+        logger.debug("removed_strains = %s" % (removed_strains, ))
 
         # find which user made the update that caused this signal
         update = Update.load_update()
@@ -517,6 +534,8 @@ def handle_line_strain_changed(sender, instance, action, reverse, model, pk_set,
                     lambda: _post_commit_unlink_ice_entry_from_study(user_email, study.pk,
                                                                      study.created.mod_time,
                                                                      remove_on_commit))
+        except ChangeFromFixture:
+            logger.warning("Detected changes from fixtures, skipping ICE signal handling.")
         # if an error occurs, print a helpful log message, then re-raise it so Django will email
         # administrators
         except RuntimeError:
