@@ -33,7 +33,10 @@ class AutocompleteWidget(forms.widgets.MultiWidget):
             'main/js/autocomplete2.js',
             )
         css = {
-            'all': ('main/js/lib/jquery-ui/jquery-ui.min.css', ),
+            'all': (
+                'main/js/lib/jquery-ui/jquery-ui.min.css',
+                'main/widgets.css',
+            ),
         }
 
     def __init__(self, attrs=None, model=User, opt={}):
@@ -203,7 +206,7 @@ class MultiCarbonSourceAutocompleteWidget(MultiAutocompleteWidget, CarbonSourceA
 class MetadataTypeAutocompleteWidget(AutocompleteWidget):
     """ Autocomplete widget for types of metadata """
     def __init__(self, attrs=None, opt={}):
-        opt.update({'text_attr': {'class': 'autocomp autocomp_meta', }, })
+        opt.update({'text_attr': {'class': 'autocomp autocomp_type', }, })
         super(MetadataTypeAutocompleteWidget, self).__init__(
             attrs=attrs, model=MetadataType, opt=opt)
 

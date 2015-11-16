@@ -9,11 +9,11 @@ from django.db.models import Count
 from django.utils.translation import ugettext_lazy as _
 from django_auth_ldap.backend import LDAPBackend
 
-from .forms import UserAutocompleteWidget
+from .forms import MetadataTypeAutocompleteWidget, UserAutocompleteWidget
 from .models import (
     Assay, Attachment, CarbonSource, GeneIdentifier, GroupPermission, Line, MeasurementGroup,
-    MeasurementType, Metabolite, MetadataGroup, MetadataType, Phosphor, ProteinIdentifier,
-    Protocol, SBMLTemplate, Strain, Study, Update, UserPermission,
+    MeasurementType, Metabolite, MetadataGroup, MetadataTemplate, MetadataType, Phosphor,
+    ProteinIdentifier, Protocol, SBMLTemplate, Strain, Study, Update, UserPermission,
     )
 from .sbml_export import validate_sbml_attachment
 from .solr import StudySearch, UserSearch
@@ -137,11 +137,22 @@ class ProtocolAdminForm(forms.ModelForm):
             self.instance.owner = c_user
 
 
+class MetadataTemplateInline(admin.TabularInline):
+    """ Inline submodel for editing user permissions """
+    model = MetadataTemplate
+    extra = 1
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == 'meta_type':
+            kwargs['widget'] = MetadataTypeAutocompleteWidget()
+        return db_field.formfield(**kwargs)
+
+
 class ProtocolAdmin(EDDObjectAdmin):
     """ Definition for admin-edit of Protocols """
     form = ProtocolAdminForm
     list_display = ['name', 'description', 'active', 'variant_of', 'categorization', 'owner', ]
-    inlines = (AttachmentInline, )
+    inlines = (MetadataTemplateInline, AttachmentInline, )
 
     def save_model(self, request, obj, form, change):
         if not change:
