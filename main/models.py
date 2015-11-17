@@ -704,6 +704,7 @@ class StudyPermission(models.Model):
         return self.get_who_label()
 
 
+@python_2_unicode_compatible
 class UserPermission(StudyPermission):
     class Meta:
         db_table = 'study_user_permission'
@@ -728,6 +729,7 @@ class UserPermission(StudyPermission):
         return 'u:%(user)s' % {'user': self.user.username}
 
 
+@python_2_unicode_compatible
 class GroupPermission(StudyPermission):
     class Meta:
         db_table = 'study_group_permission'
@@ -752,6 +754,7 @@ class GroupPermission(StudyPermission):
         return 'g:%(group)s' % {'group': self.group.name}
 
 
+@python_2_unicode_compatible
 class Protocol(EDDObject):
     """ A defined method of examining a Line. """
     class Meta:
@@ -851,6 +854,7 @@ class Strain(EDDObject, LineProperty):
         return json_dict
 
 
+@python_2_unicode_compatible
 class CarbonSource(EDDObject, LineProperty):
     """ Information about carbon sources, isotope labeling. """
     class Meta:

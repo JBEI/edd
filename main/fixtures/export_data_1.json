@@ -486,6 +486,16 @@
 },
 {
   "fields": {
+    "unit_name": "counts",
+    "alternate_names": null,
+    "display": true,
+    "type_group": "_"
+  },
+  "model": "main.measurementunit",
+  "pk": 6
+},
+{
+  "fields": {
     "y": [ "0.00000" ],
     "x": [ "0.00000" ],
     "updated": 39,
