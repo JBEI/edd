@@ -11,16 +11,12 @@ https://docs.djangoproject.com/en/1.7/ref/settings/
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 import json
+import ldap
 import os
 
-import ldap
 from django_auth_ldap.config import LDAPSearch, GroupOfUniqueNamesType
 from django.conf.global_settings import TEMPLATE_CONTEXT_PROCESSORS as TCP
-from kombu.serialization import register
-import psycopg2.extensions
-
-from edd_utils.parsers.json_encoders import datetime_dumps, datetime_loads, \
-    EXTENDED_JSON_CONTENT_TYPE
+from psycopg2.extensions import ISOLATION_LEVEL_SERIALIZABLE
 
 
 ####################################################################################################
@@ -35,15 +31,6 @@ except IOError:
     print("Required configuration file server.cfg is missing from %s"
           "Copy from server.cfg-example and fill in appropriate values" % BASE_DIR)
     raise
-
-
-####################################################################################################
-# Register custom serialization code to allow us to serialize datetime objects as JSON (just
-# datetimes, for starters)
-####################################################################################################
-register(EXTENDED_JSON_CONTENT_TYPE, datetime_dumps, datetime_loads,
-         content_type='application/x-' + EXTENDED_JSON_CONTENT_TYPE,
-         content_encoding='UTF-8')
 
 
 # Quick-start development settings - unsuitable for production
@@ -200,7 +187,7 @@ DATABASES = {
             # code complexity / development time as justified. Ideally, Django will eventually
             # support READ_ONLY transactions, which we should use by default to help mitigate the
             # computational burden.
-            'isolation_level': psycopg2.extensions.ISOLATION_LEVEL_SERIALIZABLE,
+            'isolation_level': ISOLATION_LEVEL_SERIALIZABLE,
         },
     },
 }
@@ -263,6 +250,6 @@ MEDIA_ROOT = config['site'].get('media_root', '/var/www/uploads')
 MEDIA_URL = config['site'].get('media_url', '/uploads/')
 
 try:
-    from .local_settings import *
+    from .local_settings import *  # noqa
 except ImportError:
     pass
