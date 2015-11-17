@@ -288,7 +288,9 @@ class LineTests (TestCase):  # XXX also Strain, CarbonSource
         self.assertTrue(json_dict['labeling'] == "100% unlabeled")
         self.assertTrue(line1.carbon_source_labeling == "100% unlabeled")
         self.assertTrue(line1.carbon_source_name == "Carbon source 1")
-        self.assertTrue(line1.carbon_source_info == "Carbon source 1 (100% unlabeled)")
+        self.assertTrue(
+            line1.carbon_source_info == "Carbon source 1 (100% unlabeled)",
+            line1.carbon_source_info)
         self.assertTrue(
             line3.carbon_source_info ==
             "Carbon source 1 (100% unlabeled),Carbon source 3 (40% 14C)")
