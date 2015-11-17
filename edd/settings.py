@@ -18,7 +18,6 @@ from django_auth_ldap.config import LDAPSearch, GroupOfUniqueNamesType
 from django.conf.global_settings import TEMPLATE_CONTEXT_PROCESSORS as TCP
 from psycopg2.extensions import ISOLATION_LEVEL_SERIALIZABLE
 
-
 ####################################################################################################
 # Load urls and authentication credentials from server.cfg (TODO: some other stuff in there should
 # be moved here)

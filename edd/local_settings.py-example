@@ -6,7 +6,7 @@
 import os
 
 # Use everything in the common settings file
-from .settings import *
+from .settings import *  # noqa
 
 # Store attachments inside the project directory, under 'uploads'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'uploads', '')
