@@ -7,7 +7,6 @@ from builtins import str
 from collections import OrderedDict
 from django.db.models import Prefetch, Q
 from django.utils.translation import ugettext_lazy as _
-from past.builtins import cmp
 
 
 logger = logging.getLogger(__name__)
@@ -58,6 +57,7 @@ class ExportSelection(object):
             'grouppermission_set',
         )
         allowed_study = [s for s in matched_study if s.user_can_read(user)]
+        # TODO: add in empty measurements for assays that have none
         # load all matching measurements
         self._measures = Measurement.objects.filter(
             # all measurements are from visible study
@@ -244,8 +244,12 @@ class TableExport(object):
             assay = self.selection.assays.get(measurement.assay_id, None)
             protocol = assay.protocol
             line = self.selection.lines.get(assay.line_id, None)
+            # build row with study/line info
             row = self._init_row_for_line(tables, line)
+            # add on columns for protocol/assay/measurement
             row += self._output_measure_row(protocol, assay, measurement)
+            # TODO: add on columns for protocol worklist metadata
+            # TODO: remove worklist metadata from previous steps? always have worklist end of row
             table, table_key = self._init_tables_for_protocol(tables, protocol)
             values = measurement.measurementvalue_set.order_by('x')
             if layout == ExportOption.DATA_COLUMN_BY_POINT:

@@ -650,6 +650,10 @@ class ExportOptionForm(forms.Form):
         label=_('Include a section for each Protocol'),
         required=False,
         )
+    worklist_choice = forms.ModelChoiceField(
+        queryset=Protocol.objects.all(),
+        required=False,
+        )
     study_meta = forms.MultipleChoiceField(
         choices=map(table.ColumnChoice.get_field_choice, Study.export_columns()),
         label=_('Study fields to include'),

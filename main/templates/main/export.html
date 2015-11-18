@@ -6,7 +6,6 @@
   <script type="text/javascript" src="{% static 'edd_utils/js/lib/handsontable.full.min.js' %}"></script>
   <link rel="stylesheet" media="screen" href="{% static 'edd_utils/css/lib/handsontable.full.min.css' %}" />
   <script type="text/javascript">
-  //<![CDATA[
   $(document).on('click', '.disclose .discloseLink', function (e) {
     $(e.target).closest('.disclose').toggleClass('discloseHide');
     return false;
@@ -30,8 +29,17 @@
         dataArea.toggle();
         tables.toggle();
       });
+    // add select/deselect controls
+    $('.exportOptions > ul').each(function (i, ul) {
+      var $ul = $(ul), css = { 'float': 'right', 'padding-left': '1em' };
+      $('<a href="#">').text('Deselect All').css(css).on('click', function () {
+        $ul.find(':checkbox').prop('checked', false);
+      }).appendTo($ul.prev('p'));
+      $('<a href="#">').text('Select All').css(css).on('click', function () {
+        $ul.find(':checkbox').prop('checked', true);
+      }).appendTo($ul.prev('p'));
+    });
   });
-  //]]>
   </script>
 {% endblock js_css %}
 
