@@ -1,6 +1,10 @@
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
 import json
 import logging
 
+from builtins import str
 from copy import deepcopy
 from django import forms
 from django.contrib.auth import get_user_model
@@ -89,7 +93,7 @@ class MultiAutocompleteWidget(AutocompleteWidget):
                 return [
                     self._separator.join(map(str, values[0])),
                     self._separator.join(map(str, values[1])),
-                   ]
+                ]
             else:
                 # there are no values, return "empty" structure
                 return ['', None]
@@ -604,24 +608,24 @@ class ExportOptionForm(forms.Form):
     DATA_COLUMN_BY_POINT = 'dbyp'
     LINE_COLUMN_BY_DATA = 'lbyd'
     LAYOUT_CHOICE = (
-            (DATA_COLUMN_BY_LINE, _('columns of metadata types, and rows of lines/assays')),
-            (DATA_COLUMN_BY_POINT, _('columns of metadata types, and rows of single points')),
-            (LINE_COLUMN_BY_DATA, _('columns of lines/assays, and rows of metadata types')),
-        )
+        (DATA_COLUMN_BY_LINE, _('columns of metadata types, and rows of lines/assays')),
+        (DATA_COLUMN_BY_POINT, _('columns of metadata types, and rows of single points')),
+        (LINE_COLUMN_BY_DATA, _('columns of lines/assays, and rows of metadata types')),
+    )
     COMMA_SEPARATED = 'csv'
     TAB_SEPARATED = 'tsv'
     SEPARATOR_CHOICE = (
-            (COMMA_SEPARATED, _('Comma-separated (CSV)')),
-            (TAB_SEPARATED, _('Tab-separated')),
-        )
+        (COMMA_SEPARATED, _('Comma-separated (CSV)')),
+        (TAB_SEPARATED, _('Tab-separated')),
+    )
     ALL_DATA = 'all'
     SUMMARY_DATA = 'summary'
     NONE_DATA = 'none'
     FORMAT_CHOICE = (
-            (ALL_DATA, _('All')),
-            (SUMMARY_DATA, _('Summarize')),
-            (NONE_DATA, _('None')),
-        )
+        (ALL_DATA, _('All')),
+        (SUMMARY_DATA, _('Summarize')),
+        (NONE_DATA, _('None')),
+    )
 
     layout = forms.ChoiceField(
         choices=LAYOUT_CHOICE,
@@ -700,7 +704,7 @@ class ExportOptionForm(forms.Form):
                 "protocol_meta": prefs.get('export.csv.protocol_meta', '__all__'),
                 "assay_meta": prefs.get('export.csv.assay_meta', '__all__'),
                 "measure_meta": prefs.get('export.csv.measure_meta', '__all__'),
-                }
+            }
         return {}
 
     def clean(self):
