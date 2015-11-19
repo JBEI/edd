@@ -62,7 +62,7 @@ class MetadataTypeAdmin(admin.ModelAdmin):
     """ Definition for admin-edit of Metadata Types """
     fields = ('type_name', 'input_size', 'default_value', 'prefix', 'postfix',
               'group', 'for_context', )
-    list_display = ('type_name', 'prefix', 'default_value', 'postfix', 'is_line', 'is_protocol',
+    list_display = ('type_name', 'prefix', 'default_value', 'postfix', 'for_context',
                     'num_lines', 'num_assay', 'group', )
     list_filter = ('group', )
     radio_fields = {'group': admin.VERTICAL, 'for_context': admin.VERTICAL}
@@ -74,16 +74,6 @@ class MetadataTypeAdmin(admin.ModelAdmin):
         self._num_assay = Assay.metadata_type_frequencies()
         # q = q.annotate(num_lines=Count('line'), num_studies=Count('line__study', distinct=True))
         return q
-
-    def is_line(self, instance):
-        return instance.for_line()
-    is_line.boolean = True
-    is_line.short_description = 'Lines?'
-
-    def is_protocol(self, instance):
-        return instance.for_protocol()
-    is_protocol.boolean = True
-    is_protocol.short_description = 'Assays?'
 
     def num_lines(self, instance):
         return self._num_lines.get(instance.pk, 0)
