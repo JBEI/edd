@@ -30,7 +30,7 @@
         tables.toggle();
       });
     // add select/deselect controls
-    $('.exportOptions > ul').each(function (i, ul) {
+    $('.exportOptions > ul[id$=_meta]').each(function (i, ul) {
       var $ul = $(ul), css = { 'float': 'right', 'padding-left': '1em' };
       $('<a href="#">').text('Deselect All').css(css).on('click', function () {
         $ul.find(':checkbox').prop('checked', false);

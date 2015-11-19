@@ -697,19 +697,19 @@ class ExportOptionForm(forms.Form):
     def initial_from_user_settings(cls, user):
         """ Looks for preferences in user profile to set form choices; if found, apply, otherwise
             sets all options. """
+        prefs = {}
         if hasattr(user, 'userprofile'):
             prefs = user.userprofile.prefs
-            return {
-                "layout": prefs.get('export.csv.layout', cls.DATA_COLUMN_BY_LINE),
-                "separator": prefs.get('export.csv.separator', cls.COMMA_SEPARATED),
-                "data_format": prefs.get('export.csv.data_format', cls.ALL_DATA),
-                "study_meta": prefs.get('export.csv.study_meta', '__all__'),
-                "line_meta": prefs.get('export.csv.line_meta', '__all__'),
-                "protocol_meta": prefs.get('export.csv.protocol_meta', '__all__'),
-                "assay_meta": prefs.get('export.csv.assay_meta', '__all__'),
-                "measure_meta": prefs.get('export.csv.measure_meta', '__all__'),
-            }
-        return {}
+        return {
+            "layout": prefs.get('export.csv.layout', cls.DATA_COLUMN_BY_LINE),
+            "separator": prefs.get('export.csv.separator', cls.COMMA_SEPARATED),
+            "data_format": prefs.get('export.csv.data_format', cls.ALL_DATA),
+            "study_meta": prefs.get('export.csv.study_meta', '__all__'),
+            "line_meta": prefs.get('export.csv.line_meta', '__all__'),
+            "protocol_meta": prefs.get('export.csv.protocol_meta', '__all__'),
+            "assay_meta": prefs.get('export.csv.assay_meta', '__all__'),
+            "measure_meta": prefs.get('export.csv.measure_meta', '__all__'),
+        }
 
     def clean(self):
         data = super(ExportOptionForm, self).clean()
@@ -717,6 +717,7 @@ class ExportOptionForm(forms.Form):
             m: data.get(m, [])
             for m in ['study_meta', 'line_meta', 'protocol_meta', 'assay_meta', 'measure_meta']
         }
+        print(meta)
         self._options = table.ExportOption(
             layout=data.get('layout', table.ExportOption.DATA_COLUMN_BY_LINE),
             separator=data.get('separator', table.ExportOption.COMMA_SEPARATED),
@@ -755,7 +756,7 @@ class ExportOptionForm(forms.Form):
                 self.initial.update({
                     meta: [choice[0] for choice in self.fields[meta].choices],
                     })
-            # update incoming data with default initial if not already set
-            if meta not in data:
-                data.setlist(meta, self.initial.get(meta, []))
+                # update incoming data with default initial if not already set
+                if meta not in data and 'layout' not in data:
+                    data.setlist(meta, self.initial.get(meta, []))
         self.data = data
