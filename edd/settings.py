@@ -244,9 +244,6 @@ USE_TZ = True
 STATIC_ROOT = os.path.join(BASE_DIR, 'static', '')
 STATIC_URL = '/static/'
 
-# File upload location
-MEDIA_ROOT = config['site'].get('media_root', '/var/www/uploads')
-MEDIA_URL = config['site'].get('media_url', '/uploads/')
 
 try:
     from .local_settings import *  # noqa

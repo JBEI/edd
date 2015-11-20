@@ -538,17 +538,18 @@ since EDD's requirements.txt should normally be used to install required package
 * Clone code into a new directory
     * Create `server.cfg` and `edd/local_settings.py` based on example files
 * Create a new virtualenv for the virtual host
-    * easiest to just `pip install -r requirements.txt` in new virtualenv
-    * remember there is a separate requriements.txt for Celery dependencies
+    * fast way is copy another virtualenv with `virtualenv-clone /path/to/old /path/to/new`
+    * easiest and/or more repeatable to `pip install -r requirements.txt` in new virtualenv
+        * remember there is a separate requriements.txt for Celery dependencies
 * Clone a new database
     * depending on code version of 'donor' database and target code version, `./manage.py migrate`
+    * TODO: SYNBIO-1245, should be able to bootstrap from empty database
 * In the VirtualHost directive:
     * Set the hostname to the correct host
     * Update the WSGI Process Group
     * Update the python-path for the WSGI process to reference new directory and virtualenv
     * Set the logging for error.log and access.log to vhost-specific files
 * TODO: punting on handling multiple solr indexes
-* TODO: nail down exactly what config is necessary to have VirtualHosts be hostname-specific
 
 
 [1]:    https://edd.jbei.org
