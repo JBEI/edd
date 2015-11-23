@@ -34,7 +34,6 @@
 
     "ice": {
         "url": "https://registry-test.jbei.org/",
-        "cert": "./certs/registry-test.pem",
         "edd_key": "COPY THE CORRECT KEY HERE"
     },
 

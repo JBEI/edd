@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
+
 import base64
 import hashlib
 import hmac
@@ -8,9 +9,9 @@ import requests
 import re
 import logging
 
+from django.conf import settings
 from requests.auth import AuthBase
 from requests.compat import urlparse
-from edd.settings import ICE_URL, ICE_SECRET_HMAC_KEY, ICE_REQUEST_TIMEOUT
 
 """
 Defines classes and utility methods used to communicate with the Index of Composable Elements
@@ -104,7 +105,7 @@ class HmacAuth(AuthBase):
         Builds a signature for the provided request message based on the secret key configured in
         server.cfg
         """
-        key = base64.b64decode(ICE_SECRET_HMAC_KEY)
+        key = base64.b64decode(settings.ICE_SECRET_HMAC_KEY)
         msg = self.build_message(request)
         digest = hmac.new(key, msg=msg, digestmod=hashlib.sha1).digest()
         sig = base64.b64encode(digest).decode()
@@ -124,7 +125,7 @@ class IceApi(object):
 
     """
 
-    def __init__(self, user_email, base_url=ICE_URL, timeout=ICE_REQUEST_TIMEOUT):
+    def __init__(self, user_email, base_url=settings.ICE_URL, timeout=settings.ICE_REQUEST_TIMEOUT):
         """
         Creates a new instance of IceApi
         :param user_email: the email address of the user who persistent ICE changes will be
