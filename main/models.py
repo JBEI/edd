@@ -553,6 +553,7 @@ class EDDObject(models.Model):
         return user.is_superuser
 
 
+@python_2_unicode_compatible
 class Study(EDDObject):
     """ A collection of items to be studied. """
     class Meta:
@@ -579,6 +580,9 @@ class Study(EDDObject):
             table.ColumnChoice(
                 cls, 'contact', _('Contact'), lambda x: x.get_contact(), heading='Study Contact'),
         ]
+
+    def __str__(self):
+        return self.name
 
     def to_solr_json(self):
         """ Convert the Study model to a dict structure formatted for Solr JSON. """
@@ -834,6 +838,7 @@ class LineProperty(object):
         return len(set([l.study_id for l in lines]))
 
 
+@python_2_unicode_compatible
 class Strain(EDDObject, LineProperty):
     """ A link to a strain/part in the JBEI ICE Registry. """
     class Meta:
@@ -841,6 +846,9 @@ class Strain(EDDObject, LineProperty):
     object_ref = models.OneToOneField(EDDObject, parent_link=True)
     registry_id = models.UUIDField(blank=True, null=True)
     registry_url = models.URLField(max_length=255, blank=True, null=True)
+
+    def __str__(self):
+        return self.name
 
     def to_solr_value(self):
         return '%(id)s@%(name)s' % {'id': self.registry_id, 'name': self.name}
@@ -877,6 +885,7 @@ class CarbonSource(EDDObject, LineProperty):
         return "%s (%s)" % (self.name, self.labeling)
 
 
+@python_2_unicode_compatible
 class Line(EDDObject):
     """ A single item to be studied (contents of well, tube, dish, etc). """
     class Meta:
@@ -926,6 +935,9 @@ class Line(EDDObject):
                 lambda x: x.meta_store.get('%s' % t.id, ''))
             for t in types
         ]
+
+    def __str__(self):
+        return self.name
 
     def to_json(self):
         json_dict = super(Line, self).to_json()
@@ -1083,6 +1095,7 @@ class MetaboliteKeyword(models.Model):
         return keywords
 
 
+@python_2_unicode_compatible
 class Metabolite(MeasurementType):
     """ Defines additional metadata on a metabolite measurement type; charge, carbon count, molar
         mass, and molecular formula.
@@ -1097,6 +1110,9 @@ class Metabolite(MeasurementType):
     molecular_formula = models.TextField()
     keywords = models.ManyToManyField(
         MetaboliteKeyword, db_table="metabolites_to_keywords")
+
+    def __str__(self):
+        return self.type_name
 
     def is_metabolite(self):
         return True
@@ -1147,6 +1163,7 @@ class Metabolite(MeasurementType):
 Metabolite._meta.get_field('type_group').default = MeasurementGroup.METABOLITE
 
 
+@python_2_unicode_compatible
 class GeneIdentifier(MeasurementType):
     """ Defines additional metadata on gene identifier transcription measurement type. """
     class Meta:
@@ -1162,18 +1179,25 @@ class GeneIdentifier(MeasurementType):
         """ Generate a dictionary of genes keyed by name. """
         return {g.type_name: g for g in cls.objects.order_by("type_name")}
 
+    def __str__(self):
+        return self.type_name
+
 GeneIdentifier._meta.get_field('type_group').default = MeasurementGroup.GENEID
 
 
+@python_2_unicode_compatible
 class ProteinIdentifier(MeasurementType):
     """ Defines additional metadata on gene identifier transcription measurement type. """
     class Meta:
         db_table = 'protein_identifier'
-    pass
+
+    def __str__(self):
+        return self.type_name
 
 ProteinIdentifier._meta.get_field('type_group').default = MeasurementGroup.PROTEINID
 
 
+@python_2_unicode_compatible
 class Phosphor(MeasurementType):
     """ Defines metadata for phosphorescent measurements """
     class Meta:
@@ -1184,6 +1208,9 @@ class Phosphor(MeasurementType):
         max_digits=16, decimal_places=5, blank=True, null=True)
     reference_type = models.ForeignKey(
         MeasurementType, blank=True, null=True, related_name='phosphor_set')
+
+    def __str__(self):
+        return self.type_name
 
 Phosphor._meta.get_field('type_group').default = MeasurementGroup.PHOSPHOR
 
@@ -1215,6 +1242,7 @@ class MeasurementUnit(models.Model):
         return self.unit_name
 
 
+@python_2_unicode_compatible
 class Assay(EDDObject):
     """ An examination of a Line, containing the Protocol and set of Measurements. """
     class Meta:
@@ -1225,6 +1253,9 @@ class Assay(EDDObject):
     experimenter = models.ForeignKey(
         settings.AUTH_USER_MODEL, blank=True, null=True, related_name='assay_experimenter_set')
     measurement_types = models.ManyToManyField(MeasurementType, through='Measurement')
+
+    def __str__(self):
+        return self.name
 
     def get_metabolite_measurements(self):
         return self.measurement_set.filter(
@@ -1434,6 +1465,7 @@ class MeasurementValue(models.Model):
         super(MeasurementValue, self).save(*args, **kwargs)
 
 
+@python_2_unicode_compatible
 class SBMLTemplate(EDDObject):
     """ Container for information used in SBML export. """
     class Meta:
@@ -1445,6 +1477,9 @@ class SBMLTemplate(EDDObject):
     biomass_exchange_name = models.TextField()
     # FIXME would like to limit this to attachments only on parent EDDObject, and remove null=True
     sbml_file = models.ForeignKey(Attachment, blank=True, null=True)
+
+    def __str__(self):
+        return self.name
 
     @property
     def xml_file(self):

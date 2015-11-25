@@ -5,6 +5,8 @@ import logging
 
 from django.conf import settings
 
+# patch the default formatter to use a unicode format string
+logging._defaultFormatter = logging.Formatter("%(message)s")
 logger = logging.getLogger(__name__)
 
 # If configured, make sure the celery app is imported when

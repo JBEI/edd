@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 
 import logging
 
+from builtins import str
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse as urlreverse
@@ -245,10 +246,9 @@ def _post_commit_unlink_ice_entry_from_study(user_email, study_pk, study_creatio
             if not _is_linkable(strain):
                 logger.warning(
                     "Strain with id %d is no longer linked to study id %d, but doesn't have "
-                    "enough data to "
-                    "link to ICE. It's possible (though unlikely) that the EDD strain has been "
-                    "modified "
-                    "since an ICE link was created for it." % (strain.pk, study_pk))
+                    "enough data to link to ICE. It's possible (though unlikely) that the EDD "
+                    "strain has been modified since an ICE link was created for it." %
+                    (strain.pk, study_pk))
                 index += 1
                 continue
 
@@ -430,8 +430,10 @@ def handle_line_strain_changed(sender, instance, action, reverse, model, pk_set,
         else:
             added_strains = line.strains.all()
 
-        logger.debug("added_strains = " + str(added_strains))
-        logger.debug("removed_strains = " + str(removed_strains))
+        # Django cannot properly handle casting querysets to str if unicode characters are included.
+        # Instead, use list comprehension or values_list to print
+        logger.debug("added_strains = %s" % ([s.pk for s in added_strains], ))
+        logger.debug("removed_strains = %s" % ([s.pk for s in removed_strains], ))
 
         # schedule asynchronous work to maintain ICE strain links to this study, failing if any
         # job submission fails (probably because our link to Celery or RabbitMQ is down, and isn't
@@ -479,8 +481,7 @@ def handle_line_strain_changed(sender, instance, action, reverse, model, pk_set,
                 if lines:
                     logger.warning(
                         "Found %d other lines linking study id %d to strain id %d. This link "
-                        "won't be "
-                        "removed from ICE." % (lines.count(), study.pk, strain.pk))
+                        "won't be removed from ICE." % (lines.count(), study.pk, strain.pk))
                     continue
 
                 remove_on_commit.append(strain)
