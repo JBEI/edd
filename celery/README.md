@@ -20,6 +20,8 @@ Per the [documentation][1], celery is
         * [Install anc Configure RabbitMQ backend](#Debian_RabbitMQ)
         * [Install Celery as a daemon](#Debian_Celery)
         * [Install Flower as a daemon](#Debian_Flower)
+    * [Common Configuration Steps][#Common_Configuration]
+	    * [Configure the running RabbitMQ Server][#Configure_Rabbit]
 
 ---------------------------------------------------------------------------------------------------
 
@@ -101,37 +103,8 @@ Unless specified otherwise, all commands should be run from the repository root 
         * Switch to user `rabbitmq` with `sudo su - rabbitmq`
         * `rabbitmq-server &`
         * Following steps will not work without a running server
-    * Set up the server
-        * Remove default `guest` account: `rabbitmqctl delete_user guest`
-        * Add a virtual host for EDD: `rabbitmqctl add_vhost /edd`
-        * Create a limited account for EDD
-            * Avoid special characters as the password is provided via URL
-                * If you do use special characters, understand how shell quoting works first
-            * Add the password to EDD's `server.cfg` as the `rabbitmq.edd_pass` parameter
-            * `rabbitmqctl add_user edd_user <EDD_RABBITMQ_PASS>`
-            * `rabbitmqctl set_permissions -p /edd edd_user ".*" ".*" ".*"`
-            * More information about [access control][5]
-        * Create an admin account for Flower
-            * Avoid special characters as the password is provided via URL
-                * If you do use special characters, understand how shell quoting works first
-            * Add the password to EDD's `server.cfg` as the `rabbitmq.mgmt_pass` parameter
-            * `rabbitmqctl add_user bunny <RABBITMQ_PASS>`
-            * `rabbitmqctl set_permissions -p / bunny ".*" ".*" ".*"`
-            * `rabbitmqctl set_permissions -p /edd bunny ".*" ".*" ".*"`
-            * TODO: experiment with access controls to find what permissions are necessary
-        * Modify RabbitMQ configuration to listen only on localhost
-            * From `/usr/local/etc/rabbitmq`, copy `rabbitmq.config.example` to `rabbitmq.config`
-            * Find the first occurance of "localhost" and add lines following the example comment
-              that will cause RabbitMQ to ignore all remote requests
-
-                %% Disable all remote access to RabbitMQ
-                {tcp_listeners, [{"127.0.0.1", 5672},
-                                 {"::1",       5672}]}
-
-            * Search the file for "loopback" and uncomment the line, adding the edd_user
-
-                %% only allow edd_user access from localhost
-                {loopback_users, [<<"guest">>, <<"edd_user">>]}
+    * Configure the running RabbitMQ Server
+	   * See [common instructions][#Configure_Rabbit] for doing this on Debian or OSX
 
     * Configure RabbitMQ to run as a daemon
         * `sudo cp ./celery/osx/com.rabbitmq.plist /Libarary/LaunchDaemons`
@@ -199,8 +172,8 @@ Unless specified otherwise, all commands should be run from the repository root 
     * You should, at a minimum, set up the development environment as explained in the core EDD
       documentation. In particular, you will need the following sections:
         * Required Debian Packages
+		* virtualenvwrapper
         * Python packages
-        * virtualenvwrapper
     * TODO: any additional Debian package needed
     * Additional pip dependencies for Celery are included in the requirements.txt accompanying
       this document.
@@ -216,8 +189,9 @@ Unless specified otherwise, all commands should be run from the repository root 
     * Install `rabbitmq-server` via `apt`
         * If you don't know what the above means, *please* [let a sysadmin do it][7]
         * Update `/etc/apt/sources.list` to reference RabbitMQ servers
-        * Import rabbitmq.com certificate
-        * `apt-get install rabbitmq-server`
+        * Import rabbitmq.com certificate per RabbitMQ's install directions
+        * Install RabbitMQ. List the version number to get the up-to-date version from RabbitMQ instead of the older one available from Debian (order of sources.list doesn't seem to matter for this).
+	        apt-get install rabbitmq-server=3.5.6-1
     * TODO: `pip install -r` in virtualenv, how to get RabbitMQ/Celery to use virtualenv?
     * Configure 
     * TODO: follow same steps as OS X 'Start the RabbitMQ Server' and 'Set up the server'; should
@@ -238,8 +212,10 @@ Unless specified otherwise, all commands should be run from the repository root 
         * [Message Signing][11]
         * [Logging and Intrusion Detection][14]
     * `sudo useradd -r celery`
+	* `sudo usermod -a -G www-data celery` allows celery user to access /var/log/edd/query.log, which it will write to if running on the same VM as EDD
     * `sudo cp ./celery/debian/edd_celeryd.script /etc/init.d/edd_celeryd`
     * `sudo cp ./celery/debian/edd_celeryd.config /etc/default/edd_celeryd`
+	* `sudo vi /etc/default/edd_celeryd`
     * `service edd_celeryd start`
 
 <a name="Debian_Flower"/>
@@ -248,6 +224,45 @@ Unless specified otherwise, all commands should be run from the repository root 
         * [Configuration Options][12]
         * [Persistent Mode][13]
     * TODO
+	
+<a name="Common_Configuration"/>
+### Common Configuration Steps
+
+<a name="Configure_Rabbit"/>
+* Configure the running RabbitMQ server
+    * Remove default `guest` account: `rabbitmqctl delete_user guest`
+    * Add a virtual host for EDD: `rabbitmqctl add_vhost /edd`
+    * Create a limited account for EDD
+        * Avoid special characters as the password is provided via URL
+            * If you do use special characters, understand how shell quoting works first
+        * Add the password to EDD's `server.cfg` as the `rabbitmq.edd_pass` parameter
+        * `rabbitmqctl add_user edd_user <EDD_RABBITMQ_PASS>`
+        * `rabbitmqctl set_permissions -p /edd edd_user ".*" ".*" ".*"`
+        * More information about [access control][5]
+    * Create an admin account for Flower
+        * Avoid special characters as the password is provided via URL
+            * If you do use special characters, understand how shell quoting works first
+        * Add the password to EDD's `server.cfg` as the `rabbitmq.mgmt_pass` parameter
+        * `rabbitmqctl add_user bunny <RABBITMQ_PASS>`
+        * `rabbitmqctl set_permissions -p / bunny ".*" ".*" ".*"`
+        * `rabbitmqctl set_permissions -p /edd bunny ".*" ".*" ".*"`
+		* `sudo rabbitmqctl set_user_tags bunny administrator`
+        * TODO: experiment with access controls to find minimum permissions necessary
+    * Modify RabbitMQ configuration to listen only on localhost
+        * Copy and modify configuration file `rabbitmq.config.example` to `rabbitmq.config`
+		   * OSX: it's in `/usr/local/etc/rabbitmq`
+		   * Debian: it's in `/etc/rabbitmq/rabbitmq.config`
+        * Find the first occurance of "localhost" and add lines following the example comment
+          that will cause RabbitMQ to ignore all remote requests
+
+            %% Disable all remote access to RabbitMQ
+            {tcp_listeners, [{"127.0.0.1", 5672},
+                             {"::1",       5672}]}
+
+        * Search the file for "loopback" and uncomment the line, adding the edd_user
+
+            %% only allow edd_user access from localhost
+            {loopback_users, [<<"guest">>, <<"edd_user">>]}
 
 
 [1]:  https://celery.readthedocs.org/en/latest/index.html "Celery Documentation"
