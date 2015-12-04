@@ -602,6 +602,44 @@ class ExportSelectionForm(forms.Form):
         return self._selection
 
 
+class WorklistForm(forms.Form):
+    """ Form used for selecting worklist export options. """
+    worklist_choice = forms.ModelChoiceField(
+        queryset=Protocol.objects.all(),
+        required=False,
+    )
+    measurement_types = forms.ModelMultipleChoiceField(
+        queryset=MeasurementType.objects.all(),
+        required=False,
+        widget=forms.SelectMultiple,
+    )
+
+    def __init__(self, *args, **kwargs):
+        # removes default hard-coded suffix of colon character on all labels
+        kwargs.setdefault('label_suffix', '')
+        super(WorklistForm, self).__init__(*args, **kwargs)
+        self.fields['measurement_types'].choices = []  # Javascript will set choices
+        self._worklist = None
+
+    def clean(self):
+        data = super(WorklistForm, self).clean()
+        # keep any set choices
+        self.fields['measurement_types'].choices = [
+            (t.pk, t.type_name) for t in data.get('measurement_types', [])
+        ]
+        self._worklist = {
+            'protocol': data.get('worklist_choice', None),
+            'measurement_types': data.get('measurement_types', []),
+        }
+        return data
+
+    def get_worklist(self):
+        if self._worklist is None:
+            if not self.is_valid():
+                raise ValueError("Worklist options are invalid")
+        return self._worklist
+
+
 class ExportOptionForm(forms.Form):
     """ Form used for changing options on exports. """
     DATA_COLUMN_BY_LINE = 'dbyl'
@@ -631,59 +669,55 @@ class ExportOptionForm(forms.Form):
         choices=LAYOUT_CHOICE,
         label=_('Layout export with'),
         required=False,
-        )
+    )
     separator = forms.ChoiceField(
         choices=SEPARATOR_CHOICE,
         label=_('Field separators'),
         required=False,
-        )
+    )
     data_format = forms.ChoiceField(
         choices=FORMAT_CHOICE,
         label=_('Include measurement data'),
         required=False,
-        )
+    )
     line_section = forms.BooleanField(
         label=_('Include Lines in own section'),
         required=False,
-        )
+    )
     protocol_section = forms.BooleanField(
         label=_('Include a section for each Protocol'),
         required=False,
-        )
-    worklist_choice = forms.ModelChoiceField(
-        queryset=Protocol.objects.all(),
-        required=False,
-        )
+    )
     study_meta = forms.MultipleChoiceField(
         choices=map(table.ColumnChoice.get_field_choice, Study.export_columns()),
         label=_('Study fields to include'),
         required=False,
         widget=forms.CheckboxSelectMultiple,
-        )
+    )
     line_meta = forms.MultipleChoiceField(
         choices=map(table.ColumnChoice.get_field_choice, Line.export_columns()),
         label=_('Line fields to include'),
         required=False,
         widget=forms.CheckboxSelectMultiple,
-        )
+    )
     protocol_meta = forms.MultipleChoiceField(
         choices=map(table.ColumnChoice.get_field_choice, Protocol.export_columns()),
         label=_('Protocol fields to include'),
         required=False,
         widget=forms.CheckboxSelectMultiple,
-        )
+    )
     assay_meta = forms.MultipleChoiceField(
         choices=map(table.ColumnChoice.get_field_choice, Assay.export_columns()),
         label=_('Assay fields to include'),
         required=False,
         widget=forms.CheckboxSelectMultiple,
-        )
+    )
     measure_meta = forms.MultipleChoiceField(
         choices=map(table.ColumnChoice.get_field_choice, Measurement.export_columns()),
         label=_('Measurement fields to include'),
         required=False,
         widget=forms.CheckboxSelectMultiple,
-        )
+    )
 
     def __init__(self, *args, **kwargs):
         # removes default hard-coded suffix of colon character on all labels
@@ -717,7 +751,7 @@ class ExportOptionForm(forms.Form):
             m: data.get(m, [])
             for m in ['study_meta', 'line_meta', 'protocol_meta', 'assay_meta', 'measure_meta']
         }
-        print(meta)
+        logger.debug(meta)
         self._options = table.ExportOption(
             layout=data.get('layout', table.ExportOption.DATA_COLUMN_BY_LINE),
             separator=data.get('separator', table.ExportOption.COMMA_SEPARATED),
@@ -725,14 +759,12 @@ class ExportOptionForm(forms.Form):
             line_section=data.get('line_section', False),
             protocol_section=data.get('protocol_section', False),
             meta=meta,
-            )
+        )
         return data
 
     def get_options(self):
         if self._options is None:
-            if self.is_valid():
-                return self._options
-            else:
+            if not self.is_valid():
                 raise ValueError("Export options are invalid")
         return self._options
 
@@ -755,7 +787,7 @@ class ExportOptionForm(forms.Form):
             if self.initial.get(meta, None) == '__all__':
                 self.initial.update({
                     meta: [choice[0] for choice in self.fields[meta].choices],
-                    })
+                })
                 # update incoming data with default initial if not already set
                 if meta not in data and 'layout' not in data:
                     data.setlist(meta, self.initial.get(meta, []))

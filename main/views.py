@@ -16,7 +16,8 @@ from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django.db.models import Count, Prefetch, Q
 from django.http import (
-    Http404, HttpResponse, HttpResponseNotAllowed, HttpResponseRedirect, JsonResponse, QueryDict)
+    Http404, HttpResponse, HttpResponseNotAllowed, HttpResponseRedirect, JsonResponse, QueryDict,
+)
 from django.http.response import HttpResponseForbidden, HttpResponseBadRequest
 from django.shortcuts import render, get_object_or_404, redirect, render_to_response
 from django.template import RequestContext
@@ -32,17 +33,20 @@ from . import data_import, models, sbml_export
 from .export import table
 from .forms import (
     AssayForm, CreateAttachmentForm, CreateCommentForm, CreateStudyForm, ExportOptionForm,
-    ExportSelectionForm, LineForm, MeasurementForm, MeasurementValueFormSet, )
+    ExportSelectionForm, LineForm, MeasurementForm, MeasurementValueFormSet, WorklistForm
+)
 from .ice import IceApi
 from .models import (
     Assay, Attachment, Line, Measurement, MeasurementCompartment, MeasurementGroup, MeasurementType,
     MeasurementValue, Metabolite, MetaboliteSpecies, MetadataType, Protocol, SBMLTemplate, Study,
-    StudyPermission, Update, )
+    StudyPermission, Update,
+)
 from .signals import study_modified
 from .solr import StudySearch, UserSearch
 from .utilities import (
     JSONDecimalEncoder, get_edddata_carbon_sources, get_edddata_measurement, get_edddata_misc,
-    get_edddata_strains, get_edddata_study, get_edddata_users, get_selected_lines)
+    get_edddata_strains, get_edddata_study, get_edddata_users, get_selected_lines,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -505,15 +509,21 @@ class ExportView(generic.TemplateView):
 
     def handle_export(self, request, select_data, option_initial, option_data):
         select_form = ExportSelectionForm(data=select_data, user=request.user)
+        worklist_form = WorklistForm(data=select_data)
         option_form = None
         try:
             self._select = select_form.get_selection()
             option_form = ExportOptionForm(
                 data=option_data,
                 initial=option_initial,
-                selection=self._select)
+                selection=self._select,
+            )
             if option_form.is_valid():
-                self._export = table.TableExport(self._select, option_form.get_options())
+                self._export = table.TableExport(
+                    self._select,
+                    option_form.get_options(),
+                    worklist_form.get_worklist(),
+                )
                 if request.POST.get('action', None) == "download":
                     response = HttpResponse(self._export.output(), content_type='text/csv')
                     # set download filename as the first name in the exported studies
@@ -524,7 +534,8 @@ class ExportView(generic.TemplateView):
                     selection=self._select,
                     select_form=select_form,
                     option_form=option_form,
-                    ))
+                    worklist_form=worklist_form,
+                ))
         except Exception:
             logger.error("Failed to validate forms for export")
             raise
@@ -532,8 +543,9 @@ class ExportView(generic.TemplateView):
             selection=self._select,
             select_form=select_form,
             option_form=option_form,
+            worklist_form=worklist_form,
             error_message='Could not parse export request',
-            ))
+        ))
 
     def export_output(self):
         if self._export is not None:
