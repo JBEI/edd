@@ -233,7 +233,6 @@ class TableExport(object):
         # check how tables are being sectioned
         line_section = self.options.line_section
         protocol_section = self.options.protocol_section
-        layout = self.options.layout
         # store tables
         tables = OrderedDict()
         if line_section:
@@ -242,47 +241,10 @@ class TableExport(object):
         elif not protocol_section:
             tables['all'] = OrderedDict()
             tables['all']['header'] = self._output_line_header() + self._output_measure_header()
-        # if export is a worklist, go off of lines instead of measurements
         if self.worklist and self.worklist['protocol']:
-            lines = self.selection.lines
-            protocol = self.worklist['protocol']
-            for pk, line in lines.items():
-                # build row with study/line info
-                row = self._init_row_for_line(tables, line)
-                for space in self.worklist.get('placeholder', []):
-                    row.append(space)
-                table, table_key = self._init_tables_for_protocol(tables, protocol)
-                # append measurement type; insert empty cell if no types selected
-                for m in self.worklist.get('measurement_types', ['']):
-                    temp = row[:] + self._output_measure_row(None, None, None)
-                    temp.append(m)
-                    table['%s.%s' % (pk, m)] = temp
+            self._do_worklist(tables)
         else:
-            # add data from each exported measurement; already sorted by protocol
-            for measurement in self.selection.measurements:
-                assay = self.selection.assays.get(measurement.assay_id, None)
-                protocol = assay.protocol
-                line = self.selection.lines.get(assay.line_id, None)
-                # build row with study/line info
-                row = self._init_row_for_line(tables, line)
-                # add on columns for protocol/assay/measurement
-                row += self._output_measure_row(protocol, assay, measurement)
-                table, table_key = self._init_tables_for_protocol(tables, protocol)
-                values = measurement.measurementvalue_set.order_by('x')
-                if layout == ExportOption.DATA_COLUMN_BY_POINT:
-                    for value in values:
-                        arow = row[:]
-                        arow.append(value_str(value.x))
-                        arow.append(value_str(value.y))
-                        table[value.id] = arow
-                else:
-                    # keep track of all x values encountered in the table
-                    xx = self._x_values[table_key] = self._x_values.get(table_key, {})
-                    # do value_str to the float-casted version of x to eliminate 0-padding
-                    xx.update({value_str(v.x): v.x for v in values})
-                    squashed = {value_str(v.x): value_str(v.y) for v in values}
-                    row.append(squashed)
-                    table[measurement.id] = row
+            self._do_export(tables)
         return self._build_output(tables)
 
     def _build_output(self, tables):
@@ -319,6 +281,54 @@ class TableExport(object):
             # join the rows
             out.append(row_separator.join(rows))
         return table_separator.join(out)
+
+    def _do_export(self, tables):
+        # add data from each exported measurement; already sorted by protocol
+        for measurement in self.selection.measurements:
+            assay = self.selection.assays.get(measurement.assay_id, None)
+            protocol = assay.protocol
+            line = self.selection.lines.get(assay.line_id, None)
+            # build row with study/line info
+            row = self._init_row_for_line(tables, line)
+            # add on columns for protocol/assay/measurement
+            row += self._output_measure_row(protocol, assay, measurement)
+            table, table_key = self._init_tables_for_protocol(tables, protocol)
+            values = measurement.measurementvalue_set.order_by('x')
+            if self.options.layout == ExportOption.DATA_COLUMN_BY_POINT:
+                for value in values:
+                    arow = row[:]
+                    arow.append(value_str(value.x))
+                    arow.append(value_str(value.y))
+                    table[value.id] = arow
+            else:
+                # keep track of all x values encountered in the table
+                xx = self._x_values[table_key] = self._x_values.get(table_key, {})
+                # do value_str to the float-casted version of x to eliminate 0-padding
+                xx.update({value_str(v.x): v.x for v in values})
+                squashed = {value_str(v.x): value_str(v.y) for v in values}
+                row.append(squashed)
+                table[measurement.id] = row
+
+    def _do_worklist(self, tables):
+        # if export is a worklist, go off of lines instead of measurements
+        lines = self.selection.lines
+        protocol = self.worklist['protocol']
+        for pk, line in lines.items():
+            # build row with study/line info
+            row = self._init_row_for_line(tables, line)
+            for space in self.worklist.get('placeholder', []):
+                row.append(space)
+            table, table_key = self._init_tables_for_protocol(tables, protocol)
+            # append measurement type; insert empty cell if no types selected
+            measurement_types = self.worklist.get('measurement_types', [])
+            for m in measurement_types:
+                temp = row[:] + self._output_measure_row(None, None, None)
+                temp.append(m)
+                table['%s.%s' % (pk, m)] = temp
+            if not measurement_types:
+                temp = row[:] + self._output_measure_row(None, None, None)
+                temp.append('')
+                table['%s' % (pk, )] = temp
 
     def _init_row_for_line(self, tables, line):
         line_section = self.options.line_section
