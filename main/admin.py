@@ -131,6 +131,7 @@ class MetadataTemplateInline(admin.TabularInline):
     """ Inline submodel for editing user permissions """
     model = MetadataTemplate
     extra = 1
+    ordering = ('ordering', )
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == 'meta_type':

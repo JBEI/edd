@@ -245,10 +245,13 @@ class TableExport(object):
         # if export is a worklist, go off of lines instead of measurements
         if self.worklist and self.worklist['protocol']:
             lines = self.selection.lines
+            protocol = self.worklist['protocol']
             for pk, line in lines.items():
                 # build row with study/line info
                 row = self._init_row_for_line(tables, line)
-                table, table_key = self._init_tables_for_protocol(tables, self.worklist['protocol'])
+                for space in self.worklist.get('placeholder', []):
+                    row.append(space)
+                table, table_key = self._init_tables_for_protocol(tables, protocol)
                 # append measurement type; insert empty cell if no types selected
                 for m in self.worklist.get('measurement_types', ['']):
                     temp = row[:] + self._output_measure_row(None, None, None)
@@ -363,7 +366,7 @@ class TableExport(object):
         return row
 
     def _output_measure_header(self):
-        from main.models import Measurement, Protocol
+        from main.models import Measurement, MetadataTemplate, Protocol
         row = []
         choices = {col.get_key(): col.get_heading() for col in Protocol.export_columns()}
         for column in self.options.protocol_meta:
@@ -376,6 +379,21 @@ class TableExport(object):
             row.append(choices.get(column, ''))
         # need to append measurement type columns for worklist output
         if self.worklist and self.worklist['protocol']:
+            protocol = self.worklist['protocol']
+            placeholder = []
+            templates = MetadataTemplate.objects.filter(
+                protocol=protocol,
+            ).select_related(
+                'meta_type',
+            ).order_by(
+                'ordering',
+            )
+            for meta in templates:
+                row.append(meta.meta_type.type_name)
+                placeholder.append(
+                    meta.default_value if meta.default_value else meta.meta_type.default_value
+                )
+            self.worklist['placeholder'] = placeholder
             row.append(_('Measurement Type'))
         # need to append header columns for X, Y for tall-and-skinny output
         # others append all possible X values to header during o

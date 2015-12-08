@@ -821,6 +821,8 @@ class MetadataTemplate(models.Model):
     meta_type = models.ForeignKey(MetadataType)
     # potentially override the default value in templates?
     default_value = models.CharField(max_length=255, blank=True, null=True)
+    # allow ordering of metadata
+    ordering = models.IntegerField(blank=True, null=True, unique=True)
 
     def __str__(self):
         return str(self.meta_type)
