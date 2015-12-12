@@ -227,6 +227,13 @@ LOGGING = {
         },
     },
     'loggers': {
+        # specify formatting for Django log messages, and also force tracebacks for uncaught
+        # exceptions to be logged. Without this, django only logs cryptic 1-liners for uncaught
+        # exceptions...see SYNBIO-1262 for an example where this was very misleading.
+        'django': {
+            'level': 'DEBUG',
+            'handlers': ['console', ],
+        },
         'django.db.backends': {
             'level': 'WARNING',
             'handlers': ['console', ],
