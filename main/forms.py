@@ -22,7 +22,9 @@ from .ice import IceApi
 from .export import table
 from .models import (
     Assay, Attachment, CarbonSource, Comment, Line, Measurement, MeasurementType,
-    MeasurementValue, MetadataType, Protocol, Strain, Study, StudyPermission, Update, )
+    MeasurementValue, MetadataType, Protocol, Strain, Study, StudyPermission, Update,
+    WorklistTemplate,
+)
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -604,33 +606,28 @@ class ExportSelectionForm(forms.Form):
 
 class WorklistForm(forms.Form):
     """ Form used for selecting worklist export options. """
-    worklist_choice = forms.ModelChoiceField(
-        queryset=Protocol.objects.all(),
+    template = forms.ModelChoiceField(
+        queryset=WorklistTemplate.objects.all(),
         required=False,
-    )
-    measurement_types = forms.ModelMultipleChoiceField(
-        queryset=MeasurementType.objects.all(),
-        required=False,
-        widget=forms.SelectMultiple,
     )
 
     def __init__(self, *args, **kwargs):
         # removes default hard-coded suffix of colon character on all labels
         kwargs.setdefault('label_suffix', '')
         super(WorklistForm, self).__init__(*args, **kwargs)
-        self.fields['measurement_types'].choices = []  # Javascript will set choices
         self._worklist = None
 
     def clean(self):
         data = super(WorklistForm, self).clean()
-        # keep any set choices
-        self.fields['measurement_types'].choices = [
-            (t.pk, t.type_name) for t in data.get('measurement_types', [])
-        ]
-        self._worklist = {
-            'protocol': data.get('worklist_choice', None),
-            'measurement_types': data.get('measurement_types', []),
-        }
+        self._options = table.ExportOption(
+            layout=table.ExportOption.DATA_COLUMN_BY_LINE,
+            separator=table.ExportOption.COMMA_SEPARATED,
+            data_format=table.ExportOption.ALL_DATA,
+            line_section=False,
+            protocol_section=False,
+            columns=[],
+        )
+        self._worklist = data.get('template', None)
         return data
 
     def get_worklist(self):
@@ -688,32 +685,37 @@ class ExportOptionForm(forms.Form):
         label=_('Include a section for each Protocol'),
         required=False,
     )
-    study_meta = forms.MultipleChoiceField(
+    study_meta = forms.TypedMultipleChoiceField(
         choices=map(table.ColumnChoice.get_field_choice, Study.export_columns()),
+        coerce=table.ColumnChoice.coerce(Study.export_columns()),
         label=_('Study fields to include'),
         required=False,
         widget=forms.CheckboxSelectMultiple,
     )
-    line_meta = forms.MultipleChoiceField(
+    line_meta = forms.TypedMultipleChoiceField(
         choices=map(table.ColumnChoice.get_field_choice, Line.export_columns()),
+        coerce=table.ColumnChoice.coerce(Line.export_columns()),
         label=_('Line fields to include'),
         required=False,
         widget=forms.CheckboxSelectMultiple,
     )
-    protocol_meta = forms.MultipleChoiceField(
+    protocol_meta = forms.TypedMultipleChoiceField(
         choices=map(table.ColumnChoice.get_field_choice, Protocol.export_columns()),
+        coerce=table.ColumnChoice.coerce(Protocol.export_columns()),
         label=_('Protocol fields to include'),
         required=False,
         widget=forms.CheckboxSelectMultiple,
     )
-    assay_meta = forms.MultipleChoiceField(
+    assay_meta = forms.TypedMultipleChoiceField(
         choices=map(table.ColumnChoice.get_field_choice, Assay.export_columns()),
+        coerce=table.ColumnChoice.coerce(Assay.export_columns()),
         label=_('Assay fields to include'),
         required=False,
         widget=forms.CheckboxSelectMultiple,
     )
-    measure_meta = forms.MultipleChoiceField(
+    measure_meta = forms.TypedMultipleChoiceField(
         choices=map(table.ColumnChoice.get_field_choice, Measurement.export_columns()),
+        coerce=table.ColumnChoice.coerce(Measurement.export_columns()),
         label=_('Measurement fields to include'),
         required=False,
         widget=forms.CheckboxSelectMultiple,
@@ -747,18 +749,19 @@ class ExportOptionForm(forms.Form):
 
     def clean(self):
         data = super(ExportOptionForm, self).clean()
-        meta = {
-            m: data.get(m, [])
-            for m in ['study_meta', 'line_meta', 'protocol_meta', 'assay_meta', 'measure_meta']
-        }
-        logger.debug(meta)
+        columns = []
+        for m in ['study_meta', 'line_meta', 'protocol_meta', 'assay_meta', 'measure_meta']:
+            columns.extend(data.get(m, []))
+        print('----------')
+        print(columns)
+        print('----------')
         self._options = table.ExportOption(
             layout=data.get('layout', table.ExportOption.DATA_COLUMN_BY_LINE),
             separator=data.get('separator', table.ExportOption.COMMA_SEPARATED),
             data_format=data.get('data_format', table.ExportOption.ALL_DATA),
             line_section=data.get('line_section', False),
             protocol_section=data.get('protocol_section', False),
-            meta=meta,
+            columns=columns,
         )
         return data
 

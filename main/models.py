@@ -783,7 +783,6 @@ class Protocol(EDDObject):
     variant_of = models.ForeignKey('self', blank=True, null=True, related_name='derived_set')
     default_units = models.ForeignKey(
         'MeasurementUnit', blank=True, null=True, related_name="protocol_set")
-    metadata_template = models.ManyToManyField(MetadataType, through="MetadataTemplate")
     categorization = models.CharField(
         max_length=8, choices=CATEGORY_CHOICE, default=CATEGORY_NONE)
 
@@ -813,18 +812,36 @@ class Protocol(EDDObject):
 
 
 @python_2_unicode_compatible
-class MetadataTemplate(models.Model):
+class WorklistTemplate(EDDObject):
     """ Defines sets of metadata to use as a template on a Protocol. """
     class Meta:
-        db_table = 'metadata_template'
+        db_table = 'worklist_template'
     protocol = models.ForeignKey(Protocol)
-    meta_type = models.ForeignKey(MetadataType)
+
+    def __str__(self):
+        return self.name
+
+
+@python_2_unicode_compatible
+class WorklistColumn(models.Model):
+    """ Defines metadata defaults and layout. """
+    class Meta:
+        db_table = 'worklist_column'
+    template = models.ForeignKey(WorklistTemplate)
+    # if meta_type is None, treat default_value as format string
+    meta_type = models.ForeignKey(MetadataType, blank=True, null=True)
+    # if None, default to meta_type.type_name or ''
+    heading = models.CharField(max_length=255, blank=True, null=True)
     # potentially override the default value in templates?
     default_value = models.CharField(max_length=255, blank=True, null=True)
+    # text to display in UI explaining how to modify column
+    help_text = models.TextField(blank=True, null=True)
     # allow ordering of metadata
     ordering = models.IntegerField(blank=True, null=True, unique=True)
 
     def __str__(self):
+        if self.heading:
+            return self.heading
         return str(self.meta_type)
 
 
@@ -914,15 +931,15 @@ class Line(EDDObject):
             table.ColumnChoice(
                 # TODO export should handle multi-valued fields better than this
                 cls, 'strain', _('Strain'),
-                lambda x: u'|'.join([s.name for s in x.strains.all()])),
+                lambda x: '|'.join([s.name for s in x.strains.all()])),
             table.ColumnChoice(
                 # TODO export should handle multi-valued fields better than this
                 cls, 'csource_name', _('Carbon Source'),
-                lambda x: u'|'.join([c.name for c in x.carbon_source.all()])),
+                lambda x: '|'.join([c.name for c in x.carbon_source.all()])),
             table.ColumnChoice(
                 # TODO export should handle multi-valued fields better than this
                 cls, 'csource_label', _('Carbon Labeling'),
-                lambda x: u'|'.join([c.labeling for c in x.carbon_source.all()])),
+                lambda x: '|'.join([c.labeling for c in x.carbon_source.all()])),
             table.ColumnChoice(
                 cls, 'experimenter', _('Experimenter'),
                 lambda x: x.experimenter.email if x.experimenter else '',

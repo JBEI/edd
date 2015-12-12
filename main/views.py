@@ -509,7 +509,6 @@ class ExportView(generic.TemplateView):
 
     def handle_export(self, request, select_data, option_initial, option_data):
         select_form = ExportSelectionForm(data=select_data, user=request.user)
-        worklist_form = WorklistForm(data=select_data)
         option_form = None
         try:
             self._select = select_form.get_selection()
@@ -522,7 +521,7 @@ class ExportView(generic.TemplateView):
                 self._export = table.TableExport(
                     self._select,
                     option_form.get_options(),
-                    worklist_form.get_worklist(),
+                    None,
                 )
                 if request.POST.get('action', None) == "download":
                     response = HttpResponse(self._export.output(), content_type='text/csv')
@@ -534,7 +533,6 @@ class ExportView(generic.TemplateView):
                     selection=self._select,
                     select_form=select_form,
                     option_form=option_form,
-                    worklist_form=worklist_form,
                 ))
         except Exception:
             logger.error("Failed to validate forms for export")
@@ -543,7 +541,6 @@ class ExportView(generic.TemplateView):
             selection=self._select,
             select_form=select_form,
             option_form=option_form,
-            worklist_form=worklist_form,
             error_message='Could not parse export request',
         ))
 

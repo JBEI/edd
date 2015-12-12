@@ -12,8 +12,9 @@ from django_auth_ldap.backend import LDAPBackend
 from .forms import MetadataTypeAutocompleteWidget, UserAutocompleteWidget
 from .models import (
     Assay, Attachment, CarbonSource, GeneIdentifier, GroupPermission, Line, MeasurementGroup,
-    MeasurementType, Metabolite, MetadataGroup, MetadataTemplate, MetadataType, Phosphor,
+    MeasurementType, Metabolite, MetadataGroup, MetadataType, Phosphor,
     ProteinIdentifier, Protocol, SBMLTemplate, Strain, Study, Update, UserPermission,
+    WorklistColumn, WorklistTemplate,
     )
 from .sbml_export import validate_sbml_attachment
 from .solr import StudySearch, UserSearch
@@ -127,23 +128,11 @@ class ProtocolAdminForm(forms.ModelForm):
             self.instance.owner = c_user
 
 
-class MetadataTemplateInline(admin.TabularInline):
-    """ Inline submodel for editing user permissions """
-    model = MetadataTemplate
-    extra = 1
-    ordering = ('ordering', )
-
-    def formfield_for_foreignkey(self, db_field, request, **kwargs):
-        if db_field.name == 'meta_type':
-            kwargs['widget'] = MetadataTypeAutocompleteWidget()
-        return db_field.formfield(**kwargs)
-
-
 class ProtocolAdmin(EDDObjectAdmin):
     """ Definition for admin-edit of Protocols """
     form = ProtocolAdminForm
     list_display = ['name', 'description', 'active', 'variant_of', 'categorization', 'owner', ]
-    inlines = (MetadataTemplateInline, AttachmentInline, )
+    inlines = (AttachmentInline, )
 
     def save_model(self, request, obj, form, change):
         if not change:
@@ -383,6 +372,25 @@ class EDDUserAdmin(UserAdmin):
     update_groups_from_ldap.short_description = 'Update Groups from LDAP'
 
 
+class WorklistColumnInline(admin.TabularInline):
+    """ Inline submodel for editing worklist columns. """
+    model = WorklistColumn
+    fields = ('ordering', 'heading', 'meta_type', 'default_value', 'help_text', )
+    ordering = ('ordering', 'heading', )
+    extra = 1
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == 'meta_type':
+            kwargs['widget'] = MetadataTypeAutocompleteWidget()
+        return db_field.formfield(**kwargs)
+
+
+class WorklistTemplateAdmin(EDDObjectAdmin):
+    fields = ('name', 'description', 'protocol', )
+    list_display = ('name', 'description', 'protocol', )
+    inlines = (WorklistColumnInline, )
+
+
 admin.site.register(MetadataGroup, MetadataGroupAdmin)
 admin.site.register(MetadataType, MetadataTypeAdmin)
 admin.site.register(Protocol, ProtocolAdmin)
@@ -396,5 +404,6 @@ admin.site.register(Phosphor, MeasurementTypeAdmin)
 admin.site.register(Study, StudyAdmin)
 admin.site.register(Assay, AssayAdmin)
 admin.site.register(SBMLTemplate, SBMLTemplateAdmin)
+admin.site.register(WorklistTemplate, WorklistTemplateAdmin)
 admin.site.unregister(get_user_model())
 admin.site.register(get_user_model(), EDDUserAdmin)

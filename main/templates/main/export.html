@@ -100,12 +100,6 @@
     <div class="sectionHead">Specify the layout of the data you wish to export.</div>
     <div class="sectionContent exportOptions">
       {{ select_form.as_p }}
-      <div class="disclose discloseHide">
-        <a href="#" class="discloseLink">Worklist Options</a>
-        <div class="discloseBody" id="worklist_section">
-          {{ worklist_form.as_p }}
-        </div>
-      </div>
       {{ option_form.as_p }}
       <button type="submit" name="action" value="apply">Apply</button>
       <button type="submit" name="action" value="download">Download</button>
