@@ -12,18 +12,7 @@ module StudyD {
     'use strict';
 
     var mainGraphObject:any;
-
-    // For the filtering section on the main graph
-    var allFilteringWidgets:GenericFilterSection[];
-    var assayFilteringWidgets:GenericFilterSection[];
-    var metaboliteFilteringWidgets:GenericFilterSection[];
-    var metaboliteDataProcessed:boolean;
-    var proteinFilteringWidgets:GenericFilterSection[];
-    var proteinDataProcessed:boolean;
-    var geneFilteringWidgets:GenericFilterSection[];
-    var geneDataProcessed:boolean;
-    var measurementFilteringWidgets: GenericFilterSection[];
-    var genericDataProcessed: boolean;
+    var progressiveFilteringWidget: ProgressiveFilteringWidget;
 
     var mainGraphRefreshTimerID:any;
 
@@ -64,6 +53,296 @@ module StudyD {
     export interface UniqueIDToValue {
         [index: number]: string;
     }
+
+
+    // For the filtering section on the main graph
+    export class ProgressiveFilteringWidget {
+
+        allFilteringWidgets: GenericFilterSection[];
+        assayFilteringWidgets: GenericFilterSection[];
+        metaboliteFilteringWidgets: GenericFilterSection[];
+        proteinFilteringWidgets: GenericFilterSection[];
+        geneFilteringWidgets: GenericFilterSection[];
+        measurementFilteringWidgets: GenericFilterSection[];
+
+        metaboliteDataProcessed: boolean;
+        proteinDataProcessed: boolean;
+        geneDataProcessed: boolean;
+        genericDataProcessed: boolean;
+
+        studyDObject: any;
+        mainGraphObject: any;
+
+
+        constructor(studyDObject: any) {
+
+            this.studyDObject = studyDObject;
+
+            this.allFilteringWidgets = [];
+            this.assayFilteringWidgets = [];
+            this.metaboliteFilteringWidgets = [];
+            this.proteinFilteringWidgets = [];
+            this.geneFilteringWidgets = [];
+            this.measurementFilteringWidgets = [];
+
+            this.metaboliteDataProcessed = false;
+            this.proteinDataProcessed = false;
+            this.geneDataProcessed = false;
+            this.genericDataProcessed = false;
+        }
+
+
+        // Read through the Lines, Assays, and AssayMeasurements data and prepare a secondary data
+        // structure for filtering according to unique criteria, then remake the filtering section under
+        // the main graph area with columns of labeled checkboxes.
+        prepareFilteringSection(): void {
+
+            var seenInLinesHash: any = {};
+            var seenInAssaysHash: any = {};
+            var aIDsToUse: string[] = [];
+
+            // First do some basic sanity filtering on the list
+            $.each(EDDData.Assays, (assayId: string, assay: any): void => {
+                var line = EDDData.Lines[assay.lid];
+                if (!assay.active || !line || !line.active) return;
+                $.each(assay.meta || [], (metadataId) => { seenInAssaysHash[metadataId] = 1; });
+                $.each(line.meta || [], (metadataId) => { seenInLinesHash[metadataId] = 1; });
+                aIDsToUse.push(assayId);
+            });
+
+            // Create filters on assay tables
+            // TODO media is now a metadata type, strain and carbon source should be too
+            var assayFilters = [];
+            assayFilters.push(new StrainFilterSection());
+            assayFilters.push(new CarbonSourceFilterSection());
+            assayFilters.push(new CarbonLabelingFilterSection());
+            for (var id in seenInLinesHash) {
+                assayFilters.push(new LineMetaDataFilterSection(id));
+            }
+            assayFilters.push(new LineNameFilterSection());
+            assayFilters.push(new ProtocolFilterSection());
+            assayFilters.push(new AssaySuffixFilterSection());
+            for (var id in seenInAssaysHash) {
+                assayFilters.push(new AssayMetaDataFilterSection(id));
+            }
+
+            console.log(aIDsToUse);
+
+            // We can initialize all the Assay- and Line-level filters immediately
+            this.assayFilteringWidgets = assayFilters;
+            assayFilters.forEach((filter) => {
+                filter.processFilteringData(aIDsToUse);
+                filter.populateTable();
+            });
+
+            this.metaboliteFilteringWidgets = [];
+            this.metaboliteFilteringWidgets.push(new MetaboliteCompartmentFilterSection());
+            this.metaboliteFilteringWidgets.push(new MetaboliteFilterSection());
+
+            this.proteinFilteringWidgets = [];
+            this.proteinFilteringWidgets.push(new ProteinFilterSection());
+
+            this.geneFilteringWidgets = [];
+            this.geneFilteringWidgets.push(new GeneFilterSection());
+
+            this.measurementFilteringWidgets = [];
+            this.measurementFilteringWidgets.push(new MeasurementFilterSection());
+
+            this.allFilteringWidgets = [].concat(
+                assayFilters,
+                this.metaboliteFilteringWidgets,
+                this.proteinFilteringWidgets,
+                this.geneFilteringWidgets,
+                this.measurementFilteringWidgets);
+            this.repopulateFilteringSection();
+        }
+
+
+        // Clear out any old filters in the filtering section, and add in the ones that
+        // claim to be "useful".
+        repopulateFilteringSection(): void {
+            // Clear out the old filtering UI, add back filter widgets
+            var table = $('<div>').addClass('filterTable').appendTo($('#mainFilterSection').empty());
+            var dark:boolean = false;
+            $.each(this.allFilteringWidgets, (i, widget) => {
+                if (widget.isFilterUseful()) {
+                    widget.addToParent(table[0]);
+                    widget.applyBackgroundStyle(dark);
+                    dark = !dark;
+                }
+            });
+        }
+
+
+        processMeasurementData(data):void {
+
+            var process: (ids: string[], i: number, widget: GenericFilterSection) => void;
+
+            var filterIds = { 'm': [], 'p': [], 'g': [], '_': [] };
+
+            // loop over all downloaded measurements
+            $.each(data.measures || {}, (index, measurement) => {
+                var assay = EDDData.Assays[measurement.assay], line, mtype;
+                if (!assay || !assay.active) return;
+                line = EDDData.Lines[assay.lid];
+                if (!line || !line.active) return;
+                mtype = data.types[measurement.type] || {};
+                if (mtype.family === 'm') { // measurement is of metabolite
+                    filterIds.m.push(measurement.id);
+                } else if (mtype.family === 'p') { // measurement is of protein
+                    filterIds.p.push(measurement.id);
+                } else if (mtype.family === 'g') { // measurement is of gene / transcript
+                    filterIds.g.push(measurement.id);
+                } else {
+                    // throw everything else in a general area
+                    filterIds._.push(measurement.id);
+                }
+            });
+
+            process = (ids: string[], i: number, widget: GenericFilterSection): void => {
+                widget.processFilteringData(ids);
+                widget.populateTable();
+            };
+            if (filterIds.m.length) {
+                $.each(this.metaboliteFilteringWidgets, process.bind({}, filterIds.m));
+                this.metaboliteDataProcessed = true;
+            }
+            if (filterIds.p.length) {
+                $.each(this.proteinFilteringWidgets, process.bind({}, filterIds.p));
+                this.proteinDataProcessed = true;
+            }
+            if (filterIds.g.length) {
+                $.each(this.geneFilteringWidgets, process.bind({}, filterIds.g));
+                this.geneDataProcessed = true;
+            }
+            if (filterIds._.length) {
+                $.each(this.measurementFilteringWidgets, process.bind({}, filterIds._));
+                this.genericDataProcessed = true;
+            }
+            this.repopulateFilteringSection();
+        }
+
+
+        buildAssayIDSet(): any[] {
+            var previousIDSet: any[] = [];
+            // The next loop is designed to progressively hide rows in the criteria lists in the
+            // filtering section of the page, based on the selections in the previous criteria list. We
+            // start with all the non-disabled Assay IDs in the Study. With each pass through the loop
+            // below we will narrow this set down, until we get to the per-measurement filters, which
+            // will just use the set and return it unaltered.
+            $.each(EDDData.Assays, (assayId, assay) => {
+                var line = EDDData.Lines[assay.lid];
+                if (!assay.active || !line || !line.active) return;
+                previousIDSet.push(assayId);
+
+            });
+            $.each(this.assayFilteringWidgets, (i, filter) => {
+                previousIDSet = filter.applyProgressiveFiltering(previousIDSet);
+            });
+            return previousIDSet;
+        }
+     
+
+        buildFilteredMeasurements(): any[] {
+            var previousIDSet = this.buildAssayIDSet();
+            var measurements: any[] = [];
+            $.each(previousIDSet, (i, assayId) => {
+                var assay = EDDData.Assays[assayId];
+                $.merge(measurements, assay.measures || []);
+            });
+
+            // We start out with four references to the array of available measurement IDs, one for each major category.
+            // Each of these will become its own array in turn as we narrow it down.
+            // This is to prevent a sub-selection in one category from overriding a sub-selection in the others.
+
+            var metaboliteMeasurements = measurements;
+            var proteinMeasurements = measurements;
+            var geneMeasurements = measurements;
+            var genericMeasurements = measurements;
+
+            // Note that we only try to filter if we got measurements that apply to the widget types
+
+            if (this.metaboliteDataProcessed) {
+                $.each(this.metaboliteFilteringWidgets, (i, filter) => {
+                    metaboliteMeasurements = filter.applyProgressiveFiltering(metaboliteMeasurements);
+                });
+            }
+            if (this.proteinDataProcessed) {
+                $.each(this.proteinFilteringWidgets, (i, filter) => {
+                    proteinMeasurements = filter.applyProgressiveFiltering(proteinMeasurements);
+                });
+            }
+            if (this.geneDataProcessed) {
+                $.each(this.geneFilteringWidgets, (i, filter) => {
+                    geneMeasurements = filter.applyProgressiveFiltering(geneMeasurements);
+                });
+            }
+            if (this.genericDataProcessed) {
+                $.each(this.measurementFilteringWidgets, (i, filter) => {
+                    genericMeasurements = filter.applyProgressiveFiltering(genericMeasurements);
+                });
+            }
+
+            // Once we've finished with the filtering, we want to see if any sub-selections have been made across
+            // any of the categories, and if so, merge those sub-selections into one.
+
+            // The idea is, we display everything until the user makes a selection in one or more of the main categories,
+            // then drop everything from the categories that contain no selections.
+
+            // An example scenario will explain why this is important:
+
+            // Say a user is presented with two categories, Metabolite and Measurement.
+            // Metabolite has criteria 'Acetate' and 'Ethanol' available.
+            // Measurement has only one criteria available, 'Optical Density'.
+            // By default, Acetate, Ethanol, and Optical Density are all unchecked, and all visible on the graph.
+            // This is equivalent to 'return measurements' below.
+
+            // If the user checks 'Acetate', they expect only Acetate to be displayed, even though no change has been made to
+            // the Measurement section where Optical Density is listed.
+            // In the code below, by comparing metaboliteMeasurements.length to measurements.length,
+            // We see that the selection has been narrowed to Acetate and append only those Acetate measurements onto dSM.
+            // Then by comparing genericMeasurements.length to measurements.length, we see that the Measurement section has
+            // not narrowed down its given set of measurements, so we skip appending those to dSM.
+            // The end result is only the Acetate measurements.
+
+            // Then suppose the user checks 'Optical Density', because they want to compare Acetate against Optical Density.
+            // Now we need to put those two on the graph.
+            // Since genericMeasurements has been narrowed down to only Optical Density measurements,
+            // its length no longer matches measurements.length.  So we push it onto dSM, where it combines with the Acetate.
+
+            var dSM: any[] = [];    // Deliberately selected measurements
+            if (metaboliteMeasurements.length != measurements.length) { dSM = dSM.concat(metaboliteMeasurements); }
+            if (proteinMeasurements.length != measurements.length) { dSM = dSM.concat(proteinMeasurements); }
+            if (geneMeasurements.length != measurements.length) { dSM = dSM.concat(geneMeasurements); }
+            if (genericMeasurements.length != measurements.length) { dSM = dSM.concat(genericMeasurements); }
+            if (dSM.length) {
+                return dSM;
+            }
+
+            return measurements;
+        }
+
+
+        checkRedrawRequired(force?: boolean): boolean {
+            var redraw: boolean = false;
+            // do not redraw if graph is not initialized yet
+            if (this.mainGraphObject) {
+                redraw = !!force;
+                // Walk down the filter widget list.  If we encounter one whose collective checkbox
+                // state has changed since we last made this walk, then a redraw is required. Note that
+                // we should not skip this loop, even if we already know a redraw is required, since the
+                // call to anyCheckboxesChangedSinceLastInquiry sets internal state in the filter
+                // widgets that we will use next time around.
+                $.each(this.allFilteringWidgets, (i, filter) => {
+                    if (filter.anyCheckboxesChangedSinceLastInquiry()) {
+                        redraw = true;
+                    }
+                });
+            }
+            return redraw;
+        }
+    }
+
 
 
     export class GenericFilterSection  {
@@ -209,11 +488,9 @@ module StudyD {
         }
 
 
-        applyBackgroundStyle(darker:number):void {
-            darker = darker % 2;
-            var striping = ['stripeRowA', 'stripeRowB'];
-            $(this.filterColumnDiv).removeClass(striping[1-darker]);
-            $(this.filterColumnDiv).addClass(striping[darker]);
+        applyBackgroundStyle(darker:boolean):void {
+            $(this.filterColumnDiv).removeClass(darker ? 'stripeRowB' : 'stripeRowA');
+            $(this.filterColumnDiv).addClass(darker ? 'stripeRowA' : 'stripeRowB');
         }
 
 
@@ -780,16 +1057,7 @@ module StudyD {
 
         this.mainGraphObject = null;
 
-        this.allFilteringWidgets = [];
-        this.assayFilteringWidgets = [];
-        this.metaboliteFilteringWidgets = [];
-        this.metaboliteDataProcessed = false;
-        this.proteinFilteringWidgets = [];
-        this.proteinDataProcessed = false;
-        this.geneFilteringWidgets = [];
-        this.geneDataProcessed = false;
-        this.measurementFilteringWidgets = [];
-        this.genericDataProcessed = false;
+        this.progressiveFilteringWidget = new ProgressiveFilteringWidget(this);
 
         this.carbonBalanceData = null;
         this.carbonBalanceDisplayIsFresh = false;
@@ -830,7 +1098,7 @@ module StudyD {
             },
             'success': (data) => {
                 EDDData = $.extend(EDDData || {}, data);
-                this.prepareFilteringSection();
+                this.progressiveFilteringWidget.prepareFilteringSection();
                 // Instantiate a table specification for the Lines table
                 this.linesDataGridSpec = new DataGridSpecLines();
                 // Instantiate the table itself with the spec
@@ -935,79 +1203,6 @@ module StudyD {
     }
 
 
-    // Read through the Lines, Assays, and AssayMeasurements data and prepare a secondary data
-    // structure for filtering according to unique criteria, then remake the filtering section under
-    // the main graph area with columns of labeled checkboxes.
-    export function prepareFilteringSection() {
-
-        var seenInLinesHash:any = {};
-        var seenInAssaysHash:any = {};
-
-        // First do some basic sanity filtering on the list
-        var aIDsToUse:string[] = $.map(EDDData.Assays, (assay:any, assayId:string):string => {
-            var line = EDDData.Lines[assay.lid];
-            if (!assay.active || !line || !line.active) return;
-            $.each(assay.meta || [], (metadataId) => { seenInAssaysHash[metadataId] = 1; });
-            $.each(line.meta || [], (metadataId) => { seenInLinesHash[metadataId] = 1; });
-            return assayId;
-        });
-
-        // Create filters on assay tables
-        // TODO media is now a metadata type, strain and carbon source should be too
-        var assayFilters = [];
-        assayFilters.push(new StrainFilterSection());
-        assayFilters.push(new CarbonSourceFilterSection());
-        assayFilters.push(new CarbonLabelingFilterSection());
-        [].push.apply(assayFilters, $.map(seenInLinesHash, (id) => new LineMetaDataFilterSection(id)));
-        assayFilters.push(new LineNameFilterSection());
-        assayFilters.push(new ProtocolFilterSection());
-        assayFilters.push(new AssaySuffixFilterSection());
-        [].push.apply(assayFilters, $.map(seenInAssaysHash, (id) => new AssayMetaDataFilterSection(id)));
-
-        // We can initialize all the Assay- and Line-level filters immediately
-        this.assayFilteringWidgets = assayFilters;
-        assayFilters.forEach((filter) => {
-            filter.processFilteringData(aIDsToUse);
-            filter.populateTable();
-        });
-
-        this.metaboliteFilteringWidgets = [];
-        this.metaboliteFilteringWidgets.push(new MetaboliteCompartmentFilterSection());
-        this.metaboliteFilteringWidgets.push(new MetaboliteFilterSection());
-        
-        this.proteinFilteringWidgets = [];
-        this.proteinFilteringWidgets.push(new ProteinFilterSection());
-    
-        this.geneFilteringWidgets = [];
-        this.geneFilteringWidgets.push(new GeneFilterSection());
-
-        this.measurementFilteringWidgets = [];
-        this.measurementFilteringWidgets.push(new MeasurementFilterSection());
-
-        this.allFilteringWidgets = [].concat(
-            assayFilters,
-            this.metaboliteFilteringWidgets,
-            this.proteinFilteringWidgets,
-            this.geneFilteringWidgets,
-            this.measurementFilteringWidgets);
-        this.repopulateFilteringSection();
-    }
-
-
-    // Clear out any old fitlers in the filtering section, and add in the ones that
-    // claim to be "useful".
-    export function repopulateFilteringSection() {
-        // Clear out the old filtering UI, add back filter widgets
-        var table = $('<div>').addClass('filterTable').appendTo($('#mainFilterSection').empty());
-        $.each(this.allFilteringWidgets, (i, widget) => {
-            if (widget.isFilterUseful()) {
-                widget.addToParent(table[0]);
-                widget.applyBackgroundStyle(i % 2 === 1);
-            }
-        });
-    }
-
-
     export function processCarbonBalanceData() {
         // Prepare the carbon balance graph
         this.carbonBalanceData = new CarbonBalance.Display();
@@ -1053,6 +1248,8 @@ module StudyD {
         if (this.mainGraphObject === null && $('#maingraph').size() === 1) {
             this.mainGraphObject = Object.create(StudyDGraphing);
             this.mainGraphObject.Setup('maingraph');
+
+            this.progressiveFilteringWidget.mainGraphObject = this.mainGraphObject;
         }
 
         $('#mainFilterSection').on('mouseover mousedown mouseup', () => this.queueMainGraphRemake())
@@ -1119,11 +1316,9 @@ module StudyD {
 
     function processMeasurementData(context, data, protocol) {
         var assaySeen = {},
-            filterIds = { 'm': [], 'p': [], 'g': [], '_': [] },
             protocolToAssay = {},
             count_total:number = 0,
-            count_rec:number = 0,
-            process: (ids: string[], i: number, widget: GenericFilterSection) => void;
+            count_rec:number = 0;
         EDDData.AssayMeasurements = EDDData.AssayMeasurements || {};
         EDDData.MeasurementTypes = $.extend(EDDData.MeasurementTypes || {}, data.types);
         // attach measurement counts to each assay
@@ -1154,40 +1349,18 @@ module StudyD {
             (assay.measures = assay.measures || []).push(measurement.id);
             if (mtype.family === 'm') { // measurement is of metabolite
                 (assay.metabolites = assay.metabolites || []).push(measurement.id);
-                filterIds.m.push(measurement.id);
             } else if (mtype.family === 'p') { // measurement is of protein
                 (assay.proteins = assay.proteins || []).push(measurement.id);
-                filterIds.p.push(measurement.id);
             } else if (mtype.family === 'g') { // measurement is of gene / transcript
                 (assay.transcriptions = assay.transcriptions || []).push(measurement.id);
-                filterIds.g.push(measurement.id);
             } else {
                 // throw everything else in a general area
                 (assay.general = assay.general || []).push(measurement.id);
-                filterIds._.push(measurement.id);
             }
         });
-        process = (ids: string[], i: number, widget: GenericFilterSection): void => {
-            widget.processFilteringData(ids);
-            widget.populateTable();
-        };
-        if (filterIds.m.length) {
-            $.each(context.metaboliteFilteringWidgets, process.bind({}, filterIds.m));
-            context.metaboliteDataProcessed = true;
-        }
-        if (filterIds.p.length) {
-            $.each(context.proteinFilteringWidgets, process.bind({}, filterIds.p));
-            context.proteinDataProcessed = true;
-        }
-        if (filterIds.g.length) {
-            $.each(context.geneFilteringWidgets, process.bind({}, filterIds.g));
-            context.geneDataProcessed = true;
-        }
-        if (filterIds._.length) {
-            $.each(context.measurementFilteringWidgets, process.bind({}, filterIds._));
-            context.genericDataProcessed = true;
-        }
-        context.repopulateFilteringSection();
+
+        context.progressiveFilteringWidget.processMeasurementData(data);
+
         if (count_rec < count_total) {
             // TODO not all measurements downloaded; display a message indicating this
             // explain downloading individual assay measurements too
@@ -1284,71 +1457,6 @@ module StudyD {
     }
 
 
-    function checkRedrawRequired(context:any, force?:boolean):boolean {
-        var redraw:boolean = false;
-        // do not redraw if graph is not initialized yet
-        if (StudyDGraphing && context.mainGraphObject) {
-            redraw = !!force;
-            // Walk down the filter widget list.  If we encounter one whose collective checkbox
-            // state has changed since we last made this walk, then a redraw is required. Note that
-            // we should not skip this loop, even if we already know a redraw is required, since the
-            // call to anyCheckboxesChangedSinceLastInquiry sets internal state in the filter
-            // widgets that we will use next time around.
-            $.each(context.allFilteringWidgets, (i, filter) => {
-                if (filter.anyCheckboxesChangedSinceLastInquiry()) {
-                    redraw = true;
-                }
-            });
-        }
-        return redraw;
-    }
-
-
-    function buildGraphAssayIDSet(context:any):any[] {
-        var previousIDSet:any[] = [];
-        // The next loop is designed to progressively hide rows in the criteria lists in the
-        // filtering section of the page, based on the selections in the previous criteria list. We
-        // start with all the non-disabled Assay IDs in the Study. With each pass through the loop
-        // below we will narrow this set down, until we get to the per-measurement filters, which
-        // will just use the set and return it unaltered.
-        $.each(EDDData.Assays, (assayId, assay) => {
-            var line = EDDData.Lines[assay.lid];
-            if (!assay.active || !line || !line.active) return;
-            previousIDSet.push(assayId);
-
-        });
-        $.each(context.assayFilteringWidgets, (i, filter) => {
-            previousIDSet = filter.applyProgressiveFiltering(previousIDSet);
-        });
-        return previousIDSet;
-    }
-
-
-    function buildFilteredMeasurements(context:any, previousIDSet:any[]):any[] {
-        var measurements:any[] = [], widgetFilter = (i, filter) => {
-            measurements = filter.applyProgressiveFiltering(measurements);
-        };
-        $.each(previousIDSet, (i, assayId) => {
-            var assay = EDDData.Assays[assayId];
-            $.merge(measurements, assay.measures || []);
-        });
-        // only try to filter if we got measurements that apply to the widget types
-        if (context.metaboliteDataProcessed) {
-            $.each(context.metaboliteFilteringWidgets, widgetFilter);
-        }
-        if (context.proteinDataProcessed) {
-            $.each(context.proteinFilteringWidgets, widgetFilter);
-        }
-        if (context.geneDataProcessed) {
-            $.each(context.geneFilteringWidgets, widgetFilter);
-        }
-        if (context.genericDataProcessed) {
-            $.each(context.measurementFilteringWidgets, widgetFilter);
-        }
-        return measurements;
-    }
-
-
     function remakeMainGraphArea(context:any, force?:boolean) {
         var previousIDSet:any[], postFilteringMeasurements:any[],
             dataPointsDisplayed = 0,
@@ -1358,13 +1466,12 @@ module StudyD {
             convert = (d) => { return [[ d[0][0], d[1][0] ]]; },
             compare = (a, b) => { return a[0] - b[0]; };
         context.mainGraphRefreshTimerID = 0;
-        if (!checkRedrawRequired(context, force)) {
+        if (!context.progressiveFilteringWidget.checkRedrawRequired(force)) {
             return;
         }
         // Start out with a blank graph.  We will re-add all the relevant sets.
         context.mainGraphObject.clearAllSets();
-        previousIDSet = buildGraphAssayIDSet(context);
-        postFilteringMeasurements = buildFilteredMeasurements(context, previousIDSet);
+        postFilteringMeasurements = context.progressiveFilteringWidget.buildFilteredMeasurements();
 
         $.each(postFilteringMeasurements, (i, measurementId) => {
             var measure:AssayMeasurementRecord = EDDData.AssayMeasurements[measurementId],
@@ -1535,7 +1642,7 @@ module StudyD {
     export function editAssay(index:number):void {
         var record = EDDData.Assays[index], form;
         if (!record) {
-            console.log('Invalid record for editing: ' + index);
+            console.log('Invalid Assay record for editing: ' + index);
             return;
         }
 
@@ -1548,7 +1655,7 @@ module StudyD {
     export function editLine(index:number):void {
         var record = EDDData.Lines[index], form;
         if (!record) {
-            console.log('Invalid record for editing: ' + index);
+            console.log('Invalid Line record for editing: ' + index);
             return;
         }
 
