@@ -43,7 +43,7 @@ module StudyD {
     var assaysDataGrids;
 
 
-    // Utility interface used by GenericFilterSection#buildUniqueValuesHash
+    // Utility interface used by GenericFilterSection#updateUniqueIndexesHash
     export interface ValueToUniqueID {
         [index: string]: number;
     }
@@ -308,11 +308,13 @@ module StudyD {
             // Since genericMeasurements has been narrowed down to only Optical Density measurements,
             // its length no longer matches measurements.length.  So we push it onto dSM, where it combines with the Acetate.
 
+            var anyChecked = (filter: GenericFilterSection): boolean => { return filter.anyCheckboxesChecked; };
+
             var dSM: any[] = [];    // Deliberately selected measurements
-            if (metaboliteMeasurements.length != measurements.length) { dSM = dSM.concat(metaboliteMeasurements); }
-            if (proteinMeasurements.length != measurements.length) { dSM = dSM.concat(proteinMeasurements); }
-            if (geneMeasurements.length != measurements.length) { dSM = dSM.concat(geneMeasurements); }
-            if (genericMeasurements.length != measurements.length) { dSM = dSM.concat(genericMeasurements); }
+            if ( this.metaboliteFilteringWidgets.some(anyChecked)) { dSM = dSM.concat(metaboliteMeasurements); }
+            if (    this.proteinFilteringWidgets.some(anyChecked)) { dSM = dSM.concat(proteinMeasurements); }
+            if (       this.geneFilteringWidgets.some(anyChecked)) { dSM = dSM.concat(geneMeasurements); }
+            if (this.measurementFilteringWidgets.some(anyChecked)) { dSM = dSM.concat(genericMeasurements); }
             if (dSM.length) {
                 return dSM;
             }
@@ -347,8 +349,11 @@ module StudyD {
 
         // A dictionary of the unique values found for filtering against.
         // Each key is an integer, ascending from 1, in the order the value was first encountered
-        // when examining the record data in buildUniqueValuesHash.
+        // when examining the record data in updateUniqueIndexesHash.
         uniqueValues: UniqueIDToValue;
+        uniqueIndexes: ValueToUniqueID;
+        uniqueIndexCounter: number;
+
         // The sorted order of the list of unique values found in the filter
         uniqueValuesOrder: number[];
         // A dictionary resolving a record ID (assay ID, measurement ID) to an array. Each array
@@ -386,6 +391,8 @@ module StudyD {
 
         constructor() {
             this.uniqueValues = {};
+            this.uniqueIndexes = {};
+            this.uniqueIndexCounter = 0;
             this.uniqueValuesOrder = [];
             this.filterHash = {};
             this.previousCheckboxState = {};
@@ -440,11 +447,11 @@ module StudyD {
             ids = $.map(this.filterHash || {}, (_, previousId: string) => previousId);
             // skip over building unique values and sorting when no new IDs added
             if (ids.length > previousIds.length) {
-                usedValues = this.buildUniqueValuesHash(ids);
+                this.updateUniqueIndexesHash(ids);
                 crSet = [];
                 cHash = {};
                 // Create a reversed hash so keys map values and values map keys
-                $.each(usedValues, (value: string, uniqueID: number): void => {
+                $.each(this.uniqueIndexes, (value: string, uniqueID: number): void => {
                     cHash[uniqueID] = value;
                     crSet.push(uniqueID);
                 });
@@ -466,9 +473,9 @@ module StudyD {
         // unique value with an integer UID, and construct a hash resolving each record to one (or
         // possibly more) of those integer UIDs.  This prepares us for quick filtering later on.
         // (This generic filter does nothing, so we leave these structures blank.)
-        buildUniqueValuesHash(ids: string[]): ValueToUniqueID {
+        updateUniqueIndexesHash(ids: string[]): void {
             this.filterHash = this.filterHash || {};
-            return {};
+            this.uniqueIndexes = this.uniqueIndexes || {};
         }
 
 
@@ -579,16 +586,20 @@ module StudyD {
             var queryStrs = [];
             if (v != null) {
                 if (v.length >= this.minCharsToTriggerSearch) {
-                    useSearchBox = true;
                     // If there are multiple words, we match each separately.
                     // We will not attempt to match against empty strings, so we filter those out if
-                    // any slipped through
+                    // any slipped through.
                     queryStrs = v.split(/\s+/).filter((one) => { return one.length > 0; });
+                    // The user might have pasted/typed only whitespace, so:
+                    if (queryStrs.length > 0) {
+                        useSearchBox = true;
+                    }
                 }
             }
 
             var valuesVisiblePreFiltering = {};
-            var idsPostFiltering = [];
+            var idsPostFiltering = ids;
+
             var indexIsVisible = (index):boolean => {
                 var match:boolean = true, text:string;
                 if (useSearchBox) {
@@ -599,8 +610,7 @@ module StudyD {
                 }
                 if (match) {
                     valuesVisiblePreFiltering[index] = 1;
-                    if ((this.previousCheckboxState[index] === 'C')
-                            || !this.anyCheckboxesChecked) {
+                    if ((this.previousCheckboxState[index] === 'C') || !this.anyCheckboxesChecked) {
                         return true;
                     }
                 }
@@ -608,11 +618,13 @@ module StudyD {
             };
 
             idsPostFiltering = ids.filter((id) => {
-                var valueIndexes = this.filterHash[id];
-                if (valueIndexes instanceof Array) {
-                    return valueIndexes.some(indexIsVisible);
+                // If we have filtering data for this id, use it.
+                // If we don't, the id probably belongs to some other measurement category,
+                // so we ignore it.
+                if (this.filterHash[id]) {
+                    return this.filterHash[id].some(indexIsVisible);
                 }
-                return indexIsVisible(valueIndexes);
+                return false;
             });
 
             var rowsToAppend = [];
@@ -662,8 +674,8 @@ module StudyD {
         }
 
 
-        buildUniqueValuesHash(ids: string[]): ValueToUniqueID {
-            var uniqueNamesId: ValueToUniqueID = {}, unique = 0;
+        updateUniqueIndexesHash(ids: string[]): void {
+            this.uniqueIndexes = this.uniqueIndexes || {};
             this.filterHash = this.filterHash || {};
             ids.forEach((assayId: string) => {
                 var line:any = this._assayIdToLine(assayId) || {};
@@ -672,12 +684,11 @@ module StudyD {
                 (line.strain || []).forEach((strainId: string): void => {
                     var strain = EDDData.Strains[strainId];
                     if (strain && strain.name) {
-                        uniqueNamesId[strain.name] = uniqueNamesId[strain.name] || ++unique;
-                        this.filterHash[assayId].push(uniqueNamesId[strain.name]);
+                        this.uniqueIndexes[strain.name] = this.uniqueIndexes[strain.name] || ++this.uniqueIndexCounter;
+                        this.filterHash[assayId].push(this.uniqueIndexes[strain.name]);
                     }
                 });
             });
-            return uniqueNamesId;
         }
     }
 
@@ -690,8 +701,8 @@ module StudyD {
         }
 
 
-        buildUniqueValuesHash(ids: string[]): ValueToUniqueID {
-            var uniqueNamesId: ValueToUniqueID = {}, unique = 0;
+        updateUniqueIndexesHash(ids: string[]): void {
+            this.uniqueIndexes = this.uniqueIndexes || {};
             this.filterHash = this.filterHash || {};
             ids.forEach((assayId:string) => {
                 var line:any = this._assayIdToLine(assayId) || {};
@@ -700,12 +711,11 @@ module StudyD {
                 (line.carbon || []).forEach((carbonId:string) => {
                     var src = EDDData.CSources[carbonId];
                     if (src && src.name) {
-                        uniqueNamesId[src.name] = uniqueNamesId[src.name] || ++unique;
-                        this.filterHash[assayId].push(uniqueNamesId[src.name]);
+                        this.uniqueIndexes[src.name] = this.uniqueIndexes[src.name] || ++this.uniqueIndexCounter;
+                        this.filterHash[assayId].push(this.uniqueIndexes[src.name]);
                     }
                 });
             });
-            return uniqueNamesId;
         }
     }
 
@@ -718,8 +728,8 @@ module StudyD {
         }
 
 
-        buildUniqueValuesHash(ids: string[]): ValueToUniqueID {
-            var uniqueNamesId: ValueToUniqueID = {}, unique = 0;
+        updateUniqueIndexesHash(ids: string[]): void {
+            this.uniqueIndexes = this.uniqueIndexes || {};
             this.filterHash = this.filterHash || {};
             ids.forEach((assayId:string) => {
                 var line:any = this._assayIdToLine(assayId) || {};
@@ -728,12 +738,11 @@ module StudyD {
                 (line.carbon || []).forEach((carbonId:string) => {
                     var src = EDDData.CSources[carbonId];
                     if (src && src.labeling) {
-                        uniqueNamesId[src.labeling] = uniqueNamesId[src.labeling] || ++unique;
-                        this.filterHash[assayId].push(uniqueNamesId[src.labeling]);
+                        this.uniqueIndexes[src.labeling] = this.uniqueIndexes[src.labeling] || ++this.uniqueIndexCounter;
+                        this.filterHash[assayId].push(this.uniqueIndexes[src.labeling]);
                     }
                 });
             });
-            return uniqueNamesId;
         }
     }
 
@@ -746,18 +755,17 @@ module StudyD {
         }
 
 
-        buildUniqueValuesHash(ids: string[]): ValueToUniqueID {
-            var uniqueNamesId: ValueToUniqueID = {}, unique = 0;
+        updateUniqueIndexesHash(ids: string[]): void {
+            this.uniqueIndexes = this.uniqueIndexes || {};
             this.filterHash = this.filterHash || {};
             ids.forEach((assayId:string) => {
                 var line:any = this._assayIdToLine(assayId) || {};
                 this.filterHash[assayId] = this.filterHash[assayId] || [];
                 if (line.name) {
-                    uniqueNamesId[line.name] = uniqueNamesId[line.name] || ++unique;
-                    this.filterHash[assayId].push(uniqueNamesId[line.name]);
+                    this.uniqueIndexes[line.name] = this.uniqueIndexes[line.name] || ++this.uniqueIndexCounter;
+                    this.filterHash[assayId].push(this.uniqueIndexes[line.name]);
                 }
             });
-            return uniqueNamesId;
         }
     }
 
@@ -770,18 +778,17 @@ module StudyD {
         }
 
 
-        buildUniqueValuesHash(ids: string[]): ValueToUniqueID {
-            var uniqueNamesId: ValueToUniqueID = {}, unique = 0;
+        updateUniqueIndexesHash(ids: string[]): void {
+            this.uniqueIndexes = this.uniqueIndexes || {};
             this.filterHash = this.filterHash || {};
             ids.forEach((assayId:string) => {
                 var protocol: ProtocolRecord = this._assayIdToProtocol(assayId);
                 this.filterHash[assayId] = this.filterHash[assayId] || [];
                 if (protocol && protocol.name) {
-                    uniqueNamesId[protocol.name] = uniqueNamesId[protocol.name] || ++unique;
-                    this.filterHash[assayId].push(uniqueNamesId[protocol.name]);
+                    this.uniqueIndexes[protocol.name] = this.uniqueIndexes[protocol.name] || ++this.uniqueIndexCounter;
+                    this.filterHash[assayId].push(this.uniqueIndexes[protocol.name]);
                 }
             });
-            return uniqueNamesId;
         }
     }
 
@@ -794,18 +801,17 @@ module StudyD {
         }
 
 
-        buildUniqueValuesHash(ids: string[]): ValueToUniqueID {
-            var uniqueNamesId: ValueToUniqueID = {}, unique = 0;
+        updateUniqueIndexesHash(ids: string[]): void {
+            this.uniqueIndexes = this.uniqueIndexes || {};
             this.filterHash = this.filterHash || {};
             ids.forEach((assayId:string) => {
                 var assay = this._assayIdToAssay(assayId) || {};
                 this.filterHash[assayId] = this.filterHash[assayId] || [];
                 if (assay.name) {
-                    uniqueNamesId[assay.name] = uniqueNamesId[assay.name] || ++unique;
-                    this.filterHash[assayId].push(uniqueNamesId[assay.name]);
+                    this.uniqueIndexes[assay.name] = this.uniqueIndexes[assay.name] || ++this.uniqueIndexCounter;
+                    this.filterHash[assayId].push(this.uniqueIndexes[assay.name]);
                 }
             });
-            return uniqueNamesId;
         }
     }
 
@@ -836,8 +842,8 @@ module StudyD {
 
     export class LineMetaDataFilterSection extends MetaDataFilterSection {
 
-        buildUniqueValuesHash(ids: string[]): ValueToUniqueID {
-            var uniqueNamesId: ValueToUniqueID = {}, unique = 0;
+        updateUniqueIndexesHash(ids: string[]): void {
+            this.uniqueIndexes = this.uniqueIndexes || {};
             this.filterHash = this.filterHash || {};
             ids.forEach((assayId:string) => {
                 var line: any = this._assayIdToLine(assayId) || {}, value = '(Empty)';
@@ -845,10 +851,9 @@ module StudyD {
                 if (line.meta && line.meta[this.metaDataID]) {
                     value = [ this.pre, line.meta[this.metaDataID], this.post ].join(' ').trim();
                 }
-                uniqueNamesId[value] = uniqueNamesId[value] || ++unique;
-                this.filterHash[assayId].push(uniqueNamesId[value]);
+                this.uniqueIndexes[value] = this.uniqueIndexes[value] || ++this.uniqueIndexCounter;
+                this.filterHash[assayId].push(this.uniqueIndexes[value]);
             });
-            return uniqueNamesId;
         }
     }
 
@@ -856,8 +861,8 @@ module StudyD {
 
     export class AssayMetaDataFilterSection extends MetaDataFilterSection {
 
-        buildUniqueValuesHash(ids: string[]): ValueToUniqueID {
-            var uniqueNamesId: ValueToUniqueID = {}, unique = 0;
+        updateUniqueIndexesHash(ids: string[]): void {
+            this.uniqueIndexes = this.uniqueIndexes || {};
             this.filterHash = this.filterHash || {};
             ids.forEach((assayId:string) => {
                 var assay: any = this._assayIdToAssay(assayId) || {}, value = '(Empty)';
@@ -865,10 +870,9 @@ module StudyD {
                 if (assay.meta && assay.meta[this.metaDataID]) {
                     value = [ this.pre, assay.meta[this.metaDataID], this.post ].join(' ').trim();
                 }
-                uniqueNamesId[value] = uniqueNamesId[value] || ++unique;
-                this.filterHash[assayId].push(uniqueNamesId[value]);
+                this.uniqueIndexes[value] = this.uniqueIndexes[value] || ++this.uniqueIndexCounter;
+                this.filterHash[assayId].push(this.uniqueIndexes[value]);
             });
-            return uniqueNamesId;
         }
     }
 
@@ -882,19 +886,18 @@ module StudyD {
         }
 
 
-        buildUniqueValuesHash(amIDs: string[]): ValueToUniqueID {
-            var uniqueNamesId: ValueToUniqueID = {}, unique = 0;
+        updateUniqueIndexesHash(amIDs: string[]): void {
+            this.uniqueIndexes = this.uniqueIndexes || {};
             this.filterHash = this.filterHash || {};
             amIDs.forEach((measureId:string) => {
                 var measure: any = EDDData.AssayMeasurements[measureId] || {}, value: any;
                 this.filterHash[measureId] = this.filterHash[measureId] || [];
                 value = EDDData.MeasurementTypeCompartments[measure.compartment] || {};
                 if (value && value.name) {
-                    uniqueNamesId[value.name] = uniqueNamesId[value.name] || ++unique;
-                    this.filterHash[measureId].push(uniqueNamesId[value.name]);
+                    this.uniqueIndexes[value.name] = this.uniqueIndexes[value.name] || ++this.uniqueIndexCounter;
+                    this.filterHash[measureId].push(this.uniqueIndexes[value.name]);
                 }
             });
-            return uniqueNamesId;
         }
     }
 
@@ -913,8 +916,8 @@ module StudyD {
             return this.loadPending || this.uniqueValuesOrder.length > 0;
         }
 
-        buildUniqueValuesHash(mIds: string[]): ValueToUniqueID {
-            var uniqueNamesId: ValueToUniqueID = {}, unique: number = 0;
+        updateUniqueIndexesHash(mIds: string[]): void {
+            this.uniqueIndexes = this.uniqueIndexes || {};
             this.filterHash = this.filterHash || {};
             mIds.forEach((measureId: string): void => {
                 var measure: any = EDDData.AssayMeasurements[measureId] || {};
@@ -923,13 +926,12 @@ module StudyD {
                 if (measure && measure.type) {
                     mType = EDDData.MeasurementTypes[measure.type] || {};
                     if (mType && mType.name) {
-                        uniqueNamesId[mType.name] = uniqueNamesId[mType.name] || ++unique;
-                        this.filterHash[measureId].push(uniqueNamesId[mType.name]);
+                        this.uniqueIndexes[mType.name] = this.uniqueIndexes[mType.name] || ++this.uniqueIndexCounter;
+                        this.filterHash[measureId].push(this.uniqueIndexes[mType.name]);
                     }
                 }
             });
             this.loadPending = false;
-            return uniqueNamesId;
         }
     }
 
@@ -951,8 +953,8 @@ module StudyD {
         }
 
 
-        buildUniqueValuesHash(amIDs: string[]): ValueToUniqueID {
-            var uniqueNamesId: ValueToUniqueID = {}, unique = 0;
+        updateUniqueIndexesHash(amIDs: string[]): void {
+            this.uniqueIndexes = this.uniqueIndexes || {};
             this.filterHash = this.filterHash || {};
             amIDs.forEach((measureId:string) => {
                 var measure: any = EDDData.AssayMeasurements[measureId] || {}, metabolite: any;
@@ -960,14 +962,13 @@ module StudyD {
                 if (measure && measure.type) {
                     metabolite = EDDData.MetaboliteTypes[measure.type] || {};
                     if (metabolite && metabolite.name) {
-                        uniqueNamesId[metabolite.name] = uniqueNamesId[metabolite.name] || ++unique;
-                        this.filterHash[measureId].push(uniqueNamesId[metabolite.name]);
+                        this.uniqueIndexes[metabolite.name] = this.uniqueIndexes[metabolite.name] || ++this.uniqueIndexCounter;
+                        this.filterHash[measureId].push(this.uniqueIndexes[metabolite.name]);
                     }
                 }
             });
             // If we've been called to build our hashes, assume there's no load pending
             this.loadPending = false;
-            return uniqueNamesId;
         }
     }
 
@@ -990,8 +991,8 @@ module StudyD {
         }
 
 
-        buildUniqueValuesHash(amIDs: string[]): ValueToUniqueID {
-            var uniqueNamesId: ValueToUniqueID = {}, unique = 0;
+        updateUniqueIndexesHash(amIDs: string[]): void {
+            this.uniqueIndexes = this.uniqueIndexes || {};
             this.filterHash = this.filterHash || {};
             amIDs.forEach((measureId:string) => {
                 var measure: any = EDDData.AssayMeasurements[measureId] || {}, protein: any;
@@ -999,14 +1000,13 @@ module StudyD {
                 if (measure && measure.type) {
                     protein = EDDData.ProteinTypes[measure.type] || {};
                     if (protein && protein.name) {
-                        uniqueNamesId[protein.name] = uniqueNamesId[protein.name] || ++unique;
-                        this.filterHash[measureId].push(uniqueNamesId[protein.name]);
+                        this.uniqueIndexes[protein.name] = this.uniqueIndexes[protein.name] || ++this.uniqueIndexCounter;
+                        this.filterHash[measureId].push(this.uniqueIndexes[protein.name]);
                     }
                 }
             });
             // If we've been called to build our hashes, assume there's no load pending
             this.loadPending = false;
-            return uniqueNamesId;
         }
     }
 
@@ -1029,8 +1029,8 @@ module StudyD {
         }
 
 
-        buildUniqueValuesHash(amIDs: string[]): ValueToUniqueID {
-            var uniqueNamesId: ValueToUniqueID = {}, unique = 0;
+        updateUniqueIndexesHash(amIDs: string[]): void {
+            this.uniqueIndexes = this.uniqueIndexes || {};
             this.filterHash = this.filterHash || {};
             amIDs.forEach((measureId:string) => {
                 var measure: any = EDDData.AssayMeasurements[measureId] || {}, gene: any;
@@ -1038,14 +1038,13 @@ module StudyD {
                 if (measure && measure.type) {
                     gene = EDDData.GeneTypes[measure.type] || {};
                     if (gene && gene.name) {
-                        uniqueNamesId[gene.name] = uniqueNamesId[gene.name] || ++unique;
-                        this.filterHash[measureId].push(uniqueNamesId[gene.name]);
+                        this.uniqueIndexes[gene.name] = this.uniqueIndexes[gene.name] || ++this.uniqueIndexCounter;
+                        this.filterHash[measureId].push(this.uniqueIndexes[gene.name]);
                     }
                 }
             });
             // If we've been called to build our hashes, assume there's no load pending
             this.loadPending = false;
-            return uniqueNamesId;
         }
     }
 
