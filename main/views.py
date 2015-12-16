@@ -476,7 +476,7 @@ class StudyDetailView(generic.DetailView):
         try:
             return Line.objects.get(pk=line_id, study=study)
         except Line.DoesNotExist:
-            logger.warning('Failed to load line,study combo %s,%s' % (line_id, study.pk))
+            logger.warning('Failed to load (line, study) combo (%s,%s)' % (line_id, study.pk))
         return None
 
 
@@ -1216,7 +1216,8 @@ def search(request):
     elif model_name == "Strain":
         ice = IceApi(user_email=request.user.email)
         found = ice.search_for_part(term, suppress_errors=True)
-        results = [match.get('entryInfo', dict()) for match in found.get('results', [])]
+        if found:
+            results = [match.get('entryInfo', dict()) for match in found.get('results', [])]
     elif model_name == "Group":
         found = Group.objects.filter(name__iregex=re_term).order_by('name')[:20]
         results = [{'id': item.pk, 'name': item.name} for item in found]

@@ -124,7 +124,7 @@ class IceApi(object):
 
     """
 
-    def __init__(self, user_email, base_url=ICE_URL, timeout=ICE_REQUEST_TIMEOUT):
+    def __init__(self, user_email, base_url=ICE_URL, timeout=ICE_REQUEST_TIMEOUT, verify_ssl_cert=True):
         """
         Creates a new instance of IceApi
         :param user_email: the email address of the user who persistent ICE changes will be
@@ -132,6 +132,10 @@ class IceApi(object):
         :param base_url: the base URL of the ICE install.
         :param timeout a tuple representing the connection and read timeouts, respectively, in
         seconds, for HTTP requests issued to ICE
+        :param verify_ssl_cert True to verify ICE's SSL certificate. Provided so clients can ignore
+        self-signed certificates during *local* EDD / ICE testing on a single development machine.
+        Note that it's very dangerous to skip certificate verification when communicating across
+        the network, and this should NEVER be done in production.
         :return:
         """
 
@@ -143,6 +147,7 @@ class IceApi(object):
 
         self.user_email = user_email
         self.timeout = timeout
+        self.verify_ssl_cert = verify_ssl_cert
 
     def fetch_part(self, entry_id, suppress_errors=False):
         """
@@ -150,25 +155,48 @@ class IceApi(object):
         UUID. Returns a tuple of a dict containing ICE JSON representation of a part and the
         URL for the part; or a tuple of None and the URL if there was a non-success HTTP
         result; or None if there were errors making the request.
+        :param entry_id:
+        :param suppress_errors: true to catch and log exception messages and return None instead of
+        raising Exceptions.
+        :return: The JSON response from ICE, or None if an an Exception occurred but suppress_errors
+        was true.
         """
 
         url = '%s/rest/parts/%s' % (self.base_url, entry_id)
         auth = HmacAuth(user_email=self.user_email)
         try:
-            response = requests.get(url=url, auth=auth, timeout=self.timeout)
+            response = requests.get(url=url, auth=auth, timeout=self.timeout,
+                                    verify=self.verify_ssl_cert)
         except requests.exceptions.Timeout as e:
-            logger.error("Timeout requesting part %s: %s", entry_id, e)
+
             if not suppress_errors:
                 raise e
+            logger.exception("Timeout requesting part %s: %s", entry_id)
         else:
             if response.status_code == requests.codes.ok:
                 return (response.json(), url,)
+
             if not suppress_errors:
                 response.raise_for_status()
+
+            logger.exception('Error fetching part from ICE with entry_id %(entry_id)s. '
+                             'Response = %(status_code)d: "%(msg)s"'
+                             % {'entry_id': entry_id,
+                                'status_code': response.status_code,
+                                'msg': response.reason
+                                })
 
             return (None, url,)
 
     def search_for_part(self, query, suppress_errors=False):
+        """
+        Calls ICE's REST API to search for a biological part with using the specified query string
+        :param query: the query string
+        :param suppress_errors:
+        :return:
+        """
+        logger.info('Searching for ICE part(s) using query %s' % query)
+
         if self.user_email is None:
             raise RuntimeError('No user defined for ICE search')
         url = '%s/rest/search' % self.base_url
@@ -180,18 +208,25 @@ class IceApi(object):
                                         auth=auth,
                                         data=json.dumps(data),
                                         headers=headers,
-                                        timeout=self.timeout
+                                        timeout=self.timeout,
+                                        verify=self.verify_ssl_cert,
                                         )
             if response.status_code == requests.codes.ok:
                 return response.json()
             elif suppress_errors:
+                logger.exception('Error searching for ICE part using query "%(query_str)s". '
+                                 'Response was %(status_code)s: "%(msg)s"' %
+                                 { 'query_str': query,
+                                   'status_code': response.status_code,
+                                   'msg': response.reason})
                 return None
             else:
                 response.raise_for_status()
         except requests.exceptions.Timeout as e:
-            logger.error("Timeout searching ICE: %s", e)
             if not suppress_errors:
                 raise e
+            logger.exception('Timeout searching ICE for query "%s"' % query)
+
 
     def _create_or_update_link(self, study_name, study_url, entry_experiments_url, auth,
                                link_id=None):
@@ -218,7 +253,8 @@ class IceApi(object):
             headers['id'] = link_id
 
         response = requests.request('POST', entry_experiments_url, auth=auth, data=json_str,
-                                    headers=headers, timeout=self.timeout)
+                                    headers=headers, timeout=self.timeout,
+                                    verify=self.verify_ssl_cert)
 
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
@@ -245,7 +281,8 @@ class IceApi(object):
         entry_experiments_rest_url = '%s/rest/parts/%s/experiments/' % (self.base_url, ice_entry_id)
         auth = HmacAuth(user_email=self.user_email)
         response = requests.request('GET', entry_experiments_rest_url, auth=auth,
-                                    headers=_JSON_CONTENT_TYPE_HEADER, timeout=self.timeout)
+                                    headers=_JSON_CONTENT_TYPE_HEADER, timeout=self.timeout,
+                                    verify=self.verify_ssl_cert)
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
 
@@ -265,7 +302,8 @@ class IceApi(object):
             logger.info('Deleting link %d from entry %s' % (link_id, ice_entry_id))
             link_resource_uri = entry_experiments_rest_url + "%s/" % link_id
             response = requests.request('DELETE', link_resource_uri, auth=auth,
-                                        timeout=self.timeout)
+                                        timeout=self.timeout,
+                                        verify=self.verify_ssl_cert)
 
             if response.status_code != requests.codes.ok:
                 response.raise_for_status()
@@ -304,7 +342,8 @@ class IceApi(object):
         logger.info(entry_experiments_rest_url)
         auth = HmacAuth(user_email=self.user_email)
         response = requests.request('GET', entry_experiments_rest_url, auth=auth,
-                                    headers=_JSON_CONTENT_TYPE_HEADER, timeout=self.timeout)
+                                    headers=_JSON_CONTENT_TYPE_HEADER, timeout=self.timeout,
+                                    verify=self.verify_ssl_cert)
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
 

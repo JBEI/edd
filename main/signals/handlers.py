@@ -141,7 +141,7 @@ def handle_study_post_save(sender, instance, created, **kwargs):
         except RuntimeError as rte:
             if settings.USE_CELERY:
                 logger.exception("Error submitting study link rename task(s) to Celery for study "
-                                 "id= %d" % study.pk, rte)
+                                 "id= %d" % study.pk)
             else:
                 logger.exception("Error making direct HTTP requests to ICE to rename study id = %d"
                                  % study.pk)
@@ -281,10 +281,9 @@ def _post_commit_unlink_ice_entry_from_study(user_email, study_pk, study_creatio
     # administrators
     except RuntimeError as rte:
         if settings.USE_CELERY:
-            logger.exception("Exception submitting job to Celery (index=%d)" % index, rte)
+            logger.exception("Exception submitting job to Celery (index=%d)" % index)
         else:
-            logger.exception("Exception updating ICE links via HTTP requests (index=%d)"
-                             % index, rte)
+            logger.exception("Exception updating ICE links via HTTP requests (index=%d)" % index)
         raise rte
 
 
@@ -334,10 +333,9 @@ def _post_commit_link_ice_entry_to_study(user_email, study, linked_strains):
     # administrators
     except RuntimeError as rte:
         if settings.USE_CELERY:
-            logger.exception("Error submitting jobs to Celery (index=%d)" % index, rte)
+            logger.exception("Error submitting jobs to Celery (index=%d)" % index)
         else:
-            logger.exception("Error updating ICE links via direct HTTP request (index=%d)" % index,
-                             rte)
+            logger.exception("Error updating ICE links via direct HTTP request (index=%d)" % index)
         raise rte
 
 
@@ -532,7 +530,7 @@ def handle_line_strain_changed(sender, instance, action, reverse, model, pk_set,
         # administrators
         except RuntimeError as rte:
             logger.exception("Exception scheduling post-commit work. Progress so far: added=%d, "
-                             "removed=%d" % (added_count, removed_count), rte)
+                             "removed=%d" % (added_count, removed_count))
             raise rte
 
     logger.debug(
