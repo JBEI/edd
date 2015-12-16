@@ -126,8 +126,6 @@ module StudyD {
                 assayFilters.push(new AssayMetaDataFilterSection(id));
             }
 
-            console.log(aIDsToUse);
-
             // We can initialize all the Assay- and Line-level filters immediately
             this.assayFilteringWidgets = assayFilters;
             assayFilters.forEach((filter) => {
@@ -912,14 +910,15 @@ module StudyD {
         }
 
         isFilterUseful(): boolean {
-            return this.loadPending || this.uniqueValuesOrder.length > 1;
+            return this.loadPending || this.uniqueValuesOrder.length > 0;
         }
 
         buildUniqueValuesHash(mIds: string[]): ValueToUniqueID {
             var uniqueNamesId: ValueToUniqueID = {}, unique: number = 0;
             this.filterHash = this.filterHash || {};
             mIds.forEach((measureId: string): void => {
-                var measure: any = EDDData.AssayMeasurements[measureId] || {}, mType: any;
+                var measure: any = EDDData.AssayMeasurements[measureId] || {};
+                var mType: any;
                 this.filterHash[measureId] = this.filterHash[measureId] || [];
                 if (measure && measure.type) {
                     mType = EDDData.MeasurementTypes[measure.type] || {};
@@ -947,8 +946,8 @@ module StudyD {
 
 
         // Override: If the filter has a load pending, it's "useful", i.e. display it.
-        isFilterUseful():boolean {
-            return this.loadPending || this.uniqueValuesOrder.length > 1;
+        isFilterUseful(): boolean {
+            return this.loadPending || this.uniqueValuesOrder.length > 0;
         }
 
 
@@ -987,7 +986,7 @@ module StudyD {
 
         // Override: If the filter has a load pending, it's "useful", i.e. display it.
         isFilterUseful():boolean {
-            return this.loadPending || this.uniqueValuesOrder.length > 1;
+            return this.loadPending || this.uniqueValuesOrder.length > 0;
         }
 
 
@@ -1026,7 +1025,7 @@ module StudyD {
 
         // Override: If the filter has a load pending, it's "useful", i.e. display it.
         isFilterUseful():boolean {
-            return this.loadPending || this.uniqueValuesOrder.length > 1;
+            return this.loadPending || this.uniqueValuesOrder.length > 0;
         }
 
 
