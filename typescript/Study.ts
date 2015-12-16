@@ -58,12 +58,12 @@ module StudyD {
     // For the filtering section on the main graph
     export class ProgressiveFilteringWidget {
 
-        allFilteringWidgets: GenericFilterSection[];
-        assayFilteringWidgets: GenericFilterSection[];
-        metaboliteFilteringWidgets: GenericFilterSection[];
-        proteinFilteringWidgets: GenericFilterSection[];
-        geneFilteringWidgets: GenericFilterSection[];
-        measurementFilteringWidgets: GenericFilterSection[];
+        allFilters: GenericFilterSection[];
+        assayFilters: GenericFilterSection[];
+        metaboliteFilters: GenericFilterSection[];
+        proteinFilters: GenericFilterSection[];
+        geneFilters: GenericFilterSection[];
+        measurementFilters: GenericFilterSection[];
 
         metaboliteDataProcessed: boolean;
         proteinDataProcessed: boolean;
@@ -78,12 +78,12 @@ module StudyD {
 
             this.studyDObject = studyDObject;
 
-            this.allFilteringWidgets = [];
-            this.assayFilteringWidgets = [];
-            this.metaboliteFilteringWidgets = [];
-            this.proteinFilteringWidgets = [];
-            this.geneFilteringWidgets = [];
-            this.measurementFilteringWidgets = [];
+            this.allFilters = [];
+            this.assayFilters = [];
+            this.metaboliteFilters = [];
+            this.proteinFilters = [];
+            this.geneFilters = [];
+            this.measurementFilters = [];
 
             this.metaboliteDataProcessed = false;
             this.proteinDataProcessed = false;
@@ -127,31 +127,31 @@ module StudyD {
             }
 
             // We can initialize all the Assay- and Line-level filters immediately
-            this.assayFilteringWidgets = assayFilters;
+            this.assayFilters = assayFilters;
             assayFilters.forEach((filter) => {
                 filter.processFilteringData(aIDsToUse);
                 filter.populateTable();
             });
 
-            this.metaboliteFilteringWidgets = [];
-            this.metaboliteFilteringWidgets.push(new MetaboliteCompartmentFilterSection());
-            this.metaboliteFilteringWidgets.push(new MetaboliteFilterSection());
+            this.metaboliteFilters = [];
+            this.metaboliteFilters.push(new MetaboliteCompartmentFilterSection());
+            this.metaboliteFilters.push(new MetaboliteFilterSection());
 
-            this.proteinFilteringWidgets = [];
-            this.proteinFilteringWidgets.push(new ProteinFilterSection());
+            this.proteinFilters = [];
+            this.proteinFilters.push(new ProteinFilterSection());
 
-            this.geneFilteringWidgets = [];
-            this.geneFilteringWidgets.push(new GeneFilterSection());
+            this.geneFilters = [];
+            this.geneFilters.push(new GeneFilterSection());
 
-            this.measurementFilteringWidgets = [];
-            this.measurementFilteringWidgets.push(new MeasurementFilterSection());
+            this.measurementFilters = [];
+            this.measurementFilters.push(new MeasurementFilterSection());
 
-            this.allFilteringWidgets = [].concat(
+            this.allFilters = [].concat(
                 assayFilters,
-                this.metaboliteFilteringWidgets,
-                this.proteinFilteringWidgets,
-                this.geneFilteringWidgets,
-                this.measurementFilteringWidgets);
+                this.metaboliteFilters,
+                this.proteinFilters,
+                this.geneFilters,
+                this.measurementFilters);
             this.repopulateFilteringSection();
         }
 
@@ -162,7 +162,7 @@ module StudyD {
             // Clear out the old filtering UI, add back filter widgets
             var table = $('<div>').addClass('filterTable').appendTo($('#mainFilterSection').empty());
             var dark:boolean = false;
-            $.each(this.allFilteringWidgets, (i, widget) => {
+            $.each(this.allFilters, (i, widget) => {
                 if (widget.isFilterUseful()) {
                     widget.addToParent(table[0]);
                     widget.applyBackgroundStyle(dark);
@@ -202,19 +202,19 @@ module StudyD {
                 widget.populateTable();
             };
             if (filterIds.m.length) {
-                $.each(this.metaboliteFilteringWidgets, process.bind({}, filterIds.m));
+                $.each(this.metaboliteFilters, process.bind({}, filterIds.m));
                 this.metaboliteDataProcessed = true;
             }
             if (filterIds.p.length) {
-                $.each(this.proteinFilteringWidgets, process.bind({}, filterIds.p));
+                $.each(this.proteinFilters, process.bind({}, filterIds.p));
                 this.proteinDataProcessed = true;
             }
             if (filterIds.g.length) {
-                $.each(this.geneFilteringWidgets, process.bind({}, filterIds.g));
+                $.each(this.geneFilters, process.bind({}, filterIds.g));
                 this.geneDataProcessed = true;
             }
             if (filterIds._.length) {
-                $.each(this.measurementFilteringWidgets, process.bind({}, filterIds._));
+                $.each(this.measurementFilters, process.bind({}, filterIds._));
                 this.genericDataProcessed = true;
             }
             this.repopulateFilteringSection();
@@ -234,7 +234,7 @@ module StudyD {
                 previousIDSet.push(assayId);
 
             });
-            $.each(this.assayFilteringWidgets, (i, filter) => {
+            $.each(this.assayFilters, (i, filter) => {
                 previousIDSet = filter.applyProgressiveFiltering(previousIDSet);
             });
             return previousIDSet;
@@ -261,22 +261,22 @@ module StudyD {
             // Note that we only try to filter if we got measurements that apply to the widget types
 
             if (this.metaboliteDataProcessed) {
-                $.each(this.metaboliteFilteringWidgets, (i, filter) => {
+                $.each(this.metaboliteFilters, (i, filter) => {
                     metaboliteMeasurements = filter.applyProgressiveFiltering(metaboliteMeasurements);
                 });
             }
             if (this.proteinDataProcessed) {
-                $.each(this.proteinFilteringWidgets, (i, filter) => {
+                $.each(this.proteinFilters, (i, filter) => {
                     proteinMeasurements = filter.applyProgressiveFiltering(proteinMeasurements);
                 });
             }
             if (this.geneDataProcessed) {
-                $.each(this.geneFilteringWidgets, (i, filter) => {
+                $.each(this.geneFilters, (i, filter) => {
                     geneMeasurements = filter.applyProgressiveFiltering(geneMeasurements);
                 });
             }
             if (this.genericDataProcessed) {
-                $.each(this.measurementFilteringWidgets, (i, filter) => {
+                $.each(this.measurementFilters, (i, filter) => {
                     genericMeasurements = filter.applyProgressiveFiltering(genericMeasurements);
                 });
             }
@@ -297,24 +297,23 @@ module StudyD {
 
             // If the user checks 'Acetate', they expect only Acetate to be displayed, even though no change has been made to
             // the Measurement section where Optical Density is listed.
-            // In the code below, by comparing metaboliteMeasurements.length to measurements.length,
-            // We see that the selection has been narrowed to Acetate and append only those Acetate measurements onto dSM.
-            // Then by comparing genericMeasurements.length to measurements.length, we see that the Measurement section has
-            // not narrowed down its given set of measurements, so we skip appending those to dSM.
+            // In the code below, by testing for any checked boxes in the metaboliteFilters filters,
+            // we realize that the selection has been narrowed doown, so we append the Acetate measurements onto dSM.
+            // Then when we check the measurementFilters filters, we see that the Measurement section has
+            // not narrowed down its set of measurements, so we skip appending those to dSM.
             // The end result is only the Acetate measurements.
 
-            // Then suppose the user checks 'Optical Density', because they want to compare Acetate against Optical Density.
-            // Now we need to put those two on the graph.
-            // Since genericMeasurements has been narrowed down to only Optical Density measurements,
-            // its length no longer matches measurements.length.  So we push it onto dSM, where it combines with the Acetate.
+            // Then suppose the user checks 'Optical Density', intending to compare Acetate directly against Optical Density.
+            // Since measurementFilters now has checked boxes, we push its measurements onto dSM,
+            // where it combines with the Acetate.
 
             var anyChecked = (filter: GenericFilterSection): boolean => { return filter.anyCheckboxesChecked; };
 
             var dSM: any[] = [];    // Deliberately selected measurements
-            if ( this.metaboliteFilteringWidgets.some(anyChecked)) { dSM = dSM.concat(metaboliteMeasurements); }
-            if (    this.proteinFilteringWidgets.some(anyChecked)) { dSM = dSM.concat(proteinMeasurements); }
-            if (       this.geneFilteringWidgets.some(anyChecked)) { dSM = dSM.concat(geneMeasurements); }
-            if (this.measurementFilteringWidgets.some(anyChecked)) { dSM = dSM.concat(genericMeasurements); }
+            if ( this.metaboliteFilters.some(anyChecked)) { dSM = dSM.concat(metaboliteMeasurements); }
+            if (    this.proteinFilters.some(anyChecked)) { dSM = dSM.concat(proteinMeasurements); }
+            if (       this.geneFilters.some(anyChecked)) { dSM = dSM.concat(geneMeasurements); }
+            if (this.measurementFilters.some(anyChecked)) { dSM = dSM.concat(genericMeasurements); }
             if (dSM.length) {
                 return dSM;
             }
@@ -333,7 +332,7 @@ module StudyD {
                 // we should not skip this loop, even if we already know a redraw is required, since the
                 // call to anyCheckboxesChangedSinceLastInquiry sets internal state in the filter
                 // widgets that we will use next time around.
-                $.each(this.allFilteringWidgets, (i, filter) => {
+                $.each(this.allFilters, (i, filter) => {
                     if (filter.anyCheckboxesChangedSinceLastInquiry()) {
                         redraw = true;
                     }
