@@ -42,7 +42,8 @@ urlpatterns = patterns(
         login_required(views.study_export_sbml),
         name='sbml_export'),
 
-    url(r'^export', login_required(views.ExportView.as_view()), name='export'),
+    url(r'^export/$', login_required(views.ExportView.as_view()), name='export'),
+    url(r'^worklist/$', login_required(views.WorklistView.as_view()), name='worklist'),
 
     url(r'^file/download/(?P<file_id>\d+)$', login_required(views.download)),
     url(r'^file/delete/(?P<file_id>\d+)$', login_required(views.delete_file)),

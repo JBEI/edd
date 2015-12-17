@@ -31,51 +31,20 @@
         dataArea.toggle();
         tables.toggle();
       });
-    // add select/deselect controls
-    $('.exportOptions > ul[id$=_meta]').each(function (i, ul) {
-      var $ul = $(ul), css = { 'float': 'right', 'padding-left': '1em' };
-      $('<a href="#">').text('Deselect All').css(css).on('click', function () {
-        $ul.find(':checkbox').prop('checked', false);
-        return false;
-      }).appendTo($ul.prev('p'));
-      $('<a href="#">').text('Select All').css(css).on('click', function () {
-        $ul.find(':checkbox').prop('checked', true);
-        return false;
-      }).appendTo($ul.prev('p'));
-    });
-    // add selection for measurement types
-    $('#id_measurement_types').css('width', '100%').select2({
-      'ajax': {
-        'data': function (params) {
-          return {
-            'model': 'MeasurementType',  // TODO: change based on the currently selected protocol
-            'term': params.term || ''  //, TODO: autocomplete search handling page params
-          }
-        },
-        'dataType': 'json',
-        'delay': 250,
-        'processResults': function (data, params) {
-          return {
-            'results': data.rows.map(function (x) { return { 'id': x.id, 'text': x.name }; })
-          }
-        },
-        'url': '/search'
-      }
-    });
   });
   </script>
 {% endblock js_css %}
 
 {% block head_title %}
   {% if selection.studies.values|length == 1 %}
-    Data Export For {{ selection.studies.values.0.name }}
+    Worklist Export For {{ selection.studies.values.0.name }}
   {% else %}
-    Data Export For {{ selection.studies.values|length }} Studies
+    Worklist Export for {{ selection.studies.values|length }} Studies
   {% endif %}
 {% endblock head_title %}
 
 {% block body_title %}
-  Data Export For {% for study in selection.studies.values %}
+  Worklist Export For {% for study in selection.studies.values %}
    <a href="{% url 'main:detail' study.id %}">{{ study.name }}</a>{% if not forloop.last %},{% endif %}
   {% endfor %}
 {% endblock body_title %}
@@ -98,13 +67,13 @@
 </div>
 
 <!-- start of main form -->
-<form method="post" id="exportForm" action="{% url 'main:export' %}">
+<form method="post" id="worklistForm" action="{% url 'main:worklist' %}">
   {% csrf_token %}
   <div class="pageSection" id="mainModeDiv">
-    <div class="sectionHead">Specify the layout of the data you wish to export.</div>
+    <div class="sectionHead">Select a worklist template and options.</div>
     <div class="sectionContent exportOptions">
       {{ select_form.as_p }}
-      {{ option_form.as_p }}
+      {{ worklist_form.as_p }}
       <button type="submit" name="action" value="apply">Apply</button>
       <button type="submit" name="action" value="download">Download</button>
     </div>

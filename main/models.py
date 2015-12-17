@@ -335,12 +335,9 @@ class MetadataType(models.Model):
             return self.for_study()
         elif isinstance(obj, Line):
             return self.for_line()
-        elif isinstance(obj, Protocol):
-            return self.for_protocol()
         elif isinstance(obj, Assay):
-            return self.for_protocol()
-        else:
-            return (self.for_context == self.ALL)
+            return self.for_assay()
+        return False
 
 
 @python_2_unicode_compatible
@@ -550,7 +547,7 @@ class EDDObject(models.Model):
         return True
 
     def user_can_write(self, user):
-        return user.is_superuser
+        return user and user.is_superuser
 
 
 @python_2_unicode_compatible
@@ -611,10 +608,10 @@ class Study(EDDObject):
 
     def user_can_read(self, user):
         """ Utility method testing if a user has read access to a Study. """
-        return user.is_superuser or user.is_staff or any(p.is_read() for p in chain(
+        return user and (user.is_superuser or user.is_staff or any(p.is_read() for p in chain(
             self.userpermission_set.filter(user=user),
             self.grouppermission_set.filter(group__user=user)
-        ))
+        )))
 
     def user_can_write(self, user):
         """ Utility method testing if a user has write access to a Study. """
@@ -838,6 +835,29 @@ class WorklistColumn(models.Model):
     help_text = models.TextField(blank=True, null=True)
     # allow ordering of metadata
     ordering = models.IntegerField(blank=True, null=True, unique=True)
+
+    def get_column(self):
+        if self.meta_type:
+            type_context = self.meta_type.for_context
+            lookup = lambda x: x.metadata_get(self.meta_type)
+        else:
+            type_context = None
+            lookup = lambda x: (self.default_value or '') % self.get_format_dict(x)
+        model = {
+            MetadataType.STUDY: Study,
+            MetadataType.LINE: Line,
+            MetadataType.ASSAY: Assay,
+        }.get(type_context, None)
+        return table.ColumnChoice(
+            model, 'worklist_column_%s' % self.pk, self.heading, lookup,
+        )
+
+    def get_format_dict(self, instance):
+        """ Build dict used in format string for columns that use it. This implementation re-uses
+            EDDObject.to_json(), in a flattened format. """
+        # Must import inside method to avoid circular import
+        from .utilities import flatten_json
+        return flatten_json(instance.to_json())
 
     def __str__(self):
         if self.heading:

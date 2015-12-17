@@ -619,16 +619,24 @@ class WorklistForm(forms.Form):
 
     def clean(self):
         data = super(WorklistForm, self).clean()
+        template = data.get('template', None)
+        columns = [x.get_column() for x in template.worklistcolumn_set.order_by('ordering', )]
         self._options = table.ExportOption(
             layout=table.ExportOption.DATA_COLUMN_BY_LINE,
             separator=table.ExportOption.COMMA_SEPARATED,
             data_format=table.ExportOption.ALL_DATA,
             line_section=False,
             protocol_section=False,
-            columns=[],
+            columns=columns,
         )
         self._worklist = data.get('template', None)
         return data
+
+    def get_options(self):
+        if self._options is None:
+            if not self.is_valid():
+                raise ValueError("Export options are invalid")
+        return self._options
 
     def get_worklist(self):
         if self._worklist is None:
@@ -752,9 +760,6 @@ class ExportOptionForm(forms.Form):
         columns = []
         for m in ['study_meta', 'line_meta', 'protocol_meta', 'assay_meta', 'measure_meta']:
             columns.extend(data.get(m, []))
-        print('----------')
-        print(columns)
-        print('----------')
         self._options = table.ExportOption(
             layout=data.get('layout', table.ExportOption.DATA_COLUMN_BY_LINE),
             separator=data.get('separator', table.ExportOption.COMMA_SEPARATED),
@@ -783,8 +788,9 @@ class ExportOptionForm(forms.Form):
         data.update(self.data)
         # update available choices based on instances in self._selection
         if self._selection and hasattr(self._selection, 'lines'):
-            choices = map(table.ColumnChoice.get_field_choice, self._selection.line_columns)
-            self.fields['line_meta'].choices = choices
+            columns = self._selection.line_columns
+            self.fields['line_meta'].choices = map(table.ColumnChoice.get_field_choice, columns)
+            self.fields['line_meta'].coerce = table.ColumnChoice.coerce(columns)
         # set all _meta options if no list of options was passed in
         for meta in ['study_meta', 'line_meta', 'protocol_meta', 'assay_meta', 'measure_meta']:
             if self.initial.get(meta, None) == '__all__':

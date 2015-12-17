@@ -412,6 +412,8 @@ class StudyDetailView(generic.DetailView):
                         reverse('main:sbml_export', kwargs={'study': self.object.pk}))
                 else:
                     return ExportView.as_view()(request, *args, **kwargs)
+            elif line_action == 'worklist':
+                return WorklistView.as_view()(request, *args, **kwargs)
             # but not edit
             elif not can_write:
                 messages.error(request, 'You do not have permission to modify this study.')
@@ -484,70 +486,102 @@ class StudyDetailView(generic.DetailView):
         return None
 
 
-class ExportView(generic.TemplateView):
-    """ Encapsulates functionality for exports. """
-    template_name = 'main/export.html'
-
+class EDDExportView(generic.TemplateView):
+    """ Base view for exporting EDD information. """
     def __init__(self, *args, **kwargs):
-        super(ExportView, self).__init__(*args, **kwargs)
+        super(EDDExportView, self).__init__(*args, **kwargs)
         self._export = None
+        self._selection = table.ExportSelection(None)
+
+    def get_context_data(self, **kwargs):
+        context = super(EDDExportView, self).get_context_data(**kwargs)
+        return context
+
+    def get_template_names(self):
+        """ Override in child classes to specify alternate templates. """
+        return ['main/export.html', ]
 
     def get(self, request, *args, **kwargs):
-        """ Populates ExportSelectionForm from query/URL parameters and uses a default
-            ExportOptionForm. """
-        data = QueryDict(mutable=True)
-        data.update(kwargs)
-        data.update(request.GET)
-        initial = ExportOptionForm.initial_from_user_settings(request.user)
-        opt_data = QueryDict(mutable=True)
-        return self.handle_export(request, data, initial, opt_data)
+        context = self.get_context_data(**kwargs)
+        context.update(self.init_forms(request, request.GET))
+        return self.render_to_response(context)
 
-    def post(self, request, *args, **kwargs):
-        """ Populates both ExportSelectionForm and ExportOptionForm from POST parameters. """
+    def init_forms(self, request, payload):
         initial = ExportOptionForm.initial_from_user_settings(request.user)
-        return self.handle_export(request, request.POST, initial, request.POST)
-
-    def handle_export(self, request, select_data, option_initial, option_data):
-        select_form = ExportSelectionForm(data=select_data, user=request.user)
-        option_form = None
+        select_form = ExportSelectionForm(data=payload, user=request.user)
         try:
-            self._select = select_form.get_selection()
+            self._selection = select_form.get_selection()
             option_form = ExportOptionForm(
-                data=option_data,
-                initial=option_initial,
-                selection=self._select,
+                data=payload,
+                initial=initial,
+                selection=self._selection,
             )
             if option_form.is_valid():
                 self._export = table.TableExport(
-                    self._select,
+                    self._selection,
                     option_form.get_options(),
                     None,
                 )
-                if request.POST.get('action', None) == "download":
-                    response = HttpResponse(self._export.output(), content_type='text/csv')
-                    # set download filename as the first name in the exported studies
-                    study = self._export.selection.studies.values()[0]
-                    response['Content-Disposition'] = 'attachment; filename="%s.csv"' % study.name
-                    return response
-                return self.render_to_response(self.get_context_data(
-                    selection=self._select,
-                    select_form=select_form,
-                    option_form=option_form,
-                ))
-        except Exception:
-            logger.error("Failed to validate forms for export")
-            raise
-        return self.render_to_response(self.get_context_data(
-            selection=self._select,
-            select_form=select_form,
-            option_form=option_form,
-            error_message='Could not parse export request',
-        ))
+        except Exception as e:
+            logger.error("Failed to validate forms for export: %s", e)
+        return {
+            'download': payload.get('action', None) == 'download',
+            'output': self._export.output() if self._export else '',
+            'option_form': option_form,
+            'select_form': select_form,
+            'selection': self._selection,
+        }
 
-    def export_output(self):
-        if self._export is not None:
-            return self._export.output()
-        return ''
+    def post(self, request, *args, **kwargs):
+        context = self.get_context_data(**kwargs)
+        context.update(self.init_forms(request, request.POST))
+        return self.render_to_response(context)
+
+    def render_to_response(self, context, **kwargs):
+        if context.get('download', False):
+            response = HttpResponse(self._export.output(), content_type='text/csv')
+            # set download filename as the first name in the exported studies
+            study = self._export.selection.studies.values()[0]
+            response['Content-Disposition'] = 'attachment; filename="%s.csv"' % study.name
+            return response
+        return super(EDDExportView, self).render_to_response(context, **kwargs)
+
+
+class ExportView(EDDExportView):
+    """ View to export EDD information in a table/CSV format. """
+    pass
+
+
+class WorklistView(EDDExportView):
+    """ View to export lines in a worklist template. """
+    def get_template_names(self):
+        """ Override in child classes to specify alternate templates. """
+        return ['main/worklist.html', ]
+
+    def init_forms(self, request, payload):
+        select_form = ExportSelectionForm(data=payload, user=request.user)
+        worklist_form = WorklistForm()
+        try:
+            self._selection = select_form.get_selection()
+            worklist_form = WorklistForm(
+                data=payload,
+                selection=self._selection,
+            )
+            if worklist_form.is_valid():
+                self._export = table.TableExport(
+                    self._selection,
+                    worklist_form.get_options(),
+                    worklist_form.get_worklist(),
+                )
+        except Exception as e:
+            logger.error("Failed to validate forms for export: %s", e)
+        return {
+            'download': payload.get('action', None) == 'download',
+            'output': self._export.output() if self._export else '',
+            'select_form': select_form,
+            'selection': self._selection,
+            'worklist_form': worklist_form,
+        }
 
 
 # /study/<study_id>/lines/

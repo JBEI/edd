@@ -4,7 +4,8 @@ from __future__ import unicode_literals
 import json
 import re
 
-from collections import defaultdict
+from builtins import str
+from collections import defaultdict, Iterable
 from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.contrib.sites.models import Site
@@ -48,6 +49,26 @@ media_types = {
     'M9': 'M9 (M9 salts minimal media)',
     'EZ': 'EZ (EZ Rich)',
 }
+
+
+def flatten_json(source):
+    """ Takes a json-shaped input (usually a dict), and flattens any nested dict, list, or tuple
+        with dotted key names. """
+    # TODO: test this!
+    output = defaultdict(lambda: '')
+    # convert lists/tuples to a dict
+    if not isinstance(source, dict) and isinstance(source, Iterable):
+        source = dict(enumerate(source))
+    for key, value in source.iteritems():
+        key = str(key)
+        if isinstance(value, string_types):
+            output[key] = value
+        elif isinstance(value, (dict, Iterable)):
+            for sub, item in flatten_json(value).iteritems():
+                output['.'.join((key, sub, ))] = item
+        else:
+            output[key] = value
+    return output
 
 
 def get_edddata_study(study):
