@@ -53,6 +53,10 @@ module StudyD {
     export interface UniqueIDToValue {
         [index: number]: string;
     }
+    // Used in ProgressiveFilteringWidget#prepareFilteringSection
+    export interface RecordIDToBoolean {
+        [index: string]: boolean;
+    }
 
 
     // For the filtering section on the main graph
@@ -60,6 +64,7 @@ module StudyD {
 
         allFilters: GenericFilterSection[];
         assayFilters: GenericFilterSection[];
+        // MeasurementGroupCode: Need to keep a separate filter list for each type.
         metaboliteFilters: GenericFilterSection[];
         proteinFilters: GenericFilterSection[];
         geneFilters: GenericFilterSection[];
@@ -74,6 +79,7 @@ module StudyD {
         mainGraphObject: any;
 
 
+        // MeasurementGroupCode: Need to initialize each filter list.
         constructor(studyDObject: any) {
 
             this.studyDObject = studyDObject;
@@ -92,21 +98,24 @@ module StudyD {
         }
 
 
-        // Read through the Lines, Assays, and AssayMeasurements data and prepare a secondary data
-        // structure for filtering according to unique criteria, then remake the filtering section under
-        // the main graph area with columns of labeled checkboxes.
+        // Read through the Lines, Assays, and AssayMeasurements structures to learn what types are present,
+        // then instantiate the relevant subclasses of GenericFilterSection, to create a series of
+        // columns for the filtering section under the main graph on the page.
+        // This must be outside the constructor because EDDData.Lines and EDDData.Assays are not immediately available
+        // on page load.
+        // MeasurementGroupCode: Need to create and add relevant filters for each group.
         prepareFilteringSection(): void {
 
-            var seenInLinesHash: any = {};
-            var seenInAssaysHash: any = {};
+            var seenInLinesHash: RecordIDToBoolean = {};
+            var seenInAssaysHash: RecordIDToBoolean = {};
             var aIDsToUse: string[] = [];
 
             // First do some basic sanity filtering on the list
             $.each(EDDData.Assays, (assayId: string, assay: any): void => {
                 var line = EDDData.Lines[assay.lid];
                 if (!assay.active || !line || !line.active) return;
-                $.each(assay.meta || [], (metadataId) => { seenInAssaysHash[metadataId] = 1; });
-                $.each(line.meta || [], (metadataId) => { seenInLinesHash[metadataId] = 1; });
+                $.each(assay.meta || [], (metadataId) => { seenInAssaysHash[metadataId] = true; });
+                $.each(line.meta || [], (metadataId) => { seenInLinesHash[metadataId] = true; });
                 aIDsToUse.push(assayId);
             });
 
@@ -129,7 +138,7 @@ module StudyD {
             // We can initialize all the Assay- and Line-level filters immediately
             this.assayFilters = assayFilters;
             assayFilters.forEach((filter) => {
-                filter.processFilteringData(aIDsToUse);
+                filter.populateFilterFromRecordIDs(aIDsToUse);
                 filter.populateTable();
             });
 
@@ -159,7 +168,6 @@ module StudyD {
         // Clear out any old filters in the filtering section, and add in the ones that
         // claim to be "useful".
         repopulateFilteringSection(): void {
-            // Clear out the old filtering UI, add back filter widgets
             var table = $('<div>').addClass('filterTable').appendTo($('#mainFilterSection').empty());
             var dark:boolean = false;
             $.each(this.allFilters, (i, widget) => {
@@ -172,19 +180,24 @@ module StudyD {
         }
 
 
-        processMeasurementData(data):void {
+        // Given a set of measurement records and a dictionary of corresponding types
+        // (passed down from the server as a result of a data request), sort them into
+        // their various categories, then pass each category to their relevant filter objects
+        // (possibly adding to the values in the filter) and refresh the UI for each filter.
+        // MeasurementGroupCode: Need to process each group separately here.
+        processIncomingMeasurementRecords(measures, types): void {
 
             var process: (ids: string[], i: number, widget: GenericFilterSection) => void;
 
             var filterIds = { 'm': [], 'p': [], 'g': [], '_': [] };
 
             // loop over all downloaded measurements
-            $.each(data.measures || {}, (index, measurement) => {
+            $.each(measures || {}, (index, measurement) => {
                 var assay = EDDData.Assays[measurement.assay], line, mtype;
                 if (!assay || !assay.active) return;
                 line = EDDData.Lines[assay.lid];
                 if (!line || !line.active) return;
-                mtype = data.types[measurement.type] || {};
+                mtype = types[measurement.type] || {};
                 if (mtype.family === 'm') { // measurement is of metabolite
                     filterIds.m.push(measurement.id);
                 } else if (mtype.family === 'p') { // measurement is of protein
@@ -198,7 +211,7 @@ module StudyD {
             });
 
             process = (ids: string[], i: number, widget: GenericFilterSection): void => {
-                widget.processFilteringData(ids);
+                widget.populateFilterFromRecordIDs(ids);
                 widget.populateTable();
             };
             if (filterIds.m.length) {
@@ -221,42 +234,46 @@ module StudyD {
         }
 
 
+        // Build a list of all the non-disabled Assay IDs in the Study.
         buildAssayIDSet(): any[] {
-            var previousIDSet: any[] = [];
-            // The next loop is designed to progressively hide rows in the criteria lists in the
-            // filtering section of the page, based on the selections in the previous criteria list. We
-            // start with all the non-disabled Assay IDs in the Study. With each pass through the loop
-            // below we will narrow this set down, until we get to the per-measurement filters, which
-            // will just use the set and return it unaltered.
+            var assayIds: any[] = [];
             $.each(EDDData.Assays, (assayId, assay) => {
                 var line = EDDData.Lines[assay.lid];
                 if (!assay.active || !line || !line.active) return;
-                previousIDSet.push(assayId);
+                assayIds.push(assayId);
 
             });
-            $.each(this.assayFilters, (i, filter) => {
-                previousIDSet = filter.applyProgressiveFiltering(previousIDSet);
-            });
-            return previousIDSet;
+            return assayIds;
         }
      
 
+        // Starting with a list of all the non-disabled Assay IDs in the Study, we loop it through the
+        // Line and Assay-level filters, causing the filters to refresh their UI, narrowing the set down.
+        // We resolve the resulting set of Assay IDs into measurement IDs, then pass them on to the
+        // measurement-level filters.  In the end we return a set of measurement IDs representing the
+        // end result of all the filters, suitable for passing to the graphing functions.
+        // MeasurementGroupCode: Need to process each group separately here.
         buildFilteredMeasurements(): any[] {
-            var previousIDSet = this.buildAssayIDSet();
-            var measurements: any[] = [];
-            $.each(previousIDSet, (i, assayId) => {
+            var filteredAssayIds = this.buildAssayIDSet();
+
+            $.each(this.assayFilters, (i, filter) => {
+                filteredAssayIds = filter.applyProgressiveFiltering(filteredAssayIds);
+            });
+
+            var measurementIds: any[] = [];
+            $.each(filteredAssayIds, (i, assayId) => {
                 var assay = EDDData.Assays[assayId];
-                $.merge(measurements, assay.measures || []);
+                $.merge(measurementIds, assay.measures || []);
             });
 
             // We start out with four references to the array of available measurement IDs, one for each major category.
             // Each of these will become its own array in turn as we narrow it down.
             // This is to prevent a sub-selection in one category from overriding a sub-selection in the others.
 
-            var metaboliteMeasurements = measurements;
-            var proteinMeasurements = measurements;
-            var geneMeasurements = measurements;
-            var genericMeasurements = measurements;
+            var metaboliteMeasurements = measurementIds;
+            var proteinMeasurements = measurementIds;
+            var geneMeasurements = measurementIds;
+            var genericMeasurements = measurementIds;
 
             // Note that we only try to filter if we got measurements that apply to the widget types
 
@@ -309,7 +326,7 @@ module StudyD {
 
             var anyChecked = (filter: GenericFilterSection): boolean => { return filter.anyCheckboxesChecked; };
 
-            var dSM: any[] = [];    // Deliberately selected measurements
+            var dSM: any[] = [];    // "Deliberately selected measurements"
             if ( this.metaboliteFilters.some(anyChecked)) { dSM = dSM.concat(metaboliteMeasurements); }
             if (    this.proteinFilters.some(anyChecked)) { dSM = dSM.concat(proteinMeasurements); }
             if (       this.geneFilters.some(anyChecked)) { dSM = dSM.concat(geneMeasurements); }
@@ -318,7 +335,7 @@ module StudyD {
                 return dSM;
             }
 
-            return measurements;
+            return measurementIds;
         }
 
 
@@ -344,10 +361,21 @@ module StudyD {
 
 
 
-    export class GenericFilterSection  {
+    // A generic version of a filtering column in the filtering section beneath the graph area on the page,
+    // meant to be subclassed for specific criteria.
+    // When initialized with a set of record IDs, the column is filled with labeled checkboxes, one for each
+    // unique value of the given criteria encountered in the records.
+    // During use, another set of record IDs is passed in, and if any checkboxes are checked, the ID set is
+    // narrowed down to only those records that contain the checked values.
+    // Checkboxes whose values are not represented anywhere in the given IDs are temporarily disabled,
+    // visually indicating to a user that those values are not available for further filtering. 
+    // The filters are meant to be called in sequence, feeding each returned ID set into the next,
+    // progressively narrowing down the enabled checkboxes.
+    // MeasurementGroupCode: Need to subclass this for each group type.
+    export class GenericFilterSection {
 
-        // A dictionary of the unique values found for filtering against.
-        // Each key is an integer, ascending from 1, in the order the value was first encountered
+        // A dictionary of the unique values found for filtering against, and the dictionary's complement.
+        // Each unique ID is an integer, ascending from 1, in the order the value was first encountered
         // when examining the record data in updateUniqueIndexesHash.
         uniqueValues: UniqueIDToValue;
         uniqueIndexes: ValueToUniqueID;
@@ -355,8 +383,11 @@ module StudyD {
 
         // The sorted order of the list of unique values found in the filter
         uniqueValuesOrder: number[];
+
         // A dictionary resolving a record ID (assay ID, measurement ID) to an array. Each array
         // contains the integer identifiers of the unique values that apply to that record.
+        // (It's rare, but there can actually be more than one criteria that matches a given ID,
+        //  for example a Line with two feeds assigned to it.)
         filterHash: ValueToUniqueList;
         // Dictionary resolving the filter value integer identifiers to HTML Input checkboxes.
         checkboxes: {[index: number]: JQuery};
@@ -397,7 +428,7 @@ module StudyD {
             this.previousCheckboxState = {};
 
             this.typingTimeout = null;
-            this.typingDelay = 330;
+            this.typingDelay = 330;    // TODO: Not implemented
             this.currentSearchSelection = '';
             this.previousSearchSelection = '';
             this.minCharsToTriggerSearch = 1;
@@ -437,7 +468,7 @@ module StudyD {
         }
 
 
-        processFilteringData(ids: string[]): void {
+        populateFilterFromRecordIDs(ids: string[]): void {
             var usedValues: ValueToUniqueID, crSet: number[], cHash: UniqueIDToValue,
                 previousIds: string[];
             // can get IDs from multiple assays, first merge with this.filterHash
@@ -498,6 +529,9 @@ module StudyD {
         }
 
 
+        // Runs through the values in uniqueValuesOrder, adding a checkbox and label for each
+        // filtering value represented.  If there are more than 15 values, the filter gets
+        // a search box and scrollbar.
         populateTable():void {
             var fCol = $(this.filterColumnDiv).empty();
             // Only use the scrolling container div if the size of the list warrants it, because
@@ -529,7 +563,7 @@ module StudyD {
                 $('<label>').attr('for', cboxName).text(this.uniqueValues[uniqueId])
                     .appendTo(cell);
             });
-            Dragboxes.initTable(this.filteringTable);
+            Dragboxes.initTable(this.filteringTable);    // TODO: Drag select is broken in Safari
         }
 
 
@@ -573,6 +607,12 @@ module StudyD {
         }
 
 
+        // Takes a set of record IDs, and if any checkboxes in the filter's UI are checked,
+        // the ID set is narrowed down to only those records that contain the checked values.
+        // Checkboxes whose values are not represented anywhere in the given IDs are temporarily disabled
+        // and sorted to the bottom of the list, visually indicating to a user that those values are not
+        // available for further filtering.
+        // The narrowed set of IDs is then returned, for use by the next filter.
         applyProgressiveFiltering(ids:any[]):any {
 
             // If the filter only contains one item, it's pointless to apply it.
@@ -580,9 +620,12 @@ module StudyD {
                 return ids;
             }
 
+            var idsPostFiltering: any[];
+
             var useSearchBox:boolean = false;
-            var v = this.currentSearchSelection;
             var queryStrs = [];
+
+            var v = this.currentSearchSelection;
             if (v != null) {
                 if (v.length >= this.minCharsToTriggerSearch) {
                     // If there are multiple words, we match each separately.
@@ -597,7 +640,6 @@ module StudyD {
             }
 
             var valuesVisiblePreFiltering = {};
-            var idsPostFiltering = ids;
 
             var indexIsVisible = (index):boolean => {
                 var match:boolean = true, text:string;
@@ -1356,7 +1398,7 @@ module StudyD {
             }
         });
 
-        context.progressiveFilteringWidget.processMeasurementData(data);
+        context.progressiveFilteringWidget.processIncomingMeasurementRecords(data.measures || {}, data.types);
 
         if (count_rec < count_total) {
             // TODO not all measurements downloaded; display a message indicating this
