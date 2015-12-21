@@ -839,7 +839,7 @@ class WorklistColumn(models.Model):
     def get_column(self):
         if self.meta_type:
             type_context = self.meta_type.for_context
-            lookup = lambda x: x.metadata_get(self.meta_type)
+            lookup = lambda x: x.metadata_get(self.meta_type) if x else ''
         else:
             type_context = None
             lookup = lambda x: (self.default_value or '') % self.get_format_dict(x)
@@ -849,7 +849,7 @@ class WorklistColumn(models.Model):
             MetadataType.ASSAY: Assay,
         }.get(type_context, None)
         return table.ColumnChoice(
-            model, 'worklist_column_%s' % self.pk, self.heading, lookup,
+            model, 'worklist_column_%s' % self.pk, str(self), lookup,
         )
 
     def get_format_dict(self, instance):
@@ -857,7 +857,7 @@ class WorklistColumn(models.Model):
             EDDObject.to_json(), in a flattened format. """
         # Must import inside method to avoid circular import
         from .utilities import flatten_json
-        return flatten_json(instance.to_json())
+        return flatten_json(instance.to_json() if instance else {})
 
     def __str__(self):
         if self.heading:

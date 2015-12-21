@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class ColumnChoice(object):
     def __init__(self, model, key, label, lookup, heading=None, lookup_kwargs={}):
         self._model = model
-        self._key = '.'.join([model.__name__, key, ])
+        self._key = '.'.join([model.__name__, key, ]) if model else key
         self._label = label
         self._lookup = lookup
         self._heading = heading if heading is not None else label
@@ -54,9 +54,11 @@ class ColumnChoice(object):
         return self._key
 
     def get_value(self, instance):
-        if instance is None:
+        try:
+            return self._lookup(instance, **self._lookup_kwargs)
+        except Exception as e:
+            logger.exception('Failed to get column value: %s', e)
             return ''
-        return self._lookup(instance, **self._lookup_kwargs)
 
 
 class EmptyChoice(ColumnChoice):
@@ -244,7 +246,7 @@ class TableExport(object):
             tables['line']['header'] = self._output_line_header()
         elif not self.options.protocol_section:
             tables['all'] = OrderedDict()
-            tables['all']['header'] = self._output_line_header() + self._output_measure_header()
+            tables['all']['header'] = self._output_header()
         if self.worklist:
             self._do_worklist(tables)
         else:

@@ -11,6 +11,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.contrib.postgres.forms import HStoreField
 from django.core.exceptions import ValidationError
+from django.db.models import Prefetch
 from django.db.models.base import Model
 from django.db.models.manager import BaseManager
 from django.http import QueryDict
@@ -23,7 +24,7 @@ from .export import table
 from .models import (
     Assay, Attachment, CarbonSource, Comment, Line, Measurement, MeasurementType,
     MeasurementValue, MetadataType, Protocol, Strain, Study, StudyPermission, Update,
-    WorklistTemplate,
+    WorklistTemplate, WorklistColumn,
 )
 
 User = get_user_model()
@@ -607,7 +608,9 @@ class ExportSelectionForm(forms.Form):
 class WorklistForm(forms.Form):
     """ Form used for selecting worklist export options. """
     template = forms.ModelChoiceField(
-        queryset=WorklistTemplate.objects.all(),
+        queryset=WorklistTemplate.objects.prefetch_related(
+            Prefetch('worklistcolumn_set', queryset=WorklistColumn.objects.order_by('ordering')),
+        ),
         required=False,
     )
 
