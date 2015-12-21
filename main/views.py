@@ -576,7 +576,7 @@ def study_measurements(request, study, protocol):
             measurement__active=True,
             measurement__assay__active=True,
             measurement__assay__line__active=True,
-            measurement__range=(measure_list[0].id, measure_list[-1].id),
+            measurement__pk__range=(measure_list[0].id, measure_list[-1].id),
             )
     else:
         values = []

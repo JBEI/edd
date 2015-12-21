@@ -244,11 +244,11 @@ def _post_commit_unlink_ice_entry_from_study(user_email, study_pk, study_creatio
             # print a warning and skip any strains that didn't include enough data for a link to ICE
             if not _is_linkable(strain):
                 logger.warning(
-                    "Strain with id %d is no longer linked to study id %d, but doesn't have "
-                    "enough data to "
-                    "link to ICE. It's possible (though unlikely) that the EDD strain has been "
-                    "modified "
-                    "since an ICE link was created for it." % (strain.pk, study_pk))
+                    "Strain with id %d is no longer linked to study id %d, but EDD's "
+                    "database entry for this strain doesn't have enough data to remove the "
+                    "corresponding study link from ICE. It's possible (though unlikely) that the "
+                    "EDD strain has been modified since an ICE link was created for it." % (
+                        strain.pk, study_pk))
                 index += 1
                 continue
 
@@ -397,110 +397,37 @@ def handle_line_strain_changed(sender, instance, action, reverse, model, pk_set,
         return
 
     elif "post_add" == action:
-        current_strain_pks = line.strains.values_list('pk', flat=True).all()
-        added_strains = []
-        removed_strains = []
 
-        # if this "add" was preceded by a "clear", figure out the added/removed strains for this
-        # line are from the
-        # clear/re-add-everything process
-        if line.pre_clear_strain_pks:
-            added_strains = line.strains.exclude(pk__in=line.pre_clear_strain_pks)
-            removed_strain_pks = [removed for removed in line.pre_clear_strain_pks if
-                                  removed not in current_strain_pks]
-
-            # If strains were removed by the transaction, note that the M2M signal is published
-            # before
-            # the strain is actually removed from the database
-            removed_strains = Strain.objects.filter(pk__in=removed_strain_pks)
-
-            # clean up artifacts of the last clear/add cycle in case a subsequent "add" is
-            # performed on with the same
-            # instance object
-            line.pre_clear_strains = None
-        else:
-            added_strains = line.strains.all()
-
-        logger.debug("pre_clear_strain_pks = " + str(instance.pre_clear_strain_pks))
-        logger.debug("current_strain_pks = " + str(current_strain_pks))
-        logger.debug("added_strains = " + str(added_strains))
-        logger.debug("removed_strains = " + str(removed_strains))
+        added_strains = [strain for strain in line.strains.filter(pk__in=pk_set)]
+        logger.debug(u"added_strains = %s" % unicode(added_strains))
 
         # schedule asynchronous work to maintain ICE strain links to this study, failing if any
         # job submission fails (probably because our link to Celery or RabbitMQ is down, and isn't
         # likely to come back up for subsequently attempted task submissions in the loop)
         study = line.study
 
-        added_count = 0
-        removed_count = 0
-
+        strain_pk = 0
         try:
             # find which user made the update that caused this signal
             update = Update.load_update()
             user_email = update.mod_by.email
-
             logger.debug("update performed by user " + user_email)
-
-            # narrow down the list of lines that are no longer associated with this strain to
-            # just those
-            # we want to take action on in ICE.
-            remove_on_commit = []
-            for strain in removed_strains:
-
-                # skip any strains that can't be associated with an ICE entry
-                if not _is_linkable(strain):
-                    logger.warning(
-                        "Strain with id %d is no longer linked to study id %d, but doesn't have "
-                        "enough data to remove the study link (if any) from ICE. It\'s possible, "
-                        "though unlikely, that the EDD strain has been modified since an ICE link "
-                        "was created for it."
-                        % (strain.pk, study.pk))
-                    continue
-
-                # test whether any lines still exist that link the study to this strain. if not,
-                # schedule a task to remove the link from ICE. Note that we could skip this check
-                # and just depend on the one in unlink_ice_part_from_study, but that would remove
-                # our ability to detect stale
-                # tasks in the pipeline
-
-                lines = Line.objects.filter(strains__registry_url=strain.registry_url,
-                                            study__pk=study.pk,
-                                            study__created__mod_time=study.created.mod_time)
-
-                if lines:
-                    logger.warning(
-                        "Found %d other lines linking study id %d to strain id %d. This link "
-                        "won't be "
-                        "removed from ICE." % (lines.count(), study.pk, strain.pk))
-                    continue
-
-                remove_on_commit.append(strain)
-                removed_count += 1
-
-            if remove_on_commit:
-                # wait until the connection commits, then schedule work to remove the link(s)
-                # from ICE. Note that if we don't wait, the Celery task can run before it commits,
-                # at which point its initial DB query will indicate an inconsistent database
-                # state. This happened repeatably during testing.
-                connection.on_commit(
-                    lambda: _post_commit_unlink_ice_entry_from_study(user_email, study.pk,
-                                                                     study.created.mod_time,
-                                                                     remove_on_commit))
 
             add_on_commit_strains = []
             for strain in added_strains:
+                strain_pk = strain.pk
 
                 # skip any strains that aren't associated with an ICE entry
                 if not _is_linkable(strain):
                     logger.warning(
-                        'Strain with id %d is now linked to study id %d, but doesn\'t have enough '
-                        'data to link to ICE. It\'s possible (though unlikely) that the EDD strain '
-                        'has been modified since an ICE link was created for it.'
+                        "Strain with id %d is now linked to study id %d, but EDD's "
+                        "database entry for the strain doesn't contain enough data to create an "
+                        "ICE link back to the study. It's possible (though unlikely) that the "
+                        "EDD strain has been modified since an ICE link was created for it."
                         % (strain.pk, study.pk))
                     continue
 
                 add_on_commit_strains.append(strain)
-                added_count += 1
 
             if add_on_commit_strains:
                 # wait until the connection commits, then schedule work to add/update the link(s)
@@ -511,30 +438,92 @@ def handle_line_strain_changed(sender, instance, action, reverse, model, pk_set,
                     lambda: _post_commit_link_ice_entry_to_study(user_email, study,
                                                                  add_on_commit_strains))
 
-            actual_count = added_count + removed_count
-            exp_change_count = len(removed_strains) + len(added_strains)
-            if exp_change_count == 0:
-                logger.info("No strain association changes...no ICE updates are required.")
+            exp_add_count = len(pk_set)
+            linkable_count = len(add_on_commit_strains)
 
+            if settings.USE_CELERY:
+                logger.info("Done scheduling post-commit work to submit jobs to Celery: will "
+                            "submit ICE link creation task for each %d of %d added strains." %
+                            linkable_count, exp_add_count)
             else:
-                if settings.USE_CELERY:
-                    logger.info("Done post-commit work to submit jobs to Celery: submitting jobs "
-                                "for %d of %d strains." % (actual_count, exp_change_count))
-                else:
-                    logger.info(
-                        "Done scheduling post-commit work for direct HTTP request(s) to ICE: "
-                        "requested updates for %d of %d strains."
-                        % (actual_count, exp_change_count))
-
+                logger.info(
+                    "Done scheduling post-commit work for direct HTTP request(s) to ICE: "
+                    "requested a job to sequentially create links for %d of %d added "
+                    "strains via direct HTTP request(s)." % (linkable_count, exp_add_count))
         # if an error occurs, print a helpful log message, then re-raise it so Django will email
         # administrators
         except RuntimeError as rte:
-            logger.exception("Exception scheduling post-commit work. Progress so far: added=%d, "
-                             "removed=%d" % (added_count, removed_count))
+            logger.exception("Exception scheduling post-commit work. Failed on strain id %d" %
+                             strain_pk)
             raise rte
+    elif 'pre_remove' == action:
+        # cache data associated with this strain so we have enough info to remove some or all of
+        # ICE's link(s) to this study if appropriate after line -> strain relationship change is
+        # completed in EDD
+        line.removed_strains = Strain.objects.filter(pk__in=pk_set)
+    elif 'post_remove' == action:
+        removed_strains = line.removed_strains
+        logger.debug(u"removed_strains = %s" % unicode(removed_strains))
 
-    logger.debug(
-        "End " + handle_line_strain_changed.__name__ + "():" + action)
+        # find which user made the update that caused this signal
+        update = Update.load_update()
+        user_email = update.mod_by.email
+        logger.debug("update performed by user " + user_email)
+
+        # schedule asynchronous work to maintain ICE strain links to this study, failing if any
+        # job submission fails (probably because our link to Celery or RabbitMQ is down, and
+        # isn't likely to come back up for subsequently attempted task submissions in the loop)
+        study = line.study
+        strain_pk = 0
+
+        try:
+
+            # narrow down the list of lines that are no longer associated with this strain to
+            # just those
+            # we want to take action on in ICE.
+            remove_on_commit = []
+            for strain in removed_strains:
+                strain_pk = strain.pk
+                # skip any strains that can't be associated with an ICE entry
+                if not _is_linkable(strain):
+                    logger.warning(
+                        "Strain with id %d is no longer linked to study id %d, but EDD's "
+                        "database entry for the strain doesn't have enough data to facilitate "
+                        "removal of the corresponding study link from ICE (if any).  It's "
+                        "possible, though unlikely, that the EDD strain has been modified "
+                        "since an ICE link was created for it."
+                        % (strain.pk, study.pk))
+                    continue
+                # test whether any lines still exist that link the study to this strain. if not,
+                # schedule a task to remove the link from ICE. Note that we could skip this check
+                # and just depend on the one in unlink_ice_part_from_study, but that would remove
+                # our ability to detect stale tasks in the pipeline
+                lines = Line.objects.filter(strains__registry_url=strain.registry_url,
+                                            study__pk=study.pk,
+                                            study__created__mod_time=study.created.mod_time)
+                if lines:
+                    logger.warning(
+                        "Found %d other lines linking study id %d to strain id %d. The ICE link "
+                        "to this study won't be removed." % (lines.count(), study.pk, strain.pk))
+                    continue
+                remove_on_commit.append(strain)
+
+            if remove_on_commit:
+                # wait until the transaction commits, then schedule work to remove the link(s)
+                # from ICE. Note that if we don't wait, the Celery task can run before it commits,
+                # at which point its initial DB query will indicate an inconsistent database
+                # state. This happened repeatably during testing.
+                connection.on_commit(
+                    lambda: _post_commit_unlink_ice_entry_from_study(user_email, study.pk,
+                                                                     study.created.mod_time,
+                                                                     remove_on_commit))
+        # if an error occurs, print a helpful log message, then re-raise it so Django will email
+        # administrators
+        except RuntimeError:
+            logger.exception("Exception scheduling post-commit work. Failed on strain with id %d" %
+                             strain_pk)
+
+    logger.debug("End " + handle_line_strain_changed.__name__ + "():" + action)
 
 
 def get_abs_study_url(study_pk):

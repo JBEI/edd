@@ -195,7 +195,7 @@ class IceApi(object):
         :param suppress_errors:
         :return:
         """
-        logger.info('Searching for ICE part(s) using query %s' % query)
+        logger.info('Searching for ICE part(s) using query "%s"' % query)
 
         if self.user_email is None:
             raise RuntimeError('No user defined for ICE search')
@@ -244,9 +244,9 @@ class IceApi(object):
         json_str = json.dumps(json_dict)
 
         if logger:
-            logger.warning("Requesting part-> study link from ICE (id=%s): %s"
+            logger.info("Requesting part-> study link from ICE (id=%s): %s"
                            % (str(link_id), entry_experiments_url))
-            logger.warning(json_str)
+            logger.info("Response: %s " % json_str)
 
         headers = {'Content-Type': 'application/json'}
         if link_id:

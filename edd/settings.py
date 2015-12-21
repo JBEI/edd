@@ -16,6 +16,8 @@ import os
 import ldap
 from django_auth_ldap.config import LDAPSearch, GroupOfUniqueNamesType
 from django.conf.global_settings import TEMPLATE_CONTEXT_PROCESSORS as TCP
+from django.conf.global_settings import TEMPLATE_CONTEXT_PROCESSORS as \
+    DEFAULT_TEMPLATE_CONTEXT_PROCESSORS
 from kombu.serialization import register
 import psycopg2.extensions
 
@@ -51,7 +53,6 @@ register(EXTENDED_JSON_CONTENT_TYPE, datetime_dumps, datetime_loads,
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-TEMPLATE_DEBUG = True
 
 # SECURITY WARNING: keep the secret key used in production secret!
 # default quote from http://thedoomthatcametopuppet.tumblr.com/
@@ -128,11 +129,33 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 )
 
-# this gives us access to the original request in templates
-# see e.g.: http://stackoverflow.com/questions/2882490
-TEMPLATE_CONTEXT_PROCESSORS = TCP + (
-    'django.core.context_processors.request',
-)
+####################################################################################################
+# Template configuration
+####################################################################################################
+# Configure a simple setup that tells Django to load templates from the defined "templates"
+# subdirectories inside each installed application (added in 1.9, required starting in Django 1.10)
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': ['edd_utils.templates', 'main.templates'],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'debug': DEBUG,  # only strictly needed when the value differs from DEBUG. Included
+                             # explicitly here since it was in the prior version of this file
+            'context_processors': DEFAULT_TEMPLATE_CONTEXT_PROCESSORS + [
+                                                # this gives us access to the original request in
+                                                # templates. see e.g.:
+                                                # http://stackoverflow.com/questions/2882490
+                                                'django.template.context_processors.request',
+                                                # required to enable auth templates
+                                                'django.contrib.auth.context_processors.auth'],
+        }
+    },
+]
+
+####################################################################################################
+# Authentication
+####################################################################################################
 
 # See https://pythonhosted.org/django-auth-ldap/install.html
 # See https://docs.djangoproject.com/en/1.7/howto/auth-remote-user/
@@ -169,20 +192,38 @@ AUTH_LDAP_PROFILE_ATTR_MAP = {
     'employee_number': 'lblempnum',
 }
 
+# Add security checks for user passwords
+# AUTH_PASSWORD_VALIDATORS = [
+#     {
+#         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+#     },
+#     {
+#         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+#     },
+#     {
+#         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+#     },
+#     {
+#         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+#     },
+# ]
 
+####################################################################################################
 # Solr/Haystack Configuration
+####################################################################################################
 EDD_MAIN_SOLR = {
     'default': {
         'URL': config['solr'].get('url', 'http://localhost:8080/'),
     },
 }
 
-
-# Database
+####################################################################################################
+# Databases
+####################################################################################################
 # https://docs.djangoproject.com/en/1.7/ref/settings/#databases
 DATABASES = {
     'default': {
-        'ENGINE': config['db'].get('driver', 'transaction_hooks.backends.postgresql_psycopg2'),
+        'ENGINE': config['db'].get('driver', 'django.db.backends.postgresql'),
         'NAME': config['db'].get('database', 'edd'),
         'USER': config['db'].get('user', 'edduser'),
         'PASSWORD': config['db'].get('pass', ''),
@@ -205,6 +246,9 @@ DATABASES = {
     },
 }
 
+####################################################################################################
+# Logging
+####################################################################################################
 # Default logging configuration -- for production
 LOGGING = {
     'version': 1,
@@ -249,8 +293,9 @@ LOGGING = {
     },
 }
 
-
+####################################################################################################
 # Internationalization
+####################################################################################################
 # https://docs.djangoproject.com/en/1.7/topics/i18n/
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'America/Los_Angeles'
@@ -258,17 +303,23 @@ USE_I18N = True
 USE_L10N = True
 USE_TZ = True
 
-
+####################################################################################################
 # Static files (CSS, JavaScript, Images)
+####################################################################################################
 # https://docs.djangoproject.com/en/1.7/howto/static-files/
 # Keeping all static files in the static directory of the project
 STATIC_ROOT = os.path.join(BASE_DIR, 'static', '')
 STATIC_URL = '/static/'
 
-# File upload location
+####################################################################################################
+#  File upload location
+####################################################################################################
 MEDIA_ROOT = config['site'].get('media_root', '/var/www/uploads')
 MEDIA_URL = config['site'].get('media_url', '/uploads/')
 
+####################################################################################################
+#  local_settings.py: enables any configuration here to be overridden without changing this file.
+####################################################################################################
 try:
     from .local_settings import *
 except ImportError:
