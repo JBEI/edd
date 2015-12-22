@@ -42,6 +42,7 @@ class ColumnChoice(object):
             Line: line,
             Protocol: protocol or default,
             Study: line.study,
+            None: line,
         }.get(self._model, default)
 
     def get_field_choice(self):
@@ -330,6 +331,7 @@ class TableExport(object):
         protocol = self.worklist.protocol
         table = tables['all']
         for pk, line in lines.items():
+            print('\tBuilding row for line %s, %s' % (pk, line.name))
             # build row with study/line info
             row = self._output_row_with_line(line, protocol)
             table['%s' % (pk, )] = row
@@ -373,10 +375,13 @@ class TableExport(object):
 
     def _output_row_with_line(self, line, protocol, models=None):
         row = []
-        for column in self.options.columns:
+        print('\tUsing line %s: %s to build row' % (line.pk, line.name, ))
+        for i, column in enumerate(self.options.columns):
+            print('\tBuilding column %s: %s' % (i, column.get_heading(), ))
             if models is None or column._model in models:
                 instance = column.convert_instance_from_line(line, protocol)
                 row.append(column.get_value(instance))
+        print('\t%s' % (row, ))
         return row
 
     def _output_row_with_measure(self, measure, models=None):
