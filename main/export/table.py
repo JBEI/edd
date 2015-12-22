@@ -84,12 +84,11 @@ class ExportSelection(object):
             'userpermission_set',
             'grouppermission_set',
         )
-        allowed_study = [s for s in matched_study if s.user_can_read(user)]
-        # TODO: add in empty measurements for assays that have none
+        self._allowed_study = [s for s in matched_study if s.user_can_read(user)]
         # load all matching measurements
         self._measures = Measurement.objects.filter(
             # all measurements are from visible study
-            Q(assay__line__study__in=allowed_study),
+            Q(assay__line__study__in=self._allowed_study),
             # OR grouping finds measurements under one of passed-in parameters
             Q(assay__line__study__in=studyId) |
             Q(assay__line__in=lineId, assay__line__active=True) |
@@ -104,8 +103,8 @@ class ExportSelection(object):
             'update_ref__mod_by',
             'experimenter',
         )
-        assays = Assay.objects.filter(
-            Q(line__study__in=allowed_study),
+        self._assays = Assay.objects.filter(
+            Q(line__study__in=self._allowed_study),
             Q(line__in=lineId, line__active=True) |
             Q(pk__in=assayId, active=True) |
             Q(measurement__in=measureId, measurement__active=True),
@@ -113,9 +112,8 @@ class ExportSelection(object):
         ).select_related(
             'protocol',
         )
-        self._assays = {a.id: a for a in assays}
-        lines = Line.objects.filter(
-            Q(study__in=allowed_study),
+        self._lines = Line.objects.filter(
+            Q(study__in=self._allowed_study),
             Q(study__in=studyId) |
             Q(pk__in=lineId, active=True) |
             Q(assay__in=assayId, assay__active=True) |
@@ -125,14 +123,13 @@ class ExportSelection(object):
             Prefetch('strains', queryset=Strain.objects.order_by('id')),
             Prefetch('carbon_source', queryset=CarbonSource.objects.order_by('id')),
         )
-        self._lines = {l.id: l for l in lines}
-        self._studies = {s.id: s for s in allowed_study}
 
     @property
     def studies(self):
         """ A dict mapping Study.pk to Study for those studies included in the export and
             allowed to be viewed by the user. """
-        return self._studies
+        studies = {s.id: s for s in self._allowed_study}
+        return studies
 
     @property
     def study_columns(self):
@@ -142,7 +139,8 @@ class ExportSelection(object):
     @property
     def lines(self):
         """ A dict mapping Line.pk to Line for those lines included in the export. """
-        return self._lines
+        lines = {l.id: l for l in self._lines}
+        return lines
 
     @property
     def line_columns(self):
@@ -152,7 +150,8 @@ class ExportSelection(object):
     @property
     def assays(self):
         """ A dict mapping Assay.pk to Assay for those assays included in the export. """
-        return self._assays
+        assays = {a.id: a for a in self._assays}
+        return assays
 
     @property
     def assay_columns(self):
@@ -163,6 +162,7 @@ class ExportSelection(object):
     def measurements(self):
         """ A dict mapping Measurement.pk to Measurement for those measurements included in
             the export. """
+        # TODO: add in empty measurements for assays that have none
         return self._measures
 
 
@@ -193,36 +193,12 @@ class ExportOption(object):
 
     def __init__(self, layout=DATA_COLUMN_BY_LINE, separator=COMMA_SEPARATED, data_format=ALL_DATA,
                  line_section=False, protocol_section=False, columns=[]):
-        self._layout = layout
-        self._separator = separator
-        self._data_format = data_format
-        self._line_section = line_section
-        self._protocol_section = protocol_section
-        self._columns = columns
-
-    @property
-    def layout(self):
-        return self._layout
-
-    @property
-    def separator(self):
-        return self._separator
-
-    @property
-    def data_format(self):
-        return self._data_format
-
-    @property
-    def line_section(self):
-        return self._line_section
-
-    @property
-    def protocol_section(self):
-        return self._protocol_section
-
-    @property
-    def columns(self):
-        return self._columns
+        self.layout = layout
+        self.separator = separator
+        self.data_format = data_format
+        self.line_section = line_section
+        self.protocol_section = protocol_section
+        self.columns = columns
 
 
 def value_str(value):
@@ -331,7 +307,6 @@ class TableExport(object):
         protocol = self.worklist.protocol
         table = tables['all']
         for pk, line in lines.items():
-            print('\tBuilding row for line %s, %s' % (pk, line.name))
             # build row with study/line info
             row = self._output_row_with_line(line, protocol)
             table['%s' % (pk, )] = row
@@ -375,13 +350,10 @@ class TableExport(object):
 
     def _output_row_with_line(self, line, protocol, models=None):
         row = []
-        print('\tUsing line %s: %s to build row' % (line.pk, line.name, ))
         for i, column in enumerate(self.options.columns):
-            print('\tBuilding column %s: %s' % (i, column.get_heading(), ))
             if models is None or column._model in models:
                 instance = column.convert_instance_from_line(line, protocol)
                 row.append(column.get_value(instance))
-        print('\t%s' % (row, ))
         return row
 
     def _output_row_with_measure(self, measure, models=None):

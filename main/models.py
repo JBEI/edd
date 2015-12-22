@@ -901,8 +901,10 @@ class WorklistColumn(models.Model):
             EDDObject.to_json(), in a flattened format. """
         # Must import inside method to avoid circular import
         from .utilities import flatten_json
-        fmt_dict = flatten_json(instance.to_json() if instance else {})
-        print('>\tFormat Dict = %s' % (str(fmt_dict)))
+        fmt_dict = flatten_json(instance.to_json(depth=1) if instance else {})
+        # add in: date
+        # TODO: pass in tz based on user profile?
+        fmt_dict.update(today=arrow.now().format('YYYYMMDD'))
         return fmt_dict
 
     def __str__(self):
@@ -1026,6 +1028,7 @@ class Line(EDDObject):
 
     def to_json(self, depth=0):
         json_dict = super(Line, self).to_json(depth)
+        # for backward-compatibility, add the 'extra' item to contact dict
         contact = self.get_attr_depth('contact', depth, default={})
         if isinstance(contact, dict):
             contact['extra'] = self.contact_extra
@@ -1035,10 +1038,12 @@ class Line(EDDObject):
             'control': self.control,
             'replicate': self.replicate_id,
             'contact': contact,
-            'experimenter': self.experimenter_id,
+            'experimenter': self.get_attr_depth('experimenter', depth),
             'strain': [s.pk for s in self.strains.all()],
             'carbon': [c.pk for c in self.carbon_source.all()],
-            })
+        })
+        if depth > 0:
+            json_dict.update(study=self.study_id)
         return json_dict
 
     @property
