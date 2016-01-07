@@ -982,7 +982,10 @@ class Line(EDDObject):
 
 class MeasurementGroup(object):
     """ Does not need its own table in database, but multiple models will reference measurements
-        that are specific to a specific group category: metabolomics, proteomics, etc. """
+        that are specific to a specific group category: metabolomics, proteomics, etc. 
+        Note that when a new group type is added here, code will need to be updated elsewhere,
+        including the Javascript/Typescript front end.
+        Look for the string 'MeasurementGroupCode' in comments."""
     GENERIC = '_'
     METABOLITE = 'm'
     GENEID = 'g'
