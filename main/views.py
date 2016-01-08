@@ -569,12 +569,13 @@ class WorklistView(EDDExportView):
             if worklist_form.is_valid():
                 self._export = table.TableExport(
                     self._selection,
-                    worklist_form.get_options(),
-                    worklist_form.get_worklist(),
+                    worklist_form.options,
+                    worklist_form.worklist,
                 )
         except Exception as e:
             logger.exception("Failed to validate forms for export: %s", e)
         return {
+            'defaults_form': worklist_form.defaults_form,
             'download': payload.get('action', None) == 'download',
             'output': self._export.output() if self._export else '',
             'select_form': select_form,

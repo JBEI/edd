@@ -609,7 +609,7 @@ class WorklistForm(forms.Form):
     """ Form used for selecting worklist export options. """
     template = forms.ModelChoiceField(
         queryset=WorklistTemplate.objects.prefetch_related(
-            Prefetch('worklistcolumn_set', queryset=WorklistColumn.objects.order_by('ordering')),
+            Prefetch('worklistcolumn_set', queryset=WorklistColumn.objects.order_by('ordering', )),
         ),
         required=False,
     )
@@ -618,12 +618,18 @@ class WorklistForm(forms.Form):
         # removes default hard-coded suffix of colon character on all labels
         kwargs.setdefault('label_suffix', '')
         super(WorklistForm, self).__init__(*args, **kwargs)
+        self.defaults_form = None
+        self._options = None
         self._worklist = None
 
     def clean(self):
         data = super(WorklistForm, self).clean()
         template = data.get('template', None)
-        columns = [x.get_column() for x in template.worklistcolumn_set.order_by('ordering', )]
+        columns = []
+        if template:
+            dform = self.create_defaults_form(template)
+            if dform.is_valid():
+                columns = dform.columns
         self._options = table.ExportOption(
             layout=table.ExportOption.DATA_COLUMN_BY_LINE,
             separator=table.ExportOption.COMMA_SEPARATED,
@@ -632,20 +638,67 @@ class WorklistForm(forms.Form):
             protocol_section=False,
             columns=columns,
         )
-        self._worklist = data.get('template', None)
+        self._worklist = template
         return data
+
+    def create_defaults_form(self, template):
+        self.defaults_form = WorklistDefaultsForm(self.data, self.files, template=template)
+        return self.defaults_form
 
     def get_options(self):
         if self._options is None:
             if not self.is_valid():
                 raise ValueError("Export options are invalid")
         return self._options
+    options = property(get_options)
 
     def get_worklist(self):
         if self._worklist is None:
             if not self.is_valid():
                 raise ValueError("Worklist options are invalid")
         return self._worklist
+    worklist = property(get_worklist)
+
+
+class WorklistDefaultsForm(forms.Form):
+    """ Sub-form used to select the default values used in columns of a worklist export. """
+
+    def __init__(self, *args, **kwargs):
+        self._template = kwargs.pop('template', None)
+        self._lookup = {}
+        self._column = []
+        super(WorklistDefaultsForm, self).__init__(*args, **kwargs)
+        # create a field for default values in each column of template
+        for x in self._template.worklistcolumn_set.order_by('ordering', ):
+            form_name = 'col.%s' % (x.pk, )
+            self.initial[form_name] = x.get_default()
+            self.fields[form_name] = forms.CharField(
+                initial=x.get_default(),
+                label=str(x),
+                required=False,
+            )
+            self._lookup[form_name] = x
+            self._column.append(x)
+
+    def clean(self):
+        data = super(WorklistDefaultsForm, self).clean()
+        # this is SUPER GROSS, but apparently the only way to change the form output from here is
+        #   to muck with the source data, by poking the undocumented _mutable property of QueryDict
+        self.data._mutable = True
+        # if no incoming data for field, fall back to default (initial) instead of empty string
+        for name, field in self.fields.items():
+            value = field.widget.value_from_datadict(self.data, self.files, self.add_prefix(name))
+            if not value:
+                value = field.initial
+            self.data[name] = data[name] = value
+            self._lookup[name].default_value = value
+        # flip back _mutable property
+        self.data._mutable = False
+        return data
+
+    def get_columns(self):
+        return [x.get_column() for x in self._column]
+    columns = property(get_columns)
 
 
 class ExportOptionForm(forms.Form):
