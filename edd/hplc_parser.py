@@ -67,6 +67,7 @@ def parse_hplc_file(input_file_path):
 		for line in table_header:
 			section_width_carryover = 0
 			for section_width in section_widths:
+
 				# slice a segment off the line of the correct width
 				width = section_width_carryover + section_width
 				segment = line[:width]
@@ -78,12 +79,43 @@ def parse_hplc_file(input_file_path):
 					section_width_carryover = 0
 				else: # account for extra character in next section
 					section_width_carryover = 1
-
 				column_headers[section_index] += segment
 
-		# TODO: at this point you have the 'column_headers', but they are not clean
-		
-		# collect data
+		# clean up the column headers
+		for i in range(len(column_headers)):
+			column_headers[i] = column_headers[i].split()
 
+		# collect the data
+		# each sample is indexed by sample name
+		samples = {}
+		line = input_file.readline()
 
+		# each value is indexed by column header
+		entry_template = {}
+		for column_header in column_headers:
+			entry_template[column_header] = []
+
+		previous_name = None
+		while line != '':
+			if line == '\n':
+				continue
+
+			# get the name of the sample related to the row
+			sample_name = line[section_widths[0]].strip()
+			if not sample_name:
+				sample_name = previous_name
+			else:
+				previous_name = sample_name
+
+			# initilize the sample entry
+			if not samples.has_key(sample_name):
+				samples[sample_name] = dict(entry_template)
+
+			# collect the other data items
+			for row_index in range(section_widths)[1:]:
+				segment = line[:section_widths[row_index]].strip()
+				line = line[section_widths[row_index]:]
+				samples[sample_name][column_headers[row_index]].append(segment)
+
+			line = input_file.readline()
 
