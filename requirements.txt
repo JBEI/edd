@@ -9,7 +9,7 @@ django-form-utils==1.0.3
 django-threadlocals==0.8
 enum34==1.0.4
 future==0.15.2
-jdcal==1.0
+jdcal==1.2
 jsonpickle==0.9.2
 ndg-httpsclient==0.4.0
 numpy==1.9.2
