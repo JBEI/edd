@@ -28,22 +28,28 @@ class ColumnChoice(object):
 
     def convert_instance_from_measure(self, measure, default=None):
         from main.models import Assay, Line, Measurement, Protocol, Study
-        return {
-            Assay: measure.assay,
-            Line: measure.assay.line,
-            Measurement: measure,
-            Protocol: measure.assay.protocol,
-            Study: measure.assay.line.study,
-        }.get(self._model, default)
+        try:
+            return {
+                Assay: measure.assay,
+                Line: measure.assay.line,
+                Measurement: measure,
+                Protocol: measure.assay.protocol,
+                Study: measure.assay.line.study,
+            }.get(self._model, default)
+        except AttributeError:
+            return default
 
     def convert_instance_from_line(self, line, protocol, default=None):
         from main.models import Line, Protocol, Study
-        return {
-            Line: line,
-            Protocol: protocol or default,
-            Study: line.study,
-            None: line,
-        }.get(self._model, default)
+        try:
+            return {
+                Line: line,
+                Protocol: protocol or default,
+                Study: line.study,
+                None: line,
+            }.get(self._model, default)
+        except AttributeError:
+            return default
 
     def get_field_choice(self):
         return (self._key, self._label)
@@ -54,9 +60,12 @@ class ColumnChoice(object):
     def get_key(self):
         return self._key
 
-    def get_value(self, instance):
+    def get_value(self, instance, **kwargs):
         try:
-            return self._lookup(instance, **self._lookup_kwargs)
+            lookup_kwargs = {}
+            lookup_kwargs.update(**self._lookup_kwargs)
+            lookup_kwargs.update(**kwargs)
+            return self._lookup(instance, **lookup_kwargs)
         except Exception as e:
             logger.exception('Failed to get column value: %s', e)
             return ''
@@ -192,13 +201,16 @@ class ExportOption(object):
     )
 
     def __init__(self, layout=DATA_COLUMN_BY_LINE, separator=COMMA_SEPARATED, data_format=ALL_DATA,
-                 line_section=False, protocol_section=False, columns=[]):
+                 line_section=False, protocol_section=False, columns=[], blank_columns=[],
+                 blank_mod=0):
         self.layout = layout
         self.separator = separator
         self.data_format = data_format
         self.line_section = line_section
         self.protocol_section = protocol_section
         self.columns = columns
+        self.blank_columns = blank_columns
+        self.blank_mod = blank_mod
 
 
 def value_str(value):
@@ -306,10 +318,18 @@ class TableExport(object):
         lines = self.selection.lines
         protocol = self.worklist.protocol
         table = tables['all']
-        for pk, line in lines.items():
+        counter = 0
+        for i, (pk, line) in enumerate(lines.items()):
             # build row with study/line info
             row = self._output_row_with_line(line, protocol)
             table['%s' % (pk, )] = row
+            # when modulus set, insert 'blank' row every modulus rows
+            if self.options.blank_mod and not (i + 1) % self.options.blank_mod:
+                counter += 1
+                blank = self._output_row_with_line(
+                    None, protocol, columns=self.options.blank_columns, blank=counter,
+                )
+                table['blank%s' % i] = blank
 
     def _init_row_for_line(self, tables, line):
         line_section = self.options.line_section
@@ -348,12 +368,14 @@ class TableExport(object):
         from main.models import Line, Study
         return self._output_header([Line, Study, ])
 
-    def _output_row_with_line(self, line, protocol, models=None):
+    def _output_row_with_line(self, line, protocol, models=None, columns=None, **kwargs):
         row = []
-        for i, column in enumerate(self.options.columns):
+        if columns is None:
+            columns = self.options.columns
+        for i, column in enumerate(columns):
             if models is None or column._model in models:
                 instance = column.convert_instance_from_line(line, protocol)
-                row.append(column.get_value(instance))
+                row.append(column.get_value(instance, **kwargs))
         return row
 
     def _output_row_with_measure(self, measure, models=None):

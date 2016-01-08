@@ -873,13 +873,23 @@ class WorklistColumn(models.Model):
     # allow ordering of metadata
     ordering = models.IntegerField(blank=True, null=True, unique=True)
 
-    def get_column(self):
+    def get_column(self, **kwargs):
+        type_context = None
+
+        def lookup_format(instance, **kwargs):
+            return self.get_default() % self.get_format_dict(instance, **kwargs)
+
+        def lookup_meta(instance, **kwargs):
+            if instance:
+                return instance.metadata_get(self.meta_type)
+            return self.get_default() % kwargs
+
         if self.meta_type:
             type_context = self.meta_type.for_context
-            lookup = lambda x: x.metadata_get(self.meta_type) if x else self.get_default()
+            lookup = lookup_meta
         else:
             type_context = None
-            lookup = lambda x: self.get_default() % self.get_format_dict(x)
+            lookup = lookup_format
         model = {
             MetadataType.STUDY: Study,
             MetadataType.LINE: Line,
@@ -896,7 +906,7 @@ class WorklistColumn(models.Model):
             return self.meta_type.default_value
         return ''
 
-    def get_format_dict(self, instance):
+    def get_format_dict(self, instance, *args, **kwargs):
         """ Build dict used in format string for columns that use it. This implementation re-uses
             EDDObject.to_json(), in a flattened format. """
         # Must import inside method to avoid circular import
@@ -905,6 +915,7 @@ class WorklistColumn(models.Model):
         # add in: date
         # TODO: pass in tz based on user profile?
         fmt_dict.update(today=arrow.now().format('YYYYMMDD'))
+        fmt_dict.update(**kwargs)
         return fmt_dict
 
     def __str__(self):

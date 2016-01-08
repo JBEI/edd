@@ -5,6 +5,7 @@ import json
 import logging
 
 from builtins import str
+from collections import OrderedDict
 from copy import deepcopy
 from django import forms
 from django.contrib.auth import get_user_model
@@ -619,6 +620,7 @@ class WorklistForm(forms.Form):
         kwargs.setdefault('label_suffix', '')
         super(WorklistForm, self).__init__(*args, **kwargs)
         self.defaults_form = None
+        self.flush_form = None
         self._options = None
         self._worklist = None
 
@@ -626,10 +628,16 @@ class WorklistForm(forms.Form):
         data = super(WorklistForm, self).clean()
         template = data.get('template', None)
         columns = []
+        blank_mod = 0
+        blank_columns = []
         if template:
             dform = self.create_defaults_form(template)
+            fform = self.create_flush_form(template)
             if dform.is_valid():
                 columns = dform.columns
+            if fform.is_valid():
+                blank_mod = fform.cleaned_data['row_count']
+                blank_columns = fform.columns
         self._options = table.ExportOption(
             layout=table.ExportOption.DATA_COLUMN_BY_LINE,
             separator=table.ExportOption.COMMA_SEPARATED,
@@ -637,13 +645,23 @@ class WorklistForm(forms.Form):
             line_section=False,
             protocol_section=False,
             columns=columns,
+            blank_columns=blank_columns,
+            blank_mod=blank_mod,
         )
         self._worklist = template
         return data
 
     def create_defaults_form(self, template):
-        self.defaults_form = WorklistDefaultsForm(self.data, self.files, template=template)
+        self.defaults_form = WorklistDefaultsForm(
+            self.data, self.files, prefix='defaults', template=template,
+        )
         return self.defaults_form
+
+    def create_flush_form(self, template):
+        self.flush_form = WorklistFlushForm(
+            self.data, self.files, prefix='flush', template=template,
+        )
+        return self.flush_form
 
     def get_options(self):
         if self._options is None:
@@ -665,20 +683,21 @@ class WorklistDefaultsForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         self._template = kwargs.pop('template', None)
-        self._lookup = {}
-        self._column = []
+        self._lookup = OrderedDict()
+        self._created_fields = {}
         super(WorklistDefaultsForm, self).__init__(*args, **kwargs)
         # create a field for default values in each column of template
         for x in self._template.worklistcolumn_set.order_by('ordering', ):
             form_name = 'col.%s' % (x.pk, )
             self.initial[form_name] = x.get_default()
-            self.fields[form_name] = forms.CharField(
+            self.fields[form_name] = self._created_fields[form_name] = forms.CharField(
+                help_text=x.help_text,
                 initial=x.get_default(),
                 label=str(x),
                 required=False,
+                widget=forms.TextInput(attrs={'size': 30}),
             )
             self._lookup[form_name] = x
-            self._column.append(x)
 
     def clean(self):
         data = super(WorklistDefaultsForm, self).clean()
@@ -686,19 +705,28 @@ class WorklistDefaultsForm(forms.Form):
         #   to muck with the source data, by poking the undocumented _mutable property of QueryDict
         self.data._mutable = True
         # if no incoming data for field, fall back to default (initial) instead of empty string
-        for name, field in self.fields.items():
-            value = field.widget.value_from_datadict(self.data, self.files, self.add_prefix(name))
+        for name, field in self._created_fields.items():
+            key = self.add_prefix(name)
+            value = field.widget.value_from_datadict(self.data, self.files, key)
             if not value:
                 value = field.initial
-            self.data[name] = data[name] = value
+            self.data[key] = data[key] = value
             self._lookup[name].default_value = value
         # flip back _mutable property
         self.data._mutable = False
         return data
 
     def get_columns(self):
-        return [x.get_column() for x in self._column]
+        return [x.get_column() for x in self._lookup.values()]
     columns = property(get_columns)
+
+
+class WorklistFlushForm(WorklistDefaultsForm):
+    """ Adds a field to take a number of rows to output before inserting a flush row with selected
+        defaults. Entering 0 means no flush rows. """
+    row_count = forms.IntegerField(
+        initial=0, min_value=0, required=False, widget=forms.NumberInput(attrs={'size': 5}),
+    )
 
 
 class ExportOptionForm(forms.Form):

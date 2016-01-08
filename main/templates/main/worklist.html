@@ -74,7 +74,22 @@
     <div class="sectionContent exportOptions">
       {{ select_form.as_p }}
       {{ worklist_form.as_p }}
-      {{ defaults_form.as_p }}
+      {% if defaults_form %}
+      <div class="disclose discloseHide">
+        <a href="#" class="discloseLink">Modify Column Default Values</a>
+        <div class="discloseBody">
+          {{ defaults_form.as_p }}
+        </div>
+      </div>
+      {% endif %}
+      {% if flush_form %}
+      <div class="disclose discloseHide">
+        <a href="#" class="discloseLink">Add Flush Rows</a>
+        <div class="discloseBody">
+          {{ flush_form.as_p }}
+        </div>
+      </div>
+      {% endif %}
       <button type="submit" name="action" value="apply">Apply</button>
       <button type="submit" name="action" value="download">Download</button>
     </div>

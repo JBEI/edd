@@ -577,6 +577,7 @@ class WorklistView(EDDExportView):
         return {
             'defaults_form': worklist_form.defaults_form,
             'download': payload.get('action', None) == 'download',
+            'flush_form': worklist_form.flush_form,
             'output': self._export.output() if self._export else '',
             'select_form': select_form,
             'selection': self._selection,
