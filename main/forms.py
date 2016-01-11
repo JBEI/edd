@@ -149,13 +149,13 @@ class RegistryAutocompleteWidget(AutocompleteWidget):
             Strain.objects.get(registry_id=value)
             return value
         except ValueError as e:
-            logger.error('Failed to load Strain with registry_id %s: %s' % (value, e, ))
+            logger.exception(('Error querying for an EDD strain with registry_id %s' % value))
         except Strain.DoesNotExist as e:
-            logger.warning('No Strain found with registry_id %s, searching ICE' % (value, ))
+            logger.info('No EDD Strain found with registry_id %s. Searching ICE...' % (value, ))
             try:
                 update = Update.load_update()
                 ice = IceApi(user_email=update.mod_by.email)
-                (part, url) = ice.fetch_part(value, suppress_errors=True)
+                (part, url) = ice.fetch_part(value)
                 if part:
                     strain = Strain(
                         name=part['name'],
@@ -165,9 +165,9 @@ class RegistryAutocompleteWidget(AutocompleteWidget):
                         )
                     strain.save()
                     return value
-                logger.error('No strain in ICE with registry_id %s' % (value, ))
+                logger.error('No ICE strain %s was found' % value)
             except Exception as e:
-                logger.error('Failed to load strain %s from ICE: %s' % (value, str(e)))
+                logger.exception('Failed to load strain %s from ICE' % value)
 
         return None
 

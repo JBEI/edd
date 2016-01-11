@@ -203,7 +203,8 @@ def email_admins(subject, message, logger):
 
     except Exception as exc:
         # just log the exception since the email was most likely generated as an indication of error
-        logger.exception(exc)
+        # Note that logger.exception automatically includes the traceback in its log.
+        logger.exception('Error emailing administrators. Subject = "%s"' % subject)
     finally:
         logger.debug("calling sendmail's quit()")
         server.quit()

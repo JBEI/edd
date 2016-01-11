@@ -9,7 +9,7 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.contrib.sites.models import Site
 from django.db.models import Aggregate
-from django.db.models.sql.aggregates import Aggregate as SQLAggregate
+from django.db.models.aggregates import Aggregate as SQLAggregate
 from six import string_types
 from threadlocals.threadlocals import get_current_request
 from uuid import UUID

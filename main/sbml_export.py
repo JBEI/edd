@@ -51,7 +51,7 @@ from collections import defaultdict, OrderedDict
 from six import string_types
 
 from .models import (
-    Assay, Attachment, MeasurementType, MeasurementUnit, Metabolite, MetaboliteExchange,
+    Attachment, MeasurementType, MeasurementUnit, Metabolite, MetaboliteExchange,
     MetaboliteSpecies, Protocol, SBMLTemplate,
     )
 from .utilities import interpolate_at, line_export_base

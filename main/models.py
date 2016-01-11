@@ -558,7 +558,7 @@ class Study(EDDObject):
     class Meta:
         db_table = 'study'
         verbose_name_plural = 'Studies'
-    object_ref = models.OneToOneField(EDDObject, parent_link=True)
+    object_ref = models.OneToOneField(EDDObject, parent_link=True, related_name='+')
     # contact info has two fields to support:
     # 1. linking to a specific user in EDD
     # 2. "This is data I got from 'Improving unobtanium production in Bio-Widget using foobar'
@@ -704,6 +704,7 @@ class StudyPermission(models.Model):
         return self.get_who_label()
 
 
+@python_2_unicode_compatible
 class UserPermission(StudyPermission):
     class Meta:
         db_table = 'study_user_permission'
@@ -728,6 +729,7 @@ class UserPermission(StudyPermission):
         return 'u:%(user)s' % {'user': self.user.username}
 
 
+@python_2_unicode_compatible
 class GroupPermission(StudyPermission):
     class Meta:
         db_table = 'study_group_permission'
@@ -752,6 +754,7 @@ class GroupPermission(StudyPermission):
         return 'g:%(group)s' % {'group': self.group.name}
 
 
+@python_2_unicode_compatible
 class Protocol(EDDObject):
     """ A defined method of examining a Line. """
     class Meta:
@@ -771,7 +774,7 @@ class Protocol(EDDObject):
         (CATEGORY_TPOMICS, 'Transcriptomics / Proteomics'),
     )
 
-    object_ref = models.OneToOneField(EDDObject, parent_link=True)
+    object_ref = models.OneToOneField(EDDObject, parent_link=True, related_name='+')
     owned_by = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='protocol_set')
     variant_of = models.ForeignKey('self', blank=True, null=True, related_name='derived_set')
     default_units = models.ForeignKey(
@@ -851,6 +854,7 @@ class Strain(EDDObject, LineProperty):
         return json_dict
 
 
+@python_2_unicode_compatible
 class CarbonSource(EDDObject, LineProperty):
     """ Information about carbon sources, isotope labeling. """
     class Meta:
@@ -880,7 +884,7 @@ class Line(EDDObject):
     study = models.ForeignKey(Study)
     control = models.BooleanField(default=False)
     replicate = models.ForeignKey('self', blank=True, null=True)
-    object_ref = models.OneToOneField(EDDObject, parent_link=True)
+    object_ref = models.OneToOneField(EDDObject, parent_link=True, related_name='+')
     contact = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True,
                                 related_name='line_contact_set')
     contact_extra = models.TextField()
@@ -1266,7 +1270,7 @@ class MeasurementFormat(object):
 
 @python_2_unicode_compatible
 class Measurement(models.Model):
-    """ A plot of data points for an (assay, measurement type) pair. """
+    """ A set of data points for an (assay, measurement type) pair. """
     class Meta:
         db_table = 'measurement'
     assay = models.ForeignKey(Assay)

@@ -17,7 +17,7 @@
     },
 
     "db": {
-        "driver": "transaction_hooks.backends.postgresql_psycopg2",
+        "driver": "django.db.backends.postgresql",
         "user": "edduser",
         "pass": "PASSWORD FOR EDDUSER",
         "host": "localhost",
