@@ -19,8 +19,34 @@ declare module StudyD {
     interface UniqueIDToValue {
         [index: number]: string;
     }
+    interface RecordIDToBoolean {
+        [index: string]: boolean;
+    }
+    class ProgressiveFilteringWidget {
+        allFilters: GenericFilterSection[];
+        assayFilters: GenericFilterSection[];
+        metaboliteFilters: GenericFilterSection[];
+        proteinFilters: GenericFilterSection[];
+        geneFilters: GenericFilterSection[];
+        measurementFilters: GenericFilterSection[];
+        metaboliteDataProcessed: boolean;
+        proteinDataProcessed: boolean;
+        geneDataProcessed: boolean;
+        genericDataProcessed: boolean;
+        studyDObject: any;
+        mainGraphObject: any;
+        constructor(studyDObject: any);
+        prepareFilteringSection(): void;
+        repopulateFilteringSection(): void;
+        processIncomingMeasurementRecords(measures: any, types: any): void;
+        buildAssayIDSet(): any[];
+        buildFilteredMeasurements(): any[];
+        checkRedrawRequired(force?: boolean): boolean;
+    }
     class GenericFilterSection {
         uniqueValues: UniqueIDToValue;
+        uniqueIndexes: ValueToUniqueID;
+        uniqueIndexCounter: number;
         uniqueValuesOrder: number[];
         filterHash: ValueToUniqueList;
         checkboxes: {
@@ -47,11 +73,11 @@ declare module StudyD {
         constructor();
         configure(): void;
         createContainerObjects(): void;
-        processFilteringData(ids: string[]): void;
-        buildUniqueValuesHash(ids: string[]): ValueToUniqueID;
+        populateFilterFromRecordIDs(ids: string[]): void;
+        updateUniqueIndexesHash(ids: string[]): void;
         isFilterUseful(): boolean;
         addToParent(parentDiv: any): void;
-        applyBackgroundStyle(darker: number): void;
+        applyBackgroundStyle(darker: boolean): void;
         populateTable(): void;
         anyCheckboxesChangedSinceLastInquiry(): boolean;
         applyProgressiveFiltering(ids: any[]): any;
@@ -62,27 +88,27 @@ declare module StudyD {
     }
     class StrainFilterSection extends GenericFilterSection {
         configure(): void;
-        buildUniqueValuesHash(ids: string[]): ValueToUniqueID;
+        updateUniqueIndexesHash(ids: string[]): void;
     }
     class CarbonSourceFilterSection extends GenericFilterSection {
         configure(): void;
-        buildUniqueValuesHash(ids: string[]): ValueToUniqueID;
+        updateUniqueIndexesHash(ids: string[]): void;
     }
     class CarbonLabelingFilterSection extends GenericFilterSection {
         configure(): void;
-        buildUniqueValuesHash(ids: string[]): ValueToUniqueID;
+        updateUniqueIndexesHash(ids: string[]): void;
     }
     class LineNameFilterSection extends GenericFilterSection {
         configure(): void;
-        buildUniqueValuesHash(ids: string[]): ValueToUniqueID;
+        updateUniqueIndexesHash(ids: string[]): void;
     }
     class ProtocolFilterSection extends GenericFilterSection {
         configure(): void;
-        buildUniqueValuesHash(ids: string[]): ValueToUniqueID;
+        updateUniqueIndexesHash(ids: string[]): void;
     }
     class AssaySuffixFilterSection extends GenericFilterSection {
         configure(): void;
-        buildUniqueValuesHash(ids: string[]): ValueToUniqueID;
+        updateUniqueIndexesHash(ids: string[]): void;
     }
     class MetaDataFilterSection extends GenericFilterSection {
         metaDataID: string;
@@ -92,42 +118,40 @@ declare module StudyD {
         configure(): void;
     }
     class LineMetaDataFilterSection extends MetaDataFilterSection {
-        buildUniqueValuesHash(ids: string[]): ValueToUniqueID;
+        updateUniqueIndexesHash(ids: string[]): void;
     }
     class AssayMetaDataFilterSection extends MetaDataFilterSection {
-        buildUniqueValuesHash(ids: string[]): ValueToUniqueID;
+        updateUniqueIndexesHash(ids: string[]): void;
     }
     class MetaboliteCompartmentFilterSection extends GenericFilterSection {
         configure(): void;
-        buildUniqueValuesHash(amIDs: string[]): ValueToUniqueID;
+        updateUniqueIndexesHash(amIDs: string[]): void;
     }
     class MeasurementFilterSection extends GenericFilterSection {
         loadPending: boolean;
         configure(): void;
         isFilterUseful(): boolean;
-        buildUniqueValuesHash(mIds: string[]): ValueToUniqueID;
+        updateUniqueIndexesHash(mIds: string[]): void;
     }
     class MetaboliteFilterSection extends GenericFilterSection {
         loadPending: boolean;
         configure(): void;
         isFilterUseful(): boolean;
-        buildUniqueValuesHash(amIDs: string[]): ValueToUniqueID;
+        updateUniqueIndexesHash(amIDs: string[]): void;
     }
     class ProteinFilterSection extends GenericFilterSection {
         loadPending: boolean;
         configure(): void;
         isFilterUseful(): boolean;
-        buildUniqueValuesHash(amIDs: string[]): ValueToUniqueID;
+        updateUniqueIndexesHash(amIDs: string[]): void;
     }
     class GeneFilterSection extends GenericFilterSection {
         loadPending: boolean;
         configure(): void;
         isFilterUseful(): boolean;
-        buildUniqueValuesHash(amIDs: string[]): ValueToUniqueID;
+        updateUniqueIndexesHash(amIDs: string[]): void;
     }
     function prepareIt(): void;
-    function prepareFilteringSection(): void;
-    function repopulateFilteringSection(): void;
     function processCarbonBalanceData(): void;
     function prepareAfterLinesTable(): void;
     function requestAssayData(assay: any): void;
