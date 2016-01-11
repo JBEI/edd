@@ -42,6 +42,7 @@
 from __future__ import division
 
 import json
+import logging
 import math
 import re
 import sys
@@ -55,6 +56,9 @@ from .models import (
     MetaboliteSpecies, Protocol, SBMLTemplate,
     )
 from .utilities import interpolate_at, line_export_base
+
+
+logger = logging.getLogger(__name__)
 
 
 ########################################################################
@@ -404,7 +408,7 @@ class sbml_info(object):
             # signal to delete any 'custom' connections between the given measurement
             # and any reactant, and then return the default.
             if (str(species_id) == ""):
-                print("DELETING RECORD: %d:%d" % (self._chosen_template.id, metabolite.id))
+                logger.info("DELETING RECORD: %d:%d" % (self._chosen_template.id, metabolite.id))
                 MetaboliteSpecies.objects.filter(
                     sbml_template_id=self._chosen_template.id,
                     measurement_type_id=metabolite.id
@@ -412,14 +416,14 @@ class sbml_info(object):
                 self._modified.add(str(species_id))
         else:
             species_id = ""
-        print("\treassign 1: %s : %s" % (metabolite.id, species_id))
+        logger.debug("\treassign 1: %s : %s" % (metabolite.id, species_id))
         # If the given species ID doesn't resolve to anything, it's got to be an
         # erroneous value entered by a user, and we should return the current
         # association with the measurement type if there is one.
         temp_species = self._species_by_id.get(species_id, None)
         if (temp_species is None):
             sp = self._resolved_species.get(metabolite.id, None)
-            print('\tresolved %s to %s' % (metabolite.id, sp))
+            logger.debug('\tresolved %s to %s' % (metabolite.id, sp))
             if (sp is None):
                 return ""
             return sp.id
@@ -432,16 +436,16 @@ class sbml_info(object):
         # update/create it.  (We know the species ID is valid by now.)
         # First, clear out the old record:
         try:
-            print("DELETING RECORD 2: %d:%d" % (self._chosen_template.id, metabolite.id))
+            logger.info("DELETING RECORD 2: %d:%d" % (self._chosen_template.id, metabolite.id))
             MetaboliteSpecies.objects.filter(
                 sbml_template_id=self._chosen_template.id,
                 measurement_type_id=metabolite.id
             ).delete()
             self._modified.add(species_id)
         except Exception as e:
-            print(e)
+            logger.exception('Failed to delete metabolite species record: %s', e)
         # insert the new record
-        print("CREATING RECORD %s:%s" % (metabolite.short_name, species_id))
+        logger.debug("CREATING RECORD %s:%s" % (metabolite.short_name, species_id))
         MetaboliteSpecies.objects.create(
             sbml_template=self._chosen_template,
             measurement_type=metabolite,
@@ -458,7 +462,7 @@ class sbml_info(object):
         exchange_id = str(exchange_id)
         if (exchange_id is not None):
             if (exchange_id == ""):
-                print("DELETING EXCHANGE RECORD")
+                logger.info("DELETING EXCHANGE RECORD")
                 MetaboliteExchange(
                     sbml_template_id=self._chosen_template.id,
                     measurement_type_id=metabolite.id
@@ -475,14 +479,14 @@ class sbml_info(object):
         if (old_met is not None) and (old_met.id == metabolite.id):
             return exchange_id
         try:
-            print("DELETING EXCHANGE RECORD 2")
+            logger.info("DELETING EXCHANGE RECORD 2")
             MetaboliteExchange.objects.get(
                 sbml_template_id=self._chosen_template.id,
                 measurement_type_id=metabolite.id
             ).delete()
         except Exception as e:
-            print(e)
-        print("CREATING RECORD %s:%s" % (metabolite.short_name, exchange_id))
+            logger.exception('Failed to delete metabolite exchange record: %s', e)
+        logger.debug("CREATING RECORD %s:%s" % (metabolite.short_name, exchange_id))
         MetaboliteExchange.objects.create(
             sbml_template=self._chosen_template,
             measurement_type=metabolite,
@@ -1005,7 +1009,7 @@ class line_assay_data(line_export_base):
     # XXX CACHING STUFF (see utilities.py)
     def _step_0_pre_fetch_data(self):
         if self.debug:
-            print("STEP 0: pre-fetching measurement data")
+            logger.debug("STEP 0: pre-fetching measurement data")
         self._fetch_cache_data()
 
     def _find_min_max_x_in_measurements(self, measurements, defined_only=None):
@@ -1031,7 +1035,7 @@ class line_assay_data(line_export_base):
         Step 2: Find and filter OD Data
         """
         if self.debug:
-            print("STEP 2: filter OD data")
+            logger.debug("STEP 2: filter OD data")
         od_protocols = self._get_protocols_by_category(Protocol.CATEGORY_OD)
         if (len(od_protocols) == 0):
             raise ValueError("Cannot find the OD600 protocol by name!")
@@ -1175,7 +1179,7 @@ class line_assay_data(line_export_base):
     def _step_3_get_hplc_data(self):
         """private method"""
         if self.debug:
-            print("STEP 3: get HPLC data")
+            logger.debug("STEP 3: get HPLC data")
         self._process_multi_purpose_protocol(Protocol.CATEGORY_HPLC)
 
     # this function is used to extract data for HPLC, LC-MS, and transcriptomics
@@ -1314,7 +1318,7 @@ class line_assay_data(line_export_base):
     def _step_4_get_lcms_data(self):
         """private method"""
         if self.debug:
-            print("STEP 4: get LCMS data")
+            logger.debug("STEP 4: get LCMS data")
         self._process_multi_purpose_protocol(
             Protocol.CATEGORY_LCMS,
             process_carbon_ratios_separately=True,
@@ -1323,7 +1327,7 @@ class line_assay_data(line_export_base):
     def _step_5_get_ramos_data(self):
         """private method"""
         if self.debug:
-            print("STEP 5: get RAMOS data")
+            logger.debug("STEP 5: get RAMOS data")
         ramos_protocols = self._get_protocols_by_category(Protocol.CATEGORY_RAMOS)
         if (len(ramos_protocols) == 0):
             return
@@ -1371,7 +1375,7 @@ class line_assay_data(line_export_base):
     def _step_6_get_transcriptomics_proteomics(self):
         """private method"""
         if self.debug:
-            print("STEP 6: get transcriptomics/proteomics data")
+            logger.debug("STEP 6: get transcriptomics/proteomics data")
         self._process_multi_purpose_protocol(Protocol.CATEGORY_TPOMICS)
 
     def _get_ramos_conversion(self, short_name):
@@ -1386,7 +1390,7 @@ class line_assay_data(line_export_base):
     def _step_7_calculate_fluxes(self):
         """private method"""
         if self.debug:
-            print("STEP 7: calculate fluxes")
+            logger.debug("STEP 7: calculate fluxes")
         all_checked_measurements = []
         # measurement_ids = []
         measurement_protocol_categories = {}
@@ -1403,7 +1407,7 @@ class line_assay_data(line_export_base):
                             measurement_protocol_categories[m.id] = category
                             measurement_assays[m.id] = assay
                         elif (is_checked is None) and self.debug:
-                            print("  warning: skipping measurement %d for assay '%s'" %
+                            logger.debug("  warning: skipping measurement %d for assay '%s'" %
                                   m.id, m.assay.name)
         # FIXME not sure this should be necessary...
         for m in self._od_measurements:
@@ -1412,7 +1416,7 @@ class line_assay_data(line_export_base):
                     all_checked_measurements.append(m)
         all_checked_measurements.sort(key=lambda a: a.short_name.lower())
         if self.debug:
-            print("  data fetched")
+            logger.debug("  data fetched")
         od_mtype = MeasurementType.objects.get(short_name="OD")
         for m in all_checked_measurements:
             # mtype = m.measurement_type
@@ -2161,7 +2165,7 @@ class line_sbml_export (line_assay_data, sbml_info):
         Private method
         """
         if self.debug:
-            print("STEP 1: get template files")
+            logger.debug("STEP 1: get template files")
         # TODO figure out something sensible for unit testing
         if (len(self._sbml_templates) == 0):
             if (not test_mode):
@@ -2176,7 +2180,7 @@ class line_sbml_export (line_assay_data, sbml_info):
     def _step_8_pre_parse_and_match(self, sbml_file=None):
         """private method"""
         if self.debug:
-            print("STEP 8: match to species in SBML file")
+            logger.debug("STEP 8: match to species in SBML file")
         self._process_sbml(sbml_file=sbml_file)
         if (len(self._species_data_types_available) > 0):
             # First we attempt to locate the form element that describes the set of
@@ -2196,7 +2200,7 @@ class line_sbml_export (line_assay_data, sbml_info):
             # by passing a defined value, even if just an empty string, instead of
             # 'undef', for any spmatch# element that was on the previous incarnation
             # of the page.
-            print("\tAll species matches: %s" % species_matches)
+            logger.debug("\tAll species matches: %s" % species_matches)
             for mid in sorted(list(self._species_data_types_available)):
                 metabolite = self._metabolites_by_id[mid]
                 form_element_id = "spmatch%d" % mid
@@ -2204,7 +2208,7 @@ class line_sbml_export (line_assay_data, sbml_info):
                     metabolite=metabolite,
                     species_id=species_matches.get(form_element_id, None)
                 )
-                print("\tAssigned %s to %s" % (mid, species_match))
+                logger.debug("\tAssigned %s to %s" % (mid, species_match))
                 # We pass in the contents of the relevant form element here, and the
                 # code in the sbml_info class checks to see if it matches a known
                 # species.   If it does, the measurement type is reassigned to the
@@ -2291,14 +2295,14 @@ class line_sbml_export (line_assay_data, sbml_info):
                     minimum=m_lo,
                     values=[d.conc for d in species_data[mid]])
             except ValueError as e:
-                print(e)
+                logger.exception('Failed to assign concentration: %s', e)
         for mid in flux_data.keys():
             metabolite = self._metabolites_by_id[mid]
             values = [d.flux for d in flux_data[mid] if d.flux is not None]
             try:
                 self._assign_value_to_flux(metabolite.id, values)
             except ValueError as e:
-                print(e)
+                logger.exception('Failed to assign flux value: %s', e)
         # now biomass
         values = [d.flux for d in self._biomass_data[t]]
         self._assign_value_to_flux(self._biomass_metab.id, values)
