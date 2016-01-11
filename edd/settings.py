@@ -16,13 +16,12 @@ import os
 import ldap
 from django_auth_ldap.config import LDAPSearch, GroupOfUniqueNamesType
 from django.conf.global_settings import TEMPLATE_CONTEXT_PROCESSORS as TCP
-from django.conf.global_settings import TEMPLATE_CONTEXT_PROCESSORS as \
-    DEFAULT_TEMPLATE_CONTEXT_PROCESSORS
 from kombu.serialization import register
 import psycopg2.extensions
 
-from edd_utils.parsers.json_encoders import datetime_dumps, datetime_loads, \
-    EXTENDED_JSON_CONTENT_TYPE
+from edd_utils.parsers.json_encoders import (
+    datetime_dumps, datetime_loads, EXTENDED_JSON_CONTENT_TYPE
+)
 
 
 ####################################################################################################
@@ -142,13 +141,13 @@ TEMPLATES = [
         'OPTIONS': {
             'debug': DEBUG,  # only strictly needed when the value differs from DEBUG. Included
                              # explicitly here since it was in the prior version of this file
-            'context_processors': DEFAULT_TEMPLATE_CONTEXT_PROCESSORS + [
-                                                # this gives us access to the original request in
-                                                # templates. see e.g.:
-                                                # http://stackoverflow.com/questions/2882490
-                                                'django.template.context_processors.request',
-                                                # required to enable auth templates
-                                                'django.contrib.auth.context_processors.auth'],
+            'context_processors': TCP + [
+                # this gives us access to the original request in templates. see e.g.:
+                # http://stackoverflow.com/questions/2882490
+                'django.template.context_processors.request',
+                # required to enable auth templates
+                'django.contrib.auth.context_processors.auth'
+            ],
         }
     },
 ]
