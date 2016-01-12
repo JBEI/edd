@@ -580,7 +580,7 @@ class Study(EDDObject):
     class Meta:
         db_table = 'study'
         verbose_name_plural = 'Studies'
-    object_ref = models.OneToOneField(EDDObject, parent_link=True)
+    object_ref = models.OneToOneField(EDDObject, parent_link=True, related_name='+')
     # contact info has two fields to support:
     # 1. linking to a specific user in EDD
     # 2. "This is data I got from 'Improving unobtanium production in Bio-Widget using foobar'
@@ -812,7 +812,7 @@ class Protocol(EDDObject):
         (CATEGORY_TPOMICS, 'Transcriptomics / Proteomics'),
     )
 
-    object_ref = models.OneToOneField(EDDObject, parent_link=True)
+    object_ref = models.OneToOneField(EDDObject, parent_link=True, related_name='+')
     owned_by = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='protocol_set')
     variant_of = models.ForeignKey('self', blank=True, null=True, related_name='derived_set')
     default_units = models.ForeignKey(
@@ -991,7 +991,7 @@ class Line(EDDObject):
     study = models.ForeignKey(Study)
     control = models.BooleanField(default=False)
     replicate = models.ForeignKey('self', blank=True, null=True)
-    object_ref = models.OneToOneField(EDDObject, parent_link=True)
+    object_ref = models.OneToOneField(EDDObject, parent_link=True, related_name='+')
     contact = models.ForeignKey(
         settings.AUTH_USER_MODEL, blank=True, null=True, related_name='line_contact_set')
     contact_extra = models.TextField()
@@ -1104,7 +1104,10 @@ class Line(EDDObject):
 
 class MeasurementGroup(object):
     """ Does not need its own table in database, but multiple models will reference measurements
-        that are specific to a specific group category: metabolomics, proteomics, etc. """
+        that are specific to a specific group category: metabolomics, proteomics, etc.
+        Note that when a new group type is added here, code will need to be updated elsewhere,
+        including the Javascript/Typescript front end.
+        Look for the string 'MeasurementGroupCode' in comments."""
     GENERIC = '_'
     METABOLITE = 'm'
     GENEID = 'g'

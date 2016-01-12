@@ -482,7 +482,7 @@ class StudyDetailView(generic.DetailView):
         try:
             return Line.objects.get(pk=line_id, study=study)
         except Line.DoesNotExist:
-            logger.warning('Failed to load line,study combo %s,%s' % (line_id, study.pk))
+            logger.warning('Failed to load (line, study) combo (%s,%s)' % (line_id, study.pk))
         return None
 
 
@@ -620,8 +620,8 @@ def study_measurements(request, study, protocol):
             measurement__active=True,
             measurement__assay__active=True,
             measurement__assay__line__active=True,
-            measurement__range=(measure_list[0].id, measure_list[-1].id),
-            )
+            measurement__pk__range=(measure_list[0].id, measure_list[-1].id),
+        )
     else:
         values = []
     value_dict = collections.defaultdict(list)

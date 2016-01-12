@@ -1,10 +1,9 @@
-from django.conf.urls import patterns, url
+from django.conf.urls import url
 from django.contrib.auth.decorators import login_required
 
 from . import views
 
-urlpatterns = patterns(
-    '',
+urlpatterns = [
     url(r'^$', views.utilities_index, name='index'),
     url(r'^gc_ms$', views.gcms_home, name='gc_ms_home'),
     url(r'^gc_ms/parse$', views.gcms_parse, name='parse_gc_ms'),
@@ -18,4 +17,4 @@ urlpatterns = patterns(
     url(r'^ec/import/$', login_required(views.ec_import), name="ec_import"),
     url(r'^ec/import/action/(?P<target>[a-z0-9]+)/(?P<path>.*)$',
         login_required(views.ec_import_action), name="ec_import_action"),
-)
+]

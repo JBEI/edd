@@ -443,7 +443,7 @@ class sbml_info(object):
             ).delete()
             self._modified.add(species_id)
         except Exception as e:
-            logger.debug(e)
+            logger.exception('Failed to delete metabolite species record: %s', e)
         # insert the new record
         logger.debug("CREATING RECORD %s:%s" % (metabolite.short_name, species_id))
         MetaboliteSpecies.objects.create(
@@ -485,7 +485,7 @@ class sbml_info(object):
                 measurement_type_id=metabolite.id
             ).delete()
         except Exception as e:
-            logger.debug(e)
+            logger.exception('Failed to delete metabolite exchange record: %s', e)
         logger.debug("CREATING RECORD %s:%s" % (metabolite.short_name, exchange_id))
         MetaboliteExchange.objects.create(
             sbml_template=self._chosen_template,
@@ -1409,7 +1409,7 @@ class line_assay_data(line_export_base):
                         elif (is_checked is None) and self.debug:
                             logger.debug(
                                 "  warning: skipping measurement %d for assay '%s'" %
-                                m.id, m.assay.name
+                                (m.id, m.assay.name)
                             )
         # FIXME not sure this should be necessary...
         for m in self._od_measurements:
@@ -2297,14 +2297,14 @@ class line_sbml_export (line_assay_data, sbml_info):
                     minimum=m_lo,
                     values=[d.conc for d in species_data[mid]])
             except ValueError as e:
-                logger.debug(e)
+                logger.exception('Failed to assign concentration: %s', e)
         for mid in flux_data.keys():
             metabolite = self._metabolites_by_id[mid]
             values = [d.flux for d in flux_data[mid] if d.flux is not None]
             try:
                 self._assign_value_to_flux(metabolite.id, values)
             except ValueError as e:
-                logger.debug(e)
+                logger.exception('Failed to assign flux value: %s', e)
         # now biomass
         values = [d.flux for d in self._biomass_data[t]]
         self._assign_value_to_flux(self._biomass_metab.id, values)

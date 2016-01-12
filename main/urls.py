@@ -1,12 +1,11 @@
-from django.conf.urls import patterns, url
+from django.conf.urls import url
 from django.contrib.auth.decorators import login_required
 from django.contrib.staticfiles.storage import staticfiles_storage
 from django.views.generic.base import RedirectView
 from main import views
 
 
-urlpatterns = patterns(
-    '',
+urlpatterns = [
     url(r'^$', login_required(views.StudyCreateView.as_view()), name='index'),
     url(r'^study/$',
         login_required(views.StudyCreateView.as_view()),
@@ -66,4 +65,4 @@ urlpatterns = patterns(
             permanent=False
             ),
         name='favicon'),
-)
+]
