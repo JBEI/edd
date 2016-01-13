@@ -880,9 +880,10 @@ class WorklistColumn(models.Model):
             return self.get_default() % self.get_format_dict(instance, **kwargs)
 
         def lookup_meta(instance, **kwargs):
+            default = self.get_default() % kwargs
             if instance:
-                return instance.metadata_get(self.meta_type)
-            return self.get_default() % kwargs
+                return instance.metadata_get(self.meta_type, default=default)
+            return default
 
         if self.meta_type:
             type_context = self.meta_type.for_context

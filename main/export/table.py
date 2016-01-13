@@ -236,10 +236,7 @@ class TableExport(object):
         elif not self.options.protocol_section:
             tables['all'] = OrderedDict()
             tables['all']['header'] = self._output_header()
-        if self.worklist:
-            self._do_worklist(tables)
-        else:
-            self._do_export(tables)
+        self._do_export(tables)
         return self._build_output(tables)
 
     def _build_output(self, tables):
@@ -313,24 +310,6 @@ class TableExport(object):
                 row.append(squashed)
                 table[measurement.id] = row
 
-    def _do_worklist(self, tables):
-        # if export is a worklist, go off of lines instead of measurements
-        lines = self.selection.lines
-        protocol = self.worklist.protocol
-        table = tables['all']
-        counter = 0
-        for i, (pk, line) in enumerate(lines.items()):
-            # build row with study/line info
-            row = self._output_row_with_line(line, protocol)
-            table['%s' % (pk, )] = row
-            # when modulus set, insert 'blank' row every modulus rows
-            if self.options.blank_mod and not (i + 1) % self.options.blank_mod:
-                counter += 1
-                blank = self._output_row_with_line(
-                    None, protocol, columns=self.options.blank_columns, blank=counter,
-                )
-                table['blank%s' % i] = blank
-
     def _init_row_for_line(self, tables, line):
         line_section = self.options.line_section
         row = self._output_row_with_line(line, None)
@@ -396,3 +375,37 @@ class TableExport(object):
             return map(lambda x: squashed.get(x[0], ''), all_x)
         # expecting a list to be returned
         return [squashed]
+
+
+class WorklistExport(TableExport):
+    """ Outputs tables for line worklists. """
+    def __init__(self, selection, options, worklist=None):
+        super(WorklistExport, self).__init__(selection, options)
+        self.worklist = worklist
+
+    def output(self):
+        # store tables
+        tables = OrderedDict()
+        tables['all'] = OrderedDict()
+        tables['all']['header'] = self._output_header()
+        if self.worklist and self.worklist.protocol:
+            self._do_worklist(tables)
+        return self._build_output(tables)
+
+    def _do_worklist(self, tables):
+        # if export is a worklist, go off of lines instead of measurements
+        lines = self.selection.lines
+        protocol = self.worklist.protocol
+        table = tables['all']
+        counter = 0
+        for i, (pk, line) in enumerate(lines.items()):
+            # build row with study/line info
+            row = self._output_row_with_line(line, protocol)
+            table['%s' % (pk, )] = row
+            # when modulus set, insert 'blank' row every modulus rows
+            if self.options.blank_mod and not (i + 1) % self.options.blank_mod:
+                counter += 1
+                blank = self._output_row_with_line(
+                    None, protocol, columns=self.options.blank_columns, blank=counter,
+                )
+                table['blank%s' % i] = blank

@@ -567,7 +567,7 @@ class WorklistView(EDDExportView):
                 data=payload,
             )
             if worklist_form.is_valid():
-                self._export = table.TableExport(
+                self._export = table.WorklistExport(
                     self._selection,
                     worklist_form.options,
                     worklist_form.worklist,

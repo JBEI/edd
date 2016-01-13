@@ -725,7 +725,8 @@ class WorklistFlushForm(WorklistDefaultsForm):
     """ Adds a field to take a number of rows to output before inserting a flush row with selected
         defaults. Entering 0 means no flush rows. """
     row_count = forms.IntegerField(
-        initial=0, min_value=0, required=False, widget=forms.NumberInput(attrs={'size': 5}),
+        initial=0, help_text='The number of worklist rows before a flush row is inserted',
+        min_value=0, required=False, widget=forms.NumberInput(attrs={'size': 5}),
     )
 
 
