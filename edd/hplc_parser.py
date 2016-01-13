@@ -1,41 +1,55 @@
-##
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#
 #    This is for parsing the output of HPLC machines.
 ##
-
+import logging
 import sys, os
+import io
 
 
-header_prefix_width = 21
-header_expected_count = 6
+logger = logging.getLogger(__name__)
 
+# header_prefix_width = 21
+# header_expected_count = 6
 
-if __name__ == "__main__":
+max_header_line_count = 20
 
-	if len(sys.argv) != 2:
-		print("usage: python hplc_parser.py input_file_path")
-
-	input_file_path = sys.argv[1]
-
-	print()
-
-
+# Parses out the file
 def parse_hplc_file(input_file_path):
 	if not os.path.exists(input_file_path):
 		raise IOError("Error: unable to locate file %s" % input_file_path)
 
-	with open(input_file_path, "r", encoding="utf-8") as input_file:
+	with io.open(input_file_path, "r", encoding = 'utf-16') as input_file:
+		logger.debug("HPLC_parser opened and is reading file %s" % input_file_path)
+
 
 		# read in header block
 		header_block = [ input_file.readline() ]
 		# header_block_length = 0
-		while not header_block[-1].startswith("-"):
-			header_block.append( input_file.readline() )
+		logger.debug("HPLC_parser searching for header block")
+		i = 0
+		while not header_block[-1].strip().startswith("-"):
+			line = input_file.readline()
+
+			header_block.append( line.strip() )
+
+			if i >= max_header_line_count:
+				logger.error("HPLC_parser unable to find header: unexpected length")
+				exit(1)
+			elif line == '':
+				logger.error("HPLC_parser unable to find header: EOF encountered")
+				
+			i += 1
+
+		logger.debug("HPLC_parser parsing header block")
 
 		# the title line is first, and unused
 		# title_line = header_block[0]
 		
 		# collect table header, "Sample Name... "
 		# clips it off the end of the header block
+
 		table_header = []
 		table_divider = header_block[-1] 
 		r_index = -2
@@ -45,6 +59,8 @@ def parse_hplc_file(input_file_path):
 			r_index -= 1
 			line = header_block[r_index]
 		table_header.reverse()
+
+		logger.debug("HPLC_parser collected table_header")
 
 		# collect header data, currently not parsed
 		header_block = header_block[1:r_index]
@@ -58,6 +74,8 @@ def parse_hplc_file(input_file_path):
 			else:
 				section_widths.append([0])
 
+		logger.debug("HPLC_parser parsed column widths")
+
 		# parse table header
 		# collect the multiline text
 		column_headers = []
@@ -69,6 +87,8 @@ def parse_hplc_file(input_file_path):
 			for section_width in section_widths:
 
 				# slice a segment off the line of the correct width
+				logger.debug(section_width_carryover)
+				logger.debug(section_width)
 				width = section_width_carryover + section_width
 				segment = line[:width]
 				line = line[width:]
@@ -118,4 +138,24 @@ def parse_hplc_file(input_file_path):
 				samples[sample_name][column_headers[row_index]].append(segment)
 
 			line = input_file.readline()
+
+	return samples
+
+
+if __name__ == "__main__":
+
+	logging.basicConfig(filename='hplc_parser.log',level=logging.DEBUG)
+
+	if len(sys.argv) is not 2:
+		print("usage: python hplc_parser.py input_file_path")
+		exit(1)
+
+	logger.debug("\nHPLC_parser hello world")
+
+	input_file_path = sys.argv[1]
+
+	samples = parse_hplc_file(input_file_path)
+
+	print( samples )
+
 
