@@ -408,7 +408,7 @@ class sbml_info(object):
             # signal to delete any 'custom' connections between the given measurement
             # and any reactant, and then return the default.
             if (str(species_id) == ""):
-                logger.info("DELETING RECORD: %d:%d" % (self._chosen_template.id, metabolite.id))
+                logger.debug("DELETING RECORD: %d:%d" % (self._chosen_template.id, metabolite.id))
                 MetaboliteSpecies.objects.filter(
                     sbml_template_id=self._chosen_template.id,
                     measurement_type_id=metabolite.id
@@ -436,7 +436,7 @@ class sbml_info(object):
         # update/create it.  (We know the species ID is valid by now.)
         # First, clear out the old record:
         try:
-            logger.info("DELETING RECORD 2: %d:%d" % (self._chosen_template.id, metabolite.id))
+            logger.debug("DELETING RECORD 2: %d:%d" % (self._chosen_template.id, metabolite.id))
             MetaboliteSpecies.objects.filter(
                 sbml_template_id=self._chosen_template.id,
                 measurement_type_id=metabolite.id
@@ -462,7 +462,7 @@ class sbml_info(object):
         exchange_id = str(exchange_id)
         if (exchange_id is not None):
             if (exchange_id == ""):
-                logger.info("DELETING EXCHANGE RECORD")
+                logger.debug("DELETING EXCHANGE RECORD")
                 MetaboliteExchange(
                     sbml_template_id=self._chosen_template.id,
                     measurement_type_id=metabolite.id
@@ -479,7 +479,7 @@ class sbml_info(object):
         if (old_met is not None) and (old_met.id == metabolite.id):
             return exchange_id
         try:
-            logger.info("DELETING EXCHANGE RECORD 2")
+            logger.debug("DELETING EXCHANGE RECORD 2")
             MetaboliteExchange.objects.get(
                 sbml_template_id=self._chosen_template.id,
                 measurement_type_id=metabolite.id
@@ -1407,8 +1407,10 @@ class line_assay_data(line_export_base):
                             measurement_protocol_categories[m.id] = category
                             measurement_assays[m.id] = assay
                         elif (is_checked is None) and self.debug:
-                            logger.debug("  warning: skipping measurement %d for assay '%s'" %
-                                  m.id, m.assay.name)
+                            logger.debug(
+                                "  warning: skipping measurement %d for assay '%s'" %
+                                (m.id, m.assay.name)
+                            )
         # FIXME not sure this should be necessary...
         for m in self._od_measurements:
             if self._metabolites_checked.get(m.id, None):

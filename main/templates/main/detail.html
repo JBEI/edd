@@ -234,16 +234,19 @@
                         <option value="false">Enabled</option>
                     </select>
                 </label>
-                <input type="radio" id="line_action_export" name="line_action" value="export" />
-                {% else %}
-                <input type="hidden" id="line_action_export" name="line_action" value="export" />
                 {% endif %}
+                <input type="radio" id="line_action_export" name="line_action" value="export" />
                 <label for="line_action_export">
                     <span>Export Data</span>
                     <select name="export">
                         <option value="csv">as CSV/etc</option>
                         <option value="sbml">to SBML</option>
                     </select>
+                </label>
+                <input type="radio" id="line_action_worklist" name="line_action" value="worklist" />
+                <label for="line_action_worklist">
+                    <span>Generate Worklist</span>
+                    <!-- TODO: include selection of worklist templates here? -->
                 </label>
                 <button type="submit" name="action" value="line_action">Take Action</button>
             </div>

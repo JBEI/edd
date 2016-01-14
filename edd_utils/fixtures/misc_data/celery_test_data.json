@@ -105,46 +105,46 @@
   "send_retry_warning_before_failure": {
     "first_retry_is_too_late": {
       "task": {
-        "default_retry_delay": "2",
-        "retries": "0",
-        "max_retries": "5"
+        "default_retry_delay": 2,
+        "retries": 0,
+        "max_retries": 5
       },
-      "est_execution_time": "0",
-      "notify_on_retry_num": "1",
-      "expected_result": "false"
+      "est_execution_time": 0,
+      "notify_on_retry_num": 1,
+      "expected_result": false
     },
 
     "all_warnings_are_too_late": {
      "task": {
-        "default_retry_delay": "2",
-        "retries": "4",
-        "max_retries": "5"
+        "default_retry_delay": 2,
+        "retries": 4,
+        "max_retries": 5
       },
-      "est_execution_time": "0",
-      "notify_on_retry_num": "4",
-      "expected_result": "false"
+      "est_execution_time": 0,
+      "notify_on_retry_num": 4,
+      "expected_result": false
     },
 
     "approaching_worthwhile_to_warn": {
      "task": {
-        "default_retry_delay": "2",
-        "retries": "8",
-        "max_retries": "10"
+        "default_retry_delay": 2,
+        "retries": 8,
+        "max_retries": 10
       },
-      "est_execution_time": "0",
-      "notify_on_retry_num": "9",
-      "expected_result": "false"
+      "est_execution_time": 0,
+      "notify_on_retry_num": 9,
+      "expected_result": false
     },
 
     "worthwhile_to_warn": {
      "task": {
-        "default_retry_delay": "2",
-        "retries": "9",
-        "max_retries": "11"
+        "default_retry_delay": 2,
+        "retries": 9,
+        "max_retries": 11
       },
-      "est_execution_time": "0",
-      "notify_on_retry_num": "10",
-      "expected_result": "True"
+      "est_execution_time": 0,
+      "notify_on_retry_num": 10,
+      "expected_result": true
     }
 
 

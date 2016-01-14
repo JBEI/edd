@@ -9,11 +9,12 @@ from django.db.models import Count
 from django.utils.translation import ugettext_lazy as _
 from django_auth_ldap.backend import LDAPBackend
 
-from .forms import UserAutocompleteWidget
+from .forms import MetadataTypeAutocompleteWidget, UserAutocompleteWidget
 from .models import (
     Assay, Attachment, CarbonSource, GeneIdentifier, GroupPermission, Line, MeasurementGroup,
-    MeasurementType, Metabolite, MetadataGroup, MetadataType, Phosphor, ProteinIdentifier,
-    Protocol, SBMLTemplate, Strain, Study, Update, UserPermission,
+    MeasurementType, Metabolite, MetadataGroup, MetadataType, Phosphor,
+    ProteinIdentifier, Protocol, SBMLTemplate, Strain, Study, Update, UserPermission,
+    WorklistColumn, WorklistTemplate,
     )
 from .sbml_export import validate_sbml_attachment
 from .solr import StudySearch, UserSearch
@@ -62,7 +63,7 @@ class MetadataTypeAdmin(admin.ModelAdmin):
     """ Definition for admin-edit of Metadata Types """
     fields = ('type_name', 'input_size', 'default_value', 'prefix', 'postfix',
               'group', 'for_context', )
-    list_display = ('type_name', 'prefix', 'default_value', 'postfix', 'is_line', 'is_protocol',
+    list_display = ('type_name', 'prefix', 'default_value', 'postfix', 'for_context',
                     'num_lines', 'num_assay', 'group', )
     list_filter = ('group', )
     radio_fields = {'group': admin.VERTICAL, 'for_context': admin.VERTICAL}
@@ -74,16 +75,6 @@ class MetadataTypeAdmin(admin.ModelAdmin):
         self._num_assay = Assay.metadata_type_frequencies()
         # q = q.annotate(num_lines=Count('line'), num_studies=Count('line__study', distinct=True))
         return q
-
-    def is_line(self, instance):
-        return instance.for_line()
-    is_line.boolean = True
-    is_line.short_description = 'Lines?'
-
-    def is_protocol(self, instance):
-        return instance.for_protocol()
-    is_protocol.boolean = True
-    is_protocol.short_description = 'Assays?'
 
     def num_lines(self, instance):
         return self._num_lines.get(instance.pk, 0)
@@ -381,6 +372,25 @@ class EDDUserAdmin(UserAdmin):
     update_groups_from_ldap.short_description = 'Update Groups from LDAP'
 
 
+class WorklistColumnInline(admin.TabularInline):
+    """ Inline submodel for editing worklist columns. """
+    model = WorklistColumn
+    fields = ('ordering', 'heading', 'meta_type', 'default_value', 'help_text', )
+    ordering = ('ordering', 'heading', )
+    extra = 1
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == 'meta_type':
+            kwargs['widget'] = MetadataTypeAutocompleteWidget()
+        return db_field.formfield(**kwargs)
+
+
+class WorklistTemplateAdmin(EDDObjectAdmin):
+    fields = ('name', 'description', 'protocol', )
+    list_display = ('name', 'description', 'protocol', )
+    inlines = (WorklistColumnInline, )
+
+
 admin.site.register(MetadataGroup, MetadataGroupAdmin)
 admin.site.register(MetadataType, MetadataTypeAdmin)
 admin.site.register(Protocol, ProtocolAdmin)
@@ -394,5 +404,6 @@ admin.site.register(Phosphor, MeasurementTypeAdmin)
 admin.site.register(Study, StudyAdmin)
 admin.site.register(Assay, AssayAdmin)
 admin.site.register(SBMLTemplate, SBMLTemplateAdmin)
+admin.site.register(WorklistTemplate, WorklistTemplateAdmin)
 admin.site.unregister(get_user_model())
 admin.site.register(get_user_model(), EDDUserAdmin)

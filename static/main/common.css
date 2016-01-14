@@ -642,11 +642,11 @@ div.pulldownMenuMenuBlock ul > li > input[type="checkbox"] {
 /* Styling for a special-purpose "filter criteria" table */
 div.filteringSection {
     border:none;
-    overflow-x: scroll;
+    overflow-x: auto;
     overflow-y: hidden;
     white-space: nowrap;
     margin:0px 2px 0px 2px;
-    max-height: 276px;
+    max-height: 285px;
 }
 div.filterTable {
     border:none;

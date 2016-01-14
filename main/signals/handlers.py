@@ -248,8 +248,9 @@ def _post_commit_unlink_ice_entry_from_study(user_email, study_pk, study_creatio
                     "Strain with id %d is no longer linked to study id %d, but EDD's "
                     "database entry for this strain doesn't have enough data to remove the "
                     "corresponding study link from ICE. It's possible (though unlikely) that the "
-                    "EDD strain has been modified since an ICE link was created for it." % (
-                        strain.pk, study_pk))
+                    "EDD strain has been modified since an ICE link was created for it." %
+                    (strain.pk, study_pk)
+                )
                 index += 1
                 continue
 
@@ -412,7 +413,7 @@ def handle_line_strain_changed(sender, instance, action, reverse, model, pk_set,
         return
 
     elif "post_add" == action:
-        added_strains = [strain for strain in line.strains.filter(pk__in=pk_set)]
+        added_strains = list(line.strains.filter(pk__in=pk_set))
         logger.debug("added_strains = %s" % str(added_strains))
 
         # schedule asynchronous work to maintain ICE strain links to this study, failing if any

@@ -3,11 +3,10 @@ from __future__ import unicode_literals
 
 import logging
 
-from builtins import str as unicode
+from builtins import str
 from collections import OrderedDict
 from django.db.models import Prefetch, Q
 from django.utils.translation import ugettext_lazy as _
-from past.builtins import cmp
 
 
 logger = logging.getLogger(__name__)
@@ -16,11 +15,41 @@ logger = logging.getLogger(__name__)
 class ColumnChoice(object):
     def __init__(self, model, key, label, lookup, heading=None, lookup_kwargs={}):
         self._model = model
-        self._key = u'.'.join([model.__name__, key, ])
+        self._key = '.'.join([model.__name__, key, ]) if model else key
         self._label = label
         self._lookup = lookup
         self._heading = heading if heading is not None else label
         self._lookup_kwargs = lookup_kwargs
+
+    @classmethod
+    def coerce(cls, instances):
+        lookup = {col.get_key(): col for col in instances}
+        return lambda key: lookup.get(key, None)
+
+    def convert_instance_from_measure(self, measure, default=None):
+        from main.models import Assay, Line, Measurement, Protocol, Study
+        try:
+            return {
+                Assay: measure.assay,
+                Line: measure.assay.line,
+                Measurement: measure,
+                Protocol: measure.assay.protocol,
+                Study: measure.assay.line.study,
+            }.get(self._model, default)
+        except AttributeError:
+            return default
+
+    def convert_instance_from_line(self, line, protocol, default=None):
+        from main.models import Line, Protocol, Study
+        try:
+            return {
+                Line: line,
+                Protocol: protocol or default,
+                Study: line.study,
+                None: line,
+            }.get(self._model, default)
+        except AttributeError:
+            return default
 
     def get_field_choice(self):
         return (self._key, self._label)
@@ -31,8 +60,15 @@ class ColumnChoice(object):
     def get_key(self):
         return self._key
 
-    def get_value(self, instance):
-        return self._lookup(instance, **self._lookup_kwargs)
+    def get_value(self, instance, **kwargs):
+        try:
+            lookup_kwargs = {}
+            lookup_kwargs.update(**self._lookup_kwargs)
+            lookup_kwargs.update(**kwargs)
+            return self._lookup(instance, **lookup_kwargs)
+        except Exception as e:
+            logger.exception('Failed to get column value: %s', e)
+            return ''
 
 
 class EmptyChoice(ColumnChoice):
@@ -48,63 +84,61 @@ class ExportSelection(object):
         from main.models import Assay, CarbonSource, Line, Measurement, Strain, Study
         # check studies linked to incoming IDs for permissions
         matched_study = Study.objects.filter(
-                Q(pk__in=studyId, active=True) |
-                Q(line__in=lineId, line__active=True) |
-                Q(line__assay__in=assayId, line__assay__active=True) |
-                Q(line__assay__measurement__in=measureId, line__assay__measurement__active=True)
-            ).distinct(
-            ).prefetch_related(
-                'userpermission_set',
-                'grouppermission_set',
-            )
-        allowed_study = [s for s in matched_study if s.user_can_read(user)]
+            Q(pk__in=studyId, active=True) |
+            Q(line__in=lineId, line__active=True) |
+            Q(line__assay__in=assayId, line__assay__active=True) |
+            Q(line__assay__measurement__in=measureId, line__assay__measurement__active=True)
+        ).distinct(
+        ).prefetch_related(
+            'userpermission_set',
+            'grouppermission_set',
+        )
+        self._allowed_study = [s for s in matched_study if s.user_can_read(user)]
         # load all matching measurements
         self._measures = Measurement.objects.filter(
-                # all measurements are from visible study
-                Q(assay__line__study__in=allowed_study),
-                # OR grouping finds measurements under one of passed-in parameters
-                Q(assay__line__study__in=studyId) |
-                Q(assay__line__in=lineId, assay__line__active=True) |
-                Q(assay__in=assayId, assay__active=True) |
-                Q(pk__in=measureId, active=True),
-            ).order_by(
-                'assay__protocol_id'
-            ).select_related(
-                'measurement_type',
-                'x_units',
-                'y_units',
-                'update_ref__mod_by',
-                'experimenter',
-            )
-        assays = Assay.objects.filter(
-            Q(line__study__in=allowed_study),
+            # all measurements are from visible study
+            Q(assay__line__study__in=self._allowed_study),
+            # OR grouping finds measurements under one of passed-in parameters
+            Q(assay__line__study__in=studyId) |
+            Q(assay__line__in=lineId, assay__line__active=True) |
+            Q(assay__in=assayId, assay__active=True) |
+            Q(pk__in=measureId, active=True),
+        ).order_by(
+            'assay__protocol_id'
+        ).select_related(
+            'measurement_type',
+            'x_units',
+            'y_units',
+            'update_ref__mod_by',
+            'experimenter',
+        )
+        self._assays = Assay.objects.filter(
+            Q(line__study__in=self._allowed_study),
             Q(line__in=lineId, line__active=True) |
             Q(pk__in=assayId, active=True) |
             Q(measurement__in=measureId, measurement__active=True),
-            ).distinct(
-            ).select_related(
-                'protocol',
-            )
-        self._assays = {a.id: a for a in assays}
-        lines = Line.objects.filter(
-            Q(study__in=allowed_study),
+        ).distinct(
+        ).select_related(
+            'protocol',
+        )
+        self._lines = Line.objects.filter(
+            Q(study__in=self._allowed_study),
             Q(study__in=studyId) |
             Q(pk__in=lineId, active=True) |
             Q(assay__in=assayId, assay__active=True) |
             Q(assay__measurement__in=measureId, assay__measurement__active=True),
-            ).distinct(
-            ).prefetch_related(
-                Prefetch('strains', queryset=Strain.objects.order_by('id')),
-                Prefetch('carbon_source', queryset=CarbonSource.objects.order_by('id')),
-            )
-        self._lines = {l.id: l for l in lines}
-        self._studies = {s.id: s for s in allowed_study}
+        ).distinct(
+        ).prefetch_related(
+            Prefetch('strains', queryset=Strain.objects.order_by('id')),
+            Prefetch('carbon_source', queryset=CarbonSource.objects.order_by('id')),
+        )
 
     @property
     def studies(self):
         """ A dict mapping Study.pk to Study for those studies included in the export and
             allowed to be viewed by the user. """
-        return self._studies
+        studies = {s.id: s for s in self._allowed_study}
+        return studies
 
     @property
     def study_columns(self):
@@ -114,7 +148,8 @@ class ExportSelection(object):
     @property
     def lines(self):
         """ A dict mapping Line.pk to Line for those lines included in the export. """
-        return self._lines
+        lines = {l.id: l for l in self._lines}
+        return lines
 
     @property
     def line_columns(self):
@@ -124,7 +159,8 @@ class ExportSelection(object):
     @property
     def assays(self):
         """ A dict mapping Assay.pk to Assay for those assays included in the export. """
-        return self._assays
+        assays = {a.id: a for a in self._assays}
+        return assays
 
     @property
     def assay_columns(self):
@@ -135,6 +171,7 @@ class ExportSelection(object):
     def measurements(self):
         """ A dict mapping Measurement.pk to Measurement for those measurements included in
             the export. """
+        # TODO: add in empty measurements for assays that have none
         return self._measures
 
 
@@ -144,165 +181,90 @@ class ExportOption(object):
     DATA_COLUMN_BY_POINT = 'dbyp'
     LINE_COLUMN_BY_DATA = 'lbyd'
     LAYOUT_CHOICE = (
-            (DATA_COLUMN_BY_LINE, _('columns of metadata types, and rows of lines/assays')),
-            (DATA_COLUMN_BY_POINT, _('columns of metadata types, and rows of single points')),
-            (LINE_COLUMN_BY_DATA, _('columns of lines/assays, and rows of metadata types')),
-        )
+        (DATA_COLUMN_BY_LINE, _('columns of metadata types, and rows of lines/assays')),
+        (DATA_COLUMN_BY_POINT, _('columns of metadata types, and rows of single points')),
+        (LINE_COLUMN_BY_DATA, _('columns of lines/assays, and rows of metadata types')),
+    )
     COMMA_SEPARATED = 'csv'
     TAB_SEPARATED = 'tsv'
     SEPARATOR_CHOICE = (
-            (COMMA_SEPARATED, _('Comma-separated (CSV)')),
-            (TAB_SEPARATED, _('Tab-separated')),
-        )
+        (COMMA_SEPARATED, _('Comma-separated (CSV)')),
+        (TAB_SEPARATED, _('Tab-separated')),
+    )
     ALL_DATA = 'all'
     SUMMARY_DATA = 'summary'
     NONE_DATA = 'none'
     FORMAT_CHOICE = (
-            (ALL_DATA, _('All')),
-            (SUMMARY_DATA, _('Summarize')),
-            (NONE_DATA, _('None')),
-        )
+        (ALL_DATA, _('All')),
+        (SUMMARY_DATA, _('Summarize')),
+        (NONE_DATA, _('None')),
+    )
 
     def __init__(self, layout=DATA_COLUMN_BY_LINE, separator=COMMA_SEPARATED, data_format=ALL_DATA,
-                 line_section=False, protocol_section=False, meta={}):
-        self._layout = layout
-        self._separator = separator
-        self._data_format = data_format
-        self._line_section = line_section
-        self._protocol_section = protocol_section
-        self._meta = meta
-
-    @property
-    def layout(self):
-        return self._layout
-
-    @property
-    def separator(self):
-        return self._separator
-
-    @property
-    def data_format(self):
-        return self._data_format
-
-    @property
-    def line_section(self):
-        return self._line_section
-
-    @property
-    def protocol_section(self):
-        return self._protocol_section
-
-    @property
-    def study_meta(self):
-        return self._meta.get('study_meta', [])
-
-    @property
-    def line_meta(self):
-        return self._meta.get('line_meta', [])
-
-    @property
-    def protocol_meta(self):
-        return self._meta.get('protocol_meta', [])
-
-    @property
-    def assay_meta(self):
-        return self._meta.get('assay_meta', [])
-
-    @property
-    def measure_meta(self):
-        return self._meta.get('measure_meta', [])
+                 line_section=False, protocol_section=False, columns=[], blank_columns=[],
+                 blank_mod=0):
+        self.layout = layout
+        self.separator = separator
+        self.data_format = data_format
+        self.line_section = line_section
+        self.protocol_section = protocol_section
+        self.columns = columns
+        self.blank_columns = blank_columns
+        self.blank_mod = blank_mod
 
 
 def value_str(value):
     """ used to format value lists to a colon-delimited (unicode) string """
     # cast to float to remove 0-padding
-    return ':'.join(map(unicode, map(float, value)))
+    return ':'.join(map(str, map(float, value)))
 
 
 class TableExport(object):
     """ Outputs tables for export of EDD objects. """
-    def __init__(self, selection, options):
+    def __init__(self, selection, options, worklist=None):
         self.selection = selection
         self.options = options
+        self.worklist = worklist
+        self._x_values = {}
 
     def output(self):
-        # check how tables are being sectioned
-        line_section = self.options.line_section
-        protocol_section = self.options.protocol_section
-        layout = self.options.layout
         # store tables
         tables = OrderedDict()
-        if line_section:
+        if self.options.line_section:
             tables['line'] = OrderedDict()
             tables['line']['header'] = self._output_line_header()
-        elif not protocol_section:
+        elif not self.options.protocol_section:
             tables['all'] = OrderedDict()
-            tables['all']['header'] = self._output_line_header() + self._output_measure_header()
-        x_values = {}
-        # add data from each exported measurement; already sorted by protocol
-        for measurement in self.selection.measurements:
-            assay = self.selection.assays.get(measurement.assay_id, None)
-            protocol = assay.protocol
-            line = self.selection.lines.get(assay.line_id, None)
-            study = line.study
-            row = self._output_line_row(study, line)
-            if line_section:
-                if line.id not in tables['line']:
-                    tables['line'][line.id] = row
-                # reset row after this point
-                row = []
-            row += self._output_measure_row(protocol, assay, measurement)
-            if protocol_section:
-                if protocol.id not in tables:
-                    tables[protocol.id] = OrderedDict()
-                    tables[protocol.id]['header'] = []
-                    if not line_section:
-                        tables[protocol.id]['header'] += self._output_line_header()
-                    tables[protocol.id]['header'] += self._output_measure_header()
-                table_key = protocol.id
-            else:
-                table_key = 'all'
-            table = tables[table_key]
-            values = measurement.measurementvalue_set.all()
-            values = sorted(values, lambda a, b: cmp(a.x, b.x))
-            if layout == ExportOption.DATA_COLUMN_BY_POINT:
-                for value in values:
-                    arow = row[:]
-                    arow.append(value_str(value.x))
-                    arow.append(value_str(value.y))
-                    table[value.id] = arow
-            else:
-                # keep track of all x values encountered in the table
-                xx = x_values[table_key] = x_values.get(table_key, {})
-                # do value_str to the float-casted version of x to eliminate 0-padding
-                xx.update({value_str(v.x): v.x for v in values})
-                squashed = {value_str(v.x): value_str(v.y) for v in values}
-                row.append(squashed)
-                table[measurement.id] = row
-        table_separator = u'\n\n'
-        row_separator = u'\n'
-        cell_separator = u'\t' if self.options.separator == ExportOption.TAB_SEPARATED else u','
+            tables['all']['header'] = self._output_header()
+        self._do_export(tables)
+        return self._build_output(tables)
+
+    def _build_output(self, tables):
+        layout = self.options.layout
+        table_separator = '\n\n'
+        row_separator = '\n'
+        cell_separator = '\t' if self.options.separator == ExportOption.TAB_SEPARATED else ','
         if layout == ExportOption.DATA_COLUMN_BY_POINT:
             # data is already in correct orientation, join and return
             return table_separator.join([
                 row_separator.join([
                     cell_separator.join([
-                        unicode(cell) for cell in row
-                        ]) for rkey, row in table.items()
-                    ]) for tkey, table in tables.items()
+                        str(cell) for cell in rrow
+                        ]) for rkey, rrow in ttable.items()
+                    ]) for tkey, ttable in tables.items()
                 ])
         # both LINE_COLUMN_BY_DATA and DATA_COLUMN_BY_LINE are constructed similarly
         # each table in LINE_COLUMN_BY_DATA is transposed
         out = []
         for tkey, table in tables.items():
             # sort x values by original numeric values
-            all_x = sorted(x_values.get(tkey, {}).items(), lambda a, b: cmp(a[1], b[1]))
+            all_x = sorted(self._x_values.get(tkey, {}).items(), key=lambda a: a[1])
             # generate header row
-            rows = [map(unicode, table['header'] + map(lambda x: x[0], all_x))]
+            rows = [map(str, table['header'] + map(lambda x: x[0], all_x))]
             # go through non-header rows; unsquash final column
             for rkey, row in table.items()[1:]:
                 unsquash = self._output_unsquash(all_x, row[-1:][0])
-                rows.append(map(unicode, row[:-1] + unsquash))
+                rows.append(map(str, row[:-1] + unsquash))
             # do the transpose here if needed
             if layout == ExportOption.LINE_COLUMN_BY_DATA:
                 rows = zip(*rows)
@@ -312,61 +274,100 @@ class TableExport(object):
             out.append(row_separator.join(rows))
         return table_separator.join(out)
 
-    def _output_line_header(self):
-        row = []
-        choices = {col.get_key(): col.get_heading() for col in self.selection.study_columns}
-        for column in self.options.study_meta:
-            row.append(choices.get(column, ''))
-        choices = {col.get_key(): col.get_heading() for col in self.selection.line_columns}
-        for column in self.options.line_meta:
-            row.append(choices.get(column, ''))
+    def _do_export(self, tables):
+        from main.models import Assay, Line, Measurement, Protocol, Study
+        # add data from each exported measurement; already sorted by protocol
+        for measurement in self.selection.measurements:
+            assay = self.selection.assays.get(measurement.assay_id, None)
+            protocol = assay.protocol
+            line = self.selection.lines.get(assay.line_id, None)
+            if self.options.line_section:
+                line_only = [Line, Study, ]
+                other_only = [Assay, Measurement, Protocol, ]
+                # add row to line table w/ Study, Line columns only
+                if line.id not in tables['line']:
+                    row = self._output_row_with_measure(measurement, models=line_only)
+                    tables['line'][line.id] = row
+                # create row for protocol/all table w/ Protocol, Assay, Measurement columns only
+                row = self._output_row_with_measure(measurement, models=other_only)
+            else:
+                # create row for protocol/all table
+                row = self._output_row_with_measure(measurement)
+            table, table_key = self._init_tables_for_protocol(tables, protocol)
+            values = measurement.measurementvalue_set.order_by('x')
+            if self.options.layout == ExportOption.DATA_COLUMN_BY_POINT:
+                for value in values:
+                    arow = row[:]
+                    arow.append(value_str(value.x))
+                    arow.append(value_str(value.y))
+                    table[value.id] = arow
+            else:
+                # keep track of all x values encountered in the table
+                xx = self._x_values[table_key] = self._x_values.get(table_key, {})
+                # do value_str to the float-casted version of x to eliminate 0-padding
+                xx.update({value_str(v.x): v.x for v in values})
+                squashed = {value_str(v.x): value_str(v.y) for v in values}
+                row.append(squashed)
+                table[measurement.id] = row
+
+    def _init_row_for_line(self, tables, line):
+        line_section = self.options.line_section
+        row = self._output_row_with_line(line, None)
+        if line_section:
+            if line.id not in tables['line']:
+                tables['line'][line.id] = row
+            # reset row after this point
+            row = []
         return row
 
-    def _output_line_row(self, study, line):
+    def _init_tables_for_protocol(self, tables, protocol):
+        if self.options.protocol_section:
+            if protocol.id not in tables:
+                tables[protocol.id] = OrderedDict()
+                header = []
+                if self.options.line_section:
+                    header += self._output_measure_header()
+                else:
+                    header += self._output_header()
+                tables[protocol.id]['header'] = header
+            table_key = protocol.id
+        else:
+            table_key = 'all'
+        table = tables[table_key]
+        return (table, table_key)
+
+    def _output_header(self, models=None):
         row = []
-        empty = EmptyChoice()
-        choices = {col.get_key(): col for col in self.selection.study_columns}
-        for column in self.options.study_meta:
-            row.append(choices.get(column, empty).get_value(study))
-        choices = {col.get_key(): col for col in self.selection.line_columns}
-        for column in self.options.line_meta:
-            row.append(choices.get(column, empty).get_value(line))
+        for column in self.options.columns:
+            if models is None or column._model in models:
+                row.append(column.get_heading())
+        return row
+
+    def _output_line_header(self):
+        from main.models import Line, Study
+        return self._output_header([Line, Study, ])
+
+    def _output_row_with_line(self, line, protocol, models=None, columns=None, **kwargs):
+        row = []
+        if columns is None:
+            columns = self.options.columns
+        for i, column in enumerate(columns):
+            if models is None or column._model in models:
+                instance = column.convert_instance_from_line(line, protocol)
+                row.append(column.get_value(instance, **kwargs))
+        return row
+
+    def _output_row_with_measure(self, measure, models=None):
+        row = []
+        for column in self.options.columns:
+            if models is None or column._model in models:
+                instance = column.convert_instance_from_measure(measure)
+                row.append(column.get_value(instance))
         return row
 
     def _output_measure_header(self):
-        from main.models import Measurement, Protocol
-        layout = self.options.layout
-        row = []
-        choices = {col.get_key(): col.get_heading() for col in Protocol.export_columns()}
-        for column in self.options.protocol_meta:
-            row.append(choices.get(column, ''))
-        choices = {col.get_key(): col.get_heading() for col in self.selection.assay_columns}
-        for column in self.options.assay_meta:
-            row.append(choices.get(column, ''))
-        choices = {col.get_key(): col.get_heading() for col in Measurement.export_columns()}
-        for column in self.options.measure_meta:
-            row.append(choices.get(column, ''))
-        # need to append header columns for X, Y for tall-and-skinny output
-        # others append all possible X values to header during o
-        if layout == ExportOption.DATA_COLUMN_BY_POINT:
-            row.append(_('X'))
-            row.append(_('Y'))
-        return row
-
-    def _output_measure_row(self, protocol, assay, measure):
-        from main.models import Measurement, Protocol
-        row = []
-        empty = EmptyChoice()
-        choices = {col.get_key(): col for col in Protocol.export_columns()}
-        for column in self.options.protocol_meta:
-            row.append(choices.get(column, empty).get_value(protocol))
-        choices = {col.get_key(): col for col in self.selection.assay_columns}
-        for column in self.options.assay_meta:
-            row.append(choices.get(column, empty).get_value(assay))
-        choices = {col.get_key(): col for col in Measurement.export_columns()}
-        for column in self.options.measure_meta:
-            row.append(choices.get(column, empty).get_value(measure))
-        return row
+        from main.models import Assay, Measurement, Protocol
+        return self._output_header([Assay, Measurement, Protocol, ])
 
     def _output_unsquash(self, all_x, squashed):
         # all_x is list of 2-tuple from dict.items()
@@ -374,3 +375,37 @@ class TableExport(object):
             return map(lambda x: squashed.get(x[0], ''), all_x)
         # expecting a list to be returned
         return [squashed]
+
+
+class WorklistExport(TableExport):
+    """ Outputs tables for line worklists. """
+    def __init__(self, selection, options, worklist=None):
+        super(WorklistExport, self).__init__(selection, options)
+        self.worklist = worklist
+
+    def output(self):
+        # store tables
+        tables = OrderedDict()
+        tables['all'] = OrderedDict()
+        tables['all']['header'] = self._output_header()
+        if self.worklist and self.worklist.protocol:
+            self._do_worklist(tables)
+        return self._build_output(tables)
+
+    def _do_worklist(self, tables):
+        # if export is a worklist, go off of lines instead of measurements
+        lines = self.selection.lines
+        protocol = self.worklist.protocol
+        table = tables['all']
+        counter = 0
+        for i, (pk, line) in enumerate(lines.items()):
+            # build row with study/line info
+            row = self._output_row_with_line(line, protocol)
+            table['%s' % (pk, )] = row
+            # when modulus set, insert 'blank' row every modulus rows
+            if self.options.blank_mod and not (i + 1) % self.options.blank_mod:
+                counter += 1
+                blank = self._output_row_with_line(
+                    None, protocol, columns=self.options.blank_columns, blank=counter,
+                )
+                table['blank%s' % i] = blank

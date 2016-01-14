@@ -33,8 +33,28 @@ class UpdateManager(models.Manager):
         return super(UpdateManager, self).get_queryset().select_related('mod_by')
 
 
+class EDDSerialize(object):
+    """ Mixin class for EDD models supporting JSON serialization. """
+    def get_attr_depth(self, attr_name, depth, default=None):
+        # check for id attribute does not trigger database call
+        id_attr = '%s_id' % attr_name
+        if hasattr(self, id_attr) and getattr(self, id_attr):
+            if depth > 0:
+                return getattr(self, attr_name).to_json(depth=depth-1)
+            return getattr(self, id_attr)
+        return default
+
+    def to_json(self, depth=0):
+        """ Converts object to a dict appropriate for JSON serialization. If the depth argument
+            is positive, the dict will expand links to other objects, rather than inserting a
+            database identifier. """
+        return {
+            'id': self.pk,
+        }
+
+
 @python_2_unicode_compatible
-class Update(models.Model):
+class Update(models.Model, EDDSerialize):
     """ A user update; referenced from other models that track creation and/or modification.
         Views get an Update object by calling main.models.Update.load_request_update(request) to
         lazy-load a request-scoped Update object model. """
@@ -105,10 +125,13 @@ class Update(models.Model):
             return None
         return self.mod_by.email
 
-    def to_json(self):
+    def to_json(self, depth=0):
+        """ Converts object to a dict appropriate for JSON serialization. If the depth argument
+            is positive, the dict will expand links to other objects, rather than inserting a
+            database identifier. """
         return {
             "time": arrow.get(self.mod_time).timestamp,
-            "user": self.mod_by_id,
+            "user": self.get_attr_depth('mod_by', depth),
         }
 
     def format_timestamp(self, format_string="%Y-%m-%d %I:%M%p"):
@@ -198,7 +221,7 @@ class MetadataGroup(models.Model):
 
 
 @python_2_unicode_compatible
-class MetadataType(models.Model):
+class MetadataType(models.Model, EDDSerialize):
     """ Type information for arbitrary key-value data stored on EDDObject instances. """
 
     # defining values to use in the for_context field
@@ -306,7 +329,7 @@ class MetadataType(models.Model):
     def __str__(self):
         return self.type_name
 
-    def to_json(self):
+    def to_json(self, depth=0):
         # TODO: refactor to have sane names in EDDDataInterface.ts
         return {
             "id": self.pk,
@@ -335,16 +358,13 @@ class MetadataType(models.Model):
             return self.for_study()
         elif isinstance(obj, Line):
             return self.for_line()
-        elif isinstance(obj, Protocol):
-            return self.for_protocol()
         elif isinstance(obj, Assay):
-            return self.for_protocol()
-        else:
-            return (self.for_context == self.ALL)
+            return self.for_assay()
+        return False
 
 
 @python_2_unicode_compatible
-class EDDObject(models.Model):
+class EDDObject(models.Model, EDDSerialize):
     """ A first-class EDD object, with update trail, comments, attachments. """
     class Meta:
         db_table = 'edd_object'
@@ -535,24 +555,26 @@ class EDDObject(models.Model):
                 cls, 'name', _('Name'), lambda x: x.name, heading=cls.__name__ + ' Name'),
         ]
 
-    def to_json(self):
+    def to_json(self, depth=0):
         return {
             'id': self.pk,
             'name': self.name,
             'description': self.description,
             'active': self.active,
             'meta': self.meta_store,
-            'modified': self.updated.to_json() if self.updated else None,
-            'created': self.created.to_json() if self.created else None,
+            # Always include expanded created/updated objects instead of IDs
+            'modified': self.updated.to_json(depth) if self.updated else None,
+            'created': self.created.to_json(depth) if self.created else None,
         }
 
     def user_can_read(self, user):
         return True
 
     def user_can_write(self, user):
-        return user.is_superuser
+        return user and user.is_superuser
 
 
+@python_2_unicode_compatible
 class Study(EDDObject):
     """ A collection of items to be studied. """
     class Meta:
@@ -579,6 +601,9 @@ class Study(EDDObject):
             table.ColumnChoice(
                 cls, 'contact', _('Contact'), lambda x: x.get_contact(), heading='Study Contact'),
         ]
+
+    def __str__(self):
+        return self.name
 
     def to_solr_json(self):
         """ Convert the Study model to a dict structure formatted for Solr JSON. """
@@ -607,10 +632,10 @@ class Study(EDDObject):
 
     def user_can_read(self, user):
         """ Utility method testing if a user has read access to a Study. """
-        return user.is_superuser or user.is_staff or any(p.is_read() for p in chain(
+        return user and (user.is_superuser or user.is_staff or any(p.is_read() for p in chain(
             self.userpermission_set.filter(user=user),
             self.grouppermission_set.filter(group__user=user)
-        ))
+        )))
 
     def user_can_write(self, user):
         """ Utility method testing if a user has write access to a Study. """
@@ -654,6 +679,19 @@ class Study(EDDObject):
         for assay in self.get_assays():
             assays_by_protocol[assay.protocol_id].append(assay.id)
         return assays_by_protocol
+
+    def to_json(self, depth=0):
+        json_dict = super(Study, self).to_json(depth=depth)
+        contact = self.get_attr_depth('contact', depth, default={})
+        if isinstance(contact, dict):
+            contact['extra'] = self.contact_extra
+        else:
+            contact = {'id': contact, 'extra': self.contact_extra}
+        json_dict.update({
+            'contact': contact,
+            'metabolic_map': self.get_attr_depth('metabolic_map', depth),
+        })
+        return json_dict
 
 
 @python_2_unicode_compatible
@@ -779,7 +817,6 @@ class Protocol(EDDObject):
     variant_of = models.ForeignKey('self', blank=True, null=True, related_name='derived_set')
     default_units = models.ForeignKey(
         'MeasurementUnit', blank=True, null=True, related_name="protocol_set")
-    metadata_template = models.ManyToManyField(MetadataType, through="MetadataTemplate")
     categorization = models.CharField(
         max_length=8, choices=CATEGORY_CHOICE, default=CATEGORY_NONE)
 
@@ -809,16 +846,82 @@ class Protocol(EDDObject):
 
 
 @python_2_unicode_compatible
-class MetadataTemplate(models.Model):
+class WorklistTemplate(EDDObject):
     """ Defines sets of metadata to use as a template on a Protocol. """
     class Meta:
-        db_table = 'metadata_template'
+        db_table = 'worklist_template'
     protocol = models.ForeignKey(Protocol)
-    meta_type = models.ForeignKey(MetadataType)
-    # potentially override the default value in templates?
-    default_value = models.CharField(max_length=255, blank=True, null=True)
 
     def __str__(self):
+        return self.name
+
+
+@python_2_unicode_compatible
+class WorklistColumn(models.Model):
+    """ Defines metadata defaults and layout. """
+    class Meta:
+        db_table = 'worklist_column'
+    template = models.ForeignKey(WorklistTemplate)
+    # if meta_type is None, treat default_value as format string
+    meta_type = models.ForeignKey(MetadataType, blank=True, null=True)
+    # if None, default to meta_type.type_name or ''
+    heading = models.CharField(max_length=255, blank=True, null=True)
+    # potentially override the default value in templates?
+    default_value = models.CharField(max_length=255, blank=True, null=True)
+    # text to display in UI explaining how to modify column
+    help_text = models.TextField(blank=True, null=True)
+    # allow ordering of metadata
+    ordering = models.IntegerField(blank=True, null=True, unique=True)
+
+    def get_column(self, **kwargs):
+        type_context = None
+
+        def lookup_format(instance, **kwargs):
+            return self.get_default() % self.get_format_dict(instance, **kwargs)
+
+        def lookup_meta(instance, **kwargs):
+            default = self.get_default() % kwargs
+            if instance:
+                return instance.metadata_get(self.meta_type, default=default)
+            return default
+
+        if self.meta_type:
+            type_context = self.meta_type.for_context
+            lookup = lookup_meta
+        else:
+            type_context = None
+            lookup = lookup_format
+        model = {
+            MetadataType.STUDY: Study,
+            MetadataType.LINE: Line,
+            MetadataType.ASSAY: Assay,
+        }.get(type_context, None)
+        return table.ColumnChoice(
+            model, 'worklist_column_%s' % self.pk, str(self), lookup,
+        )
+
+    def get_default(self):
+        if self.default_value:
+            return self.default_value
+        elif self.meta_type:
+            return self.meta_type.default_value
+        return ''
+
+    def get_format_dict(self, instance, *args, **kwargs):
+        """ Build dict used in format string for columns that use it. This implementation re-uses
+            EDDObject.to_json(), in a flattened format. """
+        # Must import inside method to avoid circular import
+        from .utilities import flatten_json
+        fmt_dict = flatten_json(instance.to_json(depth=1) if instance else {})
+        # add in: date
+        # TODO: pass in tz based on user profile?
+        fmt_dict.update(today=arrow.now().format('YYYYMMDD'))
+        fmt_dict.update(**kwargs)
+        return fmt_dict
+
+    def __str__(self):
+        if self.heading:
+            return self.heading
         return str(self.meta_type)
 
 
@@ -834,6 +937,7 @@ class LineProperty(object):
         return len(set([l.study_id for l in lines]))
 
 
+@python_2_unicode_compatible
 class Strain(EDDObject, LineProperty):
     """ A link to a strain/part in the JBEI ICE Registry. """
     class Meta:
@@ -842,11 +946,14 @@ class Strain(EDDObject, LineProperty):
     registry_id = models.UUIDField(blank=True, null=True)
     registry_url = models.URLField(max_length=255, blank=True, null=True)
 
+    def __str__(self):
+        return self.name
+
     def to_solr_value(self):
         return '%(id)s@%(name)s' % {'id': self.registry_id, 'name': self.name}
 
-    def to_json(self):
-        json_dict = super(Strain, self).to_json()
+    def to_json(self, depth=0):
+        json_dict = super(Strain, self).to_json(depth)
         json_dict.update({
             'registry_id': self.registry_id,
             'registry_url': self.registry_url,
@@ -864,19 +971,20 @@ class CarbonSource(EDDObject, LineProperty):
     labeling = models.TextField()
     volume = models.DecimalField(max_digits=16, decimal_places=5)
 
-    def to_json(self):
-        json_dict = super(CarbonSource, self).to_json()
+    def to_json(self, depth=0):
+        json_dict = super(CarbonSource, self).to_json(depth)
         json_dict.update({
             'labeling': self.labeling,
             'volume': self.volume,
-            'initials': self.created.initials,
-            })
+            'initials': self.created.initials,  # TODO: see if this is used, maybe replace
+        })
         return json_dict
 
     def __str__(self):
         return "%s (%s)" % (self.name, self.labeling)
 
 
+@python_2_unicode_compatible
 class Line(EDDObject):
     """ A single item to be studied (contents of well, tube, dish, etc). """
     class Meta:
@@ -885,11 +993,11 @@ class Line(EDDObject):
     control = models.BooleanField(default=False)
     replicate = models.ForeignKey('self', blank=True, null=True)
     object_ref = models.OneToOneField(EDDObject, parent_link=True, related_name='+')
-    contact = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True,
-                                related_name='line_contact_set')
+    contact = models.ForeignKey(
+        settings.AUTH_USER_MODEL, blank=True, null=True, related_name='line_contact_set')
     contact_extra = models.TextField()
-    experimenter = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True,
-                                     related_name='line_experimenter_set')
+    experimenter = models.ForeignKey(
+        settings.AUTH_USER_MODEL, blank=True, null=True, related_name='line_experimenter_set')
     carbon_source = models.ManyToManyField(CarbonSource, blank=True, db_table='line_carbon_source')
     protocols = models.ManyToManyField(Protocol, through='Assay')
     strains = models.ManyToManyField(Strain, blank=True, db_table='line_strain')
@@ -903,15 +1011,15 @@ class Line(EDDObject):
             table.ColumnChoice(
                 # TODO export should handle multi-valued fields better than this
                 cls, 'strain', _('Strain'),
-                lambda x: u'|'.join([s.name for s in x.strains.all()])),
+                lambda x: '|'.join([s.name for s in x.strains.all()])),
             table.ColumnChoice(
                 # TODO export should handle multi-valued fields better than this
                 cls, 'csource_name', _('Carbon Source'),
-                lambda x: u'|'.join([c.name for c in x.carbon_source.all()])),
+                lambda x: '|'.join([c.name for c in x.carbon_source.all()])),
             table.ColumnChoice(
                 # TODO export should handle multi-valued fields better than this
                 cls, 'csource_label', _('Carbon Labeling'),
-                lambda x: u'|'.join([c.labeling for c in x.carbon_source.all()])),
+                lambda x: '|'.join([c.labeling for c in x.carbon_source.all()])),
             table.ColumnChoice(
                 cls, 'experimenter', _('Experimenter'),
                 lambda x: x.experimenter.email if x.experimenter else '',
@@ -927,16 +1035,27 @@ class Line(EDDObject):
             for t in types
         ]
 
-    def to_json(self):
-        json_dict = super(Line, self).to_json()
+    def __str__(self):
+        return self.name
+
+    def to_json(self, depth=0):
+        json_dict = super(Line, self).to_json(depth)
+        # for backward-compatibility, add the 'extra' item to contact dict
+        contact = self.get_attr_depth('contact', depth, default={})
+        if isinstance(contact, dict):
+            contact['extra'] = self.contact_extra
+        else:
+            contact = {'user_id': contact, 'extra': self.contact_extra}
         json_dict.update({
             'control': self.control,
             'replicate': self.replicate_id,
-            'contact': {'user_id': self.contact_id, 'text': self.contact_extra, },
-            'experimenter': self.experimenter_id,
+            'contact': contact,
+            'experimenter': self.get_attr_depth('experimenter', depth),
             'strain': [s.pk for s in self.strains.all()],
             'carbon': [c.pk for c in self.carbon_source.all()],
-            })
+        })
+        if depth > 0:
+            json_dict.update(study=self.study_id)
         return json_dict
 
     @property
@@ -986,7 +1105,7 @@ class Line(EDDObject):
 
 class MeasurementGroup(object):
     """ Does not need its own table in database, but multiple models will reference measurements
-        that are specific to a specific group category: metabolomics, proteomics, etc. 
+        that are specific to a specific group category: metabolomics, proteomics, etc.
         Note that when a new group type is added here, code will need to be updated elsewhere,
         including the Javascript/Typescript front end.
         Look for the string 'MeasurementGroupCode' in comments."""
@@ -1005,7 +1124,7 @@ class MeasurementGroup(object):
 
 
 @python_2_unicode_compatible
-class MeasurementType(models.Model):
+class MeasurementType(models.Model, EDDSerialize):
     """ Defines the type of measurement being made. A generic measurement only has name and short
         name; if the type is a metabolite, the metabolite attribute will contain additional
         metabolite info. """
@@ -1020,7 +1139,7 @@ class MeasurementType(models.Model):
     def to_solr_value(self):
         return '%(id)s@%(name)s' % {'id': self.pk, 'name': self.type_name}
 
-    def to_json(self):
+    def to_json(self, depth=0):
         return {
             "id": self.pk,
             "name": self.type_name,
@@ -1086,6 +1205,7 @@ class MetaboliteKeyword(models.Model):
         return keywords
 
 
+@python_2_unicode_compatible
 class Metabolite(MeasurementType):
     """ Defines additional metadata on a metabolite measurement type; charge, carbon count, molar
         mass, and molecular formula.
@@ -1101,10 +1221,13 @@ class Metabolite(MeasurementType):
     keywords = models.ManyToManyField(
         MetaboliteKeyword, db_table="metabolites_to_keywords")
 
+    def __str__(self):
+        return self.type_name
+
     def is_metabolite(self):
         return True
 
-    def to_json(self):
+    def to_json(self, depth=0):
         """ Export a serializable dictionary.  Because this will access all associated keyword
             objects, it is recommended to include a call to query.prefetch_related("keywords")
             when selecting metabolites in bulk. """
@@ -1150,6 +1273,7 @@ class Metabolite(MeasurementType):
 Metabolite._meta.get_field('type_group').default = MeasurementGroup.METABOLITE
 
 
+@python_2_unicode_compatible
 class GeneIdentifier(MeasurementType):
     """ Defines additional metadata on gene identifier transcription measurement type. """
     class Meta:
@@ -1165,18 +1289,25 @@ class GeneIdentifier(MeasurementType):
         """ Generate a dictionary of genes keyed by name. """
         return {g.type_name: g for g in cls.objects.order_by("type_name")}
 
+    def __str__(self):
+        return self.type_name
+
 GeneIdentifier._meta.get_field('type_group').default = MeasurementGroup.GENEID
 
 
+@python_2_unicode_compatible
 class ProteinIdentifier(MeasurementType):
     """ Defines additional metadata on gene identifier transcription measurement type. """
     class Meta:
         db_table = 'protein_identifier'
-    pass
+
+    def __str__(self):
+        return self.type_name
 
 ProteinIdentifier._meta.get_field('type_group').default = MeasurementGroup.PROTEINID
 
 
+@python_2_unicode_compatible
 class Phosphor(MeasurementType):
     """ Defines metadata for phosphorescent measurements """
     class Meta:
@@ -1187,6 +1318,9 @@ class Phosphor(MeasurementType):
         max_digits=16, decimal_places=5, blank=True, null=True)
     reference_type = models.ForeignKey(
         MeasurementType, blank=True, null=True, related_name='phosphor_set')
+
+    def __str__(self):
+        return self.type_name
 
 Phosphor._meta.get_field('type_group').default = MeasurementGroup.PHOSPHOR
 
@@ -1218,6 +1352,7 @@ class MeasurementUnit(models.Model):
         return self.unit_name
 
 
+@python_2_unicode_compatible
 class Assay(EDDObject):
     """ An examination of a Line, containing the Protocol and set of Measurements. """
     class Meta:
@@ -1228,6 +1363,9 @@ class Assay(EDDObject):
     experimenter = models.ForeignKey(
         settings.AUTH_USER_MODEL, blank=True, null=True, related_name='assay_experimenter_set')
     measurement_types = models.ManyToManyField(MeasurementType, through='Measurement')
+
+    def __str__(self):
+        return self.name
 
     def get_metabolite_measurements(self):
         return self.measurement_set.filter(
@@ -1245,13 +1383,13 @@ class Assay(EDDObject):
     def long_name(self):
         return "%s-%s-%s" % (self.line.name, self.protocol.name, self.name)
 
-    def to_json(self):
-        json_dict = super(Assay, self).to_json()
+    def to_json(self, depth=0):
+        json_dict = super(Assay, self).to_json(depth)
         json_dict.update({
-            'lid': self.line_id,
-            'pid': self.protocol_id,
-            'experimenter': self.experimenter_id,
-            })
+            'lid': self.get_attr_depth('line', depth),
+            'pid': self.get_attr_depth('protocol', depth),
+            'experimenter': self.get_attr_depth('experimenter', depth),
+        })
         return json_dict
 
 
@@ -1269,8 +1407,8 @@ class MeasurementFormat(object):
 
 
 @python_2_unicode_compatible
-class Measurement(models.Model):
-    """ A set of data points for an (assay, measurement type) pair. """
+class Measurement(models.Model, EDDSerialize):
+    """ A plot of data points for an (assay, measurement type) pair. """
     class Meta:
         db_table = 'measurement'
     assay = models.ForeignKey(Assay)
@@ -1306,11 +1444,11 @@ class Measurement(models.Model):
                 lambda x: x.y_units.unit_name if x.y_units.display else ''),
         ]
 
-    def to_json(self):
+    def to_json(self, depth=0):
         return {
             "id": self.pk,
-            "assay": self.assay_id,
-            "type": self.measurement_type_id,
+            "assay": self.get_attr_depth('assay', depth),
+            "type": self.get_attr_depth('measurement_type', depth),
             "comp": self.compartment,
             "format": self.measurement_format,
             # including points here is extremely inefficient
@@ -1437,6 +1575,7 @@ class MeasurementValue(models.Model):
         super(MeasurementValue, self).save(*args, **kwargs)
 
 
+@python_2_unicode_compatible
 class SBMLTemplate(EDDObject):
     """ Container for information used in SBML export. """
     class Meta:
@@ -1448,6 +1587,9 @@ class SBMLTemplate(EDDObject):
     biomass_exchange_name = models.TextField()
     # FIXME would like to limit this to attachments only on parent EDDObject, and remove null=True
     sbml_file = models.ForeignKey(Attachment, blank=True, null=True)
+
+    def __str__(self):
+        return self.name
 
     @property
     def xml_file(self):
@@ -1476,7 +1618,7 @@ class SBMLTemplate(EDDObject):
         # may need to do a post-save signal; get sbml attachment and save in sbml_file
         super(SBMLTemplate, self).save(*args, **kwargs)
 
-    def to_json(self):
+    def to_json(self, depth=0):
         return {
             "id": self.pk,
             "name": self.name,
@@ -1538,7 +1680,7 @@ def User_institutions(self):
         return []
 
 
-def User_to_json(self):
+def User_to_json(self, depth=0):
     # FIXME this may be excessive - how much does the frontend actually need?
     return {
         "id": self.pk,

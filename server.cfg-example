@@ -1,19 +1,13 @@
 {
     "site": {
-        "root": "http://localhost/edd/",
-        "host": "localhost",
         "secret": "GENERATE SOME RANDOM TEXT HERE",
-        "admins": { "William": "wcmorrell@lbl.gov" },
-        "media_root": "/var/www/uploads",
-        "media_url": "/uploads/"
+        "admins": { "William": "wcmorrell@lbl.gov" }
     },
 
     "email": {
         "host": "localhost",
         "user": "",
-        "password": "",
-        "port" : "25",
-        "subject_prefix": "[EDD]"
+        "password": ""
     },
 
     "db": {
@@ -40,8 +34,7 @@
 
     "ice": {
         "url": "https://registry-test.jbei.org/",
-        "cert": "./certs/registry-test.pem",
-        "edd_key": "yJwU0chpercYs/R4YmCUxhbRZBHM4WqpO3ZH0ZW6+4X+/aTodSGTI2w5jeBxWgJXNN1JNQIg02Ic3ZnZtSEVYA=="
+        "edd_key": "COPY THE CORRECT KEY HERE"
     },
 
     "rabbitmq": {
