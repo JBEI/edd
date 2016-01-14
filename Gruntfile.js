@@ -12,6 +12,28 @@ module.exports = function(grunt) {
     	clean: {
     		build: ["./typescript/build/"]
         },
+        insert_timestamp: {
+            js: {
+                options: {
+                    prepend: true,
+                    append: false,
+                    // Uses default output of `Date()`
+                    format: false,
+                    template: '// Compiled to JS on: {timestamp}  ',
+                    insertNewlines: true
+                },
+                files: [{
+                    // Use dynamic extend name
+                    expand: true,
+                    // Source dir
+                    cwd: './typescript/build/',
+                    // Match files
+                    src: ['**/*.ts'],
+                    // Output files
+                    dest: './typescript/build/'
+                }]
+            }
+        },
         typescript: {
             dev: {
                 src: ['./typescript/build/*.ts'],
@@ -20,7 +42,8 @@ module.exports = function(grunt) {
                     rootDir: './typescript/build/',
                     target: 'es5',
                     declaration: false,
-                    sourceMap: true,
+                    inlineSourceMap: true,
+                    inlineSources: true,
                     removeComments: false,
                 }
             },
@@ -49,29 +72,6 @@ module.exports = function(grunt) {
                 }]
             }
         },
-        insert_timestamp: {
-            js: {
-                options: {
-                    prepend: false,
-                    append: true,
-                    // Uses default output of `Date()`
-                    format: false,
-                    template: '// JS compiled on: {timestamp}  ',
-                    insertNewlines: true
-                },
-                files: [{
-                    // Use dynamic extend name
-                    expand: true,
-                    // Source dir
-                    cwd: './typescript/build/',
-                    // Match files
-                    src: ['**/*.js'],
-                    // Output files
-                    dest: './typescript/build/',
-                    ext: '.js'
-                }]
-            }
-        },
         copy: {
             prep: {
                 cwd: './typescript/src/',    // set working folder / root to copy
@@ -81,7 +81,7 @@ module.exports = function(grunt) {
             },
             mergeDev: {
                 cwd: './typescript/build/',
-                src: '**/*',
+                src: ['**/*.js'],
                 dest: './main/static/main/js/',
                 expand: true
             },
@@ -101,7 +101,7 @@ module.exports = function(grunt) {
         watch: {
             scripts: {
                 files: ['./typescript/src/*.ts'],                 // the watched files
-                tasks: ["clean:build", "copy:prep", "typescript:dev", "insert_timestamp:js", "copy:mergeDev", "exec:collect"],  // the task(s) to run
+                tasks: ["clean:build", "copy:prep", "insert_timestamp:js", "typescript:dev", "copy:mergeDev", "exec:collect"],  // the task(s) to run
                 options: {
                     spawn: false // makes the watch task faster
                 }
@@ -118,10 +118,10 @@ module.exports = function(grunt) {
         grunt.registerTask('default', ["clean:build", "copy:prep", "typescript:prod", "uglify:prod", "copy:mergeProd", "exec:collect"]);
     } else if (watch) {
         // Dev build and watch for changes
-        grunt.registerTask('default', ["clean:build", "copy:prep", "typescript:dev", "insert_timestamp:js", "copy:mergeDev", "exec:collect", 'watch']);
+        grunt.registerTask('default', ["clean:build", "copy:prep", "insert_timestamp:js", "typescript:dev", "copy:mergeDev", "exec:collect", 'watch']);
     } else {
         // Standard one-time dev build
-        grunt.registerTask('default', ["clean:build", "copy:prep", "typescript:dev", "insert_timestamp:js", "copy:mergeDev", "exec:collect"]);
+        grunt.registerTask('default', ["clean:build", "copy:prep", "insert_timestamp:js", "typescript:dev", "copy:mergeDev", "exec:collect"]);
     }
 };
 
