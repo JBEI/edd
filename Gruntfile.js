@@ -6,13 +6,14 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-contrib-clean');
     grunt.loadNpmTasks('grunt-exec');
     grunt.loadNpmTasks('grunt-insert-timestamp');
+    grunt.loadNpmTasks('grunt-contrib-uglify');
 
     grunt.initConfig({
     	clean: {
     		build: ["./typescript/build/"]
         },
         typescript: {
-            buildDev: {
+            dev: {
                 src: ['./typescript/build/*.ts'],
                 dest: './typescript/build/',
                 options: {
@@ -23,7 +24,7 @@ module.exports = function(grunt) {
                     removeComments: false,
                 }
             },
-            buildProd: {
+            prod: {
                 src: ['./typescript/build/*.ts'],
                 dest: './typescript/build/',
                 options: {
@@ -33,6 +34,19 @@ module.exports = function(grunt) {
                     sourceMap: false,
                     removeComments: true,
                 }
+            }
+        },
+        uglify: {
+            options: {
+                mangle: false
+            },
+            prod: {
+                files: [{
+                    expand: true,
+                    cwd: './typescript/build/',
+                    src: '**/*.js',
+                    dest: './typescript/build/'
+                }]
             }
         },
         insert_timestamp: {
@@ -87,7 +101,7 @@ module.exports = function(grunt) {
         watch: {
             scripts: {
                 files: ['./typescript/src/*.ts'],                 // the watched files
-                tasks: ["clean:build", "copy:prep", "typescript:buildDev", "insert_timestamp:js", "copy:mergeDev", "exec:collect"],  // the task(s) to run
+                tasks: ["clean:build", "copy:prep", "typescript:dev", "insert_timestamp:js", "copy:mergeDev", "exec:collect"],  // the task(s) to run
                 options: {
                     spawn: false // makes the watch task faster
                 }
@@ -101,13 +115,13 @@ module.exports = function(grunt) {
 
     if (production) {
         // One-time production build
-        grunt.registerTask('default', ["clean:build", "copy:prep", "typescript:buildProd", "copy:mergeProd", "exec:collect"]);
+        grunt.registerTask('default', ["clean:build", "copy:prep", "typescript:prod", "uglify:prod", "copy:mergeProd", "exec:collect"]);
     } else if (watch) {
         // Dev build and watch for changes
-        grunt.registerTask('default', ["clean:build", "copy:prep", "typescript:buildDev", "insert_timestamp:js", "copy:mergeDev", "exec:collect", 'watch']);
+        grunt.registerTask('default', ["clean:build", "copy:prep", "typescript:dev", "insert_timestamp:js", "copy:mergeDev", "exec:collect", 'watch']);
     } else {
         // Standard one-time dev build
-        grunt.registerTask('default', ["clean:build", "copy:prep", "typescript:buildDev", "insert_timestamp:js", "copy:mergeDev", "exec:collect"]);
+        grunt.registerTask('default', ["clean:build", "copy:prep", "typescript:dev", "insert_timestamp:js", "copy:mergeDev", "exec:collect"]);
     }
 };
 
