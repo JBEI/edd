@@ -9,6 +9,7 @@
   "devDependencies": {
     "grunt-contrib-copy": "^0.8.2",
     "grunt-contrib-watch": "^0.6.1",
+    "grunt-insert-timestamp": "^0.1.0",
     "grunt-typescript": ""
   },
   "scripts": {
