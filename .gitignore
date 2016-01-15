@@ -15,3 +15,4 @@ edd/local_settings.py
 # and ignore local log directory
 /log
 
+/typescript/build
