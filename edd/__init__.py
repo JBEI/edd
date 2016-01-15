@@ -2,6 +2,10 @@
 from __future__ import absolute_import, unicode_literals
 
 import logging
+import os
+
+# specify a default settings, in case DJANGO_SETTINGS_MODULE env is not set
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "edd.settings")
 
 from django.conf import settings
 

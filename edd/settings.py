@@ -71,11 +71,11 @@ ADMINS = MANAGERS = tuple(config['site'].get('admins', {}).items())
 # most of these just explicitly set the Django defaults, but since  affect Django, Celery, and
 # custom Celery support
 # code, we enforce them here for consistency
-EMAIL_SUBJECT_PREFIX = '[EDD]'
+EMAIL_SUBJECT_PREFIX = '[EDD] '
 EMAIL_TIMEOUT = 60  # in seconds
-EMAIL_HOST = config['email'].get('host', 'localhost')
-EMAIL_HOST_USER = config['email'].get('user', '')
-EMAIL_HOST_PASSWORD = config['email'].get('password', '')
+EMAIL_HOST = 'localhost'
+EMAIL_HOST_USER = ''
+EMAIL_HOST_PASSWORD = ''
 EMAIL_PORT = 25
 
 ####################################################################################################
