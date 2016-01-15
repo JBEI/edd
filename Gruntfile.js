@@ -94,7 +94,7 @@ module.exports = function(grunt) {
         },
         exec: {
             collect: {
-                command: './manage.py collectstatic',
+                command: './manage.py collectstatic --noinput',
                 stdout: true
             }
         },
