@@ -11,16 +11,31 @@ logger = logging.getLogger(__name__)
 # The maximum number of lines to read before giving up on finding the header.
 max_header_line_count = 20
 
-# Load the file and make call to parse it.
 def parse_hplc_file(input_file_path):
+	"""Loads the file on the given path and parses textual HPLC data from it."""
+
 	if not os.path.exists(input_file_path):
 		raise IOError("Error: unable to locate file %s" % input_file_path)
 
 	with io.open(input_file_path, "r", encoding = 'utf-16') as input_file:
 		return _parse_hplc_file_contents(input_file)
 
+# debugging aid.
+def _display_sample(samples,selection):
+	q = {}
+	for x in samples.keys():
+		q[x] = {}
+		for y in samples[x].keys():
+			val = samples[x][y]
+			if type(samples[x][y]) is list:
+				val = val[:5]
+			q[x][y] = val
+	for v in q[q.keys()[selection]].keys():
+		print v, q[q.keys()[selection]][v]
+
 # Parses out the file
 def _parse_hplc_file_contents(input_file):
+	"""Collects records from the given file and returns them as a list"""
 	logger.debug("opened and is reading file %s" % input_file_path)
 
 	# read in header block
@@ -38,7 +53,7 @@ def _parse_hplc_file_contents(input_file):
 			exit(1)
 		elif line == '':
 			logger.error("unable to find header: EOF encountered")
-			
+
 		i += 1
 
 	logger.debug("parsing header block")
@@ -49,7 +64,7 @@ def _parse_hplc_file_contents(input_file):
 	# TODO: retain usable form of header entries?
 	
 	# collect table header, "Sample Name", etc.
-	# clips it off the end of the header block
+	# cliping it off the end of the header block
 	table_header = []
 	table_divider = header_block[-1] 
 	r_index = -2
@@ -140,7 +155,6 @@ def _parse_hplc_file_contents(input_file):
 
 		# get the name of the sample related to the row
 		sample_name = line[:section_widths[0]].strip()
-		# print "section_widths",section_widths
 
 		if sample_name:
 			# ensure no collision with previous sample labels by adding a number
@@ -164,9 +178,9 @@ def _parse_hplc_file_contents(input_file):
 			samples[sample_name] = dict(entry_template)
 
 		# collect the other data items
-		for row_index in range(len(section_widths))[1:]:
+		for row_index in range(len(section_widths)):
 			segment = line[:section_widths[row_index]].strip()
-			line = line[section_widths[row_index]:]
+			line = line[section_widths[row_index]+1:]
 			if segment:
 				samples[sample_name][column_headers[row_index]].append(segment)
 
