@@ -339,12 +339,12 @@ module Utl {
 		}
 
 		// Remove all child elements from the specified element.
-		static removeAllChildren(element:HTMLElement):void {
+		static removeAllChildren(element: HTMLElement): void {
 			while (element.firstChild)
 				element.removeChild(element.firstChild);
 		}
 
-		static removeFromParent(element:HTMLElement):void {
+		static removeFromParent(element: HTMLElement): void {
 			if (element && element.parentNode)
 				element.parentNode.removeChild(element);
 		}
@@ -352,10 +352,57 @@ module Utl {
 		// Call this anywhere in your code to trap F12 keypress to stop in debugger.
 		// This is useful for looking at DOM elements in a popup that would normally go away when
 		// you moved the mouse away from it.
-		static enableF12Trap():void {
+		static enableF12Trap(): void {
 			$(window).keydown(function(e) { if (e.keyCode == 123) debugger; });
 		}
 
+		static startWaitBadge(selector): void {
+			$(selector).css("class", "waitbadge wait");
+		}
+
+		static stopWaitBadge(selector): void {
+			$(selector).css("class", "waitbadge");
+		}
+	}
+
+
+	export class FileDropZone {
+
+		static setup(element_id, url, process_result, multiple):void {
+			var zone = new FileDrop(element_id, {});	// filedrop-min.js , http://filedropjs.org
+			var csrftoken = jQuery.cookie('csrftoken');
+			if (!(typeof multiple === "undefined")) {
+				zone.multiple(multiple);
+			} else {
+				zone.multiple(false);
+			}
+			zone.event('send', function(files) {
+				files.each(function(file) {
+					file.event('done', function(xhr) {
+						var result = jQuery.parseJSON(xhr.responseText);
+						console.log(result);
+						if (result.python_error) {
+							alert(result.python_error);
+						} else {
+							process_result(result);
+						}
+					});
+
+					file.event('error', function(e, xhr) {
+						alert('Error uploading ' + this.name + ': ' +
+							xhr.status + ', ' + xhr.statusText);
+					});
+
+					// this ensures that the CSRF middleware in Django doesn't reject our
+					// HTTP request
+					file.event('xhrSetup', function(xhr) {
+						xhr.setRequestHeader("X-CSRFToken", csrftoken);
+					});
+
+					file.sendTo(url);
+				});
+			});
+		}
 	}
 
 

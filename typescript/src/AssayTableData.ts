@@ -1,5 +1,5 @@
 /// <reference path="typescript-declarations.d.ts" />
-/// <reference path="util2.ts" />
+/// <reference path="Utl.ts" />
 
 declare var ATData:any; // Setup by the server.
 declare var EDDATDGraphing:any;
@@ -1616,7 +1616,7 @@ $(window).load(function() {
     var url = "/utilities/parsefile";
     var atdata_url = "/study/" + EDDData.currentStudyID + "/assaydata";
 
-    setupFileDrop("textData", url, EDDATD.process_result, false);
+    Utl.FileDropZone.setup("textData", url, EDDATD.process_result, false);
     $('.disclose').find('a.discloseLink').on('click', EDDATD.disclose);
     // Populate ATData and EDDData objects via AJAX calls
     jQuery.ajax(atdata_url, {
