@@ -132,7 +132,6 @@ def _parse_hplc_file_contents(input_file):
 	samples = {}
 
 	# each value is indexed by column header
-	entry_template = {}
 	for column_header_index in range(len(column_headers)):
 		header = u""
 		for header_part in column_headers[column_header_index]:
@@ -140,11 +139,11 @@ def _parse_hplc_file_contents(input_file):
 		if len(header) > 0:
 			header = header[1:]
 		column_headers[column_header_index] = header
-		entry_template[header] = []
 
 	logger.debug("collected the column_headers")
 	logger.debug("now reading in the data")
 
+	# Read in each line and contruct records
 	previous_name = None
 	while True:
 		line = input_file.readline()
@@ -175,15 +174,20 @@ def _parse_hplc_file_contents(input_file):
 
 		# initilize the sample entry
 		if not samples.has_key(sample_name):
-			samples[sample_name] = dict(entry_template)
+			entry = {}
+			for header in column_headers:
+				entry[header] = []
+			samples[sample_name] = entry
 
 		# collect the other data items
 		for row_index in range(len(section_widths)):
+
 			segment = line[:section_widths[row_index]].strip()
 			line = line[section_widths[row_index]+1:]
-			if segment:
+			if segment and segment != u'-':
 				samples[sample_name][column_headers[row_index]].append(segment)
 
+		
 	logger.info("successfully parsed the HPLC file %s"
 		% os.path.basename(input_file_path))
 
