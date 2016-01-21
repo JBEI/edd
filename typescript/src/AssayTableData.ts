@@ -1,5 +1,5 @@
-/// <reference path="lib/jquery.d.ts" />
-/// <reference path="EDDDataInterface.ts" />
+/// <reference path="typescript-declarations.d.ts" />
+/// <reference path="util2.ts" />
 
 declare var ATData:any; // Setup by the server.
 declare var EDDATDGraphing:any;
@@ -1579,6 +1579,53 @@ prepareIt: (): void => {
     $('#transpose').click(EDDATD.clickedOnTranspose);
     EDDATD.changedMasterProtocol(); //  Since the initial masterProtocol value is zero, we need to manually trigger this:
     EDDATD.queueProcessImportSettings();
+},
+
+
+disclose: (): boolean => {
+    $(this).closest('.disclose').toggleClass('discloseHide');
+    return false;
+},
+
+
+process_result: (result): void => {
+    if (result.file_type == "xlsx") {
+        var ws = result.file_data["worksheets"][0];
+        console.log(ws);
+        var table = ws[0];
+        var csv = [];
+        if (table.headers) {
+            csv.push(table.headers.join());
+        }
+        for (var i = 0; i < table.values.length; i++) {
+            csv.push(table.values[i].join());
+        }
+        $("#rawdataformatp").val("csv");
+        $("#textData").text(csv.join("\n"));
+    } else {
+        $("#rawdataformatp").val(result.file_type);
+        $("#textData").text(result.file_data);
+    }
+    EDDATD.parseAndDisplayText(); // AssayTableData.ts
 }
 
 };
+
+
+$(window).load(function() {
+    var url = "/utilities/parsefile";
+    var atdata_url = "/study/" + EDDData.currentStudyID + "/assaydata";
+
+    setupFileDrop("textData", url, EDDATD.process_result, false);
+    $('.disclose').find('a.discloseLink').on('click', EDDATD.disclose);
+    // Populate ATData and EDDData objects via AJAX calls
+    jQuery.ajax(atdata_url, {
+        "success": function(data) {
+            ATData = data.ATData;
+            $.extend(EDDData, data.EDDData);
+            EDDATD.prepareIt();
+        }
+    }).fail(function(x, s, e) {
+        alert(s);
+    });
+});

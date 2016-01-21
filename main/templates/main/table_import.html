@@ -23,50 +23,13 @@
 
   <!-- some page-specific code -->
   <script type="text/javascript">
+
   var ATData = {}; // this needs to be declared before loading AssayTableData.js!
   var EDDData = {};
-  EDDData.currentUserID = {{ user.pk }};
-  var atdata_url = "/study/{{ study.id }}/assaydata";
 
-  function disclose() {
-    $(this).closest('.disclose').toggleClass('discloseHide');
-    return false;
-  }
-  var url = "/utilities/parsefile";
-  var process_result = function (result) {
-    if (result.file_type == "xlsx") {
-      var ws = result.file_data["worksheets"][0];
-      console.log(ws);
-      var table = ws[0];
-      var csv = [];
-      if (table.headers) {
-        csv.push(table.headers.join());
-      }
-      for (var i = 0; i < table.values.length; i++) {
-        csv.push(table.values[i].join());
-      }
-      $("#rawdataformatp").val("csv");
-      $("#textData").text(csv.join("\n"));
-    } else {
-      $("#rawdataformatp").val(result.file_type);
-      $("#textData").text(result.file_data);
-    }
-    EDDATD.parseAndDisplayText(); // AssayTableData.ts
-  };
-  $(window).load(function () {
-      setupFileDrop("textData", url, process_result, false);
-      $('.disclose').find('a.discloseLink').on('click', disclose);
-      // Populate ATData and EDDData objects via AJAX calls
-      jQuery.ajax(atdata_url, {
-        "success": function(data) {
-          ATData = data.ATData;
-          $.extend(EDDData, data.EDDData);
-          EDDATD.prepareIt();
-        }
-      }).fail(function (x, s, e) {
-        alert(s);
-      });
-  });
+  EDDData.currentUserID = {{ user.pk }};
+  EDDData.currentStudyID = {{ study.id }};
+
   </script>
   <script type="text/javascript" src="{% static 'main/js/autocomplete2.js' %}"></script>
   <script type="text/javascript" src="{% static 'main/js/AssayTableData.js' %}"></script>
