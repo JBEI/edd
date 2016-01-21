@@ -1,5 +1,4 @@
-
-// requires util2.js
+// requires Utl.js
 
 var EDDRnaSeq = (function () {
     var pub = {};
@@ -75,8 +74,7 @@ var EDDRnaSeq = (function () {
                 $("#data-table").val("");
                 submit_data(study_id);
             });
-            setupFileDrop("data-field", filedrop_url, pub.process_result,
-                false);
+            Utl.FileDropZone.setup("data-field", filedrop_url, pub.process_result, false);
             $("#process-button").click(function () {
                 submit_data();
             });
