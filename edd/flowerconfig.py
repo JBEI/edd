@@ -5,19 +5,19 @@ http://flower.readthedocs.org/en/latest/config.html
 """
 
 from celery import Celery
-from edd.settings import config
+from django.conf import settings
 
 
 # Broker Settings
-RABBITMQ_HOST = config['rabbitmq'].get('hostname')
-EDD_RABBITMQ_USERNAME = config['rabbitmq'].get('edd_user')
-EDD_RABBITMQ_PASSWORD = config['rabbitmq'].get('edd_pass')
-RABBITMQ_PORT = config['rabbitmq'].get('port')
-EDD_VHOST = config['rabbitmq'].get('edd_vhost')
+RABBITMQ_HOST = settings.config['rabbitmq'].get('hostname')
+EDD_RABBITMQ_USERNAME = settings.config['rabbitmq'].get('edd_user')
+EDD_RABBITMQ_PASSWORD = settings.config['rabbitmq'].get('edd_pass')
+RABBITMQ_PORT = settings.config['rabbitmq'].get('port')
+EDD_VHOST = settings.config['rabbitmq'].get('edd_vhost')
 
-RABBITMQ_MGMT_USERNAME = config['rabbitmq'].get('mgmt_user', 'bunny')
-RABBITMQ_MGMT_PASSWORD = config['rabbitmq'].get('mgmt_pass', '')
-RABBITMQ_MGMT_PORT = config['rabbitmq'].get('mgmt_port', 15672)
+RABBITMQ_MGMT_USERNAME = settings.config['rabbitmq'].get('mgmt_user', 'bunny')
+RABBITMQ_MGMT_PASSWORD = settings.config['rabbitmq'].get('mgmt_pass', '')
+RABBITMQ_MGMT_PORT = settings.config['rabbitmq'].get('mgmt_port', 15672)
 MGMT_INTERFACE_URL = 'amqp://%(user)s:%(pass)s@%(host)s/%(vhost)s' % {
     'user': RABBITMQ_MGMT_USERNAME,
     'pass': RABBITMQ_MGMT_PASSWORD,

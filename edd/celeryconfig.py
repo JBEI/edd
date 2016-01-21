@@ -12,7 +12,6 @@ import socket
 
 from datetime import timedelta
 from django.conf import settings
-from edd.settings import config
 from edd_utils.parsers.json_encoders import EXTENDED_JSON_CONTENT_TYPE
 
 ####################################################################################################
@@ -55,11 +54,11 @@ CELERY_MAX_ICE_RETRIES = 19
 # General settings for celery
 ####################################################################################################
 # Broker Settings
-RABBITMQ_HOST = config['rabbitmq'].get('hostname')
-EDD_RABBITMQ_USERNAME = config['rabbitmq'].get('edd_user')
-EDD_RABBITMQ_PASSWORD = config['rabbitmq'].get('edd_pass')
-RABBITMQ_PORT = config['rabbitmq'].get('port')
-EDD_VHOST = config['rabbitmq'].get('edd_vhost')
+RABBITMQ_HOST = settings.config['rabbitmq'].get('hostname')
+EDD_RABBITMQ_USERNAME = settings.config['rabbitmq'].get('edd_user')
+EDD_RABBITMQ_PASSWORD = settings.config['rabbitmq'].get('edd_pass')
+RABBITMQ_PORT = settings.config['rabbitmq'].get('port')
+EDD_VHOST = settings.config['rabbitmq'].get('edd_vhost')
 BROKER_URL = 'amqp://%(user)s:%(pass)s@%(host)s:%(port)s/%(vhost)s' % {
              'user': EDD_RABBITMQ_USERNAME,
              'pass': EDD_RABBITMQ_PASSWORD,
@@ -135,10 +134,10 @@ CELERY_IMPORTS = ('edd.remote_tasks',)
 ####################################################################################################
 # Configure database backend to store task state and results
 ####################################################################################################
-DB_USER = config['db'].get('user', 'edduser')
-DB_PASSWORD = config['db'].get('pass', '')
-DB_HOST = config['db'].get('host', 'localhost')
-DB_NAME = config['db'].get('database', 'localhost')
+DB_USER = settings.config['db'].get('user', 'edduser')
+DB_PASSWORD = settings.config['db'].get('pass', '')
+DB_HOST = settings.config['db'].get('host', 'localhost')
+DB_NAME = settings.config['db'].get('database', 'localhost')
 CELERY_RESULT_BACKEND = ('db+postgresql://%(db_user)s:%(db_password)s@%(db_host)s/%(db_name)s'
                          % {
                              'db_user': DB_USER,
@@ -168,7 +167,7 @@ CELERY_REDIRECT_STDOUTS_LEVEL = 'WARN'  # override the default setting of 'WARN'
 
 # convert dictionary required by JSON-formatted server.cfg to list of (name, email) tuples required
 # by Celery, also converting from the JSON Unicode to ASCII to avoid problems with sending email.
-admins_dict_temp = config['site'].get('admins', [])
+admins_dict_temp = settings.config['site'].get('admins', [])
 recipients_tuple_list = []
 force_ascii = True
 for raw_name in admins_dict_temp:

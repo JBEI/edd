@@ -7,9 +7,11 @@ from __future__ import absolute_import
 import arrow
 # use the same email configuration for custom emails as Celery and Django are using in other parts
 # of EDD. if deployed to a separate server, we can just copy over the other config files
-from edd.settings import *
-from edd.celeryconfig import SERVER_EMAIL, CELERY_MIN_WARNING_GRACE_PERIOD_MIN, \
-    CELERY_SEND_TASK_ERROR_EMAILS, CELERYD_TASK_TIME_LIMIT, CELERYD_TASK_SOFT_TIME_LIMIT
+from django.conf import settings
+from edd.celeryconfig import (
+    SERVER_EMAIL, CELERY_MIN_WARNING_GRACE_PERIOD_MIN, CELERY_SEND_TASK_ERROR_EMAILS,
+    CELERYD_TASK_TIME_LIMIT, CELERYD_TASK_SOFT_TIME_LIMIT
+)
 from email.mime.text import MIMEText
 from email.utils import formataddr
 # use smtplib directly to send mail since Celery doesn't seem to expose an API to help with this,
@@ -120,12 +122,12 @@ def email_admins(subject, message, logger):
     # extract recipient data from the required Celery dictionary format
     logger.debug("Raw configuration values on following lines:")
     logger.debug("send error emails: " + CELERY_SEND_TASK_ERROR_EMAILS.__str__())
-    logger.debug("host: " + EMAIL_HOST)
-    logger.debug("port " + EMAIL_PORT.__str__())
-    logger.debug("admins: " + ADMINS.__str__())
+    logger.debug("host: " + settings.EMAIL_HOST)
+    logger.debug("port " + settings.EMAIL_PORT.__str__())
+    logger.debug("admins: " + settings.ADMINS.__str__())
     logger.debug("sender email: " + SERVER_EMAIL)
-    logger.debug("email user = " + EMAIL_HOST_USER)
-    logger.debug("email password = " + EMAIL_HOST_PASSWORD)
+    logger.debug("email user = " + settings.EMAIL_HOST_USER)
+    logger.debug("email password = " + settings.EMAIL_HOST_PASSWORD)
     logger.debug("End raw configuration values")
 
     # return early if task error emails have been silenced
@@ -138,11 +140,10 @@ def email_admins(subject, message, logger):
     ################################################################################################
     formatted_recipients_list = []
     unformatted_recipients_list = []
-    for recipient in ADMINS:
-        name = recipient[0]
-        email_addr = recipient[1]
-        formatted = formataddr((name, email_addr))
+    for recipient in settings.ADMINS:
+        formatted = formataddr(recipient)
         formatted_recipients_list.append(formatted)
+        email_addr = recipient[1]
         unformatted_recipients_list.append(email_addr)
 
     # convert dictionary supplied by JSON-formatted server.cfg to formats useful to us
@@ -160,11 +161,17 @@ def email_admins(subject, message, logger):
         #                                      admin[1].encode('ascii', 'replace'))
         #                                      for admin in ADMINS]
 
-        recipients_str_list = [_format_email_address(admin[0].encode('ascii', 'replace'),
-                               admin[1].encode('ascii', 'replace'))
-                               for admin in ADMINS]
+        recipients_str_list = [
+            _format_email_address(
+                admin[0].encode('ascii', 'replace'),
+                admin[1].encode('ascii', 'replace'),
+            )
+            for admin in settings.ADMINS
+        ]
     else:
-        recipients_str_list = [_format_email_address(admin[0], admin[1]) for admin in ADMINS]
+        recipients_str_list = [
+            _format_email_address(admin[0], admin[1]) for admin in settings.ADMINS
+        ]
 
     sender_name = ' Program'  # non-Celery
     formatted_sender_email = _format_email_address(sender_name, SERVER_EMAIL)
@@ -172,13 +179,13 @@ def email_admins(subject, message, logger):
 
     logger.debug("Values in use:")
     logger.debug("send error emails: " + CELERY_SEND_TASK_ERROR_EMAILS.__str__())
-    logger.debug("host: " + EMAIL_HOST)
-    logger.debug("port " + EMAIL_PORT.__str__())
+    logger.debug("host: " + settings.EMAIL_HOST)
+    logger.debug("port " + settings.EMAIL_PORT.__str__())
     logger.debug("ADMINS (Celery): " + ascii_recipients_tuple_list.__str__())
     logger.debug("recipients_str (stmp): " + recipients_str)
     logger.debug("sender email: " + formatted_sender_email)
-    logger.debug("email user = " + EMAIL_HOST_USER)
-    logger.debug("email password = " + EMAIL_HOST_PASSWORD)
+    logger.debug("email user = " + settings.EMAIL_HOST_USER)
+    logger.debug("email password = " + settings.EMAIL_HOST_PASSWORD)
     logger.debug("End values in use.")
 
     # build message headers
@@ -191,17 +198,17 @@ def email_admins(subject, message, logger):
     logger.debug(msg)
 
     # contact the server and send the email
-    server = smtplib.SMTP(EMAIL_HOST, EMAIL_PORT, timeout=EMAIL_TIMEOUT)
+    server = smtplib.SMTP(settings.EMAIL_HOST, settings.EMAIL_PORT, timeout=settings.EMAIL_TIMEOUT)
     server.set_debuglevel(1)
 
     try:
         # log into the server if credentials are configured
-        if EMAIL_HOST_USER:
-            server.login(EMAIL_HOST_USER, EMAIL_HOST_PASSWORD)
+        if settings.EMAIL_HOST_USER:
+            server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
         server.sendmail(formatted_sender_email, recipients_str_list, msg.as_string())
         logger.debug("sendmail() returned")
 
-    except Exception as exc:
+    except Exception:
         # just log the exception since the email was most likely generated as an indication of error
         # Note that logger.exception automatically includes the traceback in its log.
         logger.exception('Error emailing administrators. Subject = "%s"' % subject)
@@ -273,13 +280,13 @@ def test_time_limit_consistency(task, celery_logger, est_execution_time=0, use_e
                'soft_time_limit: %(soft_time_limit)d\n'
                'hard_time_limit: %(hard_time_limit)d\n'
                'max retry period: = %(max_retry_time)f\n ' % {
-                    'task_name': task.name,
-                    'task_id': task.request.id,
-                    'est_execution_time': est_execution_time,
-                    'soft_time_limit': soft_time_limit,
-                    'hard_time_limit': hard_time_limit,
-                    'max_retry_time': est_final_retry_time
-                    })
+                   'task_name': task.name,
+                   'task_id': task.request.id,
+                   'est_execution_time': est_execution_time,
+                   'soft_time_limit': soft_time_limit,
+                   'hard_time_limit': hard_time_limit,
+                   'max_retry_time': est_final_retry_time
+               })
 
     # send the message
     email_admins(subject, message, celery_logger)
