@@ -141,6 +141,27 @@ class Update(models.Model, EDDSerialize):
 
 
 @python_2_unicode_compatible
+class Datasource(models.Model):
+    """ Defines an outside source for bits of data in the system. Initially developed to track
+        where basic metabolite information originated (e.g. BIGG, KEGG, manual input). """
+    name = models.CharField(max_length=255)
+    url = models.CharField(max_length=255, blank=True, default='')
+    download_date = models.DateField(auto_now=True)
+    created = models.ForeignKey(Update, related_name='datasource', editable=False)
+
+    def __str__(self):
+        return '%s <%s>' % (self.name, self.url)
+
+    def save(self, *args, **kwargs):
+        if self.created_id is None:
+            update = kwargs.get('update', None)
+            if update is None:
+                update = Update.load_update()
+            self.created = update
+        super(Datasource, self).save(*args, **kwargs)
+
+
+@python_2_unicode_compatible
 class Comment(models.Model):
     """ Text blob attached to an EDDObject by a given user at a given time/Update. """
     class Meta:
@@ -1220,6 +1241,7 @@ class Metabolite(MeasurementType):
     molecular_formula = models.TextField()
     keywords = models.ManyToManyField(
         MetaboliteKeyword, db_table="metabolites_to_keywords")
+    source = models.ForeignKey(Datasource, blank=True, null=True)
 
     def __str__(self):
         return self.type_name
