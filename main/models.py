@@ -5,6 +5,7 @@ import arrow
 import json
 import logging
 import os.path
+import re
 import warnings
 
 from builtins import str
@@ -1243,6 +1244,8 @@ class Metabolite(MeasurementType):
         MetaboliteKeyword, db_table="metabolites_to_keywords")
     source = models.ForeignKey(Datasource, blank=True, null=True)
 
+    carbon_pattern = re.compile(r'C(\d*)')
+
     def __str__(self):
         return self.type_name
 
@@ -1265,6 +1268,13 @@ class Metabolite(MeasurementType):
             "chgn": self.charge,  # TODO find anywhere in typescript using this and fix it
             "kstr": ",".join(['%s' % k for k in self.keywords.all()]),
         })
+
+    def save(self, *args, **kwargs):
+        if self.carbon_count is None:
+            self.carbon_count = self.extract_carbon_count()
+        # force METABOLITE group
+        self.type_group = MeasurementGroup.METABOLITE
+        super(Metabolite, self).save(*args, **kwargs)
 
     @property
     def keywords_str(self):
@@ -1291,6 +1301,13 @@ class Metabolite(MeasurementType):
             if (keyword not in new_keywords):
                 self.keywords.remove(current_kwds[keyword])
 
+    def extract_carbon_count(self):
+        count = 0
+        for match in self.carbon_pattern.finditer(self.molecular_formula):
+            c = match.group(1)
+            count = count + (int(c) if c else 1)
+        return count
+
 # override the default type_group for metabolites
 Metabolite._meta.get_field('type_group').default = MeasurementGroup.METABOLITE
 
@@ -1314,6 +1331,13 @@ class GeneIdentifier(MeasurementType):
     def __str__(self):
         return self.type_name
 
+    def save(self, *args, **kwargs):
+        if self.carbon_count is None:
+            self.carbon_count = self.extract_carbon_count()
+        # force GENEID group
+        self.type_group = MeasurementGroup.GENEID
+        super(GeneIdentifier, self).save(*args, **kwargs)
+
 GeneIdentifier._meta.get_field('type_group').default = MeasurementGroup.GENEID
 
 
@@ -1325,6 +1349,13 @@ class ProteinIdentifier(MeasurementType):
 
     def __str__(self):
         return self.type_name
+
+    def save(self, *args, **kwargs):
+        if self.carbon_count is None:
+            self.carbon_count = self.extract_carbon_count()
+        # force PROTEINID group
+        self.type_group = MeasurementGroup.PROTEINID
+        super(ProteinIdentifier, self).save(*args, **kwargs)
 
 ProteinIdentifier._meta.get_field('type_group').default = MeasurementGroup.PROTEINID
 
@@ -1343,6 +1374,13 @@ class Phosphor(MeasurementType):
 
     def __str__(self):
         return self.type_name
+
+    def save(self, *args, **kwargs):
+        if self.carbon_count is None:
+            self.carbon_count = self.extract_carbon_count()
+        # force PHOSPHOR group
+        self.type_group = MeasurementGroup.PHOSPHOR
+        super(Phosphor, self).save(*args, **kwargs)
 
 Phosphor._meta.get_field('type_group').default = MeasurementGroup.PHOSPHOR
 
