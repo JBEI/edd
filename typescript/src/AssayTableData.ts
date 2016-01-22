@@ -1,17 +1,457 @@
 /// <reference path="typescript-declarations.d.ts" />
 /// <reference path="Utl.ts" />
 
-declare var ATData:any; // Setup by the server.
-declare var EDDATDGraphing:any;
-declare var EDD_auto:any;
+
 
 // Type name for the grid of values pasted in
-interface RawInput extends Array<string[]> {}
+interface RawInput extends Array<string[]> { }
 // type for the stats generated from parsing input text
 interface RawInputStat {
     input: RawInput;
     columns: number;
 }
+
+
+module EDDTableImport {
+    'use strict';
+
+    // Parse the Step 2 data into a null-padded rectangular grid
+    export class RawInputStep {
+
+        private data: any[];
+        rowMarkers: any[];
+        transpose: boolean;
+        // If the user deliberately chose to transpose or not transpose, disable the attempt
+        // to auto-determine transposition.
+        userClickedOnTranspose: boolean;
+        // Whether to interpret the pasted data row-wise or column-wise, when importing
+        // either measurements or metadata.
+        ignoreDataGaps: boolean;
+        userClickedOnIgnoreDataGaps: boolean;
+        separatorType: string;
+
+        newDataAvailable: any;
+
+
+        constructor(newDataAvailable: any) {
+
+            this.data = [];
+            this.rowMarkers = [];
+            this.transpose = false;
+            this.userClickedOnTranspose = false;
+            this.ignoreDataGaps = false;
+            this.userClickedOnIgnoreDataGaps = false;
+            this.separatorType = 'csv';
+            var t = this;
+
+            $('#textData')
+                .on('paste', function() { t.pastedRawData(); })
+                .on('keyup', function() { t.parseAndDisplayText(); })
+                .on('keydown', function(e) { return t.suppressNormalTab(e); });
+
+            // Using "change" for these because it's more efficient AND because it works around an
+            // irritating Chrome inconsistency
+            // For some of these, changing them shouldn't actually affect processing until we implement
+            // an overwrite-checking feature or something similar
+            $('#rawdataformatp').on('click', function() { t.parseAndDisplayText(); });
+            // enable autocomplete on statically defined fields
+
+            $('#ignoreGaps').click(function() { t.clickedOnIgnoreDataGaps(); });
+            $('#transpose').click(function() { t.clickedOnTranspose(); });
+
+            this.newDataAvailable = newDataAvailable;
+        }
+
+
+        parseAndDisplayText():void {
+
+            var mode: string, delimiter: string, input: RawInputStat;
+
+            this.setIgnoreGaps();
+            this.setTranspose();
+            this.setSeparatorType();
+
+            this.data = [];
+            this.rowMarkers = [];
+
+            mode = EDDATD.interpretationMode;
+            // If we're in "mdv" mode, lock the delimiter to tabs
+            if (mode === 'mdv') {
+                this.setSeparatorType('tab');
+            }
+            delimiter = '\t';
+            if (this.separatorType === 'csv') {
+                delimiter = ',';
+            }
+            input = this.parseRawInput(delimiter, mode);
+
+            if (mode === 'std' || mode === 'tr' || mode === 'pr') {
+                // If the user hasn't deliberately chosen a setting for 'transpose', we will do
+                // some analysis to attempt to guess which orientation the data needs to have.
+                if (!this.userClickedOnTranspose) {
+                    this.inferTransposeSetting(input.input);
+                }
+                // Now that that's done, move the data in
+                if (this.transpose) {
+                    // first row becomes Y-markers as-is
+                    this.rowMarkers = input.input.shift() || [];
+                    this.data = (input.input[0] || []).map((_, i: number): string[] => {
+                        return input.input.map((row: string[]): string => row[i] || '');
+                    });
+                } else {
+                    this.rowMarkers = [];
+                    this.data = (input.input || []).map((row: string[]): string[] => {
+                        this.rowMarkers.push(row.shift());
+                        return row;
+                    });
+                }
+                // If the user hasn't deliberately chosen to ignore, or accept, gaps in the data,
+                // do a basic analysis to guess which setting makes more sense.
+                if (!this.userClickedOnIgnoreDataGaps) {
+                    this.inferGapsSetting();
+                }
+                // Give labels to any header positions that got 'null' for a value.
+                this.rowMarkers = this.rowMarkers.map((value: string) => value || '?');
+                // Attempt to auto-set any type pulldowns that haven't been deliberately set by the user
+                // TODO: Move this activity out of RawInputStep and to the next step
+                this.rowMarkers.forEach((value: string, i: number): void => {
+                    var type: any;
+                    if (!EDDATD.Table.pulldownUserChangedFlags[i]) {
+                        type = this.figureOutThisRowsDataType(value, this.data[i] || []);
+                        EDDATD.Table.pulldownSettings[i] = type;
+                    }
+                });
+                // We meed at least 2 rows and columns for MDV format to make any sense
+            } else if ((mode === "mdv") && (input.input.length > 1) && (input.columns > 1)) {
+                this.processMdv(input.input);
+            }
+
+            this.newDataAvailable();
+        }
+
+
+        parseRawInput(delimiter: string, mode: string):RawInputStat {
+            var rawText: string, longestRow: number, rows: RawInput, multiColumn: boolean;
+            rawText = $('#textData').val();
+            rows = [];
+            // find the highest number of columns in a row
+            longestRow = rawText.split(/[ \r]*\n/).reduce((prev: number, rawRow: string): number => {
+                var row: string[];
+                if (rawRow !== '') {
+                    row = rawRow.split(delimiter);
+                    rows.push(row);
+                    return Math.max(prev, row.length);
+                }
+                return prev;
+            }, 0);
+            // pad out rows so it is rectangular
+            if (mode === 'std' || mode === 'tr' || mode === 'pr') {
+                rows.forEach((row: string[]): void => {
+                    while (row.length < longestRow) {
+                        row.push('');
+                    }
+                });
+            }
+            return {
+                'input': rows,
+                'columns': longestRow
+            };
+        }
+
+
+        inferTransposeSetting(rows: RawInput):void  {
+            // The most straightforward method is to take the top row, and the first column,
+            // and analyze both to see which one most likely contains a run of timestamps.
+            // We'll also do the same for the second row and the second column, in case the
+            // timestamps are underneath some other header.
+            var arraysToAnalyze: string[][], arraysScores: number[], setTranspose: boolean;
+        
+            // Note that with empty or too-small source data, these arrays will either remain
+            // empty, or become 'null'
+            arraysToAnalyze = [
+                rows[0] || [],   // First row
+                rows[1] || [],   // Second row
+                (rows || []).map((row: string[]): string => row[0]),   // First column
+                (rows || []).map((row: string[]): string => row[1])    // Second column
+            ];
+            arraysScores = arraysToAnalyze.map((row: string[], i: number): number => {
+                var score = 0, prev: number, nnPrev: number;
+                if (!row || row.length === 0) {
+                    return 0;
+                }
+                prev = nnPrev = undefined;
+                row.forEach((value: string, j: number, r: string[]): void => {
+                    var t: number;
+                    if (value) {
+                        t = parseFloat(value.replace(/,/g, ''));
+                    }
+                    if (!isNaN(t)) {
+                        if (!isNaN(prev) && t > prev) {
+                            score += 2;
+                        } else if (!isNaN(nnPrev) && t > nnPrev) {
+                            score += 1;
+                        }
+                        nnPrev = t;
+                    }
+                    prev = t;
+                });
+                return score / row.length;
+            });
+            // If the first row and column scored differently, judge based on them.
+            // Only if they scored the same do we judge based on the second row and second column.
+            if (arraysScores[0] !== arraysScores[2]) {
+                setTranspose = arraysScores[0] > arraysScores[2];
+            } else {
+                setTranspose = arraysScores[1] > arraysScores[3];
+            }
+            this.setTranspose(setTranspose);
+        }
+
+
+        inferGapsSetting():void {
+            // Count the number of blank values at the end of each column
+            // Count the number of blank values in between non-blank data
+            // If more than three times as many as at the end, default to ignore gaps
+            var intra: number = 0, extra: number = 0;
+            this.data.forEach((row: string[]): void => {
+                var notNull: boolean = false;
+                // copy and reverse to loop from the end
+                row.slice(0).reverse().forEach((value: string): void => {
+                    if (!value) {
+                        notNull ? ++extra : ++intra;
+                    } else {
+                        notNull = true;
+                    }
+                });
+            });
+            var result:boolean = extra > (intra * 3);
+            this.setIgnoreGaps(result);
+        }
+
+
+        // TODO: It might make more sense do put this in the table step, rather than the raw data step.
+        // TODO: Get rid of the magic numbers used here.
+        figureOutThisRowsDataType(label: string, row: string[]):number {
+            var blank: number, strings: number, condensed: string[];
+            if (EDDATD.interpretationMode == 'tr') {
+                if (label.match(/gene/i)) {
+                    return 10;
+                }
+                if (label.match(/rpkm/i)) {
+                    return 11;
+                }
+                // If we can't match to the above two, set the row to 'undefined' so it's ignored by default
+                return 0;
+            }
+            // Take care of some braindead guesses
+            if (label.match(/assay/i) || label.match(/line/i)) {
+                return 1;
+            }
+            if (EDDATD.interpretationMode == 'pr') {
+                if (label.match(/protein/i)) {
+                    return 12;
+                }
+                // No point in continuing, only line and protein are relevant
+                return 0;
+            }
+            // Things we'll be counting to hazard a guess at the row contents
+            blank = strings = 0;
+            // A condensed version of the row, with no nulls or blank values
+            condensed = row.filter((v: string): boolean => !!v);
+            blank = row.length - condensed.length;
+            condensed.forEach((v: string): void => {
+                v = v.replace(/,/g, '');
+                if (isNaN(parseFloat(v))) {
+                    ++strings;
+                }
+            });
+            // If the label parses into a number and the data contains no strings, call it a timsetamp for data
+            if (!isNaN(parseFloat(label)) && (strings === 0)) {
+                return 3;
+            }
+            // No choice by default
+            return 0;
+        }
+
+
+        processMdv(input: RawInput):void {
+            var rows: RawInput, colLabels: string[], compounds: any, orderedComp: string[];
+            rows = input.slice(0); // copy
+            // If this word fragment is in the first row, drop the whole row.
+            // (Ignoring a Q of unknown capitalization)
+            if (rows[0].join('').match(/uantitation/g)) {
+                rows.shift();
+            }
+            compounds = {};
+            orderedComp = [];
+            rows.forEach((row: string[]): void => {
+                var first: string, marked: string[], name: string, index: number;
+                first = row.shift();
+                // If we happen to encounter an occurrence of a row with 'Compound' in
+                // the first column, we treat it as a row of column identifiers.
+                if (first === 'Compound') {
+                    colLabels = row;
+                    return;
+                }
+                marked = first.split(' M = ');
+                if (marked.length === 2) {
+                    name = marked[0];
+                    index = parseInt(marked[1], 10);
+                    if (!compounds[name]) {
+                        compounds[name] = { 'originalRows': {}, 'processedAssayCols': {} }
+                        orderedComp.push(name);
+                    }
+                    compounds[name].originalRows[index] = row.slice(0);
+                }
+            });
+            $.each(compounds, (name: string, value: any): void => {
+                var indices: number[];
+                // First gather up all the marker indexes given for this compound
+                indices = $.map(value.originalRows, (_, index: string): number => parseInt(index, 10));
+                indices.sort((a, b) => a - b); // sort ascending
+                // Run through the set of columnLabels above, assembling a marking number for each,
+                // by drawing - in order - from this collected row data.
+                colLabels.forEach((label: string, index: number): void => {
+                    var parts: string[], anyFloat: boolean;
+                    parts = [];
+                    anyFloat = false;
+                    indices.forEach((ri: number): void => {
+                        var original: string[], cell: string;
+                        original = value.originalRows[ri];
+                        cell = original[index];
+                        if (cell) {
+                            cell = cell.replace(/,/g, '');
+                            if (isNaN(parseFloat(cell))) {
+                                if (anyFloat) {
+                                    parts.push('');
+                                }
+                            } else {
+                                parts.push(cell);
+                            }
+                        }
+                    });
+                    // Assembled a full carbon marker number, grab the column label, and place
+                    // the marker in the appropriate section.
+                    value.processedAssayCols[index] = parts.join('/');
+                });
+            });
+            // Start the set of row markers with a generic label
+            this.rowMarkers = ['Assay'];
+            // The first row is our label collection
+            this.data[0] = colLabels.slice(0);
+            // push the rest of the rows generated from ordered list of compounds
+            Array.prototype.push.apply(
+                this.data,
+                orderedComp.map((name: string): string[] => {
+                    var compound: any, row: string[], colLookup: any;
+                    this.rowMarkers.push(name);
+                    compound = compounds[name];
+                    row = [];
+                    colLookup = compound.processedAssayCols;
+                    // generate row cells by mapping column labels to processed columns
+                    Array.prototype.push.apply(row,
+                        colLabels.map((_, index: number): string => colLookup[index] || '')
+                    );
+                    return row;
+                })
+            );
+        }
+
+
+        // This gets called when there is a paste event.
+        pastedRawData():void {
+            // We do this using a timeout so the rest of the paste events fire, and get the pasted result.
+            window.setTimeout((): void => {
+                if (EDDATD.interpretationMode !== "mdv") {
+                    var text: string = $('#textData').val() || '', test: boolean;
+                    test = text.split('\t').length >= text.split(',').length;
+                    this.setSeparatorType(test ? 'tab' : 'csv');
+                }
+            }, 1);
+        }
+
+
+        getGrid(): any[] {
+            return this.data;
+        }
+
+
+        setIgnoreGaps(value?: boolean): void {
+            var ignoreGaps = $('#ignoreGaps');
+            if (value === undefined) {
+                value = ignoreGaps.prop('checked');
+            } else {
+                ignoreGaps.prop('checked', value);
+            }
+            this.ignoreDataGaps = value;
+        }
+
+
+        setTranspose(value?: boolean): void {
+            var transpose = $('#transpose');
+            if (value === undefined) {
+                value = transpose.prop('checked');
+            } else {
+                transpose.prop('checked', value);
+            }
+            this.transpose = value;
+        }
+
+
+        setSeparatorType(value?: string): void {
+            var separatorPulldown = $('#rawdataformatp');
+            if (value === undefined) {
+                value = separatorPulldown.val();
+            } else {
+                separatorPulldown.val(value);
+            }
+            this.separatorType = value;
+        }
+
+
+        clickedOnIgnoreDataGaps():void {
+            this.userClickedOnIgnoreDataGaps = true;
+            this.parseAndDisplayText();    // This will take care of reading the status of the checkbox
+        }
+
+
+        clickedOnTranspose():void {
+            this.userClickedOnTranspose = true;
+            this.parseAndDisplayText();
+        }
+
+
+        // This handles insertion of a tab into the textarea.
+        // May be glitchy.
+        suppressNormalTab(e: JQueryKeyEventObject): boolean {
+            var input: HTMLInputElement, text: string;
+            if (e.which === 9) {
+                input = <HTMLInputElement>e.target;
+                text = $(input).val();
+                // set value to itself with selection replaced by a tab character
+                $(input).val([
+                    text.substring(0, input.selectionStart),
+                    text.substring(input.selectionEnd)
+                ].join('\t'));
+                // put caret at right position again
+                input.selectionStart = input.selectionEnd = input.selectionStart + 1;
+                return false;
+            }
+            return true;
+        }
+    }
+}
+
+
+
+
+// ----------------------------------------------------------------------------------------------------------
+
+
+declare var ATData:any; // Setup by the server.
+declare var EDDATDGraphing:any;
+declare var EDD_auto:any;
+
 // type for the options in row pulldowns
 // TODO update to use unions when migrating to Typescript 1.4+
 interface RowPulldownOption extends Array<any> { // Array<string|number|RowPulldownOption[]>
@@ -25,24 +465,11 @@ EDDATD = {
 
 // The Protocol for which we will be importing data.
 masterProtocol:0,
+rawInputStep:null,
 // The main mode we are interpreting data in.
 // Valid values sofar are "std", "mdv", "tr", "pr".
 interpretationMode:"std",
 processImportSettingsTimerID:0,
-
-// Used to parse the Step 2 data into a null-padded rectangular grid
-Grid:{
-    data:[],
-    rowMarkers:[],
-    transpose: false,
-    // If the user deliberately chose to transpose or not transpose, disable the attempt
-    // to auto-determine transposition.
-    userClickedOnTranspose: false,
-    // Whether to interpret the pasted data row-wise or column-wise, when importing
-    // either measurements or metadata.
-    ignoreDataGaps: false,
-    userClickedOnIgnoreDataGaps: false
-},
 
 // Used to assemble and display the table components in Step 3
 Table:{
@@ -152,19 +579,15 @@ queueProcessImportSettings: ():void => {
 
 
 processImportSettings: ():void => {
-    var stdLayout:JQuery, trLayout:JQuery, prLayout:JQuery, mdvLayout:JQuery, ignoreGaps:JQuery,
-        transpose:JQuery, graph:JQuery, rawFormat:JQuery;
+    var stdLayout:JQuery, trLayout:JQuery, prLayout:JQuery, mdvLayout:JQuery, graph:JQuery;
     stdLayout = $('#stdlayout');
     trLayout = $('#trlayout');
     prLayout = $('#prlayout');
     mdvLayout = $('#mdvlayout');
-    ignoreGaps = $('#ignoreGaps');
-    transpose = $('#transpose');
+
     graph = $('#graphDiv');
-    rawFormat = $('#rawdataformatp');
     // all need to exist, or page is broken
-    if (![ stdLayout, trLayout, prLayout, mdvLayout, ignoreGaps, transpose, graph, rawFormat
-            ].every((item):boolean => item.length !== 0)) {
+    if (![ stdLayout, trLayout, prLayout, mdvLayout, graph ].every((item):boolean => item.length !== 0)) {
         return;
     }
 
@@ -185,131 +608,16 @@ processImportSettings: ():void => {
         graph.addClass('off');
         EDDATD.graphEnabled = 0;
         // We neither ignore gaps, nor transpose, for MDV documents
-        ignoreGaps.prop('checked', false);
-        transpose.prop('checked', false);
+        EDDATD.rawInputStep.setIgnoreGaps(false);
+        EDDATD.rawInputStep.setTranspose(false);
         // JBEI MDV format documents are always pasted in from Excel, so they're always tab-separated
-        rawFormat.val('tab');
+        EDDATD.rawInputStep.setSeparatorType('tab');
         EDDATD.Table.pulldownSettings = [1, 5]; // A default set of pulldown settings for this mode
     } else {
         // If none of them are checked - WTF?  Don't parse or change anything.
         return;
     }
-    EDDATD.Grid.ignoreDataGaps = ignoreGaps.prop('checked');
-    EDDATD.Grid.transpose = transpose.prop('checked');
-    EDDATD.parseAndDisplayText();
-},
-
-
-// This gets called when there is a paste event.
-pastedRawData: ():void => {
-    // We do this using a timeout so the rest of the paste events fire, and get the pasted result.
-    window.setTimeout(():void => {
-        if (EDDATD.interpretationMode !== "mdv") {
-            var text:string = $('#textData').val() || '', test:boolean;
-            test = text.split('\t').length >= text.split(',').length;
-            $('#rawdataformatp').val(test ? 'tab' : 'csv');
-        }
-    }, 1);
-},
-
-
-parseRawInput: (delimiter: string, mode: string):RawInputStat => {
-    var rawText:string, longestRow:number, rows:RawInput, multiColumn:boolean;
-    rawText = $('#textData').val();
-    rows = [];
-    // find the highest number of columns in a row
-    longestRow = rawText.split(/[ \r]*\n/).reduce((prev:number, rawRow: string):number => {
-        var row:string[];
-        if (rawRow !== '') {
-            row = rawRow.split(delimiter);
-            rows.push(row);
-            return Math.max(prev, row.length);
-        }
-        return prev;
-    }, 0);
-    // pad out rows so it is rectangular
-    if (mode === 'std' || mode === 'tr' || mode === 'pr') {
-        rows.forEach((row:string[]):void => {
-            while (row.length < longestRow) {
-                row.push('');
-            }
-        });
-    }
-    return {
-        'input': rows,
-        'columns': longestRow
-    };
-},
-
-
-inferTransposeSetting: (rows: RawInput): void => {
-    // The most straightforward method is to take the top row, and the first column,
-    // and analyze both to see which one most likely contains a run of timestamps.
-    // We'll also do the same for the second row and the second column, in case the
-    // timestamps are underneath some other header.
-    var arraysToAnalyze: string[][], arraysScores: number[], setTranspose: boolean;
-    
-    // Note that with empty or too-small source data, these arrays will either remain
-    // empty, or become 'null'
-    arraysToAnalyze = [
-        rows[0] || [],   // First row
-        rows[1] || [],   // Second row
-        (rows || []).map((row: string[]): string => row[0]),   // First column
-        (rows || []).map((row: string[]): string => row[1])    // Second column
-    ];
-    arraysScores = arraysToAnalyze.map((row: string[], i: number): number => {
-        var score = 0, prev: number, nnPrev: number;
-        if (!row || row.length === 0) {
-            return 0;
-        }
-        prev = nnPrev = undefined;
-        row.forEach((value: string, j: number, r: string[]): void => {
-            var t: number;
-            if (value) {
-                t = parseFloat(value.replace(/,/g, ''));
-            }
-            if (!isNaN(t)) {
-                if (!isNaN(prev) && t > prev) {
-                    score += 2;
-                } else if (!isNaN(nnPrev) && t > nnPrev) {
-                    score += 1;
-                }
-                nnPrev = t;
-            }
-            prev = t;
-        });
-        return score / row.length;
-    });
-    // If the first row and column scored differently, judge based on them.
-    // Only if they scored the same do we judge based on the second row and second column.
-    if (arraysScores[0] !== arraysScores[2]) {
-        setTranspose = arraysScores[0] > arraysScores[2];
-    } else {
-        setTranspose = arraysScores[1] > arraysScores[3];
-    }
-    $('#transpose').prop('checked', setTranspose);
-    EDDATD.Grid.transpose = setTranspose;
-},
-
-
-inferGapsSetting: (): void => {
-    // Count the number of blank values at the end of each column
-    // Count the number of blank values in between non-blank data
-    // If more than three times as many as at the end, default to ignore gaps
-    var intra: number = 0, extra: number = 0;
-    EDDATD.Grid.data.forEach((row: string[]): void => {
-        var notNull: boolean = false;
-        // copy and reverse to loop from the end
-        row.slice(0).reverse().forEach((value: string): void => {
-            if (!value) {
-                notNull ? ++extra : ++intra;
-            } else {
-                notNull = true;
-            }
-        });
-    });
-    EDDATD.Grid.ignoreDataGaps = extra > (intra * 3);
-    $('#ignoreGaps').prop('checked', EDDATD.Grid.ignoreDataGaps);
+    EDDATD.rawInputStep.parseAndDisplayText();
 },
 
 
@@ -317,13 +625,15 @@ inferActiveFlags: (): void => {
     // An important thing to note here is that this data is in [y][x] format -
     // that is, it goes by row, then by column, when referencing.
     // This matches Grid.data and Table.dataCells.
+    var grid = EDDATD.rawInputStep.getGrid();
     var x: number, y: number;
-    (EDDATD.Grid.data[0] || []).forEach((_, x: number): void => {
+
+    (grid[0] || []).forEach((_, x: number): void => {
         if (EDDATD.Table.activeColFlags[x] === undefined) {
             EDDATD.Table.activeColFlags[x] = true;
         }
     });
-    EDDATD.Grid.data.forEach((row: string[], y: number): void => {
+    grid.forEach((row: string[], y: number): void => {
         if (EDDATD.Table.activeRowFlags[y] === undefined) {
             EDDATD.Table.activeRowFlags[y] = true;
         }
@@ -334,90 +644,6 @@ inferActiveFlags: (): void => {
             }
         });
     });
-},
-
-
-processMdv: (input: RawInput): void => {
-    var rows: RawInput, colLabels: string[], compounds: any, orderedComp: string[];
-    rows = input.slice(0); // copy
-    // If this word fragment is in the first row, drop the whole row.
-    // (Ignoring a Q of unknown capitalization)
-    if (rows[0].join('').match(/uantitation/g)) {
-        rows.shift();
-    }
-    compounds = {};
-    orderedComp = [];
-    rows.forEach((row: string[]): void => {
-        var first: string, marked: string[], name: string, index: number;
-        first = row.shift();
-        // If we happen to encounter an occurrence of a row with 'Compound' in
-        // the first column, we treat it as a row of column identifiers.
-        if (first === 'Compound') {
-            colLabels = row;
-            return;
-        }
-        marked = first.split(' M = ');
-        if (marked.length === 2) {
-            name = marked[0];
-            index = parseInt(marked[1], 10);
-            if (!compounds[name]) {
-                compounds[name] = { 'originalRows': {}, 'processedAssayCols': {} }
-                orderedComp.push(name);
-            }
-            compounds[name].originalRows[index] = row.slice(0);
-        }
-    });
-    $.each(compounds, (name: string, value: any): void => {
-        var indices: number[];
-        // First gather up all the marker indexes given for this compound
-        indices = $.map(value.originalRows, (_, index: string): number => parseInt(index, 10));
-        indices.sort((a, b) => a - b); // sort ascending
-        // Run through the set of columnLabels above, assembling a marking number for each,
-        // by drawing - in order - from this collected row data.
-        colLabels.forEach((label: string, index: number): void => {
-            var parts: string[], anyFloat: boolean;
-            parts = [];
-            anyFloat = false;
-            indices.forEach((ri: number): void => {
-                var original: string[], cell: string;
-                original = value.originalRows[ri];
-                cell = original[index];
-                if (cell) {
-                    cell = cell.replace(/,/g, '');
-                    if (isNaN(parseFloat(cell))) {
-                        if (anyFloat) {
-                            parts.push('');
-                        }
-                    } else {
-                        parts.push(cell);
-                    }
-                }
-            });
-            // Assembled a full carbon marker number, grab the column label, and place
-            // the marker in the appropriate section.
-            value.processedAssayCols[index] = parts.join('/');
-        });
-    });
-    // Start the set of row markers with a generic label
-    EDDATD.Grid.rowMarkers = ['Assay'];
-    // The first row is our label collection
-    EDDATD.Grid.data[0] = colLabels.slice(0);
-    // push the rest of the rows generated from ordered list of compounds
-    Array.prototype.push.apply(
-        EDDATD.Grid.data,
-        orderedComp.map((name: string): string[] => {
-            var compound: any, row: string[], colLookup: any;
-            EDDATD.Grid.rowMarkers.push(name);
-            compound = compounds[name];
-            row = [];
-            colLookup = compound.processedAssayCols;
-            // generate row cells by mapping column labels to processed columns
-            Array.prototype.push.apply(row,
-                colLabels.map((_, index: number): string => colLookup[index] || '')
-                );
-            return row;
-        })
-    );
 },
 
 
@@ -442,6 +668,8 @@ constructDataTable: (mode:string):void => {
     var controlCols: string[], pulldownOptions: any[],
         table: HTMLTableElement, colgroup:JQuery, body: HTMLTableElement,
         row: HTMLTableRowElement;
+
+    var grid = EDDATD.rawInputStep.getGrid();
 
     EDDATD.Table.dataCells = [];
     EDDATD.Table.colCheckboxCells = [];
@@ -510,7 +738,7 @@ constructDataTable: (mode:string):void => {
         $('<col>').appendTo(colgroup);
     });
     // add col elements for each data column
-    (EDDATD.Grid.data[0] || []).forEach((): void => {
+    (grid[0] || []).forEach((): void => {
         EDDATD.Table.colObjects.push($('<col>').appendTo(colgroup)[0]);
     });
     // First row: spacer cells, followed by checkbox cells for each data column
@@ -519,7 +747,7 @@ constructDataTable: (mode:string):void => {
     controlCols.forEach((): void => {
         $(row.insertCell()).attr({ 'x': '0', 'y': 0 });
     });
-    (EDDATD.Grid.data[0] || []).forEach((_, i: number): void => {
+    (grid[0] || []).forEach((_, i: number): void => {
         var cell: JQuery, box: JQuery;
         cell = $(row.insertCell()).attr({ 'id': 'colCBCell' + i, 'x': 1 + i, 'y': 0 })
             .addClass('checkBoxCell');
@@ -531,7 +759,7 @@ constructDataTable: (mode:string):void => {
     });
     EDDATD.Table.pulldownObjects = [];  // We don't want any lingering old objects in this
     // The rest of the rows: A pulldown, a checkbox, a row label, and a row of data.
-    EDDATD.Grid.data.forEach((values: string[], i: number): void => {
+    grid.forEach((values: string[], i: number): void => {
         var cell: JQuery;
         row = <HTMLTableRowElement> body.insertRow();
         // checkbox cell
@@ -559,7 +787,7 @@ constructDataTable: (mode:string):void => {
         EDDATD.Table.pulldownObjects.push(cell[0]);
         // label cell
         cell = $(row.insertCell()).attr({ 'id': 'rowMCell' + i, 'x': 0, 'y': i + 1 });
-        $('<div>').text(EDDATD.Grid.rowMarkers[i]).appendTo(cell);
+        $('<div>').text(EDDATD.rawInputStep.rowMarkers[i]).appendTo(cell);
         EDDATD.Table.rowLabelCells.push(cell[0]);
         // the table data itself
         EDDATD.Table.dataCells[i] = [];
@@ -584,65 +812,11 @@ constructDataTable: (mode:string):void => {
 },
 
 
-parseAndDisplayText: (): void => {
-    var mode:string, delimiter:string, rawFormat:JQuery, input:RawInputStat;
-    mode = EDDATD.interpretationMode;
-    delimiter = '\t';
-    EDDATD.Grid.data = [];
-    EDDATD.Grid.rowMarkers = [];
-    rawFormat = $('#rawdataformatp');
-    if (rawFormat.length === 0) {
-        console.log("Can't find data format pulldown")
-        return;
-    }
-    // If we're in "mdv" mode, lock the delimiter to tabs
-    if (mode === 'mdv') {
-        rawFormat.val('tab');
-    }
-    if (rawFormat.val() === 'csv') {
-        delimiter = ',';
-    }
-    input = EDDATD.parseRawInput(delimiter, mode);
+parseAndDisplayTextCallback: (): void => {
+    var mode: string;
 
-    if (mode === 'std' || mode === 'tr' || mode === 'pr') {
-        // If the user hasn't deliberately chosen a setting for 'transpose', we will do
-        // some analysis to attempt to guess which orientation the data needs to have.
-        if (!EDDATD.Grid.userClickedOnTranspose) {
-            EDDATD.inferTransposeSetting(input.input);
-        }
-        // Now that that's done, move the data into Grid.data
-        if (EDDATD.Grid.transpose) {
-            // first row becomes Y-markers as-is
-            EDDATD.Grid.rowMarkers = input.input.shift() || [];
-            EDDATD.Grid.data = (input.input[0] || []).map((_, i: number): string[] => {
-                return input.input.map((row: string[]): string => row[i] || '');
-            });
-        } else {
-            EDDATD.Grid.rowMarkers = [];
-            EDDATD.Grid.data = (input.input || []).map((row: string[]): string[] => {
-                EDDATD.Grid.rowMarkers.push(row.shift());
-                return row;
-            });
-        }
-        // If the user hasn't deliberately chosen to ignore, or accept, gaps in the data,
-        // do a basic analysis to guess which setting makes more sense.
-        if (!EDDATD.Grid.userClickedOnIgnoreDataGaps) {
-            EDDATD.inferGapsSetting();
-        }
-        // Give labels to any header positions that got 'null' for a value.
-        EDDATD.Grid.rowMarkers = EDDATD.Grid.rowMarkers.map((value: string) => value || '?');
-        // Attempt to auto-set any type pulldowns that haven't been deliberately set by the user
-        EDDATD.Grid.rowMarkers.forEach((value: string, i: number): void => {
-            var type: any;
-            if (!EDDATD.Table.pulldownUserChangedFlags[i]) {
-                type = EDDATD.figureOutThisRowsDataType(value, EDDATD.Grid.data[i] || []);
-                EDDATD.Table.pulldownSettings[i] = type;
-            }
-        });
-    // We meed at least 2 rows and columns for MDV format to make any sense
-    } else if ((mode === "mdv") && (input.input.length > 1) && (input.columns > 1)) {
-        EDDATD.processMdv(input.input);
-    }
+    mode = EDDATD.interpretationMode;
+
     // Create a map of enabled/disabled flags for our data,
     // but only fill the areas that do not already exist.
     EDDATD.inferActiveFlags();
@@ -671,7 +845,8 @@ parseAndDisplayText: (): void => {
 // This routine does a bit of additional styling to the Step 3 data table.
 // It removes and re-adds the dataTypeCell css classes according to the pulldown settings for each row.
 applyTableDataTypeStyling: (): void => {
-    EDDATD.Grid.data.forEach((row: string[], index: number): void => {
+    var grid = EDDATD.rawInputStep.getGrid();
+    grid.forEach((row: string[], index: number): void => {
         var pulldown: number, hlLabel: boolean, hlRow: boolean;
         pulldown = EDDATD.Table.pulldownSettings[index] || 0;
         hlLabel = hlRow = false;
@@ -697,20 +872,9 @@ changedAMasterPulldown: (): void => {
 },
 
 
-clickedOnIgnoreDataGaps: (): void => {
-    EDDATD.Grid.userClickedOnIgnoreDataGaps = true;
-    EDDATD.queueProcessImportSettings();    // This will take care of reading the status of the checkbox
-},
-
-
-clickedOnTranspose: (): void => {
-    EDDATD.Grid.userClickedOnTranspose = true;
-    EDDATD.queueProcessImportSettings();
-},
-
-
 changedRowDataTypePulldown: (index: number, value: number): void => {
     var selected: number;
+    var grid = EDDATD.rawInputStep.getGrid();
     // The value does not necessarily match the selectedIndex.
     selected = EDDATD.Table.pulldownObjects[index].selectedIndex;
     EDDATD.Table.pulldownSettings[index] = value;
@@ -750,7 +914,7 @@ changedRowDataTypePulldown: (index: number, value: number): void => {
         //   Anyway, here we run through the pulldowns, making sure that if the user selected
         // "Metabolite Name", we blank out all references to "Timestamp" and "Metadata", and
         // vice-versa.
-        EDDATD.Grid.data.forEach((_, i: number): void => {
+        grid.forEach((_, i: number): void => {
             var c: number = EDDATD.Table.pulldownSettings[i];
             if (value === 5) {
                 if (c === 3 || c === 4) {
@@ -777,53 +941,10 @@ changedRowDataTypePulldown: (index: number, value: number): void => {
 },
 
 
-figureOutThisRowsDataType: (label: string, row: string[]) => {
-    var blank: number, strings: number, condensed: string[];
-    if (EDDATD.interpretationMode == 'tr') {
-        if (label.match(/gene/i)) {
-            return 10;
-        }
-        if (label.match(/rpkm/i)) {
-            return 11;
-        }
-        // If we can't match to the above two, set the row to 'undefined' so it's ignored by default
-        return 0;
-    }
-    // Take care of some braindead guesses
-    if (label.match(/assay/i) || label.match(/line/i)) {
-        return 1;
-    }
-    if (EDDATD.interpretationMode == 'pr') {
-        if (label.match(/protein/i)) {
-            return 12;
-        }
-        // No point in continuing, only line and protein are relevant
-        return 0;
-    }
-    // Things we'll be counting to hazard a guess at the row contents
-    blank = strings = 0;
-    // A condensed version of the row, with no nulls or blank values
-    condensed = row.filter((v: string): boolean => !!v);
-    blank = row.length - condensed.length;
-    condensed.forEach((v: string): void => {
-        v = v.replace(/,/g, '');
-        if (isNaN(parseFloat(v))) {
-            ++strings;
-        }
-    });
-    // If the label parses into a number and the data contains no strings, call it a timsetamp for data
-    if (!isNaN(parseFloat(label)) && (strings === 0)) {
-        return 3;
-    }
-    // No choice by default
-    return 0;
-},
-
-
 redrawIgnoredValueMarkers: (): void => {
     EDDATD.Table.dataCells.forEach((row: HTMLElement[]): void => {
         row.forEach((cell: HTMLElement): void => {
-            var toggle: boolean = !EDDATD.Grid.ignoreDataGaps && !!cell.getAttribute('isblank');
+            var toggle: boolean = !EDDATD.rawInputStep.ignoreDataGaps && !!cell.getAttribute('isblank');
             $(cell).toggleClass('ignoredLine', toggle);
         });
     });
@@ -857,14 +978,15 @@ toggleTableColumn: (box: HTMLElement): void => {
 
 
 resetEnabledFlagMarkers: (): void => {
-    EDDATD.Grid.data.forEach((row: string[], y: number): void => {
+    var grid = EDDATD.rawInputStep.getGrid();
+    grid.forEach((row: string[], y: number): void => {
         EDDATD.Table.activeFlags[y] = EDDATD.Table.activeFlags[y] || [];
         row.forEach((_, x: number): void => {
             EDDATD.Table.activeFlags[y][x] = true;
         });
         EDDATD.Table.activeRowFlags[y] = true;
     });
-    (EDDATD.Grid.data[0] || []).forEach((_, x: number): void => {
+    (grid[0] || []).forEach((_, x: number): void => {
         EDDATD.Table.activeColFlags[x] = true;
     });
     // Flip all the checkboxes on in the header cells for the data columns
@@ -898,8 +1020,9 @@ redrawEnabledFlagMarkers: (): void => {
 
 interpretDataTableRows: (): [boolean, number] => {
     var single: number = 0, nonSingle: number = 0, earliestName: number;
+    var grid = EDDATD.rawInputStep.getGrid();
     // Look for the presence of "single measurement type" rows, and rows of all other single-item types
-    EDDATD.Grid.data.forEach((_, y: number): void => {
+    grid.forEach((_, y: number): void => {
         var pulldown: number;
         if (EDDATD.Table.activeRowFlags[y]) {
             pulldown = EDDATD.Table.pulldownSettings[y];
@@ -931,6 +1054,9 @@ interpretDataTable: (): void => {
     var assayLineNamesCount = 0;
     var measurementNamesCount = 0;
     var metadataNamesCount = 0;
+
+    var grid = EDDATD.rawInputStep.getGrid();
+
     // Here are the arrays we will use later
     EDDATD.Sets.parsedSets = [];
     EDDATD.Sets.uniqueLineAssayNames = [];
@@ -968,13 +1094,13 @@ interpretDataTable: (): void => {
             uniqueTimes = [];
             times = {};
             foundMeta = false;
-            EDDATD.Grid.data.forEach((row: string[], r: number): void => {
+            grid.forEach((row: string[], r: number): void => {
                 var pulldown: number, label: string, value: string, timestamp: number;
                 if (!EDDATD.Table.activeRowFlags[r] || !EDDATD.Table.activeFlags[r][c]) {
                     return;
                 }
                 pulldown = EDDATD.Table.pulldownSettings[r];
-                label = EDDATD.Grid.rowMarkers[r] || '';
+                label = EDDATD.rawInputStep.rowMarkers[r] || '';
                 value = row[c] || '';
                 if (!pulldown) {
                     return;
@@ -996,7 +1122,7 @@ interpretDataTable: (): void => {
                     if (!isNaN(timestamp)) {
                         if (!value) {
                             // If we're ignoring gaps, skip out on recording this value
-                            if (EDDATD.Grid.ignoreDataGaps) {
+                            if (EDDATD.rawInputStep.ignoreDataGaps) {
                                 return;
                             }
                             // We actually prefer null here, to indicate a placeholder value
@@ -1055,20 +1181,20 @@ interpretDataTable: (): void => {
             if (!EDDATD.Table.activeColFlags[c]) {
                 return;
             }
-            cellValue = EDDATD.Grid.data[interpretMode[1]][c] || '';
+            cellValue = grid[interpretMode[1]][c] || '';
             if (cellValue) {
                 // If haven't seen cellValue before, increment and store uniqueness index
                 if (!seenAssayLineNames[cellValue]) {
                     seenAssayLineNames[cellValue] = ++assayLineNamesCount;
                     EDDATD.Sets.uniqueLineAssayNames.push(cellValue);
                 }
-                EDDATD.Grid.data.forEach((row: string[], r: number): void => {
+                grid.forEach((row: string[], r: number): void => {
                     var pulldown: number, label: string, value: string, timestamp: number;
                     if (!EDDATD.Table.activeRowFlags[r] || !EDDATD.Table.activeFlags[r][c]) {
                         return;
                     }
                     pulldown = EDDATD.Table.pulldownSettings[r];
-                    label = EDDATD.Grid.rowMarkers[r] || '';
+                    label = EDDATD.rawInputStep.rowMarkers[r] || '';
                     value = row[c] || '';
                     if (!pulldown || !(pulldown === 5 || pulldown === 12) || !label || !value) {
                         return;
@@ -1527,44 +1653,23 @@ generateFormSubmission: (): void => {
 },
 
 
-// This handles insertion of a tab into the textarea.
-// May be glitchy.
-suppressNormalTab: (e: JQueryKeyEventObject): boolean => {
-    var input: HTMLInputElement, text: string;
-    if (e.which === 9) {
-        input = <HTMLInputElement> e.target;
-        text = $(input).val();
-        // set value to itself with selection replaced by a tab character
-        $(input).val([
-            text.substring(0, input.selectionStart),
-            text.substring(input.selectionEnd)
-            ].join('\t'));
-        // put caret at right position again
-        input.selectionStart = input.selectionEnd = input.selectionStart + 1;
-        return false;
-    }
-    return true;
-},
-
-
 prepareIt: (): void => {
     var reProcessOnClick: string[], reDoLastStepOnChange: string[];
-    reProcessOnClick = ['#stdlayout', '#trlayout', '#prlayout', '#mdvlayout', '#rawdataformatp'];
-    reDoLastStepOnChange = ['#masterAssay', '#masterLine', '#masterMComp', '#masterMType',
-            '#masterMUnits'];
-    $('#textData')
-        .on('paste', EDDATD.pastedRawData)
-        .on('keyup', EDDATD.parseAndDisplayText)
-        .on('keydown', EDDATD.suppressNormalTab);
+
+    reProcessOnClick = ['#stdlayout', '#trlayout', '#prlayout', '#mdvlayout'];
+    reDoLastStepOnChange = ['#masterAssay', '#masterLine', '#masterMComp', '#masterMType', '#masterMUnits'];
+
     $('#dataTableDiv')
         .on('mouseover mouseout', 'td', EDDATD.highlighterF)
         .on('dblclick', 'td', EDDATD.singleValueDisablerF);
+
     // This is rather a lot of callbacks, but we need to make sure we're
     // tracking the minimum number of elements with this call, since the
     // function called has such strong effects on the rest of the page.
     // For example, a user should be free to change "merge" to "replace" without having
     // their edits in Step 2 erased.
     $("#masterProtocol").change(EDDATD.changedMasterProtocol);
+
     // Using "change" for these because it's more efficient AND because it works around an
     // irritating Chrome inconsistency
     // For some of these, changing them shouldn't actually affect processing until we implement
@@ -1572,11 +1677,13 @@ prepareIt: (): void => {
     $(reProcessOnClick.join(',')).on('click', EDDATD.queueProcessImportSettings);
     $(reDoLastStepOnChange.join(',')).on('change', EDDATD.changedAMasterPulldown);
     // enable autocomplete on statically defined fields
+
     EDD_auto.setup_field_autocomplete('#masterMComp', 'MeasurementCompartment');
     EDD_auto.setup_field_autocomplete('#masterMType', 'GenericOrMetabolite', EDDData.MetaboliteTypes || {});
     EDD_auto.setup_field_autocomplete('#masterMUnits', 'MeasurementUnit');
-    $('#ignoreGaps').click(EDDATD.clickedOnIgnoreDataGaps);
-    $('#transpose').click(EDDATD.clickedOnTranspose);
+
+    EDDATD.rawInputStep = new EDDTableImport.RawInputStep(EDDATD.parseAndDisplayTextCallback);
+
     EDDATD.changedMasterProtocol(); //  Since the initial masterProtocol value is zero, we need to manually trigger this:
     EDDATD.queueProcessImportSettings();
 },
@@ -1606,7 +1713,7 @@ process_result: (result): void => {
         $("#rawdataformatp").val(result.file_type);
         $("#textData").text(result.file_data);
     }
-    EDDATD.parseAndDisplayText(); // AssayTableData.ts
+    EDDATD.rawInputStep.parseAndDisplayText(); // AssayTableData.ts
 }
 
 };
