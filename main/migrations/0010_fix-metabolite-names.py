@@ -6,7 +6,7 @@ import logging
 import os
 import re
 
-from django.db import connection, migrations
+from django.db import connection, migrations, transaction
 from django.db.models import Q
 
 
@@ -72,7 +72,8 @@ def fix_manual_metabolites(apps, schema_editor):
     # manual fixes to metabolite info
     for name, values in fix_data.items():
         try:
-            m = Metabolite.objects.get(type_name=name)
+            with transaction.atomic():
+                m = Metabolite.objects.get(type_name=name)
             m.type_name = values[0]
             m.short_name = values[1]
             m.charge = values[2]
@@ -85,8 +86,9 @@ def fix_manual_metabolites(apps, schema_editor):
     # merging existing metabolites into new canonical types
     for old, canonical in merge_data.items():
         try:
-            m_old = Metabolite.objects.get(type_name=old)
-            m_canonical = Metabolite.objects.get(type_name=canonical)
+            with transaction.atomic():
+                m_old = Metabolite.objects.get(type_name=old)
+                m_canonical = Metabolite.objects.get(type_name=canonical)
             merge_metabolites(m_old, m_canonical)
         except Metabolite.DoesNotExist:
             logger.warning('Nothing to merge: "%s" and "%s"', old, canonical)
@@ -94,14 +96,18 @@ def fix_manual_metabolites(apps, schema_editor):
     # not metabolites
     with connection.cursor() as cursor:
         for name in delete_data:
-            m = Metabolite.objects.get(type_name=name)
-            MetaboliteKeyword.objects.filter(metabolite=m).delete()
-            cursor.execute('DELETE FROM %s WHERE %s = %s' % (
-                Metabolite._meta.db_table,
-                Metabolite._meta.pk.column,
-                m.pk
-            ))
-            MeasurementType.objects.filter(pk=m.pk).update(type_group=MeasurementGroup.GENERIC)
+            try:
+                with transaction.atomic():
+                    m = Metabolite.objects.get(type_name=name)
+                MetaboliteKeyword.objects.filter(metabolite=m).delete()
+                cursor.execute('DELETE FROM %s WHERE %s = %s' % (
+                    Metabolite._meta.db_table,
+                    Metabolite._meta.pk.column,
+                    m.pk
+                ))
+                MeasurementType.objects.filter(pk=m.pk).update(type_group=MeasurementGroup.GENERIC)
+            except Metabolite.DoesNotExist:
+                logger.warning('No metabolite to switch to generic measurement: "%s"', name)
 
 
 def insert_bigg_metabolites(apps, schema_editor):
