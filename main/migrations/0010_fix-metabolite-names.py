@@ -6,7 +6,7 @@ import logging
 import os
 import re
 
-from django.db import connection, migrations, transaction
+from django.db import connection, IntegrityError, migrations, transaction
 from django.db.models import Q
 
 
@@ -154,7 +154,14 @@ def merge_metabolites(m_old, m_canonical):
     from main.models import Measurement, MetaboliteExchange, MetaboliteSpecies
     # point objects referencing the old to the canonical
     for x in [Measurement, MetaboliteExchange, MetaboliteSpecies]:
-        x.objects.filter(measurement_type=m_old).update(measurement_type=m_canonical)
+        queryset = x.objects.filter(measurement_type=m_old)
+        try:
+            with transaction.atomic():
+                queryset.update(measurement_type=m_canonical)
+        except IntegrityError:
+            # at least one  item in queryset already has a link to canonical metabolite
+            logger.warning('Model %s already has link with "%s", cannot merge "%s"',
+                           x, m_canonical, m_old)
     # MetaboliteKeyword uses different names, cannot be updated, bleh
     m_canonical.keywords.add(*m_old.keywords.all())  # use * to dereference queryset into args list
     m_old.keywords.clear()
