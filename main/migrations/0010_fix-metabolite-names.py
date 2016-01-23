@@ -71,14 +71,17 @@ def fix_manual_metabolites(apps, schema_editor):
     from main.models import MeasurementGroup, MeasurementType, Metabolite, MetaboliteKeyword
     # manual fixes to metabolite info
     for name, values in fix_data.items():
-        m = Metabolite.objects.get(type_name=name)
-        m.type_name = values[0]
-        m.short_name = values[1]
-        m.charge = values[2]
-        m.carbon_count = values[3]
-        m.molar_mass = values[4]
-        m.molecular_formula = values[5]
-        m.save()
+        try:
+            m = Metabolite.objects.get(type_name=name)
+            m.type_name = values[0]
+            m.short_name = values[1]
+            m.charge = values[2]
+            m.carbon_count = values[3]
+            m.molar_mass = values[4]
+            m.molecular_formula = values[5]
+            m.save()
+        except Metabolite.DoesNotExist:
+            logger.warning("Nothing to fix: '%s'", name)
     # merging existing metabolites into new canonical types
     for old, canonical in merge_data.items():
         try:
