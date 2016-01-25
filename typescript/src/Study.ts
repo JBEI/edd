@@ -2946,12 +2946,14 @@ class DataGridSpecAssays extends DataGridSpecBase {
                 return (<any>(y > z) - <any>(z > y));
             },
             'metaboliteValueToCell': (value) => {
-                return new DataGridDataCell(gridSpec, index, {
+                var cell = new DataGridDataCell(gridSpec, value.id, {
                     'hoverEffect': true,
                     'checkboxName': 'measurementId',
                     'checkboxWithID': () => { return 'measurement' + value.id + 'include'; },
                     'contentString': value.name
                 });
+                $(cell.checkboxElement).val(value.id);
+                return cell;
             },
             'transcriptToCell': (ids:any[]) => {
                 return new DataGridDataCell(gridSpec, index, {

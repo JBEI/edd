@@ -667,7 +667,7 @@ def study_assay_measurements(request, study, protocol, assay):
         measurement__active=True,
         measurement__assay__active=True,
         measurement__assay__line__active=True,
-        measurement__range=(measure_list[0].id, measure_list[-1].id),
+        measurement__id__range=(measure_list[0].id, measure_list[-1].id),
         )
     value_dict = collections.defaultdict(list)
     for v in values:
