@@ -25,12 +25,13 @@ fix_data = {
     'isopentenyl monophosphate': ('Isopentenyl Phosphate', 'ipmp', 0, 5, 166.11, 'C5H11O4P'),
     'Propionyl CoA': ('Propionyl CoA', 'pro-coa', 0, 24, 823.6, 'C24H40N7O17P3S'),
     'butyrolactam': ('2-Pyrrolidinone', '2-P', 0, 4, 85.1, 'C4H7NO'),
-    'Isopentenyl-ATP': ('Isopentenyl-ATP', 'ISPATP', 0, 15, 575.3, 'C15H24N5O13P3')
+    'Isopentenyl-ATP': ('Isopentenyl-ATP', 'ISPATP', 0, 15, 575.3, 'C15H24N5O13P3'),
+    'HMG-coA': ('Hydroxymethylglutaryl CoA', 'hmgcoa', 0, 27, 911.661, "C27H39N7O20P3S"),
+    'L-Fucose 1-phosphate': ('L-Fucose 1-phosphate', 'fuc1p__L', 0, 6, 244.1364, "C6H11O8P"),
 }
 # key is existing type_name, value is type_name of canonical metabolite
 merge_data = {
     'Mevalonate': 'R Mevalonate',
-    'HMG-coA': 'Hydroxymethylglutaryl CoA',
     'Argnine': 'L-Arginine',
     'Nicotinic Acid': 'Nicotinate',
     'LOrnithine': 'L Ornithine',
@@ -49,7 +50,6 @@ merge_data = {
     'trans-Aconitate': 'Trans-Aconitate',
     'beta-Alanine': 'Beta-Alanine',
     'CDPdiacylglycerol (E coli) **': 'CDPdiacylglycerol  E coli',
-    'L-Fucose 1-phosphate': 'L Fucose 1 phosphate',
     'Mevalonate-PP': 'R 5 Diphosphomevalonate',
     'GGPP': 'Geranylgeranyl diphosphate',
 }
