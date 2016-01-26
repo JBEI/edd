@@ -2,6 +2,10 @@
 /// <reference path="Utl.ts" />
 
 
+declare var ATData: any; // Setup by the server.
+declare var EDDATDGraphing: any;
+declare var EDD_auto: any;
+
 
 // Type name for the grid of values pasted in
 interface RawInput extends Array<string[]> { }
@@ -14,6 +18,209 @@ interface RawInputStat {
 
 module EDDTableImport {
     'use strict';
+
+    export var selectMajorKindStep: SelectMajorKindStep;
+    export var rawInputStep: RawInputStep;
+    export var identifyStructuresStep: IdentifyStructuresStep;
+    export var typeDisambiguationStep: TypeDisambiguationStep;
+
+
+    export function onWindowLoad(): void {
+        var atdata_url = "/study/" + EDDData.currentStudyID + "/assaydata";
+
+        $('.disclose').find('a.discloseLink').on('click', EDDTableImport.disclose);
+
+        // Populate ATData and EDDData objects via AJAX calls
+        jQuery.ajax(atdata_url, {
+            "success": function(data) {
+                ATData = data.ATData;
+                $.extend(EDDData, data.EDDData);
+                EDDTableImport.onReferenceRecordsLoad();
+            }
+        }).fail(function(x, s, e) {
+            alert(s);
+        });
+    }
+
+
+    export function onReferenceRecordsLoad(): void {
+
+        var a = new SelectMajorKindStep(EDDTableImport.selectMajorKindCallback);
+        var b = new RawInputStep(a, EDDTableImport.rawInputCallback);
+        var c = new IdentifyStructuresStep(a, b, EDDTableImport.identifyStructuresCallback);
+        var d = new TypeDisambiguationStep(a, c, EDDTableImport.typeDisambiguationCallback);
+
+        EDDTableImport.selectMajorKindStep = a;
+        EDDTableImport.rawInputStep = b;
+        EDDTableImport.identifyStructuresStep = c;
+        EDDTableImport.typeDisambiguationStep = d;
+
+        $('#submitForImport').on('click', EDDTableImport.submitForImport);
+
+        a.changedMasterProtocol(); //  Since the initial masterProtocol value is zero, we need to manually trigger this:
+        a.queueHandleNewInput();
+    }
+
+
+    export function selectMajorKindCallback(): void {
+        if (EDDTableImport.selectMajorKindStep.interpretationMode == 'mdv') {
+            // We never ignore gaps, or transpose, for MDV documents
+            EDDTableImport.rawInputStep.setIgnoreGaps(false);
+            EDDTableImport.rawInputStep.setTranspose(false);
+            // JBEI MDV format documents are always pasted in from Excel, so they're always tab-separated
+            EDDTableImport.rawInputStep.setSeparatorType('tab');
+            // TODO: Interpose a function
+            EDDTableImport.identifyStructuresStep.pulldownSettings = [1, 5]; // A default set of pulldown settings for this mode
+        }
+        EDDTableImport.rawInputStep.handleNewInput();
+    }
+
+
+    export function rawInputCallback(): void {
+        EDDTableImport.identifyStructuresStep.handleNewInput();
+    }
+
+
+    export function identifyStructuresCallback(): void {
+        // Now that we're got the table from Step 3 built,
+        // we turn to the table in Step 4:  A set for each type of data, consisting of disambiguation rows,
+        // where the user can link unknown items to pre-existing EDD data.
+        EDDTableImport.typeDisambiguationStep.handleNewInput();
+    }
+
+
+    export function typeDisambiguationCallback(): void {
+        var parsedSets = EDDTableImport.identifyStructuresStep.parsedSets;
+        // if the debug area is there, set its value to JSON of parsed sets
+        $('#jsondebugarea').val(JSON.stringify(parsedSets));
+    }
+
+
+    export function submitForImport(): void {
+        var json: string;
+        var parsedSets = EDDTableImport.identifyStructuresStep.parsedSets;
+        // Run through the data sets one more time, pulling out any values in the pulldowns and
+        // autocomplete elements in Step 4 and embedding them in their respective data sets.
+        json = JSON.stringify(parsedSets);
+        $('#jsonoutput').val(json);
+        $('#jsondebugarea').val(json);
+    }
+
+
+    export function disclose(): boolean {
+        $(this).closest('.disclose').toggleClass('discloseHide');
+        return false;
+    }
+
+
+    export class SelectMajorKindStep {
+
+        // The Protocol for which we will be importing data.
+        masterProtocol: number;
+        // The main mode we are interpreting data in.
+        // Valid values sofar are "std", "mdv", "tr", "pr".
+        interpretationMode: string;
+        inputRefreshTimerID: number;
+
+        newDataAvailableCallback: any;
+
+
+        constructor(newDataAvailableCallback: any) {
+            this.masterProtocol = 0;
+            this.interpretationMode = "std";
+            this.inputRefreshTimerID = null;
+
+            this.newDataAvailableCallback = newDataAvailableCallback;
+
+            var reProcessOnClick: string[];
+
+            reProcessOnClick = ['#stdlayout', '#trlayout', '#prlayout', '#mdvlayout'];
+
+            // This is rather a lot of callbacks, but we need to make sure we're
+            // tracking the minimum number of elements with this call, since the
+            // function called has such strong effects on the rest of the page.
+            // For example, a user should be free to change "merge" to "replace" without having
+            // their edits in Step 2 erased.
+            $("#masterProtocol").change(this.changedMasterProtocol.bind(this));
+
+            // Using "change" for these because it's more efficient AND because it works around an
+            // irritating Chrome inconsistency
+            // For some of these, changing them shouldn't actually affect processing until we implement
+            // an overwrite-checking feature or something similar
+            $(reProcessOnClick.join(',')).on('click', this.queueHandleNewInput.bind(this));
+        }
+
+
+        queueHandleNewInput(): void {
+            // Start a timer to wait before calling the routine that remakes the graph.
+            // This way we're not bothering the user with the long redraw process when
+            // they are making fast edits.
+            if (this.inputRefreshTimerID) {
+                clearTimeout(this.inputRefreshTimerID);
+            }
+            this.inputRefreshTimerID = setTimeout(this.handleNewInput.bind(this), 5);
+        }
+
+
+        handleNewInput(): void {
+
+            var stdLayout: JQuery, trLayout: JQuery, prLayout: JQuery, mdvLayout: JQuery, graph: JQuery;
+            stdLayout = $('#stdlayout');
+            trLayout = $('#trlayout');
+            prLayout = $('#prlayout');
+            mdvLayout = $('#mdvlayout');
+
+            graph = $('#graphDiv');
+            // all need to exist, or page is broken
+            if (![stdLayout, trLayout, prLayout, mdvLayout, graph].every((item): boolean => item.length !== 0)) {
+                console.log("Missing crucial page element, cannot run.");
+                return;
+            }
+
+            if (stdLayout.prop('checked')) { //  Standard interpretation mode
+                this.interpretationMode = 'std';
+            } else if (trLayout.prop('checked')) {   //  Transcriptomics mode
+                this.interpretationMode = 'tr';
+            } else if (prLayout.prop('checked')) {   //  Proteomics mode
+                this.interpretationMode = 'pr';
+            } else if (mdvLayout.prop('checked')) {  // JBEI Mass Distribution Vector format
+                this.interpretationMode = 'mdv';
+            } else {
+                // If none of them are checked - WTF?  Don't parse or change anything.
+                return;
+            }
+            this.newDataAvailableCallback();
+        }
+
+
+        changedMasterProtocol():void {
+            var protocolIn: JQuery, assayIn: JQuery, currentAssays: number[];
+
+            // check master protocol
+            protocolIn = $('#masterProtocol');
+            var p = parseInt(protocolIn.val(), 10);
+            if (this.masterProtocol === p) {
+                // no change
+                return;
+            }
+            this.masterProtocol = p;
+            // check for master assay
+            assayIn = $('#masterAssay').empty();
+            $('<option>').text('(Create New)').appendTo(assayIn).val('new').prop('selected', true);
+            currentAssays = ATData.existingAssays[protocolIn.val()] || [];
+            currentAssays.forEach((id: number): void => {
+                var assay = EDDData.Assays[id],
+                    line = EDDData.Lines[assay.lid],
+                    protocol = EDDData.Protocols[assay.pid];
+                $('<option>').appendTo(assayIn).val('' + id).text([
+                    line.name, protocol.name, assay.name].join('-'));
+            });
+            $('#masterLineSpan').removeClass('off');
+            this.queueHandleNewInput();
+        }
+    }
+
+
 
     // Parse the Step 2 data into a null-padded rectangular grid
     export class RawInputStep {
@@ -31,10 +238,11 @@ module EDDTableImport {
         separatorType: string;
         inputRefreshTimerID: any;
 
+        selectMajorKindStep: SelectMajorKindStep;
         newDataAvailableCallback: any;
 
 
-        constructor(newDataAvailableCallback: any) {
+        constructor(selectMajorKindStep: SelectMajorKindStep, newDataAvailableCallback: any) {
 
             this.data = [];
             this.rowMarkers = [];
@@ -61,6 +269,10 @@ module EDDTableImport {
             $('#ignoreGaps').click(this.clickedOnIgnoreDataGaps.bind(this));
             $('#transpose').click(this.clickedOnTranspose.bind(this));
 
+            var url = "/utilities/parsefile";
+            Utl.FileDropZone.setup("textData", url, this.processFileContent.bind(this), false);
+
+            this.selectMajorKindStep = selectMajorKindStep;
             this.newDataAvailableCallback = newDataAvailableCallback;
         }
 
@@ -80,7 +292,7 @@ module EDDTableImport {
 
             var mode: string, delimiter: string, input: RawInputStat;
 
-            mode = EDDATD.interpretationMode;
+            mode = this.selectMajorKindStep.interpretationMode;
 
             this.setIgnoreGaps();
             this.setTranspose();
@@ -133,6 +345,28 @@ module EDDTableImport {
             }
 
             this.newDataAvailableCallback();
+        }
+
+
+        processFileContent(result): void {
+            if (result.file_type == "xlsx") {
+                var ws = result.file_data["worksheets"][0];
+                console.log(ws);
+                var table = ws[0];
+                var csv = [];
+                if (table.headers) {
+                    csv.push(table.headers.join());
+                }
+                for (var i = 0; i < table.values.length; i++) {
+                    csv.push(table.values[i].join());
+                }
+                this.setSeparatorType('csv');
+                $("#textData").text(csv.join("\n"));
+            } else {
+                this.setSeparatorType(result.file_type);
+                $("#textData").text(result.file_data);
+            }
+            this.handleNewInput();
         }
 
 
@@ -323,7 +557,7 @@ module EDDTableImport {
         pastedRawData():void {
             // We do this using a timeout so the rest of the paste events fire, and get the pasted result.
             window.setTimeout((): void => {
-                if (EDDATD.interpretationMode !== "mdv") {
+                if (this.selectMajorKindStep.interpretationMode !== "mdv") {
                     var text: string = $('#textData').val() || '', test: boolean;
                     test = text.split('\t').length >= text.split(',').length;
                     this.setSeparatorType(test ? 'tab' : 'csv');
@@ -455,10 +689,11 @@ module EDDTableImport {
         // A flag to indicate whether we have seen any timestamps specified in the import data
         seenAnyTimestamps: boolean;
 
+        selectMajorKindStep: SelectMajorKindStep;
         newDataAvailableCallback: any;
 
 
-        constructor(rawInputStep: RawInputStep, newDataAvailableCallback: any) {
+        constructor(selectMajorKindStep: SelectMajorKindStep, rawInputStep: RawInputStep, newDataAvailableCallback: any) {
 
             this.rawInputStep = rawInputStep;
 
@@ -493,17 +728,20 @@ module EDDTableImport {
             // A flag to indicate whether we have seen any timestamps specified in the import data
             this.seenAnyTimestamps = false;
 
+            this.selectMajorKindStep = selectMajorKindStep;
             this.newDataAvailableCallback = newDataAvailableCallback;
 
             $('#dataTableDiv')
                 .on('mouseover mouseout', 'td', this.highlighterF.bind(this))
                 .on('dblclick', 'td', this.singleValueDisablerF.bind(this));
+
+            $('#resetEnabledFlagMarkers').on('click', this.resetEnabledFlagMarkers.bind(this));
         }
 
 
         handleNewInput(): void {
 
-            var mode = EDDATD.interpretationMode;
+            var mode = this.selectMajorKindStep.interpretationMode;
 
             var graph = $('#graphDiv');
             if (mode === 'std') {
@@ -1227,7 +1465,7 @@ module EDDTableImport {
 
         remakeGraphArea():void {
 
-            var mode = EDDATD.interpretationMode;
+            var mode = this.selectMajorKindStep.interpretationMode;
 
             this.graphRefreshTimerID = 0;
             if (!EDDATDGraphing || !this.graphEnabled) {
@@ -1243,6 +1481,14 @@ module EDDTableImport {
         }
     }
 
+
+
+    interface AutoCache {
+        comp: any,
+        meta: any,
+        unit: any,
+        metabolite: any
+    }
 
 
     export class TypeDisambiguationStep {
@@ -1265,10 +1511,13 @@ module EDDTableImport {
         // To give unique ID values to each autocomplete entity we create
         autoCompUID: number;
 
+        autoCache: AutoCache;
+
+        selectMajorKindStep: SelectMajorKindStep;
         newDataAvailableCallback: any;
 
 
-        constructor(identifyStructuresStep: IdentifyStructuresStep, newDataAvailableCallback: any) {
+        constructor(selectMajorKindStep: SelectMajorKindStep, identifyStructuresStep: IdentifyStructuresStep, newDataAvailableCallback: any) {
 
             this.assayLineObjSets = {};
             this.currentlyVisibleAssayLineObjSets = [];
@@ -1277,11 +1526,21 @@ module EDDTableImport {
             this.metadataObjSets = {};
             this.autoCompUID = 0;
 
+            this.autoCache = {
+                comp: {},
+                meta: {},
+                unit: {},
+                metabolite: {}
+            };
+
+            this.selectMajorKindStep = selectMajorKindStep;
             this.identifyStructuresStep = identifyStructuresStep;
             this.newDataAvailableCallback = newDataAvailableCallback;
 
             var reDoLastStepOnChange = ['#masterAssay', '#masterLine', '#masterMComp', '#masterMType', '#masterMUnits'];
             $(reDoLastStepOnChange.join(',')).on('change', this.changedAMasterPulldown.bind(this));
+
+            $('#resetDisambiguationFields').on('click', this.resetDisambiguationFields.bind(this));
 
             // enable autocomplete on statically defined fields
             EDD_auto.setup_field_autocomplete('#masterMComp', 'MeasurementCompartment');
@@ -1294,8 +1553,8 @@ module EDDTableImport {
         // Create the Step 4 table:  A set of rows, one for each y-axis column of data,
         // where the user can fill out additional information for the pasted table.
         handleNewInput(): void {
-            var mode = EDDATD.interpretationMode;
-            var masterP = EDDATD.masterProtocol;    // Shout-outs to a mid-grade rapper
+            var mode = this.selectMajorKindStep.interpretationMode;
+            var masterP = this.selectMajorKindStep.masterProtocol;    // Shout-outs to a mid-grade rapper
 
             var parsedSets = this.identifyStructuresStep.parsedSets;
             var seenAnyTimestamps = this.identifyStructuresStep.seenAnyTimestamps;
@@ -1320,7 +1579,7 @@ module EDDTableImport {
             // If parsed data exists, but haven't seen a single timestamp show the "master timestamp" UI.
             $('#masterTimestampDiv').toggleClass('off', seenAnyTimestamps);
             // If we have no Assays/Lines detected for disambiguation, ask the user to select one.
-            this.remakeAssayLineSection(EDDATD.masterProtocol);
+            this.remakeAssayLineSection(this.selectMajorKindStep.masterProtocol);
             // If in 'Transcription' or 'Proteomics' mode, there are no measurement types involved.
             // skip the measurement section, and provide statistics about the gathered records.
             if (mode === "tr" || mode === "pr") {
@@ -1338,6 +1597,13 @@ module EDDTableImport {
             }
 
             this.newDataAvailableCallback();
+        }
+
+
+        // TODO: This function should reset all the disambiguation fields to the values
+        // that were auto-detected in the last refresh of the object.
+        resetDisambiguationFields(): void {
+            // Get to work!!
         }
 
 
@@ -1416,7 +1682,7 @@ module EDDTableImport {
         remakeMeasurementSection(): void {
             var table: HTMLTableElement, body: HTMLTableElement, row: HTMLTableRowElement;
 
-            var mode = EDDATD.interpretationMode;
+            var mode = this.selectMajorKindStep.interpretationMode;
             var uniqueMeasurementNames = this.identifyStructuresStep.uniqueMeasurementNames;
 
             // put together a disambiguation section for measurement types
@@ -1454,14 +1720,14 @@ module EDDTableImport {
                 // TODO sizing should be handled in CSS
                 disam.compObj.attr('size', 4).data('visibleIndex', i)
                     .next().attr('name', 'disamMComp' + (i + 1));
-                EDD_auto.setup_field_autocomplete(disam.compObj, 'MeasurementCompartment', EDDATD.AutoCache.comp);
+                EDD_auto.setup_field_autocomplete(disam.compObj, 'MeasurementCompartment', this.autoCache.comp);
                 disam.typeObj.attr('size', 45).data('visibleIndex', i)
                     .next().attr('name', 'disamMType' + (i + 1));
-                EDD_auto.setup_field_autocomplete(disam.typeObj, 'GenericOrMetabolite', EDDATD.AutoCache.metabolite);
+                EDD_auto.setup_field_autocomplete(disam.typeObj, 'GenericOrMetabolite', this.autoCache.metabolite);
                 EDD_auto.initial_search(disam.typeObj, name);
                 disam.unitsObj.attr('size', 10).data('visibleIndex', i)
                     .next().attr('name', 'disamMUnits' + (i + 1));
-                EDD_auto.setup_field_autocomplete(disam.unitsObj, 'MeasurementUnit', EDDATD.AutoCache.unit);
+                EDD_auto.setup_field_autocomplete(disam.unitsObj, 'MeasurementUnit', this.autoCache.unit);
                 // If we're in MDV mode, the units pulldowns are irrelevant.
                 disam.unitsObj.toggleClass('off', mode === 'mdv');
             });
@@ -1496,7 +1762,7 @@ module EDDTableImport {
                 }
                 disam.metaObj.attr('name', 'disamMeta' + (i + 1)).addClass('autocomp_altype')
                     .next().attr('name', 'disamMetaHidden' + (i + 1));
-                EDD_auto.setup_field_autocomplete(disam.metaObj, 'AssayLineMetadataType', EDDATD.AutoCache.meta);
+                EDD_auto.setup_field_autocomplete(disam.metaObj, 'AssayLineMetadataType', this.autoCache.meta);
             });
         }
 
@@ -1567,7 +1833,7 @@ module EDDTableImport {
         // specify compartments for all their measurements.
         checkAllMeasurementCompartmentDisam():void {
             var allSet: boolean;
-            var mode = EDDATD.interpretationMode;
+            var mode = this.selectMajorKindStep.interpretationMode;
 
             allSet = this.currentlyVisibleMeasurementObjSets.every((obj: any): boolean => {
                 var hidden: JQuery = obj.compObj.next();
@@ -1588,7 +1854,7 @@ module EDDTableImport {
             };
             highest = 0;
             // ATData.existingAssays is type {[index: string]: number[]}
-            assays = ATData.existingAssays[EDDATD.masterProtocol] || [];
+            assays = ATData.existingAssays[this.selectMajorKindStep.masterProtocol] || [];
             assays.every((id: number, i: number): boolean => {
                 var assay: AssayRecord, line: LineRecord, protocol: any, name: string;
                 assay = EDDData.Assays[id];
@@ -1660,218 +1926,8 @@ module EDDTableImport {
 }
 
 
-
-
-// ----------------------------------------------------------------------------------------------------------
-
-
-declare var ATData:any; // Setup by the server.
-declare var EDDATDGraphing:any;
-declare var EDD_auto:any;
-
-var EDDATD:any;
-
-EDDATD = {
-
-// The Protocol for which we will be importing data.
-masterProtocol:0,
-// The main mode we are interpreting data in.
-// Valid values sofar are "std", "mdv", "tr", "pr".
-interpretationMode:"std",
-processMasterImportSettingsTimerID: 0,
-
-rawInputStep: null,
-identifyStructuresStep: null,
-typeDisambiguationStep: null,
-
-AutoCache: {
-    comp: {},
-    meta: {},
-    unit: {},
-    metabolite: {}
-},
-
-
-changedMasterProtocol: ():void => {
-    var protocolIn:JQuery, assayIn:JQuery, currentAssays:number[];
-    // check master protocol
-    protocolIn = $('#masterProtocol');
-    var p = parseInt(protocolIn.val(), 10);
-    if (EDDATD.masterProtocol === p) {
-        // no change
-        return;
-    }
-    EDDATD.masterProtocol = p;
-    // check for master assay
-    assayIn = $('#masterAssay').empty();
-    $('<option>').text('(Create New)').appendTo(assayIn).val('new').prop('selected', true);
-    currentAssays = ATData.existingAssays[protocolIn.val()] || [];
-    currentAssays.forEach((id:number):void => {
-        var assay = EDDData.Assays[id],
-            line = EDDData.Lines[assay.lid],
-            protocol = EDDData.Protocols[assay.pid];
-        $('<option>').appendTo(assayIn).val('' + id).text([
-            line.name, protocol.name, assay.name ].join('-'));
-    });
-    $('#masterLineSpan').removeClass('off');
-    EDDATD.queueProcessMasterImportSettings();
-},
-
-
-queueProcessMasterImportSettings: (): void => {
-    // Start a timer to wait before calling the routine that reparses the import settings.
-    // This way we're calling the reparse just once, even when we get multiple cascaded
-    // events that require it.
-    if (EDDATD.processMasterImportSettingsTimerID) {
-        clearTimeout(EDDATD.processMasterImportSettingsTimerID);
-    }
-    EDDATD.processMasterImportSettingsTimerID = setTimeout(EDDATD.processMasterImportSettings.bind(EDDATD), 5);
-},
-
-
-processMasterImportSettings: (): void => {
-    var stdLayout:JQuery, trLayout:JQuery, prLayout:JQuery, mdvLayout:JQuery, graph:JQuery;
-    stdLayout = $('#stdlayout');
-    trLayout = $('#trlayout');
-    prLayout = $('#prlayout');
-    mdvLayout = $('#mdvlayout');
-
-    graph = $('#graphDiv');
-    // all need to exist, or page is broken
-    if (![ stdLayout, trLayout, prLayout, mdvLayout, graph ].every((item):boolean => item.length !== 0)) {
-        console.log("Missing crucial page element, cannot run.");
-        return;
-    }
-
-    if (stdLayout.prop('checked')) { //  Standard interpretation mode
-        EDDATD.interpretationMode = 'std';
-    } else if (trLayout.prop('checked')) {   //  Transcriptomics mode
-        EDDATD.interpretationMode = 'tr';
-    } else if (prLayout.prop('checked')) {   //  Proteomics mode
-        EDDATD.interpretationMode = 'pr';
-    } else if (mdvLayout.prop('checked')) {  // JBEI Mass Distribution Vector format
-        EDDATD.interpretationMode = 'mdv';
-        // We never ignore gaps, or transpose, for MDV documents
-        EDDATD.rawInputStep.setIgnoreGaps(false);
-        EDDATD.rawInputStep.setTranspose(false);
-        // JBEI MDV format documents are always pasted in from Excel, so they're always tab-separated
-        EDDATD.rawInputStep.setSeparatorType('tab');
-        EDDATD.identifyStructuresStep.pulldownSettings = [1, 5]; // A default set of pulldown settings for this mode
-    } else {
-        // If none of them are checked - WTF?  Don't parse or change anything.
-        return;
-    }
-    EDDATD.rawInputStep.handleNewInput();
-},
-
-
-rawInputCallback: (): void => {
-    EDDATD.identifyStructuresStep.handleNewInput();
-},
-
-
-identifyStructuresCallback: (): void => {
-    // Now that we're got the table from Step 3 built,
-    // we turn to the table in Step 4:  A set for each type of data, conisting of disambiguation rows,
-    // where the user can link unknown items to pre-existing EDD data.
-    EDDATD.typeDisambiguationStep.handleNewInput();
-},
-
-
-typeDisambiguationCallback: (): void => {
-
-    var parsedSets = EDDATD.identifyStructuresStep.parsedSets;
-    // if the debug area is there, set its value to JSON of parsed sets
-    $('#jsondebugarea').val(JSON.stringify(parsedSets));
-},
-
-
-generateFormSubmission: (): void => {
-    var json: string;
-
-    var parsedSets = EDDATD.identifyStructuresStep.parsedSets;
-
-    // Run through the data sets one more time, pulling out any values in the pulldowns and
-    // autocomplete elements in Step 4 and embedding them in their respective data sets.
-    json = JSON.stringify(parsedSets);
-    $('#jsonoutput').val(json);
-    $('#jsondebugarea').val(json);
-},
-
-
-prepareIt: (): void => {
-    var reProcessOnClick: string[];
-
-    reProcessOnClick = ['#stdlayout', '#trlayout', '#prlayout', '#mdvlayout'];
-
-    // This is rather a lot of callbacks, but we need to make sure we're
-    // tracking the minimum number of elements with this call, since the
-    // function called has such strong effects on the rest of the page.
-    // For example, a user should be free to change "merge" to "replace" without having
-    // their edits in Step 2 erased.
-    $("#masterProtocol").change(EDDATD.changedMasterProtocol);
-
-    // Using "change" for these because it's more efficient AND because it works around an
-    // irritating Chrome inconsistency
-    // For some of these, changing them shouldn't actually affect processing until we implement
-    // an overwrite-checking feature or something similar
-    $(reProcessOnClick.join(',')).on('click', EDDATD.queueProcessMasterImportSettings);
-
-    EDDATD.rawInputStep = new EDDTableImport.RawInputStep(EDDATD.rawInputCallback);
-    EDDATD.identifyStructuresStep =
-        new EDDTableImport.IdentifyStructuresStep(EDDATD.rawInputStep, EDDATD.identifyStructuresCallback);
-    EDDATD.typeDisambiguationStep =
-        new EDDTableImport.TypeDisambiguationStep(EDDATD.identifyStructuresStep, EDDATD.typeDisambiguationCallback);
-
-    EDDATD.changedMasterProtocol(); //  Since the initial masterProtocol value is zero, we need to manually trigger this:
-    EDDATD.queueProcessMasterImportSettings();
-},
-
-
-disclose: (): boolean => {
-    $(this).closest('.disclose').toggleClass('discloseHide');
-    return false;
-},
-
-
-process_result: (result): void => {
-    if (result.file_type == "xlsx") {
-        var ws = result.file_data["worksheets"][0];
-        console.log(ws);
-        var table = ws[0];
-        var csv = [];
-        if (table.headers) {
-            csv.push(table.headers.join());
-        }
-        for (var i = 0; i < table.values.length; i++) {
-            csv.push(table.values[i].join());
-        }
-        $("#rawdataformatp").val("csv");
-        $("#textData").text(csv.join("\n"));
-    } else {
-        $("#rawdataformatp").val(result.file_type);
-        $("#textData").text(result.file_data);
-    }
-    EDDATD.rawInputStep.handleNewInput(); // AssayTableData.ts
-}
-
-};
-
-
 $(window).load(function() {
-    var url = "/utilities/parsefile";
-    var atdata_url = "/study/" + EDDData.currentStudyID + "/assaydata";
-
-    Utl.FileDropZone.setup("textData", url, EDDATD.process_result, false);
-    $('.disclose').find('a.discloseLink').on('click', EDDATD.disclose);
-    // Populate ATData and EDDData objects via AJAX calls
-    jQuery.ajax(atdata_url, {
-        "success": function(data) {
-            ATData = data.ATData;
-            $.extend(EDDData, data.EDDData);
-            EDDATD.prepareIt();
-        }
-    }).fail(function(x, s, e) {
-        alert(s);
-    });
+    EDDTableImport.onWindowLoad();
 });
+
+

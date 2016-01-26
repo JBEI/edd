@@ -252,7 +252,7 @@ at how the pulldowns should be set, but you may need to tweak it.</p>
       </div>
     </div>
 
-    <div class="resetButtonDiv" style="float:right;" onclick="EDDATD.resetEnabledFlagMarkers();">Reset</div>
+    <div class="resetButtonDiv" id="resetEnabledFlagMarkers" style="float:right;">Reset</div>
 
     Step 3 : Verify the data has been interpreted correctly, and disable any values you don't want.
 
@@ -295,7 +295,7 @@ at how the pulldowns should be set, but you may need to tweak it.</p>
       </div>
     </div>
 
-    <div class="resetButtonDiv" style="float:right;" onclick="EDDATD.resetInfoTableFields();">Re-parse</div>
+    <div class="resetButtonDiv" id="resetDisambiguationFields" style="float:right;">Reset</div>
 
     Step 4 : Help to disambiguate some of the detected values.
   </div>
@@ -393,7 +393,7 @@ at how the pulldowns should be set, but you may need to tweak it.</p>
 </div>
 
 <div style="width:99%;text-align:right;margin:10px 0px 10px 0px;">
-  <input type="submit" name="action" value="Submit Data" onclick="EDDATD.generateFormSubmission();" />
+  <input type="submit" id="submitForImport" name="action" value="Submit Data" />
 </div>
 
 <input type="hidden" id="jsonoutput" name="jsonoutput" />
