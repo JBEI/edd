@@ -1460,7 +1460,6 @@
         ["asn__L", "L-Asparagine", "C4H8N2O3", 0],
         ["asp__L", "L-Aspartate", "C4H6NO4", -1],
         ["aspsa", "L-Aspartate 4-semialdehyde", "C4H7NO3", 0],
-        ["asptrna_asn", "L-Aspartyl-tRNA(Asn)", "None", 0],
         ["crn", "L-Carnitine", "C7H15NO3", 0],
         ["crncoa", "L-Carnitinyl-CoA", "C28H46N8O18P3S", -3],
         ["citr__L", "L-Citrulline", "C6H13N3O3", 0],

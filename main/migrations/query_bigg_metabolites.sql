@@ -18,7 +18,9 @@ SELECT x.bigg_id, trim(regexp_replace(x.name, x.formula || '$', '')) AS name, x.
 		-- skip blank formulas
 		x.formula <> ''
 		-- skip obvious placeholder formulas like 'R', 'X', 'Z'
+		-- or where more than 3 lowercase letters in a row
 		AND x.formula !~ '[RXZ][A-Z0-9]*$'
+		AND x.formula !~ '[a-z]{3}'
 	GROUP BY x.bigg_id, x.name, x.formula, x.charge, x.repeat, y.total
 	-- throw out anything without supermajority agreement on formula
 	HAVING x.repeat/y.total > 0.66
