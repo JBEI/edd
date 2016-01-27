@@ -1263,7 +1263,7 @@ module StudyD {
     }
 
 
-    function filterTableKeyDown(context, e) {
+    function filterTableKeyDown(e) {
         switch (e.keyCode) {
             case 38: // up
             case 40: // down
@@ -1275,7 +1275,7 @@ module StudyD {
                 if (e.keyCode > 8 && e.keyCode < 32) {
                     return;
                 }
-                context.queueMainGraphRemake();
+                this.queueMainGraphRemake();
         }
     }
 
@@ -1291,9 +1291,9 @@ module StudyD {
             this.progressiveFilteringWidget.mainGraphObject = this.mainGraphObject;
         }
 
-        $('#mainFilterSection').on('mouseover mousedown mouseup', () => this.queueMainGraphRemake())
-                .on('keydown', (e) => filterTableKeyDown(this, e));
-        $('#separateAxesCheckbox').on('change', () => this.queueMainGraphRemake(true));
+        $('#mainFilterSection').on('mouseover mousedown mouseup', this.queueMainGraphRemake.bind(this))
+                .on('keydown', filterTableKeyDown.bind(this));
+        $('#separateAxesCheckbox').on('change', this.queueMainGraphRemake.bind(this, true));
 
         // Enable edit lines button
         $('#editLineButton').on('click', (ev:JQueryMouseEventObject):boolean => {
@@ -1319,11 +1319,6 @@ module StudyD {
         // Hacky button for changing the metabolic map
         $("#metabolicMapName").click( () => this.onClickedMetabolicMapName() );
 
-        requestAllMetaboliteData(this);
-    }
-
-
-    function requestAllMetaboliteData(context) {
         $.each(EDDData.Protocols, (id, protocol) => {
             $.ajax({
                 url: 'measurements/' + id + '/',
@@ -1333,7 +1328,7 @@ module StudyD {
                     console.log('Failed to fetch measurement data on ' + protocol.name + '!');
                     console.log(status);
                 },
-                success: (data) => { processMeasurementData(context, data, protocol); }
+                success: processMeasurementData.bind(this, protocol)
             });
         });
     }
@@ -1348,12 +1343,12 @@ module StudyD {
                 console.log('Failed to fetch measurement data on ' + assay.name + '!');
                 console.log(status);
             },
-            success: (data) => { processMeasurementData(this, data, protocol); }
+            success: processMeasurementData.bind(this, protocol)
         });
     }
 
 
-    function processMeasurementData(context, data, protocol) {
+    function processMeasurementData(protocol, data) {
         var assaySeen = {},
             protocolToAssay = {},
             count_total:number = 0,
@@ -1398,19 +1393,19 @@ module StudyD {
             }
         });
 
-        context.progressiveFilteringWidget.processIncomingMeasurementRecords(data.measures || {}, data.types);
+        this.progressiveFilteringWidget.processIncomingMeasurementRecords(data.measures || {}, data.types);
 
         if (count_rec < count_total) {
             // TODO not all measurements downloaded; display a message indicating this
             // explain downloading individual assay measurements too
         }
         // invalidate assays on all DataGrids; redraws the affected rows
-        $.each(context.assaysDataGrids, (protocolId, dataGrid) => {
+        $.each(this.assaysDataGrids, (protocolId, dataGrid) => {
             dataGrid.invalidateAssayRecords(Object.keys(protocolToAssay[protocolId] || {}));
         });
-        context.linesDataGridSpec.enableCarbonBalanceWidget(true);
-        context.processCarbonBalanceData();
-        context.queueMainGraphRemake();
+        this.linesDataGridSpec.enableCarbonBalanceWidget(true);
+        this.processCarbonBalanceData();
+        this.queueMainGraphRemake();
     }
 
 
@@ -1425,15 +1420,15 @@ module StudyD {
         if (this.linesActionPanelRefreshTimer) {
             clearTimeout (this.linesActionPanelRefreshTimer);
         }
-        this.linesActionPanelRefreshTimer = setTimeout(() => linesActionPanelShow(this), 150);
+        this.linesActionPanelRefreshTimer = setTimeout(linesActionPanelShow.bind(this), 150);
     }
 
 
-    function linesActionPanelShow(context) {
+    function linesActionPanelShow() {
         // Figure out how many lines are selected.
         var checkedBoxes = [], checkedLen, linesActionPanel;
-        if (context.linesDataGrid) {
-            checkedBoxes = context.linesDataGrid.getSelectedCheckboxElements();
+        if (this.linesDataGrid) {
+            checkedBoxes = this.linesDataGrid.getSelectedCheckboxElements();
         }
         checkedLen = checkedBoxes.length;
         linesActionPanel = $('#linesActionPanel').toggleClass('off', !checkedLen);
@@ -1455,18 +1450,18 @@ module StudyD {
         if (this.assaysActionPanelRefreshTimer) {
             clearTimeout(this.assaysActionPanelRefreshTimer);
         }
-        this.assaysActionPanelRefreshTimer = setTimeout(() => assaysActionPanelShow(this), 150);
+        this.assaysActionPanelRefreshTimer = setTimeout(assaysActionPanelShow.bind(this), 150);
     }
 
 
-    function assaysActionPanelShow(context) {
+    function assaysActionPanelShow() {
         var checkedBoxes = [], checkedAssays, checkedMeasure, panel, infobox;
         panel = $('#assaysActionPanel');
         if (!panel.size()) {
             return;
         }
         // Figure out how many assays/checkboxes are selected.
-        $.each(context.assaysDataGrids, (pID, dataGrid) => {
+        $.each(this.assaysDataGrids, (pID, dataGrid) => {
             checkedBoxes = checkedBoxes.concat(dataGrid.getSelectedCheckboxElements());
         });
         checkedAssays = $(checkedBoxes).filter('[id^=assay]').size();
@@ -1492,11 +1487,11 @@ module StudyD {
         if (this.mainGraphRefreshTimerID) {
             clearTimeout(this.mainGraphRefreshTimerID);
         }
-        this.mainGraphRefreshTimerID = setTimeout(() => remakeMainGraphArea(this, force), 200);
+        this.mainGraphRefreshTimerID = setTimeout(remakeMainGraphArea.bind(this, force), 200);
     }
 
 
-    function remakeMainGraphArea(context:any, force?:boolean) {
+    function remakeMainGraphArea(force?:boolean) {
         var previousIDSet:any[], postFilteringMeasurements:any[],
             dataPointsDisplayed = 0,
             dataPointsTotal = 0,
@@ -1504,13 +1499,13 @@ module StudyD {
             // FIXME assumes (x0, y0) points
             convert = (d) => { return [[ d[0][0], d[1][0] ]]; },
             compare = (a, b) => { return a[0] - b[0]; };
-        context.mainGraphRefreshTimerID = 0;
-        if (!context.progressiveFilteringWidget.checkRedrawRequired(force)) {
+        this.mainGraphRefreshTimerID = 0;
+        if (!this.progressiveFilteringWidget.checkRedrawRequired(force)) {
             return;
         }
         // Start out with a blank graph.  We will re-add all the relevant sets.
-        context.mainGraphObject.clearAllSets();
-        postFilteringMeasurements = context.progressiveFilteringWidget.buildFilteredMeasurements();
+        this.mainGraphObject.clearAllSets();
+        postFilteringMeasurements = this.progressiveFilteringWidget.buildFilteredMeasurements();
 
         $.each(postFilteringMeasurements, (i, measurementId) => {
             var measure:AssayMeasurementRecord = EDDData.AssayMeasurements[measurementId],
@@ -1543,7 +1538,7 @@ module StudyD {
                     newSet.yaxisByMeasurementTypeID = mtype.family;
                 }
             }
-            context.mainGraphObject.addNewSet(newSet);
+            this.mainGraphObject.addNewSet(newSet);
         });
 
         var displayText = dataPointsDisplayed + " points displayed";
@@ -1552,7 +1547,7 @@ module StudyD {
         }
         $('#pointsDisplayedSpan').empty().text(displayText);
 
-        context.mainGraphObject.drawSets();
+        this.mainGraphObject.drawSets();
     }
 
 
