@@ -2324,11 +2324,11 @@ class line_sbml_export (line_assay_data, sbml_info):
                 combined = []
                 for c in range(13):
                     if (c < len(values)):
-                        combined.append(values[c] + "(0.02)\t")
+                        combined.append("%s(0.02)\t" % values[c])
                     else:
                         combined.append("-\t")
                 mname = self._metabolites_by_id[mid].short_name
-                carbon_notes["LCMS"].append(mname + "\tM-0\t" + "".join(combined))
+                carbon_notes["LCMS"].append("%s\tM-0\t%s" % (mname, "".join(combined), ))
             n_total, n_added = self._add_notes(carbon_notes)
         # TODO some kind of feedback?
         import libsbml
