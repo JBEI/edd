@@ -75,6 +75,7 @@ module StudyD {
         geneDataProcessed: boolean;
         genericDataProcessed: boolean;
 
+        filterTableJQ: JQuery;
         studyDObject: any;
         mainGraphObject: any;
 
@@ -95,6 +96,8 @@ module StudyD {
             this.proteinDataProcessed = false;
             this.geneDataProcessed = false;
             this.genericDataProcessed = false;
+
+            this.filterTableJQ = null;
         }
 
 
@@ -109,6 +112,8 @@ module StudyD {
             var seenInLinesHash: RecordIDToBoolean = {};
             var seenInAssaysHash: RecordIDToBoolean = {};
             var aIDsToUse: string[] = [];
+
+            this.filterTableJQ = $('<div>').addClass('filterTable').appendTo($('#mainFilterSection'));
 
             // First do some basic sanity filtering on the list
             $.each(EDDData.Assays, (assayId: string, assay: any): void => {
@@ -168,11 +173,11 @@ module StudyD {
         // Clear out any old filters in the filtering section, and add in the ones that
         // claim to be "useful".
         repopulateFilteringSection(): void {
-            var table = $('<div>').addClass('filterTable').appendTo($('#mainFilterSection').empty());
+            this.filterTableJQ.children().detach();
             var dark:boolean = false;
             $.each(this.allFilters, (i, widget) => {
                 if (widget.isFilterUseful()) {
-                    widget.addToParent(table[0]);
+                    widget.addToParent(this.filterTableJQ[0]);
                     widget.applyBackgroundStyle(dark);
                     dark = !dark;
                 }
@@ -401,8 +406,9 @@ module StudyD {
 
         // References to HTML elements created by the filter
         filterColumnDiv: HTMLElement;
-        titleElement: HTMLElement;
-        searchBoxElement:HTMLInputElement;
+        plaintextTitleDiv: HTMLElement;
+        searchBox: HTMLInputElement;
+        searchBoxTitleDiv: HTMLElement;
         scrollZoneDiv: HTMLElement;
         filteringTable: JQuery;
         tableBodyElement: HTMLTableElement;
@@ -450,16 +456,20 @@ module StudyD {
             var sBoxID: string = 'filter' + this.sectionShortLabel + 'SearchBox',
                 sBox: HTMLInputElement;
             this.filterColumnDiv = $("<div>").addClass('filterColumn')[0];
-            this.titleElement = $("<span>").addClass('filterHead').text(this.sectionTitle)[0];
+            var textTitle = $("<span>").text(this.sectionTitle)[0];
+            this.plaintextTitleDiv = $("<div>").addClass('filterHead').append(textTitle)[0];
 
             $(sBox = document.createElement("input"))
-                .attr({ 'id': sBoxID, 
-                           'name': sBoxID,
-                           'placeholder': this.sectionTitle,
-                           'size': 14})
-                .addClass('searchBox filterHead');
+                .attr({
+                    'id': sBoxID,
+                    'name': sBoxID,
+                    'placeholder': this.sectionTitle,
+                    'size': 14
+                });
             sBox.setAttribute('type', 'text'); // JQuery .attr() cannot set this
-            this.searchBoxElement = sBox;
+            this.searchBox = sBox;
+            this.searchBoxTitleDiv = $("<div>").addClass('filterHeadSearch').append(sBox)[0];
+
             this.scrollZoneDiv = $("<div>").addClass('filterCriteriaScrollZone')[0];
             this.filteringTable = $("<table>")
                 .addClass('filterCriteriaTable dragboxes')
@@ -538,11 +548,11 @@ module StudyD {
             // the scrolling container div declares a large padding margin for the scroll bar,
             // and that padding margin would be an empty waste of space otherwise.
             if (this.uniqueValuesOrder.length > 15) {
-                fCol.append(this.searchBoxElement).append(this.scrollZoneDiv);
+                fCol.append(this.searchBoxTitleDiv).append(this.scrollZoneDiv);
                 // Change the reference so we're affecting the innerHTML of the correct div later on
                 fCol = $(this.scrollZoneDiv);
             } else {
-                fCol.append(this.titleElement);
+                fCol.append(this.plaintextTitleDiv);
             }
             fCol.append(this.filteringTable);
 
@@ -563,7 +573,9 @@ module StudyD {
                 $('<label>').attr('for', cboxName).text(this.uniqueValues[uniqueId])
                     .appendTo(cell);
             });
-            Dragboxes.initTable(this.filteringTable);    // TODO: Drag select is broken in Safari
+            // TODO: Drag select is twitchy - clicking a table cell background should check the box,
+            // even if the user isn't hitting the label or the checkbox itself.
+            Dragboxes.initTable(this.filteringTable);
         }
 
 
@@ -572,7 +584,7 @@ module StudyD {
         anyCheckboxesChangedSinceLastInquiry():boolean {
             var changed:boolean = false,
                 currentCheckboxState: UniqueIDToValue = {},
-                v:string = $(this.searchBoxElement).val();
+                v: string = $(this.searchBox).val();
             this.anyCheckboxesChecked = false;
             $.each(this.checkboxes || {}, (uniqueId: number, checkbox: JQuery) => {
                 var current, previous;
@@ -668,6 +680,9 @@ module StudyD {
                 return false;
             });
 
+            // Create a document fragment, and accumulate inside it all the rows we want to display, in sorted order.
+            var frag = document.createDocumentFragment();
+
             var rowsToAppend = [];
             this.uniqueValuesOrder.forEach((crID) => {
                 var checkbox: JQuery = this.checkboxes[crID],
@@ -676,13 +691,17 @@ module StudyD {
                 checkbox.prop('disabled', !show)
                 $(row).toggleClass('nodata', !show);
                 if (show) {
-                    this.tableBodyElement.appendChild(row);
+                    frag.appendChild(row);
                 } else {
                     rowsToAppend.push(row);
                 }
             });
-            // Now, (re)append all the rows we disabled, so they go to the bottom of the table
-            rowsToAppend.forEach((row) => this.tableBodyElement.appendChild(row));
+            // Now, append all the rows we disabled, so they go to the bottom of the table
+            rowsToAppend.forEach((row) => frag.appendChild(row));
+
+            // Remember that we last sorted by this column
+            this.tableBodyElement.appendChild(frag);
+
             return idsPostFiltering;
         }
 
@@ -1275,7 +1294,7 @@ module StudyD {
                 if (e.keyCode > 8 && e.keyCode < 32) {
                     return;
                 }
-                this.queueMainGraphRemake();
+                this.queueMainGraphRemake(false);
         }
     }
 
@@ -1291,7 +1310,7 @@ module StudyD {
             this.progressiveFilteringWidget.mainGraphObject = this.mainGraphObject;
         }
 
-        $('#mainFilterSection').on('mouseover mousedown mouseup', this.queueMainGraphRemake.bind(this))
+        $('#mainFilterSection').on('mouseover mousedown mouseup', this.queueMainGraphRemake.bind(this, false))
                 .on('keydown', filterTableKeyDown.bind(this));
         $('#separateAxesCheckbox').on('change', this.queueMainGraphRemake.bind(this, true));
 
@@ -1405,7 +1424,7 @@ module StudyD {
         });
         this.linesDataGridSpec.enableCarbonBalanceWidget(true);
         this.processCarbonBalanceData();
-        this.queueMainGraphRemake();
+        this.queueMainGraphRemake(false);
     }
 
 
