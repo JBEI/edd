@@ -2320,8 +2320,7 @@ class line_sbml_export (line_assay_data, sbml_info):
         carbon_data = self._carbon_data_by_metabolite.get(t, {})
         if (len(carbon_data) > 0):
             carbon_notes = {"LCMS": []}
-            for mid, value_str in carbon_data.iteritems():
-                values = value_str.split("/")
+            for mid, values in carbon_data.iteritems():
                 combined = []
                 for c in range(13):
                     if (c < len(values)):
