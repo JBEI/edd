@@ -355,8 +355,6 @@ class sbml_info(object):
                     ex_resolved = reactant_to_exchange.get(name, [None])[0]
                     if (ex_resolved is not None):
                         break
-            # FIXME make sure we are consistently indexing by metabolite ID, NOT
-            # the short_name
             self._resolved_exchanges[met.id] = ex_resolved
             if (ex_resolved is not None):
                 self._exchanges_to_metabolites[ex_resolved.ex_id] = met
@@ -508,9 +506,9 @@ class sbml_info(object):
         if (mid == self._biomass_metab.id):
             exchange = self.biomass_exchange
         else:
-            if mid not in self._resolved_exchanges:
-                raise ValueError("no matching exchange reaction")
-            exchange = self._resolved_exchanges[mid]
+            exchange = self._resolved_exchanges.get(mid, None)
+        if exchange is None:
+            raise ValueError("No exchange reaction matching metabolite %s" % mid)
         return exchange.assign_flux_value(values)
 
     def _assign_transcription_value_to_gene(self, gene_name, values):
