@@ -463,7 +463,7 @@ class sbml_info(object):
         if (exchange_id is not None):
             if (exchange_id == ""):
                 logger.debug("DELETING EXCHANGE RECORD")
-                MetaboliteExchange(
+                MetaboliteExchange.objects.filter(
                     sbml_template_id=self._chosen_template.id,
                     measurement_type_id=metabolite.id
                 ).delete()
@@ -480,7 +480,7 @@ class sbml_info(object):
             return exchange_id
         try:
             logger.debug("DELETING EXCHANGE RECORD 2")
-            MetaboliteExchange.objects.get(
+            MetaboliteExchange.objects.filter(
                 sbml_template_id=self._chosen_template.id,
                 measurement_type_id=metabolite.id
             ).delete()
