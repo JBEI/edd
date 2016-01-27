@@ -22,3 +22,6 @@ LOGGING['handlers']['console']['level'] = 'DEBUG'
 LOGGING['loggers']['django.db.backends']['level']='DEBUG'
 LOGGING['loggers']['main']['level']='DEBUG'
 LOGGING['loggers']['edd']['level']='DEBUG'
+
+# Tell the django-allauth app which site ID we are using
+SITE_ID = 1

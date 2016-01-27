@@ -101,9 +101,23 @@ INSTALLED_APPS = (
     'django.contrib.postgres',
     'django_extensions',  # django-extensions in pip
     'form_utils',  # django-form-utils in pip
+
+    # EDD apps
     'main',
     'edd_utils',
     'edd.profile',
+
+    # apps for django-allauth
+    # after EDD apps so EDD templates are chosen over allauth templates
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.github',
+    'allauth.socialaccount.providers.google',
+    'allauth.socialaccount.providers.linkedin_oauth2',
+    'allauth.socialaccount.providers.openid',
+    'allauth.socialaccount.providers.persona',
+    'allauth.socialaccount.providers.twitter',
 )
 MIDDLEWARE_CLASSES = (
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -133,9 +147,10 @@ TEMPLATES = [
             'context_processors': TCP + [
                 # this gives us access to the original request in templates. see e.g.:
                 # http://stackoverflow.com/questions/2882490
+                # also required for django-allauth
                 'django.template.context_processors.request',
                 # required to enable auth templates
-                'django.contrib.auth.context_processors.auth'
+                'django.contrib.auth.context_processors.auth',
             ],
         }
     },
@@ -151,6 +166,8 @@ AUTHENTICATION_BACKENDS = (
     'django_auth_ldap.backend.LDAPBackend',
     'django.contrib.auth.backends.RemoteUserBackend',
     'django.contrib.auth.backends.ModelBackend',
+    # `allauth` specific authentication methods, such as login by e-mail
+    'allauth.account.auth_backends.AuthenticationBackend',
 )
 ROOT_URLCONF = 'edd.urls'
 WSGI_APPLICATION = 'edd.wsgi.application'
