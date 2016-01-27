@@ -299,6 +299,7 @@ class line_export_base(object):
         measurement_data = MeasurementValue.objects.filter(
             measurement__assay__line__in=self.lines,
             measurement__assay__line__study=self.study,
+            y__isnull=False, y__len__gt=0,
         )
         # XXX I think the reason for this is that the old EDD stores the line and
         # study IDs directly in various other tables, and selects on these instead

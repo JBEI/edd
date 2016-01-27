@@ -1866,7 +1866,7 @@ class processed_measurement(object):
         # so we don't pollute that set with values created via interpolation.
         # Also note that we will have to remake this array after attempting
         # interpolation.
-        valid_mdata = [md for md in measurement_data if md.y is not None]
+        valid_mdata = [md for md in measurement_data if md.y]
         valid_mdata.sort(key=lambda a: a.x)
         mdata_tuples = [(md.fx, md.fy) for md in valid_mdata]
         valid_mtimes = set([md.fx for md in valid_mdata])

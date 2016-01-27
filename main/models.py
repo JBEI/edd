@@ -1550,11 +1550,11 @@ class MeasurementValue(models.Model):
 
     @property
     def fx(self):
-        return float(self.x[0])
+        return float(self.x[0]) if self.x else None
 
     @property
     def fy(self):
-        return float(self.y[0])
+        return float(self.y[0]) if self.y else None
 
     def to_json(self):
         return {
