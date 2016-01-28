@@ -14,3 +14,7 @@
     float: left;
     width: 6em;
 }
+.login_or {
+    margin: 10px auto;
+    text-align: center;
+}

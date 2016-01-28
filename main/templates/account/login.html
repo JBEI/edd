@@ -6,6 +6,10 @@
 
 {% block js_css %}
     <link rel="stylesheet" type="text/css" href="{% static 'main/login.css' %}" />
+    {% get_providers as socialaccount_providers %}
+    {% if socialaccount_providers %}
+    {% providers_media_js %}
+    {% endif %}
 {% endblock js_css %}
 
 {% block status %}
@@ -15,10 +19,37 @@
 {% endblock status %}
 
 {% block content %}
+    {% get_providers as socialaccount_providers %}
     <form class="login_form" method="POST" action="{% url 'account_login' %}">
+        <fieldset>
+        {% if socialaccount_providers %}
+            <legend>Login with third party accounts</legend>
+            <p>
+                {% blocktrans with site.name as site_name %}
+                Please sign in with one of your existing third party accounts. Or, 
+                <a href="{{ signup_url }}">sign up</a> for a {{ site_name }} account 
+                and sign in below:
+                {% endblocktrans %}
+            </p>
+            <div class="socialaccount_ballot">
+                <ul class="socialaccount_providers">
+                    {% include "socialaccount/snippets/provider_list.html" with process="login" %}
+                </ul>
+            </div>
+        {% else %}
+            <legend>Create an account</legend>
+            <p>
+                {% blocktrans %}
+                If you have not created an account yet, then please
+                <a href="{{ signup_url }}">sign up</a> first.
+                {% endblocktrans %}
+            </p>
+        {% endif %}
+        </fieldset>
+        <div class="login_or">{% trans 'or' %}</div>
         {% csrf_token %}
         <fieldset>
-            <legend>Login</legend>
+            <legend>Login with EDD Account</legend>
             <div>
                 {{ form.login.label_tag }}
                 {{ form.login }}
@@ -31,29 +62,4 @@
             <input type="hidden" name="next" value="{{ next }}"/>
         </fieldset>
     </form>
-
-    {% get_providers as socialaccount_providers %}
-        {% if socialaccount_providers %}
-        <p>
-            {% blocktrans with site.name as site_name %}
-            Please sign in with one of your existing third party accounts. Or, 
-            <a href="{{ signup_url }}">sign up</a> for a {{ site_name }} account 
-            and sign in below:
-            {% endblocktrans %}
-        </p>
-        <div class="socialaccount_ballot">
-            <ul class="socialaccount_providers">
-                {% include "socialaccount/snippets/provider_list.html" with process="login" %}
-            </ul>
-            <div class="login-or">{% trans 'or' %}</div>
-        </div>
-        {% include "socialaccount/snippets/login_extra.html" %}
-    {% else %}
-        <p>
-            {% blocktrans %}
-            If you have not created an account yet, then please
-            <a href="{{ signup_url }}">sign up</a> first.
-            {% endblocktrans %}
-        </p>
-    {% endif %}
 {% endblock content %}
