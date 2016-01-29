@@ -74,7 +74,7 @@ var EDDRnaSeq = (function () {
                 $("#data-table").val("");
                 submit_data(study_id);
             });
-            Utl.FileDropZone.setup("data-field", filedrop_url, pub.process_result, false);
+            Utl.FileDropZone.create("data-field", filedrop_url, pub.process_result, false);
             $("#process-button").click(function () {
                 submit_data();
             });

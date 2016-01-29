@@ -25,6 +25,8 @@ module EDDTableImport {
     export var typeDisambiguationStep: TypeDisambiguationStep;
 
 
+    // As soon as the window load signal is sent, call back to the server for the set of reference records
+    // that will be used to disambiguate labels in imported data.
     export function onWindowLoad(): void {
         var atdata_url = "/study/" + EDDData.currentStudyID + "/assaydata";
 
@@ -43,6 +45,8 @@ module EDDTableImport {
     }
 
 
+    // As soon as we've got and parsed the reference data, we can set up all the callbacks for the UI,
+    // effectively turning the page "on".
     export function onReferenceRecordsLoad(): void {
 
         var a = new SelectMajorKindStep(EDDTableImport.selectMajorKindCallback);
@@ -57,38 +61,38 @@ module EDDTableImport {
 
         $('#submitForImport').on('click', EDDTableImport.submitForImport);
 
-        a.changedMasterProtocol(); //  Since the initial masterProtocol value is zero, we need to manually trigger this:
-        a.queueHandleNewInput();
+        // We need to manually trigger this, after all our steps are constructed.
+        // This will cascade calls through the rest of the steps and configure them too.
+        a.changedMasterProtocol();
     }
 
 
+    // This is called by our instance of selectMajorKindStep to announce changes.
     export function selectMajorKindCallback(): void {
         if (EDDTableImport.selectMajorKindStep.interpretationMode == 'mdv') {
-            // We never ignore gaps, or transpose, for MDV documents
-            EDDTableImport.rawInputStep.setIgnoreGaps(false);
-            EDDTableImport.rawInputStep.setTranspose(false);
-            // JBEI MDV format documents are always pasted in from Excel, so they're always tab-separated
-            EDDTableImport.rawInputStep.setSeparatorType('tab');
-            // TODO: Interpose a function
+            // TODO: There has got to be a better way to handle this
             EDDTableImport.identifyStructuresStep.pulldownSettings = [1, 5]; // A default set of pulldown settings for this mode
         }
-        EDDTableImport.rawInputStep.handleNewInput();
+        EDDTableImport.rawInputStep.previousStepChanged();
     }
 
 
+    // This is called by our instance of rawInputStep to announce changes.
     export function rawInputCallback(): void {
-        EDDTableImport.identifyStructuresStep.handleNewInput();
+        EDDTableImport.identifyStructuresStep.previousStepChanged();
     }
 
 
+    // This is called by our instance of identifyStructuresStep to announce changes.
     export function identifyStructuresCallback(): void {
         // Now that we're got the table from Step 3 built,
         // we turn to the table in Step 4:  A set for each type of data, consisting of disambiguation rows,
         // where the user can link unknown items to pre-existing EDD data.
-        EDDTableImport.typeDisambiguationStep.handleNewInput();
+        EDDTableImport.typeDisambiguationStep.previousStepChanged();
     }
 
 
+    // This is called by our instance of typeDisambiguationStep to announce changes.
     export function typeDisambiguationCallback(): void {
         var parsedSets = EDDTableImport.identifyStructuresStep.parsedSets;
         // if the debug area is there, set its value to JSON of parsed sets
@@ -96,6 +100,10 @@ module EDDTableImport {
     }
 
 
+    // When the submit button is pushed, fetch the most recent record sets from our identifyStructuresStep instance,
+    // and embed them in the hidden form field that will be submitted to the server.
+    // Note that this is not all that the server needs, in order to successfully process an import.
+    // It also reads other form elements from the page, created by selectMajorKindStep and typeDisambiguationStep.
     export function submitForImport(): void {
         var json: string;
         var parsedSets = EDDTableImport.identifyStructuresStep.parsedSets;
@@ -107,12 +115,14 @@ module EDDTableImport {
     }
 
 
+    // The usual click-to-disclose callback.  Perhaps this should be in Utl.ts?
     export function disclose(): boolean {
         $(this).closest('.disclose').toggleClass('discloseHide');
         return false;
     }
 
 
+    // The class responsible for everything in the "Step 1" box that you see on the data import page.
     export class SelectMajorKindStep {
 
         // The Protocol for which we will be importing data.
@@ -122,15 +132,15 @@ module EDDTableImport {
         interpretationMode: string;
         inputRefreshTimerID: number;
 
-        newDataAvailableCallback: any;
+        nextStepCallback: any;
 
 
-        constructor(newDataAvailableCallback: any) {
+        constructor(nextStepCallback: any) {
             this.masterProtocol = 0;
             this.interpretationMode = "std";
             this.inputRefreshTimerID = null;
 
-            this.newDataAvailableCallback = newDataAvailableCallback;
+            this.nextStepCallback = nextStepCallback;
 
             var reProcessOnClick: string[];
 
@@ -147,22 +157,22 @@ module EDDTableImport {
             // irritating Chrome inconsistency
             // For some of these, changing them shouldn't actually affect processing until we implement
             // an overwrite-checking feature or something similar
-            $(reProcessOnClick.join(',')).on('click', this.queueHandleNewInput.bind(this));
+            $(reProcessOnClick.join(',')).on('click', this.queueReconfigure.bind(this));
         }
 
 
-        queueHandleNewInput(): void {
+        queueReconfigure(): void {
             // Start a timer to wait before calling the routine that remakes the graph.
             // This way we're not bothering the user with the long redraw process when
             // they are making fast edits.
             if (this.inputRefreshTimerID) {
                 clearTimeout(this.inputRefreshTimerID);
             }
-            this.inputRefreshTimerID = setTimeout(this.handleNewInput.bind(this), 5);
+            this.inputRefreshTimerID = setTimeout(this.reconfigure.bind(this), 5);
         }
 
 
-        handleNewInput(): void {
+        reconfigure(): void {
 
             var stdLayout: JQuery, trLayout: JQuery, prLayout: JQuery, mdvLayout: JQuery, graph: JQuery;
             stdLayout = $('#stdlayout');
@@ -189,7 +199,7 @@ module EDDTableImport {
                 // If none of them are checked - WTF?  Don't parse or change anything.
                 return;
             }
-            this.newDataAvailableCallback();
+            this.nextStepCallback();
         }
 
 
@@ -216,13 +226,15 @@ module EDDTableImport {
                     line.name, protocol.name, assay.name].join('-'));
             });
             $('#masterLineSpan').removeClass('off');
-            this.queueHandleNewInput();
+            this.queueReconfigure();
         }
     }
 
 
 
-    // Parse the Step 2 data into a null-padded rectangular grid
+    // The class responsible for everything in the "Step 2" box that you see on the data import page.
+    // Parse the raw data from typing or pasting in the input box, or a dragged-in file,
+    // into a null-padded rectangular grid that can be easily used by the next step.
     export class RawInputStep {
 
         private data: any[];
@@ -239,10 +251,10 @@ module EDDTableImport {
         inputRefreshTimerID: any;
 
         selectMajorKindStep: SelectMajorKindStep;
-        newDataAvailableCallback: any;
+        nextStepCallback: any;
 
 
-        constructor(selectMajorKindStep: SelectMajorKindStep, newDataAvailableCallback: any) {
+        constructor(selectMajorKindStep: SelectMajorKindStep, nextStepCallback: any) {
 
             this.data = [];
             this.rowMarkers = [];
@@ -256,7 +268,7 @@ module EDDTableImport {
 
             $('#textData')
                 .on('paste', this.pastedRawData.bind(this))
-                .on('keyup', this.queueHandleNewInput.bind(this))
+                .on('keyup', this.queueReprocessRawData.bind(this))
                 .on('keydown', this.suppressNormalTab.bind(this));
 
             // Using "change" for these because it's more efficient AND because it works around an
@@ -264,7 +276,7 @@ module EDDTableImport {
             // For some of these, changing them shouldn't actually affect processing until we implement
             // an overwrite-checking feature or something similar
 
-            $('#rawdataformatp').on('change', this.queueHandleNewInput.bind(this));
+            $('#rawdataformatp').on('change', this.queueReprocessRawData.bind(this));
             $('#ignoreGaps').on('change', this.clickedOnIgnoreDataGaps.bind(this));
             $('#transpose').on('change', this.clickedOnTranspose.bind(this));
 
@@ -276,22 +288,36 @@ module EDDTableImport {
                 false);
 
             this.selectMajorKindStep = selectMajorKindStep;
-            this.newDataAvailableCallback = newDataAvailableCallback;
+            this.nextStepCallback = nextStepCallback;
         }
 
 
-        queueHandleNewInput():void {
+        // In practice, the only time this will be called is when Step 1 changes,
+        // which may call for a reconfiguration of the controls in this step.
+        previousStepChanged(): void {
+            if (this.selectMajorKindStep.interpretationMode == 'mdv') {
+                // We never ignore gaps, or transpose, for MDV documents
+                this.setIgnoreGaps(false);
+                this.setTranspose(false);
+                // JBEI MDV format documents are always pasted in from Excel, so they're always tab-separated
+                this.setSeparatorType('tab');
+            }
+            this.queueReprocessRawData();
+        }
+
+
+        queueReprocessRawData(): void {
             // Start a timer to wait before calling the routine that remakes the graph.
             // This way we're not bothering the user with the long redraw process when
             // they are making fast edits.
             if (this.inputRefreshTimerID) {
                 clearTimeout(this.inputRefreshTimerID);
             }
-            this.inputRefreshTimerID = setTimeout(this.handleNewInput.bind(this), 350);
+            this.inputRefreshTimerID = setTimeout(this.reprocessRawData.bind(this), 350);
         }
 
 
-        handleNewInput():void {
+        reprocessRawData(): void {
 
             var mode: string, delimiter: string, input: RawInputStat;
 
@@ -347,7 +373,7 @@ module EDDTableImport {
                 this.processMdv(input.input);
             }
 
-            this.newDataAvailableCallback();
+            this.nextStepCallback();
         }
 
 
@@ -389,7 +415,7 @@ module EDDTableImport {
                 $("#textData").val(result.file_data);
                 this.inferSeparatorType();
             }
-            this.handleNewInput();
+            this.reprocessRawData();
         }
 
 
@@ -592,11 +618,6 @@ module EDDTableImport {
         }
 
 
-        getGrid(): any[] {
-            return this.data;
-        }
-
-
         setIgnoreGaps(value?: boolean): void {
             var ignoreGaps = $('#ignoreGaps');
             if (value === undefined) {
@@ -632,13 +653,13 @@ module EDDTableImport {
 
         clickedOnIgnoreDataGaps():void {
             this.userClickedOnIgnoreDataGaps = true;
-            this.handleNewInput();    // This will take care of reading the status of the checkbox
+            this.reprocessRawData();    // This will take care of reading the status of the checkbox
         }
 
 
         clickedOnTranspose():void {
             this.userClickedOnTranspose = true;
-            this.handleNewInput();
+            this.reprocessRawData();
         }
 
 
@@ -660,6 +681,11 @@ module EDDTableImport {
             }
             return true;
         }
+
+
+        getGrid(): any[] {
+            return this.data;
+        }
     }
 
 
@@ -672,10 +698,10 @@ module EDDTableImport {
     }
 
 
-    // Parse the Step 2 data into a null-padded rectangular grid,
-    // draw the grid as a table with puldowns for specifying the contens of the rows and columns,
-    // as well as checkboxes to enable or disable rows or columns.
-    // Interpret the current grid and table settings into EDD-friendly sets.
+    // The class responsible for everything in the "Step 3" box that you see on the data import page.
+    // Get the grid from the previous step, and draw it as a table with puldowns for specifying the content
+    // of the rows and columns, as well as checkboxes to enable or disable rows or columns.
+    // Interpret the current grid and the settings on the current table into EDD-friendly sets.
     export class IdentifyStructuresStep {
 
         rawInputStep: RawInputStep;
@@ -716,10 +742,10 @@ module EDDTableImport {
         seenAnyTimestamps: boolean;
 
         selectMajorKindStep: SelectMajorKindStep;
-        newDataAvailableCallback: any;
+        nextStepCallback: any;
 
 
-        constructor(selectMajorKindStep: SelectMajorKindStep, rawInputStep: RawInputStep, newDataAvailableCallback: any) {
+        constructor(selectMajorKindStep: SelectMajorKindStep, rawInputStep: RawInputStep, nextStepCallback: any) {
 
             this.rawInputStep = rawInputStep;
 
@@ -755,7 +781,7 @@ module EDDTableImport {
             this.seenAnyTimestamps = false;
 
             this.selectMajorKindStep = selectMajorKindStep;
-            this.newDataAvailableCallback = newDataAvailableCallback;
+            this.nextStepCallback = nextStepCallback;
 
             $('#dataTableDiv')
                 .on('mouseover mouseout', 'td', this.highlighterF.bind(this))
@@ -765,8 +791,8 @@ module EDDTableImport {
         }
 
 
-        handleNewInput(): void {
-
+        previousStepChanged(): void {
+            
             var mode = this.selectMajorKindStep.interpretationMode;
 
             var graph = $('#graphDiv');
@@ -809,7 +835,7 @@ module EDDTableImport {
             // This is rather resource intensive, so we're delaying a bit, and restarting the delay
             // if the user makes additional edits to the data within the delay period.
             this.queueGraphRemake();
-            this.newDataAvailableCallback();
+            this.nextStepCallback();
         }
 
 
@@ -1187,7 +1213,7 @@ module EDDTableImport {
             this.applyTableDataTypeStyling(grid);
             this.interpretDataTable();
             this.queueGraphRemake();
-            this.newDataAvailableCallback();
+            this.nextStepCallback();
         }
 
 
@@ -1200,7 +1226,7 @@ module EDDTableImport {
             this.redrawEnabledFlagMarkers();
             // Resetting a disabled row may change the number of rows listed in the Info table.
             this.queueGraphRemake();
-            this.newDataAvailableCallback();
+            this.nextStepCallback();
         }
 
 
@@ -1213,7 +1239,7 @@ module EDDTableImport {
             this.redrawEnabledFlagMarkers();
             // Resetting a disabled column may change the rows listed in the Info table.
             this.queueGraphRemake();
-            this.newDataAvailableCallback();
+            this.nextStepCallback();
         }
 
 
@@ -1238,7 +1264,7 @@ module EDDTableImport {
             this.interpretDataTable();
             this.redrawEnabledFlagMarkers();
             this.queueGraphRemake();
-            this.newDataAvailableCallback();
+            this.nextStepCallback();
         }
 
 
@@ -1470,7 +1496,7 @@ module EDDTableImport {
                     this.interpretDataTable();
                     this.redrawEnabledFlagMarkers();
                     this.queueGraphRemake();
-                    this.newDataAvailableCallback();
+                    this.nextStepCallback();
                 }
             }
         }
@@ -1517,6 +1543,7 @@ module EDDTableImport {
     }
 
 
+    // The class responsible for everything in the "Step 4" box that you see on the data import page.
     export class TypeDisambiguationStep {
 
         identifyStructuresStep: IdentifyStructuresStep;
@@ -1540,10 +1567,10 @@ module EDDTableImport {
         autoCache: AutoCache;
 
         selectMajorKindStep: SelectMajorKindStep;
-        newDataAvailableCallback: any;
+        nextStepCallback: any;
 
 
-        constructor(selectMajorKindStep: SelectMajorKindStep, identifyStructuresStep: IdentifyStructuresStep, newDataAvailableCallback: any) {
+        constructor(selectMajorKindStep: SelectMajorKindStep, identifyStructuresStep: IdentifyStructuresStep, nextStepCallback: any) {
 
             this.assayLineObjSets = {};
             this.currentlyVisibleAssayLineObjSets = [];
@@ -1561,7 +1588,7 @@ module EDDTableImport {
 
             this.selectMajorKindStep = selectMajorKindStep;
             this.identifyStructuresStep = identifyStructuresStep;
-            this.newDataAvailableCallback = newDataAvailableCallback;
+            this.nextStepCallback = nextStepCallback;
 
             var reDoLastStepOnChange = ['#masterAssay', '#masterLine', '#masterMComp', '#masterMType', '#masterMUnits'];
             $(reDoLastStepOnChange.join(',')).on('change', this.changedAMasterPulldown.bind(this));
@@ -1576,9 +1603,14 @@ module EDDTableImport {
         }
 
 
+        previousStepChanged(): void {
+            this.reconfigure();
+        }
+
+
         // Create the Step 4 table:  A set of rows, one for each y-axis column of data,
         // where the user can fill out additional information for the pasted table.
-        handleNewInput(): void {
+        reconfigure(): void {
             var mode = this.selectMajorKindStep.interpretationMode;
             var masterP = this.selectMajorKindStep.masterProtocol;    // Shout-outs to a mid-grade rapper
 
@@ -1622,7 +1654,7 @@ module EDDTableImport {
                 this.remakeMetadataSection();
             }
 
-            this.newDataAvailableCallback();
+            this.nextStepCallback();
         }
 
 
@@ -1798,7 +1830,7 @@ module EDDTableImport {
         changedAMasterPulldown():void {
             // Show the master line dropdown if the master assay dropdown is set to new
             $('#masterLineSpan').toggleClass('off', $('#masterAssay').val() !== 'new');
-            this.handleNewInput();
+            this.reconfigure();
         }
 
 
