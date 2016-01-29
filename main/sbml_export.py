@@ -202,12 +202,12 @@ class ExchangeInfo(object):
                 self.lb_param = self.kin_law.getParameter("LOWER_BOUND")
                 if self.lb_param is not None and self.lb_param.isSetValue():
                     self.lb_value = self.lb_param.getValue()
-                if self.ub_param is not None and self.ub_param.isSetValue():
-                    self.ub_value = self.ub_param.getValue()
-                self.reject = self.lb_value is not None and self.ub_value is not None
-                if not is_biomass_rxn and not self.reject:
-                    parent_info._exchanges_by_id[self.ex_id] = self
-                    parent_info._reactant_to_exchange[self.re_id].append(self)
+                    if self.ub_param is not None and self.ub_param.isSetValue():
+                        self.ub_value = self.ub_param.getValue()
+                        self.reject = False
+                        if not is_biomass_rxn:
+                            parent_info._exchanges_by_id[self.ex_id] = self
+                            parent_info._reactant_to_exchange[self.re_id].append(self)
 
     def upper_bound(self):
         return str(self.ub_value)
@@ -325,7 +325,7 @@ class sbml_info(object):
         known_species = MetaboliteSpecies.objects.filter(
             sbml_template_id=self._chosen_template.id)
         exchanges_by_metab_id = {
-            e.measurement_type_id: self._exchanges_by_id[e.exchange_name]
+            e.measurement_type_id: self._exchanges_by_id.get(e.exchange_name, None)
             for e in known_exchanges
         }
         species_by_metab_id = {
@@ -709,8 +709,8 @@ class sbml_info(object):
                 continue
             result.append({
                 'name': metabolite.short_name,
-                'species': self._resolved_species[metabolite.id],
-                'exchange': self._resolved_exchanges[metabolite.id],
+                'species': self._resolved_species.get(metabolite.id, None),
+                'exchange': self._resolved_exchanges.get(metabolite.id, None),
             })
         return result
 

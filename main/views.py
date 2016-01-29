@@ -16,10 +16,10 @@ from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django.db.models import Count, Prefetch, Q
 from django.http import (
-    Http404, HttpResponse, HttpResponseNotAllowed, HttpResponseRedirect, JsonResponse, QueryDict,
+    Http404, HttpResponse, HttpResponseNotAllowed, HttpResponseRedirect, JsonResponse,
 )
 from django.http.response import HttpResponseForbidden, HttpResponseBadRequest
-from django.shortcuts import render, get_object_or_404, redirect, render_to_response
+from django.shortcuts import render, get_object_or_404, redirect
 from django.template import RequestContext
 from django.template.defaulttags import register
 from django.utils.safestring import mark_safe
@@ -335,9 +335,10 @@ class StudyDetailView(generic.DetailView):
         return self.handle_measurement_edit_response(request, lines, measures)
 
     def handle_measurement_edit_response(self, request, lines, measures):
-        return render_to_response(
+        return render(
+            request,
             'main/edit_measurement.html',
-            dictionary={
+            context={
                 'lines': lines,
                 'measures': ','.join(['%s' % m.pk for m in measures]),
                 'study': self.object,
@@ -816,13 +817,14 @@ def study_import_table(request, study):
         except ValueError as e:
             print("ERROR!!! %s" % e)
             messages.error(request, e)
-    return render_to_response(
+    return render(
+        request,
         "main/table_import.html",
-        dictionary={
+        context={
             "study": model,
             "protocols": protocols,
         },
-        context_instance=RequestContext(request))
+    )
 
 
 # /study/<study_id>/import/rnaseq
@@ -841,14 +843,15 @@ def study_import_rnaseq(request, study):
                 result.n_assay, result.n_meas)
         except ValueError as e:
             messages["error"] = str(e)
-    return render_to_response(
+    return render(
+        request,
         "main/import_rnaseq.html",
-        dictionary={
+        context={
             "messages": messages,
             "study": model,
             "lines": lines,
         },
-        context_instance=RequestContext(request))
+    )
 
 
 # /study/<study_id>/import/rnaseq/edgepro
@@ -890,15 +893,16 @@ def study_import_rnaseq_edgepro(request, study):
             "long_name": assay.long_name,
             "n_meas": assay.measurement_set.count(),
         })
-    return render_to_response(
+    return render(
+        request,
         "main/import_rnaseq_edgepro.html",
-        dictionary={
+        context={
             "selected_assay_id": assay_id,
             "assays": assay_info,
             "messages": messages,
             "study": model,
         },
-        context_instance=RequestContext(request))
+    )
 
 
 # /study/<study_id>/import/rnaseq/parse
@@ -980,10 +984,14 @@ def study_export_sbml(request, study):
             form=form,
             debug=True)
     except ValueError as e:
-        return render(request, "main/error.html", {
-            "error_source": "SBML export for %s" % model.name,
-            "error_message": str(e),
-        })
+        return render(
+            request,
+            "main/error.html",
+            context={
+                "error_source": "SBML export for %s" % model.name,
+                "error_message": str(e),
+            },
+        )
     else:
         # two levels of exception handling allow us to view whatever steps
         # were completed successfully even if a later step fails
@@ -1003,15 +1011,16 @@ def study_export_sbml(request, study):
                     file_name = manager.output_file_name(timestamp)
                     response['Content-Disposition'] = 'attachment; filename="%s"' % file_name
                     return response
-        return render_to_response(
+        return render(
+            request,
             "main/sbml_export.html",
-            dictionary={
+            context={
                 "data": manager,
                 "study": model,
                 "lines": lines,
                 "error_message": error_message,
             },
-            context_instance=RequestContext(request))
+        )
 
 
 # /data/users

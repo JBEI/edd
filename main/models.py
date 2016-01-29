@@ -1600,8 +1600,7 @@ class SBMLTemplate(EDDObject):
         if read_sbml.getNumErrors() > 0:
             log = read_sbml.getErrorLog()
             for i in range(read_sbml.getNumErrors()):
-                # TODO setup logging
-                print("--- SBML ERROR --- " + log.getError(i).getMessage())
+                logger.error("--- SBML ERROR --- %s" % log.getError(i).getMessage())
             raise Exception("Could not load SBML")
         model = read_sbml.getModel()
         rlist = model.getListOfReactions()
