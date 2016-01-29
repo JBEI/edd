@@ -55,7 +55,7 @@
 <div class="pageSection" id="selectMajorKindStep">
 <div class="sectionHead">Step 1 : Specify the kind of data you wish to import.</div>
 
-<div class="sectionContent" style="padding:0em 0em 3px 0em;">
+<div class="sectionContent" style="padding:8px;">
   <ul style="font-size:13px;list-style-type:none;">
     <li>
       <div class="disclose discloseHide">
@@ -69,25 +69,25 @@
         <div class="discloseBody" id="stdlayoutexample"
           style="color:#44D;font-size:12px;margin-left:1.2em;">
           <p>Example 1:</p>
-          <img src="{% static 'main/images/excel_example-a.png' %}"
+          <img src="{% static 'main/images/data_examples/excel_example-a.png' %}"
                style="border:none;padding:5px;"/>
           <p>Here is a sequence of metabolites measured at different times.
             To import this, you would paste it into the Step 2 box.  The EDD
             automatically flips the axes and detects the presence of a time
             sequence and measurement names,
             and sets the pulldowns in Step 3 like so:</p>
-          <img src="{% static 'main/images/excel_example-a-settings.png' %}"
+          <img src="{% static 'main/images/data_examples/excel_example-a-settings.png' %}"
                style="border:none;padding:5px;"/>
           <p>Then in Step 4, you would select the Line and Assay where the
             data will be imported.</p>
           <p>Example 2:</p>
-          <img src="{% static 'main/images/excel_example-b.png' %}"
+          <img src="{% static 'main/images/data_examples/excel_example-b.png' %}"
                style="border:none;padding:5px;"/>
           <p>Here is a sequence of measurements for multiple metabolites across
             different Lines.  The EDD will recognize the metabolites, but
             might not recognize the top row as Line names,
             in which case the pulldowns will start out looking like this:</p>
-          <img src="{% static 'main/images/excel_example-b-settings.png' %}"
+          <img src="{% static 'main/images/data_examples/excel_example-b-settings.png' %}"
                style="border:none;padding:5px;">
           <p>If you set the first pulldown to "Assay/Line Names", you can
             proceed to link the items with existing Lines or Assays in
@@ -105,7 +105,7 @@
         <span><a class="discloseLink" href="#">Example</a></span>
         <div class="discloseBody" id="trlayoutexample"
              style="color:#44D;font-size:12px;margin-left:1.2em;">
-          <img src="{% static 'main/images/transcription_example.png' %}"
+          <img src="{% static 'main/images/data_examples/transcription_example.png' %}"
                style="border:none;padding:5px;">
           <p>In this typical example of gene transcription data, the only two
             columns that the EDD actually cares about are the gene name, and
@@ -125,7 +125,7 @@
         <span><a class="discloseLink" href="#">Example</a></span>
         <div class="discloseBody" id="prlayoutexample"
              style="color:#44D;font-size:12px;margin-left:1.2em;">
-          <img src="{% static 'main/images/proteomics_example.png' %}"
+          <img src="{% static 'main/images/data_examples/proteomics_example.png' %}"
                style="border:none;padding:5px;">
           <p>In this example of proteomics data, the columns represent
               protein names, and the rows represent Line or Assay names.</p>
@@ -143,7 +143,7 @@
         <div class="discloseBody" id="mdvlayoutexample"
              style="color:#44D;font-size:12px;margin-left:1.2em;">
           <p>Example:</p>
-          <img src="{% static 'main/images/excel_example-jbei_mdv.png' %}"
+          <img src="{% static 'main/images/data_examples/excel_example-jbei_mdv.png' %}"
                style="border:none;padding:5px;">
           <p>The data will be for a single Line.  Multiple Assays will be
               created automatically in the selected Protocol,
@@ -206,7 +206,7 @@
       </div>
     </div>
 
-    Step 2 : Type or paste in your raw data.
+    Step 2 : Drag a file, or type in your raw data.
 
     <span class="tableControl" style="padding-top:1px;">
       <input type="checkbox"

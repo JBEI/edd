@@ -263,14 +263,17 @@ module EDDTableImport {
             // irritating Chrome inconsistency
             // For some of these, changing them shouldn't actually affect processing until we implement
             // an overwrite-checking feature or something similar
-            $('#rawdataformatp').on('click', this.queueHandleNewInput.bind(this));
-            // enable autocomplete on statically defined fields
 
-            $('#ignoreGaps').click(this.clickedOnIgnoreDataGaps.bind(this));
-            $('#transpose').click(this.clickedOnTranspose.bind(this));
+            $('#rawdataformatp').on('change', this.queueHandleNewInput.bind(this));
+            $('#ignoreGaps').on('change', this.clickedOnIgnoreDataGaps.bind(this));
+            $('#transpose').on('change', this.clickedOnTranspose.bind(this));
 
-            var url = "/utilities/parsefile";
-            Utl.FileDropZone.setup("textData", url, this.processFileContent.bind(this), false);
+            console.log('setup dropzone call');
+            Utl.FileDropZone.create("textData",
+                this.processRawFileContent.bind(this),
+                "/utilities/parsefile",
+                this.processParsedFileContent.bind(this),
+                false);
 
             this.selectMajorKindStep = selectMajorKindStep;
             this.newDataAvailableCallback = newDataAvailableCallback;
@@ -348,7 +351,22 @@ module EDDTableImport {
         }
 
 
-        processFileContent(result): void {
+        processRawFileContent(fileType, result): boolean {
+            console.log(fileType);
+            console.log('processing new file via processRawFileContent');
+            if (fileType === 'text/xml') {
+                $("#textData").val(result);
+                this.inferSeparatorType();
+                return true;
+            } else if (fileType === 'text/csv') {
+                $("#textData").val(result);
+                this.inferSeparatorType();
+                return true;
+            }
+        }
+
+
+        processParsedFileContent(result): void {
             if (result.file_type == "xlsx") {
                 var ws = result.file_data["worksheets"][0];
                 console.log(ws);
@@ -361,10 +379,15 @@ module EDDTableImport {
                     csv.push(table.values[i].join());
                 }
                 this.setSeparatorType('csv');
-                $("#textData").text(csv.join("\n"));
+                $("#textData").val(csv.join("\n"));
+            } else if (result.file_type == "tab") {
+                // If the type is deliberately set to tab, respect it.
+                // otherwise, attempt to guess the setting.
+                this.setSeparatorType('tab');
+                $("#textData").val(result.file_data);
             } else {
-                this.setSeparatorType(result.file_type);
-                $("#textData").text(result.file_data);
+                $("#textData").val(result.file_data);
+                this.inferSeparatorType();
             }
             this.handleNewInput();
         }
@@ -556,13 +579,16 @@ module EDDTableImport {
         // This gets called when there is a paste event.
         pastedRawData():void {
             // We do this using a timeout so the rest of the paste events fire, and get the pasted result.
-            window.setTimeout((): void => {
-                if (this.selectMajorKindStep.interpretationMode !== "mdv") {
-                    var text: string = $('#textData').val() || '', test: boolean;
-                    test = text.split('\t').length >= text.split(',').length;
-                    this.setSeparatorType(test ? 'tab' : 'csv');
-                }
-            }, 1);
+            window.setTimeout(this.inferSeparatorType.bind(this), 1);
+        }
+
+
+        inferSeparatorType(): void {
+            if (this.selectMajorKindStep.interpretationMode !== "mdv") {
+                var text: string = $('#textData').val() || '', test: boolean;
+                test = text.split('\t').length >= text.split(',').length;
+                this.setSeparatorType(test ? 'tab' : 'csv');
+            }
         }
 
 

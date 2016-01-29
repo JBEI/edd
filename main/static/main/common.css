@@ -494,7 +494,7 @@ span.tableControl {
     margin:0px 1px 0px 16px;
     padding:0px;
     height:15px;
-    color:#3C75B9;
+    color:#444444;
     font-size:12px;
     vertical-align:bottom;
 }
@@ -1349,4 +1349,22 @@ div.footer > div.footer-text {
 div.footer > div.footer-text > span {
     margin: 0 2em;
 }
+
+
+.fd-zone {
+    background-repeat: no-repeat;
+    background-attachment: scroll;
+    background-position: center; 
+    background-image: url(images/dropzone-excel_csv.png);
+}
+.fd-zone.over {
+    background-image: url(images/dropzone-excel_csv-over.png);
+}
+.fd-zone.xml {
+    background-image: url(images/dropzone-xml.png);
+}
+.fd-zone.xml.over {
+    background-image: url(images/dropzone-xml-over.png);
+}
+
 /* End of common styles */

@@ -368,40 +368,94 @@ module Utl {
 
 	export class FileDropZone {
 
-		static setup(element_id, url, process_result, multiple):void {
-			var zone = new FileDrop(element_id, {});	// filedrop-min.js , http://filedropjs.org
-			var csrftoken = jQuery.cookie('csrftoken');
+		zone: any;
+		csrftoken: any;
+		element_id: any;
+		url: string;
+		
+		process_original: any;
+		process_result: any;
+
+        constructor(element_id, process_original, url: string, process_result, multiple) {
+
+			var z = new FileDrop(element_id, {});	// filedrop-min.js , http://filedropjs.org
+			this.zone = z;
+			this.csrftoken = jQuery.cookie('csrftoken');
 			if (!(typeof multiple === "undefined")) {
-				zone.multiple(multiple);
+				z.multiple(multiple);
 			} else {
-				zone.multiple(false);
+				z.multiple(false);
 			}
-			zone.event('send', function(files) {
+			this.process_original = process_original;
+			this.process_result = process_result;
+			this.url = url;
+		}
+
+
+		// If process_original is provided, it will be called with the raw file data from the drop zone.
+		// If url is provided and process_original returns false (or was not provided) the file will be sent to the given url.
+		// If process_result is provided, it will be called with the returned result of the url call.
+		static create(element_id, process_original, url, process_result, multiple): void {
+			var h = new FileDropZone(element_id, process_original, url, process_result, multiple);
+			h.setup();
+		}
+
+
+		setup():void {
+			var t = this;
+			this.zone.event('send', function(files) {
 				files.each(function(file) {
-					file.event('done', function(xhr) {
-						var result = jQuery.parseJSON(xhr.responseText);
-						console.log(result);
-						if (result.python_error) {
-							alert(result.python_error);
-						} else {
-							process_result(result);
-						}
-					});
-
-					file.event('error', function(e, xhr) {
-						alert('Error uploading ' + this.name + ': ' +
-							xhr.status + ', ' + xhr.statusText);
-					});
-
-					// this ensures that the CSRF middleware in Django doesn't reject our
-					// HTTP request
-					file.event('xhrSetup', function(xhr) {
-						xhr.setRequestHeader("X-CSRFToken", csrftoken);
-					});
-
-					file.sendTo(url);
+					if (typeof t.process_original === "function") {
+						file.read({
+							//start: 5,
+							//end: -10,
+							//func: 'cp1251',
+							onDone: function(str) {
+								var rawFileProcessStatus = t.process_original(file.type, str);
+								if (!rawFileProcessStatus) {
+									t.processUrl(file);
+								}
+							},
+							onError: function(e) {
+								alert('Failed to read the file! Error: ' + e.fdError)
+							},
+							func: 'text'
+						})
+					} else {
+						t.processUrl(file);
+					}
 				});
 			});
+		}
+
+
+		processUrl(file:any) {
+
+			var t = this;
+			if (typeof this.url === 'string') {
+
+				file.event('done', function(xhr) {
+					var result = jQuery.parseJSON(xhr.responseText);
+					if (result.python_error) {
+						alert(result.python_error);
+					} else if (typeof t.process_result === "function") {
+						t.process_result(result);
+					}
+				});
+
+				file.event('error', function(e, xhr) {
+					alert('Error uploading ' + this.name + ': ' +
+						xhr.status + ', ' + xhr.statusText);
+				});
+
+				// this ensures that the CSRF middleware in Django doesn't reject our
+				// HTTP request
+				file.event('xhrSetup', function(xhr) {
+					xhr.setRequestHeader("X-CSRFToken", t.csrftoken);
+				});
+
+				file.sendTo(this.url);
+			}
 		}
 	}
 
