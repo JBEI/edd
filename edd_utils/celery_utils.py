@@ -1,10 +1,17 @@
+# -*- coding: utf-8 -*-
 """
 A collection of utility functions used to support common Celery task use cases
 """
-
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 import arrow
+# use smtplib directly to send mail since Celery doesn't seem to expose an API to help with this,
+# and it's unclear whether the Django libraries will be available/functional to remote Celery
+# workers running outside the context of the EDD Django app (though probably within the context
+# of its codebase)
+import smtplib
+import traceback
+
 # use the same email configuration for custom emails as Celery and Django are using in other parts
 # of EDD. if deployed to a separate server, we can just copy over the other config files
 from django.conf import settings
@@ -14,12 +21,6 @@ from edd.celeryconfig import (
 )
 from email.mime.text import MIMEText
 from email.utils import formataddr
-# use smtplib directly to send mail since Celery doesn't seem to expose an API to help with this,
-# and it's unclear whether the Django libraries will be available/functional to remote Celery
-# workers running outside the context of the EDD Django app (though probably within the context
-# of its codebase)
-import smtplib
-import traceback
 
 INVALID_DELAY = -1
 
@@ -516,7 +517,7 @@ def send_retry_warning(task, est_execution_time, warn_after_retry_num, celery_lo
                                       (CELERY_MIN_WARNING_GRACE_PERIOD_MIN * SECONDS_PER_MINUTE)))
 
     if is_notification_retry and not warn:
-            celery_logger.warning("Skipping administrator warning on retry %d since it can't be "
-                                  "addressed within the %f minute cutoff"
-                                  % (warn_after_retry_num, CELERY_MIN_WARNING_GRACE_PERIOD_MIN))
+        celery_logger.warning("Skipping administrator warning on retry %d since it can't be "
+                              "addressed within the %f minute cutoff"
+                              % (warn_after_retry_num, CELERY_MIN_WARNING_GRACE_PERIOD_MIN))
     return warn

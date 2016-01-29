@@ -143,7 +143,7 @@
         "max_retries": 11
       },
       "est_execution_time": 0,
-      "notify_on_retry_num": 10,
+      "notify_on_retry_num": 9,
       "expected_result": true
     }
 

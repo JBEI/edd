@@ -334,8 +334,6 @@ class CeleryUtilsTests(TestCase):
             test_data = json.load(test_fixture)['compute_exp_retry_delay']
 
             for test_case_name in test_data:
-                print(test_case_name)
-
                 # extract useful data from the JSON dictionary
                 test_case = test_data[test_case_name]
                 task = decode_test_task(test_case['task'], require_max_retries=False)
@@ -346,17 +344,14 @@ class CeleryUtilsTests(TestCase):
                     result = compute_exp_retry_delay(task)
                     if 'ValueError' == exp_result:
                         self.fail("Expected ValueError but got a %s" % result)
-
                     self.assertEquals(int(exp_result), result)
-                    print('\tResult delay = %s = %s' % (
-                        result, arrow.utcnow().replace(seconds=+result))
-                    )
-
                 except ValueError:
                     if "ValueError" != exp_result:
                         self.fail("Expected a result (%d), but got a ValueError"
                                   % float(exp_result))
-                    print('\t Expected and got a ValueError')
+                else:
+                    if "ValueError" == exp_result:
+                        self.fail("Expected a ValueError but got (%d)" % float(exp_result))
 
     def test_time_until_retry_num(self):
         """
@@ -368,8 +363,6 @@ class CeleryUtilsTests(TestCase):
             test_data = json.load(test_fixture)['time_until_retry']
 
             for test_case_name in test_data:
-                print(test_case_name)
-
                 # extract useful data from the JSON dictionary
                 test_case = test_data[test_case_name]
                 exp_result = test_case['expected_result']
@@ -389,10 +382,7 @@ class CeleryUtilsTests(TestCase):
                                               default_retry_delay)
                     if 'ValueError' == exp_result:
                         self.fail("Expected ValueError but got a result (%f)" % result)
-
-                    print('\tResult = %s = %s' % (result, arrow.utcnow().replace(seconds=+result)))
                     self.assertEquals(float(exp_result), result)
-
                 except ValueError:
                     self.assertEquals("ValueError", exp_result)
 
@@ -413,4 +403,6 @@ class CeleryUtilsTests(TestCase):
 
                 result = send_retry_warning(task, est_task_execution_time, notify_on_retry_num,
                                             logger)
-                self.assertEquals(exp_result, result)
+                self.assertEquals(exp_result, result,
+                                  'Unexpected result in testcase %s: %s vs %s' %
+                                  (test_case_name, result, exp_result))
