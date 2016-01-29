@@ -855,8 +855,8 @@ class SBMLUtilTests(TestCase):
             dir_name = os.path.dirname(__file__)
             sbml_file = os.path.join(dir_name, "fixtures", "misc_data", "simple.sbml")
             s = sbml_export.sbml_info(i_template=0, sbml_file=sbml_file)
-            self.assertTrue(s.n_sbml_species == 4)
-            self.assertTrue(s.n_sbml_reactions == 5)
+            self.assertEquals(s.n_sbml_species, 4)
+            self.assertEquals(s.n_sbml_reactions, 5)
             # TODO lots more
 
 

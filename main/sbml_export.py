@@ -115,14 +115,7 @@ class ReactionInfo(object):
             if reaction.isSetNotes():
                 self.notes = parse_sbml_notes_to_dict(reaction.getNotes())
                 self.extract_gene_association()
-                self.extract_protien_association()
-
-        if (self.id in parent_info._reactions_by_id):
-            self.is_duplicate = True
-        else:
-            parent_info._reactions_by_id[self.id] = self
-            if (reaction.isSetNotes()):
-                self.notes = parse_sbml_notes_to_dict(reaction.getNotes())
+                self.extract_protein_association()
 
     @property
     def n_notes(O):
@@ -147,7 +140,7 @@ class ReactionInfo(object):
                     self.protein_ids.append(gene)
                     self.parent_info._protein_reactions[gene].append(self)
 
-    def extract_protien_association(self):
+    def extract_protein_association(self):
         """ See docstring on extract_gene_association. """
         for assoc_string in self.notes.get("PROTEIN_ASSOCIATION", []):
             for proteins in parse_note_string_boolean_logic(assoc_string):
