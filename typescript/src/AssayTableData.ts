@@ -16,9 +16,18 @@ interface RawInputStat {
 }
 
 
+// This module encapsulates all the custom code for the data import page.
+// It consists primarily of a series of classes, each corresponding to a step in the import process,
+// with a corresponding chunk of UI on the import page.
+// Each class pulls data from one or more previous steps, does some internal processing,
+// then triggers a callback function, announcing the availability of its own new data.
+// The callback function triggers the instance of the next step.
 module EDDTableImport {
     'use strict';
 
+    // During initialization we will allocate one instance of each of the classes
+    // that handle the major steps of the import process.
+    // These are specified in the order they are called, and the order they appear on the page:
     export var selectMajorKindStep: SelectMajorKindStep;
     export var rawInputStep: RawInputStep;
     export var identifyStructuresStep: IdentifyStructuresStep;
@@ -49,6 +58,7 @@ module EDDTableImport {
     // effectively turning the page "on".
     export function onReferenceRecordsLoad(): void {
 
+        // Allocate one instance of each step, providing references to the previous steps as needed.
         var a = new SelectMajorKindStep(EDDTableImport.selectMajorKindCallback);
         var b = new RawInputStep(a, EDDTableImport.rawInputCallback);
         var c = new IdentifyStructuresStep(a, b, EDDTableImport.identifyStructuresCallback);
@@ -59,6 +69,7 @@ module EDDTableImport {
         EDDTableImport.identifyStructuresStep = c;
         EDDTableImport.typeDisambiguationStep = d;
 
+        // Wire up the function that submits the page
         $('#submitForImport').on('click', EDDTableImport.submitForImport);
 
         // We need to manually trigger this, after all our steps are constructed.
@@ -69,30 +80,32 @@ module EDDTableImport {
 
     // This is called by our instance of selectMajorKindStep to announce changes.
     export function selectMajorKindCallback(): void {
+        // This is a bit of a hack.  We want to change the pulldown settings in Step 3 if the mode in Step 1 is changed,
+        // but leave the pulldown alone otherwise (including when Step 2 announces its own changes.)
+        // TODO: Make Step 3 track this with an internal variable.
         if (EDDTableImport.selectMajorKindStep.interpretationMode == 'mdv') {
-            // TODO: There has got to be a better way to handle this
             EDDTableImport.identifyStructuresStep.pulldownSettings = [1, 5]; // A default set of pulldown settings for this mode
         }
         EDDTableImport.rawInputStep.previousStepChanged();
     }
 
 
-    // This is called by our instance of rawInputStep to announce changes.
+    // This is called by our instance of Step 2, RawInputStep to announce changes.
+    // We just pass the signal along to Step 3: IdentifyStructuresStep.
     export function rawInputCallback(): void {
         EDDTableImport.identifyStructuresStep.previousStepChanged();
     }
 
 
-    // This is called by our instance of identifyStructuresStep to announce changes.
+    // This is called by our instance of Step 3, IdentifyStructuresStep to announce changes.
+    // We just pass the signal along to Step 4: TypeDisambiguationStep.
     export function identifyStructuresCallback(): void {
-        // Now that we're got the table from Step 3 built,
-        // we turn to the table in Step 4:  A set for each type of data, consisting of disambiguation rows,
-        // where the user can link unknown items to pre-existing EDD data.
         EDDTableImport.typeDisambiguationStep.previousStepChanged();
     }
 
 
-    // This is called by our instance of typeDisambiguationStep to announce changes.
+    // This is called by our instance of TypeDisambiguationStep to announce changes.
+    // All we do currently is repopulate the debug area.
     export function typeDisambiguationCallback(): void {
         var parsedSets = EDDTableImport.identifyStructuresStep.parsedSets;
         // if the debug area is there, set its value to JSON of parsed sets
@@ -100,15 +113,13 @@ module EDDTableImport {
     }
 
 
-    // When the submit button is pushed, fetch the most recent record sets from our identifyStructuresStep instance,
+    // When the submit button is pushed, fetch the most recent record sets from our IdentifyStructuresStep instance,
     // and embed them in the hidden form field that will be submitted to the server.
     // Note that this is not all that the server needs, in order to successfully process an import.
-    // It also reads other form elements from the page, created by selectMajorKindStep and typeDisambiguationStep.
+    // It also reads other form elements from the page, created by SelectMajorKindStep and TypeDisambiguationStep.
     export function submitForImport(): void {
         var json: string;
         var parsedSets = EDDTableImport.identifyStructuresStep.parsedSets;
-        // Run through the data sets one more time, pulling out any values in the pulldowns and
-        // autocomplete elements in Step 4 and embedding them in their respective data sets.
         json = JSON.stringify(parsedSets);
         $('#jsonoutput').val(json);
         $('#jsondebugarea').val(json);
@@ -123,6 +134,8 @@ module EDDTableImport {
 
 
     // The class responsible for everything in the "Step 1" box that you see on the data import page.
+    // Here we provide UI for selecting the major kind of import, and the Protocol that the data should be stored under.
+    // These choices affect the behavior of all subsequent steps.
     export class SelectMajorKindStep {
 
         // The Protocol for which we will be importing data.
@@ -233,8 +246,14 @@ module EDDTableImport {
 
 
     // The class responsible for everything in the "Step 2" box that you see on the data import page.
-    // Parse the raw data from typing or pasting in the input box, or a dragged-in file,
+    // It needs to parse the raw data from typing or pasting in the input box, or a dragged-in file,
     // into a null-padded rectangular grid that can be easily used by the next step.
+    // Depending on the kind of import chosen in Step 1, this step will accept different kinds of files,
+    // and handle the file drag in different ways.
+    // For example, when the import kind is "Standard" and the user drags in a CSV file, the file is parsed
+    // in-browser and the contents are placed in the text box.  When the import kind is "Biolector" and the user
+    // drags in an XML file, the file is sent to the server and parsed there, and the resulting data is passed
+    // back to the browser and placed in the text box.
     export class RawInputStep {
 
         private data: any[];
