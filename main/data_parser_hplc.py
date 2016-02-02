@@ -5,6 +5,8 @@
 ##
 import sys, os, io, logging
 
+# TODO: Restructure as an Interable Object, allowing samples or lines to be
+# processed individually rather then in one big batch
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +20,11 @@ def parse_hplc_file(input_file_path):
 		raise IOError("Error: unable to locate file %s" % input_file_path)
 
 	with io.open(input_file_path, "r", encoding = 'utf-16') as input_file:
-		return _parse_hplc_file_contents(input_file)
+		logger.debug("opened and is reading file %s" % input_file_path)
+		samples = _parse_hplc_file_contents(input_file)
+		logger.info("successfully parsed the HPLC file %s" \
+			% os.path.basename(input_file_path))
+		return samples
 
 # debugging aid.
 def _display_sample(samples,selection):
@@ -36,7 +42,6 @@ def _display_sample(samples,selection):
 # Parses out the file
 def _parse_hplc_file_contents(input_file):
 	"""Collects records from the given file and returns them as a list"""
-	logger.debug("opened and is reading file %s" % input_file_path)
 
 	# read in header block
 	header_block = [ input_file.readline() ]
@@ -193,10 +198,6 @@ def _parse_hplc_file_contents(input_file):
 			else:
 				samples[sample_name][column_headers[row_index]] \
 					.append( previous_segments[row_index] )
-
-		
-	logger.info("successfully parsed the HPLC file %s"
-		% os.path.basename(input_file_path))
 
 	return samples
 
