@@ -74,7 +74,7 @@ module EDDTableImport {
 
         // We need to manually trigger this, after all our steps are constructed.
         // This will cascade calls through the rest of the steps and configure them too.
-        a.changedMasterProtocol();
+        a.reconfigure();
     }
 
 
@@ -141,7 +141,7 @@ module EDDTableImport {
         // The Protocol for which we will be importing data.
         masterProtocol: number;
         // The main mode we are interpreting data in.
-        // Valid values sofar are "std", "mdv", "tr", "pr".
+        // Valid values sofar are "std", "mdv", "tr", "pr", and "biolector".
         interpretationMode: string;
         inputRefreshTimerID: number;
 
@@ -150,34 +150,33 @@ module EDDTableImport {
 
         constructor(nextStepCallback: any) {
             this.masterProtocol = 0;
-            this.interpretationMode = "std";
+            this.interpretationMode = null;    // We rely on a separate call to reconfigure() to set this properly.
             this.inputRefreshTimerID = null;
 
             this.nextStepCallback = nextStepCallback;
 
-            var reProcessOnClick: string[];
+            var reProcessOnChange: string[];
 
-            reProcessOnClick = ['#stdlayout', '#trlayout', '#prlayout', '#mdvlayout'];
+            reProcessOnChange = ['#stdlayout', '#trlayout', '#prlayout', '#mdvlayout', '#biolectorlayout'];
 
             // This is rather a lot of callbacks, but we need to make sure we're
             // tracking the minimum number of elements with this call, since the
             // function called has such strong effects on the rest of the page.
             // For example, a user should be free to change "merge" to "replace" without having
             // their edits in Step 2 erased.
-            $("#masterProtocol").change(this.changedMasterProtocol.bind(this));
+            $("#masterProtocol").change(this.reconfigure.bind(this));
 
             // Using "change" for these because it's more efficient AND because it works around an
             // irritating Chrome inconsistency
             // For some of these, changing them shouldn't actually affect processing until we implement
             // an overwrite-checking feature or something similar
-            $(reProcessOnClick.join(',')).on('click', this.queueReconfigure.bind(this));
+            $(reProcessOnChange.join(',')).on('click', this.queueReconfigure.bind(this));
         }
 
 
+        // Start a timer to wait before calling the reconfigure routine.
+        // This way we condense multiple possible events from the radio buttons and/or pulldown into one.
         queueReconfigure(): void {
-            // Start a timer to wait before calling the routine that remakes the graph.
-            // This way we're not bothering the user with the long redraw process when
-            // they are making fast edits.
             if (this.inputRefreshTimerID) {
                 clearTimeout(this.inputRefreshTimerID);
             }
@@ -185,61 +184,40 @@ module EDDTableImport {
         }
 
 
+        // Read the settings out of the UI and pass along.
+        // If the interpretation mode has changed, all the subsequent steps will need a refresh.
+        // If the master Protocol pulldown has changed, Step 4 will need a refresh,
+        // specifically the master Assay pulldown and Assay/Line disambiguation section.
         reconfigure(): void {
-
-            var stdLayout: JQuery, trLayout: JQuery, prLayout: JQuery, mdvLayout: JQuery, graph: JQuery;
-            stdLayout = $('#stdlayout');
-            trLayout = $('#trlayout');
-            prLayout = $('#prlayout');
-            mdvLayout = $('#mdvlayout');
-
-            graph = $('#graphDiv');
-            // all need to exist, or page is broken
-            if (![stdLayout, trLayout, prLayout, mdvLayout, graph].every((item): boolean => item.length !== 0)) {
-                console.log("Missing crucial page element, cannot run.");
-                return;
-            }
-
-            if (stdLayout.prop('checked')) { //  Standard interpretation mode
-                this.interpretationMode = 'std';
-            } else if (trLayout.prop('checked')) {   //  Transcriptomics mode
-                this.interpretationMode = 'tr';
-            } else if (prLayout.prop('checked')) {   //  Proteomics mode
-                this.interpretationMode = 'pr';
-            } else if (mdvLayout.prop('checked')) {  // JBEI Mass Distribution Vector format
-                this.interpretationMode = 'mdv';
-            } else {
-                // If none of them are checked - WTF?  Don't parse or change anything.
-                return;
-            }
-            this.nextStepCallback();
+            if (this.checkInterpretationMode() || this.checkMasterProtocol()) {
+                this.nextStepCallback();
+            }                
         }
 
 
-        changedMasterProtocol():void {
-            var protocolIn: JQuery, assayIn: JQuery, currentAssays: number[];
+        // If the interpretation mode value has changed, note the change and return 'true'.
+        // Otherwise return 'false'.
+        checkInterpretationMode(): boolean {
+            // Find every input element of type 'radio' with the name attribute of 'datalayout' that's checked.
+            // Should return 0 or 1 elements.
+            var modeRadio = $("input[type='radio'][name='datalayout']:checked");
+            // If none of them are checked, we don't have enough information to handle any next steps.
+            if (modeRadio.length < 1) { return false; }
+            var radioValue = modeRadio.val();
+            if (this.interpretationMode == radioValue) { return false; }
+            this.interpretationMode = radioValue;
+            return true;
+        }
 
-            // check master protocol
-            protocolIn = $('#masterProtocol');
+
+        // If the master Protocol pulldown value has changed, note the change and return 'true'.
+        // Otherwise return 'false'.
+        checkMasterProtocol():boolean {
+            var protocolIn = $('#masterProtocol');
             var p = parseInt(protocolIn.val(), 10);
-            if (this.masterProtocol === p) {
-                // no change
-                return;
-            }
+            if (this.masterProtocol === p) { return false; }
             this.masterProtocol = p;
-            // check for master assay
-            assayIn = $('#masterAssay').empty();
-            $('<option>').text('(Create New)').appendTo(assayIn).val('new').prop('selected', true);
-            currentAssays = ATData.existingAssays[protocolIn.val()] || [];
-            currentAssays.forEach((id: number): void => {
-                var assay = EDDData.Assays[id],
-                    line = EDDData.Lines[assay.lid],
-                    protocol = EDDData.Protocols[assay.pid];
-                $('<option>').appendTo(assayIn).val('' + id).text([
-                    line.name, protocol.name, assay.name].join('-'));
-            });
-            $('#masterLineSpan').removeClass('off');
-            this.queueReconfigure();
+            return true;
         }
     }
 
@@ -251,7 +229,7 @@ module EDDTableImport {
     // Depending on the kind of import chosen in Step 1, this step will accept different kinds of files,
     // and handle the file drag in different ways.
     // For example, when the import kind is "Standard" and the user drags in a CSV file, the file is parsed
-    // in-browser and the contents are placed in the text box.  When the import kind is "Biolector" and the user
+    // in-browser and the contents are placed in the text box.  When the import kind is "biolector" and the user
     // drags in an XML file, the file is sent to the server and parsed there, and the resulting data is passed
     // back to the browser and placed in the text box.
     export class RawInputStep {
@@ -299,7 +277,6 @@ module EDDTableImport {
             $('#ignoreGaps').on('change', this.clickedOnIgnoreDataGaps.bind(this));
             $('#transpose').on('change', this.clickedOnTranspose.bind(this));
 
-            console.log('setup dropzone call');
             Utl.FileDropZone.create("textData",
                 this.processRawFileContent.bind(this),
                 "/utilities/parsefile",
@@ -314,13 +291,24 @@ module EDDTableImport {
         // In practice, the only time this will be called is when Step 1 changes,
         // which may call for a reconfiguration of the controls in this step.
         previousStepChanged(): void {
-            if (this.selectMajorKindStep.interpretationMode == 'mdv') {
+
+            var mode = this.selectMajorKindStep.interpretationMode;
+            $('#textData').removeClass('xml');
+            if (mode === 'mdv') {
                 // We never ignore gaps, or transpose, for MDV documents
                 this.setIgnoreGaps(false);
                 this.setTranspose(false);
                 // JBEI MDV format documents are always pasted in from Excel, so they're always tab-separated
                 this.setSeparatorType('tab');
+            } else if (mode === 'biolector') {
+                // Biolector data is expected in XML format
+                $('#textData').addClass('xml');
+                // Biolector data is always tab-separated, always transposed, and always ignores gaps
+                this.setSeparatorType('tab');
+                this.setTranspose(true);
+                this.setIgnoreGaps(true);
             }
+
             this.queueReprocessRawData();
         }
 
@@ -349,23 +337,38 @@ module EDDTableImport {
             this.data = [];
             this.rowMarkers = [];
 
-            // If we're in "mdv" mode, lock the delimiter to tabs
-            if (mode === 'mdv') {
-                this.setSeparatorType('tab');
-            }
             delimiter = '\t';
             if (this.separatorType === 'csv') {
                 delimiter = ',';
             }
             input = this.parseRawInput(delimiter, mode);
 
-            if (mode === 'std' || mode === 'tr' || mode === 'pr') {
-                // If the user hasn't deliberately chosen a setting for 'transpose', we will do
-                // some analysis to attempt to guess which orientation the data needs to have.
-                if (!this.userClickedOnTranspose) {
-                    this.inferTransposeSetting(input.input);
+            // We meed at least 2 rows and columns for MDV format to make any sense
+
+            if (mode === "mdv") {
+                // MDV format is quite different, so we parse it in its own subroutine.
+                if ((input.input.length > 1) && (input.columns > 1)) {
+                    this.processMdv(input.input);
                 }
-                // Now that that's done, move the data in
+            } else {
+                // All other formats (so far) are interpreted from a grid.
+                // Even biolector XML - which is converted to a grid on the server, then passed back.
+
+                // Note that biolector is left out here - we don't want to do any "inferring" with that data.
+                if (mode === 'std' || mode === 'tr' || mode === 'pr') {
+                    // If the user hasn't deliberately chosen a setting for 'transpose', we will do
+                    // some analysis to attempt to guess which orientation the data needs to have.
+                    if (!this.userClickedOnTranspose) {
+                        this.inferTransposeSetting(input.input);
+                    }
+                    // If the user hasn't deliberately chosen to ignore, or accept, gaps in the data,
+                    // do a basic analysis to guess which setting makes more sense.
+                    if (!this.userClickedOnIgnoreDataGaps) {
+                        this.inferGapsSetting();
+                    }
+                }
+
+                // Collect the data based on the settings
                 if (this.transpose) {
                     // first row becomes Y-markers as-is
                     this.rowMarkers = input.input.shift() || [];
@@ -379,17 +382,9 @@ module EDDTableImport {
                         return row;
                     });
                 }
-                // If the user hasn't deliberately chosen to ignore, or accept, gaps in the data,
-                // do a basic analysis to guess which setting makes more sense.
-                if (!this.userClickedOnIgnoreDataGaps) {
-                    this.inferGapsSetting();
-                }
+
                 // Give labels to any header positions that got 'null' for a value.
                 this.rowMarkers = this.rowMarkers.map((value: string) => value || '?');
-
-            // We meed at least 2 rows and columns for MDV format to make any sense
-            } else if ((mode === "mdv") && (input.input.length > 1) && (input.columns > 1)) {
-                this.processMdv(input.input);
             }
 
             this.nextStepCallback();
@@ -398,7 +393,6 @@ module EDDTableImport {
 
         processRawFileContent(fileType, result): boolean {
             console.log(fileType);
-            console.log('processing new file via processRawFileContent');
             if (fileType === 'text/xml') {
                 $("#textData").val(result);
                 this.inferSeparatorType();
@@ -414,7 +408,6 @@ module EDDTableImport {
         processParsedFileContent(result): void {
             if (result.file_type == "xlsx") {
                 var ws = result.file_data["worksheets"][0];
-                console.log(ws);
                 var table = ws[0];
                 var csv = [];
                 if (table.headers) {
@@ -539,6 +532,7 @@ module EDDTableImport {
 
         processMdv(input: RawInput):void {
             var rows: RawInput, colLabels: string[], compounds: any, orderedComp: string[];
+            colLabels = [];
             rows = input.slice(0); // copy
             // If this word fragment is in the first row, drop the whole row.
             // (Ignoring a Q of unknown capitalization)
@@ -826,7 +820,7 @@ module EDDTableImport {
             var rowMarkers = this.rawInputStep.rowMarkers;
             var ignoreDataGaps = this.rawInputStep.ignoreDataGaps;
 
-            if (mode === 'std' || mode === 'tr' || mode === 'pr') {
+            if (mode === 'std' || mode === 'tr' || mode === 'pr' || mode === 'biolector') {
                 rowMarkers.forEach((value: string, i: number): void => {
                     var type: any;
                     if (!this.pulldownUserChangedFlags[i]) {
@@ -1544,8 +1538,8 @@ module EDDTableImport {
             }
             EDDATDGraphing.clearAllSets();
             var sets = this.parsedSets;
-            // If we're not in this mode, drawing a graph is nonsensical.
-            if (mode === "std") {
+            // If we're not in either of these modes, drawing a graph is nonsensical.
+            if (mode === "std" || mode === 'biolector') {
                 sets.forEach((set) => EDDATDGraphing.addNewSet(set));
             }
             EDDATDGraphing.drawSets();
@@ -1572,6 +1566,7 @@ module EDDTableImport {
         // those strings.  Any selections the user has already set will be preserved,
         // even as the disambiguation section is destroyed and remade.
 
+        protocolCurrentlyDisplayed: number;
         // For disambuguating Assays/Lines
         assayLineObjSets: any;
         currentlyVisibleAssayLineObjSets: any[];
@@ -1597,6 +1592,7 @@ module EDDTableImport {
             this.currentlyVisibleMeasurementObjSets = [];
             this.metadataObjSets = {};
             this.autoCompUID = 0;
+            this.protocolCurrentlyDisplayed = 0;
 
             this.autoCache = {
                 comp: {},
@@ -1609,8 +1605,8 @@ module EDDTableImport {
             this.identifyStructuresStep = identifyStructuresStep;
             this.nextStepCallback = nextStepCallback;
 
-            var reDoLastStepOnChange = ['#masterAssay', '#masterLine', '#masterMComp', '#masterMType', '#masterMUnits'];
-            $(reDoLastStepOnChange.join(',')).on('change', this.changedAMasterPulldown.bind(this));
+            var reDoStepOnChange = ['#masterAssay', '#masterLine', '#masterMComp', '#masterMType', '#masterMUnits'];
+            $(reDoStepOnChange.join(',')).on('change', this.changedAnyMasterPulldown.bind(this));
 
             $('#resetDisambiguationFields').on('click', this.resetDisambiguationFields.bind(this));
 
@@ -1618,34 +1614,47 @@ module EDDTableImport {
             EDD_auto.setup_field_autocomplete('#masterMComp', 'MeasurementCompartment');
             EDD_auto.setup_field_autocomplete('#masterMType', 'GenericOrMetabolite', EDDData.MetaboliteTypes || {});
             EDD_auto.setup_field_autocomplete('#masterMUnits', 'MeasurementUnit');
-
         }
 
 
         previousStepChanged(): void {
+            var assayIn: JQuery;
+            var currentAssays: number[];
+            var masterP = this.selectMajorKindStep.masterProtocol;    // Shout-outs to a mid-grade rapper
+            if (this.protocolCurrentlyDisplayed != masterP) {
+                this.protocolCurrentlyDisplayed = masterP;
+                // We deal with recreating this pulldown here, instead of in remakeAssayLineSection(),
+                // because remakeAssayLineSection() is called by reconfigure(), which is called
+                // when other UI in this step changes - and this pulldown is NOT affected by changes to
+                // the other UI.
+                assayIn = $('#masterAssay').empty();
+                $('<option>').text('(Create New)').appendTo(assayIn).val('new').prop('selected', true);
+                currentAssays = ATData.existingAssays[masterP] || [];
+                currentAssays.forEach((id: number): void => {
+                    var assay = EDDData.Assays[id],
+                        line = EDDData.Lines[assay.lid],
+                        protocol = EDDData.Protocols[assay.pid];
+                    $('<option>').appendTo(assayIn).val('' + id).text([
+                        line.name, protocol.name, assay.name].join('-'));
+                });
+                // Always reveal this, since the default for the Assay pulldown is always 'new'.
+                $('#masterLineSpan').removeClass('off');
+            }
             this.reconfigure();
         }
 
 
-        // Create the Step 4 table:  A set of rows, one for each y-axis column of data,
+        // Create the Step 4 tables:  Sets of rows, one for each y-axis column of values,
         // where the user can fill out additional information for the pasted table.
         reconfigure(): void {
             var mode = this.selectMajorKindStep.interpretationMode;
-            var masterP = this.selectMajorKindStep.masterProtocol;    // Shout-outs to a mid-grade rapper
 
             var parsedSets = this.identifyStructuresStep.parsedSets;
             var seenAnyTimestamps = this.identifyStructuresStep.seenAnyTimestamps;
             var uniqueMeasurementNames = this.identifyStructuresStep.uniqueMeasurementNames;
             var uniqueMetadataNames = this.identifyStructuresStep.uniqueMetadataNames;
 
-            // Initially hide all the Step 4 master pulldowns so we can reveal just the ones we need later
-            $('#masterAssayLineDiv').addClass('off');
-            $('#masterMTypeDiv').addClass('off');
-            $('#disambiguateLinesAssaysSection').addClass('off');
-            $('#disambiguateMeasurementsSection').addClass('off');
             $('#disambiguateMetadataSection').addClass('off');
-            $('#disambiguateAssaysTable').remove();
-            $('#disambiguateMeasurementsTable').remove();
             $('#disambiguateMetadataTable').remove();
             // If no sets to show, leave the area blank and show the 'enter some data!' banner
             if (parsedSets.length === 0) {
@@ -1655,19 +1664,8 @@ module EDDTableImport {
             $('#emptyDisambiguationLabel').addClass('off');
             // If parsed data exists, but haven't seen a single timestamp show the "master timestamp" UI.
             $('#masterTimestampDiv').toggleClass('off', seenAnyTimestamps);
-            // If we have no Assays/Lines detected for disambiguation, ask the user to select one.
-            this.remakeAssayLineSection(this.selectMajorKindStep.masterProtocol);
-            // If in 'Transcription' or 'Proteomics' mode, there are no measurement types involved.
-            // skip the measurement section, and provide statistics about the gathered records.
-            if (mode === "tr" || mode === "pr") {
-                // no-op
-            } else if (uniqueMeasurementNames.length === 0 && seenAnyTimestamps) {
-                // no measurements for disambiguation, have timestamp data => ask the user to select one
-                $('#masterMTypeDiv').removeClass('off');
-            } else {
-                // have measurement types, in approprate mode, remake measurement section
-                this.remakeMeasurementSection();
-            }
+            this.remakeAssayLineSection();
+            this.remakeMeasurementSection();
             // If we've detected any metadata types for disambiguation, create a section
             if (uniqueMetadataNames.length > 0) {
                 this.remakeMetadataSection();
@@ -1684,75 +1682,82 @@ module EDDTableImport {
         }
 
 
-        remakeAssayLineSection(masterP: number): void {
+        // If the previous step found Line or Assay names that need resolving, put together a disambiguation section
+        // for Assays/Lines.
+        // Keep a separate set of correlations between strings and pulldowns for each Protocol,
+        // since the same string can match different Assays, and the pulldowns will have different content, in each Protocol.
+        // If the previous step didn't find any Line or Assay names that need resolving,
+        // reveal the pulldowns for selecting a master Line/Assay, leaving the table empty, and return.
+        remakeAssayLineSection(): void {
             var table: HTMLTableElement, body: HTMLTableElement;
-
             var uniqueLineAssayNames = this.identifyStructuresStep.uniqueLineAssayNames;
+            var masterP = this.protocolCurrentlyDisplayed;
+
+            $('#disambiguateAssaysTable').remove();
 
             if (uniqueLineAssayNames.length === 0) {
+                $('#disambiguateLinesAssaysSection').addClass('off');
                 $('#masterAssayLineDiv').removeClass('off');
-            } else {
-                // Otherwise, put together a disambiguation section for Assays/Lines
-                // Keep a separate set of correlations between string and pulldowns for each
-                // Protocol, since same string can match different Assays, and the pulldowns
-                // will have different content, in each Protocol.
-                this.assayLineObjSets[masterP] = {};
-                this.currentlyVisibleAssayLineObjSets = [];
-                var t = this;
-                table = <HTMLTableElement>$('<table>')
-                    .attr({ 'id': 'disambiguateAssaysTable', 'cellspacing': 0 })
-                    .appendTo($('#disambiguateLinesAssaysSection').removeClass('off'))
-                    .on('change', 'select', (ev: JQueryInputEventObject): void => {
-                        t.userChangedAssayLineDisam(ev.target);
-                    })[0];
-                body = <HTMLTableElement>$('<tbody>').appendTo(table)[0];
-                uniqueLineAssayNames.forEach((name: string, i: number): void => {
-                    var disam: any, row: HTMLTableRowElement, defaultSel: any,
-                        cell: JQuery, aSelect: JQuery, lSelect: JQuery;
-                    disam = this.assayLineObjSets[masterP][name];
-                    if (!disam) {
-                        disam = {};
-                        defaultSel = this.disambiguateAnAssayOrLine(name, i);
-                        // First make a table row, and save a reference to it
-                        disam.rowObj = row = <HTMLTableRowElement>body.insertRow();
-                        // Next, add a table cell with the string we are disambiguating
-                        $('<div>').text(name).appendTo(row.insertCell());
-                        // Now build another table cell that will contain the pulldowns
-                        cell = $(row.insertCell()).css('text-align', 'left');
-                        aSelect = $('<select>').appendTo(cell)
-                            .data({ 'setByUser': false, 'visibleIndex': i })
-                            .attr('name', 'disamAssay' + (i + 1));
-                        disam.assayObj = aSelect[0];
-                        $('<option>').text('(Create New)').appendTo(aSelect).val('new')
-                            .prop('selected', !defaultSel.assayID);
-                        (ATData.existingAssays[masterP] || []).forEach((id: number): void => {
-                            var assay: AssayRecord, line: LineRecord, protocol: any;
-                            assay = EDDData.Assays[id];
-                            line = EDDData.Lines[assay.lid];
-                            protocol = EDDData.Protocols[assay.pid];
-                            $('<option>').text([line.name, protocol.name, assay.name].join('-'))
-                                .appendTo(aSelect).val(id.toString())
-                                .prop('selected', defaultSel.assayID === id);
-                        });
-                        // a span to contain the text label for the Line pulldown, and the pulldown itself
-                        cell = $('<span>').text('for Line:').toggleClass('off', !!defaultSel.assayID)
-                            .appendTo(cell);
-                        lSelect = $('<select>').appendTo(cell).data('setByUser', false)
-                            .attr('name', 'disamLine' + (i + 1));
-                        disam.lineObj = lSelect[0];
-                        $('<option>').text('(Create New)').appendTo(lSelect).val('new')
-                            .prop('selected', !defaultSel.lineID);
-                        // ATData.existingLines is of type {id: number; n: string;}[]
-                        (ATData.existingLines || []).forEach((line: any) => {
-                            $('<option>').text(line.n).appendTo(lSelect).val(line.id.toString())
-                                .prop('selected', defaultSel.lineID === line.id);
-                        });
-                        this.assayLineObjSets[masterP][name] = disam;
-                    }
-                    $(disam.rowObj).appendTo(body);
-                    this.currentlyVisibleAssayLineObjSets.push(disam);
-                });
+                return;
             }
+
+            $('#masterAssayLineDiv').addClass('off');
+            this.assayLineObjSets[masterP] = {};
+            this.currentlyVisibleAssayLineObjSets = [];
+            var t = this;
+            table = <HTMLTableElement>$('<table>')
+                .attr({ 'id': 'disambiguateAssaysTable', 'cellspacing': 0 })
+                .appendTo($('#disambiguateLinesAssaysSection').removeClass('off'))
+                .on('change', 'select', (ev: JQueryInputEventObject): void => {
+                    t.userChangedAssayLineDisam(ev.target);
+                })[0];
+            body = <HTMLTableElement>$('<tbody>').appendTo(table)[0];
+            uniqueLineAssayNames.forEach((name: string, i: number): void => {
+                var disam: any, row: HTMLTableRowElement, defaultSel: any,
+                    cell: JQuery, aSelect: JQuery, lSelect: JQuery;
+                disam = this.assayLineObjSets[masterP][name];
+                if (!disam) {
+                    disam = {};
+                    defaultSel = this.disambiguateAnAssayOrLine(name, i);
+                    // First make a table row, and save a reference to it
+                    disam.rowObj = row = <HTMLTableRowElement>body.insertRow();
+                    // Next, add a table cell with the string we are disambiguating
+                    $('<div>').text(name).appendTo(row.insertCell());
+                    // Now build another table cell that will contain the pulldowns
+                    cell = $(row.insertCell()).css('text-align', 'left');
+                    aSelect = $('<select>').appendTo(cell)
+                        .data({ 'setByUser': false, 'visibleIndex': i })
+                        .attr('name', 'disamAssay' + (i + 1));
+                    disam.assayObj = aSelect[0];
+                    $('<option>').text('(Create New)').appendTo(aSelect).val('new')
+                        .prop('selected', !defaultSel.assayID);
+                    (ATData.existingAssays[masterP] || []).forEach((id: number): void => {
+                        var assay: AssayRecord, line: LineRecord, protocol: any;
+                        assay = EDDData.Assays[id];
+                        line = EDDData.Lines[assay.lid];
+                        protocol = EDDData.Protocols[assay.pid];
+                        $('<option>').text([line.name, protocol.name, assay.name].join('-'))
+                            .appendTo(aSelect).val(id.toString())
+                            .prop('selected', defaultSel.assayID === id);
+                    });
+                    // a span to contain the text label for the Line pulldown, and the pulldown itself
+                    cell = $('<span>').text('for Line:').toggleClass('off', !!defaultSel.assayID)
+                        .appendTo(cell);
+                    lSelect = $('<select>').appendTo(cell).data('setByUser', false)
+                        .attr('name', 'disamLine' + (i + 1));
+                    disam.lineObj = lSelect[0];
+                    $('<option>').text('(Create New)').appendTo(lSelect).val('new')
+                        .prop('selected', !defaultSel.lineID);
+                    // ATData.existingLines is of type {id: number; n: string;}[]
+                    (ATData.existingLines || []).forEach((line: any) => {
+                        $('<option>').text(line.n).appendTo(lSelect).val(line.id.toString())
+                            .prop('selected', defaultSel.lineID === line.id);
+                    });
+                    this.assayLineObjSets[masterP][name] = disam;
+                }
+                $(disam.rowObj).appendTo(body);
+                this.currentlyVisibleAssayLineObjSets.push(disam);
+            });
         }
 
 
@@ -1761,6 +1766,21 @@ module EDDTableImport {
 
             var mode = this.selectMajorKindStep.interpretationMode;
             var uniqueMeasurementNames = this.identifyStructuresStep.uniqueMeasurementNames;
+            var seenAnyTimestamps = this.identifyStructuresStep.seenAnyTimestamps;
+
+            $('#disambiguateMeasurementsSection').addClass('off');
+            $('#disambiguateMeasurementsTable').remove();
+            $('#masterMTypeDiv').addClass('off');
+
+            // If in 'Transcription' or 'Proteomics' mode, there are no measurement types involved.
+            // skip the measurement section, and provide statistics about the gathered records.
+            if (mode === "tr" || mode === "pr") { return; }
+
+            if (uniqueMeasurementNames.length === 0 && seenAnyTimestamps) {
+                // no measurements for disambiguation, have timestamp data => ask the user to select one
+                $('#masterMTypeDiv').removeClass('off');
+                return;
+            }
 
             // put together a disambiguation section for measurement types
             var t = this;
@@ -1846,7 +1866,7 @@ module EDDTableImport {
 
         // We call this when any of the 'master' pulldowns are changed in Step 4.
         // Such changes may affect the available contents of some of the pulldowns in the step.
-        changedAMasterPulldown():void {
+        changedAnyMasterPulldown(): void {
             // Show the master line dropdown if the master assay dropdown is set to new
             $('#masterLineSpan').toggleClass('off', $('#masterAssay').val() !== 'new');
             this.reconfigure();

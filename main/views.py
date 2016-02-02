@@ -1209,37 +1209,23 @@ def utilities_parse_table(request):
                         "formatted correctly. (Word documents are not allowed!)"})
     data = request.read()
     try:
-        parsed = csv.reader(data, delimiter='\t')
-        assert(len(parsed[0]) > 1)
+        from edd_utils.parsers import excel
+        result = excel.import_xlsx_tables(file=BytesIO(data))
         return JsonResponse({
-            "file_type": "tab",
+            "file_type": "xlsx",
+            "file_data": result,
+        })
+    except ImportError as e:
+        return JsonResponse({
+            "python_error": "jbei_tools module required to handle Excel table input."
+        })
+    except ValueError as e:
+        return JsonResponse({"python_error": str(e)})
+    except Exception as e:
+        return JsonResponse({
+            "file_type": "csv",
             "file_data": data,
         })
-    except Exception as e:
-        try:
-            parsed = csv.reader(data, delimiter=',')
-            assert(len(parsed[0]) > 1)
-            return JsonResponse({
-                "file_type": "csv",
-                "file_data": data,
-            })
-        except Exception as e:
-            try:
-                from edd_utils.parsers import excel
-                result = excel.import_xlsx_tables(file=BytesIO(data))
-                return JsonResponse({
-                    "file_type": "xlsx",
-                    "file_data": result,
-                })
-            except ImportError as e:
-                return JsonResponse({
-                    "python_error": "jbei_tools module required to handle Excel table input."
-                })
-            except ValueError as e:
-                return JsonResponse({"python_error": str(e)})
-            except Exception as e:
-                return default_error
-
 
 meta_pattern = re.compile(r'(\w*)MetadataType$')
 
