@@ -2,10 +2,13 @@
 
 {% load i18n %}
 
-{% block head_title %}{% trans "Account Inactive" %}{% endblock %}
+{% block head_title %}{% trans "Account Inactive" %} &mdash; {{ block.super }}{% endblock %}
 
 {% block content %}
-<h1>{% trans "Account Inactive" %}</h1>
-
-<p>{% trans "This account is inactive." %}</p>
-{% endblock %}
+    <div class="login_form">
+        <fieldset>
+            <legend>{% trans "Account Inactive" %}</legend>
+            <p>{% trans "This account is inactive." %}</p>
+        </fieldset>
+    </div>
+{% endblock content %}

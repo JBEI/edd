@@ -13,6 +13,7 @@
 {% endblock js_css %}
 
 {% block status %}
+    {{ block.super }}
     {% if form.errors %}
     <p class="bad">Login failed. Please try again.</p>
     {% endif %}

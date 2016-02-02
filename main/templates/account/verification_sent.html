@@ -1,12 +1,22 @@
 {% extends "account/base.html" %}
 
 {% load i18n %}
+{% load staticfiles %}
 
-{% block head_title %}{% trans "Verify Your E-mail Address" %}{% endblock %}
+{% block head_title %}{% trans "Verify Your E-mail Address" %} &mdash; {{ block.super }}{% endblock %}
+
+{% block js_css %}
+    <link rel="stylesheet" type="text/css" href="{% static 'main/login.css' %}" />
+{% endblock js_css %}
 
 {% block content %}
-    <h1>{% trans "Verify Your E-mail Address" %}</h1>
-
-    <p>{% blocktrans %}We have sent an e-mail to you for verification. Follow the link provided to finalize the signup process. Please contact us if you do not receive it within a few minutes.{% endblocktrans %}</p>
-
-{% endblock %}
+    <div class="login_form">
+        <h1>{% trans "Verify Your E-mail Address" %}</h1>
+        <p>
+            {% blocktrans %}
+            We have sent an e-mail to you for verification. Follow the link provided to finalize
+            the signup process. Please contact us if you do not receive it within a few minutes.
+            {% endblocktrans %}
+        </p>
+    </div>
+{% endblock content %}

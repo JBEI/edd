@@ -9,7 +9,8 @@
     min-height: 1.5em;
     padding: 0 0 5px 80px;
 }
-.login_form > fieldset > div > label {
+.login_form > fieldset > div > label,
+.login_form > fieldset > p > label {
     display: inline-block;
     float: left;
     width: 6em;
@@ -17,4 +18,22 @@
 .login_or {
     margin: 10px auto;
     text-align: center;
+}
+span.icon {
+    color: transparent;
+    display: inline-block;
+    height: 16px;
+    width: 16px;
+}
+span.icon.primary {
+    background-image: url('/static/main/images/star.png');
+}
+span.icon.verified {
+    background-image: url('/static/main/images/award_star_gold_3.png');
+}
+span.icon.unverified {
+    background-image: url('/static/main/images/lock.png');
+}
+.buttonHolder {
+    margin-top: 1em;
 }

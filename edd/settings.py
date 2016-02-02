@@ -18,9 +18,6 @@ from django_auth_ldap.config import LDAPSearch, GroupOfUniqueNamesType
 from django.conf.global_settings import TEMPLATE_CONTEXT_PROCESSORS as TCP
 from psycopg2.extensions import ISOLATION_LEVEL_SERIALIZABLE
 
-from edd_utils.parsers.json_encoders import (
-    datetime_dumps, datetime_loads, EXTENDED_JSON_CONTENT_TYPE
-)
 
 ####################################################################################################
 # Load urls and authentication credentials from server.cfg (TODO: some other stuff in there should
@@ -115,9 +112,6 @@ INSTALLED_APPS = (
     'allauth.socialaccount.providers.github',
     'allauth.socialaccount.providers.google',
     'allauth.socialaccount.providers.linkedin_oauth2',
-    'allauth.socialaccount.providers.openid',
-    'allauth.socialaccount.providers.persona',
-    'allauth.socialaccount.providers.twitter',
 )
 MIDDLEWARE_CLASSES = (
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -139,7 +133,10 @@ MIDDLEWARE_CLASSES = (
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': ['edd_utils.templates', 'main.templates'],
+        'DIRS': [  # DIRS is a list of filesystem paths, NOT app names
+            os.path.join(BASE_DIR, 'edd_utils', 'templates'),
+            os.path.join(BASE_DIR, 'main', 'templates'),
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'debug': DEBUG,  # only strictly needed when the value differs from DEBUG. Included
@@ -212,6 +209,18 @@ AUTH_LDAP_PROFILE_ATTR_MAP = {
 #         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
 #     },
 # ]
+
+
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'https'
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
+ACCOUNT_USERNAME_REQUIRED = False
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'SCOPE': ['email', 'profile', ],
+    }
+}
+
 
 ####################################################################################################
 # Solr/Haystack Configuration
