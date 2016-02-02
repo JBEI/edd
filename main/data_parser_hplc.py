@@ -145,6 +145,7 @@ def _parse_hplc_file_contents(input_file):
 
 	# Read in each line and contruct records
 	previous_name = None
+	previous_segments = [None for x in range(len(section_widths))]
 	while True:
 		line = input_file.readline()
 		if line == '\n':
@@ -184,8 +185,14 @@ def _parse_hplc_file_contents(input_file):
 
 			segment = line[:section_widths[row_index]].strip()
 			line = line[section_widths[row_index]+1:]
+			# Put the value into our data structure
 			if segment and segment != u'-':
 				samples[sample_name][column_headers[row_index]].append(segment)
+				previous_segments[row_index] = segment
+			# In the case of a dash or empty string, repeat the last value.
+			else:
+				samples[sample_name][column_headers[row_index]] \
+					.append( previous_segments[row_index] )
 
 		
 	logger.info("successfully parsed the HPLC file %s"
