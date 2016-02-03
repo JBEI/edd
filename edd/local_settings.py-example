@@ -13,9 +13,16 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'uploads', '')
 MEDIA_URL = '/uploads/'
 
 # Add the Django Debug Toolbar to local instance
+# Add login providers
 INSTALLED_APPS = INSTALLED_APPS + (
+    'allauth.socialaccount.providers.github',
+    'allauth.socialaccount.providers.google',
+    'allauth.socialaccount.providers.linkedin_oauth2',
     'debug_toolbar',
-    )
+)
+
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'http'
+
 
 # Log all queries to the console
 LOGGING['handlers']['console']['level'] = 'DEBUG'
@@ -25,3 +32,4 @@ LOGGING['loggers']['edd']['level']='DEBUG'
 
 # Tell the django-allauth app which site ID we are using
 SITE_ID = 1
+

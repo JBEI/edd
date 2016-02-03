@@ -98,20 +98,18 @@ INSTALLED_APPS = (
     'django.contrib.postgres',
     'django_extensions',  # django-extensions in pip
     'form_utils',  # django-form-utils in pip
+    # django-allauth in pip; separate apps for each provider
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    # 'allauth.socialaccount.providers.github',
+    # 'allauth.socialaccount.providers.google',
+    # 'allauth.socialaccount.providers.linkedin_oauth2',
 
     # EDD apps
     'main',
     'edd_utils',
     'edd.profile',
-
-    # apps for django-allauth
-    # after EDD apps so EDD templates are chosen over allauth templates
-    'allauth',
-    'allauth.account',
-    'allauth.socialaccount',
-    'allauth.socialaccount.providers.github',
-    'allauth.socialaccount.providers.google',
-    'allauth.socialaccount.providers.linkedin_oauth2',
 )
 MIDDLEWARE_CLASSES = (
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -212,7 +210,8 @@ AUTH_LDAP_PROFILE_ATTR_MAP = {
 
 
 ACCOUNT_ADAPTER = 'main.account.adapter.EDDAccountAdapter'
-ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'http'
+# NOTE: should override in local_settings with 'http' when running in dev environment
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'https'
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
 ACCOUNT_USERNAME_REQUIRED = False
