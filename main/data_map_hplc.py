@@ -5,37 +5,39 @@
 ##
 import sys, os
 import logging
-
+from .models import (Study)
 
 logger = logging.getLogger(__name__)
-
-# parse_hplc_file(input_file_path)
-
 
 # TODO: collect the needed Django interfacing objects
 # TODO: write proper protective logic
 # TODO: make sure process executes in a trasaction!
 
-# TODO: get user, get study, ?
-
-def map_hplc_samples(samples, User, Study):
+def map_hplc_samples(samples, user, study):
     """Maps HPLC data from a data structure {name:{fields:[values]}} to the
     database, injecting the new information."""
 
-    # def _process_hplc_samples(samples):
-
-    # print 'yo'
-
     # Get the user identity
     logging.debug('getting user')
+    
+    # TODO: generate field specific logic.
 
+    # 'Sample Name'            Used to seed Line Names
+    # 'Sample Amt'             Line - meta
+    # 'Multip.*Dilution'       Line - meta
+    # 'RetTime [min]'          Meas - X dimension
+    # 'Amount'                 Meas - Y
+    # 'Compound'               Meas - type
+    # 'FileName .D'            Line - meta
 
+    # TODO: respond to units embedded in names
 
-    if not User:
+    if not user:
         raise Exception("An EDD username is required to run map_hplc_samples()")
 
-    if not Study:
+    if not study:
         raise Exception("An EDD study is required to run map_hplc_samples()")
+
 
 if __name__ == "__main__":
 
@@ -60,12 +62,12 @@ if __name__ == "__main__":
     logger.addHandler(sh)
 
     # parse the provided filepath
-    # input_file_path = sys.argv[1]
-    # samples = parse_hplc_file(input_file_path)
+    input_file_path = sys.argv[1]
+    samples = parse_hplc_file(input_file_path)
 
     from django.contrib.auth import get_user_model
-    User = get_user_model()
-    Study = Study.objects.get(name=study_name)
+    user = get_user_model()
+    study = Study.objects.get(name=study_name)
 
 
     logger.debug("parse function returned, values stored in dict 'samples'")
