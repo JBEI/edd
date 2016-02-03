@@ -5,7 +5,7 @@
 ##
 import sys, os
 import logging
-from .models import (Study)
+from main.models import (Study)
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ def map_hplc_samples(samples, user, study):
 
 if __name__ == "__main__":
 
-    from data_parser_hplc import parse_hplc_file
+    from main.parsers.hplc import parse_hplc_file
 
     if len(sys.argv) is not 2:
         print("usage: python data_map_hplc input_file_path")
