@@ -211,13 +211,20 @@ AUTH_LDAP_PROFILE_ATTR_MAP = {
 # ]
 
 
-ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'https'
+ACCOUNT_ADAPTER = 'main.account.adapter.EDDAccountAdapter'
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'http'
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
 ACCOUNT_USERNAME_REQUIRED = False
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
         'SCOPE': ['email', 'profile', ],
+    },
+    'linkedin': {
+        'SCOPE': ['r_basicprofile', 'r_emailaddress', ],
+        'PROFILE_FIELDS': [
+            'id', 'first-name', 'last-name', 'email-address', 'picture-url', 'public-profile-url',
+        ],
     }
 }
 

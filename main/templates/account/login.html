@@ -1,11 +1,11 @@
-{% extends "edd_base.html" %}
+{% extends "account/base.html" %}
 
 {% load i18n %}
 {% load account socialaccount %}
 {% load staticfiles %}
 
 {% block js_css %}
-    <link rel="stylesheet" type="text/css" href="{% static 'main/login.css' %}" />
+    {{ block.super }}
     {% get_providers as socialaccount_providers %}
     {% if socialaccount_providers %}
     {% providers_media_js %}
@@ -22,6 +22,7 @@
 {% block content %}
     {% get_providers as socialaccount_providers %}
     <form class="login_form" method="POST" action="{% url 'account_login' %}">
+        {% csrf_token %}
         <fieldset>
         {% if socialaccount_providers %}
             <legend>Login with third party accounts</legend>
@@ -48,7 +49,6 @@
         {% endif %}
         </fieldset>
         <div class="login_or">{% trans 'or' %}</div>
-        {% csrf_token %}
         <fieldset>
             <legend>Login with EDD Account</legend>
             <div>
