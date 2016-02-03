@@ -217,6 +217,9 @@ ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
 ACCOUNT_USERNAME_REQUIRED = False
 SOCIALACCOUNT_PROVIDERS = {
+    'github': {
+        'SCOPE': ['user', ],
+    },
     'google': {
         'SCOPE': ['email', 'profile', ],
     },
@@ -225,7 +228,7 @@ SOCIALACCOUNT_PROVIDERS = {
         'PROFILE_FIELDS': [
             'id', 'first-name', 'last-name', 'email-address', 'picture-url', 'public-profile-url',
         ],
-    }
+    },
 }
 
 

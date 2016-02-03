@@ -34,6 +34,41 @@ span.icon.verified {
 span.icon.unverified {
     background-image: url('/static/main/images/lock.png');
 }
+span.socialaccount_provider {
+    background-repeat: no-repeat;
+    display: inline-block;
+    height: 16px;
+    padding-left: 24px;
+}
+span.socialaccount_provider.github {
+    background-image: url('/static/main/images/github-icon.png');
+}
+span.socialaccount_provider.google {
+    background-image: url('/static/main/images/google-icon.png');
+}
+span.socialaccount_provider.linkedin {
+    background-image: url('/static/main/images/linkedin-icon.png');
+}
+a.socialaccount_provider {
+    background-repeat: no-repeat;
+    color: transparent;
+    display: inline-block;
+    height: 48px;
+    width: 200px;
+}
+a.socialaccount_provider.github {
+    background-image: url('/static/main/images/github-login.png');
+}
+a.socialaccount_provider.google {
+    background-image: url('/static/main/images/google-login.png');
+}
+a.socialaccount_provider.linkedin_oauth2 {
+    background-image: url('/static/main/images/linkedin-login.png');
+    background-position-x: 8px; 
+}
 .buttonHolder {
     margin-top: 1em;
+}
+ul {
+    list-style: none;
 }
