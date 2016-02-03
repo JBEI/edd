@@ -1,8 +1,0 @@
-You (or someone pretending to be you) have asked to register an account
-at the Experiment Data Depot. If this wasn't you, please ignore this
-email and your address will be removed from our records.
-
-To activate this account, please click the following link within the
-next {{ expiration_days }} days:
-
-https://edd.jbei.org/{% url 'registration_activate' activation_key %}
