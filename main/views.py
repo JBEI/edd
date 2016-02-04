@@ -1208,6 +1208,24 @@ def utilities_parse_table(request):
                         "spreadsheet or a CSV/TSV file.  Please check that the contents are "
                         "formatted correctly. (Word documents are not allowed!)"})
     data = request.read()
+    # These are embedded by the filedrop.js class
+    file_name = request.META.get('HTTP_X_FILE_NAME')
+    file_size = request.META.get('HTTP_X_FILE_SIZE')
+    file_type = request.META.get('HTTP_X_FILE_TYPE')
+    file_date = request.META.get('HTTP_X_FILE_DATE')
+
+    if file_type == "text/xml":
+        try:
+            from edd_utils.parsers.biolector import getBiolectorXMLRecordsAsJSON, XMLImportError
+            result = getBiolectorXMLRecordsAsJSON(data, 0)
+            return JsonResponse({
+                "file_type": "xml",
+                "file_data": result,
+            })
+        except ImportError as e:
+            return JsonResponse({
+                "python_error": "jbei_tools module required to handle XML table input."
+            })
     try:
         from edd_utils.parsers import excel
         result = excel.import_xlsx_tables(file=BytesIO(data))
@@ -1226,6 +1244,7 @@ def utilities_parse_table(request):
             "file_type": "csv",
             "file_data": data,
         })
+
 
 meta_pattern = re.compile(r'(\w*)MetadataType$')
 

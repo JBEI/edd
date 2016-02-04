@@ -392,12 +392,12 @@ module EDDTableImport {
 
 
         processRawFileContent(fileType, result): boolean {
-            console.log(fileType);
-            if (fileType === 'text/xml') {
-                $("#textData").val(result);
-                this.inferSeparatorType();
-                return true;
-            } else if (fileType === 'text/csv') {
+//            if (fileType === 'text/xml') {
+//                $("#textData").val(result);
+//                this.inferSeparatorType();
+//                return true;
+//            }
+            if (fileType === 'text/csv') {
                 $("#textData").val(result);
                 this.inferSeparatorType();
                 return true;
