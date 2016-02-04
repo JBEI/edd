@@ -630,9 +630,38 @@ class Study(EDDObject):
             'aclw': [p.__str__() for p in self.get_combined_permission() if p.is_write()],
         }
 
+    @staticmethod
+    def user_permission_q(user, requested_permission, keyword_prefix=''):
+        """
+        Constructs a django Q object for testing whether the specified user has the
+        specicied permission for a study as part of a Study-related Django model query. Note that
+        this only tests
+        whether the user or group has specific permissions granted on the Study, not whether the
+        user's role (e.g. 'staff', 'admin') gives him/her access to it.  See
+        user_role_has_read_access( user), user_can_read(self, user)
+        :param user: the user
+        :param requested_permission: the study permission type to test (e.g. StudyPermission.READ)
+        :param keyword_prefix: an optional keyword prefix to prepend to the query keyword arguments.
+        For example when querying Study, the default value of '' should by used, or when querying
+        for Lines, whose permissions depend on the related Study, use 'study__' similar to other
+        queryset keyword arguments.
+        :return: true if the user has explicit read permission to the study
+        """
+
+        return ((Q(**{'%suserpermission__user' % keyword_prefix: user}) &
+                 Q(**{'%suserpermission__permission_type' % keyword_prefix:
+                          requested_permission})) |
+                (Q(**{'%sgrouppermission__group__user' % keyword_prefix: user}) &
+                 Q(**{'%sgrouppermission__permission_type' % keyword_prefix:
+                          requested_permission})))
+
+    @staticmethod
+    def user_role_can_read(user):
+        return user.is_superuser or user.is_staff
+
     def user_can_read(self, user):
         """ Utility method testing if a user has read access to a Study. """
-        return user and (user.is_superuser or user.is_staff or any(p.is_read() for p in chain(
+        return user and (Study.user_role_can_read(user) or any(p.is_read() for p in chain(
             self.userpermission_set.filter(user=user),
             self.grouppermission_set.filter(group__user=user)
         )))
@@ -992,6 +1021,7 @@ class Line(EDDObject):
     study = models.ForeignKey(Study)
     control = models.BooleanField(default=False)
     replicate = models.ForeignKey('self', blank=True, null=True)
+
     object_ref = models.OneToOneField(EDDObject, parent_link=True, related_name='+')
     contact = models.ForeignKey(
         settings.AUTH_USER_MODEL, blank=True, null=True, related_name='line_contact_set')
@@ -1101,6 +1131,13 @@ class Line(EDDObject):
         if len(existing_assay_numbers) > 0:
             assay_start_id = max(existing_assay_numbers) + 1
         return assay_start_id
+
+
+    def user_can_read(self, user):
+        return self.study.user_can_read(user)
+
+    def user_can_write(self, user):
+        return self.study.user_can_write(user)
 
 
 class MeasurementGroup(object):

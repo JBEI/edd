@@ -100,6 +100,8 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     'django.contrib.postgres',
     'django_extensions',  # django-extensions in pip
+    'rest_framework',
+    #'rest_framework_swagger'
     'form_utils',  # django-form-utils in pip
     'main',
     'edd_utils',
@@ -232,6 +234,39 @@ DATABASES = {
             'isolation_level': ISOLATION_LEVEL_SERIALIZABLE,
         },
     },
+}
+
+####################################################################################################
+# REST API Framework
+####################################################################################################
+
+PUBLISH_REST_API = False  # by default, don't publish the API until we can do more testing
+REST_FRAMEWORK = {
+    # Use Django's standard `django.contrib.auth` permissions,
+    # or allow read-only access for unauthenticated users.
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        #  'rest_framework.authentication.BasicAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',  # Note: in addition to requiring
+                                                        # authentication for access, EDD uses custom
+                                                        # study-level permissions
+                                                       # that
+                                                # should be enforced by custom code at the REST API
+                                                # implementation level. We could also optionally
+                                                # override # our model managers for more safety
+                                                # at the cost of convenience for developers.
+    ),
+    # allow default client-configurable pagination for REST API result size
+    'DEFAULT_PAGINATION_CLASS': 'edd.rest.paginators.ClientConfigurablePagination',
+}
+
+SWAGGER_SETTINGS = {
+    'api_version': '0.1',
+    'api_path': '/rest/',
+    'base_path': '/docs/',
+
 }
 
 ####################################################################################################
