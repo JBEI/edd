@@ -14,6 +14,14 @@ class HPLC_Parser:
 	# The maximum number of lines to read before giving up on finding the header.
 	max_header_line_count = 20
 
+	self.input_file = None     # The file that is being parsed
+	self.samples = None        # The final data resulting from batch parsing
+	self.header_block = None   # The file header
+	self.table_header = None   # The table header
+	self.table_divider = None  # The table divider, indicates column widths
+	self.section_widths = None # List of all column widths
+	self.column_headers = None # The label at the head of each column
+
 	def parse_hplc_file(self, input_file_path):
 		"""Loads the file on the given path and parses textual HPLC data from it."""
 
@@ -21,45 +29,44 @@ class HPLC_Parser:
 			raise IOError("Error: unable to locate file %s" % input_file_path)
 
 		with io.open(input_file_path, "r", encoding = 'utf-16') as input_file:
+			self.input_file = input_file
 			logger.debug("opened and is reading file %s" % input_file_path)
-			samples = _parse_hplc_file_contents(input_file)
+			self.samples = _parse_hplc_file_contents()
 			logger.info("successfully parsed the HPLC file %s" \
 				% os.path.basename(input_file_path))
-			return samples
+			return self.samples
 
 	# debugging aid.
-	def _display_sample(self, samples,selection):
+	def _display_sample(self, selection):
 		q = {}
-		for x in samples.keys():
+		for x in self.samples.keys():
 			q[x] = {}
-			for y in samples[x].keys():
-				val = samples[x][y]
-				if type(samples[x][y]) is list:
+			for y in self.samples[x].keys():
+				val = self.samples[x][y]
+				if type(self.samples[x][y]) is list:
 					val = val[:5]
 				q[x][y] = val
 		for v in q[q.keys()[selection]].keys():
 			print v, q[q.keys()[selection]][v]
 
-	# Parses out the file
-	def _parse_hplc_file_contents(self, input_file):
-		"""Collects records from the given file and returns them as a list"""
+	def _parse_file_header(self):
 
 		# read in header block
-		header_block = [ input_file.readline() ]
+		self.header_block = [ input_file.readline() ]
+
 		# header_block_length = 0
 		logger.debug("searching for header block")
 		i = 0
-		while not header_block[-1].startswith("-"):
+		while not self.header_block[-1].startswith("-"):
 			line = input_file.readline()
 
-			header_block.append( line )
+			self.header_block.append( line )
 
 			if i >= max_header_line_count:
 				logger.error("unable to find header: unexpected length")
 				exit(1)
 			elif line == '':
 				logger.error("unable to find header: EOF encountered")
-
 			i += 1
 
 		logger.debug("parsing header block")
@@ -68,41 +75,43 @@ class HPLC_Parser:
 		# title_line = header_block[0]
 
 		# TODO: retain usable form of header entries?
-		
+	
+	def _collect_table_header(self):
 		# collect table header, "Sample Name", etc.
 		# cliping it off the end of the header block
-		table_header = []
-		table_divider = header_block[-1] 
+		self.table_header = []
+		self.table_divider = self.header_block[-1]
 		r_index = -2
-		line = header_block[r_index]
+		line = self.header_block[r_index]
 		while line != "" and not line.isspace():
-			table_header.append(line)
+			self.table_header.append(line)
 			r_index -= 1
-			line = header_block[r_index]
-		table_header.reverse()
-
-		logger.debug("collected table_header")
+			line = self.header_block[r_index]
+		self.table_header.reverse()
 
 		# collect header data, currently not parsed
-		header_block = header_block[1:r_index]
+		# ( removes table header from header block )
+		self.header_block = self.header_block[1:r_index]
 
+	def determine_section_widths(self):
 		# parse widths
 		section_widths = [0]
 		section_index = 0
-		for c in table_divider.strip():
+		for c in self.table_divider.strip():
 			if c == '-':
 				section_widths[section_index] += 1
 			else:
 				section_widths.append(0)
 				section_index += 1
 
-		logger.debug("parsed column widths")
+		return section_widths
 
-		# parse table header
+	def _extract_column_headers_from_multiline_text(self):
+
 		# collect the multiline text
-		column_headers = []
-		for section_width in section_widths:
-			column_headers.append('')
+		self.column_headers = []
+		for section_width in self.section_widths:
+			self.column_headers.append('')
 		for line in table_header:
 			section_index = 0
 			section_width_carryover = 0
@@ -126,26 +135,39 @@ class HPLC_Parser:
 					section_width_carryover = 0
 				else: # account for extra character in next section
 					section_width_carryover = 1
-				column_headers[section_index] += segment
+				self.column_headers[section_index] += segment
 				section_index += 1
 
 		# clean up the column headers
-		for i in range(len(column_headers)):
-			column_headers[i] = column_headers[i].split()
+		for i in range(len(self.column_headers)):
+			self.column_headers[i] = self.column_headers[i].split()
 
 		# prepare container that will collect the data
 		# each sample is indexed by sample name
-		samples = {}
+		self.samples = {}
 
 		# each value is indexed by column header
-		for column_header_index in range(len(column_headers)):
+		for column_header_index in range(len(self.column_headers)):
 			header = u""
-			for header_part in column_headers[column_header_index]:
+			for header_part in self.column_headers[column_header_index]:
 				header += u" " + header_part
 			if len(header) > 0:
 				header = header[1:]
-			column_headers[column_header_index] = header
+			self.column_headers[column_header_index] = header
 
+	# Parses out the file
+	def _parse_hplc_file_contents(self):
+		"""Collects records from the given file and returns them as a list"""
+
+		self._parse_file_header()
+
+		self._collect_table_header()
+		logger.debug("collected table_header")
+
+		self.section_widths = self.determine_section_widths()
+		logger.debug("parsed column widths")
+
+		self._extract_column_headers_from_multiline_text()
 		logger.debug("collected the column_headers")
 		logger.debug("now reading in the data")
 
@@ -164,10 +186,10 @@ class HPLC_Parser:
 
 			if sample_name:
 				# ensure no collision with previous sample labels by adding a number
-				if samples.has_key(sample_name):
+				if self.samples.has_key(sample_name):
 					sample_name += u'-2'
 					i = 3
-					while samples.has_key(sample_name):
+					while self.samples.has_key(sample_name):
 						last_dash_index = sample_name.rindex('-')
 						sample_name = sample_name[:last_dash_index+1] + unicode(i)
 						i += 1
@@ -180,11 +202,11 @@ class HPLC_Parser:
 				sample_name = previous_name
 
 			# initilize the sample entry
-			if not samples.has_key(sample_name):
+			if not self.samples.has_key(sample_name):
 				entry = {}
-				for header in column_headers:
+				for header in self.column_headers:
 					entry[header] = []
-				samples[sample_name] = entry
+				self.samples[sample_name] = entry
 
 			# collect the other data items
 			for row_index in range(len(section_widths)):
@@ -193,12 +215,12 @@ class HPLC_Parser:
 				line = line[section_widths[row_index]+1:]
 				# Put the value into our data structure
 				if segment and segment != u'-':
-					samples[sample_name][column_headers[row_index]].append(segment)
+					self.samples[sample_name][self.column_headers[row_index]].append(segment)
 					previous_segments[row_index] = segment
 				# In the case of a dash or empty string, repeat the last value.
 				else:
-					samples[sample_name][column_headers[row_index]] \
+					self.samples[sample_name][self.column_headers[row_index]] \
 						.append( previous_segments[row_index] )
 
-		return samples
+		return self.samples
 
