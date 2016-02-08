@@ -1332,8 +1332,6 @@ class GeneIdentifier(MeasurementType):
         return self.type_name
 
     def save(self, *args, **kwargs):
-        if self.carbon_count is None:
-            self.carbon_count = self.extract_carbon_count()
         # force GENEID group
         self.type_group = MeasurementGroup.GENEID
         super(GeneIdentifier, self).save(*args, **kwargs)
@@ -1351,8 +1349,6 @@ class ProteinIdentifier(MeasurementType):
         return self.type_name
 
     def save(self, *args, **kwargs):
-        if self.carbon_count is None:
-            self.carbon_count = self.extract_carbon_count()
         # force PROTEINID group
         self.type_group = MeasurementGroup.PROTEINID
         super(ProteinIdentifier, self).save(*args, **kwargs)
@@ -1376,8 +1372,6 @@ class Phosphor(MeasurementType):
         return self.type_name
 
     def save(self, *args, **kwargs):
-        if self.carbon_count is None:
-            self.carbon_count = self.extract_carbon_count()
         # force PHOSPHOR group
         self.type_group = MeasurementGroup.PHOSPHOR
         super(Phosphor, self).save(*args, **kwargs)
