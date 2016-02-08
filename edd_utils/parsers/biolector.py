@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 """
-Interpret a Biolector XML file (as a string), creating a series of measurement sets suitable for passing to
+Interpret a Biolector XML file, creating a series of measurement sets suitable for passing to
 Step 2 of the EDD Data Table Import page.
 """
 
@@ -21,14 +21,6 @@ logger = logging.getLogger('main.views')  # Man, I know I am totally Doing This 
 
 class XMLImportError(Exception):
     """Something bad happened during deserialization."""
-
-    @classmethod
-    def WithData(cls, original_exc, model, fk, field_value):
-        """
-        Factory method for creating a deserialization error which has a more
-        explanatory messsage.
-        """
-        return cls("%s: (%s:pk=%s) field_value was '%s'" % (original_exc, model, fk, field_value))
 
 
 class RawImportRecord(object):

@@ -1203,21 +1203,21 @@ def delete_file(request, file_id):
 def utilities_parse_table(request):
     """ Attempt to process posted data as either a TSV or CSV file or Excel spreadsheet and
         extract a table of data automatically. """
-    default_error = JsonResponse({
-        "python_error": "The uploaded file could not be interpreted as either an Excel "
-                        "spreadsheet or a CSV/TSV file.  Please check that the contents are "
-                        "formatted correctly. (Word documents are not allowed!)"})
-    data = request.read()
     # These are embedded by the filedrop.js class
     file_name = request.META.get('HTTP_X_FILE_NAME')
     file_size = request.META.get('HTTP_X_FILE_SIZE')
     file_type = request.META.get('HTTP_X_FILE_TYPE')
     file_date = request.META.get('HTTP_X_FILE_DATE')
 
+    # On OS X, we can use the file_type value.  For example, a modern Excel document is reported as
+    # "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", and it's consistent across Safari, Firefox, and Chrome.
+    # On Windows XP, file_type is always blank, so we need to fall back to file name extensions like ".xlsx" and ".xls".
+
     if file_type == "text/xml":
         try:
             from edd_utils.parsers.biolector import getBiolectorXMLRecordsAsJSON, XMLImportError
-            result = getBiolectorXMLRecordsAsJSON(data, 0)
+            # We pass the request directly along, so it can be read as a stream by the parser
+            result = getBiolectorXMLRecordsAsJSON(request, 0)
             return JsonResponse({
                 "file_type": "xml",
                 "file_data": result,
@@ -1226,24 +1226,30 @@ def utilities_parse_table(request):
             return JsonResponse({
                 "python_error": "jbei_tools module required to handle XML table input."
             })
-    try:
-        from edd_utils.parsers import excel
-        result = excel.import_xlsx_tables(file=BytesIO(data))
-        return JsonResponse({
-            "file_type": "xlsx",
-            "file_data": result,
-        })
-    except ImportError as e:
-        return JsonResponse({
-            "python_error": "jbei_tools module required to handle Excel table input."
-        })
-    except ValueError as e:
-        return JsonResponse({"python_error": str(e)})
-    except Exception as e:
-        return JsonResponse({
-            "file_type": "csv",
-            "file_data": data,
-        })
+    if 'officedocument.spreadsheet' in file_type:
+        try:
+            from edd_utils.parsers import excel
+            data = request.read()
+            result = excel.import_xlsx_tables(file=BytesIO(data))
+            return JsonResponse({
+                "file_type": "xlsx",
+                "file_data": result,
+            })
+        except ImportError as e:
+            return JsonResponse({
+                "python_error": "jbei_tools module required to handle Excel table input."
+            })
+        except ValueError as e:
+            return JsonResponse({"python_error": str(e)})
+        except Exception as e:
+            return JsonResponse({
+                "file_type": "csv",
+                "file_data": data,
+            })
+    return JsonResponse({
+        "python_error": "The uploaded file could not be interpreted as either an Excel "
+                        "spreadsheet or an XML file.  Please check that the contents are "
+                        "formatted correctly. (Word documents are not allowed!)"})
 
 
 meta_pattern = re.compile(r'(\w*)MetadataType$')

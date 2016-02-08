@@ -215,6 +215,8 @@
       </div>
     </div>
 
+    <div class="resetButtonDiv" id="resetstep2" style="float:right;">Reset</div>
+
     Step 2 : Drag a file, or type in your raw data.
 
     <span class="tableControl" style="padding-top:1px;">
@@ -241,8 +243,16 @@
 
   </div>
 
-  <div class="sectionContent" style="padding:0em;text-align:center;">
-    <textarea class="dataTextArea" rows="16" style="width:98.5%;margin:2px;" id="textData" name="textData"></textarea>
+  <div class="sectionContent" style="padding:2px;text-align:center;">
+    <textarea class="dataTextArea" rows="16" id="step2textarea" name="step2textarea"></textarea>
+    <div class="fileDropInfoArea off" id="fileDropInfoArea">
+      <div class="fileDropInfoIcon" id="fileDropInfoIcon"></div>
+      <div class="fileDropInfoName" id="fileDropInfoName">Blank filename.xml</div>
+      <div class="fileDropInfoSending" id="fileDropInfoSending">
+        <span>Sending To Server...</span> <progress id="fileUploadProgressBar" />
+      </div>
+      <div class="fileDropInfoLog" id="fileDropInfoLog"></div>
+    </div>
   </div>
 </div>
 
@@ -261,7 +271,7 @@ at how the pulldowns should be set, but you may need to tweak it.</p>
       </div>
     </div>
 
-    <div class="resetButtonDiv" id="resetEnabledFlagMarkers" style="float:right;">Reset</div>
+    <div class="resetButtonDiv" id="resetstep3" style="float:right;">Reset</div>
 
     Step 3 : Verify the data has been interpreted correctly, and disable any values you don't want.
 
@@ -304,7 +314,7 @@ at how the pulldowns should be set, but you may need to tweak it.</p>
       </div>
     </div>
 
-    <div class="resetButtonDiv" id="resetDisambiguationFields" style="float:right;">Reset</div>
+    <div class="resetButtonDiv" id="resetstep4" style="float:right;">Reset</div>
 
     Step 4 : Help to disambiguate some of the detected values.
   </div>
@@ -410,6 +420,6 @@ at how the pulldowns should be set, but you may need to tweak it.</p>
 </form>
 
 
-  <textarea class="dataTextArea" rows="5" style="width:98%;margin:10px;" id="jsondebugarea" name="jsondebugarea"></textarea>
+  <textarea class="dataTextArea" rows="5" style="margin:10px;" id="jsondebugarea" name="jsondebugarea"></textarea>
 
 {% endblock content %}

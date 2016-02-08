@@ -236,6 +236,7 @@ module EDDTableImport {
 
         private data: any[];
         rowMarkers: any[];
+        activeDraggedFile: any;
         transpose: boolean;
         // If the user deliberately chose to transpose or not transpose, disable the attempt
         // to auto-determine transposition.
@@ -246,12 +247,15 @@ module EDDTableImport {
         userClickedOnIgnoreDataGaps: boolean;
         separatorType: string;
         inputRefreshTimerID: any;
+        fileUploadProgressBar: Utl.ProgressBar;
 
         selectMajorKindStep: SelectMajorKindStep;
         nextStepCallback: any;
 
 
         constructor(selectMajorKindStep: SelectMajorKindStep, nextStepCallback: any) {
+
+            this.selectMajorKindStep = selectMajorKindStep;
 
             this.data = [];
             this.rowMarkers = [];
@@ -261,9 +265,8 @@ module EDDTableImport {
             this.userClickedOnIgnoreDataGaps = false;
             this.separatorType = 'csv';
             this.inputRefreshTimerID = null;
-            var t = this;
 
-            $('#textData')
+            $('#step2textarea')
                 .on('paste', this.pastedRawData.bind(this))
                 .on('keyup', this.queueReprocessRawData.bind(this))
                 .on('keydown', this.suppressNormalTab.bind(this));
@@ -276,14 +279,21 @@ module EDDTableImport {
             $('#rawdataformatp').on('change', this.queueReprocessRawData.bind(this));
             $('#ignoreGaps').on('change', this.clickedOnIgnoreDataGaps.bind(this));
             $('#transpose').on('change', this.clickedOnTranspose.bind(this));
+            $('#resetstep2').on('click', this.reset.bind(this));
 
-            Utl.FileDropZone.create("textData",
-                this.processRawFileContent.bind(this),
-                "/utilities/parsefile",
-                this.processParsedFileContent.bind(this),
-                false);
+            this.fileUploadProgressBar = new Utl.ProgressBar('fileUploadProgressBar');
 
-            this.selectMajorKindStep = selectMajorKindStep;
+            Utl.FileDropZone.create({
+                elementId: "step2textarea",
+                fileInitFn: this.fileDropped.bind(this),
+                processRawFn: this.fileRead.bind(this),
+                url: "/utilities/parsefile",
+                processResponseFn: this.fileReturnedFromServer.bind(this),
+                progressBar: this.fileUploadProgressBar
+            });
+            this.clearDropZone();
+            this.queueReprocessRawData();
+
             this.nextStepCallback = nextStepCallback;
         }
 
@@ -291,9 +301,8 @@ module EDDTableImport {
         // In practice, the only time this will be called is when Step 1 changes,
         // which may call for a reconfiguration of the controls in this step.
         previousStepChanged(): void {
-
             var mode = this.selectMajorKindStep.interpretationMode;
-            $('#textData').removeClass('xml');
+            $('#step2textarea').removeClass('xml');
             if (mode === 'mdv') {
                 // We never ignore gaps, or transpose, for MDV documents
                 this.setIgnoreGaps(false);
@@ -302,13 +311,12 @@ module EDDTableImport {
                 this.setSeparatorType('tab');
             } else if (mode === 'biolector') {
                 // Biolector data is expected in XML format
-                $('#textData').addClass('xml');
+                $('#step2textarea').addClass('xml');
                 // Biolector data is always tab-separated, always transposed, and always ignores gaps
                 this.setSeparatorType('tab');
                 this.setTranspose(true);
                 this.setIgnoreGaps(true);
             }
-
             this.queueReprocessRawData();
         }
 
@@ -391,21 +399,59 @@ module EDDTableImport {
         }
 
 
-        processRawFileContent(fileType, result): boolean {
-//            if (fileType === 'text/xml') {
-//                $("#textData").val(result);
-//                this.inferSeparatorType();
-//                return true;
-//            }
-            if (fileType === 'text/csv') {
-                $("#textData").val(result);
+        // Here, we take a look at the type of the dropped file and decide whether to
+        // send it to the server, or process it locally.
+        // We inform the FileDropZone of our decision by setting flags in the fileContiner object,
+        // which will be inspected when this function returns.
+        fileDropped(fileContainer): void {
+            var mode = this.selectMajorKindStep.interpretationMode;
+            console.log(fileContainer);
+            // We'll process csv files locally.
+            if ((fileContainer.fileType === 'csv') &&
+                    (mode === 'std' || mode === 'tr' || mode === 'pr')) {
+                fileContainer.skipProcessRaw = false;
+                fileContainer.skipUpload = true;
+                return;
+            }
+            // With Excel documents, we need some server-side tools.
+            // We'll signal the dropzone to upload this, and receive processed results.
+            if ((fileContainer.fileType === 'excel') &&
+                    (mode === 'std' || mode === 'tr' || mode === 'pr' || mode === 'mdv')) {
+                this.showDropZone(fileContainer);
+                fileContainer.skipProcessRaw = true;
+                fileContainer.skipUpload = false;
+                return;
+            }
+            if (fileContainer.fileType === 'xml' && mode === 'biolector') {
+                this.showDropZone(fileContainer);
+                fileContainer.skipProcessRaw = true;
+                fileContainer.skipUpload = false;
+                return;
+            }
+            // By default, skip any further processing
+            fileContainer.skipProcessRaw = true;
+            fileContainer.skipUpload = true;
+        }
+
+
+        // This function is passed the usual fileContainer object, but also a reference to the
+        // full content of the dropped file.  So, for example, in the case of parsing a csv file,
+        // we just drop that content into the text box and we're done.
+        fileRead(fileContainer, result): void {
+            if (fileContainer.fileType === 'csv') {
+                // Since we're handling this format entirely client-side, we can get rid of the
+                // drop zone immediately.
+                fileContainer.skipUpload = true;
+                this.clearDropZone();
+                $("#step2textarea").val(result);
                 this.inferSeparatorType();
-                return true;
+                return;
             }
         }
 
 
-        processParsedFileContent(result): void {
+        fileReturnedFromServer(result): void {
+            $('#fileDropInfoSending').addClass('off');
             if (result.file_type == "xlsx") {
                 var ws = result.file_data["worksheets"][0];
                 var table = ws[0];
@@ -417,14 +463,14 @@ module EDDTableImport {
                     csv.push(table.values[i].join());
                 }
                 this.setSeparatorType('csv');
-                $("#textData").val(csv.join("\n"));
+                $("#step2textarea").val(csv.join("\n"));
             } else if (result.file_type == "tab") {
                 // If the type is deliberately set to tab, respect it.
                 // otherwise, attempt to guess the setting.
                 this.setSeparatorType('tab');
-                $("#textData").val(result.file_data);
+                $("#step2textarea").val(result.file_data);
             } else {
-                $("#textData").val(result.file_data);
+                $("#step2textarea").val(result.file_data);
                 this.inferSeparatorType();
             }
             this.reprocessRawData();
@@ -433,7 +479,7 @@ module EDDTableImport {
 
         parseRawInput(delimiter: string, mode: string):RawInputStat {
             var rawText: string, longestRow: number, rows: RawInput, multiColumn: boolean;
-            rawText = $('#textData').val();
+            rawText = $('#step2textarea').val();
             rows = [];
             // find the highest number of columns in a row
             longestRow = rawText.split(/[ \r]*\n/).reduce((prev: number, rawRow: string): number => {
@@ -457,6 +503,50 @@ module EDDTableImport {
                 'input': rows,
                 'columns': longestRow
             };
+        }
+
+
+        // Reset and hide the info box that appears when a file is dropped,
+        // and reveal the text entry area.
+        clearDropZone(): void {
+            $('#step2textarea').removeClass('off');
+            $('#fileDropInfoArea').addClass('off');
+            $('#fileDropInfoSending').addClass('off');
+            $('#fileDropInfoName').empty();
+            $('#fileDropInfoLog').empty();
+            // If we have a currently tracked dropped file, set its flags so we ignore any callbacks,
+            // before we forget about it.
+            if (this.activeDraggedFile) {
+                this.activeDraggedFile.stopProcessing = true;
+            }
+            this.activeDraggedFile = null;
+        }
+
+
+        // Reset and hide the info box that appears when a file is dropped,
+        // and reveal the text entry area.
+        showDropZone(fileContainer): void {
+            // Set the icon image properly
+            $('#fileDropInfoIcon').removeClass('xml');
+            $('#fileDropInfoIcon').removeClass('excel');
+            if (fileContainer.fileType === 'xml') {
+                $('#fileDropInfoIcon').addClass('xml');
+            } else if (fileContainer.fileType === 'excel') {
+                $('#fileDropInfoIcon').addClass('excel');
+            }
+            $('#step2textarea').addClass('off');
+            $('#fileDropInfoArea').removeClass('off');
+            $('#fileDropInfoSending').removeClass('off');
+            $('#fileDropInfoName').text(fileContainer.file.name)
+//            $('#fileDropInfoLog').empty();
+            this.activeDraggedFile = fileContainer;
+        }
+
+
+        reset(): void {
+            this.clearDropZone();
+            $('#step2textarea').val('');
+            this.reprocessRawData();
         }
 
 
@@ -624,7 +714,7 @@ module EDDTableImport {
 
         inferSeparatorType(): void {
             if (this.selectMajorKindStep.interpretationMode !== "mdv") {
-                var text: string = $('#textData').val() || '', test: boolean;
+                var text: string = $('#step2textarea').val() || '', test: boolean;
                 test = text.split('\t').length >= text.split(',').length;
                 this.setSeparatorType(test ? 'tab' : 'csv');
             }
@@ -800,7 +890,7 @@ module EDDTableImport {
                 .on('mouseover mouseout', 'td', this.highlighterF.bind(this))
                 .on('dblclick', 'td', this.singleValueDisablerF.bind(this));
 
-            $('#resetEnabledFlagMarkers').on('click', this.resetEnabledFlagMarkers.bind(this));
+            $('#resetstep3').on('click', this.resetEnabledFlagMarkers.bind(this));
         }
 
 
@@ -1608,7 +1698,7 @@ module EDDTableImport {
             var reDoStepOnChange = ['#masterAssay', '#masterLine', '#masterMComp', '#masterMType', '#masterMUnits'];
             $(reDoStepOnChange.join(',')).on('change', this.changedAnyMasterPulldown.bind(this));
 
-            $('#resetDisambiguationFields').on('click', this.resetDisambiguationFields.bind(this));
+            $('#resetstep4').on('click', this.resetDisambiguationFields.bind(this));
 
             // enable autocomplete on statically defined fields
             EDD_auto.setup_field_autocomplete('#masterMComp', 'MeasurementCompartment');
