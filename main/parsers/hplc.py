@@ -5,8 +5,8 @@
 ##
 import sys, os, io, logging
 
-# TODO: Restructure as an Interable Object, allowing samples or lines to be
-# processed individually rather then in one big batch
+# TODO: Finish Restructure as an Interable Object, allowing samples or lines to 
+# be processed individually rather then in one big batch. __next__()
 
 class HPLC_Parser:
 	logger = logging.getLogger(__name__)
@@ -31,7 +31,26 @@ class HPLC_Parser:
 		with io.open(input_file_path, "r", encoding = 'utf-16') as input_file:
 			self.input_file = input_file
 			logger.debug("opened and is reading file %s" % input_file_path)
-			self.samples = _parse_hplc_file_contents()
+
+			self._parse_file_header()
+
+			self._collect_table_header()
+			logger.debug("collected table_header")
+
+			self.section_widths = self.determine_section_widths()
+			logger.debug("parsed column widths")
+
+			self._extract_column_headers_from_multiline_text()
+			logger.debug("collected the column_headers")
+			logger.debug("now reading in the data")
+
+			# Read in each line and contruct records
+			previous_name = None
+			previous_segments = [None for x in range(len(section_widths))]
+
+			while self(_parse_sample()):
+				pass
+
 			logger.info("successfully parsed the HPLC file %s" \
 				% os.path.basename(input_file_path))
 			return self.samples
@@ -208,30 +227,3 @@ class HPLC_Parser:
 		self.current_sample = self.samples[sample_name]
 
 		return True
-
-
-	# Parses out the file in one batch action
-	def _parse_hplc_file_contents(self):
-		"""Collects records from the given file and returns them as a list"""
-
-		self._parse_file_header()
-
-		self._collect_table_header()
-		logger.debug("collected table_header")
-
-		self.section_widths = self.determine_section_widths()
-		logger.debug("parsed column widths")
-
-		self._extract_column_headers_from_multiline_text()
-		logger.debug("collected the column_headers")
-		logger.debug("now reading in the data")
-
-		# Read in each line and contruct records
-		previous_name = None
-		previous_segments = [None for x in range(len(section_widths))]
-
-		while self(_parse_sample()):
-			pass
-
-		return self.samples
-
