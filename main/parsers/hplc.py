@@ -126,8 +126,8 @@ class HPLC_Parser:
 				segment = line[:width]
 				line = line[width:]
 
-				# This is here because the normally empty divider space 
-				# sometimes has an important character in it.
+				# The normally empty divider space sometimes has an
+				# important character in it.
 				#
 				# clip divider character only if empty
 				if len(line) > 0 and line[0].isspace():
@@ -155,7 +155,62 @@ class HPLC_Parser:
 				header = header[1:]
 			self.column_headers[column_header_index] = header
 
-	# Parses out the file
+	def _parse_sample(self):
+		"""Collects a single sample from the file and stores it in the samples data structure"""
+
+		line = input_file.readline()
+		if line == '\n':
+			continue
+		if not line:
+			return False
+
+		# get the name of the sample related to the row
+		sample_name = line[:section_widths[0]].strip()
+
+		if sample_name:
+			# ensure no collision with previous sample labels by adding a number
+			if self.samples.has_key(sample_name):
+				sample_name += u'-2'
+				i = 3
+				while self.samples.has_key(sample_name):
+					last_dash_index = sample_name.rindex('-')
+					sample_name = sample_name[:last_dash_index+1] + unicode(i)
+					i += 1
+			previous_name = sample_name
+
+		if not sample_name:
+			if not previous_name:
+				logger.error("entry with no sample name found, aborting")
+				return False
+			sample_name = previous_name
+
+		# initilize the sample entry
+		if not self.samples.has_key(sample_name):
+			entry = {}
+			for header in self.column_headers:
+				entry[header] = []
+			self.samples[sample_name] = entry
+
+		# collect the other data items
+		for row_index in range(len(section_widths)):
+
+			segment = line[:section_widths[row_index]].strip()
+			line = line[section_widths[row_index]+1:]
+			# Put the value into our data structure
+			if segment and segment != u'-':
+				self.samples[sample_name][self.column_headers[row_index]].append(segment)
+				previous_segments[row_index] = segment
+			# In the case of a dash or empty string, repeat the last value.
+			else:
+				self.samples[sample_name][self.column_headers[row_index]] \
+					.append( previous_segments[row_index] )
+
+		self.current_sample = self.samples[sample_name]
+
+		return True
+
+
+	# Parses out the file in one batch action
 	def _parse_hplc_file_contents(self):
 		"""Collects records from the given file and returns them as a list"""
 
@@ -174,53 +229,9 @@ class HPLC_Parser:
 		# Read in each line and contruct records
 		previous_name = None
 		previous_segments = [None for x in range(len(section_widths))]
-		while True:
-			line = input_file.readline()
-			if line == '\n':
-				continue
-			if not line:
-				break
 
-			# get the name of the sample related to the row
-			sample_name = line[:section_widths[0]].strip()
-
-			if sample_name:
-				# ensure no collision with previous sample labels by adding a number
-				if self.samples.has_key(sample_name):
-					sample_name += u'-2'
-					i = 3
-					while self.samples.has_key(sample_name):
-						last_dash_index = sample_name.rindex('-')
-						sample_name = sample_name[:last_dash_index+1] + unicode(i)
-						i += 1
-
-				previous_name = sample_name
-			if not sample_name:
-				if not previous_name:
-					logger.error("entry with no sample name found, aborting")
-					return None
-				sample_name = previous_name
-
-			# initilize the sample entry
-			if not self.samples.has_key(sample_name):
-				entry = {}
-				for header in self.column_headers:
-					entry[header] = []
-				self.samples[sample_name] = entry
-
-			# collect the other data items
-			for row_index in range(len(section_widths)):
-
-				segment = line[:section_widths[row_index]].strip()
-				line = line[section_widths[row_index]+1:]
-				# Put the value into our data structure
-				if segment and segment != u'-':
-					self.samples[sample_name][self.column_headers[row_index]].append(segment)
-					previous_segments[row_index] = segment
-				# In the case of a dash or empty string, repeat the last value.
-				else:
-					self.samples[sample_name][self.column_headers[row_index]] \
-						.append( previous_segments[row_index] )
+		while self(_parse_sample()):
+			pass
 
 		return self.samples
 
