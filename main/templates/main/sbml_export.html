@@ -70,7 +70,7 @@ $(window).load(function () {
 </div>
 
 
-<form method="post" id="exportForm" action="/study/{{ study.id }}/sbml">
+<form method="post" id="exportForm" action="/study/{{ study.id }}/sbml/">
 {% csrf_token %}
 
 <input type="hidden" name="selectedLineIDs" value="{{ data.selected_line_ids }}" />

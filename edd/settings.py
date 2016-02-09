@@ -18,9 +18,6 @@ from django_auth_ldap.config import LDAPSearch, GroupOfUniqueNamesType
 from django.conf.global_settings import TEMPLATE_CONTEXT_PROCESSORS as TCP
 from psycopg2.extensions import ISOLATION_LEVEL_SERIALIZABLE
 
-from edd_utils.parsers.json_encoders import (
-    datetime_dumps, datetime_loads, EXTENDED_JSON_CONTENT_TYPE
-)
 
 ####################################################################################################
 # Load urls and authentication credentials from server.cfg (TODO: some other stuff in there should
@@ -101,6 +98,15 @@ INSTALLED_APPS = (
     'django.contrib.postgres',
     'django_extensions',  # django-extensions in pip
     'form_utils',  # django-form-utils in pip
+    # django-allauth in pip; separate apps for each provider
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    # 'allauth.socialaccount.providers.github',
+    # 'allauth.socialaccount.providers.google',
+    # 'allauth.socialaccount.providers.linkedin_oauth2',
+
+    # EDD apps
     'main',
     'edd_utils',
     'edd.profile',
@@ -125,7 +131,10 @@ MIDDLEWARE_CLASSES = (
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': ['edd_utils.templates', 'main.templates'],
+        'DIRS': [  # DIRS is a list of filesystem paths, NOT app names
+            os.path.join(BASE_DIR, 'edd_utils', 'templates'),
+            os.path.join(BASE_DIR, 'main', 'templates'),
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'debug': DEBUG,  # only strictly needed when the value differs from DEBUG. Included
@@ -133,9 +142,10 @@ TEMPLATES = [
             'context_processors': TCP + [
                 # this gives us access to the original request in templates. see e.g.:
                 # http://stackoverflow.com/questions/2882490
+                # also required for django-allauth
                 'django.template.context_processors.request',
                 # required to enable auth templates
-                'django.contrib.auth.context_processors.auth'
+                'django.contrib.auth.context_processors.auth',
             ],
         }
     },
@@ -151,6 +161,8 @@ AUTHENTICATION_BACKENDS = (
     'django_auth_ldap.backend.LDAPBackend',
     'django.contrib.auth.backends.RemoteUserBackend',
     'django.contrib.auth.backends.ModelBackend',
+    # `allauth` specific authentication methods, such as login by e-mail
+    'allauth.account.auth_backends.AuthenticationBackend',
 )
 ROOT_URLCONF = 'edd.urls'
 WSGI_APPLICATION = 'edd.wsgi.application'
@@ -195,6 +207,29 @@ AUTH_LDAP_PROFILE_ATTR_MAP = {
 #         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
 #     },
 # ]
+
+
+ACCOUNT_ADAPTER = 'main.account.adapter.EDDAccountAdapter'
+# NOTE: should override in local_settings with 'http' when running in dev environment
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'https'
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
+ACCOUNT_USERNAME_REQUIRED = False
+SOCIALACCOUNT_PROVIDERS = {
+    'github': {
+        'SCOPE': ['user', ],
+    },
+    'google': {
+        'SCOPE': ['email', 'profile', ],
+    },
+    'linkedin': {
+        'SCOPE': ['r_basicprofile', 'r_emailaddress', ],
+        'PROFILE_FIELDS': [
+            'id', 'first-name', 'last-name', 'email-address', 'picture-url', 'public-profile-url',
+        ],
+    },
+}
+
 
 ####################################################################################################
 # Solr/Haystack Configuration

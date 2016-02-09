@@ -2,6 +2,7 @@ arrow==0.6.0
 cffi==1.2.1
 cryptography==1.0.1
 Django==1.9
+django-allauth==0.24.1
 django-auth-ldap==1.2.6
 django-debug-toolbar==1.4
 django-extensions==1.6.1
@@ -13,6 +14,7 @@ jdcal==1.2
 jsonpickle==0.9.2
 ndg-httpsclient==0.4.0
 numpy==1.9.2
+oauthlib==1.0.3
 openpyxl==2.2.6
 psycopg2==2.6.1
 pyasn1==0.1.8
@@ -22,7 +24,9 @@ pysmb==1.1.16
 python-dateutil==2.4.2
 python-ldap==2.4.20
 python-libsbml==5.11.4
+python-openid==2.2.5
 requests==2.9.0
+requests-oauthlib==0.6.0
 scikit-learn==0.16.1
 scipy==0.16.0
 six==1.10.0

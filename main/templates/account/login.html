@@ -1,0 +1,72 @@
+{% extends "account/base.html" %}
+
+{% load i18n %}
+{% load account socialaccount %}
+{% load staticfiles %}
+
+{% block js_css %}
+    {{ block.super }}
+    {% get_providers as socialaccount_providers %}
+    {% if socialaccount_providers %}
+    {% providers_media_js %}
+    {% endif %}
+{% endblock js_css %}
+
+{% block status %}
+    {{ block.super }}
+    {% if form.errors %}
+    <p class="bad">Login failed. Please try again.</p>
+    {% endif %}
+{% endblock status %}
+
+{% block content %}
+    {% get_providers as socialaccount_providers %}
+    <form class="login_form" method="POST" action="{% url 'account_login' %}">
+        {% csrf_token %}
+        <fieldset>
+        {% if socialaccount_providers %}
+            <legend>Login with third party accounts</legend>
+            <p>
+                {% blocktrans %}
+                Please sign in with one of your existing third party accounts.
+                {% endblocktrans %}
+            </p>
+            <div class="socialaccount_ballot">
+                <ul class="socialaccount_providers">
+                    {% include "socialaccount/snippets/provider_list.html" with process="login" %}
+                </ul>
+            </div>
+        {% else %}
+            <legend>Create an account</legend>
+            <p>
+                {% blocktrans %}
+                If you have not created an account yet, then please
+                <a href="{{ signup_url }}">sign up</a> first. You may also log in with your LBL
+                account.
+                {% endblocktrans %}
+            </p>
+        {% endif %}
+        </fieldset>
+        <div class="login_or">{% trans 'or' %}</div>
+        <fieldset>
+            <legend>Login with EDD Account</legend>
+            <div>
+                {{ form.login.label_tag }}
+                {{ form.login }}
+            </div>
+            <div>
+                {{ form.password.label_tag }}
+                {{ form.password }}
+            </div>
+            <button type="submit">Login</button>
+            <input type="hidden" name="next" value="{{ next }}"/>
+        </fieldset>
+        {% if socialaccount_providers %}
+            <p>
+                {% blocktrans with site.name as site_name %}
+                <a href="{{ signup_url }}">Sign up</a> for a {{ site_name }} account.
+                {% endblocktrans %}
+            </p>
+        {% endif %}
+    </form>
+{% endblock content %}

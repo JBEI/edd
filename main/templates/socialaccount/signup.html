@@ -1,0 +1,49 @@
+{% extends "edd_base.html" %}
+
+{% load i18n %}
+{% load staticfiles %}
+
+{% block head_title %}{% trans "Signup" %} &mdash; {{ block.super }}{% endblock %}
+
+{% block js_css %}
+    <link rel="stylesheet" type="text/css" href="{% static 'main/login.css' %}" />
+{% endblock js_css %}
+
+{% block content %}
+    <form class="login_form" id="signup_form" method="post"
+            action="{% url 'socialaccount_signup' %}">
+        <fieldset>
+            <legend>{% trans "Sign Up" %}</legend>
+            <p>
+            {% blocktrans with provider_name=account.get_provider.name site_name=site.name %}
+            You are about to use your {{provider_name}} account to login to {{site_name}}. As a
+            final step, please complete the following form:
+            {% endblocktrans %}
+            </p>
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+            {{ form.non_field_errors }}
+            {% endif %}
+            <div>
+                {% if form.username.errors %}
+                {{ form.username.errors }}
+                {% endif %}
+                {{ form.username.label_tag }}
+                {{ form.username }}
+            </div>
+            <div>
+                {% if form.email.errors %}
+                {{ form.email.errors }}
+                {% endif %}
+                {{ form.email.label_tag }}
+                {{ form.email }}
+            </div>
+            {% if redirect_field_value %}
+            <input type="hidden"
+                    name="{{ redirect_field_name }}"
+                    value="{{ redirect_field_value }}" />
+            {% endif %}
+            <button type="submit">{% trans "Sign Up" %} &raquo;</button>
+        </fieldset>
+    </form>
+{% endblock %}

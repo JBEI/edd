@@ -66,6 +66,189 @@ logger = logging.getLogger(__name__)
 # LAYER 1: SBML MODEL PROCESSING
 #
 ########################################################################
+class SpeciesInfo(object):
+    """ Simple class to store species information extracted from SBML model. """
+    def __init__(self, species, parent_info):
+        self.species = species
+        self.id = species.getId()
+        self.name = species.getName()
+        self.is_duplicate = self.id in parent_info._species_by_id
+        self.notes = {}
+        if not self.is_duplicate:
+            parent_info._species_by_id[self.id] = self
+            if species.isSetNotes():
+                self.notes = parse_sbml_notes_to_dict(species.getNotes())
+
+    @property
+    def n_notes(self):
+        return len(self.notes)
+
+    def __hash__(self):
+        return self.id.__hash__()
+
+    def __str__(self):
+        return self.id
+
+    def assign_concentration(self, minimum, maximum, values):
+        assert(len(values) > 0)
+        value = sum(values) / len(values)
+        self.notes["CONCENTRATION_CURRENT"] = [str(value)]
+        if minimum is not None:
+            self.notes["CONCENTRATION_LOWEST"] = [str(minimum)]
+        if maximum is not None:
+            self.notes['CONCENTRATION_HIGHEST'] = [str(maximum)]
+        self.species.setNotes(create_sbml_notes_object(self.notes))
+
+
+class ReactionInfo(object):
+    """ Simple class to store reaction information extracted from SBML model. """
+    def __init__(self, reaction, parent_info):
+        self.reaction = reaction
+        self.id = reaction.getId()
+        self.is_duplicate = self.id in parent_info._reactions_by_id
+        self.parent_info = parent_info
+        self.notes = {}
+        self.gene_ids = []
+        self.protein_ids = []
+        if not self.is_duplicate:
+            parent_info._reactions_by_id[self.id] = self
+            if reaction.isSetNotes():
+                self.notes = parse_sbml_notes_to_dict(reaction.getNotes())
+                self.extract_gene_association()
+                self.extract_protein_association()
+
+    @property
+    def n_notes(O):
+        return len(O.notes)
+
+    def __hash__(O):
+        return O.id.__hash__()
+
+    def __str__(self):
+        return self.id
+
+    def extract_gene_association(self):
+        """ NOTE, TODO: We are currently treating an association with a gene name as an additional
+            association with a protein of the same name, and vice-versa. This is not necessarily
+            correct, but it helps us deal with naming scheme conflicts.
+            However, the display in the old EDD does not appear to reflect this convention! """
+        for assoc_string in self.notes.get("GENE_ASSOCIATION", []):
+            for genes in parse_note_string_boolean_logic(assoc_string):
+                for gene in genes:
+                    self.gene_ids.append(gene)
+                    self.parent_info._gene_reactions[gene].append(self)
+                    self.protein_ids.append(gene)
+                    self.parent_info._protein_reactions[gene].append(self)
+
+    def extract_protein_association(self):
+        """ See docstring on extract_gene_association. """
+        for assoc_string in self.notes.get("PROTEIN_ASSOCIATION", []):
+            for proteins in parse_note_string_boolean_logic(assoc_string):
+                for protein in proteins:
+                    self.protein_ids.append(protein)
+                    self.parent_info._protein_reactions[protein].append(self)
+                    self.gene_ids.append(protein)
+                    self.parent_info._gene_reactions[protein].append(self)
+
+    def update_notes(self, transcripts, proteins):
+        # note that using "%g" in the format strings will convert integral
+        # doubles to integer format - this isn't really necessary but it is
+        # consistent with the old EDD and thus makes testing easier
+        if (len(transcripts) > 0):
+            gene_tr_str = " ".join(["%s=%g" % (gid, v) for gid, v in transcripts.iteritems()])
+            self.notes["GENE_TRANSCRIPTION_VALUES"] = [gene_tr_str]
+        if (len(proteins) > 0):
+            prot_str = " ".join(["%s=%g" % (pid, v) for pid, v in proteins.iteritems()])
+            self.notes["PROTEIN_COPY_VALUES"] = [prot_str]
+        self.reaction.setNotes(create_sbml_notes_object(self.notes))
+
+
+class ExchangeInfo(object):
+    """ Simple class to store exchange information extracted from SBML model.
+        TODO: refactor with ReactionInfo; both are used to store info about reactions, but one is
+        specific to gene and protein values, the other to metabolite fluxes. It might make more
+        sense to consolidate into a single class. """
+    def __init__(self, reaction, parent_info, is_biomass_rxn=False):
+        self.reaction = reaction
+        self.name = reaction.getName()
+        reactants = reaction.getListOfReactants()
+        self.n_reactants = len(reactants)
+        self.ex_id = reaction.getId()
+        self.re_id = None
+        self.reject = True
+        # The reaction must have a kinetic law declared inside it
+        self.kin_law = reaction.getKineticLaw()
+        self.stoichiometry = self.lb_value = self.ub_value = None
+        self.ub_param = self.lb_param = None
+
+        def format_list(l):
+            return " + ".join(["%s * %s" % (r.getStoichiometry(), r.getSpecies()) for r in l])
+
+        self.reaction_desc = "%(id)s: %(react)s%(sep)s%(prod)s" % {
+            'id': self.ex_id,
+            'react': format_list(self.reaction.getListOfReactants()),
+            'sep': " <=> " if self.reaction.getReversible() else " -> ",
+            'prod': format_list(self.reaction.getListOfProducts()),
+        }
+        # There must be one, and only one, reactant
+        if is_biomass_rxn or self.n_reactants == 1:
+            if not is_biomass_rxn:
+                self.re_id = reactants[0].getSpecies()  # returns ID not object
+                self.stoichiometry = reactants[0].getStoichiometry()
+            # The single reactant must be exactly 1 unit of the given metabolite
+            # (no fractional exchange)
+            if is_biomass_rxn or (self.stoichiometry == 1 and self.kin_law is not None):
+                self.ub_param = self.kin_law.getParameter("UPPER_BOUND")
+                self.lb_param = self.kin_law.getParameter("LOWER_BOUND")
+                if self.lb_param is not None and self.lb_param.isSetValue():
+                    self.lb_value = self.lb_param.getValue()
+                    if self.ub_param is not None and self.ub_param.isSetValue():
+                        self.ub_value = self.ub_param.getValue()
+                        self.reject = False
+                        if not is_biomass_rxn:
+                            parent_info._exchanges_by_id[self.ex_id] = self
+                            parent_info._reactant_to_exchange[self.re_id].append(self)
+
+    def upper_bound(self):
+        return str(self.ub_value)
+
+    def lower_bound(self):
+        return str(self.lb_value)
+
+    def bad_status_symbol(self):
+        if self.n_reactants != 1:
+            return "%dRs" % self.n_reactants
+        elif self.stoichiometry != 1:
+            return "%dSt" % self.stoichiometry
+        elif self.kin_law is None:
+            return "!KN"
+        elif self.lb_param is None:
+            return "!LB"
+        elif self.lb_value is None:
+            return "!LB#"
+        elif self.ub_param is None:
+            return "!UB"
+        elif self.ub_value is None:
+            return "!UB#"
+        return None
+
+    def __str__(self):
+        return self.reaction_desc
+
+    def assign_flux_value(self, values):
+        assert(len(values) > 0)
+        value = sum(values) / len(values)
+        if (self.kin_law is None):
+            raise ValueError("no kinetic law found")
+        if (self.ub_param is None):
+            raise ValueError("No UPPER_BOUND parameter found")
+        if (self.lb_param is None):
+            raise ValueError("No LOWER_BOUND parameter found")
+        self.ub_param.setValue(value)
+        self.lb_param.setValue(value)
+        return len(values)
+
+
 # adapted from UtilitiesSBML.pm:parseSBML
 class sbml_info(object):
     """ Base class for processing an SBML template and extracting information for display in a
@@ -93,6 +276,7 @@ class sbml_info(object):
         self._exchanges_to_metabolites = {}
         self._gene_reactions = defaultdict(list)   # indexed by gene ID
         self._protein_reactions = defaultdict(list)   # indexed by protein ID
+        self._reactant_to_exchange = defaultdict(list)
         self._resolved_species = OrderedDict()
         self._resolved_exchanges = OrderedDict()
         self.biomass_exchange = None  # XXX accessed directly by HTML template
@@ -131,193 +315,8 @@ class sbml_info(object):
         model = sbml.getModel()
         self._sbml_doc = sbml
         self._sbml_model = model
-        reactant_to_exchange = defaultdict(list)
+        self._build_info_objects(model)
 
-        # some simple internal classes for storing relevant information extracted
-        # from the SBML model.
-        class SpeciesInfo (object):
-            def __init__(O, species):
-                O.species = species
-                O.id = species.getId()
-                O.name = species.getName()
-                O.is_duplicate = False
-                O.notes = {}
-                if (O.id in self._species_by_id):
-                    O.is_duplicate = True
-                else:
-                    self._species_by_id[O.id] = O
-                    if (species.isSetNotes()):
-                        O.notes = parse_sbml_notes_to_dict(species.getNotes())
-
-            @property
-            def n_notes(O):
-                return len(O.notes)
-
-            def __str__(O):
-                return O.id
-
-            def assign_concentration(O, minimum, maximum, values):
-                assert (len(values) > 0)
-                value = sum(values) / len(values)
-                O.notes["CONCENTRATION_CURRENT"] = [str(value)]
-                if (minimum is not None):
-                    O.notes["CONCENTRATION_LOWEST"] = [str(minimum)]
-                if (maximum is not None):
-                    O.notes['CONCENTRATION_HIGHEST'] = [str(maximum)]
-                O.species.setNotes(create_sbml_notes_object(O.notes))
-
-        # XXX this class may be superfluous - both it and ExchangeInfo are used to
-        # store info about reactions, but one is specific to gene and protein
-        # values, the other to metabolite fluxes.  it might make more sense to
-        # consolidate them into a single class.
-        class ReactionInfo (object):
-            def __init__(O, reaction):
-                O.reaction = reaction
-                O.id = reaction.getId()
-                O.is_duplicate = False
-                O.notes = {}
-                O.gene_ids = []
-                O.protein_ids = []
-                if (O.id in self._reactions_by_id):
-                    O.is_duplicate = True
-                else:
-                    self._reactions_by_id[O.id] = O
-                    if (reaction.isSetNotes()):
-                        O.notes = parse_sbml_notes_to_dict(reaction.getNotes())
-                        for assoc_string in O.notes.get("GENE_ASSOCIATION", []):
-                            for genes in parse_note_string_boolean_logic(assoc_string):
-                                for gene in genes:
-                                    O.gene_ids.append(gene)
-                                    self._gene_reactions[gene].append(O)
-                                    # NOTE, TODO: We are currently treating an association with a
-                                    # gene name as an additional association with a protein of the
-                                    # same name, and vice-versa.  This is not necessarily correct,
-                                    # but it helps us deal with naming scheme conflicts.
-                                    # NOTE 2: however, the display in the old EDD does not appear
-                                    # to reflect this convention! (FIXME?)
-                                    O.protein_ids.append(gene)
-                                    self._protein_reactions[gene].append(O)
-                        for assoc_string in O.notes.get("PROTEIN_ASSOCIATION", []):
-                            for proteins in parse_note_string_boolean_logic(assoc_string):
-                                for protein in proteins:
-                                    O.protein_ids.append(protein)
-                                    self._protein_reactions[protein].append(O)
-                                    # XXX see note above
-                                    O.gene_ids.append(protein)
-                                    self._gene_reactions[protein].append(O)
-
-            @property
-            def n_notes(O):
-                return len(O.notes)
-
-            def __hash__(O):
-                return O.id.__hash__()
-
-            def update_notes(O, transcripts, proteins):
-                # note that using "%g" in the format strings will convert integral
-                # doubles to integer format - this isn't really necessary but it is
-                # consistent with the old EDD and thus makes testing easier
-                if (len(transcripts) > 0):
-                    gene_tr_str = " ".join(
-                        ["%s=%g" % (gid, v) for gid, v in transcripts.iteritems()])
-                    O.notes["GENE_TRANSCRIPTION_VALUES"] = [gene_tr_str]
-                if (len(proteins) > 0):
-                    prot_str = " ".join(
-                        ["%s=%g" % (pid, v) for pid, v in proteins.iteritems()])
-                    O.notes["PROTEIN_COPY_VALUES"] = [prot_str]
-                O.reaction.setNotes(create_sbml_notes_object(O.notes))
-
-        class ExchangeInfo (object):
-            def __init__(O, reaction, is_biomass_rxn=False):
-                # XXX due to some mysterious bugs in libsbml, we need to extract as
-                # much information as needed immediately rather than storing a
-                # reference to the SBML object
-                O.reaction = reaction
-                O.name = reaction.getName()
-                reactants = reaction.getListOfReactants()
-                O.n_reactants = len(reactants)
-                O.ex_id = reaction.getId()
-                O.re_id = None
-                O.reject = True
-                # The reaction must have a kinetic law declared inside it
-                O.kin_law = reaction.getKineticLaw()
-                O.stoichiometry = O.lb_value = O.ub_value = None
-                O.ub_param = O.lb_param = None
-
-                def format_list(l):
-                    return " + ".join([
-                        "%s * %s" % (r.getStoichiometry(), r.getSpecies()) for r in l
-                    ])
-                O.reaction_desc = "%(id)s: %(react)s%(sep)s%(prod)s" % {
-                    'id': O.ex_id,
-                    'react': format_list(O.reaction.getListOfReactants()),
-                    'sep': " <=> " if O.reaction.getReversible() else " -> ",
-                    'prod': format_list(O.reaction.getListOfProducts()),
-                }
-                # There must be one, and only one, reactant
-                if (O.n_reactants == 1) or (is_biomass_rxn):
-                    if (not is_biomass_rxn):
-                        O.re_id = reactants[0].getSpecies()
-                        O.stoichiometry = reactants[0].getStoichiometry()
-                    # The single reactant must be exactly 1 unit of the given metabolite
-                    # (no fractional exchange)
-                    if ((is_biomass_rxn) or
-                            ((O.stoichiometry == 1) and (O.kin_law is not None))):
-                        O.ub_param = O.kin_law.getParameter("UPPER_BOUND")
-                        O.lb_param = O.kin_law.getParameter("LOWER_BOUND")
-                        if (O.lb_param is not None) and (O.lb_param.isSetValue()):
-                            O.lb_value = O.lb_param.getValue()
-                            if (O.ub_param is not None) and (O.ub_param.isSetValue()):
-                                O.ub_value = O.ub_param.getValue()
-                                O.reject = False
-                                if (not is_biomass_rxn):
-                                    self._exchanges_by_id[O.ex_id] = O
-                                    reactant_to_exchange[O.re_id].append(O)
-
-            def upper_bound(O):
-                return str(O.ub_value)
-
-            def lower_bound(O):
-                return str(O.lb_value)
-
-            def bad_status_symbol(O):
-                if (O.n_reactants != 1):
-                    return "%dRs" % O.n_reactants
-                elif (O.stoichiometry != 1):
-                    return "%dSt" % O.stoichiometry
-                elif (O.kin_law is None):
-                    return "!KN"
-                elif (O.lb_param is None):
-                    return "!LB"
-                elif (O.lb_param is None):
-                    return "!LB#"
-                elif (O.ub_param is None):
-                    return "!UB"
-                elif (O.ub_param is None):
-                    return "!UB#"
-                return None
-
-            def __str__(O):
-                return O.reaction_desc
-
-            def assign_flux_value(O, values):
-                assert (len(values) > 0)
-                value = sum(values) / len(values)
-                if (O.kin_law is None):
-                    raise ValueError("no kinetic law found")
-                if (O.ub_param is None):
-                    raise ValueError("No UPPER_BOUND parameter found")
-                if (O.lb_param is None):
-                    raise ValueError("No LOWER_BOUND parameter found")
-                O.ub_param.setValue(value)
-                O.lb_param.setValue(value)
-                return len(values)
-        for species in model.getListOfSpecies():
-            self._sbml_species.append(SpeciesInfo(species))
-        for reaction in model.getListOfReactions():
-            self._sbml_reactions.append(ReactionInfo(reaction))
-        for reaction in model.getListOfReactions():
-            self._sbml_exchanges.append(ExchangeInfo(reaction))
         # In this loop we're attempting to munge the name of a metabolite type so
         # that it matches the name of any one species, and any one reactant in the
         # detected exchanges
@@ -326,7 +325,7 @@ class sbml_info(object):
         known_species = MetaboliteSpecies.objects.filter(
             sbml_template_id=self._chosen_template.id)
         exchanges_by_metab_id = {
-            e.measurement_type_id: self._exchanges_by_id[e.exchange_name]
+            e.measurement_type_id: self._exchanges_by_id.get(e.exchange_name, None)
             for e in known_exchanges
         }
         species_by_metab_id = {
@@ -334,43 +333,7 @@ class sbml_info(object):
             for s in known_species
         }
         for met in self._all_metabolites:
-            mname = met.short_name  # first we grab the unaltered name
-            # Then we create a version using the standard symbol substitutions.
-            mname_transcoded = generate_transcoded_metabolite_name(mname)
-            # The first thing we check for is the presence of a pre-defined pairing,
-            # of this metabolite type to an ID string.
-            ex_resolved = exchanges_by_metab_id.get(met.id, None)
-            # If that doesn't resolve, we then begin a trial-and-error process of
-            # matching, running through a list of potential names in search of
-            # something that resolves.
-            if (ex_resolved is None):
-                reactant_names_to_try = [
-                    mname,
-                    mname_transcoded,
-                    "M_" + mname + "_e",
-                    "M_" + mname_transcoded + "_e",
-                    "M_" + mname_transcoded + "_e_",
-                ]
-                for name in reactant_names_to_try:
-                    ex_resolved = reactant_to_exchange.get(name, [None])[0]
-                    if (ex_resolved is not None):
-                        break
-            # FIXME make sure we are consistently indexing by metabolite ID, NOT
-            # the short_name
-            self._resolved_exchanges[met.id] = ex_resolved
-            if (ex_resolved is not None):
-                self._exchanges_to_metabolites[ex_resolved.ex_id] = met
-            # Do the same run for species ID matchups.
-            sp_resolved = species_by_metab_id.get(met.id, None)
-            if (sp_resolved is None):
-                names = generate_species_name_guesses_from_metabolite_name(mname)
-                for name in names:
-                    sp_resolved = self._species_by_id.get(name, None)
-                    if (sp_resolved is not None):
-                        break
-            self._resolved_species[met.id] = sp_resolved
-            if (sp_resolved is not None):
-                self._species_to_metabolites[sp_resolved.id] = met
+            self._process_metabolite(met, exchanges_by_metab_id, species_by_metab_id)
         # finally, biomass reaction
         if (self.biomass_reaction_id() != ""):
             try:
@@ -380,8 +343,53 @@ class sbml_info(object):
                 raise ValueError("Can't find biomass exchange reaction '%s' in "
                                  "selected SBML template: %s" % self.biomass_reaction_id(), e)
                 # TODO if this fails should it be an error?
-            self.biomass_exchange = ExchangeInfo(biomass_rxn, is_biomass_rxn=True)
+            self.biomass_exchange = ExchangeInfo(biomass_rxn, self, is_biomass_rxn=True)
             # self._resolved_exchanges[biomass_metab.id] = self.biomass_exchange
+
+    def _build_info_objects(self, model):
+        for species in model.getListOfSpecies():
+            self._sbml_species.append(SpeciesInfo(species, self))
+        for reaction in model.getListOfReactions():
+            self._sbml_reactions.append(ReactionInfo(reaction, self))
+        for reaction in model.getListOfReactions():
+            self._sbml_exchanges.append(ExchangeInfo(reaction, self))
+
+    def _process_metabolite(self, met, exchanges_by_metab_id, species_by_metab_id):
+        mname = met.short_name  # first we grab the unaltered name
+        # Then we create a version using the standard symbol substitutions.
+        mname_transcoded = generate_transcoded_metabolite_name(mname)
+        # The first thing we check for is the presence of a pre-defined pairing,
+        # of this metabolite type to an ID string.
+        ex_resolved = exchanges_by_metab_id.get(met.id, None)
+        # If that doesn't resolve, we then begin a trial-and-error process of
+        # matching, running through a list of potential names in search of
+        # something that resolves.
+        if (ex_resolved is None):
+            reactant_names_to_try = [
+                mname,
+                mname_transcoded,
+                "M_" + mname + "_e",
+                "M_" + mname_transcoded + "_e",
+                "M_" + mname_transcoded + "_e_",
+            ]
+            for name in reactant_names_to_try:
+                ex_resolved = self._reactant_to_exchange.get(name, [None])[0]
+                if (ex_resolved is not None):
+                    break
+        if (ex_resolved is not None):
+            self._resolved_exchanges[met.id] = ex_resolved
+            self._exchanges_to_metabolites[ex_resolved.ex_id] = met
+        # Do the same run for species ID matchups.
+        sp_resolved = species_by_metab_id.get(met.id, None)
+        if (sp_resolved is None):
+            names = generate_species_name_guesses_from_metabolite_name(mname)
+            for name in names:
+                sp_resolved = self._species_by_id.get(name, None)
+                if (sp_resolved is not None):
+                    break
+        if (sp_resolved is not None):
+            self._resolved_species[met.id] = sp_resolved
+            self._species_to_metabolites[sp_resolved.id] = met
 
     def _unique_resolved_exchanges(self):
         return set([ex.ex_id for ex in self._resolved_exchanges.values() if ex is not None])
@@ -463,7 +471,7 @@ class sbml_info(object):
         if (exchange_id is not None):
             if (exchange_id == ""):
                 logger.debug("DELETING EXCHANGE RECORD")
-                MetaboliteExchange(
+                MetaboliteExchange.objects.filter(
                     sbml_template_id=self._chosen_template.id,
                     measurement_type_id=metabolite.id
                 ).delete()
@@ -480,7 +488,7 @@ class sbml_info(object):
             return exchange_id
         try:
             logger.debug("DELETING EXCHANGE RECORD 2")
-            MetaboliteExchange.objects.get(
+            MetaboliteExchange.objects.filter(
                 sbml_template_id=self._chosen_template.id,
                 measurement_type_id=metabolite.id
             ).delete()
@@ -508,9 +516,9 @@ class sbml_info(object):
         if (mid == self._biomass_metab.id):
             exchange = self.biomass_exchange
         else:
-            if mid not in self._resolved_exchanges:
-                raise ValueError("no matching exchange reaction")
-            exchange = self._resolved_exchanges[mid]
+            exchange = self._resolved_exchanges.get(mid, None)
+        if exchange is None:
+            raise ValueError("No exchange reaction matching metabolite %s" % mid)
         return exchange.assign_flux_value(values)
 
     def _assign_transcription_value_to_gene(self, gene_name, values):
@@ -701,8 +709,8 @@ class sbml_info(object):
                 continue
             result.append({
                 'name': metabolite.short_name,
-                'species': self._resolved_species[metabolite.id],
-                'exchange': self._resolved_exchanges[metabolite.id],
+                'species': self._resolved_species.get(metabolite.id, None),
+                'exchange': self._resolved_exchanges.get(metabolite.id, None),
             })
         return result
 
@@ -1866,7 +1874,7 @@ class processed_measurement(object):
         # so we don't pollute that set with values created via interpolation.
         # Also note that we will have to remake this array after attempting
         # interpolation.
-        valid_mdata = [md for md in measurement_data if md.y is not None]
+        valid_mdata = [md for md in measurement_data if md.y]
         valid_mdata.sort(key=lambda a: a.x)
         mdata_tuples = [(md.fx, md.fy) for md in valid_mdata]
         valid_mtimes = set([md.fx for md in valid_mdata])
@@ -2322,16 +2330,15 @@ class line_sbml_export (line_assay_data, sbml_info):
         carbon_data = self._carbon_data_by_metabolite.get(t, {})
         if (len(carbon_data) > 0):
             carbon_notes = {"LCMS": []}
-            for mid, value_str in carbon_data.iteritems():
-                values = value_str.split("/")
+            for mid, values in carbon_data.iteritems():
                 combined = []
                 for c in range(13):
                     if (c < len(values)):
-                        combined.append(values[c] + "(0.02)\t")
+                        combined.append("%s(0.02)\t" % values[c])
                     else:
                         combined.append("-\t")
                 mname = self._metabolites_by_id[mid].short_name
-                carbon_notes["LCMS"].append(mname + "\tM-0\t" + "".join(combined))
+                carbon_notes["LCMS"].append("%s\tM-0\t%s" % (mname, "".join(combined), ))
             n_total, n_added = self._add_notes(carbon_notes)
         # TODO some kind of feedback?
         import libsbml

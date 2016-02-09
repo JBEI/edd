@@ -296,26 +296,8 @@
 },
 {
   "fields": {
-    "type_name": "Acetate",
-    "type_group": "m",
-    "short_name": "ac"
-  },
-  "model": "main.measurementtype",
-  "pk": 1
-},
-{
-  "fields": {
-    "type_name": "D-Glucose",
-    "type_group": "m",
-    "short_name": "glc-D"
-  },
-  "model": "main.measurementtype",
-  "pk": 2
-},
-{
-  "fields": {
     "type_name": "Optical Density",
-    "type_group": "m",
+    "type_group": "_",
     "short_name": "OD"
   },
   "model": "main.measurementtype",
@@ -324,7 +306,7 @@
 {
   "fields": {
     "type_name": "CO2 production",
-    "type_group": "m",
+    "type_group": "_",
     "short_name": "CO2p"
   },
   "model": "main.measurementtype",
@@ -333,106 +315,11 @@
 {
   "fields": {
     "type_name": "O2 consumption",
-    "type_group": "m",
+    "type_group": "_",
     "short_name": "O2c"
   },
   "model": "main.measurementtype",
   "pk": 5
-},
-{
-  "fields": {
-    "type_name": "CO2",
-    "type_group": "m",
-    "short_name": "co2"
-  },
-  "model": "main.measurementtype",
-  "pk": 6
-},
-{
-  "fields": {
-    "type_name": "O2",
-    "type_group": "m",
-    "short_name": "o2"
-  },
-  "model": "main.measurementtype",
-  "pk": 7
-},
-{
-  "fields": {
-    "molecular_formula": "C2H3O2",
-    "keywords": [],
-    "charge": -1,
-    "carbon_count": 2,
-    "molar_mass": "60.05000"
-  },
-  "model": "main.metabolite",
-  "pk": 1
-},
-{
-  "fields": {
-    "molecular_formula": "C6H12O6",
-    "keywords": [],
-    "charge": 0,
-    "carbon_count": 6,
-    "molar_mass": "180.16000"
-  },
-  "model": "main.metabolite",
-  "pk": 2
-},
-{
-  "fields": {
-    "molecular_formula": "",
-    "keywords": [],
-    "charge": 0,
-    "carbon_count": 0,
-    "molar_mass": "0.00000"
-  },
-  "model": "main.metabolite",
-  "pk": 3
-},
-{
-  "fields": {
-    "molecular_formula": "CO2",
-    "keywords": [],
-    "charge": 0,
-    "carbon_count": 1,
-    "molar_mass": "44.01000"
-  },
-  "model": "main.metabolite",
-  "pk": 4
-},
-{
-  "fields": {
-    "molecular_formula": "O2",
-    "keywords": [],
-    "charge": 0,
-    "carbon_count": 0,
-    "molar_mass": "32.00000"
-  },
-  "model": "main.metabolite",
-  "pk": 5
-},
-{
-  "fields": {
-    "molecular_formula": "CO2",
-    "keywords": [],
-    "charge": 0,
-    "carbon_count": 1,
-    "molar_mass": "44.01000"
-  },
-  "model": "main.metabolite",
-  "pk": 6
-},
-{
-  "fields": {
-    "molecular_formula": "O2",
-    "keywords": [],
-    "charge": 0,
-    "carbon_count": 0,
-    "molar_mass": "32.00000"
-  },
-  "model": "main.metabolite",
-  "pk": 7
 },
 {
   "fields": {
@@ -1687,7 +1574,7 @@
     "assay": 14,
     "compartment": "2",
     "measurement_format": 0,
-    "measurement_type": 1,
+    "measurement_type": 647,
     "experimenter": 1,
     "y_units": 2,
     "active": true,
@@ -1702,7 +1589,7 @@
     "assay": 14,
     "compartment": "2",
     "measurement_format": 0,
-    "measurement_type": 2,
+    "measurement_type": 1001,
     "experimenter": 1,
     "y_units": 2,
     "active": true,
@@ -1717,7 +1604,7 @@
     "assay": 15,
     "compartment": "2",
     "measurement_format": 0,
-    "measurement_type": 1,
+    "measurement_type": 647,
     "experimenter": 1,
     "y_units": 2,
     "active": true,
@@ -1732,7 +1619,7 @@
     "assay": 15,
     "compartment": "2",
     "measurement_format": 0,
-    "measurement_type": 2,
+    "measurement_type": 1001,
     "experimenter": 1,
     "y_units": 2,
     "active": true,
@@ -1762,7 +1649,7 @@
     "assay": 17,
     "compartment": "2",
     "measurement_format": 0,
-    "measurement_type": 1,
+    "measurement_type": 647,
     "experimenter": 1,
     "y_units": 4,
     "active": true,
@@ -1777,7 +1664,7 @@
     "assay": 17,
     "compartment": "2",
     "measurement_format": 0,
-    "measurement_type": 2,
+    "measurement_type": 1001,
     "experimenter": 1,
     "y_units": 4,
     "active": true,
@@ -1822,7 +1709,7 @@
     "assay": 19,
     "compartment": "1",
     "measurement_format": 0,
-    "measurement_type": 1,
+    "measurement_type": 647,
     "experimenter": 1,
     "y_units": 2,
     "active": true,

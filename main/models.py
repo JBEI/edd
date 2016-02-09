@@ -5,6 +5,7 @@ import arrow
 import json
 import logging
 import os.path
+import re
 import warnings
 
 from builtins import str
@@ -138,6 +139,27 @@ class Update(models.Model, EDDSerialize):
         """ Convert the datetime (mod_time) to a human-readable string, including conversion from
             UTC to local time zone. """
         return arrow.get(self.mod_time).to('local').strftime(format_string)
+
+
+@python_2_unicode_compatible
+class Datasource(models.Model):
+    """ Defines an outside source for bits of data in the system. Initially developed to track
+        where basic metabolite information originated (e.g. BIGG, KEGG, manual input). """
+    name = models.CharField(max_length=255)
+    url = models.CharField(max_length=255, blank=True, default='')
+    download_date = models.DateField(auto_now=True)
+    created = models.ForeignKey(Update, related_name='datasource', editable=False)
+
+    def __str__(self):
+        return '%s <%s>' % (self.name, self.url)
+
+    def save(self, *args, **kwargs):
+        if self.created_id is None:
+            update = kwargs.get('update', None)
+            if update is None:
+                update = Update.load_update()
+            self.created = update
+        super(Datasource, self).save(*args, **kwargs)
 
 
 @python_2_unicode_compatible
@@ -1193,8 +1215,7 @@ class MetaboliteKeyword(models.Model):
     @classmethod
     def all_with_metabolite_ids(cls):
         keywords = []
-        kwd_objects = cls.objects.all().order_by("name").prefetch_related(
-            "metabolite_set")
+        kwd_objects = cls.objects.order_by("name").prefetch_related("metabolite_set")
         for keyword in kwd_objects:
             ids_dicts = keyword.metabolite_set.values("id")
             keywords.append({
@@ -1220,6 +1241,9 @@ class Metabolite(MeasurementType):
     molecular_formula = models.TextField()
     keywords = models.ManyToManyField(
         MetaboliteKeyword, db_table="metabolites_to_keywords")
+    source = models.ForeignKey(Datasource, blank=True, null=True)
+
+    carbon_pattern = re.compile(r'C(\d*)')
 
     def __str__(self):
         return self.type_name
@@ -1243,6 +1267,13 @@ class Metabolite(MeasurementType):
             "chgn": self.charge,  # TODO find anywhere in typescript using this and fix it
             "kstr": ",".join(['%s' % k for k in self.keywords.all()]),
         })
+
+    def save(self, *args, **kwargs):
+        if self.carbon_count is None:
+            self.carbon_count = self.extract_carbon_count()
+        # force METABOLITE group
+        self.type_group = MeasurementGroup.METABOLITE
+        super(Metabolite, self).save(*args, **kwargs)
 
     @property
     def keywords_str(self):
@@ -1269,6 +1300,13 @@ class Metabolite(MeasurementType):
             if (keyword not in new_keywords):
                 self.keywords.remove(current_kwds[keyword])
 
+    def extract_carbon_count(self):
+        count = 0
+        for match in self.carbon_pattern.finditer(self.molecular_formula):
+            c = match.group(1)
+            count = count + (int(c) if c else 1)
+        return count
+
 # override the default type_group for metabolites
 Metabolite._meta.get_field('type_group').default = MeasurementGroup.METABOLITE
 
@@ -1292,6 +1330,11 @@ class GeneIdentifier(MeasurementType):
     def __str__(self):
         return self.type_name
 
+    def save(self, *args, **kwargs):
+        # force GENEID group
+        self.type_group = MeasurementGroup.GENEID
+        super(GeneIdentifier, self).save(*args, **kwargs)
+
 GeneIdentifier._meta.get_field('type_group').default = MeasurementGroup.GENEID
 
 
@@ -1303,6 +1346,11 @@ class ProteinIdentifier(MeasurementType):
 
     def __str__(self):
         return self.type_name
+
+    def save(self, *args, **kwargs):
+        # force PROTEINID group
+        self.type_group = MeasurementGroup.PROTEINID
+        super(ProteinIdentifier, self).save(*args, **kwargs)
 
 ProteinIdentifier._meta.get_field('type_group').default = MeasurementGroup.PROTEINID
 
@@ -1321,6 +1369,11 @@ class Phosphor(MeasurementType):
 
     def __str__(self):
         return self.type_name
+
+    def save(self, *args, **kwargs):
+        # force PHOSPHOR group
+        self.type_group = MeasurementGroup.PHOSPHOR
+        super(Phosphor, self).save(*args, **kwargs)
 
 Phosphor._meta.get_field('type_group').default = MeasurementGroup.PHOSPHOR
 
@@ -1550,11 +1603,11 @@ class MeasurementValue(models.Model):
 
     @property
     def fx(self):
-        return float(self.x[0])
+        return float(self.x[0]) if self.x else None
 
     @property
     def fy(self):
-        return float(self.y[0])
+        return float(self.y[0]) if self.y else None
 
     def to_json(self):
         return {
@@ -1600,8 +1653,7 @@ class SBMLTemplate(EDDObject):
         if read_sbml.getNumErrors() > 0:
             log = read_sbml.getErrorLog()
             for i in range(read_sbml.getNumErrors()):
-                # TODO setup logging
-                print("--- SBML ERROR --- " + log.getError(i).getMessage())
+                logger.error("--- SBML ERROR --- %s" % log.getError(i).getMessage())
             raise Exception("Could not load SBML")
         model = read_sbml.getModel()
         rlist = model.getListOfReactions()

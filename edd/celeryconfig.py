@@ -1,3 +1,4 @@
+# coding: utf-8
 """
 Defines configuration parameters for EDD's Celery distributed task queue and some parameters for the
 Celery Flower add-on web interface for Celery monitoring and management.
@@ -8,6 +9,8 @@ http://flower.readthedocs.org/en/latest/config.html#conf for the Celery Flower a
 flowerconfig.py where most of the flower configuration data are.
 """
 
+import json
+import os
 import socket
 
 from datetime import timedelta
@@ -49,16 +52,28 @@ CELERY_WARN_AFTER_RETRY_NUM_FOR_ICE = 3
 # ~= 2 weeks total wait...plenty of overhead for outages without intervention/data loss
 CELERY_MAX_ICE_RETRIES = 19
 
+####################################################################################################
+# Load urls and authentication credentials from server.cfg (TODO: some other stuff in there should
+# be moved here)
+####################################################################################################
+BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+try:
+    with open(os.path.join(BASE_DIR, 'server.cfg')) as server_cfg:
+        config = json.load(server_cfg)
+except IOError:
+    print("Required configuration file server.cfg is missing from %s"
+          "Copy from server.cfg-example and fill in appropriate values" % BASE_DIR)
+    raise
 
 ####################################################################################################
 # General settings for celery
 ####################################################################################################
 # Broker Settings
-RABBITMQ_HOST = settings.config['rabbitmq'].get('hostname')
-EDD_RABBITMQ_USERNAME = settings.config['rabbitmq'].get('edd_user')
-EDD_RABBITMQ_PASSWORD = settings.config['rabbitmq'].get('edd_pass')
-RABBITMQ_PORT = settings.config['rabbitmq'].get('port')
-EDD_VHOST = settings.config['rabbitmq'].get('edd_vhost')
+RABBITMQ_HOST = config['rabbitmq'].get('hostname')
+EDD_RABBITMQ_USERNAME = config['rabbitmq'].get('edd_user')
+EDD_RABBITMQ_PASSWORD = config['rabbitmq'].get('edd_pass')
+RABBITMQ_PORT = config['rabbitmq'].get('port')
+EDD_VHOST = config['rabbitmq'].get('edd_vhost')
 BROKER_URL = 'amqp://%(user)s:%(pass)s@%(host)s:%(port)s/%(vhost)s' % {
              'user': EDD_RABBITMQ_USERNAME,
              'pass': EDD_RABBITMQ_PASSWORD,
@@ -134,10 +149,10 @@ CELERY_IMPORTS = ('edd.remote_tasks',)
 ####################################################################################################
 # Configure database backend to store task state and results
 ####################################################################################################
-DB_USER = settings.config['db'].get('user', 'edduser')
-DB_PASSWORD = settings.config['db'].get('pass', '')
-DB_HOST = settings.config['db'].get('host', 'localhost')
-DB_NAME = settings.config['db'].get('database', 'localhost')
+DB_USER = config['db'].get('user', 'edduser')
+DB_PASSWORD = config['db'].get('pass', '')
+DB_HOST = config['db'].get('host', 'localhost')
+DB_NAME = config['db'].get('database', 'localhost')
 CELERY_RESULT_BACKEND = ('db+postgresql://%(db_user)s:%(db_password)s@%(db_host)s/%(db_name)s'
                          % {
                              'db_user': DB_USER,
@@ -167,7 +182,7 @@ CELERY_REDIRECT_STDOUTS_LEVEL = 'WARN'  # override the default setting of 'WARN'
 
 # convert dictionary required by JSON-formatted server.cfg to list of (name, email) tuples required
 # by Celery, also converting from the JSON Unicode to ASCII to avoid problems with sending email.
-admins_dict_temp = settings.config['site'].get('admins', [])
+admins_dict_temp = config['site'].get('admins', [])
 recipients_tuple_list = []
 force_ascii = True
 for raw_name in admins_dict_temp:
