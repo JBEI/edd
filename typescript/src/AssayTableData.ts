@@ -234,9 +234,23 @@ module EDDTableImport {
     // back to the browser and placed in the text box.
     export class RawInputStep {
 
-        private data: any[];
-        rowMarkers: any[];
+        // This is where we organize raw data pasted into the text box by the user,
+        // or placed there as a result of server-side processing - like taking apart a dropped Excel file.
+
+        private gridFromTextField: any[];
+        gridRowMarkers: any[];
+
+        // This is where we handle dropped files, and the semi-processed record sets that the server returns,
+        // from interpreting an XML Biolector file for example.
+
         activeDraggedFile: any;
+        processedSetsFromFile: any[];
+        processedSetsAvailable: boolean;
+        fileUploadProgressBar: Utl.ProgressBar;
+
+        // Additional options for interpreting text box data, exposed in the UI for the user to tweak.
+        // Sometimes set automatically by certain import modes, like the "mdv" mode.
+
         transpose: boolean;
         // If the user deliberately chose to transpose or not transpose, disable the attempt
         // to auto-determine transposition.
@@ -246,8 +260,8 @@ module EDDTableImport {
         ignoreDataGaps: boolean;
         userClickedOnIgnoreDataGaps: boolean;
         separatorType: string;
+
         inputRefreshTimerID: any;
-        fileUploadProgressBar: Utl.ProgressBar;
 
         selectMajorKindStep: SelectMajorKindStep;
         nextStepCallback: any;
@@ -257,8 +271,10 @@ module EDDTableImport {
 
             this.selectMajorKindStep = selectMajorKindStep;
 
-            this.data = [];
-            this.rowMarkers = [];
+            this.gridFromTextField = [];
+            this.processedSetsFromFile = [];
+            this.processedSetsAvailable = false;
+            this.gridRowMarkers = [];
             this.transpose = false;
             this.userClickedOnTranspose = false;
             this.ignoreDataGaps = false;
@@ -302,22 +318,41 @@ module EDDTableImport {
         // which may call for a reconfiguration of the controls in this step.
         previousStepChanged(): void {
             var mode = this.selectMajorKindStep.interpretationMode;
+
+            // By default, our drop zone wants excel or csv files, so we clear additional class:
             $('#step2textarea').removeClass('xml');
+
+            if (mode === 'biolector') {
+                // Biolector data is expected in XML format.
+                $('#step2textarea').addClass('xml');
+                // It is also expected to be dropped from a file.
+                // So either we're already in file mode and there are already parsed sets available,
+                // Or we are in text entry mode waiting for a file drop.
+                // Either way there's no need to call reprocessRawData(), so we just push on to the next step.
+                this.nextStepCallback();
+                return;
+            }
             if (mode === 'mdv') {
-                // We never ignore gaps, or transpose, for MDV documents
+                // When JBEI MDV format documents are pasted in, it's always from Excel, so they're always tab-separated.
+                this.setSeparatorType('tab');
+                // We also never ignore gaps, or transpose, for MDV documents.
                 this.setIgnoreGaps(false);
                 this.setTranspose(false);
-                // JBEI MDV format documents are always pasted in from Excel, so they're always tab-separated
-                this.setSeparatorType('tab');
-            } else if (mode === 'biolector') {
-                // Biolector data is expected in XML format
-                $('#step2textarea').addClass('xml');
-                // Biolector data is always tab-separated, always transposed, and always ignores gaps
-                this.setSeparatorType('tab');
-                this.setTranspose(true);
-                this.setIgnoreGaps(true);
+                // Proceed through to the dropzone check.
             }
-            this.queueReprocessRawData();
+            if (mode === 'std' || mode === 'tr' || mode === 'pr' || mode === 'mdv') {
+                // If an excel file was dropped in, its content was pulled out and dropped into the text box.
+                // The only reason we would want to still show the file info area is if we are currently in the middle
+                // of processing a file and haven't yet received its worksheets from the server.
+                // We can determine that by checking the status of any existing FileDropZoneFileContainer.
+                // If it's stale, we clear it so the user can drop in another file.
+                if (this.activeDraggedFile) {
+                    if (this.activeDraggedFile.allWorkFinished) {
+                        this.clearDropZone();
+                    }
+                }
+                this.queueReprocessRawData();
+            }
         }
 
 
@@ -342,8 +377,8 @@ module EDDTableImport {
             this.setTranspose();
             this.setSeparatorType();
 
-            this.data = [];
-            this.rowMarkers = [];
+            this.gridFromTextField = [];
+            this.gridRowMarkers = [];
 
             delimiter = '\t';
             if (this.separatorType === 'csv') {
@@ -379,20 +414,20 @@ module EDDTableImport {
                 // Collect the data based on the settings
                 if (this.transpose) {
                     // first row becomes Y-markers as-is
-                    this.rowMarkers = input.input.shift() || [];
-                    this.data = (input.input[0] || []).map((_, i: number): string[] => {
+                    this.gridRowMarkers = input.input.shift() || [];
+                    this.gridFromTextField = (input.input[0] || []).map((_, i: number): string[] => {
                         return input.input.map((row: string[]): string => row[i] || '');
                     });
                 } else {
-                    this.rowMarkers = [];
-                    this.data = (input.input || []).map((row: string[]): string[] => {
-                        this.rowMarkers.push(row.shift());
+                    this.gridRowMarkers = [];
+                    this.gridFromTextField = (input.input || []).map((row: string[]): string[] => {
+                        this.gridRowMarkers.push(row.shift());
                         return row;
                     });
                 }
 
                 // Give labels to any header positions that got 'null' for a value.
-                this.rowMarkers = this.rowMarkers.map((value: string) => value || '?');
+                this.gridRowMarkers = this.gridRowMarkers.map((value: string) => value || '?');
             }
 
             this.nextStepCallback();
@@ -449,9 +484,15 @@ module EDDTableImport {
         }
 
 
+        // This is called upon receiving a response from a file upload operation,
+        // and unlike fileRead() above, is passed a processed result from the server as a second argument,
+        // rather than the raw contents of the file.
         fileReturnedFromServer(fileContainer, result): void {
+            // Whether we clear the file info area entirely, or just update its status,
+            // we know we no longer need the 'sending' status.
             $('#fileDropInfoSending').addClass('off');
-            if (result.file_type == "xlsx") {
+            if (fileContainer.fileType == "excel") {
+                this.clearDropZone();
                 var ws = result.file_data["worksheets"][0];
                 var table = ws[0];
                 var csv = [];
@@ -463,17 +504,20 @@ module EDDTableImport {
                 }
                 this.setSeparatorType('csv');
                 $("#step2textarea").val(csv.join("\n"));
-            } else if (result.file_type == "tab") {
-                // If the type is deliberately set to tab, respect it.
-                // otherwise, attempt to guess the setting.
-                this.setSeparatorType('tab');
-                $("#step2textarea").val(result.file_data);
-            } else {
-                $("#step2textarea").val(result.file_data);
-                console.log(result.file_data);
-                this.inferSeparatorType();
+                this.reprocessRawData();
+                return;
             }
-            this.reprocessRawData();
+            if (fileContainer.fileType == "xml") {
+                var d = result.file_data;
+                this.processedSetsFromFile = d;
+                var t = 0;
+                d.forEach((set:any): void => { t += set.data.length; });
+                $('<p>').text('Found ' + d.length + ' measurements with ' + t + ' total data points.').appendTo($("#fileDropInfoLog"));
+                this.processedSetsAvailable = true;
+                // Call this directly, skipping over reprocessRawData() since we don't need it.
+                this.nextStepCallback();
+                return;
+            }
         }
 
 
@@ -508,6 +552,9 @@ module EDDTableImport {
 
         // Reset and hide the info box that appears when a file is dropped,
         // and reveal the text entry area.
+        // This also clears the "processedSetsAvailable" flag because it assumes that
+        // the text entry area is now the preferred data source for subsequent steps.
+
         clearDropZone(): void {
             $('#step2textarea').removeClass('off');
             $('#fileDropInfoArea').addClass('off');
@@ -520,6 +567,7 @@ module EDDTableImport {
                 this.activeDraggedFile.stopProcessing = true;
             }
             this.activeDraggedFile = null;
+            this.processedSetsAvailable = false;
         }
 
 
@@ -538,6 +586,7 @@ module EDDTableImport {
             $('#fileDropInfoArea').removeClass('off');
             $('#fileDropInfoSending').removeClass('off');
             $('#fileDropInfoName').text(fileContainer.file.name)
+            $('#fileUploadMessage').text('Sending ' + Utl.JS.sizeToString(fileContainer.file.size) + ' To Server...');
 //            $('#fileDropInfoLog').empty();
             this.activeDraggedFile = fileContainer;
         }
@@ -604,7 +653,7 @@ module EDDTableImport {
             // Count the number of blank values in between non-blank data
             // If more than three times as many as at the end, default to ignore gaps
             var intra: number = 0, extra: number = 0;
-            this.data.forEach((row: string[]): void => {
+            this.gridFromTextField.forEach((row: string[]): void => {
                 var notNull: boolean = false;
                 // copy and reverse to loop from the end
                 row.slice(0).reverse().forEach((value: string): void => {
@@ -683,15 +732,15 @@ module EDDTableImport {
                 });
             });
             // Start the set of row markers with a generic label
-            this.rowMarkers = ['Assay'];
+            this.gridRowMarkers = ['Assay'];
             // The first row is our label collection
-            this.data[0] = colLabels.slice(0);
+            this.gridFromTextField[0] = colLabels.slice(0);
             // push the rest of the rows generated from ordered list of compounds
             Array.prototype.push.apply(
-                this.data,
+                this.gridFromTextField,
                 orderedComp.map((name: string): string[] => {
                     var compound: any, row: string[], colLookup: any;
-                    this.rowMarkers.push(name);
+                    this.gridRowMarkers.push(name);
                     compound = compounds[name];
                     row = [];
                     colLookup = compound.processedAssayCols;
@@ -787,7 +836,7 @@ module EDDTableImport {
 
 
         getGrid(): any[] {
-            return this.data;
+            return this.gridFromTextField;
         }
     }
 
@@ -907,11 +956,11 @@ module EDDTableImport {
             graph.toggleClass('off', !this.graphEnabled);
 
             var grid = this.rawInputStep.getGrid();
-            var rowMarkers = this.rawInputStep.rowMarkers;
+            var gridRowMarkers = this.rawInputStep.gridRowMarkers;
             var ignoreDataGaps = this.rawInputStep.ignoreDataGaps;
 
             if (mode === 'std' || mode === 'tr' || mode === 'pr' || mode === 'biolector') {
-                rowMarkers.forEach((value: string, i: number): void => {
+                gridRowMarkers.forEach((value: string, i: number): void => {
                     var type: any;
                     if (!this.pulldownUserChangedFlags[i]) {
                         type = this.figureOutThisRowsDataType(mode, value, grid[i] || []);
@@ -924,7 +973,7 @@ module EDDTableImport {
             // but only fill the areas that do not already exist.
             this.inferActiveFlags(grid);
             // Construct table cell objects for the page, based on our extracted data
-            this.constructDataTable(mode, grid, rowMarkers);
+            this.constructDataTable(mode, grid, gridRowMarkers);
             // Interpret the data in Step 3,
             // which involves skipping disabled rows or columns,
             // optionally ignoring blank values,
@@ -1011,7 +1060,7 @@ module EDDTableImport {
         }
 
 
-        constructDataTable(mode:string, grid:any, rowMarkers:any): void {
+        constructDataTable(mode:string, grid:any, gridRowMarkers:any): void {
             var controlCols: string[], pulldownOptions: any[],
                 table: HTMLTableElement, colgroup: JQuery, body: HTMLTableElement,
                 row: HTMLTableRowElement;
@@ -1134,7 +1183,7 @@ module EDDTableImport {
                 this.pulldownObjects.push(cell[0]);
                 // label cell
                 cell = $(row.insertCell()).attr({ 'id': 'rowMCell' + i, 'x': 0, 'y': i + 1 });
-                $('<div>').text(rowMarkers[i]).appendTo(cell);
+                $('<div>').text(gridRowMarkers[i]).appendTo(cell);
                 this.rowLabelCells.push(cell[0]);
                 // the table data itself
                 this.dataCells[i] = [];
@@ -1374,7 +1423,7 @@ module EDDTableImport {
         interpretDataTable():void {
 
             var grid = this.rawInputStep.getGrid();
-            var rowMarkers = this.rawInputStep.rowMarkers;
+            var gridRowMarkers = this.rawInputStep.gridRowMarkers;
             var ignoreDataGaps = this.rawInputStep.ignoreDataGaps;
 
             // We'll be accumulating these for disambiguation.
@@ -1411,7 +1460,7 @@ module EDDTableImport {
                         'label': 'Column ' + c,
                         'name': 'Column ' + c,
                         'units': 'units',
-                        // For submission to the database
+                        // For submission to the database. TODO: Update
                         'parsingIndex': c,
                         'assay': null,
                         'assayName': null,
@@ -1430,7 +1479,7 @@ module EDDTableImport {
                             return;
                         }
                         pulldown = this.pulldownSettings[r];
-                        label = rowMarkers[r] || '';
+                        label = gridRowMarkers[r] || '';
                         value = row[c] || '';
                         if (!pulldown) {
                             return;
@@ -1524,7 +1573,7 @@ module EDDTableImport {
                                 return;
                             }
                             pulldown = this.pulldownSettings[r];
-                            label = rowMarkers[r] || '';
+                            label = gridRowMarkers[r] || '';
                             value = row[c] || '';
                             if (!pulldown || !(pulldown === 5 || pulldown === 12) || !label || !value) {
                                 return;
@@ -1534,7 +1583,7 @@ module EDDTableImport {
                                 'label': 'Column ' + c + ' row ' + r,
                                 'name': 'Column ' + c + ' row ' + r,
                                 'units': 'units',
-                                // For submission to the database
+                                // For submission to the database TODO: update
                                 'parsingIndex': this.parsedSets.length,
                                 'assay': seenAssayLineNames[cellValue],
                                 'assayName': cellValue,

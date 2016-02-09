@@ -1200,20 +1200,25 @@ def delete_file(request, file_id):
 
 
 # /utilities/parsefile
+# To reach this function, files are sent from the client by the Utl.FileDropZone class (in Utl.ts).
 def utilities_parse_table(request):
     """ Attempt to process posted data as either a TSV or CSV file or Excel spreadsheet and
         extract a table of data automatically. """
-    # These are embedded by the filedrop.js class
-    file_name = request.META.get('HTTP_X_FILE_NAME')
-    file_size = request.META.get('HTTP_X_FILE_SIZE')
-    file_type = request.META.get('HTTP_X_FILE_TYPE')
-    file_date = request.META.get('HTTP_X_FILE_DATE')
+    # These are embedded by the filedrop.js class.  Here for reference.
+    #file_name = request.META.get('HTTP_X_FILE_NAME')
+    #file_size = request.META.get('HTTP_X_FILE_SIZE')
+    #file_type = request.META.get('HTTP_X_FILE_TYPE')
+    #file_date = request.META.get('HTTP_X_FILE_DATE')
 
-    # On OS X, we can use the file_type value.  For example, a modern Excel document is reported as
+    # In requests from OS X clients, we can use the file_type value.  For example, a modern Excel document is reported as
     # "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", and it's consistent across Safari, Firefox, and Chrome.
-    # On Windows XP, file_type is always blank, so we need to fall back to file name extensions like ".xlsx" and ".xls".
+    # However, on Windows XP, file_type is always blank, so we need to fall back to file name extensions like ".xlsx" and ".xls".
 
-    if file_type == "text/xml":
+    # The Utl.JS.guessFileType() function in Utl.ts applies logic like this to guess the type, and that guess is
+    # sent along in a custom header:
+    edd_file_type = request.META.get('HTTP_X_EDD_FILE_TYPE')
+
+    if edd_file_type == "xml":
         try:
             from edd_utils.parsers.biolector import getBiolectorXMLRecordsAsJSON, XMLImportError
             # We pass the request directly along, so it can be read as a stream by the parser
@@ -1226,7 +1231,7 @@ def utilities_parse_table(request):
             return JsonResponse({
                 "python_error": "jbei_tools module required to handle XML table input."
             })
-    if 'officedocument.spreadsheet' in file_type:
+    if edd_file_type == "excel":
         try:
             from edd_utils.parsers import excel
             data = request.read()

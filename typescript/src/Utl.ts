@@ -250,24 +250,54 @@ module Utl {
 		}
 
 
+		// Convert a size provided in bytes to a nicely formatted string
+		static sizeToString(size:number, allowBytes?:boolean):string {
+
+			var tb = size / (1024 * 1024 * 1024 * 1024);
+			if ((tb > 1) || (tb < -1)) {
+				return Utl.JS.nicelyPrintFloat(tb, 2) + ' Tb';
+			}
+			var gigs = size / (1024 * 1024 * 1024);
+			if ((gigs > 1) || (gigs < -1)) {
+				return Utl.JS.nicelyPrintFloat(gigs, 2) + ' Gb';
+			}
+			var megs = size / (1024 * 1024);
+			if ((megs > 1) || (megs < -1)) {
+				return Utl.JS.nicelyPrintFloat(megs, 2) + ' Mb';
+			}
+			var k = size / 1024;
+			if (((k > 1) || (k < -1)) || !allowBytes) {
+				return Utl.JS.nicelyPrintFloat(k, 2) + ' Kb';
+			}
+			return size + ' b';
+		}
+
+
+		// -1 : Print as a full float
+		//  0 : Print as an int, ALWAYS rounded down.
+		// +n : Print with n decimal places, UNLESS the value is an integer
+		static nicelyPrintFloat(v:number, places:number):string {
+			// We do not want to display ANY decimal point if the value is an integer.
+			if (v % 1 === 0) {	// Basic integer test
+				return (v % 1).toString();
+			}
+			if (places > 0) {
+				return v.toFixed(places);
+			} else if (places == 0) {
+				return (v % 1).toString();
+			}
+			return v.toString();
+		}
+
+
 		// Given a file name (n) and a file type string (t), try and guess what kind of file we've got.
 		static guessFileType(n: string, t: string): string {
 			// Going in order from most confident to least confident guesses:
-			if (t.indexOf('officedocument.spreadsheet') >= 0) {
-				return 'excel';
-			}
-			if (t === 'text/csv') {
-				return 'csv';
-			}
-			if (t === 'text/xml') {
-				return 'xml';
-			}
-			if ((n.indexOf('.xlsx', n.length - 5) !== -1) || (n.indexOf('.xls', n.length - 4) !== -1)) {
-				return 'excel';
-			}
-			if (n.indexOf('.xml', n.length - 4) !== -1) {
-				return 'xml';
-			}
+			if (t.indexOf('officedocument.spreadsheet') >= 0) { return 'excel'; }
+			if (t === 'text/csv') { return 'csv'; }
+			if (t === 'text/xml') { return 'xml'; }
+			if ((n.indexOf('.xlsx', n.length - 5) !== -1) || (n.indexOf('.xls', n.length - 4) !== -1)) { return 'excel'; }
+			if (n.indexOf('.xml', n.length - 4) !== -1) { return 'xml'; }
 			// If all else fails, assume it's a csv file.  (So, any extension that's not tried above, or no extension.)
 			return 'csv';
 		}
@@ -612,9 +642,11 @@ module Utl {
 				fileContainer.allWorkFinished = true;
 			});
 
-			// This ensures that the CSRF middleware in Django doesn't reject our HTTP request.
 			f.event('xhrSetup', function(xhr) {
+				// This ensures that the CSRF middleware in Django doesn't reject our HTTP request.
 				xhr.setRequestHeader("X-CSRFToken", t.csrftoken);
+				// We want to pass along our own guess at the file type, since it's based on a more specific set of criteria.
+				xhr.setRequestHeader('X-EDD-File-Type', fileContainer.fileType)
 			});
 
 			f.event('sendXHR', function() {
