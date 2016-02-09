@@ -1215,8 +1215,7 @@ class MetaboliteKeyword(models.Model):
     @classmethod
     def all_with_metabolite_ids(cls):
         keywords = []
-        kwd_objects = cls.objects.all().order_by("name").prefetch_related(
-            "metabolite_set")
+        kwd_objects = cls.objects.order_by("name").prefetch_related("metabolite_set")
         for keyword in kwd_objects:
             ids_dicts = keyword.metabolite_set.values("id")
             keywords.append({
