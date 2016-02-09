@@ -405,7 +405,6 @@ module EDDTableImport {
         // which will be inspected when this function returns.
         fileDropped(fileContainer): void {
             var mode = this.selectMajorKindStep.interpretationMode;
-            console.log(fileContainer);
             // We'll process csv files locally.
             if ((fileContainer.fileType === 'csv') &&
                     (mode === 'std' || mode === 'tr' || mode === 'pr')) {
@@ -450,7 +449,7 @@ module EDDTableImport {
         }
 
 
-        fileReturnedFromServer(result): void {
+        fileReturnedFromServer(fileContainer, result): void {
             $('#fileDropInfoSending').addClass('off');
             if (result.file_type == "xlsx") {
                 var ws = result.file_data["worksheets"][0];
@@ -471,6 +470,7 @@ module EDDTableImport {
                 $("#step2textarea").val(result.file_data);
             } else {
                 $("#step2textarea").val(result.file_data);
+                console.log(result.file_data);
                 this.inferSeparatorType();
             }
             this.reprocessRawData();

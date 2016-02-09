@@ -65,6 +65,7 @@ div.fileDropInfoSending {
 	margin: 3px;
 }
 div.fileDropInfoSending span {
+	font-size:12px;
 	margin-right: 10px;
 }
 

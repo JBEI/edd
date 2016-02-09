@@ -9,6 +9,7 @@ from __future__ import unicode_literals
 
 from optparse import OptionParser
 import sys
+import copy
 import logging
 
 from xml.dom import pulldom
@@ -28,32 +29,36 @@ class RawImportRecord(object):
     A "raw" record for measurement import, suitable for passing to Step 2 of the EDD Data Table Import page.
     Think of it as a crude form of an Assay (only one measurement type allowed, and its value array) with ambiguous strings for names.
     It provides a series of data points, and places for strings meant to be resolved into record identifiers
-    (by Step 4 in the front end for example) such as Line/Assay, Name (of Measurement/Gene/etc), and Metadata names/values.
-    The intention is to eventually make the import page submit the same data structure back to the server,
-    with the resolved values added in - perhaps turning it into a hypothetical "FilledImportRecord" that is a subclass of this class.
-    Then after passing that milestone, we can actually stop passing the redundant values back and forth, and just keep
-    them on the server and fill them in, creating the "FilledImportRecord" objects server-side.
-    At that point we will be in a position to unify ALL multi-step import processes (the ones that involve a disambiguation or
-    verification step) under one roof.
+    (by Step 4 in the front end for example) such as Line/Assay, Measurement (name of General/Metabolite/Gene/etc),
+    and Metadata names/values.
+    The intention is to eventually make the import page submit a complementary data structure back to the server,
+    resolving the ambiguous names to primary keys of real records, and use both structures to finalize the submission.
+    (In some situations - like small tab/csv documents - the parsing is all done client-side, and in that case the client
+    can just submit both structures at the same time.)
+    Once we pass this milestone in implementation, we will be in a position to unify ALL multi-step import processes
+    (the ones that involve a disambiguation or verification step) under one roof, by subclassing RawImportRecord
+    and the (currently hypothetical) complementary ImportDisambiguationRecord to introduce extra processing.
     """
 
-    def __init__(self, kind="std", name="NoName", assayName=None, data=[], metadataName={}):
+    def __init__(self, kind="std", name="NoName", line_name=None, assay_name=None, data=[], metadataName={}):
         self.kind = kind
-        self.assayName = assayName
+        self.assay_name = assay_name
+        self.line_name = line_name
         self.name = name
-        self.metadataName = metadataName
-        self.data = data
+        self.metadataName = copy.deepcopy(metadataName)
+        self.data = copy.deepcopy(data)
 
     def __repr__(self):
         return "<%s RawImportRecord '%s', A:'%s', %s data points>" % (
-            self.kind, self.name, self.assayName, len(self.data))
+            self.kind, self.name, self.assay_name, len(self.data))
 
     def to_json(self, depth=0):
         return {
             "kind": self.kind,
-            "assayName": self.assayName,
-            "name": self.name,
-            "metadataName": self.metadataName,
+            "line_name": self.line_name,
+            "assay_name": self.assay_name,
+            "measurement_name": self.name,
+            "metadata_by_name": self.metadataName,
             "data": self.data,
         }
 
@@ -63,7 +68,7 @@ def getBiolectorXMLRecordsAsJSON(stream_or_string, thin=0):
   records = []
   for item in BiolectorXMLReader(stream_or_string, thin=thin):
     j = item.to_json()
-    # logger.warning('Set (%s)' % (j))
+    #logger.warning('Set (%s)' % (item))
     records.append(j)
   return records
 
@@ -95,64 +100,119 @@ class BiolectorXMLReader(six.Iterator):
     def __next__(self):
         # If we have a built RawImportRecord in the buffer, return it.
         if len(self.rawImportRecordBuffer) > 0:
+          #logger.warning('Popping from buffer with length %s' % (len(self.rawImportRecordBuffer)))
           return self.rawImportRecordBuffer.pop()
-        # If the buffer is empty, add a new chunk of RawImportRecord objects to it.
-        # (They are most easy to create in quantity, since a Fermentation node contains
-        # many sets' worth of measurements, and contains name data that applies to all of them.)
+
+        # If the buffer is empty, we add a new chunk of RawImportRecord objects to it,
+        # by rolling through this ugly finite state machine until we hit the closing of a Fermentation element.
+        # (RawImportRecords are most easy to create in quantity, since a Fermentation node contains
+        # many record' worth of measurements, and contains a Line name and metadata that applies to all of them.)
+
+        # Accumulated at the Fermantation element level
+        line_name = None
+        well = None
+        wellindex = None
+        content = None
+
+        # A template for metadata for each RawImportRecord, embedded en-masse at the close of a Fermantation element
+        metaData = {}
+
+        # Accumulated at the Curve level
+        assay_name = None
+        measurement = None
+        new_import_record_buffer = []
+
+        # Accumulated at the CurvePoint level
+        runtime = None
+        numeric_value = None
+        measurement_point_buffer = []
+
+        # Accumulated everywhere, whenever we encounter a text node in the document
+        temp_string_buffer = []
+        temp_string = ''
+
+        # Note that this code used to be written to leverage the 'expandNode' method.
+        # Well, 'expandNode' has a serious problem with fully populating grandchild nodes, and calling it on
+        # END_ELEMENT instead of START_ELEMENT often causes Python to iterate back on itself and dump core.
+        # Furthermore, one can't rely on a node's children or text elements of children to be populated when
+        # hitting an END_ELEMENT event, so we have to watch for each element individually and keep our own
+        # state to track where it is.
+        #   On top of that, the CHARACTERS event is not guaranteed to handle entire text nodes at once, so
+        # we need to buffer sequential CHARACTERS events until we get some other event, then join and wipe the buffer.
+
+        # It's a lot of pain to work around, but the end result is, we can build a nice compact data structure
+        # without ever keeping more than a tiny fragment of the input file in memory at a time,
+        # so we can handle Biolector xml files in the hundreds-of-megabytes without trouble.
+
         for event, node in self.event_stream:
-            if event == "START_ELEMENT" and node.nodeName == "Fermentation":
-                self.event_stream.expandNode(node)
-                self.rawImportRecordBuffer.extend(self._handle_object(node))
-                if len(self.rawImportRecordBuffer) > 0:
-                  return self.rawImportRecordBuffer.pop()
+          if event == pulldom.CHARACTERS:
+            temp_string_buffer.append(node.nodeValue)
+            continue
+          temp_string = ''.join(temp_string_buffer)
+          temp_string_buffer = []
+
+          if event == pulldom.END_ELEMENT and node.nodeName == "Description":
+            line_name = temp_string
+
+          # Accumulating the metadata structure
+          if event == pulldom.END_ELEMENT and node.nodeName == "Well":
+            well = temp_string
+            if well is not None and well != "":
+              metaData["well"] = well
+          if event == pulldom.END_ELEMENT and node.nodeName == "WellIndex":
+            wellindex = temp_string
+            if wellindex is not None and wellindex != "":
+              metaData["well index"] = wellindex
+          if event == pulldom.END_ELEMENT and node.nodeName == "Content":
+            content = temp_string
+            if content is not None and content != "":
+              metaData["well content"] = content
+
+          if event == pulldom.END_ELEMENT and node.nodeName == "Key":
+            measurement = temp_string
+          if event == pulldom.END_ELEMENT and node.nodeName == "Name":
+            assay_name = temp_string
+          if event == pulldom.END_ELEMENT and node.nodeName == "Curve":
+            # At the end of each Curve element, we dump our accumulated measurements into a new RawImportRecord.
+            new_import_record_buffer.append(RawImportRecord("biolector", measurement, line_name, assay_name, measurement_point_buffer, metaData))
+            measurement_point_buffer = []
+
+          # At the close of every CurvePoint we append a measurement point to our buffer
+          if event == pulldom.END_ELEMENT and node.nodeName == "RunTime":
+            runtime = temp_string
+          if event == pulldom.END_ELEMENT and node.nodeName == "NumericValue":
+            numeric_value = temp_string
+          if event == pulldom.END_ELEMENT and node.nodeName == "CurvePoint":
+            measurement_point_buffer.append([runtime, numeric_value])
+            # This is not technically neccessary but is good housekeeping
+            runtime = None
+            numeric_value = None
+
+          # At the end of a Fermentation element, we run back over the accumulated list
+          # of new RawImportRecord objects and finalize their names.
+          if event == pulldom.END_ELEMENT and node.nodeName == "Fermentation":
+            if line_name is None or line_name == "":
+              line_name = ' '.join([content, well, wellindex])
+            for new_import_record in new_import_record_buffer:
+              new_import_record.line_name = line_name
+            self.rawImportRecordBuffer.extend(new_import_record_buffer)
+            new_import_record_buffer = []
+            metaData = {}
+            #logger.warning('Extended buffer to length %s' % (len(self.rawImportRecordBuffer)))
+            if len(self.rawImportRecordBuffer) > 0:
+              return self.rawImportRecordBuffer.pop()
+
+          # If we haven't used the temp_string during the non-CHARACTERS event directly
+          # following it, we should consider it stale and discard it.
+          # At first this may seem overly restrictive but it actually makes sense.
+          temp_string = ''
+
         # If buffer is empty and the stream is empty, we're done.
         raise StopIteration
 
 
     def __iter__(self):
         return self
-
-
-    def _handle_object(self, node):
-        """
-        Convert a <Fermentation> node to a list of RawImportRecord objects.
-        """
-        assayName = getTextInSubElement(node, "Description", "")
-        well = getTextInSubElement(node, "Well", "")
-        wellindex = getTextInSubElement(node, "WellIndex", "")
-        content = getTextInSubElement(node, "Content", "")
-
-        # We count on the experimenter putting a sensible Assay name in the description,
-        # but if the description is blank, try to cobble something together...
-        if assayName is None or assayName == "":
-          assayName = ' '.join([content, well, wellindex])
-
-        if assayName is None or assayName == "":
-          raise XMLImportError("<Fermentation> node lacks enough info to create a name!")
-
-        metaDataTemplate = {}
-        if well is not None and well != "":
-          metaDataTemplate["well"] = well
-        if wellindex is not None and wellindex != "":
-          metaDataTemplate["well index"] = wellindex
-        if content is not None and content != "":
-          metaDataTemplate["well content"] = content
-
-        newObjects = []
-
-        for cal_sets in node.getElementsByTagName("CalibratedData"):
-          for one_set in cal_sets.getElementsByTagName("CalibratedDataSet"):
-            for one_curve in one_set.getElementsByTagName("Curves"):
-              metaData = metaDataTemplate.copy()
-              name = getTextInSubElement(one_curve, "Name", "Unknown")
-              data = []
-              for one_point in one_curve.getElementsByTagName("ListOfPoints"):
-                x = getTextInSubElement(one_point, "RunTime", None)
-                y = getTextInSubElement(one_point, "NumericValue", None)
-                data.append([x, y])
-                newObjects.append(RawImportRecord("biolector", name, assayName, data, metaData))
-
-        return newObjects
 
 
 

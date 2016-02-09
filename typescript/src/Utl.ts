@@ -490,6 +490,9 @@ module Utl {
 
 			this.progressBar = options.progressBar || null;
 
+			// If there's a cleaner way to force-disable event logging in filedrop-min.js, do please put it here!
+			(<any>window).fd.logging = false;
+
 			var z = new FileDrop(options.elementId, {});	// filedrop-min.js , http://filedropjs.org
 			this.zone = z;
 			this.csrftoken = jQuery.cookie('csrftoken');
