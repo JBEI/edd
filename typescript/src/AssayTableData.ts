@@ -84,7 +84,8 @@ module EDDTableImport {
         // but leave the pulldown alone otherwise (including when Step 2 announces its own changes.)
         // TODO: Make Step 3 track this with an internal variable.
         if (EDDTableImport.selectMajorKindStep.interpretationMode == 'mdv') {
-            EDDTableImport.identifyStructuresStep.pulldownSettings = [1, 5]; // A default set of pulldown settings for this mode
+            // A default set of pulldown settings for this mode
+            EDDTableImport.identifyStructuresStep.pulldownSettings = [TypeEnum.Assay_Line_Names, TypeEnum.Metabolite_Name];
         }
         EDDTableImport.rawInputStep.previousStepChanged();
     }
@@ -509,10 +510,10 @@ module EDDTableImport {
             }
             if (fileContainer.fileType == "xml") {
                 var d = result.file_data;
-                this.processedSetsFromFile = d;
                 var t = 0;
                 d.forEach((set:any): void => { t += set.data.length; });
                 $('<p>').text('Found ' + d.length + ' measurements with ' + t + ' total data points.').appendTo($("#fileDropInfoLog"));
+                this.processedSetsFromFile = d;
                 this.processedSetsAvailable = true;
                 // Call this directly, skipping over reprocessRawData() since we don't need it.
                 this.nextStepCallback();
@@ -850,13 +851,24 @@ module EDDTableImport {
     }
 
 
+    // Magic numbers used in pulldowns to assign types to rows/fields.
+    export class TypeEnum {
+        static Gene_Names = 10;
+        static RPKM_Values = 11;
+        static Assay_Line_Names = 1;
+        static Protein_Name = 12;
+        static Metabolite_Names = 2;
+        static Timestamp = 3;
+        static Metadata_Name = 4;
+        static Metabolite_Name = 5;
+    }
+
+
     // The class responsible for everything in the "Step 3" box that you see on the data import page.
     // Get the grid from the previous step, and draw it as a table with puldowns for specifying the content
     // of the rows and columns, as well as checkboxes to enable or disable rows or columns.
     // Interpret the current grid and the settings on the current table into EDD-friendly sets.
     export class IdentifyStructuresStep {
-
-        rawInputStep: RawInputStep;
 
         rowLabelCells: any[];
         colCheckboxCells: any[];
@@ -884,15 +896,17 @@ module EDDTableImport {
         graphEnabled:boolean;
         graphRefreshTimerID: any;
 
-        // Data structures pulled from the grid and composed into sets suitable for handing to
-        // the EDD server
+        // Data structures pulled from the Step 2 grid or server response,
+        // and composed into sets suitable for submission to the server.
         parsedSets: any[];
-        uniqueLineAssayNames: any[];
+        uniqueLineNames: any[];
+        uniqueAssayNames: any[];
         uniqueMeasurementNames: any[];
         uniqueMetadataNames: any[];
         // A flag to indicate whether we have seen any timestamps specified in the import data
         seenAnyTimestamps: boolean;
 
+        rawInputStep: RawInputStep;
         selectMajorKindStep: SelectMajorKindStep;
         nextStepCallback: any;
 
@@ -926,7 +940,8 @@ module EDDTableImport {
             this.graphRefreshTimerID = null;
 
             this.parsedSets = [];
-            this.uniqueLineAssayNames = [];
+            this.uniqueLineNames = [];
+            this.uniqueAssayNames = [];
             this.uniqueMeasurementNames = [];
             this.uniqueMetadataNames = [];
             // A flag to indicate whether we have seen any timestamps specified in the import data
@@ -948,18 +963,18 @@ module EDDTableImport {
             var mode = this.selectMajorKindStep.interpretationMode;
 
             var graph = $('#graphDiv');
-            if (mode === 'std') {
+            if (mode === 'std' || mode === 'biolector') {
                 this.graphEnabled = true;
             } else {
                 this.graphEnabled = false;
             }
             graph.toggleClass('off', !this.graphEnabled);
 
-            var grid = this.rawInputStep.getGrid();
             var gridRowMarkers = this.rawInputStep.gridRowMarkers;
+            var grid = this.rawInputStep.getGrid();
             var ignoreDataGaps = this.rawInputStep.ignoreDataGaps;
 
-            if (mode === 'std' || mode === 'tr' || mode === 'pr' || mode === 'biolector') {
+            if (mode === 'std' || mode === 'tr' || mode === 'pr') {
                 gridRowMarkers.forEach((value: string, i: number): void => {
                     var type: any;
                     if (!this.pulldownUserChangedFlags[i]) {
@@ -969,20 +984,21 @@ module EDDTableImport {
                 });
             }
 
-            // Create a map of enabled/disabled flags for our data,
-            // but only fill the areas that do not already exist.
-            this.inferActiveFlags(grid);
-            // Construct table cell objects for the page, based on our extracted data
-            this.constructDataTable(mode, grid, gridRowMarkers);
+            if (mode === 'std' || mode === 'tr' || mode === 'pr' || mode === 'mdv') {
+                // Create a map of enabled/disabled flags for our data,
+                // but only fill the areas that do not already exist.
+                this.inferActiveFlags(grid);
+                // Construct table cell objects for the page, based on our extracted data
+                this.constructDataTable(mode, grid, gridRowMarkers);
+                // and leaving out any values that have been individually flagged.
+                // Update the styles of the new table to reflect the
+                // (possibly previously set) flag markers and the "ignore gaps" setting.
+                this.redrawIgnoredValueMarkers(ignoreDataGaps);
+                this.redrawEnabledFlagMarkers();
+            }
             // Interpret the data in Step 3,
-            // which involves skipping disabled rows or columns,
-            // optionally ignoring blank values,
-            // and leaving out any values that have been individually flagged.
+            // which involves skipping disabled rows or columns, optionally ignoring blank values,
             this.interpretDataTable();
-            // Update the styles of the new table to reflect the
-            // (possibly previously set) flag markers and the "ignore gaps" setting.
-            this.redrawIgnoredValueMarkers(ignoreDataGaps);
-            this.redrawEnabledFlagMarkers();
             // Start a delay timer that redraws the graph from the interpreted data.
             // This is rather resource intensive, so we're delaying a bit, and restarting the delay
             // if the user makes additional edits to the data within the delay period.
@@ -996,21 +1012,21 @@ module EDDTableImport {
             var blank: number, strings: number, condensed: string[];
             if (mode == 'tr') {
                 if (label.match(/gene/i)) {
-                    return 10;
+                    return TypeEnum.Gene_Names;
                 }
                 if (label.match(/rpkm/i)) {
-                    return 11;
+                    return TypeEnum.RPKM_Values;
                 }
                 // If we can't match to the above two, set the row to 'undefined' so it's ignored by default
                 return 0;
             }
             // Take care of some braindead guesses
             if (label.match(/assay/i) || label.match(/line/i)) {
-                return 1;
+                return TypeEnum.Assay_Line_Names;
             }
             if (mode == 'pr') {
                 if (label.match(/protein/i)) {
-                    return 12;
+                    return TypeEnum.Protein_Name;
                 }
                 // No point in continuing, only line and protein are relevant
                 return 0;
@@ -1028,7 +1044,7 @@ module EDDTableImport {
             });
             // If the label parses into a number and the data contains no strings, call it a timsetamp for data
             if (!isNaN(parseFloat(label)) && (strings === 0)) {
-                return 3;
+                return TypeEnum.Timestamp;
             }
             // No choice by default
             return 0;
@@ -1061,7 +1077,7 @@ module EDDTableImport {
 
 
         constructDataTable(mode:string, grid:any, gridRowMarkers:any): void {
-            var controlCols: string[], pulldownOptions: any[],
+            var controlCols: string[], pulldownOptions: RowPulldownOption[],
                 table: HTMLTableElement, colgroup: JQuery, body: HTMLTableElement,
                 row: HTMLTableRowElement;
 
@@ -1075,36 +1091,36 @@ module EDDTableImport {
                 pulldownOptions = [
                     ['--', 0],
                     ['Entire Row Is...', [
-                        ['Gene Names', 10],
-                        ['RPKM Values', 11]
-                    ]
+                            ['Gene Names', TypeEnum.Gene_Names],
+                            ['RPKM Values', TypeEnum.RPKM_Values]
+                        ]
                     ]
                 ];
             } else if (mode === 'pr') {
                 pulldownOptions = [
                     ['--', 0],
                     ['Entire Row Is...', [
-                        ['Assay/Line Names', 1],
-                    ]
+                            ['Assay/Line Names', TypeEnum.Assay_Line_Names],
+                        ]
                     ],
                     ['First Column Is...', [
-                        ['Protein Name', 12]
-                    ]
+                            ['Protein Name', TypeEnum.Protein_Name]
+                        ]
                     ]
                 ];
             } else {
                 pulldownOptions = [
                     ['--', 0],
                     ['Entire Row Is...', [
-                        ['Assay/Line Names', 1],
-                        ['Metabolite Names', 2]
-                    ]
+                            ['Assay/Line Names', TypeEnum.Assay_Line_Names],
+                            ['Metabolite Names', TypeEnum.Metabolite_Names]
+                        ]
                     ],
                     ['First Column Is...', [
-                        ['Timestamp', 3],
-                        ['Metadata Name', 4],
-                        ['Metabolite Name', 5]
-                    ]
+                            ['Timestamp', TypeEnum.Timestamp],
+                            ['Metadata Name', TypeEnum.Metadata_Name],
+                            ['Metabolite Name', TypeEnum.Metabolite_Name]
+                        ]
                     ]
                 ];
             }
@@ -1233,9 +1249,11 @@ module EDDTableImport {
                 var pulldown: number, hlLabel: boolean, hlRow: boolean;
                 pulldown = this.pulldownSettings[index] || 0;
                 hlLabel = hlRow = false;
-                if (pulldown === 1 || pulldown === 2) {
+                if (pulldown === TypeEnum.Assay_Line_Names || pulldown === TypeEnum.Metabolite_Names) {
                     hlRow = true;
-                } else if (3 <= pulldown && pulldown <= 5) {
+                } else if ( pulldown !== TypeEnum.Timestamp &&
+                            pulldown !== TypeEnum.Metadata_Name &&
+                            pulldown !== TypeEnum.Metabolite_Name) {
                     hlLabel = true;
                 }
                 $(this.rowLabelCells[index]).toggleClass('dataTypeCell', hlLabel);
@@ -1274,31 +1292,6 @@ module EDDTableImport {
         }
 
 
-        interpretDataTableRows(grid:any):[boolean, number] {
-            var single: number = 0, nonSingle: number = 0, earliestName: number;
-            // Look for the presence of "single measurement type" rows, and rows of all other single-item types
-            grid.forEach((_, y: number): void => {
-                var pulldown: number;
-                if (this.activeRowFlags[y]) {
-                    pulldown = this.pulldownSettings[y];
-                    if (pulldown === 5 || pulldown === 12) {
-                        single++; // Single Measurement Name or Single Protein Name
-                    } else if (pulldown === 4 || pulldown === 3) {
-                        nonSingle++;
-                    } else if (pulldown === 1 && earliestName === undefined) {
-                        earliestName = y;
-                    }
-                }
-            });
-            // Only use this mode if the table is entirely free of single-timestamp and
-            // single-metadata rows, and has at least one "single measurement" row, and at
-            // least one "Assay/Line names" row.
-            // Note: requirement of an "Assay/Line names" row prevents this mode from being
-            // enabled when the page is in 'Transcription' mode.
-            return [(single > 0 && nonSingle === 0 && earliestName !== undefined), earliestName];
-        }
-
-
         changedRowDataTypePulldown(index: number, value: number):void {
             var selected: number;
 
@@ -1308,7 +1301,10 @@ module EDDTableImport {
             selected = this.pulldownObjects[index].selectedIndex;
             this.pulldownSettings[index] = value;
             this.pulldownUserChangedFlags[index] = true;
-            if ((value >= 3 && value <= 5) || value === 12) {
+            if (    value === TypeEnum.Timestamp ||
+                    value === TypeEnum.Metadata_Name ||
+                    value === TypeEnum.Metabolite_Name ||
+                    value === TypeEnum.Protein_Name) {
                 // "Timestamp", "Metadata", or other single-table-cell types
                 // Set all the rest of the pulldowns to this,
                 // based on the assumption that the first is followed by many others
@@ -1345,20 +1341,20 @@ module EDDTableImport {
                 // vice-versa.
                 grid.forEach((_, i: number): void => {
                     var c: number = this.pulldownSettings[i];
-                    if (value === 5) {
-                        if (c === 3 || c === 4) {
+                    if (value === TypeEnum.Metabolite_Name) {
+                        if (c === TypeEnum.Timestamp || c === TypeEnum.Metadata_Name) {
                             this.pulldownObjects[i].selectedIndex = 0;
                             this.pulldownSettings[i] = 0;
-                        } else if (c === 2) { // Can't allow "Measurement Types" setting either
-                            this.pulldownObjects[i].selectedIndex = 1;
-                            this.pulldownSettings[i] = 1;
+                        } else if (c === TypeEnum.Metabolite_Names) { // Can't allow "Measurement Types" setting either
+                            this.pulldownObjects[i].selectedIndex = TypeEnum.Assay_Line_Names;
+                            this.pulldownSettings[i] = TypeEnum.Assay_Line_Names;
                         }
-                    } else if ((value === 3 || value === 4) && c === 5) {
+                    } else if ((value === TypeEnum.Timestamp || value === TypeEnum.Metadata_Name) && c === TypeEnum.Metabolite_Name) {
                         this.pulldownObjects[i].selectedIndex = 0;
                         this.pulldownSettings[i] = 0;
                     }
                 });
-                // It would seem logical to require a similar check for "Protein Name", ID 12, but in practice
+                // It would seem logical to require a similar check for "Protein Name", but in practice
                 // the user is disallowed from selecting any of the other single-table-cell types when the
                 // page is in Proteomics mode.  So the check is redundant.
             }
@@ -1422,150 +1418,173 @@ module EDDTableImport {
 
         interpretDataTable():void {
 
+            // This mode means we make a new "set" for each cell in the table, rather than
+            // the standard method of making a new "set" for each column in the table.
+            var singleMode:boolean;
+            var single: number, nonSingle: number, earliestName: number;
+
             var grid = this.rawInputStep.getGrid();
             var gridRowMarkers = this.rawInputStep.gridRowMarkers;
             var ignoreDataGaps = this.rawInputStep.ignoreDataGaps;
 
             // We'll be accumulating these for disambiguation.
             // Each unique key will get a distinct value, placing it in the order first seen
-            var seenAssayLineNames = {};
+            var seenLineNames = {};
+            var seenAssayNames = {};
             var seenMeasurementNames = {};
             var seenMetadataNames = {};
             // Here's how we track the indexes we assign as values above.
-            var assayLineNamesCount = 0;
+            var lineNamesCount = 0;
+            var assayNamesCount = 0;
             var measurementNamesCount = 0;
             var metadataNamesCount = 0;
 
             // Here are the arrays we will use later
             this.parsedSets = [];
-            this.uniqueLineAssayNames = [];
+            this.uniqueLineNames = [];
+            this.uniqueAssayNames = [];
             this.uniqueMeasurementNames = [];
             this.uniqueMetadataNames = [];
             this.seenAnyTimestamps = false;
 
-            // This mode means we make a new "set" for each cell in the table, rather than
-            // the standard method of making a new "set" for each column in the table.
-            var interpretMode = this.interpretDataTableRows(grid);
+            // If we've got pre-processed sets from the server available, use those instead of any
+            // table contents.
 
-            // The standard method: Make a "set" for each column of the table
-            if (!interpretMode[0]) {
-                this.colObjects.forEach((_, c: number): void => {
+            if (this.rawInputStep.processedSetsAvailable) {
+
+                this.rawInputStep.processedSetsFromFile.forEach((rawSet, c: number): void => {
                     var set: any, uniqueTimes: number[], times: any, foundMeta: boolean;
-                    // Skip it if the whole column is deactivated
-                    if (!this.activeColFlags[c]) {
-                        return;
+
+                    var ln = rawSet.line_name;
+                    var an = rawSet.assay_name;
+                    var mn = rawSet.measurement_name;
+
+                    uniqueTimes = [];
+                    times = {};
+                    foundMeta = false;
+
+                    // The procedure for Assays, Measurements, etc is the same:
+                    // If the value is blank, we can't build a valid set, to skip to the next set.
+                    // If the value is valid but we haven't seen it before, increment and store a uniqueness index.
+                    if (!ln && ln !== 0) { return; }
+                    if (!an && an !== 0) { return; }
+                    if (!mn && mn !== 0) { return; }
+                    if (!seenLineNames[ln]) {
+                        seenLineNames[ln] = ++lineNamesCount;
+                        this.uniqueLineNames.push(an);
                     }
+                    if (!seenAssayNames[an]) {
+                        seenAssayNames[an] = ++assayNamesCount;
+                        this.uniqueAssayNames.push(an);
+                    }
+                    if (!seenMeasurementNames[mn]) {
+                        seenMeasurementNames[mn] = ++measurementNamesCount;
+                        this.uniqueMeasurementNames.push(mn);
+                    }
+
                     set = {
                         // For the graphing module
-                        'label': 'Column ' + c,
-                        'name': 'Column ' + c,
+                        'label': (ln ? ln+': ' : '') + an+': ' + mn,
+                        'name': mn,
                         'units': 'units',
                         // For submission to the database. TODO: Update
                         'parsingIndex': c,
-                        'assay': null,
-                        'assayName': null,
-                        'measurementType': null,
+                        'assay': seenAssayNames[an],
+                        'assayName': an,
+                        'line': seenLineNames[an],
+                        'lineName': ln,    // TODO: Handle Line names as their own thing
+                        'measurementType': seenMeasurementNames[mn],
                         'metadata': {},
                         'singleData': null,
                         // For both
                         'data': []
                     };
-                    uniqueTimes = [];
-                    times = {};
-                    foundMeta = false;
-                    grid.forEach((row: string[], r: number): void => {
-                        var pulldown: number, label: string, value: string, timestamp: number;
-                        if (!this.activeRowFlags[r] || !this.activeFlags[r][c]) {
-                            return;
+
+                    // Slightly different procedure for metadata, but same idea:
+                    Object.keys(rawSet.metadata_by_name).forEach((key):void => {
+                        var value = rawSet.metadata_by_name[key];
+                        if (!seenMetadataNames[key]) {
+                            seenMetadataNames[key] = ++metadataNamesCount;
+                            this.uniqueMetadataNames.push(key);
                         }
-                        pulldown = this.pulldownSettings[r];
-                        label = gridRowMarkers[r] || '';
-                        value = row[c] || '';
-                        if (!pulldown) {
-                            return;
-                        } else if (pulldown === 11) {  // Transcriptomics: RPKM values
-                            value = value.replace(/,/g, '');
-                            if (value) {
-                                set.singleData = value;
-                            }
-                            return;
-                        } else if (pulldown === 10) {  // Transcriptomics: Gene names
-                            if (value) {
-                                set.name = value;
-                                set.measurementType = value;
-                            }
-                            return;
-                        } else if (pulldown === 3) {   // Timestamps
-                            label = label.replace(/,/g, '');
-                            timestamp = parseFloat(label);
-                            if (!isNaN(timestamp)) {
-                                if (!value) {
-                                    // If we're ignoring gaps, skip out on recording this value
-                                    if (ignoreDataGaps) {
-                                        return;
-                                    }
-                                    // We actually prefer null here, to indicate a placeholder value
-                                    value = null;
-                                }
-                                if (!times[timestamp]) {
-                                    times[timestamp] = value;
-                                    uniqueTimes.push(timestamp);
-                                    this.seenAnyTimestamps = true;
-                                }
-                            }
-                            return;
-                        } else if (label === '' || value === '') {
-                            // Now that we've dealt with timestamps, we proceed on to other data types.
-                            // All the other data types do not accept a blank value, so we weed them out now.
-                            return;
-                        } else if (pulldown === 1) {   // Assay/Line Names
-                            // If haven't seen value before, increment and store uniqueness index
-                            if (!seenAssayLineNames[value]) {
-                                seenAssayLineNames[value] = ++assayLineNamesCount;
-                                this.uniqueLineAssayNames.push(value);
-                            }
-                            set.assay = seenAssayLineNames[value];
-                            set.assayName = value;
-                            return;
-                        } else if (pulldown === 2) {   // Metabolite Names
-                            // If haven't seen value before, increment and store uniqueness index
-                            if (!seenMeasurementNames[value]) {
-                                seenMeasurementNames[value] = ++measurementNamesCount;
-                                this.uniqueMeasurementNames.push(value);
-                            }
-                            set.measurementType = seenMeasurementNames[value];
-                            return;
-                        } else if (pulldown === 4) {   // Metadata
-                            if (!seenMetadataNames[label]) {
-                                seenMetadataNames[label] = ++metadataNamesCount;
-                                this.uniqueMetadataNames.push(label);
-                            }
-                            set.metadata[seenMetadataNames[label]] = value;
-                            foundMeta = true;
+                        set.metadata[seenMetadataNames[key]] = value;
+                        foundMeta = true;
+                    });
+
+                    // Validate the provided set of time/value points
+                    rawSet.data.forEach((xy: string[]): void => {
+                        var time = xy[0] || '';
+                        var value = xy[1];
+                        // Sometimes people - or Excel docs - drop commas into large numbers.
+                        var timeFloat = parseFloat(time.replace(/,/g, ''));
+                        // If we can't get a usable timestamp, discard this point.
+                        if (isNaN(timeFloat)) { return; }
+                        if (!value && <any>value !== 0) {
+                            // If we're ignoring gaps, skip any undefined/null values.
+                            //if (ignoreDataGaps) { return; }    // Note: Forced always-off for now
+                            // A null is our standard placeholder value
+                            value = null;
+                        }
+                        if (!times[timeFloat]) {
+                            times[timeFloat] = value;
+                            uniqueTimes.push(timeFloat);
+                            this.seenAnyTimestamps = true;
                         }
                     });
                     uniqueTimes.sort((a, b) => a - b).forEach((time: number): void => {
                         set.data.push([time, times[time]]);
                     });
-                    // only save if accumulated some data or metadata
-                    if (uniqueTimes.length || foundMeta || set.singleData !== null) {
+
+                    // only save if we accumulated some data or metadata
+                    if (uniqueTimes.length || foundMeta) {
                         this.parsedSets.push(set);
                     }
                 });
-                // The alternate method: A "set" for every cell of the table, with the timestamp
-                // to be determined later.
-            } else {
+                return;
+            }
+
+            // If we're not using pre-processed records, we need to use the pulldown settings in this step
+            // (usually set by the user) to determine what mode we're in.
+
+            single = 0;
+            nonSingle = 0;
+            earliestName = null;
+            // Look for the presence of "single measurement type" rows, and rows of all other single-item types
+            grid.forEach((_, y: number): void => {
+                var pulldown: number;
+                if (this.activeRowFlags[y]) {
+                    pulldown = this.pulldownSettings[y];
+                    if (pulldown === TypeEnum.Metabolite_Name || pulldown === TypeEnum.Protein_Name) {
+                        single++; // Single Measurement Name or Single Protein Name
+                    } else if (pulldown === TypeEnum.Metadata_Name || pulldown === TypeEnum.Timestamp) {
+                        nonSingle++;
+                    } else if (pulldown === TypeEnum.Assay_Line_Names && earliestName === null) {
+                        earliestName = y;
+                    }
+                }
+            });
+
+            // Only use this mode if the table is entirely free of single-timestamp and
+            // single-metadata rows, and has at least one "single measurement" row, and at
+            // least one "Assay/Line names" row.
+            // (Note that requirement of an "Assay/Line names" row prevents this mode from being
+            // enabled when the page is in 'Transcriptomics' or 'Proteomics' mode.)
+            singleMode = (single > 0 && nonSingle === 0 && earliestName !== null) ? true : false;
+
+            // A "set" for every cell of the table, with the timestamp to be determined later.
+            if (singleMode) {
+
                 this.colObjects.forEach((_, c: number): void => {
                     var cellValue: string, set: any;
                     if (!this.activeColFlags[c]) {
                         return;
                     }
-                    cellValue = grid[interpretMode[1]][c] || '';
+                    cellValue = grid[earliestName][c] || '';
                     if (cellValue) {
                         // If haven't seen cellValue before, increment and store uniqueness index
-                        if (!seenAssayLineNames[cellValue]) {
-                            seenAssayLineNames[cellValue] = ++assayLineNamesCount;
-                            this.uniqueLineAssayNames.push(cellValue);
+                        if (!seenAssayNames[cellValue]) {
+                            seenAssayNames[cellValue] = ++assayNamesCount;
+                            this.uniqueAssayNames.push(cellValue);
                         }
                         grid.forEach((row: string[], r: number): void => {
                             var pulldown: number, label: string, value: string, timestamp: number;
@@ -1575,7 +1594,7 @@ module EDDTableImport {
                             pulldown = this.pulldownSettings[r];
                             label = gridRowMarkers[r] || '';
                             value = row[c] || '';
-                            if (!pulldown || !(pulldown === 5 || pulldown === 12) || !label || !value) {
+                            if (!pulldown || !(pulldown === TypeEnum.Metabolite_Name || pulldown === TypeEnum.Protein_Name) || !label || !value) {
                                 return;
                             }
                             set = {
@@ -1585,7 +1604,7 @@ module EDDTableImport {
                                 'units': 'units',
                                 // For submission to the database TODO: update
                                 'parsingIndex': this.parsedSets.length,
-                                'assay': seenAssayLineNames[cellValue],
+                                'assay': seenAssayNames[cellValue],
                                 'assayName': cellValue,
                                 'measurementType': null,
                                 'metadata': {},
@@ -1593,13 +1612,13 @@ module EDDTableImport {
                                 // For both
                                 'data': []
                             };
-                            if (pulldown === 5) {
+                            if (pulldown === TypeEnum.Metabolite_Name) {
                                 if (!seenMeasurementNames[label]) {
                                     seenMeasurementNames[label] = ++measurementNamesCount;
                                     this.uniqueMeasurementNames.push(label);
                                 }
                                 set.measurementType = seenMeasurementNames[label];
-                            } else if (pulldown === 12) {
+                            } else if (pulldown === TypeEnum.Protein_Name) {
                                 set.name = label;
                                 set.measurementType = label;
                             }
@@ -1607,7 +1626,114 @@ module EDDTableImport {
                         });
                     }
                 });
+                return;
             }
+
+            // The standard method: Make a "set" for each column of the table
+
+            this.colObjects.forEach((_, c: number): void => {
+                var set: any, uniqueTimes: number[], times: any, foundMeta: boolean;
+                // Skip it if the whole column is deactivated
+                if (!this.activeColFlags[c]) {
+                    return;
+                }
+                set = {
+                    // For the graphing module
+                    'label': 'Column ' + c,
+                    'name': 'Column ' + c,
+                    'units': 'units',
+                    // For submission to the database. TODO: Update
+                    'parsingIndex': c,
+                    'assay': null,
+                    'assayName': null,
+                    'measurementType': null,
+                    'metadata': {},
+                    'singleData': null,
+                    // For both
+                    'data': []
+                };
+                uniqueTimes = [];
+                times = {};
+                foundMeta = false;
+                grid.forEach((row: string[], r: number): void => {
+                    var pulldown: number, label: string, value: string, timestamp: number;
+                    if (!this.activeRowFlags[r] || !this.activeFlags[r][c]) {
+                        return;
+                    }
+                    pulldown = this.pulldownSettings[r];
+                    label = gridRowMarkers[r] || '';
+                    value = row[c] || '';
+                    if (!pulldown) {
+                        return;
+                    } else if (pulldown === TypeEnum.RPKM_Values) {  // Transcriptomics: RPKM values
+                        value = value.replace(/,/g, '');
+                        if (value) {
+                            set.singleData = value;
+                        }
+                        return;
+                    } else if (pulldown === TypeEnum.Gene_Names) {  // Transcriptomics: Gene names
+                        if (value) {
+                            set.name = value;
+                            set.measurementType = value;
+                        }
+                        return;
+                    } else if (pulldown === TypeEnum.Timestamp) {   // Timestamps
+                        label = label.replace(/,/g, '');
+                        timestamp = parseFloat(label);
+                        if (!isNaN(timestamp)) {
+                            if (!value) {
+                                // If we're ignoring gaps, skip out on recording this value
+                                if (ignoreDataGaps) {
+                                    return;
+                                }
+                                // We actually prefer null here, to indicate a placeholder value
+                                value = null;
+                            }
+                            if (!times[timestamp]) {
+                                times[timestamp] = value;
+                                uniqueTimes.push(timestamp);
+                                this.seenAnyTimestamps = true;
+                            }
+                        }
+                        return;
+                    } else if (label === '' || value === '') {
+                        // Now that we've dealt with timestamps, we proceed on to other data types.
+                        // All the other data types do not accept a blank value, so we weed them out now.
+                        return;
+                    } else if (pulldown === TypeEnum.Assay_Line_Names) {
+                        // If haven't seen value before, increment and store uniqueness index
+                        if (!seenAssayNames[value]) {
+                            seenAssayNames[value] = ++assayNamesCount;
+                            this.uniqueAssayNames.push(value);
+                        }
+                        set.assay = seenAssayNames[value];
+                        set.assayName = value;
+                        return;
+                    } else if (pulldown === TypeEnum.Metabolite_Names) {   // Metabolite Names
+                        // If haven't seen value before, increment and store uniqueness index
+                        if (!seenMeasurementNames[value]) {
+                            seenMeasurementNames[value] = ++measurementNamesCount;
+                            this.uniqueMeasurementNames.push(value);
+                        }
+                        set.measurementType = seenMeasurementNames[value];
+                        return;
+                    } else if (pulldown === TypeEnum.Metadata_Name) {   // Metadata
+                        if (!seenMetadataNames[label]) {
+                            seenMetadataNames[label] = ++metadataNamesCount;
+                            this.uniqueMetadataNames.push(label);
+                        }
+                        set.metadata[seenMetadataNames[label]] = value;
+                        foundMeta = true;
+                    }
+                });
+                uniqueTimes.sort((a, b) => a - b).forEach((time: number): void => {
+                    set.data.push([time, times[time]]);
+                });
+                // only save if accumulated some data or metadata
+                if (uniqueTimes.length || foundMeta || set.singleData !== null) {
+                    this.parsedSets.push(set);
+                }
+            });
         }
 
 
@@ -1634,23 +1760,21 @@ module EDDTableImport {
             // Walk up the item tree until we arrive at a table cell,
             // so we can get the index of the table cell in the table.
             cell = $(e.target).closest('td');
-            if (cell.length) {
-                x = parseInt(cell.attr('x'), 10);
-                y = parseInt(cell.attr('y'), 10);
-                if (x && y && x > 0 && y > 0) {
-                    --x;
-                    --y;
-                    if (this.activeFlags[y][x]) {
-                        this.activeFlags[y][x] = false;
-                    } else {
-                        this.activeFlags[y][x] = true;
-                    }
-                    this.interpretDataTable();
-                    this.redrawEnabledFlagMarkers();
-                    this.queueGraphRemake();
-                    this.nextStepCallback();
-                }
+            if (!cell.length) { return; }
+            x = parseInt(cell.attr('x'), 10);
+            y = parseInt(cell.attr('y'), 10);
+            if (!x || !y || x < 1 || y < 1) { return; }
+            --x;
+            --y;
+            if (this.activeFlags[y][x]) {
+                this.activeFlags[y][x] = false;
+            } else {
+                this.activeFlags[y][x] = true;
             }
+            this.interpretDataTable();
+            this.redrawEnabledFlagMarkers();
+            this.queueGraphRemake();
+            this.nextStepCallback();
         }
 
 
@@ -1829,12 +1953,12 @@ module EDDTableImport {
         // reveal the pulldowns for selecting a master Line/Assay, leaving the table empty, and return.
         remakeAssayLineSection(): void {
             var table: HTMLTableElement, body: HTMLTableElement;
-            var uniqueLineAssayNames = this.identifyStructuresStep.uniqueLineAssayNames;
+            var uniqueAssayNames = this.identifyStructuresStep.uniqueAssayNames;
             var masterP = this.protocolCurrentlyDisplayed;
 
             $('#disambiguateAssaysTable').remove();
 
-            if (uniqueLineAssayNames.length === 0) {
+            if (uniqueAssayNames.length === 0) {
                 $('#disambiguateLinesAssaysSection').addClass('off');
                 $('#masterAssayLineDiv').removeClass('off');
                 return;
@@ -1851,7 +1975,7 @@ module EDDTableImport {
                     t.userChangedAssayLineDisam(ev.target);
                 })[0];
             body = <HTMLTableElement>$('<tbody>').appendTo(table)[0];
-            uniqueLineAssayNames.forEach((name: string, i: number): void => {
+            uniqueAssayNames.forEach((name: string, i: number): void => {
                 var disam: any, row: HTMLTableRowElement, defaultSel: any,
                     cell: JQuery, aSelect: JQuery, lSelect: JQuery;
                 disam = this.assayLineObjSets[masterP][name];
