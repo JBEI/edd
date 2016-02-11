@@ -87,6 +87,8 @@ class MetadataTypeAdmin(admin.ModelAdmin):
 
 class EDDObjectAdmin(admin.ModelAdmin):
     """ Parent class for EDD Object model admin classes """
+    search_fields = ['name', 'description', ]
+
     def save_model(self, request, obj, form, change):
         update = Update.load_request_update(request)
         if not change:
