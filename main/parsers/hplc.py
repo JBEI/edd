@@ -22,6 +22,9 @@ class HPLC_Parser:
 	self.section_widths = None # List of all column widths
 	self.column_headers = None # The label at the head of each column
 
+	self.amount_column_header_index  = None
+	self.compound_column_header_index = None
+
 	def parse_hplc_file(self, input_file_path):
 		"""Loads the file on the given path and parses textual HPLC data from it."""
 
@@ -48,6 +51,7 @@ class HPLC_Parser:
 			previous_name = None
 			previous_segments = [None for x in range(len(section_widths))]
 
+			self.samples = {}
 			while self(_parse_sample()):
 				pass
 
@@ -161,9 +165,7 @@ class HPLC_Parser:
 		for i in range(len(self.column_headers)):
 			self.column_headers[i] = self.column_headers[i].split()
 
-		# prepare container that will collect the data
 		# each sample is indexed by sample name
-		self.samples = {}
 
 		# each value is indexed by column header
 		for column_header_index in range(len(self.column_headers)):
@@ -174,56 +176,76 @@ class HPLC_Parser:
 				header = header[1:]
 			self.column_headers[column_header_index] = header
 
+			if header.startswith('Amount'):
+				# self.amount_column_header_index  = column_header_index
+				self.amount_begin_position = sum(section_widths[:column_header_index-1])+len(section_widths[:column_header_index-1])
+				self.amount_end_position   = section_widths[column_header_index]
+			elif header.startswith('Compound'):
+				# self.compound_column_header_index = column_header_index
+				self.compound_begin_position = sum(section_widths[:column_header_index-1])+len(section_widths[:column_header_index-1])
+				self.compound_end_position   = section_widths[column_header_index]
+
 	def _parse_sample(self):
-		"""Collects a single sample from the file and stores it in the samples data structure"""
+		"""Collects a single sample from the file and stores it in the samples data structure
 
-		line = input_file.readline()
-		if line == '\n':
-			continue
-		if not line:
-			return False
+		Returns True when a sample was read successfully, else False"""
 
-		# get the name of the sample related to the row
-		sample_name = line[:section_widths[0]].strip()
+		## Collect Sample Name
 
-		if sample_name:
-			# ensure no collision with previous sample labels by adding a number
-			if self.samples.has_key(sample_name):
-				sample_name += u'-2'
-				i = 3
-				while self.samples.has_key(sample_name):
-					last_dash_index = sample_name.rindex('-')
-					sample_name = sample_name[:last_dash_index+1] + unicode(i)
-					i += 1
-			previous_name = sample_name
+		sample_name_collected = False
+		sample_name = None
 
-		if not sample_name:
-			if not previous_name:
-				logger.error("entry with no sample name found, aborting")
+		## Begin Loop
+		while True:
+
+			file_pos = input_file.tell()
+			line = input_file.readline()
+			if line == '\n':
+				continue
+			if not line:
 				return False
-			sample_name = previous_name
 
-		# initilize the sample entry
-		if not self.samples.has_key(sample_name):
-			entry = {}
-			for header in self.column_headers:
-				entry[header] = []
-			self.samples[sample_name] = entry
+			## verify a new sample has not started.
 
-		# collect the other data items
-		for row_index in range(len(section_widths)):
+			# get the name of the sample related to the row
+			line_sample_name = line[:section_widths[0]].strip()
 
-			segment = line[:section_widths[row_index]].strip()
-			line = line[section_widths[row_index]+1:]
+			if line_sample_name:
+				if sample_name_collected:
+					# beginning of next record, reset file pointer
+					input_file.seek(file_pos)
+					return True
+
+				# ensure no collision with previous sample labels by adding a number
+				if self.samples.has_key(line_sample_name):
+					line_sample_name += u'-2'
+					i = 3
+					while self.samples.has_key(line_sample_name):
+						last_dash_index = line_sample_name.rindex('-')
+						line_sample_name = line_sample_name[:last_dash_index+1] + unicode(i)
+						i += 1
+				previous_name = line_sample_name
+
+			if not line_sample_name:
+				if not sample_name:
+					logger.error("entry with no sample name found, aborting")
+					return False
+				sample_name = line_sample_name
+
+			# collect the other data items - grab amounts & compounds
+
+			amount_string = line[self.amount_begin_position:self.amount_end_position].strip()
+			compound_string = line[self.amount_begin_position:self.compound_end_position].strip()
+
+
+			# initilize the sample entry
+			if not self.samples.has_key(sample_name):
+				self.samples[sample_name] = []
+
 			# Put the value into our data structure
 			if segment and segment != u'-':
-				self.samples[sample_name][self.column_headers[row_index]].append(segment)
-				previous_segments[row_index] = segment
-			# In the case of a dash or empty string, repeat the last value.
-			else:
-				self.samples[sample_name][self.column_headers[row_index]] \
-					.append( previous_segments[row_index] )
+				self.samples[sample_name].append( (compound_string,amount_string) )
 
-		self.current_sample = self.samples[sample_name]
+			self.current_sample = self.samples[sample_name]
 
-		return True
+			return True
