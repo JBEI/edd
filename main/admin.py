@@ -6,6 +6,7 @@ from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin
 from django.db.models import Count
+from django.utils.html import format_html
 from django.utils.translation import ugettext_lazy as _
 from django_auth_ldap.backend import LDAPBackend
 
@@ -157,12 +158,21 @@ class StrainAdminForm(forms.ModelForm):
 class StrainAdmin(EDDObjectAdmin):
     """ Definition for admin-edit of Strains """
     form = StrainAdminForm
-    list_display = ('name', 'description', 'num_lines', 'num_studies', 'created', )
+    list_display = (
+        'name', 'description', 'hyperlink_strain', 'num_lines', 'num_studies', 'created',
+    )
 
     def get_queryset(self, request):
         q = super(StrainAdmin, self).get_queryset(request)
         q = q.annotate(num_lines=Count('line'), num_studies=Count('line__study', distinct=True))
+        q = q.select_related('created__mod_by')
         return q
+
+    def hyperlink_strain(self, instance):
+        if instance.registry_url:
+            return format_html('<a href="{}" target="_new">ICE entry</a>', instance.registry_url)
+        return '-'
+    hyperlink_strain.short_description = 'ICE Link'
 
     # annotated queryset with count of lines referencing strain, need method to load annotation
     def num_lines(self, instance):
