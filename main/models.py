@@ -36,9 +36,6 @@ class UpdateManager(models.Manager):
 
 class EDDSerialize(object):
     """ Mixin class for EDD models supporting JSON serialization. """
-    class Meta:
-        abstract = True
-
     def get_attr_depth(self, attr_name, depth, default=None):
         # check for id attribute does not trigger database call
         id_attr = '%s_id' % attr_name
@@ -388,8 +385,14 @@ class MetadataType(models.Model, EDDSerialize):
         return False
 
 
-class EDDMetadata(object):
-    """ Mixin class for EDD models supporting metadata. """
+class EDDMetadata(models.Model):
+    """ Base class for EDD models supporting metadata. """
+    class Meta:
+        abstract = True
+
+    # store arbitrary metadata as a dict with hstore extension
+    meta_store = HStoreField(blank=True, default=dict)
+
     def get_metadata_json(self):
         return self.meta_store
 
@@ -471,7 +474,7 @@ class EDDMetadata(object):
 
 
 @python_2_unicode_compatible
-class EDDObject(models.Model, EDDSerialize, EDDMetadata):
+class EDDObject(EDDMetadata, EDDSerialize):
     """ A first-class EDD object, with update trail, comments, attachments. """
     class Meta:
         db_table = 'edd_object'
@@ -482,8 +485,6 @@ class EDDObject(models.Model, EDDSerialize, EDDMetadata):
     # these are used often enough we should save extra queries by including as fields
     created = models.ForeignKey(Update, related_name='object_created', editable=False)
     updated = models.ForeignKey(Update, related_name='object_updated', editable=False)
-    # store arbitrary metadata as a dict with hstore extension
-    meta_store = HStoreField(blank=True, default=dict)
 
     @property
     def mod_epoch(self):
@@ -1444,7 +1445,7 @@ class MeasurementFormat(object):
 
 
 @python_2_unicode_compatible
-class Measurement(models.Model, EDDSerialize, EDDMetadata):
+class Measurement(EDDMetadata, EDDSerialize):
     """ A plot of data points for an (assay, measurement type) pair. """
     class Meta:
         db_table = 'measurement'
@@ -1463,8 +1464,6 @@ class Measurement(models.Model, EDDSerialize, EDDMetadata):
     measurement_format = models.CharField(
         max_length=2, choices=MeasurementFormat.FORMAT_CHOICE,
         default=MeasurementFormat.SCALAR)
-    # store arbitrary metadata as a dict with hstore extension
-    meta_store = HStoreField(blank=True, default=dict)
 
     @classmethod
     def export_columns(cls):
