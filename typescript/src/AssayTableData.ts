@@ -34,6 +34,37 @@ module EDDTableImport {
     export var typeDisambiguationStep: TypeDisambiguationStep;
 
 
+    interface MeasurementValueSequence {
+        data:string[][];
+    }
+
+    interface GraphingSet extends MeasurementValueSequence {
+        label: string;
+        name: string;
+        units: string;
+        color?: string;
+        tags?: any;
+    }
+    // These are returned by the server after parsing a dropped file
+    interface RawImportSet extends MeasurementValueSequence {
+        kind: string;
+        line_name: string;
+        assay_name: string;
+        measurement_name: string;
+        metadata_by_name?: {[id:string]: string},
+    }
+    // This information is added post-disambiguation, in addition to the fields from RawImportSet, and sent to the server
+    interface ResolvedImportSet extends RawImportSet {
+        protocol_id:string;
+        line_id:string;    // Value of 'null' or string 'new' indicates new Line should be created with name line_name. 
+        assay_id:string;
+        measurement_id:string;
+        compartment_id:string;
+        units_id:string;
+        metadata_by_id:{[id:string]: string};
+    }
+
+
     // As soon as the window load signal is sent, call back to the server for the set of reference records
     // that will be used to disambiguate labels in imported data.
     export function onWindowLoad(): void {
@@ -108,9 +139,10 @@ module EDDTableImport {
     // This is called by our instance of TypeDisambiguationStep to announce changes.
     // All we do currently is repopulate the debug area.
     export function typeDisambiguationCallback(): void {
-        var parsedSets = EDDTableImport.identifyStructuresStep.parsedSets;
+//        var parsedSets = EDDTableImport.identifyStructuresStep.parsedSets;
+        var resolvedSets = EDDTableImport.typeDisambiguationStep.createSetsForSubmission();
         // if the debug area is there, set its value to JSON of parsed sets
-        $('#jsondebugarea').val(JSON.stringify(parsedSets));
+        $('#jsondebugarea').val(JSON.stringify(resolvedSets);
     }
 
 
@@ -120,8 +152,8 @@ module EDDTableImport {
     // It also reads other form elements from the page, created by SelectMajorKindStep and TypeDisambiguationStep.
     export function submitForImport(): void {
         var json: string;
-        var parsedSets = EDDTableImport.identifyStructuresStep.parsedSets;
-        json = JSON.stringify(parsedSets);
+        var resolvedSets = EDDTableImport.typeDisambiguationStep.createSetsForSubmission();
+        json = JSON.stringify(resolvedSets);
         $('#jsonoutput').val(json);
         $('#jsondebugarea').val(json);
     }
@@ -190,9 +222,10 @@ module EDDTableImport {
         // If the master Protocol pulldown has changed, Step 4 will need a refresh,
         // specifically the master Assay pulldown and Assay/Line disambiguation section.
         reconfigure(): void {
-            if (this.checkInterpretationMode() || this.checkMasterProtocol()) {
-                this.nextStepCallback();
-            }                
+            // Don't inline these into the if statement or the second one might not be called!
+            var a:boolean = this.checkInterpretationMode();
+            var b:boolean = this.checkMasterProtocol();
+            if (a || b) { this.nextStepCallback(); }
         }
 
 
@@ -898,7 +931,8 @@ module EDDTableImport {
 
         // Data structures pulled from the Step 2 grid or server response,
         // and composed into sets suitable for submission to the server.
-        parsedSets: any[];
+        parsedSets: RawImportSet[];
+        graphSets: GraphingSet[];
         uniqueLineNames: any[];
         uniqueAssayNames: any[];
         uniqueMeasurementNames: any[];
@@ -940,6 +974,7 @@ module EDDTableImport {
             this.graphRefreshTimerID = null;
 
             this.parsedSets = [];
+            this.graphSets = [];
             this.uniqueLineNames = [];
             this.uniqueAssayNames = [];
             this.uniqueMeasurementNames = [];
@@ -984,6 +1019,9 @@ module EDDTableImport {
                 });
             }
 
+            // We're emptying the data table whether we remake it or not...
+            $('#dataTableDiv').empty();
+
             if (mode === 'std' || mode === 'tr' || mode === 'pr' || mode === 'mdv') {
                 // Create a map of enabled/disabled flags for our data,
                 // but only fill the areas that do not already exist.
@@ -996,8 +1034,9 @@ module EDDTableImport {
                 this.redrawIgnoredValueMarkers(ignoreDataGaps);
                 this.redrawEnabledFlagMarkers();
             }
-            // Interpret the data in Step 3,
-            // which involves skipping disabled rows or columns, optionally ignoring blank values,
+            // Either we're interpreting some pre-processed data sets from a server response,
+            // or we're interpreting the data table we just laid out above,
+            // which involves skipping disabled rows or columns, optionally ignoring blank values, etc.
             this.interpretDataTable();
             // Start a delay timer that redraws the graph from the interpreted data.
             // This is rather resource intensive, so we're delaying a bit, and restarting the delay
@@ -1124,9 +1163,6 @@ module EDDTableImport {
                     ]
                 ];
             }
-
-            // Remove and replace the table in the document
-            $('#dataTableDiv').empty();
 
             // attach all event handlers to the table itself
             var t = this;
@@ -1428,19 +1464,15 @@ module EDDTableImport {
             var ignoreDataGaps = this.rawInputStep.ignoreDataGaps;
 
             // We'll be accumulating these for disambiguation.
-            // Each unique key will get a distinct value, placing it in the order first seen
-            var seenLineNames = {};
-            var seenAssayNames = {};
-            var seenMeasurementNames = {};
-            var seenMetadataNames = {};
-            // Here's how we track the indexes we assign as values above.
-            var lineNamesCount = 0;
-            var assayNamesCount = 0;
-            var measurementNamesCount = 0;
-            var metadataNamesCount = 0;
+            var seenLineNames:{[id:string]: boolean} = {};
+            var seenAssayNames:{[id:string]: boolean} = {};
+            var seenMeasurementNames:{[id:string]: boolean} = {};
+            var seenMetadataNames:{[id:string]: boolean} = {};
 
             // Here are the arrays we will use later
             this.parsedSets = [];
+            this.graphSets = [];
+
             this.uniqueLineNames = [];
             this.uniqueAssayNames = [];
             this.uniqueMeasurementNames = [];
@@ -1453,7 +1485,7 @@ module EDDTableImport {
             if (this.rawInputStep.processedSetsAvailable) {
 
                 this.rawInputStep.processedSetsFromFile.forEach((rawSet, c: number): void => {
-                    var set: any, uniqueTimes: number[], times: any, foundMeta: boolean;
+                    var set: RawImportSet, graphSet: GraphingSet, uniqueTimes: number[], times: any, foundMeta: boolean;
 
                     var ln = rawSet.line_name;
                     var an = rawSet.assay_name;
@@ -1464,50 +1496,33 @@ module EDDTableImport {
                     foundMeta = false;
 
                     // The procedure for Assays, Measurements, etc is the same:
-                    // If the value is blank, we can't build a valid set, to skip to the next set.
+                    // If the value is blank, we can't build a valid set, so skip to the next set.
                     // If the value is valid but we haven't seen it before, increment and store a uniqueness index.
                     if (!ln && ln !== 0) { return; }
                     if (!an && an !== 0) { return; }
                     if (!mn && mn !== 0) { return; }
                     if (!seenLineNames[ln]) {
-                        seenLineNames[ln] = ++lineNamesCount;
-                        this.uniqueLineNames.push(an);
+                        seenLineNames[ln] = true;
+                        this.uniqueLineNames.push(ln);
                     }
                     if (!seenAssayNames[an]) {
-                        seenAssayNames[an] = ++assayNamesCount;
+                        seenAssayNames[an] = true;
                         this.uniqueAssayNames.push(an);
                     }
                     if (!seenMeasurementNames[mn]) {
-                        seenMeasurementNames[mn] = ++measurementNamesCount;
+                        seenMeasurementNames[mn] = true;
                         this.uniqueMeasurementNames.push(mn);
                     }
 
-                    set = {
-                        // For the graphing module
-                        'label': (ln ? ln+': ' : '') + an+': ' + mn,
-                        'name': mn,
-                        'units': 'units',
-                        // For submission to the database. TODO: Update
-                        'parsingIndex': c,
-                        'assay': seenAssayNames[an],
-                        'assayName': an,
-                        'line': seenLineNames[an],
-                        'lineName': ln,    // TODO: Handle Line names as their own thing
-                        'measurementType': seenMeasurementNames[mn],
-                        'metadata': {},
-                        'singleData': null,
-                        // For both
-                        'data': []
-                    };
+                    var reassembledData = [];
 
                     // Slightly different procedure for metadata, but same idea:
                     Object.keys(rawSet.metadata_by_name).forEach((key):void => {
                         var value = rawSet.metadata_by_name[key];
                         if (!seenMetadataNames[key]) {
-                            seenMetadataNames[key] = ++metadataNamesCount;
+                            seenMetadataNames[key] = true;
                             this.uniqueMetadataNames.push(key);
                         }
-                        set.metadata[seenMetadataNames[key]] = value;
                         foundMeta = true;
                     });
 
@@ -1532,13 +1547,30 @@ module EDDTableImport {
                         }
                     });
                     uniqueTimes.sort((a, b) => a - b).forEach((time: number): void => {
-                        set.data.push([time, times[time]]);
+                        reassembledData.push([time, times[time]]);
                     });
 
-                    // only save if we accumulated some data or metadata
-                    if (uniqueTimes.length || foundMeta) {
-                        this.parsedSets.push(set);
+                    // Only save if we accumulated some data or metadata
+                    if (!uniqueTimes.length && !foundMeta) { return; }
+
+                    set = {
+                        // Copy across the fields from the RawImportSet record
+                        kind:              rawSet.kind,
+                        line_name:         rawSet.line_name,
+                        assay_name:        rawSet.assay_name,
+                        measurement_name:  rawSet.measurement_name,
+                        metadata_by_name:  rawSet.metadata_by_name,
+                        data:              reassembledData
+                    };
+                    this.parsedSets.push(set);
+
+                    graphSet = {
+                        'label': (ln ? ln+': ' : '') + an+': ' + mn,
+                        'name': mn,
+                        'units': 'units',
+                        'data': reassembledData
                     }
+                    this.graphSets.push(graphSet);
                 });
                 return;
             }
@@ -1575,56 +1607,52 @@ module EDDTableImport {
             if (singleMode) {
 
                 this.colObjects.forEach((_, c: number): void => {
-                    var cellValue: string, set: any;
-                    if (!this.activeColFlags[c]) {
-                        return;
-                    }
+                    var cellValue: string, set: RawImportSet;
+
+                    if (!this.activeColFlags[c]) { return; }
                     cellValue = grid[earliestName][c] || '';
-                    if (cellValue) {
-                        // If haven't seen cellValue before, increment and store uniqueness index
-                        if (!seenAssayNames[cellValue]) {
-                            seenAssayNames[cellValue] = ++assayNamesCount;
-                            this.uniqueAssayNames.push(cellValue);
-                        }
-                        grid.forEach((row: string[], r: number): void => {
-                            var pulldown: number, label: string, value: string, timestamp: number;
-                            if (!this.activeRowFlags[r] || !this.activeFlags[r][c]) {
-                                return;
-                            }
-                            pulldown = this.pulldownSettings[r];
-                            label = gridRowMarkers[r] || '';
-                            value = row[c] || '';
-                            if (!pulldown || !(pulldown === TypeEnum.Metabolite_Name || pulldown === TypeEnum.Protein_Name) || !label || !value) {
-                                return;
-                            }
-                            set = {
-                                // For the graphing module (which we won't be using in this mode, actually)
-                                'label': 'Column ' + c + ' row ' + r,
-                                'name': 'Column ' + c + ' row ' + r,
-                                'units': 'units',
-                                // For submission to the database TODO: update
-                                'parsingIndex': this.parsedSets.length,
-                                'assay': seenAssayNames[cellValue],
-                                'assayName': cellValue,
-                                'measurementType': null,
-                                'metadata': {},
-                                'singleData': value,
-                                // For both
-                                'data': []
-                            };
-                            if (pulldown === TypeEnum.Metabolite_Name) {
-                                if (!seenMeasurementNames[label]) {
-                                    seenMeasurementNames[label] = ++measurementNamesCount;
-                                    this.uniqueMeasurementNames.push(label);
-                                }
-                                set.measurementType = seenMeasurementNames[label];
-                            } else if (pulldown === TypeEnum.Protein_Name) {
-                                set.name = label;
-                                set.measurementType = label;
-                            }
-                            this.parsedSets.push(set);
-                        });
+                    if (!cellValue) { return; }
+
+                    // If haven't seen cellValue before, increment and store uniqueness index
+                    if (!seenAssayNames[cellValue]) {
+                        seenAssayNames[cellValue] = true;
+                        this.uniqueAssayNames.push(cellValue);
                     }
+                    grid.forEach((row: string[], r: number): void => {
+                        var pulldown: number, label: string, value: string, timestamp: number;
+                        if (!this.activeRowFlags[r] || !this.activeFlags[r][c]) {
+                            return;
+                        }
+                        pulldown = this.pulldownSettings[r];
+                        label = gridRowMarkers[r] || '';
+                        value = row[c] || '';
+                        if (!pulldown || !label || !value) { return; }
+
+                        var m_name:string = null;
+                        if (pulldown === TypeEnum.Metabolite_Name) {
+                            if (!seenMeasurementNames[label]) {
+                                seenMeasurementNames[label] = true;
+                                this.uniqueMeasurementNames.push(label);
+                            }
+                            m_name = label;
+                        } else if (pulldown === TypeEnum.Protein_Name) {
+                            m_name = label;
+                        } else {
+                            // If we aren't on a row that's labeled as either a metabolite valye or a protein value,
+                            // return without making a set.
+                            return;
+                        }
+
+                        set = {
+                            kind:              this.selectMajorKindStep.interpretationMode,
+                            line_name:         null,
+                            assay_name:        cellValue,
+                            measurement_name:  m_name,
+                            metadata_by_name:  {},
+                            data:              [[null, value]]
+                        };
+                        this.parsedSets.push(set);
+                    });
                 });
                 return;
             }
@@ -1632,26 +1660,23 @@ module EDDTableImport {
             // The standard method: Make a "set" for each column of the table
 
             this.colObjects.forEach((_, c: number): void => {
-                var set: any, uniqueTimes: number[], times: any, foundMeta: boolean;
+                var set: RawImportSet, graphSet: GraphingSet, uniqueTimes: number[], times: any, foundMeta: boolean;
                 // Skip it if the whole column is deactivated
                 if (!this.activeColFlags[c]) {
                     return;
                 }
+
+                var reassembledData = [];    // We'll fill this out as we go
+
                 set = {
-                    // For the graphing module
-                    'label': 'Column ' + c,
-                    'name': 'Column ' + c,
-                    'units': 'units',
-                    // For submission to the database. TODO: Update
-                    'parsingIndex': c,
-                    'assay': null,
-                    'assayName': null,
-                    'measurementType': null,
-                    'metadata': {},
-                    'singleData': null,
-                    // For both
-                    'data': []
+                    kind:              this.selectMajorKindStep.interpretationMode,
+                    line_name:         null,
+                    assay_name:        null,
+                    measurement_name:  null,
+                    metadata_by_name:  {},
+                    data:              reassembledData,
                 };
+
                 uniqueTimes = [];
                 times = {};
                 foundMeta = false;
@@ -1668,13 +1693,12 @@ module EDDTableImport {
                     } else if (pulldown === TypeEnum.RPKM_Values) {  // Transcriptomics: RPKM values
                         value = value.replace(/,/g, '');
                         if (value) {
-                            set.singleData = value;
+                            reassembledData = [[null, value]];
                         }
                         return;
                     } else if (pulldown === TypeEnum.Gene_Names) {  // Transcriptomics: Gene names
                         if (value) {
-                            set.name = value;
-                            set.measurementType = value;
+                            set.measurement_name = value;
                         }
                         return;
                     } else if (pulldown === TypeEnum.Timestamp) {   // Timestamps
@@ -1703,36 +1727,45 @@ module EDDTableImport {
                     } else if (pulldown === TypeEnum.Assay_Line_Names) {
                         // If haven't seen value before, increment and store uniqueness index
                         if (!seenAssayNames[value]) {
-                            seenAssayNames[value] = ++assayNamesCount;
+                            seenAssayNames[value] = true;
                             this.uniqueAssayNames.push(value);
                         }
-                        set.assay = seenAssayNames[value];
-                        set.assayName = value;
+                        set.assay_name = value;
                         return;
                     } else if (pulldown === TypeEnum.Metabolite_Names) {   // Metabolite Names
                         // If haven't seen value before, increment and store uniqueness index
                         if (!seenMeasurementNames[value]) {
-                            seenMeasurementNames[value] = ++measurementNamesCount;
+                            seenMeasurementNames[value] = true;
                             this.uniqueMeasurementNames.push(value);
                         }
-                        set.measurementType = seenMeasurementNames[value];
+                        set.measurement_name = value;
                         return;
                     } else if (pulldown === TypeEnum.Metadata_Name) {   // Metadata
                         if (!seenMetadataNames[label]) {
-                            seenMetadataNames[label] = ++metadataNamesCount;
+                            seenMetadataNames[label] = true;
                             this.uniqueMetadataNames.push(label);
                         }
-                        set.metadata[seenMetadataNames[label]] = value;
+                        set.metadata_by_name[label] = value;
                         foundMeta = true;
                     }
                 });
                 uniqueTimes.sort((a, b) => a - b).forEach((time: number): void => {
-                    set.data.push([time, times[time]]);
+                    reassembledData.push([time, times[time]]);
                 });
                 // only save if accumulated some data or metadata
-                if (uniqueTimes.length || foundMeta || set.singleData !== null) {
-                    this.parsedSets.push(set);
+                if (!uniqueTimes.length && !foundMeta && !reassembledData[0]) {
+                    return;
                 }
+
+                this.parsedSets.push(set);
+
+                graphSet = {
+                    'label': 'Column ' + c,
+                    'name': 'Column ' + c,
+                    'units': 'units',
+                    'data': reassembledData
+                }
+                this.graphSets.push(graphSet);
             });
         }
 
@@ -1800,7 +1833,7 @@ module EDDTableImport {
                 return;
             }
             EDDATDGraphing.clearAllSets();
-            var sets = this.parsedSets;
+            var sets = this.graphSets;
             // If we're not in either of these modes, drawing a graph is nonsensical.
             if (mode === "std" || mode === 'biolector') {
                 sets.forEach((set) => EDDATDGraphing.addNewSet(set));
@@ -1888,8 +1921,8 @@ module EDDTableImport {
                 this.protocolCurrentlyDisplayed = masterP;
                 // We deal with recreating this pulldown here, instead of in remakeAssayLineSection(),
                 // because remakeAssayLineSection() is called by reconfigure(), which is called
-                // when other UI in this step changes - and this pulldown is NOT affected by changes to
-                // the other UI.
+                // when other UI in this step changes.  This pulldown is NOT affected by changes to
+                // the other UI, so it would be pointless to remake it in response to them.
                 assayIn = $('#masterAssay').empty();
                 $('<option>').text('(Create New)').appendTo(assayIn).val('new').prop('selected', true);
                 currentAssays = ATData.existingAssays[masterP] || [];
@@ -1914,26 +1947,27 @@ module EDDTableImport {
 
             var parsedSets = this.identifyStructuresStep.parsedSets;
             var seenAnyTimestamps = this.identifyStructuresStep.seenAnyTimestamps;
-            var uniqueMeasurementNames = this.identifyStructuresStep.uniqueMeasurementNames;
-            var uniqueMetadataNames = this.identifyStructuresStep.uniqueMetadataNames;
-
+            // Hide all the subsections by default
+            $('#masterTimestampDiv').addClass('off');
+            $('#disambiguateLinesAssaysSection').addClass('off');
+            $('#masterAssayLineDiv').addClass('off');
+            $('#disambiguateMeasurementsSection').addClass('off');
+            $('#masterMTypeDiv').addClass('off');
             $('#disambiguateMetadataSection').addClass('off');
-            $('#disambiguateMetadataTable').remove();
+
             // If no sets to show, leave the area blank and show the 'enter some data!' banner
             if (parsedSets.length === 0) {
                 $('#emptyDisambiguationLabel').removeClass('off');
                 return;
             }
+
             $('#emptyDisambiguationLabel').addClass('off');
-            // If parsed data exists, but haven't seen a single timestamp show the "master timestamp" UI.
+            // If parsed data exists, but we haven't seen a single timestamp, show the "master timestamp" UI.
             $('#masterTimestampDiv').toggleClass('off', seenAnyTimestamps);
+            // Call subroutines for each of the major sections
             this.remakeAssayLineSection();
             this.remakeMeasurementSection();
-            // If we've detected any metadata types for disambiguation, create a section
-            if (uniqueMetadataNames.length > 0) {
-                this.remakeMetadataSection();
-            }
-
+            this.remakeMetadataSection();
             this.nextStepCallback();
         }
 
@@ -1958,14 +1992,13 @@ module EDDTableImport {
 
             $('#disambiguateAssaysTable').remove();
 
+            this.assayLineObjSets[masterP] = this.assayLineObjSets[masterP] || {};
+
             if (uniqueAssayNames.length === 0) {
-                $('#disambiguateLinesAssaysSection').addClass('off');
                 $('#masterAssayLineDiv').removeClass('off');
                 return;
             }
 
-            $('#masterAssayLineDiv').addClass('off');
-            this.assayLineObjSets[masterP] = {};
             this.currentlyVisibleAssayLineObjSets = [];
             var t = this;
             table = <HTMLTableElement>$('<table>')
@@ -1976,22 +2009,22 @@ module EDDTableImport {
                 })[0];
             body = <HTMLTableElement>$('<tbody>').appendTo(table)[0];
             uniqueAssayNames.forEach((name: string, i: number): void => {
-                var disam: any, row: HTMLTableRowElement, defaultSel: any,
-                    cell: JQuery, aSelect: JQuery, lSelect: JQuery;
+                var disam: any, row: HTMLTableRowElement, defaultSel: any, cell: JQuery, aSelect: JQuery, lSelect: JQuery;
                 disam = this.assayLineObjSets[masterP][name];
                 if (!disam) {
                     disam = {};
                     defaultSel = this.disambiguateAnAssayOrLine(name, i);
                     // First make a table row, and save a reference to it
-                    disam.rowObj = row = <HTMLTableRowElement>body.insertRow();
+                    row = <HTMLTableRowElement>body.insertRow();
+                    disam.rowElementJQ = $(row);
                     // Next, add a table cell with the string we are disambiguating
                     $('<div>').text(name).appendTo(row.insertCell());
                     // Now build another table cell that will contain the pulldowns
                     cell = $(row.insertCell()).css('text-align', 'left');
                     aSelect = $('<select>').appendTo(cell)
-                        .data({ 'setByUser': false, 'visibleIndex': i })
+                        .data({ 'setByUser': false })
                         .attr('name', 'disamAssay' + (i + 1));
-                    disam.assayObj = aSelect[0];
+                    disam.selectAssayJQElement = aSelect;
                     $('<option>').text('(Create New)').appendTo(aSelect).val('new')
                         .prop('selected', !defaultSel.assayID);
                     (ATData.existingAssays[masterP] || []).forEach((id: number): void => {
@@ -2008,7 +2041,7 @@ module EDDTableImport {
                         .appendTo(cell);
                     lSelect = $('<select>').appendTo(cell).data('setByUser', false)
                         .attr('name', 'disamLine' + (i + 1));
-                    disam.lineObj = lSelect[0];
+                    disam.selectLineJQElement = lSelect;
                     $('<option>').text('(Create New)').appendTo(lSelect).val('new')
                         .prop('selected', !defaultSel.lineID);
                     // ATData.existingLines is of type {id: number; n: string;}[]
@@ -2018,62 +2051,65 @@ module EDDTableImport {
                     });
                     this.assayLineObjSets[masterP][name] = disam;
                 }
-                $(disam.rowObj).appendTo(body);
+                disam.selectAssayJQElement.data({ 'visibleIndex': i });
+                disam.rowElementJQ.appendTo(body);
                 this.currentlyVisibleAssayLineObjSets.push(disam);
             });
         }
 
 
         remakeMeasurementSection(): void {
-            var table: HTMLTableElement, body: HTMLTableElement, row: HTMLTableRowElement;
+            var body: HTMLTableElement, row: HTMLTableRowElement;
 
             var mode = this.selectMajorKindStep.interpretationMode;
             var uniqueMeasurementNames = this.identifyStructuresStep.uniqueMeasurementNames;
             var seenAnyTimestamps = this.identifyStructuresStep.seenAnyTimestamps;
 
             $('#disambiguateMeasurementsSection').addClass('off');
-            $('#disambiguateMeasurementsTable').remove();
             $('#masterMTypeDiv').addClass('off');
 
             // If in 'Transcription' or 'Proteomics' mode, there are no measurement types involved.
             // skip the measurement section, and provide statistics about the gathered records.
             if (mode === "tr" || mode === "pr") { return; }
 
+            // No measurements for disambiguation, have timestamp data:  That means we need to choose one measurement.
+            // You might think that we should display this even without timestamp data, to handle the case where we're importing
+            // a single measurement type for a single timestamp...  But that would be a 1-dimensional import, since there is only
+            // one other object with multiple types to work with (lines/assays).  We're not going to bother supporting that.
             if (uniqueMeasurementNames.length === 0 && seenAnyTimestamps) {
-                // no measurements for disambiguation, have timestamp data => ask the user to select one
                 $('#masterMTypeDiv').removeClass('off');
                 return;
             }
 
+            this.currentlyVisibleMeasurementObjSets.forEach((disam:any): void => {
+                disam.rowElementJQ.detach();
+            });
+            $('#disambiguateMeasurementsSection').removeClass('off');
+
             // put together a disambiguation section for measurement types
             var t = this;
-            table = <HTMLTableElement>$('<table>')
-                .attr({ 'id': 'disambiguateMeasurementsTable', 'cellspacing': 0 })
-                .appendTo($('#disambiguateMeasurementsSection').removeClass('off'))
-                .on('change', 'input[type=hidden]', (ev: JQueryInputEventObject): void => {
-                    // only watch for changes on the hidden portion, let autocomplete work
-                    t.userChangedMeasurementDisam(ev.target);
-                })[0];
-            body = <HTMLTableElement>$('<tbody>').appendTo(table)[0];
-            // Headers for the table
-            row = <HTMLTableRowElement>body.insertRow();
-            $('<th>').attr({ 'colspan': 2 }).css('text-align', 'right').text('Compartment').appendTo(row);
-            $('<th>').text('Type').appendTo(row);
-            $('<th>').text(mode === 'std' ? 'Units' : '').appendTo(row);
-            // Done with headers row
+            body = <HTMLTableElement>($('#disambiguateMeasurementsTable').children().first()[0]);
             this.currentlyVisibleMeasurementObjSets = [];   // For use in cascading user settings
             uniqueMeasurementNames.forEach((name: string, i: number): void => {
                 var disam: any;
                 disam = this.measurementObjSets[name];
-                if (disam && disam.rowObj) {
-                    $(disam.rowObj).appendTo(body);
+                if (disam && disam.rowElementJQ) {
+                    disam.rowElementJQ.appendTo(body);
                 } else {
                     disam = {};
-                    disam.rowObj = row = <HTMLTableRowElement>body.insertRow();
+                    row = <HTMLTableRowElement>body.insertRow();
+                    disam.rowElementJQ = $(row);
                     $('<div>').text(name).appendTo(row.insertCell());
                     ['compObj', 'typeObj', 'unitsObj'].forEach((auto: string): void => {
                         var cell: JQuery = $(row.insertCell()).addClass('disamDataCell');
                         disam[auto] = EDD_auto.create_autocomplete(cell).data('type', auto);
+                    });
+                    disam.typeHiddenObj = disam.typeObj.next();
+                    disam.compHiddenObj = disam.compObj.next();
+                    disam.unitsHiddenObj = disam.unitsObj.next();
+                    $(row).on('change', 'input[type=hidden]', (ev: JQueryInputEventObject): void => {
+                        // only watch for changes on the hidden portion, let autocomplete work
+                        t.userChangedMeasurementDisam(ev.target);
                     });
                     this.measurementObjSets[name] = disam;
                 }
@@ -2090,6 +2126,7 @@ module EDDTableImport {
                 EDD_auto.setup_field_autocomplete(disam.unitsObj, 'MeasurementUnit', this.autoCache.unit);
                 // If we're in MDV mode, the units pulldowns are irrelevant.
                 disam.unitsObj.toggleClass('off', mode === 'mdv');
+                this.currentlyVisibleMeasurementObjSets.push(disam);
             });
             this.checkAllMeasurementCompartmentDisam();
         }
@@ -2099,7 +2136,9 @@ module EDDTableImport {
             var table: HTMLTableElement, body: HTMLTableElement, row: HTMLTableRowElement;
 
             var uniqueMetadataNames = this.identifyStructuresStep.uniqueMetadataNames;
+            if (uniqueMetadataNames.length < 1) { return; }
 
+            $('#disambiguateMetadataTable').remove();
             // put together a disambiguation section for metadata
             table = <HTMLTableElement>$('<table>')
                 .attr({ 'id': 'disambiguateMetadataTable', 'cellspacing': 0 })
@@ -2111,13 +2150,15 @@ module EDDTableImport {
             uniqueMetadataNames.forEach((name: string, i: number): void => {
                 var disam: any;
                 disam = this.metadataObjSets[name];
-                if (disam && disam.rowObj) {
-                    $(disam.rowObj).appendTo(body);
+                if (disam && disam.rowElementJQ) {
+                    disam.rowElementJQ.appendTo(body);
                 } else {
                     disam = {};
-                    disam.rowObj = row = <HTMLTableRowElement>body.insertRow();
+                    row = <HTMLTableRowElement>body.insertRow();
+                    disam.rowElementJQ = $(row);
                     $('<div>').text(name).appendTo(row.insertCell());
                     disam.metaObj = EDD_auto.create_autocomplete(row.insertCell()).val(name);
+                    disam.metaHiddenObj = disam.metaObj.next();
                     this.metadataObjSets[name] = disam;
                 }
                 disam.metaObj.attr('name', 'disamMeta' + (i + 1)).addClass('autocomp_altype')
@@ -2153,7 +2194,7 @@ module EDDTableImport {
             }
             v = changed.data('visibleIndex') || 0;
             this.currentlyVisibleAssayLineObjSets.slice(v).forEach((obj: any): void => {
-                var select: JQuery = $(obj.assayObj);
+                var select: JQuery = obj.selectAssayJQElement;
                 if (select.data('setByUser')) {
                     return;
                 }
@@ -2165,6 +2206,7 @@ module EDDTableImport {
 
 
         userChangedMeasurementDisam(element: Element):void {
+            console.log('changed');
             var hidden: JQuery, auto: JQuery, type: string, i: number;
             hidden = $(element);
             auto = hidden.prev();
@@ -2196,13 +2238,13 @@ module EDDTableImport {
             var mode = this.selectMajorKindStep.interpretationMode;
 
             allSet = this.currentlyVisibleMeasurementObjSets.every((obj: any): boolean => {
-                var hidden: JQuery = obj.compObj.next();
+                var hidden: JQuery = obj.compHiddenObj;
                 if (obj.compObj.data('setByUser') || (hidden.val() && hidden.val() !== '0')) {
                     return true;
                 }
                 return false;
             });
-            $('#noCompartmentWarning').toggleClass('off', mode !== 'mdv' && allSet);
+            $('#noCompartmentWarning').toggleClass('off', mode !== 'mdv' || allSet);
         }
 
 
@@ -2281,6 +2323,111 @@ module EDDTableImport {
                 return true;
             });
             return selections;
+        }
+
+
+        createSetsForSubmission():ResolvedImportSet[] {
+
+            // From Step 1
+            var masterProtocol = $("#masterProtocol").val();
+
+            // From Step 3
+            var seenAnyTimestamps = this.identifyStructuresStep.seenAnyTimestamps;
+            var parsedSets = this.identifyStructuresStep.parsedSets;
+
+            // From this Step
+            var masterTime = parseFloat($('#masterTimestamp').val());
+            var masterLine = $('#masterLine').val();
+            var masterAssay = $('#masterAssay').val();
+            var masterMType = $('#masterMType').val();
+            var masterMComp = $('#masterMComp').val();
+            var masterMUnits = $('#masterMUnits').val();
+
+            var resolvedSets:ResolvedImportSet[] = [];
+
+            parsedSets.forEach((set, c: number): void => {
+                var resolvedSet: ResolvedImportSet;
+
+                // Go with the master values by default 
+                var line_id = masterLine;           // (might be 'new')
+                var assay_id = masterAssay;         // (might be 'new')
+                var measurement_id = masterMType;
+                var compartment_id = masterMComp;
+                var units_id = masterMUnits;
+
+                var data = set.data;
+
+                var metaData:{[id:string]: string} = {};
+                var metaDataPresent:boolean = false;
+
+                // If we have a valid, specific Assay name, look for a disambiguation field that matches it.
+                if (set.assay_name !== null && masterProtocol) {
+                    var disam = this.assayLineObjSets[masterProtocol][set.assay_name];
+                    if (disam) {
+                        assay_id = disam.selectAssayJQElement.val();
+                        line_id = disam.selectLineJQElement.val();
+                    }
+                }
+                // Same for measurement name, but resolve all three measurement fields if we find a match.
+                if (set.measurement_name !== null) {
+                    var disam = this.measurementObjSets[set.measurement_name];
+                    if (disam) {
+                        measurement_id = disam.typeHiddenObj.val();
+                        compartment_id = disam.compHiddenObj.val();
+                        units_id = disam.unitsHiddenObj.val();
+                    }
+                }
+
+                // Any metadata disambiguation fields that are left unresolved, will have their metadata
+                // dropped from the import in this step, because this loop is building key-value pairs where
+                // the key is the chosen database id of the metadata type.  No id == not added.
+                Object.keys(set.metadata_by_name).forEach((name):void => {
+                    var disam = this.metadataObjSets[name];
+                    if (disam) {
+                        var id = disam.metaHiddenObj.val();
+                        if (id) {
+                            metaData[id] = set.metadata_by_name[name];
+                            metaDataPresent = true;
+                        }
+                    }
+                });
+
+                // If we haven't seen any timestamps during data accumulation, it means we need the user to pick
+                // a master timestamp.  In that situation, any given set will have at most one data point in it,
+                // with the timestamp in the data point set to 'null'.  Here we resolve it to a valid timestamp.
+                // If there is no master timestamp selected, we drop the data point, but make the set anyway since
+                // it might carry metadata.
+                if (!seenAnyTimestamps && set.data[0]) {
+                    if (!isNaN(masterTime)) {
+                        data[0][0] = masterTime;
+                    } else {
+                        data = [];
+                    }
+                }
+
+                // If we have no data, and no metadata that survived resolving, don't make the set.
+                if (data.length < 1 && !metaDataPresent) { return; }
+
+                resolvedSet = {
+                    // Copy across the fields from the RawImportSet record
+                    kind:              set.kind,
+                    line_name:         set.line_name,
+                    assay_name:        set.assay_name,
+                    measurement_name:  set.measurement_name,
+                    metadata_by_name:  set.metadata_by_name,
+                    data:              data,
+                    // Add new disambiguation-specific fields
+                    protocol_id:       masterProtocol,
+                    line_id:           line_id,
+                    assay_id:          assay_id,
+                    measurement_id:    measurement_id,
+                    compartment_id:    compartment_id,
+                    units_id:          units_id,
+                    metadata_by_id:    metaData
+                };
+                resolvedSets.push(resolvedSet);
+            });
+            return resolvedSets;
         }
     }
 }
