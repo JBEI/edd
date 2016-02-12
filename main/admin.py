@@ -2,7 +2,7 @@
 from __future__ import unicode_literals
 
 from django import forms
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin
 from django.db.models import Count
@@ -10,7 +10,10 @@ from django.utils.html import format_html
 from django.utils.translation import ugettext_lazy as _
 from django_auth_ldap.backend import LDAPBackend
 
-from .forms import MetadataTypeAutocompleteWidget, UserAutocompleteWidget
+from .forms import (
+    MetadataTypeAutocompleteWidget, RegistryAutocompleteWidget, RegistryValidator,
+    UserAutocompleteWidget
+)
 from .models import (
     Assay, Attachment, CarbonSource, GeneIdentifier, GroupPermission, Line, MeasurementGroup,
     MeasurementType, Metabolite, MetadataGroup, MetadataType, Phosphor,
@@ -143,24 +146,31 @@ class ProtocolAdmin(EDDObjectAdmin):
         super(ProtocolAdmin, self).save_model(request, obj, form, change)
 
 
-class StrainAdminForm(forms.ModelForm):
-    class Meta:
-        model = Strain
-        fields = ('name', 'registry_url', 'description', 'active', )
-        labels = {
-            'name': _('Strain'),
-            'registry_url': _('Registry URL'),
-            'description': _('Description'),
-            'active': _('Is Active'),
-        }
-
-
 class StrainAdmin(EDDObjectAdmin):
     """ Definition for admin-edit of Strains """
-    form = StrainAdminForm
     list_display = (
         'name', 'description', 'hyperlink_strain', 'num_lines', 'num_studies', 'created',
     )
+
+    def __init__(self, *args, **kwargs):
+        super(StrainAdmin, self).__init__(*args, **kwargs)
+        self.ice_validator = RegistryValidator(create_strains=False)
+
+    def get_fields(self, request, obj=None):
+        if not obj or not obj.registry_id:
+            return ['registry_id', ]
+        return ['name', 'description', 'registry_url', ]
+
+    def formfield_for_dbfield(self, db_field, **kwargs):
+        if db_field.name == 'registry_id':
+            kwargs['widget'] = RegistryAutocompleteWidget()
+            kwargs['validators'] = [self.ice_validator.validate, ]
+        return super(StrainAdmin, self).formfield_for_dbfield(db_field, **kwargs)
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj and obj.registry_id:
+            return ['name', 'description', 'registry_url', ]
+        return ['name', 'description', ]
 
     def get_queryset(self, request):
         q = super(StrainAdmin, self).get_queryset(request)
@@ -183,6 +193,14 @@ class StrainAdmin(EDDObjectAdmin):
     def num_studies(self, instance):
         return instance.num_studies
     num_studies.short_description = '# Studies'
+
+    def save_model(self, request, obj, form, change):
+        if self.ice_validator.count != 0:
+            messages.error(request, _('A strain record already exists for that ICE entry!'))
+            return
+        if self.ice_validator.part:
+            obj.registry_url = self.ice_validator.part['url']
+        super(StrainAdmin, self).save_model(request, obj, form, change)
 
 
 class CarbonSourceAdmin(EDDObjectAdmin):
