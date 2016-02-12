@@ -142,7 +142,7 @@ module EDDTableImport {
 //        var parsedSets = EDDTableImport.identifyStructuresStep.parsedSets;
         var resolvedSets = EDDTableImport.typeDisambiguationStep.createSetsForSubmission();
         // if the debug area is there, set its value to JSON of parsed sets
-        $('#jsondebugarea').val(JSON.stringify(resolvedSets);
+        $('#jsondebugarea').val(JSON.stringify(resolvedSets));
     }
 
 
@@ -1863,9 +1863,12 @@ module EDDTableImport {
         // even as the disambiguation section is destroyed and remade.
 
         protocolCurrentlyDisplayed: number;
-        // For disambuguating Assays/Lines
-        assayLineObjSets: any;
-        currentlyVisibleAssayLineObjSets: any[];
+        // For disambuguating Lines
+        lineObjSets: any;
+        currentlyVisibleLineObjSets: any[];
+        // For disambuguating Assays (really Assay/Line combinations)
+        assayObjSets: any;
+        currentlyVisibleAssayObjSets: any[];
         // For disambuguating measurement types
         measurementObjSets: any;
         currentlyVisibleMeasurementObjSets: any[];
@@ -1882,8 +1885,10 @@ module EDDTableImport {
 
         constructor(selectMajorKindStep: SelectMajorKindStep, identifyStructuresStep: IdentifyStructuresStep, nextStepCallback: any) {
 
-            this.assayLineObjSets = {};
-            this.currentlyVisibleAssayLineObjSets = [];
+            this.lineObjSets = {};
+            this.assayObjSets = {};
+            this.currentlyVisibleLineObjSets = [];
+            this.currentlyVisibleAssayObjSets = [];
             this.measurementObjSets = {};
             this.currentlyVisibleMeasurementObjSets = [];
             this.metadataObjSets = {};
@@ -1919,8 +1924,8 @@ module EDDTableImport {
             var masterP = this.selectMajorKindStep.masterProtocol;    // Shout-outs to a mid-grade rapper
             if (this.protocolCurrentlyDisplayed != masterP) {
                 this.protocolCurrentlyDisplayed = masterP;
-                // We deal with recreating this pulldown here, instead of in remakeAssayLineSection(),
-                // because remakeAssayLineSection() is called by reconfigure(), which is called
+                // We deal with recreating this pulldown here, instead of in remakeAssaySection(),
+                // because remakeAssaySection() is called by reconfigure(), which is called
                 // when other UI in this step changes.  This pulldown is NOT affected by changes to
                 // the other UI, so it would be pointless to remake it in response to them.
                 assayIn = $('#masterAssay').empty();
@@ -1949,7 +1954,9 @@ module EDDTableImport {
             var seenAnyTimestamps = this.identifyStructuresStep.seenAnyTimestamps;
             // Hide all the subsections by default
             $('#masterTimestampDiv').addClass('off');
-            $('#disambiguateLinesAssaysSection').addClass('off');
+            $('#disambiguateLinesSection').addClass('off');
+            $('#masterLineDiv').addClass('off');
+            $('#disambiguateAssaysSection').addClass('off');
             $('#masterAssayLineDiv').addClass('off');
             $('#disambiguateMeasurementsSection').addClass('off');
             $('#masterMTypeDiv').addClass('off');
@@ -1965,7 +1972,11 @@ module EDDTableImport {
             // If parsed data exists, but we haven't seen a single timestamp, show the "master timestamp" UI.
             $('#masterTimestampDiv').toggleClass('off', seenAnyTimestamps);
             // Call subroutines for each of the major sections
-            this.remakeAssayLineSection();
+            if (mode === "biolector") {
+                this.remakeLineSection();
+            } else {
+                this.remakeAssaySection();
+            }
             this.remakeMeasurementSection();
             this.remakeMetadataSection();
             this.nextStepCallback();
@@ -1979,38 +1990,104 @@ module EDDTableImport {
         }
 
 
+        // If the previous step found Line names that need resolving, and the interpretation mode in Step 1
+        // warrants resolving Lines independent of Assays, we create this section.
+        // The point is that if we connect unresolved Line strings on their own, the unresolved Assay strings
+        // can be used to create multiple new Assays with identical names under a range of Lines.
+        // This means users can create a matrix of Line/Assay combinations, rather than a one-dimensional
+        // resolution where unique Assay names must always point to one unique Assay record.
+        remakeLineSection(): void {
+            var table: HTMLTableElement, body: HTMLTableElement;
+            var uniqueLineNames = this.identifyStructuresStep.uniqueLineNames;
+
+            this.currentlyVisibleLineObjSets.forEach((disam:any): void => {
+                disam.rowElementJQ.detach();
+            });
+            $('#disambiguateLinesTable').remove();
+
+            if (uniqueLineNames.length === 0) {
+                $('#masterLineDiv').removeClass('off');
+                return;
+            }
+
+            this.currentlyVisibleLineObjSets = [];
+            var t = this;
+            table = <HTMLTableElement>$('<table>')
+                .attr({ 'id': 'disambiguateLinesTable', 'cellspacing': 0 })
+                .appendTo($('#disambiguateLinesSection').removeClass('off'))
+                .on('change', 'select', (ev: JQueryInputEventObject): void => {
+                    t.userChangedLineDisam(ev.target);
+                })[0];
+            body = <HTMLTableElement>$('<tbody>').appendTo(table)[0];
+            uniqueLineNames.forEach((name: string, i: number): void => {
+                var disam: any, row: HTMLTableRowElement, defaultSel: any, cell: JQuery, select: JQuery;
+                disam = this.lineObjSets[name];
+                if (!disam) {
+                    disam = {};
+                    defaultSel = this.disambiguateAnAssayOrLine(name, i);
+                    // First make a table row, and save a reference to it
+                    row = <HTMLTableRowElement>body.insertRow();
+                    disam.rowElementJQ = $(row);
+                    // Next, add a table cell with the string we are disambiguating
+                    $('<div>').text(name).appendTo(row.insertCell());
+                    // Now build another table cell that will contain the pulldowns
+                    cell = $(row.insertCell()).css('text-align', 'left');
+                    select = $('<select>').appendTo(cell)
+                        .data({ 'setByUser': false })
+                        .attr('name', 'disamLine' + i);
+                    disam.selectLineJQElement = select;
+                    $('<option>').text('(Create New)').appendTo(select).val('new')
+                        .prop('selected', !defaultSel.lineID);
+                    (ATData.existingLines || []).forEach((line: any): void => {
+                        $('<option>').text(line.n)
+                            .appendTo(select).val(line.id.toString())
+                            .prop('selected', defaultSel.lineID === line.id);
+                    });
+                    this.lineObjSets[name] = disam;
+                }
+                disam.selectLineJQElement.data({ 'visibleIndex': i });
+                disam.rowElementJQ.appendTo(body);
+                this.currentlyVisibleLineObjSets.push(disam);
+            });
+        }
+
+
         // If the previous step found Line or Assay names that need resolving, put together a disambiguation section
         // for Assays/Lines.
         // Keep a separate set of correlations between strings and pulldowns for each Protocol,
         // since the same string can match different Assays, and the pulldowns will have different content, in each Protocol.
         // If the previous step didn't find any Line or Assay names that need resolving,
         // reveal the pulldowns for selecting a master Line/Assay, leaving the table empty, and return.
-        remakeAssayLineSection(): void {
+        remakeAssaySection(): void {
             var table: HTMLTableElement, body: HTMLTableElement;
             var uniqueAssayNames = this.identifyStructuresStep.uniqueAssayNames;
             var masterP = this.protocolCurrentlyDisplayed;
 
+            this.currentlyVisibleAssayObjSets.forEach((disam:any): void => {
+                disam.rowElementJQ.detach();
+            });
+
             $('#disambiguateAssaysTable').remove();
 
-            this.assayLineObjSets[masterP] = this.assayLineObjSets[masterP] || {};
+            this.assayObjSets[masterP] = this.assayObjSets[masterP] || {};
 
             if (uniqueAssayNames.length === 0) {
                 $('#masterAssayLineDiv').removeClass('off');
                 return;
             }
 
-            this.currentlyVisibleAssayLineObjSets = [];
+            this.currentlyVisibleAssayObjSets = [];
             var t = this;
             table = <HTMLTableElement>$('<table>')
                 .attr({ 'id': 'disambiguateAssaysTable', 'cellspacing': 0 })
-                .appendTo($('#disambiguateLinesAssaysSection').removeClass('off'))
+                .appendTo($('#disambiguateAssaysSection').removeClass('off'))
                 .on('change', 'select', (ev: JQueryInputEventObject): void => {
-                    t.userChangedAssayLineDisam(ev.target);
+                    t.userChangedAssayDisam(ev.target);
                 })[0];
             body = <HTMLTableElement>$('<tbody>').appendTo(table)[0];
             uniqueAssayNames.forEach((name: string, i: number): void => {
                 var disam: any, row: HTMLTableRowElement, defaultSel: any, cell: JQuery, aSelect: JQuery, lSelect: JQuery;
-                disam = this.assayLineObjSets[masterP][name];
+                disam = this.assayObjSets[masterP][name];
                 if (!disam) {
                     disam = {};
                     defaultSel = this.disambiguateAnAssayOrLine(name, i);
@@ -2023,7 +2100,7 @@ module EDDTableImport {
                     cell = $(row.insertCell()).css('text-align', 'left');
                     aSelect = $('<select>').appendTo(cell)
                         .data({ 'setByUser': false })
-                        .attr('name', 'disamAssay' + (i + 1));
+                        .attr('name', 'disamAssay' + i);
                     disam.selectAssayJQElement = aSelect;
                     $('<option>').text('(Create New)').appendTo(aSelect).val('new')
                         .prop('selected', !defaultSel.assayID);
@@ -2040,7 +2117,7 @@ module EDDTableImport {
                     cell = $('<span>').text('for Line:').toggleClass('off', !!defaultSel.assayID)
                         .appendTo(cell);
                     lSelect = $('<select>').appendTo(cell).data('setByUser', false)
-                        .attr('name', 'disamLine' + (i + 1));
+                        .attr('name', 'disamLine' + i);
                     disam.selectLineJQElement = lSelect;
                     $('<option>').text('(Create New)').appendTo(lSelect).val('new')
                         .prop('selected', !defaultSel.lineID);
@@ -2049,11 +2126,11 @@ module EDDTableImport {
                         $('<option>').text(line.n).appendTo(lSelect).val(line.id.toString())
                             .prop('selected', defaultSel.lineID === line.id);
                     });
-                    this.assayLineObjSets[masterP][name] = disam;
+                    this.assayObjSets[masterP][name] = disam;
                 }
                 disam.selectAssayJQElement.data({ 'visibleIndex': i });
                 disam.rowElementJQ.appendTo(body);
-                this.currentlyVisibleAssayLineObjSets.push(disam);
+                this.currentlyVisibleAssayObjSets.push(disam);
             });
         }
 
@@ -2104,26 +2181,23 @@ module EDDTableImport {
                         var cell: JQuery = $(row.insertCell()).addClass('disamDataCell');
                         disam[auto] = EDD_auto.create_autocomplete(cell).data('type', auto);
                     });
-                    disam.typeHiddenObj = disam.typeObj.next();
-                    disam.compHiddenObj = disam.compObj.next();
-                    disam.unitsHiddenObj = disam.unitsObj.next();
+                    disam.typeHiddenObj = disam.typeObj.attr('size', 45).next();
+                    disam.compHiddenObj = disam.compObj.attr('size', 4).next();
+                    disam.unitsHiddenObj = disam.unitsObj.attr('size', 10).next();
                     $(row).on('change', 'input[type=hidden]', (ev: JQueryInputEventObject): void => {
                         // only watch for changes on the hidden portion, let autocomplete work
                         t.userChangedMeasurementDisam(ev.target);
                     });
+                    EDD_auto.setup_field_autocomplete(disam.compObj, 'MeasurementCompartment', this.autoCache.comp);
+                    EDD_auto.setup_field_autocomplete(disam.typeObj, 'GenericOrMetabolite', this.autoCache.metabolite);
+                    EDD_auto.initial_search(disam.typeObj, name);
+                    EDD_auto.setup_field_autocomplete(disam.unitsObj, 'MeasurementUnit', this.autoCache.unit);
                     this.measurementObjSets[name] = disam;
                 }
                 // TODO sizing should be handled in CSS
-                disam.compObj.attr('size', 4).data('visibleIndex', i)
-                    .next().attr('name', 'disamMComp' + (i + 1));
-                EDD_auto.setup_field_autocomplete(disam.compObj, 'MeasurementCompartment', this.autoCache.comp);
-                disam.typeObj.attr('size', 45).data('visibleIndex', i)
-                    .next().attr('name', 'disamMType' + (i + 1));
-                EDD_auto.setup_field_autocomplete(disam.typeObj, 'GenericOrMetabolite', this.autoCache.metabolite);
-                EDD_auto.initial_search(disam.typeObj, name);
-                disam.unitsObj.attr('size', 10).data('visibleIndex', i)
-                    .next().attr('name', 'disamMUnits' + (i + 1));
-                EDD_auto.setup_field_autocomplete(disam.unitsObj, 'MeasurementUnit', this.autoCache.unit);
+                disam.compObj.data('visibleIndex', i);
+                disam.typeObj.data('visibleIndex', i);
+                disam.unitsObj.data('visibleIndex', i);
                 // If we're in MDV mode, the units pulldowns are irrelevant.
                 disam.unitsObj.toggleClass('off', mode === 'mdv');
                 this.currentlyVisibleMeasurementObjSets.push(disam);
@@ -2161,8 +2235,8 @@ module EDDTableImport {
                     disam.metaHiddenObj = disam.metaObj.next();
                     this.metadataObjSets[name] = disam;
                 }
-                disam.metaObj.attr('name', 'disamMeta' + (i + 1)).addClass('autocomp_altype')
-                    .next().attr('name', 'disamMetaHidden' + (i + 1));
+                disam.metaObj.attr('name', 'disamMeta' + i).addClass('autocomp_altype')
+                    .next().attr('name', 'disamMetaHidden' + i);
                 EDD_auto.setup_field_autocomplete(disam.metaObj, 'AssayLineMetadataType', this.autoCache.meta);
             });
         }
@@ -2177,13 +2251,36 @@ module EDDTableImport {
         }
 
 
+        // If the pulldown is being set to 'new', walk down the remaining pulldowns in the section,
+        // in order, setting them to 'new' as well, stopping just before any pulldown marked as
+        // being 'set by the user'.
+        userChangedLineDisam(lineEl: Element):boolean {
+            var changed: JQuery, v: number;
+            changed = $(lineEl).data('setByUser', true);
+            if (changed.val() !== 'new') {
+                // stop here for anything other than 'new'; only 'new' cascades to following pulldowns
+                return false;
+            }
+            v = changed.data('visibleIndex') || 0;
+            this.currentlyVisibleLineObjSets.slice(v).forEach((obj: any): void => {
+                var select: JQuery = obj.selectLineJQElement;
+                if (select.data('setByUser')) {
+                    return;
+                }
+                // set dropdown to 'new' and reveal the line pulldown
+                select.val('new').next().removeClass('off');
+            });
+            return false;
+        }
+
+
         // This function serves two purposes.
         // 1. If the given Assay disambiguation pulldown is being set to 'new', reveal the adjacent
         //    Line pulldown, otherwise hide it.
         // 2. If the pulldown is being set to 'new', walk down the remaining pulldowns in the section,
         //    in order, setting them to 'new' as well, stopping just before any pulldown marked as
         //    being 'set by the user'.
-        userChangedAssayLineDisam(assayEl: Element):boolean {
+        userChangedAssayDisam(assayEl: Element):boolean {
             var changed: JQuery, v: number;
             changed = $(assayEl).data('setByUser', true);
             // The span with the corresponding Line pulldown is always right next to the Assay pulldown
@@ -2193,7 +2290,7 @@ module EDDTableImport {
                 return false;
             }
             v = changed.data('visibleIndex') || 0;
-            this.currentlyVisibleAssayLineObjSets.slice(v).forEach((obj: any): void => {
+            this.currentlyVisibleAssayObjSets.slice(v).forEach((obj: any): void => {
                 var select: JQuery = obj.selectAssayJQElement;
                 if (select.data('setByUser')) {
                     return;
@@ -2329,6 +2426,7 @@ module EDDTableImport {
         createSetsForSubmission():ResolvedImportSet[] {
 
             // From Step 1
+            var mode = this.selectMajorKindStep.interpretationMode;
             var masterProtocol = $("#masterProtocol").val();
 
             // From Step 3
@@ -2338,6 +2436,7 @@ module EDDTableImport {
             // From this Step
             var masterTime = parseFloat($('#masterTimestamp').val());
             var masterLine = $('#masterLine').val();
+            var masterAssayLine = $('#masterAssayLine').val();
             var masterAssay = $('#masterAssay').val();
             var masterMType = $('#masterMType').val();
             var masterMComp = $('#masterMComp').val();
@@ -2348,9 +2447,9 @@ module EDDTableImport {
             parsedSets.forEach((set, c: number): void => {
                 var resolvedSet: ResolvedImportSet;
 
-                // Go with the master values by default 
-                var line_id = masterLine;           // (might be 'new')
-                var assay_id = masterAssay;         // (might be 'new')
+                var line_id = 'new';    // A convenient default
+                var assay_id = 'new';
+                // Go with the master values by default for these
                 var measurement_id = masterMType;
                 var compartment_id = masterMComp;
                 var units_id = masterMUnits;
@@ -2360,14 +2459,27 @@ module EDDTableImport {
                 var metaData:{[id:string]: string} = {};
                 var metaDataPresent:boolean = false;
 
-                // If we have a valid, specific Assay name, look for a disambiguation field that matches it.
-                if (set.assay_name !== null && masterProtocol) {
-                    var disam = this.assayLineObjSets[masterProtocol][set.assay_name];
-                    if (disam) {
-                        assay_id = disam.selectAssayJQElement.val();
-                        line_id = disam.selectLineJQElement.val();
+                if (mode === "biolector") {
+                    line_id = masterLine;
+                    // If we have a valid, specific Assay name, look for a disambiguation field that matches it.
+                    if (set.line_name !== null) {
+                        var disam = this.lineObjSets[set.line_name];
+                        if (disam) {
+                            line_id = disam.selectLineJQElement.val();    // assay_id remains as "new"
+                        }
+                    }
+                } else {
+                    line_id = masterAssayLine;
+                    assay_id = masterAssay;
+                    if (set.assay_name !== null && masterProtocol) {
+                        var disam = this.assayObjSets[masterProtocol][set.assay_name];
+                        if (disam) {
+                            assay_id = disam.selectAssayJQElement.val();
+                            line_id = disam.selectLineJQElement.val();
+                        }
                     }
                 }
+
                 // Same for measurement name, but resolve all three measurement fields if we find a match.
                 if (set.measurement_name !== null) {
                     var disam = this.measurementObjSets[set.measurement_name];

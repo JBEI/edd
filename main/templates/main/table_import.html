@@ -342,6 +342,26 @@ at how the pulldowns should be set, but you may need to tweak it.</p>
 
   </div>
 
+  <div class="sectionContent off" id="masterLineDiv">
+
+    <table class="formTable" style="margin-left:1em;">
+      <tr>
+        <td style="vertical-align:middle;">
+          <span>
+            Line for the all data:
+            <select name="masterLine" id="masterLine">
+              <option value="new">(Create New)</option>
+              {% for line in study.line_set.all %}
+              <option value="{{ line.pk }}">{{ line.name }}</option>
+              {% endfor %}
+            </select>
+          </span>
+        </td>
+      </tr>
+    </table>
+
+  </div>
+
   <div class="sectionContent off" id="masterAssayLineDiv">
 
     <table class="formTable" style="margin-left:1em;">
@@ -354,7 +374,7 @@ at how the pulldowns should be set, but you may need to tweak it.</p>
             </select>
           </span>
           <span id="masterLineSpan">
-            for Line: <select name="masterLine" id="masterLine">
+            for Line: <select name="masterAssayLine" id="masterAssayLine">
               <option value="new">(Create New)</option>
               {% for line in study.line_set.all %}
               <option value="{{ line.pk }}">{{ line.name }}</option>
@@ -391,7 +411,11 @@ at how the pulldowns should be set, but you may need to tweak it.</p>
 
   </div>
 
-  <div class="sectionContent disambiguationSection" id="disambiguateLinesAssaysSection">
+  <div class="sectionContent disambiguationSection" id="disambiguateLinesSection">
+    <h3>Lines</h3>
+  </div>
+
+  <div class="sectionContent disambiguationSection" id="disambiguateAssaysSection">
     <h3>Assays</h3>
   </div>
 
