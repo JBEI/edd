@@ -113,6 +113,9 @@ class BiolectorXMLReader(six.Iterator):
         well = None
         wellindex = None
         content = None
+        # We turn this flag on when we're inside a '<CalibratedData>' element.
+        # That way we ignore any accumulated curve data that's inside a '<RawData>' element.
+        calibrated_data = False
 
         # A template for metadata for each RawImportRecord, embedded en-masse at the close of a Fermantation element
         metaData = {}
@@ -151,6 +154,11 @@ class BiolectorXMLReader(six.Iterator):
           temp_string = ''.join(temp_string_buffer)
           temp_string_buffer = []
 
+          if event == pulldom.START_ELEMENT and node.nodeName == "CalibratedData":
+            calibrated_data = True
+          if event == pulldom.END_ELEMENT and node.nodeName == "CalibratedData":
+            calibrated_data = False
+
           if event == pulldom.END_ELEMENT and node.nodeName == "Description":
             line_name = temp_string
 
@@ -158,23 +166,24 @@ class BiolectorXMLReader(six.Iterator):
           if event == pulldom.END_ELEMENT and node.nodeName == "Well":
             well = temp_string
             if well is not None and well != "":
-              metaData["well"] = well
+              metaData["Bio:well"] = well
           if event == pulldom.END_ELEMENT and node.nodeName == "WellIndex":
             wellindex = temp_string
             if wellindex is not None and wellindex != "":
-              metaData["well index"] = wellindex
+              metaData["Bio:well index"] = wellindex
           if event == pulldom.END_ELEMENT and node.nodeName == "Content":
             content = temp_string
             if content is not None and content != "":
-              metaData["well content"] = content
+              metaData["Bio:well content"] = content
 
           if event == pulldom.END_ELEMENT and node.nodeName == "Key":
             measurement = temp_string
           if event == pulldom.END_ELEMENT and node.nodeName == "Name":
             assay_name = temp_string
           if event == pulldom.END_ELEMENT and node.nodeName == "Curve":
-            # At the end of each Curve element, we dump our accumulated measurements into a new RawImportRecord.
-            new_import_record_buffer.append(RawImportRecord("biolector", measurement, line_name, assay_name, measurement_point_buffer, metaData))
+            if calibrated_data:
+              # At the end of each Curve element, we dump our accumulated measurements into a new RawImportRecord.
+              new_import_record_buffer.append(RawImportRecord("biolector", measurement, line_name, assay_name, measurement_point_buffer, metaData))
             measurement_point_buffer = []
 
           # At the close of every CurvePoint we append a measurement point to our buffer
