@@ -2449,10 +2449,16 @@ module EDDTableImport {
 
                 var line_id = 'new';    // A convenient default
                 var assay_id = 'new';
-                // Go with the master values by default for these
-                var measurement_id = masterMType;
-                var compartment_id = masterMComp;
-                var units_id = masterMUnits;
+
+                var measurement_id = null;
+                var compartment_id = null;
+                var units_id = null;
+                // In modes where we resolve measurement types in the client UI, go with the master values by default.
+                if (mode === "biolector" || mode === "std" || mode === "mdv") {
+                    measurement_id = masterMType;
+                    compartment_id = masterMComp;
+                    units_id = masterMUnits;
+                }
 
                 var data = set.data;
 
@@ -2461,11 +2467,12 @@ module EDDTableImport {
 
                 if (mode === "biolector") {
                     line_id = masterLine;
-                    // If we have a valid, specific Assay name, look for a disambiguation field that matches it.
+                    assay_id = "named_or_new"; // Tells the server to attempt to resolve directly against the name, or make a new Assay
+                    // If we have a valid, specific Line name, look for a disambiguation field that matches it.
                     if (set.line_name !== null) {
                         var disam = this.lineObjSets[set.line_name];
                         if (disam) {
-                            line_id = disam.selectLineJQElement.val();    // assay_id remains as "new"
+                            line_id = disam.selectLineJQElement.val();
                         }
                     }
                 } else {
@@ -2480,13 +2487,16 @@ module EDDTableImport {
                     }
                 }
 
-                // Same for measurement name, but resolve all three measurement fields if we find a match.
-                if (set.measurement_name !== null) {
-                    var disam = this.measurementObjSets[set.measurement_name];
-                    if (disam) {
-                        measurement_id = disam.typeHiddenObj.val();
-                        compartment_id = disam.compHiddenObj.val();
-                        units_id = disam.unitsHiddenObj.val();
+                // Same for measurement name, but resolve all three measurement fields if we find a match,
+                // and only if we are resolving measurement types client-side.
+                if (mode === "biolector" || mode === "std" || mode === "mdv") {
+                    if (set.measurement_name !== null) {
+                        var disam = this.measurementObjSets[set.measurement_name];
+                        if (disam) {
+                            measurement_id = disam.typeHiddenObj.val();
+                            compartment_id = disam.compHiddenObj.val();
+                            units_id = disam.unitsHiddenObj.val();
+                        }
                     }
                 }
 
