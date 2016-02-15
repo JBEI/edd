@@ -395,7 +395,7 @@ class LineForm(forms.ModelForm):
                 initial[fieldkey] = json.dumps(value)
             # everything else shove value into fieldname
             else:
-                initial[fieldkey] = value
+                initial[fieldkey] = str(value)
         return initial
 
     def check_bulk_edit(self):

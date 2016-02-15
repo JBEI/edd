@@ -1591,7 +1591,7 @@ module StudyD {
         form.find('[name=line-ids]').val(record.id);
         form.find('[name=line-name]').val(record.name);
         form.find('[name=line-description]').val(record.description);
-        form.find('[name=line-control]').prop('checked', record.control);
+        form.find('[name=line-control]').prop('checked', record.control).val('1');
         form.find('[name=line-contact_0]').val(record.contact.text || (contact && contact.uid ? contact.uid : '--'));
         form.find('[name=line-contact_1]').val(record.contact.user_id);
         form.find('[name=line-experimenter_0]').val(experimenter && experimenter.uid ? experimenter.uid : '--');
@@ -1622,7 +1622,7 @@ module StudyD {
     function scrollToForm(form) {
         // make sure form is disclosed
         var top = form.toggleClass('discloseHide', false).offset().top;
-        $('html').animate({ 'scrollTop': top }, 'slow');
+        $('html, body').animate({ 'scrollTop': top }, 'slow');
     }
 
     function updateUIAssayForm(form) {
