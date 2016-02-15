@@ -12,7 +12,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.contrib.postgres.forms import HStoreField
 from django.core.exceptions import ValidationError
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Q
 from django.db.models.base import Model
 from django.db.models.manager import BaseManager
 from django.http import QueryDict
@@ -142,19 +142,10 @@ class GroupAutocompleteWidget(AutocompleteWidget):
 
 
 class RegistryValidator(object):
-    def __init__(self, create_strains=True):
-        self.create_strains = create_strains
+    def __init__(self, existing_strain=None):
+        self.existing_strain = existing_strain
         self.count = None
         self.part = None
-
-    def create_strain(self):
-        if self.part and self.create_strains:
-            Strain.objects.create(
-                name=self.part['name'],
-                description=self.part['shortDescription'],
-                registry_id=self.part['recordId'],
-                registry_url=self.part['url'],
-            )
 
     def load_part_from_ice(self, value):
         try:
@@ -169,19 +160,34 @@ class RegistryValidator(object):
                 params={"uuid": value, },
             )
 
+    def save_strain(self):
+        if self.part and self.existing_strain:
+            self.existing_strain.registry_id = self.part['recordId']
+            self.existing_strain.registry_url = self.part['url']
+            self.existing_strain.save()
+        elif self.part:
+            Strain.objects.create(
+                name=self.part['name'],
+                description=self.part['shortDescription'],
+                registry_id=self.part['recordId'],
+                registry_url=self.part['url'],
+            )
+
     def validate(self, value):
         try:
             qs = Strain.objects.filter(registry_id=value)
+            if self.existing_strain:
+                qs = qs.exclude(pk__in=[self.existing_strain])
             self.count = qs.count()
             if self.count == 0:
                 logger.info('No EDD Strain found with registry_id %s. Searching ICE...', value)
                 self.load_part_from_ice(value)
-                self.create_strain()
-            elif self.count > 1:
+                self.save_strain()
+            else:
                 raise ValidationError(
-                    _('Multiple strains found matching %(uuid)s: %(matches)s'),
-                    code='non-unique records',
-                    params={"uuid": value, "matches": list(qs), },
+                    _('Selected ICE record is already linked to EDD strains: %(strains)s'),
+                    code='existing records',
+                    params={"strains": list(qs), },
                 )
         except ValueError:
             raise ValidationError(

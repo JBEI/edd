@@ -154,9 +154,10 @@ class StrainAdmin(EDDObjectAdmin):
 
     def __init__(self, *args, **kwargs):
         super(StrainAdmin, self).__init__(*args, **kwargs)
-        self.ice_validator = RegistryValidator(create_strains=False)
+        self.ice_validator = RegistryValidator()
 
     def get_fields(self, request, obj=None):
+        self.ice_validator = RegistryValidator(existing_strain=obj)
         if not obj or not obj.registry_id:
             return ['registry_id', ]
         return ['name', 'description', 'registry_url', ]
@@ -182,16 +183,19 @@ class StrainAdmin(EDDObjectAdmin):
         if instance.registry_url:
             return format_html('<a href="{}" target="_new">ICE entry</a>', instance.registry_url)
         return '-'
+    hyperlink_strain.admin_order_field = 'registry_url'
     hyperlink_strain.short_description = 'ICE Link'
 
     # annotated queryset with count of lines referencing strain, need method to load annotation
     def num_lines(self, instance):
         return instance.num_lines
+    num_lines.admin_order_field = 'num_lines'
     num_lines.short_description = '# Lines'
 
     # annotated queryset with count of studies referencing strain, need method to load annotation
     def num_studies(self, instance):
         return instance.num_studies
+    num_studies.admin_order_field = 'num_studies'
     num_studies.short_description = '# Studies'
 
     def save_model(self, request, obj, form, change):
