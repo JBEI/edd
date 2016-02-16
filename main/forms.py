@@ -12,7 +12,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.contrib.postgres.forms import HStoreField
 from django.core.exceptions import ValidationError
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Q
 from django.db.models.base import Model
 from django.db.models.manager import BaseManager
 from django.http import QueryDict
@@ -141,6 +141,62 @@ class GroupAutocompleteWidget(AutocompleteWidget):
         super(GroupAutocompleteWidget, self).__init__(attrs=attrs, model=Group, opt=opt)
 
 
+class RegistryValidator(object):
+    def __init__(self, existing_strain=None):
+        self.existing_strain = existing_strain
+        self.count = None
+        self.part = None
+
+    def load_part_from_ice(self, value):
+        try:
+            update = Update.load_update()
+            ice = IceApi(user_email=update.mod_by.email)
+            (self.part, url) = ice.fetch_part(value)
+            self.part['url'] = ''.join((ice.base_url, '/entry/', str(self.part['id']), ))
+        except Exception:
+            raise ValidationError(
+                _('Failed to load strain %(uuid)s from ICE'),
+                code='ice failure',
+                params={"uuid": value, },
+            )
+
+    def save_strain(self):
+        if self.part and self.existing_strain:
+            self.existing_strain.registry_id = self.part['recordId']
+            self.existing_strain.registry_url = self.part['url']
+            self.existing_strain.save()
+        elif self.part:
+            Strain.objects.create(
+                name=self.part['name'],
+                description=self.part['shortDescription'],
+                registry_id=self.part['recordId'],
+                registry_url=self.part['url'],
+            )
+
+    def validate(self, value):
+        try:
+            qs = Strain.objects.filter(registry_id=value)
+            if self.existing_strain:
+                qs = qs.exclude(pk__in=[self.existing_strain])
+            self.count = qs.count()
+            if self.count == 0:
+                logger.info('No EDD Strain found with registry_id %s. Searching ICE...', value)
+                self.load_part_from_ice(value)
+                self.save_strain()
+            else:
+                raise ValidationError(
+                    _('Selected ICE record is already linked to EDD strains: %(strains)s'),
+                    code='existing records',
+                    params={"strains": list(qs), },
+                )
+        except ValueError:
+            raise ValidationError(
+                _('Error querying for an EDD strain with registry_id %(uuid)s'),
+                code='query failure',
+                params={"uuid": value, },
+            )
+
+
 class RegistryAutocompleteWidget(AutocompleteWidget):
     """ Autocomplete widget for Registry strains """
     def __init__(self, attrs=None, opt={}):
@@ -148,6 +204,7 @@ class RegistryAutocompleteWidget(AutocompleteWidget):
         super(RegistryAutocompleteWidget, self).__init__(attrs=attrs, model=Strain, opt=opt)
 
     def decompress(self, value):
+        """ Overriding since Strain uses registry_id for lookups. """
         if isinstance(value, Strain):
             return [self.display_value(value), value.registry_id, ]
         elif value:
@@ -155,45 +212,9 @@ class RegistryAutocompleteWidget(AutocompleteWidget):
             return [self.display_value(o), value, ]
         return ['', None, ]
 
-    def validate_strain(self, value):
-        try:
-            Strain.objects.get(registry_id=value)
-            return value
-        except ValueError as e:
-            logger.exception(('Error querying for an EDD strain with registry_id %s' % value))
-        except Strain.DoesNotExist as e:
-            logger.info('No EDD Strain found with registry_id %s. Searching ICE...' % (value, ))
-            try:
-                update = Update.load_update()
-                ice = IceApi(user_email=update.mod_by.email)
-                (part, url) = ice.fetch_part(value)
-                if part:
-                    strain = Strain(
-                        name=part['name'],
-                        description=part['shortDescription'],
-                        registry_id=part['recordId'],
-                        registry_url=''.join((ice.base_url, '/entry/', str(part['id']), )),
-                        )
-                    strain.save()
-                    return value
-                logger.error('No ICE strain %s was found' % value)
-            except Exception as e:
-                logger.exception('Failed to load strain %s from ICE' % value)
-
-        return None
-
-    def value_from_datadict(self, data, files, name):
-        value = super(RegistryAutocompleteWidget, self).value_from_datadict(data, files, name)
-        return self.validate_strain(value)
-
 
 class MultiRegistryAutocompleteWidget(MultiAutocompleteWidget, RegistryAutocompleteWidget):
-    def value_from_datadict(self, data, files, name):
-        # value from super will be joined by self._separator, so split it to get the true value
-        joined = super(RegistryAutocompleteWidget, self).value_from_datadict(data, files, name)
-        if joined:
-            return map(self.validate_strain, joined.split(self._separator))
-        return []
+    pass
 
 
 class CarbonSourceAutocompleteWidget(AutocompleteWidget):
@@ -370,8 +391,9 @@ class LineForm(forms.ModelForm):
                 '<input type="checkbox" class="off bulk" name="%s" checked="checked" '
                 'value/>%s' % (self.add_prefix('_bulk_%s' % fieldname), field.label)
                 )
-        # make sure strain is keyed by registry_id instead of pk
+        # make sure strain is keyed by registry_id instead of pk, and validates uuid
         self.fields['strains'].to_field_name = 'registry_id'
+        self.fields['strains'].validators.append(RegistryValidator().validate)
         # keep a flag for bulk edit, treats meta_store slightly differently
         self._bulk = False
         # override form field handling of HStore
@@ -428,13 +450,6 @@ class LineForm(forms.ModelForm):
             in_place.update(meta)
             meta = in_place
         return meta
-
-    def full_clean(self):
-        # Validation from the RegistryAutocompleteWidget never gets caught in default handlers
-        try:
-            super(LineForm, self).full_clean()
-        except ValidationError as e:
-            self.add_error(None, e)
 
     def is_editing(self):
         return self.instance.pk is not None
