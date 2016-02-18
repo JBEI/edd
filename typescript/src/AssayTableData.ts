@@ -1046,7 +1046,6 @@ module EDDTableImport {
         }
 
 
-        // TODO: Get rid of the magic numbers used here.
         figureOutThisRowsDataType(mode: string, label: string, row: string[]): number {
             var blank: number, strings: number, condensed: string[];
             if (mode == 'tr') {
@@ -2102,7 +2101,7 @@ module EDDTableImport {
                         .data({ 'setByUser': false })
                         .attr('name', 'disamAssay' + i);
                     disam.selectAssayJQElement = aSelect;
-                    $('<option>').text('(Create New)').appendTo(aSelect).val('new')
+                    $('<option>').text('(Create New)').appendTo(aSelect).val('named_or_new')
                         .prop('selected', !defaultSel.assayID);
                     (ATData.existingAssays[masterP] || []).forEach((id: number): void => {
                         var assay: AssayRecord, line: LineRecord, protocol: any;

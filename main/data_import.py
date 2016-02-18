@@ -80,11 +80,18 @@ class TableImport(object):
                 continue
 
             # At this point we know we need to create an Assay, or reference one we created earlier.
-            # the question is, for which Line and Protocol?  Now protocol_id is essential.             
+            # the question is, for which Line and Protocol?  Now protocol_id is essential, so we check it.   
             if protocol_id is None:
                 logger.warning('Import set has needs new Assay but has undefined protocol_id field.')
                 item['invalid_fields'] = True
                 continue  # Nothing we can do
+
+            try:
+                protocol = Protocol.objects.get(pk=protocol_id)
+            except Protocol.DoesNotExist:
+                logger.warning('Import set cannot load protocol %s' % (protocol_id))
+                item['invalid_fields'] = True
+                continue
 
             if line_id is None:
                 logger.warning('Import set needs new Assay but has undefined line_id field.')
@@ -142,7 +149,7 @@ class TableImport(object):
                 assay = line.assay_set.create(
                     name=str(assay_start_id),
                     description=desc,
-                    protocol=protocol_id,
+                    protocol=protocol,
                     experimenter=self._user)
                 logger.info('Created new Assay %s:%s' % (assay.id, str(assay_start_id)))
                 self._line_assay_lookup[(resolved_line_id, assay_name)] = assay.id
@@ -157,8 +164,8 @@ class TableImport(object):
                     continue;
             assay = line.assay_set.create(
                 name=assay_name,
-                description=desc,
-                protocol=protocol_id,
+                description='',
+                protocol=protocol,
                 experimenter=self._user)
             logger.info('Created new Assay %s:%s' % (assay.id, assay_name))
             self._line_assay_lookup[(resolved_line_id, assay_name)] = assay.id
@@ -179,6 +186,7 @@ class TableImport(object):
                 continue
 
             assay_id = item.get('assay_id', None)
+            line_id = item.get('line_id', None)
             resolved_assay_id = assay_id
 
             # This is pursuant to getting a valid assay_id.  Contingencies (undefined values, new record creations,
@@ -195,16 +203,18 @@ class TableImport(object):
                     assay_name = 'New Assay'
                 resolved_assay_id = self._line_assay_lookup[(resolved_line_id, assay_name)]
 
+            assay = Assay.objects.get(pk=resolved_assay_id)
+
             m_name = item.get('measurement_name', None)
             mtype = item.get('measurement_id', 0)
-            comp = item.get('compartment_id', 0)
+            comp_id = item.get('compartment_id', 0)
             unit_id = item.get('units_id', 1)
 
             # In Transcriptomics and Proteomics mode, we attempt to resolve measurements client-side,
             # so we go by the measurement_name, ignoring the measurement_id and related fields (which will be blank)
             layout = self._layout()
             if layout == 'tr':
-                comp = 0
+                comp_id = MeasurementCompartment.UNKNOWN
                 unit_id = 1
                 gene_ids = GeneIdentifier.objects.filter(type_name=m_name).values_list('id')
                 if len(gene_ids) != 1:
@@ -213,7 +223,7 @@ class TableImport(object):
                 mtype = gene_ids[0]
             elif layout == 'pr':
                 # TODO Protein import should be re-worked to get types from a label/session-id combo
-                comp = 0
+                comp_id = 0
                 unit_id = 1
                 protein_ids = ProteinIdentifier.objects.filter(type_name=m_name).values_list('id')
                 if len(protein_ids) == 1:
@@ -234,10 +244,10 @@ class TableImport(object):
             if mtype == 0:
                 warnings.warn('Skipped set %s because it does not reference a known measurement.' % fake_index)
                 continue
-            logger.info('Loading measurements for %s:%s' % (comp, mtype))
+            logger.info('Loading measurements for %s:%s' % (comp_id, mtype))
             records = assay.measurement_set.filter(
                 measurement_type_id=mtype,
-                compartment=str(comp),)
+                compartment=str(comp_id),)
             unit = self._unit(unit_id)
             record = None
             if records.count() > 0:
@@ -249,8 +259,8 @@ class TableImport(object):
             if record is None:
                 record = assay.measurement_set.create(
                     measurement_type_id=mtype,
-                    measurement_format=self._mtype_format(points),
-                    compartment=str(comp),
+                    measurement_format=self._mtype_guess_format(points),
+                    compartment=str(comp_id),
                     experimenter=self._user,
                     x_units=hours,
                     y_units=unit)
@@ -281,8 +291,9 @@ class TableImport(object):
                             assay.line.meta_store[metatype.pk] = value
                         elif metatype.for_protocol():
                             assay.meta_store[metatype.pk] = value
-        for label, assay in self._assay_lookup.items():
+        for label, assay_id in self._line_assay_lookup.items():
             # force refresh of Update (also saves any changed metadata)
+            assay = Assay.objects.get(pk=assay_id)
             assay.save()
             assay.line.save()
         self._study.save()
@@ -307,18 +318,18 @@ class TableImport(object):
                 logger.warning('No MetadataType found for %s' % meta_id)
         return self._meta_lookup.get(meta_id, None)
 
-    def _mtype_format(self, points):
+    def _mtype_guess_format(self, points):
         layout = self._layout()
         if layout == 'mdv':
-            return 1    # carbon ratios are vectors
+            return MeasurementFormat.VECTOR    # carbon ratios are vectors
         elif layout in ('tr', 'pr'):
-            return 0    # always single values
+            return MeasurementFormat.SCALAR    # always single values
         else:
             # if any value looks like carbon ratio (vector), treat all as vector
             for (x, y) in points:
                 if y is not None and ('/' in y or ':' in y):
-                    return 1
-            return 0
+                    return MeasurementFormat.VECTOR
+            return MeasurementFormat.SCALAR
 
     def _replace(self):
         return self._data.get('writemode', None) == 'r'
