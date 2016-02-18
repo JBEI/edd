@@ -142,7 +142,7 @@ module EDDTableImport {
 //        var parsedSets = EDDTableImport.identifyStructuresStep.parsedSets;
         var resolvedSets = EDDTableImport.typeDisambiguationStep.createSetsForSubmission();
         // if the debug area is there, set its value to JSON of parsed sets
-        $('#jsondebugarea').val(JSON.stringify(resolvedSets));
+//        $('#jsondebugarea').val(JSON.stringify(resolvedSets));
     }
 
 
@@ -513,6 +513,7 @@ module EDDTableImport {
                 this.clearDropZone();
                 $("#step2textarea").val(result);
                 this.inferSeparatorType();
+                this.reprocessRawData();
                 return;
             }
         }
@@ -1286,9 +1287,9 @@ module EDDTableImport {
                 hlLabel = hlRow = false;
                 if (pulldown === TypeEnum.Assay_Line_Names || pulldown === TypeEnum.Metabolite_Names) {
                     hlRow = true;
-                } else if ( pulldown !== TypeEnum.Timestamp &&
-                            pulldown !== TypeEnum.Metadata_Name &&
-                            pulldown !== TypeEnum.Metabolite_Name) {
+                } else if ( pulldown === TypeEnum.Timestamp ||
+                            pulldown === TypeEnum.Metadata_Name ||
+                            pulldown === TypeEnum.Metabolite_Name) {
                     hlLabel = true;
                 }
                 $(this.rowLabelCells[index]).toggleClass('dataTypeCell', hlLabel);
@@ -2455,8 +2456,8 @@ module EDDTableImport {
                 // In modes where we resolve measurement types in the client UI, go with the master values by default.
                 if (mode === "biolector" || mode === "std" || mode === "mdv") {
                     measurement_id = masterMType;
-                    compartment_id = masterMComp;
-                    units_id = masterMUnits;
+                    compartment_id = masterMComp || "0";
+                    units_id = masterMUnits || "1";
                 }
 
                 var data = set.data;
@@ -2493,8 +2494,8 @@ module EDDTableImport {
                         var disam = this.measurementObjSets[set.measurement_name];
                         if (disam) {
                             measurement_id = disam.typeHiddenObj.val();
-                            compartment_id = disam.compHiddenObj.val();
-                            units_id = disam.unitsHiddenObj.val();
+                            compartment_id = disam.compHiddenObj.val() || "0";
+                            units_id = disam.unitsHiddenObj.val() || "1";
                         }
                     }
                 }

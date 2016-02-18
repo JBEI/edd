@@ -11,8 +11,8 @@ from django.core.exceptions import PermissionDenied
 
 from .models import (
     Assay, GeneIdentifier, Line, Measurement, MeasurementCompartment, MeasurementGroup,
-    MeasurementUnit, MeasurementValue, MetadataType, ProteinIdentifier, Protocol, Update
-    )
+    MeasurementUnit, MeasurementValue, MeasurementFormat, MetadataType, ProteinIdentifier,
+    Protocol, Update)
 
 
 logger = logging.getLogger(__name__)
@@ -206,8 +206,8 @@ class TableImport(object):
             assay = Assay.objects.get(pk=resolved_assay_id)
 
             m_name = item.get('measurement_name', None)
-            mtype = item.get('measurement_id', 0)
-            comp_id = item.get('compartment_id', 0)
+            m_id = item.get('measurement_id', 0)
+            comp_id = item.get('compartment_id', MeasurementCompartment.UNKNOWN)
             unit_id = item.get('units_id', 1)
 
             # In Transcriptomics and Proteomics mode, we attempt to resolve measurements client-side,
@@ -220,18 +220,18 @@ class TableImport(object):
                 if len(gene_ids) != 1:
                     logger.warning('Found %s GeneIdentifier instances for %s' % (len(gene_ids), m_name))
                     continue
-                mtype = gene_ids[0]
+                m_id = gene_ids[0]
             elif layout == 'pr':
                 # TODO Protein import should be re-worked to get types from a label/session-id combo
-                comp_id = 0
+                comp_id = MeasurementCompartment.UNKNOWN
                 unit_id = 1
                 protein_ids = ProteinIdentifier.objects.filter(type_name=m_name).values_list('id')
                 if len(protein_ids) == 1:
-                    mtype = protein_ids[0]
+                    m_id = protein_ids[0]
                 else:
                     logger.warning('Found %s ProteinIdentifier instances for %s' % (len(protein_ids), m_name))
                     if len(protein_ids) > 1:
-                        mtype = protein_ids[0]
+                        m_id = protein_ids[0]
                     else:
                         try:
                             p = ProteinIdentifier.objects.create(type_name=m_name)
@@ -239,14 +239,14 @@ class TableImport(object):
                             logger.error('Failed to create ProteinIdentifier %s' % m_name)
                             continue
                         else:
-                            mtype = p.pk
+                            m_id = p.pk
 
-            if mtype == 0:
+            if m_id == 0:
                 warnings.warn('Skipped set %s because it does not reference a known measurement.' % fake_index)
                 continue
-            logger.info('Loading measurements for %s:%s' % (comp_id, mtype))
+            logger.info('Loading measurements for %s:%s' % (comp_id, m_id))
             records = assay.measurement_set.filter(
-                measurement_type_id=mtype,
+                measurement_type_id=m_id,
                 compartment=str(comp_id),)
             unit = self._unit(unit_id)
             record = None
@@ -258,7 +258,7 @@ class TableImport(object):
                     record.save()  # force refresh of Update
             if record is None:
                 record = assay.measurement_set.create(
-                    measurement_type_id=mtype,
+                    measurement_type_id=m_id,
                     measurement_format=self._mtype_guess_format(points),
                     compartment=str(comp_id),
                     experimenter=self._user,
