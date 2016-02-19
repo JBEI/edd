@@ -45,12 +45,19 @@ experimentation.  See the deployed version at [edd.jbei.org][1].
 
 ## System Pre-requisites
 
- * Passwords <a name="Passwords"/>
+* Passwords <a name="Passwords"/>
     * Get required passwords from a teammate or JBEI sysadmin.
         * JBEI_AUTH - to configure LDAP binding and EDD's server.cfg
         * edduser - the password to the production EDD database instance. You'll need this to copy
           its data for local development work. See [Database Conversion](#DbConversion)
         * edd ice key - used by edd to authorize REST API calls to ICE
+* Local git repo config
+    * The typescript build process includes some comments that will change with every rebuild.
+      These comments will cause unnecessary merge conflicts if allowed into the repo, so the
+      project includes some configuration to strip them out.
+    * Upon cloning a repo for the first time (or updating a repo from before filtering), do:
+        * `.gitconfig.sh`
+        * If updating a repo, you may need to add changed files to the index once
    
 ### Mac OS X
 This section contains directions for setting up a development environment on EDD in OSX.
