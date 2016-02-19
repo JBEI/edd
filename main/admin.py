@@ -261,6 +261,7 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
 
     def _study_count(self, obj):
         return obj.num_studies
+    _study_count.admin_order_field = 'num_studies'
     _study_count.short_description = '# Studies'
 
 
