@@ -808,11 +808,14 @@ def study_import_table(request, study):
     if (request.method == "POST"):
         # print stuff for debug
         for key in sorted(request.POST):
-            print("%s : %s" % (key, request.POST[key]))
+            try:
+                print("%s : %s" % (key, request.POST[key]))
+            except UnicodeEncodeError:
+                print("(Can't dump unicode value.)")
         try:
             table = data_import.TableImport(model, request.user)
             added = table.import_data(request.POST)
-            messages.success(request, 'Imported %s measurements' % added)
+            messages.success(request, 'Imported %s measurement values.' % added)
         except ValueError as e:
             print("ERROR!!! %s" % e)
             messages.error(request, e)
@@ -1220,9 +1223,9 @@ def utilities_parse_table(request):
 
     if edd_file_type == "xml":
         try:
-            from edd_utils.parsers.biolector import getBiolectorXMLRecordsAsJSON, XMLImportError
+            from edd_utils.parsers import biolector
             # We pass the request directly along, so it can be read as a stream by the parser
-            result = getBiolectorXMLRecordsAsJSON(request, 0)
+            result = biolector.getBiolectorXMLRecordsAsJSON(request, 0)
             return JsonResponse({
                 "file_type": "xml",
                 "file_data": result,

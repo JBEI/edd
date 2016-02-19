@@ -107,24 +107,24 @@ class TableImport(object):
                 if line_name is None or line_name == '':
                     line_name = 'New Line'
                     if line_name in self._line_lookup:
-                        resolved_line_id = this._line_lookup[line_name]
+                        resolved_line_id = self._line_lookup[line_name]
                     else:
                         line = self._study.line_set.create(
                             name='Imported %s' % (self._study.line_set.count() + 1),
                             contact=self._user,
                             experimenter=self._user)
-                        this._line_lookup[line_name] = line.id
+                        self._line_lookup[line_name] = line.id
                         resolved_line_id = line.id
                         logger.info('Created new Line %s:%s' % (line.id, line.name))
                 else:
                     if line_name in self._line_lookup:
-                        resolved_line_id = this._line_lookup[line_name]
+                        resolved_line_id = self._line_lookup[line_name]
                     else:
                         line = self._study.line_set.create(
                             name=line_name,
                             contact=self._user,
                             experimenter=self._user)
-                        this._line_lookup[line_name] = line.id
+                        self._line_lookup[line_name] = line.id
                         resolved_line_id = line.id
                         logger.info('Created new Line %s:%s' % (line.id, line.name))
             else:
@@ -174,6 +174,10 @@ class TableImport(object):
         added = 0
         fake_index = 0
         hours = MeasurementUnit.objects.get(unit_name='hours')
+        # TODO: During a standard-size biolector import (~50000 measurement values) this loop runs very slowly
+        # on my test machine, consistently taking an entire second per set (approx 300 values each).
+        # To an end user, this makes the submission appear to hang for over a minute, which might make them
+        # behave erratically...
         for item in series:
             fake_index += 1
             points = item.get('data', [])
@@ -197,7 +201,7 @@ class TableImport(object):
                     line_name = item.get('line_name', None)
                     if line_name is None or line_name == '':
                         line_name = 'New Line'
-                    resolved_line_id = this._line_lookup[line_name]
+                    resolved_line_id = self._line_lookup[line_name]
                 assay_name = item.get('assay_name', None)
                 if assay_name is None or assay_name == '':
                     assay_name = 'New Assay'

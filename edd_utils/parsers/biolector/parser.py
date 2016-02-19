@@ -7,15 +7,14 @@ Step 2 of the EDD Data Table Import page.
 
 from __future__ import unicode_literals
 
-from optparse import OptionParser
-import sys
 import copy
-import logging
-
 from xml.dom import pulldom
 from xml.sax import handler
 from xml.sax.expatreader import ExpatParser as _ExpatParser
 from django.utils import six
+
+import logging
+
 
 logger = logging.getLogger('main.views')  # Man, I know I am totally Doing This Wrong, but I can't figure it out just now
 
@@ -62,7 +61,6 @@ class RawImportRecord(object):
         }
 
 
-
 def getBiolectorXMLRecordsAsJSON(stream_or_string, thin=0):
   records = []
   for item in BiolectorXMLReader(stream_or_string, thin=thin):
@@ -70,7 +68,6 @@ def getBiolectorXMLRecordsAsJSON(stream_or_string, thin=0):
     #logger.warning('Set (%s)' % (item))
     records.append(j)
   return records
-
 
 
 class BiolectorXMLReader(six.Iterator):
@@ -359,34 +356,3 @@ class ExternalReferenceForbidden(DefusedXmlException):
     def __str__(self):
         tpl = "ExternalReferenceForbidden(system_id='{}', public_id={})"
         return tpl.format(self.sysid, self.pubid)
-
-
-#
-# End of code from /django/core/serializers/xml_serializer.py 
-#
-
-
-def run (args, out=sys.stdout, err=sys.stderr) :
-  parser = OptionParser()
-  parser.add_option("--csv", dest="csv", action="store_true",
-    help="Output result in CSV format for Excel import")
-  parser.add_option("--n-peaks", dest="n_peaks", action="store", type="int",
-    help="Number of peaks expected")
-  parser.add_option("--quiet", dest="quiet", action="store_true",
-    help="Suppress non-essential output")
-  options, args = parser.parse_args(args)
-  assert len(args) == 1
-  result = Report(open(args[0], 'U').readlines())
-  assert (len(result.samples) > 0)
-  if options.quiet :
-    err = StringIO()
-  if options.csv :
-    result.show_peak_areas_csv(n_expected=options.n_peaks,
-      out=out, err=err)
-  else :
-    result.show_peak_areas(n_expected=options.n_peaks,
-      out=out, err=err)
-  return result
-
-if (__name__ == "__main__") :
-  run(sys.argv[1:])
