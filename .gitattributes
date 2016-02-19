@@ -1,2 +1,2 @@
-*.js ts-timestamp
+*.js filter=ts-timestamp
 
