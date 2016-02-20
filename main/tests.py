@@ -512,52 +512,38 @@ class ImportTests(TestCase):
         MeasurementUnit.objects.create(unit_name="FPKM")
 
     def get_form(self):
-        mu = MeasurementUnit.objects.get(unit_name="mM")
+        p_id = str(Protocol.objects.get(name="GC-MS").pk)
+        l_id = str(Line.objects.get(name="L1").pk)
+        m_id_a = str(Metabolite.objects.get(short_name="ac").pk)
+        m_id_b = str(Metabolite.objects.get(short_name="glc-D").pk)
+        u_id = str(MeasurementUnit.objects.get(unit_name="mM").pk)
         # breaking up big text blob
-        json = ("""[{"label":"Column 0","name":"Column 0","units":"units","parsingIndex":0,"""
-                """"assay":null,"assayName":null,"measurementType":1,"metadata":{},"""
-                """"singleData":null,"color":"rgb(10, 136, 109)","data":["""
-                """[0,"0.1"],[1,"0.2"],[2,"0.4"],[4,"1.7"],[8,"5.9"]]},"""
-                """{"label":"Column 1","name":"Column 1","units":"units","parsingIndex":1,"""
-                """"assay":null,"assayName":null,"measurementType":2,"metadata":{},"""
-                """"singleData":null,"color":"rgb(136, 14, 43)","data":["""
-                """[0,"0.2"],[1,"0.4"],[2,"0.6"],[4,"0.8"],[8,"1.2"]]}]""")
+        json = "".join(['[{',
+                '"kind":"std",',
+                '"protocol_name":"GC-MS","protocol_id":"',p_id,'",',
+                '"line_name":"","line_id":"',l_id,'",',
+                '"assay_name":"Column 0","assay_id":"named_or_new",',
+                '"measurement_name":"ac","measurement_id":"',m_id_a,'",',
+                '"comp_name":"ic","comp_id":"1",',
+                '"units_name":"units","units_id":"',u_id,'",',
+                '"metadata":{},',
+                '"data":[[0,"0.1"],[1,"0.2"],[2,"0.4"],[4,"1.7"],[8,"5.9"]]',
+                '},{',
+                '"kind":"std",',
+                '"protocol_name":"GC-MS","protocol_id":"',p_id,'",',
+                '"line_name":"","line_id":"',l_id,'",',
+                '"assay_name":"Column 0","assay_id":"named_or_new",',
+                '"measurement_name":"glc-D","measurement_id":"',m_id_b,'",',
+                '"comp_name":"ic","comp_id":"1",',
+                '"units_name":"units","units_id":"',u_id,'",',
+                '"metadata":{},',
+                '"data":[[0,"0.2"],[1,"0.4"],[2,"0.6"],[4,"0.8"],[8,"1.2"]]}]'])
         # XXX not proud of this, but we need actual IDs in here
         return {
             'action': "Submit Data",
             'datalayout': "std",
-            'disamMComp1': 1,
-            'disamMComp2': 1,
-            'disamMType1': Metabolite.objects.get(short_name="ac").pk,
-            'disamMType2': Metabolite.objects.get(short_name="glc-D").pk,
-            'disamMUnits1': mu.pk,
-            'disamMUnits2': mu.pk,
-            'enableColumn0': 1,
-            'enableColumn1': 2,
-            'enableRow0': 1,
-            'enableRow1': 2,
-            'enableRow2': 3,
-            'enableRow3': 4,
-            'enableRow4': 5,
-            'enableRow5': 6,
             'jsonoutput': json,
-            'masterAssay': "new",
-            'masterLine': Line.objects.get(name="L1").pk,
-            'masterMComp': '',
-            'masterMCompValue': 0,
-            'masterMType': '',
-            'masterMTypeValue': 0,
-            'masterMUnits': '',
-            'masterMUnitsValue': 0,
-            'masterProtocol': Protocol.objects.get(name="GC-MS").pk,
-            'masterTimestamp': '',
             'rawdataformat': "csv",
-            'row0type': 2,
-            'row1type': 3,
-            'row2type': 3,
-            'row3type': 3,
-            'row4type': 3,
-            'row5type': 3,
             'studyID': Study.objects.get(name="Test Study 1").pk,
             'writemode': "m",
         }
