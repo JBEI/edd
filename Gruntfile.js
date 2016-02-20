@@ -111,6 +111,7 @@ module.exports = function(grunt) {
 
 
     var production = grunt.option('production');
+    var notimestamps = grunt.option('notimestamps');
     var watch = grunt.option('watch');
 
     if (production) {
@@ -119,6 +120,9 @@ module.exports = function(grunt) {
     } else if (watch) {
         // Dev build and watch for changes
         grunt.registerTask('default', ["clean:build", "copy:prep", "insert_timestamp:js", "typescript:dev", "copy:mergeDev", "exec:collect", 'watch']);
+    } else if (notimestamps) {
+        // Dev build and watch for changes
+        grunt.registerTask('default', ["clean:build", "copy:prep", "typescript:dev", "copy:mergeDev", "exec:collect"]);
     } else {
         // Standard one-time dev build
         grunt.registerTask('default', ["clean:build", "copy:prep", "insert_timestamp:js", "typescript:dev", "copy:mergeDev", "exec:collect"]);
