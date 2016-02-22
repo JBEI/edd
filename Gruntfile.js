@@ -59,6 +59,17 @@ module.exports = function(grunt) {
                     removeComments: false,
                 }
             },
+            commit: {
+                src: ['./typescript/build/*.ts'],
+                dest: './typescript/build/',
+                options: {
+                    rootDir: './typescript/build/',
+                    target: 'es5',
+                    declaration: false,
+                    sourceMap: false,
+                    removeComments: false,
+                }
+            },
             prod: {
                 src: ['./typescript/build/*.ts'],
                 dest: './typescript/build/',
@@ -123,7 +134,7 @@ module.exports = function(grunt) {
 
 
     var production = grunt.option('production');
-    var notimestamps = grunt.option('notimestamps');
+    var commit = grunt.option('commit');
     var watch = grunt.option('watch');
 
     if (production) {
@@ -132,9 +143,9 @@ module.exports = function(grunt) {
     } else if (watch) {
         // Dev build and watch for changes
         grunt.registerTask('default', ["clean:build", "copy:prep", "insert_timestamp:js", "typescript:dev", "copy:mergeDev", "exec:collect", 'watch']);
-    } else if (notimestamps) {
+    } else if (commit) {
         // Dev build and watch for changes
-        grunt.registerTask('default', ["clean:build", "copy:prep", "typescript:dev", "copy:mergeDev", "exec:collect"]);
+        grunt.registerTask('default', ["clean:build", "copy:prep", "typescript:commit", "copy:mergeDev", "exec:collect"]);
     } else {
         // Standard one-time dev build
         grunt.registerTask('default', ["clean:build", "copy:prep", "insert_timestamp:js", "typescript:dev", "copy:mergeDev", "exec:collect"]);
