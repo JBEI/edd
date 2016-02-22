@@ -17,8 +17,7 @@ module.exports = function(grunt) {
                 options: {
                     prepend: true,
                     append: false,
-                    // An alternative to the datatime option, specify a function to call to return a Date object,
-                    // rather than a single Date object.
+                    // An alternative to the datetime option:  A function to call to return a Date object.
                     datetimefunc: function (fileList) {
                       var fs = require('fs');
                       var mostRecentMTime = 0;
