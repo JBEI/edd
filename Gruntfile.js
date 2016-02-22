@@ -32,7 +32,7 @@ module.exports = function(grunt) {
                     },
                     // Uses default output of `Date()`
                     format: false,
-                    template: '// Compiled to JS on: {timestamp}  ',
+                    template: '// File last modified on: {timestamp}  ',
                     insertNewlines: true
                 },
                 files: [{
