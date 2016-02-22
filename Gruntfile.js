@@ -17,6 +17,19 @@ module.exports = function(grunt) {
                 options: {
                     prepend: true,
                     append: false,
+                    // An alternative to the datatime option, specify a function to call to return a Date object,
+                    // rather than a single Date object.
+                    datetimefunc: function (fileList) {
+                      var fs = require('fs');
+                      var mostRecentMTime = 0;
+                      // Find the most recently modified timestamp of specified files
+                      fileList.forEach(function(filepath) {
+                        statsObj = fs.statSync(filepath);
+                        mTime = statsObj.mtime.getTime();
+                        if (mTime > mostRecentMTime) { mostRecentMTime = mTime }
+                      });
+                      return new Date(mostRecentMTime);
+                    },
                     // Uses default output of `Date()`
                     format: false,
                     template: '// Compiled to JS on: {timestamp}  ',
