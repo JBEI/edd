@@ -275,11 +275,13 @@ class CreateStudyForm(forms.ModelForm):
         # make sure the creator has write permission, and ESE has read
         s.userpermission_set.update_or_create(
             user=s.created.mod_by,
-            permission_type=StudyPermission.WRITE)
+            permission_type=StudyPermission.WRITE,
+        )
         # XXX hard-coding the ID is gross, do it better
         s.grouppermission_set.update_or_create(
             group_id=1,
-            permission_type=StudyPermission.READ)
+            permission_type=StudyPermission.READ,
+        )
         return s
 
 

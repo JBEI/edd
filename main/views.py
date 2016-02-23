@@ -103,8 +103,18 @@ class StudyCreateView(generic.edit.CreateView):
         study.updated = update
         return generic.edit.CreateView.form_valid(self, form)
 
+    def get_context_data(self, **kwargs):
+        context = super(StudyCreateView, self).get_context_data(**kwargs)
+        context['can_create'] = self.user_can_create(self.request.user)
+        return context
+
     def get_success_url(self):
         return reverse('main:detail', kwargs={'pk': self.object.pk})
+
+    def user_can_create(self, user):
+        if hasattr(settings, 'EDD_ONLY_SUPERUSER_CREATE') and settings.EDD_ONLY_SUPERUSER_CREATE:
+            return user.is_superuser
+        return True
 
 
 class StudyDetailView(generic.DetailView):
