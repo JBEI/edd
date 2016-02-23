@@ -19,6 +19,7 @@ from django.http import QueryDict
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 from form_utils.forms import BetterModelForm
+from functools import partial
 
 from .ice import IceApi
 from .export import table
@@ -175,6 +176,10 @@ class RegistryValidator(object):
 
     def validate(self, value):
         try:
+            if isinstance(value, (list, tuple)):
+                for v in value:
+                    self.validate(v)
+                return
             qs = Strain.objects.filter(registry_id=value)
             if self.existing_strain:
                 qs = qs.exclude(pk__in=[self.existing_strain])
@@ -183,7 +188,7 @@ class RegistryValidator(object):
                 logger.info('No EDD Strain found with registry_id %s. Searching ICE...', value)
                 self.load_part_from_ice(value)
                 self.save_strain()
-            else:
+            elif self.count > 1:
                 raise ValidationError(
                     _('Selected ICE record is already linked to EDD strains: %(strains)s'),
                     code='existing records',
@@ -275,11 +280,13 @@ class CreateStudyForm(forms.ModelForm):
         # make sure the creator has write permission, and ESE has read
         s.userpermission_set.update_or_create(
             user=s.created.mod_by,
-            permission_type=StudyPermission.WRITE)
+            permission_type=StudyPermission.WRITE,
+        )
         # XXX hard-coding the ID is gross, do it better
         s.grouppermission_set.update_or_create(
             group_id=1,
-            permission_type=StudyPermission.READ)
+            permission_type=StudyPermission.READ,
+        )
         return s
 
 
@@ -392,8 +399,17 @@ class LineForm(forms.ModelForm):
                 'value/>%s' % (self.add_prefix('_bulk_%s' % fieldname), field.label)
                 )
         # make sure strain is keyed by registry_id instead of pk, and validates uuid
-        self.fields['strains'].to_field_name = 'registry_id'
-        self.fields['strains'].validators.append(RegistryValidator().validate)
+        strains_field = self.fields['strains']
+
+        def __clean(self, value):
+            # validator creates Strain record if missing, now can check value
+            for v in value:
+                self.run_validators(v)
+            return self.__clean(value)
+        strains_field.__clean = strains_field.clean
+        strains_field.clean = partial(__clean, strains_field)
+        strains_field.to_field_name = 'registry_id'
+        strains_field.validators = [RegistryValidator().validate, ]
         # keep a flag for bulk edit, treats meta_store slightly differently
         self._bulk = False
         # override form field handling of HStore
@@ -417,7 +433,7 @@ class LineForm(forms.ModelForm):
                 initial[fieldkey] = json.dumps(value)
             # everything else shove value into fieldname
             else:
-                initial[fieldkey] = value
+                initial[fieldkey] = str(value)
         return initial
 
     def check_bulk_edit(self):

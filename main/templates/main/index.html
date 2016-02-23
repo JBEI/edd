@@ -24,6 +24,7 @@
 
 
 {% block content %}
+    {% if can_create %}
     <div class="pageSection disclose discloseHide" id="addNewStudyMain">
         <div class="sectionHead">
             <span class="discloseLink"><a href="#">Add A New Study</a></span>
@@ -36,6 +37,7 @@
             </form>
         </div>
     </div>
+    {% endif %}
     <div class="pageSection">
         <table id="studiesTable"></table>
     </div>

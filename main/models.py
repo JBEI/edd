@@ -385,72 +385,19 @@ class MetadataType(models.Model, EDDSerialize):
         return False
 
 
-@python_2_unicode_compatible
-class EDDObject(models.Model, EDDSerialize):
-    """ A first-class EDD object, with update trail, comments, attachments. """
+class EDDMetadata(models.Model):
+    """ Base class for EDD models supporting metadata. """
     class Meta:
-        db_table = 'edd_object'
-    name = models.CharField(max_length=255)
-    description = models.TextField(blank=True, null=True)
-    active = models.BooleanField(default=True)
-    updates = models.ManyToManyField(Update, db_table='edd_object_update', related_name='+')
-    # these are used often enough we should save extra queries by including as fields
-    created = models.ForeignKey(Update, related_name='object_created', editable=False)
-    updated = models.ForeignKey(Update, related_name='object_updated', editable=False)
+        abstract = True
+
     # store arbitrary metadata as a dict with hstore extension
     meta_store = HStoreField(blank=True, default=dict)
-
-    @property
-    def mod_epoch(self):
-        return arrow.get(self.updated.mod_time).timestamp
-
-    @property
-    def last_modified(self):
-        return self.updated.format_timestamp()
-
-    def was_modified(self):
-        return self.updates.count() > 1
-
-    @property
-    def date_created(self):
-        return self.created.format_timestamp()
-
-    def get_attachment_count(self):
-        return self.files.count()
-
-    @property
-    def attachments(self):
-        return self.files.all()
-
-    @property
-    def comment_list(self):
-        return self.comments.order_by('created__mod_time').all()
-
-    def get_comment_count(self):
-        return self.comments.count()
 
     def get_metadata_json(self):
         return self.meta_store
 
     def get_metadata_types(self):
-        return list(MetadataType.objects.filter(pk__in=self.meta_store.keys()))
-
-    @classmethod
-    def metadata_type_frequencies(cls):
-        return dict(
-            MetadataType.objects.extra(select={
-                'count': 'SELECT COUNT(1) FROM edd_object o '
-                         'INNER JOIN %s x ON o.id = x.object_ref_id '
-                         'WHERE o.meta_store ? metadata_type.id::varchar'
-                         % cls._meta.db_table
-                }).values_list('id', 'count')
-            )
-
-    def get_metadata_item(self, key=None, pk=None):
-        assert ([pk, key].count(None) == 1)
-        if pk is None:
-            pk = MetadataType.objects.get(type_name=key)
-        return self.meta_store.get('%s' % pk.id)
+        return MetadataType.objects.filter(pk__in=self.meta_store.keys())
 
     def get_metadata_dict(self):
         """ Return a Python dictionary of metadata with the keys replaced by the
@@ -465,22 +412,6 @@ class EDDObject(models.Model, EDDSerialize):
                 value = value + " " + metadata_type.postfix
             metadata['%s' % metadata_types[pk]] = value
         return metadata
-
-    def set_metadata_item(self, key, value, defer_save=False):
-        warnings.warn('Call to deprecated function EDDObject.set_metadata_item with: %s, %s; '
-                      'the function uses a non-unique key to look up values. Clients should use '
-                      'their own lookup to find a MetadataType instance and store to '
-                      'EDDObject.meta_store directly using MetadataType.pk as a key; or use '
-                      'metadata_add, metadata_clear, metadata_get, metadata_remove'
-                      % (key, value, ),
-                      category=DeprecationWarning)
-        mdtype = MetadataType.objects.get(type_name=key)
-        if (not mdtype.is_allowed_object(self)):
-            raise ValueError("The metadata type '%s' does not apply to %s objects." % (
-                mdtype.type_name, self.__class__.__name__, ))
-        self.meta_store['%s' % mdtype.id] = value
-        if (not defer_save):
-            self.save()
 
     def metadata_add(self, metatype, value, append=True):
         """ Adds metadata to the object; by default, if there is already metadata of the same type,
@@ -541,6 +472,60 @@ class EDDObject(models.Model, EDDSerialize):
                 except ValueError:
                     pass
 
+
+@python_2_unicode_compatible
+class EDDObject(EDDMetadata, EDDSerialize):
+    """ A first-class EDD object, with update trail, comments, attachments. """
+    class Meta:
+        db_table = 'edd_object'
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    active = models.BooleanField(default=True)
+    updates = models.ManyToManyField(Update, db_table='edd_object_update', related_name='+')
+    # these are used often enough we should save extra queries by including as fields
+    created = models.ForeignKey(Update, related_name='object_created', editable=False)
+    updated = models.ForeignKey(Update, related_name='object_updated', editable=False)
+
+    @property
+    def mod_epoch(self):
+        return arrow.get(self.updated.mod_time).timestamp
+
+    @property
+    def last_modified(self):
+        return self.updated.format_timestamp()
+
+    def was_modified(self):
+        return self.updates.count() > 1
+
+    @property
+    def date_created(self):
+        return self.created.format_timestamp()
+
+    def get_attachment_count(self):
+        return self.files.count()
+
+    @property
+    def attachments(self):
+        return self.files.all()
+
+    @property
+    def comment_list(self):
+        return self.comments.order_by('created__mod_time').all()
+
+    def get_comment_count(self):
+        return self.comments.count()
+
+    @classmethod
+    def metadata_type_frequencies(cls):
+        return dict(
+            MetadataType.objects.extra(select={
+                'count': 'SELECT COUNT(1) FROM edd_object o '
+                         'INNER JOIN %s x ON o.id = x.object_ref_id '
+                         'WHERE o.meta_store ? metadata_type.id::varchar'
+                         % cls._meta.db_table
+                }).values_list('id', 'count')
+            )
+
     def __str__(self):
         return self.name
 
@@ -583,7 +568,7 @@ class EDDObject(models.Model, EDDSerialize):
             'name': self.name,
             'description': self.description,
             'active': self.active,
-            'meta': self.meta_store,
+            'meta': self.get_metadata_json(),
             # Always include expanded created/updated objects instead of IDs
             'modified': self.updated.to_json(depth) if self.updated else None,
             'created': self.created.to_json(depth) if self.created else None,
@@ -1460,7 +1445,7 @@ class MeasurementFormat(object):
 
 
 @python_2_unicode_compatible
-class Measurement(models.Model, EDDSerialize):
+class Measurement(EDDMetadata, EDDSerialize):
     """ A plot of data points for an (assay, measurement type) pair. """
     class Meta:
         db_table = 'measurement'
@@ -1509,6 +1494,7 @@ class Measurement(models.Model, EDDSerialize):
             # "values": map(lambda p: p.to_json(), self.measurementvalue_set.all()),
             "x_units": self.x_units_id,
             "y_units": self.y_units_id,
+            "meta": self.get_metadata_json(),
         }
 
     def __str__(self):

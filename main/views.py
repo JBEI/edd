@@ -103,8 +103,18 @@ class StudyCreateView(generic.edit.CreateView):
         study.updated = update
         return generic.edit.CreateView.form_valid(self, form)
 
+    def get_context_data(self, **kwargs):
+        context = super(StudyCreateView, self).get_context_data(**kwargs)
+        context['can_create'] = self.user_can_create(self.request.user)
+        return context
+
     def get_success_url(self):
         return reverse('main:detail', kwargs={'pk': self.object.pk})
+
+    def user_can_create(self, user):
+        if hasattr(settings, 'EDD_ONLY_SUPERUSER_CREATE') and settings.EDD_ONLY_SUPERUSER_CREATE:
+            return user.is_superuser
+        return True
 
 
 class StudyDetailView(generic.DetailView):
@@ -122,6 +132,18 @@ class StudyDetailView(generic.DetailView):
         context['new_measurement'] = MeasurementForm(prefix='measurement')
         context['writable'] = self.get_object().user_can_write(self.request.user)
         return context
+
+    def get_object(self, queryset=None):
+        """ Overrides the base method to curry if there is no filtering queryset. """
+        # already looked up object and no filter needed, return previous object
+        if hasattr(self, '_detail_object') and queryset is None:
+            return self._detail_object
+        # call parents
+        obj = super(StudyDetailView, self).get_object(queryset)
+        # save parents result if no filtering queryset
+        if queryset is None:
+            self._detail_object = obj
+        return obj
 
     def get_queryset(self):
         qs = super(StudyDetailView, self).get_queryset()
@@ -243,6 +265,7 @@ class StudyDetailView(generic.DetailView):
         total = len(ids)
         saved = 0
         for value in ids:
+            logger.info('\tprocessing line bulk edit for %s', value)
             line = self._get_line(value)
             if line:
                 form = LineForm(request.POST, instance=line, prefix='line', study=study)
@@ -250,6 +273,10 @@ class StudyDetailView(generic.DetailView):
                 if form.is_valid():
                     form.save()
                     saved += 1
+                else:
+                    for error in form.errors.values():
+                        messages.warning(request, error)
+                    logger.info('Errors: %s', form.errors)
         messages.success(request, 'Saved %(saved)s of %(total)s Lines' % {
             'saved': saved,
             'total': total,

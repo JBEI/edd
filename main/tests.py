@@ -141,11 +141,13 @@ class StudyTests(TestCase):
 
     def test_study_metadata(self):
         study = Study.objects.get(name='Test Study 1')
-        study.set_metadata_item("Some key", "1.234")
-        self.assertTrue(study.get_metadata_item("Some key") == "1.234")
+        md = MetadataType.objects.get(type_name='Some key')
+        md3 = MetadataType.objects.get(type_name='Some key 3')
+        study.metadata_add(md, '1.234')
+        self.assertTrue(study.metadata_get(md) == "1.234")
         self.assertTrue(study.get_metadata_dict() == {'Some key': '1.234'})
         try:
-            study.set_metadata_item("Some key 3", "9.876")
+            study.metadata_add(md3, '9.876')
         except ValueError:
             pass
         else:

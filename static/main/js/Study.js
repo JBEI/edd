@@ -1005,7 +1005,9 @@ var StudyD;
             var addrow = $(ev.target).closest('.line-edit-meta'), type, value;
             type = addrow.find('.line-meta-type').val();
             value = addrow.find('.line-meta-value').val();
-            addrow.find(':input').val(''); // clear out inputs so another value can be entered
+            // clear out inputs so another value can be entered
+            addrow.find(':input').not(':checkbox, :radio').val('');
+            addrow.find(':checkbox, :radio').prop('checked', false);
             if (EDDData.MetaDataTypes[type]) {
                 insertLineMetadataRow(addrow, type, value).find(':input').trigger('change');
             }
@@ -1353,14 +1355,17 @@ var StudyD;
     }
     function clearAssayForm() {
         var form = $('#id_assay-assay_id').closest('.disclose');
-        form.find('[name^=assay-]').val('').end().find('.cancel-link').remove();
+        form.find('[name^=assay-]').not(':checkbox, :radio').val('');
+        form.find('[name^=assay-]').filter(':checkbox, :radio').prop('selected', false);
+        form.find('.cancel-link').remove();
         form.find('.errorlist').remove();
         return form;
     }
     function clearLineForm() {
         var form = $('#id_line-ids').closest('.disclose');
         form.find('.line-meta').remove();
-        form.find(':input').filter('[name^=line-]').val('');
+        form.find('[name^=line-]').not(':checkbox, :radio').val('');
+        form.find('[name^=line-]').filter(':checkbox, :radio').prop('checked', false);
         form.find('.errorlist').remove();
         form.find('.cancel-link').remove();
         form.find('.bulk').addClass('off');
@@ -1410,7 +1415,7 @@ var StudyD;
     function scrollToForm(form) {
         // make sure form is disclosed
         var top = form.toggleClass('discloseHide', false).offset().top;
-        $('html').animate({ 'scrollTop': top }, 'slow');
+        $('html, body').animate({ 'scrollTop': top }, 'slow');
     }
     function updateUIAssayForm(form) {
         var title, button;
