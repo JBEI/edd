@@ -67,8 +67,8 @@ delete_data = [
 
 
 def fix_manual_metabolites(apps, schema_editor):
+    from main.models import MeasurementGroup
     # using updated version
-    MeasurementGroup = apps.get_model('main', 'MeasurementGroup')
     MeasurementType = apps.get_model('main', 'MeasurementType')
     Metabolite = apps.get_model('main', 'Metabolite')
     MetaboliteKeyword = apps.get_model('main', 'MetaboliteKeyword')
