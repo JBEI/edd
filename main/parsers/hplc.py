@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
@@ -86,10 +87,9 @@ class HPLC_Parser:
 			self.header_block.append( line )
 
 			if i >= max_header_line_count:
-				logger.error("unable to find header: unexpected length")
-				exit(1)
+				except Error("unable to find header: unexpected length")
 			elif line == '':
-				logger.error("unable to find header: EOF encountered")
+				except Error("unable to find header: EOF encountered")
 			i += 1
 
 		logger.debug("parsing header block")
@@ -188,7 +188,9 @@ class HPLC_Parser:
 	def _parse_sample(self):
 		"""Collects a single sample from the file and stores it in the samples data structure
 
-		Returns True when a sample was read successfully, else False"""
+		Returns True when a sample was read successfully, else False
+
+		Format: [ (compound_string,amount_string), ...] """
 
 		## Collect Sample Name
 
@@ -212,7 +214,7 @@ class HPLC_Parser:
 
 			if line_sample_name:
 				if sample_name_collected:
-					# beginning of next record, reset file pointer
+					# beginning of next record encountered, reset file pointer
 					input_file.seek(file_pos)
 					return True
 
@@ -224,7 +226,9 @@ class HPLC_Parser:
 						last_dash_index = line_sample_name.rindex('-')
 						line_sample_name = line_sample_name[:last_dash_index+1] + unicode(i)
 						i += 1
-				previous_name = line_sample_name
+
+				sample_name = line_sample_name
+				sample_name_collected = True
 
 			if not line_sample_name:
 				if not sample_name:
@@ -237,13 +241,12 @@ class HPLC_Parser:
 			amount_string = line[self.amount_begin_position:self.amount_end_position].strip()
 			compound_string = line[self.amount_begin_position:self.compound_end_position].strip()
 
-
 			# initilize the sample entry
 			if not self.samples.has_key(sample_name):
 				self.samples[sample_name] = []
 
 			# Put the value into our data structure
-			if segment and segment != u'-':
+			if amount_string != u'-' and compound_string != u'-':
 				self.samples[sample_name].append( (compound_string,amount_string) )
 
 			self.current_sample = self.samples[sample_name]
