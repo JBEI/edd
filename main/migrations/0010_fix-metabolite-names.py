@@ -68,7 +68,10 @@ delete_data = [
 
 def fix_manual_metabolites(apps, schema_editor):
     # using updated version
-    from main.models import MeasurementGroup, MeasurementType, Metabolite, MetaboliteKeyword
+    MeasurementGroup = apps.get_model('main', 'MeasurementGroup')
+    MeasurementType = apps.get_model('main', 'MeasurementType')
+    Metabolite = apps.get_model('main', 'Metabolite')
+    MetaboliteKeyword = apps.get_model('main', 'MetaboliteKeyword')
     # manual fixes to metabolite info
     for name, values in fix_data.items():
         try:
@@ -112,7 +115,9 @@ def fix_manual_metabolites(apps, schema_editor):
 
 def insert_bigg_metabolites(apps, schema_editor):
     # using updated version
-    from main.models import Datasource, Metabolite, Update
+    Datasource = apps.get_model('main', 'Datasource')
+    Metabolite = apps.get_model('main', 'Metabolite')
+    Update = apps.get_model('main', 'Update')
     base_dir = os.path.dirname(__file__)
     data = {}
     try:
@@ -134,7 +139,7 @@ def insert_bigg_metabolites(apps, schema_editor):
                 m.save()
                 # more than one, merge remaining into first
                 for x in existing[1:]:
-                    merge_metabolites(x, m)
+                    merge_metabolites(apps, x, m)
             else:
                 m = Metabolite(
                     short_name=entry[0],
@@ -150,8 +155,10 @@ def insert_bigg_metabolites(apps, schema_editor):
         logger.exception('Failed importing BIGG metabolite selections')
 
 
-def merge_metabolites(m_old, m_canonical):
-    from main.models import Measurement, MetaboliteExchange, MetaboliteSpecies
+def merge_metabolites(apps, m_old, m_canonical):
+    Measurement = apps.get_model('main', 'Measurement')
+    MetaboliteExchange = apps.get_model('main', 'MetaboliteExchange')
+    MetaboliteSpecies = apps.get_model('main', 'MetaboliteSpecies')
     # point objects referencing the old to the canonical
     for x in [Measurement, MetaboliteExchange, MetaboliteSpecies]:
         queryset = x.objects.filter(measurement_type=m_old)
