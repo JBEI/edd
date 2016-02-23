@@ -92,7 +92,7 @@ def fix_manual_metabolites(apps, schema_editor):
             with transaction.atomic():
                 m_old = Metabolite.objects.get(type_name=old)
                 m_canonical = Metabolite.objects.get(type_name=canonical)
-            merge_metabolites(m_old, m_canonical)
+            merge_metabolites(apps, m_old, m_canonical)
         except Metabolite.DoesNotExist:
             logger.warning('Nothing to merge: "%s" and "%s"', old, canonical)
     # delete metabolite records, but KEEP measurement records for metabolites that are
