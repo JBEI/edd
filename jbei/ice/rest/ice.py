@@ -13,6 +13,7 @@ import importlib
 import requests
 from requests.auth import AuthBase
 from requests.compat import urlparse
+from jbei.rest.utils import remove_trailing_slash
 
 from jbei.rest.request_generators import RequestGenerator, SessionRequestGenerator
 from jbei.util.deprecated import deprecated
@@ -446,13 +447,17 @@ class SessionAuth(AuthBase):
         if not ice_username:
             raise ValueError("At least one source of ICE username is required")
 
+        # chop off the trailing '/', if any, so we can write easier-to-read URL snippets in our code
+        # (starting w '%s/')
+        base_url = remove_trailing_slash(base_url)
+
         # begin a session to track any persistent state required by the server
         session = requests.session()
 
         # build request parameters for login
         login_dict = {'email': ice_username,
                       'password': password}
-        login_resource_url = '%(base_url)srest/accesstokens/' % { 'base_url': base_url }
+        login_resource_url = '%(base_url)s/rest/accesstokens/' % { 'base_url': base_url }
 
         # issue a POST to request login from the ICE REST API
         response = session.post(login_resource_url, headers=_JSON_CONTENT_TYPE_HEADER,
@@ -515,9 +520,7 @@ class IceApi(object):
 
         # chop off the trailing '/', if any, so we can write easier-to-read URL snippets in our code
         # (starting w '%s/')
-        if '/' == base_url[(len(base_url) - 1)]:
-            base_url = base_url[0:len(base_url) - 1]
-        self.base_url = base_url
+        self.base_url = remove_trailing_slash(base_url)
 
 
     def fetch_part(self, entry_id, suppress_errors=False):

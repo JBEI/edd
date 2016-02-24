@@ -12,6 +12,7 @@ import logging
 
 import requests
 from requests.auth import AuthBase
+from jbei.rest.utils import remove_trailing_slash
 
 import jbei
 from jbei.rest.request_generators import SessionRequestGenerator, RequestGenerator
@@ -247,7 +248,7 @@ class EddSessionAuth(AuthBase):
     ############################################
 
     @staticmethod
-    def login(username, password, base_url='https://edd.jbei.org/',
+    def login(username, password, base_url='https://edd.jbei.org',
               timeout=DEFAULT_REQUEST_TIMEOUT, verify_ssl_cert=VERIFY_SSL_DEFAULT):
         """
         Logs into EDD at the provided URL
@@ -258,9 +259,12 @@ class EddSessionAuth(AuthBase):
         :raises Exception: if an HTTP error occurs
         """
 
+        # chop off the trailing '/', if any, so we can write easier-to-read URL snippets in our code
+        # (starting w '%s/')
+        base_url = remove_trailing_slash(base_url)
+
         # issue a GET to get the CRSF token for use in auto-login
-        base_url = base_url if base_url.endswith('/') else '%s/' % base_url
-        login_page_url = '%saccounts/login/' % base_url
+        login_page_url = '%s/accounts/login/' % base_url
         session = requests.session()
         response = session.get(login_page_url, timeout=timeout, verify=verify_ssl_cert)
 
@@ -338,8 +342,11 @@ class EddApi(object):
         """
         super(self.__class__, self).__init__()
         self.session_auth = session_auth
-        self.base_url = base_url
         self._enable_write = False
+
+        # chop off the trailing '/', if any, so we can write easier-to-read URL snippets in our code
+        # (starting w '%s/')
+        self.base_url = remove_trailing_slash(base_url)
 
     def set_write_enabled(self, enabled):
         """
@@ -395,7 +402,7 @@ class EddApi(object):
             search_params['case_sensitive'] = case_sensitive
 
         # make the HTTP request
-        url = '%srest/strain' % self.base_url
+        url = '%s/rest/strain' % self.base_url
         request_generator = self.session_auth.getRequestGenerator()
         response = request_generator.get(url, params=search_params, headers=self._json_header)
 
@@ -426,7 +433,7 @@ class EddApi(object):
         """
 
         # make the HTTP request
-        url = '%srest/study/%d/lines/' % self.base_url
+        url = '%s/rest/study/%d/lines/' % self.base_url
         request_generator = self.session_auth.getRequestGenerator()
         response = request_generator.get(url, headers=self._json_header)
 
@@ -446,7 +453,7 @@ class EddApi(object):
         """
         self._prevent_write_while_disabled()
 
-        url = '%srest/study/%d/lines/' % (self.base_url, study_id)
+        url = '%s/rest/study/%d/lines/' % (self.base_url, study_id)
 
         new_line = {
                 "study": study_id,
@@ -494,7 +501,7 @@ class EddApi(object):
         }
 
         # make the HTTP request
-        url = '%srest/strain/' % self.base_url
+        url = '%s/rest/strain/' % self.base_url
         request_generator = self.session_auth.getRequestGenerator()
         response = request_generator.post(url, data=json.dumps(post_data),
                                           headers=self._json_header)
@@ -508,7 +515,7 @@ class EddApi(object):
         return Strain(**json.loads(response.content))
 
     def get_study(self, pk):
-        url = '%srest/study/%d' %(self.base_url, pk)
+        url = '%s/rest/study/%d' %(self.base_url, pk)
         request_generator = self.session_auth.getRequestGenerator()
         response = request_generator.get(url)
 

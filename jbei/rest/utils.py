@@ -26,7 +26,7 @@ def show_response_html(response):
     time.sleep(5)
     os.remove(temp_file_path)
 
-port_n_suffix = r'(?:(:\d+)?)/.*'
+port_n_suffix = r'(?:(:\d+)?)(?:/.*)?'
 local_uri_pattern = re.compile(r'http://localhost%s' % port_n_suffix, re.IGNORECASE)
 http_uri_pattern = re.compile(r'^https://.*', re.IGNORECASE)
 local_uri_address_pattern = re.compile(r'^http://127.0.0.1%s' % port_n_suffix, re.IGNORECASE)
@@ -34,9 +34,15 @@ local_uri_address_pattern = re.compile(r'^http://127.0.0.1%s' % port_n_suffix, r
 def is_url_secure(uri):
     """
     Tests whether the input URL is either local, or secured by HTTP. In most circumstances, URL's
-    that don't meet these criteria are insecure for sending user credentials to.
+    that don't meet these criteria are insecure for sending user credentials to. Note that a secure
+    URL in and of itself isn't a guarantee that communication to that endpoint is secure.
     :param uri: the URI to test for security
     :return: true if the URI indicates user credentials will be protected, false otherwise
     """
     return http_uri_pattern.match(uri) or local_uri_pattern.match(uri) or \
            local_uri_address_pattern.match(uri)
+
+def remove_trailing_slash(uri):
+    if '/' == uri[(len(uri) - 1)]:
+        return uri[0:len(uri) - 1]
+    return uri
