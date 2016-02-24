@@ -7,7 +7,6 @@ import logging
 import os.path
 import warnings
 
-from builtins import str
 from collections import defaultdict
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -634,7 +633,7 @@ class Study(EDDObject):
     def user_permission_q(user, requested_permission, keyword_prefix=''):
         """
         Constructs a django Q object for testing whether the specified user has the
-        specicied permission for a study as part of a Study-related Django model query. Note that
+        required permission for a study as part of a Study-related Django model query. Note that
         this only tests
         whether the user or group has specific permissions granted on the Study, not whether the
         user's role (e.g. 'staff', 'admin') gives him/her access to it.  See
@@ -988,6 +987,10 @@ class Strain(EDDObject, LineProperty):
             'registry_url': self.registry_url,
             })
         return json_dict
+
+    @staticmethod
+    def user_can_write(user):
+        return user.is_superuser
 
 
 @python_2_unicode_compatible

@@ -242,22 +242,23 @@ DATABASES = {
 
 PUBLISH_REST_API = False  # by default, don't publish the API until we can do more testing
 REST_FRAMEWORK = {
-    # Use Django's standard `django.contrib.auth` permissions,
-    # or allow read-only access for unauthenticated users.
+    # Use Django's standard `django.contrib.auth` authentication.
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        #  'rest_framework.authentication.BasicAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ),
+    # Note: in addition to requiring authentication for access, EDD uses custom study-level
+    # permissions that should be enforced by custom code at the REST API implementation level. We
+    # could also optionally override our model managers for more safety at the cost of
+    # convenience for developers.
     'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated',  # Note: in addition to requiring
-                                                        # authentication for access, EDD uses custom
-                                                        # study-level permissions
-                                                       # that
-                                                # should be enforced by custom code at the REST API
-                                                # implementation level. We could also optionally
-                                                # override # our model managers for more safety
-                                                # at the cost of convenience for developers.
+        'rest_framework.permissions.IsAuthenticated',
     ),
+
+    # TODO: disable the browsable API to prevent access until we've had time to do a more careful
+    # design / testing of the API. See issues linked to SYNBIO-1299.
+    # 'DEFAULT_RENDERER_CLASSES': (
+    #     'rest_framework.renderers.JSONRenderer',
+    # ),
     # allow default client-configurable pagination for REST API result size
     'DEFAULT_PAGINATION_CLASS': 'edd.rest.paginators.ClientConfigurablePagination',
 }

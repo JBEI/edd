@@ -1,25 +1,18 @@
-from rest_framework.generics import GenericAPIView
+import logging
+
+from rest_framework import mixins, status
+from rest_framework import viewsets
+from rest_framework.exceptions import APIException
 from rest_framework.relations import StringRelatedField
+from rest_framework.response import Response
 
 from main.models import Study, StudyPermission, Line, Strain, User
-from rest_framework import viewsets
-from rest_framework import mixins
-from rest_framework.views import APIView
-from .serializers import LineSerializer, StudySerializer, UserSerializer, StrainSerializer
-import logging
-from rest_framework.exceptions import APIException
-from rest_framework import permissions
-from rest_framework.response import Response
+from rest.serializers import LineSerializer, StudySerializer, UserSerializer, StrainSerializer
+
 logger = logging.getLogger(__name__)
 from rest_framework import permissions
-from rest_framework import status
-from rest_framework import generics
-from rest_framework.views import APIView
 from rest_framework.generics import ListAPIView
 from django.shortcuts import get_object_or_404
-
-
-from django.http import Http404
 
 # class IsStudyReadable(permissions.BasePermission):
 #     """
@@ -46,24 +39,87 @@ class StrainViewSet(viewsets.ModelViewSet):
     #  / EDD
 
     def get_queryset(self):
+        logger.debug('in %s' % self.get_queryset.__name__)
         # parse optional query parameters
 
-        id = self.request.query_params.get('id')
-        url = self.request.query_params.get('url')
-        name = self.request.query_params.get('name')
-        name_regex = self.request.query_params.get('name_regex')
+        pk_filter = self.request.query_params.get('pk')
+        registry_id_filter = self.request.query_params.get('registry_id')
+        registry_url_regex_filter = self.request.query_params.get('registry_url_regex')
+        case_sensitive = self.request.query_params.get('case_sensitive')
+        name_filter = self.request.query_params.get('name')
+        name_regex_filter = self.request.query_params.get('name_regex')
 
         query = Strain.objects.all()
-        if id:
-            query = query.filter(registry_id=id)
-        if url:
-            query = query.filter(registry_url=url)
-        if name:
-            query = query.filter(name__icontains=name)
-        if name_regex:
-            query = query.filter(name__iregex=name_regex)
+
+        if pk_filter:
+            query = query.filter(pk=pk_filter)
+
+        if registry_id_filter:
+            query = query.filter(registry_id=registry_id_filter)
+
+        if registry_url_regex_filter:
+            if case_sensitive:
+                query = query.filter(registry_url__regex=registry_url_regex_filter)
+            else:
+                query = query.filter(registry_url__iregex=registry_url_regex_filter)
+
+        if name_filter:
+            if case_sensitive:
+                query = query.filter(name__contains=name_filter)
+            else:
+                query = query.filter(name__icontains=name_filter)
+
+        if name_regex_filter:
+            if case_sensitive:
+                query = query.filter(name__regex=name_regex_filter)
+            else:
+                query = query.filter(name__iregex=name_regex_filter)
+
+        query = query.select_related('object_ref')
+
+        print('StrainViewSet query count=%d' % query.count())
+        print(query)
 
         return query
+
+    # def list(self):
+    #     logger.debug('in ' + self.list.__name__())
+    #     super.list()
+    #
+    # def retrieve(self, request, *args, **kwargs):
+    #     logger.debug('in ' + self.list.__name__())
+    #     super.retrieve(request, *args, **kwargs)
+    #
+    def create(self, request, *args, **kwargs):
+         logger.debug('in ' + self.list.__name__)
+
+         # deny access to those without permission
+         user = request.user
+         if not Strain.user_can_write(user):
+             return Response(status=status.HTTP_403_FORBIDDEN)
+
+         return super(StrainViewSet, self).create(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        logger.debug('in ' + self.list.__name__)
+
+        # deny access to those without permission
+        user = request.user
+        if not Strain.user_can_write(user):
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        return super(StrainViewSet, self).update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+         logger.debug('in ' + self.list.__name__)
+
+         # deny access to those without permission
+         user = request.user
+         if not Strain.user_can_write(user):
+             return Response(status=status.HTTP_403_FORBIDDEN)
+
+         return super(StrainViewSet, self).destroy(request, *args, **kwargs)
+
 
 class LineViewSet(viewsets.ReadOnlyModelViewSet):
     """
@@ -73,6 +129,7 @@ class LineViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = LineSerializer
     contact = StringRelatedField(many=False)
     experimenter = StringRelatedField(many=False)
+
 
 class StudyViewSet(viewsets.ModelViewSet):
     serializer_class = StudySerializer
@@ -86,8 +143,8 @@ class StudyViewSet(viewsets.ModelViewSet):
         permission = StudyPermission.WRITE if self.request.method in HTTP_MUTATOR_METHODS else \
                      StudyPermission.READ
 
-        # if the user's admin / staff role gives read access to all Studies, don't bother testing
-        # the explicit permissions for this study in the query
+        # if the user's admin / staff role gives read access to all Studies, don't bother querying
+        # the database for specific permissions defined on this study
         if permission == StudyPermission.READ and Study.user_role_can_read(user):
             study_query = Study.objects.filter(pk=study_pk)
         else:
@@ -115,12 +172,10 @@ class StudyLineView(viewsets.ModelViewSet):  # LineView(APIView):
         study_pk = self.kwargs[self.STUDY_URL_KWARG]
 
         user = self.request.user
-        requested_permission = StudyPermission.WRITE if self.request.method in HTTP_MUTATOR_METHODS else \
-                     StudyPermission.READ
+        requested_permission = StudyPermission.WRITE if self.request.method in \
+                               HTTP_MUTATOR_METHODS else StudyPermission.READ
 
-        # build the query, enforcing EDD's custom study access controls # TODO: initial code here
-        # doesn't test for write permissions. should be able to handle that
-
+        # build the query, enforcing EDD's custom study access controls
         if requested_permission == StudyPermission.READ or Study.user_can_read(user):
             study_user_permission_q = Study.user_permission_q(user, requested_permission,
                                                               keyword_prefix='study__')
@@ -131,7 +186,80 @@ class StudyLineView(viewsets.ModelViewSet):  # LineView(APIView):
 
         return line_query
 
-    #def post(self, request):
+    # TODO: if doable with some degree of clarity, use reflection to enforce DRY in mutator methods
+    # below. For now, we'll go with fast rather than elegant. MF 2/24/16
+    # def enforce_write_access_privileges(self, call_on_success_function):
+    #     study_pk = self.kwargs[self.STUDY_URL_KWARG]
+    #     user = self.request.user
+    #
+    #     if self.queryset:
+    #         logger.log('has queryset')
+    #
+    #     # enforce study write privileges
+    #     error_response = StudyLineView._test_user_write_access(user, study_pk)
+    #     if error_response:
+    #         return error_response
+    #
+    #     super(StudyLineView).call_on_success_function(self, ) # TODO: investigate this
+
+    def create(self, request, *args, **kwargs):
+        ##############################################################
+         # enforce study write privileges
+        ##############################################################
+        study_pk = self.kwargs[self.STUDY_URL_KWARG]
+        user = self.request.user
+        error_response = StudyLineView._test_user_write_access(user, study_pk)
+        if error_response:
+            return error_response
+
+        ##############################################################
+        # if user has write privileges for the study, use parent implementation
+        ##############################################################
+        return super(StudyLineView, self).create(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        ##############################################################
+         # enforce study write privileges
+        ##############################################################
+        study_pk = self.kwargs[self.STUDY_URL_KWARG]
+        user = self.request.user
+        error_response = StudyLineView._test_user_write_access(user, study_pk)
+        if error_response:
+            return error_response
+
+        ##############################################################
+        # if user has write privileges for the study, use parent implementation
+        ##############################################################
+        return super(StudyLineView, self).update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        ##############################################################
+         # enforce study write privileges
+        ##############################################################
+        study_pk = self.kwargs[self.STUDY_URL_KWARG]
+        user = self.request.user
+        error_response = StudyLineView._test_user_write_access(user, study_pk)
+        if error_response:
+            return error_response
+
+        ##############################################################
+        # if user has write privileges for the study, use parent implementation
+        ##############################################################
+        return super(StudyLineView, self).create(request, *args, **kwargs)
+
+
+    @staticmethod
+    def _test_user_write_access(user, study_pk):
+        # return a 403 error if user doesn't have write access
+        requested_permission = StudyPermission.WRITE
+        study_user_permission_q = Study.user_permission_q(user, requested_permission)
+        user_has_permission_query = Study.objects.filter(study_user_permission_q, pk=study_pk)
+
+        if not user_has_permission_query:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        return None
+
 
     #
 

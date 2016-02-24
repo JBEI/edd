@@ -3,10 +3,10 @@ from __future__ import unicode_literals
 
 import json
 import logging
-
-from builtins import str
 from collections import OrderedDict
 from copy import deepcopy
+
+from builtins import str
 from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
@@ -20,7 +20,7 @@ from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 from form_utils.forms import BetterModelForm
 
-from .ice import IceApi
+from jbei.ice.rest.ice import IceApi, HmacAuth
 from .export import table
 from .models import (
     Assay, Attachment, CarbonSource, Comment, Line, Measurement, MeasurementType,
@@ -165,8 +165,8 @@ class RegistryAutocompleteWidget(AutocompleteWidget):
             logger.info('No EDD Strain found with registry_id %s. Searching ICE...' % (value, ))
             try:
                 update = Update.load_update()
-                ice = IceApi(user_email=update.mod_by.email)
-                (part, url) = ice.fetch_part(value)
+                ice = IceApi(auth=HmacAuth.get(username=update.mod_by.email))
+                (part, url) = ice.fetch_part_json(value)
                 if part:
                     strain = Strain(
                         name=part['name'],

@@ -9,19 +9,19 @@ Celery task implementation. See celery_utils.py for common supporting utility me
 
 from __future__ import absolute_import
 
+from builtins import str
 from django.core.exceptions import MultipleObjectsReturned
 
 from edd.celeryconfig import CELERY_INITIAL_ICE_RETRY_DELAY, CELERY_WARN_AFTER_RETRY_NUM_FOR_ICE, \
     CELERY_MAX_ICE_RETRIES
+from edd_utils.celery_utils import compute_exp_retry_delay
+from edd_utils.celery_utils import make_standard_email_subject, email_admins
+from edd_utils.celery_utils import send_resolution_message
 from edd_utils.celery_utils import send_retry_warning_if_applicable, INVALID_DELAY, \
     test_time_limit_consistency
-from edd_utils.celery_utils import compute_exp_retry_delay
 from edd_utils.celery_utils import send_stale_input_warning
-from edd_utils.celery_utils import send_resolution_message
-from edd_utils.celery_utils import make_standard_email_subject, email_admins
-from main.ice import IceApi, parse_entry_id
+from jbei.ice.rest.ice import IceApi, parse_entry_id, HmacAuth
 from main.models import Line, Strain
-from builtins import str
 
 # use smtplib directly since Celery doesn't seem to expose an API to help with this,
 # and it's unclear whether the Django libraries will be available/functional to remote Celery
@@ -218,7 +218,7 @@ def link_ice_entry_to_study(self, edd_user_email, strain_pk, study_pk, study_url
         # make a request via ICE's REST API to link the ICE strain to the EDD study that references
         # it
         study = line.study
-        ice = IceApi(user_email=edd_user_email)
+        ice = IceApi(auth=HmacAuth.get(username=edd_user_email))
         ice.link_entry_to_study(str(workaround_strain_entry_id), study.pk, study_url, study.name,
                                 logger=celery_logger, old_study_name=old_study_name)
 
@@ -333,7 +333,7 @@ def unlink_ice_entry_from_study(self, edd_user_email, study_pk, study_url, strai
                 return _STALE_OR_ERR_INPUT  # succeed after sending the warning
 
         # remove the study link from ICE
-        ice = IceApi(user_email=edd_user_email)
+        ice = IceApi(auth=HmacAuth.get(user_email=edd_user_email))
         removed = ice.unlink_entry_from_study(strain_registry_id, study_pk, study_url,
                                               celery_logger)
 

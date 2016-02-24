@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-import arrow
 import os.path
 import warnings
 
+import arrow
 from django.contrib.auth.models import User, Group
 from django.core.exceptions import PermissionDenied
 from django.test import TestCase
-from edd.profile.models import UserProfile
 
+from edd.profile.models import UserProfile
 from . import data_import, sbml_export, utilities
 from .forms import (
     LineForm,
@@ -1037,7 +1037,7 @@ class UtilityTests(TestCase):
 class IceTests(TestCase):
 
     def test_entry_uri_pattern(self):
-        from ice import ICE_ENTRY_URL_PATTERN
+        from jbei.ice.rest.ice import ICE_ENTRY_URL_PATTERN
 
         # test matching against ICE URI's with a numeric ID
         uri = 'https://registry-test.jbei.org/entry/49194/'

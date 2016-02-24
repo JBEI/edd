@@ -7,6 +7,8 @@ import json
 import logging
 import operator
 import re
+from functools import reduce
+from io import BytesIO
 
 from builtins import str
 from django.conf import settings
@@ -16,8 +18,7 @@ from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django.db.models import Count, Prefetch, Q
 from django.http import (
-    Http404, HttpResponse, HttpResponseNotAllowed, HttpResponseRedirect, JsonResponse, QueryDict,
-)
+    Http404, HttpResponse, HttpResponseNotAllowed, HttpResponseRedirect, JsonResponse, )
 from django.http.response import HttpResponseForbidden, HttpResponseBadRequest
 from django.shortcuts import render, get_object_or_404, redirect, render_to_response
 from django.template import RequestContext
@@ -26,16 +27,14 @@ from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 from django.views import generic
 from django.views.decorators.csrf import ensure_csrf_cookie
-from functools import reduce
-from io import BytesIO
 
+from jbei.ice.rest.ice import IceApi, HmacAuth
 from . import data_import, models, sbml_export
 from .export import table
 from .forms import (
     AssayForm, CreateAttachmentForm, CreateCommentForm, CreateStudyForm, ExportOptionForm,
     ExportSelectionForm, LineForm, MeasurementForm, MeasurementValueFormSet, WorklistForm
 )
-from .ice import IceApi
 from .models import (
     Assay, Attachment, Line, Measurement, MeasurementCompartment, MeasurementGroup, MeasurementType,
     MeasurementValue, Metabolite, MetaboliteSpecies, MetadataType, Protocol, SBMLTemplate, Study,
@@ -1258,7 +1257,7 @@ def search(request):
         found = solr.query(query=term, options={'edismax': True})
         results = found['response']['docs']
     elif model_name == "Strain":
-        ice = IceApi(user_email=request.user.email)
+        ice = IceApi(auth=HmacAuth.get(username=request.user.email))
         found = ice.search_for_part(term, suppress_errors=True)
         if found is None:  # there were errors searching
             results = []

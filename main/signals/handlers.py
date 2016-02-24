@@ -11,8 +11,8 @@ from django.db import connection, transaction
 from django.db.models.signals import m2m_changed, post_delete, post_save, pre_save, pre_delete
 from django.dispatch import receiver
 
+from jbei.ice.rest.ice import parse_entry_id, HmacAuth
 from . import study_modified, study_removed, user_modified
-from ..ice import parse_entry_id
 from ..models import Line, Strain, Study, Update
 from ..solr import StudySearch, UserSearch
 from ..utilities import get_absolute_url
@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 if settings.USE_CELERY:
     from edd.remote_tasks import link_ice_entry_to_study, unlink_ice_entry_from_study
 else:
-    from main.ice import IceApi
+    from jbei.ice.rest.ice import IceApi
 
 
 @receiver(post_save, sender=Study)
@@ -230,7 +230,7 @@ def _post_commit_unlink_ice_entry_from_study(user_email, study_pk, study_creatio
     """
     logger.info('Start ' + _post_commit_unlink_ice_entry_from_study.__name__ + '()')
 
-    ice = IceApi(user_email) if not settings.USE_CELERY else None
+    ice = IceApi(auth=HmacAuth(usernam=user_email)) if not settings.USE_CELERY else None
 
     study_url = get_abs_study_url(study_pk)
     index = 0
@@ -297,7 +297,7 @@ def _post_commit_link_ice_entry_to_study(user_email, study, linked_strains):
     django-commit-hooks limitation that a no-arg method be passed to the post-commit hook.
     :param linked_strains cached strain information
     """
-    ice = IceApi(user_email) if not settings.USE_CELERY else None
+    ice = IceApi(auth=HmacAuth.get(username=user_email)) if not settings.USE_CELERY else None
 
     index = 0
 
