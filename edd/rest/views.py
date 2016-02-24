@@ -6,8 +6,8 @@ from rest_framework.exceptions import APIException
 from rest_framework.relations import StringRelatedField
 from rest_framework.response import Response
 
+from edd.rest.serializers import LineSerializer, StudySerializer, UserSerializer, StrainSerializer
 from main.models import Study, StudyPermission, Line, Strain, User
-from rest.serializers import LineSerializer, StudySerializer, UserSerializer, StrainSerializer
 
 logger = logging.getLogger(__name__)
 from rest_framework import permissions
