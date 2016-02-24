@@ -5,7 +5,19 @@ Defines serializers for EDD's nascent REST API, as supported by the django rest 
 
 from rest_framework import serializers
 from rest_framework import reverse
-from main.models import Line, Study, User, Strain
+from main.models import Line, Study, User, Strain, Update
+from rest_framework.fields import empty
+
+####################################################################################################
+# unused
+####################################################################################################
+class UpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Update
+        fields = ('mod_time', 'mod_by', 'path', 'origin')
+        depth = 0
+
+####################################################################################################
 
 class StudySerializer(serializers.ModelSerializer):
     class Meta:
@@ -52,8 +64,7 @@ class LineSerializer(serializers.ModelSerializer):
         # Note: display only a subset of the fields
         # TODO: follow up on contact extra field -- can't be null/blank, but appears unused in GUI
         fields = ('pk', 'study', 'name', 'description', 'control', 'replicate', 'contact',
-                    'experimenter', 'protocols', 'strains',
-                    'updated', 'created', )
+                    'experimenter', 'protocols', 'strains',)
 
         #study = StudyLineRelatedField(many=False, read_only=True)
         #contact = serializers.StringRelatedField(many=False)
@@ -78,7 +89,21 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
         depth = 0
 
 class StrainSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = Strain
-        fields = ('name', 'description', 'registry_url', 'registry_id')
+
+        fields = ('name', 'description', 'registry_url', 'registry_id', 'pk')
         depth = 0
+
+    # def __init__(self, instance=None, data=empty, **kwargs):
+    #      super(self.__class__, self).__init__(instance, data, **kwargs)
+
+    # work around an apparent oversite in ModelSerializer's __new__ implementation that prevents us
+    # from using it to construct new objects from a class instance with kw arguments similar to its
+    # __init__() method
+    # @staticmethod
+    # def __new__(cls, *args, **kwargs):
+    #     kwargs.pop('data', empty)
+    #     kwargs.pop('instance', None)
+    #     return serializers.ModelSerializer.__new__(cls, *args, **kwargs)
