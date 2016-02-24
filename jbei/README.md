@@ -108,7 +108,7 @@ created.
    
 	       mkdir jbei\ python\ scripts && cd jbei\ python\ scripts
 	       git init
-	       git remote add –f edd-django https://your-username@repo.jbei.org/scm/edd/edd-django.git
+	       git remote add edd-django https://your-username@repo.jbei.org/scm/edd/edd-django.git
    * Enable sparse checkout so you can get just the scripts you need.
 
            git config core.sparsecheckout true
@@ -122,16 +122,19 @@ created.
 
            git pull edd-django master
 	   
-* Install required Python packages
+* Install required Python packages.
+
+    First confirm that you're working in the correct virtualenv! See directions above.
+
 	    workon jbei-scripts
-        pip install -r requirements.txt
+	    pip install -r jbei/requirements.txt
 	
 * Add the `jbei` directory, and any desired subdirectories to the $PYTHONPATH
 
-    cd jbei/
-	PYTHONPATH=$PYTHONPATH:`pwd`/jbei:`pwd`/jbei/edd/rest/scripts/
-	
-	alternately, add the `PYTHNONPATH line above to your .bash_profile
+        cd jbei/
+        PYTHONPATH=$PYTHONPATH:`pwd`/jbei:`pwd`/jbei/edd/rest/scripts/
+
+	   Alternately, update the `PYTHNONPATH` in your `.bash_profile`
 	
 * Edit the `jbei/edd/rest/scripts/settings.py` file if needed. Its purpose is to set defaults used
  by the scripts to contact EDD and ICE.  Unless you're using it for code development or testing,
@@ -139,7 +142,7 @@ created.
 
 ## Run a script!
 
-For example: `python create_lines.py my_csv_file.csv -study 1234`
+For example: `python jbei/edd/rest/scripts/create_lines.py my_csv_file.csv -study 1234`
 
 ## Get the latest code
 
@@ -147,9 +150,9 @@ From the repository directory you configured, just run
 
     git pull
 
-Keep in mind that new code may have been added somewhere other than where your sparse checkout is
- looking for it! You can always browse the rest of the code in [BitBucket](https://repo.jbei.org/projects/EDD/repos/edd-django/browse/jbei/)
- if that's needed.
+Keep in mind that new code may have been added in a different branch or in a different directory
+than where your sparse checkout is looking for it! You can always browse the rest of the code in
+[BitBucket](https://repo.jbei.org/projects/EDD/repos/edd-django/browse/jbei/) if that's needed.
 
 
 
