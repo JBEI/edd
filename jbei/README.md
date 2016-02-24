@@ -1,12 +1,12 @@
 # JBEI Python Code
 
 This package contains Python code for general JBEI use, particularly for client interface to JBEI's
-web application at the API level. Code here is a work in progress, and should eventually be
-versioned and distributed independently of (though in coordinated with) specific application code
+web applications at the API level. Code here is a work in progress, and should eventually be
+versioned and distributed independently of (though coordinated with) specific application code
  such as EDD or ICE.
 
 If you aren't familiar with what an [API](https://en.wikipedia.org/wiki/Application_programming_interface)
-is, you probably shouldn't be using these scripts, or you should do so with help and with great
+is, you probably shouldn't write your own code to use these scripts, or you should do so with help and with great
 care to avoid destroying important data.
 
 This initial version of these scripts and API's are only supported for the purpose of automating
@@ -36,11 +36,12 @@ These directions assume you're basically comfortable using the OSX Terminal. If 
 
 #### Install basic development tools needed to support the scripts.
  Depending on what's already installed / in use on your computer, you'll want to consider
- following directions in four of the first three sections below, plus (Xcode, Homebrew, Python, pip,
- virtualenvwrapper).
+ following directions the sections below.
 
 1. Install XCode: <a name="XCode"/>
-    Install XCode (and associated Developer Tools) via the App Store
+    Install XCode and associated Developer Tools via the App Store. If you type `git` at the
+    command line and get a usage message rather than `command not found` or similar , you can
+    probably skip this step.
     * As of OS X 10.9 "Mavericks": you can just run `xcode-select --install` at the terminal to just
     only get the command-line tools
     * Run the command below to stablish `/usr/include`:
@@ -67,12 +68,13 @@ later on.
 
        `sudo pip install virtualenvwrapper`
    * Add the following lines to your shell startup file (e.g. `~/.bash_profile`), or create one
-   if it doesn't exist
+   if it doesn't exist. Note that this file may not visible in Finder by default, or from the
+   Terminal unless you use `ls -a` to show all files.
 
             # configure virtualenvwrapper to isolate Python environments
             export WORKON_HOME=$HOME/.virtualenvs
             source /usr/local/bin/virtualenvwrapper.sh
-   * Include the changes you just made in the current Terminal:
+   * Incorporate the changes you just made into your current Terminal:
 
             source ~/.bash_profile
 
@@ -101,7 +103,8 @@ created.
 	
 * Download scripts from https://repo.jbei.org/projects/EDD/repos/edd-django/browse. These files may eventually be hosted elsewhere, but for now the initial versions are being developed/maintained concurrently with EDD.
 * Do a [sparse checkout](http://jasonkarns.com/blog/subdirectory-checkouts-with-git-sparse-checkout/) to get just the subsection of EDD code that you need to run these scripts. You won't want the whole application codebase. For example, run the following commands:
-   * Create and initialize your local repo (replacing sample below with your own LDAP username):
+   * Create and initialize your local repo (replacing the sample on the last line below with
+   your own LDAP username):
    
 	       mkdir jbei\ python\ scripts && cd jbei\ python\ scripts
 	       git init
