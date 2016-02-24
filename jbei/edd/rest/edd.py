@@ -307,7 +307,7 @@ class EddSessionAuth(AuthBase):
                 logger.info('Successfully logged into EDD at %s' % base_url)
                 return EddSessionAuth(session, csrf_token, timeout=timeout, verify_ssl_cert=verify_ssl_cert)
         else:
-            show_response_html(response)
+            # show_response_html(response)
             response.raise_for_status()
 
 class EddApi(object):
