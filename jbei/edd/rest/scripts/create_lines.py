@@ -758,6 +758,7 @@ try:
     with edd_session_auth:
 
         edd = EddApi(base_url=EDD_URL, session_auth=edd_session_auth)
+        edd.set_write_enabled(True)
 
         ############################################################################################
         # Query user for the study to create lines in, verifying that the study exists / the user

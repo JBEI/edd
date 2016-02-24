@@ -303,6 +303,7 @@ class EddSessionAuth(AuthBase):
                 logger.info('Successfully logged into EDD at %s' % base_url)
                 return EddSessionAuth(session, csrf_token, timeout=timeout, verify_ssl_cert=verify_ssl_cert)
         else:
+            show_response_html(response)
             response.raise_for_status()
 
 class EddApi(object):
@@ -324,7 +325,7 @@ class EddApi(object):
 
     def __init__(self, session_auth, base_url):
         """
-        Creates a new instance of EddApi.
+        Creates a new instance of EddApi, which prevents data changes by default.
         :param base_url: the base URL of the EDD deployment to interface with,
         e.g. https://edd.jbei.org/. Note HTTPS should almost always be used for security.
         :param session_auth: a valid, authenticated EDD session used to authorize all requests to
@@ -338,6 +339,24 @@ class EddApi(object):
         super(self.__class__, self).__init__()
         self.session_auth = session_auth
         self.base_url = base_url
+        self._enable_write = False
+
+    def set_write_enabled(self, enabled):
+        """
+        Enables remote changes to EDD's database via method calls made from EddApi. Changes EDD
+        are disabled by default to prevent accidental data loss.
+        :param enabled: True to enabled changes to EDD, false disables changes.
+        """
+        self._enable_write = enabled
+
+    def is_write_enabled(self):
+        return self._enable_write
+
+    def _prevent_write_while_disabled(self):
+        if not self._enable_write:
+            raise RuntimeError('To prevent accidental data loss, changes to EDD data are '
+                               'disabled. Use %s to allow writes, '
+                               'but please use carefully!' % self.set_write_enabled.__name__)
 
 
     def search_strains(self, registry_id=None, registry_url_regex=None, name=None, name_regex=None,
@@ -385,7 +404,7 @@ class EddApi(object):
             response.raise_for_status()
 
         if USE_DRF_SERIALIZER:
-            from rest.serializers import  StrainSerializer
+            from edd.rest.serializers import  StrainSerializer
             return PagedResult.of(response.content, serializer_class=StrainSerializer.__class__)
         else:
             return PagedResult.of(response.content, model_class=Strain)
@@ -423,7 +442,10 @@ class EddApi(object):
         :return: the newly-created Line, but containing only the subset of its state serialized
         by the REST API.
         :raises: exception if the line couldn't be created
+        :raises RuntimeError: if writes are disabled when this method is invoked
         """
+        self._prevent_write_while_disabled()
+
         url = '%srest/study/%d/lines/' % (self.base_url, study_id)
 
         new_line = {
@@ -460,7 +482,10 @@ class EddApi(object):
         :return: the newly-created strain, but containing only the subset of its state serialized
         by the REST API.
         :raises: an Exception if the strain couldn't be created
+        :raises RuntimeError: if writes are disabled when this method is invoked
         """
+        self._prevent_write_while_disabled()
+
         post_data = {
             'name': name,
             'description': description,
@@ -569,7 +594,7 @@ class PagedResult(object):
             # thus far, plus lots of extra library dependencies for not much benefit
             if USE_DRF_SERIALIZER:
 
-                from rest.serializers import StrainSerializer
+                from edd.rest.serializers import StrainSerializer
                 # serializer = serializer_class(data=object_dict)  # TODO: should work, but doesn't
                 # because of an apparent problem in __new__ in DRF's SerializerMetaClass. huh.
                 serializer = StrainSerializer(data=object_dict)
