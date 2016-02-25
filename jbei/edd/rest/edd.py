@@ -12,12 +12,12 @@ import logging
 
 import requests
 from requests.auth import AuthBase
-from jbei.rest.utils import remove_trailing_slash
+from jbei.rest.utils import remove_trailing_slash, UNSAFE_HTTP_METHODS
+from urlparse import urlparse, urlsplit
 
 import jbei
 from jbei.rest.request_generators import SessionRequestGenerator, RequestGenerator
 from jbei.rest.utils import show_response_html
-from jbei.util.deprecated import deprecated
 
 VERIFY_SSL_DEFAULT = jbei.rest.request_generators.RequestGenerator.VERIFY_SSL_DEFAULT
 DEFAULT_REQUEST_TIMEOUT = (10, 10)  # HTTP request connection and read timeouts, respectively (seconds)
@@ -28,8 +28,8 @@ USE_DRF_SERIALIZER = False  # test flag for doing deserialization without the Dj
 
 logger = logging.getLogger(__name__)
 
-## TODO: either continue with this approach, or investigate using reflection to dynamically derive
-## Model classes that prevent database access. Note that our current deserialization process is
+# TODO: either continue with this approach, or investigate using reflection to dynamically derive
+# Model classes that prevent database access. Note that our current deserialization process is
 # reflection-based, so it makes sense to pursue that when possible so we can avoid maintaining
 # these classes
 # class EmptyQuerysetManager(models.Manager):
@@ -49,7 +49,8 @@ logger = logging.getLogger(__name__)
 #         manager = EmptyQuerysetManager()
 #
 #
-# #     Proxy models for EDD's Django instances obtained via calls to EDD's REST API rather than from
+# #     Proxy models for EDD's Django instances obtained via calls to EDD's REST API rather than
+# #     from
 # #     direct database access using the ORM.  Detached* instances have all the same fields as
 # #     their base Django model class, but they prevent accidental database modification via
 # #     client-side REST code while keeping all the same fields and methods otherwise available to
@@ -137,22 +138,45 @@ class Study(EddRestObject):
         super(Study, self).__init__(**temp)
 
 
+DJANGO_CSRF_COOKIE_KEY = 'csrftoken'
 
+def insert_spoofed_csrf_headers(headers, base_url):
+    """
+    Creates HTTP headers that help to work around Django's CSRF protection, which shouldn't apply
+    outside of the browser context.
+    :param headers: a dictionary into which headers will be inserted, if needed
+    :param base_url: the base URL of the Django application being contacted
+    """
+    # if connecting to Django/DRF via HTTPS, spoof the 'Host' and 'Referer' headers that Django
+    # uses to help prevent cross-site scripting attacks for secure browser connections. This
+    # should be OK for a standalone Python REST API client, since the origin of a
+    # cross-site scripting attack is malicious website code that executes in a browser,
+    # but accesses another site's credentials via the browser or via user prompts within the
+    # browser. Not applicable in this case for a standalone REST API client.
+    # References:
+    # https://docs.djangoproject.com/en/dev/ref/csrf/#how-it-works
+    # http://security.stackexchange.com/questions/96114/why-is-referer-checking-needed-for-django
+    # http://mathieu.fenniak.net/is-your-web-api-susceptible-to-a-csrf-exploit/
+    # -to-prevent-csrf
+    if urlparse(base_url).scheme == 'https':
+        headers['Host'] = urlsplit(base_url).netloc
+        headers['Referer'] = base_url  # LOL! Bad spelling is now standard :-)
 
 class DrfSessionRequestGenerator(SessionRequestGenerator):
     """
     A special-case SessionRequestGenerator to support CSRF token headers required by the Django /
     Django Rest Framework (DRF) to make requests to "unsafe" (mutator) REST resources. Clients of
     DrfSessionRequestGenerator can just transparently call request/post/delete/etc methods here
-    without needing to worry about which methods need DRF'S CSRF header set.
+    without needing to worry about which methods need DRF'S CSRF header set, or the mechanics of
+    how that's accomplished.
+    :param base_url: the base url of the site where Django REST framework is being connected to.
     """
 
-    UNSAFE_METHODS = ('POST', 'PUT', 'PATCH', 'DELETE')
-
-    def __init__(self, session, csrf_token, timeout=DEFAULT_REQUEST_TIMEOUT,
+    def __init__(self, base_url, session, timeout=DEFAULT_REQUEST_TIMEOUT,
                  verify_ssl_cert=VERIFY_SSL_DEFAULT):
         super(DrfSessionRequestGenerator, self).__init__(session, timeout=timeout,
                                              verify_ssl_cert=verify_ssl_cert)
+        self._base_url = base_url
 
 
     #############################################################
@@ -167,8 +191,8 @@ class DrfSessionRequestGenerator(SessionRequestGenerator):
 
     def request(self, method, url, **kwargs):
         # if using an "unsafe" HTTP method, include the CSRF header required by DRF
-        if method.upper() in self.UNSAFE_METHODS:
-             kwargs = self.insert_csrf_header(kwargs)
+        if method.upper() in UNSAFE_HTTP_METHODS:
+             kwargs = self.insert_csrf_headers(kwargs)
 
         return self._session.request(method, url, **kwargs)
 
@@ -179,38 +203,40 @@ class DrfSessionRequestGenerator(SessionRequestGenerator):
         return self._session.get(url, **kwargs)
 
     def post(self, url, data=None, **kwargs):
-        kwargs = self.insert_csrf_header(**kwargs)
+        kwargs = self.insert_csrf_headers(**kwargs)
         return self._session.post(url, data, **kwargs)
 
     def put(self, url, data=None, **kwargs):
-        kwargs = self.insert_csrf_header(kwargs)
+        kwargs = self.insert_csrf_headers(kwargs)
         return self._session.put(url, data, **kwargs)
 
     def patch(self, url, data=None, **kwargs):
-        kwargs = self.insert_csrf_header(kwargs)
+        kwargs = self.insert_csrf_headers(kwargs)
         return self._session.patch(url, data, **kwargs)
 
     def delete(self, url, **kwargs):
-        kwargs = self.insert_csrf_header(kwargs)
+        kwargs = self.insert_csrf_headers(kwargs)
         return self._session.delete(url, **kwargs)
 
-    def insert_csrf_header(self, **kwargs):
+    def get_csrf_headers(self, **kwargs):
         """
-        Gets an updated dictionary of HTTP request headers, including the CSRF token. The original
-        input headers dictionary (if any) isn't modified.
+        Gets an updated dictionary of HTTP request headers, including headers required to satisfy
+        Django's CSRF protection. The original input headers dictionary (if any) isn't modified.
         :return:
         """
         kwargs = kwargs.copy()  # don't modify the input dictionary
         headers = kwargs.pop('headers')
-
-        csrf_token = self._session.cookies['csrftoken'] # grab cookie value set by Django
 
         if headers:
             headers = headers.copy()  # don't modify the headers dictionary
         else:
             headers = []
 
-        headers['X-CSRFToken'] = csrf_token # set the header value needed by DRF
+        csrf_token = self._session.cookies[DJANGO_CSRF_COOKIE_KEY]  # grab cookie value set by Django
+        headers['X-CSRFToken'] = csrf_token  # set the header value needed by DRF (inexplicably
+                                             # different than the one Django uses)
+
+        insert_spoofed_csrf_headers(headers, self.base_url)
         kwargs['headers'] = headers
         return kwargs
 
@@ -220,11 +246,11 @@ class EddSessionAuth(AuthBase):
     Implements session-based authentication for EDD.
     """
 
-    def __init__(self, session, csrf_token, timeout=DEFAULT_REQUEST_TIMEOUT,
+    def __init__(self, base_url, session, timeout=DEFAULT_REQUEST_TIMEOUT,
                  verify_ssl_cert=VERIFY_SSL_DEFAULT):
         self._session = session
-        self._request_generator = DrfSessionRequestGenerator(session, csrf_token, timeout=timeout,
-                                                          verify_ssl_cert=verify_ssl_cert)
+        self._request_generator = DrfSessionRequestGenerator(base_url, session, timeout=timeout,
+                                                             verify_ssl_cert=verify_ssl_cert)
 
     def getRequestGenerator(self):
         return self._request_generator
@@ -248,73 +274,6 @@ class EddSessionAuth(AuthBase):
         self._session.__exit__(type, value, traceback)
     ############################################
 
-    @staticmethod
-    @deprecated
-    def login_django_page(username, password, base_url='https://edd.jbei.org',
-              timeout=DEFAULT_REQUEST_TIMEOUT, verify_ssl_cert=VERIFY_SSL_DEFAULT):
-        """
-        Logs into EDD at the provided URL using the Django web form. During testing, this worked
-        locally on development laptop, but was unsuccessful on the test server (running via WSGI
-        and with some different settings).
-        :param login_page_url: the URL of the login page,
-        (e.g. https://localhost:8000/accounts/login/).
-        Note that it's a security flaw to use HTTP for anything but local testing.
-        :return: an authentication object that encapsulates the newly-created user session, or None
-        if authentication failed (likely because of user error in entering credentials).
-        :raises Exception: if an HTTP error occurs
-        """
-
-        # chop off the trailing '/', if any, so we can write easier-to-read URL snippets in our code
-        # (starting w '%s/'). also makes our code trailing-slash agnostic.
-        base_url = remove_trailing_slash(base_url)
-
-        # issue a GET to get the CRSF token for use in auto-login
-        login_page_url = '%s/accounts/login/' % base_url
-        session = requests.session()
-        response = session.get(login_page_url, timeout=timeout, verify=verify_ssl_cert)
-
-        if response.status_code != requests.codes.ok:
-            response.raise_for_status()
-
-        # extract the CSRF token from the server response to include as a form header
-        # with the login request (doesn't work without it, even though it's already present in the
-        # session cookie)
-        csrf_token = response.cookies['csrftoken']  # Note: NOT the same key as the header we
-        # send with requests
-        if not csrf_token:
-            logger.error("No CSRF token received from EDD. Something's wrong.")
-            raise Exception('Server response did not include the required CSRF token')
-
-        csrf_request_headers = { 'csrfmiddlewaretoken': csrf_token }
-
-        # package up credentials and CSRF token to send with the login request
-        login_dict =  {
-            'username': username,
-            'password': password,
-        }
-        login_dict.update(csrf_request_headers)
-        # issue a POST to log in
-        attempted_login = True
-        response = session.post(login_page_url, data=login_dict, timeout=timeout,
-                                verify=verify_ssl_cert)
-
-        # show_response_html(response)
-        # return the session if it's successfully logged in, or print error messages/raise
-        # exceptions as appropriate
-        if response.status_code == requests.codes.ok:
-            DJANGO_LOGIN_FAILURE_CONTENT = 'Login failed'
-            DJANGO_REST_API_FAILURE_CONTENT = 'This field is required'
-            if DJANGO_LOGIN_FAILURE_CONTENT in response.content or \
-                            DJANGO_REST_API_FAILURE_CONTENT in response.content:
-                logger.warning('Login failed. Please try again.')
-                logger.info(response.headers)
-            else:
-                logger.info('Successfully logged into EDD at %s' % base_url)
-                return EddSessionAuth(session, csrf_token, timeout=timeout, verify_ssl_cert=verify_ssl_cert)
-        else:
-            # show_response_html(response)
-            response.raise_for_status()
-
 
     @staticmethod
     def login(username, password, base_url='https://edd.jbei.org',
@@ -333,7 +292,9 @@ class EddSessionAuth(AuthBase):
         base_url = remove_trailing_slash(base_url)
 
         # issue a GET to get the CRSF token for use in auto-login
-        login_page_url = '%s/rest/auth/login/' % base_url
+
+        login_page_url = '%s/accounts/login/' % base_url  # Django login page URL
+        #login_page_url = '%s/rest/auth/login/' % base_url  # Django REST framework login page URL
         session = requests.session()
         response = session.get(login_page_url, timeout=timeout, verify=verify_ssl_cert)
 
@@ -343,23 +304,28 @@ class EddSessionAuth(AuthBase):
         # extract the CSRF token from the server response to include as a form header
         # with the login request (doesn't work without it, even though it's already present in the
         # session cookie)
-        csrf_token = response.cookies['csrftoken']  # Note: NOT the same key as the header we
+
+        csrf_token = response.cookies[DJANGO_CSRF_COOKIE_KEY]  # Note: NOT the same key as the header we
         # send with requests
         if not csrf_token:
             logger.error("No CSRF token received from EDD. Something's wrong.")
             raise Exception('Server response did not include the required CSRF token')
-
-        csrf_request_headers = { 'csrfmiddlewaretoken': csrf_token }
+        csrf_request_headers = {'csrfmiddlewaretoken': csrf_token }
 
         # package up credentials and CSRF token to send with the login request
-        login_dict =  {
+        login_dict = {
             'username': username,
             'password': password,
         }
         login_dict.update(csrf_request_headers)
+
+        # work around Django's CSRF protection, which doesn't apply outside of the browser context
+        headers = {}
+        insert_spoofed_csrf_headers(headers, base_url)
+
         # issue a POST to log in
         attempted_login = True
-        response = session.post(login_page_url, data=login_dict, timeout=timeout,
+        response = session.post(login_page_url, data=login_dict, headers=headers, timeout=timeout,
                                 verify=verify_ssl_cert)
 
         # show_response_html(response)
@@ -374,7 +340,8 @@ class EddSessionAuth(AuthBase):
                 logger.info(response.headers)
             else:
                 logger.info('Successfully logged into EDD at %s' % base_url)
-                return EddSessionAuth(session, csrf_token, timeout=timeout, verify_ssl_cert=verify_ssl_cert)
+                return EddSessionAuth(base_url, session, timeout=timeout,
+                                      verify_ssl_cert=verify_ssl_cert)
         else:
             # show_response_html(response)
             response.raise_for_status()
@@ -577,7 +544,7 @@ class EddApi(object):
 
         # throw an error for unexpected reply
         if response.status_code != requests.codes.ok:
-            # show_response_html(response)  # TODO: remove
+            # show_response_html(response)
             response.raise_for_status()
 
         # return the created strain
@@ -589,6 +556,9 @@ class EddApi(object):
         response = request_generator.get(url)
 
         # throw an error for unexpected reply
+        if response.status_code == 404:
+            return None
+
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
 

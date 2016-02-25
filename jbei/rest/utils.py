@@ -7,8 +7,10 @@ import tempfile
 import webbrowser
 import time
 
-import re
+from urlparse import urlparse
 
+
+UNSAFE_HTTP_METHODS = ('POST', 'PUT', 'PATCH', 'DELETE')
 
 def show_response_html(response):
     """
@@ -26,10 +28,6 @@ def show_response_html(response):
     time.sleep(5)
     os.remove(temp_file_path)
 
-port_n_suffix = r'(?:(:\d+)?)(?:/.*)?'
-local_uri_pattern = re.compile(r'http://localhost%s' % port_n_suffix, re.IGNORECASE)
-http_uri_pattern = re.compile(r'^https://.*', re.IGNORECASE)
-local_uri_address_pattern = re.compile(r'^http://127.0.0.1%s' % port_n_suffix, re.IGNORECASE)
 
 def is_url_secure(uri):
     """
@@ -39,8 +37,7 @@ def is_url_secure(uri):
     :param uri: the URI to test for security
     :return: true if the URI indicates user credentials will be protected, false otherwise
     """
-    return http_uri_pattern.match(uri) or local_uri_pattern.match(uri) or \
-           local_uri_address_pattern.match(uri)
+    return urlparse(uri).scheme == 'https'
 
 def remove_trailing_slash(uri):
     if '/' == uri[(len(uri) - 1)]:

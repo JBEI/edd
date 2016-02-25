@@ -5,8 +5,7 @@ web applications at the API level. Code here is a work in progress, and should e
 versioned and distributed independently of (though coordinated with) specific application code
  such as EDD or ICE.
 
-<em>If you aren't familiar with what an [API](https://en.wikipedia
-.org/wiki/Application_programming_interface)
+<em>If you aren't familiar with what an [API](https://en.wikipedia.org/wiki/Application_programming_interface)
 is, you probably shouldn't write your own code using these scripts, or <font color="red"><u>you
 should do so with help and with great care to avoid destroying important scientific data hosted in
 JBEI's
@@ -110,14 +109,15 @@ created.
 
 #### Check out code to run the scripts
 	
-* Download scripts from https://repo.jbei.org/projects/EDD/repos/edd-django/browse. These files may eventually be hosted elsewhere, but for now the initial versions are being developed/maintained concurrently with EDD.
+* Download scripts from [the Bitbucket repo](https://repo.jbei.org/projects/EDD/repos/edd-django/browse). These files
+may eventually be hosted elsewhere, but for now the initial versions are being developed/maintained concurrently with EDD.
 * Do a [sparse checkout](http://jasonkarns.com/blog/subdirectory-checkouts-with-git-sparse-checkout/) to get just the subsection of EDD code that you need to run these scripts. You won't want the whole application codebase. For example, run the following commands:
    * Create and initialize your local repo (replacing the sample on the last line below with
    your own LDAP username):
    
 	       mkdir jbei\ python\ scripts && cd jbei\ python\ scripts
 	       git init
-	       git remote add edd-django https://your-username@repo.jbei.org/scm/edd/edd-django.git
+	       git remote add origin https://your-username@repo.jbei.org/scm/edd/edd-django.git
    * Enable sparse checkout so you can get just the scripts you need.
 
            git config core.sparsecheckout true
@@ -125,7 +125,7 @@ created.
    * Configure git's `sparse-checkout`` file to get just the script code and its dependencies in the
     EDD code
 
-           echo jbei/ >> .git/info/sparse-checkout
+           echo jbei/* >> .git/info/sparse-checkout
 	   
    * Checkout the scripts
 

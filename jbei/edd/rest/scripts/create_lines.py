@@ -766,37 +766,35 @@ try:
         ############################################################################################
         study = None
 
-        study_number = args.study
-        if study_number:
-            study = edd.get_study(study_number)
-            if study:
-                print('Creating lines in study %d specified on the command line' % study_number)
-            else:
-                print("Study %d specified on the command line couldn't be found in EDD at %s. "
-                      "Maybe this study number is from a different EDD deployment, or has the "
-                      "wrong access privileges?"
-                      % (study_number, EDD_URL))
+        study_number = str(args.study) if args.study else None
+        STUDY_PROMPT = 'Which EDD study number should lines be created in? '
+        if not study_number:
+            study_number = raw_input(STUDY_PROMPT)
 
         # query user regarding which study to use, then verify it exists in EDD
         digit = re.compile(r'^\s*(\d+)\s*$')
         while not study:
-
-            study_number = raw_input('Which EDD study should lines be created in? ')
             match = digit.match(study_number)
             if not match:
                 print('"%s" is not an integer' % study_number)
                 continue
 
+            print 'Searching EDD for study %s...' % study_number,
             study_number = int(match.group(1))
             study = edd.get_study(study_number)
 
             if not study:
+                print(' failed! :-<')
                 print("Study %(study_num)d couldn't be found in EDD at %(edd_url)s. "
                       "Maybe this study number is from a different EDD deployment, or has the "
                       "wrong access privileges for user %(username)s?"
                       % {'study_num': study_number,
                          'edd_url': EDD_URL,
                          'username': username})
+
+                study_number = raw_input(STUDY_PROMPT)
+            else:
+                print('Success!')
 
         if study:
             print('Found study %d in EDD, named "%s "' % (study_number, study.name))
