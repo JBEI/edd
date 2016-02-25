@@ -17,6 +17,7 @@ from jbei.rest.utils import remove_trailing_slash
 import jbei
 from jbei.rest.request_generators import SessionRequestGenerator, RequestGenerator
 from jbei.rest.utils import show_response_html
+from jbei.util.deprecated import deprecated
 
 VERIFY_SSL_DEFAULT = jbei.rest.request_generators.RequestGenerator.VERIFY_SSL_DEFAULT
 DEFAULT_REQUEST_TIMEOUT = (10, 10)  # HTTP request connection and read timeouts, respectively (seconds)
@@ -248,6 +249,74 @@ class EddSessionAuth(AuthBase):
     ############################################
 
     @staticmethod
+    @deprecated
+    def login_django_page(username, password, base_url='https://edd.jbei.org',
+              timeout=DEFAULT_REQUEST_TIMEOUT, verify_ssl_cert=VERIFY_SSL_DEFAULT):
+        """
+        Logs into EDD at the provided URL using the Django web form. During testing, this worked
+        locally on development laptop, but was unsuccessful on the test server (running via WSGI
+        and with some different settings).
+        :param login_page_url: the URL of the login page,
+        (e.g. https://localhost:8000/accounts/login/).
+        Note that it's a security flaw to use HTTP for anything but local testing.
+        :return: an authentication object that encapsulates the newly-created user session, or None
+        if authentication failed (likely because of user error in entering credentials).
+        :raises Exception: if an HTTP error occurs
+        """
+
+        # chop off the trailing '/', if any, so we can write easier-to-read URL snippets in our code
+        # (starting w '%s/'). also makes our code trailing-slash agnostic.
+        base_url = remove_trailing_slash(base_url)
+
+        # issue a GET to get the CRSF token for use in auto-login
+        login_page_url = '%s/accounts/login/' % base_url
+        session = requests.session()
+        response = session.get(login_page_url, timeout=timeout, verify=verify_ssl_cert)
+
+        if response.status_code != requests.codes.ok:
+            response.raise_for_status()
+
+        # extract the CSRF token from the server response to include as a form header
+        # with the login request (doesn't work without it, even though it's already present in the
+        # session cookie)
+        csrf_token = response.cookies['csrftoken']  # Note: NOT the same key as the header we
+        # send with requests
+        if not csrf_token:
+            logger.error("No CSRF token received from EDD. Something's wrong.")
+            raise Exception('Server response did not include the required CSRF token')
+
+        csrf_request_headers = { 'csrfmiddlewaretoken': csrf_token }
+
+        # package up credentials and CSRF token to send with the login request
+        login_dict =  {
+            'username': username,
+            'password': password,
+        }
+        login_dict.update(csrf_request_headers)
+        # issue a POST to log in
+        attempted_login = True
+        response = session.post(login_page_url, data=login_dict, timeout=timeout,
+                                verify=verify_ssl_cert)
+
+        # show_response_html(response)
+        # return the session if it's successfully logged in, or print error messages/raise
+        # exceptions as appropriate
+        if response.status_code == requests.codes.ok:
+            DJANGO_LOGIN_FAILURE_CONTENT = 'Login failed'
+            DJANGO_REST_API_FAILURE_CONTENT = 'This field is required'
+            if DJANGO_LOGIN_FAILURE_CONTENT in response.content or \
+                            DJANGO_REST_API_FAILURE_CONTENT in response.content:
+                logger.warning('Login failed. Please try again.')
+                logger.info(response.headers)
+            else:
+                logger.info('Successfully logged into EDD at %s' % base_url)
+                return EddSessionAuth(session, csrf_token, timeout=timeout, verify_ssl_cert=verify_ssl_cert)
+        else:
+            # show_response_html(response)
+            response.raise_for_status()
+
+
+    @staticmethod
     def login(username, password, base_url='https://edd.jbei.org',
               timeout=DEFAULT_REQUEST_TIMEOUT, verify_ssl_cert=VERIFY_SSL_DEFAULT):
         """
@@ -260,11 +329,11 @@ class EddSessionAuth(AuthBase):
         """
 
         # chop off the trailing '/', if any, so we can write easier-to-read URL snippets in our code
-        # (starting w '%s/')
+        # (starting w '%s/'). also makes our code trailing-slash agnostic.
         base_url = remove_trailing_slash(base_url)
 
         # issue a GET to get the CRSF token for use in auto-login
-        login_page_url = '%s/accounts/login/' % base_url
+        login_page_url = '%s/rest/auth/login/' % base_url
         session = requests.session()
         response = session.get(login_page_url, timeout=timeout, verify=verify_ssl_cert)
 
@@ -345,7 +414,7 @@ class EddApi(object):
         self._enable_write = False
 
         # chop off the trailing '/', if any, so we can write easier-to-read URL snippets in our code
-        # (starting w '%s/')
+        # (starting w '%s/'). also makes our code trailing-slash agnostic.
         self.base_url = remove_trailing_slash(base_url)
 
     def set_write_enabled(self, enabled):

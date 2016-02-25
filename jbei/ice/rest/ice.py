@@ -448,7 +448,7 @@ class SessionAuth(AuthBase):
             raise ValueError("At least one source of ICE username is required")
 
         # chop off the trailing '/', if any, so we can write easier-to-read URL snippets in our code
-        # (starting w '%s/')
+        # (starting w '%s/'). also makes our code trailing-slash agnostic.
         base_url = remove_trailing_slash(base_url)
 
         # begin a session to track any persistent state required by the server
@@ -519,7 +519,7 @@ class IceApi(object):
         self.auth = auth
 
         # chop off the trailing '/', if any, so we can write easier-to-read URL snippets in our code
-        # (starting w '%s/')
+        # (starting w '%s/'). also makes our code trailing-slash agnostic.
         self.base_url = remove_trailing_slash(base_url)
 
 

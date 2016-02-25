@@ -19,3 +19,5 @@ urlpatterns = [
 
 if settings.PUBLISH_REST_API:
     urlpatterns.append(url(r'^rest/', include('edd.rest.urls', namespace='rest')))
+    urlpatterns.append(url(r'^rest/auth/', include('rest_framework.urls',
+                               namespace='rest_framework')))

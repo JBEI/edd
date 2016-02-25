@@ -5,9 +5,13 @@ web applications at the API level. Code here is a work in progress, and should e
 versioned and distributed independently of (though coordinated with) specific application code
  such as EDD or ICE.
 
-If you aren't familiar with what an [API](https://en.wikipedia.org/wiki/Application_programming_interface)
-is, you probably shouldn't write your own code to use these scripts, or you should do so with help and with great
-care to avoid destroying important data.
+<em>If you aren't familiar with what an [API](https://en.wikipedia
+.org/wiki/Application_programming_interface)
+is, you probably shouldn't write your own code using these scripts, or <font color="red"><u>you
+should do so with help and with great care to avoid destroying important scientific data hosted in
+JBEI's
+web applications.</u></font>
+.</em>
 
 This initial version of these scripts and API's are only supported for the purpose of automating
 line creation in EDD. Feel free to write your own code against the API's defined here, but expect
@@ -32,6 +36,11 @@ These directions assume you're basically comfortable using the OSX Terminal. If 
 
 ## Set up a Python 2 environment to run this code
 ### Mac OSX
+
+El Capitan: these directions haven't been updated for El Capitan. Unfortunately, they won't
+presently work on El Capitan, but will hopefully be updated soon. El Capitan related issues also
+affect the install process for the EDD Python development environment, and should also be
+documented there.
 
 
 #### Install basic development tools needed to support the scripts.

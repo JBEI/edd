@@ -53,9 +53,14 @@ experimentation.  See the deployed version at [edd.jbei.org][1].
 ### Mac OS X
 This section contains directions for setting up a development environment on EDD in OSX.
 
+El Capitan: these directions haven't yet been updated for El Capitan. Unfortunately, they won't
+presently work on El Capitan, but will hopefully be updated soon. El Capitan related issues also
+affect the install process for the JBEI Python scripts under jbei/, and should also be documented
+ there.
+
 * XCode <a name="XCode"/>
     Install XCode (and associated Developer Tools) via the App Store
-    * As of OS X 10.9 "Mavericks": `xcode-select --install` to just get command-line tools
+    * As of OS X 10.9 "Mavericks": you can just run `xcode-select --install` at the terminal to just only get the command-line tools
     * Establish `/usr/include` with:
       ``sudo ln -s `xcrun --show-sdk-path`/usr/include /usr/include``
 * [Homebrew][2] <a name="HomeBrew"/>
@@ -64,7 +69,7 @@ This section contains directions for setting up a development environment on EDD
 * Python <a name="Python"/>
     * Replace default OS X version of Python with the more up-to-date Homebrew version
     * `brew install python`
-    * May need to reload shell to see the proper Python version
+    * May need to relaunch the terminal to see the proper Python version
 * Replace default OS X version of OpenSSL <a name="OpenSSL"/>
     * `brew install OpenSSL`
 * [Pip][3] <a name="Pip"/>
