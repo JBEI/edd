@@ -12,23 +12,19 @@ import sys, os, io, logging
 class HPLC_Parser:
 	logger = logging.getLogger(__name__)
 
-	# The maximum number of lines to read before giving up on finding the header.
+	# The maximum number of lines to read before giving up on finding the header
 	max_header_line_count = 20
 
 	def __init__(self):
 		self.input_file = None     # The file that is being parsed
 		self.samples = None        # The final data resulting from batch parsing
-		self.header_block = None   # The file header
-		self.table_header = None   # The table header
-		self.table_divider = None  # The table divider, indicates column widths
-		self.section_widths = None # List of all column widths
-		self.column_headers = None # The label at the head of each column
 
 		self.amount_column_header_index  = None
 		self.compound_column_header_index = None
 
 	def parse_hplc_file(self, input_file_path):
-		"""Loads the file on the given path and parses textual HPLC data from it."""
+		"""Loads the file on the given path and parses textual HPLC data
+		 from it."""
 
 		if not os.path.exists(input_file_path):
 			raise IOError("Error: unable to locate file %s" % input_file_path)
@@ -38,24 +34,26 @@ class HPLC_Parser:
 			self.input_file = input_file
 			logger.debug("opened and is reading file %s" % input_file_path)
 
-			self._parse_file_header()
+			header_block = self._parse_file_header(self.input_file)
 
-			self._collect_table_header()
+			(header_block,table_header,table_divider) \
+			    = self._collect_table_header(header_block)
 			logger.debug("collected table_header")
 
-			self.section_widths = self.determine_section_widths()
+			section_widths = self.determine_section_widths(table_divider)
 			logger.debug("parsed column widths")
 
-			self._extract_column_headers_from_multiline_text()
+			self._extract_column_headers_from_multiline_text( \
+				section_widths, table_header)
 			logger.debug("collected the column_headers")
 			logger.debug("now reading in the data")
 
 			# Read in each line and contruct records
 			previous_name = None
-			previous_segments = [None for x in range(len(self.section_widths))]
+			previous_segments = [None for x in range(len(section_widths))]
 
 			self.samples = {}
-			while self._parse_sample():
+			while self._parse_sample(section_widths):
 				pass
 
 			logger.info("successfully parsed the HPLC file %s" \
@@ -75,18 +73,18 @@ class HPLC_Parser:
 		for v in q[q.keys()[selection]].keys():
 			print v, q[q.keys()[selection]][v]
 
-	def _parse_file_header(self):
+	def _parse_file_header(self, input_file):
 
 		# read in header block
-		self.header_block = [ self.input_file.readline() ]
+		header_block = [ input_file.readline() ]
 
 		# header_block_length = 0
 		logger.debug("searching for header block")
 		i = 0
-		while not self.header_block[-1].startswith("-"):
-			line = self.input_file.readline()
+		while not header_block[-1].startswith("-"):
+			line = input_file.readline()
 
-			self.header_block.append( line )
+			header_block.append( line )
 
 			if i >= HPLC_Parser.max_header_line_count:
 				raise Error("unable to find header: unexpected length")
@@ -100,28 +98,34 @@ class HPLC_Parser:
 		# title_line = header_block[0]
 
 		# TODO: retain usable form of header entries?
-	def _collect_table_header(self):
+
+		return header_block
+
+
+	def _collect_table_header(self, header_block):
 		# collect table header, "Sample Name", etc.
 		# cliping it off the end of the header block
-		self.table_header = []
-		self.table_divider = self.header_block[-1]
+		table_header = []
+		table_divider = header_block[-1] # indicates column widths
 		r_index = -2
-		line = self.header_block[r_index]
+		line = header_block[r_index]
 		while line != "" and not line.isspace():
-			self.table_header.append(line)
+			table_header.append(line)
 			r_index -= 1
-			line = self.header_block[r_index]
-		self.table_header.reverse()
+			line = header_block[r_index]
+		table_header.reverse()
 
 		# collect header data, currently not parsed
 		# ( removes table header from header block )
-		self.header_block = self.header_block[1:r_index]
+		header_block = header_block[1:r_index]
 
-	def determine_section_widths(self):
+		return header_block,table_header,table_divider
+
+	def determine_section_widths(self, table_divider):
 		# parse widths
 		section_widths = [0]
 		section_index = 0
-		for c in self.table_divider.strip():
+		for c in table_divider.strip():
 			if c == '-':
 				section_widths[section_index] += 1
 			else:
@@ -132,16 +136,17 @@ class HPLC_Parser:
 
 		return section_widths
 
-	def _extract_column_headers_from_multiline_text(self):
+	def _extract_column_headers_from_multiline_text( \
+		self, section_widths, table_header):
 
 		# collect the multiline text
-		self.column_headers = []
-		for section_width in self.section_widths:
-			self.column_headers.append('')
-		for line in self.table_header:
+		column_headers = []
+		for section_width in section_widths:
+			column_headers.append('')
+		for line in table_header:
 			section_index = 0
 			section_width_carryover = 0
-			for section_width in self.section_widths:
+			for section_width in section_widths:
 
 				if not line or line.isspace():
 					logger.debug('table header multiline scan terminated early')
@@ -161,41 +166,72 @@ class HPLC_Parser:
 					section_width_carryover = 0
 				else: # account for extra character in next section
 					section_width_carryover = 1
-				self.column_headers[section_index] += segment
+				column_headers[section_index] += segment
 				section_index += 1
 
 		# clean up the column headers
-		for i in range(len(self.column_headers)):
-			self.column_headers[i] = self.column_headers[i].split()
+		for i in range(len(column_headers)):
+			column_headers[i] = column_headers[i].split()
 
 		# each sample is indexed by sample name
 
 		# each value is indexed by column header
-		for column_header_index in range(len(self.column_headers)):
+		for column_header_index in range(len(column_headers)):
 			header = u""
-			for header_part in self.column_headers[column_header_index]:
+			for header_part in column_headers[column_header_index]:
 				header += u" " + header_part
 			if len(header) > 0:
 				header = header[1:]
-			self.column_headers[column_header_index] = header
+			column_headers[column_header_index] = header
 
 			logger.debug("header: %s", header)
 
 			if header.startswith('Amount'):
-				# self.amount_column_header_index  = column_header_index
-				self.amount_begin_position = sum(self.section_widths[:column_header_index])+len(self.section_widths[:column_header_index])
-				self.amount_end_position   = self.section_widths[column_header_index] + self.amount_begin_position
-				logger.debug("Amount Begin: %s    End %s", self.amount_begin_position, self.amount_end_position)
-				# logger.debug("Amount section width: %s", self.section_widths[:column_header_index])
+				self.amount_begin_position = sum( \
+					section_widths[:column_header_index]) \
+				    + len(section_widths[:column_header_index])
+				self.amount_end_position = section_widths[column_header_index] \
+				                           + self.amount_begin_position
+				logger.debug("Amount Begin: %s    End %s", \
+					self.amount_begin_position, self.amount_end_position)
+				# logger.debug("Amount section width: %s", \
+				#    section_widths[:column_header_index])
 			elif header.startswith('Compound'):
-				# self.compound_column_header_index = column_header_index
-				self.compound_begin_position = sum(self.section_widths[:column_header_index])+len(self.section_widths[:column_header_index])
-				self.compound_end_position   = self.section_widths[column_header_index] + self.compound_begin_position
-				logger.debug("Compound Begin: %s    End %s", self.compound_begin_position, self.compound_end_position)
-				# logger.debug("Compound section width: %s", self.section_widths[:column_header_index])
+				self.compound_begin_position = sum( \
+					section_widths[:column_header_index]) \
+				    + len(section_widths[:column_header_index])
+				self.compound_end_position = \
+				    section_widths[column_header_index] \
+				    + self.compound_begin_position
+				logger.debug("Compound Begin: %s    End %s", \
+					self.compound_begin_position, self.compound_end_position)
+				# logger.debug("Compound section width: %s", \
+				#     section_widths[:column_header_index])
 
-	def _parse_sample(self):
-		"""Collects a single sample from the file and stores it in the samples data structure
+		return column_headers
+
+
+	def _parse_96_well_format_samples(self):
+		"""Collects the samples from a 96 well plate format file
+
+		Format: [ (compound_string,amount_string), ...] """
+
+		raise NotImplementedError("_parse_96_well_format_samples")
+
+		# sample_names = []
+
+		# # collect all the sample names
+		# # ...
+
+		# while False:
+		# 	if line.startswith('#'):
+		# 		# End of block.
+		# 		pass
+
+
+	def _parse_sample(self, section_widths):
+		"""Collects a single sample from the file and stores it in
+		the samples data structure
 
 		Returns True when a sample was read successfully, else False
 
@@ -217,22 +253,23 @@ class HPLC_Parser:
 			## verify a new sample has not started.
 
 			# get the name of the sample related to the row
-			line_sample_name = line[:self.section_widths[0]].strip()
+			line_sample_name = line[:section_widths[0]].strip()
 			# logger.debug("line_sample_name: %s",line_sample_name)
 
 			if line_sample_name:
 				if sample_name:
-					# logger.debug("new record encountered, resetting file pointer")
+					# new record encountered, resetting file pointer
 					self.input_file.seek(file_pos)
 					return True
 
-				# ensure no collision with previous sample labels by adding a number
+				# ensure no collision with previous sample names by adding a #
 				if self.samples.has_key(line_sample_name):
 					line_sample_name += u'-2'
 					i = 3
 					while self.samples.has_key(line_sample_name):
 						last_dash_index = line_sample_name.rindex('-')
-						line_sample_name = line_sample_name[:last_dash_index+1] + unicode(i)
+						line_sample_name = \
+						    line_sample_name[:last_dash_index+1] + unicode(i)
 						i += 1
 
 				sample_name = line_sample_name
@@ -244,8 +281,13 @@ class HPLC_Parser:
 
 			# collect the other data items - grab amounts & compounds
 
-			amount_string = line[self.amount_begin_position:self.amount_end_position].strip()
-			compound_string = line[self.compound_begin_position:self.compound_end_position].strip()
+			amount_string = line[ \
+			    self.amount_begin_position : \
+			    self.amount_end_position].strip()
+
+			compound_string = line[ \
+			    self.compound_begin_position : \
+			    self.compound_end_position].strip()
 
 			# initilize the sample entry
 			if not self.samples.has_key(sample_name):
@@ -253,6 +295,5 @@ class HPLC_Parser:
 
 			# Put the value into our data structure
 			if amount_string != u'-' and compound_string != u'-':
-				self.samples[sample_name].append( (compound_string,amount_string) )
-
-			self.current_sample = self.samples[sample_name]
+				self.samples[sample_name].append( \
+					(compound_string,amount_string))
