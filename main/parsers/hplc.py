@@ -128,6 +128,8 @@ class HPLC_Parser:
 				section_widths.append(0)
 				section_index += 1
 
+		logger.debug("section widths: %s", section_widths)
+
 		return section_widths
 
 	def _extract_column_headers_from_multiline_text(self):
@@ -177,14 +179,20 @@ class HPLC_Parser:
 				header = header[1:]
 			self.column_headers[column_header_index] = header
 
+			logger.debug("header: %s", header)
+
 			if header.startswith('Amount'):
 				# self.amount_column_header_index  = column_header_index
-				self.amount_begin_position = sum(self.section_widths[:column_header_index-1])+len(self.section_widths[:column_header_index-1])
-				self.amount_end_position   = self.section_widths[column_header_index]
+				self.amount_begin_position = sum(self.section_widths[:column_header_index])+len(self.section_widths[:column_header_index])
+				self.amount_end_position   = self.section_widths[column_header_index] + self.amount_begin_position
+				logger.debug("Amount Begin: %s    End %s", self.amount_begin_position, self.amount_end_position)
+				# logger.debug("Amount section width: %s", self.section_widths[:column_header_index])
 			elif header.startswith('Compound'):
 				# self.compound_column_header_index = column_header_index
-				self.compound_begin_position = sum(self.section_widths[:column_header_index-1])+len(self.section_widths[:column_header_index-1])
-				self.compound_end_position   = self.section_widths[column_header_index]
+				self.compound_begin_position = sum(self.section_widths[:column_header_index])+len(self.section_widths[:column_header_index])
+				self.compound_end_position   = self.section_widths[column_header_index] + self.compound_begin_position
+				logger.debug("Compound Begin: %s    End %s", self.compound_begin_position, self.compound_end_position)
+				# logger.debug("Compound section width: %s", self.section_widths[:column_header_index])
 
 	def _parse_sample(self):
 		"""Collects a single sample from the file and stores it in the samples data structure
@@ -194,29 +202,27 @@ class HPLC_Parser:
 		Format: [ (compound_string,amount_string), ...] """
 
 		## Collect Sample Name
-
-		sample_name_collected = False
 		sample_name = None
 
-		## Begin Loop
+		## Loop - collect each line associated with the sample
 		while True:
 
 			file_pos = self.input_file.tell()
 			line = self.input_file.readline()
-			if line == '\n':
+			if line == '\n': # Skip blank line
 				continue
-			if not line:
+			if not line: # End Of File
 				return False
 
 			## verify a new sample has not started.
 
 			# get the name of the sample related to the row
 			line_sample_name = line[:self.section_widths[0]].strip()
-			logger.debug("line_sample_name: %s",line_sample_name)
+			# logger.debug("line_sample_name: %s",line_sample_name)
 
 			if line_sample_name:
-				if sample_name_collected:
-					# beginning of next record encountered, reset file pointer
+				if sample_name:
+					# logger.debug("new record encountered, resetting file pointer")
 					self.input_file.seek(file_pos)
 					return True
 
@@ -230,18 +236,16 @@ class HPLC_Parser:
 						i += 1
 
 				sample_name = line_sample_name
-				sample_name_collected = True
+				logger.debug("sample_name: %s",sample_name)
 
-			if not line_sample_name:
-				if not sample_name:
+			if not line_sample_name and not sample_name: 
 					logger.error("entry with no sample name found, aborting")
 					return False
-				sample_name = line_sample_name
 
 			# collect the other data items - grab amounts & compounds
 
 			amount_string = line[self.amount_begin_position:self.amount_end_position].strip()
-			compound_string = line[self.amount_begin_position:self.compound_end_position].strip()
+			compound_string = line[self.compound_begin_position:self.compound_end_position].strip()
 
 			# initilize the sample entry
 			if not self.samples.has_key(sample_name):
@@ -252,5 +256,3 @@ class HPLC_Parser:
 				self.samples[sample_name].append( (compound_string,amount_string) )
 
 			self.current_sample = self.samples[sample_name]
-
-			return True
