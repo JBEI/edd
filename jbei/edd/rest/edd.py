@@ -6,21 +6,21 @@ but is implemented to initially fulfill the basic need to connect to EDD program
 
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
-
+import jbei
+from jbei.rest.request_generators import SessionRequestGenerator
+from jbei.rest.utils import show_response_html, is_success_code
+from jbei.rest.utils import remove_trailing_slash, UNSAFE_HTTP_METHODS
 import json
 import logging
-
 import requests
 from requests.auth import AuthBase
-from jbei.rest.utils import remove_trailing_slash, UNSAFE_HTTP_METHODS
 from urlparse import urlparse, urlsplit
 
-import jbei
-from jbei.rest.request_generators import SessionRequestGenerator, RequestGenerator
-from jbei.rest.utils import show_response_html
-
+DEBUG = True  # controls whether error response content is written to temp file, then displayed
+              # in a browser tab
 VERIFY_SSL_DEFAULT = jbei.rest.request_generators.RequestGenerator.VERIFY_SSL_DEFAULT
-DEFAULT_REQUEST_TIMEOUT = (10, 10)  # HTTP request connection and read timeouts, respectively (seconds)
+DEFAULT_REQUEST_TIMEOUT = (10, 10)  # HTTP request connection and read timeouts, respectively
+                                    # (seconds)
 
 USE_DRF_SERIALIZER = False  # test flag for doing deserialization without the Django REST
 # Framework's serializer, which it turns out isn't very useful on the client side anyway.
@@ -31,7 +31,8 @@ logger = logging.getLogger(__name__)
 # TODO: either continue with this approach, or investigate using reflection to dynamically derive
 # Model classes that prevent database access. Note that our current deserialization process is
 # reflection-based, so it makes sense to pursue that when possible so we can avoid maintaining
-# these classes
+# these classes in parallel to the Django ORM models (which we shouldn't always use on the client
+# side).
 # class EmptyQuerysetManager(models.Manager):
 #     """
 #     A custom Django model manager whose purpose is to hide the database.
@@ -67,10 +68,13 @@ logger = logging.getLogger(__name__)
 #     pass
 
 #############################################################################################
+
+
 class EddRestObject(object):
-    """ Defines the plain Python object equivalent of Django model objects persisted to EDD's
-    database.  This separate object hierarchy should be used only on by external clients of EDD's REST
-    API, since little-to-no validation is performed on the data stored in these objects.
+    """
+    Defines the plain Python object equivalent of Django model objects persisted to EDD's
+    database.  This separate object hierarchy should be used only on by external clients of EDD's
+    REST API, since little-to-no validation is performed on the data stored in these objects.
 
     This separate object hierarchy that mirrors EDD's is necessary for a couple of reasons:
     1) It prevents EDD's REST API clients from having to install Django libraries that won't really
@@ -79,18 +83,18 @@ class EddRestObject(object):
     room during for non-breaking API changes. For example, REST API additions on the server side
     shouldn't require updates to client code.
 
-    As a result, it creates a separate object hierarchy that mirrors EDD's Django models and
-    needs to be maintained seperately.
+    As a result, it creates a separate object hierarchy that closely matches EDD's Django
+    models, but needs to be maintained separately.
 
     Note that there con be some differences in defaults between EddRestObjects and the Django models
     on which they're based. While Django modules have defaults defined for application to related
-    database records, EddRestObjects, which may only be partially populated from the ground truth in the database,
-    use None for all attributes that arent' specifically set. This should hopefully help to
-    distinguish unknown values from those that have defaults applied.
+    database records, EddRestObjects, which may only be partially populated from the ground truth in
+    the database, use None for all attributes that arent' specifically set. This should hopefully
+    help to distinguish unknown values from those that have defaults applied.
 
-    TODO: alternatively, and BEFORE puting a lot of additional work into this, consider a
-    reflection-based solution that dynamically inspects EDD's Django model objects and creates
-    non-Django variants.
+    TODO: alternatively, and BEFORE putting a lot of additional work into this, consider
+    finding/implementing a reflection-based solution that dynamically inspects EDD's Django model
+    objects and creates non-Django variants.
     """
     def __init__(self, **kwargs):
         self.pk = kwargs.get('pk')
@@ -140,7 +144,8 @@ class Study(EddRestObject):
 
 DJANGO_CSRF_COOKIE_KEY = 'csrftoken'
 
-def insert_spoofed_csrf_headers(headers, base_url):
+
+def insert_spoofed_https_csrf_headers(headers, base_url):
     """
     Creates HTTP headers that help to work around Django's CSRF protection, which shouldn't apply
     outside of the browser context.
@@ -162,6 +167,7 @@ def insert_spoofed_csrf_headers(headers, base_url):
         headers['Host'] = urlsplit(base_url).netloc
         headers['Referer'] = base_url  # LOL! Bad spelling is now standard :-)
 
+
 class DrfSessionRequestGenerator(SessionRequestGenerator):
     """
     A special-case SessionRequestGenerator to support CSRF token headers required by the Django /
@@ -175,9 +181,8 @@ class DrfSessionRequestGenerator(SessionRequestGenerator):
     def __init__(self, base_url, session, timeout=DEFAULT_REQUEST_TIMEOUT,
                  verify_ssl_cert=VERIFY_SSL_DEFAULT):
         super(DrfSessionRequestGenerator, self).__init__(session, timeout=timeout,
-                                             verify_ssl_cert=verify_ssl_cert)
+                                                         verify_ssl_cert=verify_ssl_cert)
         self._base_url = base_url
-
 
     #############################################################
     # 'with' context manager implementation
@@ -186,13 +191,13 @@ class DrfSessionRequestGenerator(SessionRequestGenerator):
         return self
 
     def __exit__(self, type, value, traceback):
-        super(self.__class, self).__exit__(type, value, traceback)
+        super(self.DrfSessionRequestGenerator, self).__exit__(type, value, traceback)
     #############################################################
 
     def request(self, method, url, **kwargs):
         # if using an "unsafe" HTTP method, include the CSRF header required by DRF
         if method.upper() in UNSAFE_HTTP_METHODS:
-             kwargs = self.insert_csrf_headers(kwargs)
+            kwargs = self.get_csrf_headers(kwargs)
 
         return self._session.request(method, url, **kwargs)
 
@@ -203,19 +208,19 @@ class DrfSessionRequestGenerator(SessionRequestGenerator):
         return self._session.get(url, **kwargs)
 
     def post(self, url, data=None, **kwargs):
-        kwargs = self.insert_csrf_headers(**kwargs)
+        kwargs = self.get_csrf_headers(**kwargs)
         return self._session.post(url, data, **kwargs)
 
     def put(self, url, data=None, **kwargs):
-        kwargs = self.insert_csrf_headers(kwargs)
+        kwargs = self.get_csrf_headers(kwargs)
         return self._session.put(url, data, **kwargs)
 
     def patch(self, url, data=None, **kwargs):
-        kwargs = self.insert_csrf_headers(kwargs)
+        kwargs = self.get_csrf_headers(kwargs)
         return self._session.patch(url, data, **kwargs)
 
     def delete(self, url, **kwargs):
-        kwargs = self.insert_csrf_headers(kwargs)
+        kwargs = self.get_csrf_headers(kwargs)
         return self._session.delete(url, **kwargs)
 
     def get_csrf_headers(self, **kwargs):
@@ -232,11 +237,12 @@ class DrfSessionRequestGenerator(SessionRequestGenerator):
         else:
             headers = []
 
-        csrf_token = self._session.cookies[DJANGO_CSRF_COOKIE_KEY]  # grab cookie value set by Django
+        csrf_token = self._session.cookies[DJANGO_CSRF_COOKIE_KEY]  # grab cookie value set by
+                                                                    # Django
         headers['X-CSRFToken'] = csrf_token  # set the header value needed by DRF (inexplicably
                                              # different than the one Django uses)
 
-        insert_spoofed_csrf_headers(headers, self.base_url)
+        insert_spoofed_https_csrf_headers(headers, self._base_url)
         kwargs['headers'] = headers
         return kwargs
 
@@ -245,6 +251,7 @@ class EddSessionAuth(AuthBase):
     """
     Implements session-based authentication for EDD.
     """
+    SESSION_ID_KEY = 'sessionid'
 
     def __init__(self, base_url, session, timeout=DEFAULT_REQUEST_TIMEOUT,
                  verify_ssl_cert=VERIFY_SSL_DEFAULT):
@@ -252,7 +259,7 @@ class EddSessionAuth(AuthBase):
         self._request_generator = DrfSessionRequestGenerator(base_url, session, timeout=timeout,
                                                              verify_ssl_cert=verify_ssl_cert)
 
-    def getRequestGenerator(self):
+    def get_request_generator(self):
         return self._request_generator
 
     def __call__(self, request):
@@ -260,13 +267,14 @@ class EddSessionAuth(AuthBase):
         Overrides the empty base implementation to provide authentication for the provided request
         object (which should normally be _session)
         """
-        if request != self._session: # TODO: not super helpful!!
+        if request != self._session:  # TODO: not super helpful!!
             logger.warning('Requests using EddSessionAuth should originate from the session '
                            'rather than from a new request.')
-            SESSION_ID_KEY = 'sessionid'
-            request.cookies[SESSION_ID_KEY]= self._session.cookies[SESSION_ID_KEY]
+            request.cookies[self.SESSION_ID_KEY] = self._session.cookies[self.SESSION_ID_KEY]
 
-    ### 'with' context manager implementation ###
+    ############################################
+    # 'with' context manager implementation ###
+    ############################################
     def __enter__(self):
         return self
 
@@ -274,13 +282,13 @@ class EddSessionAuth(AuthBase):
         self._session.__exit__(type, value, traceback)
     ############################################
 
-
     @staticmethod
     def login(username, password, base_url='https://edd.jbei.org',
               timeout=DEFAULT_REQUEST_TIMEOUT, verify_ssl_cert=VERIFY_SSL_DEFAULT):
         """
         Logs into EDD at the provided URL
-        :param login_page_url: the URL of the login page, (e.g. https://localhost:8000/accounts/login/).
+        :param login_page_url: the URL of the login page,
+        (e.g. https://localhost:8000/accounts/login/).
         Note that it's a security flaw to use HTTP for anything but local testing.
         :return: an authentication object that encapsulates the newly-created user session, or None
         if authentication failed (likely because of user error in entering credentials).
@@ -294,7 +302,7 @@ class EddSessionAuth(AuthBase):
         # issue a GET to get the CRSF token for use in auto-login
 
         login_page_url = '%s/accounts/login/' % base_url  # Django login page URL
-        #login_page_url = '%s/rest/auth/login/' % base_url  # Django REST framework login page URL
+        # login_page_url = '%s/rest/auth/login/' % base_url  # Django REST framework login page URL
         session = requests.session()
         response = session.get(login_page_url, timeout=timeout, verify=verify_ssl_cert)
 
@@ -303,39 +311,37 @@ class EddSessionAuth(AuthBase):
 
         # extract the CSRF token from the server response to include as a form header
         # with the login request (doesn't work without it, even though it's already present in the
-        # session cookie)
+        # session cookie). Note: NOT the same key as the header we send with requests
 
-        csrf_token = response.cookies[DJANGO_CSRF_COOKIE_KEY]  # Note: NOT the same key as the header we
-        # send with requests
+        csrf_token = response.cookies[DJANGO_CSRF_COOKIE_KEY]
         if not csrf_token:
             logger.error("No CSRF token received from EDD. Something's wrong.")
             raise Exception('Server response did not include the required CSRF token')
-        csrf_request_headers = {'csrfmiddlewaretoken': csrf_token }
 
         # package up credentials and CSRF token to send with the login request
         login_dict = {
             'username': username,
             'password': password,
         }
+        csrf_request_headers = {'csrfmiddlewaretoken': csrf_token}
         login_dict.update(csrf_request_headers)
 
-        # work around Django's CSRF protection, which doesn't apply outside of the browser context
+        # work around Django's additional CSRF protection for HTTPS, which doesn't apply outside of
+        # the browser context
         headers = {}
-        insert_spoofed_csrf_headers(headers, base_url)
+        insert_spoofed_https_csrf_headers(headers, base_url)
 
         # issue a POST to log in
-        attempted_login = True
         response = session.post(login_page_url, data=login_dict, headers=headers, timeout=timeout,
                                 verify=verify_ssl_cert)
 
-        # show_response_html(response)
         # return the session if it's successfully logged in, or print error messages/raise
         # exceptions as appropriate
         if response.status_code == requests.codes.ok:
             DJANGO_LOGIN_FAILURE_CONTENT = 'Login failed'
             DJANGO_REST_API_FAILURE_CONTENT = 'This field is required'
             if DJANGO_LOGIN_FAILURE_CONTENT in response.content or \
-                            DJANGO_REST_API_FAILURE_CONTENT in response.content:
+               DJANGO_REST_API_FAILURE_CONTENT in response.content:
                 logger.warning('Login failed. Please try again.')
                 logger.info(response.headers)
             else:
@@ -343,8 +349,10 @@ class EddSessionAuth(AuthBase):
                 return EddSessionAuth(base_url, session, timeout=timeout,
                                       verify_ssl_cert=verify_ssl_cert)
         else:
-            # show_response_html(response)
+            if DEBUG:
+                show_response_html(response)
             response.raise_for_status()
+
 
 class EddApi(object):
     """
@@ -370,10 +378,6 @@ class EddApi(object):
         e.g. https://edd.jbei.org/. Note HTTPS should almost always be used for security.
         :param session_auth: a valid, authenticated EDD session used to authorize all requests to
         the API.
-        :param timeout a tuple representing the connection and read timeouts, respectively, in
-        seconds, for HTTP requests issued to ICE
-        :param verify_ssl_cert: whether or not to verify EDD's SSL certificate. False is useful for
-        local-only testing, but this option shouldn't be used in production.
         :return: a new EddApi instance
         """
         super(self.__class__, self).__init__()
@@ -401,10 +405,8 @@ class EddApi(object):
                                'disabled. Use %s to allow writes, '
                                'but please use carefully!' % self.set_write_enabled.__name__)
 
-
     def search_strains(self, registry_id=None, registry_url_regex=None, name=None, name_regex=None,
                        case_sensitive=None):
-
         """
         Searches EDD for strain(s) matching the search criteria.
         :param registry_id: the registry id (UUID) to search for
@@ -423,10 +425,10 @@ class EddApi(object):
         search_params = {}
 
         if registry_id:
-            search_params['registry_id']=registry_id
+            search_params['registry_id'] = registry_id
 
         if registry_url_regex:
-            search_params['registry_url_regex']= registry_url_regex
+            search_params['registry_url_regex'] = registry_url_regex
 
         if name:
             search_params['name'] = name
@@ -439,7 +441,7 @@ class EddApi(object):
 
         # make the HTTP request
         url = '%s/rest/strain' % self.base_url
-        request_generator = self.session_auth.getRequestGenerator()
+        request_generator = self.session_auth.get_request_generator()
         response = request_generator.get(url, params=search_params, headers=self._json_header)
 
         # throw an error for unexpected reply
@@ -447,37 +449,29 @@ class EddApi(object):
             response.raise_for_status()
 
         if USE_DRF_SERIALIZER:
-            from edd.rest.serializers import  StrainSerializer
+            from edd.rest.serializers import StrainSerializer
             return PagedResult.of(response.content, serializer_class=StrainSerializer.__class__)
         else:
             return PagedResult.of(response.content, model_class=Strain)
 
-    def get_study_lines(self, study):
+    def get_study_lines(self, study_pk):
 
         """
-        Searches EDD for strain(s) matching the search criteria.
-        :param registry_id: the registry id (UUID) to search for
-        :param registry_url_regex: the registry URL to search for
-        :param name: the strain name or name fragment to search for (case-sensitivity determined
-        by case_sensitive)
-        :param name_regex: a regular expression for the strain name (case-sensitivity determined
-        by case_sensitive)
-        :param case_sensitive: whether or not to use case-sensitive string comparisons. False or
-        None indicates that searches should be case-insensitive.
+        Queries EDD for lines associated with a study
         :return: a PagedResult containing some or all of the EDD strains that matched the search
         criteria
         """
 
         # make the HTTP request
-        url = '%s/rest/study/%d/lines/' % self.base_url
-        request_generator = self.session_auth.getRequestGenerator()
+        url = '%s/rest/study/%d/lines/' % (self.base_url, study_pk)
+        request_generator = self.session_auth.get_request_generator()
         response = request_generator.get(url, headers=self._json_header)
 
         # throw an error for unexpected reply
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
 
-        return PagedResult.of(response.content, StrainSerializer.__class__)
+        return PagedResult.of(response.content, Line)
 
     def create_line(self, study_id, strain_id, name, description=None):
         """
@@ -492,32 +486,32 @@ class EddApi(object):
         url = '%s/rest/study/%d/lines/' % (self.base_url, study_id)
 
         new_line = {
-                "study": study_id,
-                "name": name,
-                "control": False,
-                "replicate": None,
-                # "contact": 60,
-                # "contact_extra": ' ',
-                # "experimenter": 60,
-                # "protocols": [
-                #     1933
-                # ],
-                "strains": [strain_id],
-            }
+            "study": study_id,
+            "name": name,
+            "control": False,
+            "replicate": None,
+            # "contact": 60,
+            # "contact_extra": ' ',
+            # "experimenter": 60,
+            # "protocols": [
+            #     1933
+            # ],
+            "strains": [strain_id],
+        }
+
         if description:
             new_line['description'] = description
 
-        request_generator = self.session_auth.getRequestGenerator()
+        request_generator = self.session_auth.get_request_generator()
         response = request_generator.post(url, headers=self._json_header, data=json.dumps(new_line))
 
-        # show_response_html(response)  # TODO: remove after debugging
-
         # throw an error for unexpected reply
-        if response.status_code != requests.codes.ok:
+        if not is_success_code(response.status_code):
+            if DEBUG:
+                show_response_html(response)
             response.raise_for_status()
 
         return Line(**json.loads(response.content))
-
 
     def create_strain(self, name, description, registry_id, registry_url):
         """
@@ -538,21 +532,22 @@ class EddApi(object):
 
         # make the HTTP request
         url = '%s/rest/strain/' % self.base_url
-        request_generator = self.session_auth.getRequestGenerator()
+        request_generator = self.session_auth.get_request_generator()
         response = request_generator.post(url, data=json.dumps(post_data),
                                           headers=self._json_header)
 
         # throw an error for unexpected reply
-        if response.status_code != requests.codes.ok:
-            # show_response_html(response)
+        if not is_success_code(response.status_code):
+            if DEBUG:
+                show_response_html(response)
             response.raise_for_status()
 
         # return the created strain
         return Strain(**json.loads(response.content))
 
     def get_study(self, pk):
-        url = '%s/rest/study/%d' %(self.base_url, pk)
-        request_generator = self.session_auth.getRequestGenerator()
+        url = '%s/rest/study/%d' % (self.base_url, pk)
+        request_generator = self.session_auth.get_request_generator()
         response = request_generator.get(url)
 
         # throw an error for unexpected reply
@@ -570,6 +565,7 @@ class EddApi(object):
         kwargs.pop('updated')
 
         return Study(**kwargs)
+
 
 class PagedResult(object):
     def __init__(self, results, total_result_count, next_page=None, previous_page=None):
@@ -602,7 +598,6 @@ class PagedResult(object):
         :return: a PagedResult containing the data and a sufficient information for finding the rest
         of it (if any)
         """
-        #klass = globals('')
 
         # convert reply to a dictionary of native python data types
         json_dict = json.loads(json_string)
@@ -645,7 +640,7 @@ class PagedResult(object):
                 # because of an apparent problem in __new__ in DRF's SerializerMetaClass. huh.
                 serializer = StrainSerializer(data=object_dict)
                 serializer.is_valid(raise_exception=True)
-                ModelClass = serializer.Meta.model
+                model_class = serializer.Meta.model
                 validated_data = serializer.validated_data
 
                 # work around an issue where the default
@@ -657,7 +652,7 @@ class PagedResult(object):
                 pk = object_dict.get('pk')
                 if pk:
                     validated_data['pk'] = pk
-                result_object = ModelClass(**validated_data)
+                result_object = model_class(**validated_data)
             # using parallel object hierarchy to Django model objects. Note that input isn't
             # validated, but that shouldn't really be an issue on the client side, so long as the
             # server connection is secure / trusted

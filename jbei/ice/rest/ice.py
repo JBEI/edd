@@ -1,4 +1,13 @@
 # -*- coding: utf-8 -*-
+"""
+Defines classes and utility methods used to communicate with the Index of Composable Elements
+(ICE), a.k.a. the "registry of parts". This API is designed to minimize dependencies on other
+libraries (e.g. Django model objects) so that it can be used from any part of the EDD codebase,
+including remotely-executed code, with a minimum of network traffic and install process. For
+example, many of the methods in the IceApi class are called from Celery tasks that may execute on
+a physically separate server from EDD itself, where Django model objects shouldn't be passed over
+the network.
+"""
 from __future__ import unicode_literals
 
 import base64
@@ -13,7 +22,7 @@ import importlib
 import requests
 from requests.auth import AuthBase
 from requests.compat import urlparse
-from jbei.rest.utils import remove_trailing_slash
+from jbei.rest.utils import remove_trailing_slash, CLIENT_ERROR_NOT_FOUND
 
 from jbei.rest.request_generators import RequestGenerator, SessionRequestGenerator
 from jbei.util.deprecated import deprecated
@@ -23,7 +32,7 @@ logger = logging.getLogger(__name__)
 ####################################################################################################
 # Set reasonable defaults where possible
 ####################################################################################################
-ICE_REQUEST_TIMEOUT = (10,10)  # request and read timeout, respectively, in seconds
+ICE_REQUEST_TIMEOUT = (10, 10)  # request and read timeout, respectively, in seconds
 ICE_URL = 'https://registry.jbei.org'
 ICE_SECRET_KEY = None
 
@@ -69,17 +78,6 @@ else:
 
 ####################################################################################################
 
-"""
-Defines classes and utility methods used to communicate with the Index of Composable Elements
-(ICE), a.k.a. the "registry of parts". This API is designed to minimize dependencies on other
-libraries (e.g. Django model objects) so that it can be used from any part of the EDD codebase,
-including remotely-executed code, with a minimum of network traffic and install process. For
-example, many of the methods in the IceApi class are called from Celery tasks that may execute on
-a physically separate server from EDD itself, where Django model objects shouldn't be passed over
-the network.
-"""
-
-
 
 _JSON_CONTENT_TYPE_HEADER = {'Content-Type': 'application/json; charset=utf8'}
 
@@ -91,6 +89,7 @@ _IDENTIFIER = r'[\w-]+'
 _ICE_ENTRY_URL_REGEX = '(%(protocol)s)://(%(base_url)s)/entry/(%(identifier)s)/?' % {
     'protocol': _PROTOCOL, 'base_url': _BASE_ICE_URL_REGEX, 'identifier': _IDENTIFIER, }
 ICE_ENTRY_URL_PATTERN = re.compile('^%s$' % _ICE_ENTRY_URL_REGEX, re.IGNORECASE)
+
 
 class Part(object):
     """
@@ -165,15 +164,18 @@ class Part(object):
         parents = []
         parents_list = json_dict.get('parents')
         parents_list = (Part.of(parent_dict) for parent_dict in parents_list) if parents_list \
-                       else []
+            else []
 
-        # TODO: no known examples of these...may be wrong. If just strings, no need for parsing here
-        links = json_dict.get('links', []) # TODO: no known examples of this...may be wrong
-        parameters = json_dict.get('parameters', [])  # TODO: no known examples of this...may be wrong
-        access_permissions = json_dict.get('accessPermissions', []) # TODO: no known examples of this...may be wrong
+        ############################################################################################
+        #  TODO: untested / no known examples of these...may be wrong. If just strings, no need for
+        # parsing here
+        links = json_dict.get('links', [])
+        parameters = json_dict.get('parameters', [])
+        access_permissions = json_dict.get('accessPermissions', [])
+        ############################################################################################
         linked_parts_temp = json_dict.get('linkedParts')
         linked_parts = (Part.of(linked_part_dict) for linked_part_dict in linked_parts_temp) if \
-                linked_parts_temp else []
+                       linked_parts_temp else []
         # strains_temp = json_dict.get('strainData')
         # strain_data = (strain for strain in strains_temp) if strains_temp else []
 
@@ -188,7 +190,8 @@ class Part(object):
 
         # set other parameters whose names are different in Python than Java
         # TODO: can do this with less code by automatically converting camel case for most of
-        # these. At least one known solution exists at http://stackoverflow.com/questions/1175208/elegant-python-function-to
+        # these. At least one known solution exists at
+        # http://stackoverflow.com/questions/1175208/elegant-python-function-to
         #  -convert-camelcase-to-camel-case (seems a bit problematic, license-wise)
         params['uuid'] = json_dict.get('recordId')
         params['owner_email'] = json_dict.get('ownerEmail')
@@ -224,7 +227,7 @@ class Part(object):
         for key in identically_named_keys:
             params[key] = json_dict.get(key)
 
-        part_type = json_dict['type'] # don't shadow builtin 'type'!
+        part_type = json_dict['type']  # don't shadow builtin 'type'!
 
         if 'PLASMID' == part_type:
             return Plasmid(**params)
@@ -253,10 +256,12 @@ class Strain(Part):
         self.host = host
         self.genotype_phenotype = genotype_phenotype
 
+
 class Plasmid(Part):
     def __init__(self, **kwargs):
         super(self.__class__, self).__init__(**kwargs)
         self.plasmid_data = kwargs.pop('plasmid_data', None)
+
 
 def parse_entry_id(ice_entry_url):
     """
@@ -284,12 +289,10 @@ class HmacAuth(AuthBase):
     Instances of HmacAuth are immutable and are therefore safe to use in multiple threads.
     :param username the username of the ice user who ICE activity will be attributed to.
     Overrides the value provided by user_auth if both are present. At least one is required.
-    :param user_auth an object that encapsulates information
-    for the user that messages will be attributed to. Either user_auth or user_email is required.
     :raises ValueError if no user email address is provided.
     """
     # TODO: remove remaining ICE-specific code/variable names to make this code more generic,
-    # then relocate
+    # then relocate. May need to create an ICE-specific subclass.
 
     def __init__(self, secret_key, username=None):
         if not secret_key:
@@ -298,7 +301,7 @@ class HmacAuth(AuthBase):
         self._SECRET_KEY = secret_key
         self._request_generator = RequestGenerator()
 
-    def getRequestGenerator(self):
+    def get_request_generator(self):
         return self._request_generator
 
     def __call__(self, request):
@@ -346,7 +349,9 @@ class HmacAuth(AuthBase):
         params = sorted(map(lambda p: p.split('=', 1), query.split('&')), key=lambda p: p[0])
         return '&'.join(map(lambda p: '='.join(p), params))
 
-    ### 'with' context manager implementation ###
+    ############################################
+    # 'with' context manager implementation ###
+    ############################################
     def __enter__(self):
         return self
 
@@ -401,7 +406,7 @@ class SessionAuth(AuthBase):
         self._session = session
         self._request_generator = SessionRequestGenerator(session, timeout, verify_ssl_cert)
 
-    def getRequestGenerator(self):
+    def get_request_generator(self):
         return self._request_generator
 
     def __call__(self, request):
@@ -410,10 +415,12 @@ class SessionAuth(AuthBase):
         object (which should normally be _session). ICE doesn't seem to read the session ID from
         cookies, so there's no specific need to provide those here.
         """
-        request.headers['X-ICE-Authentication-SessionId']= self._session_id
+        request.headers['X-ICE-Authentication-SessionId'] = self._session_id
         return request
 
-    ### 'with' context manager implementation ###
+    ############################################
+    # 'with' context manager implementation ###
+    ############################################
     def __enter__(self):
         return self
 
@@ -457,14 +464,12 @@ class SessionAuth(AuthBase):
         # build request parameters for login
         login_dict = {'email': ice_username,
                       'password': password}
-        login_resource_url = '%(base_url)s/rest/accesstokens/' % { 'base_url': base_url }
+        login_resource_url = '%(base_url)s/rest/accesstokens/' % {'base_url': base_url}
 
         # issue a POST to request login from the ICE REST API
         response = session.post(login_resource_url, headers=_JSON_CONTENT_TYPE_HEADER,
-                                data=json.dumps(login_dict), timeout=timeout,  verify=verify_ssl_cert)  # TODO: change JSON
-        # header content
-                                                              # here if needed to match example
-                                                              # script
+                                data=json.dumps(login_dict), timeout=timeout,
+                                verify=verify_ssl_cert)
 
         # raise an exception if the server didn't give the expected response
         if response.status_code != requests.codes.ok:
@@ -479,10 +484,6 @@ class SessionAuth(AuthBase):
                              "required session id")
 
         logger.info('Successfully logged into ICE at %s' % base_url)
-
-        # stuff session ID into the session in the hope it'll work. TODO: resolve whether this is
-        # really needed
-        #session.cookies[ICE_SESSION_COOKIE] = json_response[ICE_SESSION_COOKIE]
 
         return SessionAuth(session_id, session)
 
@@ -505,13 +506,6 @@ class IceApi(object):
         Creates a new instance of IceApi
         :param auth: the authentication strategy for communication with ICE
         :param base_url: the base URL of the ICE install.
-        :param timeout a tuple representing the connection and read timeouts, respectively, in
-        seconds, for HTTP requests issued to ICE
-        :param verify_ssl_cert True to verify ICE's SSL certificate. Provided so clients can ignore
-        self-signed certificates during *local* EDD / ICE testing on a single development machine.
-        Note that it's very dangerous to skip certificate verification when communicating across
-        the network, and this should NEVER be done in production.
-        :return:
         """
         if not auth:
             raise ValueError("A valid authentication mechanism must be provided")
@@ -522,12 +516,11 @@ class IceApi(object):
         # (starting w '%s/'). also makes our code trailing-slash agnostic.
         self.base_url = remove_trailing_slash(base_url)
 
-
     def fetch_part(self, entry_id, suppress_errors=False):
         """
         Retrieves a part using any of the unique identifiers: part number, synthetic id, or
-        UUID. Returns a Strain object; or None if no part was found or if there were
-        suppressed errors in making the request.
+        UUID. Returns a Part object; or None if no part was found or if there were suppressed
+        errors in making the request.
         :param entry_id: the ICE ID for this part
         :param suppress_errors: true to catch and log exception messages and return None instead of
         raising Exceptions.
@@ -536,8 +529,7 @@ class IceApi(object):
         """
 
         rest_url = '%s/rest/parts/%s' % (self.base_url, entry_id)
-        browser_url = '%s/parts/%s' % (self.base_url, entry_id)
-        request_generator = self.auth.getRequestGenerator()
+        request_generator = self.auth.get_request_generator()
         try:
             response = request_generator.get(url=rest_url, auth=self.auth)
         except requests.exceptions.Timeout as e:
@@ -555,6 +547,9 @@ class IceApi(object):
 
                 return Part.of(json_dict)
 
+            elif response.status_code == CLIENT_ERROR_NOT_FOUND:
+                return None
+
             if not suppress_errors:
                 response.raise_for_status()
 
@@ -567,7 +562,7 @@ class IceApi(object):
 
             return None
 
-    @deprecated # use fetch_part() instead. MF 2/17/16
+    @deprecated  # new code should use fetch_part() instead. MF 2/17/16
     def fetch_part_json(self, entry_id, suppress_errors=False):
         """
         Retrieves a part using any of the unique identifiers: part number, synthetic id, or
@@ -582,7 +577,7 @@ class IceApi(object):
         """
 
         url = '%s/rest/parts/%s' % (self.base_url, entry_id)
-        request_generator = self.auth.getRequestGenerator()
+        request_generator = self.auth.get_request_generator()
         try:
             response = request_generator.get(url=url, auth=self.auth)
         except requests.exceptions.Timeout as e:
@@ -619,20 +614,23 @@ class IceApi(object):
         data = {'queryString': query}
         headers = {'Content-Type': 'application/json; charset=utf8'}
         try:
-            request_generator = self.auth.getRequestGenerator()
-            response = request_generator.request('POST', url,
-                                        auth=self.auth,
-                                        data=json.dumps(data),
-                                        headers=headers
-                                        )
+            request_generator = self.auth.get_request_generator()
+            response = request_generator.request(
+                'POST', url,
+                auth=self.auth,
+                data=json.dumps(data),
+                headers=headers
+            )
             if response.status_code == requests.codes.ok:
                 return response.json()
             elif suppress_errors:
                 logger.exception('Error searching for ICE part using query "%(query_str)s". '
                                  'Response was %(status_code)s: "%(msg)s"' %
-                                 { 'query_str': query,
-                                   'status_code': response.status_code,
-                                   'msg': response.reason})
+                                 {
+                                     'query_str': query,
+                                     'status_code': response.status_code,
+                                     'msg': response.reason
+                                 })
                 return None
             else:
                 response.raise_for_status()
@@ -667,7 +665,7 @@ class IceApi(object):
         if link_id:
             headers['id'] = link_id
 
-        request_generator = self.auth.getRequestGenerator()
+        request_generator = self.auth.get_request_generator()
         response = request_generator.request('POST', entry_experiments_url, auth=self.auth,
                                              data=json_str,
                                              headers=headers)
@@ -695,9 +693,9 @@ class IceApi(object):
 
         # Look up the links associated with this ICE part
         entry_experiments_rest_url = '%s/rest/parts/%s/experiments/' % (self.base_url, ice_entry_id)
-        request_generator = self.auth.getRequestGenerator()
+        request_generator = self.auth.get_request_generator()
         response = request_generator.request('GET', entry_experiments_rest_url, auth=self.auth,
-                                    headers=_JSON_CONTENT_TYPE_HEADER)
+                                             headers=_JSON_CONTENT_TYPE_HEADER)
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
 
@@ -753,9 +751,9 @@ class IceApi(object):
         # query ICE to get the list of existing links for this part
         entry_experiments_rest_url = '%s/rest/parts/%s/experiments/' % (self.base_url, ice_entry_id)
         logger.info(entry_experiments_rest_url)
-        request_generator = self.auth.getRequestGenerator()
+        request_generator = self.auth.get_request_generator()
         response = request_generator.request('GET', entry_experiments_rest_url, auth=self.auth,
-                                    headers=_JSON_CONTENT_TYPE_HEADER)
+                                             headers=_JSON_CONTENT_TYPE_HEADER)
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
 

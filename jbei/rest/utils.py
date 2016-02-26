@@ -12,6 +12,7 @@ from urlparse import urlparse
 
 UNSAFE_HTTP_METHODS = ('POST', 'PUT', 'PATCH', 'DELETE')
 
+
 def show_response_html(response):
     """
     A utility method for debugging REST API calls. Launches a browser window that displays the
@@ -20,7 +21,6 @@ def show_response_html(response):
     :param response: an HTTP response
     """
     temp_file = tempfile.mkstemp(text=True, suffix='.html')
-    temp_file_handle = temp_file[0]
     temp_file_path = temp_file[1]
     with open(temp_file_path, mode='w+') as response_file:
         response_file.write(response.content)
@@ -39,7 +39,14 @@ def is_url_secure(uri):
     """
     return urlparse(uri).scheme == 'https'
 
+
 def remove_trailing_slash(uri):
     if '/' == uri[(len(uri) - 1)]:
         return uri[0:len(uri) - 1]
     return uri
+
+
+def is_success_code(http_status_code):
+    return (200 <= http_status_code) and (http_status_code < 300)
+
+CLIENT_ERROR_NOT_FOUND = 404

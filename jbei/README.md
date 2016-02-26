@@ -151,7 +151,27 @@ may eventually be hosted elsewhere, but for now the initial versions are being d
 
 ## Run a script!
 
-For example: `python jbei/edd/rest/scripts/create_lines.py my_csv_file.csv -study 1234`
+Running an example script: `python -m jbei.edd.rest.scripts.create_lines my_csv_file.csv`
+
+Get help for a script: append `--help` to the command
+
+    (jbei-scripts)$ python -m jbei.edd.rest.scripts.create_lines --help
+    usage: create_lines.py [-h] [-p P] [-u U] [-s] [-study STUDY] file_name
+
+    Create EDD lines/strains from a list of ICE entries
+
+    positional arguments:
+      file_name          A CSV file containing strains exported from ICE
+
+    optional arguments:
+      -h, --help         show this help message and exit
+      -p P, -password P  provide a password via the command line (helps with
+                         testing)
+      -u U, -username U  provide username via the command line (helps with
+                         testing)
+      -s, -silent        skip user prompts to verify CSV content
+      -study STUDY       the number of the EDD study to create the new lines in
+
 
 ## Get the latest code
 

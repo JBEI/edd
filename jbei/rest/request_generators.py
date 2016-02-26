@@ -1,18 +1,9 @@
 """
 Defines utility classes for use in HTTP request generation.
 """
-import importlib
-import os
 
 import requests
 
-# TODO: remove
-# # dynamically import the settings module configured via environment variable OR specific command
-# # within the host script. Note that we can't use django.conf.settings here, since we're only
-# # importing custom EDD settings that unfortunately aren't persisted by django.conf.settings as are
-# #  the django-defined settings (although we define both in the same file).
-# settings_module = os.environ['DJANGO_SETTINGS_MODULE']
-# custom_settings = importlib.import_module(settings_module)
 
 class RequestGenerator(object):
     """
@@ -72,11 +63,11 @@ class RequestGenerator(object):
     def _set_defaults(self, **kwargs):
         # if not explicitly provided, use the default timeout configured in the constructor
         if TIMEOUT_KEY not in kwargs:
-            kwargs[TIMEOUT_KEY]=self._timeout
+            kwargs[TIMEOUT_KEY] = self._timeout
 
         # if not explicitly providid, use the default setting configured in the constructor
         if VERIFY_KEY not in kwargs:
-            kwargs[VERIFY_KEY]=self._verify_ssl_cert
+            kwargs[VERIFY_KEY] = self._verify_ssl_cert
 
     def set_timeout(self, timeout):
         """
@@ -98,7 +89,7 @@ class SessionRequestGenerator(RequestGenerator):
     def __init__(self, session, timeout=RequestGenerator.DEFAULT_TIMEOUT,
                  verify_ssl_cert=RequestGenerator.VERIFY_SSL_DEFAULT):
         super(SessionRequestGenerator, self).__init__(timeout=timeout,
-                                              verify_ssl_cert=verify_ssl_cert)
+                                                      verify_ssl_cert=verify_ssl_cert)
         self._session = session
 
     ############################################
