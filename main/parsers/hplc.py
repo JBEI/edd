@@ -107,6 +107,8 @@ class HPLC_Parser:
 
 		# read in header block
 		header_block = [ input_file.readline() ]
+		if "*** End of Report ***" in header_block[0]:
+			return header_block
 
 		# header_block_length = 0
 		logger.debug("searching for header block")
@@ -116,10 +118,12 @@ class HPLC_Parser:
 
 			header_block.append( line )
 
-			if i >= HPLC_Parser.max_header_line_count:
-				raise Error("unable to find header: unexpected length")
+			if "*** End of Report ***" in line:
+				return header_block
+			elif i >= HPLC_Parser.max_header_line_count:
+				raise Exception("unable to find header: unexpected length")
 			elif line == '':
-				raise Error("unable to find header: EOF encountered")
+				raise Exception("unable to find header: EOF encountered")
 			i += 1
 
 		logger.debug("parsing header block")
@@ -241,42 +245,87 @@ class HPLC_Parser:
 		return column_headers
 
 
-	def _parse_96_well_format_block(self):
-		pass
+	def _parse_96_well_format_block( \
+		self,sample_names, compounds, column_headers,section_widths):
+		"""Reads in a single block of data from file"""
+
+		end_of_block = False
+		line_number = 0
+		while not end_of_block:
+			line = self.input_file.readline()
+
+			if line.startswith('#'):
+				end_of_block = True
+
+			for index in range(len(column_headers)):
+				if "Sample" in column_headers[index]:
+					begin_position = sum(  section_widths[:index] ) \
+									+ len( section_widths[:index] )
+					end_position = section_widths[index] + begin_position
+					name = line[begin_position:end_position].strip()
+					# sample names is implicitly indexed by line_number
+					sample_names.append(name)
+				elif "Amount" in column_headers[index]:
+					begin_position = sum(  section_widths[:index] ) \
+									+ len( section_widths[:index] )
+					end_position = section_widths[index] + begin_position
+					amount = line[begin_position:end_position].strip()
+
+					if amount == "0.00000":
+						continue
+
+					compound = column_headers[index] \
+						.replace("Amount","").strip()
+
+					compounds.append((line_number,(compound,amount)))
+
+			line_number += 1
+
+		return sample_names, compounds
+
 
 	def _parse_96_well_format_samples(self):
 		"""Collects the samples from a 96 well plate format file
 
 		Format: [ (compound_string,amount_string), ...] """
 
-		raise NotImplementedError("_parse_96_well_format_samples")
+		# raise NotImplementedError("_parse_96_well_format_samples")
 
 		sample_names = []
+		compounds = []
 
 		# collect all the sample names
 		# ...
 
-		end_of_block = False
-		while False:
-			line = self.input_file.readline()
+		while True:
+			logger.debug("collecting the header_block")
+			header_block = self._parse_file_header(self.input_file)
 
-			if line.startswith('#'):
-				# End of block.
-				pass
+			if "*** End of Report ***" in header_block[-1]:
+				break
 
-			# logger.debug("collecting the header_block")
-			# header_block = self._parse_file_header(self.input_file)
+			logger.debug("collecting the table_header")
+			(header_block,table_header,table_divider) \
+			    = self._collect_table_header(header_block)
 
-			# logger.debug("collecting the table_header")
-			# (header_block,table_header,table_divider) \
-			#     = self._collect_table_header(header_block)
+			logger.debug("parsing column widths")
+			section_widths = self.determine_section_widths(table_divider)
 
-			# logger.debug("parsing column widths")
-			# section_widths = self.determine_section_widths(table_divider)
+			logger.debug("collecting the column_headers")
+			column_headers = self._extract_column_headers_from_multiline_text( \
+				section_widths, table_header)
 
-			# logger.debug("collecting the column_headers")
-			# column_headers = self._extract_column_headers_from_multiline_text( \
-			# 	section_widths, table_header)
+			self._parse_96_well_format_block( \
+				sample_names, compounds, column_headers, section_widths)
+
+		# Line up the sample name with the amounts
+		for indexed_compound in compounds:
+			line_number, compound = indexed_compound
+			sample_name = sample_names[line_number]
+			if sample_name in self.samples:
+				self.samples[sample_name].append(compound)
+			else:
+				self.samples[sample_name] = [compound]
 			
 	def _parse_sample(self, section_widths):
 		"""Collects a single sample from the file and stores it in
@@ -346,5 +395,3 @@ class HPLC_Parser:
 			if amount_string != u'-' and compound_string != u'-':
 				self.samples[sample_name].append( \
 					(compound_string,amount_string))
-
-
