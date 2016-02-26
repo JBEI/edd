@@ -9,6 +9,11 @@
     <script type="text/javascript" src="{% static 'main/js/lib/qtip/jquery.qtip.min.js' %}"></script>
     <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/qtip/jquery.qtip.min.css' %}" />
     <script type="text/javascript" src="{% static 'main/js/autocomplete2.js' %}"></script>
+    <script type="text/javascript">
+
+        EDDData.currentStudyID = {{ study.id }};
+
+    </script>
     <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>

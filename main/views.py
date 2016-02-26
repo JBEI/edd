@@ -836,11 +836,14 @@ def study_import_table(request, study):
     if (request.method == "POST"):
         # print stuff for debug
         for key in sorted(request.POST):
-            print("%s : %s" % (key, request.POST[key]))
+            try:
+                print("%s : %s" % (key, request.POST[key]))
+            except UnicodeEncodeError:
+                print("(Can't dump unicode value.)")
         try:
             table = data_import.TableImport(model, request.user)
             added = table.import_data(request.POST)
-            messages.success(request, 'Imported %s measurements' % added)
+            messages.success(request, 'Imported %s measurement values.' % added)
         except ValueError as e:
             print("ERROR!!! %s" % e)
             messages.error(request, e)
@@ -1236,45 +1239,61 @@ def delete_file(request, file_id):
 
 
 # /utilities/parsefile
+# To reach this function, files are sent from the client by the Utl.FileDropZone class (in Utl.ts).
 def utilities_parse_table(request):
     """ Attempt to process posted data as either a TSV or CSV file or Excel spreadsheet and
         extract a table of data automatically. """
-    default_error = JsonResponse({
-        "python_error": "The uploaded file could not be interpreted as either an Excel "
-                        "spreadsheet or a CSV/TSV file.  Please check that the contents are "
-                        "formatted correctly. (Word documents are not allowed!)"})
-    data = request.read()
-    try:
-        parsed = csv.reader(data, delimiter='\t')
-        assert(len(parsed[0]) > 1)
-        return JsonResponse({
-            "file_type": "tab",
-            "file_data": data,
-        })
-    except Exception as e:
+    # These are embedded by the filedrop.js class.  Here for reference.
+    #file_name = request.META.get('HTTP_X_FILE_NAME')
+    #file_size = request.META.get('HTTP_X_FILE_SIZE')
+    #file_type = request.META.get('HTTP_X_FILE_TYPE')
+    #file_date = request.META.get('HTTP_X_FILE_DATE')
+
+    # In requests from OS X clients, we can use the file_type value.  For example, a modern Excel document is reported as
+    # "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", and it's consistent across Safari, Firefox, and Chrome.
+    # However, on Windows XP, file_type is always blank, so we need to fall back to file name extensions like ".xlsx" and ".xls".
+
+    # The Utl.JS.guessFileType() function in Utl.ts applies logic like this to guess the type, and that guess is
+    # sent along in a custom header:
+    edd_file_type = request.META.get('HTTP_X_EDD_FILE_TYPE')
+
+    if edd_file_type == "xml":
         try:
-            parsed = csv.reader(data, delimiter=',')
-            assert(len(parsed[0]) > 1)
+            from edd_utils.parsers import biolector
+            # We pass the request directly along, so it can be read as a stream by the parser
+            result = biolector.getBiolectorXMLRecordsAsJSON(request, 0)
+            return JsonResponse({
+                "file_type": "xml",
+                "file_data": result,
+            })
+        except ImportError as e:
+            return JsonResponse({
+                "python_error": "jbei_tools module required to handle XML table input."
+            })
+    if edd_file_type == "excel":
+        try:
+            from edd_utils.parsers import excel
+            data = request.read()
+            result = excel.import_xlsx_tables(file=BytesIO(data))
+            return JsonResponse({
+                "file_type": "xlsx",
+                "file_data": result,
+            })
+        except ImportError as e:
+            return JsonResponse({
+                "python_error": "jbei_tools module required to handle Excel table input."
+            })
+        except ValueError as e:
+            return JsonResponse({"python_error": str(e)})
+        except Exception as e:
             return JsonResponse({
                 "file_type": "csv",
                 "file_data": data,
             })
-        except Exception as e:
-            try:
-                from edd_utils.parsers import excel
-                result = excel.import_xlsx_tables(file=BytesIO(data))
-                return JsonResponse({
-                    "file_type": "xlsx",
-                    "file_data": result,
-                })
-            except ImportError as e:
-                return JsonResponse({
-                    "python_error": "jbei_tools module required to handle Excel table input."
-                })
-            except ValueError as e:
-                return JsonResponse({"python_error": str(e)})
-            except Exception as e:
-                return default_error
+    return JsonResponse({
+        "python_error": "The uploaded file could not be interpreted as either an Excel "
+                        "spreadsheet or an XML file.  Please check that the contents are "
+                        "formatted correctly. (Word documents are not allowed!)"})
 
 
 meta_pattern = re.compile(r'(\w*)MetadataType$')

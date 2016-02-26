@@ -1,4 +1,4 @@
-/// <reference path="EDDDataInterface.ts" />
+/// <reference path="typescript-declarations.d.ts" />
 /// <reference path="Utl.ts" />
 /// <reference path="Dragboxes.ts" />
 /// <reference path="BiomassCalculationUI.ts" />
@@ -75,6 +75,7 @@ module StudyD {
         geneDataProcessed: boolean;
         genericDataProcessed: boolean;
 
+        filterTableJQ: JQuery;
         studyDObject: any;
         mainGraphObject: any;
 
@@ -95,6 +96,8 @@ module StudyD {
             this.proteinDataProcessed = false;
             this.geneDataProcessed = false;
             this.genericDataProcessed = false;
+
+            this.filterTableJQ = null;
         }
 
 
@@ -109,6 +112,8 @@ module StudyD {
             var seenInLinesHash: RecordIDToBoolean = {};
             var seenInAssaysHash: RecordIDToBoolean = {};
             var aIDsToUse: string[] = [];
+
+            this.filterTableJQ = $('<div>').addClass('filterTable').appendTo($('#mainFilterSection'));
 
             // First do some basic sanity filtering on the list
             $.each(EDDData.Assays, (assayId: string, assay: any): void => {
@@ -168,11 +173,11 @@ module StudyD {
         // Clear out any old filters in the filtering section, and add in the ones that
         // claim to be "useful".
         repopulateFilteringSection(): void {
-            var table = $('<div>').addClass('filterTable').appendTo($('#mainFilterSection').empty());
+            this.filterTableJQ.children().detach();
             var dark:boolean = false;
             $.each(this.allFilters, (i, widget) => {
                 if (widget.isFilterUseful()) {
-                    widget.addToParent(table[0]);
+                    widget.addToParent(this.filterTableJQ[0]);
                     widget.applyBackgroundStyle(dark);
                     dark = !dark;
                 }
@@ -401,8 +406,9 @@ module StudyD {
 
         // References to HTML elements created by the filter
         filterColumnDiv: HTMLElement;
-        titleElement: HTMLElement;
-        searchBoxElement:HTMLInputElement;
+        plaintextTitleDiv: HTMLElement;
+        searchBox: HTMLInputElement;
+        searchBoxTitleDiv: HTMLElement;
         scrollZoneDiv: HTMLElement;
         filteringTable: JQuery;
         tableBodyElement: HTMLTableElement;
@@ -450,16 +456,20 @@ module StudyD {
             var sBoxID: string = 'filter' + this.sectionShortLabel + 'SearchBox',
                 sBox: HTMLInputElement;
             this.filterColumnDiv = $("<div>").addClass('filterColumn')[0];
-            this.titleElement = $("<span>").addClass('filterHead').text(this.sectionTitle)[0];
+            var textTitle = $("<span>").text(this.sectionTitle)[0];
+            this.plaintextTitleDiv = $("<div>").addClass('filterHead').append(textTitle)[0];
 
             $(sBox = document.createElement("input"))
-                .attr({ 'id': sBoxID, 
-                           'name': sBoxID,
-                           'placeholder': this.sectionTitle,
-                           'size': 14})
-                .addClass('searchBox filterHead');
+                .attr({
+                    'id': sBoxID,
+                    'name': sBoxID,
+                    'placeholder': this.sectionTitle,
+                    'size': 14
+                });
             sBox.setAttribute('type', 'text'); // JQuery .attr() cannot set this
-            this.searchBoxElement = sBox;
+            this.searchBox = sBox;
+            this.searchBoxTitleDiv = $("<div>").addClass('filterHeadSearch').append(sBox)[0];
+
             this.scrollZoneDiv = $("<div>").addClass('filterCriteriaScrollZone')[0];
             this.filteringTable = $("<table>")
                 .addClass('filterCriteriaTable dragboxes')
@@ -538,11 +548,11 @@ module StudyD {
             // the scrolling container div declares a large padding margin for the scroll bar,
             // and that padding margin would be an empty waste of space otherwise.
             if (this.uniqueValuesOrder.length > 15) {
-                fCol.append(this.searchBoxElement).append(this.scrollZoneDiv);
+                fCol.append(this.searchBoxTitleDiv).append(this.scrollZoneDiv);
                 // Change the reference so we're affecting the innerHTML of the correct div later on
                 fCol = $(this.scrollZoneDiv);
             } else {
-                fCol.append(this.titleElement);
+                fCol.append(this.plaintextTitleDiv);
             }
             fCol.append(this.filteringTable);
 
@@ -563,7 +573,9 @@ module StudyD {
                 $('<label>').attr('for', cboxName).text(this.uniqueValues[uniqueId])
                     .appendTo(cell);
             });
-            Dragboxes.initTable(this.filteringTable);    // TODO: Drag select is broken in Safari
+            // TODO: Drag select is twitchy - clicking a table cell background should check the box,
+            // even if the user isn't hitting the label or the checkbox itself.
+            Dragboxes.initTable(this.filteringTable);
         }
 
 
@@ -572,7 +584,7 @@ module StudyD {
         anyCheckboxesChangedSinceLastInquiry():boolean {
             var changed:boolean = false,
                 currentCheckboxState: UniqueIDToValue = {},
-                v:string = $(this.searchBoxElement).val();
+                v: string = $(this.searchBox).val();
             this.anyCheckboxesChecked = false;
             $.each(this.checkboxes || {}, (uniqueId: number, checkbox: JQuery) => {
                 var current, previous;
@@ -668,6 +680,9 @@ module StudyD {
                 return false;
             });
 
+            // Create a document fragment, and accumulate inside it all the rows we want to display, in sorted order.
+            var frag = document.createDocumentFragment();
+
             var rowsToAppend = [];
             this.uniqueValuesOrder.forEach((crID) => {
                 var checkbox: JQuery = this.checkboxes[crID],
@@ -676,13 +691,17 @@ module StudyD {
                 checkbox.prop('disabled', !show)
                 $(row).toggleClass('nodata', !show);
                 if (show) {
-                    this.tableBodyElement.appendChild(row);
+                    frag.appendChild(row);
                 } else {
                     rowsToAppend.push(row);
                 }
             });
-            // Now, (re)append all the rows we disabled, so they go to the bottom of the table
-            rowsToAppend.forEach((row) => this.tableBodyElement.appendChild(row));
+            // Now, append all the rows we disabled, so they go to the bottom of the table
+            rowsToAppend.forEach((row) => frag.appendChild(row));
+
+            // Remember that we last sorted by this column
+            this.tableBodyElement.appendChild(frag);
+
             return idsPostFiltering;
         }
 
@@ -1265,7 +1284,7 @@ module StudyD {
     }
 
 
-    function filterTableKeyDown(context, e) {
+    function filterTableKeyDown(e) {
         switch (e.keyCode) {
             case 38: // up
             case 40: // down
@@ -1277,7 +1296,7 @@ module StudyD {
                 if (e.keyCode > 8 && e.keyCode < 32) {
                     return;
                 }
-                context.queueMainGraphRemake();
+                this.queueMainGraphRemake(false);
         }
     }
 
@@ -1293,9 +1312,9 @@ module StudyD {
             this.progressiveFilteringWidget.mainGraphObject = this.mainGraphObject;
         }
 
-        $('#mainFilterSection').on('mouseover mousedown mouseup', () => this.queueMainGraphRemake())
-                .on('keydown', (e) => filterTableKeyDown(this, e));
-        $('#separateAxesCheckbox').on('change', () => this.queueMainGraphRemake(true));
+        $('#mainFilterSection').on('mouseover mousedown mouseup', this.queueMainGraphRemake.bind(this, false))
+                .on('keydown', filterTableKeyDown.bind(this));
+        $('#separateAxesCheckbox').on('change', this.queueMainGraphRemake.bind(this, true));
 
         // Enable edit lines button
         $('#editLineButton').on('click', (ev:JQueryMouseEventObject):boolean => {
@@ -1321,11 +1340,6 @@ module StudyD {
         // Hacky button for changing the metabolic map
         $("#metabolicMapName").click( () => this.onClickedMetabolicMapName() );
 
-        requestAllMetaboliteData(this);
-    }
-
-
-    function requestAllMetaboliteData(context) {
         $.each(EDDData.Protocols, (id, protocol) => {
             $.ajax({
                 url: 'measurements/' + id + '/',
@@ -1335,7 +1349,7 @@ module StudyD {
                     console.log('Failed to fetch measurement data on ' + protocol.name + '!');
                     console.log(status);
                 },
-                success: (data) => { processMeasurementData(context, data, protocol); }
+                success: processMeasurementData.bind(this, protocol)
             });
         });
     }
@@ -1350,12 +1364,12 @@ module StudyD {
                 console.log('Failed to fetch measurement data on ' + assay.name + '!');
                 console.log(status);
             },
-            success: (data) => { processMeasurementData(this, data, protocol); }
+            success: processMeasurementData.bind(this, protocol)
         });
     }
 
 
-    function processMeasurementData(context, data, protocol) {
+    function processMeasurementData(protocol, data) {
         var assaySeen = {},
             protocolToAssay = {},
             count_total:number = 0,
@@ -1400,19 +1414,19 @@ module StudyD {
             }
         });
 
-        context.progressiveFilteringWidget.processIncomingMeasurementRecords(data.measures || {}, data.types);
+        this.progressiveFilteringWidget.processIncomingMeasurementRecords(data.measures || {}, data.types);
 
         if (count_rec < count_total) {
             // TODO not all measurements downloaded; display a message indicating this
             // explain downloading individual assay measurements too
         }
         // invalidate assays on all DataGrids; redraws the affected rows
-        $.each(context.assaysDataGrids, (protocolId, dataGrid) => {
+        $.each(this.assaysDataGrids, (protocolId, dataGrid) => {
             dataGrid.invalidateAssayRecords(Object.keys(protocolToAssay[protocolId] || {}));
         });
-        context.linesDataGridSpec.enableCarbonBalanceWidget(true);
-        context.processCarbonBalanceData();
-        context.queueMainGraphRemake();
+        this.linesDataGridSpec.enableCarbonBalanceWidget(true);
+        this.processCarbonBalanceData();
+        this.queueMainGraphRemake(false);
     }
 
 
@@ -1427,15 +1441,15 @@ module StudyD {
         if (this.linesActionPanelRefreshTimer) {
             clearTimeout (this.linesActionPanelRefreshTimer);
         }
-        this.linesActionPanelRefreshTimer = setTimeout(() => linesActionPanelShow(this), 150);
+        this.linesActionPanelRefreshTimer = setTimeout(linesActionPanelShow.bind(this), 150);
     }
 
 
-    function linesActionPanelShow(context) {
+    function linesActionPanelShow() {
         // Figure out how many lines are selected.
         var checkedBoxes = [], checkedLen, linesActionPanel;
-        if (context.linesDataGrid) {
-            checkedBoxes = context.linesDataGrid.getSelectedCheckboxElements();
+        if (this.linesDataGrid) {
+            checkedBoxes = this.linesDataGrid.getSelectedCheckboxElements();
         }
         checkedLen = checkedBoxes.length;
         linesActionPanel = $('#linesActionPanel').toggleClass('off', !checkedLen);
@@ -1457,18 +1471,18 @@ module StudyD {
         if (this.assaysActionPanelRefreshTimer) {
             clearTimeout(this.assaysActionPanelRefreshTimer);
         }
-        this.assaysActionPanelRefreshTimer = setTimeout(() => assaysActionPanelShow(this), 150);
+        this.assaysActionPanelRefreshTimer = setTimeout(assaysActionPanelShow.bind(this), 150);
     }
 
 
-    function assaysActionPanelShow(context) {
+    function assaysActionPanelShow() {
         var checkedBoxes = [], checkedAssays, checkedMeasure, panel, infobox;
         panel = $('#assaysActionPanel');
         if (!panel.size()) {
             return;
         }
         // Figure out how many assays/checkboxes are selected.
-        $.each(context.assaysDataGrids, (pID, dataGrid) => {
+        $.each(this.assaysDataGrids, (pID, dataGrid) => {
             checkedBoxes = checkedBoxes.concat(dataGrid.getSelectedCheckboxElements());
         });
         checkedAssays = $(checkedBoxes).filter('[id^=assay]').size();
@@ -1494,11 +1508,11 @@ module StudyD {
         if (this.mainGraphRefreshTimerID) {
             clearTimeout(this.mainGraphRefreshTimerID);
         }
-        this.mainGraphRefreshTimerID = setTimeout(() => remakeMainGraphArea(this, force), 200);
+        this.mainGraphRefreshTimerID = setTimeout(remakeMainGraphArea.bind(this, force), 200);
     }
 
 
-    function remakeMainGraphArea(context:any, force?:boolean) {
+    function remakeMainGraphArea(force?:boolean) {
         var previousIDSet:any[], postFilteringMeasurements:any[],
             dataPointsDisplayed = 0,
             dataPointsTotal = 0,
@@ -1506,13 +1520,13 @@ module StudyD {
             // FIXME assumes (x0, y0) points
             convert = (d) => { return [[ d[0][0], d[1][0] ]]; },
             compare = (a, b) => { return a[0] - b[0]; };
-        context.mainGraphRefreshTimerID = 0;
-        if (!context.progressiveFilteringWidget.checkRedrawRequired(force)) {
+        this.mainGraphRefreshTimerID = 0;
+        if (!this.progressiveFilteringWidget.checkRedrawRequired(force)) {
             return;
         }
         // Start out with a blank graph.  We will re-add all the relevant sets.
-        context.mainGraphObject.clearAllSets();
-        postFilteringMeasurements = context.progressiveFilteringWidget.buildFilteredMeasurements();
+        this.mainGraphObject.clearAllSets();
+        postFilteringMeasurements = this.progressiveFilteringWidget.buildFilteredMeasurements();
 
         $.each(postFilteringMeasurements, (i, measurementId) => {
             var measure:AssayMeasurementRecord = EDDData.AssayMeasurements[measurementId],
@@ -1545,7 +1559,7 @@ module StudyD {
                     newSet.yaxisByMeasurementTypeID = mtype.family;
                 }
             }
-            context.mainGraphObject.addNewSet(newSet);
+            this.mainGraphObject.addNewSet(newSet);
         });
 
         var displayText = dataPointsDisplayed + " points displayed";
@@ -1554,7 +1568,7 @@ module StudyD {
         }
         $('#pointsDisplayedSpan').empty().text(displayText);
 
-        context.mainGraphObject.drawSets();
+        this.mainGraphObject.drawSets();
     }
 
 

@@ -10,8 +10,10 @@
     {% block js_css %}
     {% if user.is_authenticated %}
     <script type="text/javascript">
-    window.EDDData = window.EDDData || {};
-    EDDData.currentUserID = {{ user.id }};
+
+        window.EDDData = window.EDDData || {};
+        EDDData.currentUserID = {{ user.id }};
+
     </script>
     {% endif %}
     {% endblock js_css%}

@@ -69,7 +69,7 @@
 <!-- start of main form -->
 <form method="post" id="worklistForm" action="{% url 'main:worklist' %}">
   {% csrf_token %}
-  <div class="pageSection" id="mainModeDiv">
+  <div class="pageSection">
     <div class="sectionHead">Select a worklist template and options.</div>
     <div class="sectionContent exportOptions">
       {{ select_form.as_p }}

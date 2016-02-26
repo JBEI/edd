@@ -1,6 +1,5 @@
 /// <reference path="typescript-declarations.d.ts" />
 /// <reference path="Utl.ts" />
-/// <reference path="EDDDataInterface.ts" />
 /// <reference path="StudyCarbonBalance.ts" />
 
 module CarbonBalance {

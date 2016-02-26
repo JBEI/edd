@@ -15,6 +15,7 @@ from edd_utils.form_utils import (
 )
 from edd_utils.parsers import gc_ms
 from edd_utils.parsers import skyline
+from edd_utils.parsers import biolector
 from django.test import TestCase
 from edd_utils.celery_utils import (
     compute_exp_retry_delay, send_retry_warning, time_until_retry,
@@ -22,6 +23,18 @@ from edd_utils.celery_utils import (
 
 test_dir = os.path.join(os.path.dirname(__file__), "fixtures", "misc_data")
 logger = logging.getLogger(__name__)
+
+
+class JSONObjectEncoder(json.JSONEncoder):
+  
+    def default(self, obj):
+        if isinstance(obj, set):
+            return list(obj)
+        if isinstance(obj, frozenset):
+            return list(obj)
+        if hasattr(obj, 'toJSONable'):
+            return obj.toJSONable()
+        return json.JSONEncoder.default(self, obj)
 
 
 ########################################################################
@@ -108,6 +121,26 @@ class SkylineTests (TestCase):
         assert (out.getvalue().startswith("File   A   B   C   D"))
         assert ("4  22  35  35  23" in out.getvalue())
         assert (['4', 'A', 22] in r['rows'])
+
+
+########################################################################
+# BIOLECTOR IMPORT
+class BiolectorTests(TestCase):
+    def test_simple(self):
+        filename = "edd_utils/parsers/biolector/biolector_test_file.xml"
+        file = open(filename, 'U')
+        results = biolector.getBiolectorXMLRecordsAsJSON(file, 0)
+        assert (len(results) > 0)
+        #result_string = "\n".join(json.dumps(result, cls = JSONObjectEncoder) for result in results)
+        #print >> out, result_string
+        print "\nBiolector: Parsed sets should have 48 records.  Number of records: %s" % len(results)
+        assert len(results) == 48
+        last_v = results[-1]['data'][-1][1]
+        print "Biolector: Last value in data array of last record should be 8.829, is %s" % last_v
+        assert (last_v == "8.829")
+        well_v = results[20]['metadata_by_name']['Bio:well']
+        print "Biolector: 20th set should have metadata Bio:well set to C05, is %s" % well_v
+        assert (well_v == "C05")
 
 
 ########################################################################

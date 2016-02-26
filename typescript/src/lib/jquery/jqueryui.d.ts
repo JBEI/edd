@@ -4,7 +4,7 @@
 // Definitions: https://github.com/borisyankov/DefinitelyTyped
 
 
-/// <reference path="jquery.d.ts"/>
+/// <reference path="../jquery/jquery.d.ts"/>
 
 declare module JQueryUI {
     // Accordion //////////////////////////////////////////////////

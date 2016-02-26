@@ -1,5 +1,4 @@
 /// <reference path="typescript-declarations.d.ts" />
-/// <reference path="lib/jqueryui.d.ts" />
 /// <reference path="Utl.ts" />
 var EDD_auto = EDD_auto || {};
 // At this point, this class is experimental. It's supposed to make modal dialog boxes
