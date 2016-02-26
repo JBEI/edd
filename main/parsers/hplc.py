@@ -19,8 +19,12 @@ class HPLC_Parser:
 		self.input_file = None     # The file that is being parsed
 		self.samples = {}          # The final data resulting from batch parsing
 
-		self.amount_column_header_index  = None
-		self.compound_column_header_index = None
+		# Integer indices for standard format parsing
+		self.amount_begin_position = None
+		self.amount_end_position = None
+		self.compound_begin_position = None
+		self.compound_end_position = None
+
 
 	def parse_hplc_file(self, input_file_path):
 		"""Loads the file on the given path and parses textual HPLC data
@@ -37,32 +41,26 @@ class HPLC_Parser:
 		self.input_file = io.open(input_file_path, "r", encoding = 'utf-16')
 		logger.debug("reading file: %s", input_file_path)
 
-		header_block = self._parse_file_header(self.input_file)
-
-		format_is_96_well_plate = False
-		if header_block[0].startswith("Batch"):
-			format_is_96_well_plate = True
-
-		(header_block,table_header,table_divider) \
-		    = self._collect_table_header(header_block)
-		logger.debug("collected table_header")
-
-		section_widths = self.determine_section_widths(table_divider)
-		logger.debug("parsed column widths")
-
-		self._extract_column_headers_from_multiline_text( \
-			section_widths, table_header)
-		logger.debug("collected the column_headers")
-		logger.debug("now reading in the data")
-
-		# Read in each line and contruct records
-		previous_name = None
-		previous_segments = [None for x in range(len(section_widths))]
-
-		if format_is_96_well_plate:
+		if self._check_is_96_well_format(self.input_file):
+			logger.info("Detected 96 well format in HPLC file")
 			self._parse_96_well_format_samples()
-			pass
 		else:
+			logger.info("Detected standard format in HPLC file")
+			header_block = self._parse_file_header(self.input_file)
+
+			logger.debug("collecting the table_header")
+			(header_block,table_header,table_divider) \
+			    = self._collect_table_header(header_block)
+
+			logger.debug("parsing column widths")
+			section_widths = self.determine_section_widths(table_divider)
+
+			logger.debug("collecting the column_headers")
+			column_headers = self._extract_column_headers_from_multiline_text( \
+				section_widths, table_header)
+			
+			# Read in each line and contruct records
+			logger.debug("now reading in the data")
 			while self._parse_sample(section_widths):
 				pass
 
@@ -85,6 +83,25 @@ class HPLC_Parser:
 				q[x][y] = val
 		for v in q[q.keys()[selection]].keys():
 			print v, q[q.keys()[selection]][v]
+
+	def _check_is_96_well_format(self, input_file):
+		"""Checks if the file is in 96 well plate format.
+
+		Must be first to access the file! Does not advance pointer.
+
+		returns True if 96 well plate format
+		returns False if standard format"""
+
+		file_pos = self.input_file.tell()
+		firstline = input_file.readline()
+		self.input_file.seek(file_pos)
+
+		if firstline.startswith("Batch"):
+			return True
+		else:
+			return False
+
+
 
 	def _parse_file_header(self, input_file):
 
@@ -224,6 +241,9 @@ class HPLC_Parser:
 		return column_headers
 
 
+	def _parse_96_well_format_block(self):
+		pass
+
 	def _parse_96_well_format_samples(self):
 		"""Collects the samples from a 96 well plate format file
 
@@ -231,17 +251,33 @@ class HPLC_Parser:
 
 		raise NotImplementedError("_parse_96_well_format_samples")
 
-		# sample_names = []
+		sample_names = []
 
-		# # collect all the sample names
-		# # ...
+		# collect all the sample names
+		# ...
 
-		# while False:
-		# 	if line.startswith('#'):
-		# 		# End of block.
-		# 		pass
+		end_of_block = False
+		while False:
+			line = self.input_file.readline()
 
+			if line.startswith('#'):
+				# End of block.
+				pass
 
+			# logger.debug("collecting the header_block")
+			# header_block = self._parse_file_header(self.input_file)
+
+			# logger.debug("collecting the table_header")
+			# (header_block,table_header,table_divider) \
+			#     = self._collect_table_header(header_block)
+
+			# logger.debug("parsing column widths")
+			# section_widths = self.determine_section_widths(table_divider)
+
+			# logger.debug("collecting the column_headers")
+			# column_headers = self._extract_column_headers_from_multiline_text( \
+			# 	section_widths, table_header)
+			
 	def _parse_sample(self, section_widths):
 		"""Collects a single sample from the file and stores it in
 		the samples data structure
@@ -310,3 +346,5 @@ class HPLC_Parser:
 			if amount_string != u'-' and compound_string != u'-':
 				self.samples[sample_name].append( \
 					(compound_string,amount_string))
+
+
