@@ -317,21 +317,12 @@ class AssayDataTests(TestCase):
         protocol2 = Protocol.objects.create(
             name="OD600", categorization=Protocol.CATEGORY_OD, owned_by=user1)
         Protocol.objects.create(name="New protocol", owned_by=user1, active=False)
-        mt1 = Metabolite.objects.create(
-            type_name="Mevalonate", short_name="Mev", type_group="m", charge=-1, carbon_count=6,
-            molecular_formula="C6H11O4", molar_mass=148.16)
-        mt2 = Metabolite.objects.create(
-            type_name="D-Glucose", short_name="glc-D", type_group="m", charge=0, carbon_count=6,
-            molecular_formula="C6H12O6", molar_mass=180.16)
-        mt3 = Metabolite.objects.create(
-            type_name="Acetate", short_name="ac", type_group="m", charge=-1, carbon_count=2,
-            molecular_formula="C2H3O2", molar_mass=60.05)
+        mt1 = Metabolite.objects.get(short_name="ac")
         kw1 = MetaboliteKeyword.objects.create(name="GCMS", mod_by=user1)
-        kw2 = MetaboliteKeyword.objects.create(name="HPLC", mod_by=user1)
+        MetaboliteKeyword.objects.create(name="HPLC", mod_by=user1)
         kw3 = MetaboliteKeyword.objects.create(name="Mevalonate Pathway", mod_by=user1)
         mt1.keywords.add(kw1)
         mt1.keywords.add(kw3)
-        mt2.keywords.add(kw2)
         mt2 = GeneIdentifier.objects.create(
             type_name="Gene name 1", short_name="gen1", type_group="g")
         mt3 = MeasurementType.create_protein(
