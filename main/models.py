@@ -1328,6 +1328,29 @@ class ProteinIdentifier(MeasurementType):
     """ Defines additional metadata on gene identifier transcription measurement type. """
     class Meta:
         db_table = 'protein_identifier'
+    length = models.IntegerField(
+        blank=True, null=True,
+        verbose_name=_('Length'), help_text=_('sequence length')
+    )
+    mass = models.DecimalField(
+        blank=True, null=True, max_digits=16, decimal_places=5,
+        verbose_name=_('Mass'), help_text=_('of unprocessed protein, in Daltons'),
+    )
+    source = models.ForeignKey(
+        Datasource, blank=True, null=True,
+    )
+    accession_pattern = re.compile(
+        r'(?:[a-z]{2}\|)?'  # optional identifier for SwissProt or TrEMBL
+        r'([OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9](?:[A-Z][A-Z0-9]{2}[0-9]){1,2})'  # the ID
+        r'(?:\|(\w+))?'  # optional name
+    )
+
+    @classmethod
+    def match_accession_id(cls, text):
+        match = cls.accession_pattern.match(text)
+        if match:
+            return match.group(1)
+        return text
 
     def __str__(self):
         return self.type_name

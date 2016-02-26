@@ -219,13 +219,24 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
 
     def get_fields(self, request, obj=None):
         if issubclass(self.model, Metabolite):
-            return (('short_name', 'molar_mass', 'charge', ), 'type_name', 'molecular_formula', )
+            return (
+                ('short_name', 'molar_mass', 'charge', ),
+                'type_name', 'molecular_formula', 'source',
+            )
         elif issubclass(self.model, GeneIdentifier):
-            return ('type_name', ('location_in_genome', 'positive_strand', 'location_start',
-                    'location_end', 'gene_length'), )
+            return (
+                'type_name',
+                ('location_in_genome', 'positive_strand', 'location_start', 'location_end',
+                    'gene_length'),
+            )
+        elif issubclass(self.model, ProteinIdentifier):
+            return ('type_name', 'short_name', 'length', 'mass', 'source', )
         elif issubclass(self.model, Phosphor):
-            return ('type_name', 'short_name', ('excitation_wavelength', 'emission_wavelength', ),
-                    'reference_type', )
+            return (
+                'type_name', 'short_name',
+                ('excitation_wavelength', 'emission_wavelength', ),
+                'reference_type',
+            )
         # always keep check for MeasurementType last
         elif issubclass(self.model, MeasurementType):
             return ('type_name', 'short_name', )
@@ -234,7 +245,9 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
     def get_list_display(self, request):
         if issubclass(self.model, Metabolite):
             return ('type_name', 'short_name', 'molecular_formula', 'molar_mass', 'charge',
-                    '_keywords', '_study_count', )
+                    '_keywords', '_study_count', 'source__name')
+        elif issubclass(self.model, ProteinIdentifier):
+            return ('type_name', 'short_name', 'length', 'mass', '_study_count', 'source')
         elif issubclass(self.model, GeneIdentifier):
             return ('type_name', 'location_in_genome', 'positive_strand', 'location_start',
                     'location_end', 'gene_length', '_study_count', )
@@ -250,8 +263,20 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
         q = super(MeasurementTypeAdmin, self).get_queryset(request)
         if self.model == MeasurementType:
             q = q.filter(type_group=MeasurementGroup.GENERIC)
+        elif issubclass(self.model, Metabolite) or issubclass(self.model, ProteinIdentifier):
+            q = q.select_related('source__name')
         q = q.annotate(num_studies=Count('measurement__assay__line__study', distinct=True))
         return q
+
+    def get_readonly_fields(self, request, obj=None):
+        if issubclass(self.model, Metabolite) or issubclass(self.model, ProteinIdentifier):
+            return ('source', )
+        return tuple()
+
+    def get_search_results(self, request, queryset, search_term):
+        if issubclass(self.model, ProteinIdentifier):
+            search_term = ProteinIdentifier.match_accession_id(search_term)
+        return super(MeasurementTypeAdmin, self).get_search_results(request, queryset, search_term)
 
     def _keywords(self, obj):
         if issubclass(self.model, Metabolite):
