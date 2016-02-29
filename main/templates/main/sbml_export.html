@@ -19,6 +19,7 @@ FIXME far too much logic encoded in this template
 EDDData = JSON.parse("{{ data.export_JSON|escapejs }}"); // FIXME this is gross
 
 EDDData.currentUserID = {{ user.pk }};
+EDDData.currentStudyID = {{ study.id }};
 
 // FIXME move this somewhere central
 function disclose() {
@@ -70,7 +71,7 @@ $(window).load(function () {
 </div>
 
 
-<form method="post" id="exportForm" action="/study/{{ study.id }}/sbml">
+<form method="post" id="exportForm" action="/study/{{ study.id }}/sbml/">
 {% csrf_token %}
 
 <input type="hidden" name="selectedLineIDs" value="{{ data.selected_line_ids }}" />

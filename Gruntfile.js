@@ -17,9 +17,21 @@ module.exports = function(grunt) {
                 options: {
                     prepend: true,
                     append: false,
+                    // An alternative to the datetime option:  A function to call to return a Date object.
+                    datetimefunc: function (fileList) {
+                      var fs = require('fs');
+                      var mostRecentMTime = 0;
+                      // Find the most recently modified timestamp of specified files
+                      fileList.forEach(function(filepath) {
+                        statsObj = fs.statSync(filepath);
+                        mTime = statsObj.mtime.getTime();
+                        if (mTime > mostRecentMTime) { mostRecentMTime = mTime }
+                      });
+                      return new Date(mostRecentMTime);
+                    },
                     // Uses default output of `Date()`
                     format: false,
-                    template: '// Compiled to JS on: {timestamp}  ',
+                    template: '// File last modified on: {timestamp}  ',
                     insertNewlines: true
                 },
                 files: [{
@@ -44,6 +56,17 @@ module.exports = function(grunt) {
                     declaration: false,
                     inlineSourceMap: true,
                     inlineSources: true,
+                    removeComments: false,
+                }
+            },
+            commit: {
+                src: ['./typescript/build/*.ts'],
+                dest: './typescript/build/',
+                options: {
+                    rootDir: './typescript/build/',
+                    target: 'es5',
+                    declaration: false,
+                    sourceMap: false,
                     removeComments: false,
                 }
             },
@@ -111,6 +134,7 @@ module.exports = function(grunt) {
 
 
     var production = grunt.option('production');
+    var commit = grunt.option('commit');
     var watch = grunt.option('watch');
 
     if (production) {
@@ -119,6 +143,9 @@ module.exports = function(grunt) {
     } else if (watch) {
         // Dev build and watch for changes
         grunt.registerTask('default', ["clean:build", "copy:prep", "insert_timestamp:js", "typescript:dev", "copy:mergeDev", "exec:collect", 'watch']);
+    } else if (commit) {
+        // Dev build and watch for changes
+        grunt.registerTask('default', ["clean:build", "copy:prep", "typescript:commit", "copy:mergeDev", "exec:collect"]);
     } else {
         // Standard one-time dev build
         grunt.registerTask('default', ["clean:build", "copy:prep", "insert_timestamp:js", "typescript:dev", "copy:mergeDev", "exec:collect"]);

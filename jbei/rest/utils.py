@@ -37,7 +37,9 @@ def is_url_secure(uri):
     :param uri: the URI to test for security
     :return: true if the URI indicates user credentials will be protected, false otherwise
     """
-    return urlparse(uri).scheme == 'https'
+    url_parts = urlparse(uri)
+    return url_parts.scheme == 'https' or url_parts.hostname == 'localhost' or \
+           url_parts.hostname == '127.0.0.1'
 
 
 def remove_trailing_slash(uri):

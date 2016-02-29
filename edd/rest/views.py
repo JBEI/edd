@@ -131,7 +131,7 @@ class LineViewSet(viewsets.ReadOnlyModelViewSet):
     experimenter = StringRelatedField(many=False)
 
 
-class StudyViewSet(viewsets.ModelViewSet):
+class StudyViewSet(viewsets.ReadOnlyModelViewSet):  # read-only for now...see TODO below
     serializer_class = StudySerializer
     contact = StringRelatedField(many=False)
 
@@ -152,6 +152,16 @@ class StudyViewSet(viewsets.ModelViewSet):
             study_query = Study.objects.filter(user_permission_q, pk=study_pk)
 
         return study_query
+
+    def create(self, request, *args, **kwargs):
+        if not Study.user_can_create(request.user):
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        return super(StudyViewSet, self).create(request, *args, **kwargs)
+
+    # TODO: test whether update / destroy are protected by get_queryset, or whether they need
+        # separate permissions checks to protect them. Then change back to a ModelViewSet.
+
 
 
 class StudyLineView(viewsets.ModelViewSet):  # LineView(APIView):
@@ -277,11 +287,16 @@ class StudyLineView(viewsets.ModelViewSet):  # LineView(APIView):
     #
     #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class StrainsView(viewsets.ModelViewSet):
+class StrainsView(viewsets.ModelViewSet): # TODO: unused...implement
     serializer_class = StrainSerializer
     lookup_field = 'pk'
 
-class StudyListLinesView(mixins.CreateModelMixin, ListAPIView):
+class StudyListLinesView(mixins.CreateModelMixin, ListAPIView):  # TODO: unused... implement or
+                                                                 # remove
+    """
+        API endpoint that allows lines to be viewed or edited.
+    """
+
     serializer_class = LineSerializer
     lookup_field = 'pk'
 
@@ -301,10 +316,6 @@ class StudyListLinesView(mixins.CreateModelMixin, ListAPIView):
         obj = get_object_or_404(queryset, **filter)
         self.check_object_permissions(self.request, obj)
         return obj
-
-    """
-    API endpoint that allows lines to be viewed or edited.
-    """
 
     def get_queryset(self):
 

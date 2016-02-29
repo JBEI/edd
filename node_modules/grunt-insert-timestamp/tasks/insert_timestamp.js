@@ -24,13 +24,13 @@ module.exports = function(grunt) {
       format: 'yyyy-mm-dd HH:MM:ss o',
       template: '/* {timestamp} */',
       datetime: new Date(),
+      datetimefunc: null,
       insertNewlines: true
     });
 
     // Iterate over all specified file groups.
     this.files.forEach(function(file) {
-      // Concat specified files.
-      var src = file.src.filter(function(filepath) {
+      var filteredFiles = file.src.filter(function(filepath) {
         // Warn on and remove invalid source files (if nonull was set).
         if (!grunt.file.exists(filepath)) {
           grunt.log.warn('Source file "' + filepath + '" not found.');
@@ -38,14 +38,21 @@ module.exports = function(grunt) {
         } else {
           return true;
         }
-      }).map(function(filepath) {
+      });
+
+      // Concatenate specified files.
+      var src = filteredFiles.map(function(filepath) {
         // Read file source.
         return grunt.file.read(filepath);
       }).join('');
 
+      var d = options.datetime;
+      if (typeof options.datetimefunc === 'function') {
+        d = options.datetimefunc(filteredFiles);
+      }
+
       // Handle options.
-      var d = options.datetime,
-          f = options.format,
+      var f = options.format,
           timestamp = (f && (typeof f === 'string' || f instanceof String)) ? grunt.template.date(d, f) : grunt.template.date(d),
           comment = stringTemplate(options.template, {
       	    timestamp: timestamp

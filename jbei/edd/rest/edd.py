@@ -320,7 +320,7 @@ class EddSessionAuth(AuthBase):
 
         # package up credentials and CSRF token to send with the login request
         login_dict = {
-            'username': username,
+            'login': username,
             'password': password,
         }
         csrf_request_headers = {'csrfmiddlewaretoken': csrf_token}
@@ -344,6 +344,9 @@ class EddSessionAuth(AuthBase):
                DJANGO_REST_API_FAILURE_CONTENT in response.content:
                 logger.warning('Login failed. Please try again.')
                 logger.info(response.headers)
+                if DEBUG:
+                    show_response_html(response)
+                return None
             else:
                 logger.info('Successfully logged into EDD at %s' % base_url)
                 return EddSessionAuth(base_url, session, timeout=timeout,

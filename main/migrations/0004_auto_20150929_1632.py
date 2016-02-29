@@ -24,7 +24,10 @@ def ensure_needed_infrastructure_available(apps, schema_editor):
     try:
         admin_user = User.objects.get(username='system')
     except User.DoesNotExist:
-        admin_user = User.objects.create_superuser('system', settings.ADMINS[0][1], None)
+        admin_email = 'root@localhost'  # we try to do better than this below
+        if settings.ADMINS and len(settings.ADMINS):
+            admin_email = settings.ADMINS[0][1]  # grab first admin email
+        admin_user = User.objects.create_superuser('system', admin_email, None)
     # We are sure the admin user exists now, so get it with the migration version of model
     User = apps.get_model(settings.AUTH_USER_MODEL)
     admin_user = User.objects.get(username='system')

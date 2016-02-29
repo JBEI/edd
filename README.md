@@ -18,6 +18,7 @@ experimentation.  See the deployed version at [edd.jbei.org][1].
        * [Solr Standalone](#Solr) (Solr 5.X)
        * [Python Packages](#Python_Packages)
        * [Update EDD Configuration Files](#EDD_Config)
+       * [Postfix](#Postfix_OSX)
        * [Configure LDAP SSL](#LDAP_SSL)
        * [Build Tools](#Build_Tools)
        * [Configure Database](#Configure_DB)
@@ -38,17 +39,25 @@ experimentation.  See the deployed version at [edd.jbei.org][1].
 * [Solr Tests](#Solr_Test)
 * [Required Python Package Reference](#PythonPackages)
 * [Setting up multiple Apache VHOST](#Apache_VHOST)
+* [Configuring social logins](#Social)
 
 ---------------------------------------------------------------------------------------------------
 
 ## System Pre-requisites
 
- * Passwords <a name="Passwords"/>
+* Passwords <a name="Passwords"/>
     * Get required passwords from a teammate or JBEI sysadmin.
         * JBEI_AUTH - to configure LDAP binding and EDD's server.cfg
         * edduser - the password to the production EDD database instance. You'll need this to copy
           its data for local development work. See [Database Conversion](#DbConversion)
         * edd ice key - used by edd to authorize REST API calls to ICE
+* Local git repo config
+    * The typescript build process includes some comments that will change with every rebuild.
+      These comments will cause unnecessary merge conflicts if allowed into the repo, so the
+      project includes some configuration to strip them out.
+    * Upon cloning a repo for the first time (or updating a repo from before filtering), do:
+        * `.gitconfig.sh`
+        * If updating a repo, you may need to add changed files to the index once
    
 ### Mac OS X
 This section contains directions for setting up a development environment on EDD in OSX.
@@ -163,7 +172,7 @@ affect the install process for the JBEI Python scripts under jbei/, and should a
 * Install python packages
     
             cd code/edd-django
-            sudo pip install -r requirements.txt
+            pip install -r requirements.txt
 
     * See [Python Packages](#PythonPackages) for a detailed list
 
@@ -176,11 +185,14 @@ affect the install process for the JBEI Python scripts under jbei/, and should a
         * `ice.edd_key`: the key used by EDD send REST API calls to ICE
         * `site.admins`: use your email address to receive Celery failure messages as a debugging
             aid, but limit spam to other team members during development
-        * `email.host`: aspmx.l.google.com will work if you have a GMail account
-        * TODO: using localhost as email host should work fine within LBL domain
     * Update `site`, `db`, `solr`, `ldap`, and `ice` for appropriate connection parameters
     * _*DO NOT CHECK THIS FILE INTO SOURCE CONTROL*_ ! This file is included by default in EDD's
       `.gitignore` file, so you should have to work hard to commit it to Git by mistake.
+
+* Postfix <a name="Postfix_OSX"/>
+    * If using localhost as a SMTP host, make sure postfix is running
+    * `sudo postfix status` will check the status of postfix daemon
+    * `sudo postfix start` will start postfix, allowing emails to be sent from localhost
 
 * Configure LDAP SSL <a name="LDAP_SSL"/>
     * Configue handling in `/etc/openldap/ldap.conf`
@@ -249,7 +261,8 @@ affect the install process for the JBEI Python scripts under jbei/, and should a
 
 * PostgreSQL <a name="PostgreSQL"/>
     * Required for installing psycopg2 driver, even if you don’t need to run database locally
-        * If you want a more recent postgresql, you can use the Postgresql 3rd-party repository with apt-get:
+        * If you want a more recent postgresql, you can use the Postgresql 3rd-party repository
+          with apt-get:
         * `wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -`
         * `sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg main" >> /etc/apt/sources.list.d/postgresql.list’`
         * `sudo apt-get update`
@@ -331,7 +344,8 @@ affect the install process for the JBEI Python scripts under jbei/, and should a
         * `sudo /etc/init.d/tomcat7 start`
     * Optional:
         * Install the tomcat admin page with `sudo apt-get install tomcat7-admin`
-        * Add a user capable of accessing the admin page by editing `/etc/tomcat7/tomcat-users.xml`.  Instructions are in the file.
+        * Add a user capable of accessing the admin page by editing `/etc/tomcat7/tomcat-users.xml`.
+          Instructions are in the file.
         * Diagnose startup issues by inspecting `/var/log/tomcat7/catalina.out`
 
 * Django setup <a name="Django_Deb"/>
@@ -453,11 +467,22 @@ URL's to interact with them.
           for Flower
         * Note that the `-conf` option doesn't seem to work according to the sample in the
           instructions, or via attempted variations on that [example][22]
-        * Known error modes: basic testing has revealed several failure modes of interest to administrators
-           * Celery doesn't seem to do a good job of detecting changes to code or configuration files. Celery worker(s) need to be restarted frequently during development or when deploying a new version of EDD.
-           * If Celery goes down while RabbitMQ is up, client tasks requested via the celery API will be enqueued at RabbitMQ and will execute normally after Celery comes back up
-           * If Celery is up but RabbitMQ is down for more than a few seconds when clients request that a task be executed, task requests will generate a client-side Exception
- 	       * During a brief transition period as RabbitMQ is going down with Celery still up, client task requests will NOT generate an Exception, and will stay perpetually in the PENDING state regardless of whether RabbitMQ comes back up.  Client code needs to check for this case, but Celery 3.1.18 isn't known to provide helpful hooks (for instance, to help client code decide how long to wait). Celery has before_task_publish and after_task_publish signals that combined with the database backend may provide reasonable guarantees of data integrity.
+        * Known error modes: basic testing has revealed several failure modes of interest to
+          administrators
+           * Celery doesn't seem to do a good job of detecting changes to code or configuration
+             files. Celery worker(s) need to be restarted frequently during development or when
+             deploying a new version of EDD.
+           * If Celery goes down while RabbitMQ is up, client tasks requested via the celery API
+             will be enqueued at RabbitMQ and will execute normally after Celery comes back up
+           * If Celery is up but RabbitMQ is down for more than a few seconds when clients request
+             that a task be executed, task requests will generate a client-side Exception
+ 	       * During a brief transition period as RabbitMQ is going down with Celery still up,
+             client task requests will NOT generate an Exception, and will stay perpetually in the
+             PENDING state regardless of whether RabbitMQ comes back up.  Client code needs to
+             check for this case, but Celery 3.1.18 isn't known to provide helpful hooks (for
+             instance, to help client code decide how long to wait). Celery has before_task_publish
+             and after_task_publish signals that combined with the database backend may provide
+             reasonable guarantees of data integrity.
 
 
 ## Database Conversion <a name="DbConversion"/>
@@ -510,7 +535,7 @@ since EDD's requirements.txt should normally be used to install required package
 * [Arrow][10]
       * "Arrow is a Python library that offers a sensible, human-friendly approach to creating,
         manipulating, formatting and converting dates, times, and timestamps."
-      * `sudo pip install arrow`
+      * `pip install arrow`
 * [cryptography][11]
     * Adds some crypto libraries to help play nice with TLS certificates
     * Needs additional env flags to ensure using Brew-installed OpenSSL
@@ -520,24 +545,27 @@ since EDD's requirements.txt should normally be used to install required package
           command
 * [Django][12]
     * MVC web framework used to develop EDD.
-    * `sudo pip install Django`
+    * `pip install Django`
+* [django-allauth][25]
+    * A Django application providing for both local and social logins
+    * `pip install django-allauth`
 * [django-auth-ldap][13]
     * A Django application providing authentication with an LDAP backend.
-    * `sudo pip install django-auth-ldap`
+    * `pip install django-auth-ldap`
 * [django-extensions][14]
     * Adds additional management extensions to the Django management script.
-    * `sudo pip install django-extensions`
+    * `pip install django-extensions`
 * [django-threadlocals][15]
     * A Django middleware for storing the current request in a thread.local
 * [requests][16]
     * "Requests is an Apache2 Licensed HTTP library, written in Python, for human beings."
-    * `sudo pip install requests[security]`
+    * `pip install requests[security]`
 * [psycopg2][17]
     * Database driver/adapter for PostgreSQL in Python.
-    * `sudo pip install psycopg2`
+    * `pip install psycopg2`
 * [python-ldap][18]
     * Object-oriented client API for accessing LDAP directories.
-    * `sudo pip install python-ldap`
+    * `pip install python-ldap`
 
 ## Setting up multiple Apache VHOST <a name="Apache_VHOST"/>
 * Clone code into a new directory
@@ -555,6 +583,19 @@ since EDD's requirements.txt should normally be used to install required package
     * Update the python-path for the WSGI process to reference new directory and virtualenv
     * Set the logging for error.log and access.log to vhost-specific files
 * TODO: punting on handling multiple solr indexes
+
+## Configuring Social Logins <a name="Social"/>
+* For broad overview, refer to the [django-allauth documentation][25].
+* To use a new provider:
+    * Add the provider application to `INSTALLED_APPS`
+    * Put logos in `./main/static/main/images/` and update styles in `./main/static/main/login.css`
+    * From the admin site, add a new Social application, using Client ID and Secret Key from
+      provider
+        * [Github registration][26]
+        * [Google registration][27]
+        * [LinkedIn registration][28]
+        * Each provider may require additional details about the application, allowed domains
+          and/or URLs, etc.
 
 
 [1]:    https://edd.jbei.org
@@ -581,3 +622,7 @@ since EDD's requirements.txt should normally be used to install required package
 [22]:   http://flower.readthedocs.org/en/latest/config.html
 [23]:   http://lucene.apache.org/solr/
 [24]:   http://apple.stackexchange.com/questions/119711/why-mac-os-x-dont-source-bashrc
+[25]:   http://django-allauth.readthedocs.org/en/latest/index.html
+[26]:   https://github.com/settings/applications/new
+[27]:   https://console.developers.google.com/
+[28]:   https://www.linkedin.com/secure/developer?newapp=

@@ -18,9 +18,10 @@ from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django.db.models import Count, Prefetch, Q
 from django.http import (
-    Http404, HttpResponse, HttpResponseNotAllowed, HttpResponseRedirect, JsonResponse, )
+    Http404, HttpResponse, HttpResponseNotAllowed, HttpResponseRedirect, JsonResponse,
+)
 from django.http.response import HttpResponseForbidden, HttpResponseBadRequest
-from django.shortcuts import render, get_object_or_404, redirect, render_to_response
+from django.shortcuts import render, get_object_or_404, redirect
 from django.template import RequestContext
 from django.template.defaulttags import register
 from django.utils.safestring import mark_safe
@@ -102,6 +103,11 @@ class StudyCreateView(generic.edit.CreateView):
         study.updated = update
         return generic.edit.CreateView.form_valid(self, form)
 
+    def get_context_data(self, **kwargs):
+        context = super(StudyCreateView, self).get_context_data(**kwargs)
+        context['can_create'] = Study.user_can_create(self.request.user)
+        return context
+
     def get_success_url(self):
         return reverse('main:detail', kwargs={'pk': self.object.pk})
 
@@ -121,6 +127,18 @@ class StudyDetailView(generic.DetailView):
         context['new_measurement'] = MeasurementForm(prefix='measurement')
         context['writable'] = self.get_object().user_can_write(self.request.user)
         return context
+
+    def get_object(self, queryset=None):
+        """ Overrides the base method to curry if there is no filtering queryset. """
+        # already looked up object and no filter needed, return previous object
+        if hasattr(self, '_detail_object') and queryset is None:
+            return self._detail_object
+        # call parents
+        obj = super(StudyDetailView, self).get_object(queryset)
+        # save parents result if no filtering queryset
+        if queryset is None:
+            self._detail_object = obj
+        return obj
 
     def get_queryset(self):
         qs = super(StudyDetailView, self).get_queryset()
@@ -242,6 +260,7 @@ class StudyDetailView(generic.DetailView):
         total = len(ids)
         saved = 0
         for value in ids:
+            logger.info('\tprocessing line bulk edit for %s', value)
             line = self._get_line(value)
             if line:
                 form = LineForm(request.POST, instance=line, prefix='line', study=study)
@@ -249,6 +268,10 @@ class StudyDetailView(generic.DetailView):
                 if form.is_valid():
                     form.save()
                     saved += 1
+                else:
+                    for error in form.errors.values():
+                        messages.warning(request, error)
+                    logger.info('Errors: %s', form.errors)
         messages.success(request, 'Saved %(saved)s of %(total)s Lines' % {
             'saved': saved,
             'total': total,
@@ -334,9 +357,10 @@ class StudyDetailView(generic.DetailView):
         return self.handle_measurement_edit_response(request, lines, measures)
 
     def handle_measurement_edit_response(self, request, lines, measures):
-        return render_to_response(
+        return render(
+            request,
             'main/edit_measurement.html',
-            dictionary={
+            context={
                 'lines': lines,
                 'measures': ','.join(['%s' % m.pk for m in measures]),
                 'study': self.object,
@@ -666,7 +690,7 @@ def study_assay_measurements(request, study, protocol, assay):
         measurement__active=True,
         measurement__assay__active=True,
         measurement__assay__line__active=True,
-        measurement__range=(measure_list[0].id, measure_list[-1].id),
+        measurement__id__range=(measure_list[0].id, measure_list[-1].id),
         )
     value_dict = collections.defaultdict(list)
     for v in values:
@@ -807,21 +831,25 @@ def study_import_table(request, study):
     if (request.method == "POST"):
         # print stuff for debug
         for key in sorted(request.POST):
-            print("%s : %s" % (key, request.POST[key]))
+            try:
+                print("%s : %s" % (key, request.POST[key]))
+            except UnicodeEncodeError:
+                print("(Can't dump unicode value.)")
         try:
             table = data_import.TableImport(model, request.user)
             added = table.import_data(request.POST)
-            messages.success(request, 'Imported %s measurements' % added)
+            messages.success(request, 'Imported %s measurement values.' % added)
         except ValueError as e:
             print("ERROR!!! %s" % e)
             messages.error(request, e)
-    return render_to_response(
+    return render(
+        request,
         "main/table_import.html",
-        dictionary={
+        context={
             "study": model,
             "protocols": protocols,
         },
-        context_instance=RequestContext(request))
+    )
 
 
 # /study/<study_id>/import/rnaseq
@@ -840,14 +868,15 @@ def study_import_rnaseq(request, study):
                 result.n_assay, result.n_meas)
         except ValueError as e:
             messages["error"] = str(e)
-    return render_to_response(
+    return render(
+        request,
         "main/import_rnaseq.html",
-        dictionary={
+        context={
             "messages": messages,
             "study": model,
             "lines": lines,
         },
-        context_instance=RequestContext(request))
+    )
 
 
 # /study/<study_id>/import/rnaseq/edgepro
@@ -889,15 +918,16 @@ def study_import_rnaseq_edgepro(request, study):
             "long_name": assay.long_name,
             "n_meas": assay.measurement_set.count(),
         })
-    return render_to_response(
+    return render(
+        request,
         "main/import_rnaseq_edgepro.html",
-        dictionary={
+        context={
             "selected_assay_id": assay_id,
             "assays": assay_info,
             "messages": messages,
             "study": model,
         },
-        context_instance=RequestContext(request))
+    )
 
 
 # /study/<study_id>/import/rnaseq/parse
@@ -979,10 +1009,14 @@ def study_export_sbml(request, study):
             form=form,
             debug=True)
     except ValueError as e:
-        return render(request, "main/error.html", {
-            "error_source": "SBML export for %s" % model.name,
-            "error_message": str(e),
-        })
+        return render(
+            request,
+            "main/error.html",
+            context={
+                "error_source": "SBML export for %s" % model.name,
+                "error_message": str(e),
+            },
+        )
     else:
         # two levels of exception handling allow us to view whatever steps
         # were completed successfully even if a later step fails
@@ -1002,15 +1036,16 @@ def study_export_sbml(request, study):
                     file_name = manager.output_file_name(timestamp)
                     response['Content-Disposition'] = 'attachment; filename="%s"' % file_name
                     return response
-        return render_to_response(
+        return render(
+            request,
             "main/sbml_export.html",
-            dictionary={
+            context={
                 "data": manager,
                 "study": model,
                 "lines": lines,
                 "error_message": error_message,
             },
-            context_instance=RequestContext(request))
+        )
 
 
 # /data/users
@@ -1199,45 +1234,61 @@ def delete_file(request, file_id):
 
 
 # /utilities/parsefile
+# To reach this function, files are sent from the client by the Utl.FileDropZone class (in Utl.ts).
 def utilities_parse_table(request):
     """ Attempt to process posted data as either a TSV or CSV file or Excel spreadsheet and
         extract a table of data automatically. """
-    default_error = JsonResponse({
-        "python_error": "The uploaded file could not be interpreted as either an Excel "
-                        "spreadsheet or a CSV/TSV file.  Please check that the contents are "
-                        "formatted correctly. (Word documents are not allowed!)"})
-    data = request.read()
-    try:
-        parsed = csv.reader(data, delimiter='\t')
-        assert(len(parsed[0]) > 1)
-        return JsonResponse({
-            "file_type": "tab",
-            "file_data": data,
-        })
-    except Exception as e:
+    # These are embedded by the filedrop.js class.  Here for reference.
+    #file_name = request.META.get('HTTP_X_FILE_NAME')
+    #file_size = request.META.get('HTTP_X_FILE_SIZE')
+    #file_type = request.META.get('HTTP_X_FILE_TYPE')
+    #file_date = request.META.get('HTTP_X_FILE_DATE')
+
+    # In requests from OS X clients, we can use the file_type value.  For example, a modern Excel document is reported as
+    # "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", and it's consistent across Safari, Firefox, and Chrome.
+    # However, on Windows XP, file_type is always blank, so we need to fall back to file name extensions like ".xlsx" and ".xls".
+
+    # The Utl.JS.guessFileType() function in Utl.ts applies logic like this to guess the type, and that guess is
+    # sent along in a custom header:
+    edd_file_type = request.META.get('HTTP_X_EDD_FILE_TYPE')
+
+    if edd_file_type == "xml":
         try:
-            parsed = csv.reader(data, delimiter=',')
-            assert(len(parsed[0]) > 1)
+            from edd_utils.parsers import biolector
+            # We pass the request directly along, so it can be read as a stream by the parser
+            result = biolector.getBiolectorXMLRecordsAsJSON(request, 0)
+            return JsonResponse({
+                "file_type": "xml",
+                "file_data": result,
+            })
+        except ImportError as e:
+            return JsonResponse({
+                "python_error": "jbei_tools module required to handle XML table input."
+            })
+    if edd_file_type == "excel":
+        try:
+            from edd_utils.parsers import excel
+            data = request.read()
+            result = excel.import_xlsx_tables(file=BytesIO(data))
+            return JsonResponse({
+                "file_type": "xlsx",
+                "file_data": result,
+            })
+        except ImportError as e:
+            return JsonResponse({
+                "python_error": "jbei_tools module required to handle Excel table input."
+            })
+        except ValueError as e:
+            return JsonResponse({"python_error": str(e)})
+        except Exception as e:
             return JsonResponse({
                 "file_type": "csv",
                 "file_data": data,
             })
-        except Exception as e:
-            try:
-                from edd_utils.parsers import excel
-                result = excel.import_xlsx_tables(file=BytesIO(data))
-                return JsonResponse({
-                    "file_type": "xlsx",
-                    "file_data": result,
-                })
-            except ImportError as e:
-                return JsonResponse({
-                    "python_error": "jbei_tools module required to handle Excel table input."
-                })
-            except ValueError as e:
-                return JsonResponse({"python_error": str(e)})
-            except Exception as e:
-                return default_error
+    return JsonResponse({
+        "python_error": "The uploaded file could not be interpreted as either an Excel "
+                        "spreadsheet or an XML file.  Please check that the contents are "
+                        "formatted correctly. (Word documents are not allowed!)"})
 
 
 meta_pattern = re.compile(r'(\w*)MetadataType$')

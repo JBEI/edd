@@ -28,6 +28,13 @@ logger.addHandler(console_handler)
 # TODO: comment out?
 root_logger = logging.getLogger('root')
 root_logger.setLevel(logging.DEBUG)
+root_logger.addHandler(console_handler)
+
+# TODO: why isn't this inherited from root? without these lines, get "No handlers could be found for
+#  logger "jbei.edd.rest.edd""
+edd_logger = logging.getLogger('jbei.edd.rest.edd')
+edd_logger.setLevel(logging.ERROR)
+edd_logger.addHandler(console_handler)
 ####################################################################################################
 
 import collections
@@ -36,13 +43,15 @@ import getpass
 import argparse
 import csv
 import re
-from jbei.rest.utils import is_url_secure
+from jbei.rest.utils import is_url_secure, show_response_html
 from jbei.ice.rest.ice import Strain as IceStrain
 from .settings import EDD_URL, ICE_URL, PRINT_FOUND_ICE_PARTS, PRINT_FOUND_EDD_STRAINS, \
     SIMULATE_STRAIN_CREATION
 from jbei.edd.rest.edd import EddSessionAuth, EddApi
 from jbei.ice.rest.ice import IceApi
 from jbei.ice.rest.ice import SessionAuth as IceSessionAuth
+
+DEBUG = True
 
 MIN_COL_NUM = 1
 MAX_EXCEL_COLS = 16384  # max number of columns supported by the Excel format ()
@@ -267,7 +276,6 @@ def get_ice_parts(base_url, ice_username, password, part_numbers_list,
     :param password: the ice password
     :return:
     """
-    ice_parts = []
     part_number_to_part_dict = collections.OrderedDict()  # order for easy comparison against CSV
     print 'Logging into ICE at %s ...' % ICE_URL,
     with IceSessionAuth.login(ice_username=username, password=password,
@@ -302,12 +310,9 @@ def get_ice_parts(base_url, ice_username, password, part_numbers_list,
                 logger.warning("Couldn't locate part \"%s\" (#%d)" % (local_ice_part_number,
                                                                       list_position))
             else:
-                ice_parts.append(part)
+                part_number_to_part_dict[local_ice_part_number] = part
 
-                if print_search_comparison:
-                    part_number_to_part_dict[search_id] = part
-
-    found_parts_count = len(ice_parts)
+    found_parts_count = len(part_number_to_part_dict)
 
     # add a blank line to separate summary from warning output
     if found_parts_count != csv_part_number_count:
@@ -322,7 +327,7 @@ def get_ice_parts(base_url, ice_username, password, part_numbers_list,
     # enforce the restriction that only ICE Strains may be used to create EDD lines. Plasmids
     #  / Parts should cause the script to abort
     non_strain_parts = {}
-    for part in ice_parts:
+    for part in part_number_to_part_dict.values():
         if not isinstance(part, IceStrain):
             non_strain_parts[part.id] = part
     if non_strain_parts:
@@ -338,7 +343,7 @@ def get_ice_parts(base_url, ice_username, password, part_numbers_list,
     if print_search_comparison:
         print_found_ice_parts(part_number_to_part_dict)
 
-    return ice_parts
+    return part_number_to_part_dict
 
 
 def find_existing_strains(edd, ice_parts, existing_edd_strains, strains_by_part_number,
@@ -356,7 +361,7 @@ def find_existing_strains(edd, ice_parts, existing_edd_strains, strains_by_part_
     :param non_existent_edd_strains: an empty list that will be populated with
     :return:
     """
-    for ice_part in ice_parts:
+    for ice_part in ice_parts.values():
 
             # search for the strain by registry ID
             edd_strains = edd.search_strains(registry_id=ice_part.uuid)
@@ -509,6 +514,7 @@ def create_lines(study_id, csv_summary, strains_by_part_number):
     ice_part_number = None
     line_index = 0
     strain_col_width = 0
+    skipped_some_strains = False
 
     try:
         # loop over lines, attempting to create them in EDD
@@ -519,6 +525,7 @@ def create_lines(study_id, csv_summary, strains_by_part_number):
             if not strain:
                 logger.warning("Skipping line creation for part number \"%s\" that wasn't found "
                                "in ICE" % ice_part_number)
+                skipped_some_strains = True
                 continue
 
             strain_col_width = max([len(str(strain.pk)), strain_col_width])
@@ -535,6 +542,8 @@ def create_lines(study_id, csv_summary, strains_by_part_number):
             lines_by_part_number[ice_part_number] = line
             line_index += 1
 
+        if skipped_some_strains:
+            print ''
         print('All %d lines were created in EDD. BAM!' % len(lines_by_part_number))
         print('')
 
@@ -752,7 +761,11 @@ try:
             print 'Logging into EDD at %s... ' % EDD_URL,
             edd_session_auth = EddSessionAuth.login(base_url=EDD_URL, username=username,
                                                     password=password)
-            print('success!')
+            if(edd_session_auth):
+                print('success!')
+            else:
+                print('failed :-{')
+
         except ConnectionError as e:
             # if no connection could be made, stop looping uselessly
             raise e
@@ -808,12 +821,12 @@ try:
         # Loop over part numbers in the spreadsheet, looking each one up in ICE to get its UUID (
         # the only identifier currently stored in EDD)
         ############################################################################################
-        ice_part_numbers = [input.local_ice_part_number for input in
+        csv_part_numbers = [input.local_ice_part_number for input in
                             csv_summary.line_creation_inputs]
-        ice_parts = get_ice_parts(ICE_URL, username, password, ice_part_numbers,
-                                  print_search_comparison=PRINT_FOUND_ICE_PARTS)
+        ice_parts_dict = get_ice_parts(ICE_URL, username, password, csv_part_numbers,
+                                       print_search_comparison=PRINT_FOUND_ICE_PARTS)
 
-        ice_part_count = len(ice_parts)
+        ice_part_count = len(ice_parts_dict)
 
         if not ice_part_count:
             print ''
@@ -829,8 +842,8 @@ try:
                   "have to create the rest manually, using output above as a reference.")
             result = raw_input("Create EDD lines for %(found)d of %(total)d parts? (Y/n) " %
                                {
-                                    'found': len(ice_parts),
-                                    'total': len(ice_part_numbers)
+                                    'found': len(ice_parts_dict),
+                                    'total': len(csv_part_numbers)
                                }).upper()
             if ('Y' != result) and ('YES' != result):
                 print('Aborting line creation.')
@@ -849,7 +862,17 @@ try:
         non_existent_edd_strains = []
         strains_by_part_number = collections.OrderedDict()
 
-        find_existing_strains(edd, ice_parts, existing_edd_strains, strains_by_part_number,
+        # for consistency, print out part numbers from the CSV that we won't be looking for in EDD
+        # because they couldn't be found in ICE
+        if ice_part_count != csv_part_number_count:
+            for part_number in csv_part_numbers:
+                if not part_number in ice_parts_dict:
+                    logger.warning('Skipping EDD strain creation for part number "%s" that wasn\'t '
+                                   'found in ICE' % part_number)
+            print ''  # add space between the warnings and summary output
+
+
+        find_existing_strains(edd, ice_parts_dict, existing_edd_strains, strains_by_part_number,
                               non_existent_edd_strains)
 
         if PRINT_FOUND_EDD_STRAINS:

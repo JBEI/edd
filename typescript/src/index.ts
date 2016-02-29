@@ -1,7 +1,6 @@
-/// <reference path="EDDDataInterface.ts" />
+/// <reference path="typescript-declarations.d.ts" />
 /// <reference path="DataGrid.ts" />
 /// <reference path="Utl.ts" />
-/// <reference path="lib/jquery.d.ts" />
 
 declare var EDDData:EDDData;  // sticking this here as IDE isn't following references
 

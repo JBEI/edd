@@ -5,6 +5,7 @@ import arrow
 import json
 import logging
 import os.path
+import re
 import warnings
 
 from collections import defaultdict
@@ -137,6 +138,27 @@ class Update(models.Model, EDDSerialize):
         """ Convert the datetime (mod_time) to a human-readable string, including conversion from
             UTC to local time zone. """
         return arrow.get(self.mod_time).to('local').strftime(format_string)
+
+
+@python_2_unicode_compatible
+class Datasource(models.Model):
+    """ Defines an outside source for bits of data in the system. Initially developed to track
+        where basic metabolite information originated (e.g. BIGG, KEGG, manual input). """
+    name = models.CharField(max_length=255)
+    url = models.CharField(max_length=255, blank=True, default='')
+    download_date = models.DateField(auto_now=True)
+    created = models.ForeignKey(Update, related_name='datasource', editable=False)
+
+    def __str__(self):
+        return '%s <%s>' % (self.name, self.url)
+
+    def save(self, *args, **kwargs):
+        if self.created_id is None:
+            update = kwargs.get('update', None)
+            if update is None:
+                update = Update.load_update()
+            self.created = update
+        super(Datasource, self).save(*args, **kwargs)
 
 
 @python_2_unicode_compatible
@@ -362,72 +384,19 @@ class MetadataType(models.Model, EDDSerialize):
         return False
 
 
-@python_2_unicode_compatible
-class EDDObject(models.Model, EDDSerialize):
-    """ A first-class EDD object, with update trail, comments, attachments. """
+class EDDMetadata(models.Model):
+    """ Base class for EDD models supporting metadata. """
     class Meta:
-        db_table = 'edd_object'
-    name = models.CharField(max_length=255)
-    description = models.TextField(blank=True, null=True)
-    active = models.BooleanField(default=True)
-    updates = models.ManyToManyField(Update, db_table='edd_object_update', related_name='+')
-    # these are used often enough we should save extra queries by including as fields
-    created = models.ForeignKey(Update, related_name='object_created', editable=False)
-    updated = models.ForeignKey(Update, related_name='object_updated', editable=False)
+        abstract = True
+
     # store arbitrary metadata as a dict with hstore extension
     meta_store = HStoreField(blank=True, default=dict)
-
-    @property
-    def mod_epoch(self):
-        return arrow.get(self.updated.mod_time).timestamp
-
-    @property
-    def last_modified(self):
-        return self.updated.format_timestamp()
-
-    def was_modified(self):
-        return self.updates.count() > 1
-
-    @property
-    def date_created(self):
-        return self.created.format_timestamp()
-
-    def get_attachment_count(self):
-        return self.files.count()
-
-    @property
-    def attachments(self):
-        return self.files.all()
-
-    @property
-    def comment_list(self):
-        return self.comments.order_by('created__mod_time').all()
-
-    def get_comment_count(self):
-        return self.comments.count()
 
     def get_metadata_json(self):
         return self.meta_store
 
     def get_metadata_types(self):
-        return list(MetadataType.objects.filter(pk__in=self.meta_store.keys()))
-
-    @classmethod
-    def metadata_type_frequencies(cls):
-        return dict(
-            MetadataType.objects.extra(select={
-                'count': 'SELECT COUNT(1) FROM edd_object o '
-                         'INNER JOIN %s x ON o.id = x.object_ref_id '
-                         'WHERE o.meta_store ? metadata_type.id::varchar'
-                         % cls._meta.db_table
-                }).values_list('id', 'count')
-            )
-
-    def get_metadata_item(self, key=None, pk=None):
-        assert ([pk, key].count(None) == 1)
-        if pk is None:
-            pk = MetadataType.objects.get(type_name=key)
-        return self.meta_store.get('%s' % pk.id)
+        return MetadataType.objects.filter(pk__in=self.meta_store.keys())
 
     def get_metadata_dict(self):
         """ Return a Python dictionary of metadata with the keys replaced by the
@@ -442,22 +411,6 @@ class EDDObject(models.Model, EDDSerialize):
                 value = value + " " + metadata_type.postfix
             metadata['%s' % metadata_types[pk]] = value
         return metadata
-
-    def set_metadata_item(self, key, value, defer_save=False):
-        warnings.warn('Call to deprecated function EDDObject.set_metadata_item with: %s, %s; '
-                      'the function uses a non-unique key to look up values. Clients should use '
-                      'their own lookup to find a MetadataType instance and store to '
-                      'EDDObject.meta_store directly using MetadataType.pk as a key; or use '
-                      'metadata_add, metadata_clear, metadata_get, metadata_remove'
-                      % (key, value, ),
-                      category=DeprecationWarning)
-        mdtype = MetadataType.objects.get(type_name=key)
-        if (not mdtype.is_allowed_object(self)):
-            raise ValueError("The metadata type '%s' does not apply to %s objects." % (
-                mdtype.type_name, self.__class__.__name__, ))
-        self.meta_store['%s' % mdtype.id] = value
-        if (not defer_save):
-            self.save()
 
     def metadata_add(self, metatype, value, append=True):
         """ Adds metadata to the object; by default, if there is already metadata of the same type,
@@ -518,6 +471,60 @@ class EDDObject(models.Model, EDDSerialize):
                 except ValueError:
                     pass
 
+
+@python_2_unicode_compatible
+class EDDObject(EDDMetadata, EDDSerialize):
+    """ A first-class EDD object, with update trail, comments, attachments. """
+    class Meta:
+        db_table = 'edd_object'
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    active = models.BooleanField(default=True)
+    updates = models.ManyToManyField(Update, db_table='edd_object_update', related_name='+')
+    # these are used often enough we should save extra queries by including as fields
+    created = models.ForeignKey(Update, related_name='object_created', editable=False)
+    updated = models.ForeignKey(Update, related_name='object_updated', editable=False)
+
+    @property
+    def mod_epoch(self):
+        return arrow.get(self.updated.mod_time).timestamp
+
+    @property
+    def last_modified(self):
+        return self.updated.format_timestamp()
+
+    def was_modified(self):
+        return self.updates.count() > 1
+
+    @property
+    def date_created(self):
+        return self.created.format_timestamp()
+
+    def get_attachment_count(self):
+        return self.files.count()
+
+    @property
+    def attachments(self):
+        return self.files.all()
+
+    @property
+    def comment_list(self):
+        return self.comments.order_by('created__mod_time').all()
+
+    def get_comment_count(self):
+        return self.comments.count()
+
+    @classmethod
+    def metadata_type_frequencies(cls):
+        return dict(
+            MetadataType.objects.extra(select={
+                'count': 'SELECT COUNT(1) FROM edd_object o '
+                         'INNER JOIN %s x ON o.id = x.object_ref_id '
+                         'WHERE o.meta_store ? metadata_type.id::varchar'
+                         % cls._meta.db_table
+                }).values_list('id', 'count')
+            )
+
     def __str__(self):
         return self.name
 
@@ -560,7 +567,7 @@ class EDDObject(models.Model, EDDSerialize):
             'name': self.name,
             'description': self.description,
             'active': self.active,
-            'meta': self.meta_store,
+            'meta': self.get_metadata_json(),
             # Always include expanded created/updated objects instead of IDs
             'modified': self.updated.to_json(depth) if self.updated else None,
             'created': self.created.to_json(depth) if self.created else None,
@@ -671,6 +678,12 @@ class Study(EDDObject):
             self.userpermission_set.filter(user=user),
             self.grouppermission_set.filter(group__user=user)
         ))
+
+    @staticmethod
+    def user_can_create(user):
+        if hasattr(settings, 'EDD_ONLY_SUPERUSER_CREATE') and settings.EDD_ONLY_SUPERUSER_CREATE:
+            return user.is_superuser
+        return True
 
     def get_combined_permission(self):
         """ Returns a chained iterator over all user and group permissions on a Study. """
@@ -1233,8 +1246,7 @@ class MetaboliteKeyword(models.Model):
     @classmethod
     def all_with_metabolite_ids(cls):
         keywords = []
-        kwd_objects = cls.objects.all().order_by("name").prefetch_related(
-            "metabolite_set")
+        kwd_objects = cls.objects.order_by("name").prefetch_related("metabolite_set")
         for keyword in kwd_objects:
             ids_dicts = keyword.metabolite_set.values("id")
             keywords.append({
@@ -1260,6 +1272,9 @@ class Metabolite(MeasurementType):
     molecular_formula = models.TextField()
     keywords = models.ManyToManyField(
         MetaboliteKeyword, db_table="metabolites_to_keywords")
+    source = models.ForeignKey(Datasource, blank=True, null=True)
+
+    carbon_pattern = re.compile(r'C(\d*)')
 
     def __str__(self):
         return self.type_name
@@ -1283,6 +1298,13 @@ class Metabolite(MeasurementType):
             "chgn": self.charge,  # TODO find anywhere in typescript using this and fix it
             "kstr": ",".join(['%s' % k for k in self.keywords.all()]),
         })
+
+    def save(self, *args, **kwargs):
+        if self.carbon_count is None:
+            self.carbon_count = self.extract_carbon_count()
+        # force METABOLITE group
+        self.type_group = MeasurementGroup.METABOLITE
+        super(Metabolite, self).save(*args, **kwargs)
 
     @property
     def keywords_str(self):
@@ -1309,6 +1331,13 @@ class Metabolite(MeasurementType):
             if (keyword not in new_keywords):
                 self.keywords.remove(current_kwds[keyword])
 
+    def extract_carbon_count(self):
+        count = 0
+        for match in self.carbon_pattern.finditer(self.molecular_formula):
+            c = match.group(1)
+            count = count + (int(c) if c else 1)
+        return count
+
 # override the default type_group for metabolites
 Metabolite._meta.get_field('type_group').default = MeasurementGroup.METABOLITE
 
@@ -1332,6 +1361,11 @@ class GeneIdentifier(MeasurementType):
     def __str__(self):
         return self.type_name
 
+    def save(self, *args, **kwargs):
+        # force GENEID group
+        self.type_group = MeasurementGroup.GENEID
+        super(GeneIdentifier, self).save(*args, **kwargs)
+
 GeneIdentifier._meta.get_field('type_group').default = MeasurementGroup.GENEID
 
 
@@ -1343,6 +1377,11 @@ class ProteinIdentifier(MeasurementType):
 
     def __str__(self):
         return self.type_name
+
+    def save(self, *args, **kwargs):
+        # force PROTEINID group
+        self.type_group = MeasurementGroup.PROTEINID
+        super(ProteinIdentifier, self).save(*args, **kwargs)
 
 ProteinIdentifier._meta.get_field('type_group').default = MeasurementGroup.PROTEINID
 
@@ -1361,6 +1400,11 @@ class Phosphor(MeasurementType):
 
     def __str__(self):
         return self.type_name
+
+    def save(self, *args, **kwargs):
+        # force PHOSPHOR group
+        self.type_group = MeasurementGroup.PHOSPHOR
+        super(Phosphor, self).save(*args, **kwargs)
 
 Phosphor._meta.get_field('type_group').default = MeasurementGroup.PHOSPHOR
 
@@ -1447,7 +1491,7 @@ class MeasurementFormat(object):
 
 
 @python_2_unicode_compatible
-class Measurement(models.Model, EDDSerialize):
+class Measurement(EDDMetadata, EDDSerialize):
     """ A plot of data points for an (assay, measurement type) pair. """
     class Meta:
         db_table = 'measurement'
@@ -1496,6 +1540,7 @@ class Measurement(models.Model, EDDSerialize):
             # "values": map(lambda p: p.to_json(), self.measurementvalue_set.all()),
             "x_units": self.x_units_id,
             "y_units": self.y_units_id,
+            "meta": self.get_metadata_json(),
         }
 
     def __str__(self):
@@ -1590,11 +1635,11 @@ class MeasurementValue(models.Model):
 
     @property
     def fx(self):
-        return float(self.x[0])
+        return float(self.x[0]) if self.x else None
 
     @property
     def fy(self):
-        return float(self.y[0])
+        return float(self.y[0]) if self.y else None
 
     def to_json(self):
         return {
@@ -1640,8 +1685,7 @@ class SBMLTemplate(EDDObject):
         if read_sbml.getNumErrors() > 0:
             log = read_sbml.getErrorLog()
             for i in range(read_sbml.getNumErrors()):
-                # TODO setup logging
-                print("--- SBML ERROR --- " + log.getError(i).getMessage())
+                logger.error("--- SBML ERROR --- %s" % log.getError(i).getMessage())
             raise Exception("Could not load SBML")
         model = read_sbml.getModel()
         rlist = model.getListOfReactions()

@@ -175,6 +175,7 @@ interface UserRecord {
 // Declare interface and EDDData variable for highlight support
 interface EDDData {
     currentUserID: number;
+    currentStudyID: number;    // Can be null/undefined when no Study is chosen
     AssayMeasurements:{[id:number]: AssayMeasurementRecord};
     Assays:{[id:number]: AssayRecord};
     CSources:{[id:number]: CarbonSourceRecord};

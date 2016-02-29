@@ -19,54 +19,16 @@
   <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.stack.js' %}"></script>
   <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.cookie.js' %}"></script>
   <script type="text/javascript" src="{% static 'main/js/lib/filedrop-min.js' %}"></script>
-  <script type="text/javascript" src="{% static 'main/js/util2.js' %}"></script>
 
   <!-- some page-specific code -->
   <script type="text/javascript">
+
   var ATData = {}; // this needs to be declared before loading AssayTableData.js!
   var EDDData = {};
-  EDDData.currentUserID = {{ user.pk }};
-  var atdata_url = "/study/{{ study.id }}/assaydata";
 
-  function disclose() {
-    $(this).closest('.disclose').toggleClass('discloseHide');
-    return false;
-  }
-  var url = "/utilities/parsefile";
-  var process_result = function (result) {
-    if (result.file_type == "xlsx") {
-      var ws = result.file_data["worksheets"][0];
-      console.log(ws);
-      var table = ws[0];
-      var csv = [];
-      if (table.headers) {
-        csv.push(table.headers.join());
-      }
-      for (var i = 0; i < table.values.length; i++) {
-        csv.push(table.values[i].join());
-      }
-      $("#rawdataformatp").val("csv");
-      $("#textData").text(csv.join("\n"));
-    } else {
-      $("#rawdataformatp").val(result.file_type);
-      $("#textData").text(result.file_data);
-    }
-    EDDATD.parseAndDisplayText(); // AssayTableData.ts
-  };
-  $(window).load(function () {
-      setupFileDrop("textData", url, process_result, false);
-      $('.disclose').find('a.discloseLink').on('click', disclose);
-      // Populate ATData and EDDData objects via AJAX calls
-      jQuery.ajax(atdata_url, {
-        "success": function(data) {
-          ATData = data.ATData;
-          $.extend(EDDData, data.EDDData);
-          EDDATD.prepareIt();
-        }
-      }).fail(function (x, s, e) {
-        alert(s);
-      });
-  });
+  EDDData.currentUserID = {{ user.pk }};
+  EDDData.currentStudyID = {{ study.id }};
+
   </script>
   <script type="text/javascript" src="{% static 'main/js/autocomplete2.js' %}"></script>
   <script type="text/javascript" src="{% static 'main/js/AssayTableData.js' %}"></script>
@@ -90,10 +52,10 @@
 {% csrf_token %}
 
 <!-- section 1 -->
-<div class="pageSection" id="mainModeDiv">
+<div class="pageSection" id="selectMajorKindStep">
 <div class="sectionHead">Step 1 : Specify the kind of data you wish to import.</div>
 
-<div class="sectionContent" style="padding:0em 0em 3px 0em;">
+<div class="sectionContent" style="padding:8px;">
   <ul style="font-size:13px;list-style-type:none;">
     <li>
       <div class="disclose discloseHide">
@@ -107,25 +69,25 @@
         <div class="discloseBody" id="stdlayoutexample"
           style="color:#44D;font-size:12px;margin-left:1.2em;">
           <p>Example 1:</p>
-          <img src="{% static 'main/images/excel_example-a.png' %}"
+          <img src="{% static 'main/images/data_examples/excel_example-a.png' %}"
                style="border:none;padding:5px;"/>
           <p>Here is a sequence of metabolites measured at different times.
             To import this, you would paste it into the Step 2 box.  The EDD
             automatically flips the axes and detects the presence of a time
             sequence and measurement names,
             and sets the pulldowns in Step 3 like so:</p>
-          <img src="{% static 'main/images/excel_example-a-settings.png' %}"
+          <img src="{% static 'main/images/data_examples/excel_example-a-settings.png' %}"
                style="border:none;padding:5px;"/>
           <p>Then in Step 4, you would select the Line and Assay where the
             data will be imported.</p>
           <p>Example 2:</p>
-          <img src="{% static 'main/images/excel_example-b.png' %}"
+          <img src="{% static 'main/images/data_examples/excel_example-b.png' %}"
                style="border:none;padding:5px;"/>
           <p>Here is a sequence of measurements for multiple metabolites across
             different Lines.  The EDD will recognize the metabolites, but
             might not recognize the top row as Line names,
             in which case the pulldowns will start out looking like this:</p>
-          <img src="{% static 'main/images/excel_example-b-settings.png' %}"
+          <img src="{% static 'main/images/data_examples/excel_example-b-settings.png' %}"
                style="border:none;padding:5px;">
           <p>If you set the first pulldown to "Assay/Line Names", you can
             proceed to link the items with existing Lines or Assays in
@@ -143,7 +105,7 @@
         <span><a class="discloseLink" href="#">Example</a></span>
         <div class="discloseBody" id="trlayoutexample"
              style="color:#44D;font-size:12px;margin-left:1.2em;">
-          <img src="{% static 'main/images/transcription_example.png' %}"
+          <img src="{% static 'main/images/data_examples/transcription_example.png' %}"
                style="border:none;padding:5px;">
           <p>In this typical example of gene transcription data, the only two
             columns that the EDD actually cares about are the gene name, and
@@ -163,7 +125,7 @@
         <span><a class="discloseLink" href="#">Example</a></span>
         <div class="discloseBody" id="prlayoutexample"
              style="color:#44D;font-size:12px;margin-left:1.2em;">
-          <img src="{% static 'main/images/proteomics_example.png' %}"
+          <img src="{% static 'main/images/data_examples/proteomics_example.png' %}"
                style="border:none;padding:5px;">
           <p>In this example of proteomics data, the columns represent
               protein names, and the rows represent Line or Assay names.</p>
@@ -181,7 +143,7 @@
         <div class="discloseBody" id="mdvlayoutexample"
              style="color:#44D;font-size:12px;margin-left:1.2em;">
           <p>Example:</p>
-          <img src="{% static 'main/images/excel_example-jbei_mdv.png' %}"
+          <img src="{% static 'main/images/data_examples/excel_example-jbei_mdv.png' %}"
                style="border:none;padding:5px;">
           <p>The data will be for a single Line.  Multiple Assays will be
               created automatically in the selected Protocol,
@@ -190,6 +152,15 @@
           <p>Make sure you select the whole table, including the headers
               along the top, when you copy your data to the clipboard.</p>
         </div>
+      </div>
+    </li>
+
+    <li>
+      <div class="disclose discloseHide">
+        <input type="radio" name="datalayout" value="biolector" id="biolectorlayout" />
+        <label for="biolectorlayout">
+          A <b>Biolector</b> xml data file
+        </label>
       </div>
     </li>
 
@@ -233,7 +204,7 @@
 
 
 <!-- section 2 -->
-<div class="pageSection" id="mainModeDiv">
+<div class="pageSection" id="rawInputStep">
   <div class="sectionHead" style="padding-right:7px;">
 
     <div class="helpBadgeDiv" style="float:left;">Help
@@ -244,7 +215,9 @@
       </div>
     </div>
 
-    Step 2 : Type or paste in your raw data.
+    <div class="resetButtonDiv" id="resetstep2" style="float:right;">Reset</div>
+
+    Step 2 : Drag a file, or type in your raw data.
 
     <span class="tableControl" style="padding-top:1px;">
       <input type="checkbox"
@@ -270,13 +243,21 @@
 
   </div>
 
-  <div class="sectionContent" style="padding:0em;text-align:center;">
-    <textarea class="dataTextArea" rows="16" style="width:98.5%;margin:2px;" id="textData" name="textData"></textarea>
+  <div class="sectionContent" style="padding:2px;text-align:center;">
+    <textarea class="dataTextArea" rows="16" id="step2textarea" name="step2textarea"></textarea>
+    <div class="fileDropInfoArea off" id="fileDropInfoArea">
+      <div class="fileDropInfoIcon" id="fileDropInfoIcon"></div>
+      <div class="fileDropInfoName" id="fileDropInfoName">Blank filename.xml</div>
+      <div class="fileDropInfoSending" id="fileDropInfoSending">
+        <span id="fileUploadMessage">Sending To Server...</span> <progress id="fileUploadProgressBar" />
+      </div>
+      <div class="fileDropInfoLog" id="fileDropInfoLog"></div>
+    </div>
   </div>
 </div>
 
 <!-- section 3 -->
-<div class="pageSection">
+<div class="pageSection" id="identifyStructuresStep">
 
   <div class="sectionHead">
 
@@ -290,7 +271,7 @@ at how the pulldowns should be set, but you may need to tweak it.</p>
       </div>
     </div>
 
-    <div class="resetButtonDiv" style="float:right;" onclick="EDDATD.resetEnabledFlagMarkers();">Reset</div>
+    <div class="resetButtonDiv" id="resetstep3" style="float:right;">Reset</div>
 
     Step 3 : Verify the data has been interpreted correctly, and disable any values you don't want.
 
@@ -310,7 +291,7 @@ at how the pulldowns should be set, but you may need to tweak it.</p>
 
 
 <!-- section 4 -->
-<div class="pageSection">
+<div class="pageSection" id="typeDisambiguationStep">
   <div class="sectionHead">
 
     <div class="helpBadgeDiv" style="float:left;">Help
@@ -333,7 +314,7 @@ at how the pulldowns should be set, but you may need to tweak it.</p>
       </div>
     </div>
 
-    <div class="resetButtonDiv" style="float:right;" onclick="EDDATD.resetInfoTableFields();">Re-parse</div>
+    <div class="resetButtonDiv" id="resetstep4" style="float:right;">Reset</div>
 
     Step 4 : Help to disambiguate some of the detected values.
   </div>
@@ -361,6 +342,26 @@ at how the pulldowns should be set, but you may need to tweak it.</p>
 
   </div>
 
+  <div class="sectionContent off" id="masterLineDiv">
+
+    <table class="formTable" style="margin-left:1em;">
+      <tr>
+        <td style="vertical-align:middle;">
+          <span>
+            Line for the all data:
+            <select name="masterLine" id="masterLine">
+              <option value="new">(Create New)</option>
+              {% for line in study.line_set.all %}
+              <option value="{{ line.pk }}">{{ line.name }}</option>
+              {% endfor %}
+            </select>
+          </span>
+        </td>
+      </tr>
+    </table>
+
+  </div>
+
   <div class="sectionContent off" id="masterAssayLineDiv">
 
     <table class="formTable" style="margin-left:1em;">
@@ -373,7 +374,7 @@ at how the pulldowns should be set, but you may need to tweak it.</p>
             </select>
           </span>
           <span id="masterLineSpan">
-            for Line: <select name="masterLine" id="masterLine">
+            for Line: <select name="masterAssayLine" id="masterAssayLine">
               <option value="new">(Create New)</option>
               {% for line in study.line_set.all %}
               <option value="{{ line.pk }}">{{ line.name }}</option>
@@ -410,17 +411,28 @@ at how the pulldowns should be set, but you may need to tweak it.</p>
 
   </div>
 
-  <div class="sectionContent disambiguationSection"
-     id="disambiguateLinesAssaysSection">
-    <h3>Lines/Assays</h3>
+  <div class="sectionContent disambiguationSection" id="disambiguateLinesSection">
+    <h3>Lines</h3>
   </div>
 
-  <div class="sectionContent disambiguationSection"
-     id="disambiguateMeasurementsSection">
+  <div class="sectionContent disambiguationSection" id="disambiguateAssaysSection">
+    <h3>Assays</h3>
+  </div>
+
+  <div class="sectionContent disambiguationSection" id="disambiguateMeasurementsSection">
     <h3>Metabolite Types</h3>
     <div id="noCompartmentWarning" class="statusMessage neutral">
       Make sure you specify a compartment (Intracellular/Extracellular) for your mass distribution measurements.
     </div>
+    <table id="disambiguateMeasurementsTable" cellspacing="0">
+      <tbody>
+        <tr>
+          <th colspan="2" style="text-align: right;">Compartment</th>
+          <th>Type</th>
+          <th>Units</th>
+        </tr>
+      </tbody>
+    </table>
   </div>
 
   <div class="sectionContent disambiguationSection"
@@ -431,14 +443,14 @@ at how the pulldowns should be set, but you may need to tweak it.</p>
 </div>
 
 <div style="width:99%;text-align:right;margin:10px 0px 10px 0px;">
-  <input type="submit" name="action" value="Submit Data" onclick="EDDATD.generateFormSubmission();" />
+  <input type="submit" id="submitForImport" name="action" value="Submit Data" />
 </div>
 
 <input type="hidden" id="jsonoutput" name="jsonoutput" />
 <input type="hidden" name="studyID" value="{{ study.id }}"/>
 </form>
 
-
-  <textarea class="dataTextArea" rows="5" style="width:98%;margin:10px;" id="jsondebugarea" name="jsondebugarea"></textarea>
-
+<!--
+  <textarea class="dataTextArea" rows="5" style="margin:10px;" id="jsondebugarea" name="jsondebugarea"></textarea>
+-->
 {% endblock content %}
