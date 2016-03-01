@@ -20,7 +20,7 @@ class HPLC_Parser:
 	max_header_line_count = 20
 
 	def __init__(self):
-		self.input_file = None         # The file that is being parsed
+		self.input_stream = None       # The stream that is being parsed
 		self.samples = OrderedDict()   # The final data resulting from batch parsing
 		self.compound_entry = namedtuple( 'Compound Entry', ['Compound','Amount'] )
 
@@ -31,32 +31,22 @@ class HPLC_Parser:
 		self.compound_end_position = None
 
 
-	def parse_hplc_file(self, input_file_path):
-		"""Loads the file on the given path and parses textual HPLC data
-		 from it.
+	def parse_hplc_data(self, input_stream):
+		"""Parses textual HPLC data from it.
 
-		 raises IOError
-
-		 returns samples = { 'sample name': [('compound','amount'),...], ... }
+		 returns samples = { 'Sample Name': [('Compound','Amount'),...], ... }
 		 """
 
-		 # TODO: convert to IOStream instead of file handling
 		 # TODO: use 'with' and 'yield'
 		 # TODO: Add warnings if the 96 well columns don't line up
 		 # TODO: HPLC_Parse_Exception for what line parsing failed on!
 
-		if not os.path.exists(input_file_path):
-			raise IOError("Error: unable to locate file %s" % input_file_path)
-
-		self.input_file = io.open(input_file_path, "r", encoding = 'utf-16')
-		logger.debug("reading file: %s", input_file_path)
-
-		if self._check_is_96_well_format(self.input_file):
+		if self._check_is_96_well_format(self.input_stream):
 			logger.info("Detected 96 well format in HPLC file")
 			self._parse_96_well_format_samples()
 		else:
 			logger.info("Detected standard format in HPLC file")
-			header_block = self._parse_file_header(self.input_file)
+			header_block = self._parse_file_header(self.input_stream)
 
 			logger.debug("collecting the table_header")
 			(header_block,table_header,table_divider) = self._get_table_header(header_block)
@@ -76,7 +66,7 @@ class HPLC_Parser:
 		logger.info("successfully parsed the HPLC file %s",
 			os.path.basename(input_file_path))
 
-		self.input_file.close()
+		self.input_stream.close()
 
 		return self.samples
 
@@ -101,9 +91,9 @@ class HPLC_Parser:
 		returns True if 96 well plate format
 		returns False if standard format"""
 
-		file_pos = self.input_file.tell()
+		file_pos = self.input_stream.tell()
 		firstline = input_file.readline()
-		self.input_file.seek(file_pos)
+		self.input_stream.seek(file_pos)
 
 		if firstline.startswith("Batch"):
 			return True
@@ -260,7 +250,7 @@ class HPLC_Parser:
 		end_of_block = False
 		line_number = 0
 		while not end_of_block:
-			line = self.input_file.readline()
+			line = self.input_stream.readline()
 
 			if line.startswith('#'):
 				end_of_block = True
@@ -306,7 +296,7 @@ class HPLC_Parser:
 
 		while True:
 			logger.debug("collecting the header_block")
-			header_block = self._parse_file_header(self.input_file)
+			header_block = self._parse_file_header(self.input_stream)
 
 			if "*** End of Report ***" in header_block[-1]:
 				break
@@ -348,8 +338,8 @@ class HPLC_Parser:
 		## Loop - collect each line associated with the sample
 		while True:
 
-			file_pos = self.input_file.tell()
-			line = self.input_file.readline()
+			file_pos = self.input_stream.tell()
+			line = self.input_stream.readline()
 			if line == '\n': # Skip blank line
 				continue
 			if not line: # End Of File
@@ -364,7 +354,7 @@ class HPLC_Parser:
 			if line_sample_name:
 				if sample_name:
 					# new record encountered, resetting file pointer
-					self.input_file.seek(file_pos)
+					self.input_stream.seek(file_pos)
 					return True
 
 				# ensure no collision with previous sample names by adding a #
