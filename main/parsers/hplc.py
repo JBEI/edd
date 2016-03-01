@@ -70,19 +70,6 @@ class HPLC_Parser:
 
 		return self.samples
 
-	# debugging aid.
-	def _display_sample(self, selection):
-		q = {}
-		for x in self.samples.keys():
-			q[x] = {}
-			for y in self.samples[x].keys():
-				val = self.samples[x][y]
-				if type(self.samples[x][y]) is list:
-					val = val[:5]
-				q[x][y] = val
-		for v in q[q.keys()[selection]].keys():
-			print v, q[q.keys()[selection]][v]
-
 	def _check_is_96_well_format(self, input_file):
 		"""Checks if the file is in 96 well plate format.
 
