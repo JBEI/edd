@@ -9,6 +9,9 @@ import sys, os, io, logging
 # TODO: Finish Restructure as an Interable Object, allowing samples or lines to 
 # be processed individually rather then in one big batch. __next__()
 
+class HPLC_Parse_Exception(Exception):
+	pass
+
 class HPLC_Parser:
 	logger = logging.getLogger(__name__)
 
@@ -35,6 +38,13 @@ class HPLC_Parser:
 		 returns samples = { 'sample name': [('compound','amount'),...], ... }
 		 """
 
+		 # TODO: convert to IOStream instead of file handling
+		 # TODO: use 'with' and 'yield'
+		 # TODO: Add warnings if the 96 well columns don't line up
+		 # TODO: use OrderedDict for return
+		 # TODO: use namedtuple for return
+		 # TODO: HPLC_Parse_Exception for what line parsing failed on!
+
 		if not os.path.exists(input_file_path):
 			raise IOError("Error: unable to locate file %s" % input_file_path)
 
@@ -50,10 +60,10 @@ class HPLC_Parser:
 
 			logger.debug("collecting the table_header")
 			(header_block,table_header,table_divider) \
-			    = self._collect_table_header(header_block)
+			    = self._get_table_header(header_block)
 
 			logger.debug("parsing column widths")
-			section_widths = self.determine_section_widths(table_divider)
+			section_widths = self._get_section_widths(table_divider)
 
 			logger.debug("collecting the column_headers")
 			column_headers = self._extract_column_headers_from_multiline_text( \
@@ -121,9 +131,9 @@ class HPLC_Parser:
 			if "*** End of Report ***" in line:
 				return header_block
 			elif i >= HPLC_Parser.max_header_line_count:
-				raise Exception("unable to find header: unexpected length")
+				raise HPLC_Parse_Exception("unable to find header: unexpected length")
 			elif line == '':
-				raise Exception("unable to find header: EOF encountered")
+				raise HPLC_Parse_Exception("unable to find header: EOF encountered")
 			i += 1
 
 		logger.debug("parsing header block")
@@ -136,7 +146,7 @@ class HPLC_Parser:
 		return header_block
 
 
-	def _collect_table_header(self, header_block):
+	def _get_table_header(self, header_block):
 		# collect table header, "Sample Name", etc.
 		# cliping it off the end of the header block
 		table_header = []
@@ -155,8 +165,7 @@ class HPLC_Parser:
 
 		return header_block,table_header,table_divider
 
-	def determine_section_widths(self, table_divider):
-		# parse widths
+	def _get_section_widths(self, table_divider):
 		section_widths = [0]
 		section_index = 0
 		for c in table_divider.strip():
@@ -271,7 +280,7 @@ class HPLC_Parser:
 					end_position = section_widths[index] + begin_position
 					amount = line[begin_position:end_position].strip()
 
-					if amount == "0.00000":
+					if float(amount) == 0.0:
 						continue
 
 					compound = column_headers[index] \
@@ -306,10 +315,10 @@ class HPLC_Parser:
 
 			logger.debug("collecting the table_header")
 			(header_block,table_header,table_divider) \
-			    = self._collect_table_header(header_block)
+			    = self._get_table_header(header_block)
 
 			logger.debug("parsing column widths")
-			section_widths = self.determine_section_widths(table_divider)
+			section_widths = self._get_section_widths(table_divider)
 
 			logger.debug("collecting the column_headers")
 			column_headers = self._extract_column_headers_from_multiline_text( \
@@ -363,11 +372,11 @@ class HPLC_Parser:
 				# ensure no collision with previous sample names by adding a #
 				if self.samples.has_key(line_sample_name):
 					line_sample_name += u'-2'
-					i = 3
+					i = 3 # TODO: explain this
 					while self.samples.has_key(line_sample_name):
 						last_dash_index = line_sample_name.rindex('-')
-						line_sample_name = \
-						    line_sample_name[:last_dash_index+1] + unicode(i)
+						line_sample_name = "%s%s" % (
+							line_sample_name[:last_dash_index+1], str(i) )
 						i += 1
 
 				sample_name = line_sample_name
@@ -379,12 +388,12 @@ class HPLC_Parser:
 
 			# collect the other data items - grab amounts & compounds
 
-			amount_string = line[ \
-			    self.amount_begin_position : \
+			amount_string = line[
+			    self.amount_begin_position :
 			    self.amount_end_position].strip()
 
-			compound_string = line[ \
-			    self.compound_begin_position : \
+			compound_string = line[
+			    self.compound_begin_position :
 			    self.compound_end_position].strip()
 
 			# initilize the sample entry
@@ -393,5 +402,7 @@ class HPLC_Parser:
 
 			# Put the value into our data structure
 			if amount_string != u'-' and compound_string != u'-':
-				self.samples[sample_name].append( \
+				self.samples[sample_name].append(
 					(compound_string,amount_string))
+
+
