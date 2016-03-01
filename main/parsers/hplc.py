@@ -59,14 +59,13 @@ class HPLC_Parser:
 			header_block = self._parse_file_header(self.input_file)
 
 			logger.debug("collecting the table_header")
-			(header_block,table_header,table_divider) \
-			    = self._get_table_header(header_block)
+			(header_block,table_header,table_divider) = self._get_table_header(header_block)
 
 			logger.debug("parsing column widths")
 			section_widths = self._get_section_widths(table_divider)
 
 			logger.debug("collecting the column_headers")
-			column_headers = self._extract_column_headers_from_multiline_text( \
+			column_headers = self._extract_column_headers_from_multiline_text(
 				section_widths, table_header)
 			
 			# Read in each line and contruct records
@@ -74,7 +73,7 @@ class HPLC_Parser:
 			while self._parse_sample(section_widths):
 				pass
 
-		logger.info("successfully parsed the HPLC file %s", \
+		logger.info("successfully parsed the HPLC file %s",
 			os.path.basename(input_file_path))
 
 		self.input_file.close()
@@ -179,7 +178,7 @@ class HPLC_Parser:
 
 		return section_widths
 
-	def _extract_column_headers_from_multiline_text( \
+	def _extract_column_headers_from_multiline_text(
 		self, section_widths, table_header):
 
 		# collect the multiline text
@@ -230,31 +229,31 @@ class HPLC_Parser:
 			logger.debug("header: %s", header)
 
 			if header.startswith('Amount'):
-				self.amount_begin_position = sum( \
-					section_widths[:column_header_index]) \
-				    + len(section_widths[:column_header_index])
-				self.amount_end_position = section_widths[column_header_index] \
-				                           + self.amount_begin_position
-				logger.debug("Amount Begin: %s    End %s", \
+				self.amount_begin_position = ( sum(
+					section_widths[:column_header_index])
+				    + len(section_widths[:column_header_index]) )
+				self.amount_end_position = ( section_widths[column_header_index]
+				                           + self.amount_begin_position )
+				logger.debug("Amount Begin: %s    End %s",
 					self.amount_begin_position, self.amount_end_position)
-				# logger.debug("Amount section width: %s", \
+				# logger.debug("Amount section width: %s",
 				#    section_widths[:column_header_index])
 			elif header.startswith('Compound'):
-				self.compound_begin_position = sum( \
-					section_widths[:column_header_index]) \
-				    + len(section_widths[:column_header_index])
-				self.compound_end_position = \
-				    section_widths[column_header_index] \
-				    + self.compound_begin_position
-				logger.debug("Compound Begin: %s    End %s", \
+				self.compound_begin_position = ( sum(
+					section_widths[:column_header_index])
+				    + len(section_widths[:column_header_index]) )
+				self.compound_end_position = (
+				    section_widths[column_header_index]
+				    + self.compound_begin_position )
+				logger.debug("Compound Begin: %s    End %s",
 					self.compound_begin_position, self.compound_end_position)
-				# logger.debug("Compound section width: %s", \
+				# logger.debug("Compound section width: %s",
 				#     section_widths[:column_header_index])
 
 		return column_headers
 
 
-	def _parse_96_well_format_block( \
+	def _parse_96_well_format_block(
 		self,sample_names, compounds, column_headers,section_widths):
 		"""Reads in a single block of data from file"""
 
@@ -268,23 +267,22 @@ class HPLC_Parser:
 
 			for index in range(len(column_headers)):
 				if "Sample" in column_headers[index]:
-					begin_position = sum(  section_widths[:index] ) \
-									+ len( section_widths[:index] )
+					begin_position = ( sum(  section_widths[:index] ) 
+									+ len( section_widths[:index] ) )
 					end_position = section_widths[index] + begin_position
 					name = line[begin_position:end_position].strip()
 					# sample names is implicitly indexed by line_number
 					sample_names.append(name)
 				elif "Amount" in column_headers[index]:
-					begin_position = sum(  section_widths[:index] ) \
-									+ len( section_widths[:index] )
+					begin_position = ( sum(  section_widths[:index] )
+									+ len( section_widths[:index] ) )
 					end_position = section_widths[index] + begin_position
 					amount = line[begin_position:end_position].strip()
 
 					if float(amount) == 0.0:
 						continue
 
-					compound = column_headers[index] \
-						.replace("Amount","").strip()
+					compound = column_headers[index].replace("Amount","").strip()
 
 					compounds.append((line_number,self.compound_entry(compound,amount)))
 
@@ -314,17 +312,17 @@ class HPLC_Parser:
 				break
 
 			logger.debug("collecting the table_header")
-			(header_block,table_header,table_divider) \
+			(header_block,table_header,table_divider)
 			    = self._get_table_header(header_block)
 
 			logger.debug("parsing column widths")
 			section_widths = self._get_section_widths(table_divider)
 
 			logger.debug("collecting the column_headers")
-			column_headers = self._extract_column_headers_from_multiline_text( \
+			column_headers = self._extract_column_headers_from_multiline_text(
 				section_widths, table_header)
 
-			self._parse_96_well_format_block( \
+			self._parse_96_well_format_block(
 				sample_names, compounds, column_headers, section_widths)
 
 		# Line up the sample name with the amounts
