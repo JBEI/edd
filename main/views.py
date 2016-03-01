@@ -834,15 +834,12 @@ def study_import_table(request, study):
     # FIXME filter protocols?
     protocols = Protocol.objects.order_by('name')
     if (request.method == "POST"):
-        # print stuff for debug
-        for key in sorted(request.POST):
-            print("%s : %s" % (key, request.POST[key]))
         try:
             table = data_import.TableImport(model, request.user)
             added = table.import_data(request.POST)
             messages.success(request, 'Imported %s measurements' % added)
         except ValueError as e:
-            print("ERROR!!! %s" % e)
+            logger.exception('Import failed: %s', e)
             messages.error(request, e)
     return render(
         request,

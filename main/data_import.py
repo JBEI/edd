@@ -6,16 +6,19 @@ import logging
 import re
 import warnings
 
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from django.core.exceptions import PermissionDenied
+from django.db.models import Q
 
 from .models import (
-    Assay, GeneIdentifier, Line, Measurement, MeasurementCompartment, MeasurementGroup,
-    MeasurementUnit, MeasurementValue, MetadataType, ProteinIdentifier, Protocol, Update
-    )
+    Assay, Datasource, GeneIdentifier, Line, Measurement, MeasurementCompartment,
+    MeasurementGroup, MeasurementUnit, MeasurementValue, MetadataType, ProteinIdentifier,
+    Protocol, Update
+)
 
 
 logger = logging.getLogger(__name__)
+MType = namedtuple('MType', ['compartment', 'type_id', 'unit_id', ])
 
 
 class TableImport(object):
@@ -242,32 +245,44 @@ class TableImport(object):
 
     def _mtype(self, label):
         layout = self._layout()
+        NO_TYPE = MType(0, 0, 1)
+        source = Datasource(name=self._user.username)  # defining, but not saving unless needed
         if layout == 'tr':
             gene_ids = GeneIdentifier.objects.filter(type_name=label).values_list('id')
             if len(gene_ids) == 1:
-                return (0, ) + gene_ids[0] + (1, )
+                return MType(0, gene_ids[0], 1)
             else:
-                logger.warning('Found %s GeneIdentifier instances for %s' % (
-                    len(gene_ids), label))
-            return (0, 0, 1)
+                logger.warning('Found %(length)s GeneIdentifier instances for %(label)s' % {
+                    'length': len(gene_ids),
+                    'label': label,
+                })
+            return NO_TYPE
         elif layout == 'pr':
             # TODO Protein import should be re-worked to get types from a label/session-id combo
-            protein_ids = ProteinIdentifier.objects.filter(type_name=label).values_list('id')
+            protein_ids = ProteinIdentifier.objects.filter(
+                Q(short_name=ProteinIdentifier.match_accession_id(label)) |
+                Q(short_name=label) |
+                Q(type_name=label)
+            ).values_list('id')
             if len(protein_ids) == 1:
-                return (0, ) + protein_ids[0] + (1, )
+                return MType(0, protein_ids[0], 1, )
             else:
-                logger.warning('Found %s ProteinIdentifier instances for %s' % (
-                    len(protein_ids), label))
+                logger.warning('Found %(length)s ProteinIdentifier instances for %(label)s' % {
+                    'length': len(protein_ids),
+                    'label': label,
+                })
                 if len(protein_ids) > 1:
-                    return (0, ) + protein_ids[0] + (1, )
+                    # FIXME: choosing the first one for now, should be error?
+                    return (0, protein_ids[0], 1, )
                 else:
+                    # FIXME: this blindly creates a new type; should try external lookups first?
                     try:
-                        p = ProteinIdentifier.objects.create(type_name=label)
+                        p = ProteinIdentifier.objects.create(type_name=label, source=source)
                     except:
                         logger.error('Failed to create ProteinIdentifier %s' % label)
                     else:
                         return (0, p.pk, 1, )
-            return (0, 0, 1)
+            return NO_TYPE
         if label not in self._type_lookup:
             if label is None:
                 self._type_lookup[label] = (
