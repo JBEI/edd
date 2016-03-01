@@ -5,6 +5,7 @@
 #    This is for parsing the output of HPLC machines.
 ##
 import sys, os, io, logging
+from collections import OrderedDict, namedtuple
 
 # TODO: Finish Restructure as an Interable Object, allowing samples or lines to 
 # be processed individually rather then in one big batch. __next__()
@@ -19,8 +20,9 @@ class HPLC_Parser:
 	max_header_line_count = 20
 
 	def __init__(self):
-		self.input_file = None     # The file that is being parsed
-		self.samples = {}          # The final data resulting from batch parsing
+		self.input_file = None         # The file that is being parsed
+		self.samples = OrderedDict()   # The final data resulting from batch parsing
+		self.compound_entry = namedtuple( 'Compound Entry', ['Compound','Amount'] )
 
 		# Integer indices for standard format parsing
 		self.amount_begin_position = None
@@ -41,8 +43,6 @@ class HPLC_Parser:
 		 # TODO: convert to IOStream instead of file handling
 		 # TODO: use 'with' and 'yield'
 		 # TODO: Add warnings if the 96 well columns don't line up
-		 # TODO: use OrderedDict for return
-		 # TODO: use namedtuple for return
 		 # TODO: HPLC_Parse_Exception for what line parsing failed on!
 
 		if not os.path.exists(input_file_path):
@@ -286,7 +286,7 @@ class HPLC_Parser:
 					compound = column_headers[index] \
 						.replace("Amount","").strip()
 
-					compounds.append((line_number,(compound,amount)))
+					compounds.append((line_number,self.compound_entry(compound,amount)))
 
 			line_number += 1
 
@@ -403,6 +403,6 @@ class HPLC_Parser:
 			# Put the value into our data structure
 			if amount_string != u'-' and compound_string != u'-':
 				self.samples[sample_name].append(
-					(compound_string,amount_string))
+					self.compound_entry(compound_string,amount_string))
 
 
