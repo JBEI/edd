@@ -22,7 +22,7 @@ class HPLC_Parser:
 	def __init__(self):
 		self.input_stream = None       # The stream that is being parsed
 		self.samples = OrderedDict()   # The final data resulting from batch parsing
-		self.compound_entry = namedtuple( 'Compound Entry', ['Compound','Amount'] )
+		self.compound_entry = namedtuple( 'Compound_Entry', ['Compound','Amount'] )
 
 		# Integer indices for standard format parsing
 		self.amount_begin_position = None
@@ -31,22 +31,27 @@ class HPLC_Parser:
 		self.compound_end_position = None
 
 
-	def parse_hplc_data(self, input_stream):
+	def parse_hplc(self, input_stream):
 		"""Parses textual HPLC data from it.
 
 		 returns samples = { 'Sample Name': [('Compound','Amount'),...], ... }
 		 """
 
+		if not input_stream:
+			raise HPLC_Parse_Exception("No data stream provided")
+
+		 # TODO: format detection is fragile... needs attention
 		 # TODO: use 'with' and 'yield'
 		 # TODO: Add warnings if the 96 well columns don't line up
+		 # TODO: Add warning if line is shorter then expected
 		 # TODO: HPLC_Parse_Exception for what line parsing failed on!
 
-		if self._check_is_96_well_format(self.input_stream):
+		if self._check_is_96_well_format(input_stream):
 			logger.info("Detected 96 well format in HPLC file")
-			self._parse_96_well_format_samples()
+			self._parse_96_well_format_samples(input_stream)
 		else:
 			logger.info("Detected standard format in HPLC file")
-			header_block = self._parse_file_header(self.input_stream)
+			header_block = self._parse_file_header(input_stream)
 
 			logger.debug("collecting the table_header")
 			(header_block,table_header,table_divider) = self._get_table_header(header_block)
@@ -60,27 +65,26 @@ class HPLC_Parser:
 			
 			# Read in each line and contruct records
 			logger.debug("now reading in the data")
-			while self._parse_sample(section_widths):
+			while self._parse_sample(input_stream, section_widths):
 				pass
 
-		logger.info("successfully parsed the HPLC file %s",
-			os.path.basename(input_file_path))
+		logger.info("successfully parsed the HPLC data")
 
-		self.input_stream.close()
+		input_stream.close()
 
 		return self.samples
 
-	def _check_is_96_well_format(self, input_file):
+	def _check_is_96_well_format(self, input_stream):
 		"""Checks if the file is in 96 well plate format.
 
-		Must be first to access the file! Does not advance pointer.
+		Must be first class function to access the stream! Does not advance pointer.
 
 		returns True if 96 well plate format
 		returns False if standard format"""
 
-		file_pos = self.input_stream.tell()
-		firstline = input_file.readline()
-		self.input_stream.seek(file_pos)
+		stream_pos = input_stream.tell()
+		firstline = input_stream.readline()
+		input_stream.seek(stream_pos)
 
 		if firstline.startswith("Batch"):
 			return True
@@ -89,10 +93,10 @@ class HPLC_Parser:
 
 
 
-	def _parse_file_header(self, input_file):
+	def _parse_file_header(self, input_stream):
 
 		# read in header block
-		header_block = [ input_file.readline() ]
+		header_block = [ input_stream.readline() ]
 		if "*** End of Report ***" in header_block[0]:
 			return header_block
 
@@ -100,7 +104,7 @@ class HPLC_Parser:
 		logger.debug("searching for header block")
 		i = 0
 		while not header_block[-1].startswith("-"):
-			line = input_file.readline()
+			line = input_stream.readline()
 
 			header_block.append( line )
 
@@ -231,13 +235,13 @@ class HPLC_Parser:
 
 
 	def _parse_96_well_format_block(
-		self,sample_names, compounds, column_headers,section_widths):
+		self, input_stream, sample_names, compounds, column_headers, section_widths):
 		"""Reads in a single block of data from file"""
 
 		end_of_block = False
 		line_number = 0
 		while not end_of_block:
-			line = self.input_stream.readline()
+			line = input_stream.readline()
 
 			if line.startswith('#'):
 				end_of_block = True
@@ -268,7 +272,7 @@ class HPLC_Parser:
 		return sample_names, compounds
 
 
-	def _parse_96_well_format_samples(self):
+	def _parse_96_well_format_samples(self, input_stream):
 		"""Collects the samples from a 96 well plate format file
 
 		Format: [ (compound_string,amount_string), ...] """
@@ -283,14 +287,13 @@ class HPLC_Parser:
 
 		while True:
 			logger.debug("collecting the header_block")
-			header_block = self._parse_file_header(self.input_stream)
+			header_block = self._parse_file_header(input_stream)
 
 			if "*** End of Report ***" in header_block[-1]:
 				break
 
 			logger.debug("collecting the table_header")
-			(header_block,table_header,table_divider)
-			    = self._get_table_header(header_block)
+			(header_block,table_header,table_divider) = self._get_table_header(header_block)
 
 			logger.debug("parsing column widths")
 			section_widths = self._get_section_widths(table_divider)
@@ -300,7 +303,7 @@ class HPLC_Parser:
 				section_widths, table_header)
 
 			self._parse_96_well_format_block(
-				sample_names, compounds, column_headers, section_widths)
+				input_stream, sample_names, compounds, column_headers, section_widths)
 
 		# Line up the sample name with the amounts
 		for indexed_compound in compounds:
@@ -311,7 +314,7 @@ class HPLC_Parser:
 			else:
 				self.samples[sample_name] = [compound]
 			
-	def _parse_sample(self, section_widths):
+	def _parse_sample(self, input_stream, section_widths):
 		"""Collects a single sample from the file and stores it in
 		the samples data structure
 
@@ -325,8 +328,8 @@ class HPLC_Parser:
 		## Loop - collect each line associated with the sample
 		while True:
 
-			file_pos = self.input_stream.tell()
-			line = self.input_stream.readline()
+			file_pos = input_stream.tell()
+			line = input_stream.readline()
 			if line == '\n': # Skip blank line
 				continue
 			if not line: # End Of File
@@ -341,13 +344,13 @@ class HPLC_Parser:
 			if line_sample_name:
 				if sample_name:
 					# new record encountered, resetting file pointer
-					self.input_stream.seek(file_pos)
+					input_stream.seek(file_pos)
 					return True
 
 				# ensure no collision with previous sample names by adding a #
 				if self.samples.has_key(line_sample_name):
-					line_sample_name += u'-2'
-					i = 3 # TODO: explain this
+					line_sample_name += u'-2' # first sample has no number. Begin next with 'name-2'
+					i = 3 # if name-2 is taken, begin counting up from 'name-3'
 					while self.samples.has_key(line_sample_name):
 						last_dash_index = line_sample_name.rindex('-')
 						line_sample_name = "%s%s" % (
