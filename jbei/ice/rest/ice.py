@@ -299,7 +299,7 @@ class HmacAuth(AuthBase):
             raise ValueError("A secret key is required input for HMAC authentication")
         self._USER_EMAIL = username
         self._SECRET_KEY = secret_key
-        self._request_generator = RequestGenerator()
+        self._request_generator = RequestGenerator(auth=self)
 
     def get_request_generator(self):
         return self._request_generator
@@ -404,7 +404,8 @@ class SessionAuth(AuthBase):
     def __init__(self, session_id, session, timeout=ICE_REQUEST_TIMEOUT, verify_ssl_cert=True):
         self._session_id = session_id
         self._session = session
-        self._request_generator = SessionRequestGenerator(session, timeout, verify_ssl_cert)
+        self._request_generator = SessionRequestGenerator(session, auth=self, timeout=timeout,
+                                                          verify_ssl_cert=verify_ssl_cert)
 
     def get_request_generator(self):
         return self._request_generator
@@ -510,7 +511,7 @@ class IceApi(object):
         if not auth:
             raise ValueError("A valid authentication mechanism must be provided")
 
-        self.auth = auth
+        self.request_generator = auth.get_request_generator()
 
         # chop off the trailing '/', if any, so we can write easier-to-read URL snippets in our code
         # (starting w '%s/'). also makes our code trailing-slash agnostic.
@@ -529,9 +530,8 @@ class IceApi(object):
         """
 
         rest_url = '%s/rest/parts/%s' % (self.base_url, entry_id)
-        request_generator = self.auth.get_request_generator()
         try:
-            response = request_generator.get(url=rest_url, auth=self.auth)
+            response = self.request_generator.get(url=rest_url)
         except requests.exceptions.Timeout as e:
 
             if not suppress_errors:
@@ -577,9 +577,8 @@ class IceApi(object):
         """
 
         url = '%s/rest/parts/%s' % (self.base_url, entry_id)
-        request_generator = self.auth.get_request_generator()
         try:
-            response = request_generator.get(url=url, auth=self.auth)
+            response = self.request_generator.get(url=url)
         except requests.exceptions.Timeout as e:
 
             if not suppress_errors:
@@ -614,8 +613,7 @@ class IceApi(object):
         data = {'queryString': query}
         headers = {'Content-Type': 'application/json; charset=utf8'}
         try:
-            request_generator = self.auth.get_request_generator()
-            response = request_generator.request(
+            response = self.request_generator.request(
                 'POST', url,
                 auth=self.auth,
                 data=json.dumps(data),
@@ -665,8 +663,8 @@ class IceApi(object):
         if link_id:
             headers['id'] = link_id
 
-        request_generator = self.auth.get_request_generator()
-        response = request_generator.request('POST', entry_experiments_url, auth=self.auth,
+        request_generator = self.request_generator
+        response = request_generator.request('POST', entry_experiments_url,
                                              data=json_str,
                                              headers=headers)
 
@@ -693,8 +691,8 @@ class IceApi(object):
 
         # Look up the links associated with this ICE part
         entry_experiments_rest_url = '%s/rest/parts/%s/experiments/' % (self.base_url, ice_entry_id)
-        request_generator = self.auth.get_request_generator()
-        response = request_generator.request('GET', entry_experiments_rest_url, auth=self.auth,
+
+        response = self.request_generator.request('GET', entry_experiments_rest_url,
                                              headers=_JSON_CONTENT_TYPE_HEADER)
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
@@ -751,8 +749,7 @@ class IceApi(object):
         # query ICE to get the list of existing links for this part
         entry_experiments_rest_url = '%s/rest/parts/%s/experiments/' % (self.base_url, ice_entry_id)
         logger.info(entry_experiments_rest_url)
-        request_generator = self.auth.get_request_generator()
-        response = request_generator.request('GET', entry_experiments_rest_url, auth=self.auth,
+        response = self.request_generator.request('GET', entry_experiments_rest_url,
                                              headers=_JSON_CONTENT_TYPE_HEADER)
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
@@ -784,6 +781,6 @@ class IceApi(object):
         if outdated_study_links:
             for outdated_link in outdated_study_links:
                 self._create_or_update_link(study_name, study_url, entry_experiments_rest_url,
-                                            auth=self.auth, link_id=outdated_link.get('id'))
+                                            link_id=outdated_link.get('id'))
         else:
             self._create_or_update_link(study_name, study_url, entry_experiments_rest_url)

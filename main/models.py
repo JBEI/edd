@@ -8,6 +8,7 @@ import os.path
 import re
 import warnings
 
+from builtins import str
 from collections import defaultdict
 from django.conf import settings
 from django.contrib.auth import get_user_model

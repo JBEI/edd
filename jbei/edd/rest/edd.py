@@ -1,10 +1,10 @@
+# -*- coding: utf-8 -*-
 """
 Contains utility classes for connecting with and gathering data from EDD's REST API. This initial
 implementation, as well as the REST API itself, can use some additions/improvements over time,
 but is implemented to initially fulfill the basic need to connect to EDD programmatically.
 """
 
-# -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 import jbei
 from jbei.rest.request_generators import SessionRequestGenerator

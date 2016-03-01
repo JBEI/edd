@@ -11,7 +11,7 @@ EDD_URL = 'https://edd-test2.jbei.org/'
 ICE_URL = 'https://registry-test.jbei.org'
 ####################################################################################################
 
-SIMULATE_STRAIN_CREATION = False
+SIMULATE_STRAIN_CREATION = False  # test flag that skips the strain creation step
 PRINT_FOUND_ICE_PARTS = True
 PRINT_FOUND_EDD_STRAINS = True
 

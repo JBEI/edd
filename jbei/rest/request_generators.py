@@ -18,56 +18,85 @@ class RequestGenerator(object):
     VERIFY_SSL_DEFAULT = True
     DEFAULT_TIMEOUT = None
 
-    def __init__(self, timeout=DEFAULT_TIMEOUT, verify_ssl_cert=VERIFY_SSL_DEFAULT):
+    def __init__(self, timeout=DEFAULT_TIMEOUT, verify_ssl_cert=VERIFY_SSL_DEFAULT, auth=None):
         self._timeout = timeout
         self._verify_ssl_cert = verify_ssl_cert
+        self._auth = auth
 
+    ############################################
+    # 'with' context manager implementation ###
+    ############################################
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         # no-op...no persistent resources to close
         pass
+    ############################################
 
     ################################################################################################
     # Same method signatures as static methods in the requests library. Strategy pattern! :-)
     ################################################################################################
     def request(self, method, url, **kwargs):
-        self._set_defaults(**kwargs)
+        kwargs = self._set_defaults(**kwargs)
         return requests.request(method, url, **kwargs)
 
     def head(self, url, **kwargs):
-        self._set_defaults(**kwargs)
+        kwargs = self._set_defaults(**kwargs)
         return requests.head(url, **kwargs)
 
     def get(self, url, **kwargs):
-        self._set_defaults(**kwargs)
+        kwargs = self._set_defaults(**kwargs)
         return requests.get(url, **kwargs)
 
     def post(self, url, data=None, **kwargs):
-        self._set_defaults(**kwargs)
+        kwargs = self._set_defaults(**kwargs)
         return requests.post(url, data, **kwargs)
 
     def put(self, url, data=None, **kwargs):
-        self._set_defaults(**kwargs)
+        kwargs = self._set_defaults(**kwargs)
         return requests.put(url, data, **kwargs)
 
     def patch(self, url, data=None, **kwargs):
-        self._set_defaults(**kwargs)
+        kwargs = self._set_defaults(**kwargs)
         return requests.patch(url, data, **kwargs)
 
     def delete(self, url, **kwargs):
-        self._set_defaults(**kwargs)
+        kwargs = self._set_defaults(**kwargs)
         return requests.delete(url, **kwargs)
 
     def _set_defaults(self, **kwargs):
-        # if not explicitly provided, use the default timeout configured in the constructor
-        if TIMEOUT_KEY not in kwargs:
-            kwargs[TIMEOUT_KEY] = self._timeout
+        """
+        For any defaults specified in this RequestGenerator and explicitly set via kwargs
+        parameters, applies the default value
+        :param kwargs: dictionary of keyword arguments to the request that's about to be made.
+        kwargs is never modified in case clients construct their own dictionaries for use across
+        multiple HTTP requests.
+        :return: a dictionary with defaults applied as appropriate. If there are any defaults to
+        apply, this will be a different dictionary that kwargs.
+        """
+        temp = None
 
-        # if not explicitly providid, use the default setting configured in the constructor
-        if VERIFY_KEY not in kwargs:
-            kwargs[VERIFY_KEY] = self._verify_ssl_cert
+        # if not explicitly provided, use the default timeout configured in the constructor
+        if self._timeout and TIMEOUT_KEY not in kwargs:
+            if not temp:
+                temp = kwargs.copy()
+            temp[TIMEOUT_KEY] = self._timeout
+
+        # if not explicitly provided, use the default setting configured in the constructor
+        if self._verify_ssl_cert and VERIFY_KEY not in kwargs:
+            if not temp:
+                temp = kwargs.copy()
+            temp[VERIFY_KEY] = self._verify_ssl_cert
+
+        if self._auth and AUTH_KEY not in kwargs:
+            if not temp:
+                temp = kwargs.copy()
+            temp[AUTH_KEY] = self._auth
+
+        if temp:
+            return temp
+        return kwargs
 
     def set_timeout(self, timeout):
         """
@@ -76,6 +105,9 @@ class RequestGenerator(object):
         :param timeout: a tuple of (connection timeout, read timeout) in seconds
         """
         self._timeout = timeout
+
+    def set_auth(self, auth):
+        self.auth=auth
 
 
 class SessionRequestGenerator(RequestGenerator):
@@ -86,10 +118,11 @@ class SessionRequestGenerator(RequestGenerator):
     session context.
     """
 
-    def __init__(self, session, timeout=RequestGenerator.DEFAULT_TIMEOUT,
+    def __init__(self, session, auth=None, timeout=RequestGenerator.DEFAULT_TIMEOUT,
                  verify_ssl_cert=RequestGenerator.VERIFY_SSL_DEFAULT):
         super(SessionRequestGenerator, self).__init__(timeout=timeout,
-                                                      verify_ssl_cert=verify_ssl_cert)
+                                                      verify_ssl_cert=verify_ssl_cert,
+                                                      auth=auth)
         self._session = session
 
     ############################################
@@ -103,26 +136,34 @@ class SessionRequestGenerator(RequestGenerator):
     ############################################
 
     def request(self, method, url, **kwargs):
+        kwargs = self._set_defaults(**kwargs)
         return self._session.request(method, url, **kwargs)
 
     def head(self, url, **kwargs):
+        kwargs = self._set_defaults(**kwargs)
         return self._session.head(url, **kwargs)
 
     def get(self, url, **kwargs):
+        kwargs = self._set_defaults(**kwargs)
         return self._session.get(url, **kwargs)
 
     def post(self, url, data=None, **kwargs):
+        kwargs = self._set_defaults(**kwargs)
         return self._session.post(url, data, **kwargs)
 
     def put(self, url, data=None, **kwargs):
+        kwargs = self._set_defaults(**kwargs)
         return self._session.put(url, data, **kwargs)
 
     def patch(self, url, data=None, **kwargs):
+        kwargs = self._set_defaults(**kwargs)
         return self._session.patch(url, data, **kwargs)
 
     def delete(self, url, **kwargs):
+        kwargs = self._set_defaults(**kwargs)
         return self._session.delete(url, **kwargs)
 
 
 VERIFY_KEY = 'verify'
 TIMEOUT_KEY = 'timeout'
+AUTH_KEY = 'auth'
