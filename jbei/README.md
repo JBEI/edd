@@ -66,18 +66,34 @@ documented there.
     * You may need to relaunch the terminal to see the proper Python version. Test by running
     `python --version`
 
-4. Create a [virtual environment](http://docs.python-guide.org/en/latest/dev/virtualenvs/) to
+4. Set up your computer to allow visibilty into hidden files.
+
+    If you're comfortable with the Terminal, and particularly with:
+      * viewing hidden files
+      * using command line tools to edit text files
+
+    then there's nothing to do for this step.
+
+    Otherwise, the simplest way forward is
+    to run the command below in the Terminal. It will enable you to see hidden files in the Finder
+    and in the file viewer launched by the File -> Open menu in any text editor:
+
+    `defaults write com.apple.finder AppleShowAllFiles YES`
+
+5. Create a [virtual environment](http://docs.python-guide.org/en/latest/dev/virtualenvs/) to
 isolate
 dependencies for these scripts from other Python code on your computer. Even if you don't do any
-other Python work at present, it's best to start off on the right foot in case you need to do it
+other Python work at present, it's best to start off on the right foot in case you need to do so
 later on.
 
    * Install virtualenvwrapper
 
        `sudo pip install virtualenvwrapper`
-   * Add the following lines to your shell startup file (e.g. `~/.bash_profile`), or create one
-   if it doesn't exist. Note that this file may not visible in Finder by default, or from the
-   Terminal unless you use `ls -a` to show all files.
+   * Add the following lines to your shell startup file (e.g. `/Users/your_username/.bash_profile`), or create one
+   if it doesn't exist. Remember that because this file is hidden (starts with a '.'), it may not
+   visible by default (see previous step).
+   
+   Open the text editor of your choice to open/create `.bash_profile` and add the following lines:
 
             # configure virtualenvwrapper to isolate Python environments
             export WORKON_HOME=$HOME/.virtualenvs
@@ -91,7 +107,7 @@ later on.
             mkvirtualenv jbei-scripts
             workon jbei-scripts
 
-5. Check that your Terminal is working in the context of the the virtual environment you just
+6. Check that your Terminal is working in the context of the the virtual environment you just
 created.
 
     After running commands above to create a virtual environment, you'll want to get in the habit of
