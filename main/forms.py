@@ -151,7 +151,7 @@ class RegistryValidator(object):
     def load_part_from_ice(self, value):
         try:
             update = Update.load_update()
-            ice = IceApi(user_email=update.mod_by.email)
+            ice = IceApi(HmacAuth.get(username=update.mod_by.email))
             (self.part, url) = ice.fetch_part(value)
             self.part['url'] = ''.join((ice.base_url, '/entry/', str(self.part['id']), ))
         except Exception:
