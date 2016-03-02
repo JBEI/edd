@@ -13,19 +13,17 @@ from __future__ import unicode_literals
 import base64
 import hashlib
 import hmac
+import importlib
+from jbei.rest.utils import remove_trailing_slash, CLIENT_ERROR_NOT_FOUND
+from jbei.rest.request_generators import RequestGenerator, SessionRequestGenerator
+from jbei.util.deprecated import deprecated
 import json
 import logging
-import re
 import os
-import importlib
-
+import re
 import requests
 from requests.auth import AuthBase
 from requests.compat import urlparse
-from jbei.rest.utils import remove_trailing_slash, CLIENT_ERROR_NOT_FOUND
-
-from jbei.rest.request_generators import RequestGenerator, SessionRequestGenerator
-from jbei.util.deprecated import deprecated
 
 logger = logging.getLogger(__name__)
 
@@ -301,7 +299,11 @@ class HmacAuth(AuthBase):
         self._SECRET_KEY = secret_key
         self._request_generator = RequestGenerator(auth=self)
 
-    def get_request_generator(self):
+    @property
+    def request_generator(self):
+        """
+        Get the request generator responsible for creating all requests to the remote server.
+        """
         return self._request_generator
 
     def __call__(self, request):
@@ -407,7 +409,11 @@ class SessionAuth(AuthBase):
         self._request_generator = SessionRequestGenerator(session, auth=self, timeout=timeout,
                                                           verify_ssl_cert=verify_ssl_cert)
 
-    def get_request_generator(self):
+    @property
+    def request_generator(self):
+        """
+        Get the request generator responsible for creating all requests to the remote server.
+        """
         return self._request_generator
 
     def __call__(self, request):
@@ -511,7 +517,7 @@ class IceApi(object):
         if not auth:
             raise ValueError("A valid authentication mechanism must be provided")
 
-        self.request_generator = auth.get_request_generator()
+        self.request_generator = auth.request_generator
 
         # chop off the trailing '/', if any, so we can write easier-to-read URL snippets in our code
         # (starting w '%s/'). also makes our code trailing-slash agnostic.

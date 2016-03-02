@@ -259,7 +259,11 @@ class EddSessionAuth(AuthBase):
         self._request_generator = DrfSessionRequestGenerator(base_url, session, timeout=timeout,
                                                              verify_ssl_cert=verify_ssl_cert)
 
-    def get_request_generator(self):
+    @property
+    def request_generator(self):
+        """
+        Get the request generator responsible for creating all requests to the remote server.
+        """
         return self._request_generator
 
     def __call__(self, request):
@@ -444,7 +448,7 @@ class EddApi(object):
 
         # make the HTTP request
         url = '%s/rest/strain' % self.base_url
-        request_generator = self.session_auth.get_request_generator()
+        request_generator = self.session_auth.request_generator
         response = request_generator.get(url, params=search_params, headers=self._json_header)
 
         # throw an error for unexpected reply
@@ -467,7 +471,7 @@ class EddApi(object):
 
         # make the HTTP request
         url = '%s/rest/study/%d/lines/' % (self.base_url, study_pk)
-        request_generator = self.session_auth.get_request_generator()
+        request_generator = self.session_auth.request_generator
         response = request_generator.get(url, headers=self._json_header)
 
         # throw an error for unexpected reply
@@ -505,7 +509,7 @@ class EddApi(object):
         if description:
             new_line['description'] = description
 
-        request_generator = self.session_auth.get_request_generator()
+        request_generator = self.session_auth.request_generator
         response = request_generator.post(url, headers=self._json_header, data=json.dumps(new_line))
 
         # throw an error for unexpected reply
@@ -535,7 +539,7 @@ class EddApi(object):
 
         # make the HTTP request
         url = '%s/rest/strain/' % self.base_url
-        request_generator = self.session_auth.get_request_generator()
+        request_generator = self.session_auth.request_generator
         response = request_generator.post(url, data=json.dumps(post_data),
                                           headers=self._json_header)
 
@@ -550,7 +554,7 @@ class EddApi(object):
 
     def get_study(self, pk):
         url = '%s/rest/study/%d' % (self.base_url, pk)
-        request_generator = self.session_auth.get_request_generator()
+        request_generator = self.session_auth.request_generator
         response = request_generator.get(url)
 
         # throw an error for unexpected reply
