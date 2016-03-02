@@ -231,6 +231,9 @@ def parse_csv(path):
 
 
 def print_found_ice_parts(part_number_to_part_dict):
+    if not part_number_to_part_dict:
+        return
+
     # compute width for columnar output
     space = 3
     col1_width = max(len(str(search_id)) for search_id in part_number_to_part_dict.keys()) + space
@@ -303,12 +306,27 @@ def get_ice_parts(base_url, ice_username, password, part_numbers_list,
                                "part.")
                 continue
 
-            search_id = int(match.group(1))
-            part = ice.fetch_part(search_id)
+            search_id = local_ice_part_number
+            part = ice.fetch_part(local_ice_part_number)
 
             if not part:
                 logger.warning("Couldn't locate part \"%s\" (#%d)" % (local_ice_part_number,
                                                                       list_position))
+
+            # double-check for a coding error that occurred during testing. initial test parts
+            # had "JBX_*" part numbers that matched their numeric ID, but this isn't always the
+            # case!
+            elif part.part_id != search_id:
+                logger.warning("Couldn't locate part \"%(csv_part_number)s\" (#%(list_position)d "
+                               "in the file) by part number. An ICE part was found with numeric "
+                               "ID %(numeric_id)s, but its part number (%(part_number)s) didn't "
+                               "match the search part number" %
+                                {
+                                'csv_part_number': local_ice_part_number,
+                                'list_position': list_position,
+                                'numeric_id': part.id,
+                                'part_number': part.part_id
+                                })
             else:
                 part_number_to_part_dict[local_ice_part_number] = part
 
@@ -450,6 +468,8 @@ def create_missing_strains(edd, non_existent_edd_strains, strains_by_part_number
               'total': ice_part_count,
           })
 
+    # loop while gathering user input -- gives user a chance to list strains that will
+    # be created
     while True:
         result = raw_input('Do you want to create EDD strains for all of these %d parts? ('
                            'Y/n/list): ' % non_existent_strain_count).upper()
@@ -477,6 +497,7 @@ def create_missing_strains(edd, non_existent_edd_strains, strains_by_part_number
             print('Aborting line creation')
             return STRAINS_NOT_CREATED
 
+    # attempt strain creation, aborting after the first failure
     created_strain_count = 0
     try:
         for ice_part in non_existent_edd_strains:
