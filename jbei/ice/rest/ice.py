@@ -615,7 +615,6 @@ class IceApi(object):
         try:
             response = self.request_generator.request(
                 'POST', url,
-                auth=self.auth,
                 data=json.dumps(data),
                 headers=headers
             )
