@@ -4,6 +4,7 @@
 #    This is for parsing the output of HPLC machines.
 ##
 import logging
+import re
 from collections import OrderedDict
 from collections import namedtuple
 
@@ -20,15 +21,19 @@ class HPLC_Parser:
         self.logger = HPLC_Parser.logger
         self.input_stream = input_stream   # The stream that is being parsed
 
-        # samples format: { 'Sample Name': [Compound_Entry('Compound', 'Amount'), ...], ... }
+        # samples format: { 'Sample Name': [Compound_Entry('compound', 'amount'), ...], ... }
         self.samples = OrderedDict()       # The final data resulting from batch parsing
-        self.compound_entry = namedtuple('Compound_Entry', ['Compound', 'Amount'])
+        self.compound_entry = namedtuple('Compound_Entry', ['compound', 'amount'])
 
         self.compound_record = namedtuple(
-            'Compound_Record', ['Compound', 'Line', 'Assay', 'Timepoints'])
+            'Compound_Record', ['compound', 'line', 'assay', 'timepoints'])
 
         self.has_parsed = False
         self.formatted_results = None
+
+        # regex formulated with the nifty https://regex101.com/ tool
+        # reads a samples name and captures (line, Time, assay)
+        self.sample_name_regex = re.compile(r'(.*)_HPLC@([0-9]+(?:\.[0-9]*)?)(?:_([^@]+))?')
 
         # Integer indices for standard format parsing
         self.amount_begin_position = None
@@ -41,8 +46,8 @@ class HPLC_Parser:
 
         THIS CLASS IS NOT THREAD SAFE.
 
-        returns records = [('Compound', 'Line', 'Assay', Timepoints[[time, Amount], ...]), ...]
-        ( Assay may be None )
+        returns records = [('compound', 'line', 'assay', timepoints[[time, amount], ...]), ...]
+        ( assay may be None )
         """
         if self.has_parsed:
             return self.formatted_results
@@ -52,6 +57,9 @@ class HPLC_Parser:
 
         if not input_stream:
             raise HPLC_Parse_Exception("No data stream provided")
+
+        # TODO: Verify that long sample names don't clip!
+        #        ...This can't be test without interacting with the HPLC machine.
 
         # TODO: format detection is fragile... needs attention
         # TODO: Add warnings if the 96 well columns don't line up
@@ -98,22 +106,75 @@ class HPLC_Parser:
         return self.formatted_results
 
     def _format_samples_for_raw_input_record(self):
-        # TODO:!!
-
-        # formatted_samples = self.samples
+        formatted_samples = []
         # return formatted_samples
 
+        compound_record_dict = {} # { compound: [ compound_record_for_assay1, ... ], ... } 
+
+        for sample_name in self.samples:
+            # Collects the DB names from the sample_name.
+            line = time = assay = None
+            match_result = self.sample_name_regex.match( sample_name )
+            if match_result:
+                # Note: assay may be None
+                line, time, assay = match_result.group(1,2,3)
+            else:
+                # if the sample_name is not in expected format...
+                line = sample_name
+                self.logger.warn("Sample name '%s' not in the expected format! %s",
+                    sample_name,
+                    "[LINE]_HPLC@[TIME] or [LINE]_HPLC@[TIME]_[REPLICATE]")
+
+            # create formatted record for each compund entry
+            for entry in self.samples[sample_name]:
+                selected_record = None
+                if entry.compound not in compound_record_dict:
+                    compound_record_dict[entry.compound] = []
+                for record in compound_record_dict[entry.compound]:
+                    # check assay and line, may be different if on a different sample
+                    if record.assay == assay:
+                        if record.line == line:
+                            selected_record = record
+                if not selected_record:
+                    record = self.compound_record(
+                        entry.compound,
+                        line,
+                        assay,
+                        [[time,entry.amount]])
+                    compound_record_dict[entry.compound].append(record)
+                else:
+                    selected_record.timepoints.append([time,entry.amount])
+
+                # if compound_record_dict:
+                #     self.compound_record(entry.compound, )
+
+        # self.compound_record = namedtuple(
+        #     'compound_Record', ['compound', 'line', 'assay', 'timepoints'])
+
+        # samples format: { 'Sample Name': [compound_Entry('compound', 'amount'), ...], ... }
+
+
         # LINE_HPLC@TIME_REP
-        # measurement = Compound
+        # measurement = compound
         # line_name = LINE or ENTIRE_SAMPLE_NAME
         # assay_name = REP or `None`
-        # measurement_point_buffer = [ [time,Amount], ...  ] or [ [None,Amount], ... ]
+        # measurement_point_buffer = [ [time,amount], ...  ] or [ [None,amount], ... ]
         # metaData = {}
+
+
+
+
 
         # TODO: in importer: None(timepoint) -> WARNING
         # TODO: in importer: None(assay) -> `None`
 
-        return self.samples
+        compound_records = []
+        for key in compound_record_dict:
+            compound_records.extend( compound_record_dict[key] )
+
+        # return self.samples
+        # return compound_record_dict
+        return compound_records
 
     def _check_is_96_well_format(self, input_stream):
         """Checks if the file is in 96 well plate format.
@@ -420,10 +481,7 @@ class HPLC_Parser:
                     self.compound_entry(compound_string, amount_string))
 
 
-
-
-
-
+# testing hook
 if __name__ == "__main__":
     import sys, os, io
 
