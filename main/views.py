@@ -47,7 +47,8 @@ from .utilities import (
     JSONDecimalEncoder, get_edddata_carbon_sources, get_edddata_measurement, get_edddata_misc,
     get_edddata_strains, get_edddata_study, get_edddata_users, get_selected_lines,
 )
-
+from .parsers.hplc import HPLC_Parser, HPLC_Parser_Exception
+from ..util import RawImportRecord
 
 logger = logging.getLogger(__name__)
 
@@ -1290,6 +1291,38 @@ def utilities_parse_table(request):
                 "file_type": "csv",
                 "file_data": data,
             })
+    if edd_file_type == "txt":
+        try:
+            # We pass the request directly along, so it can be read as a stream by the parser
+            parser = HPLC_Parser(request)
+            compound_records = parser.parse_hplc()
+            hplc_protocol_string = "hplc"
+
+            result = []
+            for record in compound_records:
+                metadata = {}
+                raw_record = RawImportRecord(
+                    hplc_protocol_string,
+                    record.compound,
+                    record.line,
+                    record.assay,
+                    record.timepoints,  # warning: shallow copy(s)
+                    metadata)
+                result.append(raw_record)
+            return JsonResponse({
+                "file_type": "txt",
+                "file_data": result,  # TODO: verify this is correct please!
+            })
+            # TODO: better exception messages.
+        except ImportError as e:
+            return JsonResponse({
+                "python_error": "a thing went wrong..."
+            })
+        except HPLC_Parser_Exception as e:
+            return JsonResponse({
+                "python_exception": "Bad input. Type unspecified. Someone should fix this..."
+            })
+
     return JsonResponse({
         "python_error": "The uploaded file could not be interpreted as either an Excel "
                         "spreadsheet or an XML file.  Please check that the contents are "
