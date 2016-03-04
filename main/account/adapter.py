@@ -45,7 +45,7 @@ class EDDSocialAccountAdapter(DefaultSocialAccountAdapter):
         if 'email' not in sociallogin.account.extra_data:
             return
         qs = EmailAddress.objects.filter(email__iexact=sociallogin.account.extra_data['email'])
-        if qs.exists:
+        if qs.exists():
             user = qs[0].user
             account = user.socialaccount_set.first()
             provider = providers.registry.by_id(account.provider) if account else None
