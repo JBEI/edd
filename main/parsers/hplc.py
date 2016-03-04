@@ -7,13 +7,8 @@ import logging
 from collections import OrderedDict
 from collections import namedtuple
 
-# TODO: Finish Restructure as an Interable Object, allowing samples or lines to
-# be processed individually rather then in one big batch. __next__()
-
-
 class HPLC_Parse_Exception(Exception):
     pass
-
 
 class HPLC_Parser:
     logger = logging.getLogger(__name__)
@@ -21,11 +16,19 @@ class HPLC_Parser:
     # The maximum number of lines to read before giving up on finding the header
     max_header_line_count = 20
 
-    def __init__(self):
+    def __init__(self, input_stream):
         self.logger = HPLC_Parser.logger
-        self.input_stream = None       # The stream that is being parsed
-        self.samples = OrderedDict()   # The final data resulting from batch parsing
+        self.input_stream = input_stream   # The stream that is being parsed
+
+        # samples format: { 'Sample Name': [Compound_Entry('Compound', 'Amount'), ...], ... }
+        self.samples = OrderedDict()       # The final data resulting from batch parsing
         self.compound_entry = namedtuple('Compound_Entry', ['Compound', 'Amount'])
+
+        self.compound_record = namedtuple(
+            'Compound_Record', ['Compound', 'Line', 'Assay', 'Timepoints'])
+
+        self.has_parsed = False
+        self.formatted_results = None
 
         # Integer indices for standard format parsing
         self.amount_begin_position = None
@@ -33,20 +36,32 @@ class HPLC_Parser:
         self.compound_begin_position = None
         self.compound_end_position = None
 
-    def parse_hplc(self, input_stream):
-        """Parses textual HPLC data from it.
+    def parse_hplc(self):
+        """Parses textual HPLC data from the input stream, returning data formatted for use.
 
-         returns samples = { 'Sample Name': [('Compound', 'Amount'), ...], ... }
-         """
+        THIS CLASS IS NOT THREAD SAFE.
+
+        returns records = [('Compound', 'Line', 'Assay', Timepoints[[time, Amount], ...]), ...]
+        ( Assay may be None )
+        """
+        if self.has_parsed:
+            return self.formatted_results
+        self.has_parsed = True
+
+        input_stream = self.input_stream
 
         if not input_stream:
             raise HPLC_Parse_Exception("No data stream provided")
 
         # TODO: format detection is fragile... needs attention
-        # TODO: use 'with' and 'yield'
         # TODO: Add warnings if the 96 well columns don't line up
         # TODO: Add warning if line is shorter then expected
         # TODO: HPLC_Parse_Exception for what line parsing failed on!
+
+        # TODO: Add option to return `None`s for unidenfified peaks
+        # TODO: capture other data elements, and return or not based on option
+
+        # # ? : Messages -> Logger
 
         if self._check_is_96_well_format(input_stream):
             self.logger.info("Detected 96 well format in HPLC file")
@@ -72,6 +87,31 @@ class HPLC_Parser:
         self.logger.info("successfully parsed the HPLC data")
 
         input_stream.close()
+
+        # TODO: add formatter to RawImport... thingy
+        # TODO: ...this might require parsing the name format locally?
+
+        # .+_HPLC@[0-9]+\.?[0-9]*?(_REPLICATE#)?
+
+        # return self.samples
+        self.formatted_results = self._format_samples_for_raw_input_record()
+        return self.formatted_results
+
+    def _format_samples_for_raw_input_record(self):
+        # TODO:!!
+
+        # formatted_samples = self.samples
+        # return formatted_samples
+
+        # LINE_HPLC@TIME_REP
+        # measurement = Compound
+        # line_name = LINE or ENTIRE_SAMPLE_NAME
+        # assay_name = REP or `None`
+        # measurement_point_buffer = [ [time,Amount], ...  ] or [ [None,Amount], ... ]
+        # metaData = {}
+
+        # TODO: in importer: None(timepoint) -> WARNING
+        # TODO: in importer: None(assay) -> `None`
 
         return self.samples
 
@@ -378,3 +418,48 @@ class HPLC_Parser:
             if amount_string != u'-' and compound_string != u'-':
                 self.samples[sample_name].append(
                     self.compound_entry(compound_string, amount_string))
+
+
+
+
+
+
+if __name__ == "__main__":
+    import sys, os, io
+
+    logger = logging.getLogger(__name__)
+
+    if len(sys.argv) is not 2:
+        print("usage: python hplc_parser.py input_file_path")
+        exit(1)
+
+    log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+
+    logging.basicConfig(
+        filename='hplc_parser.log',
+        level=logging.DEBUG,
+        format=log_format)
+
+    # echo all debug statements to stdout
+    formatter = logging.Formatter( log_format )
+    sh = logging.StreamHandler(sys.stdout)
+    sh.setLevel(logging.DEBUG)
+    sh.setFormatter(formatter)
+    logger.addHandler(sh)
+
+    # parse the provided filepath
+    input_file_path = sys.argv[1]
+    # samples = parse_hplc_file(input_file_path)
+
+
+    if not os.path.exists(input_file_path):
+        raise IOError("Error: unable to locate file %s" % input_file_path)
+
+    with io.open(input_file_path, "r", encoding = 'utf-16') as input_file:
+        p = HPLC_Parser(input_file)
+        samples = p.parse_hplc()
+
+    # activate interactive debugger with our information inside
+    import IPython
+    IPython.embed(banner1="\n\nparse function returned, values stored in dict 'samples'")
+
