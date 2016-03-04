@@ -47,7 +47,10 @@ from .utilities import (
     JSONDecimalEncoder, get_edddata_carbon_sources, get_edddata_measurement, get_edddata_misc,
     get_edddata_strains, get_edddata_study, get_edddata_users, get_selected_lines,
 )
-from .parsers.hplc import HPLC_Parser, HPLC_Parser_Exception
+from .parsers.hplc import (
+    HPLC_Parser, HPLC_Parse_Missing_Argument_Exception,
+    HPLC_Parse_No_Header_Exception, HPLC_Parse_Misaligned_Blocks_Exception
+)
 from ..util import RawImportRecord
 
 logger = logging.getLogger(__name__)
@@ -1318,9 +1321,17 @@ def utilities_parse_table(request):
             return JsonResponse({
                 "python_error": "a thing went wrong..."
             })
-        except HPLC_Parser_Exception as e:
+        except HPLC_Parse_Missing_Argument_Exception as e:
             return JsonResponse({
-                "python_exception": "Bad input. Type unspecified. Someone should fix this..."
+                "python_exception": "HPLC parsing failed: input stream None"
+            })
+        except HPLC_Parse_No_Header_Exception as e:
+            return JsonResponse({
+                "python_exception": "HPLC parsing failed: unable to find header!"
+            })
+        except HPLC_Parse_Misaligned_Blocks_Exception as e:
+            return JsonResponse({
+                "python_exception": "HPLC parsing failed: mismatched row count amoung blocks!"
             })
 
     return JsonResponse({
