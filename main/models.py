@@ -1694,28 +1694,39 @@ class MetaboliteSpecies(models.Model):
 
 
 # XXX MONKEY PATCHING
-def User_initials(self):
+def guess_initials(user):
+    return (user.first_name or '')[:1] + (user.last_name or '')[:1]
+
+
+def User_profile(self):
+    if hasattr(self, '_profile'):
+        return self._profile
     try:
-        return self.userprofile.initials
-    except ObjectDoesNotExist:
+        from edd.profile.models import UserProfile
+        try:
+            self._profile = UserProfile.objects.get(user=self)
+        except ObjectDoesNotExist:
+            self._profile = UserProfile.objects.create(user=self, initials=guess_initials(self))
+        return self._profile
+    except:
+        logger.exception('Failed to load a profile object for %s', self)
         return None
+
+
+def User_initials(self):
+    return self.profile.initials if self.profile else None
 
 
 def User_institution(self):
-    try:
-        institutions = self.userprofile.institutions.all()
-        if len(institutions) > 0:
-            return institutions[0].institution_name
-        return None
-    except ObjectDoesNotExist:
-        return None
+    if self.profile and self.profile.institutions.count():
+        return self.profile.institutions.values_list('institution_name')[0][0]
+    return None
 
 
 def User_institutions(self):
-    try:
-        return self.userprofile.institutions.all()
-    except ObjectDoesNotExist:
-        return []
+    if self.profile:
+        return self.profile.institutions.all()
+    return []
 
 
 def User_to_json(self, depth=0):
@@ -1761,6 +1772,7 @@ User = None
 def patch_user_model():
     global User
     User = get_user_model()
+    User.add_to_class("profile", property(User_profile))
     User.add_to_class("to_json", User_to_json)
     User.add_to_class("to_solr_json", User_to_solr_json)
     User.add_to_class("initials", property(User_initials))
