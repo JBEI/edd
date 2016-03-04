@@ -8,6 +8,7 @@ import re
 from collections import OrderedDict
 from collections import namedtuple
 
+# TODO: specific Exception types
 class HPLC_Parse_Exception(Exception):
     pass
 
@@ -41,6 +42,8 @@ class HPLC_Parser:
         self.compound_begin_position = None
         self.compound_end_position = None
 
+        self.expected_row_count = None
+
     def parse_hplc(self):
         """Parses textual HPLC data from the input stream, returning data formatted for use.
 
@@ -60,16 +63,14 @@ class HPLC_Parser:
 
         # TODO: Verify that long sample names don't clip!
         #        ...This can't be test without interacting with the HPLC machine.
-
         # TODO: format detection is fragile... needs attention
-        # TODO: Add warnings if the 96 well columns don't line up
+        # TODO: Add option to return `None`s for unidenfified peaks
+        # TODO: capture other data elements, and return or not based on option
+        # # ? : Messages -> Logger
+
         # TODO: Add warning if line is shorter then expected
         # TODO: HPLC_Parse_Exception for what line parsing failed on!
 
-        # TODO: Add option to return `None`s for unidenfified peaks
-        # TODO: capture other data elements, and return or not based on option
-
-        # # ? : Messages -> Logger
 
         if self._check_is_96_well_format(input_stream):
             self.logger.info("Detected 96 well format in HPLC file")
@@ -341,8 +342,13 @@ class HPLC_Parser:
         while not end_of_block:
             line = input_stream.readline()
 
+            if self.expected_row_count and line_number > self.expected_row_count:
+                raise HPLC_Parse_Exception("More rows found then expected!")
+
             if line.startswith('#'):
                 end_of_block = True
+                if self.expected_row_count and line_number < self.expected_row_count:
+                    raise HPLC_Parse_Exception("Less rows found then expected!")
 
             for index in range(len(column_headers)):
                 if "Sample" in column_headers[index]:
