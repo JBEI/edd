@@ -1703,10 +1703,9 @@ def User_profile(self):
         return self._profile
     try:
         from edd.profile.models import UserProfile
-        try:
-            self._profile = UserProfile.objects.get(user=self)
-        except ObjectDoesNotExist:
-            self._profile = UserProfile.objects.create(user=self, initials=guess_initials(self))
+        self._profile = UserProfile.get_or_create(
+            user=self, defaults={'initials': guess_initials(self)}
+        )
         return self._profile
     except:
         logger.exception('Failed to load a profile object for %s', self)
