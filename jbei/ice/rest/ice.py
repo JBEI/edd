@@ -16,7 +16,6 @@ import hmac
 import importlib
 from jbei.rest.utils import remove_trailing_slash, CLIENT_ERROR_NOT_FOUND
 from jbei.rest.request_generators import RequestGenerator, SessionRequestGenerator
-from jbei.util.deprecated import deprecated
 import json
 import logging
 import os
@@ -568,7 +567,7 @@ class IceApi(object):
 
             return None
 
-    @deprecated  # new code should use fetch_part() instead. MF 2/17/16
+
     def fetch_part_json(self, entry_id, suppress_errors=False):
         """
         Retrieves a part using any of the unique identifiers: part number, synthetic id, or
@@ -580,6 +579,7 @@ class IceApi(object):
         raising Exceptions.
         :return: The JSON response from ICE, or None if an an Exception occurred but suppress_errors
         was true.
+        # DEPRECATED: new code should use fetch_part() instead. MF 2/17/16
         """
 
         url = '%s/rest/parts/%s' % (self.base_url, entry_id)

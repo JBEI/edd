@@ -22,6 +22,7 @@ class RequestGenerator(object):
         self._timeout = timeout
         self._verify_ssl_cert = verify_ssl_cert
         self._auth = auth
+        self._request_api = requests
 
     ############################################
     # 'with' context manager implementation ###
@@ -39,31 +40,31 @@ class RequestGenerator(object):
     ################################################################################################
     def request(self, method, url, **kwargs):
         kwargs = self._set_defaults(**kwargs)
-        return requests.request(method, url, **kwargs)
+        return self._request_api.request(method, url, **kwargs)
 
     def head(self, url, **kwargs):
         kwargs = self._set_defaults(**kwargs)
-        return requests.head(url, **kwargs)
+        return self._request_api.head(url, **kwargs)
 
     def get(self, url, **kwargs):
         kwargs = self._set_defaults(**kwargs)
-        return requests.get(url, **kwargs)
+        return self._request_api.get(url, **kwargs)
 
     def post(self, url, data=None, **kwargs):
         kwargs = self._set_defaults(**kwargs)
-        return requests.post(url, data, **kwargs)
+        return self._request_api.post(url, data, **kwargs)
 
     def put(self, url, data=None, **kwargs):
         kwargs = self._set_defaults(**kwargs)
-        return requests.put(url, data, **kwargs)
+        return self._request_api.put(url, data, **kwargs)
 
     def patch(self, url, data=None, **kwargs):
         kwargs = self._set_defaults(**kwargs)
-        return requests.patch(url, data, **kwargs)
+        return self._request_api.patch(url, data, **kwargs)
 
     def delete(self, url, **kwargs):
         kwargs = self._set_defaults(**kwargs)
-        return requests.delete(url, **kwargs)
+        return self._request_api.delete(url, **kwargs)
 
     def _set_defaults(self, **kwargs):
         """
@@ -123,6 +124,7 @@ class SessionRequestGenerator(RequestGenerator):
         super(SessionRequestGenerator, self).__init__(timeout=timeout,
                                                       verify_ssl_cert=verify_ssl_cert,
                                                       auth=auth)
+        self._request_api = session
         self._session = session
 
     ############################################
@@ -134,34 +136,6 @@ class SessionRequestGenerator(RequestGenerator):
     def __exit__(self, type, value, traceback):
         self._session.__exit__(type, value, traceback)
     ############################################
-
-    def request(self, method, url, **kwargs):
-        kwargs = self._set_defaults(**kwargs)
-        return self._session.request(method, url, **kwargs)
-
-    def head(self, url, **kwargs):
-        kwargs = self._set_defaults(**kwargs)
-        return self._session.head(url, **kwargs)
-
-    def get(self, url, **kwargs):
-        kwargs = self._set_defaults(**kwargs)
-        return self._session.get(url, **kwargs)
-
-    def post(self, url, data=None, **kwargs):
-        kwargs = self._set_defaults(**kwargs)
-        return self._session.post(url, data, **kwargs)
-
-    def put(self, url, data=None, **kwargs):
-        kwargs = self._set_defaults(**kwargs)
-        return self._session.put(url, data, **kwargs)
-
-    def patch(self, url, data=None, **kwargs):
-        kwargs = self._set_defaults(**kwargs)
-        return self._session.patch(url, data, **kwargs)
-
-    def delete(self, url, **kwargs):
-        kwargs = self._set_defaults(**kwargs)
-        return self._session.delete(url, **kwargs)
 
 
 VERIFY_KEY = 'verify'
