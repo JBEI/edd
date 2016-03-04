@@ -102,9 +102,9 @@ INSTALLED_APPS = (
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
-    # 'allauth.socialaccount.providers.github',
-    # 'allauth.socialaccount.providers.google',
-    # 'allauth.socialaccount.providers.linkedin_oauth2',
+    'allauth.socialaccount.providers.github',
+    'allauth.socialaccount.providers.google',
+    'allauth.socialaccount.providers.linkedin_oauth2',
 
     # EDD apps
     'main',
@@ -158,7 +158,7 @@ TEMPLATES = [
 # See https://pythonhosted.org/django-auth-ldap/install.html
 # See https://docs.djangoproject.com/en/1.7/howto/auth-remote-user/
 AUTHENTICATION_BACKENDS = (
-    'django_auth_ldap.backend.LDAPBackend',
+    'main.account.adapter.AllauthLDAPBackend',  # 'django_auth_ldap.backend.LDAPBackend',
     'django.contrib.auth.backends.RemoteUserBackend',
     'django.contrib.auth.backends.ModelBackend',
     # `allauth` specific authentication methods, such as login by e-mail
@@ -215,6 +215,7 @@ ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'https'
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
 ACCOUNT_USERNAME_REQUIRED = False
+SOCIALACCOUNT_ADAPTER = 'main.account.adapter.EDDSocialAccountAdapter'
 SOCIALACCOUNT_PROVIDERS = {
     'github': {
         'SCOPE': ['user', ],
