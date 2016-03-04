@@ -8,7 +8,6 @@ import re
 from collections import OrderedDict
 from collections import namedtuple
 
-
 class HPLC_Parse_Missing_Argument_Exception(Exception):
     pass
 
@@ -482,3 +481,59 @@ class HPLC_Parser:
             if amount_string != u'-' and compound_string != u'-':
                 self.samples[sample_name].append(
                     self.compound_entry(compound_string, amount_string))
+
+# testing hook
+if __name__ == "__main__":
+    import sys, os, io
+
+    logger = logging.getLogger(__name__)
+
+    if len(sys.argv) is not 2:
+        print("usage: python hplc_parser.py input_file_path")
+        exit(1)
+
+    log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+
+    logging.basicConfig(
+        filename='hplc_parser.log',
+        level=logging.DEBUG,
+        format=log_format)
+
+    # echo all debug statements to stdout
+    formatter = logging.Formatter( log_format )
+    sh = logging.StreamHandler(sys.stdout)
+    sh.setLevel(logging.DEBUG)
+    sh.setFormatter(formatter)
+    logger.addHandler(sh)
+
+    # parse the provided filepath
+    input_file_path = sys.argv[1]
+    # samples = parse_hplc_file(input_file_path)
+
+    from util import RawImportRecord
+    # from edd_utils.parsers.util import RawImportRecord
+
+    if not os.path.exists(input_file_path):
+        raise IOError("Error: unable to locate file %s" % input_file_path)
+
+    with io.open(input_file_path, "r", encoding = 'utf-16') as input_file:
+        p = HPLC_Parser(input_file)
+        compound_records = p.parse_hplc()
+        hplc_protocol_string = "hplc"
+
+        result = []
+        for record in compound_records:
+            metadata = {}
+            raw_record = RawImportRecord(
+                hplc_protocol_string,
+                record.compound,
+                record.line,
+                record.assay,
+                record.timepoints,  # warning: shallow copy(s)
+                metadata)
+            result.append(raw_record)
+
+    # activate interactive debugger with our information inside
+    import IPython
+    IPython.embed(banner1="\n\nparse function returned, values stored in dict 'samples'")
+

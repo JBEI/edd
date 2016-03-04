@@ -47,11 +47,6 @@ from .utilities import (
     JSONDecimalEncoder, get_edddata_carbon_sources, get_edddata_measurement, get_edddata_misc,
     get_edddata_strains, get_edddata_study, get_edddata_users, get_selected_lines,
 )
-from .parsers.hplc import (
-    HPLC_Parser, HPLC_Parse_Missing_Argument_Exception,
-    HPLC_Parse_No_Header_Exception, HPLC_Parse_Misaligned_Blocks_Exception
-)
-from ..util import RawImportRecord
 
 logger = logging.getLogger(__name__)
 
@@ -1296,6 +1291,12 @@ def utilities_parse_table(request):
             })
     if edd_file_type == "txt":
         try:
+            from edd_utils.parsers.hplc import (
+                HPLC_Parser, HPLC_Parse_Missing_Argument_Exception,
+                HPLC_Parse_No_Header_Exception, HPLC_Parse_Misaligned_Blocks_Exception
+                )
+            from edd_utils.parsers.util import RawImportRecord
+
             # We pass the request directly along, so it can be read as a stream by the parser
             parser = HPLC_Parser(request)
             compound_records = parser.parse_hplc()
