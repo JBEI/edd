@@ -8,14 +8,18 @@ import re
 from collections import OrderedDict
 from collections import namedtuple
 
+
 class HPLC_Parse_Missing_Argument_Exception(Exception):
     pass
+
 
 class HPLC_Parse_No_Header_Exception(Exception):
     pass
 
+
 class HPLC_Parse_Misaligned_Blocks_Exception(Exception):
     pass
+
 
 class HPLC_Parser:
     logger = logging.getLogger(__name__)
@@ -77,7 +81,6 @@ class HPLC_Parser:
 
         # TODO: Add warning if line is shorter then expected
 
-
         if self._check_is_96_well_format(input_stream):
             self.logger.info("Detected 96 well format in HPLC file")
             self._parse_96_well_format_samples(input_stream)
@@ -113,24 +116,22 @@ class HPLC_Parser:
         return self.formatted_results
 
     def _format_samples_for_raw_input_record(self):
-        formatted_samples = []
-        # return formatted_samples
 
-        compound_record_dict = {} # { compound: [ compound_record_for_assay1, ... ], ... } 
+        compound_record_dict = {}  # { compound: [ compound_record_for_assay1, ... ], ... }
 
         for sample_name in self.samples:
             # Collects the DB names from the sample_name.
             line = time = assay = None
-            match_result = self.sample_name_regex.match( sample_name )
+            match_result = self.sample_name_regex.match(sample_name)
             if match_result:
                 # Note: assay may be None
-                line, time, assay = match_result.group(1,2,3)
+                line, time, assay = match_result.group(1, 2, 3)
             else:
                 # if the sample_name is not in expected format...
                 line = sample_name
                 self.logger.warn("Sample name '%s' not in the expected format! %s",
-                    sample_name,
-                    "[LINE]_HPLC@[TIME] or [LINE]_HPLC@[TIME]_[REPLICATE]")
+                                 sample_name,
+                                 "[LINE]_HPLC@[TIME] or [LINE]_HPLC@[TIME]_[REPLICATE]")
 
             # create formatted record for each compund entry
             for entry in self.samples[sample_name]:
@@ -147,37 +148,17 @@ class HPLC_Parser:
                         entry.compound,
                         line,
                         assay,
-                        [[time,entry.amount]])
+                        [[time, entry.amount]])
                     compound_record_dict[entry.compound].append(record)
                 else:
-                    selected_record.timepoints.append([time,entry.amount])
-
-                # if compound_record_dict:
-                #     self.compound_record(entry.compound, )
-
-        # self.compound_record = namedtuple(
-        #     'compound_Record', ['compound', 'line', 'assay', 'timepoints'])
-
-        # samples format: { 'Sample Name': [compound_Entry('compound', 'amount'), ...], ... }
-
-
-        # LINE_HPLC@TIME_REP
-        # measurement = compound
-        # line_name = LINE or ENTIRE_SAMPLE_NAME
-        # assay_name = REP or `None`
-        # measurement_point_buffer = [ [time,amount], ...  ] or [ [None,amount], ... ]
-        # metaData = {}
-
-
-
-
+                    selected_record.timepoints.append([time, entry.amount])
 
         # TODO: in importer: None(timepoint) -> WARNING
         # TODO: in importer: None(assay) -> `None`
 
         compound_records = []
         for key in compound_record_dict:
-            compound_records.extend( compound_record_dict[key] )
+            compound_records.extend(compound_record_dict[key])
 
         # return self.samples
         # return compound_record_dict
@@ -222,7 +203,7 @@ class HPLC_Parser:
             elif i >= HPLC_Parser.max_header_line_count:
                 raise HPLC_Parse_No_Header_Exception(
                     "unable to find header: header not closed after %d lines",
-                    HPLC_Parser.max_header_line_count )
+                    HPLC_Parser.max_header_line_count)
             elif line == '':
                 raise HPLC_Parse_No_Header_Exception(
                     "unable to find header: EOF encountered at line %d",
@@ -501,45 +482,3 @@ class HPLC_Parser:
             if amount_string != u'-' and compound_string != u'-':
                 self.samples[sample_name].append(
                     self.compound_entry(compound_string, amount_string))
-
-
-# testing hook
-if __name__ == "__main__":
-    import sys, os, io
-
-    logger = logging.getLogger(__name__)
-
-    if len(sys.argv) is not 2:
-        print("usage: python hplc_parser.py input_file_path")
-        exit(1)
-
-    log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-
-    logging.basicConfig(
-        filename='hplc_parser.log',
-        level=logging.DEBUG,
-        format=log_format)
-
-    # echo all debug statements to stdout
-    formatter = logging.Formatter( log_format )
-    sh = logging.StreamHandler(sys.stdout)
-    sh.setLevel(logging.DEBUG)
-    sh.setFormatter(formatter)
-    logger.addHandler(sh)
-
-    # parse the provided filepath
-    input_file_path = sys.argv[1]
-    # samples = parse_hplc_file(input_file_path)
-
-
-    if not os.path.exists(input_file_path):
-        raise IOError("Error: unable to locate file %s" % input_file_path)
-
-    with io.open(input_file_path, "r", encoding = 'utf-16') as input_file:
-        p = HPLC_Parser(input_file)
-        samples = p.parse_hplc()
-
-    # activate interactive debugger with our information inside
-    import IPython
-    IPython.embed(banner1="\n\nparse function returned, values stored in dict 'samples'")
-
