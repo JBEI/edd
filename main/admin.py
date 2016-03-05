@@ -5,8 +5,10 @@ from django import forms
 from django.contrib import admin, messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin
+from django.core.urlresolvers import reverse
 from django.db.models import Count
-from django.utils.html import format_html
+from django.utils.html import escape, format_html
+from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 from django_auth_ldap.backend import LDAPBackend
 
@@ -158,9 +160,11 @@ class StrainAdmin(EDDObjectAdmin):
 
     def get_fields(self, request, obj=None):
         self.ice_validator = RegistryValidator(existing_strain=obj)
-        if not obj or not obj.registry_id:
+        if not obj:
             return ['registry_id', ]
-        return ['name', 'description', 'registry_url', ]
+        elif not obj.registry_id:
+            return ['name', 'description', 'registry_url', 'study_list', ]
+        return ['name', 'description', 'registry_url', 'study_list', ]
 
     def formfield_for_dbfield(self, db_field, **kwargs):
         if db_field.name == 'registry_id':
@@ -169,9 +173,11 @@ class StrainAdmin(EDDObjectAdmin):
         return super(StrainAdmin, self).formfield_for_dbfield(db_field, **kwargs)
 
     def get_readonly_fields(self, request, obj=None):
-        if obj and obj.registry_id:
-            return ['name', 'description', 'registry_url', ]
-        return ['name', 'description', ]
+        if not obj:
+            return ['registry_id', ]
+        elif not obj.registry_id:
+            return ['registry_url', 'study_list', ]
+        return ['name', 'description', 'study_list', ]
 
     def get_queryset(self, request):
         q = super(StrainAdmin, self).get_queryset(request)
@@ -205,6 +211,23 @@ class StrainAdmin(EDDObjectAdmin):
         if self.ice_validator.part:
             obj.registry_url = self.ice_validator.part['url']
         super(StrainAdmin, self).save_model(request, obj, form, change)
+
+    def study_list(self, instance):
+        qs = Study.objects.filter(line__strains=instance).distinct()
+        count = qs.count()
+        if count:
+            html = ', '.join([
+                '<a href="%(link)s">%(name)s</a>' % {
+                    'link': reverse('admin:main_study_change', args=[s.id]),
+                    'name': escape(s.name)
+                }
+                for s in qs[:10]
+            ])
+            if count > 10:
+                html += (', and %s more.' % (count - 10, ))
+            return mark_safe(html)
+        return None
+    study_list.short_description = 'Referenced in Studies'
 
 
 class CarbonSourceAdmin(EDDObjectAdmin):
