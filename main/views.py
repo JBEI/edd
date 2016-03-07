@@ -874,8 +874,9 @@ def utilities_parse_import_file(request):
     # The Utl.JS.guessFileType() function in Utl.ts applies logic like this to guess the type, and that guess is
     # sent along in a custom header:
     edd_file_type = request.META.get('HTTP_X_EDD_FILE_TYPE')
+    edd_import_mode = request.META.get('HTTP_X_EDD_IMPORT_MODE')
 
-    if edd_file_type == "xml":
+    if edd_import_mode == "biolector":
         try:
             from edd_utils.parsers import biolector
             # We pass the request directly along, so it can be read as a stream by the parser
@@ -908,7 +909,7 @@ def utilities_parse_import_file(request):
                 "file_type": "csv",
                 "file_data": data,
             })
-    if edd_file_type == "txt":
+    if edd_import_mode == "hplc":
         try:
             from edd_utils.parsers.hplc import (
                 HPLC_Parser, HPLC_Parse_Missing_Argument_Exception,
