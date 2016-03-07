@@ -199,15 +199,7 @@ class StrainAdmin(EDDObjectAdmin):
     class MergeWithStrainForm(forms.Form):
         # same name as admin site uses for checkboxes to select items for actions
         _selected_action = forms.CharField(widget=forms.MultipleHiddenInput)
-
-        def __init__(self, *args, **kwargs):
-            self.ice_validator = kwargs.pop('ice_validator')
-            super(StrainAdmin.MergeWithStrainForm, self).__init__(*args, **kwargs)
-            self.fields['strain'] = forms.ModelChoiceField(
-                Strain.objects,
-                widget=RegistryAutocompleteWidget,
-                validators=[self.ice_validator.validate, ]
-            )
+        strain = forms.ModelChoiceField(Strain.objects, widget=RegistryAutocompleteWidget)
 
     def merge_with_action(self, request, queryset):
         form = None
