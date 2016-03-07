@@ -213,8 +213,12 @@ class RegistryAutocompleteWidget(AutocompleteWidget):
         if isinstance(value, Strain):
             return [self.display_value(value), value.registry_id, ]
         elif value:
-            o = Strain.objects.get(registry_id=value)
-            return [self.display_value(o), value, ]
+            try:
+                o = Strain.objects.get(registry_id=value)
+            except Strain.DoesNotExist:
+                pass
+            else:
+                return [self.display_value(o), value, ]
         return ['', None, ]
 
 

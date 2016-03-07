@@ -6,7 +6,9 @@ from django.contrib import admin, messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin
 from django.core.urlresolvers import reverse
-from django.db.models import Count
+from django.db.models import Count, Q
+from django.http import HttpResponseRedirect
+from django.shortcuts import render
 from django.utils.html import escape, format_html
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
@@ -150,6 +152,7 @@ class ProtocolAdmin(EDDObjectAdmin):
 
 class StrainAdmin(EDDObjectAdmin):
     """ Definition for admin-edit of Strains """
+    actions = ['merge_with_action', ]
     list_display = (
         'name', 'description', 'hyperlink_strain', 'num_lines', 'num_studies', 'created',
     )
@@ -192,6 +195,51 @@ class StrainAdmin(EDDObjectAdmin):
         return '-'
     hyperlink_strain.admin_order_field = 'registry_url'
     hyperlink_strain.short_description = 'ICE Link'
+
+    class MergeWithStrainForm(forms.Form):
+        # same name as admin site uses for checkboxes to select items for actions
+        _selected_action = forms.CharField(widget=forms.MultipleHiddenInput)
+
+        def __init__(self, *args, **kwargs):
+            self.ice_validator = kwargs.pop('ice_validator')
+            super(StrainAdmin.MergeWithStrainForm, self).__init__(*args, **kwargs)
+            self.fields['strain'] = forms.ModelChoiceField(
+                Strain.objects,
+                widget=RegistryAutocompleteWidget,
+                validators=[self.ice_validator.validate, ]
+            )
+
+    def merge_with_action(self, request, queryset):
+        form = None
+        # only allow merges when registry_id or registry_url are None
+        queryset = queryset.filter(Q(registry_id=None) | Q(registry_url=None))
+        if 'merge' in request.POST:
+            form = self.MergeWithStrainForm(request.POST, ice_validator=self.ice_validator)
+            if form.is_valid():
+                strain = form.cleaned_data['strain']
+                # Update all lines referencing strains in queryset to reference `strain` instead
+                lines = Line.objects.filter(strains__in=queryset)
+                for line in lines:
+                    line.strains.remove(queryset)
+                    line.strains.add(strain)
+                messages.info(
+                    request,
+                    _("Merged %(strain_count)d strains, updating %(line_count)d lines.") % {
+                        'strain_count': queryset.delete(),
+                        'line_count': lines.count(),
+                    }
+                )
+                return HttpResponseRedirect(request.get_full_path())
+        if not form:
+            form = self.MergeWithStrainForm(
+                initial={'_selected_action': request.POST.getlist(admin.ACTION_CHECKBOX_NAME)},
+                ice_validator=self.ice_validator,
+            )
+        return render(request, 'admin/merge_strain.html', context={
+            'strains': queryset,
+            'form': form
+        })
+    merge_with_action.short_description = 'Merge records into …'
 
     # annotated queryset with count of lines referencing strain, need method to load annotation
     def num_lines(self, instance):
