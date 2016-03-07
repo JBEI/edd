@@ -178,7 +178,7 @@ class StrainAdmin(EDDObjectAdmin):
 
     def get_readonly_fields(self, request, obj=None):
         if not obj:  # creating a strain
-            return ['registry_id', ]
+            return []
         elif not obj.registry_id:  # existing strain without link to ICE
             return ['study_list', ]
         return ['name', 'description', 'registry_url', 'study_list', ]
@@ -199,25 +199,31 @@ class StrainAdmin(EDDObjectAdmin):
     class MergeWithStrainForm(forms.Form):
         # same name as admin site uses for checkboxes to select items for actions
         _selected_action = forms.CharField(widget=forms.MultipleHiddenInput)
-        strain = forms.ModelChoiceField(Strain.objects, widget=RegistryAutocompleteWidget)
+        strain = forms.ModelChoiceField(
+            Strain.objects.exclude(Q(registry_id=None) | Q(registry_url=None)),
+            widget=RegistryAutocompleteWidget,
+            to_field_name='registry_id',
+        )
 
     def merge_with_action(self, request, queryset):
         form = None
         # only allow merges when registry_id or registry_url are None
         queryset = queryset.filter(Q(registry_id=None) | Q(registry_url=None))
         if 'merge' in request.POST:
-            form = self.MergeWithStrainForm(request.POST, ice_validator=self.ice_validator)
+            form = self.MergeWithStrainForm(request.POST)
             if form.is_valid():
                 strain = form.cleaned_data['strain']
                 # Update all lines referencing strains in queryset to reference `strain` instead
                 lines = Line.objects.filter(strains__in=queryset)
                 for line in lines:
-                    line.strains.remove(queryset)
+                    line.strains.remove(*queryset.all())
                     line.strains.add(strain)
+                strain_count = queryset.count()
+                queryset.delete()
                 messages.info(
                     request,
                     _("Merged %(strain_count)d strains, updating %(line_count)d lines.") % {
-                        'strain_count': queryset.delete(),
+                        'strain_count': strain_count,
                         'line_count': lines.count(),
                     }
                 )
@@ -225,7 +231,6 @@ class StrainAdmin(EDDObjectAdmin):
         if not form:
             form = self.MergeWithStrainForm(
                 initial={'_selected_action': request.POST.getlist(admin.ACTION_CHECKBOX_NAME)},
-                ice_validator=self.ice_validator,
             )
         return render(request, 'admin/merge_strain.html', context={
             'strains': queryset,
