@@ -1,18 +1,23 @@
-import logging
+"""
+Defines the supported views for EDD's REST framework. This class is a work in progress.
 
-from rest_framework import mixins, status
-from rest_framework import viewsets
+Assuming Django REST Framework (DRF) will be adopted in EDD, new and existing views should be
+ported to this class over time. Many REST resources are currently defined in main/views.py,
+but are not making use of DRF.
+"""
+
+from django.shortcuts import get_object_or_404
+from edd.rest.serializers import LineSerializer, StudySerializer, UserSerializer, StrainSerializer
+from main.models import Study, StudyPermission, Line, Strain, User
+from rest_framework import (mixins, permissions, status, viewsets)
+from rest_framework.generics import ListAPIView
 from rest_framework.exceptions import APIException
 from rest_framework.relations import StringRelatedField
 from rest_framework.response import Response
 
-from edd.rest.serializers import LineSerializer, StudySerializer, UserSerializer, StrainSerializer
-from main.models import Study, StudyPermission, Line, Strain, User
+import logging
 
 logger = logging.getLogger(__name__)
-from rest_framework import permissions
-from rest_framework.generics import ListAPIView
-from django.shortcuts import get_object_or_404
 
 # class IsStudyReadable(permissions.BasePermission):
 #     """
@@ -81,44 +86,6 @@ class StrainViewSet(viewsets.ModelViewSet):
         print(query)
 
         return query
-
-    # def list(self):
-    #     logger.debug('in ' + self.list.__name__())
-    #     super.list()
-    #
-    # def retrieve(self, request, *args, **kwargs):
-    #     logger.debug('in ' + self.list.__name__())
-    #     super.retrieve(request, *args, **kwargs)
-    #
-    def create(self, request, *args, **kwargs):
-         logger.debug('in ' + self.list.__name__)
-
-         # deny access to those without permission
-         user = request.user
-         if not Strain.user_can_write(user):
-             return Response(status=status.HTTP_403_FORBIDDEN)
-
-         return super(StrainViewSet, self).create(request, *args, **kwargs)
-
-    def update(self, request, *args, **kwargs):
-        logger.debug('in ' + self.list.__name__)
-
-        # deny access to those without permission
-        user = request.user
-        if not Strain.user_can_write(user):
-            return Response(status=status.HTTP_403_FORBIDDEN)
-
-        return super(StrainViewSet, self).update(request, *args, **kwargs)
-
-    def destroy(self, request, *args, **kwargs):
-         logger.debug('in ' + self.list.__name__)
-
-         # deny access to those without permission
-         user = request.user
-         if not Strain.user_can_write(user):
-             return Response(status=status.HTTP_403_FORBIDDEN)
-
-         return super(StrainViewSet, self).destroy(request, *args, **kwargs)
 
 
 class LineViewSet(viewsets.ReadOnlyModelViewSet):

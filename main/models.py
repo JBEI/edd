@@ -1003,8 +1003,16 @@ class Strain(EDDObject, LineProperty):
         return json_dict
 
     @staticmethod
-    def user_can_write(user):
-        return user.is_superuser
+    def user_can_change(user):
+        return user.has_perm('edd.change_strain')
+
+    @staticmethod
+    def user_can_create(user):
+        return user.has_perm('edd.add_strain')
+
+    @staticmethod
+    def user_can_delete(user):
+        return user.has_perm('edd.delete_strain')
 
 
 @python_2_unicode_compatible

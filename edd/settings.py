@@ -286,7 +286,7 @@ REST_FRAMEWORK = {
     # could also optionally override our model managers for more safety at the cost of
     # convenience for developers.
     'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated',
+        'rest_framework.permissions.DjangoModelPermissions',
     ),
 
     # TODO: disable the browsable API to prevent access until we've had time to do a more careful

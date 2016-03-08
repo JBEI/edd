@@ -401,6 +401,8 @@ def find_existing_strains(edd, ice_parts, existing_edd_strains, strains_by_part_
 
             # if no EDD strains were found with this UUID, look for candidate strains by URL
             else:
+                print("ICE part %s couldn't be located in EDD's database by UUID. Performing "
+                      "other searches." % ice_part.part_id)
 
                 # look for candidate strains by URL (if present, more static / reliable than name)
                 edd_strains = edd.search_strains(registry_url_regex=r".*/parts/%d(?:/?)" %
@@ -428,10 +430,10 @@ def find_existing_strains(edd, ice_parts, existing_edd_strains, strains_by_part_
 
                 if edd_strains:
                     print('Found %(strain_count)d EDD strains that lacked proper identification, '
-                          'but whose name contained the name of ICE part %(part_number)s ("%('
-                          'part_name)s". Please contact the EDD team to correct this issue before '
-                          'you proceed.)' % {
-                              'strain_count': edd_strains.count,
+                          'but whose name(s) contained the name of ICE part %(part_number)s ("%('
+                          'part_name)s"). Please contact the EDD team to correct this issue before '
+                          'you proceed.' % {
+                              'strain_count': edd_strains.total_result_count,
                               'part_number': ice_part.part_id,
                               'part_name': ice_part.name,
                           })
