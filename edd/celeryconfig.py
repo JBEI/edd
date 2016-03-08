@@ -53,8 +53,10 @@ CELERY_WARN_AFTER_RETRY_NUM_FOR_ICE = 3
 CELERY_MAX_ICE_RETRIES = 19
 
 ####################################################################################################
-# Load urls and authentication credentials from server.cfg (TODO: some other stuff in there should
-# be moved here)
+# Load settings from server.cfg (config file shared with EDD, though this file is used both on the
+# client and server side of Celery).
+# DO NOT MODIFY THIS CODE to use Django's settings module. This code doesn't run in Django and will
+# break  using what's otherwise the normal settings import process for EDD.
 ####################################################################################################
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 try:
@@ -66,7 +68,7 @@ except IOError:
     raise
 
 ####################################################################################################
-# General settings for celery
+# General settings for celery.
 ####################################################################################################
 # Broker Settings
 RABBITMQ_HOST = config['rabbitmq'].get('hostname')

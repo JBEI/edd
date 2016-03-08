@@ -1,24 +1,30 @@
 # coding: utf-8
 """
-Defines the Celery "app" used by EDD to asynchronously execute tasks on the Celery cluster
+Defines the client-side Celery "app" (API instance) used by EDD to asynchronously execute tasks on
+the Celery cluster.
 """
 
 from __future__ import absolute_import, unicode_literals
 
 from celery import Celery
-from django.conf import settings  # noqa
+
 from kombu.serialization import register
 
 from edd_utils.parsers.json_encoders import (
     datetime_dumps, datetime_loads, EXTENDED_JSON_CONTENT_TYPE
 )
 
-# extract values for easy reference
-RABBITMQ_HOST = settings.config['rabbitmq'].get('hostname')
-EDD_RABBITMQ_USERNAME = settings.config['rabbitmq'].get('edd_user')
-EDD_RABBITMQ_PASSWORD = settings.config['rabbitmq'].get('edd_pass')
-RABBITMQ_PORT = settings.config['rabbitmq'].get('port')
-EDD_VHOST = settings.config['rabbitmq'].get('edd_vhost')
+####################################################################################################
+# Parse settings.py directly instead of the more usual method of using django.conf's settings.
+# This module is called from edd's __init__ *before* django finishes parsing settings. Maybe another
+# method is possible, but this works :-/
+####################################################################################################
+from edd.settings import config  # noqa
+RABBITMQ_HOST = config['rabbitmq'].get('hostname')
+EDD_RABBITMQ_USERNAME = config['rabbitmq'].get('edd_user')
+EDD_RABBITMQ_PASSWORD = config['rabbitmq'].get('edd_pass')
+RABBITMQ_PORT = config['rabbitmq'].get('port')
+EDD_VHOST = config['rabbitmq'].get('edd_vhost')
 BROKER_URL = 'amqp://%(user)s:%(pass)s@%(host)s:%(port)s/%(vhost)s' % {
              'user': EDD_RABBITMQ_USERNAME,
              'pass': EDD_RABBITMQ_PASSWORD,
@@ -27,10 +33,9 @@ BROKER_URL = 'amqp://%(user)s:%(pass)s@%(host)s:%(port)s/%(vhost)s' % {
              'vhost': EDD_VHOST,
 }
 
-
 ####################################################################################################
 # Register custom serialization code to allow us to serialize datetime objects as JSON (just
-# datetimes, for starters)
+# datetimes, for starters). Used by Celery tasks to serialize dates.
 ####################################################################################################
 register(EXTENDED_JSON_CONTENT_TYPE, datetime_dumps, datetime_loads,
          content_type='application/x-' + EXTENDED_JSON_CONTENT_TYPE,
@@ -44,7 +49,7 @@ task_exchange = Celery('edd', broker=BROKER_URL)
 # load configuration from celeryconfig.py file instead of hard-coding here
 # using a String here means the worker won't have to pickle the object when
 # using Windows. Pickle is insecure for production.
-task_exchange.config_from_object('django.conf:settings')
+task_exchange.config_from_object('edd.settings')
 task_exchange.config_from_object('edd.celeryconfig')
 
 # auto-discover celery tasks in all included Django apps, provided they
