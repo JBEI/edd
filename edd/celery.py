@@ -7,19 +7,27 @@ the Celery cluster.
 from __future__ import absolute_import, unicode_literals
 
 from celery import Celery
-
+import json
 from kombu.serialization import register
+import os
 
 from edd_utils.parsers.json_encoders import (
     datetime_dumps, datetime_loads, EXTENDED_JSON_CONTENT_TYPE
 )
 
 ####################################################################################################
-# Parse settings.py directly instead of the more usual method of using django.conf's settings.
-# This module is called from edd's __init__ *before* django finishes parsing settings. Maybe another
-# method is possible, but this works :-/
+# Parse URLs and access credentials directly from server.cfg instead of the more usual method of
+# using django.conf's settings, which don't appear to be parsed yet at the time this code is
+# executed from edd's __init__.  Maybe another method is possible, but this works :-/
 ####################################################################################################
-from edd.settings import config  # noqa
+BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+try:
+    with open(os.path.join(BASE_DIR, 'server.cfg')) as server_cfg:
+        config = json.load(server_cfg)
+except IOError:
+    print("Required configuration file server.cfg is missing from %s"
+          "Copy from server.cfg-example and fill in appropriate values" % BASE_DIR)
+    raise
 RABBITMQ_HOST = config['rabbitmq'].get('hostname')
 EDD_RABBITMQ_USERNAME = config['rabbitmq'].get('edd_user')
 EDD_RABBITMQ_PASSWORD = config['rabbitmq'].get('edd_pass')
@@ -49,7 +57,6 @@ task_exchange = Celery('edd', broker=BROKER_URL)
 # load configuration from celeryconfig.py file instead of hard-coding here
 # using a String here means the worker won't have to pickle the object when
 # using Windows. Pickle is insecure for production.
-task_exchange.config_from_object('edd.settings')
 task_exchange.config_from_object('edd.celeryconfig')
 
 # auto-discover celery tasks in all included Django apps, provided they
