@@ -880,7 +880,7 @@ def utilities_parse_import_file(request):
         try:
             from edd_utils.parsers import biolector
             # We pass the request directly along, so it can be read as a stream by the parser
-            result = biolector.getBiolectorXMLRecordsAsJSON(request, 0)
+            result = biolector.getRawImpotRecordsAsJSON(request, 0)
             return JsonResponse({
                 "file_type": "xml",
                 "file_data": result,
@@ -912,47 +912,31 @@ def utilities_parse_import_file(request):
     if edd_import_mode == "hplc":
         try:
             from edd_utils.parsers.hplc import (
-                HPLC_Parser, HPLC_Parse_Missing_Argument_Exception,
+                getRawImpotRecordsAsJSON, HPLC_Parse_Missing_Argument_Exception,
                 HPLC_Parse_No_Header_Exception, HPLC_Parse_Misaligned_Blocks_Exception
                 )
-            from edd_utils.parsers.util import RawImportRecord
-
-            # We pass the request directly along, so it can be read as a stream by the parser
-            parser = HPLC_Parser(request)
-            compound_records = parser.parse_hplc()
-            hplc_protocol_string = "hplc"
-
-            result = []
-            for record in compound_records:
-                metadata = {}
-                raw_record = RawImportRecord(
-                    hplc_protocol_string,
-                    record.compound,
-                    record.line,
-                    record.assay,
-                    record.timepoints,  # warning: shallow copy(s)
-                    metadata)
-                result.append(raw_record)
-            return JsonResponse({
-                "file_type": "txt",
-                "file_data": result,  # TODO: verify this is correct please!
-            })
-            # TODO: better exception messages.
+            try:
+                result = getRawImpotRecordsAsJSON(request)
+                return JsonResponse({
+                    "file_type": "hplc",
+                    "file_data": result,
+                })
+                # TODO: better exception messages.
+            except HPLC_Parse_Missing_Argument_Exception as e:
+                return JsonResponse({
+                    "python_exception": "HPLC parsing failed: input stream None"
+                })
+            except HPLC_Parse_No_Header_Exception as e:
+                return JsonResponse({
+                    "python_exception": "HPLC parsing failed: unable to find header!"
+                })
+            except HPLC_Parse_Misaligned_Blocks_Exception as e:
+                return JsonResponse({
+                    "python_exception": "HPLC parsing failed: mismatched row count amoung blocks!"
+                })
         except ImportError as e:
             return JsonResponse({
-                "python_error": "a thing went wrong..."
-            })
-        except HPLC_Parse_Missing_Argument_Exception as e:
-            return JsonResponse({
-                "python_exception": "HPLC parsing failed: input stream None"
-            })
-        except HPLC_Parse_No_Header_Exception as e:
-            return JsonResponse({
-                "python_exception": "HPLC parsing failed: unable to find header!"
-            })
-        except HPLC_Parse_Misaligned_Blocks_Exception as e:
-            return JsonResponse({
-                "python_exception": "HPLC parsing failed: mismatched row count amoung blocks!"
+                "python_error": "jbei_tools module required to handle HPLC file input."
             })
 
     return JsonResponse({
