@@ -5,18 +5,20 @@ from django import forms
 from django.contrib import admin, messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin
-from django.db.models import Count
-from django.utils.html import format_html
+from django.db.models import Count, Q
+from django.http import HttpResponseRedirect
+from django.shortcuts import render
+from django.utils.html import escape, format_html
 from django.utils.translation import ugettext_lazy as _
 from django_auth_ldap.backend import LDAPBackend
 
 from .forms import (
-    MetadataTypeAutocompleteWidget, RegistryAutocompleteWidget, RegistryValidator,
-    UserAutocompleteWidget
+    MeasurementTypeAutocompleteWidget, MetadataTypeAutocompleteWidget, RegistryAutocompleteWidget,
+    RegistryValidator, UserAutocompleteWidget
 )
 from .models import (
     Assay, Attachment, CarbonSource, GeneIdentifier, GroupPermission, Line, MeasurementGroup,
-    MeasurementType, Metabolite, MetadataGroup, MetadataType, Phosphor,
+    Measurement, MeasurementType, Metabolite, MetadataGroup, MetadataType, Phosphor,
     ProteinIdentifier, Protocol, SBMLTemplate, Strain, Study, Update, UserPermission,
     WorklistColumn, WorklistTemplate,
     )
@@ -259,6 +261,16 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
             return ('type_name', 'short_name', '_study_count', )
         return ('type_name', 'short_name', '_study_count', )
 
+    def get_merge_form(self):
+        class MergeForm(forms.Form):
+            # same name as admin site uses for checkboxes to select items for actions
+            _selected_action = forms.CharField(widget=forms.MultipleHiddenInput)
+            mtype = forms.ModelChoiceField(
+                self.get_queryset(),
+                widget=MeasurementTypeAutocompleteWidget,
+            )
+        return MergeForm
+
     def get_queryset(self, request):
         q = super(MeasurementTypeAdmin, self).get_queryset(request)
         if self.model == MeasurementType:
@@ -277,6 +289,29 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
         if issubclass(self.model, ProteinIdentifier):
             search_term = ProteinIdentifier.match_accession_id(search_term)
         return super(MeasurementTypeAdmin, self).get_search_results(request, queryset, search_term)
+
+    def merge_with_action(self, request, queryset):
+        MergeForm = self.get_merge_form()
+        form = None
+        if 'merge' in request.POST:
+            form = MergeForm(request.POST)
+            if form.is_valid():
+                mtype = form.cleaned_data['mtype']
+                # update all measurements referencing mtype
+                Measurement.objects.filter(
+                    measurement_type__in=queryset,
+                ).update(measurement_type=mtype)
+                queryset.delete()
+                return HttpResponseRedirect(request.get_full_path())
+        if not form:
+            form = MergeForm(
+                initial={'_selected_action': request.POST.getlist(admin.ACTION_CHECKBOX_NAME)},
+            )
+        return render(request, 'admin/merge_measurement_type.html', context={
+            'types': queryset,
+            'form': form,
+        })
+    merge_with_action.short_description = 'Merge records into …'
 
     def _keywords(self, obj):
         if issubclass(self.model, Metabolite):
