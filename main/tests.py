@@ -318,11 +318,6 @@ class AssayDataTests(TestCase):
             name="OD600", categorization=Protocol.CATEGORY_OD, owned_by=user1)
         Protocol.objects.create(name="New protocol", owned_by=user1, active=False)
         mt1 = Metabolite.objects.get(short_name="ac")
-        kw1 = MetaboliteKeyword.objects.create(name="GCMS", mod_by=user1)
-        MetaboliteKeyword.objects.create(name="HPLC", mod_by=user1)
-        kw3 = MetaboliteKeyword.objects.create(name="Mevalonate Pathway", mod_by=user1)
-        mt1.keywords.add(kw1)
-        mt1.keywords.add(kw3)
         mt2 = GeneIdentifier.objects.create(
             type_name="Gene name 1", short_name="gen1", type_group="g")
         mt3 = MeasurementType.create_protein(
@@ -409,15 +404,6 @@ class AssayDataTests(TestCase):
             measurement_type__short_name="ac")[0]
         mt1 = meas1.measurement_type
         self.assertTrue(mt1.is_metabolite() and not mt1.is_protein() and not mt1.is_gene())
-        met = Metabolite.objects.get(short_name="ac")
-        met.set_keywords(["GCMS", "HPLC"])
-        self.assertTrue(met.keywords_str == "GCMS, HPLC")
-        self.assertTrue(met.to_json() == {
-            'id': mt1.id, 'cc': 2, 'name': u'Acetate', 'chgn': -1, 'ans': '', 'mm': 0,
-            'f': u'C2H3O2', 'chg': -1, 'sn': u'ac', 'family': mt1.type_group,
-            'kstr': 'GCMS,HPLC'})
-        keywords = MetaboliteKeyword.all_with_metabolite_ids()
-        self.assertEqual(len(keywords[1]['metabolites']), 2)
 
     def test_measurement_unit(self):
         mu = MeasurementUnit.objects.get(unit_name="mM")

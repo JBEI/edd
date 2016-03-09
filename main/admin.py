@@ -247,7 +247,7 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
     def get_list_display(self, request):
         if issubclass(self.model, Metabolite):
             return ('type_name', 'short_name', 'molecular_formula', 'molar_mass', 'charge',
-                    '_keywords', '_study_count', 'source__name')
+                    'tags', '_study_count', 'source')
         elif issubclass(self.model, ProteinIdentifier):
             return ('type_name', 'short_name', 'length', 'mass', '_study_count', 'source')
         elif issubclass(self.model, GeneIdentifier):
@@ -312,12 +312,6 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
             'form': form,
         })
     merge_with_action.short_description = 'Merge records into …'
-
-    def _keywords(self, obj):
-        if issubclass(self.model, Metabolite):
-            return obj.keywords_str
-        return ''
-    _keywords.short_description = 'Keywords'
 
     def _study_count(self, obj):
         return obj.num_studies

@@ -10,6 +10,7 @@ import warnings
 
 from builtins import str
 from collections import defaultdict
+from django import forms
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import ArrayField, HStoreField
@@ -27,6 +28,15 @@ from .export import table
 
 
 logger = logging.getLogger(__name__)
+
+
+class VarCharField(models.TextField):
+    """ Take advantage of postgres VARCHAR = TEXT, to have unlimited CharField, using TextInput
+        widget. """
+    def formfield(self, **kwargs):
+        defaults = {'widget': forms.TextInput}
+        defaults.update(kwargs)
+        return super(VarCharField, self).formfield(**defaults)
 
 
 class UpdateManager(models.Manager):
@@ -1188,30 +1198,6 @@ class MeasurementType(models.Model, EDDSerialize):
 
 
 @python_2_unicode_compatible
-class MetaboliteKeyword(models.Model):
-    class Meta:
-        db_table = "metabolite_keyword"
-    name = models.CharField(max_length=255, unique=True)
-    mod_by = models.ForeignKey(settings.AUTH_USER_MODEL)
-
-    def __str__(self):
-        return self.name
-
-    @classmethod
-    def all_with_metabolite_ids(cls):
-        keywords = []
-        kwd_objects = cls.objects.order_by("name").prefetch_related("metabolite_set")
-        for keyword in kwd_objects:
-            ids_dicts = keyword.metabolite_set.values("id")
-            keywords.append({
-                "id": keyword.id,
-                "name": keyword.name,
-                "metabolites": [i_d['id'] for i_d in ids_dicts],
-            })
-        return keywords
-
-
-@python_2_unicode_compatible
 class Metabolite(MeasurementType):
     """ Defines additional metadata on a metabolite measurement type; charge, carbon count, molar
         mass, and molecular formula.
@@ -1224,8 +1210,7 @@ class Metabolite(MeasurementType):
     carbon_count = models.IntegerField()
     molar_mass = models.DecimalField(max_digits=16, decimal_places=5)
     molecular_formula = models.TextField()
-    keywords = models.ManyToManyField(
-        MetaboliteKeyword, db_table="metabolites_to_keywords")
+    tags = ArrayField(VarCharField(), default=[])
     source = models.ForeignKey(Datasource, blank=True, null=True)
 
     carbon_pattern = re.compile(r'C(\d*)')
@@ -1237,9 +1222,7 @@ class Metabolite(MeasurementType):
         return True
 
     def to_json(self, depth=0):
-        """ Export a serializable dictionary.  Because this will access all associated keyword
-            objects, it is recommended to include a call to query.prefetch_related("keywords")
-            when selecting metabolites in bulk. """
+        """ Export a serializable dictionary. """
         return dict(super(Metabolite, self).to_json(), **{
             # FIXME the alternate names pointed to by the 'ans' key are
             # supposed to come from the 'alternate_metabolite_type_names'
@@ -1250,7 +1233,8 @@ class Metabolite(MeasurementType):
             "cc": self.carbon_count,
             "chg": self.charge,
             "chgn": self.charge,  # TODO find anywhere in typescript using this and fix it
-            "kstr": ",".join(['%s' % k for k in self.keywords.all()]),
+            "kstr": ",".join(self.tags),  # TODO find anywhere in typescript using this and fix
+            "tags": self.tags,
         })
 
     def save(self, *args, **kwargs):
@@ -1259,31 +1243,6 @@ class Metabolite(MeasurementType):
         # force METABOLITE group
         self.type_group = MeasurementGroup.METABOLITE
         super(Metabolite, self).save(*args, **kwargs)
-
-    @property
-    def keywords_str(self):
-        return ", ".join(['%s' % k for k in self.keywords.all()])
-
-    def add_keyword(self, keyword):
-        try:
-            kw_obj = MetaboliteKeyword.objects.get(name=keyword)
-        except MetaboliteKeyword.DoesNotExist:
-            raise ValueError("'%s' is not a valid keyword." % keyword)
-        else:
-            self.keywords.add(kw_obj)
-
-    def set_keywords(self, keywords):
-        """ Given a collection of keywords (as strings), link this metabolite to the equivalent
-            MetaboliteKeyword object(s). """
-        new_keywords = set(keywords)
-        current_kwds = {kw.name: kw for kw in self.keywords.all()}
-        for keyword in keywords:  # step 1: add new keywords
-            if (keyword in current_kwds):
-                continue
-            self.add_keyword(keyword)
-        for keyword in current_kwds:  # step 2: remove obsolete keywords
-            if (keyword not in new_keywords):
-                self.keywords.remove(current_kwds[keyword])
 
     def extract_carbon_count(self):
         count = 0
