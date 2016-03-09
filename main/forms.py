@@ -248,9 +248,12 @@ class MetadataTypeAutocompleteWidget(AutocompleteWidget):
 class MeasurementTypeAutocompleteWidget(AutocompleteWidget):
     """ Autocomplete widget for types of metadata """
     def __init__(self, attrs=None, opt={}):
-        opt.update({'text_attr': {'class': 'autocomp autocomp_measure', }, })
+        """ Set opt with {'text_attr': {'class': 'autocomp autocomp_XXX'}} to override. """
+        my_opt = {'text_attr': {'class': 'autocomp autocomp_measure', }, }
+        my_opt.update(**opt)
         super(MeasurementTypeAutocompleteWidget, self).__init__(
-            attrs=attrs, model=MeasurementType, opt=opt)
+            attrs=attrs, model=MeasurementType, opt=my_opt,
+        )
 
 
 class CreateStudyForm(forms.ModelForm):

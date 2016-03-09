@@ -217,49 +217,16 @@ class CarbonSourceAdmin(EDDObjectAdmin):
 
 class MeasurementTypeAdmin(admin.ModelAdmin):
     """ Definition for admin-edit of Measurement Types """
-    search_fields = ('type_name', 'short_name', )
-
     def get_fields(self, request, obj=None):
-        if issubclass(self.model, Metabolite):
-            return (
-                ('short_name', 'molar_mass', 'charge', ),
-                'type_name', 'molecular_formula', 'source',
-            )
-        elif issubclass(self.model, GeneIdentifier):
-            return (
-                'type_name',
-                ('location_in_genome', 'positive_strand', 'location_start', 'location_end',
-                    'gene_length'),
-            )
-        elif issubclass(self.model, ProteinIdentifier):
-            return ('type_name', 'short_name', 'length', 'mass', 'source', )
-        elif issubclass(self.model, Phosphor):
-            return (
-                'type_name', 'short_name',
-                ('excitation_wavelength', 'emission_wavelength', ),
-                'reference_type',
-            )
-        # always keep check for MeasurementType last
-        elif issubclass(self.model, MeasurementType):
-            return ('type_name', 'short_name', )
-        return ('type_name', 'short_name', )
+        return [
+            'type_name', 'short_name',
+        ]
 
     def get_list_display(self, request):
-        if issubclass(self.model, Metabolite):
-            return ('type_name', 'short_name', 'molecular_formula', 'molar_mass', 'charge',
-                    'tags', '_study_count', 'source')
-        elif issubclass(self.model, ProteinIdentifier):
-            return ('type_name', 'short_name', 'length', 'mass', '_study_count', 'source')
-        elif issubclass(self.model, GeneIdentifier):
-            return ('type_name', 'location_in_genome', 'positive_strand', 'location_start',
-                    'location_end', 'gene_length', '_study_count', )
-        elif issubclass(self.model, Phosphor):
-            return ('type_name', 'short_name', 'excitation_wavelength', 'emission_wavelength',
-                    'reference_type', '_study_count', )
-        # always keep check for MeasurementType last
-        elif issubclass(self.model, MeasurementType):
-            return ('type_name', 'short_name', '_study_count', )
-        return ('type_name', 'short_name', '_study_count', )
+        return ['type_name', 'short_name', '_study_count', ]
+
+    def get_merge_autowidget(self):
+        return MeasurementTypeAutocompleteWidget
 
     def get_merge_form(self):
         class MergeForm(forms.Form):
@@ -267,28 +234,19 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
             _selected_action = forms.CharField(widget=forms.MultipleHiddenInput)
             mtype = forms.ModelChoiceField(
                 self.get_queryset(),
-                widget=MeasurementTypeAutocompleteWidget,
+                widget=self.get_merge_autowidget(),
             )
         return MergeForm
 
     def get_queryset(self, request):
-        q = super(MeasurementTypeAdmin, self).get_queryset(request)
+        qs = super(MeasurementTypeAdmin, self).get_queryset(request)
         if self.model == MeasurementType:
-            q = q.filter(type_group=MeasurementGroup.GENERIC)
-        elif issubclass(self.model, Metabolite) or issubclass(self.model, ProteinIdentifier):
-            q = q.select_related('source__name')
-        q = q.annotate(num_studies=Count('measurement__assay__line__study', distinct=True))
-        return q
+            qs = qs.filter(type_group=MeasurementGroup.GENERIC)
+        qs = qs.annotate(num_studies=Count('measurement__assay__line__study', distinct=True))
+        return qs
 
-    def get_readonly_fields(self, request, obj=None):
-        if issubclass(self.model, Metabolite) or issubclass(self.model, ProteinIdentifier):
-            return ('source', )
-        return tuple()
-
-    def get_search_results(self, request, queryset, search_term):
-        if issubclass(self.model, ProteinIdentifier):
-            search_term = ProteinIdentifier.match_accession_id(search_term)
-        return super(MeasurementTypeAdmin, self).get_search_results(request, queryset, search_term)
+    def get_search_fields(self, request):
+        return ['type_name', 'short_name', ]
 
     def merge_with_action(self, request, queryset):
         MergeForm = self.get_merge_form()
@@ -317,6 +275,101 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
         return obj.num_studies
     _study_count.admin_order_field = 'num_studies'
     _study_count.short_description = '# Studies'
+
+
+class MetaboliteAdmin(MeasurementTypeAdmin):
+    def get_fields(self, request, obj=None):
+        return super(MetaboliteAdmin, self).get_fields(request, obj) + [
+            ('molecular_formula', 'molar_mass', 'charge', ),  # grouping in tuple puts in a row
+            'source',
+        ]
+
+    def get_list_display(self, request):
+        # complete override
+        return [
+            'type_name', 'short_name', 'molecular_formula', 'molar_mass', 'charge', 'tags',
+            '_study_count', 'source'
+        ]
+
+    def get_merge_autowidget(self):
+        opt = {'text_attr': {'class': 'autocomp autocomp_metabol'}}
+        return MeasurementTypeAutocompleteWidget(opt=opt)
+
+    def get_queryset(self, request):
+        qs = super(MetaboliteAdmin, self).get_queryset(request)
+        qs = qs.select_related('source')
+        return qs
+
+    def get_readonly_fields(self, request, obj=None):
+        return ['source', ]
+
+
+class ProteinAdmin(MeasurementTypeAdmin):
+    def get_fields(self, request, obj=None):
+        return super(ProteinAdmin, self).get_fields(request, obj) + [
+            ('length', 'mass',),
+            'source',
+        ]
+
+    def get_list_display(self, request):
+        # complete override
+        return [
+            'type_name', 'short_name', 'length', 'mass', '_study_count', 'source',
+        ]
+
+    def get_merge_autowidget(self):
+        opt = {'text_attr': {'class': 'autocomp autocomp_protein'}}
+        return MeasurementTypeAutocompleteWidget(opt=opt)
+
+    def get_queryset(self, request):
+        qs = super(ProteinAdmin, self).get_queryset(request)
+        qs = qs.select_related('source')
+        return qs
+
+    def get_readonly_fields(self, request, obj=None):
+        return ['source', ]
+
+    def get_search_results(self, request, queryset, search_term):
+        search_term = ProteinIdentifier.match_accession_id(search_term)
+        return super(ProteinAdmin, self).get_search_results(request, queryset, search_term)
+
+
+class GeneAdmin(MeasurementTypeAdmin):
+    def get_fields(self, request, obj=None):
+        return super(GeneAdmin, self).get_fields(request, obj) + [
+            ('location_in_genome', 'positive_strand', 'location_start', 'location_end',
+             'gene_length'),  # join these on the same row
+        ]
+
+    def get_list_display(self, request):
+        # complete override
+        return [
+            'type_name', 'location_in_genome', 'positive_strand', 'location_start',
+            'location_end', 'gene_length', '_study_count',
+        ]
+
+    def get_merge_autowidget(self):
+        opt = {'text_attr': {'class': 'autocomp autocomp_gene'}}
+        return MeasurementTypeAutocompleteWidget(opt=opt)
+
+
+class PhosphorAdmin(MeasurementTypeAdmin):
+    def get_fields(self, request, obj=None):
+        return super(PhosphorAdmin, self).get_fields(request, obj) + [
+            ('excitation_wavelength', 'emission_wavelength', ),
+            'reference_type',
+        ]
+
+    def get_list_display(self, request):
+        # complete override
+        return [
+            'type_name', 'short_name', 'excitation_wavelength', 'emission_wavelength',
+            'reference_type', '_study_count',
+        ]
+
+    def get_merge_autowidget(self):
+        opt = {'text_attr': {'class': 'autocomp autocomp_phosphor'}}
+        return MeasurementTypeAutocompleteWidget(opt=opt)
 
 
 class UserPermissionInline(admin.TabularInline):
@@ -486,10 +539,10 @@ admin.site.register(Protocol, ProtocolAdmin)
 admin.site.register(Strain, StrainAdmin)
 admin.site.register(CarbonSource, CarbonSourceAdmin)
 admin.site.register(MeasurementType, MeasurementTypeAdmin)
-admin.site.register(Metabolite, MeasurementTypeAdmin)
-admin.site.register(GeneIdentifier, MeasurementTypeAdmin)
-admin.site.register(ProteinIdentifier, MeasurementTypeAdmin)
-admin.site.register(Phosphor, MeasurementTypeAdmin)
+admin.site.register(Metabolite, MetaboliteAdmin)
+admin.site.register(GeneIdentifier, GeneAdmin)
+admin.site.register(ProteinIdentifier, ProteinAdmin)
+admin.site.register(Phosphor, PhosphorAdmin)
 admin.site.register(Study, StudyAdmin)
 admin.site.register(Assay, AssayAdmin)
 admin.site.register(SBMLTemplate, SBMLTemplateAdmin)
