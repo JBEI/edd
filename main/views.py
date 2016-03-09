@@ -48,7 +48,6 @@ from .utilities import (
     get_edddata_strains, get_edddata_study, get_edddata_users, get_selected_lines,
 )
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -849,12 +848,101 @@ def study_import_table(request, study):
             messages.error(request, e)
     return render(
         request,
-        "main/table_import.html",
+        "main/import.html",
         context={
             "study": model,
             "protocols": protocols,
         },
     )
+
+
+# /utilities/parsefile
+# To reach this function, files are sent from the client by the Utl.FileDropZone class (in Utl.ts).
+def utilities_parse_import_file(request):
+    """ Attempt to process posted data as either a TSV or CSV file or Excel spreadsheet and
+        extract a table of data automatically. """
+    # These are embedded by the filedrop.js class.  Here for reference.
+    #file_name = request.META.get('HTTP_X_FILE_NAME')
+    #file_size = request.META.get('HTTP_X_FILE_SIZE')
+    #file_type = request.META.get('HTTP_X_FILE_TYPE')
+    #file_date = request.META.get('HTTP_X_FILE_DATE')
+
+    # In requests from OS X clients, we can use the file_type value.  For example, a modern Excel document is reported as
+    # "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", and it's consistent across Safari, Firefox, and Chrome.
+    # However, on Windows XP, file_type is always blank, so we need to fall back to file name extensions like ".xlsx" and ".xls".
+
+    # The Utl.JS.guessFileType() function in Utl.ts applies logic like this to guess the type, and that guess is
+    # sent along in a custom header:
+    edd_file_type = request.META.get('HTTP_X_EDD_FILE_TYPE')
+    edd_import_mode = request.META.get('HTTP_X_EDD_IMPORT_MODE')
+
+    if edd_import_mode == "biolector":
+        try:
+            from edd_utils.parsers import biolector
+            # We pass the request directly along, so it can be read as a stream by the parser
+            result = biolector.getRawImpotRecordsAsJSON(request, 0)
+            return JsonResponse({
+                "file_type": "xml",
+                "file_data": result,
+            })
+        except ImportError as e:
+            return JsonResponse({
+                "python_error": "jbei_tools module required to handle XML table input."
+            })
+    if edd_file_type == "excel":
+        try:
+            from edd_utils.parsers import excel
+            data = request.read()
+            result = excel.import_xlsx_tables(file=BytesIO(data))
+            return JsonResponse({
+                "file_type": "xlsx",
+                "file_data": result,
+            })
+        except ImportError as e:
+            return JsonResponse({
+                "python_error": "jbei_tools module required to handle Excel table input."
+            })
+        except ValueError as e:
+            return JsonResponse({"python_error": str(e)})
+        except Exception as e:
+            return JsonResponse({
+                "file_type": "csv",
+                "file_data": data,
+            })
+    if edd_import_mode == "hplc":
+        try:
+            from edd_utils.parsers.hplc import (
+                getRawImpotRecordsAsJSON, HPLC_Parse_Missing_Argument_Exception,
+                HPLC_Parse_No_Header_Exception, HPLC_Parse_Misaligned_Blocks_Exception
+                )
+            try:
+                result = getRawImpotRecordsAsJSON(request)
+                return JsonResponse({
+                    "file_type": "hplc",
+                    "file_data": result,
+                })
+                # TODO: better exception messages.
+            except HPLC_Parse_Missing_Argument_Exception as e:
+                return JsonResponse({
+                    "python_exception": "HPLC parsing failed: input stream None"
+                })
+            except HPLC_Parse_No_Header_Exception as e:
+                return JsonResponse({
+                    "python_exception": "HPLC parsing failed: unable to find header!"
+                })
+            except HPLC_Parse_Misaligned_Blocks_Exception as e:
+                return JsonResponse({
+                    "python_exception": "HPLC parsing failed: mismatched row count amoung blocks!"
+                })
+        except ImportError as e:
+            return JsonResponse({
+                "python_error": "jbei_tools module required to handle HPLC file input."
+            })
+
+    return JsonResponse({
+        "python_error": "The uploaded file could not be interpreted as either an Excel "
+                        "spreadsheet or an XML file.  Please check that the contents are "
+                        "formatted correctly. (Word documents are not allowed!)"})
 
 
 # /study/<study_id>/import/rnaseq
@@ -1236,64 +1324,6 @@ def delete_file(request, file_id):
             "You do not have permission to remove files associated with this study.")
     model.delete()
     return redirect(redirect_url)
-
-
-# /utilities/parsefile
-# To reach this function, files are sent from the client by the Utl.FileDropZone class (in Utl.ts).
-def utilities_parse_table(request):
-    """ Attempt to process posted data as either a TSV or CSV file or Excel spreadsheet and
-        extract a table of data automatically. """
-    # These are embedded by the filedrop.js class.  Here for reference.
-    #file_name = request.META.get('HTTP_X_FILE_NAME')
-    #file_size = request.META.get('HTTP_X_FILE_SIZE')
-    #file_type = request.META.get('HTTP_X_FILE_TYPE')
-    #file_date = request.META.get('HTTP_X_FILE_DATE')
-
-    # In requests from OS X clients, we can use the file_type value.  For example, a modern Excel document is reported as
-    # "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", and it's consistent across Safari, Firefox, and Chrome.
-    # However, on Windows XP, file_type is always blank, so we need to fall back to file name extensions like ".xlsx" and ".xls".
-
-    # The Utl.JS.guessFileType() function in Utl.ts applies logic like this to guess the type, and that guess is
-    # sent along in a custom header:
-    edd_file_type = request.META.get('HTTP_X_EDD_FILE_TYPE')
-
-    if edd_file_type == "xml":
-        try:
-            from edd_utils.parsers import biolector
-            # We pass the request directly along, so it can be read as a stream by the parser
-            result = biolector.getBiolectorXMLRecordsAsJSON(request, 0)
-            return JsonResponse({
-                "file_type": "xml",
-                "file_data": result,
-            })
-        except ImportError as e:
-            return JsonResponse({
-                "python_error": "jbei_tools module required to handle XML table input."
-            })
-    if edd_file_type == "excel":
-        try:
-            from edd_utils.parsers import excel
-            data = request.read()
-            result = excel.import_xlsx_tables(file=BytesIO(data))
-            return JsonResponse({
-                "file_type": "xlsx",
-                "file_data": result,
-            })
-        except ImportError as e:
-            return JsonResponse({
-                "python_error": "jbei_tools module required to handle Excel table input."
-            })
-        except ValueError as e:
-            return JsonResponse({"python_error": str(e)})
-        except Exception as e:
-            return JsonResponse({
-                "file_type": "csv",
-                "file_data": data,
-            })
-    return JsonResponse({
-        "python_error": "The uploaded file could not be interpreted as either an Excel "
-                        "spreadsheet or an XML file.  Please check that the contents are "
-                        "formatted correctly. (Word documents are not allowed!)"})
 
 
 meta_pattern = re.compile(r'(\w*)MetadataType$')

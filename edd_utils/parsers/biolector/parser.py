@@ -23,7 +23,7 @@ class XMLImportError(Exception):
     """Something bad happened during deserialization."""
 
 
-def getBiolectorXMLRecordsAsJSON(stream_or_string, thin=0):
+def getRawImpotRecordsAsJSON(stream_or_string, thin=0):
   records = []
   for item in BiolectorXMLReader(stream_or_string, thin=thin):
     j = item.to_json()

@@ -172,9 +172,7 @@ def _process_read(read_label, raw_datablocks):
         pass
 
     # TODO: CONSIDER: Migrate to Line
-    if 'device_name' in metadata_entries:
-        pass
-    else:
+    if 'device_name' not in metadata_entries:
         raise Exception("Device name not given!")
 
     try:
