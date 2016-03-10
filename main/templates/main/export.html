@@ -100,7 +100,7 @@
 <!-- start of main form -->
 <form method="post" id="exportForm" action="{% url 'main:export' %}">
   {% csrf_token %}
-  <div class="pageSection" id="mainModeDiv">
+  <div class="pageSection">
     <div class="sectionHead">Specify the layout of the data you wish to export.</div>
     <div class="sectionContent exportOptions">
       {{ select_form.as_p }}

@@ -1,5 +1,4 @@
 /// <reference path="typescript-declarations.d.ts" />
-/// <reference path="EDDDataInterface.ts" />
 // This file contains various utility classes under the Utl module.
 var Utl;
 (function (Utl) {
@@ -205,6 +204,69 @@ var Utl;
                 ret += str;
             return ret;
         };
+        // Convert a size provided in bytes to a nicely formatted string
+        JS.sizeToString = function (size, allowBytes) {
+            var tb = size / (1024 * 1024 * 1024 * 1024);
+            if ((tb > 1) || (tb < -1)) {
+                return Utl.JS.nicelyPrintFloat(tb, 2) + ' Tb';
+            }
+            var gigs = size / (1024 * 1024 * 1024);
+            if ((gigs > 1) || (gigs < -1)) {
+                return Utl.JS.nicelyPrintFloat(gigs, 2) + ' Gb';
+            }
+            var megs = size / (1024 * 1024);
+            if ((megs > 1) || (megs < -1)) {
+                return Utl.JS.nicelyPrintFloat(megs, 2) + ' Mb';
+            }
+            var k = size / 1024;
+            if (((k > 1) || (k < -1)) || !allowBytes) {
+                return Utl.JS.nicelyPrintFloat(k, 2) + ' Kb';
+            }
+            return size + ' b';
+        };
+        // -1 : Print as a full float
+        //  0 : Print as an int, ALWAYS rounded down.
+        // +n : Print with n decimal places, UNLESS the value is an integer
+        JS.nicelyPrintFloat = function (v, places) {
+            // We do not want to display ANY decimal point if the value is an integer.
+            if (v % 1 === 0) {
+                return (v % 1).toString();
+            }
+            if (places > 0) {
+                return v.toFixed(places);
+            }
+            else if (places == 0) {
+                return (v % 1).toString();
+            }
+            return v.toString();
+        };
+        // Given a file name (n) and a file type string (t), try and guess what kind of file we've got.
+        JS.guessFileType = function (n, t) {
+            // Going in order from most confident to least confident guesses:
+            if (t.indexOf('officedocument.spreadsheet') >= 0) {
+                return 'excel';
+            }
+            if (t === 'text/csv') {
+                return 'csv';
+            }
+            if (t === 'text/xml') {
+                return 'xml';
+            }
+            if ((n.indexOf('.xlsx', n.length - 5) !== -1) || (n.indexOf('.xls', n.length - 4) !== -1)) {
+                return 'excel';
+            }
+            if (n.indexOf('.xml', n.length - 4) !== -1) {
+                return 'xml';
+            }
+            if (t === 'text/plain') {
+                return 'plaintext';
+            }
+            if (n.indexOf('.txt', n.length - 4) !== -1) {
+                return 'plaintext';
+            }
+            // If all else fails, assume it's a csv file.  (So, any extension that's not tried above, or no extension.)
+            return 'csv';
+        };
         // Given a date in seconds (with a possible fractional portion being milliseconds),
         // based on zero being midnight of Jan 1, 1970 (standard old-school POSIX time),
         // return a string formatted in the manner of "Dec 21 2012, 11:45am",
@@ -303,9 +365,216 @@ var Utl;
             $(window).keydown(function (e) { if (e.keyCode == 123)
                 debugger; });
         };
+        JS.startWaitBadge = function (selector) {
+            $(selector).css("class", "waitbadge wait");
+        };
+        JS.stopWaitBadge = function (selector) {
+            $(selector).css("class", "waitbadge");
+        };
         return JS;
     })();
     Utl.JS = JS;
+    // A progress bar with a range from 0 to 100 percent.
+    // When given only an id, the class seeks an element in the document and uses that as the progress bar.
+    // When given a parent element, the class makes a new <progress> element underneath it with the given id.
+    var ProgressBar = (function () {
+        function ProgressBar(id, parentElement) {
+            var b;
+            if (parentElement) {
+                b = $('<progress>').appendTo(parentElement)[0];
+                b.id = id;
+            }
+            else {
+                b = document.getElementById(id);
+            }
+            b.innerHTML = '0% complete';
+            b.setAttribute('min', '0');
+            b.setAttribute('max', '100');
+            b.setAttribute('value', '0');
+            b.className = 'off';
+            this.element = b;
+        }
+        // Sets the progress bar from 0 to 100 percent, or no value to disable.
+        // Also shows the spinny wait icon if the progress bar is set to a value other than 100.
+        ProgressBar.prototype.setProgress = function (percentage) {
+            var b = this.element;
+            if (typeof (percentage) === 'undefined') {
+                b.innerHTML = '0% complete';
+                b.setAttribute('value', '0');
+                b.className = 'off';
+            }
+            else {
+                b.innerHTML = percentage + '% complete';
+                b.setAttribute('value', percentage.toString());
+                b.className = '';
+            }
+        };
+        return ProgressBar;
+    })();
+    Utl.ProgressBar = ProgressBar;
+    // A class wrapping filedrop-min.js (http://filedropjs.org) and providing some additional structure.
+    // It's initialized with a single 'options' object:
+    // {
+    //	elementId: ID of the element to be set up as a drop zone
+    //	fileInitFn: Called when a file has been dropped, but before any processing has started
+    //	processRawFn: Called when the file content has been read into a local variable, but before any communication with
+    //                the server.
+    //	url: The URL to upload the file.
+    //	progressBar: A ProgressBar object for tracking the upload progress.
+    //	processResponseFn: Called when the server sends back its results.
+    // }
+    // All callbacks are given a FileDropZoneFileContainer object as their first argument.
+    // TODO:
+    // * Rewrite this with an option to only accept the first file in a dropped set.
+    // * Create a fileContainerGroup object, and a fileContainergGroupIndexCounter, and assign sets of files the same group UID.
+    // * Add a 'cleanup' callback that's called after all files in a group have been uploaded.
+    var FileDropZone = (function () {
+        // If processRawFn is provided, it will be called with the raw file data from the drop zone.
+        // If url is provided and processRawFn returns false (or was not provided) the file will be sent to the given url.
+        // If processResponseFn is provided, it will be called with the returned result of the url call.
+        function FileDropZone(options) {
+            this.progressBar = options.progressBar || null;
+            // If there's a cleaner way to force-disable event logging in filedrop-min.js, do please put it here!
+            window.fd.logging = false;
+            var z = new FileDrop(options.elementId, {}); // filedrop-min.js , http://filedropjs.org
+            this.zone = z;
+            this.csrftoken = jQuery.cookie('csrftoken');
+            if (!(typeof options.multiple === "undefined")) {
+                z.multiple(options.multiple);
+            }
+            else {
+                z.multiple(false);
+            }
+            this.fileInitFn = options.fileInitFn;
+            this.processRawFn = options.processRawFn;
+            this.processResponseFn = options.processResponseFn;
+            this.url = options.url;
+        }
+        // Helper function to create and set up a FileDropZone.
+        FileDropZone.create = function (options) {
+            var h = new FileDropZone(options);
+            h.setup();
+        };
+        FileDropZone.prototype.setup = function () {
+            var t = this;
+            this.zone.event('send', function (files) {
+                files.each(function (file) {
+                    var fileContainer = {
+                        file: file,
+                        fileType: Utl.JS.guessFileType(file.name, file.type),
+                        extraHeaders: {},
+                        progressBar: t.progressBar,
+                        uniqueIndex: FileDropZone.fileContainerIndexCounter++,
+                        stopProcessing: false,
+                        skipProcessRaw: null,
+                        skipUpload: null,
+                        allWorkFinished: false
+                    };
+                    // callInitFile may set fileContainer's internal stopProcessing flag, or any of the others.
+                    // So it's possible for callInitFile to act as a gatekeeper, rejecting the dropped file
+                    // and halting any additional processing, or it can decide whether to read and process
+                    // this file locally, or upload it to the server, or even both.
+                    // Another trick: callInitFile may swap in a custom ProgressBar object just for this file,
+                    // so multiple files can have their own separate progress bars, while they are all uploaded
+                    // in parallel.
+                    t.callInitFile.call(t, fileContainer);
+                    if (fileContainer.stopProcessing) {
+                        fileContainer.allWorkFinished = true;
+                        return;
+                    }
+                    t.callProcessRaw.call(t, fileContainer);
+                });
+            });
+        };
+        // If there is a fileInitFn set, call it with the given FileDropZoneFileContainer.
+        FileDropZone.prototype.callInitFile = function (fileContainer) {
+            if (typeof this.fileInitFn === "function") {
+                this.fileInitFn(fileContainer);
+            }
+        };
+        // If processRawFn is defined, we read the entire file into a variable,
+        // then pass that to processRawFn along with the FileDropZoneFileContainer object.
+        // FileDropZoneFileContainer's contents might be modofied - specifically, the flags - so we check them afterwards
+        // to decide how to proceed.
+        FileDropZone.prototype.callProcessRaw = function (fileContainer) {
+            var t = this;
+            if (typeof this.processRawFn === "function" && !fileContainer.skipProcessRaw) {
+                fileContainer.file.read({
+                    //start: 5,
+                    //end: -10,
+                    //func: 'cp1251',
+                    onDone: function (str) {
+                        t.processRawFn(fileContainer, str);
+                        if (!fileContainer.stopProcessing && !fileContainer.skipUpload) {
+                            t.uploadFile.call(t, fileContainer);
+                        }
+                        else {
+                            fileContainer.allWorkFinished = true;
+                        }
+                    },
+                    onError: function (e) {
+                        alert('Failed to read the file! Error: ' + e.fdError);
+                    },
+                    func: 'text'
+                });
+            }
+            else if (!fileContainer.skipUpload) {
+                this.uploadFile(fileContainer);
+            }
+        };
+        FileDropZone.prototype.uploadFile = function (fileContainer) {
+            var t = this;
+            var f = fileContainer.file;
+            // If no url has been defined, we have to stop here.
+            if (typeof this.url !== 'string') {
+                fileContainer.allWorkFinished = true;
+                return;
+            }
+            // From this point on we assume we're uploading the file,
+            // so we set up the progressBar and callback events before triggering the call to upload.
+            f.event('done', function (xhr) {
+                var result = jQuery.parseJSON(xhr.responseText);
+                if (result.python_error) {
+                    alert(result.python_error); // TODO: This is a bit extreme. Might want to just pass it to the callback.
+                }
+                else if (typeof t.processResponseFn === "function") {
+                    t.processResponseFn(fileContainer, result);
+                }
+                fileContainer.allWorkFinished = true;
+            });
+            f.event('error', function (e, xhr) {
+                // TODO: Again, heavy handed. Might want to just embed this in FileDropZoneFileContainer
+                // and make an error handler callback.
+                alert('Error uploading ' + f.name + ': ' + xhr.status + ', ' + xhr.statusText);
+                fileContainer.allWorkFinished = true;
+            });
+            f.event('xhrSetup', function (xhr) {
+                // This ensures that the CSRF middleware in Django doesn't reject our HTTP request.
+                xhr.setRequestHeader("X-CSRFToken", t.csrftoken);
+                // We want to pass along our own guess at the file type, since it's based on a more specific set of criteria.
+                xhr.setRequestHeader('X-EDD-File-Type', fileContainer.fileType);
+                $.each(fileContainer.extraHeaders, function (name, value) {
+                    xhr.setRequestHeader('X-EDD-' + name, value);
+                });
+            });
+            f.event('sendXHR', function () {
+                if (fileContainer.progressBar) {
+                    fileContainer.progressBar.setProgress(0);
+                }
+            });
+            // Update progress when browser reports it:
+            f.event('progress', function (current, total) {
+                if (fileContainer.progressBar) {
+                    var width = current / total * 100;
+                    fileContainer.progressBar.setProgress(width);
+                }
+            });
+            f.sendTo(this.url);
+        };
+        FileDropZone.fileContainerIndexCounter = 0;
+        return FileDropZone;
+    })();
+    Utl.FileDropZone = FileDropZone;
     // SVG-related utilities.
     var SVG = (function () {
         function SVG() {

@@ -19,6 +19,7 @@ FIXME far too much logic encoded in this template
 EDDData = JSON.parse("{{ data.export_JSON|escapejs }}"); // FIXME this is gross
 
 EDDData.currentUserID = {{ user.pk }};
+EDDData.currentStudyID = {{ study.id }};
 
 // FIXME move this somewhere central
 function disclose() {

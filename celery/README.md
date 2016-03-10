@@ -1,4 +1,4 @@
-# JBEI Configuration for Celery Distributed Task Queue
+# Celery Distributed Task Queue Configuration
 
 This document covers the various install and configuration instructions to run Celery/RabbitMQ.
 Per the [documentation][1], celery is
@@ -27,6 +27,7 @@ Per the [documentation][1], celery is
 
 <a name="External"/>
 For reference, see:
+
 * the RabbitMQ [Production Checklist][2]
 * the Celery [security configuration][3]
 * the Celery [configuration reference][4]
@@ -40,11 +41,13 @@ RabbitMQ, Celery, and Flower, depending on whether all of the above, as well as 
 instance, are hosted on a single trusted network.
 
 <a name="Prereq"/>
+
 ## System Pre-requisites
 This document will assume some basic knowledge of POSIX concepts; files, directories, users, 
 permissions, processes, etc.
 
 <a name="OSX"/>
+
 ### Mac OS X
 This section contains directions for setting up a Celery service on a OS X development environment.
 It is not meant to be used as a production service; if you need Celery for heavy usage, consider
@@ -53,6 +56,7 @@ getting an instance on a Linux server.
 Unless specified otherwise, all commands should be run from the repository root directory.
 
 <a name="OSX_EDD"/>
+
 * Follow EDD Instructions
     * You should, at a minimum, set up the development environment as explained in the core EDD
       documentation. In particular, you will need the following sections:
@@ -115,6 +119,7 @@ Unless specified otherwise, all commands should be run from the repository root 
             * `sudo launchctl unload /Library/LaunchDaemons/com.rabbitmq.plist`
     
 <a name="OSX_Celery"/>
+
 * Install Celery as a daemon
     * Create `celery` user account
         * `sudo ./celery/osx/add_system_user.sh celery`
@@ -159,15 +164,18 @@ Unless specified otherwise, all commands should be run from the repository root 
     * See [celeryconfig.py](edd/edd/celeryconfig.py) for reference
 
 <a name="OSX_Flower"/>
+
 * Install Flower as a daemon
     * TODO
     * Links
         * [configurating Flower authentication][8]
 
 <a name="Debian"/>
+
 ### Debian
 
 <a name="Debian_EDD"/>
+
 * Follow EDD Instructions
     * You should, at a minimum, set up the development environment as explained in the core EDD
       documentation. In particular, you will need the following sections:
@@ -206,6 +214,7 @@ Unless specified otherwise, all commands should be run from the repository root 
             sudo vim rabbitmq.config
 
 <a name="Debian_Celery"/>
+
 * Install Celery as a daemon
     * References
         * [Running the Worker as a daemon][9]
@@ -219,6 +228,7 @@ Unless specified otherwise, all commands should be run from the repository root 
     * `service edd_celeryd start`
 
 <a name="Debian_Flower"/>
+
 * Install Flower as a daemon
     * References
         * [Configuration Options][12]
@@ -226,9 +236,11 @@ Unless specified otherwise, all commands should be run from the repository root 
     * TODO
 	
 <a name="Common_Configuration"/>
+
 ### Common Configuration Steps
 
 <a name="Configure_Rabbit"/>
+
 * Configure the running RabbitMQ server
     * Remove default `guest` account: `rabbitmqctl delete_user guest`
     * Add a virtual host for EDD: `rabbitmqctl add_vhost /edd`

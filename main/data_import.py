@@ -258,7 +258,6 @@ class TableImport(object):
                 })
             return NO_TYPE
         elif layout == 'pr':
-            # TODO Protein import should be re-worked to get types from a label/session-id combo
             protein_ids = ProteinIdentifier.objects.filter(
                 Q(short_name=ProteinIdentifier.match_accession_id(label)) |
                 Q(short_name=label) |
@@ -273,7 +272,7 @@ class TableImport(object):
                 })
                 if len(protein_ids) > 1:
                     # FIXME: choosing the first one for now, should be error?
-                    return (0, protein_ids[0], 1, )
+                    return MType(0, protein_ids[0], 1, )
                 else:
                     # FIXME: this blindly creates a new type; should try external lookups first?
                     try:
@@ -281,7 +280,7 @@ class TableImport(object):
                     except:
                         logger.error('Failed to create ProteinIdentifier %s' % label)
                     else:
-                        return (0, p.pk, 1, )
+                        return MType(0, p.pk, 1, )
             return NO_TYPE
         if label not in self._type_lookup:
             if label is None:

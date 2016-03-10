@@ -1,6 +1,6 @@
+/// <reference path="typescript-declarations.d.ts" />
 /// <reference path="Utl.ts" />
 /// <reference path="Dragboxes.ts" />
-/// <reference path="lib/jquery.d.ts" />
 
 //
 // This is a re-implementation of DataGridServerSide for wholly client-side tables.
