@@ -10,6 +10,7 @@ Celery task implementation. See celery_utils.py for common supporting utility me
 from __future__ import absolute_import
 
 from django.core.exceptions import MultipleObjectsReturned
+from django.utils.translation import ugettext
 
 from edd.celeryconfig import CELERY_INITIAL_ICE_RETRY_DELAY, CELERY_WARN_AFTER_RETRY_NUM_FOR_ICE, \
     CELERY_MAX_ICE_RETRIES
@@ -43,7 +44,7 @@ celery_logger = get_task_logger(__name__)
 _INVALID_DELAY = -1
 
 _WARNING_IMPORTANCE = "Warning"
-_STALE_OR_ERR_INPUT = 'Stale or erroneous input'
+_STALE_OR_ERR_INPUT = ugettext('Stale or erroneous input')
 
 
 @shared_task(bind=True)
@@ -130,7 +131,7 @@ def test_repeated_retry_failure(self, fail_for_outdated_input=False, succeed_on_
     if self.request.retries > warn_at_retry_num:
         send_resolution_message(self, est_execution_time, celery_logger)
 
-    return 'Success'
+    return ugettext('Success')
 
 
 @shared_task(bind=True, default_retry_delay=CELERY_INITIAL_ICE_RETRY_DELAY,
@@ -138,7 +139,8 @@ def test_repeated_retry_failure(self, fail_for_outdated_input=False, succeed_on_
 def link_ice_entry_to_study(self, edd_user_email, strain_pk, study_pk, study_url,
                             old_study_name=None, **kwargs):
     """
-    Contacts ICE to link an ICE part referenced by an EDD strain an EDD study that uses it. In the
+    TODO: line instead of cell line
+    Contacts ICE to link an ICE strain to an EDD study that uses it. In the
     anticipated common case, this is triggered by creation of a single cell line within the confines
     of an EDD study. However, to avoid (though not entirely prevent) race conditions, EDD updates
     the entire list of study links associated with that strain. As a future improvement, we could
@@ -189,12 +191,15 @@ def link_ice_entry_to_study(self, edd_user_email, strain_pk, study_pk, study_url
 
             line = (Line.objects.filter(study__pk=study_pk, strains__pk=strain_pk)
                                 .select_related('study__created')
+                                .prefetch_related('strains')
                                 .first())
 
             if line is None:
                 raise Line.DoesNotExist("No lines found linking strain id %s to study id %d"
                                         % (strain_pk, study_pk))
 
+            # get the associated strain AND raise an exception for  unsupported multiple strain
+            # case
             strain = line.strains.get(pk=strain_pk)
 
         registry_url = strain.registry_url
@@ -209,11 +214,12 @@ def link_ice_entry_to_study(self, edd_user_email, strain_pk, study_pk, study_url
         workaround_strain_entry_id = parse_entry_id(strain.registry_url)
 
         # finish early if we don't have enough information to find the ICE entry for this strain
+        # TODO: raise an exception here once strain data are more dependable (SYNBIO-1350)
         if (not registry_url) or (not registry_id):
             celery_logger.warning("Registry URL and registry ID must both be entered in order to "
                                   "create push an EDD  study ID to ICE. Cannot create a link for "
                                   "strain with id %s" % strain.name)
-            return 'EDD strain contains insufficient data'
+            return ugettext('EDD strain contains insufficient data')
 
         # make a request via ICE's REST API to link the ICE strain to the EDD study that references
         # it
@@ -265,7 +271,7 @@ def link_ice_entry_to_study(self, edd_user_email, strain_pk, study_pk, study_url
     if self.request.retries > CELERY_WARN_AFTER_RETRY_NUM_FOR_ICE:
         send_resolution_message(self, est_execution_time, celery_logger)
 
-    return 'Link added/updated'
+    return ugettext('Link added/updated')
 
 
 @shared_task(bind=True, default_retry_delay=CELERY_INITIAL_ICE_RETRY_DELAY,
@@ -349,7 +355,7 @@ def unlink_ice_entry_from_study(self, edd_user_email, study_pk, study_url, strai
                        '''possible that the link was manually deleted  (verifiable via the GUI).'''
                        % (self.name, study_url, strain_registry_url))
             email_admins(subject, message, celery_logger)
-            return 'Non-existent link'
+            return ugettext('Non-existent link')
 
     # if Celery is about to forcibly terminate the worker, perform cleanup and then fail the task by
     #  re-raising the Exception
@@ -375,4 +381,4 @@ def unlink_ice_entry_from_study(self, edd_user_email, study_pk, study_url, strai
     if self.request.retries > CELERY_WARN_AFTER_RETRY_NUM_FOR_ICE:
         send_resolution_message(self, est_execution_time, celery_logger)
 
-    return 'Link removed'
+    return ugettext('Link removed')

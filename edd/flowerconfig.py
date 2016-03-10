@@ -5,25 +5,41 @@ http://flower.readthedocs.org/en/latest/config.html
 """
 
 from celery import Celery
-from django.conf import settings
+import json
+import os
 
+####################################################################################################
+# Load settings from server.cfg (config file shared with Django, though used here as input to
+# Flower)
+# DO NOT MODIFY THIS CODE to use Django's settings module. This code doesn't run in Django and will
+# break using what's otherwise the normal settings import process for EDD.
+####################################################################################################
+BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+try:
+    with open(os.path.join(BASE_DIR, 'server.cfg')) as server_cfg:
+        config = json.load(server_cfg)
+except IOError:
+    print("Required configuration file server.cfg is missing from %s"
+          "Copy from server.cfg-example and fill in appropriate values" % BASE_DIR)
+    raise
 
 # Broker Settings
-RABBITMQ_HOST = settings.config['rabbitmq'].get('hostname')
-EDD_RABBITMQ_USERNAME = settings.config['rabbitmq'].get('edd_user')
-EDD_RABBITMQ_PASSWORD = settings.config['rabbitmq'].get('edd_pass')
-RABBITMQ_PORT = settings.config['rabbitmq'].get('port')
-EDD_VHOST = settings.config['rabbitmq'].get('edd_vhost')
+RABBITMQ_HOST = config['rabbitmq'].get('hostname')
+EDD_RABBITMQ_USERNAME = config['rabbitmq'].get('edd_user')
+EDD_RABBITMQ_PASSWORD = config['rabbitmq'].get('edd_pass')
+RABBITMQ_PORT = config['rabbitmq'].get('port')
+EDD_VHOST = config['rabbitmq'].get('edd_vhost')
 
-RABBITMQ_MGMT_USERNAME = settings.config['rabbitmq'].get('mgmt_user', 'bunny')
-RABBITMQ_MGMT_PASSWORD = settings.config['rabbitmq'].get('mgmt_pass', '')
-RABBITMQ_MGMT_PORT = settings.config['rabbitmq'].get('mgmt_port', 15672)
+RABBITMQ_MGMT_USERNAME = config['rabbitmq'].get('mgmt_user', 'bunny')
+RABBITMQ_MGMT_PASSWORD = config['rabbitmq'].get('mgmt_pass', '')
+RABBITMQ_MGMT_PORT = config['rabbitmq'].get('mgmt_port', 15672)
 MGMT_INTERFACE_URL = 'amqp://%(user)s:%(pass)s@%(host)s/%(vhost)s' % {
     'user': RABBITMQ_MGMT_USERNAME,
     'pass': RABBITMQ_MGMT_PASSWORD,
     'host': RABBITMQ_HOST,
     'vhost': EDD_VHOST,
 }
+####################################################################################################
 
 # Set up a separate Celery "app" (instance of the Celery API) for Flower use. This is essentially
 # just a workaround for flower not allowing broker_url to be configure via the config file. This
