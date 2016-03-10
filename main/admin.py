@@ -5,6 +5,7 @@ from django import forms
 from django.contrib import admin, messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin
+from django.db import connection
 from django.db.models import Count, Q
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
@@ -217,6 +218,8 @@ class CarbonSourceAdmin(EDDObjectAdmin):
 
 class MeasurementTypeAdmin(admin.ModelAdmin):
     """ Definition for admin-edit of Measurement Types """
+    actions = ['merge_with_action']
+
     def get_fields(self, request, obj=None):
         return [
             'type_name', 'short_name',
@@ -228,12 +231,13 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
     def get_merge_autowidget(self):
         return MeasurementTypeAutocompleteWidget
 
-    def get_merge_form(self):
+    def get_merge_form(self, request):
         class MergeForm(forms.Form):
             # same name as admin site uses for checkboxes to select items for actions
             _selected_action = forms.CharField(widget=forms.MultipleHiddenInput)
             mtype = forms.ModelChoiceField(
-                self.get_queryset(),
+                self.get_queryset(request),
+                label=self.model._meta.verbose_name,
                 widget=self.get_merge_autowidget(),
             )
         return MergeForm
@@ -249,7 +253,7 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
         return ['type_name', 'short_name', ]
 
     def merge_with_action(self, request, queryset):
-        MergeForm = self.get_merge_form()
+        MergeForm = self.get_merge_form(request)
         form = None
         if 'merge' in request.POST:
             form = MergeForm(request.POST)
@@ -277,7 +281,27 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
     _study_count.short_description = '# Studies'
 
 
+class TagListFilter(admin.SimpleListFilter):
+    title = _('Tag')
+    parameter_name = 'tags'
+
+    def lookups(self, request, model_admin):
+        lookups = []
+        with connection.cursor() as cursor:
+            cursor.execute('SELECT DISTINCT unnest(tags) FROM metabolite')
+            lookups = [item + item for item in cursor.fetchall()]
+        return lookups
+
+    def queryset(self, request, queryset):
+        tag = self.value()
+        if tag:
+            return queryset.filter(tags__contains=[self.value(), ])
+        return queryset
+
+
 class MetaboliteAdmin(MeasurementTypeAdmin):
+    list_filter = [TagListFilter, ]
+
     def get_fields(self, request, obj=None):
         return super(MetaboliteAdmin, self).get_fields(request, obj) + [
             ('molecular_formula', 'molar_mass', 'charge', ),  # grouping in tuple puts in a row
@@ -287,7 +311,7 @@ class MetaboliteAdmin(MeasurementTypeAdmin):
     def get_list_display(self, request):
         # complete override
         return [
-            'type_name', 'short_name', 'molecular_formula', 'molar_mass', 'charge', 'tags',
+            'type_name', 'short_name', 'molecular_formula', 'molar_mass', 'charge', '_tags',
             '_study_count', 'source'
         ]
 
@@ -302,6 +326,9 @@ class MetaboliteAdmin(MeasurementTypeAdmin):
 
     def get_readonly_fields(self, request, obj=None):
         return ['source', ]
+
+    def _tags(self, obj):
+        return ', '.join(obj.tags)
 
 
 class ProteinAdmin(MeasurementTypeAdmin):
