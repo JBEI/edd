@@ -77,9 +77,11 @@ class CsvSummary:
     Defines the set of line creation inputs read from CSV file, as well as some other helpful
     context that may help catch parsing or data entry errors.
     """
-    def __init__(self, line_generation_inputs, unmatched_non_blank_cell_count, blank_cell_count,
+    def __init__(self, line_generation_inputs, unique_part_numbers, unmatched_non_blank_cell_count,
+                 blank_cell_count,
                  total_rows):
         self.line_creation_inputs = line_generation_inputs
+        self.unique_part_numbers = unique_part_numbers
         self.unmatched_cell_count = unmatched_non_blank_cell_count
         self.blank_cell_count = blank_cell_count
         self.total_rows = total_rows
@@ -109,6 +111,7 @@ def parse_csv(path):
         line_creation_inputs = []
         blank_cell_count = 0
         unmatched_cell_count = 0
+        unique_part_numbers_dict = collections.OrderedDict()
 
         part_number_regex = r'\s*([A-Z]+_\d{6})\s*'
         part_number_pattern = re.compile(part_number_regex, re.IGNORECASE)
@@ -219,6 +222,7 @@ def parse_csv(path):
                     if cell_content:
                         line_desc = cell_content
 
+                unique_part_numbers_dict[part_number] = True
                 line_creation_inputs.append(LineCreationInput(part_number, line_name, line_desc))
 
             row_number += 1
@@ -227,8 +231,12 @@ def parse_csv(path):
         print("The minimum set of required column labels wasn't found in this CSV file. Required "
               "column labels are ['Part ID', 'Line Name']. A 'Line Description' column is "
               "optional.")
-    return CsvSummary(line_creation_inputs, unmatched_cell_count, blank_cell_count, row_number)
+    unique_part_numbers_list = unique_part_numbers_dict.keys()
+    return CsvSummary(line_creation_inputs, unique_part_numbers_list, unmatched_cell_count,
+                      blank_cell_count, row_number)
 
+def replace_newlines(str):
+    return str.replace('\n', r' \ ')
 
 def print_found_ice_parts(part_number_to_part_dict):
     if not part_number_to_part_dict:
@@ -241,7 +249,8 @@ def print_found_ice_parts(part_number_to_part_dict):
     col3_width = max(len(part.part_id) for part in part_number_to_part_dict.values()) + space
     col4_width = max(len(part.name) for part in part_number_to_part_dict.values()) + space
     col5_width = max(
-        len(part.short_description) for part in part_number_to_part_dict.values()) + space
+        len(replace_newlines(part.short_description)) for part in
+        part_number_to_part_dict.values()) + space
 
     col1_lbl = 'Search id:'
     col2_lbl = 'Found Part id: '
@@ -263,9 +272,10 @@ def print_found_ice_parts(part_number_to_part_dict):
     # print output
     for search_id in part_number_to_part_dict.keys():
         part = part_number_to_part_dict[search_id]
+        short_description = replace_newlines(part.short_description)
         print(''.join([str(search_id).ljust(col1_width), str(part.id).ljust(col2_width),
                        part.part_id.ljust(col3_width), part.name.ljust(col4_width),
-                       part.short_description.ljust(col5_width)]))
+                       short_description.ljust(col5_width)]))
 
 
 def get_ice_parts(base_url, ice_username, password, part_numbers_list,
@@ -339,7 +349,7 @@ def get_ice_parts(base_url, ice_username, password, part_numbers_list,
     print ('Found %(found)d of %(total)d parts in ICE.' %
            {
                'found': found_parts_count,
-               'total': csv_part_number_count
+               'total': csv_part_number_count,
            })
 
     # enforce the restriction that only ICE Strains may be used to create EDD lines. Plasmids
@@ -401,8 +411,8 @@ def find_existing_strains(edd, ice_parts, existing_edd_strains, strains_by_part_
 
             # if no EDD strains were found with this UUID, look for candidate strains by URL
             else:
-                print("ICE part %s couldn't be located in EDD's database by UUID. Performing "
-                      "other searches." % ice_part.part_id)
+                print("ICE part %s couldn't be located in EDD's database by UUID. Searching by "
+                      "name and URL to help avoid strain curation problems." % ice_part.part_id)
 
                 # look for candidate strains by URL (if present, more static / reliable than name)
                 edd_strains = edd.search_strains(registry_url_regex=r".*/parts/%d(?:/?)" %
@@ -473,7 +483,7 @@ def create_missing_strains(edd, non_existent_edd_strains, strains_by_part_number
     # loop while gathering user input -- gives user a chance to list strains that will
     # be created
     while True:
-        result = raw_input('Do you want to create EDD strains for all of these %d parts? ('
+        result = raw_input('Do you want to create EDD strains for all %d of these parts? ('
                            'Y/n/list): ' % non_existent_strain_count).upper()
 
         if 'Y' == result or 'YES' == result:
@@ -534,6 +544,7 @@ def create_lines(study_id, csv_summary, strains_by_part_number):
     """
     lines_by_part_number = collections.OrderedDict()
 
+    line_name = None
     ice_part_number = None
     line_index = 0
     strain_col_width = 0
@@ -559,7 +570,8 @@ def create_lines(study_id, csv_summary, strains_by_part_number):
                 continue
 
             # create the line in EDD, or raise an Exception if creation can't occur
-            line = edd.create_line(study_number, strain.pk, line_input.name, line_input.description)
+            line_name = line_input.name
+            line = edd.create_line(study_number, strain.pk, line_name, line_input.description)
 
             # save state to help print good summary output / error messages
             lines_by_part_number[ice_part_number] = line
@@ -611,11 +623,16 @@ def create_lines(study_id, csv_summary, strains_by_part_number):
                            description.ljust(col3_width), str(strain_id).ljust(strain_col_width)]))
 
     except Exception:
+        line_creation_input_count = len(csv_summary.line_creation_inputs)
         logger.exception('An error occurred during line creation. %(created)d of %(total)d '
-                         'lines were created '
-                         'before the error occurred for part number %(part_num)s.',
-                         {'created': line_index, 'total': ice_part_count,
-                             'part_num': ice_part_number})
+                         'lines were created before the error occurred for line "%(line_name)s" '
+                         '(part number %(part_num)s).',
+                         {
+                             'created': line_index,
+                             'total': line_creation_input_count,
+                             'line_name': line_name,
+                             'part_num': ice_part_number
+                         })
 
 UUID_CHAR_COUNT = 36
 
@@ -730,13 +747,16 @@ try:
     print('Reading CSV file...')
     print(OUTPUT_SEPARATOR)
     csv_summary = parse_csv(args.file_name)
-    csv_part_number_count = len(csv_summary.line_creation_inputs)
+    csv_line_creation_count = len(csv_summary.line_creation_inputs)
+    csv_unique_part_numbers = csv_summary.unique_part_numbers
+    csv_part_number_count = len(csv_unique_part_numbers)
 
     print('Done reading file %s:' % os.path.basename(args.file_name))
+    print('\tUnique ICE part numbers read: %d ' % len(csv_unique_part_numbers))
+    print('\tLine creation inputs read: %d ' % csv_line_creation_count)
     print('\tTotal rows in file: %d' % csv_summary.total_rows)
-    print('\tLine creation inputs read: %d ' % csv_part_number_count)
 
-    if not csv_part_number_count:
+    if not csv_line_creation_count:
         print('Aborting line creation. No lines to create!')
         exit(0)
 
@@ -844,9 +864,10 @@ try:
         # Loop over part numbers in the spreadsheet, looking each one up in ICE to get its UUID (
         # the only identifier currently stored in EDD)
         ############################################################################################
-        csv_part_numbers = [input.local_ice_part_number for input in
-                            csv_summary.line_creation_inputs]
-        ice_parts_dict = get_ice_parts(ICE_URL, username, password, csv_part_numbers,
+
+        # extract only the unique part numbers referenced from the CSV. it's likely that many lines
+        # will reference the same strains
+        ice_parts_dict = get_ice_parts(ICE_URL, username, password, csv_unique_part_numbers,
                                        print_search_comparison=PRINT_FOUND_ICE_PARTS)
 
         ice_part_count = len(ice_parts_dict)
@@ -863,10 +884,12 @@ try:
                   "numbers above)")
             print("Do you want to create EDD lines for the parts that were found? You'll "
                   "have to create the rest manually, using output above as a reference.")
-            result = raw_input("Create EDD lines for %(found)d of %(total)d parts? (Y/n) " %
+            result = raw_input("Create EDD lines for %(found)d of %(total)d parts? Recall that "
+                               "each ICE part may have many associated lines ("
+                               "Y/n): " %
                                {
                                     'found': len(ice_parts_dict),
-                                    'total': len(csv_part_numbers)
+                                    'total': len(csv_unique_part_numbers)
                                }).upper()
             if ('Y' != result) and ('YES' != result):
                 print('Aborting line creation.')
@@ -888,7 +911,7 @@ try:
         # for consistency, print out part numbers from the CSV that we won't be looking for in EDD
         # because they couldn't be found in ICE
         if ice_part_count != csv_part_number_count:
-            for part_number in csv_part_numbers:
+            for part_number in csv_unique_part_numbers:
                 if not part_number in ice_parts_dict:
                     logger.warning('Skipping EDD strain creation for part number "%s" that wasn\'t '
                                    'found in ICE' % part_number)
