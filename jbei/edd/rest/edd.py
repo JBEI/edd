@@ -199,29 +199,29 @@ class DrfSessionRequestGenerator(SessionRequestGenerator):
         if method.upper() in UNSAFE_HTTP_METHODS:
             kwargs = self.get_csrf_headers(kwargs)
 
-        return self._session.request(method, url, **kwargs)
+        return super(DrfSessionRequestGenerator, self).request(method, url, **kwargs)
 
     def head(self, url, **kwargs):
-        return self._session.head(url, **kwargs)
+        return super(DrfSessionRequestGenerator, self).get(url, **kwargs)
 
     def get(self, url, **kwargs):
-        return self._session.get(url, **kwargs)
+        return super(DrfSessionRequestGenerator, self).get(url, **kwargs)
 
     def post(self, url, data=None, **kwargs):
         kwargs = self.get_csrf_headers(**kwargs)
-        return self._session.post(url, data, **kwargs)
+        return super(DrfSessionRequestGenerator, self).post(url, data, **kwargs)
 
     def put(self, url, data=None, **kwargs):
         kwargs = self.get_csrf_headers(kwargs)
-        return self._session.put(url, data, **kwargs)
+        return super(DrfSessionRequestGenerator, self).put(url, data, **kwargs)
 
     def patch(self, url, data=None, **kwargs):
         kwargs = self.get_csrf_headers(kwargs)
-        return self._session.patch(url, data, **kwargs)
+        return super(DrfSessionRequestGenerator, self).patch(url, data, **kwargs)
 
     def delete(self, url, **kwargs):
         kwargs = self.get_csrf_headers(kwargs)
-        return self._session.delete(url, **kwargs)
+        return super(DrfSessionRequestGenerator, self).delete(url, **kwargs)
 
     def get_csrf_headers(self, **kwargs):
         """
@@ -411,6 +411,10 @@ class EddApi(object):
             raise RuntimeError('To prevent accidental data loss, changes to EDD data are '
                                'disabled. Use %s to allow writes, '
                                'but please use carefully!' % self.set_write_enabled.__name__)
+
+    @property
+    def request_generator(self):
+        return self.session_auth.request_generator
 
     def search_strains(self, registry_id=None, registry_url_regex=None, name=None, name_regex=None,
                        case_sensitive=None):

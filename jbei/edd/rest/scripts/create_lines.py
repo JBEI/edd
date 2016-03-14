@@ -5,6 +5,11 @@ from __future__ import unicode_literals
 # code in that module will attempt to look for a django settings module and fail if django isn't
 # installed in the current virtualenv
 import os
+
+import arrow
+
+from jbei.utils import to_human_relevant_delta, UserInputTimer
+
 os.environ.setdefault('ICE_SETTINGS_MODULE', 'jbei.edd.rest.scripts.settings')
 ####################################################################################################
 
@@ -278,6 +283,10 @@ def print_found_ice_parts(part_number_to_part_dict):
                        short_description.ljust(col5_width)]))
 
 
+class NonStrainPartsError(RuntimeError):
+    pass
+
+
 def get_ice_parts(base_url, ice_username, password, part_numbers_list,
                   print_search_comparison=False):
     """
@@ -289,9 +298,10 @@ def get_ice_parts(base_url, ice_username, password, part_numbers_list,
     :param password: the ice password
     :return:
     """
+    csv_part_number_count = len(part_numbers_list)
     part_number_to_part_dict = collections.OrderedDict()  # order for easy comparison against CSV
     print 'Logging into ICE at %s ...' % ICE_URL,
-    with IceSessionAuth.login(ice_username=username, password=password,
+    with IceSessionAuth.login(ice_username=ice_username, password=password,
                               base_url=ICE_URL) as ice_session_auth:
         print('success!')
 
@@ -366,7 +376,7 @@ def get_ice_parts(base_url, ice_username, password, part_numbers_list,
         print('')
         print_found_ice_parts(non_strain_parts)
         print('')
-        exit(0)
+        raise NonStrainPartsError()
 
     if print_search_comparison:
         print_found_ice_parts(part_number_to_part_dict)
@@ -403,7 +413,7 @@ def find_existing_strains(edd, ice_parts, existing_edd_strains, strains_by_part_
                               'part_number': ice_part.part_id,
                               'uuid': ice_part.record_id
                           })
-                    exit(0)
+                    return False
 
                 existing_strain = edd_strains.results[0]
                 existing_edd_strains[ice_part.part_id] = existing_strain
@@ -422,7 +432,7 @@ def find_existing_strains(edd, ice_parts, existing_edd_strains, strains_by_part_
                     print("Found an existing, but malformed, EDD strain for part %s (registry_id "
                           "%s). Please have the EDD team correct this issue before you proceed."
                           % (ice_part.part_id, ice_part.uuid))
-                    exit(0)
+                    return False
 
                 # look for candidate strains by UUID-based URL
                 edd_strains = edd.search_strains(registry_url_regex=r".*/parts/%s(?:/?)" %
@@ -433,7 +443,7 @@ def find_existing_strains(edd, ice_parts, existing_edd_strains, strains_by_part_
                               "(registry_id  %s). Please have the EDD team correct this issue "
                               "before you proceed."
                               % (ice_part.part_id, ice_part.uuid))
-                        exit(0)
+                        return False
 
                 # if no strains were found by URL, search by name
                 edd_strains = edd.search_strains(name=ice_part.name)
@@ -447,9 +457,10 @@ def find_existing_strains(edd, ice_parts, existing_edd_strains, strains_by_part_
                               'part_number': ice_part.part_id,
                               'part_name': ice_part.name,
                           })
-                    exit(0)
+                    return False
 
                 non_existent_edd_strains.append(ice_part)
+    return True
 
 
 def create_missing_strains(edd, non_existent_edd_strains, strains_by_part_number, ice_part_count):
@@ -468,12 +479,14 @@ def create_missing_strains(edd, non_existent_edd_strains, strains_by_part_number
     if not non_existent_edd_strains:
         return STRAINS_CREATED
 
+    non_existent_strain_count = len(non_existent_edd_strains)
+
     print('')
     print(OUTPUT_SEPARATOR)
-    print('Creating EDD Strains...')
+    print('Creating %d EDD Strains...' % non_existent_strain_count)
     print(OUTPUT_SEPARATOR)
 
-    non_existent_strain_count = len(non_existent_edd_strains)
+
     print('Warning: %(non_existent)d of %(total)d ICE parts did not have an '
           'existing strain in EDD.' % {
               'non_existent': len(non_existent_edd_strains),
@@ -483,7 +496,8 @@ def create_missing_strains(edd, non_existent_edd_strains, strains_by_part_number
     # loop while gathering user input -- gives user a chance to list strains that will
     # be created
     while True:
-        result = raw_input('Do you want to create EDD strains for all %d of these parts? ('
+        result = input.user_input('Do you want to create EDD strains for all %d of these '
+                                     'parts? ('
                            'Y/n/list): ' % non_existent_strain_count).upper()
 
         if 'Y' == result or 'YES' == result:
@@ -533,7 +547,7 @@ def create_missing_strains(edd, non_existent_edd_strains, strains_by_part_number
         return STRAINS_NOT_CREATED
 
 
-def create_lines(study_id, csv_summary, strains_by_part_number):
+def create_lines(edd, study_id, csv_summary, strains_by_part_number):
     """
     Creates lines in an EDD study, then prints summary output
     :param study_id: numeric primary key identifying the EDD study that lines should be
@@ -542,7 +556,8 @@ def create_lines(study_id, csv_summary, strains_by_part_number):
     for any lines whose creation was skipped/aknowleged early in the process
     :param strains_by_part_number: the list of EDD strains the lines will be created from
     """
-    lines_by_part_number = collections.OrderedDict()
+    created_lines = []  # in same order as line creation inputs. None for skipped lines.
+    created_line_count = 0
 
     line_name = None
     ice_part_number = None
@@ -552,34 +567,34 @@ def create_lines(study_id, csv_summary, strains_by_part_number):
 
     try:
         # loop over lines, attempting to create them in EDD
-        for line_input in csv_summary.line_creation_inputs:
-            ice_part_number = line_input.local_ice_part_number
+        for line_creation_input in csv_summary.line_creation_inputs:
+            ice_part_number = line_creation_input.local_ice_part_number
             strain = strains_by_part_number.get(ice_part_number)
 
+            # skip any lines whose EDD strain couldn't be created because the relevant ICE part
+            # wasn't found. User has already acknowledged this and chosen to proceed
             if not strain:
                 logger.warning("Skipping line creation for part number \"%s\" that wasn't found "
                                "in ICE" % ice_part_number)
                 skipped_some_strains = True
+                created_lines.append(None)
                 continue
 
             strain_col_width = max([len(str(strain.pk)), strain_col_width])
 
-            # skip any lines whose EDD strain couldn't be created because the relevant ICE part
-            # wasn't found. User has already aknowleged this and chosen to proceed
-            if not strain:
-                continue
-
             # create the line in EDD, or raise an Exception if creation can't occur
-            line_name = line_input.name
-            line = edd.create_line(study_number, strain.pk, line_name, line_input.description)
+            line_name = line_creation_input.name
+            line = edd.create_line(study_id, strain.pk, line_name,
+                                   line_creation_input.description)
 
             # save state to help print good summary output / error messages
-            lines_by_part_number[ice_part_number] = line
+            created_line_count += 1
+            created_lines.append(line)
             line_index += 1
 
         if skipped_some_strains:
             print ''
-        print('All %d lines were created in EDD. BAM!' % len(lines_by_part_number))
+        print('All %d lines were created in EDD. BAM!' % created_line_count)
         print('')
 
         # determine sizing for columnar summary output
@@ -603,14 +618,14 @@ def create_lines(study_id, csv_summary, strains_by_part_number):
             [col1_lbl.ljust(col1_width), col2_lbl.ljust(col2_width), col3_lbl.ljust(col3_width),
              col4_lbl.ljust(strain_col_width)]))
 
-        # print created lines, also reiterating inputs for any lines that weren't created
-        # because the associated ICE parts couldn't be found
-        for line_input in csv_summary.line_creation_inputs:
-            ice_part_number = line_input.local_ice_part_number
+        # print created lines, also reiterating inputs for any lines that weren't created because
+        # the associated ICE parts couldn't be found
+        for line_index, line_creation_input in enumerate(csv_summary.line_creation_inputs):
+            ice_part_number = line_creation_input.local_ice_part_number
             strain = strains_by_part_number.get(ice_part_number)
             strain_id = strain.pk if strain else '[ Not found in ICE ]'
 
-            created_line = lines_by_part_number.get(ice_part_number)
+            created_line = created_lines[line_index]
 
             # assume line creation errors were handled properly above in that code.
             # just ignore missing lines for printing purposes here
@@ -624,8 +639,9 @@ def create_lines(study_id, csv_summary, strains_by_part_number):
 
     except Exception:
         line_creation_input_count = len(csv_summary.line_creation_inputs)
-        logger.exception('An error occurred during line creation. %(created)d of %(total)d '
-                         'lines were created before the error occurred for line "%(line_name)s" '
+        logger.exception('An error occurred during line creation. At least %(created)d of %('
+                         'total)d lines were created before the error occurred for line "%('
+                         'line_name)s" '
                          '(part number %(part_num)s).',
                          {
                              'created': line_index,
@@ -694,252 +710,366 @@ def print_edd_strains(existing_edd_strains, non_existent_edd_strains):
                        str(strain.registry_id).ljust(col4_width),
                        strain.description.ljust(col5_width)]))
 
-try:
-    ################################################################################################
-    # Configure command line parameters
-    ################################################################################################
-    parser = argparse.ArgumentParser(description='Create EDD lines/strains from a list of ICE '
-                                                 'entries')
-    parser.add_argument('file_name', help='A CSV file containing strains exported from ICE')
 
-    parser.add_argument('-p', '-password', help='provide a password via the command '
-                                                'line (helps with repeated use / testing)')
-    parser.add_argument('-u', '-username', help='provide username via the command line ('
-                                                'helps with repeated use / testing)')
-    parser.add_argument('-s', '-silent', action='store_const', const=True,
-                        help='skip user prompts to verify CSV content')
-    parser.add_argument('-study', type=int, help='the number of the EDD study to create the new '
-                                                 'lines in')
-    args = parser.parse_args()
+class Performance(object):
+    """
+    Defines performance tracking for elapsed time the script uses in performing the anticipated
+    most expensive tasks.
+    """
 
-    # print out important parameters
-    print(OUTPUT_SEPARATOR)
-    print(os.path.basename(__file__))
-    print(OUTPUT_SEPARATOR)
-    print('\tSettings module:\t%s' % os.environ['ICE_SETTINGS_MODULE'])
-    print('\tEDD URL:\t%s' % EDD_URL)
-    print('\tICE URL:\t%s' % ICE_URL)
-    print('\tCSV File:\t%s' % args.file_name)
-    if args.u:
-        print('\tEDD/ICE Username:\t%s' % args.u)
-    if args.study:
-        print('\tEDD Study ID:\t%d' % args.study)
-    print('')
-    print(OUTPUT_SEPARATOR)
+    def __init__(self, overall_start_time):
+        self._overall_start_time = overall_start_time
 
-    ################################################################################################
-    # Verify that URL's start with HTTP*S* for non-local use. Don't allow mistaken config to expose
-    # access credentials! Local testing requires insecure http, so this mistake is easy to make!
-    ################################################################################################
-    if not is_url_secure(EDD_URL):
-        print('EDD_BASE_URL %s is insecure. You must use HTTPS to maintain security for non-local '
-              'URL\'s')
-        exit(0)
+        zero_time_delta = overall_start_time - overall_start_time
 
-    if not is_url_secure(ICE_URL):
-        print('ICE_BASE_URL %s is insecure. You must use HTTPS to maintain security for non-local '
-              'URL\'s')
-        exit(0)
+        self.csv_parse_delta = None
+        self.ice_communication_delta = None
+        self.edd_communication_delta = None
+        self.edd_login_delta = None
+        self.waiting_for_user_delta = None
+        self._overall_end_time = None
+        self._total_time = None
 
-    ################################################################################################
-    # Read in part numbers from the CSV
-    ################################################################################################
-    print('Reading CSV file...')
-    print(OUTPUT_SEPARATOR)
-    csv_summary = parse_csv(args.file_name)
-    csv_line_creation_count = len(csv_summary.line_creation_inputs)
-    csv_unique_part_numbers = csv_summary.unique_part_numbers
-    csv_part_number_count = len(csv_unique_part_numbers)
+    @property
+    def overall_end_time(self):
+        return self._overall_end_time
 
-    print('Done reading file %s:' % os.path.basename(args.file_name))
-    print('\tUnique ICE part numbers read: %d ' % len(csv_unique_part_numbers))
-    print('\tLine creation inputs read: %d ' % csv_line_creation_count)
-    print('\tTotal rows in file: %d' % csv_summary.total_rows)
+    @overall_end_time.setter
+    def overall_end_time(self, value):
+        self._overall_end_time = value
+        self._total_time = self.overall_end_time - self._overall_start_time
 
-    if not csv_line_creation_count:
-        print('Aborting line creation. No lines to create!')
-        exit(0)
+    @property
+    def unaccounted_for_delta(self):
 
-    if not args.s:
-        result = raw_input('Do these totals make sense [Y/n]: ').upper()
-        if ('Y' != result) and ('YES' != result):
-            print('Aborting line creation. Please verify that your CSV file has the correct content'
-                  ' before proceeding with this tool.')
-            exit(0)
+        unaccounted_for = self._total_time
 
-    ################################################################################################
-    # Gather user credentials and verify by logging into EDD, then
-    # looping until successful login
-    ################################################################################################
+        if self.waiting_for_user_delta:
+            unaccounted_for -= self.waiting_for_user_delta
 
-    print('')
-    print(OUTPUT_SEPARATOR)
-    print('Authenticating...')
-    print(OUTPUT_SEPARATOR)
+        if self.csv_parse_delta:
+            unaccounted_for -= self.csv_parse_delta
+        if self.edd_login_delta:
+            unaccounted_for -= self.edd_login_delta
+            if self.edd_communication_delta:
+                unaccounted_for -= self.edd_communication_delta
+        if self.ice_communication_delta:
+            unaccounted_for -= self.ice_communication_delta
 
-    attempted_login = False
-    edd_session_auth = None
+        return unaccounted_for
 
-    while not edd_session_auth:
-
-        # gather user credentials from command line arguments and/or user prompt
-        if args.u and not attempted_login:
-            username = args.u
-        else:
-            if not attempted_login:
-                username = getpass.getuser()
-            username_input = raw_input('Username [%s]: ' % username)
-            username = username_input if username_input else username
-        if args.p and not attempted_login:
-            password = args.p
-        else:
-            append_prompt = ' [enter to use existing entry]' if attempted_login else ''
-            password_input = getpass.getpass('Password for %s%s: ' % (username, append_prompt))
-            password = password_input if password_input else password
-
-        attempted_login = True
-
-        # attempt EDD login
-        try:
-            print 'Logging into EDD at %s... ' % EDD_URL,
-            edd_session_auth = EddSessionAuth.login(base_url=EDD_URL, username=username,
-                                                    password=password)
-            if(edd_session_auth):
-                print('success!')
-            else:
-                print('failed :-{')
-
-        except ConnectionError as e:
-            # if no connection could be made, stop looping uselessly
-            raise e
-
-        except Exception as e:
-            logger.exception('Error logging into EDD')
-
-    with edd_session_auth:
-
-        edd = EddApi(base_url=EDD_URL, session_auth=edd_session_auth)
-        edd.set_write_enabled(True)
-
+    def print_summary(self):
         ############################################################################################
-        # Query user for the study to create lines in, verifying that the study exists / the user
-        # has access to it
-        ############################################################################################
-        study = None
-
-        study_number = str(args.study) if args.study else None
-        STUDY_PROMPT = 'Which EDD study number should lines be created in? '
-        if not study_number:
-            study_number = raw_input(STUDY_PROMPT)
-
-        # query user regarding which study to use, then verify it exists in EDD
-        digit = re.compile(r'^\s*(\d+)\s*$')
-        while not study:
-            match = digit.match(study_number)
-            if not match:
-                print('"%s" is not an integer' % study_number)
-                continue
-
-            print 'Searching EDD for study %s...' % study_number,
-            study_number = int(match.group(1))
-            study = edd.get_study(study_number)
-
-            if not study:
-                print(' failed! :-<')
-                print("Study %(study_num)d couldn't be found in EDD at %(edd_url)s. "
-                      "Maybe this study number is from a different EDD deployment, or has the "
-                      "wrong access privileges for user %(username)s?"
-                      % {'study_num': study_number,
-                         'edd_url': EDD_URL,
-                         'username': username})
-
-                study_number = raw_input(STUDY_PROMPT)
-            else:
-                print('Success!')
-
-        if study:
-            print('Found study %d in EDD, named "%s "' % (study_number, study.name))
-
-        ############################################################################################
-        # Loop over part numbers in the spreadsheet, looking each one up in ICE to get its UUID (
-        # the only identifier currently stored in EDD)
+        # Print a summary of runtime
         ############################################################################################
 
-        # extract only the unique part numbers referenced from the CSV. it's likely that many lines
-        # will reference the same strains
-        ice_parts_dict = get_ice_parts(ICE_URL, username, password, csv_unique_part_numbers,
-                                       print_search_comparison=PRINT_FOUND_ICE_PARTS)
+        print('')
+        print(OUTPUT_SEPARATOR)
+        print('Total run time: %s' % to_human_relevant_delta(self._total_time.total_seconds()))
+        print(OUTPUT_SEPARATOR)
 
-        ice_part_count = len(ice_parts_dict)
+        if self.csv_parse_delta:
+            print('\tParsing CSV file: %s' % to_human_relevant_delta(
+                    self.csv_parse_delta.total_seconds()))
 
-        if not ice_part_count:
-            print ''
-            print('No ICE parts were found for the part numbers listed in the CSV file. Aborting '
-                  'line creation since there\'s insufficient input to create any lines in EDD.')
-            exit(0)
+        if self.edd_login_delta:
 
-        if ice_part_count < csv_part_number_count:
-            print ''
-            print("WARNING: Not all parts listed in the CSV file were found in ICE (see part "
-                  "numbers above)")
-            print("Do you want to create EDD lines for the parts that were found? You'll "
-                  "have to create the rest manually, using output above as a reference.")
-            result = raw_input("Create EDD lines for %(found)d of %(total)d parts? Recall that "
-                               "each ICE part may have many associated lines ("
-                               "Y/n): " %
-                               {
-                                    'found': len(ice_parts_dict),
-                                    'total': len(csv_unique_part_numbers)
-                               }).upper()
+            if self.ice_communication_delta:
+                print('\tCommunicating with ICE: %s' % to_human_relevant_delta(
+                        self.ice_communication_delta.total_seconds()))
+            print('\tCommunicating with EDD: %s' % to_human_relevant_delta(
+                    (self.edd_communication_delta + self.edd_login_delta).total_seconds()))
+
+        if self.waiting_for_user_delta:
+            print('\tWaiting on user input: %s' % to_human_relevant_delta(
+                    self.waiting_for_user_delta.total_seconds()))
+        print('\tOtherwise unaccounted for: %s' % to_human_relevant_delta(
+                self.unaccounted_for_delta.total_seconds()))
+
+
+def main():
+    now = arrow.utcnow()
+    zero_time_delta = now - now
+    performance = Performance(arrow.utcnow())
+
+    input = UserInputTimer()
+    edd = None
+
+    try:
+
+        ############################################################################################
+        # Configure command line parameters
+        ############################################################################################
+        parser = argparse.ArgumentParser(description='Create EDD lines/strains from a list of ICE '
+                                                     'entries')
+        parser.add_argument('file_name', help='A CSV file containing strains exported from ICE')
+
+        parser.add_argument('-p', '-password', help='provide a password via the command '
+                                                    'line (helps with repeated use / testing)')
+        parser.add_argument('-u', '-username', help='provide username via the command line ('
+                                                    'helps with repeated use / testing)')
+        parser.add_argument('-s', '-silent', action='store_const', const=True,
+                            help='skip user prompts to verify CSV content')
+        parser.add_argument('-study', type=int, help='the number of the EDD study to create the new '
+                                                     'lines in')
+        args = parser.parse_args()
+
+        # print out important parameters
+        print(OUTPUT_SEPARATOR)
+        print(os.path.basename(__file__))
+        print(OUTPUT_SEPARATOR)
+        print('\tSettings module:\t%s' % os.environ['ICE_SETTINGS_MODULE'])
+        print('\tEDD URL:\t%s' % EDD_URL)
+        print('\tICE URL:\t%s' % ICE_URL)
+        print('\tCSV File:\t%s' % args.file_name)
+        if args.u:
+            print('\tEDD/ICE Username:\t%s' % args.u)
+        if args.study:
+            print('\tEDD Study ID:\t%d' % args.study)
+        print('')
+        print(OUTPUT_SEPARATOR)
+
+        ############################################################################################
+        # Verify that URL's start with HTTP*S* for non-local use. Don't allow mistaken config to
+        # expose access credentials! Local testing requires insecure http, so this mistake is
+        # easy to make!
+        ############################################################################################
+        if not is_url_secure(EDD_URL):
+            print('EDD_BASE_URL %s is insecure. You must use HTTPS to maintain security for non-'
+                  'local URL\'s')
+            return 0
+
+        if not is_url_secure(ICE_URL):
+            print('ICE_BASE_URL %s is insecure. You must use HTTPS to maintain security for non-'
+                  'local URL\'s')
+            return 0
+
+        ############################################################################################
+        # Read in part numbers from the CSV
+        ############################################################################################
+        print('Reading CSV file...')
+        print(OUTPUT_SEPARATOR)
+        csv_parse_start_time = arrow.utcnow()
+        csv_summary = parse_csv(args.file_name)
+        performance.csv_parse_delta = arrow.utcnow() - csv_parse_start_time
+        csv_line_creation_count = len(csv_summary.line_creation_inputs)
+        csv_unique_part_numbers = csv_summary.unique_part_numbers
+        csv_part_number_count = len(csv_unique_part_numbers)
+
+        print('Done reading file %s:' % os.path.basename(args.file_name))
+        print('\tUnique ICE part numbers read: %d ' % len(csv_unique_part_numbers))
+        print('\tLine creation inputs read: %d ' % csv_line_creation_count)
+        print('\tTotal rows in file: %d' % csv_summary.total_rows)
+
+        if not csv_line_creation_count:
+            print('Aborting line creation. No lines to create!')
+            return 0
+
+        if not args.s:
+            result = input.user_input('Do these totals make sense [Y/n]: ').upper()
             if ('Y' != result) and ('YES' != result):
-                print('Aborting line creation.')
-                exit(0)
-
-        print('')
-        print(OUTPUT_SEPARATOR)
-        print('Searching for pre-existing strains in EDD...')
-        print(OUTPUT_SEPARATOR)
+                print('Aborting line creation. Please verify that your CSV file has the correct '
+                      'content before proceeding with this tool.')
+                return 0
 
         ############################################################################################
-        # search EDD for existing strains using UUID's queried from ICE
-        ############################################################################################
-        # keep parts in same order as spreadsheet to allow resume following an unanticipated error
-        existing_edd_strains = collections.OrderedDict()
-        non_existent_edd_strains = []
-        strains_by_part_number = collections.OrderedDict()
-
-        # for consistency, print out part numbers from the CSV that we won't be looking for in EDD
-        # because they couldn't be found in ICE
-        if ice_part_count != csv_part_number_count:
-            for part_number in csv_unique_part_numbers:
-                if not part_number in ice_parts_dict:
-                    logger.warning('Skipping EDD strain creation for part number "%s" that wasn\'t '
-                                   'found in ICE' % part_number)
-            print ''  # add space between the warnings and summary output
-
-
-        find_existing_strains(edd, ice_parts_dict, existing_edd_strains, strains_by_part_number,
-                              non_existent_edd_strains)
-
-        if PRINT_FOUND_EDD_STRAINS:
-            print_edd_strains(existing_edd_strains, non_existent_edd_strains)
-
-        # If some strains were missing in EDD, confirm with user, and then create them
-        strains_created = create_missing_strains(edd, non_existent_edd_strains,
-                                                 strains_by_part_number, ice_part_count)
-        if not strains_created:
-            exit(1)
-
-        ############################################################################################
-        # Create new lines!
+        # Gather user credentials and verify by logging into EDD, then
+        # looping until successful login
         ############################################################################################
 
         print('')
         print(OUTPUT_SEPARATOR)
-        print('Creating new lines in EDD study %d...' % study_number)
+        print('Authenticating...')
         print(OUTPUT_SEPARATOR)
 
-        create_lines(study_number, csv_summary, strains_by_part_number)
+        attempted_login = False
+        edd_session_auth = None
+        performance.edd_login_delta = zero_time_delta
 
-except Exception as e:
-    logger.exception('Error')
+        while not edd_session_auth:
+
+            # gather user credentials from command line arguments and/or user prompt
+            if args.u and not attempted_login:
+                username = args.u
+            else:
+                if not attempted_login:
+                    username = getpass.getuser()
+                username_input = input.user_input('Username [%s]: ' % username)
+                username = username_input if username_input else username
+            if args.p and not attempted_login:
+                password = args.p
+            else:
+                append_prompt = ' [enter to use existing entry]' if attempted_login else ''
+                password_input = getpass.getpass('Password for %s%s: ' % (username, append_prompt))
+                password = password_input if password_input else password
+
+            attempted_login = True
+
+            # attempt EDD login
+            try:
+                print 'Logging into EDD at %s... ' % EDD_URL,
+                edd_login_start_time = arrow.utcnow()
+                edd_session_auth = EddSessionAuth.login(base_url=EDD_URL, username=username,
+                                                        password=password)
+                performance.edd_login_delta += (edd_login_start_time - arrow.utcnow())
+                if(edd_session_auth):
+                    print('success!')
+                else:
+                    print('failed :-{')
+
+            except ConnectionError as e:
+                # if no connection could be made, stop looping uselessly
+                raise e
+
+            except Exception as e:
+                logger.exception('Error logging into EDD')
+
+        with edd_session_auth:
+
+            edd = EddApi(base_url=EDD_URL, session_auth=edd_session_auth)
+            edd.set_write_enabled(True)
+
+            ########################################################################################
+            # Query user for the study to create lines in, verifying that the study exists / the
+            # user has access to it
+            ########################################################################################
+            study = None
+
+            study_number = str(args.study) if args.study else None
+            STUDY_PROMPT = 'Which EDD study number should lines be created in? '
+            if not study_number:
+                study_number = input.user_input(STUDY_PROMPT)
+
+            # query user regarding which study to use, then verify it exists in EDD
+            digit = re.compile(r'^\s*(\d+)\s*$')
+            while not study:
+                match = digit.match(study_number)
+                if not match:
+                    print('"%s" is not an integer' % study_number)
+                    continue
+
+                print 'Searching EDD for study %s...' % study_number,
+                study_number = int(match.group(1))
+                study = edd.get_study(study_number)
+
+                if not study:
+                    print(' failed! :-<')
+                    print("Study %(study_num)d couldn't be found in EDD at %(edd_url)s. "
+                          "Maybe this study number is from a different EDD deployment, or has the "
+                          "wrong access privileges for user %(username)s?"
+                          % {'study_num': study_number,
+                             'edd_url': EDD_URL,
+                             'username': username})
+
+                    study_number = input.user_input(STUDY_PROMPT)
+                else:
+                    print('Success!')
+
+            if study:
+                print('Found study %d in EDD, named "%s "' % (study_number, study.name))
+
+            ########################################################################################
+            # Loop over part numbers in the spreadsheet, looking each one up in ICE to get its UUID
+            # (the only identifier currently stored in EDD)
+            ########################################################################################
+
+            # extract only the unique part numbers referenced from the CSV. it's likely that many
+            # lines will reference the same strains
+            ice_communication_start = arrow.utcnow()
+            ice_parts_dict = get_ice_parts(ICE_URL, username, password, csv_unique_part_numbers,
+                                           print_search_comparison=PRINT_FOUND_ICE_PARTS)
+            performance.ice_communication_delta = arrow.utcnow() - ice_communication_start
+
+            ice_part_count = len(ice_parts_dict)
+
+            if not ice_part_count:
+                print ''
+                print('No ICE parts were found for the part numbers listed in the CSV file. '
+                      'Aborting line creation since there\'s insufficient input to create any '
+                      'lines in EDD.')
+                return 0
+
+            if ice_part_count < csv_part_number_count:
+                print ''
+                print("WARNING: Not all parts listed in the CSV file were found in ICE (see part "
+                      "numbers above)")
+                print("Do you want to create EDD lines for the parts that were found? You'll "
+                      "have to create the rest manually, using output above as a reference.")
+                result = input.user_input("Create EDD lines for %(found)d of %(total)d parts? "
+                                             "Recall that "
+                                   "each ICE part may have many associated lines ("
+                                   "Y/n): " %
+                                          {
+                                        'found': len(ice_parts_dict),
+                                        'total': len(csv_unique_part_numbers)
+                                   }).upper()
+                if ('Y' != result) and ('YES' != result):
+                    print('Aborting line creation.')
+                    return 0
+
+            print('')
+            print(OUTPUT_SEPARATOR)
+            print('Searching for pre-existing strains in EDD...')
+            print(OUTPUT_SEPARATOR)
+
+            ########################################################################################
+            # search EDD for existing strains using UUID's queried from ICE
+            ########################################################################################
+            # keep parts in same order as spreadsheet to allow resume following an unanticipated
+            # error
+            existing_edd_strains = collections.OrderedDict()
+            non_existent_edd_strains = []
+            strains_by_part_number = collections.OrderedDict()
+
+            # for consistency, print out part numbers from the CSV that we won't be looking for in
+            # EDD because they couldn't be found in ICE
+            if ice_part_count != csv_part_number_count:
+                for part_number in csv_unique_part_numbers:
+                    if not part_number in ice_parts_dict:
+                        logger.warning('Skipping EDD strain creation for part number "%s" that '
+                                       'wasn\'t found in ICE' % part_number)
+                print ''  # add space between the warnings and summary output
+
+            success = find_existing_strains(edd, ice_parts_dict, existing_edd_strains,
+                                            strains_by_part_number, non_existent_edd_strains)
+            if not success:
+                return 0
+
+            if PRINT_FOUND_EDD_STRAINS:
+                print_edd_strains(existing_edd_strains, non_existent_edd_strains)
+
+            # If some strains were missing in EDD, confirm with user, and then create them
+            strains_created = create_missing_strains(edd, non_existent_edd_strains,
+                                                     strains_by_part_number, ice_part_count)
+            if not strains_created:
+                return 1
+
+            ########################################################################################
+            # Create new lines!
+            ########################################################################################
+
+            print('')
+            print(OUTPUT_SEPARATOR)
+            print('Creating %d new lines in EDD study %d...' % (csv_line_creation_count,
+                                                                study_number))
+            print(OUTPUT_SEPARATOR)
+
+            create_lines(edd, study_number, csv_summary, strains_by_part_number)
+    except NonStrainPartsError as nsp:
+        # user output already handled above
+        return 1
+    except Exception as e:
+        logger.exception('Error')
+
+    finally:
+        # compute and print a summary of ellapsed time on various expensive tasks
+        if input:
+            performance.waiting_for_user_delta = input.wait_time
+        if edd:
+            performance.edd_communication_delta = edd.request_generator.wait_time
+        performance.overall_end_time = arrow.utcnow()
+        performance.print_summary()
+
+if __name__ == '__main__' or __name__=='jbei.edd.rest.scripts.create_lines':
+    result = main()
+    exit(result)

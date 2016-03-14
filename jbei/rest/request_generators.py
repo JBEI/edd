@@ -1,7 +1,7 @@
 """
 Defines utility classes for use in HTTP request generation.
 """
-
+import arrow
 import requests
 
 
@@ -24,6 +24,32 @@ class RequestGenerator(object):
         self._auth = auth
         self._request_api = requests
 
+        # initialize wait time to timedelta zero
+        now = arrow.utcnow()
+        self._wait_time = now - now
+
+    @property
+    def wait_time(self):
+        """
+        Gets the decimal time in seconds spent waiting on communication using this RequestGenerator
+        """
+        return self._wait_time
+
+    def _update_wait_time(self, start_time, end_time):
+        """
+        Updates the total wait time tracked by this instance of IceApi. Helps clients with
+        identifying bottlenecks.
+        :return:
+        """
+        delta = end_time - start_time
+        self._wait_time += delta
+
+    def reset_wait_time(self):
+        """
+        Zeroes out the total wait time tracked by this instance of IceApi.
+        """
+        self._wait_time = 0
+
     ############################################
     # 'with' context manager implementation ###
     ############################################
@@ -40,31 +66,59 @@ class RequestGenerator(object):
     ################################################################################################
     def request(self, method, url, **kwargs):
         kwargs = self._set_defaults(**kwargs)
-        return self._request_api.request(method, url, **kwargs)
+        start_time = arrow.utcnow()
+        try:
+            return self._request_api.request(method, url, **kwargs)
+        finally:
+            self._update_wait_time(start_time, arrow.utcnow())
 
     def head(self, url, **kwargs):
         kwargs = self._set_defaults(**kwargs)
-        return self._request_api.head(url, **kwargs)
+        start_time = arrow.utcnow()
+        try:
+            return self._request_api.head(url, **kwargs)
+        finally:
+            self._update_wait_time(start_time, arrow.utcnow())
 
     def get(self, url, **kwargs):
         kwargs = self._set_defaults(**kwargs)
-        return self._request_api.get(url, **kwargs)
+        start_time = arrow.utcnow()
+        try:
+            return self._request_api.get(url, **kwargs)
+        finally:
+            self._update_wait_time(start_time, arrow.utcnow())
 
     def post(self, url, data=None, **kwargs):
         kwargs = self._set_defaults(**kwargs)
-        return self._request_api.post(url, data, **kwargs)
+        start_time = arrow.utcnow()
+        try:
+            return self._request_api.post(url, data, **kwargs)
+        finally:
+            self._update_wait_time(start_time, arrow.utcnow())
 
     def put(self, url, data=None, **kwargs):
         kwargs = self._set_defaults(**kwargs)
-        return self._request_api.put(url, data, **kwargs)
+        start_time = arrow.utcnow()
+        try:
+            return self._request_api.put(url, data, **kwargs)
+        finally:
+            self._update_wait_time(start_time, arrow.utcnow())
 
     def patch(self, url, data=None, **kwargs):
         kwargs = self._set_defaults(**kwargs)
-        return self._request_api.patch(url, data, **kwargs)
+        start_time = arrow.utcnow()
+        try:
+            return self._request_api.patch(url, data, **kwargs)
+        finally:
+            self._update_wait_time(start_time, arrow.utcnow())
 
     def delete(self, url, **kwargs):
         kwargs = self._set_defaults(**kwargs)
-        return self._request_api.delete(url, **kwargs)
+        start_time = arrow.utcnow()
+        try:
+            return self._request_api.delete(url, **kwargs)
+        finally:
+            self._update_wait_time(start_time, arrow.utcnow())
 
     def _set_defaults(self, **kwargs):
         """
