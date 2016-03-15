@@ -14,6 +14,8 @@ from celery import shared_task
 from celery.utils.log import get_task_logger
 from celery.exceptions import SoftTimeLimitExceeded
 from django.core.exceptions import MultipleObjectsReturned
+from django.utils.translation import ugettext
+
 from django.db import transaction
 from edd.celeryconfig import (CELERY_INITIAL_ICE_RETRY_DELAY,
                               CELERY_WARN_AFTER_RETRY_NUM_FOR_ICE,
