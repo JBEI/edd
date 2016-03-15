@@ -7,6 +7,8 @@ import json
 import logging
 import operator
 import re
+from functools import reduce
+from io import BytesIO
 
 from builtins import str
 from django.conf import settings
@@ -26,16 +28,14 @@ from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 from django.views import generic
 from django.views.decorators.csrf import ensure_csrf_cookie
-from functools import reduce
-from io import BytesIO
 
+from jbei.ice.rest.ice import IceApi, HmacAuth
 from . import data_import, models, sbml_export
 from .export import table
 from .forms import (
     AssayForm, CreateAttachmentForm, CreateCommentForm, CreateStudyForm, ExportOptionForm,
     ExportSelectionForm, LineForm, MeasurementForm, MeasurementValueFormSet, WorklistForm
 )
-from .ice import IceApi
 from .models import (
     Assay, Attachment, Line, Measurement, MeasurementCompartment, MeasurementGroup, MeasurementType,
     MeasurementValue, Metabolite, MetaboliteSpecies, MetadataType, Protocol, SBMLTemplate, Study,
@@ -104,16 +104,11 @@ class StudyCreateView(generic.edit.CreateView):
 
     def get_context_data(self, **kwargs):
         context = super(StudyCreateView, self).get_context_data(**kwargs)
-        context['can_create'] = self.user_can_create(self.request.user)
+        context['can_create'] = Study.user_can_create(self.request.user)
         return context
 
     def get_success_url(self):
         return reverse('main:detail', kwargs={'pk': self.object.pk})
-
-    def user_can_create(self, user):
-        if hasattr(settings, 'EDD_ONLY_SUPERUSER_CREATE') and settings.EDD_ONLY_SUPERUSER_CREATE:
-            return user.is_superuser
-        return True
 
 
 class StudyDetailView(generic.DetailView):
@@ -1343,7 +1338,7 @@ def search(request):
         found = solr.query(query=term, options={'edismax': True})
         results = found['response']['docs']
     elif model_name == "Strain":
-        ice = IceApi(user_email=request.user.email)
+        ice = IceApi(auth=HmacAuth.get(username=request.user.email))
         found = ice.search_for_part(term, suppress_errors=True)
         if found is None:  # there were errors searching
             results = []

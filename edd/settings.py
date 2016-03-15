@@ -97,6 +97,8 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     'django.contrib.postgres',
     'django_extensions',  # django-extensions in pip
+    'rest_framework',
+    #'rest_framework_swagger'
     'form_utils',  # django-form-utils in pip
     # django-allauth in pip; separate apps for each provider
     'allauth',
@@ -271,6 +273,40 @@ DATABASES = {
 }
 
 ####################################################################################################
+# REST API Framework
+####################################################################################################
+
+PUBLISH_REST_API = False  # by default, don't publish the API until we can do more testing
+REST_FRAMEWORK = {
+    # Use Django's standard `django.contrib.auth` authentication.
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework.authentication.SessionAuthentication',
+    ),
+    # Note: in addition to requiring authentication for access, EDD uses custom study-level
+    # permissions that should be enforced by custom code at the REST API implementation level. We
+    # could also optionally override our model managers for more safety at the cost of
+    # convenience for developers.
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.DjangoModelPermissions',
+    ),
+
+    # TODO: disable the browsable API to prevent access until we've had time to do a more careful
+    # design / testing of the API. See issues linked to SYNBIO-1299.
+    # 'DEFAULT_RENDERER_CLASSES': (
+    #     'rest_framework.renderers.JSONRenderer',
+    # ),
+    # allow default client-configurable pagination for REST API result size
+    'DEFAULT_PAGINATION_CLASS': 'edd.rest.paginators.ClientConfigurablePagination',
+}
+
+SWAGGER_SETTINGS = {
+    'api_version': '0.1',
+    'api_path': '/rest/',
+    'base_path': '/docs/',
+
+}
+
+####################################################################################################
 # Logging
 ####################################################################################################
 # Default logging configuration -- for production
@@ -298,6 +334,10 @@ LOGGING = {
         # specify formatting for Django log messages, and also force tracebacks for uncaught
         # exceptions to be logged. Without this, django only logs cryptic 1-liners for uncaught
         # exceptions...see SYNBIO-1262 for an example where this was very misleading.
+        'root': {
+            'level': 'DEBUG',
+            'handlers': ['console', ],
+        },
         'django': {
             'level': 'DEBUG',
             'handlers': ['console', ],
