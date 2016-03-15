@@ -106,7 +106,7 @@ var EDDTableImport;
             this.inputRefreshTimerID = null;
             this.nextStepCallback = nextStepCallback;
             var reProcessOnChange;
-            reProcessOnChange = ['#stdlayout', '#trlayout', '#prlayout', '#mdvlayout', '#biolectorlayout'];
+            reProcessOnChange = ['#stdlayout', '#trlayout', '#hplclayout', '#prlayout', '#mdvlayout', '#biolectorlayout'];
             // This is rather a lot of callbacks, but we need to make sure we're
             // tracking the minimum number of elements with this call, since the
             // function called has such strong effects on the rest of the page.
@@ -233,6 +233,11 @@ var EDDTableImport;
                 this.nextStepCallback();
                 return;
             }
+            if (mode === 'hplc') {
+                // HPLC data is expected as a text file.
+                this.nextStepCallback();
+                return;
+            }
             if (mode === 'mdv') {
                 // When JBEI MDV format documents are pasted in, it's always from Excel, so they're always tab-separated.
                 this.setSeparatorType('tab');
@@ -286,8 +291,8 @@ var EDDTableImport;
             }
             else {
                 // All other formats (so far) are interpreted from a grid.
-                // Even biolector XML - which is converted to a grid on the server, then passed back.
-                // Note that biolector is left out here - we don't want to do any "inferring" with that data.
+                // Even biolector XML - which is converted to standard records on the server, then passed back.
+                // Note that biolector and hplc are left out here - we don't want to do any "inferring" with them.
                 if (mode === 'std' || mode === 'tr' || mode === 'pr') {
                     // If the user hasn't deliberately chosen a setting for 'transpose', we will do
                     // some analysis to attempt to guess which orientation the data needs to have.
@@ -326,8 +331,10 @@ var EDDTableImport;
         // which will be inspected when this function returns.
         RawInputStep.prototype.fileDropped = function (fileContainer) {
             var mode = this.selectMajorKindStep.interpretationMode;
+            fileContainer.extraHeaders['Import-Mode'] = mode;
+            var ft = fileContainer.fileType;
             // We'll process csv files locally.
-            if ((fileContainer.fileType === 'csv') &&
+            if ((ft === 'csv' || ft === 'plaintext') &&
                 (mode === 'std' || mode === 'tr' || mode === 'pr')) {
                 fileContainer.skipProcessRaw = false;
                 fileContainer.skipUpload = true;
@@ -335,14 +342,21 @@ var EDDTableImport;
             }
             // With Excel documents, we need some server-side tools.
             // We'll signal the dropzone to upload this, and receive processed results.
-            if ((fileContainer.fileType === 'excel') &&
+            if ((ft === 'excel') &&
                 (mode === 'std' || mode === 'tr' || mode === 'pr' || mode === 'mdv')) {
                 this.showDropZone(fileContainer);
                 fileContainer.skipProcessRaw = true;
                 fileContainer.skipUpload = false;
                 return;
             }
-            if (fileContainer.fileType === 'xml' && mode === 'biolector') {
+            if ((ft === 'csv' || ft === 'plaintext') &&
+                (mode === 'hplc')) {
+                this.showDropZone(fileContainer);
+                fileContainer.skipProcessRaw = true;
+                fileContainer.skipUpload = false;
+                return;
+            }
+            if (ft === 'xml' && mode === 'biolector') {
                 this.showDropZone(fileContainer);
                 fileContainer.skipProcessRaw = true;
                 fileContainer.skipUpload = false;
@@ -371,9 +385,21 @@ var EDDTableImport;
         // and unlike fileRead() above, is passed a processed result from the server as a second argument,
         // rather than the raw contents of the file.
         RawInputStep.prototype.fileReturnedFromServer = function (fileContainer, result) {
+            var mode = this.selectMajorKindStep.interpretationMode;
             // Whether we clear the file info area entirely, or just update its status,
             // we know we no longer need the 'sending' status.
             $('#fileDropInfoSending').addClass('off');
+            if (mode === 'biolector' || mode === 'hplc') {
+                var d = result.file_data;
+                var t = 0;
+                d.forEach(function (set) { t += set.data.length; });
+                $('<p>').text('Found ' + d.length + ' measurements with ' + t + ' total data points.').appendTo($("#fileDropInfoLog"));
+                this.processedSetsFromFile = d;
+                this.processedSetsAvailable = true;
+                // Call this directly, skipping over reprocessRawData() since we don't need it.
+                this.nextStepCallback();
+                return;
+            }
             if (fileContainer.fileType == "excel") {
                 this.clearDropZone();
                 var ws = result.file_data["worksheets"][0];
@@ -388,17 +414,6 @@ var EDDTableImport;
                 this.setSeparatorType('csv');
                 $("#step2textarea").val(csv.join("\n"));
                 this.reprocessRawData();
-                return;
-            }
-            if (fileContainer.fileType == "xml") {
-                var d = result.file_data;
-                var t = 0;
-                d.forEach(function (set) { t += set.data.length; });
-                $('<p>').text('Found ' + d.length + ' measurements with ' + t + ' total data points.').appendTo($("#fileDropInfoLog"));
-                this.processedSetsFromFile = d;
-                this.processedSetsAvailable = true;
-                // Call this directly, skipping over reprocessRawData() since we don't need it.
-                this.nextStepCallback();
                 return;
             }
         };
@@ -755,7 +770,7 @@ var EDDTableImport;
             var _this = this;
             var mode = this.selectMajorKindStep.interpretationMode;
             var graph = $('#graphDiv');
-            if (mode === 'std' || mode === 'biolector') {
+            if (mode === 'std' || mode === 'biolector' || mode === 'hplc') {
                 this.graphEnabled = true;
             }
             else {
@@ -1546,7 +1561,7 @@ var EDDTableImport;
             EDDATDGraphing.clearAllSets();
             var sets = this.graphSets;
             // If we're not in either of these modes, drawing a graph is nonsensical.
-            if (mode === "std" || mode === 'biolector') {
+            if (mode === "std" || mode === 'biolector' || mode === 'hplc') {
                 sets.forEach(function (set) { return EDDATDGraphing.addNewSet(set); });
             }
             EDDATDGraphing.drawSets();
@@ -2085,7 +2100,7 @@ var EDDTableImport;
                 var compartment_id = null;
                 var units_id = null;
                 // In modes where we resolve measurement types in the client UI, go with the master values by default.
-                if (mode === "biolector" || mode === "std" || mode === "mdv") {
+                if (mode === "biolector" || mode === "std" || mode === "mdv" || mode === "hplc") {
                     measurement_id = masterMType;
                     compartment_id = masterMComp || "0";
                     units_id = masterMUnits || "1";
@@ -2117,7 +2132,7 @@ var EDDTableImport;
                 }
                 // Same for measurement name, but resolve all three measurement fields if we find a match,
                 // and only if we are resolving measurement types client-side.
-                if (mode === "biolector" || mode === "std" || mode === "mdv") {
+                if (mode === "biolector" || mode === "std" || mode === "mdv" || mode === 'hplc') {
                     if (set.measurement_name !== null) {
                         var disam = _this.measurementObjSets[set.measurement_name];
                         if (disam) {
