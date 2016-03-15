@@ -48,10 +48,6 @@ class TableImport(object):
         """ Checks that each item in the series has some data or metadata. """
         for item in series:
             points = item.get('data', [])
-            # if no array of data, check for 'singleData' and add to data array
-            # with master_timestamp (if validly defined)
-            if len(points) == 0 and 'singleData' in item and self._valid_time():
-                points.append([self._time(), item['singleData']])
             meta = item.get('metadata_by_id', {})
             for meta_id in meta:
                 self._metatype(meta_id)  # don't care about return value here
@@ -178,7 +174,7 @@ class TableImport(object):
                 logger.warning('Skipped set %s because no assay could be loaded' % index)
             else:
                 assay = item['assay_obj']
-                record = self._load_measurement_record(item, points, hours)
+                record = self._load_measurement_record(item, hours)
                 added += self._process_measurement_points(record, points)
                 self._process_metadata(assay, meta)
                 # force refresh of Assay's Update (also saves any changed metadata)
@@ -210,12 +206,13 @@ class TableImport(object):
         if record is None:
             record = assay.measurement_set.create(
                 measurement_type=mtype.type,
-                measurement_format=self._mtype_format(points),
+                measurement_format=self._mtype_guess_format(points),
                 compartment=mtype.compartment,
                 experimenter=self._user,
                 x_units=hours,
                 y_units=mtype.unit,
             )
+        return record
 
     def _process_measurement_points(self, record, points):
         added = 0
@@ -274,7 +271,7 @@ class TableImport(object):
         # In Transcriptomics and Proteomics mode, we attempt to resolve measurements client-side,
         # so we go by the measurement_name, ignoring the measurement_id and related fields (which
         # will be blank)
-        found_type = self._mtype_from_layout(item, hours, NO_TYPE)
+        found_type = self._mtype_from_layout(item, hours, default=NO_TYPE)
         if found_type is NO_TYPE:
             try:
                 found_type = MType(
@@ -286,7 +283,7 @@ class TableImport(object):
                 pass
         return found_type
 
-    def _mtype_from_layout(self, item, hours, default):
+    def _mtype_from_layout(self, item, hours, default=None):
         found_type = default
         layout = self._layout()
         label = item.get('measurement_name', None)
@@ -350,9 +347,6 @@ class TableImport(object):
             except MeasurementUnit.DoesNotExist:
                 logger.warning('No MeasurementUnit found for %s' % unit_id)
         return self._unit_lookup.get(unit_id, None)
-
-    def _valid_time(self):
-        return self._time().isdigit()
 
 
 ########################################################################
