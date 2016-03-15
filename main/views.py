@@ -2,7 +2,6 @@
 from __future__ import unicode_literals
 
 import collections
-import csv
 import json
 import logging
 import operator
@@ -880,7 +879,7 @@ def utilities_parse_import_file(request):
         try:
             from edd_utils.parsers import biolector
             # We pass the request directly along, so it can be read as a stream by the parser
-            result = biolector.getRawImpotRecordsAsJSON(request, 0)
+            result = biolector.getRawImportRecordsAsJSON(request, 0)
             return JsonResponse({
                 "file_type": "xml",
                 "file_data": result,
@@ -912,11 +911,11 @@ def utilities_parse_import_file(request):
     if edd_import_mode == "hplc":
         try:
             from edd_utils.parsers.hplc import (
-                getRawImpotRecordsAsJSON, HPLC_Parse_Missing_Argument_Exception,
+                getRawImportRecordsAsJSON, HPLC_Parse_Missing_Argument_Exception,
                 HPLC_Parse_No_Header_Exception, HPLC_Parse_Misaligned_Blocks_Exception
                 )
             try:
-                result = getRawImpotRecordsAsJSON(request)
+                result = getRawImportRecordsAsJSON(request)
                 return JsonResponse({
                     "file_type": "hplc",
                     "file_data": result,

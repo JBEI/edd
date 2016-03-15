@@ -1685,7 +1685,7 @@ def User_profile(self):
         return self._profile
     try:
         from edd.profile.models import UserProfile
-        self._profile = UserProfile.get_or_create(
+        (self._profile, created) = UserProfile.objects.get_or_create(
             user=self, defaults={'initials': guess_initials(self)}
         )
         return self._profile
@@ -1695,7 +1695,7 @@ def User_profile(self):
 
 
 def User_initials(self):
-    return self.profile.initials if self.profile else None
+    return self.profile.initials if self.profile else _('?')
 
 
 def User_institution(self):

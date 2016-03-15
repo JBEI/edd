@@ -3,16 +3,15 @@
 #
 #    This is for parsing the output of HPLC machines.
 ##
+import chardet
 import logging
 import re
-import chardet
 
-from collections import OrderedDict
-from collections import namedtuple
+from collections import OrderedDict, namedtuple
 from .util import RawImportRecord
 
 
-def getRawImpotRecordsAsJSON(request):
+def getRawImportRecordsAsJSON(request):
     # We pass the request directly along, so it can be read as a stream by the parser
     parser = HPLC_Parser(request)
 
@@ -132,7 +131,9 @@ class HPLC_Parser:
         try:
             decoded_string = raw_string.decode(encoding)
         except Exception:
-            raise HPLC_Parse_No_Header_Exception("unable to decode document using guessed unocide type %s", encoding)
+            raise HPLC_Parse_No_Header_Exception(
+                "unable to decode document using guessed unocide type %s", encoding
+            )
 
         self.logger.info(decoded_string)
 
@@ -185,13 +186,15 @@ class HPLC_Parser:
                 new_sample_name = line[:section_widths[0]].strip()
 
                 if not new_sample_name and not sample_name:
-                    self.logger.error("Continuation entry entry specified before sample name entry. Can't interpret.")
+                    self.logger.error(
+                        "Continuation entry specified before sample name entry. Can't interpret."
+                    )
                     break
 
                 if new_sample_name:
                     # ensure no collision with previous sample names by adding a #
                     if new_sample_name in self.samples:
-                        new_sample_name += u'-2'  # first sample has no # ... Begin next with 'name-2'
+                        new_sample_name += u'-2'  # first sample has no #, begin next with 'name-2'
                         i = 3  # if name-2 is taken, begin counting up from 'name-3'
                         while new_sample_name in self.samples:
                             last_dash_index = new_sample_name.rindex('-')
@@ -279,7 +282,7 @@ class HPLC_Parser:
     def _parse_file_header(self):
 
         header_block = []
-        i = 0;
+        i = 0
         while True:
             line = next(self.decoded_stream)
             self.current_line += 1
@@ -287,9 +290,9 @@ class HPLC_Parser:
             i += 1
 
             if line.startswith("-"):
-                break;
+                break
             if "*** End of Report ***" in line:
-                break;
+                break
             if line == '':
                 raise HPLC_Parse_No_Header_Exception(
                     "unable to find header: EOF encountered at line %d",
@@ -475,9 +478,12 @@ class HPLC_Parser:
 
             self.logger.debug("collecting the column_headers")
             column_headers = self._extract_column_headers_from_multiline_text(
-                section_widths, table_header)
+                section_widths, table_header
+            )
 
-            self._parse_96_well_format_block(sample_names, compounds, column_headers, section_widths)
+            self._parse_96_well_format_block(
+                sample_names, compounds, column_headers, section_widths
+            )
 
         # Line up the sample name with the amounts
         for indexed_compound in compounds:
@@ -490,13 +496,15 @@ class HPLC_Parser:
 
 # testing hook
 if __name__ == "__main__":
-    import sys, os, io
+    import io
+    import os
+    import sys
 
     logger = logging.getLogger(__name__)
 
     if len(sys.argv) is not 2:
         print("usage: python hplc_parser.py input_file_path")
-        exit(1)
+        sys.exit(1)
 
     log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 
@@ -506,7 +514,7 @@ if __name__ == "__main__":
         format=log_format)
 
     # echo all debug statements to stdout
-    formatter = logging.Formatter( log_format )
+    formatter = logging.Formatter(log_format)
     sh = logging.StreamHandler(sys.stdout)
     sh.setLevel(logging.DEBUG)
     sh.setFormatter(formatter)
@@ -515,13 +523,10 @@ if __name__ == "__main__":
     # parse the provided filepath
     input_file_path = sys.argv[1]
 
-    from util import RawImportRecord
-    # from edd_utils.parsers.util import RawImportRecord
-
     if not os.path.exists(input_file_path):
         raise IOError("Error: unable to locate file %s" % input_file_path)
 
-    with io.open(input_file_path, "r", encoding = 'utf-16') as input_file:
+    with io.open(input_file_path, "r", encoding='utf-16') as input_file:
         p = HPLC_Parser(input_file)
         compound_records = p.parse_hplc()
         hplc_protocol_string = "hplc"
@@ -541,4 +546,3 @@ if __name__ == "__main__":
     # activate interactive debugger with our information inside
     import IPython
     IPython.embed(banner1="\n\nparse function returned, values stored in dict 'samples'")
-
