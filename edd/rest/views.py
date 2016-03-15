@@ -222,7 +222,7 @@ class StudyLineView(viewsets.ModelViewSet):  # LineView(APIView):
         ##############################################################
         # if user has write privileges for the study, use parent implementation
         ##############################################################
-        return super(StudyLineView, self).create(request, *args, **kwargs)
+        return super(StudyLineView, self).destroy(request, *args, **kwargs)
 
 
     @staticmethod
@@ -231,6 +231,8 @@ class StudyLineView(viewsets.ModelViewSet):  # LineView(APIView):
         requested_permission = StudyPermission.WRITE
         study_user_permission_q = Study.user_permission_q(user, requested_permission)
         user_has_permission_query = Study.objects.filter(study_user_permission_q, pk=study_pk)
+
+        # TODO: test raising PermissionDenied() similar to Django
 
         if not user_has_permission_query:
             return Response(status=status.HTTP_403_FORBIDDEN)
