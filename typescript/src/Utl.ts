@@ -298,6 +298,8 @@ module Utl {
 			if (t === 'text/xml') { return 'xml'; }
 			if ((n.indexOf('.xlsx', n.length - 5) !== -1) || (n.indexOf('.xls', n.length - 4) !== -1)) { return 'excel'; }
 			if (n.indexOf('.xml', n.length - 4) !== -1) { return 'xml'; }
+			if (t === 'text/plain') { return 'plaintext'; }
+			if (n.indexOf('.txt', n.length - 4) !== -1) { return 'plaintext'; }
 			// If all else fails, assume it's a csv file.  (So, any extension that's not tried above, or no extension.)
 			return 'csv';
 		}
@@ -468,6 +470,8 @@ module Utl {
     interface FileDropZoneFileContainer {
         file: any;					// The file object as created by filedrop-min.js
         fileType: string;			// A guess at the file's type, expressed as a string, as returned by Utl.JS.guessFileType .
+        extraHeaders:{[id:string]: string};	// Any extra headers to send with the POST to the server.
+
         progressBar: ProgressBar;	// The ProgressBar object used to track this file.  Can be altered after init by fileInitFn.
 
         stopProcessing: boolean;	// If set, abandon any further action on the file.
@@ -553,6 +557,7 @@ module Utl {
 					var fileContainer:FileDropZoneFileContainer  = {
 						file: file,
 						fileType: Utl.JS.guessFileType(file.name, file.type),
+						extraHeaders: {},
 						progressBar: t.progressBar,
 						uniqueIndex: FileDropZone.fileContainerIndexCounter++,
 						stopProcessing: false,
@@ -647,6 +652,11 @@ module Utl {
 				xhr.setRequestHeader("X-CSRFToken", t.csrftoken);
 				// We want to pass along our own guess at the file type, since it's based on a more specific set of criteria.
 				xhr.setRequestHeader('X-EDD-File-Type', fileContainer.fileType)
+
+            	$.each(fileContainer.extraHeaders, (name: string, value: string): void => {
+					xhr.setRequestHeader('X-EDD-' + name, value)
+				});
+
 			});
 
 			f.event('sendXHR', function() {

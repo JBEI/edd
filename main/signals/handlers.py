@@ -26,7 +26,6 @@ if settings.USE_CELERY:
 else:
     from jbei.ice.rest.ice import IceApi
 
-
 @receiver(post_save, sender=Study)
 def study_saved(sender, instance, created, raw, using, **kwargs):
     if not raw and using == 'default':
@@ -316,8 +315,7 @@ def _post_commit_link_ice_entry_to_study(user_email, study, linked_strains):
             else:
                 logger.warning(
                     "Celery configuration not found. Attempting to push study links directly ("
-                    "retries, "
-                    "admin notifications not supported")
+                    "retries, admin notifications not supported)")
                 #  as a workaround for SYNBIO-1207, prefer the ICE id extracted from the URL,
                 # which is much more likely to be the locally-unique numeric ID visible from the
                 # ICE UI. Not certain what recent EDD changes have done to new strain creation,
@@ -461,7 +459,7 @@ def handle_line_strain_changed(sender, instance, action, reverse, model, pk_set,
             if settings.USE_CELERY:
                 logger.info("Done scheduling post-commit work to submit jobs to Celery: will "
                             "submit ICE link creation task for each %d of %d added strains." %
-                            linkable_count, exp_add_count)
+                            (linkable_count, exp_add_count))
             else:
                 logger.info(
                     "Done scheduling post-commit work for direct HTTP request(s) to ICE: "

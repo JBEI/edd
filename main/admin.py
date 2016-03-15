@@ -5,8 +5,12 @@ from django import forms
 from django.contrib import admin, messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin
-from django.db.models import Count
-from django.utils.html import format_html
+from django.core.urlresolvers import reverse
+from django.db.models import Count, Q
+from django.http import HttpResponseRedirect
+from django.shortcuts import render
+from django.utils.html import escape, format_html
+from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 from django_auth_ldap.backend import LDAPBackend
 
@@ -148,6 +152,7 @@ class ProtocolAdmin(EDDObjectAdmin):
 
 class StrainAdmin(EDDObjectAdmin):
     """ Definition for admin-edit of Strains """
+    actions = ['merge_with_action', ]
     list_display = (
         'name', 'description', 'hyperlink_strain', 'num_lines', 'num_studies', 'created',
     )
@@ -158,9 +163,12 @@ class StrainAdmin(EDDObjectAdmin):
 
     def get_fields(self, request, obj=None):
         self.ice_validator = RegistryValidator(existing_strain=obj)
-        if not obj or not obj.registry_id:
+        if not obj:  # creating a strain
             return ['registry_id', ]
-        return ['name', 'description', 'registry_url', ]
+        elif not obj.registry_id:  # existing strain without link to ICE
+            return ['name', 'description', 'registry_id', 'study_list', ]
+        # existing strain with link to ICE
+        return ['name', 'description', 'registry_url', 'study_list', ]
 
     def formfield_for_dbfield(self, db_field, **kwargs):
         if db_field.name == 'registry_id':
@@ -169,9 +177,11 @@ class StrainAdmin(EDDObjectAdmin):
         return super(StrainAdmin, self).formfield_for_dbfield(db_field, **kwargs)
 
     def get_readonly_fields(self, request, obj=None):
-        if obj and obj.registry_id:
-            return ['name', 'description', 'registry_url', ]
-        return ['name', 'description', ]
+        if not obj:  # creating a strain
+            return []
+        elif not obj.registry_id:  # existing strain without link to ICE
+            return ['study_list', ]
+        return ['name', 'description', 'registry_url', 'study_list', ]
 
     def get_queryset(self, request):
         q = super(StrainAdmin, self).get_queryset(request)
@@ -185,6 +195,48 @@ class StrainAdmin(EDDObjectAdmin):
         return '-'
     hyperlink_strain.admin_order_field = 'registry_url'
     hyperlink_strain.short_description = 'ICE Link'
+
+    class MergeWithStrainForm(forms.Form):
+        # same name as admin site uses for checkboxes to select items for actions
+        _selected_action = forms.CharField(widget=forms.MultipleHiddenInput)
+        strain = forms.ModelChoiceField(
+            Strain.objects.exclude(Q(registry_id=None) | Q(registry_url=None)),
+            widget=RegistryAutocompleteWidget,
+            to_field_name='registry_id',
+        )
+
+    def merge_with_action(self, request, queryset):
+        form = None
+        # only allow merges when registry_id or registry_url are None
+        queryset = queryset.filter(Q(registry_id=None) | Q(registry_url=None))
+        if 'merge' in request.POST:
+            form = self.MergeWithStrainForm(request.POST)
+            if form.is_valid():
+                strain = form.cleaned_data['strain']
+                # Update all lines referencing strains in queryset to reference `strain` instead
+                lines = Line.objects.filter(strains__in=queryset)
+                for line in lines:
+                    line.strains.remove(*queryset.all())
+                    line.strains.add(strain)
+                strain_count = queryset.count()
+                queryset.delete()
+                messages.info(
+                    request,
+                    _("Merged %(strain_count)d strains, updating %(line_count)d lines.") % {
+                        'strain_count': strain_count,
+                        'line_count': lines.count(),
+                    }
+                )
+                return HttpResponseRedirect(request.get_full_path())
+        if not form:
+            form = self.MergeWithStrainForm(
+                initial={'_selected_action': request.POST.getlist(admin.ACTION_CHECKBOX_NAME)},
+            )
+        return render(request, 'admin/merge_strain.html', context={
+            'strains': queryset,
+            'form': form
+        })
+    merge_with_action.short_description = 'Merge records into …'
 
     # annotated queryset with count of lines referencing strain, need method to load annotation
     def num_lines(self, instance):
@@ -205,6 +257,23 @@ class StrainAdmin(EDDObjectAdmin):
         if self.ice_validator.part:
             obj.registry_url = self.ice_validator.part['url']
         super(StrainAdmin, self).save_model(request, obj, form, change)
+
+    def study_list(self, instance):
+        qs = Study.objects.filter(line__strains=instance).distinct()
+        count = qs.count()
+        if count:
+            html = ', '.join([
+                '<a href="%(link)s">%(name)s</a>' % {
+                    'link': reverse('admin:main_study_change', args=[s.id]),
+                    'name': escape(s.name)
+                }
+                for s in qs[:10]
+            ])
+            if count > 10:
+                html += (', and %s more.' % (count - 10, ))
+            return mark_safe(html)
+        return None
+    study_list.short_description = 'Referenced in Studies'
 
 
 class CarbonSourceAdmin(EDDObjectAdmin):

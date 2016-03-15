@@ -35,7 +35,7 @@
                     <a href="{% url 'account_logout' %}">Logout</a>
                 </div>
                 {% if user.is_staff %}
-                    <div><a href="{% url 'admin:index' %}">Data types</a></div>
+                    <div><a href="{% url 'admin:index' %}">Administration</a></div>
                 {% endif %}
             {% else %}
                 <div>

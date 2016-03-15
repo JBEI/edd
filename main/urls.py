@@ -46,7 +46,7 @@ urlpatterns = [
 
     url(r'^file/download/(?P<file_id>\d+)$', login_required(views.download)),
     url(r'^file/delete/(?P<file_id>\d+)$', login_required(views.delete_file)),
-    url(r'^utilities/parsefile$', login_required(views.utilities_parse_table)),
+    url(r'^utilities/parsefile$', login_required(views.utilities_parse_import_file)),
     url(r'^data/carbonsources/$', login_required(views.data_carbonsources)),
     url(r'^data/measurements/$', login_required(views.data_measurements)),
     url(r'^data/metadata/$', login_required(views.data_metadata)),
