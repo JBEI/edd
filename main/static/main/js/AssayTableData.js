@@ -1,5 +1,12 @@
 /// <reference path="typescript-declarations.d.ts" />
 /// <reference path="Utl.ts" />
+JSNumber = Number;
+JSNumber.isFinite = JSNumber.isFinite || function (value) {
+    return typeof value === 'number' && isFinite(value);
+};
+JSNumber.isNaN = JSNumber.isNaN || function (value) {
+    return value !== value;
+};
 // This module encapsulates all the custom code for the data import page.
 // It consists primarily of a series of classes, each corresponding to a step in the import process,
 // with a corresponding chunk of UI on the import page.
@@ -1202,6 +1209,7 @@ var EDDTableImport;
             var seenAssayNames = {};
             var seenMeasurementNames = {};
             var seenMetadataNames = {};
+            var disamRawSets = [];
             // Here are the arrays we will use later
             this.parsedSets = [];
             this.graphSets = [];
@@ -1227,11 +1235,12 @@ var EDDTableImport;
                     if (!ln && ln !== 0) {
                         return;
                     }
-                    if (!an && an !== 0) {
-                        return;
-                    }
                     if (!mn && mn !== 0) {
                         return;
+                    }
+                    if (!an && an !== 0) {
+                        // if just the assay name is missing, set it to the line name
+                        an = ln;
                     }
                     if (!seenLineNames[ln]) {
                         seenLineNames[ln] = true;
@@ -1257,23 +1266,33 @@ var EDDTableImport;
                     });
                     // Validate the provided set of time/value points
                     rawSet.data.forEach(function (xy) {
-                        var time = xy[0] || '';
-                        var value = xy[1];
-                        // Sometimes people - or Excel docs - drop commas into large numbers.
-                        var timeFloat = parseFloat(time.replace(/,/g, ''));
+                        var time, value;
+                        if (!JSNumber.isFinite(xy[0])) {
+                            // Sometimes people - or Excel docs - drop commas into large numbers.
+                            time = parseFloat((xy[0] || '0').replace(/,/g, ''));
+                        }
+                        else {
+                            time = xy[0];
+                        }
                         // If we can't get a usable timestamp, discard this point.
-                        if (isNaN(timeFloat)) {
+                        if (JSNumber.isNaN(time)) {
                             return;
                         }
-                        if (!value && value !== 0) {
+                        if (!xy[1] && xy[1] !== 0) {
                             // If we're ignoring gaps, skip any undefined/null values.
                             //if (ignoreDataGaps) { return; }    // Note: Forced always-off for now
                             // A null is our standard placeholder value
                             value = null;
                         }
-                        if (!times[timeFloat]) {
-                            times[timeFloat] = value;
-                            uniqueTimes.push(timeFloat);
+                        else if (!JSNumber.isFinite(xy[1])) {
+                            value = parseFloat((xy[1] || '').replace(/,/g, ''));
+                        }
+                        else {
+                            value = xy[1];
+                        }
+                        if (!times[time]) {
+                            times[time] = value;
+                            uniqueTimes.push(time);
                             _this.seenAnyTimestamps = true;
                         }
                     });

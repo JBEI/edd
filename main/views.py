@@ -934,6 +934,7 @@ def utilities_parse_import_file(request):
                     "python_exception": "HPLC parsing failed: mismatched row count amoung blocks!"
                 })
         except ImportError as e:
+            logger.exception('Failed to load module %s', e)
             return JsonResponse({
                 "python_error": "jbei_tools module required to handle HPLC file input."
             })
