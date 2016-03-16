@@ -6,6 +6,7 @@ Django==1.9
 django-allauth==0.24.1
 django-auth-ldap==1.2.6
 django-debug-toolbar==1.4
+django-environ==0.4.0
 django-extensions==1.6.1
 django-form-utils==1.0.3
 django-threadlocals==0.8

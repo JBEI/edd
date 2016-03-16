@@ -5,6 +5,7 @@
 
 # per-machine configuration file; contains secrets, DO NOT CHECK-IN
 server.cfg
+secrets.env
 
 # per-machine local settings file; this will override default settigns with local changes
 edd/local_settings.py
@@ -16,3 +17,4 @@ edd/local_settings.py
 /log
 
 /typescript/build
+

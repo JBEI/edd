@@ -3,53 +3,43 @@
 Django settings for edd project.
 
 For more information on this file, see
-https://docs.djangoproject.com/en/1.7/topics/settings/
+https://docs.djangoproject.com/en/dev/topics/settings/
 
 For the full list of settings and their values, see
-https://docs.djangoproject.com/en/1.7/ref/settings/
+https://docs.djangoproject.com/en/dev/ref/settings/
 """
 
-# Build paths inside the project like this: os.path.join(BASE_DIR, ...)
-import json
+import environ
 import ldap
-import os
 
 from django_auth_ldap.config import LDAPSearch, GroupOfUniqueNamesType
 from django.conf.global_settings import TEMPLATE_CONTEXT_PROCESSORS as TCP
 from psycopg2.extensions import ISOLATION_LEVEL_SERIALIZABLE
 
 
-####################################################################################################
-# Load urls and authentication credentials from server.cfg (TODO: some other stuff in there should
-# be moved here)
-####################################################################################################
-BASE_DIR = os.path.dirname(os.path.dirname(__file__))
-try:
-    with open(os.path.join(BASE_DIR, 'server.cfg')) as server_cfg:
-        config = json.load(server_cfg)
-except IOError:
-    print("Required configuration file server.cfg is missing from %s"
-          "Copy from server.cfg-example and fill in appropriate values" % BASE_DIR)
-    raise
+root = environ.Path(__file__) - 2  # root is parent directory of directory containing settings.py
+BASE_DIR = root()
+env = environ.Env(
+    EDD_DEBUG=(bool, True),
+)
+# TODO remove this once working through docker-compose
+env.read_env(root('secrets.env'))
 
-
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/1.7/howto/deployment/checklist/
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# SECURITY WARNING: do not run with debug turned on in production!
+# Override in local_settings.py or set DEBUG=off in environment or secrets.env
+DEBUG = env('EDD_DEBUG')
 
 # SECURITY WARNING: keep the secret key used in production secret!
 # default quote from http://thedoomthatcametopuppet.tumblr.com/
-SECRET_KEY = config['site'].get('secret', 'I was awake and dreaming at the same time, which is why'
-                                          ' this only works for local variables')
+SECRET_KEY = env('SECRET_KEY', default='I was awake and dreaming at the same time, which is why '
+                                       'this only works for local variables')
 
 ####################################################################################################
 # Set ICE configuration used in multiple places, or that we want to be able to override in
 # local_settings.py
 ####################################################################################################
-ICE_SECRET_HMAC_KEY = config['ice'].get('edd_key', '')
-ICE_URL = config['ice'].get('url', None)
+ICE_SECRET_HMAC_KEY = env('ICE_HMAC_KEY')
+ICE_URL = 'https://registry-test.jbei.org/'
 ICE_REQUEST_TIMEOUT = (10, 10)  # HTTP request connection and read timeouts, respectively (seconds)
 
 ####################################################################################################
@@ -60,10 +50,12 @@ USE_CELERY = False
 
 ####################################################################################################
 # Configure Django email variables
-# Note: Some of these are also referenced by
-# Celery and custom Celery-related code
+# Note: Some of these are also referenced by Celery and custom Celery-related code
 ####################################################################################################
-ADMINS = MANAGERS = tuple(config['site'].get('admins', {}).items())
+ADMINS = MANAGERS = (
+    ('William', 'wcmorrell@lbl.gov'),
+    ('Mark', 'mark.forrer@lbl.gov'),
+)
 
 # most of these just explicitly set the Django defaults, but since  affect Django, Celery, and
 # custom Celery support
@@ -89,8 +81,7 @@ DEBUG_TOOLBAR_CONFIG = {
 INSTALLED_APPS = (
     'django.contrib.admin',
     'django.contrib.auth',
-    'django.contrib.sites',     # recommended for registration app +
-                                # useful for computing URLs from signal handlers
+    'django.contrib.sites',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
@@ -132,8 +123,8 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [  # DIRS is a list of filesystem paths, NOT app names
-            os.path.join(BASE_DIR, 'edd_utils', 'templates'),
-            os.path.join(BASE_DIR, 'main', 'templates'),
+            root('edd_utils', 'templates'),
+            root('main', 'templates'),
         ],
         'APP_DIRS': True,
         'OPTIONS': {
@@ -156,7 +147,7 @@ TEMPLATES = [
 ####################################################################################################
 
 # See https://pythonhosted.org/django-auth-ldap/install.html
-# See https://docs.djangoproject.com/en/1.7/howto/auth-remote-user/
+# See https://docs.djangoproject.com/en/dev/howto/auth-remote-user/
 AUTHENTICATION_BACKENDS = (
     'main.account.adapter.AllauthLDAPBackend',  # 'django_auth_ldap.backend.LDAPBackend',
     'django.contrib.auth.backends.RemoteUserBackend',
@@ -168,18 +159,16 @@ ROOT_URLCONF = 'edd.urls'
 WSGI_APPLICATION = 'edd.wsgi.application'
 # LDAP Configuration
 # https://pythonhosted.org/django-auth-ldap/example.html
-AUTH_LDAP_SERVER_URI = config['ldap'].get('uri', '')
-AUTH_LDAP_BIND_DN = config['ldap'].get('dn', '')
-AUTH_LDAP_BIND_PASSWORD = config['ldap'].get('pass', '')
+AUTH_LDAP_SERVER_URI = 'ldaps://identity.lbl.gov:636'
+AUTH_LDAP_BIND_DN = 'uid=jbei_auth,cn=operational,cn=other'
+AUTH_LDAP_BIND_PASSWORD = env('LDAP_PASS')
 AUTH_LDAP_USER_SEARCH = LDAPSearch(
-    config['ldap'].get('people_base_dn', ''),
-    ldap.SCOPE_ONELEVEL,
-    config['ldap'].get('people_search', '(uid=%(user)s)')
+    'ou=People,dc=lbl,dc=gov', ldap.SCOPE_ONELEVEL,
+    '(&(uid=%(user)s)(objectclass=lblperson)(lblaccountstatus=active))'
 )
 AUTH_LDAP_GROUP_SEARCH = LDAPSearch(
-    config['ldap'].get('group_base_dn', ''),
-    ldap.SCOPE_ONELEVEL,
-    config['ldap'].get('group_search', '(objectClass=groupOfUniqueNames)'),
+    'ou=JBEI-Groups,ou=Groups,dc=lbl,dc=gov', ldap.SCOPE_ONELEVEL,
+    '(objectclass=groupofuniquenames)',
 )
 AUTH_LDAP_GROUP_TYPE = GroupOfUniqueNamesType(name_attr='cn')
 AUTH_LDAP_MIRROR_GROUPS = True
@@ -191,22 +180,6 @@ AUTH_LDAP_USER_ATTR_MAP = {
 AUTH_LDAP_PROFILE_ATTR_MAP = {
     'employee_number': 'lblempnum',
 }
-
-# Add security checks for user passwords
-# AUTH_PASSWORD_VALIDATORS = [
-#     {
-#         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-#     },
-#     {
-#         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-#     },
-#     {
-#         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-#     },
-#     {
-#         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-#     },
-# ]
 
 
 ACCOUNT_ADAPTER = 'main.account.adapter.EDDAccountAdapter'
@@ -236,39 +209,25 @@ SOCIALACCOUNT_PROVIDERS = {
 # Solr/Haystack Configuration
 ####################################################################################################
 EDD_MAIN_SOLR = {
-    'default': {
-        'URL': config['solr'].get('url', 'http://localhost:8080/'),
-    },
+    'default': env.search_url(),
 }
 
 ####################################################################################################
 # Databases
 ####################################################################################################
-# https://docs.djangoproject.com/en/1.7/ref/settings/#databases
+# https://docs.djangoproject.com/en/dev/ref/settings/#databases
 DATABASES = {
-    'default': {
-        'ENGINE': config['db'].get('driver', 'django.db.backends.postgresql'),
-        'NAME': config['db'].get('database', 'edd'),
-        'USER': config['db'].get('user', 'edduser'),
-        'PASSWORD': config['db'].get('pass', ''),
-        'HOST': config['db'].get('host', 'localhost'),
-        'PORT': config['db'].get('port', '5432'),
-        'OPTIONS': {
-            # prevent non-repeatable and phantom reads, which are possible with default 'read
-            # committed' level. The serializable level matches typical developer expectations for
-            # how the DB works, and keeps code relatively simple (though at a computational cost,
-            # and with a small chance of requiring repeated client requests if unlikely
-            # serialization errors occur).
-            #
-            # Seems unlikely that the costs of greater consistency will be significant issues
-            # unless EDD gets very high load, at which point we can consider additional resulting
-            # code complexity / development time as justified. Ideally, Django will eventually
-            # support READ_ONLY transactions, which we should use by default to help mitigate the
-            # computational burden.
-            'isolation_level': ISOLATION_LEVEL_SERIALIZABLE,
-        },
-    },
+    'default': env.db(),
 }
+# Prevent non-repeatable and phantom reads, which are possible with default 'read committed'
+# level. The serializable level matches typical developer expectations for how the DB works, and
+# keeps code relatively simple (though at a computational cost, and with a small chance of
+# requiring repeated client requests if unlikely serialization errors occur).
+# Seems unlikely that the costs of greater consistency will be significant issues unless EDD gets
+# very high load, at which point we can consider additional resulting code complexity and
+# development time as justified. Ideally, Django will eventually support READ_ONLY transactions,
+# which we should use by default to help mitigate the computational burden.
+DATABASES['default'].update(OPTIONS={'isolation_level': ISOLATION_LEVEL_SERIALIZABLE})
 
 ####################################################################################################
 # Logging
@@ -320,7 +279,7 @@ LOGGING = {
 ####################################################################################################
 # Internationalization
 ####################################################################################################
-# https://docs.djangoproject.com/en/1.7/topics/i18n/
+# https://docs.djangoproject.com/en/dev/topics/i18n/
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'America/Los_Angeles'
 USE_I18N = True
@@ -330,16 +289,16 @@ USE_TZ = True
 ####################################################################################################
 # Static files (CSS, JavaScript, Images)
 ####################################################################################################
-# https://docs.djangoproject.com/en/1.7/howto/static-files/
+# https://docs.djangoproject.com/en/dev/howto/static-files/
 # Keeping all static files in the static directory of the project
-STATIC_ROOT = os.path.join(BASE_DIR, 'static', '')
+STATIC_ROOT = root('static')
 STATIC_URL = '/static/'
 
 ####################################################################################################
 #  File upload location
 ####################################################################################################
-MEDIA_ROOT = config['site'].get('media_root', '/var/www/uploads')
-MEDIA_URL = config['site'].get('media_url', '/uploads/')
+MEDIA_ROOT = '/var/www/uploads'
+MEDIA_URL = '/uploads/'
 
 ####################################################################################################
 #  local_settings.py: enables any configuration here to be overridden without changing this file.
