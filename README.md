@@ -9,21 +9,8 @@ experimentation.  See the deployed version at [edd.jbei.org][1].
    * Mac OSX
        * [XCode](#XCode)
        * [HomeBrew](#HomeBrew)
-       * [Python](#Python)
-       * [OpenSSL](#OpenSSL)
-       * [Pip](#Pip)
-       * [virtualenvwrapper](#VirtualEnvWrapper)
-       * [PostgreSQL](#PostgreSQL)
-       * [Solr/Tomcat](#Solr_Tomcat) (Solr 4.X)
-       * [Solr Standalone](#Solr) (Solr 5.X)
-       * [Python Packages](#Python_Packages)
-       * [Update EDD Configuration Files](#EDD_Config)
-       * [Postfix](#Postfix_OSX)
-       * [Configure LDAP SSL](#LDAP_SSL)
-       * [Build Tools](#Build_Tools)
-       * [Configure Database](#Configure_DB)
-       * [Start EDD](#Start_EDD)
-       * [Build Solr Indices](#Build_Indices)
+       * [Docker](#Docker)
+       * [Running EDD](#Run_OSX)
    * [Debian (for deployment)](#Debian)
        * [Required Debian Packages](#Debian_Packages)
        * [Configure LDAP](#Configure_LDAP)
@@ -65,180 +52,49 @@ This section contains directions for setting up a development environment on EDD
 * XCode <a name="XCode"/>
     Install XCode (and associated Developer Tools) via the App Store
     * As of OS X 10.9 "Mavericks": `xcode-select --install` to just get command-line tools
-    * Establish `/usr/include` with:
-      ``sudo ln -s `xcrun --show-sdk-path`/usr/include /usr/include``
 * [Homebrew][2] <a name="HomeBrew"/>
-    * `ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"`
-    * `brew doctor`
-* Python <a name="Python"/>
-    * Replace default OS X version of Python with the more up-to-date Homebrew version
-    * `brew install python`
-    * May need to reload shell to see the proper Python version
-* Replace default OS X version of OpenSSL <a name="OpenSSL"/>
-    * `brew install OpenSSL`
-* [Pip][3] <a name="Pip"/>
-    * Should be installed as part of Homebrew install of Python
-    * For latest version: `sudo pip install --upgrade --no-use-wheel pip`
-    * Also a good idea to: `sudo pip install --upgrade setuptools`
-    * Manually install by downloading get-pip.py, run `sudo python get-pip.py`
-* [virtualenvwrapper][4] <a name="VirtualEnvWrapper"/>
-    * Makes dependency tracking, development, and deployment easier
-    * `sudo pip install virtualenvwrapper`
-    * Add to your shell startup (e.g. `~/.bashrc`) and `source` your startup file
+    * To install:
+      `ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"`
+      and follow prompts.
+    * `brew doctor` should say `Your system is ready to brew.` or describe any problems.
+    * From the edd code directory, `brew bundle` should install additional software dependencies
+* [Docker][29] <a name="Docker"/>
+    * Will be installed already via Homebrew
+    * Set up Docker Machine
+        * Create a VM to run containers:
+          `docker-machine create --driver virtualbox default`
+        * Confirm VM is running with:
+          `docker-machine ls`
+        * Stop and start VMs with:
+          `docker-machine stop default` and `docker-machine start default`
+        * Configure the `docker` command to use the VM to run containers with:
+          `eval "$(docker-machine env default)"`
+        * See more in the [Docker Machine documentation][30]
+    * Running Docker images
+        * Verify Docker is configured by running:
+          `docker run --rm hello-world`
+            * Get `docker: command not found`? You didn't successfully install from Homebrew
+            * Get `docker: Cannot connect to the Docker daemon.`? You have not run the `eval`
+              command in the Docker Machine section.
+* Running EDD <a name="Run_OSX"/>
+    * If you have not already done so, create a host VM to run containers:
+      `docker-machine create --driver virtualbox default`
+    * Create `secrets.env` based on the example in `secrets.env-example`
+    * Load the Docker environment with:
+      `eval "$(docker-machine env default)"`
+    * Start EDD services:
+      `docker-compose up -d`
+        * To run commands, use `docker-compose run $SERVICE $COMMAND`, e.g.:
+          `docker-compose run edd python manage.py shell`
+        * To access services, use the IP listed in `docker-machine ls`, e.g. access EDD via
+          https://192.168.99.100/
 
-            export WORKON_HOME=$HOME/.virtualenvs
-            source /usr/local/bin/virtualenvwrapper.sh
-
-    * Make a new virtualenv, e.g. `mkvirtualenv edd.jbei.org`
-        * `deactivate` to return to regular global python environment
-        * `workon edd.jbei.org` to switch back to edd python environment
-        * run under `workon edd.jbei.org` for the remainder of the pip installs in this document. This
-          will isolate your EDD Python configuration from any other changes you make to your
-          system.
-* PostgreSQL <a name="PostgreSQL"/>
-    * required for installing psycopg2 driver, do not need to run database locally
-    * `brew install postgresql`
-    * Following PostgreSQL steps are optional if using external database server
-    * Instructions on startup can be found with `brew info postgresql`
-        * Manually start with `postgres -D /usr/local/var/postgres`
-    * Enable the hstore extension on all new databases:
-        * `psql -d template1 -c 'create extension hstore;'`
-    * `createdb edddjango`
-    * `createuser postgres`
-    * `psql edddjango` and
-            CREATE USER edduser WITH PASSWORD 'somegoodpassword'
-                NOSUPERUSER INHERIT CREATEDB NOCREATEROLE NOREPLICATION;
-    * ctrl-d to exit
-
-* Solr / Tomcat <a name="Solr_Tomcat"/>
-    * For older 4.X Solr. Skip this item for Solr 5.0+
-    * At present, this is the recommended version until EDD and these directions are updated for
-      Solr 5.0+
-    * Install a JDK8+ from [Oracle][5]
-    * `brew install tomcat`
-    * `brew install homebrew/versions/solr4`
-    * Link to easily access tomcat and solr install directories:
-        * `ln -s /usr/local/Cellar/tomcat/(VERSION)/libexec/ /usr/local/tomcat`
-        * `ln -s /usr/local/Cellar/solr4/(VERSION)/ /usr/local/solr`
-    * Copy Solr libraries to Tomcat lib:
-        * `cp /usr/local/solr/example/lib/ext/* /usr/local/tomcat/lib/`
-    * Create Solr directories: `mkdir -p /usr/local/var/solr/data`.
-        * Note that `data/` must exist for Solr to work, but files are purposefully copied to its
-          parent, `/usr/local/var/solr/` in subsequent steps.
-    * Copy Solr configuration from `edd-django/solr` to `/usr/local/var/solr/`
-    * Modify `/usr/local/tomcat/conf/server.xml` to only listen on localhost
-        * find `<Connector port="8080" ...`
-        * add attribute `address="localhost"`
-    * Modify `/usr/local/tomcat/conf/Catalina/localhost/ROOT.xml` to point docbase to the Solr WAR
-      at `/usr/local/solr/example/webapps/solr.war`
-    * Add a `setenv.sh` to `/usr/local/tomcat/bin/` and `chmod +x /usr/local/tomcat/bin/setenv.sh`
-    
-            #!/bin/bash
-            JAVA_OPTS="$JAVA_OPTS -Dsolr.solr.home=/usr/local/var/solr"
-
-    * Service is controlled with `catalina` command; `catalina start` and `catalina stop`
-    * Access admin interface via <http://localhost:8080/>
-
-* Solr <a name="Solr"/>
-    * For versions 5.0+. Optional if using non-local server for Solr
-    * Starting with 5.0, Solr no longer supports deployment to a separate application server.
-      It's designed to run as a separate server.
-    * Install a JDK8+ from [Oracle][5]
-    * `brew install solr`
-    * Link to easily access solr install directory:
-        * `ln -s /usr/local/Cellar/solr/(VERSION)/ /usr/local/solr`
-       
-    * TODO: re-examine Solr directions from this point forward, with EDD in mind.
-    * Need to distill guidance in the following resources, also updating EDD's solr files:
-        * [Installing][6]
-        * [Upgrading][7]
-        * [Solr.xml format changes][8]
-        * [Core Admin][9] -- referenced from sample solr.xml -- see newer format required in 5.0
-    * Create Solr data directories: TODO: still necessary?
-      `mkdir -p /usr/local/var/solr/data`
-    * Copy Solr configuration from `edd-django/solr` to solr data directory
-      `usr/local/Cellar/solr/(VERSION)/server/solr`
-    * Modify `/usr/local/tomcat/conf/server.xml` to only listen on localhost
-        * find `<Connector port="8080" ...`
-        * add attribute `address="localhost"`
-    * Service is controlled with `solr` command; `solr start` and `solr stop -all`
-    * Access admin interface via <http://localhost:8983/>
-
-* Install python packages
-    
-            cd code/edd-django
-            pip install -r requirements.txt
-
-    * See [Python Packages](#PythonPackages) for a detailed list
-
- * Update EDD Configuration Files <a name="EDD_Config"/>
-    * Use EDD's `server.cfg-example` as a template to create a `server.cfg` file, replacing values
-      for:
-        * `site.secret`
-        * `db.pass`: the password you created for your local edduser Postgres account
-        * `ldap.pass`: the JBEI_AUTH password
-        * `ice.edd_key`: the key used by EDD send REST API calls to ICE
-        * `site.admins`: use your email address to receive Celery failure messages as a debugging
-            aid, but limit spam to other team members during development
-    * Update `site`, `db`, `solr`, `ldap`, and `ice` for appropriate connection parameters
-    * _*DO NOT CHECK THIS FILE INTO SOURCE CONTROL*_ ! This file is included by default in EDD's
-      `.gitignore` file, so you should have to work hard to commit it to Git by mistake.
-
-* Postfix <a name="Postfix_OSX"/>
-    * If using localhost as a SMTP host, make sure postfix is running
-    * `sudo postfix status` will check the status of postfix daemon
-    * `sudo postfix start` will start postfix, allowing emails to be sent from localhost
-
-* Configure LDAP SSL <a name="LDAP_SSL"/>
-    * Configue handling in `/etc/openldap/ldap.conf`
-    * TODO: this section may no longer apply, identity.lbl.gov has signed certificate now
-    * For OS X 10.9.x "Mavericks" or 10.10.x "Yosemite"
-        * `sudo su -`
-        * Pull CA certificates from `identity.lbl.gov`
-            * As root in `/System/Library/OpenSSL/certs`
-                * `openssl s_client -showcerts -connect identity.lbl.gov:636 > godaddy.crt`
-                    * The command will hang, but still generates the data. CTRL-C to stop it.
-                * Edit `godaddy.crt` to remove all non-certificate blocks (outside BEGIN/END), and
-                  the first certificate block (the identity.lbl.gov certificate). When you are
-                  finished, the only file content should be the "BEGIN/END" lines and the
-                  certificates themselves. No blank lines!
-        * Edit as root `/etc/openldap/ldap.conf`
-            * Add line `TLS_CACERTDIR   /System/Library/OpenSSL/certs`
-            * Add line `TLS_CACERT      /System/Library/OpenSSL/certs/godaddy.crt`
-        * Test with:
-
-                ldapsearch -H ldaps://identity.lbl.gov -b "ou=People,dc=lbl,dc=gov" -W \
-                    -D "uid=jbei_auth,cn=operational,cn=other" -s base "objectclass=*"
-
-        * Output should contain `result: 0 Success`
-
-    * For problems in OS X 10.10.x "Yosemite":
-        * Problems occurred for some developers in certificate checking with ldapsearch
-        * Work-around, comment out the `TLS_REQCERT` line
-
-* Install and run [Build Tools](#BuildTools) <a name="Build_Tools"/>
-
-* Configure Database <a name="Configure_DB"/>
-    * See [Database Conversion](#DbConversion) below for instructions that also apply to initial
-      database creation
-
-* Start EDD <a name="Start_EDD"/>
-    * If not already running, start supporting services
-        * Solr
-            * 4.X: `catalina start` to start Tomcat and Solr
-            * 5+: `solr start` to start standalone Solr server
-    * `./manage.py runserver` will launch EDD at <http://localhost:8000/>
-    * `./manage.py test main` will run unit tests on the main application
-        * Solr tests make use of a different core, see Solr section below.
-
-* Build Solr Indices <a name="Build_Indices"/>
-    * `./manage.py edd_index`
 
 ---------------------------------------------------------------------------------------------------
 
-### Debian (for deployment) <a name="Debian"/><a name="Debian_Packages"/>
+### Debian (for deployment) <a name="Debian"/>
 
-* Required `.deb` packages
+* Required `.deb` packages <a name="Debian_Packages"/>
     * `sudo apt-get install python-pip` for PyPI/pip python package manager
     * `sudo apt-get install postgresql-client` for commands used to copy database
     * `sudo apt-get install libpq-dev` for headers required by psycopg2
@@ -248,93 +104,68 @@ This section contains directions for setting up a development environment on EDD
     * `sudo apt-get install libatlas-dev liblapack-dev gfortran` for packages required by SciPy
     * `sudo apt-get install libbz2-dev` for packages required by libsmbl
 
-* Configure LDAP SSL handling in `/etc/ldap/ldap.conf` <a name="Configure_LDAP"/>
-    * Add line `TLS_CACERTDIR   /etc/ssl/certs`
-    * Add line `TLS_CACERT  /etc/ssl/certs/ca-certificates.crt`
+* Configuration changes: <a name="Debian_Config"/>
+    * Create a user for running EDD; assuming user `jbeideploy` exists for further instructions
+    * Configure LDAP SSL handling in `/etc/ldap/ldap.conf`
+        * Add line `TLS_CACERTDIR   /etc/ssl/certs`
+        * Add line `TLS_CACERT  /etc/ssl/certs/ca-certificates.crt`
 
-* Check out code to `/var/www/${SITE}` <a name="Check_Out"/>
-
-* PostgreSQL <a name="PostgreSQL"/>
-    * Required for installing psycopg2 driver, even if you don’t need to run database locally
-        * If you want a more recent postgresql, you can use the Postgresql 3rd-party repository
-          with apt-get:
-        * `wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -`
-        * `sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg main" >> /etc/apt/sources.list.d/postgresql.list’`
-        * `sudo apt-get update`
-        * `sudo apt-get install postgresql`
-    * `sudo apt-get install postgresql-contrib` (for hstore extension)
-    * Postgres user should already exist.  Let’s su to that user for the rest of these postgres commands:
-        * `sudo su postgres`
-    * `psql -d template1 -c 'create extension hstore;’` (to enable hstore)
-    * `createdb edddjango`
-    * `createuser postgres`
-    * `psql edddjango` and
-            CREATE USER edduser WITH PASSWORD 'somegoodpassword'
-                NOSUPERUSER INHERIT CREATEDB NOCREATEROLE NOREPLICATION;
-    * ctrl-d to exit
-    * `exit` to stop being postgres
-
-* [Pip][3] <a name="Pip"/>
-    * Should be installed as part of standard Python (note: setuptools may not be up-to-date)
-	    * For latest version: `sudo pip install --upgrade --no-use-wheel pip`
-    * A good idea to: `sudo pip install --upgrade setuptools`
+* As `jbeideploy`, check out code to `/var/www/${SITE}`
 
 * Python packages <a name="Python_Packages_Deb"/>
-    * `sudo pip install virtualenvwrapper`
-    * `mkdir -p /usr/local/virtualenvs`
-        * TODO: should look into permissions on directory containing virtualenvs
-    * Add to your shell startup (e.g. `~/.bashrc`) and `source` your startup file
+    * Install virtualenvwrapper in global environment:
+      `sudo pip install virtualenvwrapper`
+    * Create a location to contain virtualenvs:
+        * `sudo mkdir -p /usr/local/virtualenvs`
+    * As `jbeideploy`, add shell startup (e.g. `~/.bashrc`):
 
             if [ -f /usr/local/bin/virtualenvwrapper.sh ]; then
                 export WORKON_HOME=/usr/local/virtualenvs
                 source /usr/local/bin/virtualenvwrapper.sh
             fi
 
-    * Test your work by launching a new Terminal and running `echo $WORKON_HOME`
-        * If no value is printed, consider adding a ``~/.bash_profile`` file to force your
-          `.bashrc` to be executed. See [explanation][24]
+    * Run `source ~/.bashrc` to apply changes
+    * Set up virtualenv for the `${SITE}` where code is checked out
+        * `mkvirtualenv ${SITE}` will create the virtualenv
+        * `workon ${SITE}` will load the virtualenv into current shell session
+        * `pip install -r /var/www/${SITE}/requirements.txt` to install python packages to virtualenv
+            * If you get a compiler error complaining about “missing sasl.h” when installing ldap,
+              `sudo apt-get install libsasl2-dev` and install the requirements again.
+        * Use `deactivate` to exit the virtualenv but retain your shell session.
 
-            [[ -r ~/.bashrc ]] && . ~/.bashrc
-
-    * `mkvirtualenv edd.jbei.org`
-    * `workon edd.jbei.org`
-    * `pip install -r /path/to/project/requirements.txt` to install python packages to virtualenv
-        * If you get a compiler error complaining about “missing sasl.h” when installing ldap,
-        * `sudo apt-get install libsasl2-dev` and install the requirements again.
-    * Use `deactivate` to exit the virtual environment but retain your shell session.
-
-* Set up Tomcat/Solr (these instructions are for version 4 of Solr)
+* Set up Tomcat/Solr
+    * TODO: these instructions are for version 4 of Solr, should update to Solr5
     * Install Tomcat 7:
         * `sudo apt-get install tomcat7`
         * This will automatically create a “tomcat7” user.
     * Force the server to only listen on localhost:
         * Edit ‘/etc/tomcat7/server.xml’ and change the line:
-            <Connector port="8080" protocol="HTTP/1.1"
-                to:
-            <Connector port="8080" protocol="HTTP/1.1" address="localhost"
-    * Download solr v4 and unzip to [solr download]
-        * http://archive.apache.org/dist/lucene/solr/4.10.4/
+          `<Connector port="8080" protocol="HTTP/1.1"`
+          to:
+          `<Connector port="8080" protocol="HTTP/1.1" address="localhost"`
+    * [Download solr v4][31] and unzip to /tmp/solr
     * Copy Solr main war file:
-        * `cp [solr download]/dist/solr-4.10.4.war /var/lib/tomcat7/webapps/solr.war`
+        * `cp /tmp/solr/dist/solr-4.10.4.war /var/lib/tomcat7/webapps/solr.war`
         * `sudo chown tomcat7:tomcat7 /var/lib/tomcat7/webapps/solr.war`
         * `sudo chmod 644 /var/lib/tomcat7/webapps/solr.war`
     * Copy Solr libraries to Tomcat lib and set proper permissions:
-        * `sudo cp [solr download]/example/lib/ext/*.jar /usr/share/tomcat7/lib/`
-        * `sudo cp [solr download]/dist/solrj-lib/*.jar /usr/share/tomcat7/lib/`
+        * `sudo cp /tmp/solr/example/lib/ext/*.jar /usr/share/tomcat7/lib/`
+        * `sudo cp /tmp/solr/dist/solrj-lib/*.jar /usr/share/tomcat7/lib/`
         * `sudo chmod a+rx /usr/share/tomcat7/lib/*.jar`
-        * `sudo cp [solr download]/example/resources/log4j.properties /etc/tomcat7/log4j.properties`
+        * `sudo cp /tmp/solr/example/resources/log4j.properties /etc/tomcat7/log4j.properties`
         * `sudo chgrp tomcat7 /etc/tomcat7/log4j.properties`
-    * Create a home folder for Solr within tomcat7:
-        `sudo mkdir /var/lib/tomcat7/solr`
-        `sudo mkdir /var/lib/tomcat7/solr/data`
+    * Create a home folder for Solr:
+        `sudo mkdir -p /var/solr/data`
     * Copy in edd-django solr config files:
-        `sudo cp -R [edd download]/solr/* /var/lib/tomcat7/solr/``
-        `sudo chown -R tomcat7:tomcat7 /var/lib/tomcat7/solr`
+        `sudo cp -R /var/www/${SITE}/solr/* /var/solr/``
+        `sudo chown -R tomcat7:tomcat7 /var/solr`
     * Set up the Solr config file:
         * `sudo pico /etc/tomcat7/Catalina/localhost/solr.xml` and enter the following:
-        <Context docBase="/var/lib/tomcat7/webapps/solr.war" debug="0" crossContext="true">
-          <Environment name="solr/home" type="java.lang.String" value="/var/lib/tomcat7/solr" override="true" />
-        </Context>
+
+                <Context docBase="/var/lib/tomcat7/webapps/solr.war" debug="0" crossContext="true">
+                    <Environment name="solr/home" type="java.lang.String" value="/var/lib/tomcat7/solr" override="true" />
+                </Context>
+
     * Start Tomcat/Solr:
         * `sudo /etc/init.d/tomcat7 start`
     * Optional:
@@ -621,3 +452,6 @@ since EDD's requirements.txt should normally be used to install required package
 [26]:   https://github.com/settings/applications/new
 [27]:   https://console.developers.google.com/
 [28]:   https://www.linkedin.com/secure/developer?newapp=
+[29]:   https://docs.docker.com/engine/quickstart/
+[30]:   https://docs.docker.com/machine/overview/
+[31]:   http://archive.apache.org/dist/lucene/solr/4.10.4/
