@@ -717,7 +717,7 @@ class IceApi(object):
             link_id = link.get('id')
             logger.info('Deleting link %d from entry %s' % (link_id, ice_entry_id))
             link_resource_uri = entry_experiments_rest_url + "%s/" % link_id
-            response = request_generator.request('DELETE', link_resource_uri)
+            response = self.request_generator.request('DELETE', link_resource_uri)
 
             if response.status_code != requests.codes.ok:
                 response.raise_for_status()
