@@ -13,7 +13,7 @@ networks:
     driver: bridge
 services:
   postgres:
-    image: postgres
+    image: postgres:9.4
     volumes:
       - pgdata:/var/lib/postgres/data
     networks:
@@ -28,6 +28,9 @@ services:
   rabbitmq:
     image: rabbitmq
     env_file: secrets.env
+    ports:
+      - "5672:5672"
+      - "15672:15672"
   worker:
     build: .
     restart: always
@@ -41,12 +44,19 @@ services:
   edd:
     build: .
     restart: always
-    command: gunicorn -w 4 -b 0.0.0.0:8000 edd.wsgi:application
+    # command: gunicorn -w 4 -b 0.0.0.0:8000 edd.wsgi:application
+    command: python manage.py runserver
     links:
       - postgres
       - solr
+    ports:
+      - "8000:8000"
   nginx:
     image: nginx
+    links:
+      - edd
     ports:
       - "80:80"
       - "443:443"
+    volumes_from:
+      - edd
