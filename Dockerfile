@@ -21,7 +21,10 @@ RUN apt-get update \
 && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt /code/
-RUN pip install -r requirements.txt
+RUN pip install --upgrade pip setuptools wheel \
+&& pip install numpy \
+&& pip install scipy \
+&& pip install -r requirements.txt
 
 COPY . /code/
 

@@ -31,18 +31,24 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
-  worker:
+  edd:
     build: .
+    env_file: secrets.env
+    command: "true"
+  worker:
+    extends:
+      service: edd
     restart: always
     command: celery -A edd worker -l info
     links:
       - postgres
+      - solr
       - rabbitmq
-    env_file: secrets.env
     environment:
       - C_FORCE_ROOT=true
-  edd:
-    build: .
+  appserver:
+    extends:
+      service: edd
     restart: always
     # command: gunicorn -w 4 -b 0.0.0.0:8000 edd.wsgi:application
     command: python manage.py runserver
