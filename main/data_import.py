@@ -6,16 +6,20 @@ import logging
 import re
 import warnings
 
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from django.core.exceptions import PermissionDenied
+from django.db.models import Q
+from django.utils.translation import ugettext as _
 
 from .models import (
-    Assay, GeneIdentifier, Line, Measurement, MeasurementCompartment, MeasurementGroup,
-    MeasurementUnit, MeasurementValue, MeasurementFormat, MetadataType, ProteinIdentifier,
-    Protocol, Update)
+    Assay, Datasource, GeneIdentifier, Line, Measurement, MeasurementCompartment,
+    MeasurementFormat, MeasurementGroup, MeasurementType, MeasurementUnit, MeasurementValue,
+    MetadataType, ProteinIdentifier, Protocol, Update
+)
 
 
 logger = logging.getLogger(__name__)
+MType = namedtuple('MType', ['compartment', 'type', 'unit', ])
 
 
 class TableImport(object):
@@ -30,7 +34,6 @@ class TableImport(object):
                 user.username, study.name))
         self._line_assay_lookup = {}
         self._line_lookup = {}
-
         self._meta_lookup = {}
         self._unit_lookup = {}
 
@@ -42,266 +45,206 @@ class TableImport(object):
         return self.create_measurements(series)
 
     def check_series_points(self, series):
-        """ Checks that each item in the series has some data or metadata """
+        """ Checks that each item in the series has some data or metadata. """
         for item in series:
             points = item.get('data', [])
             meta = item.get('metadata_by_id', {})
-            for label in meta:
-                self._metatype(label)  # don't care about return value here
+            for meta_id in meta:
+                self._metatype(meta_id)  # don't care about return value here
             if len(points) == 0 and len(meta) == 0:
                 item['nothing_to_import'] = True
 
     def init_lines_and_assays(self, series):
         """ Client-side code detects labels for assays/lines, and allows the user to select
-            an "ID" for each label; these ids are passed along in each set and used to resolve to
+            an "ID" for each label; these ids are passed along in each set and are used to resolve
             actual Line and Assay instances. """
         for item in series:
-            protocol_id  = item.get('protocol_id', None)
-            line_name = item.get('line_name', None)
-            line_id = item.get('line_id', None)
-            assay_name = item.get('assay_name', None)
-            assay_id = item.get('assay_id', None)
+            item['assay_obj'] = self._init_item_assay(item)
 
-            resolved_line_id = None
-
-            if assay_id is None:
-                logger.warning('Import set has undefined assay_id field.')
+    def _init_item_assay(self, item):
+        assay = None
+        assay_id = item.get('assay_id', None)
+        assay_name = item.get('assay_name', None)
+        if assay_id is None:
+            logger.warning('Import set has undefined assay_id field.')
+            item['invalid_fields'] = True
+        elif assay_id not in ['new', 'named_or_new', ]:
+            # attempt to lookup existing assay
+            try:
+                assay = Assay.objects.get(pk=assay_id, line__study_id=self._study.pk)
+            except Assay.DoesNotExist:
+                logger.warning(
+                    'Import set cannot load Assay,Study: %(assay_id)s,%(study_id)s' % {
+                        'assay_id': assay_id,
+                        'study_id': self._study.pk,
+                    }
+                )
                 item['invalid_fields'] = True
-                continue  # Nothing we can do here
+        else:
+            # At this point we know we need to create an Assay, or reference one we created
+            # earlier. The question is, for which Line and Protocol? Now protocol_id is essential,
+            # so we check it.
+            protocol = self._init_item_protocol(item)
+            line = self._init_item_line(item)
+            if assay_name is None or assay_name.strip() == '':
+                # if we have no name, 'named_or_new' and 'new' are treated the same
+                assay_name = str(line.new_assay_number(protocol))
+            key = (line.id, assay_name)
+            if protocol is None or line is None:
+                pass  # already logged errors, move on
+            elif key in self._line_assay_lookup:
+                assay = self._line_assay_lookup[key]
+            else:
+                assay = line.assay_set.create(
+                    name=assay_name,
+                    protocol=protocol,
+                    experimenter=self._user,
+                )
+                logger.info('Created new Assay %s:%s' % (assay.id, assay_name))
+                self._line_assay_lookup[key] = assay
+        return assay
 
-            # If it appears we've been given an assay_id directly, we only care about that:
-            if assay_id != 'new' and assay_id != 'named_or_new':
-                try:
-                    assay = Assay.objects.get(pk=assay_id, line__study_id=self._study.pk)
-                except Assay.DoesNotExist:
-                    logger.warning('Import set cannot load assay,study %s,%s' % (assay_id, self._study.pk))
-                    item['invalid_fields'] = True
-                # Whether it's valid or invalid, we're done here.
-                continue
-
-            # At this point we know we need to create an Assay, or reference one we created earlier.
-            # the question is, for which Line and Protocol?  Now protocol_id is essential, so we check it.   
-            if protocol_id is None:
-                logger.warning('Import set has needs new Assay but has undefined protocol_id field.')
+    def _init_item_line(self, item):
+        line = None
+        line_id = item.get('line_id', None)
+        line_name = item.get('line_name', None)
+        if line_id is None:
+            logger.warning('Import set needs new Assay but has undefined line_id field.')
+            item['invalid_fields'] = True
+        elif line_id == 'new':
+            # If the label is 'None' we attempt to locate (or if missing, create) a Line named
+            # 'New Line'.
+            # (If a user wants a new Line created but has not specified a name, it means we have
+            # no way of distinguishing one new Line request in a multi-set import from any other.
+            # So the only sane behavior is to place all the sets under one Line.)
+            if line_name is None or line_name.strip() == '':
+                line_name = _('New Line')
+            if line_name in self._line_lookup:
+                line = self._line_lookup[line_name]
+            else:
+                line = self._study.line_set.create(
+                    name=line_name,
+                    contact=self._user,
+                    experimenter=self._user
+                )
+                self._line_lookup[line_name] = line
+                logger.info('Created new Line %s:%s' % (line.id, line.name))
+        else:
+            try:
+                line = Line.objects.get(pk=line_id, study_id=self._study.pk)
+            except Line.DoesNotExist:
+                logger.warning(
+                    'Import set cannot load Line,Study: %(line_id)s,%(study_id)s' % {
+                        'line_id': line_id,
+                        'study_id': self._study.pk,
+                    }
+                )
                 item['invalid_fields'] = True
-                continue  # Nothing we can do
+        return line
 
+    def _init_item_protocol(self, item):
+        protocol = None
+        protocol_id = item.get('protocol_id', None)
+        if protocol_id is None:
+            logger.warning('Import set needs new Assay, but has undefined protocol_id field.')
+            item['invalid_fields'] = True
+        else:
             try:
                 protocol = Protocol.objects.get(pk=protocol_id)
             except Protocol.DoesNotExist:
                 logger.warning('Import set cannot load protocol %s' % (protocol_id))
                 item['invalid_fields'] = True
-                continue
-
-            if line_id is None:
-                logger.warning('Import set needs new Assay but has undefined line_id field.')
-                item['invalid_fields'] = True
-                continue
-
-            # If we're supposed to create a new Line, we inspect the label.
-            if line_id == 'new':
-                # If the label is 'None' we attempt to locate (or if missing, create) a Line named 'New Line'.
-                # (If a user wants a new Line created but has not specified a name, it means we have no way of
-                # distinguishing one new Line request in a multi-set import from any another.  So the only sane
-                # behavior is to place all the sets under one Line.)
-                if line_name is None or line_name == '':
-                    line_name = 'New Line'
-                    if line_name in self._line_lookup:
-                        resolved_line_id = self._line_lookup[line_name]
-                    else:
-                        line = self._study.line_set.create(
-                            name='Imported %s' % (self._study.line_set.count() + 1),
-                            contact=self._user,
-                            experimenter=self._user)
-                        self._line_lookup[line_name] = line.id
-                        resolved_line_id = line.id
-                        logger.info('Created new Line %s:%s' % (line.id, line.name))
-                else:
-                    if line_name in self._line_lookup:
-                        resolved_line_id = self._line_lookup[line_name]
-                    else:
-                        line = self._study.line_set.create(
-                            name=line_name,
-                            contact=self._user,
-                            experimenter=self._user)
-                        self._line_lookup[line_name] = line.id
-                        resolved_line_id = line.id
-                        logger.info('Created new Line %s:%s' % (line.id, line.name))
-            else:
-                resolved_line_id = line_id
-            # We've done our best to resolve the Line to an id, so we verify its existence here:
-            try:
-                line = Line.objects.get(pk=resolved_line_id, study_id=self._study.pk)
-            except Line.DoesNotExist:
-                logger.warning('Import set cannot load line,study %s,%s' % (line_id, self._study.pk))
-                item['invalid_fields'] = True
-                continue
-
-            # Remember, at this point we're either deaing with 'new' or 'named_or_new' for assay_id
-
-            # If we have no name, 'named_or_new' and 'new' are treated the same.
-            if assay_name is None or assay_name == '':
-                assay_name = 'New Assay'
-                if (resolved_line_id, assay_name) in self._line_assay_lookup:
-                    # We've verifid that the new Assay we need was already created, so we're done here.
-                    continue
-                assay_start_id = line.new_assay_number(protocol)
-                assay = line.assay_set.create(
-                    name=str(assay_start_id),
-                    description=desc,
-                    protocol=protocol,
-                    experimenter=self._user)
-                logger.info('Created new Assay %s:%s' % (assay.id, str(assay_start_id)))
-                self._line_assay_lookup[(resolved_line_id, assay_name)] = assay.id
-                # Created the Assay and registered it in the lookup table, so we're done.
-                continue;
-            # Attempt to resolve the name, line_id, and protocol_id together before resorting to creating a new Assay
-            if assay_id == 'named_or_new':
-                found_assay_ids = Assay.objects.filter(line__study_id=self._study.pk,
-                    line_id=resolved_line_id, protocol_id=protocol_id, name=assay_name).values_list('id')
-                if len(found_assay_ids) == 1:
-                    self._line_assay_lookup[(resolved_line_id, assay_name)] = found_assay_ids[0]
-                    continue;
-            assay = line.assay_set.create(
-                name=assay_name,
-                description='',
-                protocol=protocol,
-                experimenter=self._user)
-            logger.info('Created new Assay %s:%s' % (assay.id, assay_name))
-            self._line_assay_lookup[(resolved_line_id, assay_name)] = assay.id
+        return protocol
 
     def create_measurements(self, series):
         added = 0
-        fake_index = 0
         hours = MeasurementUnit.objects.get(unit_name='hours')
-        # TODO: During a standard-size biolector import (~50000 measurement values) this loop runs very slowly
-        # on my test machine, consistently taking an entire second per set (approx 300 values each).
-        # To an end user, this makes the submission appear to hang for over a minute, which might make them
-        # behave erratically...
-        for item in series:
-            fake_index += 1
+        # TODO: During a standard-size biolector import (~50000 measurement values) this loop runs
+        # very slowly on my test machine, consistently taking an entire second per set (approx 300
+        # values each). To an end user, this makes the submission appear to hang for over a
+        # minute, which might make them behave erratically...
+        for (index, item) in enumerate(series):
             points = item.get('data', [])
             meta = item.get('metadata_by_id', {})
             if item.get('nothing_to_import', False):
-                warnings.warn('Skipped set %s because it has no data' % fake_index)
-                continue
-            if item.get('invalid_fields', False):
-                warnings.warn('Skipped set %s because it has invalid assay/line/protocol fields' % fake_index)
-                continue
-
-            assay_id = item.get('assay_id', None)
-            line_id = item.get('line_id', None)
-            resolved_assay_id = assay_id
-
-            # This is pursuant to getting a valid assay_id.  Contingencies (undefined values, new record creations,
-            # invalid references, etc) have been handled up in init_lines_and_assays().
-            if assay_id == 'new' or assay_id == 'named_or_new':
-                resolved_line_id = line_id
-                if line_id == 'new':
-                    line_name = item.get('line_name', None)
-                    if line_name is None or line_name == '':
-                        line_name = 'New Line'
-                    resolved_line_id = self._line_lookup[line_name]
-                assay_name = item.get('assay_name', None)
-                if assay_name is None or assay_name == '':
-                    assay_name = 'New Assay'
-                resolved_assay_id = self._line_assay_lookup[(resolved_line_id, assay_name)]
-
-            assay = Assay.objects.get(pk=resolved_assay_id)
-
-            m_name = item.get('measurement_name', None)
-            m_id = item.get('measurement_id', 0)
-            comp_id = item.get('compartment_id', MeasurementCompartment.UNKNOWN)
-            unit_id = item.get('units_id', 1)
-
-            # In Transcriptomics and Proteomics mode, we attempt to resolve measurements client-side,
-            # so we go by the measurement_name, ignoring the measurement_id and related fields (which will be blank)
-            layout = self._layout()
-            if layout == 'tr':
-                comp_id = MeasurementCompartment.UNKNOWN
-                unit_id = 1
-                gene_ids = GeneIdentifier.objects.filter(type_name=m_name).values_list('id')
-                if len(gene_ids) != 1:
-                    logger.warning('Found %s GeneIdentifier instances for %s' % (len(gene_ids), m_name))
-                    continue
-                m_id = gene_ids[0]
-            elif layout == 'pr':
-                # TODO Protein import should be re-worked to get types from a label/session-id combo
-                comp_id = MeasurementCompartment.UNKNOWN
-                unit_id = 1
-                protein_ids = ProteinIdentifier.objects.filter(type_name=m_name).values_list('id')
-                if len(protein_ids) == 1:
-                    m_id = protein_ids[0]
-                else:
-                    logger.warning('Found %s ProteinIdentifier instances for %s' % (len(protein_ids), m_name))
-                    if len(protein_ids) > 1:
-                        m_id = protein_ids[0]
-                    else:
-                        try:
-                            p = ProteinIdentifier.objects.create(type_name=m_name)
-                        except:
-                            logger.error('Failed to create ProteinIdentifier %s' % m_name)
-                            continue
-                        else:
-                            m_id = p.pk
-
-            if m_id == 0:
-                warnings.warn('Skipped set %s because it does not reference a known measurement.' % fake_index)
-                continue
-            logger.info('Loading measurements for %s:%s' % (comp_id, m_id))
-            records = assay.measurement_set.filter(
-                measurement_type_id=m_id,
-                compartment=str(comp_id),)
-            unit = self._unit(unit_id)
-            record = None
-            if records.count() > 0:
-                if self._replace():
-                    records.delete()
-                else:
-                    record = records[0]
-                    record.save()  # force refresh of Update
-            if record is None:
-                record = assay.measurement_set.create(
-                    measurement_type_id=m_id,
-                    measurement_format=self._mtype_guess_format(points),
-                    compartment=str(comp_id),
-                    experimenter=self._user,
-                    x_units=hours,
-                    y_units=unit)
-            # TODO: Possibly update to allow merging values on the same timestamp, rather than replacing?
-            for x, y in points:
-                (xvalue, yvalue) = (self._extract_value(x), self._extract_value(y))
-                try:
-                    point = record.measurementvalue_set.get(x=xvalue)
-                except MeasurementValue.DoesNotExist:
-                    point = record.measurementvalue_set.create(x=xvalue, y=yvalue)
-                else:
-                    point.y = yvalue
-                    point.save()
-                added += 1
-            if len(meta) > 0:
-                if self._replace():
-                    # would be simpler to do assay.meta_store.clear()
-                    # but we only want to replace types included in import data
-                    for label, metatype in self._meta_lookup.items():
-                        if metatype.pk in assay.meta_store:
-                            del assay.meta_store[metatype.pk]
-                        elif metatype.pk in assay.line.meta_store:
-                            del assay.line.meta_store[metatype.pk]
-                for label, value in meta.items():
-                    metatype = self._metatype(label)
-                    if metatype is not None:
-                        if metatype.for_line():
-                            assay.line.meta_store[metatype.pk] = value
-                        elif metatype.for_protocol():
-                            assay.meta_store[metatype.pk] = value
-        for label, assay_id in self._line_assay_lookup.items():
+                logger.warning('Skipped set %s because it has no data' % index)
+            elif item.get('invalid_fields', False):
+                logger.warning('Skipped set %s because it has invalid fields' % index)
+            elif item.get('assay_obj', None) is None:
+                logger.warning('Skipped set %s because no assay could be loaded' % index)
+            else:
+                assay = item['assay_obj']
+                record = self._load_measurement_record(item, hours)
+                added += self._process_measurement_points(record, points)
+                self._process_metadata(assay, meta)
+                # force refresh of Assay's Update (also saves any changed metadata)
+                assay.save()
+        for line in self._line_lookup.values():
             # force refresh of Update (also saves any changed metadata)
-            assay = Assay.objects.get(pk=assay_id)
-            assay.save()
-            assay.line.save()
+            line.save()
         self._study.save()
         return added
+
+    def _load_measurement_record(self, item, hours):
+        # TODO: stuffing hours in parameter list is a little gross, but otherwise would need
+        #   multiple unnecessary queries
+        assay = item['assay_obj']
+        points = item.get('data', [])
+        mtype = self._mtype(item)
+        logger.info('Loading measurements for %s:%s' % (mtype.compartment, mtype.type))
+        records = assay.measurement_set.filter(
+            measurement_type=mtype.type,
+            compartment=mtype.compartment,
+        )
+        record = None
+        if records.count() > 0:
+            if self._replace():
+                records.delete()
+            else:
+                record = records[0]
+                record.save()  # force refresh of Update
+        if record is None:
+            record = assay.measurement_set.create(
+                measurement_type=mtype.type,
+                measurement_format=self._mtype_guess_format(points),
+                compartment=mtype.compartment,
+                experimenter=self._user,
+                x_units=hours,
+                y_units=mtype.unit,
+            )
+        return record
+
+    def _process_measurement_points(self, record, points):
+        added = 0
+        for x, y in points:
+            (xvalue, yvalue) = (self._extract_value(x), self._extract_value(y))
+            try:
+                point = record.measurementvalue_set.get(x=xvalue)
+            except MeasurementValue.DoesNotExist:
+                point = record.measurementvalue_set.create(x=xvalue, y=yvalue)
+            else:
+                point.y = yvalue
+                point.save()
+            added += 1
+        return added
+
+    def _process_metadata(self, assay, meta):
+        if len(meta) > 0:
+            if self._replace():
+                # would be simpler to do assay.meta_store.clear()
+                # but we only want to replace types included in import data
+                for label, metatype in self._meta_lookup.items():
+                    if metatype.pk in assay.meta_store:
+                        del assay.meta_store[metatype.pk]
+                    elif metatype.pk in assay.line.meta_store:
+                        del assay.line.meta_store[metatype.pk]
+            for meta_id, value in meta.items():
+                metatype = self._metatype(meta_id)
+                if metatype is not None:
+                    if metatype.for_line():
+                        assay.line.meta_store[metatype.pk] = value
+                    elif metatype.for_protocol():
+                        assay.meta_store[metatype.pk] = value
 
     def _extract_value(self, value):
         # make sure input is string first, split on slash or colon, and give back array of numbers
@@ -321,6 +264,65 @@ class TableImport(object):
             except MetadataType.DoesNotExist:
                 logger.warning('No MetadataType found for %s' % meta_id)
         return self._meta_lookup.get(meta_id, None)
+
+    def _mtype(self, item):
+        hours = MeasurementUnit.objects.get(unit_name='hours')
+        NO_TYPE = MType(MeasurementCompartment.UNKNOWN, None, hours)
+        # In Transcriptomics and Proteomics mode, we attempt to resolve measurements client-side,
+        # so we go by the measurement_name, ignoring the measurement_id and related fields (which
+        # will be blank)
+        found_type = self._mtype_from_layout(item, hours, default=NO_TYPE)
+        if found_type is NO_TYPE:
+            try:
+                found_type = MType(
+                    item.get('compartment_id', MeasurementCompartment.UNKNOWN),
+                    MeasurementType.objects.get(pk=item.get('measurement_id', 0)),
+                    MeasurementUnit.objects.get(pk=item.get('units_id', 0))
+                )
+            except (MeasurementType.DoesNotExist, MeasurementUnit.DoesNotExist):
+                pass
+        return found_type
+
+    def _mtype_from_layout(self, item, hours, default=None):
+        found_type = default
+        layout = self._layout()
+        label = item.get('measurement_name', None)
+        source = Datasource(name=self._user.username)  # defining, but not saving unless needed
+        label = item.get('measurement_name', None)
+        if layout == 'tr':
+            genes = GeneIdentifier.objects.filter(type_name=label)
+            if len(genes) == 1:
+                found_type = MType(MeasurementCompartment.UNKNOWN, genes[0], hours)
+            else:
+                logger.warning('Found %(length)s GeneIdentifier instances for %(label)s' % {
+                    'length': len(genes),
+                    'label': label,
+                })
+        elif layout == 'pr':
+            proteins = ProteinIdentifier.objects.filter(
+                Q(short_name=ProteinIdentifier.match_accession_id(label)) |
+                Q(short_name=label) |
+                Q(type_name=label)
+            )
+            if len(proteins) == 1:
+                found_type = MType(MeasurementCompartment.UNKNOWN, proteins[0], hours)
+            else:
+                logger.warning('Found %(length)s ProteinIdentifier instances for %(label)s' % {
+                    'length': len(proteins),
+                    'label': label,
+                })
+                if len(proteins) > 1:
+                    # FIXME: choosing the first one for now, should be error?
+                    found_type = MType(MeasurementCompartment.UNKNOWN, proteins[0], hours)
+                else:
+                    # FIXME: this blindly creates a new type; should try external lookups first?
+                    try:
+                        p = ProteinIdentifier.objects.create(type_name=label, source=source)
+                    except:
+                        logger.error('Failed to create ProteinIdentifier %s' % label)
+                    else:
+                        found_type = MType(MeasurementCompartment.UNKNOWN, p.pk, hours)
+        return found_type
 
     def _mtype_guess_format(self, points):
         layout = self._layout()
@@ -344,8 +346,7 @@ class TableImport(object):
                 self._unit_lookup[unit_id] = MeasurementUnit.objects.get(id=unit_id)
             except MeasurementUnit.DoesNotExist:
                 logger.warning('No MeasurementUnit found for %s' % unit_id)
-        return self._unit_lookup[unit_id]
-
+        return self._unit_lookup.get(unit_id, None)
 
 
 ########################################################################

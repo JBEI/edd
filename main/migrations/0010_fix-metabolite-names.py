@@ -114,16 +114,18 @@ def fix_manual_metabolites(apps, schema_editor):
 
 
 def insert_bigg_metabolites(apps, schema_editor):
+    from main.models import Update
     # using updated version
     Datasource = apps.get_model('main', 'Datasource')
     Metabolite = apps.get_model('main', 'Metabolite')
-    Update = apps.get_model('main', 'Update')
+    MigrateUpdate = apps.get_model('main', 'Update')
     base_dir = os.path.dirname(__file__)
     data = {}
     try:
         with open(os.path.join(base_dir, 'bigg_import.json')) as bigg_json:
             data = json.load(bigg_json)
-        update = Update.load_update(path=__name__)
+        app_update = Update.load_update(path=__name__)
+        update = MigrateUpdate.objects.get(pk=app_update.pk)
         ds = Datasource(name='BIGG', url='https://github.com/SBRG/bigg_models', created=update)
         ds.save()
         for entry in data.get('entries', []):
