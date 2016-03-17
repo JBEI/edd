@@ -17,7 +17,7 @@ RUN apt-get update \
     libsasl2-dev \
     libssl-dev \
     postgresql-client \
-&& apt-get autoremove \
+&& apt-get autoremove -y \
 && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt /code/
