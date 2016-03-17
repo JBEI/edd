@@ -76,6 +76,11 @@ This section contains directions for setting up a development environment on EDD
             * Get `docker: command not found`? You didn't successfully install from Homebrew
             * Get `docker: Cannot connect to the Docker daemon.`? You have not run the `eval`
               command in the Docker Machine section.
+    * Try the command `docker-compose`
+        * If you get `Illegal instruction: 4`, you have an older Mac that cannot run with the
+          compiled binary provided by the Homebrew packages; run `pip install docker-compose` to
+          fix the error.
+        * Normal output is helptext showing the commands to use with `docker-compose`.
 * Running EDD <a name="Run_OSX"/>
     * If you have not already done so, create a host VM to run containers:
       `docker-machine create --driver virtualbox default`
