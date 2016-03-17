@@ -1,6 +1,6 @@
 {
   "name": "edd-django",
-  "version": "0.0.0",
+  "version": "2.3.0",
   "description": "Nodejs code associated with the Django port of EDD.",
   "main": "index.js",
   "dependencies": {
@@ -23,5 +23,5 @@
     "url": "ssh://git@repo.jbei.org:7999/edd/edd-django.git"
   },
   "author": "WCMorrell",
-  "license": "ISC"
+  "license": "UNLICENSED"
 }
