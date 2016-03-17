@@ -4,6 +4,9 @@ ENV PYTHONBUFFERED 1
 RUN mkdir /code
 WORKDIR /code
 
+# include Debian packages required to build pip packages
+RUN apt-get install libpq-dev postgresql-client libldap2-dev libsasl2-dev libssl-dev libffi-dev libatlas-dev liblapack-dev gfortran libbz2-dev
+
 ADD requirements.txt /code/
 RUN pip install -r requirements.txt
 
