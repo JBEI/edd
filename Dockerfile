@@ -5,10 +5,11 @@ RUN mkdir /code
 WORKDIR /code
 
 # include Debian packages required to build pip packages
-RUN apt-get update && apt-get install -y \
+RUN apt-get update \
+&& apt-get install -y \
     gfortran \
     libatlas-dev \
-    libbz2-dev
+    libbz2-dev \
     libffi-dev \
     liblapack-dev \
     libldap2-dev \
@@ -16,6 +17,7 @@ RUN apt-get update && apt-get install -y \
     libsasl2-dev \
     libssl-dev \
     postgresql-client \
+&& apt-get autoremove \
 && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt /code/
