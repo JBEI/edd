@@ -204,13 +204,14 @@ This section contains directions for setting up a development environment on EDD
 * django-debug-toolbar `pip install django-debug-toolbar`
     * Include `debug_toolbar` in local_settings.py INSTALLED_APPS
 
+
 ## Build Tools <a name="BuildTools"/>
 
 * The EDD makes use of Node.js and grunt for builds; it would be a good idea to:
     * OS X:
-        * `brew install node`
-        * `sudo npm install -g grunt-cli`
-        * `sudo npm install grunt`
+        * Install node; this is already included in the Brewfile
+        * Install the grunt command line: `npm install -g grunt-cli`
+        * Install node packages to the local folder: `npm install`
     * Debian:
         * `sudo apt-get install node`
         * This will install nodejs.  It might be convenient for you to link this to ‘node’
@@ -225,123 +226,9 @@ This section contains directions for setting up a development environment on EDD
         * `sudo npm install grunt`
 
 * EDD uses [TypeScript][19] for its client-side interface
-    * dependencies are already loaded into the git repo
-    * `sudo npm install grunt-typescript`
+    * Dependencies are listed in `packages.json` and may be installed with `npm install`
+    * Compile changes in `*.ts` to `*.js` by simply running `grunt` from the edd base directory
 
-* Compile changes in `*.ts` to `*.js` by simply running `grunt` from the edd base directory
-
-## Controlling EDD's Dependencies <a name="ControllingDependencies"/>
-EDD has a number of dependencies, all of which may need to be monitored/managed during development,
-testing, and production. This document contains directions for daemonizing most of them, so
-developer interaction with can often be minimal.  As needed, use the following basic commands and
-URL's to interact with them.
-
-* PostgreSQL: installed as a daemon by default on all OS's. You probably won't need to mess
-  with it.
-    * Stop/start with `/etc/init.d/postgresql stop` and `/etc/init.d/postgresql start`
-    * Configuration file for port etc is at /etc/postgresql/9.x/main/postgresql.conf .
-* Solr
-    * Solr 4.X / Tomcat
-        * Sample monitoring interface URL: <http://localhost:8080/>
-        * `catalina start` / `catalina stop`
-    * Solr 5.+:
-        * Sample monitoring interface URL: <http://localhost:8983/>
-        * `solr start` / `solr stop`
-* RabbitMQ
-    * Sample monitoring interface URL: <http//localhost:15672/>
-    * Development (OSX) 
-        * Manual operation (as user rabbitmq)
-            * `rabbitmq-server start -detached`. Leave off the `-detached` option to get better
-              error messages during configuration.
-            * `rabbitmqctl stop/status`
-        * Daemon
-            * `sudo launchctl un/load /Library/LaunchDaemons/com.rabbitmq.plist`
-            * `sudo launchctl list com.rabbitmq`
-        * Config files are in `/etc/rabbitmq/` and `/usr/local/etc/rabbitmq/rabbitmq-env.conf`
-        * Logs are in `/usr/local/var/log/rabbitmq/`
-    * Production / Test (Debian)
-        * `sudo service rabbitmq-server start/stop/status` or
-          `sudo invoke-rc.d rabbitmq-server start/stop/status`
-        * Log files are in `/var/log/rabbitmq/`
-        * Config file is in `/etc/rabbitmq/rabbitmq.config`
-    * Other useful management commands are in the [docs][20]
-* Celery / Flower
-    * Sample Flower URL: <http://localhost:5555/>
-    * Celery Worker: must run in base edd directory to detect celery config modules.
-        * Development: 
-            * Pre-demonazition: `celery worker --app edd --queues=edd --hostname=edd-worker-1.%h
-              --autoscale=10,1 --autoreload --loglevel=info`
-            * Post-demonization:  `sudo launchctl list | grep celery`, `sudo launchctl (un)load
-              /Library/LaunchDaemons/org.celeryq.worker.plist`
-        * Production / Test: `celery worker --app edd --queues=edd --hostname=edd-worker-1.%h
-          --autoscale=10,1`
-            * `service edd_celeryd {start|stop|force-reload|restart|try-restart|status}`
-            * Note that in production, prefork() processes will have the same memory and file
-              access as the user that launches this process
-            * Worker daemon config file: `/etc/default/edd_celeryd`
-    * Flower  - Development / Production / Test
-        * TODO: experiment further with getting password out of the command
-        * `celery flower -A edd.flowerconfig.flower_mgmt_interface
-          --basic_auth=flower:FLOWER_WEB_INTERFACE_PASSWORD_DEFINED_HERE`
-            * replacing the password with the desired one
-            * `-basic_auth` can likely be left out for development
-        * Though little documentation exists, it appears that the `--persistent=True` flag is
-          required to make Flower display the same task list following a restart of Flower only
-          (not Celery or RabbitMQ). It appears best for Flower 0.9 to omit this flag and treat
-          Flower as a real-time monitoring tool only.
-        * For installations on an unsafe network, consider alternate [authentication][21] flags
-          for Flower
-        * Note that the `-conf` option doesn't seem to work according to the sample in the
-          instructions, or via attempted variations on that [example][22]
-        * Known error modes: basic testing has revealed several failure modes of interest to
-          administrators
-           * Celery doesn't seem to do a good job of detecting changes to code or configuration
-             files. Celery worker(s) need to be restarted frequently during development or when
-             deploying a new version of EDD.
-           * If Celery goes down while RabbitMQ is up, client tasks requested via the celery API
-             will be enqueued at RabbitMQ and will execute normally after Celery comes back up
-           * If Celery is up but RabbitMQ is down for more than a few seconds when clients request
-             that a task be executed, task requests will generate a client-side Exception
- 	       * During a brief transition period as RabbitMQ is going down with Celery still up,
-             client task requests will NOT generate an Exception, and will stay perpetually in the
-             PENDING state regardless of whether RabbitMQ comes back up.  Client code needs to
-             check for this case, but Celery 3.1.18 isn't known to provide helpful hooks (for
-             instance, to help client code decide how long to wait). Celery has before_task_publish
-             and after_task_publish signals that combined with the database backend may provide
-             reasonable guarantees of data integrity.
-
-
-## Database Conversion <a name="DbConversion"/>
-
-This section provides instructions for converting the EDD database to handle a new schema, or on
-populating a new deployment with existing data.
-
-* Run edd's `reset_db.sh` to execute all of the steps below.
-* Create a SQL dump file to capture the contents of the existing EDD database
- 
-        pg_dump -i -h postgres.jbei.org -U edduser -F p -b -v -f edddb.sql edddb
-
-* Enter remote `edduser` password (NOT the one you created for your local instance)
- 
-* Create a database for the django application
-    * `psql -c 'create database edddjango;'` to create the database
-    * `psql -d edddjango -c 'create schema old_edd;'` to make a schema for migrating data
-    * `psql -d edddjango -c 'grant all on schema old_edd to edduser;'`
-* Edit the SQL file to prepend the new schema to the `SET search_path` line, and replace all
-  instances of `public.` with `old_edd.` (or whatever schema name you created above):
-    
-        cat edddb.sql | sed 's#SET search_path = #SET search_path = old_edd, #g' | \
-        sed 's#public\.#old_edd\.#g' | sed 's#Schema: public;#Schema: old_edd;#g' > edddb_upd.sql
-
-* Copy the dump file content into the database with `psql edddjango < edddb_upd.sql`
-* Initialize the django schema
-    * Run `./manage.py migrate` to create schema for django
-    * Fill in data with `psql edddjango < convert.sql`
-* Set user permissions
-    * If this is a development database, manually edit the auth_user table to set `is_superuser`
-      and `is_staff` to true for your account.
-    * `psql edddjango -c "update auth_user set is_superuser=true, is_staff=true where username =
-      'YOUR_USERNAME'"`
 
 ## Solr Tests <a name="Solr_Test"/>
 
@@ -349,6 +236,7 @@ populating a new deployment with existing data.
     * Create a new data directory `mkdir -p /usr/local/var/solr/data/test`
     * Add new line to `solr.xml` using same studies `instanceDir` and new data directory
         `<core name="tests" instanceDir="./cores/studies" dataDir="/usr/local/var/solr/data/test"/>`
+
 
 ## Required Python Package Reference <a name="PythonPackages"/>
 This section describes required Python packages for EDD. This listing is for reference only,
@@ -393,6 +281,7 @@ since EDD's requirements.txt should normally be used to install required package
     * Object-oriented client API for accessing LDAP directories.
     * `pip install python-ldap`
 
+
 ## Setting up multiple Apache VHOST <a name="Apache_VHOST"/>
 * Clone code into a new directory
     * Create `server.cfg` and `edd/local_settings.py` based on example files
@@ -409,6 +298,7 @@ since EDD's requirements.txt should normally be used to install required package
     * Update the python-path for the WSGI process to reference new directory and virtualenv
     * Set the logging for error.log and access.log to vhost-specific files
 * TODO: punting on handling multiple solr indexes
+
 
 ## Configuring Social Logins <a name="Social"/>
 * For broad overview, refer to the [django-allauth documentation][25].
