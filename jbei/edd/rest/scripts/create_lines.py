@@ -283,7 +283,7 @@ def print_found_ice_parts(part_number_to_part_dict):
         short_description = replace_newlines(part.short_description)
         print(''.join([str(search_id).ljust(col1_width), str(part.id).ljust(col2_width),
                        part.part_id.ljust(col3_width), part.name.ljust(col4_width),
-                       short_description.ljust(col5_width), part.uuidy.ljust(col6_width)]))
+                       short_description.ljust(col5_width), part.uuid.ljust(col6_width)]))
 
 
 class NonStrainPartsError(RuntimeError):
