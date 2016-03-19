@@ -13,7 +13,6 @@ from collections import defaultdict
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import ArrayField, HStoreField
-from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.db.models import F, Func, Q
 from django.utils.encoding import python_2_unicode_compatible
@@ -1703,7 +1702,7 @@ def User_profile(self):
         return self._profile
     try:
         from edd.profile.models import UserProfile
-        self._profile = UserProfile.get_or_create(
+        (self._profile, created) = UserProfile.objects.get_or_create(
             user=self, defaults={'initials': guess_initials(self)}
         )
         return self._profile
@@ -1713,7 +1712,7 @@ def User_profile(self):
 
 
 def User_initials(self):
-    return self.profile.initials if self.profile else None
+    return self.profile.initials if self.profile else _('?')
 
 
 def User_institution(self):

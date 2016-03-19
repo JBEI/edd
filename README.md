@@ -82,17 +82,72 @@ This section contains directions for setting up a development environment on EDD
           fix the error.
         * Normal output is helptext showing the commands to use with `docker-compose`.
 * Running EDD <a name="Run_OSX"/>
-    * If you have not already done so, create a host VM to run containers:
-      `docker-machine create --driver virtualbox default`
-    * Create `secrets.env` based on the example in `secrets.env-example`
-    * Load the Docker environment with:
-      `eval "$(docker-machine env default)"`
-    * Start EDD services:
-      `docker-compose up -d`
-        * To run commands, use `docker-compose run $SERVICE $COMMAND`, e.g.:
-          `docker-compose run edd python manage.py shell`
-        * To access services, use the IP listed in `docker-machine ls`, e.g. access EDD via
-          https://192.168.99.100/
+    * First-time setup
+        * If you have not already done so, create a host VM to run containers:
+          `docker-machine create --driver virtualbox default`
+        * Load the Docker environment with:
+          `eval "$(docker-machine env default)"`
+        * Create `secrets.env` based on the example in `secrets.env-example`
+        * Create Docker volumes for each of the volumes in `docker-compose.yml`
+            * Volumes are containers used to persist data between runs
+            * There are `pgdata` and `solrdata` volumes used.
+                * `docker volume create --name pgdata`
+                * `docker volume create --name solrdata`
+            * Initialize the postgres volume
+                * Launch a temporary postgres service container with the data volume mounted
+                  (replace `secret#` values with appropriate passwords):
+
+                        docker run --name temp_pg -d \
+                            -v pgdata:/var/lib/postgresql/data \
+                            -e POSTGRES_PASSWORD=secret1 \
+                            -e EDD_PGPASS=secret2 \
+                            postgres
+
+                * Connect to the temporary postgres service and run the init script:
+
+                        cat ./docker_services/postgres/init.sql | \
+                            docker exec -i temp_pg psql -U postgres template1
+
+            * Initialize the solr volume
+                * Launch a temporary solr service container with the data volume mounted:
+
+                        docker run --name temp_solr -dt \
+                            -v solrdata:/opt/solr/server/solr \
+                            -p "8983:8983" \
+                            solr
+
+                * Copy configuration from EDD source tree to the `temp_solr` container:
+
+                        tar -cf - -C ./docker_services/solr/cores . | \
+                            docker exec -i --user=solr temp_solr tar xf - \
+                            -C /opt/solr/server/solr/
+
+            * Run database migrations
+                * Build an image for the EDD codebase:  `docker build -t edddjango_edd .`
+                * Run the migrate management command using the EDD image linked to the temporary
+                  postgres and solr images:
+
+                        docker run --name temp_edd --rm -i \
+                            --link temp_pg:postgres \
+                            --link temp_solr:solr \
+                            edddjango_edd python manage.py migrate
+
+            * Clean-up
+                * `docker stop temp_pg && docker rm -v temp_pg`
+                * `docker stop temp_solr && docker rm -v temp_solr`
+    * `docker-compose` commands
+        * Startup all services: `docker-compose up -d`
+        * View logs: `docker-compose logs`
+        * Bringing down all services: `docker-compose down`
+        * See more in the [Docker Compose documentation][32]
+    * Startup in new shell sessions
+        * Load the Docker environment with:
+          `eval "$(docker-machine env default)"`
+        * Start EDD services:  `docker-compose up -d`
+            * To run commands, use `docker-compose run $SERVICE $COMMAND`, e.g.:
+              `docker-compose run edd python manage.py shell`
+            * To access services, use the IP listed in `docker-machine ls`, e.g. access EDD via
+              https://192.168.99.100/
 
 
 ---------------------------------------------------------------------------------------------------
@@ -350,3 +405,4 @@ since EDD's requirements.txt should normally be used to install required package
 [29]:   https://docs.docker.com/engine/quickstart/
 [30]:   https://docs.docker.com/machine/overview/
 [31]:   http://archive.apache.org/dist/lucene/solr/4.10.4/
+[32]:   https://docs.docker.com/compose/overview/
