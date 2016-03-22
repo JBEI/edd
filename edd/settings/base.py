@@ -26,28 +26,20 @@ env = environ.Env(
 if env('SECRET_KEY', default=DOCKER_SENTINEL) is DOCKER_SENTINEL:
     env.read_env(root('secrets.env'))
 
-# SECURITY WARNING: do not run with debug turned on in production!
-# Override in local_settings.py or set DEBUG=off in environment or secrets.env
-DEBUG = env('EDD_DEBUG')
 
-# SECURITY WARNING: keep the secret key used in production secret!
-# default quote from http://thedoomthatcametopuppet.tumblr.com/
-SECRET_KEY = env('SECRET_KEY', default='I was awake and dreaming at the same time, which is why '
-                                       'this only works for local variables')
-
-####################################################################################################
+###################################################################################################
 # Set ICE configuration used in multiple places, or that we want to be able to override in
 # local_settings.py
-####################################################################################################
+###################################################################################################
 ICE_SECRET_HMAC_KEY = env('ICE_HMAC_KEY')
 ICE_URL = 'https://registry-test.jbei.org/'
 ICE_REQUEST_TIMEOUT = (10, 10)  # HTTP request connection and read timeouts, respectively (seconds)
 
 
-####################################################################################################
+###################################################################################################
 # Configure Django email variables
 # Note: Some of these are also referenced by Celery and custom Celery-related code
-####################################################################################################
+###################################################################################################
 ADMINS = MANAGERS = (
     ('William', 'wcmorrell@lbl.gov'),
     ('Mark', 'mark.forrer@lbl.gov'),
@@ -63,8 +55,19 @@ EMAIL_HOST_USER = ''
 EMAIL_HOST_PASSWORD = ''
 EMAIL_PORT = 25
 
-####################################################################################################
 
+###################################################################################################
+# Basic Django configuration
+###################################################################################################
+
+# SECURITY WARNING: do not run with debug turned on in production!
+# Override in local.py or set DEBUG=off in environment or secrets.env
+DEBUG = env('EDD_DEBUG')
+
+# SECURITY WARNING: keep the secret key used in production secret!
+# default quote from http://thedoomthatcametopuppet.tumblr.com/
+SECRET_KEY = env('SECRET_KEY', default='I was awake and dreaming at the same time, which is why '
+                                       'this only works for local variables')
 
 ALLOWED_HOSTS = []
 SITE_ID = 1
@@ -107,9 +110,10 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 )
 
-####################################################################################################
+
+###################################################################################################
 # Template configuration
-####################################################################################################
+###################################################################################################
 # Configure a simple setup that tells Django to load templates from the defined "templates"
 # subdirectories inside each installed application (added in 1.9, required starting in Django 1.10)
 TEMPLATES = [
@@ -136,16 +140,17 @@ TEMPLATES = [
 ]
 
 
-####################################################################################################
+###################################################################################################
 # Solr/Haystack Configuration
-####################################################################################################
+###################################################################################################
 EDD_MAIN_SOLR = {
     'default': env.search_url(),
 }
 
-####################################################################################################
+
+###################################################################################################
 # Databases
-####################################################################################################
+###################################################################################################
 # https://docs.djangoproject.com/en/dev/ref/settings/#databases
 DATABASES = {
     'default': env.db(),
@@ -160,9 +165,10 @@ DATABASES = {
 # which we should use by default to help mitigate the computational burden.
 DATABASES['default'].update(OPTIONS={'isolation_level': ISOLATION_LEVEL_SERIALIZABLE})
 
-####################################################################################################
+
+###################################################################################################
 # Logging
-####################################################################################################
+###################################################################################################
 # Default logging configuration -- for production
 LOGGING = {
     'version': 1,
@@ -207,9 +213,10 @@ LOGGING = {
     },
 }
 
-####################################################################################################
+
+###################################################################################################
 # Internationalization
-####################################################################################################
+###################################################################################################
 # https://docs.djangoproject.com/en/dev/topics/i18n/
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'America/Los_Angeles'
@@ -217,16 +224,18 @@ USE_I18N = True
 USE_L10N = True
 USE_TZ = True
 
-####################################################################################################
+
+###################################################################################################
 # Static files (CSS, JavaScript, Images)
-####################################################################################################
+###################################################################################################
 # https://docs.djangoproject.com/en/dev/howto/static-files/
 # Keeping all static files in the static directory of the project
 STATIC_ROOT = root('static')
 STATIC_URL = '/static/'
 
-####################################################################################################
+
+###################################################################################################
 #  File upload location
-####################################################################################################
+###################################################################################################
 MEDIA_ROOT = '/var/www/uploads'
 MEDIA_URL = '/uploads/'

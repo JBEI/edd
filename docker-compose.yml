@@ -29,8 +29,9 @@ services:
       RABBITMQ_DEFAULT_USER: edd_user
       RABBITMQ_DEFAULT_VHOST: edd
       RABBITMQ_NODENAME: rabbit@rabbitmq
+    expose:
+      - "5672"
     ports:
-      - "5672:5672"
       - "15672:15672"
   smtp:
     image: namshi/smtp

@@ -44,6 +44,8 @@ experimentation.  See the deployed version at [edd.jbei.org][1].
     * Upon cloning a repo for the first time (or updating a repo from before filtering), do:
         * `.gitconfig.sh`
         * If updating a repo, you may need to add changed files to the index once
+        * May need to install a newer version of git; [Homebrew](#HomeBrew) instructions below
+          will install a more recent version on Macs.
    
 ### Mac OS X
 This section contains directions for setting up a development environment on EDD in OSX.
@@ -96,45 +98,46 @@ This section contains directions for setting up a development environment on EDD
                 * Launch a temporary postgres service container with the data volume mounted
                   (replace `secret#` values with appropriate passwords):
 
-                        docker run --name temp_pg -d \
-                            -v pgdata:/var/lib/postgresql/data \
-                            -e POSTGRES_PASSWORD=secret1 \
-                            -e EDD_PGPASS=secret2 \
-                            postgres
+                      docker run --name temp_pg -d \
+                          -v pgdata:/var/lib/postgresql/data \
+                          -e POSTGRES_PASSWORD=secret1 \
+                          -e EDD_PGPASS=secret2 \
+                          postgres
 
                 * Connect to the temporary postgres service and run the init script:
 
-                        cat ./docker_services/postgres/init.sql | \
-                            docker exec -i temp_pg psql -U postgres template1
+                      cat ./docker_services/postgres/init.sql | \
+                          docker exec -i temp_pg psql -U postgres template1
 
             * Initialize the solr volume
                 * Launch a temporary solr service container with the data volume mounted:
 
-                        docker run --name temp_solr -dt \
-                            -v solrdata:/opt/solr/server/solr \
-                            -p "8983:8983" \
-                            solr
+                      docker run --name temp_solr -dt \
+                          -v solrdata:/opt/solr/server/solr \
+                          -p "8983:8983" \
+                          solr
 
                 * Copy configuration from EDD source tree to the `temp_solr` container:
 
-                        tar -cf - -C ./docker_services/solr/cores . | \
-                            docker exec -i --user=solr temp_solr tar xf - \
-                            -C /opt/solr/server/solr/
+                      tar -cf - -C ./docker_services/solr/cores . | \
+                          docker exec -i --user=solr temp_solr \
+                          tar xf - -C /opt/solr/server/solr/
 
             * Run database migrations
                 * Build an image for the EDD codebase:  `docker build -t edddjango_edd .`
                 * Run the migrate management command using the EDD image linked to the temporary
                   postgres and solr images:
 
-                        docker run --name temp_edd --rm -i \
-                            --link temp_pg:postgres \
-                            --link temp_solr:solr \
-                            edddjango_edd python manage.py migrate
+                      docker run --name temp_edd --rm -i \
+                          --link temp_pg:postgres \
+                          --link temp_solr:solr \
+                          edddjango_edd python manage.py migrate
 
             * Clean-up
                 * `docker stop temp_pg && docker rm -v temp_pg`
                 * `docker stop temp_solr && docker rm -v temp_solr`
     * `docker-compose` commands
+        * Build all services:  `docker-compose build`
         * Startup all services: `docker-compose up -d`
         * View logs: `docker-compose logs`
         * Bringing down all services: `docker-compose down`
@@ -146,8 +149,11 @@ This section contains directions for setting up a development environment on EDD
         * Start EDD services:  `docker-compose up -d`
             * To run commands, use `docker-compose run $SERVICE $COMMAND`, e.g.:
               `docker-compose run edd python manage.py shell`
-            * To access services, use the IP listed in `docker-machine ls`, e.g. access EDD via
-              https://192.168.99.100/
+            * To access services, use the IP listed in `docker-machine ls`, e.g.
+                * access EDD via https://192.168.99.100/
+                * access Solr via http://192.168.99.100:8983/solr/
+                * access RabbitMQ Management Plugin via http://192.168.99.100:15672/
+            * Restart misbehaving services with:  `docker-compose restart $SERVICE`
 
 
 ---------------------------------------------------------------------------------------------------

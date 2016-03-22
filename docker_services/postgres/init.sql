@@ -8,3 +8,7 @@ CREATE EXTENSION hstore;
 CREATE DATABASE edd;
 -- Ensure edduser role can access edd database
 GRANT ALL PRIVILEGES ON DATABASE edd TO edduser;
+-- Create the database for celery tasks
+CREATE DATABASE celery;
+GRANT ALL PRIVILEGES ON DATABASE celery TO edduser;
+
