@@ -22,7 +22,6 @@ experimentation.  See the deployed version at [edd.jbei.org][1].
        * TODO: update TOC when Debian directions are complete
 * [Helpful Python Packages](#Helpful_Python)
 * [Build Tools](#BuildTools)
-* [Database Conversion](#Db_Conversion)
 * [Solr Tests](#Solr_Test)
 * [Required Python Package Reference](#PythonPackages)
 * [Setting up multiple Apache VHOST](#Apache_VHOST)
@@ -34,9 +33,9 @@ experimentation.  See the deployed version at [edd.jbei.org][1].
 
 * Passwords <a name="Passwords"/>
     * Get required passwords from a teammate or JBEI sysadmin.
-        * JBEI_AUTH - to configure LDAP binding and EDD's server.cfg
+        * jbei_auth - to configure LDAP binding
         * edduser - the password to the production EDD database instance. You'll need this to copy
-          its data for local development work. See [Database Conversion](#DbConversion)
+          its data for local development work.
         * edd ice key - used by edd to authorize REST API calls to ICE
 * Local git repo config
     * The typescript build process includes some comments that will change with every rebuild.
@@ -143,6 +142,7 @@ This section contains directions for setting up a development environment on EDD
     * Startup in new shell sessions
         * Load the Docker environment with:
           `eval "$(docker-machine env default)"`
+        * (Re)build the container images with current code:  `docker-compose build`
         * Start EDD services:  `docker-compose up -d`
             * To run commands, use `docker-compose run $SERVICE $COMMAND`, e.g.:
               `docker-compose run edd python manage.py shell`

@@ -1,3 +1,8 @@
+# NOTE: the EDD Dockerfile is setup to work around a flaw in the setup.py of scipy and
+#   scikit-learn where building of these packages will fail if numpy or scipy are installed
+#   with the same pip-install command.
+# IF UPDATING THE VERSIONS OF numpy, scipy, OR scikit-learn; ALSO MAKE CHANGES IN Dockerfile
+
 amqp==1.4.9
 anyjson==0.3.3
 arrow==0.7.0
