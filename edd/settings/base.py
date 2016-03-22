@@ -15,13 +15,16 @@ from django.conf.global_settings import TEMPLATE_CONTEXT_PROCESSORS as TCP
 from psycopg2.extensions import ISOLATION_LEVEL_SERIALIZABLE
 
 
-root = environ.Path(__file__) - 2  # root is parent directory of directory containing settings.py
+root = environ.Path(__file__) - 3  # root is two parents up of directory containing base.py
 BASE_DIR = root()
+DOCKER_SENTINEL = object()
 env = environ.Env(
     EDD_DEBUG=(bool, True),
+    ICE_HMAC_KEY=(str, ''),
 )
-# TODO remove this once working through docker-compose
-env.read_env(root('secrets.env'))
+# Use the SECRET_KEY to detect if env is setup via Docker; if not, load from file secrets.env
+if env('SECRET_KEY', default=DOCKER_SENTINEL) is DOCKER_SENTINEL:
+    env.read_env(root('secrets.env'))
 
 # SECURITY WARNING: do not run with debug turned on in production!
 # Override in local_settings.py or set DEBUG=off in environment or secrets.env

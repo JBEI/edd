@@ -8,7 +8,7 @@ import os
 # Use everything in the common settings file
 from .base import *  # noqa
 
-root = environ.Path(__file__) - 2  # we get this out of `from .base import *` too
+root = environ.Path(__file__) - 3  # we get this out of `from .base import *` too
 
 # Store attachments inside the project directory, under 'uploads'
 MEDIA_ROOT = root('uploads')
