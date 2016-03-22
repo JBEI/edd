@@ -3,9 +3,9 @@
 This document covers the various install and configuration instructions to run Celery/RabbitMQ.
 Per the [documentation][1], celery is
 
-        … a simple, flexible and reliable distributed system to process vast amounts of messages,
-        while providing operations with the tools required to maintain such a system. It’s a task
-        queue with focus on real-time processing, while also supporting task scheduling.
+    … a simple, flexible and reliable distributed system to process vast amounts of messages,
+    while providing operations with the tools required to maintain such a system. It’s a task
+    queue with focus on real-time processing, while also supporting task scheduling.
 
 ## Contents
 * [External Resources](#External)

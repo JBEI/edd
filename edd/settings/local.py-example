@@ -6,10 +6,12 @@
 import os
 
 # Use everything in the common settings file
-from .settings import *  # noqa
+from .base import *  # noqa
+
+root = environ.Path(__file__) - 2  # we get this out of `from .base import *` too
 
 # Store attachments inside the project directory, under 'uploads'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'uploads', '')
+MEDIA_ROOT = root('uploads')
 MEDIA_URL = '/uploads/'
 
 # Add the Django Debug Toolbar to local instance
@@ -20,6 +22,9 @@ INSTALLED_APPS = INSTALLED_APPS + (
     'allauth.socialaccount.providers.linkedin_oauth2',
     'debug_toolbar',
 )
+DEBUG_TOOLBAR_CONFIG = {
+    'JQUERY_URL': '/static/main/js/lib/jquery/jquery-2.1.4.min.js',
+}
 
 ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'http'
 
@@ -29,7 +34,4 @@ LOGGING['handlers']['console']['level'] = 'DEBUG'
 LOGGING['loggers']['django.db.backends']['level']='DEBUG'
 LOGGING['loggers']['main']['level']='DEBUG'
 LOGGING['loggers']['edd']['level']='DEBUG'
-
-# Tell the django-allauth app which site ID we are using
-SITE_ID = 1
 

@@ -10,9 +10,7 @@ https://docs.djangoproject.com/en/dev/ref/settings/
 """
 
 import environ
-import ldap
 
-from django_auth_ldap.config import LDAPSearch, GroupOfUniqueNamesType
 from django.conf.global_settings import TEMPLATE_CONTEXT_PROCESSORS as TCP
 from psycopg2.extensions import ISOLATION_LEVEL_SERIALIZABLE
 
@@ -42,11 +40,6 @@ ICE_SECRET_HMAC_KEY = env('ICE_HMAC_KEY')
 ICE_URL = 'https://registry-test.jbei.org/'
 ICE_REQUEST_TIMEOUT = (10, 10)  # HTTP request connection and read timeouts, respectively (seconds)
 
-####################################################################################################
-# Defines whether or not EDD uses Celery. All other Celery-related configuration is in
-# celeryconfig.py)
-####################################################################################################
-USE_CELERY = False
 
 ####################################################################################################
 # Configure Django email variables
@@ -57,9 +50,9 @@ ADMINS = MANAGERS = (
     ('Mark', 'mark.forrer@lbl.gov'),
 )
 
-# most of these just explicitly set the Django defaults, but since  affect Django, Celery, and
-# custom Celery support
-# code, we enforce them here for consistency
+# most of these just explicitly set the Django defaults, but since it affects Django, Celery, and
+# custom Celery support code, we enforce them here for consistency
+SERVER_EMAIL = 'jbei-edd-admin@lists.lbl.gov'
 EMAIL_SUBJECT_PREFIX = '[EDD] '
 EMAIL_TIMEOUT = 60  # in seconds
 EMAIL_HOST = 'localhost'
@@ -73,9 +66,6 @@ EMAIL_PORT = 25
 ALLOWED_HOSTS = []
 SITE_ID = 1
 LOGIN_REDIRECT_URL = '/'
-DEBUG_TOOLBAR_CONFIG = {
-    'JQUERY_URL': '/static/main/js/lib/jquery/jquery-2.1.4.min.js',
-}
 
 # Application definition
 INSTALLED_APPS = (
@@ -141,68 +131,6 @@ TEMPLATES = [
         }
     },
 ]
-
-####################################################################################################
-# Authentication
-####################################################################################################
-
-# See https://pythonhosted.org/django-auth-ldap/install.html
-# See https://docs.djangoproject.com/en/dev/howto/auth-remote-user/
-AUTHENTICATION_BACKENDS = (
-    'main.account.adapter.AllauthLDAPBackend',  # 'django_auth_ldap.backend.LDAPBackend',
-    'django.contrib.auth.backends.RemoteUserBackend',
-    'django.contrib.auth.backends.ModelBackend',
-    # `allauth` specific authentication methods, such as login by e-mail
-    'allauth.account.auth_backends.AuthenticationBackend',
-)
-ROOT_URLCONF = 'edd.urls'
-WSGI_APPLICATION = 'edd.wsgi.application'
-# LDAP Configuration
-# https://pythonhosted.org/django-auth-ldap/example.html
-AUTH_LDAP_SERVER_URI = 'ldaps://identity.lbl.gov:636'
-AUTH_LDAP_BIND_DN = 'uid=jbei_auth,cn=operational,cn=other'
-AUTH_LDAP_BIND_PASSWORD = env('LDAP_PASS')
-AUTH_LDAP_USER_SEARCH = LDAPSearch(
-    'ou=People,dc=lbl,dc=gov', ldap.SCOPE_ONELEVEL,
-    '(&(uid=%(user)s)(objectclass=lblperson)(lblaccountstatus=active))'
-)
-AUTH_LDAP_GROUP_SEARCH = LDAPSearch(
-    'ou=JBEI-Groups,ou=Groups,dc=lbl,dc=gov', ldap.SCOPE_ONELEVEL,
-    '(objectclass=groupofuniquenames)',
-)
-AUTH_LDAP_GROUP_TYPE = GroupOfUniqueNamesType(name_attr='cn')
-AUTH_LDAP_MIRROR_GROUPS = True
-AUTH_LDAP_USER_ATTR_MAP = {
-    'first_name': 'givenName',
-    'last_name': 'sn',
-    'email': 'mail',
-}
-AUTH_LDAP_PROFILE_ATTR_MAP = {
-    'employee_number': 'lblempnum',
-}
-
-
-ACCOUNT_ADAPTER = 'main.account.adapter.EDDAccountAdapter'
-# NOTE: should override in local_settings with 'http' when running in dev environment
-ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'https'
-ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
-ACCOUNT_USERNAME_REQUIRED = False
-SOCIALACCOUNT_ADAPTER = 'main.account.adapter.EDDSocialAccountAdapter'
-SOCIALACCOUNT_PROVIDERS = {
-    'github': {
-        'SCOPE': ['user', ],
-    },
-    'google': {
-        'SCOPE': ['email', 'profile', ],
-    },
-    'linkedin': {
-        'SCOPE': ['r_basicprofile', 'r_emailaddress', ],
-        'PROFILE_FIELDS': [
-            'id', 'first-name', 'last-name', 'email-address', 'picture-url', 'public-profile-url',
-        ],
-    },
-}
 
 
 ####################################################################################################
@@ -299,11 +227,3 @@ STATIC_URL = '/static/'
 ####################################################################################################
 MEDIA_ROOT = '/var/www/uploads'
 MEDIA_URL = '/uploads/'
-
-####################################################################################################
-#  local_settings.py: enables any configuration here to be overridden without changing this file.
-####################################################################################################
-try:
-    from .local_settings import *  # noqa
-except ImportError:
-    pass
