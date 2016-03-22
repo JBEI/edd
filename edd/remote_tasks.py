@@ -26,9 +26,8 @@ from edd_utils.celery_utils import compute_exp_retry_delay
 from edd_utils.celery_utils import send_stale_input_warning
 from edd_utils.celery_utils import send_resolution_message
 from edd_utils.celery_utils import make_standard_email_subject, email_admins
-
-from .ice import IceApi, parse_entry_id
-from .models import Line, Strain
+from main.ice import IceApi, parse_entry_id
+from main.models import Line, Strain
 
 
 # use the built-in Celery worker logging
@@ -211,8 +210,8 @@ def link_ice_entry_to_study(self, edd_user_email, strain_pk, study_pk, study_url
         # TODO: raise an exception here once strain data are more dependable (SYNBIO-1350)
         if (not registry_url) or (not registry_id):
             logger.warning("Registry URL and registry ID must both be entered in order to "
-                                  "create push an EDD  study ID to ICE. Cannot create a link for "
-                                  "strain with id %s" % strain.name)
+                           "create push an EDD  study ID to ICE. Cannot create a link for "
+                           "strain with id %s" % strain.name)
             return ugettext('EDD strain contains insufficient data')
 
         # make a request via ICE's REST API to link the ICE strain to the EDD study that references
@@ -225,8 +224,8 @@ def link_ice_entry_to_study(self, edd_user_email, strain_pk, study_pk, study_url
     # catch Exceptions that indicate the database relationships have changed
     except (Line.DoesNotExist, Strain.DoesNotExist):
         logger.warning("Marking task %s as complete without taking any action since its "
-                              "inputs are stale.  One or more relationships that motivated task "
-                              "submission been removed." % self.request.id)
+                       "inputs are stale.  One or more relationships that motivated task "
+                       "submission been removed." % self.request.id)
         specific_cause = ("No (strain, line, study) relationship was found in the EDD database "
                           "matching the one implied by inputs")
         send_stale_input_warning(self, specific_cause, est_execution_time, uses_exponential_backoff,
@@ -327,9 +326,9 @@ def unlink_ice_entry_from_study(self, edd_user_email, study_pk, study_url, strai
 
                 # warn administrators that this occurred
                 logger.warning("Marking task %s as complete without taking any action since "
-                                      "its inputs are stale.  One or more relationships that "
-                                      "motivated task submission have been modified."
-                                      % self.request.id)
+                               "its inputs are stale.  One or more relationships that "
+                               "motivated task submission have been modified."
+                               % self.request.id)
                 send_stale_input_warning(self, specific_cause, est_execution_time,
                                          use_exponential_backoff, logger)
                 return _STALE_OR_ERR_INPUT  # succeed after sending the warning

@@ -58,7 +58,7 @@ ADMINS = MANAGERS = (
 SERVER_EMAIL = 'jbei-edd-admin@lists.lbl.gov'
 EMAIL_SUBJECT_PREFIX = '[EDD] '
 EMAIL_TIMEOUT = 60  # in seconds
-EMAIL_HOST = 'localhost'
+EMAIL_HOST = 'smtp'
 EMAIL_HOST_USER = ''
 EMAIL_HOST_PASSWORD = ''
 EMAIL_PORT = 25

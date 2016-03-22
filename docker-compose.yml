@@ -21,11 +21,21 @@ services:
     ports:
       - "8983:8983"
   rabbitmq:
-    image: rabbitmq
+    image: rabbitmq:3-management
+    hostname: rabbitmq
     env_file: secrets.env
+    environment:
+      HOSTNAME: rabbitmq
+      RABBITMQ_DEFAULT_USER: edd_user
+      RABBITMQ_DEFAULT_VHOST: edd
+      RABBITMQ_NODENAME: rabbit@rabbitmq
     ports:
       - "5672:5672"
       - "15672:15672"
+  smtp:
+    image: namshi/smtp
+    expose:
+      - "25"
   edd:
     build: .
     env_file: secrets.env
@@ -37,8 +47,9 @@ services:
     command: celery -A edd worker -l info
     links:
       - postgres
-      - solr
       - rabbitmq
+      - smtp
+      - solr
     environment:
       - C_FORCE_ROOT=true
   appserver:
@@ -49,8 +60,9 @@ services:
     command: python manage.py runserver 0.0.0.0:8000
     links:
       - postgres
-      - solr
       - rabbitmq
+      - smtp
+      - solr
     ports:
       - "8000:8000"
   nginx:
