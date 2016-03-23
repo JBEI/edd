@@ -11,10 +11,6 @@ Per the [documentation][1], celery is
 * [External Resources](#External)
 * [System Pre-requisites](#Prereq)
     * [Mac OS X](#OSX)
-        * [Follow EDD Instructions](#OSX_EDD)
-        * [Install and Configure RabbitMQ backend](#OSX_RabbitMQ)
-        * [Install Celery as a daemon](#OSX_Celery)
-        * [Install Flower as a daemon](#OSX_Flower)
     * [Debian](#Debian)
         * [Follow EDD Instructions](#Debian_EDD)
         * [Install anc Configure RabbitMQ backend](#Debian_RabbitMQ)
@@ -40,135 +36,14 @@ a reference for all of the tasks EDD schedules on Celery workers. Also consider 
 RabbitMQ, Celery, and Flower, depending on whether all of the above, as well as any linked ICE
 instance, are hosted on a single trusted network.
 
-<a name="Prereq"/>
 
-## System Pre-requisites
+## System Pre-requisites <a name="Prereq"/>
 This document will assume some basic knowledge of POSIX concepts; files, directories, users, 
 permissions, processes, etc.
 
-<a name="OSX"/>
 
-### Mac OS X
-This section contains directions for setting up a Celery service on a OS X development environment.
-It is not meant to be used as a production service; if you need Celery for heavy usage, consider
-getting an instance on a Linux server.
-
-Unless specified otherwise, all commands should be run from the repository root directory.
-
-<a name="OSX_EDD"/>
-
-* Follow EDD Instructions
-    * You should, at a minimum, set up the development environment as explained in the core EDD
-      documentation. In particular, you will need the following sections:
-        * XCode
-        * Homebrew
-        * Python
-        * OpenSSL
-        * Pip
-        * virtualenvwrapper
-    * Additional pip dependencies for Celery are included in the requirements.txt accompanying
-      this document.
-<a name="OSX_RabbitMQ"/>
-* Install and Configure RabbitMQ backend
-    * Install RabbitMQ
-        * `brew install rabbitmq`
-        * Note that homebrew's directions for installing rabbitmq as a daemon don't seem to work.
-          We'll configure that later.
-    * For an existing EDD install without Celery
-        * `pip install -r ./celery/requirements.txt`
-        * Installs Celery-specific pip packages to the virtualenv
-    * Configure environment
-        * If running commands as yourself for testing, ensure shell environment has path set up;
-          e.g. your `.bashrc` contains `export PATH=$PATH:/usr/local/sbin`
-            * It's probably already there if you have used anything installed via brew
-        * Running commands as yourself while setting up daemons is asking for trouble. Don't skip
-          the following step of creating the daemon account.
-    * Create `rabbitmq` user account
-        * Note: the RabbitMQ scripts are written to only tolerate being run as as user `root` or
-          `rabbitmq`, so it is important to use the exact username `rabbitmq`.
-        * `sudo ./celery/osx/add_system_user.sh rabbitmq 'RabbitMQ Message Broker'`
-        * `sudo mkdir -p /var/lib/rabbitmq`
-        * `sudo chown rabbitmq:rabbitmq /var/lib/rabbitmq`
-        * `sudo dscl /Local/Default -delete Users/_rabbitmq NFSHomeDirectory`
-        * `sudo dscl /Local/Default -create Users/_rabbitmq NFSHomeDirectory /var/lib/rabbitmq/`
-        * `sudo dscl /Local/Default -delete Users/_rabbitmq UserShell`
-        * `sudo dscl /Local/Default -create Users/_rabbitmq UserShell /bin/bash`
-        * Ensure the `rabbitmq` user environment is minimally configured
-            * has a `.bashrc` with `export PATH=$PATH:/usr/local/sbin`
-            * has a `.bash_profile` with `source .bashrc`
-        * Ensure RabbitMQ directories exist and have correct permissions
-            * `sudo mkdir -p /usr/local/var/log/rabbitmq`
-            * `sudo chown rabbitmq:rabbitmq /usr/local/var/log/rabbitmq`
-            * `sudo chown -R rabbitmq /usr/local/etc/rabbitmq`
-            * `sudo chown -R rabbitmq:rabbitmq /usr/local/var/lib/rabbitmq`
-        * It is easier to run all commands as the daemon account, to prevent issues with multiple
-          processes and conflicting permissions.
-    * Start the RabbitMQ Server
-        * Switch to user `rabbitmq` with `sudo su - rabbitmq`
-        * `rabbitmq-server &`
-        * Following steps will not work without a running server
-    * Configure the running RabbitMQ Server
-	   * See [common instructions][#Configure_Rabbit] for doing this on Debian or OSX
-
-    * Configure RabbitMQ to run as a daemon
-        * `sudo cp ./celery/osx/com.rabbitmq.plist /Libarary/LaunchDaemons`
-        * `sudo launchctl load /Library/LaunchDaemons/com.rabbitmq.plist`
-        * `sudo launchctl list | grep rabbit` should return a non-blank line starting with a
-          non-zero integer indicating RabbitMQ's process ID
-        * In case of problems, unload the plist to kill the daemon
-            * `sudo launchctl unload /Library/LaunchDaemons/com.rabbitmq.plist`
-    
-<a name="OSX_Celery"/>
-
-* Install Celery as a daemon
-    * Create `celery` user account
-        * `sudo ./celery/osx/add_system_user.sh celery`
-        * `sudo mkdir -p /var/lib/celery`
-        * `sudo chown celery:celery /var/lib/celery`
-        * `sudo dscl /Local/Default -delete Users/_celery NFSHomeDirectory`
-        * `sudo dscl /Local/Default -create Users/_celery NFSHomeDirectory /var/lib/celery/`
-        * `sudo dscl /Local/Default -delete Users/_celery UserShell`
-        * `sudo dscl /Local/Default -create Users/_celery UserShell /bin/bash`
-        * Ensure user `celery` has access to EDD codebase (and EDD virtualenv!)
-            * Easy way: add `celery` to group owning home directory (`staff`, usually)
-                * `sudo dseditgroup -o edit -a celery -t user staff`
-            * Other ways are left as an exercise to the reader
-            * Test: `sudo -u celery ls -l /path/to/edd`
-        * Ensure the `celery` user environment is minimally configured
-            * Get your local virtualenv path by running `which celery` from own local account
-                * e.g. output of `/Users/alice/.virtualenvs/synbio/bin/celery` means the path is
-                  `/Users/alice/.virtualenvs/synbio/bin`
-            * has a `.bashrc` with (using your own virtualenv path and name) :
-
-                export WORKON_HOME=/Users/alice/.virtualenvs
-                export PATH=/usr/local/sbin:$PATH
-                source /usr/local/bin/virtualenvwrapper.sh
-                workon synbio
-
-            * has a `.bash_profile` with `source .bashrc`
-        * Create `edd` and `venv` symlinks to EDD repository root and virtualenv
-            * `ln -s /Users/alice/code/edd edd`
-            * `ln -s /Users/alice/.virtualenvs/synbio venv`
-        * Run a test worker (as user `celery`, from EDD repository root) with:
-            * `celery worker -A edd -Q edd -n edd-worker-1.%h -l info`
-        * Ensure log directory exists and is writable
-            * `sudo mkdir -p /var/log/celery`
-            * `sudo chown celery:celery /var/log/celery`
-    * Configure Celery to run as a daemon
-        * `sudo cp ./celery/osx/org.celeryq.worker.plist /Library/LaunchDaemons/`
-        * `sudo launchctl load /Library/LaunchDaemons/org.celeryq.worker.plist`
-        * `sudo launchctl list | grep celery` should return a non-blank line starting with a
-          non-zero integer indicating Celery process ID
-        * In case of problems, unload the plist to kill the daemon
-            * `sudo launchctl unload /Library/LaunchDaemons/org.celeryq.worker.plist`
-    * See [celeryconfig.py](edd/edd/celeryconfig.py) for reference
-
-<a name="OSX_Flower"/>
-
-* Install Flower as a daemon
-    * TODO
-    * Links
-        * [configurating Flower authentication][8]
+### Mac OS X <a name="OSX"/>
+Celery will work out-of-the-box with the Docker Compose workflow.
 
 <a name="Debian"/>
 
@@ -185,8 +60,7 @@ Unless specified otherwise, all commands should be run from the repository root 
     * TODO: any additional Debian package needed
     * Additional pip dependencies for Celery are included in the requirements.txt accompanying
       this document.
-<a name="Debian_RabbitMQ"/>
-* Install and Configure RabbitMQ backend
+* Install and Configure RabbitMQ backend <a name="Debian_RabbitMQ"/>
     * References
         * [RabbitMQ Debian Install][6]
         * [RabbitMQ Production Checklist][2]
@@ -213,9 +87,7 @@ Unless specified otherwise, all commands should be run from the repository root 
             sudo chmod o-r rabbitmq.config
             sudo vim rabbitmq.config
 
-<a name="Debian_Celery"/>
-
-* Install Celery as a daemon
+* Install Celery as a daemon <a name="Debian_Celery"/>
     * References
         * [Running the Worker as a daemon][9]
         * [Message Signing][11]
@@ -227,21 +99,15 @@ Unless specified otherwise, all commands should be run from the repository root 
 	* `sudo vi /etc/default/edd_celeryd`
     * `service edd_celeryd start`
 
-<a name="Debian_Flower"/>
-
-* Install Flower as a daemon
+* Install Flower as a daemon <a name="Debian_Flower"/>
     * References
         * [Configuration Options][12]
         * [Persistent Mode][13]
     * TODO
-	
-<a name="Common_Configuration"/>
 
-### Common Configuration Steps
+### Common Configuration Steps <a name="Common_Configuration"/>
 
-<a name="Configure_Rabbit"/>
-
-* Configure the running RabbitMQ server
+* Configure the running RabbitMQ server <a name="Configure_Rabbit"/>
     * Remove default `guest` account: `rabbitmqctl delete_user guest`
     * Add a virtual host for EDD: `rabbitmqctl add_vhost /edd`
     * Create a limited account for EDD
