@@ -1,0 +1,22 @@
+{% extends 'admin/base_site.html' %}
+
+{% block extrahead %}
+    {{ block.super }}
+    {{ form.media }}
+{% endblock extrahead %}
+
+{% block content %}
+<p>Search for type to merge selected types into. The type <i>must</i> already exist in EDD. Selected types listed below:</p>
+<ul>
+    {{ types|unordered_list }}
+</ul>
+<form action="" method="POST">
+    {% csrf_token %}
+    {{ form }}
+    <input type="hidden" name="action" value="merge_with_action" />
+    <p>
+        <button type="submit" name="merge">Merge Strains</button>
+        <a href="">Cancel</a>
+    </p>
+</form>
+{% endblock content %}

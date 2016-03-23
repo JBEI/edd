@@ -258,6 +258,12 @@ var Utl;
             if (n.indexOf('.xml', n.length - 4) !== -1) {
                 return 'xml';
             }
+            if (t === 'text/plain') {
+                return 'plaintext';
+            }
+            if (n.indexOf('.txt', n.length - 4) !== -1) {
+                return 'plaintext';
+            }
             // If all else fails, assume it's a csv file.  (So, any extension that's not tried above, or no extension.)
             return 'csv';
         };
@@ -456,6 +462,7 @@ var Utl;
                     var fileContainer = {
                         file: file,
                         fileType: Utl.JS.guessFileType(file.name, file.type),
+                        extraHeaders: {},
                         progressBar: t.progressBar,
                         uniqueIndex: FileDropZone.fileContainerIndexCounter++,
                         stopProcessing: false,
@@ -546,6 +553,9 @@ var Utl;
                 xhr.setRequestHeader("X-CSRFToken", t.csrftoken);
                 // We want to pass along our own guess at the file type, since it's based on a more specific set of criteria.
                 xhr.setRequestHeader('X-EDD-File-Type', fileContainer.fileType);
+                $.each(fileContainer.extraHeaders, function (name, value) {
+                    xhr.setRequestHeader('X-EDD-' + name, value);
+                });
             });
             f.event('sendXHR', function () {
                 if (fileContainer.progressBar) {

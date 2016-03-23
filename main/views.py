@@ -2,11 +2,12 @@
 from __future__ import unicode_literals
 
 import collections
-import csv
 import json
 import logging
 import operator
 import re
+from functools import reduce
+from io import BytesIO
 
 from builtins import str
 from django.conf import settings
@@ -26,16 +27,14 @@ from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 from django.views import generic
 from django.views.decorators.csrf import ensure_csrf_cookie
-from functools import reduce
-from io import BytesIO
 
+from jbei.ice.rest.ice import IceApi, HmacAuth
 from . import data_import, models, sbml_export
 from .export import table
 from .forms import (
     AssayForm, CreateAttachmentForm, CreateCommentForm, CreateStudyForm, ExportOptionForm,
     ExportSelectionForm, LineForm, MeasurementForm, MeasurementValueFormSet, WorklistForm
 )
-from .ice import IceApi
 from .models import (
     Assay, Attachment, Line, Measurement, MeasurementCompartment, MeasurementGroup, MeasurementType,
     MeasurementValue, Metabolite, MetaboliteSpecies, MetadataType, Protocol, SBMLTemplate, Study,
@@ -104,16 +103,11 @@ class StudyCreateView(generic.edit.CreateView):
 
     def get_context_data(self, **kwargs):
         context = super(StudyCreateView, self).get_context_data(**kwargs)
-        context['can_create'] = self.user_can_create(self.request.user)
+        context['can_create'] = Study.user_can_create(self.request.user)
         return context
 
     def get_success_url(self):
         return reverse('main:detail', kwargs={'pk': self.object.pk})
-
-    def user_can_create(self, user):
-        if hasattr(settings, 'EDD_ONLY_SUPERUSER_CREATE') and settings.EDD_ONLY_SUPERUSER_CREATE:
-            return user.is_superuser
-        return True
 
 
 class StudyDetailView(generic.DetailView):
@@ -833,18 +827,17 @@ def study_import_table(request, study):
     # FIXME filter protocols?
     protocols = Protocol.objects.order_by('name')
     if (request.method == "POST"):
-        # print stuff for debug
-        for key in sorted(request.POST):
-            try:
-                print("%s : %s" % (key, request.POST[key]))
-            except UnicodeEncodeError:
-                print("(Can't dump unicode value.)")
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug('\n'.join([
+                '%(key)s : %(value)s' % {'key': key, 'value': request.POST[key]}
+                for key in sorted(request.POST)
+            ]))
         try:
             table = data_import.TableImport(model, request.user)
             added = table.import_data(request.POST)
             messages.success(request, 'Imported %s measurement values.' % added)
         except ValueError as e:
-            print("ERROR!!! %s" % e)
+            logger.exception('Import failed: %s', e)
             messages.error(request, e)
     return render(
         request,
@@ -861,18 +854,19 @@ def study_import_table(request, study):
 def utilities_parse_import_file(request):
     """ Attempt to process posted data as either a TSV or CSV file or Excel spreadsheet and
         extract a table of data automatically. """
-    # These are embedded by the filedrop.js class.  Here for reference.
-    #file_name = request.META.get('HTTP_X_FILE_NAME')
-    #file_size = request.META.get('HTTP_X_FILE_SIZE')
-    #file_type = request.META.get('HTTP_X_FILE_TYPE')
-    #file_date = request.META.get('HTTP_X_FILE_DATE')
+    # These are embedded by the filedrop.js class. Here for reference.
+    # file_name = request.META.get('HTTP_X_FILE_NAME')
+    # file_size = request.META.get('HTTP_X_FILE_SIZE')
+    # file_type = request.META.get('HTTP_X_FILE_TYPE')
+    # file_date = request.META.get('HTTP_X_FILE_DATE')
 
-    # In requests from OS X clients, we can use the file_type value.  For example, a modern Excel document is reported as
-    # "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", and it's consistent across Safari, Firefox, and Chrome.
-    # However, on Windows XP, file_type is always blank, so we need to fall back to file name extensions like ".xlsx" and ".xls".
+    # In requests from OS X clients, we can use the file_type value. For example, a modern Excel
+    # document is reported as "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    # and it's consistent across Safari, Firefox, and Chrome. However, on Windows XP, file_type is
+    # always blank, so we need to fall back to file name extensions like ".xlsx" and ".xls".
 
-    # The Utl.JS.guessFileType() function in Utl.ts applies logic like this to guess the type, and that guess is
-    # sent along in a custom header:
+    # The Utl.JS.guessFileType() function in Utl.ts applies logic like this to guess the type, and
+    # that guess is sent along in a custom header:
     edd_file_type = request.META.get('HTTP_X_EDD_FILE_TYPE')
     edd_import_mode = request.META.get('HTTP_X_EDD_IMPORT_MODE')
 
@@ -880,7 +874,7 @@ def utilities_parse_import_file(request):
         try:
             from edd_utils.parsers import biolector
             # We pass the request directly along, so it can be read as a stream by the parser
-            result = biolector.getRawImpotRecordsAsJSON(request, 0)
+            result = biolector.getRawImportRecordsAsJSON(request, 0)
             return JsonResponse({
                 "file_type": "xml",
                 "file_data": result,
@@ -912,11 +906,11 @@ def utilities_parse_import_file(request):
     if edd_import_mode == "hplc":
         try:
             from edd_utils.parsers.hplc import (
-                getRawImpotRecordsAsJSON, HPLC_Parse_Missing_Argument_Exception,
+                getRawImportRecordsAsJSON, HPLC_Parse_Missing_Argument_Exception,
                 HPLC_Parse_No_Header_Exception, HPLC_Parse_Misaligned_Blocks_Exception
                 )
             try:
-                result = getRawImpotRecordsAsJSON(request)
+                result = getRawImportRecordsAsJSON(request)
                 return JsonResponse({
                     "file_type": "hplc",
                     "file_data": result,
@@ -935,6 +929,7 @@ def utilities_parse_import_file(request):
                     "python_exception": "HPLC parsing failed: mismatched row count amoung blocks!"
                 })
         except ImportError as e:
+            logger.exception('Failed to load module %s', e)
             return JsonResponse({
                 "python_error": "jbei_tools module required to handle HPLC file input."
             })
@@ -1343,7 +1338,7 @@ def search(request):
         found = solr.query(query=term, options={'edismax': True})
         results = found['response']['docs']
     elif model_name == "Strain":
-        ice = IceApi(user_email=request.user.email)
+        ice = IceApi(auth=HmacAuth.get(username=request.user.email))
         found = ice.search_for_part(term, suppress_errors=True)
         if found is None:  # there were errors searching
             results = []

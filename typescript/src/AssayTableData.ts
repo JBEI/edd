@@ -6,6 +6,16 @@ declare var ATData: any; // Setup by the server.
 declare var EDDATDGraphing: any;
 declare var EDD_auto: any;
 
+// Doing this bullshit because TypeScript/InternetExplorer do not recognize static methods on Number
+declare var JSNumber: any;
+JSNumber = Number;
+JSNumber.isFinite = JSNumber.isFinite || function (value: any) {
+    return typeof value === 'number' && isFinite(value);
+};
+JSNumber.isNaN = JSNumber.isNaN || function (value: any) {
+    return value !== value;
+};
+
 
 // Type name for the grid of values pasted in
 interface RawInput extends Array<string[]> { }
@@ -14,7 +24,6 @@ interface RawInputStat {
     input: RawInput;
     columns: number;
 }
-
 
 // This module encapsulates all the custom code for the data import page.
 // It consists primarily of a series of classes, each corresponding to a step in the import process,
@@ -1485,6 +1494,7 @@ module EDDTableImport {
             var seenAssayNames:{[id:string]: boolean} = {};
             var seenMeasurementNames:{[id:string]: boolean} = {};
             var seenMetadataNames:{[id:string]: boolean} = {};
+            var disamRawSets:any[] = [];
 
             // Here are the arrays we will use later
             this.parsedSets = [];
@@ -1516,8 +1526,11 @@ module EDDTableImport {
                     // If the value is blank, we can't build a valid set, so skip to the next set.
                     // If the value is valid but we haven't seen it before, increment and store a uniqueness index.
                     if (!ln && ln !== 0) { return; }
-                    if (!an && an !== 0) { return; }
                     if (!mn && mn !== 0) { return; }
+                    if (!an && an !== 0) {
+                        // if just the assay name is missing, set it to the line name
+                        an = ln;
+                    }
                     if (!seenLineNames[ln]) {
                         seenLineNames[ln] = true;
                         this.uniqueLineNames.push(ln);
@@ -1544,22 +1557,29 @@ module EDDTableImport {
                     });
 
                     // Validate the provided set of time/value points
-                    rawSet.data.forEach((xy: string[]): void => {
-                        var time = xy[0] || '';
-                        var value = xy[1];
-                        // Sometimes people - or Excel docs - drop commas into large numbers.
-                        var timeFloat = parseFloat(time.replace(/,/g, ''));
+                    rawSet.data.forEach((xy: any[]): void => {
+                        var time: number, value: number;
+                        if (!JSNumber.isFinite(xy[0])) {
+                            // Sometimes people - or Excel docs - drop commas into large numbers.
+                            time = parseFloat((xy[0] || '0').replace(/,/g, ''));
+                        } else {
+                            time = <number>xy[0];
+                        }
                         // If we can't get a usable timestamp, discard this point.
-                        if (isNaN(timeFloat)) { return; }
-                        if (!value && <any>value !== 0) {
+                        if (JSNumber.isNaN(time)) { return; }
+                        if (!xy[1] && <Number>xy[1] !== 0) {
                             // If we're ignoring gaps, skip any undefined/null values.
                             //if (ignoreDataGaps) { return; }    // Note: Forced always-off for now
                             // A null is our standard placeholder value
                             value = null;
+                        } else if (!JSNumber.isFinite(xy[1])) {
+                            value = parseFloat((xy[1] || '').replace(/,/g, ''));
+                        } else {
+                            value = <number>xy[1];
                         }
-                        if (!times[timeFloat]) {
-                            times[timeFloat] = value;
-                            uniqueTimes.push(timeFloat);
+                        if (!times[time]) {
+                            times[time] = value;
+                            uniqueTimes.push(time);
                             this.seenAnyTimestamps = true;
                         }
                     });

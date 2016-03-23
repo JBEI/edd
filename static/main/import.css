@@ -1,3 +1,20 @@
+/* Example images */
+
+.discloseBody {
+	color:#444;
+	font-size:12px;
+	margin-left:1.2em;
+}
+
+img.exampleImage {
+	border: none;
+	padding:4px;
+	margin:8px 8px 6px 5px;
+	-webkit-box-shadow: 3px 3px 8px 2px rgba(0,0,0,0.4);
+	-moz-box-shadow: 3px 3px 8px 2px rgba(0,0,0,0.4);
+	box-shadow: 3px 3px 8px 2px rgba(0,0,0,0.4);
+}
+
 /* Formatting for the label that appears when a step is disabled or irrelevant */
 
 div.disabledStepLabel {				
@@ -234,8 +251,6 @@ div.disambiguationSection table tr > td input[type="text"] {
 	margin:0px 2px 0px 0px;
 }
 
-
-/* The Step 4 disambiguation section */
 select.disamStd {
 	min-width: 10em;
 }
