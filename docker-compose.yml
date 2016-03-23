@@ -40,6 +40,8 @@ services:
   edd:
     build: .
     env_file: secrets.env
+    environment:
+      SEARCH_URL: "solr://solr:8983/solr/"
     command: "true"
   worker:
     extends:

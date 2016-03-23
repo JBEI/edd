@@ -144,7 +144,7 @@ TEMPLATES = [
 # Solr/Haystack Configuration
 ###################################################################################################
 EDD_MAIN_SOLR = {
-    'default': env.search_url(),
+    'default': env.search_url(default='solr://solr:8983/solr/'),
 }
 
 
