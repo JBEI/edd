@@ -33,6 +33,18 @@ services:
       - "5672"
     ports:
       - "15672:15672"
+  flower:
+    image: totem/celery-flower-docker
+    env_file: secrets.env
+    environment:
+      AMQP_ADMIN_HOST: rabbitmq
+      AMQP_ADMIN_USERNAME: edd_user
+      AMQP_HOST: rabbitmq
+      AMQP_USERNAME: edd_user
+    links:
+      - rabbitmq
+    ports:
+      - "5555:5555"
   smtp:
     image: namshi/smtp
     expose:
