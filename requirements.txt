@@ -23,6 +23,7 @@ djangorestframework==3.3.2
 drf-nested-routers==0.11.1
 enum34==1.1.2
 future==0.15.2
+gunicorn==19.4.5
 idna==2.0
 ipaddress==1.0.16
 jdcal==1.2

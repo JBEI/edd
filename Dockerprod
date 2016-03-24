@@ -37,3 +37,9 @@ COPY requirements.txt /tmp/
 
 # Install remaining packages; numpy, scipy, scikit-learn will all be skipped as already-installed
 RUN pip install -r /tmp/requirements.txt
+
+# TODO could reduce this down to copying ./edd ./edd_utils ./jbei ./main ./manage.py ?
+COPY . /code/
+
+# Gather static files from all apps
+RUN python manage.py collectstatic -v 0 --clear --noinput

@@ -11,11 +11,13 @@ services:
     image: postgres:9.4
     volumes:
       - pgdata:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+    expose:
+      - "5432"
     env_file: secrets.env
   solr:
     image: solr
+    depends_on:
+      - nginx
     volumes:
       - solrdata:/opt/solr/server/solr
     ports:
@@ -31,8 +33,7 @@ services:
       RABBITMQ_NODENAME: rabbit@rabbitmq
     expose:
       - "5672"
-    ports:
-      - "15672:15672"
+      - "15672"
   flower:
     image: totem/celery-flower-docker
     env_file: secrets.env
@@ -41,28 +42,35 @@ services:
       AMQP_ADMIN_USERNAME: edd_user
       AMQP_HOST: rabbitmq
       AMQP_USERNAME: edd_user
+    depends_on:
+      - nginx
+      - rabbitmq
     links:
       - rabbitmq
-    ports:
-      - "5555:5555"
+    expose:
+      - "5555"
   smtp:
     image: namshi/smtp
     expose:
       - "25"
   edd:
-    build: .
-    image: edd
+    build:
+      context: .
+      dockerfile: Dockerprod
     env_file: secrets.env
     environment:
       SEARCH_URL: "solr://solr:8983/solr/"
     command: "true"
-    volumes:
-      - .:/code/
   worker:
     extends:
       service: edd
     restart: always
     command: celery -A edd worker -l info
+    depends_on:
+      - postgres
+      - rabbitmq
+      - smtp
+      - solr
     links:
       - postgres
       - rabbitmq
@@ -74,14 +82,20 @@ services:
     extends:
       service: edd
     restart: always
-    command: python manage.py runserver 0.0.0.0:8000
+    command: gunicorn -w 4 -b 0.0.0.0:8000 edd.wsgi:application
+    depends_on:
+      - nginx
+      - postgres
+      - rabbitmq
+      - smtp
+      - solr
     links:
       - postgres
       - rabbitmq
       - smtp
       - solr
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
   nginx:
     image: nginx
     links:
