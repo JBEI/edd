@@ -289,7 +289,8 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
 
     def get_fields(self, request, obj=None):
         return [
-            'type_name', 'short_name',
+            ('type_name', 'short_name', ),
+            'study_list',
         ]
 
     def get_list_display(self, request):
@@ -316,6 +317,9 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
         qs = qs.annotate(num_studies=Count('measurement__assay__line__study', distinct=True))
         return qs
 
+    def get_readonly_fields(self, request, obj=None):
+        return ['study_list', ]
+
     def get_search_fields(self, request):
         return ['type_name', 'short_name', ]
 
@@ -341,6 +345,23 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
             'form': form,
         })
     merge_with_action.short_description = 'Merge records into …'
+
+    def study_list(self, instance):
+        qs = Study.objects.filter(line__assay__measurement__measurement_type=instance).distinct()
+        count = qs.count()
+        if count:
+            html = ', '.join([
+                '<a href="%(link)s">%(name)s</a>' % {
+                    'link': reverse('admin:main_study_change', args=[s.id]),
+                    'name': escape(s.name)
+                }
+                for s in qs[:10]
+            ])
+            if count > 10:
+                html += (', and %s more.' % (count - 10, ))
+            return mark_safe(html)
+        return None
+    study_list.short_description = 'Referenced in Studies'
 
     def _study_count(self, obj):
         return obj.num_studies
@@ -372,7 +393,7 @@ class MetaboliteAdmin(MeasurementTypeAdmin):
     def get_fields(self, request, obj=None):
         return super(MetaboliteAdmin, self).get_fields(request, obj) + [
             ('molecular_formula', 'molar_mass', 'charge', ),  # grouping in tuple puts in a row
-            'source',
+            'source', 'study_list',
         ]
 
     def get_list_display(self, request):
@@ -392,7 +413,7 @@ class MetaboliteAdmin(MeasurementTypeAdmin):
         return qs
 
     def get_readonly_fields(self, request, obj=None):
-        return ['source', ]
+        return ['source', 'study_list', ]
 
     def _tags(self, obj):
         return ', '.join(obj.tags)
@@ -402,7 +423,7 @@ class ProteinAdmin(MeasurementTypeAdmin):
     def get_fields(self, request, obj=None):
         return super(ProteinAdmin, self).get_fields(request, obj) + [
             ('length', 'mass',),
-            'source',
+            'source', 'study_list',
         ]
 
     def get_list_display(self, request):
@@ -421,7 +442,7 @@ class ProteinAdmin(MeasurementTypeAdmin):
         return qs
 
     def get_readonly_fields(self, request, obj=None):
-        return ['source', ]
+        return ['source', 'study_list', ]
 
     def get_search_results(self, request, queryset, search_term):
         search_term = ProteinIdentifier.match_accession_id(search_term)
@@ -433,6 +454,7 @@ class GeneAdmin(MeasurementTypeAdmin):
         return super(GeneAdmin, self).get_fields(request, obj) + [
             ('location_in_genome', 'positive_strand', 'location_start', 'location_end',
              'gene_length'),  # join these on the same row
+            'study_list',
         ]
 
     def get_list_display(self, request):
@@ -451,7 +473,7 @@ class PhosphorAdmin(MeasurementTypeAdmin):
     def get_fields(self, request, obj=None):
         return super(PhosphorAdmin, self).get_fields(request, obj) + [
             ('excitation_wavelength', 'emission_wavelength', ),
-            'reference_type',
+            'reference_type', 'study_list',
         ]
 
     def get_list_display(self, request):
