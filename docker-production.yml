@@ -35,13 +35,14 @@ services:
       - "5672"
       - "15672"
   flower:
-    image: totem/celery-flower-docker
+    build: ./docker_services/flower/
     env_file: secrets.env
     environment:
       AMQP_ADMIN_HOST: rabbitmq
       AMQP_ADMIN_USERNAME: edd_user
       AMQP_HOST: rabbitmq
       AMQP_USERNAME: edd_user
+      FLOWER_URL_PREFIX: flower
     depends_on:
       - nginx
       - rabbitmq
@@ -100,6 +101,9 @@ services:
     image: nginx
     links:
       - appserver
+      - flower
+      - rabbitmq
+      - solr
     ports:
       - "80:80"
       - "443:443"
