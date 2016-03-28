@@ -39,7 +39,7 @@
 
 """ Backend for exporting SBML files. """
 
-from __future__ import division
+from __future__ import division, unicode_literals
 
 import json
 import logging
@@ -51,11 +51,11 @@ import time
 from collections import defaultdict, OrderedDict
 from six import string_types
 
-from .models import (
+from ..models import (
     Attachment, MeasurementType, MeasurementUnit, Metabolite, MetaboliteExchange,
     MetaboliteSpecies, Protocol, SBMLTemplate,
-    )
-from .utilities import interpolate_at, line_export_base
+)
+from ..utilities import interpolate_at, line_export_base
 
 
 logger = logging.getLogger(__name__)
@@ -118,11 +118,11 @@ class ReactionInfo(object):
                 self.extract_protein_association()
 
     @property
-    def n_notes(O):
-        return len(O.notes)
+    def n_notes(self):
+        return len(self.notes)
 
-    def __hash__(O):
-        return O.id.__hash__()
+    def __hash__(self):
+        return self.id.__hash__()
 
     def __str__(self):
         return self.id
@@ -2033,7 +2033,9 @@ class processed_measurement(object):
                         delta=delta,
                         units=units,
                         flux=flux,
-                        interpolated=md.interpolated))
+                        interpolated=md.interpolated
+                    )
+                )
         try:
             process_md()
         except ValueError as e:

@@ -28,9 +28,9 @@ from django.utils.translation import ugettext_lazy as _
 from django.views import generic
 from django.views.decorators.csrf import ensure_csrf_cookie
 
-from jbei.ice.rest.ice import IceApi, HmacAuth, STRAIN, IceHmacAuth
-from . import data_import, models, sbml_export
-from .export import table
+from jbei.ice.rest.ice import IceApi, STRAIN, IceHmacAuth
+from . import data_import
+from .export import sbml, table
 from .forms import (
     AssayForm, CreateAttachmentForm, CreateCommentForm, CreateStudyForm, ExportOptionForm,
     ExportSelectionForm, LineForm, MeasurementForm, MeasurementValueFormSet, WorklistForm
@@ -1091,7 +1091,7 @@ def study_export_sbml(request, study):
         form = request.GET
     try:
         lines = get_selected_lines(form, model)
-        manager = sbml_export.line_sbml_export(
+        manager = sbml.line_sbml_export(
             study=model,
             lines=lines,
             form=form,
@@ -1385,7 +1385,8 @@ def search(request):
             )[:20]
         results = [item.to_json() for item in found]
     else:
-        Model = getattr(models, model_name)
+        from . import models as edd_models
+        Model = getattr(edd_models, model_name)
         # gets all the direct field names that can be filtered by terms
         ifields = [
             f.get_attname()
