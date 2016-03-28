@@ -302,7 +302,8 @@ class TableImport(object):
             except ValueError as e:
                 # failed to parse type or unit
                 self._messages_error(
-                    _('Failed to parse data for Type or Units of measurement; %(err_msg)s') % {
+                    _('Failed to parse data for Type or Units of measurement. Did you specify a '
+                      'type and unit for the measurements? Error details: %(err_msg)s') % {
                         'err_msg': e,
                     }
                 )
