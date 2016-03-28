@@ -2475,9 +2475,9 @@ module EDDTableImport {
             var masterLine = $('#masterLine').val();
             var masterAssayLine = $('#masterAssayLine').val();
             var masterAssay = $('#masterAssay').val();
-            var masterMType = $('#masterMType').val();
-            var masterMComp = $('#masterMComp').val();
-            var masterMUnits = $('#masterMUnits').val();
+            var masterMType = $('#masterMTypeValue').val();
+            var masterMComp = $('#masterMCompValue').val();
+            var masterMUnits = $('#masterMUnitsValue').val();
 
             var resolvedSets:ResolvedImportSet[] = [];
 
@@ -2493,8 +2493,8 @@ module EDDTableImport {
                 // In modes where we resolve measurement types in the client UI, go with the master values by default.
                 if (mode === "biolector" || mode === "std" || mode === "mdv" || mode === "hplc") {
                     measurement_id = masterMType;
-                    compartment_id = masterMComp || "0";
-                    units_id = masterMUnits || "1";
+                    compartment_id = masterMComp;
+                    units_id = masterMUnits;
                 }
 
                 var data = set.data;
