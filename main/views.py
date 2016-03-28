@@ -833,7 +833,7 @@ def study_import_table(request, study):
                 for key in sorted(request.POST)
             ]))
         try:
-            table = data_import.TableImport(model, request.user)
+            table = data_import.TableImport(model, request.user, request=request)
             added = table.import_data(request.POST)
             messages.success(request, 'Imported %s measurement values.' % added)
         except ValueError as e:

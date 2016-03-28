@@ -7,6 +7,7 @@ import re
 import warnings
 
 from collections import defaultdict, namedtuple
+from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.utils.translation import ugettext as _
@@ -26,7 +27,7 @@ class TableImport(object):
     """ Object to handle processing of data POSTed to /study/{id}/import view and add
         measurements to the database. """
 
-    def __init__(self, study, user):
+    def __init__(self, study, user, request=None):
         self._study = study
         self._user = user
         if not study.user_can_write(user):
@@ -36,6 +37,7 @@ class TableImport(object):
         self._line_lookup = {}
         self._meta_lookup = {}
         self._unit_lookup = {}
+        self._request = request
 
     def import_data(self, data):
         self._data = data
@@ -274,12 +276,37 @@ class TableImport(object):
         found_type = self._mtype_from_layout(item, hours, default=NO_TYPE)
         if found_type is NO_TYPE:
             try:
+                type_id = item.get('measurement_id', 0)
+                units_id = item.get('units_id', 0)
                 found_type = MType(
                     item.get('compartment_id', MeasurementCompartment.UNKNOWN),
-                    MeasurementType.objects.get(pk=item.get('measurement_id', 0)),
-                    MeasurementUnit.objects.get(pk=item.get('units_id', 0))
+                    MeasurementType.objects.get(pk=type_id),
+                    MeasurementUnit.objects.get(pk=units_id)
                 )
-            except (MeasurementType.DoesNotExist, MeasurementUnit.DoesNotExist):
+            except MeasurementType.DoesNotExist as e:
+                # failed to match type
+                self._messages_error(
+                    _('Could not match selected Measurement Type; got type ID = %(type_id)s.') % {
+                        'type_id': type_id,
+                    }
+                )
+                pass
+            except MeasurementUnit.DoesNotExist as e:
+                # failed to match unit
+                self._messages_error(
+                    _('Could not match selected Measurement Unit; got unit ID = %(unit_id)s.') % {
+                        'unit_id': unit_id,
+                    }
+                )
+                pass
+            except ValueError as e:
+                # failed to parse type or unit
+                self._messages_error(
+                    _('Failed to parse data for Type or Units of measurement. Did you specify a '
+                      'type and unit for the measurements? Error details: %(err_msg)s') % {
+                        'err_msg': e,
+                    }
+                )
                 pass
         return found_type
 
@@ -347,6 +374,21 @@ class TableImport(object):
             except MeasurementUnit.DoesNotExist:
                 logger.warning('No MeasurementUnit found for %s' % unit_id)
         return self._unit_lookup.get(unit_id, None)
+
+    def _messages_error(self, message, **kwargs):
+        """ Simple wrapper for django messages framework if request passed to TableImport. """
+        if self._request is not None:
+            messages.error(self._request, message, **kwargs)
+
+    def _messages_success(self, message, **kwargs):
+        """ Simple wrapper for django messages framework if request passed to TableImport. """
+        if self._request is not None:
+            messages.success(self._request, message, **kwargs)
+
+    def _messages_warning(self, message, **kwargs):
+        """ Simple wrapper for django messages framework if request passed to TableImport. """
+        if self._request is not None:
+            messages.warning(self._request, message, **kwargs)
 
 
 ########################################################################
