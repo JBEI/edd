@@ -291,7 +291,7 @@ class TableImport(object):
                     }
                 )
                 pass
-            except MesurementUnit.DoesNotExist as e:
+            except MeasurementUnit.DoesNotExist as e:
                 # failed to match unit
                 self._messages_error(
                     _('Could not match selected Measurement Unit; got unit ID = %(unit_id)s.') % {
