@@ -5,7 +5,6 @@ from __future__ import unicode_literals
 # code in that module will attempt to look for a django settings module and fail if django isn't
 # installed in the current virtualenv
 import os
-
 import arrow
 
 from jbei.utils import to_human_relevant_delta, UserInputTimer
@@ -790,6 +789,132 @@ class Performance(object):
                 self.unaccounted_for_delta.total_seconds()))
 
 
+def prevent_duplicate_line_names(edd, study_number, csv_summary, input_timer):
+    """
+    Queries EDD for existing lines in the study, then compares line names in the CSV against
+    existing lines in the study, and with other rows in the CSV to help detect / prevent creation
+    of difficult-to-distinguish lines with the same, or very similiar names. It's considered
+    duplication when line names differ only by case or leading/trailing whitespace.
+    :param edd: the EddApi instance to use for querying EDD
+    :param study_number: the EDD study number whose lines should be examined.
+    :param csv_summary: line creation inputs read from the CSV file
+    :param input_timer: user input timer
+    :return:
+    """
+    print('')
+    print(OUTPUT_SEPARATOR)
+    print("Checking for duplicate line names...")
+    print(OUTPUT_SEPARATOR)
+
+    # build a list existing line names in this study so we can compare names to help catch
+    # user error in line creation.
+    study_line_name_duplication_counts = {}
+    existing_lines_page = edd.get_study_lines(study_number)
+    while existing_lines_page and existing_lines_page.results:
+        # initialize the list of line name duplications in the CSV file (ignoring any
+        # already present in the study)
+        for existing_line in existing_lines_page.results:
+            line_name = existing_line.name.lower().strip()
+            study_line_name_duplication_counts[line_name] = 0
+        if existing_lines_page.next_page:
+            existing_lines_page = edd.get_study_lines(study_number,
+                                                            query_url=existing_lines_page.next_page)
+        else:
+            existing_lines_page = None
+
+    # iterate over line creation inputs in the CSV spreadsheet, testing line names against
+    # existing lines in the study and against other lines in the CSV
+    total_study_line_duplication_counts = 0  # duplications of the CSV for existing lines in the
+                                            # study (ignoring pre-existing duplicates)
+    total_csv_duplication_count = 0 # duplications internal to the CSV document
+    csv_line_duplication_counts = {}
+    max_existing_duplication_count = 0
+    max_csv_line_duplication_count = 0
+    max_line_name_width = max(len(line.name) for line in csv_summary.line_creation_inputs)
+
+    # TODO: sub-optimal efficiency for dictionary lookups here
+    for line_creation_input in csv_summary.line_creation_inputs:
+        line_name = line_creation_input.name.lower().strip()
+        if line_name in study_line_name_duplication_counts.keys():
+            duplicate_use_count = study_line_name_duplication_counts.get(line_name)
+            duplicate_use_count += 1
+            study_line_name_duplication_counts[line_name] = duplicate_use_count
+            total_study_line_duplication_counts += 1
+            max_existing_duplication_count = max(duplicate_use_count, max_existing_duplication_count)
+        if line_name in csv_line_duplication_counts.keys():
+            duplicate_use_count = csv_line_duplication_counts[line_name] + 1
+            csv_line_duplication_counts[line_name] = duplicate_use_count
+            total_csv_duplication_count += 1
+            max_csv_line_duplication_count = max(duplicate_use_count, max_csv_line_duplication_count)
+        else:
+            csv_line_duplication_counts[line_name] = 0
+
+    if not (total_study_line_duplication_counts or total_csv_duplication_count):
+        print("No duplicate line names detected")
+        return True
+
+    print('')
+    print('Found duplicate line names!')
+    print('Line creation inputs in this CSV file would produce duplicate line names for %('
+          'existing_dupes)d existing lines in the study, and %(csv_dupes)d other lines within the '
+          'same CSV file. It will be difficult or impossible to distinguish between lines with '
+          'duplicate names in EDD.' % {
+                'existing_dupes': total_study_line_duplication_counts,
+                'csv_dupes': total_csv_duplication_count,
+    })
+
+    while True:
+
+        response = input_timer.user_input('Do you want to create lines with duplicated names? ['
+                                          'Y/n/list]: ')
+        response = response.lower()
+
+        if ('y' == response) or ('yes' == response):
+            return True
+
+        if ('n' == response) or ('no' == response):
+            return False
+
+        if 'list' == response:
+            line_name_lbl = 'Line Name:'
+            existing_lbl = ' # Duplicates of existing lines:'
+            other_csv_lbl = '# Duplicates of other rows in CSV:'
+
+            space = 3
+            name_col_width = max(max_line_name_width, len(line_name_lbl)) + space
+            existing_col_width = max(len(str(max_existing_duplication_count)), len(existing_lbl)) \
+                                 + space
+            csv_col_width = max(len(str(max_csv_line_duplication_count)), len(other_csv_lbl)) + \
+                            space
+
+            print('')
+            print(''.join(((line_name_lbl.ljust(name_col_width)), existing_lbl.ljust(
+                    name_col_width), other_csv_lbl.rjust(csv_col_width))))
+
+            for line_name, study_duplication_count in \
+                    study_line_name_duplication_counts.iteritems():
+
+                csv_duplication_count = csv_line_duplication_counts.get(line_name)
+
+                if not (study_duplication_count or csv_duplication_count):
+                    continue
+
+                print(''.join((line_name.ljust(name_col_width),
+                              str(study_duplication_count).ljust(existing_col_width),
+                              str(csv_duplication_count).ljust(csv_col_width))))
+
+            for line_name, csv_duplication_count in csv_line_duplication_counts.iteritems():
+                if not csv_duplication_count:
+                    continue
+
+                if study_line_name_duplication_counts.has_key(line_name):
+                    continue # already printed out above
+
+                print(''.join((line_name.ljust(name_col_width),
+                              str(0).ljust(existing_col_width),
+                              str(csv_duplication_count).ljust(csv_col_width))))
+
+
 def main():
     now = arrow.utcnow()
     zero_time_delta = now - now
@@ -970,6 +1095,13 @@ def main():
 
             if study:
                 print('Found study %d in EDD, named "%s "' % (study_number, study.name))
+
+            continue_creation = prevent_duplicate_line_names(edd, study_number, csv_summary,
+                                                             input_timer)
+            if not continue_creation:
+                print('Aborting line creation.')
+                return 0
+
 
             ########################################################################################
             # Loop over part numbers in the spreadsheet, looking each one up in ICE to get its UUID
