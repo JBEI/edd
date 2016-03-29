@@ -463,7 +463,8 @@ def find_existing_strains(edd, ice_parts, existing_edd_strains, strains_by_part_
     return True
 
 
-def create_missing_strains(edd, non_existent_edd_strains, strains_by_part_number, ice_part_count):
+def create_missing_strains(edd, non_existent_edd_strains, strains_by_part_number, ice_part_count,
+                           input_timer):
     """
     Creates any missing EDD strains, storing the resulting new strains in strains_by_part_number
     :param edd: an authenticated instance of EddApi
@@ -496,9 +497,8 @@ def create_missing_strains(edd, non_existent_edd_strains, strains_by_part_number
     # loop while gathering user input -- gives user a chance to list strains that will
     # be created
     while True:
-        result = input.user_input('Do you want to create EDD strains for all %d of these '
-                                     'parts? ('
-                           'Y/n/list): ' % non_existent_strain_count).upper()
+        result = input_timer.user_input('Do you want to create EDD strains for all %d of these '
+                                     'parts? (Y/n/list): ' % non_existent_strain_count).upper()
 
         if 'Y' == result or 'YES' == result:
             break
@@ -792,7 +792,7 @@ def main():
     zero_time_delta = now - now
     performance = Performance(arrow.utcnow())
 
-    input = UserInputTimer()
+    input_timer = UserInputTimer()
     edd = None
 
     try:
@@ -866,7 +866,7 @@ def main():
             return 0
 
         if not args.s:
-            result = input.user_input('Do these totals make sense [Y/n]: ').upper()
+            result = input_timer.user_input('Do these totals make sense [Y/n]: ').upper()
             if ('Y' != result) and ('YES' != result):
                 print('Aborting line creation. Please verify that your CSV file has the correct '
                       'content before proceeding with this tool.')
@@ -894,7 +894,7 @@ def main():
             else:
                 if not attempted_login:
                     username = getpass.getuser()
-                username_input = input.user_input('Username [%s]: ' % username)
+                username_input = input_timer.user_input('Username [%s]: ' % username)
                 username = username_input if username_input else username
             if args.p and not attempted_login:
                 password = args.p
@@ -938,7 +938,7 @@ def main():
             study_number = str(args.study) if args.study else None
             STUDY_PROMPT = 'Which EDD study number should lines be created in? '
             if not study_number:
-                study_number = input.user_input(STUDY_PROMPT)
+                study_number = input_timer.user_input(STUDY_PROMPT)
 
             # query user regarding which study to use, then verify it exists in EDD
             digit = re.compile(r'^\s*(\d+)\s*$')
@@ -961,7 +961,7 @@ def main():
                              'edd_url': EDD_URL,
                              'username': username})
 
-                    study_number = input.user_input(STUDY_PROMPT)
+                    study_number = input_timer.user_input(STUDY_PROMPT)
                 else:
                     print('Success!')
 
@@ -995,7 +995,7 @@ def main():
                       "numbers above)")
                 print("Do you want to create EDD lines for the parts that were found? You'll "
                       "have to create the rest manually, using output above as a reference.")
-                result = input.user_input("Create EDD lines for %(found)d of %(total)d parts? "
+                result = input_timer.user_input("Create EDD lines for %(found)d of %(total)d parts? "
                                              "Recall that "
                                    "each ICE part may have many associated lines ("
                                    "Y/n): " %
@@ -1040,7 +1040,7 @@ def main():
 
             # If some strains were missing in EDD, confirm with user, and then create them
             strains_created = create_missing_strains(edd, non_existent_edd_strains,
-                                                     strains_by_part_number, ice_part_count)
+                                                     strains_by_part_number, ice_part_count, input_timer)
             if not strains_created:
                 return 1
 
@@ -1063,8 +1063,8 @@ def main():
 
     finally:
         # compute and print a summary of ellapsed time on various expensive tasks
-        if input:
-            performance.waiting_for_user_delta = input.wait_time
+        if input_timer:
+            performance.waiting_for_user_delta = input_timer.wait_time
         if edd:
             performance.edd_communication_delta = edd.request_generator.wait_time
         performance.overall_end_time = arrow.utcnow()
