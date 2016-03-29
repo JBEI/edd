@@ -256,23 +256,26 @@ def print_found_ice_parts(part_number_to_part_dict):
     col5_width = max(
         len(replace_newlines(part.short_description)) for part in
         part_number_to_part_dict.values()) + space
+    col6_width = max(len(part.uuid) for part in part_number_to_part_dict.values()) + space
 
     col1_lbl = 'Search id:'
     col2_lbl = 'Found Part id: '
     col3_lbl = 'Part id:'
     col4_lbl = 'Name:'
     col5_lbl = 'Description:'
+    col6_lbl = 'UUID:'
 
     col1_width = max([col1_width, len(col1_lbl) + space])
     col2_width = max([col2_width, len(col2_lbl) + space])
     col3_width = max([col3_width, len(col3_lbl) + space])
     col4_width = max([col4_width, len(col4_lbl) + space])
     col5_width = max([col5_width, len(col5_lbl) + space])
+    col6_width = max([col6_width, len(col6_lbl) + space])
 
     # print column headers
     print(''.join(
         [col1_lbl.ljust(col1_width), col2_lbl.ljust(col2_width), col3_lbl.ljust(col3_width),
-         col4_lbl.ljust(col4_width), col5_lbl.ljust(col5_width)]))
+         col4_lbl.ljust(col4_width), col5_lbl.ljust(col5_width), col6_lbl.ljust(col6_width)]))
 
     # print output
     for search_id in part_number_to_part_dict.keys():
@@ -280,7 +283,7 @@ def print_found_ice_parts(part_number_to_part_dict):
         short_description = replace_newlines(part.short_description)
         print(''.join([str(search_id).ljust(col1_width), str(part.id).ljust(col2_width),
                        part.part_id.ljust(col3_width), part.name.ljust(col4_width),
-                       short_description.ljust(col5_width)]))
+                       short_description.ljust(col5_width), part.uuidy.ljust(col6_width)]))
 
 
 class NonStrainPartsError(RuntimeError):
