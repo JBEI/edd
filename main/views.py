@@ -28,12 +28,22 @@ from django.utils.translation import ugettext_lazy as _
 from django.views import generic
 from django.views.decorators.csrf import ensure_csrf_cookie
 
+<<<<<<< d57b09f2755a131c9d7119b5b94fc5bdeb26b2ce
 from jbei.ice.rest.ice import IceApi, STRAIN, IceHmacAuth
 from . import data_import
 from .export import sbml, table
+=======
+from jbei.ice.rest.ice import IceApi, HmacAuth
+from .importer import (
+    TableImport, import_rna_seq, import_rnaseq_edgepro, interpret_edgepro_data,
+    interpret_raw_rna_seq_data,
+)
+from .export.sbml import line_sbml_export
+from .export.table import TableExport
+>>>>>>> Split main/data_import into main/importer/rnaseq and main/importer/table
 from .forms import (
     AssayForm, CreateAttachmentForm, CreateCommentForm, CreateStudyForm, ExportOptionForm,
-    ExportSelectionForm, LineForm, MeasurementForm, MeasurementValueFormSet, WorklistForm
+    ExportSelectionForm, LineForm, MeasurementForm, MeasurementValueFormSet, WorklistForm,
 )
 from .models import (
     Assay, Attachment, Line, Measurement, MeasurementCompartment, MeasurementGroup, MeasurementType,
@@ -538,7 +548,7 @@ class EDDExportView(generic.TemplateView):
                 selection=self._selection,
             )
             if option_form.is_valid():
-                self._export = table.TableExport(
+                self._export = TableExport(
                     self._selection,
                     option_form.get_options(),
                     None,
@@ -833,7 +843,7 @@ def study_import_table(request, study):
                 for key in sorted(request.POST)
             ]))
         try:
-            table = data_import.TableImport(model, request.user, request=request)
+            table = TableImport(model, request.user, request=request)
             added = table.import_data(request.POST)
             messages.success(request, 'Imported %s measurement values.' % added)
         except ValueError as e:
@@ -951,7 +961,7 @@ def study_import_rnaseq(request, study):
     lines = model.line_set.all()
     if request.method == "POST":
         try:
-            result = data_import.import_rna_seq.from_form(request, model)
+            result = import_rna_seq.from_form(request, model)
             messages["success"] = "Added %d measurements in %d assays." % (
                 result.n_assay, result.n_meas)
         except ValueError as e:
@@ -983,9 +993,7 @@ def study_import_rnaseq_edgepro(request, study):
         try:
             if assay_id is None or assay_id == "":
                 raise ValueError("Assay ID required for form submission.")
-            result = data_import.import_rnaseq_edgepro.from_form(
-                request=request,
-                study=model)
+            result = import_rnaseq_edgepro.from_form(request=request, study=model)
             messages["success"] = result.format_message()
         except ValueError as e:
             messages["error"] = str(e)
@@ -1031,11 +1039,10 @@ def study_import_rnaseq_parse(request, study):
     # functions
     try:
         if "edgepro" in referrer:
-            result = data_import.interpret_edgepro_data(raw_data=request.read())
+            result = interpret_edgepro_data(raw_data=request.read())
             result['format'] = "edgepro"
         else:
-            result = data_import.interpret_raw_rna_seq_data(
-                raw_data=request.read(), study=model)
+            result = interpret_raw_rna_seq_data(raw_data=request.read(), study=model)
             result['format'] = "generic"
     except ValueError as e:
         return JsonResponse({"python_error": str(e)})
@@ -1062,15 +1069,9 @@ def study_import_rnaseq_process(request, study):
             file_name = data_file.name
         result = None
         if request.POST.get("format") == "htseq-combined":
-            result = data_import.interpret_raw_rna_seq_data(
-                raw_data=data,
-                study=model,
-                file_name=file_name)
+            result = interpret_raw_rna_seq_data(raw_data=data, study=model, file_name=file_name)
         elif request.POST.get("format") == "edgepro":
-            result = data_import.interpret_edgepro_data(
-                raw_data=data,
-                study=model,
-                file_name=file_name)
+            result = interpret_edgepro_data(raw_data=data, study=model, file_name=file_name)
         else:
             raise ValueError("Format needs to be specified!")
     except ValueError as e:
@@ -1091,11 +1092,12 @@ def study_export_sbml(request, study):
         form = request.GET
     try:
         lines = get_selected_lines(form, model)
-        manager = sbml.line_sbml_export(
+        manager = line_sbml_export(
             study=model,
             lines=lines,
             form=form,
-            debug=True)
+            debug=True
+        )
     except ValueError as e:
         return render(
             request,
