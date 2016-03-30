@@ -7,7 +7,7 @@ import logging
 from collections import defaultdict
 from six import string_types
 
-from .models import (
+from ..models import (
     Assay, GeneIdentifier, Line, Measurement, MeasurementCompartment,
     MeasurementUnit, MeasurementValue, Protocol, Update
 )
