@@ -15,13 +15,13 @@ services:
       - "5432:5432"
     env_file: secrets.env
   solr:
-    image: solr
+    image: solr:5.5
     volumes:
       - solrdata:/opt/solr/server/solr
     ports:
       - "8983:8983"
   rabbitmq:
-    image: rabbitmq:3-management
+    image: rabbitmq:3.6-management
     hostname: rabbitmq
     env_file: secrets.env
     environment:
@@ -84,7 +84,7 @@ services:
     ports:
       - "8000:8000"
   nginx:
-    image: nginx
+    image: nginx:1.9
     links:
       - appserver
       - flower

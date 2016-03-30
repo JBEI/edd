@@ -6,6 +6,10 @@ volumes:
   solrdata:
     external:  # change name below to swap out alternate volumes
       name: solrdata
+  attachdata:
+    external:  # change name below to swap out alternate volumes
+      # NOTE: creation of this volume not covered in README
+      name: attachdata
 services:
   postgres:
     image: postgres:9.4
@@ -15,7 +19,7 @@ services:
       - "5432"
     env_file: secrets.env
   solr:
-    image: solr
+    image: solr:5.5
     depends_on:
       - nginx
     volumes:
@@ -23,7 +27,7 @@ services:
     ports:
       - "8983:8983"
   rabbitmq:
-    image: rabbitmq:3-management
+    image: rabbitmq:3.6-management
     hostname: rabbitmq
     env_file: secrets.env
     environment:
@@ -95,10 +99,12 @@ services:
       - rabbitmq
       - smtp
       - solr
+    volumes:
+      - attachdata:/var/www/uploads
     expose:
       - "8000"
   nginx:
-    image: nginx
+    image: nginx:1.9
     links:
       - appserver
       - flower
