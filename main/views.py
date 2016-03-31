@@ -28,19 +28,13 @@ from django.utils.translation import ugettext_lazy as _
 from django.views import generic
 from django.views.decorators.csrf import ensure_csrf_cookie
 
-<<<<<<< d57b09f2755a131c9d7119b5b94fc5bdeb26b2ce
 from jbei.ice.rest.ice import IceApi, STRAIN, IceHmacAuth
-from . import data_import
-from .export import sbml, table
-=======
-from jbei.ice.rest.ice import IceApi, HmacAuth
 from .importer import (
     TableImport, import_rna_seq, import_rnaseq_edgepro, interpret_edgepro_data,
     interpret_raw_rna_seq_data,
 )
-from .export.sbml import line_sbml_export
-from .export.table import TableExport
->>>>>>> Split main/data_import into main/importer/rnaseq and main/importer/table
+from .export.sbml import line_sbml_export, SbmlExportSettingsForm
+from .export.table import ExportSelection, TableExport, WorklistExport
 from .forms import (
     AssayForm, CreateAttachmentForm, CreateCommentForm, CreateStudyForm, ExportOptionForm,
     ExportSelectionForm, LineForm, MeasurementForm, MeasurementValueFormSet, WorklistForm,
@@ -522,7 +516,7 @@ class EDDExportView(generic.TemplateView):
     def __init__(self, *args, **kwargs):
         super(EDDExportView, self).__init__(*args, **kwargs)
         self._export = None
-        self._selection = table.ExportSelection(None)
+        self._selection = ExportSelection(None)
 
     def get_context_data(self, **kwargs):
         context = super(EDDExportView, self).get_context_data(**kwargs)
@@ -598,7 +592,7 @@ class WorklistView(EDDExportView):
                 data=payload,
             )
             if worklist_form.is_valid():
-                self._export = table.WorklistExport(
+                self._export = WorklistExport(
                     self._selection,
                     worklist_form.options,
                     worklist_form.worklist,
@@ -1134,6 +1128,8 @@ def study_export_sbml(request, study):
                 "study": model,
                 "lines": lines,
                 "error_message": error_message,
+                "select_form": ExportSelectionForm(data=form, user=request.user),
+                "export_settings_form": SbmlExportSettingsForm(),
             },
         )
 

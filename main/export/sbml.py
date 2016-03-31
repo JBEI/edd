@@ -49,6 +49,8 @@ import sys
 import time
 
 from collections import defaultdict, OrderedDict
+from django import forms
+from django.utils.translation import ugettext as _
 from six import string_types
 
 from ..models import (
@@ -247,6 +249,15 @@ class ExchangeInfo(object):
         self.ub_param.setValue(value)
         self.lb_param.setValue(value)
         return len(values)
+
+
+class SbmlExportSettingsForm(forms.Form):
+    """ Form used for selecting settings on SBML exports. """
+    sbml_template = forms.ModelChoiceField(
+        SBMLTemplate.objects.all(),  # TODO: potentially narrow options based on current user?
+        empty_label=None,
+        label=_('SBML Template'),
+    )
 
 
 # adapted from UtilitiesSBML.pm:parseSBML

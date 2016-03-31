@@ -1,131 +1,121 @@
-
-<!--
-
-FIXME far too much logic encoded in this template
-
--->
-
 {% extends "edd_base.html" %}
 {% load staticfiles %}
 
 {% block js_css %}
   {{ block.super }}
+  <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
+  <script type="text/javascript">
+  // FIXME move this somewhere central
+  function disclose() {
+    $(this).closest('.disclose').toggleClass('discloseHide');
+    return false;
+  }
+  $(window).load(function () {
+    $('.disclose').find('a.discloseLink').on('click', disclose);
+  });
+  </script>
+  <script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/StudySBMLExport.js' %}"></script>
 
-<script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.js' %}"></script>
-<script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
-
-<!-- Declare JS objects for later (will be fetched via AJAX) -->
-<script type="text/javascript">
-EDDData = JSON.parse("{{ data.export_JSON|escapejs }}"); // FIXME this is gross
-
-EDDData.currentUserID = {{ user.pk }};
-EDDData.currentStudyID = {{ study.id }};
-
-// FIXME move this somewhere central
-function disclose() {
-  $(this).closest('.disclose').toggleClass('discloseHide');
-  return false;
-}
-$(window).load(function () {
-  $('.disclose').find('a.discloseLink').on('click', disclose);
-});
-
-</script>
-<script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
-<script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
-<script type="text/javascript" src="{% static 'main/js/StudySBMLExport.js' %}"></script>
-
-<!-- style for SVG graphics -->
-<style type="text/css">
-  .cP { stroke:rgba(0,0,0,1); stroke-width:4px; stroke-linecap:round; }
-  .cV { stroke:rgba(0,0,230,1); stroke-width:4px; stroke-linecap:round; }
-  .cE { stroke:rgba(255,128,0,1); stroke-width:4px; stroke-linecap:round; }
-  .cT { stroke:rgba(0,0,0,1); stroke-width:4px; stroke-linecap:round; }
-</style>
-
-<style type="text/css">
-  .bad { color: red; background-color: transparent; }
-</style>
-
+  <style type="text/css">
+    /* style for SVG graphics */
+    .cP { stroke:rgba(0,0,0,1); stroke-width:4px; stroke-linecap:round; }
+    .cV { stroke:rgba(0,0,230,1); stroke-width:4px; stroke-linecap:round; }
+    .cE { stroke:rgba(255,128,0,1); stroke-width:4px; stroke-linecap:round; }
+    .cT { stroke:rgba(0,0,0,1); stroke-width:4px; stroke-linecap:round; }
+    /* style for errors */
+    .bad { color: red; background-color: transparent; }
+  </style>
 {% endblock js_css %}
 
 {% block head_title %}
-  SBML Export For {{ study.name }}
+  {% if selection.studies.values|length == 1 %}
+    SBML Export For {{ selection.studies.values.0.name }} - Experiment Data Depot
+  {% else %}
+    SBML Export For {{ selection.studies.values|length }} Studies - Experiment Data Depot
+  {% endif %}
+{% endblock head_title %}
+{% block head_title %}
+  SBML Export For {{ study.name }} - Experiment Data Depot
 {% endblock head_title %}
 
+
 {% block body_title %}
-  SBML Export For {{ study.name }}
+  SBML Export For {% for study in selection.studies.values %}
+   <a href="{% url 'main:detail' study.id %}">{{ study.name }}</a>{% if not forloop.last %},{% endif %}
+  {% endfor %}
 {% endblock body_title %}
 
+
+{% block status %}
+  {% if error_message %}
+    <h3 class="bad">{{ error_message }}</h3>
+  {% endif %}
+  {{ block.super }}
+{% endblock status %}
+
+
 {% block content %}
-
-{% if error_message %}
-
-<h3 class="bad">{{ error_message }}</h3>
-
-{% endif %}
-
-<!-- Line info section -->
-<div class="pageSection">
-  {% include "main/include_linetable.html" %}
-</div>
-
-
-<form method="post" id="exportForm" action="/study/{{ study.id }}/sbml/">
-{% csrf_token %}
-
-<input type="hidden" name="selectedLineIDs" value="{{ data.selected_line_ids }}" />
-<input type="hidden" name="formSubmittedFromSBMLExport" value="1" />
-
-<!-- Export settings section -->
-<div class="pageSection" style="margin:10px;" id="allstatusmain">
-
-<div class="sectionHead">Export Settings:
-  {% with n_warnings=data.n_warnings %}
-    {% if n_warnings %}
-      <span class="warn2">{{ n_warnings }} warnings</span>
-    {% endif %}
-  {% endwith %}
-</div>
-
-<!-- Step 1 -->
-<input type="hidden"
-  id="statusstep0show"
-  name="statusstep0show"
-  value="0"/>
-<div class="disclose discloseHide" id="step0">
-  <div class="sectionChapter">
-    <span><a href="#" class="discloseLink">
-      Step 1: Select the SBML template file to use for export
-    </a></span>
+  <!-- Line info section -->
+  <div class="disclose discloseHide" id="existinglineshide">
+    <div style="margin:10px">
+      <a href="#" class="discloseLink">
+        {{ selection.measurements|length }} Measurements in {{ selection.assays|length }} Assays in {{ selection.lines|length }} Lines Selected
+      </a>
+    </div>
+    <div id="existingLinesSection" class="pageSection discloseBody" style="border-width:1px;margin:10px;">  
+      {% include "main/include_linetable.html" %}
+    </div>
   </div>
 
-<div class="sectionContent discloseBody" id="statusstep0main">
-  <table style="width:95%">
-    <tr>
-      <td>
-        SBML Template:
-      <select name="chosenmap_id" id="chosenmap" onchange="submitForRefresh();">
-        {% for template in data.template_info %}
-          {% if template.is_selected %}
-            <option value="{{ template.template_id }}" selected="selected">
-              {{ template.file_name }}</option>
-          {% else %}
-            <option value="{{ template.template_id }}">
-              {{ template.file_name }}</option>
-          {% endif %}
-        {% endfor %}
-      </select>
-      <span id="templateWaitBadge" class="waitbadge"></span>
-      </td>
-      <td style="text-align:right">
-        <!-- XXX actual URL TBD -->
-        <a href="/admin/sbml">Manage Templates</a>
-      </td>
-    </tr>
-  </table>
-</div>
-</div><!-- #step0 -->
+  <form method="post" id="exportForm" action="/study/{{ study.id }}/sbml/">
+    {% csrf_token %}
+    <!-- carry over selection -->
+    {{ select_form.as_p }}
+    <!-- Export settings section -->
+    <div class="pageSection" style="margin:10px;" id="allstatusmain">
+      <!-- Show warnings count, if applicable -->
+      <div class="sectionHead">Export Settings:
+        {% if data.n_warnings %}
+          <span class="warn2">{{ data.n_warnings }} warnings</span>
+        {% endif %}
+      </div>
+      <!-- Step 1 -->
+      <input type="hidden" id="statusstep0show" name="statusstep0show" value="0"/>
+      <div class="disclose discloseHide" id="step0">
+        <div class="sectionChapter">
+          <a href="#" class="discloseLink">Step 1: Select the SBML template file to use for export</a>
+        </div>
+        <div class="sectionContent discloseBody" id="statusstep0main">
+          <!-- form method of selecting template -->
+          {{ export_settings_form.as_p }}
+          <!-- old method of selecting template -->
+          <table style="width:95%">
+            <tr>
+              <td>
+                SBML Template:
+              <select name="chosenmap_id" id="chosenmap" onchange="submitForRefresh();">
+                {% for template in data.template_info %}
+                  {% if template.is_selected %}
+                    <option value="{{ template.template_id }}" selected="selected">
+                      {{ template.file_name }}</option>
+                  {% else %}
+                    <option value="{{ template.template_id }}">
+                      {{ template.file_name }}</option>
+                  {% endif %}
+                {% endfor %}
+              </select>
+              <span id="templateWaitBadge" class="waitbadge"></span>
+              </td>
+              <td style="text-align:right">
+                <!-- XXX actual URL TBD -->
+                <a href="/admin/sbml">Manage Templates</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+      </div><!-- #step0 -->
 
 <!--
 
