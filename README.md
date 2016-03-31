@@ -123,6 +123,10 @@ This section contains directions for setting up a development environment on EDD
                           docker exec -i --user=solr temp_solr \
                           tar xf - -C /opt/solr/server/solr/
 
+                * Restart the solr container to read in the just-added config:
+
+                      docker restart temp_solr
+
             * Run database migrations
                 * Build an image for the EDD codebase:  `docker build -t edddjango_edd .`
                 * Run the migrate management command using the EDD image linked to the temporary
@@ -131,6 +135,7 @@ This section contains directions for setting up a development environment on EDD
                       docker run --name temp_edd --rm -i \
                           --link temp_pg:postgres \
                           --link temp_solr:solr \
+                          --volume `pwd`:/code/ -w /code/ \
                           edddjango_edd python manage.py migrate
 
             * Clean-up
