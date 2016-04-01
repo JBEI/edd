@@ -1737,14 +1737,12 @@ def guess_initials(user):
 
 
 def User_profile(self):
-    if hasattr(self, '_profile'):
-        return self._profile
     try:
         from edd.profile.models import UserProfile
-        (self._profile, created) = UserProfile.objects.get_or_create(
-            user=self, defaults={'initials': guess_initials(self)}
-        )
-        return self._profile
+        try:
+            return self.userprofile
+        except UserProfile.DoesNotExist:
+            return UserProfile.objects.create(user=self, initials=guess_initials(self))
     except:
         logger.exception('Failed to load a profile object for %s', self)
         return None
@@ -1756,7 +1754,7 @@ def User_initials(self):
 
 def User_institution(self):
     if self.profile and self.profile.institutions.count():
-        return self.profile.institutions.values_list('institution_name')[0][0]
+        return self.profile.institutions.all()[:1][0].institution_name
     return None
 
 
