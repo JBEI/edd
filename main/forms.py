@@ -598,22 +598,22 @@ class ExportSelectionForm(forms.Form):
         queryset=Study.objects.filter(active=True),
         required=False,
         widget=forms.MultipleHiddenInput
-        )
+    )
     lineId = forms.ModelMultipleChoiceField(
         queryset=Line.objects.filter(active=True),
         required=False,
         widget=forms.MultipleHiddenInput
-        )
+    )
     assayId = forms.ModelMultipleChoiceField(
         queryset=Assay.objects.filter(active=True),
         required=False,
         widget=forms.MultipleHiddenInput
-        )
+    )
     measurementId = forms.ModelMultipleChoiceField(
         queryset=Measurement.objects.filter(active=True),
         required=False,
         widget=forms.MultipleHiddenInput
-        )
+    )
 
     def __init__(self, *args, **kwargs):
         # removes default hard-coded suffix of colon character on all labels
@@ -641,6 +641,7 @@ class ExportSelectionForm(forms.Form):
             else:
                 raise ValueError("Export Selection is invalid")
         return self._selection
+    selection = property(get_selection)
 
 
 class WorklistForm(forms.Form):
@@ -897,12 +898,14 @@ class ExportOptionForm(forms.Form):
             if not self.is_valid():
                 raise ValueError("Export options are invalid")
         return self._options
+    options = property(get_options)
 
     def get_separator(self):
         choice = self.cleaned_data.get('separator', self.COMMA_SEPARATED)
         if choice == self.TAB_SEPARATED:
             return '\t'
         return ','
+    separator = property(get_separator)
 
     def _init_options(self):
         # sometimes self.data is a plain dict instead of a QueryDict

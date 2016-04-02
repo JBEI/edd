@@ -1538,12 +1538,6 @@ class Measurement(EDDMetadata, EDDSerialize):
     def __str__(self):
         return 'Measurement{%d}{%s}' % (self.assay.id, self.measurement_type)
 
-    def is_gene_measurement(self):
-        return self.measurement_type.type_group == MeasurementGroup.GENEID
-
-    def is_protein_measurement(self):
-        return self.measurement_type.type_group == MeasurementGroup.PROTEINID
-
     # may not be the best method name, if we ever want to support other
     # types of data as vectors in the future
     def is_carbon_ratio(self):
@@ -1582,11 +1576,11 @@ class Measurement(EDDMetadata, EDDSerialize):
 
     # TODO also handle vectors
     def extract_data_xvalues(self, defined_only=False):
-        mdata = list(self.data())
+        qs = self.measurementvalue_set.all()
         if defined_only:
-            return [m.x[0] for m in mdata if m.is_defined()]
-        else:
-            return [m.x[0] for m in mdata]
+            qs = qs.exclude(y=None, y__len=0)
+        # first index unpacks single value from tuple; second index unpacks first value from X
+        return map(lambda x: x[0][0], qs.values_list('x'))
 
     # this shouldn't need to handle vectors
     def interpolate_at(self, x):

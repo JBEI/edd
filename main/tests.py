@@ -422,14 +422,12 @@ class AssayDataTests(TestCase):
         metabolites = list(assay.get_metabolite_measurements())
         self.assertTrue(len(metabolites) == 1)
         meas1 = metabolites[0]
-        meas2 = list(assay.get_gene_measurements())[0]
         self.assertTrue(meas1.y_axis_units_name == "mM")
         self.assertTrue(meas1.name == "Acetate")
         self.assertTrue(meas1.short_name == "ac")
         self.assertTrue(meas1.full_name == "IC Acetate")
         self.assertTrue(meas1.is_concentration_measurement())
         self.assertTrue(not meas1.is_carbon_ratio())
-        self.assertTrue(meas2.is_gene_measurement())
         mdata = list(meas1.measurementvalue_set.all())
         self.assertTrue(mdata[0].x[0] == 0)
         self.assertTrue(mdata[0].y[0] == 0)

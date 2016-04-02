@@ -50,11 +50,13 @@ import time
 
 from collections import defaultdict, OrderedDict
 from django import forms
+from django.db.models import Max, Min
+from django.template.defaulttags import register
 from django.utils.translation import ugettext as _
 from six import string_types
 
 from ..models import (
-    Attachment, MeasurementType, MeasurementUnit, Metabolite, MetaboliteExchange,
+    Attachment, Measurement, MeasurementType, MeasurementUnit, Metabolite, MetaboliteExchange,
     MetaboliteSpecies, Protocol, SBMLTemplate,
 )
 from ..utilities import interpolate_at, line_export_base
@@ -251,13 +253,73 @@ class ExchangeInfo(object):
         return len(values)
 
 
-class SbmlExportSettingsForm(forms.Form):
+class SbmlForm(forms.Form):
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault('label_suffix', '')
+        super(SbmlForm, self).__init__(*args, **kwargs)
+
+
+class SbmlExportSettingsForm(SbmlForm):
     """ Form used for selecting settings on SBML exports. """
     sbml_template = forms.ModelChoiceField(
         SBMLTemplate.objects.all(),  # TODO: potentially narrow options based on current user?
         empty_label=None,
         label=_('SBML Template'),
     )
+
+
+@register.filter(name='measurement_widget')
+def measurement_widget(field):
+    """ Template filter will yield a measurement object and its checkbox widget for
+        measurements in SbmlExportMeasurementsForm. """
+    for index, measurement in enumerate(field.field.queryset.all()):
+        yield (measurement, field[index])
+
+
+@register.filter(name='scaled_x')
+def scaled_x(point, x_range):
+    """ """
+    return ((point.x[0] / x_range[1]) * 450) + 10
+
+
+class MeasurementChoiceField(forms.ModelMultipleChoiceField):
+    """ Custom ModelMultipleChoiceField that changes the display of measurement labels. """
+    def label_from_instance(self, obj):
+        return obj.measurement_type.type_name
+
+
+class SbmlExportMeasurementsForm(SbmlForm):
+    """ Form used for selecting measurements to include in SBML exports. """
+    measurementId = MeasurementChoiceField(
+        queryset=Measurement.objects.filter(active=True),
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+    )
+
+    def __init__(self, *args, **kwargs):
+        self._selection = kwargs.pop('selection', None)
+        self._types = kwargs.pop('types', None)
+        self._protocols = kwargs.pop('protocols', None)
+        self.sbml_warnings = []
+        super(SbmlExportMeasurementsForm, self).__init__(*args, **kwargs)
+        f = self.fields['measurementId']
+        f.queryset = f.queryset.filter(pk__in=self._selection.measurements).order_by(
+            'assay__protocol__name', 'assay__name',
+        )
+        if self._types:
+            f.queryset = f.queryset.filter(measurement_type__in=self._types)
+        if self._protocols:
+            f.queryset = f.queryset.filter(assay__protocol_id__in=self._protocols)
+        if f.queryset.count() == 0:
+            self.sbml_warnings.append(_('No protocols have usable data.'))
+
+    def x_range(self):
+        f = self.fields['measurementId']
+        x_range = f.queryset.aggregate(
+            max=Max('measurementvalue__x'), min=Min('measurementvalue__x')
+        )
+        # max and min are both still arrays, grab the first element
+        return (x_range.get('min', [0])[0], x_range.get('max', [0])[0])
 
 
 # adapted from UtilitiesSBML.pm:parseSBML

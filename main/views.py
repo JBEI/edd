@@ -33,7 +33,7 @@ from .importer import (
     TableImport, import_rna_seq, import_rnaseq_edgepro, interpret_edgepro_data,
     interpret_raw_rna_seq_data,
 )
-from .export.sbml import line_sbml_export, SbmlExportSettingsForm
+from .export.sbml import line_sbml_export, SbmlExportMeasurementsForm, SbmlExportSettingsForm
 from .export.table import ExportSelection, TableExport, WorklistExport
 from .forms import (
     AssayForm, CreateAttachmentForm, CreateCommentForm, CreateStudyForm, ExportOptionForm,
@@ -433,8 +433,9 @@ class StudyDetailView(generic.DetailView):
             if line_action == 'export':
                 export_type = request.POST.get('export', 'csv')
                 if export_type == 'sbml':
-                    return HttpResponseRedirect(
-                        reverse('main:sbml_export', kwargs={'study': self.object.pk}))
+                    return SbmlView.as_view()(request, *args, **kwargs)
+                    # return HttpResponseRedirect(
+                    #     reverse('main:sbml_export', kwargs={'study': self.object.pk}))
                 else:
                     return ExportView.as_view()(request, *args, **kwargs)
             elif line_action == 'worklist':
@@ -452,8 +453,9 @@ class StudyDetailView(generic.DetailView):
             if assay_action == 'export':
                 export_type = request.POST.get('export', 'csv')
                 if export_type == 'sbml':
-                    return HttpResponseRedirect(
-                        reverse('main:sbml_export', kwargs={'study': self.object.pk}))
+                    return SbmlView.as_view()(request, *args, **kwargs)
+                    # return HttpResponseRedirect(
+                    #     reverse('main:sbml_export', kwargs={'study': self.object.pk}))
                 else:
                     return ExportView.as_view()(request, *args, **kwargs)
             # but not edit
@@ -518,41 +520,31 @@ class EDDExportView(generic.TemplateView):
         self._export = None
         self._selection = ExportSelection(None)
 
-    def get_context_data(self, **kwargs):
-        context = super(EDDExportView, self).get_context_data(**kwargs)
-        return context
-
-    def get_template_names(self):
-        """ Override in child classes to specify alternate templates. """
-        return ['main/export.html', ]
-
     def get(self, request, *args, **kwargs):
         context = self.get_context_data(**kwargs)
         context.update(self.init_forms(request, request.GET))
         return self.render_to_response(context)
 
+    def get_context_data(self, **kwargs):
+        context = super(EDDExportView, self).get_context_data(**kwargs)
+        return context
+
+    def get_selection(self):
+        return self._selection
+    selection = property(get_selection)
+
+    def get_template_names(self):
+        """ Override in child classes to specify alternate templates. """
+        return ['main/export.html', ]
+
     def init_forms(self, request, payload):
-        initial = ExportOptionForm.initial_from_user_settings(request.user)
         select_form = ExportSelectionForm(data=payload, user=request.user)
         try:
             self._selection = select_form.get_selection()
-            option_form = ExportOptionForm(
-                data=payload,
-                initial=initial,
-                selection=self._selection,
-            )
-            if option_form.is_valid():
-                self._export = TableExport(
-                    self._selection,
-                    option_form.get_options(),
-                    None,
-                )
         except Exception as e:
             logger.error("Failed to validate forms for export: %s", e)
         return {
             'download': payload.get('action', None) == 'download',
-            'output': self._export.output() if self._export else '',
-            'option_form': option_form,
             'select_form': select_form,
             'selection': self._selection,
         }
@@ -574,7 +566,22 @@ class EDDExportView(generic.TemplateView):
 
 class ExportView(EDDExportView):
     """ View to export EDD information in a table/CSV format. """
-    pass
+    def init_forms(self, request, payload):
+        context = super(ExportView, self).init_forms(request, payload)
+        context.update(
+            option_form=None,
+            output='',
+        )
+        try:
+            initial = ExportOptionForm.initial_from_user_settings(request.user)
+            option_form = ExportOptionForm(data=payload, initial=initial, selection=self.selection)
+            context.update(option_form=option_form)
+            if option_form.is_valid():
+                self._export = TableExport(self.selection, option_form.options, None)
+                context.update(output=self._export.output())
+        except Exception as e:
+            logger.error("Failed to validate forms for export: %s", e)
+        return context
 
 
 class WorklistView(EDDExportView):
@@ -584,12 +591,20 @@ class WorklistView(EDDExportView):
         return ['main/worklist.html', ]
 
     def init_forms(self, request, payload):
-        select_form = ExportSelectionForm(data=payload, user=request.user)
+        context = super(WorklistView, self).init_forms(request, payload)
         worklist_form = WorklistForm()
+        context.update(
+            defaults_form=worklist_form.defaults_form,
+            flush_form=worklist_form.flush_form,
+            output='',
+            worklist_form=worklist_form,
+        )
         try:
-            self._selection = select_form.get_selection()
-            worklist_form = WorklistForm(
-                data=payload,
+            worklist_form = WorklistForm(data=payload)
+            context.update(
+                defaults_form=worklist_form.defaults_form,
+                flush_form=worklist_form.flush_form,
+                worklist_form=worklist_form,
             )
             if worklist_form.is_valid():
                 self._export = WorklistExport(
@@ -597,17 +612,53 @@ class WorklistView(EDDExportView):
                     worklist_form.options,
                     worklist_form.worklist,
                 )
+                context.update(output=self._export.output())
         except Exception as e:
             logger.exception("Failed to validate forms for export: %s", e)
-        return {
-            'defaults_form': worklist_form.defaults_form,
-            'download': payload.get('action', None) == 'download',
-            'flush_form': worklist_form.flush_form,
-            'output': self._export.output() if self._export else '',
-            'select_form': select_form,
-            'selection': self._selection,
-            'worklist_form': worklist_form,
-        }
+        return context
+
+
+class SbmlView(EDDExportView):
+    def get_template_names(self):
+        """ Override in child classes to specify alternate templates. """
+        return ['main/sbml_export.html', ]
+
+    def init_forms(self, request, payload):
+        context = super(SbmlView, self).init_forms(request, payload)
+        print('\t\tBefore context: %s' % (context, ))
+        try:
+            context.update(
+                export_settings_form=SbmlExportSettingsForm(
+                    initial={
+                        'sbml_template': self.selection.studies.values()[0].metabolic_map,
+                    },
+                ),
+                od_select_form=SbmlExportMeasurementsForm(
+                    prefix='od', selection=self.selection,
+                    types=MeasurementType.objects.filter(short_name='OD'),
+                    protocols=Protocol.objects.filter(categorization=Protocol.CATEGORY_OD),
+                ),
+                hplc_select_form=SbmlExportMeasurementsForm(
+                    prefix='hplc', selection=self.selection,
+                    protocols=Protocol.objects.filter(categorization=Protocol.CATEGORY_HPLC),
+                ),
+                ms_select_form=SbmlExportMeasurementsForm(
+                    prefix='ms', selection=self.selection,
+                    protocols=Protocol.objects.filter(categorization=Protocol.CATEGORY_LCMS),
+                ),
+                ramos_select_form=SbmlExportMeasurementsForm(
+                    prefix='ramos', selection=self.selection,
+                    protocols=Protocol.objects.filter(categorization=Protocol.CATEGORY_RAMOS),
+                ),
+                omics_select_form=SbmlExportMeasurementsForm(
+                    prefix='ramos', selection=self.selection,
+                    protocols=Protocol.objects.filter(categorization=Protocol.CATEGORY_TPOMICS),
+                ),
+            )
+        except Exception as e:
+            logger.exception("Failed to validate forms for export: %s", e)
+        print('\t\tAfter context: %s' % (context, ))
+        return context
 
 
 # /study/<study_id>/lines/
