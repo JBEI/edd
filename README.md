@@ -89,6 +89,17 @@ This section contains directions for setting up a development environment on EDD
         * Load the Docker environment with:
           `eval "$(docker-machine env default)"`
         * Create `secrets.env` based on the example in `secrets.env-example`
+            * `SECRET_KEY` is the Django server key; pick some random text
+            * `secret2` is a password you choose for the `edduser` PostgreSQL user
+            * `secret3` is a password you choose for the `edd_user` RabbitMQ user
+            * `secret4` is a password you choose for the `flower` Flower user
+            * `ICE_HMAC_KEY` is the key used to authenticate to ICE; set this to the secret used
+              in the ICE instance you connect to for test
+            * `LDAP_PASS` is the password for the `jbei_auth` user by default; you may use your own
+              password by including in your `./settings/local.py`:
+              `AUTH_LDAP_BIND_DN = 'lblEmpNum=[your-six-digit-id],ou=People,dc=lbl,dc=gov'`
+        * Copy `./settings/local.py-example` to `./settings/local.py`; any local-specific settings
+          changes will go here.
         * Create Docker volumes for each of the volumes in `docker-compose.yml`
             * Volumes are containers used to persist data between runs
             * There are `pgdata` and `solrdata` volumes used.
@@ -96,15 +107,17 @@ This section contains directions for setting up a development environment on EDD
                 * `docker volume create --name solrdata`
             * Initialize the postgres volume
                 * Launch a temporary postgres service container with the data volume mounted
-                  (replace `secret#` values with appropriate passwords):
+                  (replace `secret#` values with appropriate passwords for the `postgres` and
+                  `edduser` users, respectively):
 
                       docker run --name temp_pg -d \
                           -v pgdata:/var/lib/postgresql/data \
                           -e POSTGRES_PASSWORD=secret1 \
                           -e EDD_PGPASS=secret2 \
-                          postgres
+                          postgres:9.4
 
-                * Connect to the temporary postgres service and run the init script:
+                * Connect to the temporary postgres service and run the init script (this will
+                  prompt you for the `secret1` password for `postgres` user):
 
                       cat ./docker_services/postgres/init.sql | \
                           docker exec -i temp_pg psql -U postgres template1
@@ -115,7 +128,7 @@ This section contains directions for setting up a development environment on EDD
                       docker run --name temp_solr -dt \
                           -v solrdata:/opt/solr/server/solr \
                           -p "8983:8983" \
-                          solr
+                          solr:5.5
 
                 * Copy configuration from EDD source tree to the `temp_solr` container:
 
@@ -128,7 +141,9 @@ This section contains directions for setting up a development environment on EDD
                       docker restart temp_solr
 
             * Run database migrations
-                * Build an image for the EDD codebase:  `docker build -t edddjango_edd .`
+                * Build an image for the EDD codebase:  `docker build -t edd .`
+                    * This will take a long time on first build
+                    * TODO: set up a Docker image repo, include instructions for use
                 * Run the migrate management command using the EDD image linked to the temporary
                   postgres and solr images:
 
@@ -136,7 +151,7 @@ This section contains directions for setting up a development environment on EDD
                           --link temp_pg:postgres \
                           --link temp_solr:solr \
                           --volume `pwd`:/code/ -w /code/ \
-                          edddjango_edd python manage.py migrate
+                          edd python manage.py migrate
 
             * Clean-up
                 * `docker stop temp_pg && docker rm -v temp_pg`
