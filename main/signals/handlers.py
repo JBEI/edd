@@ -219,7 +219,7 @@ def handle_line_post_delete(sender, instance, **kwargs):
                'This situation is known to occur when a line is deleted directly from the Django '
                'shell rather than from the EDD user interface. ' % {
                     'line_pk': line.pk,
-                    'line.name': line.name,
+                    'line_name': line.name,
                     'username': username
                 })
         subject = "Stale ICE experiment link won't be deleted"
