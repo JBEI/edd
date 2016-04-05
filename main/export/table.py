@@ -112,6 +112,7 @@ class ExportSelection(object):
             'update_ref__mod_by',
             'experimenter',
             'assay__protocol',
+            'assay__line__name',
         )
         self._assays = Assay.objects.filter(
             Q(line__study__in=self._allowed_study),

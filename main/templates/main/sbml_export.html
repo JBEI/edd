@@ -31,16 +31,16 @@
 {% endblock js_css %}
 
 {% block head_title %}
-  {% if selection.studies.values|length == 1 %}
-    SBML Export For {{ selection.studies.values.0.name }} - Experiment Data Depot
+  {% if selection.studies|length == 1 %}
+    SBML Export For {{ selection.studies.0.name }} - Experiment Data Depot
   {% else %}
-    SBML Export For {{ selection.studies.values|length }} Studies - Experiment Data Depot
+    SBML Export For {{ selection.studies|length }} Studies - Experiment Data Depot
   {% endif %}
 {% endblock head_title %}
 
 
 {% block body_title %}
-  SBML Export For {% for study in selection.studies.values %}
+  SBML Export For {% for study in selection.studies %}
    <a href="{% url 'main:detail' study.id %}">{{ study.name }}</a>{% if not forloop.last %},{% endif %}
   {% endfor %}
 {% endblock body_title %}
@@ -132,8 +132,7 @@
                 {% endifchanged %}
                 </td>
                 <td class="nowrap popupcell">{{ widget }}</td>
-                <td class="right-txt"
-                    style="width:30px;">{{ values|length }}</td>
+                <td class="right-txt" style="width:30px;">{{ values|length }}</td>
                 <td style="padding:3px 2px 0px 2px;width:60%;">
                   <svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"
                       version="1.2" width="100%" height="10px" viewBox="0 0 470 10">
@@ -204,8 +203,7 @@
                   <td class="nowrap popupcell">{{ widget }}</td>
                   <td class="nowrap right-txt">{{ measurement.y_units }}</td>
                   <td class="right-txt"><!-- TODO --></td>
-                  <td class="right-txt"
-                      style="width:30px;">{{ values|length }}</td>
+                  <td class="right-txt" style="width:30px;">{{ values|length }}</td>
                   <td style="padding:3px 2px 0px 2px;width:60%;">
                     <svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"
                         version="1.2" width="100%" height="10px" viewBox="0 0 470 10">
@@ -277,8 +275,7 @@
                   <td class="nowrap popupcell">{{ widget }}</td>
                   <td class="nowrap right-txt">{{ measurement.y_units }}</td>
                   <td class="right-txt"><!-- TODO --></td>
-                  <td class="right-txt"
-                      style="width:30px;">{{ values|length }}</td>
+                  <td class="right-txt" style="width:30px;">{{ values|length }}</td>
                   <td style="padding:3px 2px 0px 2px;width:60%;">
                     <svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"
                         version="1.2" width="100%" height="10px" viewBox="0 0 470 10">
@@ -303,130 +300,80 @@
           {% endwith %}
         </div>
       </div><!-- #step3 -->
-
-<!--
-
-Step 5 (RAMOS O2/CO2)
-
--->
-
-<input type="hidden"
-        id="statusstep4show"
-        name="statusstep4show"
-        value="0"/>
-
-{% if data.need_ramos_units_warning %}
-<div class="disclose" id="step4">
-{% else %}
-<div class="disclose discloseHide" id="step4">
-{% endif %}
-  <div class="sectionChapter">
-    <span>
-      <a href="#" class="discloseLink">
-        Step 5: Select RAMOS O2/CO2 Measurements
-      </a>
-    </span>
-    <!-- TODO warnings -->
-  </div>
-
-<div class="sectionContent discloseBody" id="statusstep4main">
-  {% if data.n_ramos_measurements %}
-    {% if data.need_ramos_units_warning %}
-  <div class="warn2">
-    RAMOS measurements must be supplied in units of <b>mol/L/hr</b>,
-    but some of your data has no units labels assigned at all.
-    Since the RAMOS equipment generates measurements in units of
-    <b>mol/L/hr</b> by default, we will assume your data is in the correct
-    units.  This is dangerous, and at some point you should probably add unit
-    labels to your data.
-  </div>
-    {% endif %}
-    {% for protocol in data.export_ramos_measurements %}
-  <div class="rounded-border">
-    <!-- TODO make as much of this as possible more modular, and/or use JS -->
-    <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
-      <tr>
-        <td>Assay</td>
-        <td colspan="2">Measurement</td>
-        <td style="text-align:right;width:60px;">Is Input</td>
-        <td colspan="2"></td>
-      </tr>
-      {% for assay in protocol.assays %}
-        {% for measurement in assay.measurements %}
-      <tr>
-        <td class="nowrap">
-          {% if forloop.counter == 1 %}
-            {{ assay.name }}
+      <!--
+      Step 5 (RAMOS O2/CO2)
+      -->
+      <input type="hidden" id="statusstep4show" name="statusstep4show" value="0"/>
+      <div class="disclose discloseHide" id="step4">
+        <div class="sectionChapter">
+          <span>
+            <a href="#" class="discloseLink">Step 5: Select RAMOS O2/CO2 Measurements</a>
+          </span>
+          {% if ramos_select_form.sbml_warnings|length %}
+          <span class="warn2">
+            {% blocktrans count counter=ramos_select_form.sbml_warnings|length %}
+            {{ counter }} warning
+            {% plural %}
+            {{ counter }} warnings
+            {% endblocktrans %}
+          </span>
           {% endif %}
-        </td>
-        <td class="nowrap popupcell">
-          <input type="checkbox"
-            name="{{ measurement.type }}{{ measurement.id }}include"
-            id="{{ measurement.type }}{{ measurement.id }}include"
-            {% if measurement.include %}
-            checked="checked"
-            {% endif %}
-            value="{{ measurement.id }}"/>{{ measurement.name }}
-        </td>
-        <td class="nowrap" style="text-align:right;">
-          {{ measurement.units }}
-        </td>
-        <td style="text-align:right;">
-          {% if measurement.type == "measurement" %}
-          <input type="checkbox"
-            name="measurement{{ measurement.id }}input"
-            id="measurement{{ measurement.id }}input"
-            {% if measurement.input %}
-            checked="checked"
-            {% endif %}
-            value="{{ measurement.id }}"/>
-          {% endif %}
-        </td>
-        <td style="text-align:right;width:30px;">
-          {{ measurement.n_points }}
-        </td>
-        <td style="padding:3px 2px 0px 2px;width:60%;">
-          <svg xmlns="http://www.w3.org/2000/svg"
-              version="1.2"
-              width="100%"
-              height="10px"
-              viewBox="0 0 470 10"
-              preserveAspectRatio="none">
-            <path fill="rgba(0,0,0,0.0.05)"
-              stroke="rgba(0,0,0,0.05)"
-              d="M10,5h450"
-              style="stroke-width:2px;"
-              stroke-width="2"></path>
-            {% for md in measurement.data_points %}
-              {% if md.y == None %}
-                <path class="cE" d="M{{ md.rx }},1v8">
-              {% elif measurement.format == 0 %}
-                <path class="cP" d="M{{ md.rx }},1v8">
-              {% endif %}
-                  <title>{{ md.title }}</title>
-                </path>
-            {% endfor %}
-          </svg>
-        </td>
-      </tr>
-      {% endfor %}
-      {% endfor %}
-    </table>
-  </div>
-  {% endfor %}<!-- data.export_ramos_measurements -->
-
-  {% elif data.n_ramos_protocols %}
-    <div>No usable O2/CO2 (RAMOS-based) measurements are present.
-      To be usable, measurements must have a timestamp somewhere inside the
-      range of the OD measurements, and be in units of <b>mol/L/hr</b>.
-    </div>
-  {% else %}
-    <div class="warn2">
-      Cannot find any Protocols with "O2" and "CO2" in the name!
-    </div>
-  {% endif %}
-</div>
-</div><!-- #step4 -->
+        </div>
+        <div class="sectionContent discloseBody" id="statusstep4main">
+          {% for message in ramos_select_form.sbml_warnings %}
+          <div class="warn2">{{ message }}</div>
+          {% endfor %}
+          {% with x_range=ramos_select_form.x_range %}
+          {% for protocol, items in ramos_select_form.protocol_split %}
+            <div>Protocol <b>{{ protocol.name }}</b></div>
+            <div class="rounded-border">
+              <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
+                <tr>
+                  <td>Assay</td>
+                  <td colspan="2">Measurement</td>
+                  <td class="right-txt" style="width:60px;">Is Input</td>
+                  <td colspan="2">Recorded Values</td>
+                </tr>
+                {% for measurement, widget in items %}
+                {% with values=measurement.measurementvalue_set.all assay=measurement.assay %}
+                <tr>
+                  <td class="nowrap">
+                  {% ifchanged assay %}
+                    {{ assay.line.name }}-{{ protocol.name }}-{{ assay.name }}
+                  {% endifchanged %}
+                  </td>
+                  <td class="nowrap popupcell">{{ widget }}</td>
+                  <td class="nowrap right-txt">{{ measurement.y_units }}</td>
+                  <td class="right-txt"><!-- TODO --></td>
+                  <td class="right-txt" style="width:30px;">{{ values|length }}</td>
+                  <td style="padding:3px 2px 0px 2px;width:60%;">
+                    <svg xmlns="http://www.w3.org/2000/svg"
+                        version="1.2"
+                        width="100%"
+                        height="10px"
+                        viewBox="0 0 470 10"
+                        preserveAspectRatio="none">
+                      <path fill="rgba(0,0,0,0.0.05)"
+                        stroke="rgba(0,0,0,0.05)"
+                        d="M10,5h450"
+                        style="stroke-width:2px;"
+                        stroke-width="2"></path>
+                      {% for md in values %}
+                      <path class="cP" d="M{{ md|scaled_x:x_range }},1v8">
+                        <title>{{ md.y.0 }} at {{ md.x.0 }}</title>
+                      </path>
+                      {% endfor %}<!-- points -->
+                    </svg>
+                  </td>
+                </tr>
+                {% endwith %}
+                {% endfor %}<!-- measurements -->
+              </table>
+            </div>
+          {% endfor %}<!-- data.export_ramos_measurements -->
+          {% endwith %}
+        </div>
+      </div><!-- #step4 -->
 
 <!--
 
