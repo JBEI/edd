@@ -629,7 +629,7 @@ class SbmlView(EDDExportView):
             context.update(
                 export_settings_form=SbmlExportSettingsForm(
                     initial={
-                        'sbml_template': self.selection.studies.values()[0].metabolic_map,
+                        'sbml_template': self.selection.studies[0].metabolic_map,
                     },
                 ),
                 od_select_form=SbmlExportMeasurementsForm(

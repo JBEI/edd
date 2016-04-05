@@ -308,10 +308,12 @@ class SbmlExportMeasurementsForm(SbmlForm):
             self.sbml_warnings.append(_('No protocols have usable data.'))
 
     def measurement_split(self):
+        print('\t\Measurement_split: %s' % len(self.measurement_list))
         for index, measurement in enumerate(self.measurement_list):
             yield (measurement, self.measurement_widgets[index])
 
     def protocol_split(self):
+        print('\t\tProtocol_split: %s' % len(self.measurement_list))
         prev_protocol = None
         items = []
         # loop over all the choices in the queryset

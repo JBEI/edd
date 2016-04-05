@@ -120,13 +120,17 @@
               <tr>
                 <td>Assay</td>
                 <td>Measurement</td>
-                <td colspan="2"></td>
+                <td colspan="2">Recorded Values</td>
               </tr>
               {% with x_range=od_select_form.x_range %}
               {% for measurement, widget in od_select_form.measurement_split %}
               {% with values=measurement.measurementvalue_set.all assay=measurement.assay %}
               <tr>
-                <td class="nowrap">{{ assay.line.name }}-{{ assay.protocol.name }}-{{ assay.name }}</td>
+                <td class="nowrap">
+                {% ifchanged assay %}
+                  {{ assay.line.name }}-{{ assay.protocol.name }}-{{ assay.name }}
+                {% endifchanged %}
+                </td>
                 <td class="nowrap popupcell">{{ widget }}</td>
                 <td class="right-txt"
                     style="width:30px;">{{ values|length }}</td>
@@ -153,7 +157,6 @@
           </div>
         </div>
       </div><!-- #step1 -->
-
       <!--
       Step 3 (HPLC) 
       This is more complicated than the previous section, because it is designed to handle multiple
@@ -187,13 +190,17 @@
                 <tr>
                   <td>Assay</td>
                   <td colspan="2">Measurement</td>
-                  <td style="text-align:right;width:60px;">Is Input</td>
-                  <td colspan="2"></td>
+                  <td class="right-txt" style="width:60px;">Is Input</td>
+                  <td colspan="2">Recorded Values</td>
                 </tr>
                 {% for measurement, widget in items %}
                 {% with values=measurement.measurementvalue_set.all assay=measurement.assay %}
                 <tr>
-                  <td class="nowrap">{{ assay.line.name }}-{{ protocol.name }}-{{ assay.name }}</td>
+                  <td class="nowrap">
+                  {% ifchanged assay %}
+                    {{ assay.line.name }}-{{ protocol.name }}-{{ assay.name }}
+                  {% endifchanged %}
+                  </td>
                   <td class="nowrap popupcell">{{ widget }}</td>
                   <td class="nowrap right-txt">{{ measurement.y_units }}</td>
                   <td class="right-txt"><!-- TODO --></td>
@@ -224,129 +231,78 @@
         </div>
       </div><!-- #step2 -->
 
-<!--
-
-Step 4 (LC-MS)
-
-(This is almost identical to the previous section for HPLC protocols)
-
--->
-
-<input type="hidden"
-      id="statusstep3show"
-      name="statusstep3show"
-      value="0"/>
-
-<div class="disclose discloseHide" id="step3">
-  <div class="sectionChapter">
-    <span>
-      <a href="#" class="discloseLink">
-  Step 4: Select LCMS-like Measurements, and inputs
-      </a>
-    </span>
-    <!-- TODO warnings -->
-  </div>
-
-<div class="sectionContent discloseBody" id="statusstep3main">
-{% if data.n_lcms_measurements %}
-  {% for protocol in data.export_lcms_measurements %}
-  <div>Protocol <b>{{ protocol.name }}</b></div>
-  <div class="rounded-border">
-    <!-- TODO make as much of this as possible more modular, and/or use JS -->
-    <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
-      <tr>
-        <td>Assay</td>
-        <td colspan="2">Measurement</td>
-        <td style="text-align:right;width:60px;">Is Input</td>
-        <td colspan="2"></td>
-      </tr>
-      {% for assay in protocol.assays %}
-        {% for measurement in assay.measurements %}
-      <tr>
-        <td class="nowrap">
-          {% if forloop.counter == 1 %}
-            {{ assay.name }}
+      <!--
+      Step 4 (LC-MS)
+      (This is almost identical to the previous section for HPLC protocols)
+      -->
+      <input type="hidden" id="statusstep3show" name="statusstep3show" value="0"/>
+      <div class="disclose discloseHide" id="step3">
+        <div class="sectionChapter">
+          <span>
+            <a href="#" class="discloseLink">Step 4: Select LCMS-like Measurements, and inputs</a>
+          </span>
+          {% if hplc_select_form.sbml_warnings|length %}
+          <span class="warn2">
+            {% blocktrans count counter=ms_select_form.sbml_warnings|length %}
+            {{ counter }} warning
+            {% plural %}
+            {{ counter }} warnings
+            {% endblocktrans %}
+          </span>
           {% endif %}
-        </td>
-        <td class="nowrap popupcell">
-          <input type="checkbox"
-            name="{{ measurement.type }}{{ measurement.id }}include"
-            id="{{ measurement.type }}{{ measurement.id }}include"
-            {% if measurement.include %}
-              checked="checked"
-            {% endif %}
-            value="{{ measurement.id }}"/>{{ measurement.name }}
-        </td>
-        <td class="nowrap" style="text-align:right;">
-          {{ measurement.units }}
-        </td>
-        <td style="text-align:right;">
-          {% if measurement.type == "measurement" %}
-            {% if measurement.format == 0 %}<!-- not a carbon ratio -->
-          <input type="checkbox"
-            name="measurement{{ measurement.id }}input"
-            id="measurement{{ measurement.id }}input"
-              {% if measurement.input %}
-              checked="checked"
-              {% endif %}
-            value="{{ measurement.id }}"/>
-            {% endif %}
-          {% endif %}
-        </td>
-        <td style="text-align:right;width:30px;">
-          {{ measurement.n_points }}
-        </td>
-        <td style="padding:3px 2px 0px 2px;width:60%;">
-          <svg xmlns="http://www.w3.org/2000/svg"
-              version="1.2"
-              width="100%"
-              height="10px"
-              viewBox="0 0 470 10"
-              preserveAspectRatio="none">
-            <path fill="rgba(0,0,0,0.0.05)"
-              stroke="rgba(0,0,0,0.05)"
-              d="M10,5h450"
-              style="stroke-width:2px;"
-              stroke-width="2"></path>
-            {% for md in measurement.data_points %}
-              {% if measurement.type != "measurement" %}
-                <path class="cT" d="M{{ md.rx }},1v8">
-              {% elif md.y == None %}
-                <path class="cE" d="M{{ md.rx }},1v8">
-              {% elif measurement.format == 0 %}
-                <path class="cP" d="M{{ md.rx }},1v8">
-              {% else %}
-                <path class="cV" d="M{{ md.rx }},1v8">
-              {% endif %}
-                  <title>{{ md.title }}</title>
-                </path>
-            {% endfor %}
-          </svg>
-        </td>
-      </tr>
-      {% endfor %}<!-- measurements -->
-      {% endfor %}<!-- assays -->
-    </table>
-  </div>
-  {% endfor %}<!-- protocols -->
-
-{% elif data.n_lcms_protocols %}
-  <div>
-    No usable LC-MS-based measurements are present.
-    To be usable, measurements must have a timestamp somewhere inside the
-    range of the OD measurements, and either be carbon ratios, or a single
-    number in any of the following units: <b>mg/L</b>, <b>g/L</b>,
-    <b>mol/L</b>, <b>mM</b>, <b>uM</b>, or <b>Cmol/L</b>.
-  </div>
-{% else %}
-  <div class="warn2">
-    Cannot find any Protocols with "GCMS", "LCMS", or variants like "LC-MS" or
-    "LC/MS" in the name!
-  </div>
-{% endif %}<!-- data.n_usable_lcms_measurements -->
-
-</div>
-</div><!-- #step3 -->
+        </div>
+        <div class="sectionContent discloseBody" id="statusstep3main">
+          {% for message in ms_select_form.sbml_warnings %}
+          <div class="warn2">{{ message }}</div>
+          {% endfor %}
+          {% with x_range=ms_select_form.x_range %}
+          {% for protocol, items in ms_select_form.protocol_split %}
+            <div>Protocol <b>{{ protocol.name }}</b></div>
+            <div class="rounded-border">
+              <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
+                <tr>
+                  <td>Assay</td>
+                  <td colspan="2">Measurement</td>
+                  <td class="right-txt" style="width:60px;">Is Input</td>
+                  <td colspan="2">Recorded Values</td>
+                </tr>
+                {% for measurement, widget in items %}
+                {% with values=measurement.measurementvalue_set.all assay=measurement.assay %}
+                <tr>
+                  <td class="nowrap">
+                  {% ifchanged assay %}
+                    {{ assay.line.name }}-{{ protocol.name }}-{{ assay.name }}
+                  {% endifchanged %}
+                  </td>
+                  <td class="nowrap popupcell">{{ widget }}</td>
+                  <td class="nowrap right-txt">{{ measurement.y_units }}</td>
+                  <td class="right-txt"><!-- TODO --></td>
+                  <td class="right-txt"
+                      style="width:30px;">{{ values|length }}</td>
+                  <td style="padding:3px 2px 0px 2px;width:60%;">
+                    <svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"
+                        version="1.2" width="100%" height="10px" viewBox="0 0 470 10">
+                      <path fill="rgba(0,0,0,0.0.05)"
+                          stroke="rgba(0,0,0,0.05)"
+                          d="M10,5h450"
+                          style="stroke-width:2px;"
+                          stroke-width="2"></path>
+                      {% for md in values %}
+                      <path class="cP" d="M{{ md|scaled_x:x_range }},1v8">
+                        <title>{{ md.y.0 }} at {{ md.x.0 }}</title>
+                      </path>
+                      {% endfor %}<!-- points -->
+                    </svg>
+                  </td>
+                </tr>
+                {% endwith %}
+                {% endfor %}<!-- measurements -->
+              </table>
+            </div>
+          {% endfor %}<!-- protocols -->
+          {% endwith %}
+        </div>
+      </div><!-- #step3 -->
 
 <!--
 
