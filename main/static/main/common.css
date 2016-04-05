@@ -57,6 +57,9 @@ a:hover {
 .nowrap {
     white-space:nowrap;
 }
+.right-txt {
+    text-align: right;
+}
 .off {
     display:none;
     visibility:hidden;

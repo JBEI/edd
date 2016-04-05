@@ -112,19 +112,9 @@
           {% endif %}
         </div>
         <div class="sectionContent discloseBody" id="statusstep1main">
-          {% if not data.have_gcdw_metadata %}
-          <div class="warn2">
-            Cannot find the gCDW/L/OD600 metadata type by name! You should probably create one.
-          </div>
-          {% endif %}
-          {% if data.used_generic_GCDW_in_assays %}
-          <div class="warn2">
-            OD600 measurements need a calibration factor to be converted into gCDW/L. You can add
-            this as metadata, at the Assay or Line level. For now, the EDD is using the default
-            gCDW/L/OD600 value of <b>0.65</b> for {{ data.used_generic_GCDW_in_assays }} of your
-            selected Measurements.
-          </div>
-          {% endif %}
+          {% for message in od_select_form.sbml_warnings %}
+          <div class="warn2">{{ message }}</div>
+          {% endfor %}
           <div class="rounded-border">
             <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
               <tr>
@@ -133,20 +123,22 @@
                 <td colspan="2"></td>
               </tr>
               {% with x_range=od_select_form.x_range %}
-              {% for measurement, widget in od_select_form.measurementId|measurement_widget %}
+              {% for measurement, widget in od_select_form.measurement_split %}
+              {% with values=measurement.measurementvalue_set.all assay=measurement.assay %}
               <tr>
-                <td class="nowrap">{{ measurement.full_name }}</td>
+                <td class="nowrap">{{ assay.line.name }}-{{ assay.protocol.name }}-{{ assay.name }}</td>
                 <td class="nowrap popupcell">{{ widget }}</td>
-                <td style="text-align:right;width:30px;">{{ measurement.measurementvalue_set.count }}</td>
+                <td class="right-txt"
+                    style="width:30px;">{{ values|length }}</td>
                 <td style="padding:3px 2px 0px 2px;width:60%;">
                   <svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"
                       version="1.2" width="100%" height="10px" viewBox="0 0 470 10">
                     <path fill="rgba(0,0,0,0.0.05)"
-                      stroke="rgba(0,0,0,0.05)"
-                      d="M10,5h450"
-                      style="stroke-width:2px;"
-                      stroke-width="2"></path>
-                    {% for md in measurement.measurementvalue_set.all %}
+                        stroke="rgba(0,0,0,0.05)"
+                        d="M10,5h450"
+                        style="stroke-width:2px;"
+                        stroke-width="2"></path>
+                    {% for md in values %}
                     <path class="cP" d="M{{ md|scaled_x:x_range }},1v8">
                       <title>{{ md.y.0 }} at {{ md.x.0 }}</title>
                     </path>
@@ -154,137 +146,83 @@
                   </svg>
                 </td>
               </tr>
+              {% endwith %}
               {% endfor %}<!-- measurements -->
               {% endwith %}
             </table>
           </div>
-          <div>
-            Located and consolidated useful Optical Data for
-            {{ data.n_lines_with_useful_od }} Lines.
-          </div>
         </div>
       </div><!-- #step1 -->
 
-<!--
-
-Step 3 (HPLC) 
-
-This is more complicated than the previous section, because it is designed to
-handle multiple protocols, and there is an additional "input" checkbox for
-each measurement.
-
--->
-<input type="hidden"
-    id="statusstep2show"
-    name="statusstep2show"
-    value="0"/>
-
-<div class="disclose discloseHide" id="step2">
-  <div class="sectionChapter">
-    <span>
-      <a href="#" class="discloseLink">
-        Step 3: Select HPLC-like Measurements, and inputs
-      </a>
-    </span>
-    <!-- TODO warnings -->
-  </div>
-
-<div class="sectionContent discloseBody" id="statusstep2main">
-{% if data.n_hplc_measurements %}
-  {% for protocol in data.export_hplc_measurements %}
-  <div>Protocol <b>{{ protocol.name }}</b></div>
-  <div class="rounded-border">
-    <!-- TODO make as much of this as possible more modular, and/or use JS -->
-    <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
-      <tr>
-        <td>Assay</td>
-        <td colspan="2">Measurement</td>
-        <td style="text-align:right;width:60px;">Is Input</td>
-        <td colspan="2"></td>
-      </tr>
-      {% for assay in protocol.assays %}
-        {% for measurement in assay.measurements %}
-      <tr>
-        <td class="nowrap">
-          {% if forloop.counter == 1 %}
-            {{ assay.name }}
+      <!--
+      Step 3 (HPLC) 
+      This is more complicated than the previous section, because it is designed to handle multiple
+      protocols, and there is an additional "input" checkbox for each measurement.
+      -->
+      <input type="hidden" id="statusstep2show" name="statusstep2show" value="0"/>
+      <div class="disclose discloseHide" id="step2">
+        <div class="sectionChapter">
+          <span>
+            <a href="#" class="discloseLink">Step 3: Select HPLC-like Measurements, and inputs</a>
+          </span>
+          {% if hplc_select_form.sbml_warnings|length %}
+          <span class="warn2">
+            {% blocktrans count counter=hplc_select_form.sbml_warnings|length %}
+            {{ counter }} warning
+            {% plural %}
+            {{ counter }} warnings
+            {% endblocktrans %}
+          </span>
           {% endif %}
-        </td>
-        <td class="nowrap popupcell">
-          <input type="checkbox"
-            name="{{ measurement.type }}{{ measurement.id }}include"
-            id="{{ measurement.type }}{{ measurement.id }}include"
-            {% if measurement.include %}
-              checked="checked"
-            {% endif %}
-            value="{{ measurement.id }}"/>{{ measurement.name }}
-        </td>
-        <td class="nowrap" style="text-align:right;">{{ measurement.units }}
-        </td>
-        <td style="text-align:right;">
-          {% if measurement.type == "measurement" %}
-            {% if measurement.format == 0 %}<!-- not a carbon ratio -->
-            <input type="checkbox"
-              name="measurement{{ measurement.id }}input"
-              id="measurement{{ measurement.id }}input"
-              {% if measurement.input %}
-                checked="checked"
-              {% endif %}
-              value="{{ measurement.id }}"/>
-            {% endif %}
-          {% endif %}
-        </td>
-        <td style="text-align:right;width:30px;">
-          ({{ measurement.n_points }})
-        </td>
-        <td style="padding:3px 2px 0px 2px;width:60%;">
-          <svg xmlns="http://www.w3.org/2000/svg"
-              version="1.2"
-              width="100%"
-              height="10px"
-              viewBox="0 0 470 10"
-              preserveAspectRatio="none">
-            <path fill="rgba(0,0,0,0.0.05)"
-              stroke="rgba(0,0,0,0.05)"
-              d="M10,5h450"
-              style="stroke-width:2px;"
-              stroke-width="2"></path>
-            {% for md in measurement.data_points %}
-              {% if measurement.type != "measurement" %}
-                <path class="cT" d="M{{ md.rx }},1v8">
-              {% elif md.y == None %}
-                <path class="cE" d="M{{ md.rx }},1v8">
-              {% elif measurement.format == 0 %}
-                <path class="cP" d="M{{ md.rx }},1v8">
-              {% else %}
-                <path class="cV" d="M{{ md.rx }},1v8">
-              {% endif %}
-                  <title>{{ md.title }}</title>
-                </path>
-            {% endfor %}
-          </svg>
-        </td>
-      </tr>
-      {% endfor %}<!-- assay.measurements -->
-      {% endfor %}<!-- protocol.assays -->
-    </table>
-  </div>
-  {% endfor %}<!-- protocols -->
-
-{% elif data.n_hplc_protocols %}
-  <div class="warn2">
-    No usable HPLC-based measurements are present.
-    To be usable, measurements must have a timestamp somewhere inside the
-    range of the OD measurements.  Metabolite measurements must be in any
-    of the following units:<b>mg/L</b>, <b>g/L</b>, <b>mol/L</b>,
-    <b>mM</b>, <b>uM</b>, or <b>Cmol/L</b>.
-  </div>
-{% else %}
-  <div class="warn2">Cannot find any Protocols with "HPLC" in the name!</div>
-{% endif %}<!-- if data.n_usable_hplc_protocols -->
-
-</div><!-- #statusstep2main -->
-</div><!-- #step3 -->
+        </div>
+        <div class="sectionContent discloseBody" id="statusstep2main">
+          {% for message in hplc_select_form.sbml_warnings %}
+          <div class="warn2">{{ message }}</div>
+          {% endfor %}
+          {% with x_range=hplc_select_form.x_range %}
+          {% for protocol, items in hplc_select_form.protocol_split %}
+            <div>Protocol <b>{{ protocol.name }}</b></div>
+            <div class="rounded-border">
+              <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
+                <tr>
+                  <td>Assay</td>
+                  <td colspan="2">Measurement</td>
+                  <td style="text-align:right;width:60px;">Is Input</td>
+                  <td colspan="2"></td>
+                </tr>
+                {% for measurement, widget in items %}
+                {% with values=measurement.measurementvalue_set.all assay=measurement.assay %}
+                <tr>
+                  <td class="nowrap">{{ assay.line.name }}-{{ protocol.name }}-{{ assay.name }}</td>
+                  <td class="nowrap popupcell">{{ widget }}</td>
+                  <td class="nowrap right-txt">{{ measurement.y_units }}</td>
+                  <td class="right-txt"><!-- TODO --></td>
+                  <td class="right-txt"
+                      style="width:30px;">{{ values|length }}</td>
+                  <td style="padding:3px 2px 0px 2px;width:60%;">
+                    <svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"
+                        version="1.2" width="100%" height="10px" viewBox="0 0 470 10">
+                      <path fill="rgba(0,0,0,0.0.05)"
+                          stroke="rgba(0,0,0,0.05)"
+                          d="M10,5h450"
+                          style="stroke-width:2px;"
+                          stroke-width="2"></path>
+                      {% for md in values %}
+                      <path class="cP" d="M{{ md|scaled_x:x_range }},1v8">
+                        <title>{{ md.y.0 }} at {{ md.x.0 }}</title>
+                      </path>
+                      {% endfor %}<!-- points -->
+                    </svg>
+                  </td>
+                </tr>
+                {% endwith %}
+                {% endfor %}<!-- measurements -->
+              </table>
+            </div>
+          {% endfor %}<!-- protocols -->
+          {% endwith %}
+        </div>
+      </div><!-- #step2 -->
 
 <!--
 

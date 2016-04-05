@@ -34,20 +34,21 @@ Table displaying selected lines; used for table and SBML export pages
 </tr>
 
 {% for id, line in selection.lines.items %}
+{% with carbon_source=line.carbon_source.all %}
 <!-- {{ id }} {{ line }} -->
 <tr class="stripeRowA" data-line-id="{{ line.id }}"><td>{{ line.name }}</td>
   <td>{{ line.strain_ids }}</td>
   <td>{{ line.media }}</td>
   <td>
     <ul>
-    {% for carbon in line.carbon_source.all %}
+    {% for carbon in carbon_source %}
       <li>{{ carbon.name }}</li>
     {% endfor %}
     </ul>
   </td>
   <td>
     <ul>
-    {% for carbon in line.carbon_source.all %}
+    {% for carbon in carbon_source %}
       <li>{{ carbon.labeling }}</li>
     {% endfor %}
     </ul>
@@ -55,5 +56,6 @@ Table displaying selected lines; used for table and SBML export pages
   <td style="text-align:center;">{{ line.experimenter.userprofile.initials }}</td>
   <td>{{ line.last_modified }}</td>
 </tr>
+{% endwith %}
 {% endfor %}
 </table>

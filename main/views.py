@@ -625,7 +625,6 @@ class SbmlView(EDDExportView):
 
     def init_forms(self, request, payload):
         context = super(SbmlView, self).init_forms(request, payload)
-        print('\t\tBefore context: %s' % (context, ))
         try:
             context.update(
                 export_settings_form=SbmlExportSettingsForm(
@@ -657,7 +656,6 @@ class SbmlView(EDDExportView):
             )
         except Exception as e:
             logger.exception("Failed to validate forms for export: %s", e)
-        print('\t\tAfter context: %s' % (context, ))
         return context
 
 

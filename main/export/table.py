@@ -111,6 +111,7 @@ class ExportSelection(object):
             'y_units',
             'update_ref__mod_by',
             'experimenter',
+            'assay__protocol',
         )
         self._assays = Assay.objects.filter(
             Q(line__study__in=self._allowed_study),
@@ -128,6 +129,8 @@ class ExportSelection(object):
             Q(assay__in=assayId, assay__active=True) |
             Q(assay__measurement__in=measureId, assay__measurement__active=True),
         ).distinct(
+        ).select_related(
+            'experimenter__userprofile', 'updated',
         ).prefetch_related(
             Prefetch('strains', queryset=Strain.objects.order_by('id')),
             Prefetch('carbon_source', queryset=CarbonSource.objects.order_by('id')),
@@ -169,10 +172,15 @@ class ExportSelection(object):
 
     @property
     def measurements(self):
-        """ A dict mapping Measurement.pk to Measurement for those measurements included in
-            the export. """
+        """ A queryset of measurements to include. """
         # TODO: add in empty measurements for assays that have none
         return self._measures
+
+    @property
+    def measurements_list(self):
+        if not hasattr(self, '_measures_list'):
+            self._measures_list = list(self._measures)
+        return self._measurements_list
 
 
 class ExportOption(object):
