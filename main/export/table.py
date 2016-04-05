@@ -138,37 +138,33 @@ class ExportSelection(object):
 
     @property
     def studies(self):
-        """ A dict mapping Study.pk to Study for those studies included in the export and
-            allowed to be viewed by the user. """
-        studies = {s.id: s for s in self._allowed_study}
-        return studies
+        """ List of studies allowed to be viewed in the selection. """
+        return self._allowed_study
 
     @property
     def study_columns(self):
         from main.models import Study
-        return Study.export_columns(self._studies.values())
+        return Study.export_columns(self.studies)
 
     @property
     def lines(self):
-        """ A dict mapping Line.pk to Line for those lines included in the export. """
-        lines = {l.id: l for l in self._lines}
-        return lines
+        """ A queryset of lines included in the selection. """
+        return self._lines
 
     @property
     def line_columns(self):
         from main.models import Line
-        return Line.export_columns(self._lines.values())
+        return Line.export_columns(self.lines)
 
     @property
     def assays(self):
-        """ A dict mapping Assay.pk to Assay for those assays included in the export. """
-        assays = {a.id: a for a in self._assays}
-        return assays
+        """ A queryset of assays included in the selection. """
+        return self._assays
 
     @property
     def assay_columns(self):
         from main.models import Assay
-        return Assay.export_columns(self._assays.values())
+        return Assay.export_columns(self.assays)
 
     @property
     def measurements(self):

@@ -33,7 +33,7 @@ Table displaying selected lines; used for table and SBML export pages
   </th>
 </tr>
 
-{% for id, line in selection.lines.items %}
+{% for line in selection.lines %}
 {% with carbon_source=line.carbon_source.all %}
 <!-- {{ id }} {{ line }} -->
 <tr class="stripeRowA" data-line-id="{{ line.id }}"><td>{{ line.name }}</td>
