@@ -111,8 +111,11 @@ class ExportSelection(object):
             'y_units',
             'update_ref__mod_by',
             'experimenter',
+            'assay__experimenter',
             'assay__protocol',
-            'assay__line__name',
+            'assay__line__contact',
+            'assay__line__experimenter',
+            'assay__line__study',
         )
         self._assays = Assay.objects.filter(
             Q(line__study__in=self._allowed_study),
@@ -177,7 +180,7 @@ class ExportSelection(object):
     def measurements_list(self):
         if not hasattr(self, '_measures_list'):
             self._measures_list = list(self._measures)
-        return self._measurements_list
+        return self._measures_list
 
 
 class ExportOption(object):
@@ -280,12 +283,15 @@ class TableExport(object):
         return table_separator.join(out)
 
     def _do_export(self, tables):
-        from main.models import Assay, Line, Measurement, Protocol, Study
+        from main.models import Assay, Line, Measurement, MeasurementValue, Protocol, Study
         # add data from each exported measurement; already sorted by protocol
-        for measurement in self.selection.measurements:
-            assay = self.selection.assays.get(measurement.assay_id, None)
+        measures = self.selection.measurements.prefetch_related(
+            Prefetch('measurementvalue_set', queryset=MeasurementValue.objects.order_by('x'))
+        )
+        for measurement in measures:
+            assay = measurement.assay
             protocol = assay.protocol
-            line = self.selection.lines.get(assay.line_id, None)
+            line = assay.line
             if self.options.line_section:
                 line_only = [Line, Study, ]
                 other_only = [Assay, Measurement, Protocol, ]
@@ -299,7 +305,7 @@ class TableExport(object):
                 # create row for protocol/all table
                 row = self._output_row_with_measure(measurement)
             table, table_key = self._init_tables_for_protocol(tables, protocol)
-            values = measurement.measurementvalue_set.order_by('x')
+            values = measurement.measurementvalue_set.all()  # prefetched above
             if self.options.layout == ExportOption.DATA_COLUMN_BY_POINT:
                 for value in values:
                     arow = row[:]
@@ -403,7 +409,7 @@ class WorklistExport(TableExport):
         protocol = self.worklist.protocol
         table = tables['all']
         counter = 0
-        for i, (pk, line) in enumerate(lines.items()):
+        for i, (pk, line) in enumerate(lines):
             # build row with study/line info
             row = self._output_row_with_line(line, protocol)
             table['%s' % (pk, )] = row

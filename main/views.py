@@ -644,6 +644,7 @@ class SbmlView(EDDExportView):
         export_settings = SbmlExportSettingsForm(
             initial={'sbml_template': self.selection.studies[0].metabolic_map, },
         )
+        # TODO: detect redirect from study page, and set initial values to select all
         od_select = SbmlExportOdForm(
             prefix='od', selection=self.selection,
             types=MeasurementType.objects.filter(short_name='OD'),

@@ -175,6 +175,12 @@ class SbmlExportOdForm(SbmlExportMeasurementsForm):
         return data
 
 
+class SbmlExport(object):
+    def __init__(self, *args, **kwargs):
+        # get selected measurements, do processing
+        pass
+
+
 ########################################################################
 #
 # LAYER 1: SBML MODEL PROCESSING

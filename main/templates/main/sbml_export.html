@@ -441,107 +441,92 @@
         </div>
       </div><!-- #step5 -->
 
-<!--
-Step 7: convert units and calculate flux values
--->
-
-<input type="hidden" id="statusstep6show" name="statusstep6show" value="0"/>
-
-{% with data.n_conversion_warnings as n_warnings %}
-    {% if n_warnings %}
-<div class="disclose" id="step6">
-    {% else %}
-<div class="disclose discloseHide" id="step6">
-    {% endif %}
-  <div class="sectionChapter">
-    <span>
-      <a href="#" class="discloseLink">Step 7: Convert units and calculate all selected flux values</a>
-    </span>
-  {% if n_warnings > 1 %}
-    <span class="warn2">{{ n_warnings }} warnings</span>
-  {% elif n_warnings == 1 %}
-    <span class="warn2">{{ n_warnings }} warning</span>
-  {% endif %}
-{% endwith %}
-  </div>
-
-<div class="sectionContent discloseBody" id="statusstep6main">
-
-<!-- loop over metabolites -->
-{% for measurement in data.processed_measurements %}
-  <div class="disclose discloseHide" id="FCStep{{ forloop.counter }}">
-    <div class="subSectionChapter">
-      <span>
-        <a href="#" class="discloseLink">
-        Metabolite <b>{{ measurement.metabolite_name }}</b> for Assay
-          <b>{{ measurement.assay_name }}</b>:
-        </a>
-      </span>
-    </div>
-  {% if measurement.n_errors %}
-    {% for msg in measurement.errors %}
-    <span class="warn2">{{ msg }}</span>
-    {% endfor %}
-  {% else %}
-    <div class="subSectionContent discloseBody"
-         id="FCStep{{ forloop.counter }}main">
-    {% if measurement.is_carbon_ratio %}
-      {% for md in measurement.cr_data %}
-        <!-- TODO handle skipped measurements -->
-        <div>Using carbon ratios of <b>{{ md.y }}</b>.</div>
-      {% endfor %}
-    {% elif measurement.is_od_measurement %}
-      {% for interval in measurement.flux_data %}
-        <div>
-          Time <b>{{ interval.start }}</b> to <b>{{ interval.end }}</b> is an
-          interval of {{ interval.elapsed }}. OD goes from
-          <b>{{ interval.y_start }}</b> to <b>{{ interval.y }}</b> in that time.
+      <!--
+      Step 7: convert units and calculate flux values
+      -->
+      <input type="hidden" id="statusstep6show" name="statusstep6show" value="0"/>
+      <div class="disclose discloseHide" id="step6">
+        <div class="sectionChapter">
+          <span>
+            <a href="#" class="discloseLink">Step 7: Convert units and calculate all selected flux values</a>
+          </span>
+          <!-- TODO: warnings -->
         </div>
-        <div>
-        Exponential growth rate: log({{ interval.y }} / {{ interval.y_start }})
-          / {{ interval.elapsed }} = <b>{{ interval.flux }}</b>
-        </div>
-      {% endfor %}
-    {% else %}
-      {% for md in measurement.data %}
-        <div>
-          Time <b>{{ md.time }}</b>h has a value of {{ md.value }}<b>
-            {{ md.units }}</b>.
-        {% if md.interpolated %}
-            <span class="warn2">(Interpolated.)</span>
-        {% endif %}
-        </div>
-        {% if md.conversion_equation %}
-        <div>
-          Convert from <b>{{ md.initial_units }}</b> to {{ md.units }}:
-          {{ md.conversion_equation }} = <b>{{ md.y }}</b>{{ md.units }}
-        {% endif %}
-        </div>
-      {% endfor %}<!-- measurement.data -->
-      {% for interval in measurement.flux_data %}
-        <div>Interval <b>{{ interval.start }}</b> to <b>{{ interval.end }}</b>
-              has delta of <b>{{ interval.delta }}</b>{{ interval.units }}.
-        </div>
-        <div>
-          Calculated Flux: {{ interval.flux_eqn }} = <b>{{ interval.flux }}</b>
-        {% if interval.interpolated %}
-          <span class="warn2">(Interpolated.)</span>
-        {% endif %}
-        </div>
-      {% endfor %}<!-- measurement.intervals -->
-      {% if measurement.n_skipped_measurements %}
-        Skipped measurements at times <b>{{ measurement.skipped_measurements }}
-        </b>due to lack of a corresponding OD value. If you want a good flux
-        map at time <b>t</b>, you need OD measurements for time <b>t</b>!
-      {% endif %}
-    {% endif %}<!-- measurement.is_carbon_ratio -->
-    </div><!-- #FCStepXmain -->
-  {% endif %}<!-- measurement.n_errors -->
-  </div><!-- #FCStepX -->
-
-{% endfor %}<!-- data.processed_measurements -->
-</div><!-- #statusstep6main -->
-</div><!-- #step6 -->
+        <div class="sectionContent discloseBody" id="statusstep6main">
+        <!-- loop over metabolites -->
+        {% for measurement in data.processed_measurements %}
+          <div class="disclose discloseHide" id="FCStep{{ forloop.counter }}">
+            <div class="subSectionChapter">
+              <span>
+                <a href="#" class="discloseLink">
+                  Metabolite <b>{{ measurement.metabolite_name }}</b> for Assay
+                  <b>{{ measurement.assay_name }}</b>:
+                </a>
+              </span>
+            </div>
+            {% if measurement.n_errors %}
+              {% for msg in measurement.errors %}
+              <span class="warn2">{{ msg }}</span>
+              {% endfor %}
+            {% else %}
+              <div class="subSectionContent discloseBody" id="FCStep{{ forloop.counter }}main">
+              {% if measurement.is_carbon_ratio %}
+                {% for md in measurement.cr_data %}
+                  <!-- TODO handle skipped measurements -->
+                  <div>Using carbon ratios of <b>{{ md.y }}</b>.</div>
+                {% endfor %}
+              {% elif measurement.is_od_measurement %}
+                {% for interval in measurement.flux_data %}
+                  <div>
+                    Time <b>{{ interval.start }}</b> to <b>{{ interval.end }}</b> is an
+                    interval of {{ interval.elapsed }}. OD goes from
+                    <b>{{ interval.y_start }}</b> to <b>{{ interval.y }}</b> in that time.
+                  </div>
+                  <div>
+                    Exponential growth rate: log({{ interval.y }} / {{ interval.y_start }})
+                      / {{ interval.elapsed }} = <b>{{ interval.flux }}</b>
+                  </div>
+                {% endfor %}
+              {% else %}
+                {% for md in measurement.data %}
+                  <div>
+                    Time <b>{{ md.time }}</b>h has a value of {{ md.value }}<b>
+                    {{ md.units }}</b>.
+                    {% if md.interpolated %}
+                      <span class="warn2">(Interpolated.)</span>
+                    {% endif %}
+                  </div>
+                  {% if md.conversion_equation %}
+                  <div>
+                    Convert from <b>{{ md.initial_units }}</b> to {{ md.units }}:
+                    {{ md.conversion_equation }} = <b>{{ md.y }}</b>{{ md.units }}
+                  {% endif %}
+                  </div>
+                {% endfor %}<!-- measurement.data -->
+                {% for interval in measurement.flux_data %}
+                  <div>
+                    Interval <b>{{ interval.start }}</b> to <b>{{ interval.end }}</b>
+                    has delta of <b>{{ interval.delta }}</b>{{ interval.units }}.
+                  </div>
+                  <div>
+                    Calculated Flux: {{ interval.flux_eqn }} = <b>{{ interval.flux }}</b>
+                    {% if interval.interpolated %}
+                      <span class="warn2">(Interpolated.)</span>
+                    {% endif %}
+                  </div>
+                {% endfor %}<!-- measurement.intervals -->
+                {% if measurement.n_skipped_measurements %}
+                  Skipped measurements at times <b>{{ measurement.skipped_measurements }}
+                  </b>due to lack of a corresponding OD value. If you want a good flux
+                  map at time <b>t</b>, you need OD measurements for time <b>t</b>!
+                {% endif %}
+              {% endif %}<!-- measurement.is_carbon_ratio -->
+              </div><!-- #FCStepXmain -->
+            {% endif %}<!-- measurement.n_errors -->
+          </div><!-- #FCStepX -->
+        {% endfor %}<!-- data.processed_measurements -->
+        </div><!-- #statusstep6main -->
+      </div><!-- #step6 -->
 
 <!--
 
