@@ -86,6 +86,9 @@ This section contains directions for setting up a development environment on EDD
     * First-time setup
         * If you have not already done so, create a host VM to run containers:
           `docker-machine create --driver virtualbox default`
+            * You probably want to give the VM increased resources; default is 1 CPU + 1GB RAM.
+              In the VirtualBox application, stop the VM, then edit the settings to increase
+              available resources. Restart the VM before proceeding.
         * Load the Docker environment with:
           `eval "$(docker-machine env default)"`
         * Create `secrets.env` based on the example in `secrets.env-example`
