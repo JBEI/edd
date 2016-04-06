@@ -65,6 +65,116 @@ from ..utilities import interpolate_at, line_export_base
 logger = logging.getLogger(__name__)
 
 
+class SbmlForm(forms.Form):
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault('label_suffix', '')
+        super(SbmlForm, self).__init__(*args, **kwargs)
+
+
+class SbmlExportSettingsForm(SbmlForm):
+    """ Form used for selecting settings on SBML exports. """
+    sbml_template = forms.ModelChoiceField(
+        SBMLTemplate.objects.all(),  # TODO: potentially narrow options based on current user?
+        empty_label=None,
+        label=_('SBML Template'),
+    )
+
+
+@register.filter(name='scaled_x')
+def scaled_x(point, x_range):
+    """ Template filter calculates the relative X value for SVG sparklines. """
+    return ((point.x[0] / x_range[1]) * 450) + 10
+
+
+class MeasurementChoiceField(forms.ModelMultipleChoiceField):
+    """ Custom ModelMultipleChoiceField that changes the display of measurement labels. """
+    def label_from_instance(self, obj):
+        return obj.full_name
+
+
+class SbmlExportMeasurementsForm(SbmlForm):
+    """ Form used for selecting measurements to include in SBML exports. """
+    measurementId = MeasurementChoiceField(
+        queryset=Measurement.objects.filter(active=True),
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+    )
+
+    def __init__(self, *args, **kwargs):
+        self._selection = kwargs.pop('selection', None)
+        self._types = kwargs.pop('types', None)
+        self._protocols = kwargs.pop('protocols', None)
+        self.sbml_warnings = []
+        super(SbmlExportMeasurementsForm, self).__init__(*args, **kwargs)
+        f = self.fields['measurementId']
+        f.queryset = self._selection.measurements.order_by(
+            'assay__protocol__name', 'assay__name',
+        ).prefetch_related(
+            'measurementvalue_set',
+        )
+        if self._types is not None:
+            f.queryset = f.queryset.filter(measurement_type__in=self._types)
+        if self._protocols is not None:
+            f.queryset = f.queryset.filter(assay__protocol_id__in=self._protocols)
+        if f.queryset.count() == 0:
+            self.sbml_warnings.append(_('No protocols have usable data.'))
+
+    def measurement_split(self):
+        for index, measurement in enumerate(self.measurement_list):
+            yield (measurement, self.measurement_widgets[index])
+
+    def protocol_split(self):
+        prev_protocol = None
+        items = []
+        # loop over all the choices in the queryset
+        for index, measurement in enumerate(self.measurement_list):
+            protocol = measurement.assay.protocol
+            # when the protocol changes, yield the protocol and the choices using it
+            if protocol != prev_protocol:
+                if prev_protocol is not None:
+                    yield (prev_protocol, items)
+                prev_protocol = protocol
+                items = []
+            items.append((measurement, self.measurement_widgets[index]))
+        # at the end, yield the final choices
+        yield (prev_protocol, items)
+
+    def x_range(self):
+        f = self.fields['measurementId']
+        x_range = f.queryset.aggregate(
+            max=Max('measurementvalue__x'), min=Min('measurementvalue__x')
+        )
+        # can potentially get None if there are no values; use __getitem__ default AND `or [0]`
+        x_max = x_range.get('max', [0]) or [0]
+        x_min = x_range.get('min', [0]) or [0]
+        # max and min are both still arrays, grab the first element
+        return (x_min[0], x_max[0])
+
+    def _get_measurements(self):
+        # lazy eval and try not to query more than once
+        # NOTE: still gets evaled at least three times: populating choices, here, and validation
+        if not hasattr(self, '_measures'):
+            field = self.fields['measurementId']
+            self._measures = list(field.queryset)
+        return self._measures
+    measurement_list = property(_get_measurements)
+
+    def _get_measurement_widgets(self):
+        # lazy eval and try not to query more than once
+        if not hasattr(self, '_measure_widgets'):
+            widgets = self['measurementId']
+            self._measure_widgets = list(widgets)
+        return self._measure_widgets
+    measurement_widgets = property(_get_measurement_widgets)
+
+
+class SbmlExportOdForm(SbmlExportMeasurementsForm):
+    def clean(self):
+        data = super(SbmlExportOdForm, self).clean()
+        # TODO: check for gCDW/L/OD600 metadata on selected assays/lines
+        return data
+
+
 ########################################################################
 #
 # LAYER 1: SBML MODEL PROCESSING
@@ -251,113 +361,6 @@ class ExchangeInfo(object):
         self.ub_param.setValue(value)
         self.lb_param.setValue(value)
         return len(values)
-
-
-class SbmlForm(forms.Form):
-    def __init__(self, *args, **kwargs):
-        kwargs.setdefault('label_suffix', '')
-        super(SbmlForm, self).__init__(*args, **kwargs)
-
-
-class SbmlExportSettingsForm(SbmlForm):
-    """ Form used for selecting settings on SBML exports. """
-    sbml_template = forms.ModelChoiceField(
-        SBMLTemplate.objects.all(),  # TODO: potentially narrow options based on current user?
-        empty_label=None,
-        label=_('SBML Template'),
-    )
-
-
-@register.filter(name='scaled_x')
-def scaled_x(point, x_range):
-    """ Template filter calculates the relative X value for SVG sparklines. """
-    return ((point.x[0] / x_range[1]) * 450) + 10
-
-
-class MeasurementChoiceField(forms.ModelMultipleChoiceField):
-    """ Custom ModelMultipleChoiceField that changes the display of measurement labels. """
-    def label_from_instance(self, obj):
-        return obj.full_name
-
-
-class SbmlExportMeasurementsForm(SbmlForm):
-    """ Form used for selecting measurements to include in SBML exports. """
-    measurementId = MeasurementChoiceField(
-        queryset=Measurement.objects.filter(active=True),
-        required=False,
-        widget=forms.CheckboxSelectMultiple,
-    )
-
-    def __init__(self, *args, **kwargs):
-        self._selection = kwargs.pop('selection', None)
-        self._types = kwargs.pop('types', None)
-        self._protocols = kwargs.pop('protocols', None)
-        self.sbml_warnings = []
-        super(SbmlExportMeasurementsForm, self).__init__(*args, **kwargs)
-        f = self.fields['measurementId']
-        f.queryset = self._selection.measurements.order_by(
-            'assay__protocol__name', 'assay__name',
-        ).prefetch_related(
-            'measurementvalue_set',
-        )
-        if self._types is not None:
-            f.queryset = f.queryset.filter(measurement_type__in=self._types)
-        if self._protocols is not None:
-            f.queryset = f.queryset.filter(assay__protocol_id__in=self._protocols)
-        if f.queryset.count() == 0:
-            self.sbml_warnings.append(_('No protocols have usable data.'))
-
-    def measurement_split(self):
-        for index, measurement in enumerate(self.measurement_list):
-            yield (measurement, self.measurement_widgets[index])
-
-    def protocol_split(self):
-        prev_protocol = None
-        items = []
-        # loop over all the choices in the queryset
-        for index, measurement in enumerate(self.measurement_list):
-            protocol = measurement.assay.protocol
-            # when the protocol changes, yield the protocol and the choices using it
-            if protocol != prev_protocol:
-                if prev_protocol is not None:
-                    yield (prev_protocol, items)
-                prev_protocol = protocol
-                items = []
-            items.append((measurement, self.measurement_widgets[index]))
-        # at the end, yield the final choices
-        yield (prev_protocol, items)
-
-    def x_range(self):
-        f = self.fields['measurementId']
-        x_range = f.queryset.aggregate(
-            max=Max('measurementvalue__x'), min=Min('measurementvalue__x')
-        )
-        # max and min are both still arrays, grab the first element
-        return (x_range.get('min', [0])[0], x_range.get('max', [0])[0])
-
-    def _get_measurements(self):
-        # lazy eval and try not to query more than once
-        # NOTE: still gets evaled at least three times: populating choices, here, and validation
-        if not hasattr(self, '_measures'):
-            field = self.fields['measurementId']
-            self._measures = list(field.queryset)
-        return self._measures
-    measurement_list = property(_get_measurements)
-
-    def _get_measurement_widgets(self):
-        # lazy eval and try not to query more than once
-        if not hasattr(self, '_measure_widgets'):
-            widgets = self['measurementId']
-            self._measure_widgets = list(widgets)
-        return self._measure_widgets
-    measurement_widgets = property(_get_measurement_widgets)
-
-
-class SbmlExportOdForm(SbmlExportMeasurementsForm):
-    def clean(self):
-        data = super(SbmlExportOdForm, self).clean()
-        # TODO: check for gCDW/L/OD600 metadata on selected assays/lines
-        return data
 
 
 # adapted from UtilitiesSBML.pm:parseSBML

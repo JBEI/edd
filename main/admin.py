@@ -15,6 +15,7 @@ from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 from django_auth_ldap.backend import LDAPBackend
 
+from .export.sbml import validate_sbml_attachment
 from .forms import (
     MeasurementTypeAutocompleteWidget, MetadataTypeAutocompleteWidget, RegistryAutocompleteWidget,
     RegistryValidator, UserAutocompleteWidget
@@ -24,8 +25,7 @@ from .models import (
     Measurement, MeasurementType, Metabolite, MetadataGroup, MetadataType, Phosphor,
     ProteinIdentifier, Protocol, SBMLTemplate, Strain, Study, Update, UserPermission,
     WorklistColumn, WorklistTemplate,
-    )
-from .sbml_export import validate_sbml_attachment
+)
 from .solr import StudySearch, UserSearch
 
 

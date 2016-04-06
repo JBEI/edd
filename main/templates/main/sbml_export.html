@@ -189,7 +189,6 @@
                 <tr>
                   <td>Assay</td>
                   <td colspan="2">Measurement</td>
-                  <td class="right-txt" style="width:60px;">Is Input</td>
                   <td colspan="2">Recorded Values</td>
                 </tr>
                 {% for measurement, widget in items %}
@@ -202,7 +201,6 @@
                   </td>
                   <td class="nowrap popupcell">{{ widget }}</td>
                   <td class="nowrap right-txt">{{ measurement.y_units }}</td>
-                  <td class="right-txt"><!-- TODO --></td>
                   <td class="right-txt" style="width:30px;">{{ values|length }}</td>
                   <td style="padding:3px 2px 0px 2px;width:60%;">
                     <svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"
@@ -261,7 +259,6 @@
                 <tr>
                   <td>Assay</td>
                   <td colspan="2">Measurement</td>
-                  <td class="right-txt" style="width:60px;">Is Input</td>
                   <td colspan="2">Recorded Values</td>
                 </tr>
                 {% for measurement, widget in items %}
@@ -274,7 +271,6 @@
                   </td>
                   <td class="nowrap popupcell">{{ widget }}</td>
                   <td class="nowrap right-txt">{{ measurement.y_units }}</td>
-                  <td class="right-txt"><!-- TODO --></td>
                   <td class="right-txt" style="width:30px;">{{ values|length }}</td>
                   <td style="padding:3px 2px 0px 2px;width:60%;">
                     <svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"
@@ -331,7 +327,6 @@
                 <tr>
                   <td>Assay</td>
                   <td colspan="2">Measurement</td>
-                  <td class="right-txt" style="width:60px;">Is Input</td>
                   <td colspan="2">Recorded Values</td>
                 </tr>
                 {% for measurement, widget in items %}
@@ -344,7 +339,6 @@
                   </td>
                   <td class="nowrap popupcell">{{ widget }}</td>
                   <td class="nowrap right-txt">{{ measurement.y_units }}</td>
-                  <td class="right-txt"><!-- TODO --></td>
                   <td class="right-txt" style="width:30px;">{{ values|length }}</td>
                   <td style="padding:3px 2px 0px 2px;width:60%;">
                     <svg xmlns="http://www.w3.org/2000/svg"
@@ -374,135 +368,84 @@
           {% endwith %}
         </div>
       </div><!-- #step4 -->
+      <!--
+      Step 6: transcriptomics and proteomics
+      -->
+      <input type="hidden" id="statusstep5show" name="statusstep5show" value="0"/>
+      <div class="disclose discloseHide" id="step5">
+        <div class="sectionChapter">
+          <span>
+            <a href="#" class="discloseLink">Step 6: Select Transcriptomics/Proteomics Measurements</a>
+          </span>
+          {% if omics_select_form.sbml_warnings|length %}
+          <span class="warn2">
+            {% blocktrans count counter=omics_select_form.sbml_warnings|length %}
+            {{ counter }} warning
+            {% plural %}
+            {{ counter }} warnings
+            {% endblocktrans %}
+          </span>
+          {% endif %}
+        </div>
+        <div class="sectionContent discloseBody" id="statusstep5main">
+          {% for message in omics_select_form.sbml_warnings %}
+          <div class="warn2">{{ message }}</div>
+          {% endfor %}
+          {% with x_range=omics_select_form.x_range %}
+          {% for protocol, items in omics_select_form.protocol_split %}
+            <div>Protocol <b>{{ protocol.name }}</b></div>
+            <div class="rounded-border">
+              <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
+                <tr>
+                  <td>Assay</td>
+                  <td colspan="2">Measurement</td>
+                  <td colspan="2">Recorded Values</td>
+                </tr>
+                {% for measurement, widget in items %}
+                {% with values=measurement.measurementvalue_set.all assay=measurement.assay %}
+                <tr>
+                  <td class="nowrap">
+                  {% ifchanged assay %}
+                    {{ assay.line.name }}-{{ protocol.name }}-{{ assay.name }}
+                  {% endifchanged %}
+                  </td>
+                  <td class="nowrap popupcell">{{ widget }}</td>
+                  <td class="nowrap right-txt">{{ measurement.y_units }}</td>
+                  <td class="right-txt" style="width:30px;">{{ values|length }}</td>
+                  <td style="padding:3px 2px 0px 2px;width:60%;">
+                    <svg xmlns="http://www.w3.org/2000/svg"
+                        version="1.2"
+                        width="100%"
+                        height="10px"
+                        viewBox="0 0 470 10"
+                        preserveAspectRatio="none">
+                      <path fill="rgba(0,0,0,0.0.05)"
+                        stroke="rgba(0,0,0,0.05)"
+                        d="M10,5h450"
+                        style="stroke-width:2px;"
+                        stroke-width="2"></path>
+                      {% for md in values %}
+                      <path class="cP" d="M{{ md|scaled_x:x_range }},1v8">
+                        <title>{{ md.y.0 }} at {{ md.x.0 }}</title>
+                      </path>
+                      {% endfor %}<!-- points -->
+                    </svg>
+                  </td>
+                </tr>
+                {% endwith %}
+                {% endfor %}<!-- measurements -->
+              </table>
+            </div>
+          {% endfor %}<!-- data.export_ramos_measurements -->
+          {% endwith %}
+        </div>
+      </div><!-- #step5 -->
 
 <!--
-
-Step 6: transcriptomics and proteomics
-
--->
-
-<input type="hidden"
-        id="statusstep5show"
-        name="statusstep5show"
-        value="0"/>
-
-<div class="disclose discloseHide" id="step5">
-  <div class="sectionChapter">
-    <span>
-      <a href="#" class="discloseLink">
-         Step 6: Select Transcriptomics/Proteomics Measurements
-      </a>
-    </span>
-    <!-- TODO warnings -->
-  </div>
-
-<div class="sectionContent discloseBody" id="statusstep5main">
-{% if data.n_trans_prot_protocols %}
-  {% if data.n_trans_prot_measurements %}
-    {% for protocol in data.export_trans_prot_measurements %}
-  <div>Protocol <b>{{ protocol.name }}</b></div>
-  <div class="rounded-border">
-    <!-- TODO make as much of this as possible more modular, and/or use JS -->
-    <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
-      <tr>
-        <td>Assay</td>
-        <td colspan="2">Measurement</td>
-        <td style="text-align:right;width:60px;">Is Input</td>
-        <td colspan="2"></td>
-      </tr>
-      {% for assay in protocol.assays %}
-        {% for measurement in assay.measurements %}
-      <tr>
-        <td class="nowrap">
-          {% if forloop.counter == 1 %}
-            {{ assay.name }}
-          {% endif %}
-        </td>
-        <td class="nowrap popupcell">
-          <input type="checkbox"
-            name="{{ measurement.type }}{{ measurement.id }}include"
-            id="{{ measurement.type }}{{ measurement.id }}include"
-            {% if measurement.include %}
-              checked="checked"
-            {% endif %}
-            value="{{ measurement.id }}"/>{{ measurement.name }}
-        </td>
-        <td class="nowrap" style="text-align:right;">
-          {{ measurement.units }}
-        </td>
-        <td style="text-align:right;">
-          {% if measurement.type == "measurement" %}
-            {% if measurement.format == 0 %}<!-- not a carbon ratio -->
-          <input type="checkbox"
-            name="measurement{{ measurement.id }}input"
-            id="measurement{{ measurement.id }}input"
-              {% if measurement.input %}
-              checked="checked"
-              {% endif %}
-            value="{{ measurement.id }}"/>
-            {% endif %}
-          {% endif %}
-        </td>
-        <td style="text-align:right;width:30px;">
-          {{ measurement.n_points }}
-        </td>
-        <td style="padding:3px 2px 0px 2px;width:60%;">
-          <svg xmlns="http://www.w3.org/2000/svg"
-              version="1.2"
-              width="100%"
-              height="10px"
-              viewBox="0 0 470 10"
-              preserveAspectRatio="none">
-            <path fill="rgba(0,0,0,0.0.05)"
-              stroke="rgba(0,0,0,0.05)"
-              d="M10,5h450"
-              style="stroke-width:2px;"
-              stroke-width="2"></path>
-            {% for md in measurement.data_points %}
-              {% if measurement.type != "measurement" %}
-                <path class="cT" d="M{{ md.rx }},1v8">
-              {% elif md.y == None %}
-                <path class="cE" d="M{{ md.rx }},1v8">
-              {% elif measurement.format == 0 %}
-                <path class="cP" d="M{{ md.rx }},1v8">
-              {% else %}
-                <path class="cV" d="M{{ md.rx }},1v8">
-              {% endif %}
-                  <title>{{ md.title }}</title>
-                </path>
-            {% endfor %}
-          </svg>
-        </td>
-      </tr>
-      {% endfor %}<!-- measurements -->
-      {% endfor %}<!-- assays -->
-    </table>
-  </div>
-    {% endfor %}
-  {% else %}
-  <div class="warn2">
-    No usable Transcriptomics- or Proteomics-based Protocols have usable data.
-  </div>
-  {% endif %}
-{% else %}
-  <div class="warn2">
-    Cannot find any Protocols with "Proteomics" or "Transcriptomics" in the
-    name!
-  </div>
-{% endif %}
-</div>
-</div><!-- #step5 -->
-
-<!--
-
 Step 7: convert units and calculate flux values
-
 -->
 
-<input type="hidden"
-       id="statusstep6show"
-       name="statusstep6show"
-       value="0"/>
+<input type="hidden" id="statusstep6show" name="statusstep6show" value="0"/>
 
 {% with data.n_conversion_warnings as n_warnings %}
     {% if n_warnings %}
@@ -512,9 +455,7 @@ Step 7: convert units and calculate flux values
     {% endif %}
   <div class="sectionChapter">
     <span>
-      <a href="#" class="discloseLink">
-        Step 7: Convert units and calculate all selected flux values
-      </a>
+      <a href="#" class="discloseLink">Step 7: Convert units and calculate all selected flux values</a>
     </span>
   {% if n_warnings > 1 %}
     <span class="warn2">{{ n_warnings }} warnings</span>

@@ -33,7 +33,9 @@ from .importer import (
     TableImport, import_rna_seq, import_rnaseq_edgepro, interpret_edgepro_data,
     interpret_raw_rna_seq_data,
 )
-from .export.sbml import line_sbml_export, SbmlExportMeasurementsForm, SbmlExportSettingsForm
+from .export.sbml import (
+    SbmlExportMeasurementsForm, SbmlExportOdForm, SbmlExportSettingsForm,
+)
 from .export.table import ExportSelection, TableExport, WorklistExport
 from .forms import (
     AssayForm, CreateAttachmentForm, CreateCommentForm, CreateStudyForm, ExportOptionForm,
@@ -152,7 +154,7 @@ class StudyDetailView(generic.DetailView):
             Q(grouppermission__group__user=self.request.user,
               grouppermission__permission_type__in=['R', 'W', ])).distinct()
 
-    def handle_assay(self, request, context):
+    def handle_assay(self, request, context, *args, **kwargs):
         assay_id = request.POST.get('assay-assay_id', None)
         assay = self._get_assay(assay_id) if assay_id else None
         if assay:
@@ -171,6 +173,32 @@ class StudyDetailView(generic.DetailView):
             return True
         return False
 
+    def handle_assay_action(self, request, context, *args, **kwargs):
+        assay_action = request.POST.get('assay_action', None)
+        can_write = self.object.user_can_write(request.user)
+        form_valid = False
+        # allow any who can view to export
+        if assay_action == 'export':
+            export_type = request.POST.get('export', 'csv')
+            if export_type == 'sbml':
+                return SbmlView.as_view()
+            else:
+                return ExportView.as_view()
+        # but not edit
+        elif not can_write:
+            messages.error(request, 'You do not have permission to modify this study.')
+        elif assay_action == 'mark':
+            form_valid = self.handle_assay_mark(request)
+        elif assay_action == 'delete':
+            form_valid = self.handle_measurement_delete(request)
+        elif assay_action == 'edit':
+            return self.handle_measurement_edit(request)
+        elif assay_action == 'update':
+            return self.handle_measurement_update(request, context)
+        else:
+            messages.error(request, 'Unknown assay action %s' % (assay_action))
+        return form_valid
+
     def handle_assay_mark(self, request):
         ids = request.POST.getlist('assayId', [])
         study = self.get_object()
@@ -188,7 +216,7 @@ class StudyDetailView(generic.DetailView):
             })
         return True
 
-    def handle_attach(self, request, context):
+    def handle_attach(self, request, context, *args, **kwargs):
         form = CreateAttachmentForm(request.POST, request.FILES, edd_object=self.get_object())
         if form.is_valid():
             form.save()
@@ -197,7 +225,7 @@ class StudyDetailView(generic.DetailView):
             context['new_attach'] = form
         return False
 
-    def handle_clone(self, request):
+    def handle_clone(self, request, context, *args, **kwargs):
         ids = request.POST.getlist('lineId', [])
         study = self.get_object()
         cloned = 0
@@ -218,7 +246,7 @@ class StudyDetailView(generic.DetailView):
             })
         return True
 
-    def handle_comment(self, request, context):
+    def handle_comment(self, request, context, *args, **kwargs):
         form = CreateCommentForm(request.POST, edd_object=self.get_object())
         if form.is_valid():
             form.save()
@@ -236,7 +264,7 @@ class StudyDetailView(generic.DetailView):
         messages.success(request, '%s %s Lines' % ('Enabled' if active else 'Disabled', count))
         return True
 
-    def handle_group(self, request):
+    def handle_group(self, request, context, *args, **kwargs):
         ids = request.POST.getlist('lineId', [])
         study = self.get_object()
         if len(ids) > 1:
@@ -247,7 +275,7 @@ class StudyDetailView(generic.DetailView):
         messages.error(request, 'Must select more than one Line to group.')
         return False
 
-    def handle_line(self, request, context):
+    def handle_line(self, request, context, *args, **kwargs):
         ids = [v for v in request.POST.get('line-ids', '').split(',') if v.strip() != '']
         if len(ids) == 0:
             return self.handle_line_new(request, context)
@@ -256,6 +284,28 @@ class StudyDetailView(generic.DetailView):
         else:
             return self.handle_line_bulk(request, ids)
         return False
+
+    def handle_line_action(self, request, context, *args, **kwargs):
+        can_write = self.object.user_can_write(request.user)
+        line_action = request.POST.get('line_action', None)
+        form_valid = False
+        # allow any who can view to export
+        if line_action == 'export':
+            export_type = request.POST.get('export', 'csv')
+            if export_type == 'sbml':
+                return SbmlView.as_view()
+            else:
+                return ExportView.as_view()
+        elif line_action == 'worklist':
+            return WorklistView.as_view()
+        # but not edit
+        elif not can_write:
+            messages.error(request, 'You do not have permission to modify this study.')
+        elif line_action == 'edit':
+            form_valid = self.handle_disable(request)
+        else:
+            messages.error(request, 'Unknown line action %s' % (line_action))
+        return form_valid
 
     def handle_line_bulk(self, request, ids):
         study = self.get_object()
@@ -304,7 +354,7 @@ class StudyDetailView(generic.DetailView):
             context['new_line'] = form
         return False
 
-    def handle_measurement(self, request, context):
+    def handle_measurement(self, request, context, *args, **kwargs):
         ids = request.POST.getlist('assayId', [])
         form = MeasurementForm(request.POST, assays=ids, prefix='measurement')
         if len(ids) == 0:
@@ -410,7 +460,11 @@ class StudyDetailView(generic.DetailView):
             return self.handle_measurement_edit_response(request, lines, measures)
         return self.post_response(request, context, True)
 
-    def handle_update(self, request, context):
+    def handle_unknown(self, request, context, *args, **kwargs):
+        messages.error(request, 'Unknown action, or you do not have permission to modify this study.')
+        return False
+
+    def handle_update(self, request, context, *args, **kwargs):
         study = self.get_object()
         form = CreateStudyForm(request.POST or None, instance=study, prefix='study')
         if form.is_valid():
@@ -422,73 +476,35 @@ class StudyDetailView(generic.DetailView):
         self.object = self.get_object()
         action = request.POST.get('action', None)
         context = self.get_context_data(object=self.object, action=action, request=request)
-        form_valid = False
         can_write = self.object.user_can_write(request.user)
-        # allow any who can view to comment
-        if action == 'comment':
-            form_valid = self.handle_comment(request, context)
-        elif action == 'line_action':
-            line_action = request.POST.get('line_action', None)
-            # allow any who can view to export
-            if line_action == 'export':
-                export_type = request.POST.get('export', 'csv')
-                if export_type == 'sbml':
-                    return SbmlView.as_view()(request, *args, **kwargs)
-                    # return HttpResponseRedirect(
-                    #     reverse('main:sbml_export', kwargs={'study': self.object.pk}))
-                else:
-                    return ExportView.as_view()(request, *args, **kwargs)
-            elif line_action == 'worklist':
-                return WorklistView.as_view()(request, *args, **kwargs)
-            # but not edit
-            elif not can_write:
-                messages.error(request, 'You do not have permission to modify this study.')
-            elif line_action == 'edit':
-                form_valid = self.handle_disable(request)
-            else:
-                messages.error(request, 'Unknown line action %s' % (line_action))
-        elif action == 'assay_action':
-            assay_action = request.POST.get('assay_action', None)
-            # allow any who can view to export
-            if assay_action == 'export':
-                export_type = request.POST.get('export', 'csv')
-                if export_type == 'sbml':
-                    return SbmlView.as_view()(request, *args, **kwargs)
-                    # return HttpResponseRedirect(
-                    #     reverse('main:sbml_export', kwargs={'study': self.object.pk}))
-                else:
-                    return ExportView.as_view()(request, *args, **kwargs)
-            # but not edit
-            elif not can_write:
-                messages.error(request, 'You do not have permission to modify this study.')
-            elif assay_action == 'mark':
-                form_valid = self.handle_assay_mark(request)
-            elif assay_action == 'delete':
-                form_valid = self.handle_measurement_delete(request)
-            elif assay_action == 'edit':
-                return self.handle_measurement_edit(request)
-            elif assay_action == 'update':
-                return self.handle_measurement_update(request, context)
-            else:
-                messages.error(request, 'Unknown assay action %s' % (assay_action))
-        # all following require write permissions
-        elif not can_write:
-            messages.error(request, 'You do not have permission to modify this study.')
-        elif action == 'attach':
-            form_valid = self.handle_attach(request, context)
-        elif action == 'line':
-            form_valid = self.handle_line(request, context)
-        elif action == 'clone':
-            form_valid = self.handle_clone(request)
-        elif action == 'group':
-            form_valid = self.handle_group(request)
-        elif action == 'assay':
-            form_valid = self.handle_assay(request, context)
-        elif action == 'measurement':
-            form_valid = self.handle_measurement(request, context)
-        elif action == 'update':
-            form_valid = self.handle_update(request, context)
-        return self.post_response(request, context, form_valid)
+        # actions that may not require write permissions
+        action_lookup = {
+            'assay_action': self.handle_assay_action,
+            'comment': self.handle_comment,
+            'line_action': self.handle_line_action,
+        }
+        # actions that require write permissions
+        writable_lookup = {
+            'assay': self.handle_assay,
+            'attach': self.handle_attach,
+            'clone': self.handle_clone,
+            'group': self.handle_group,
+            'line': self.handle_line,
+            'measurement': self.handle_measurement,
+            'update': self.handle_update,
+        }
+        if can_write:
+            action_lookup.update(writable_lookup)
+        # find appropriate handler function for the submitted action
+        view_or_valid = action_lookup.get(action, self.handle_unknown)(
+            request, context, *args, **kwargs
+        )
+        if type(view_or_valid) == bool:
+            # boolean means a response to same page, with flag noting whether form was valid
+            return self.post_response(request, context, view_or_valid)
+        else:
+            # otherwise got a view function, call it
+            return view_or_valid(request, *args, **kwargs)
 
     def post_response(self, request, context, form_valid):
         if form_valid:
@@ -625,34 +641,38 @@ class SbmlView(EDDExportView):
 
     def init_forms(self, request, payload):
         context = super(SbmlView, self).init_forms(request, payload)
+        export_settings = SbmlExportSettingsForm(
+            initial={'sbml_template': self.selection.studies[0].metabolic_map, },
+        )
+        od_select = SbmlExportOdForm(
+            prefix='od', selection=self.selection,
+            types=MeasurementType.objects.filter(short_name='OD'),
+            protocols=Protocol.objects.filter(categorization=Protocol.CATEGORY_OD),
+        )
+        hplc_select = SbmlExportMeasurementsForm(
+            prefix='hplc', selection=self.selection,
+            protocols=Protocol.objects.filter(categorization=Protocol.CATEGORY_HPLC),
+        )
+        ms_select = SbmlExportMeasurementsForm(
+            prefix='ms', selection=self.selection,
+            protocols=Protocol.objects.filter(categorization=Protocol.CATEGORY_LCMS),
+        )
+        ramos_select = SbmlExportMeasurementsForm(
+            prefix='ramos', selection=self.selection,
+            protocols=Protocol.objects.filter(categorization=Protocol.CATEGORY_RAMOS),
+        )
+        omics_select = SbmlExportMeasurementsForm(
+            prefix='ramos', selection=self.selection,
+            protocols=Protocol.objects.filter(categorization=Protocol.CATEGORY_TPOMICS),
+        )
         try:
             context.update(
-                export_settings_form=SbmlExportSettingsForm(
-                    initial={
-                        'sbml_template': self.selection.studies[0].metabolic_map,
-                    },
-                ),
-                od_select_form=SbmlExportMeasurementsForm(
-                    prefix='od', selection=self.selection,
-                    types=MeasurementType.objects.filter(short_name='OD'),
-                    protocols=Protocol.objects.filter(categorization=Protocol.CATEGORY_OD),
-                ),
-                hplc_select_form=SbmlExportMeasurementsForm(
-                    prefix='hplc', selection=self.selection,
-                    protocols=Protocol.objects.filter(categorization=Protocol.CATEGORY_HPLC),
-                ),
-                ms_select_form=SbmlExportMeasurementsForm(
-                    prefix='ms', selection=self.selection,
-                    protocols=Protocol.objects.filter(categorization=Protocol.CATEGORY_LCMS),
-                ),
-                ramos_select_form=SbmlExportMeasurementsForm(
-                    prefix='ramos', selection=self.selection,
-                    protocols=Protocol.objects.filter(categorization=Protocol.CATEGORY_RAMOS),
-                ),
-                omics_select_form=SbmlExportMeasurementsForm(
-                    prefix='ramos', selection=self.selection,
-                    protocols=Protocol.objects.filter(categorization=Protocol.CATEGORY_TPOMICS),
-                ),
+                export_settings_form=export_settings,
+                od_select_form=od_select,
+                hplc_select_form=hplc_select,
+                ms_select_form=ms_select,
+                ramos_select_form=ramos_select,
+                omics_select_form=omics_select,
             )
         except Exception as e:
             logger.exception("Failed to validate forms for export: %s", e)
@@ -1123,64 +1143,6 @@ def study_import_rnaseq_process(request, study):
         logger.error('Exception in RNASeq import process: %s', e)
     else:
         return JsonResponse(result)
-
-
-# /study/<study_id>/sbml
-# FIXME should have trailing slash?
-def study_export_sbml(request, study):
-    model = load_study(request, study)
-    if request.method == "POST":
-        form = request.POST
-    else:
-        form = request.GET
-    try:
-        lines = get_selected_lines(form, model)
-        manager = line_sbml_export(
-            study=model,
-            lines=lines,
-            form=form,
-            debug=True
-        )
-    except ValueError as e:
-        return render(
-            request,
-            "main/error.html",
-            context={
-                "error_source": "SBML export for %s" % model.name,
-                "error_message": str(e),
-            },
-        )
-    else:
-        # two levels of exception handling allow us to view whatever steps
-        # were completed successfully even if a later step fails
-        error_message = None
-        try:
-            manager.run()
-        except ValueError as e:
-            error_message = str(e)
-        else:
-            if form.get("download", None):
-                timestamp_str = form["timestamp"]
-                if timestamp_str != "":
-                    timestamp = float(timestamp_str)
-                    sbml = manager.as_sbml(timestamp)
-                    response = HttpResponse(
-                        sbml, content_type="application/sbml+xml")
-                    file_name = manager.output_file_name(timestamp)
-                    response['Content-Disposition'] = 'attachment; filename="%s"' % file_name
-                    return response
-        return render(
-            request,
-            "main/sbml_export.html",
-            context={
-                "data": manager,
-                "study": model,
-                "lines": lines,
-                "error_message": error_message,
-                "select_form": ExportSelectionForm(data=form, user=request.user),
-                "export_settings_form": SbmlExportSettingsForm(),
-            },
-        )
 
 
 # /data/users
