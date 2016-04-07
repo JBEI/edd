@@ -885,7 +885,7 @@ class ExportOptionForm(forms.Form):
             columns.extend(data.get(m, []))
         self._options = table.ExportOption(
             layout=data.get('layout', table.ExportOption.DATA_COLUMN_BY_LINE),
-            separator=data.get('separator', table.ExportOption.COMMA_SEPARATED),
+            separator=self.cell_separator,
             data_format=data.get('data_format', table.ExportOption.ALL_DATA),
             line_section=data.get('line_section', False),
             protocol_section=data.get('protocol_section', False),
@@ -904,8 +904,11 @@ class ExportOptionForm(forms.Form):
         choice = self.cleaned_data.get('separator', self.COMMA_SEPARATED)
         if choice == self.TAB_SEPARATED:
             return '\t'
-        return ','
-    separator = property(get_separator)
+        elif choice == self.COMMA_SEPARATED:
+            return ','
+        else:
+            return choice
+    cell_separator = property(get_separator)
 
     def _init_options(self):
         # sometimes self.data is a plain dict instead of a QueryDict

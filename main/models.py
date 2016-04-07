@@ -1077,15 +1077,15 @@ class Line(EDDObject):
             table.ColumnChoice(
                 # TODO export should handle multi-valued fields better than this
                 cls, 'strain', _('Strain'),
-                lambda x: '|'.join([s.name for s in x.strains])),
+                lambda x: '|'.join([s.name for s in x.strains.all()])),
             table.ColumnChoice(
                 # TODO export should handle multi-valued fields better than this
                 cls, 'csource_name', _('Carbon Source'),
-                lambda x: '|'.join([c.name for c in x.carbon_source])),
+                lambda x: '|'.join([c.name for c in x.carbon_source.all()])),
             table.ColumnChoice(
                 # TODO export should handle multi-valued fields better than this
                 cls, 'csource_label', _('Carbon Labeling'),
-                lambda x: '|'.join([c.labeling for c in x.carbon_source])),
+                lambda x: '|'.join([c.labeling for c in x.carbon_source.all()])),
             table.ColumnChoice(
                 cls, 'experimenter', _('Experimenter'),
                 lambda x: x.experimenter.email if x.experimenter else '',

@@ -193,12 +193,6 @@ class ExportOption(object):
         (DATA_COLUMN_BY_POINT, _('columns of metadata types, and rows of single points')),
         (LINE_COLUMN_BY_DATA, _('columns of lines/assays, and rows of metadata types')),
     )
-    COMMA_SEPARATED = 'csv'
-    TAB_SEPARATED = 'tsv'
-    SEPARATOR_CHOICE = (
-        (COMMA_SEPARATED, _('Comma-separated (CSV)')),
-        (TAB_SEPARATED, _('Tab-separated')),
-    )
     ALL_DATA = 'all'
     SUMMARY_DATA = 'summary'
     NONE_DATA = 'none'
@@ -208,7 +202,7 @@ class ExportOption(object):
         (NONE_DATA, _('None')),
     )
 
-    def __init__(self, layout=DATA_COLUMN_BY_LINE, separator=COMMA_SEPARATED, data_format=ALL_DATA,
+    def __init__(self, layout=DATA_COLUMN_BY_LINE, separator=',', data_format=ALL_DATA,
                  line_section=False, protocol_section=False, columns=[], blank_columns=[],
                  blank_mod=0):
         self.layout = layout
@@ -236,12 +230,14 @@ class TableExport(object):
         self._x_values = {}
 
     def output(self):
-        # store tables
+        """ Builds the CSV of the table export output. """
+        # store tables; protocol PK keys table for measurements under a protocol, 'line' keys table
+        #   for line-only section (if enabled), 'all' keys table including everything.
         tables = OrderedDict()
         if self.options.line_section:
             tables['line'] = OrderedDict()
             tables['line']['header'] = self._output_line_header()
-        elif not self.options.protocol_section:
+        if not self.options.protocol_section:
             tables['all'] = OrderedDict()
             tables['all']['header'] = self._output_header()
         self._do_export(tables)
@@ -251,7 +247,7 @@ class TableExport(object):
         layout = self.options.layout
         table_separator = '\n\n'
         row_separator = '\n'
-        cell_separator = '\t' if self.options.separator == ExportOption.TAB_SEPARATED else ','
+        cell_separator = self.options.separator
         if layout == ExportOption.DATA_COLUMN_BY_POINT:
             # data is already in correct orientation, join and return
             return table_separator.join([
@@ -286,7 +282,9 @@ class TableExport(object):
         from main.models import Assay, Line, Measurement, MeasurementValue, Protocol, Study
         # add data from each exported measurement; already sorted by protocol
         measures = self.selection.measurements.prefetch_related(
-            Prefetch('measurementvalue_set', queryset=MeasurementValue.objects.order_by('x'))
+            Prefetch('measurementvalue_set', queryset=MeasurementValue.objects.order_by('x')),
+            Prefetch('assay__line__strains'),
+            Prefetch('assay__line__carbon_source'),
         )
         for measurement in measures:
             assay = measurement.assay
