@@ -40,6 +40,7 @@ urlpatterns = [
 
     url(r'^export/$', login_required(views.ExportView.as_view()), name='export'),
     url(r'^worklist/$', login_required(views.WorklistView.as_view()), name='worklist'),
+    url(r'^sbml/$', login_required(views.SbmlView.as_view()), name='sbml'),
 
     url(r'^file/download/(?P<file_id>\d+)$', login_required(views.download)),
     url(r'^file/delete/(?P<file_id>\d+)$', login_required(views.delete_file)),

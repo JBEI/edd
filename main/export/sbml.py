@@ -69,6 +69,7 @@ class SbmlForm(forms.Form):
     def __init__(self, *args, **kwargs):
         kwargs.setdefault('label_suffix', '')
         super(SbmlForm, self).__init__(*args, **kwargs)
+        self.sbml_warnings = []
 
 
 class SbmlExportSettingsForm(SbmlForm):
@@ -101,10 +102,19 @@ class SbmlExportMeasurementsForm(SbmlForm):
     )
 
     def __init__(self, *args, **kwargs):
+        """
+        Required:
+            selection = a main.export.ExportSelection object defining the items for export
+        Optional:
+            types = a queryset or collection used to filter types of measurements to include
+            protocols = a queryset or collection used to filter protocols to include
+            baseline = another SbmlExportMeasurementsForm used to find timepoints where values
+                should be interpolated
+        """
         self._selection = kwargs.pop('selection', None)
         self._types = kwargs.pop('types', None)
         self._protocols = kwargs.pop('protocols', None)
-        self.sbml_warnings = []
+        self._baseline = kwargs.pop('baseline', None)
         super(SbmlExportMeasurementsForm, self).__init__(*args, **kwargs)
         f = self.fields['measurementId']
         f.queryset = self._selection.measurements.order_by(
@@ -118,12 +128,24 @@ class SbmlExportMeasurementsForm(SbmlForm):
             f.queryset = f.queryset.filter(assay__protocol_id__in=self._protocols)
         if f.queryset.count() == 0:
             self.sbml_warnings.append(_('No protocols have usable data.'))
+        else:
+            f.initial = f.queryset
+
+    def clean(self):
+        """ Upon validation, also inserts interpolated value points matching points available in
+            baseline measurements for the same line. """
+        data = super(SbmlExportMeasurementsForm, self).clean()
+        # TODO
+        return data
 
     def measurement_split(self):
+        """ Generator which yields a Measurement object and the widget used to select the same. """
         for index, measurement in enumerate(self.measurement_list):
             yield (measurement, self.measurement_widgets[index])
 
     def protocol_split(self):
+        """ Generator which yields a Protocol name and a list of
+            (Measurement object, Measurement select widget) tuples. """
         prev_protocol = None
         items = []
         # loop over all the choices in the queryset
@@ -140,6 +162,7 @@ class SbmlExportMeasurementsForm(SbmlForm):
         yield (prev_protocol, items)
 
     def x_range(self):
+        """ Returns the bounding range of X-values used for all Measurements in the form. """
         f = self.fields['measurementId']
         x_range = f.queryset.aggregate(
             max=Max('measurementvalue__x'), min=Min('measurementvalue__x')
@@ -157,7 +180,8 @@ class SbmlExportMeasurementsForm(SbmlForm):
             field = self.fields['measurementId']
             self._measures = list(field.queryset)
         return self._measures
-    measurement_list = property(_get_measurements)
+    measurement_list = property(_get_measurements,
+                                doc='A list of Measurements included in the form')
 
     def _get_measurement_widgets(self):
         # lazy eval and try not to query more than once
@@ -165,7 +189,8 @@ class SbmlExportMeasurementsForm(SbmlForm):
             widgets = self['measurementId']
             self._measure_widgets = list(widgets)
         return self._measure_widgets
-    measurement_widgets = property(_get_measurement_widgets)
+    measurement_widgets = property(_get_measurement_widgets,
+                                   doc='A list of widgets used to select Measurements')
 
 
 class SbmlExportOdForm(SbmlExportMeasurementsForm):

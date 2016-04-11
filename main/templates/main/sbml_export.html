@@ -59,7 +59,9 @@
   <div class="disclose discloseHide" id="existinglineshide">
     <div style="margin:10px">
       <a href="#" class="discloseLink">
-        {{ selection.measurements|length }} Measurements in {{ selection.assays|length }} Assays in {{ selection.lines|length }} Lines Selected
+        {% blocktrans with measurement=selection.measurements|length assays=selection.assays|length lines=selection.lines|length %}
+          {{ measurements }} Measurements in {{ assays }} Assays in {{ lines }} Lines Selected
+        {% endblocktrans %}
       </a>
     </div>
     <div id="existingLinesSection" class="pageSection discloseBody" style="border-width:1px;margin:10px;">  
@@ -67,16 +69,22 @@
     </div>
   </div>
 
-  <form method="post" id="exportForm" action="/study/{{ study.id }}/sbml/">
+  <form method="post" id="exportForm" action="{% url 'main:sbml' %}">
     {% csrf_token %}
     <!-- carry over selection -->
     {{ select_form.as_p }}
     <!-- Export settings section -->
     <div class="pageSection" style="margin:10px;" id="allstatusmain">
       <!-- Show warnings count, if applicable -->
-      <div class="sectionHead">Export Settings:
-        {% if data.n_warnings %}
-          <span class="warn2">{{ data.n_warnings }} warnings</span>
+      <div class="sectionHead">{% trans "Export Settings:" %}
+        {% if sbml_warnings|length > 0 %}
+          <span class="warn2">
+            {% blocktrans count counter=sbml_warnings|length %}
+            {{ counter }} warning
+            {% plural %}
+            {{ counter }} warnings
+            {% endblocktrans %}
+          </span>
         {% endif %}
       </div>
       <!--
@@ -85,7 +93,9 @@
       <input type="hidden" id="statusstep0show" name="statusstep0show" value="0"/>
       <div class="disclose discloseHide" id="step0">
         <div class="sectionChapter">
-          <a href="#" class="discloseLink">Step 1: Select the SBML template file to use for export</a>
+          <a href="#" class="discloseLink">
+            {% trans "Step 1: Select the SBML template file to use for export" %}
+          </a>
         </div>
         <div class="sectionContent discloseBody" id="statusstep0main">
           <!-- form method of selecting template -->
@@ -95,15 +105,17 @@
       <!--
       Step 2: Optical Density (OD600)
       -->
-      <input type="hidden" id="statusstep1show" name="statusstep1show" value="0"/>
-      <div class="disclose{% if not data.n_od_warnings %} discloseHide{% endif %}" id="step1">
+      {% with od_warnings=od_select_form.sbml_warnings %}
+      <div class="disclose{% if od_warnings|length == 0 %} discloseHide{% endif %}" id="step1">
         <div class="sectionChapter">
           <span>
-            <a href="#" class="discloseLink">Step 2: Find OD Data:</a>
+            <a href="#" class="discloseLink">
+              {% trans "Step 2: Find OD Data" %}
+            </a>
           </span>
-          {% if od_select_form.sbml_warnings|length %}
+          {% if od_warnings %}
           <span class="warn2">
-            {% blocktrans count counter=od_select_form.sbml_warnings|length %}
+            {% blocktrans count counter=od_warnings|length %}
             {{ counter }} warning
             {% plural %}
             {{ counter }} warnings
@@ -112,15 +124,15 @@
           {% endif %}
         </div>
         <div class="sectionContent discloseBody" id="statusstep1main">
-          {% for message in od_select_form.sbml_warnings %}
+          {% for message in od_warnings %}
           <div class="warn2">{{ message }}</div>
           {% endfor %}
           <div class="rounded-border">
             <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
               <tr>
-                <td>Assay</td>
-                <td>Measurement</td>
-                <td colspan="2">Recorded Values</td>
+                <td>{% trans "Assay" %}</td>
+                <td>{% trans "Measurement" %}</td>
+                <td colspan="2">{% trans "Recorded Values" %}</td>
               </tr>
               {% with x_range=od_select_form.x_range %}
               {% for measurement, widget in od_select_form.measurement_split %}
@@ -155,21 +167,24 @@
             </table>
           </div>
         </div>
-      </div><!-- #step1 -->
+      </div>
+      {% endwith %}<!-- #step1 -->
       <!--
       Step 3 (HPLC) 
       This is more complicated than the previous section, because it is designed to handle multiple
       protocols, and there is an additional "input" checkbox for each measurement.
       -->
-      <input type="hidden" id="statusstep2show" name="statusstep2show" value="0"/>
-      <div class="disclose discloseHide" id="step2">
+      {% with hplc_warnings=hplc_select_form.sbml_warnings %}
+      <div class="disclose{% if hplc_warnings|length == 0 %} discloseHide {% endif %}" id="step2">
         <div class="sectionChapter">
           <span>
-            <a href="#" class="discloseLink">Step 3: Select HPLC-like Measurements, and inputs</a>
+            <a href="#" class="discloseLink">
+              {% trans "Step 3: Select HPLC-like Measurements, and inputs" %}
+            </a>
           </span>
-          {% if hplc_select_form.sbml_warnings|length %}
+          {% if hplc_warnings %}
           <span class="warn2">
-            {% blocktrans count counter=hplc_select_form.sbml_warnings|length %}
+            {% blocktrans count counter=hplc_warnings|length %}
             {{ counter }} warning
             {% plural %}
             {{ counter }} warnings
@@ -178,18 +193,22 @@
           {% endif %}
         </div>
         <div class="sectionContent discloseBody" id="statusstep2main">
-          {% for message in hplc_select_form.sbml_warnings %}
+          {% for message in hplc_warnings %}
           <div class="warn2">{{ message }}</div>
           {% endfor %}
           {% with x_range=hplc_select_form.x_range %}
           {% for protocol, items in hplc_select_form.protocol_split %}
-            <div>Protocol <b>{{ protocol.name }}</b></div>
+            <div>
+              {% blocktrans with name=protocol.name %}
+              Protocol <b>{{ name }}</b>
+              {% endblocktrans %}
+            </div>
             <div class="rounded-border">
               <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
                 <tr>
-                  <td>Assay</td>
-                  <td colspan="2">Measurement</td>
-                  <td colspan="2">Recorded Values</td>
+                  <td>{% trans "Assay" %}</td>
+                  <td colspan="2">{% trans "Measurement" %}</td>
+                  <td colspan="2">{% trans "Recorded Values" %}</td>
                 </tr>
                 {% for measurement, widget in items %}
                 {% with values=measurement.measurementvalue_set.all assay=measurement.assay %}
@@ -225,21 +244,23 @@
           {% endfor %}<!-- protocols -->
           {% endwith %}
         </div>
-      </div><!-- #step2 -->
-
+      </div>
+      {% endwith %}<!-- #step2 -->
       <!--
       Step 4 (LC-MS)
       (This is almost identical to the previous section for HPLC protocols)
       -->
-      <input type="hidden" id="statusstep3show" name="statusstep3show" value="0"/>
-      <div class="disclose discloseHide" id="step3">
+      {% with ms_warnings=ms_select_form.sbml_warnings %}
+      <div class="disclose{% if ms_warnings|length == 0 %} discloseHide{% endif %}" id="step3">
         <div class="sectionChapter">
           <span>
-            <a href="#" class="discloseLink">Step 4: Select LCMS-like Measurements, and inputs</a>
+            <a href="#" class="discloseLink">
+              {% trans "Step 4: Select LCMS-like Measurements, and inputs" %}
+            </a>
           </span>
-          {% if hplc_select_form.sbml_warnings|length %}
+          {% if ms_warnings %}
           <span class="warn2">
-            {% blocktrans count counter=ms_select_form.sbml_warnings|length %}
+            {% blocktrans count counter=ms_warnings|length %}
             {{ counter }} warning
             {% plural %}
             {{ counter }} warnings
@@ -248,18 +269,22 @@
           {% endif %}
         </div>
         <div class="sectionContent discloseBody" id="statusstep3main">
-          {% for message in ms_select_form.sbml_warnings %}
+          {% for message in ms_warnings %}
           <div class="warn2">{{ message }}</div>
           {% endfor %}
           {% with x_range=ms_select_form.x_range %}
           {% for protocol, items in ms_select_form.protocol_split %}
-            <div>Protocol <b>{{ protocol.name }}</b></div>
+            <div>
+              {% blocktrans with name=protocol.name %}
+              Protocol <b>{{ name }}</b>
+              {% endblocktrans %}
+            </div>
             <div class="rounded-border">
               <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
                 <tr>
-                  <td>Assay</td>
-                  <td colspan="2">Measurement</td>
-                  <td colspan="2">Recorded Values</td>
+                  <td>{% trans "Assay" %}</td>
+                  <td colspan="2">{% trans "Measurement" %}</td>
+                  <td colspan="2">{% trans "Recorded Values" %}</td>
                 </tr>
                 {% for measurement, widget in items %}
                 {% with values=measurement.measurementvalue_set.all assay=measurement.assay %}
@@ -295,7 +320,8 @@
           {% endfor %}<!-- protocols -->
           {% endwith %}
         </div>
-      </div><!-- #step3 -->
+      </div>
+      {% endwith %}<!-- #step3 -->
       <!--
       Step 5 (RAMOS O2/CO2)
       -->
@@ -325,9 +351,9 @@
             <div class="rounded-border">
               <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
                 <tr>
-                  <td>Assay</td>
-                  <td colspan="2">Measurement</td>
-                  <td colspan="2">Recorded Values</td>
+                  <td>{% trans "Assay" %}</td>
+                  <td colspan="2">{% trans "Measurement" %}</td>
+                  <td colspan="2">{% trans "Recorded Values" %}</td>
                 </tr>
                 {% for measurement, widget in items %}
                 {% with values=measurement.measurementvalue_set.all assay=measurement.assay %}
@@ -397,9 +423,9 @@
             <div class="rounded-border">
               <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
                 <tr>
-                  <td>Assay</td>
-                  <td colspan="2">Measurement</td>
-                  <td colspan="2">Recorded Values</td>
+                  <td>{% trans "Assay" %}</td>
+                  <td colspan="2">{% trans "Measurement" %}</td>
+                  <td colspan="2">{% trans "Recorded Values" %}</td>
                 </tr>
                 {% for measurement, widget in items %}
                 {% with values=measurement.measurementvalue_set.all assay=measurement.assay %}
@@ -529,15 +555,9 @@
       </div><!-- #step6 -->
 
 <!--
-
 Step 8
-
 -->
-<input type="hidden"
-    id="statusstep7show"
-    name="statusstep7show"
-    value="0"/>
-
+<input type="hidden" id="statusstep7show" name="statusstep7show" value="0"/>
 <div class="disclose discloseHide" id="step7">
   <div class="sectionChapter">
     <span>
@@ -548,20 +568,14 @@ Step 8
     </span>
     <!-- TODO warnings -->
   </div>
-
   <div class="sectionContent discloseBody" id="statusstep7main">
-
-  {% include "main/include_sbml_info.html" %}
-
-    <input class="off" type="text" size="5" name="fordebugpurposes"
-      id="fordebugpurposes" value="" />
-  
+    {% include "main/include_sbml_info.html" %}
+    <input class="off" type="text" size="5" name="fordebugpurposes" id="fordebugpurposes" value="" />
     <p>
       <b>Metabolomics:</b>
       Matching available metabolite measurements to species defined in the SBML
       model...
     </p>
-  
     <div class="rounded-border" style="display:inline-block;"><!-- margin? -->
       <table class="dataTable" cellspacing="0">
         <tr>
@@ -573,13 +587,12 @@ Step 8
           <td>
             <p>
               <span class="popup">{{ sp.name }}
-                <span class="popupinfo">{{ sp.short_name }}
-                </span>:
+                <span class="popupinfo">{{ sp.short_name }}</span>:
               </span>
             </p>
           </td>
           <td> 
-            <input  type="text"
+            <input type="text"
                 class="autocomplete"
                 autocompletetype="species"
                 autocomplete="off"
@@ -591,12 +604,8 @@ Step 8
         </tr>
         {% endfor %}
       </table>
-  
-  
-      <input type="hidden" name="speciesmatchelements"
-        value="{{ data.species_match_element_ids }}"/>
+      <input type="hidden" name="speciesmatchelements" value="{{ data.species_match_element_ids }}"/>
     </div>
-  
     <p>
       <b>Fluxomics:</b> Matching available fluxes to reactants/exchanges
         defined in the SBML model...
@@ -618,7 +627,7 @@ Step 8
             </p>
           </td>
           <td> 
-            <input  type="text"
+            <input type="text"
                 class="autocomplete"
                 autocompletetype="exchange"
                 autocomplete="off"
@@ -630,8 +639,7 @@ Step 8
         </tr>
         {% endfor %}
       </table>
-      <input type="hidden" name="fluxmatchelements"
-             value="{{ data.flux_match_element_ids }}"/>
+      <input type="hidden" name="fluxmatchelements" value="{{ data.flux_match_element_ids }}"/>
     </div>
 <!-- FIXME this shouldn't be necessary but the list items end up being placed
 far to the left for some reason -->
@@ -676,20 +684,15 @@ li {
 </div><!-- #allstatusmain -->
 
 <!--
-
 END OF EXPORT SETTINGS
-
 -->
 <div style="width:100%;font-size:13px;vertical-align:bottom;text-align:right;" id="updateSettingsTable"><input style="margin:10px 1em 1em 0;" type="submit" name="action" value="Update Settings" />
   </div>
 
 
 <!--
-
 Downloads section
-
 TODO new layout
-
 -->
 <div class="pageSection" id="dataDownloads" style="width:90%;">
   <div class="sectionHead">

@@ -778,8 +778,8 @@ class ExportOptionForm(forms.Form):
         (DATA_COLUMN_BY_POINT, _('columns of metadata types, and rows of single points')),
         (LINE_COLUMN_BY_DATA, _('columns of lines/assays, and rows of metadata types')),
     )
-    COMMA_SEPARATED = 'csv'
-    TAB_SEPARATED = 'tsv'
+    COMMA_SEPARATED = ','
+    TAB_SEPARATED = '\t'
     SEPARATOR_CHOICE = (
         (COMMA_SEPARATED, _('Comma-separated (CSV)')),
         (TAB_SEPARATED, _('Tab-separated')),
@@ -901,13 +901,7 @@ class ExportOptionForm(forms.Form):
     options = property(get_options)
 
     def get_separator(self):
-        choice = self.cleaned_data.get('separator', self.COMMA_SEPARATED)
-        if choice == self.TAB_SEPARATED:
-            return '\t'
-        elif choice == self.COMMA_SEPARATED:
-            return ','
-        else:
-            return choice
+        return self.cleaned_data.get('separator', self.COMMA_SEPARATED)
     cell_separator = property(get_separator)
 
     def _init_options(self):

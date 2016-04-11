@@ -6,8 +6,6 @@ import json
 import logging
 import operator
 import re
-from functools import reduce
-from io import BytesIO
 
 from builtins import str
 from django.conf import settings
@@ -27,6 +25,9 @@ from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 from django.views import generic
 from django.views.decorators.csrf import ensure_csrf_cookie
+from functools import reduce
+from io import BytesIO
+from itertools import chain
 
 from jbei.ice.rest.ice import IceApi, STRAIN, IceHmacAuth
 from .importer import (
@@ -461,7 +462,9 @@ class StudyDetailView(generic.DetailView):
         return self.post_response(request, context, True)
 
     def handle_unknown(self, request, context, *args, **kwargs):
-        messages.error(request, 'Unknown action, or you do not have permission to modify this study.')
+        messages.error(
+            request, 'Unknown action, or you do not have permission to modify this study.'
+        )
         return False
 
     def handle_update(self, request, context, *args, **kwargs):
@@ -641,31 +644,43 @@ class SbmlView(EDDExportView):
 
     def init_forms(self, request, payload):
         context = super(SbmlView, self).init_forms(request, payload)
-        export_settings = SbmlExportSettingsForm(
-            initial={'sbml_template': self.selection.studies[0].metabolic_map, },
-        )
+        settings_form_kwargs = {
+            'initial': {'sbml_template': self.selection.studies[0].metabolic_map, },
+        }
+        export_settings = SbmlExportSettingsForm(**settings_form_kwargs)
+        # detect if we're coming from a form submit on study page or a re-submit from export page
+        form_data = None
+        if export_settings.add_prefix('sbml_template') in request.POST:
+            form_data = request.POST
+            export_settings = SbmlExportSettingsForm(form_data, **settings_form_kwargs)
         # TODO: detect redirect from study page, and set initial values to select all
         od_select = SbmlExportOdForm(
-            prefix='od', selection=self.selection,
+            data=form_data, prefix='od', selection=self.selection,
             types=MeasurementType.objects.filter(short_name='OD'),
             protocols=Protocol.objects.filter(categorization=Protocol.CATEGORY_OD),
         )
         hplc_select = SbmlExportMeasurementsForm(
-            prefix='hplc', selection=self.selection,
+            data=form_data, prefix='hplc', selection=self.selection,
             protocols=Protocol.objects.filter(categorization=Protocol.CATEGORY_HPLC),
         )
         ms_select = SbmlExportMeasurementsForm(
-            prefix='ms', selection=self.selection,
+            data=form_data, prefix='ms', selection=self.selection,
             protocols=Protocol.objects.filter(categorization=Protocol.CATEGORY_LCMS),
         )
         ramos_select = SbmlExportMeasurementsForm(
-            prefix='ramos', selection=self.selection,
+            data=form_data, prefix='ramos', selection=self.selection,
             protocols=Protocol.objects.filter(categorization=Protocol.CATEGORY_RAMOS),
         )
         omics_select = SbmlExportMeasurementsForm(
-            prefix='ramos', selection=self.selection,
+            data=form_data, prefix='ramos', selection=self.selection,
             protocols=Protocol.objects.filter(categorization=Protocol.CATEGORY_TPOMICS),
         )
+        sbml_warnings = chain(export_settings.sbml_warnings,
+                              od_select.sbml_warnings,
+                              hplc_select.sbml_warnings,
+                              ms_select.sbml_warnings,
+                              ramos_select.sbml_warnings,
+                              omics_select.sbml_warnings)
         try:
             context.update(
                 export_settings_form=export_settings,
@@ -674,6 +689,7 @@ class SbmlView(EDDExportView):
                 ms_select_form=ms_select,
                 ramos_select_form=ramos_select,
                 omics_select_form=omics_select,
+                sbml_warnings=list(sbml_warnings)
             )
         except Exception as e:
             logger.exception("Failed to validate forms for export: %s", e)
