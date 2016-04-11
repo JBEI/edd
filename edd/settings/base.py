@@ -84,6 +84,7 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     'django.contrib.postgres',
     'django_extensions',  # django-extensions in pip
+    'rest_framework',  # djangorestframework in pip
     'form_utils',  # django-form-utils in pip
     # django-allauth in pip; separate apps for each provider
     'allauth',

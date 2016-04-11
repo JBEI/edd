@@ -16,6 +16,19 @@ root = environ.Path(__file__) - 3  # we get this out of `from .base import *` to
 MEDIA_ROOT = root('uploads')
 MEDIA_URL = '/uploads/'
 
+# Override the default MANAGERS and ADMINS
+MANAGERS = ADMINS = (
+    ('Jay Bay', 'admin@example.org'),  # <-- CHANGE ME
+)
+
+# Set the IPs where the debug toolbar will be available; use localhost IPv4 and IPv6
+INTERNAL_IPS = ['127.0.0.1', '::1', ]
+# Also add the 'external' IP for the nginx service proxying the appserver
+try:
+    import socket
+    INTERNAL_IPS.append(socket.gethostbyname('nginx'))
+except:
+    pass
 # Add the Django Debug Toolbar to local instance
 # Add login providers
 INSTALLED_APPS = INSTALLED_APPS + (
@@ -29,6 +42,9 @@ DEBUG_TOOLBAR_CONFIG = {
 }
 
 ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'http'
+USE_CELERY = True
+PUBLISH_REST_API = True
+EDD_ONLY_SUPERUSER_CREATE = False
 
 
 

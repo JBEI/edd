@@ -119,11 +119,20 @@ This section contains directions for setting up a development environment on EDD
                           -e EDD_PGPASS=secret2 \
                           postgres:9.4
 
-                * Connect to the temporary postgres service and run the init script (this will
-                  prompt you for the `secret1` password for `postgres` user):
+                * To create a new (empty) database:
+                    * Connect to the temporary postgres service and run the init script (this will
+                      prompt you for the `secret1` password for `postgres` user):
 
-                      cat ./docker_services/postgres/init.sql | \
-                          docker exec -i temp_pg psql -U postgres template1
+                          cat ./docker_services/postgres/init.sql | \
+                              docker exec -i temp_pg psql -U postgres template1
+
+                * To copy an existing database:
+                    * Dump from the existing database and pipe to the temporary postgres service
+                      (replace `{remote_host}` e.g. with `postgres.jbei.org`, and `{remote_db}`
+                      with database name):
+
+                          pg_dump -Fp -C -E UTF8 -h {remote_host} {remote_db} | \
+                              docker exec -i temp_pg psql -U postgres
 
             * Initialize the solr volume
                 * Launch a temporary solr service container with the data volume mounted:
