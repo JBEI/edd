@@ -1628,7 +1628,7 @@ var EDDTableImport;
                 // when other UI in this step changes.  This pulldown is NOT affected by changes to
                 // the other UI, so it would be pointless to remake it in response to them.
                 assayIn = $('#masterAssay').empty();
-                $('<option>').text('(Create New)').appendTo(assayIn).val('new').prop('selected', true);
+                $('<option>').text('(Create New)').appendTo(assayIn).val('named_or_new').prop('selected', true);
                 currentAssays = ATData.existingAssays[masterP] || [];
                 currentAssays.forEach(function (id) {
                     var assay = EDDData.Assays[id], line = EDDData.Lines[assay.lid], protocol = EDDData.Protocols[assay.pid];
@@ -1921,7 +1921,7 @@ var EDDTableImport;
         // Such changes may affect the available contents of some of the pulldowns in the step.
         TypeDisambiguationStep.prototype.changedAnyMasterPulldown = function () {
             // Show the master line dropdown if the master assay dropdown is set to new
-            $('#masterLineSpan').toggleClass('off', $('#masterAssay').val() !== 'new');
+            $('#masterLineSpan').toggleClass('off', $('#masterAssay').val() !== 'named_or_new');
             this.reconfigure();
         };
         // If the pulldown is being set to 'new', walk down the remaining pulldowns in the section,
@@ -1955,8 +1955,8 @@ var EDDTableImport;
             var changed, v;
             changed = $(assayEl).data('setByUser', true);
             // The span with the corresponding Line pulldown is always right next to the Assay pulldown
-            changed.next().toggleClass('off', changed.val() !== 'new');
-            if (changed.val() !== 'new') {
+            changed.next().toggleClass('off', changed.val() !== 'named_or_new');
+            if (changed.val() !== 'named_or_new') {
                 // stop here for anything other than 'new'; only 'new' cascades to following pulldowns
                 return false;
             }
@@ -1967,7 +1967,7 @@ var EDDTableImport;
                     return;
                 }
                 // set dropdown to 'new' and reveal the line pulldown
-                select.val('new').next().removeClass('off');
+                select.val('named_or_new').next().removeClass('off');
             });
             return false;
         };
@@ -2114,7 +2114,7 @@ var EDDTableImport;
             parsedSets.forEach(function (set, c) {
                 var resolvedSet;
                 var line_id = 'new'; // A convenient default
-                var assay_id = 'new';
+                var assay_id = 'named_or_new';
                 var measurement_id = null;
                 var compartment_id = null;
                 var units_id = null;
