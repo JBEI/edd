@@ -49,15 +49,21 @@ import sys
 import time
 
 from collections import defaultdict, OrderedDict
+from copy import copy
+from decimal import Decimal
 from django import forms
 from django.db.models import Max, Min
+from django.http import QueryDict
 from django.template.defaulttags import register
+from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext as _
 from six import string_types
+from threadlocals.threadlocals import get_current_request
 
+from ..forms import MetadataTypeAutocompleteWidget
 from ..models import (
     Attachment, Measurement, MeasurementType, MeasurementUnit, Metabolite, MetaboliteExchange,
-    MetaboliteSpecies, Protocol, SBMLTemplate,
+    MetaboliteSpecies, MetadataType, Protocol, SBMLTemplate,
 )
 from ..utilities import interpolate_at, line_export_base
 
@@ -138,6 +144,13 @@ class SbmlExportMeasurementsForm(SbmlForm):
         # TODO
         return data
 
+    def form_without_measurements(self):
+        """ Returns a copy of the form without the measurementId field; this allows rendering in
+            templates as, e.g. `form_var.form_without_measurements.as_p`. """
+        fles = copy(self)
+        fles.fields = {k: v for k, v in fles.fields.items() if k != 'measurementId'}
+        return fles
+
     def measurement_split(self):
         """ Generator which yields a Measurement object and the widget used to select the same. """
         for index, measurement in enumerate(self.measurement_list):
@@ -194,10 +207,90 @@ class SbmlExportMeasurementsForm(SbmlForm):
 
 
 class SbmlExportOdForm(SbmlExportMeasurementsForm):
+    DEFAULT_GCDW_FACTOR = Decimal('0.65')
+    PREF_GCDW_META = 'export.sbml.gcdw_metadata'
+    gcdw_conversion = forms.ModelChoiceField(
+        empty_label=None,
+        help_text=_('Select the metadata containing the conversion factor for Optical Density '
+                    'to grams carbon dry-weight per liter.'),
+        label=_('gCDW/L/OD factor metadata'),
+        queryset=MetadataType.objects.filter(),
+        required=False,
+        widget=MetadataTypeAutocompleteWidget,
+    )
+    gcdw_default = forms.DecimalField(
+        help_text=_('Override the default conversion factor used if no metadata value is found.'),
+        initial=DEFAULT_GCDW_FACTOR,
+        label=_('Default gCDW/L/OD factor'),
+        min_value=Decimal(0),
+        required=True,
+    )
+
     def clean(self):
         data = super(SbmlExportOdForm, self).clean()
         # TODO: check for gCDW/L/OD600 metadata on selected assays/lines
+        gcdw_default = data.get('gcdw_default', self.DEFAULT_GCDW_FACTOR)
+        conversion_meta = data.get('gcdw_conversion', None)
+        if conversion_meta is None:
+            self.sbml_warnings.append(mark_safe(
+                _('No gCDW/L/OD metadata selected, all measurements will be converted with the '
+                  'default factor of <b>%(factor)f</b>.') % {'factor': gcdw_default}
+            ))
+        else:
+            line_lookup = {}
+            # get unique lines first
+            for m in data.get('measurementId', []):
+                line_lookup[m.assay.line.pk] = m.assay.line
+            # warn for any lines missing the selected metadata type
+            for line in line_lookup.itervalues():
+                factor = line.metadata_get(conversion_meta)
+                # TODO: also check that the factor in metadata is a valid value
+                if factor is None:
+                    self.sbml_warnings.append(
+                        _('Could not find metadata %(meta)s on %(line)s; using default factor '
+                          'of <b>%(factor)f</b>.' % {
+                            'factor': gcdw_default,
+                            'line': line.name,
+                            'meta': conversion_meta.type_name,
+                          })
+                    )
         return data
+
+    def _init_conversion(self):
+        """ Attempt to load a default initial value for gcdw_conversion based on user. """
+        request = get_current_request()
+        if request and request.user:
+            prefs = request.user.profile.prefs
+            try:
+                return MetadataType.objects.get(pk=prefs[self.PREF_GCDW_META])
+            except:
+                pass
+        # TODO: load preferences from the system user if no request user
+        return None
+
+    def update_bound_data_with_defaults(self):
+        """ Forces data bound to the form to update to default values. """
+        if self.is_bound:
+            # create mutable copy of QueryDict
+            replace_data = QueryDict(mutable=True)
+            replace_data.update(self.data)
+            # set initial measurementId values
+            mfield = self.fields['measurementId']
+            replace_data.setlist(
+                self.add_prefix('measurementId'),
+                ['%s' % v.pk for v in mfield.initial]
+            )
+            # set initial gcdw_conversion values
+            cfield = self.fields['gcdw_conversion']
+            if cfield.initial:
+                name = self.add_prefix('gcdw_conversion')
+                for i, part in enumerate(cfield.widget.decompress(cfield.initial)):
+                    replace_data['%s_%s' % (name, i)] = part
+            # set initial gcdw_default value
+            dfield = self.fields['gcdw_default']
+            replace_data[self.add_prefix('gcdw_default')] = '%s' % dfield.initial
+            self.data = replace_data
+            print('\nReplaced data = %s\n\n' % replace_data)
 
 
 class SbmlExport(object):

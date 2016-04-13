@@ -51,7 +51,7 @@ from .signals import study_modified
 from .solr import StudySearch, UserSearch
 from .utilities import (
     JSONDecimalEncoder, get_edddata_carbon_sources, get_edddata_measurement, get_edddata_misc,
-    get_edddata_strains, get_edddata_study, get_edddata_users, get_selected_lines,
+    get_edddata_strains, get_edddata_study, get_edddata_users,
 )
 
 logger = logging.getLogger(__name__)
@@ -648,17 +648,20 @@ class SbmlView(EDDExportView):
             'initial': {'sbml_template': self.selection.studies[0].metabolic_map, },
         }
         export_settings = SbmlExportSettingsForm(**settings_form_kwargs)
+        # want to bind od_select always to allow validation
+        od_select = SbmlExportOdForm(
+            data=request.POST, prefix='od', selection=self.selection,
+            types=MeasurementType.objects.filter(short_name='OD'),
+            protocols=Protocol.objects.filter(categorization=Protocol.CATEGORY_OD),
+        )
         # detect if we're coming from a form submit on study page or a re-submit from export page
         form_data = None
         if export_settings.add_prefix('sbml_template') in request.POST:
             form_data = request.POST
             export_settings = SbmlExportSettingsForm(form_data, **settings_form_kwargs)
-        # TODO: detect redirect from study page, and set initial values to select all
-        od_select = SbmlExportOdForm(
-            data=form_data, prefix='od', selection=self.selection,
-            types=MeasurementType.objects.filter(short_name='OD'),
-            protocols=Protocol.objects.filter(categorization=Protocol.CATEGORY_OD),
-        )
+        else:
+            od_select.update_bound_data_with_defaults()
+        od_select.is_valid()  # don't care for result right now, just triggering validation
         hplc_select = SbmlExportMeasurementsForm(
             data=form_data, prefix='hplc', selection=self.selection,
             protocols=Protocol.objects.filter(categorization=Protocol.CATEGORY_HPLC),
@@ -675,12 +678,10 @@ class SbmlView(EDDExportView):
             data=form_data, prefix='ramos', selection=self.selection,
             protocols=Protocol.objects.filter(categorization=Protocol.CATEGORY_TPOMICS),
         )
-        sbml_warnings = chain(export_settings.sbml_warnings,
-                              od_select.sbml_warnings,
-                              hplc_select.sbml_warnings,
-                              ms_select.sbml_warnings,
-                              ramos_select.sbml_warnings,
-                              omics_select.sbml_warnings)
+        sbml_warnings = chain(
+            export_settings.sbml_warnings, od_select.sbml_warnings, hplc_select.sbml_warnings,
+            ms_select.sbml_warnings, ramos_select.sbml_warnings, omics_select.sbml_warnings,
+        )
         try:
             context.update(
                 export_settings_form=export_settings,

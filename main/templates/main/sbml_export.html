@@ -127,6 +127,7 @@
           {% for message in od_warnings %}
           <div class="warn2">{{ message }}</div>
           {% endfor %}
+          {{ od_select_form.form_without_measurements.as_p }}
           <div class="rounded-border">
             <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
               <tr>
@@ -641,14 +642,6 @@ Step 8
       </table>
       <input type="hidden" name="fluxmatchelements" value="{{ data.flux_match_element_ids }}"/>
     </div>
-<!-- FIXME this shouldn't be necessary but the list items end up being placed
-far to the left for some reason -->
-<style>
-li {
-  margin-left: 40px;
-}
-</style>
-
     {% if data.have_transcriptomics_to_embed %}
     <p>
       <b>Transcriptomics:</b> Matching available gene transcription values to

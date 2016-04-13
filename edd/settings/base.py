@@ -93,7 +93,6 @@ INSTALLED_APPS = (
     # 'allauth.socialaccount.providers.github',
     # 'allauth.socialaccount.providers.google',
     # 'allauth.socialaccount.providers.linkedin_oauth2',
-    'rest_framework',
 
     # EDD apps
     'main',
