@@ -56,18 +56,7 @@
 
 {% block content %}
   <!-- Line info section -->
-  <div class="disclose discloseHide" id="existinglineshide">
-    <div style="margin:10px">
-      <a href="#" class="discloseLink">
-        {% blocktrans with measurement=selection.measurements|length assays=selection.assays|length lines=selection.lines|length %}
-          {{ measurements }} Measurements in {{ assays }} Assays in {{ lines }} Lines Selected
-        {% endblocktrans %}
-      </a>
-    </div>
-    <div id="existingLinesSection" class="pageSection discloseBody" style="border-width:1px;margin:10px;">  
-      {% include "main/include_linetable.html" %}
-    </div>
-  </div>
+  {% include "main/include/export/linetable.html" %}
 
   <form method="post" id="exportForm" action="{% url 'main:sbml' %}">
     {% csrf_token %}
@@ -90,8 +79,7 @@
       <!--
       Step 1: Choose template
       -->
-      <input type="hidden" id="statusstep0show" name="statusstep0show" value="0"/>
-      <div class="disclose discloseHide" id="step0">
+      <div class="disclose{% if export_settings_form.errors|length == 0 %} discloseHide{% endif %}" id="step0">
         <div class="sectionChapter">
           <a href="#" class="discloseLink">
             {% trans "Step 1: Select the SBML template file to use for export" %}
@@ -105,68 +93,26 @@
       <!--
       Step 2: Optical Density (OD600)
       -->
-      {% with od_warnings=od_select_form.sbml_warnings %}
-      <div class="disclose{% if od_warnings|length == 0 %} discloseHide{% endif %}" id="step1">
+      {% with warnings_list=od_select_form.sbml_warnings %}
+      <div class="disclose{% if warnings_list|length == 0 and od_select_form.errors|length == 0 %} discloseHide{% endif %}" id="step1">
         <div class="sectionChapter">
           <span>
             <a href="#" class="discloseLink">
               {% trans "Step 2: Find OD Data" %}
             </a>
           </span>
-          {% if od_warnings %}
-          <span class="warn2">
-            {% blocktrans count counter=od_warnings|length %}
-            {{ counter }} warning
-            {% plural %}
-            {{ counter }} warnings
-            {% endblocktrans %}
-          </span>
-          {% endif %}
+          {% include 'main/include/export/warningnotice.html' %}
         </div>
         <div class="sectionContent discloseBody" id="statusstep1main">
-          {% for message in od_warnings %}
+          {% for message in warnings_list %}
           <div class="warn2">{{ message }}</div>
           {% endfor %}
+          <!-- custom fields here -->
           {{ od_select_form.form_without_measurements.as_p }}
-          <div class="rounded-border">
-            <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
-              <tr>
-                <td>{% trans "Assay" %}</td>
-                <td>{% trans "Measurement" %}</td>
-                <td colspan="2">{% trans "Recorded Values" %}</td>
-              </tr>
-              {% with x_range=od_select_form.x_range %}
-              {% for measurement, widget in od_select_form.measurement_split %}
-              {% with values=measurement.measurementvalue_set.all assay=measurement.assay %}
-              <tr>
-                <td class="nowrap">
-                {% ifchanged assay %}
-                  {{ assay.line.name }}-{{ assay.protocol.name }}-{{ assay.name }}
-                {% endifchanged %}
-                </td>
-                <td class="nowrap popupcell">{{ widget }}</td>
-                <td class="right-txt" style="width:30px;">{{ values|length }}</td>
-                <td style="padding:3px 2px 0px 2px;width:60%;">
-                  <svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"
-                      version="1.2" width="100%" height="10px" viewBox="0 0 470 10">
-                    <path fill="rgba(0,0,0,0.0.05)"
-                        stroke="rgba(0,0,0,0.05)"
-                        d="M10,5h450"
-                        style="stroke-width:2px;"
-                        stroke-width="2"></path>
-                    {% for md in values %}
-                    <path class="cP" d="M{{ md|scaled_x:x_range }},1v8">
-                      <title>{{ md.y.0 }} at {{ md.x.0 }}</title>
-                    </path>
-                    {% endfor %}<!-- points -->
-                  </svg>
-                </td>
-              </tr>
-              {% endwith %}
-              {% endfor %}<!-- measurements -->
-              {% endwith %}
-            </table>
-          </div>
+          <!-- measurement selection here -->
+          {% with section_form=od_select_form %}
+          {% include 'main/include/export/sbml/measurement_section.html' %}
+          {% endwith %}
         </div>
       </div>
       {% endwith %}<!-- #step1 -->
@@ -175,74 +121,22 @@
       This is more complicated than the previous section, because it is designed to handle multiple
       protocols, and there is an additional "input" checkbox for each measurement.
       -->
-      {% with hplc_warnings=hplc_select_form.sbml_warnings %}
-      <div class="disclose{% if hplc_warnings|length == 0 %} discloseHide {% endif %}" id="step2">
+      {% with warnings_list=hplc_select_form.sbml_warnings %}
+      <div class="disclose{% if warnings_list|length == 0 and hplc_select_form.errors|length == 0 %} discloseHide {% endif %}" id="step2">
         <div class="sectionChapter">
           <span>
             <a href="#" class="discloseLink">
               {% trans "Step 3: Select HPLC-like Measurements, and inputs" %}
             </a>
           </span>
-          {% if hplc_warnings %}
-          <span class="warn2">
-            {% blocktrans count counter=hplc_warnings|length %}
-            {{ counter }} warning
-            {% plural %}
-            {{ counter }} warnings
-            {% endblocktrans %}
-          </span>
-          {% endif %}
+          {% include 'main/include/export/warningnotice.html' %}
         </div>
         <div class="sectionContent discloseBody" id="statusstep2main">
-          {% for message in hplc_warnings %}
+          {% for message in warnings_list %}
           <div class="warn2">{{ message }}</div>
           {% endfor %}
-          {% with x_range=hplc_select_form.x_range %}
-          {% for protocol, items in hplc_select_form.protocol_split %}
-            <div>
-              {% blocktrans with name=protocol.name %}
-              Protocol <b>{{ name }}</b>
-              {% endblocktrans %}
-            </div>
-            <div class="rounded-border">
-              <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
-                <tr>
-                  <td>{% trans "Assay" %}</td>
-                  <td colspan="2">{% trans "Measurement" %}</td>
-                  <td colspan="2">{% trans "Recorded Values" %}</td>
-                </tr>
-                {% for measurement, widget in items %}
-                {% with values=measurement.measurementvalue_set.all assay=measurement.assay %}
-                <tr>
-                  <td class="nowrap">
-                  {% ifchanged assay %}
-                    {{ assay.line.name }}-{{ protocol.name }}-{{ assay.name }}
-                  {% endifchanged %}
-                  </td>
-                  <td class="nowrap popupcell">{{ widget }}</td>
-                  <td class="nowrap right-txt">{{ measurement.y_units }}</td>
-                  <td class="right-txt" style="width:30px;">{{ values|length }}</td>
-                  <td style="padding:3px 2px 0px 2px;width:60%;">
-                    <svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"
-                        version="1.2" width="100%" height="10px" viewBox="0 0 470 10">
-                      <path fill="rgba(0,0,0,0.0.05)"
-                          stroke="rgba(0,0,0,0.05)"
-                          d="M10,5h450"
-                          style="stroke-width:2px;"
-                          stroke-width="2"></path>
-                      {% for md in values %}
-                      <path class="cP" d="M{{ md|scaled_x:x_range }},1v8">
-                        <title>{{ md.y.0 }} at {{ md.x.0 }}</title>
-                      </path>
-                      {% endfor %}<!-- points -->
-                    </svg>
-                  </td>
-                </tr>
-                {% endwith %}
-                {% endfor %}<!-- measurements -->
-              </table>
-            </div>
-          {% endfor %}<!-- protocols -->
+          {% with section_form=hplc_select_form %}
+          {% include 'main/include/export/sbml/measurement_section.html' %}
           {% endwith %}
         </div>
       </div>
@@ -251,74 +145,22 @@
       Step 4 (LC-MS)
       (This is almost identical to the previous section for HPLC protocols)
       -->
-      {% with ms_warnings=ms_select_form.sbml_warnings %}
-      <div class="disclose{% if ms_warnings|length == 0 %} discloseHide{% endif %}" id="step3">
+      {% with warnings_list=ms_select_form.sbml_warnings %}
+      <div class="disclose{% if warnings_list|length == 0 and ms_select_form.errors|length == 0 %} discloseHide{% endif %}" id="step3">
         <div class="sectionChapter">
           <span>
             <a href="#" class="discloseLink">
               {% trans "Step 4: Select LCMS-like Measurements, and inputs" %}
             </a>
           </span>
-          {% if ms_warnings %}
-          <span class="warn2">
-            {% blocktrans count counter=ms_warnings|length %}
-            {{ counter }} warning
-            {% plural %}
-            {{ counter }} warnings
-            {% endblocktrans %}
-          </span>
-          {% endif %}
+          {% include 'main/include/export/warningnotice.html' %}
         </div>
         <div class="sectionContent discloseBody" id="statusstep3main">
-          {% for message in ms_warnings %}
+          {% for message in warnings_list %}
           <div class="warn2">{{ message }}</div>
           {% endfor %}
-          {% with x_range=ms_select_form.x_range %}
-          {% for protocol, items in ms_select_form.protocol_split %}
-            <div>
-              {% blocktrans with name=protocol.name %}
-              Protocol <b>{{ name }}</b>
-              {% endblocktrans %}
-            </div>
-            <div class="rounded-border">
-              <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
-                <tr>
-                  <td>{% trans "Assay" %}</td>
-                  <td colspan="2">{% trans "Measurement" %}</td>
-                  <td colspan="2">{% trans "Recorded Values" %}</td>
-                </tr>
-                {% for measurement, widget in items %}
-                {% with values=measurement.measurementvalue_set.all assay=measurement.assay %}
-                <tr>
-                  <td class="nowrap">
-                  {% ifchanged assay %}
-                    {{ assay.line.name }}-{{ protocol.name }}-{{ assay.name }}
-                  {% endifchanged %}
-                  </td>
-                  <td class="nowrap popupcell">{{ widget }}</td>
-                  <td class="nowrap right-txt">{{ measurement.y_units }}</td>
-                  <td class="right-txt" style="width:30px;">{{ values|length }}</td>
-                  <td style="padding:3px 2px 0px 2px;width:60%;">
-                    <svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"
-                        version="1.2" width="100%" height="10px" viewBox="0 0 470 10">
-                      <path fill="rgba(0,0,0,0.0.05)"
-                          stroke="rgba(0,0,0,0.05)"
-                          d="M10,5h450"
-                          style="stroke-width:2px;"
-                          stroke-width="2"></path>
-                      {% for md in values %}
-                      <path class="cP" d="M{{ md|scaled_x:x_range }},1v8">
-                        <title>{{ md.y.0 }} at {{ md.x.0 }}</title>
-                      </path>
-                      {% endfor %}<!-- points -->
-                    </svg>
-                  </td>
-                </tr>
-                {% endwith %}
-                {% endfor %}<!-- measurements -->
-              </table>
-            </div>
-          {% endfor %}<!-- protocols -->
+          {% with section_form=ms_select_form %}
+          {% include 'main/include/export/sbml/measurement_section.html' %}
           {% endwith %}
         </div>
       </div>
@@ -326,156 +168,58 @@
       <!--
       Step 5 (RAMOS O2/CO2)
       -->
-      <input type="hidden" id="statusstep4show" name="statusstep4show" value="0"/>
-      <div class="disclose discloseHide" id="step4">
+      {% with warnings_list=ramos_select_form.sbml_warnings %}
+      <div class="disclose{% if warnings_list|length == 0 and ramos_select_form.errors|length == 0 %} discloseHide{% endif %}" id="step4">
         <div class="sectionChapter">
           <span>
-            <a href="#" class="discloseLink">Step 5: Select RAMOS O2/CO2 Measurements</a>
+            <a href="#" class="discloseLink">
+              {% trans "Step 5: Select RAMOS O2/CO2 Measurements" %}
+            </a>
           </span>
-          {% if ramos_select_form.sbml_warnings|length %}
-          <span class="warn2">
-            {% blocktrans count counter=ramos_select_form.sbml_warnings|length %}
-            {{ counter }} warning
-            {% plural %}
-            {{ counter }} warnings
-            {% endblocktrans %}
-          </span>
-          {% endif %}
+          {% include 'main/include/export/warningnotice.html' %}
         </div>
         <div class="sectionContent discloseBody" id="statusstep4main">
-          {% for message in ramos_select_form.sbml_warnings %}
+          {% for message in warnings_list %}
           <div class="warn2">{{ message }}</div>
           {% endfor %}
-          {% with x_range=ramos_select_form.x_range %}
-          {% for protocol, items in ramos_select_form.protocol_split %}
-            <div>Protocol <b>{{ protocol.name }}</b></div>
-            <div class="rounded-border">
-              <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
-                <tr>
-                  <td>{% trans "Assay" %}</td>
-                  <td colspan="2">{% trans "Measurement" %}</td>
-                  <td colspan="2">{% trans "Recorded Values" %}</td>
-                </tr>
-                {% for measurement, widget in items %}
-                {% with values=measurement.measurementvalue_set.all assay=measurement.assay %}
-                <tr>
-                  <td class="nowrap">
-                  {% ifchanged assay %}
-                    {{ assay.line.name }}-{{ protocol.name }}-{{ assay.name }}
-                  {% endifchanged %}
-                  </td>
-                  <td class="nowrap popupcell">{{ widget }}</td>
-                  <td class="nowrap right-txt">{{ measurement.y_units }}</td>
-                  <td class="right-txt" style="width:30px;">{{ values|length }}</td>
-                  <td style="padding:3px 2px 0px 2px;width:60%;">
-                    <svg xmlns="http://www.w3.org/2000/svg"
-                        version="1.2"
-                        width="100%"
-                        height="10px"
-                        viewBox="0 0 470 10"
-                        preserveAspectRatio="none">
-                      <path fill="rgba(0,0,0,0.0.05)"
-                        stroke="rgba(0,0,0,0.05)"
-                        d="M10,5h450"
-                        style="stroke-width:2px;"
-                        stroke-width="2"></path>
-                      {% for md in values %}
-                      <path class="cP" d="M{{ md|scaled_x:x_range }},1v8">
-                        <title>{{ md.y.0 }} at {{ md.x.0 }}</title>
-                      </path>
-                      {% endfor %}<!-- points -->
-                    </svg>
-                  </td>
-                </tr>
-                {% endwith %}
-                {% endfor %}<!-- measurements -->
-              </table>
-            </div>
-          {% endfor %}<!-- data.export_ramos_measurements -->
+          {% with section_form=ramos_select_form %}
+          {% include 'main/include/export/sbml/measurement_section.html' %}
           {% endwith %}
         </div>
-      </div><!-- #step4 -->
+      </div>
+      {% endwith %}<!-- #step4 -->
       <!--
       Step 6: transcriptomics and proteomics
       -->
-      <input type="hidden" id="statusstep5show" name="statusstep5show" value="0"/>
-      <div class="disclose discloseHide" id="step5">
+      {% with warnings_list=omics_select_form.sbml_warnings %}
+      <div class="disclose{% if warnings_list|length == 0 and omics_select_form.errors|length == 0 %} discloseHide{% endif %}" id="step5">
         <div class="sectionChapter">
           <span>
-            <a href="#" class="discloseLink">Step 6: Select Transcriptomics/Proteomics Measurements</a>
+            <a href="#" class="discloseLink">
+              {% trans "Step 6: Select Transcriptomics/Proteomics Measurements" %}
+            </a>
           </span>
-          {% if omics_select_form.sbml_warnings|length %}
-          <span class="warn2">
-            {% blocktrans count counter=omics_select_form.sbml_warnings|length %}
-            {{ counter }} warning
-            {% plural %}
-            {{ counter }} warnings
-            {% endblocktrans %}
-          </span>
-          {% endif %}
+          {% include 'main/include/export/warningnotice.html' %}
         </div>
         <div class="sectionContent discloseBody" id="statusstep5main">
-          {% for message in omics_select_form.sbml_warnings %}
+          {% for message in warnings_list %}
           <div class="warn2">{{ message }}</div>
           {% endfor %}
-          {% with x_range=omics_select_form.x_range %}
-          {% for protocol, items in omics_select_form.protocol_split %}
-            <div>Protocol <b>{{ protocol.name }}</b></div>
-            <div class="rounded-border">
-              <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
-                <tr>
-                  <td>{% trans "Assay" %}</td>
-                  <td colspan="2">{% trans "Measurement" %}</td>
-                  <td colspan="2">{% trans "Recorded Values" %}</td>
-                </tr>
-                {% for measurement, widget in items %}
-                {% with values=measurement.measurementvalue_set.all assay=measurement.assay %}
-                <tr>
-                  <td class="nowrap">
-                  {% ifchanged assay %}
-                    {{ assay.line.name }}-{{ protocol.name }}-{{ assay.name }}
-                  {% endifchanged %}
-                  </td>
-                  <td class="nowrap popupcell">{{ widget }}</td>
-                  <td class="nowrap right-txt">{{ measurement.y_units }}</td>
-                  <td class="right-txt" style="width:30px;">{{ values|length }}</td>
-                  <td style="padding:3px 2px 0px 2px;width:60%;">
-                    <svg xmlns="http://www.w3.org/2000/svg"
-                        version="1.2"
-                        width="100%"
-                        height="10px"
-                        viewBox="0 0 470 10"
-                        preserveAspectRatio="none">
-                      <path fill="rgba(0,0,0,0.0.05)"
-                        stroke="rgba(0,0,0,0.05)"
-                        d="M10,5h450"
-                        style="stroke-width:2px;"
-                        stroke-width="2"></path>
-                      {% for md in values %}
-                      <path class="cP" d="M{{ md|scaled_x:x_range }},1v8">
-                        <title>{{ md.y.0 }} at {{ md.x.0 }}</title>
-                      </path>
-                      {% endfor %}<!-- points -->
-                    </svg>
-                  </td>
-                </tr>
-                {% endwith %}
-                {% endfor %}<!-- measurements -->
-              </table>
-            </div>
-          {% endfor %}<!-- data.export_ramos_measurements -->
+          {% with section_form=omics_select_form %}
+          {% include 'main/include/export/sbml/measurement_section.html' %}
           {% endwith %}
         </div>
-      </div><!-- #step5 -->
-
+      </div>
+      {% endwith %}<!-- #step5 -->
       <!--
       Step 7: convert units and calculate flux values
       -->
-      <input type="hidden" id="statusstep6show" name="statusstep6show" value="0"/>
       <div class="disclose discloseHide" id="step6">
         <div class="sectionChapter">
           <span>
-            <a href="#" class="discloseLink">Step 7: Convert units and calculate all selected flux values</a>
+            <a href="#" class="discloseLink">
+              {% trans "Step 7: Convert units and calculate all selected flux values" %}
+            </a>
           </span>
           <!-- TODO: warnings -->
         </div>

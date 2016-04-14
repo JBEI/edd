@@ -1,0 +1,56 @@
+{% load i18n %}
+
+
+{% with x_range=section_form.x_range %}
+{% for protocol, items in section_form.protocol_split %}
+  <div>
+    {% blocktrans with name=protocol.name %}
+    Protocol <b>{{ name }}</b>
+    {% endblocktrans %}
+  </div>
+  <div class="rounded-border">
+    <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
+      <tr>
+        <td>{% trans "Assay" %}</td>
+        <td colspan="2">{% trans "Measurement" %}</td>
+        <td colspan="2">{% trans "Recorded Values" %}</td>
+      </tr>
+      {% with x_range=section_form.x_range %}
+      {% for measurement, widget in section_form.measurement_split %}
+      {% with values=measurement.measurementvalue_set.all assay=measurement.assay %}
+      <tr>
+        <td class="nowrap">
+        {% ifchanged assay %}
+          {{ assay.line.name }}-{{ assay.protocol.name }}-{{ assay.name }}
+        {% endifchanged %}
+        </td>
+        <td class="nowrap popupcell">{{ widget }}</td>
+        <td class="nowrap right-txt">
+          {% if measurement.y_units and measurement.y_units.display %}
+          {{ measurement.y_units }}
+          {% endif %}
+        </td>
+        <td class="right-txt" style="width:30px;">{{ values|length }}</td>
+        <td style="padding:3px 2px 0px 2px;width:60%;">
+          <svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"
+              version="1.2" width="100%" height="10px" viewBox="0 0 470 10">
+            <path fill="rgba(0,0,0,0.0.05)"
+                stroke="rgba(0,0,0,0.05)"
+                d="M10,5h450"
+                style="stroke-width:2px;"
+                stroke-width="2"></path>
+            {% for md in values %}
+            <path class="cP" d="M{{ md|scaled_x:x_range }},1v8">
+              <title>{{ md.y.0 }} at {{ md.x.0 }}</title>
+            </path>
+            {% endfor %}<!-- points -->
+          </svg>
+        </td>
+      </tr>
+      {% endwith %}
+      {% endfor %}<!-- measurements -->
+      {% endwith %}
+    </table>
+  </div>
+{% endfor %}<!-- protocols -->
+{% endwith %}

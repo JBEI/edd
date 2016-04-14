@@ -52,6 +52,7 @@ from collections import defaultdict, OrderedDict
 from copy import copy
 from decimal import Decimal
 from django import forms
+from django.core.exceptions import ValidationError
 from django.db.models import Max, Min
 from django.http import QueryDict
 from django.template.defaulttags import register
@@ -228,7 +229,6 @@ class SbmlExportOdForm(SbmlExportMeasurementsForm):
 
     def clean(self):
         data = super(SbmlExportOdForm, self).clean()
-        # TODO: check for gCDW/L/OD600 metadata on selected assays/lines
         gcdw_default = data.get('gcdw_default', self.DEFAULT_GCDW_FACTOR)
         conversion_meta = data.get('gcdw_conversion', None)
         if conversion_meta is None:
@@ -237,24 +237,34 @@ class SbmlExportOdForm(SbmlExportMeasurementsForm):
                   'default factor of <b>%(factor)f</b>.') % {'factor': gcdw_default}
             ))
         else:
-            line_lookup = {}
-            # get unique lines first
-            for m in data.get('measurementId', []):
-                line_lookup[m.assay.line.pk] = m.assay.line
-            # warn for any lines missing the selected metadata type
-            for line in line_lookup.itervalues():
-                factor = line.metadata_get(conversion_meta)
-                # TODO: also check that the factor in metadata is a valid value
-                if factor is None:
-                    self.sbml_warnings.append(
-                        _('Could not find metadata %(meta)s on %(line)s; using default factor '
-                          'of <b>%(factor)f</b>.' % {
-                            'factor': gcdw_default,
-                            'line': line.name,
-                            'meta': conversion_meta.type_name,
-                          })
-                    )
+            self._clean_check_for_gcdw(data, gcdw_default, conversion_meta)
+        if len(data.get('measurementId', [])) == 0:
+            raise ValidationError(
+                _('No Optical Data measurements were selected. Biomass measurements are essential '
+                  'for flux balance analysis.'),
+                code='OD-required-for-FBA'
+            )
         return data
+
+    def _clean_check_for_gcdw(self, data, gcdw_default, conversion_meta):
+        """ Ensures that each unique selected line has a gCDW/L/OD factor. """
+        line_lookup = {}
+        # get unique lines first
+        for m in data.get('measurementId', []):
+            line_lookup[m.assay.line.pk] = m.assay.line
+        # warn for any lines missing the selected metadata type
+        for line in line_lookup.itervalues():
+            factor = line.metadata_get(conversion_meta)
+            # TODO: also check that the factor in metadata is a valid value
+            if factor is None:
+                self.sbml_warnings.append(
+                    _('Could not find metadata %(meta)s on %(line)s; using default factor '
+                      'of <b>%(factor)f</b>.' % {
+                        'factor': gcdw_default,
+                        'line': line.name,
+                        'meta': conversion_meta.type_name,
+                      })
+                )
 
     def _init_conversion(self):
         """ Attempt to load a default initial value for gcdw_conversion based on user. """
@@ -290,7 +300,6 @@ class SbmlExportOdForm(SbmlExportMeasurementsForm):
             dfield = self.fields['gcdw_default']
             replace_data[self.add_prefix('gcdw_default')] = '%s' % dfield.initial
             self.data = replace_data
-            print('\nReplaced data = %s\n\n' % replace_data)
 
 
 class SbmlExport(object):

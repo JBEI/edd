@@ -86,16 +86,8 @@
 <h3 style="color: #ff0000; font-weight: bold">{{ error_message }}</h3>
 {% endif %}
 
-<div class="disclose discloseHide" id="existinglineshide">
-  <div style="margin:10px">
-    <a href="#" class="discloseLink">
-      {{ selection.measurements|length }} Measurements in {{ selection.assays|length }} Assays in {{ selection.lines|length }} Lines Selected
-    </a>
-  </div>
-  <div id="existingLinesSection" class="pageSection discloseBody" style="border-width:1px;margin:10px;">  
-    {% include "main/include_linetable.html" %}
-  </div>
-</div>
+<!-- Line info section -->
+{% include "main/include/export/linetable.html" %}
 
 <!-- start of main form -->
 <form method="post" id="exportForm" action="{% url 'main:export' %}">
