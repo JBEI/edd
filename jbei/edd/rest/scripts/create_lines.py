@@ -62,6 +62,9 @@ MAX_EXCEL_COLS = 16384  # max number of columns supported by the Excel format ()
 SEPARATOR_CHARS = 75
 OUTPUT_SEPARATOR = ''.join(['*' for index in range(1, SEPARATOR_CHARS)])
 
+PART_NUMBER_REGEX = r'\s*([A-Z]+_[A-Z]?\d{4,6}[A-Z]?)\s*'  # tested against all strains in ICE!
+                                                           # 3/31/16
+PART_NUMBER_PATTERN = re.compile(PART_NUMBER_REGEX, re.IGNORECASE)
 
 class LineCreationInput:
     """
@@ -116,9 +119,6 @@ def parse_csv(path):
         blank_cell_count = 0
         unmatched_cell_count = 0
         unique_part_numbers_dict = collections.OrderedDict()
-
-        part_number_regex = r'\s*([A-Z]+_\d{6})\s*'
-        part_number_pattern = re.compile(part_number_regex, re.IGNORECASE)
 
         line_name_col_label_regex = r'\s*Line Name\s*'
         line_name_col_pattern = re.compile(line_name_col_label_regex, re.IGNORECASE)
@@ -177,7 +177,7 @@ def parse_csv(path):
                 # part number
                 ###################################################
                 cell_content = cols_list[part_number_col].strip()
-                match = part_number_pattern.match(cell_content)
+                match = PART_NUMBER_PATTERN.match(cell_content)
 
                 # if cell contains a recognized part number, append it to the list
                 if match:
@@ -314,22 +314,23 @@ def get_ice_parts(base_url, ice_username, password, part_numbers_list,
         print('Searching ICE for %d parts... ' % csv_part_number_count)
         print(OUTPUT_SEPARATOR)
         list_position = 0
-        part_number_regex = re.compile(r'\s*[A-Za-z]+_(\d+)\s*$')
         for local_ice_part_number in part_numbers_list:
             list_position += 1
 
             # get just the numeric part of the part number. for unknown reasons that I can't
             # reproduce in PostMan, searching for the whole part number seems to produce the
             # wrong result.
-            match = part_number_regex.match(local_ice_part_number)
+            match = PART_NUMBER_PATTERN.match(local_ice_part_number)
 
-            if not match:
+            if not match:  # NOTE: can remove this check, but left in place in case we resurrect
+                           # prior attempt to extract local ID's from part numbers (Seems to only
+                           #  work for newer parts, but not for some older ones)
                 logger.warning("Couldn't parse part number \"%s\". Unable to query ICE for this "
                                "part.")
                 continue
 
             search_id = local_ice_part_number
-            part = ice.fetch_part(local_ice_part_number)
+            part = ice.fetch_part(search_id)
 
             if not part:
                 logger.warning("Couldn't locate part \"%s\" (#%d)" % (local_ice_part_number,
@@ -338,7 +339,7 @@ def get_ice_parts(base_url, ice_username, password, part_numbers_list,
             # double-check for a coding error that occurred during testing. initial test parts
             # had "JBX_*" part numbers that matched their numeric ID, but this isn't always the
             # case!
-            elif part.part_id != search_id:
+            elif part.part_id != local_ice_part_number:
                 logger.warning("Couldn't locate part \"%(csv_part_number)s\" (#%(list_position)d "
                                "in the file) by part number. An ICE part was found with numeric "
                                "ID %(numeric_id)s, but its part number (%(part_number)s) didn't "
@@ -1024,6 +1025,7 @@ def main():
                     username = getpass.getuser()
                 username_input = input_timer.user_input('Username [%s]: ' % username)
                 username = username_input if username_input else username
+
             if args.p and not attempted_login:
                 password = args.p
             else:
@@ -1037,8 +1039,13 @@ def main():
             try:
                 print 'Logging into EDD at %s... ' % EDD_URL,
                 edd_login_start_time = arrow.utcnow()
+                workaround_request_timeout = 20  # workaround for lack of paging support in the
+                                                 # initial client-side REST API library. requests to
+                                                 # studies with an  existing large num of lines seem
+                                                 # to take too long to service since they're all
+                                                 # being included.
                 edd_session_auth = EddSessionAuth.login(base_url=EDD_URL, username=username,
-                                                        password=password)
+                                                        password=password, timeout=workaround_request_timeout)
                 performance.edd_login_delta += (edd_login_start_time - arrow.utcnow())
                 if(edd_session_auth):
                     print('success!')
