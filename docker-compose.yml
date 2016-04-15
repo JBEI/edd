@@ -1,0 +1,99 @@
+version: '2'
+volumes:
+  pgdata:
+    external:  # change name below to swap out alternate volumes
+      name: pgdata
+  solrdata:
+    external:  # change name below to swap out alternate volumes
+      name: solrdata
+services:
+  postgres:
+    image: postgres:9.4
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    env_file: secrets.env
+  solr:
+    image: solr:5.5
+    volumes:
+      - solrdata:/opt/solr/server/solr
+    ports:
+      - "8983:8983"
+  rabbitmq:
+    image: rabbitmq:3.6-management
+    hostname: rabbitmq
+    env_file: secrets.env
+    environment:
+      HOSTNAME: rabbitmq
+      RABBITMQ_DEFAULT_USER: edd_user
+      RABBITMQ_DEFAULT_VHOST: edd
+      RABBITMQ_NODENAME: rabbit@rabbitmq
+    expose:
+      - "5672"
+    ports:
+      - "15672:15672"
+  flower:
+    build: ./docker_services/flower/
+    env_file: secrets.env
+    environment:
+      AMQP_ADMIN_HOST: rabbitmq
+      AMQP_ADMIN_USERNAME: edd_user
+      AMQP_HOST: rabbitmq
+      AMQP_USERNAME: edd_user
+      FLOWER_URL_PREFIX: flower
+    links:
+      - rabbitmq
+    ports:
+      - "5555:5555"
+  smtp:
+    image: namshi/smtp
+    expose:
+      - "25"
+  edd:
+    build: .
+    image: edd
+    env_file: secrets.env
+    environment:
+      SEARCH_URL: "solr://solr:8983/solr/"
+    command: "true"
+    volumes:
+      - .:/code/
+  worker:
+    extends:
+      service: edd
+    restart: always
+    command: celery -A edd worker -l info
+    links:
+      - postgres
+      - rabbitmq
+      - smtp
+      - solr
+    environment:
+      - C_FORCE_ROOT=true
+  appserver:
+    extends:
+      service: edd
+    restart: always
+    command: python manage.py runserver 0.0.0.0:8000
+    links:
+      - postgres
+      - rabbitmq
+      - smtp
+      - solr
+    ports:
+      - "8000:8000"
+  nginx:
+    image: nginx:1.9
+    links:
+      - appserver
+      - flower
+      - rabbitmq
+      - solr
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes_from:
+      - edd
+    volumes:
+      - ./docker_services/nginx/nginx.conf:/etc/nginx/nginx.conf:ro

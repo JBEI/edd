@@ -14,7 +14,6 @@ from django import forms
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import ArrayField, HStoreField
-from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.db.models import F, Func, Q
 from django.utils.encoding import python_2_unicode_compatible

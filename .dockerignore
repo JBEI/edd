@@ -1,0 +1,14 @@
+# Files un-necessary for the Docker image
+.*
+Brewfile
+celery
+docker*
+Dockerfile
+Gruntfile.js
+log
+package.json
+secrets*
+server.cfg
+typescript
+uploads
+**/*.pyc

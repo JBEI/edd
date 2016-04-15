@@ -5,22 +5,12 @@ A collection of utility functions used to support common Celery task use cases
 from __future__ import absolute_import, unicode_literals
 
 import arrow
-# use smtplib directly to send mail since Celery doesn't seem to expose an API to help with this,
-# and it's unclear whether the Django libraries will be available/functional to remote Celery
-# workers running outside the context of the EDD Django app (though probably within the context
-# of its codebase)
-import smtplib
 import traceback
 
 # use the same email configuration for custom emails as Celery and Django are using in other parts
 # of EDD. if deployed to a separate server, we can just copy over the other config files
 from django.conf import settings
-from edd.celeryconfig import (
-    SERVER_EMAIL, CELERY_MIN_WARNING_GRACE_PERIOD_MIN, CELERY_SEND_TASK_ERROR_EMAILS,
-    CELERYD_TASK_TIME_LIMIT, CELERYD_TASK_SOFT_TIME_LIMIT
-)
-from email.mime.text import MIMEText
-from email.utils import formataddr
+from django.core.mail import mail_admins
 
 INVALID_DELAY = -1
 
@@ -113,119 +103,11 @@ def email_admins(subject, message, logger):
     """
     Emails administrators on demand from within a running Celery task. This is a custom supplement
     to the failure messages that Celery provides. All exceptions are caught and logged internally in
-    this method  since it's unlikely that clients can resolve email errors.
+    this method since it's unlikely that clients can resolve email errors.
     :param subject: the email subject
     :param message: the message body
     """
-
-    # Initial use of this library was surprisingly painful, so only make changes if you have time!
-
-    # extract recipient data from the required Celery dictionary format
-    logger.debug("Raw configuration values on following lines:")
-    logger.debug("send error emails: " + CELERY_SEND_TASK_ERROR_EMAILS.__str__())
-    logger.debug("host: " + settings.EMAIL_HOST)
-    logger.debug("port " + settings.EMAIL_PORT.__str__())
-    logger.debug("admins: " + settings.ADMINS.__str__())
-    logger.debug("sender email: " + SERVER_EMAIL)
-    logger.debug("email user = " + settings.EMAIL_HOST_USER)
-    logger.debug("email password = " + settings.EMAIL_HOST_PASSWORD)
-    logger.debug("End raw configuration values")
-
-    # return early if task error emails have been silenced
-    if not CELERY_SEND_TASK_ERROR_EMAILS:
-        logger.warning('NOT sending emails... returning early')
-        return
-
-    ################################################################################################
-    # Format raw values to squeeze them into a working email
-    ################################################################################################
-    formatted_recipients_list = []
-    unformatted_recipients_list = []
-    for recipient in settings.ADMINS:
-        formatted = formataddr(recipient)
-        formatted_recipients_list.append(formatted)
-        email_addr = recipient[1]
-        unformatted_recipients_list.append(email_addr)
-
-    # convert dictionary supplied by JSON-formatted server.cfg to formats useful to us
-    # 1 ) a comma-delimited string in format accepted by GMail smtp server
-    # 2 ) list of (name, email) tuples required by Celery,
-
-    # TODO: also converting from the JSON Unicode to ASCII to avoid potential problems with sending
-    # email. help prevent problems by forcing usernames & emails to ASCII as listed
-
-    recipients_str_list = []
-    ascii_recipients_tuple_list = []
-
-    if FORCE_ASCII:
-        # ascii_email_recipients_tuple_list = [(admin[0].encode('ascii', 'replace'),
-        #                                      admin[1].encode('ascii', 'replace'))
-        #                                      for admin in ADMINS]
-
-        recipients_str_list = [
-            _format_email_address(
-                admin[0].encode('ascii', 'replace'),
-                admin[1].encode('ascii', 'replace'),
-            )
-            for admin in settings.ADMINS
-        ]
-    else:
-        recipients_str_list = [
-            _format_email_address(admin[0], admin[1]) for admin in settings.ADMINS
-        ]
-
-    sender_name = ' Program'  # non-Celery
-    formatted_sender_email = _format_email_address(sender_name, SERVER_EMAIL)
-    recipients_str = ", ".join(recipients_str_list)
-
-    logger.debug("Values in use:")
-    logger.debug("send error emails: " + CELERY_SEND_TASK_ERROR_EMAILS.__str__())
-    logger.debug("host: " + settings.EMAIL_HOST)
-    logger.debug("port " + settings.EMAIL_PORT.__str__())
-    logger.debug("ADMINS (Celery): " + ascii_recipients_tuple_list.__str__())
-    logger.debug("recipients_str (stmp): " + recipients_str)
-    logger.debug("sender email: " + formatted_sender_email)
-    logger.debug("email user = " + settings.EMAIL_HOST_USER)
-    logger.debug("email password = " + settings.EMAIL_HOST_PASSWORD)
-    logger.debug("End values in use.")
-
-    # build message headers
-    msg = MIMEText(message, 'plain')
-    msg['From'] = formatted_sender_email
-    msg['To'] = recipients_str
-    msg['Subject'] = subject
-
-    logger.debug("Email message on following lines...")
-    logger.debug(msg)
-
-    # contact the server and send the email
-    server = smtplib.SMTP(settings.EMAIL_HOST, settings.EMAIL_PORT, timeout=settings.EMAIL_TIMEOUT)
-    server.set_debuglevel(1)
-
-    try:
-        # log into the server if credentials are configured
-        if settings.EMAIL_HOST_USER:
-            server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
-        server.sendmail(formatted_sender_email, recipients_str_list, msg.as_string())
-        logger.debug("sendmail() returned")
-
-    except Exception:
-        # just log the exception since the email was most likely generated as an indication of error
-        # Note that logger.exception automatically includes the traceback in its log.
-        logger.exception('Error emailing administrators. Subject = "%s"' % subject)
-    finally:
-        logger.debug("calling sendmail's quit()")
-        server.quit()
-
-    logger.debug("Done.")
-
-
-def _format_email_address(name, address):
-    if _FULL_PRETTY_PRINT_EMAILS:
-        return name + ' <' + address + '>'
-    elif _PARTIAL_PRETTY_PRINT_EMAILS:
-        return '<' + address + '>'
-    return address
+    mail_admins(subject, message, settings.SERVER_EMAIL)
 
 
 def make_standard_email_subject(task, subject_text, importance):
@@ -258,9 +140,12 @@ def test_time_limit_consistency(task, celery_logger, est_execution_time=0, use_e
     task
     """
 
-    hard_time_limit = task.time_limit if task.time_limit is not None else CELERYD_TASK_TIME_LIMIT
-    soft_time_limit = (task.soft_time_limit if task.soft_time_limit is not None
-                       else CELERYD_TASK_SOFT_TIME_LIMIT)
+    hard_time_limit = task.time_limit
+    if hard_time_limit is None:
+        hard_time_limit = settings.CELERYD_TASK_TIME_LIMIT
+    soft_time_limit = task.soft_time_limit
+    if soft_time_limit is None:
+        soft_time_limit = settings.CELERYD_TASK_SOFT_TIME_LIMIT
     est_final_retry_time = time_until_retry(0, task.max_retries, est_execution_time,
                                             task.default_retry_delay)
 
@@ -432,8 +317,9 @@ def send_stale_input_warning(task, specific_cause, est_execution_time, uses_expo
 
     current_retry_num = task.request.retries
 
-    subject = make_standard_email_subject(task, "Task aborted due to stale or erroneous input",
-                                          _WARNING_IMPORTANCE)
+    subject = make_standard_email_subject(
+        task, "Task aborted due to stale or erroneous input", _WARNING_IMPORTANCE
+    )
     message = ("This task has been aborted due to stale or erroneous input.\n\n"
                "It's likely that EDD users have made changes since the task was originally "
                "submitted, but before it was executed/retried.  This task is now moot, since "
@@ -497,7 +383,8 @@ def send_retry_warning(task, est_execution_time, warn_after_retry_num, celery_lo
         celery_logger.warning(
             "Inconsistent input parameters to send_retry_warning_before_failure(): "
             "(max_retries = %d) <= (notify_on_retry_num = %d). Retry messages will never be sent."
-            % (task.max_retries, warn_after_retry_num))
+            % (task.max_retries, warn_after_retry_num)
+        )
         return False
 
     # Don't bother sending the warning if the task will fail before anyone can help fix it. For
@@ -511,13 +398,19 @@ def send_retry_warning(task, est_execution_time, warn_after_retry_num, celery_lo
 
     seconds_to_final_attempt = 0
     if current_retry_num != final_retry_num:
-        seconds_to_final_attempt = time_until_retry(current_retry_num, final_retry_num,
-                                                    est_execution_time, initial_retry_delay)
-    warn = is_notification_retry and ((not skip_moot_warnings) or (seconds_to_final_attempt >=
-                                      (CELERY_MIN_WARNING_GRACE_PERIOD_MIN * SECONDS_PER_MINUTE)))
+        seconds_to_final_attempt = time_until_retry(
+            current_retry_num, final_retry_num, est_execution_time, initial_retry_delay
+        )
+    _grace_period = settings.CELERY_MIN_WARNING_GRACE_PERIOD_MIN * SECONDS_PER_MINUTE
+    warn = (is_notification_retry and
+            (not skip_moot_warnings or seconds_to_final_attempt >= _grace_period))
 
     if is_notification_retry and not warn:
-        celery_logger.warning("Skipping administrator warning on retry %d since it can't be "
-                              "addressed within the %f minute cutoff"
-                              % (warn_after_retry_num, CELERY_MIN_WARNING_GRACE_PERIOD_MIN))
+        celery_logger.warning(
+            "Skipping administrator warning on retry %(attempt)d since it can't be addressed "
+            "within the %(deadline)f minute cutoff" % {
+                'attempt': warn_after_retry_num,
+                'deadline': settings.CELERY_MIN_WARNING_GRACE_PERIOD_MIN
+            }
+        )
     return warn

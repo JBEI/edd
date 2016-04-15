@@ -5,9 +5,10 @@
 
 # per-machine configuration file; contains secrets, DO NOT CHECK-IN
 server.cfg
+secrets.env
 
 # per-machine local settings file; this will override default settigns with local changes
-edd/local_settings.py
+edd/settings/local.py
 # also ignore any local media/upload folders
 /media
 /upload
@@ -15,4 +16,8 @@ edd/local_settings.py
 # and ignore local log directory
 /log
 
+# ignore typescript intermediate build directory
 /typescript/build
+# and ignore node_modules, each user needing to compile Typescript should `npm install`
+/node_modules
+
