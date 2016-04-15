@@ -651,8 +651,8 @@ class SbmlView(EDDExportView):
         # want to bind od_select always to allow validation
         od_select = SbmlExportOdForm(
             data=request.POST, prefix='od', selection=self.selection,
-            types=MeasurementType.objects.filter(short_name='OD'),
-            protocols=Protocol.objects.filter(categorization=Protocol.CATEGORY_OD),
+            qfilter=(Q(measurement_type__short_name='OD') &
+                     Q(assay__protocol__categorization=Protocol.CATEGORY_OD)),
         )
         # detect if we're coming from a form submit on study page or a re-submit from export page
         form_data = None
@@ -664,19 +664,19 @@ class SbmlView(EDDExportView):
         od_select.is_valid()  # don't care for result right now, just triggering validation
         hplc_select = SbmlExportMeasurementsForm(
             data=form_data, prefix='hplc', selection=self.selection,
-            protocols=Protocol.objects.filter(categorization=Protocol.CATEGORY_HPLC),
+            qfilter=Q(assay__protocol__categorization=Protocol.CATEGORY_HPLC),
         )
         ms_select = SbmlExportMeasurementsForm(
             data=form_data, prefix='ms', selection=self.selection,
-            protocols=Protocol.objects.filter(categorization=Protocol.CATEGORY_LCMS),
+            qfilter=Q(assay__protocol__categorization=Protocol.CATEGORY_LCMS),
         )
         ramos_select = SbmlExportMeasurementsForm(
             data=form_data, prefix='ramos', selection=self.selection,
-            protocols=Protocol.objects.filter(categorization=Protocol.CATEGORY_RAMOS),
+            qfilter=Q(assay__protocol__categorization=Protocol.CATEGORY_RAMOS),
         )
         omics_select = SbmlExportMeasurementsForm(
             data=form_data, prefix='ramos', selection=self.selection,
-            protocols=Protocol.objects.filter(categorization=Protocol.CATEGORY_TPOMICS),
+            qfilter=Q(assay__protocol__categorization=Protocol.CATEGORY_TPOMICS),
         )
         sbml_warnings = chain(
             export_settings.sbml_warnings, od_select.sbml_warnings, hplc_select.sbml_warnings,

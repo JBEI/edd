@@ -113,12 +113,13 @@ class SbmlExportMeasurementsForm(SbmlForm):
         Required:
             selection = a main.export.ExportSelection object defining the items for export
         Optional:
-            types = a queryset or collection used to filter types of measurements to include
-            protocols = a queryset or collection used to filter protocols to include
+            qfilter = arguments to filter a measurement queryset from
+                main.export.table.ExportSelection
             baseline = another SbmlExportMeasurementsForm used to find timepoints where values
                 should be interpolated
         """
         self._selection = kwargs.pop('selection', None)
+        qfilter = kwargs.pop('qfilter', None)
         self._types = kwargs.pop('types', None)
         self._protocols = kwargs.pop('protocols', None)
         self._baseline = kwargs.pop('baseline', None)
@@ -129,10 +130,8 @@ class SbmlExportMeasurementsForm(SbmlForm):
         ).prefetch_related(
             'measurementvalue_set',
         )
-        if self._types is not None:
-            f.queryset = f.queryset.filter(measurement_type__in=self._types)
-        if self._protocols is not None:
-            f.queryset = f.queryset.filter(assay__protocol_id__in=self._protocols)
+        if qfilter is not None:
+            f.queryset = f.queryset.filter(qfilter)
         if f.queryset.count() == 0:
             self.sbml_warnings.append(_('No protocols have usable data.'))
         else:
@@ -238,6 +237,7 @@ class SbmlExportOdForm(SbmlExportMeasurementsForm):
             ))
         else:
             self._clean_check_for_gcdw(data, gcdw_default, conversion_meta)
+        # make sure that at least some OD measurements are selected
         if len(data.get('measurementId', [])) == 0:
             raise ValidationError(
                 _('No Optical Data measurements were selected. Biomass measurements are essential '
@@ -246,14 +246,27 @@ class SbmlExportOdForm(SbmlExportMeasurementsForm):
             )
         return data
 
+    def _clean_check_for_curve(self, data):
+        """ Ensures that each unique selected line has at least two points to calculate a
+            growth curve. """
+        for line in self._clean_collect_data_lines(data).itervalues():
+            count = 0
+            for m in self._measures_by_line[line.pk]:
+                count += len(m.measurementvalue_set.all())
+                if count > 1:
+                    break
+            if count < 2:
+                raise ValidationError(
+                    _('Optical Data for %(line)s contains less than two data points. Biomass '
+                      'measurements are essential for FBA, and at least two are needed to define '
+                      'a growth rate.') % {'line': line.name},
+                    code='growth-rate-required-for-FBA'
+                )
+
     def _clean_check_for_gcdw(self, data, gcdw_default, conversion_meta):
         """ Ensures that each unique selected line has a gCDW/L/OD factor. """
-        line_lookup = {}
-        # get unique lines first
-        for m in data.get('measurementId', []):
-            line_lookup[m.assay.line.pk] = m.assay.line
         # warn for any lines missing the selected metadata type
-        for line in line_lookup.itervalues():
+        for line in self._clean_collect_data_lines(data).itervalues():
             factor = line.metadata_get(conversion_meta)
             # TODO: also check that the factor in metadata is a valid value
             if factor is None:
@@ -265,6 +278,17 @@ class SbmlExportOdForm(SbmlExportMeasurementsForm):
                         'meta': conversion_meta.type_name,
                       })
                 )
+
+    def _clean_collect_data_lines(self, data):
+        """ Collects all the lines included in a data selection. """
+        if not hasattr(self, '_lines'):
+            self._lines = {}
+            self._measures_by_line = defaultdict(list)
+            # get unique lines first
+            for m in data.get('measurementId', []):
+                self._lines[m.assay.line.pk] = m.assay.line
+                self._measures_by_line[m.assay.line.pk].append(m)
+        return self._lines
 
     def _init_conversion(self):
         """ Attempt to load a default initial value for gcdw_conversion based on user. """
