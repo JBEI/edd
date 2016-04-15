@@ -21,7 +21,7 @@ from django.utils.translation import ugettext_lazy as _
 from form_utils.forms import BetterModelForm
 from functools import partial
 
-from jbei.ice.rest.ice import IceApi, HmacAuth
+from jbei.ice.rest.ice import IceApi, HmacAuth, IceHmacAuth
 from .export import table
 from .models import (
     Assay, Attachment, CarbonSource, Comment, Line, Measurement, MeasurementType,
@@ -151,7 +151,7 @@ class RegistryValidator(object):
     def load_part_from_ice(self, value):
         try:
             update = Update.load_update()
-            ice = IceApi(HmacAuth.get(username=update.mod_by.email))
+            ice = IceApi(IceHmacAuth.get(username=update.mod_by.email))
             (self.part, url) = ice.fetch_part(value)
             self.part['url'] = ''.join((ice.base_url, '/entry/', str(self.part['id']), ))
         except Exception:

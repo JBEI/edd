@@ -5,9 +5,13 @@ Assuming Django REST Framework (DRF) will be adopted in EDD, new and existing vi
 ported to this class over time. Many REST resources are currently defined in main/views.py,
 but are not making use of DRF.
 """
+import re
 
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from edd.rest.serializers import LineSerializer, StudySerializer, UserSerializer, StrainSerializer
+from jbei.edd.rest.edd import LINE_ACTIVE_STATUS_PARAM, LINES_ACTIVE_DEFAULT, ACTIVE_LINES_ONLY, \
+    ALL_LINES_VALUE, INACTIVE_LINES_ONLY
 from main.models import Study, StudyPermission, Line, Strain, User
 from rest_framework import (mixins, permissions, status, viewsets)
 from rest_framework.generics import ListAPIView
@@ -91,11 +95,38 @@ class StrainViewSet(viewsets.ModelViewSet):
 class LineViewSet(viewsets.ReadOnlyModelViewSet):
     """
     API endpoint that allows Lines to we viewed or edited.
+    TODO: add edit/create capability back in, based on study-level permissions
     """
-    queryset = Line.objects.all().order_by('created')
+    queryset = Line.objects.all()
     serializer_class = LineSerializer
     contact = StringRelatedField(many=False)
     experimenter = StringRelatedField(many=False)
+
+    def get_queryset(self):
+        query = Line.objects.all()
+
+        # filter by line active status, applying the default (only active lines)
+        active_status = self.kwargs.get(LINE_ACTIVE_STATUS_PARAM, LINES_ACTIVE_DEFAULT)
+        query = filter_line_activity(query, active_status)
+        return query
+
+
+def filter_line_activity(query, line_active_status=ACTIVE_LINES_ONLY, query_prefix=''):
+    """
+    Filters the input query by line active status
+    :param query: the base query
+    :param line_active_status: a string with the line active status
+    :param query_prefix:
+    :return:
+    """
+    line_active_status = line_active_status.lower()
+
+    if ALL_LINES_VALUE:
+        return query
+
+    # return requested status, or active lines only if input was bad
+    active_criterion = Q(**{'%sactive' % query_prefix: (line_active_status != INACTIVE_LINES_ONLY)})
+    return query.filter(active_criterion)
 
 
 class StudyViewSet(viewsets.ReadOnlyModelViewSet):  # read-only for now...see TODO below
@@ -130,16 +161,102 @@ class StudyViewSet(viewsets.ReadOnlyModelViewSet):  # read-only for now...see TO
         # separate permissions checks to protect them. Then change back to a ModelViewSet.
 
 
+NUMERIC_PK_PATTERN = re.compile('^\d+$')
+STRAIN_LOOKUP = 'strain_id'
 
-class StudyLineView(viewsets.ModelViewSet):  # LineView(APIView):
-    serializer_class = LineSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    LINE_URL_KWARG = "line"
+
+class StrainStudiesView(viewsets.ReadOnlyModelViewSet):
+    serializer_class = StudySerializer
+
+    def get_queryset(self):
+        # get the strain identifier, which could be either a numeric (local) primary key, or a UUID
+        strain_id = self.kwargs.get('strain_pk')  # NOTE: couldn't easily find a way to change
+        # lookup_field for nested router based resource like this.
+
+        # figure out which it is
+        strain_pk = strain_id if NUMERIC_PK_PATTERN.match(strain_id) else None
+        strain_uuid = strain_id if not strain_pk else None
+
+        line_active_status = self.kwargs.get(LINE_ACTIVE_STATUS_PARAM, LINES_ACTIVE_DEFAULT)
+        user = self.request.user
+
+        # only allow superusers through, since this is strain-related data that should only be
+        # accessable to sysadmins
+        if not user.is_superuser:
+            #  TODO: user group / merge in recent changes / throw PermissionsError or whatever
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        studies_query = None
+        if strain_pk:
+            studies_query = Study.objects.filter(line__strains__pk=strain_pk)
+        else:
+            studies_query = Study.objects.filter(line__strains__registry_id=strain_uuid)
+
+        # filter by line active status, applying the default (only active lines)
+        studies_query = filter_line_activity(studies_query, line_active_status=line_active_status,
+                             query_prefix='line__')
+
+        # enforce EDD's custom access controls for readability of the associated studies. Note:
+        # at present this isn't strictly necessary because of the sysadmin check above but best
+        # to enforce programatically in case the implementation of Study's access controls
+        # changes later on
+
+        if not Study.user_role_can_read(user):
+            study_user_permission_q = Study.user_permission_q(user, StudyPermission.READ,
+                                                              keyword_prefix='line__study__')
+            studies_query = studies_query.filter(study_user_permission_q)
+
+        studies_query = studies_query.distinct()
+
+        return studies_query
+
+
+class StudyStrainsView(viewsets.ReadOnlyModelViewSet):
+    """
+        API endpoint that study strains to be viewed
+    """
+    serializer_class = StrainSerializer
     STUDY_URL_KWARG = 'study_pk'
 
+    def get_queryset(self):
+        print(self.kwargs)
+
+        # extract URL arguments
+        study_id = self.kwargs[self.STUDY_URL_KWARG]
+        study_id_is_pk = re.match('^\d+$', study_id)
+        line_active_status = self.kwargs.get(LINE_ACTIVE_STATUS_PARAM, LINES_ACTIVE_DEFAULT)
+
+        # filter by line active status, applying the default (only active lines)
+        active_status = self.kwargs.get(LINE_ACTIVE_STATUS_PARAM, LINES_ACTIVE_DEFAULT)
+        query = filter_line_activity(query, active_status)
+
+        user = self.request.user
+
+        # build the query, enforcing EDD's custom study access controls. Normally we'd require
+        # sysadmin access to view strains, but the names/descriptions of strains in the study should
+        # be visible to users with read access to a study that measures them
+        study_user_permission_q = Study.user_permission_q(user, StudyPermission.READ,
+                                                              keyword_prefix='study__')
+
+        if study_id_is_pk:
+            strain_query = Study.objects.filter(study_user_permission_q, line__study__pk=study_id)
+        else:
+            strain_query = Study.objects.filter(study_user_permission_q,
+                                                line__study_registry_id=study_id)
+
+        # filter by line active status, applying the default (only active lines)
+        strain_query = filter_line_activity(strain_query, line_active_status, query_prefix='line__')
+
+        return strain_query
+
+
+class StudyLineView(viewsets.ModelViewSet):  # LineView(APIView):
     """
-    API endpoint that allows lines to be viewed or edited.
+        API endpoint that allows lines to be viewed or edited.
     """
+    serializer_class = LineSerializer
+    LINE_URL_KWARG = "line"
+    STUDY_URL_KWARG = 'study_pk'
 
     def get_queryset(self):
         print(self.kwargs)
@@ -147,6 +264,8 @@ class StudyLineView(viewsets.ModelViewSet):  # LineView(APIView):
         # extract URL arguments
         #line_pk = self.kwargs[self.LINE_URL_KWARG]
         study_pk = self.kwargs[self.STUDY_URL_KWARG]
+
+        line_active_status = self.kwargs.get(LINE_ACTIVE_STATUS_PARAM, LINES_ACTIVE_DEFAULT)
 
         user = self.request.user
         requested_permission = StudyPermission.WRITE if self.request.method in \
@@ -160,6 +279,9 @@ class StudyLineView(viewsets.ModelViewSet):  # LineView(APIView):
                                              study__pk=study_pk)
         else:
             line_query = Line.objects.filter(study__pk=study_pk)
+
+        # filter by line active status, applying the default (only active lines)
+        line_query = filter_line_activity(line_query, line_active_status)
 
         return line_query
 

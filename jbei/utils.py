@@ -2,6 +2,11 @@
 A catch-all module for general utility code that doesn't clearly belong elsewhere.
 """
 import arrow
+import getpass
+import logging
+from requests import ConnectionError
+
+logger = logging.getLogger(__name__)
 
 
 class UserInputTimer(object):
@@ -146,3 +151,63 @@ def to_human_relevant_delta(seconds):
             formatted_duration = _append(formatted_duration, int_sec_str)
 
     return formatted_duration
+
+class LoginResult:
+    def __init__(self, session_auth, username):
+        self.session_auth = session_auth
+        self.username = username
+
+def session_login(session_auth_class, base_url, application_name, username_arg=None,
+                  password_arg=None, user_input=None, print_result=True, timeout=None,
+                  verify_ssl_cert=True):
+    """
+    A helper method to simplify work in gathering user access credentials and attempting to log into
+    a remote service from a terminal-based application. If user credentials are provided,
+    they're used to attempt to log into the service. If not, or if the login attempt fails, the
+    user will be prompted to re-enter credentials on the assumption that they weren't entered
+    correctly the first time.
+    :param session_auth_class: the class responsible to implement session authentication for the
+    specified service
+    :param username_arg: optional username, or None to prompt
+    :param password_arg: optional password, or None to prompt
+    :param user_input: optional object responsible to gather user input
+    :param timeout:
+    :param verify_ssl_cert:
+    :return:
+    :raises ConnectionError: if no connection could be made to the remote service
+    """
+
+    user_input = user_input if user_input else UserInputTimer()
+    session_auth = None
+    attempted_login = False
+    while not session_auth:
+
+            # gather user credentials from command line arguments and/or user prompt
+            if (username_arg is not None) and (not attempted_login):
+                username = username_arg
+            else:
+                if not attempted_login:
+                    username = getpass.getuser()
+                username_input = user_input.user_input('Username [%s]: ' % username)
+                username = username_input if username_input else username
+            if (password_arg is not None) and not attempted_login:
+                password = password_arg
+            else:
+                append_prompt = ' [enter to use existing entry]' if attempted_login else ''
+                password_input = getpass.getpass('Password for %s%s: ' % (username, append_prompt))
+                password = password_input if password_input else password
+
+            attempted_login = True
+
+            # attempt login
+            if print_result:
+                print 'Logging into %s at %s... ' % (application_name, base_url),
+            edd_login_start_time = arrow.utcnow()
+            session_auth = session_auth_class.login(base_url=base_url, username=username,
+                                                    password=password)
+            if(session_auth):
+                if print_result:
+                    print('success!')
+                return LoginResult(session_auth, username)
+            elif print_result:
+                print('failed :-{')

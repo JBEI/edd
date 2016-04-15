@@ -50,7 +50,7 @@ import csv
 import re
 from jbei.rest.utils import is_url_secure, show_response_html
 from jbei.ice.rest.ice import Strain as IceStrain
-from .settings import EDD_URL, ICE_URL, PRINT_FOUND_ICE_PARTS, PRINT_FOUND_EDD_STRAINS, \
+from settings import EDD_URL, ICE_URL, PRINT_FOUND_ICE_PARTS, PRINT_FOUND_EDD_STRAINS, \
     SIMULATE_STRAIN_CREATION
 from jbei.edd.rest.edd import EddSessionAuth, EddApi
 from jbei.ice.rest.ice import IceApi
@@ -301,7 +301,7 @@ def get_ice_parts(base_url, ice_username, password, part_numbers_list,
     csv_part_number_count = len(part_numbers_list)
     part_number_to_part_dict = collections.OrderedDict()  # order for easy comparison against CSV
     print 'Logging into ICE at %s ...' % ICE_URL,
-    with IceSessionAuth.login(ice_username=ice_username, password=password,
+    with IceSessionAuth.login(username=ice_username, password=password,
                               base_url=ICE_URL) as ice_session_auth:
         print('success!')
 
@@ -406,7 +406,7 @@ def find_existing_strains(edd, ice_parts, existing_edd_strains, strains_by_part_
 
             # if one or more strains are found with this UUID
             if edd_strains:
-                if edd_strains.get_current_result_count() > 1 or edd_strains.is_paged():
+                if edd_strains.current_result_count() > 1 or edd_strains.is_paged():
                     print('More than one existing EDD strain was found for part %(part_number)s ('
                           'registry_id %(uuid)s). Please see the EDD team to resolve the '
                           'discrepancy before continuing.' % {
@@ -463,7 +463,8 @@ def find_existing_strains(edd, ice_parts, existing_edd_strains, strains_by_part_
     return True
 
 
-def create_missing_strains(edd, non_existent_edd_strains, strains_by_part_number, ice_part_count):
+def create_missing_strains(edd, non_existent_edd_strains, strains_by_part_number, ice_part_count,
+                           input):
     """
     Creates any missing EDD strains, storing the resulting new strains in strains_by_part_number
     :param edd: an authenticated instance of EddApi
@@ -764,6 +765,7 @@ class Performance(object):
         ############################################################################################
 
         print('')
+        print('')
         print(OUTPUT_SEPARATOR)
         print('Total run time: %s' % to_human_relevant_delta(self._total_time.total_seconds()))
         print(OUTPUT_SEPARATOR)
@@ -785,6 +787,8 @@ class Performance(object):
                     self.waiting_for_user_delta.total_seconds()))
         print('\tOtherwise unaccounted for: %s' % to_human_relevant_delta(
                 self.unaccounted_for_delta.total_seconds()))
+
+        print('')
 
 
 def main():
@@ -814,7 +818,9 @@ def main():
                                                      'lines in')
         args = parser.parse_args()
 
-        # print out important parameters
+        ############################################################################################
+        # Print out important parameters
+        ############################################################################################
         print(OUTPUT_SEPARATOR)
         print(os.path.basename(__file__))
         print(OUTPUT_SEPARATOR)
@@ -901,6 +907,7 @@ def main():
             else:
                 append_prompt = ' [enter to use existing entry]' if attempted_login else ''
                 password_input = getpass.getpass('Password for %s%s: ' % (username, append_prompt))
+                password = None  # prevent referencing undeclared if user doesn't enter input
                 password = password_input if password_input else password
 
             attempted_login = True
@@ -911,7 +918,7 @@ def main():
                 edd_login_start_time = arrow.utcnow()
                 edd_session_auth = EddSessionAuth.login(base_url=EDD_URL, username=username,
                                                         password=password)
-                performance.edd_login_delta += (edd_login_start_time - arrow.utcnow())
+                performance.edd_login_delta += (arrow.utcnow() - edd_login_start_time)
                 if(edd_session_auth):
                     print('success!')
                 else:
@@ -927,7 +934,7 @@ def main():
         with edd_session_auth:
 
             edd = EddApi(base_url=EDD_URL, session_auth=edd_session_auth)
-            edd.set_write_enabled(True)
+            edd.write_enabled(True)
 
             ########################################################################################
             # Query user for the study to create lines in, verifying that the study exists / the
@@ -1040,7 +1047,7 @@ def main():
 
             # If some strains were missing in EDD, confirm with user, and then create them
             strains_created = create_missing_strains(edd, non_existent_edd_strains,
-                                                     strains_by_part_number, ice_part_count)
+                                                     strains_by_part_number, ice_part_count, input)
             if not strains_created:
                 return 1
 
@@ -1070,6 +1077,6 @@ def main():
         performance.overall_end_time = arrow.utcnow()
         performance.print_summary()
 
-if __name__ == '__main__' or __name__=='jbei.edd.rest.scripts.create_lines':
+if __name__ == '__main__' or __name__ == 'jbei.edd.rest.scripts.create_lines':
     result = main()
     exit(result)

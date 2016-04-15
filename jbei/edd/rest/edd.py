@@ -2,19 +2,23 @@
 """
 Contains utility classes for connecting with and gathering data from EDD's REST API. This initial
 implementation, as well as the REST API itself, can use some additions/improvements over time,
-but is implemented to initially fulfill the basic need to connect to EDD programmatically.
+but is implemented to initially fulfill the basic need to connect to EDD programatically.
 """
 
 from __future__ import unicode_literals
-import jbei
-from jbei.rest.request_generators import SessionRequestGenerator
-from jbei.rest.utils import show_response_html, is_success_code
-from jbei.rest.utils import remove_trailing_slash, UNSAFE_HTTP_METHODS
+
 import json
 import logging
+from urlparse import urlparse, urlsplit
+
 import requests
 from requests.auth import AuthBase
-from urlparse import urlparse, urlsplit
+
+import jbei
+from jbei.rest.api import RestApiClient
+from jbei.rest.request_generators import SessionRequestGenerator, PagedRequestGenerator, PagedResult
+from jbei.rest.utils import remove_trailing_slash, UNSAFE_HTTP_METHODS
+from jbei.rest.utils import show_response_html, is_success_code
 
 DEBUG = True  # controls whether error response content is written to temp file, then displayed
               # in a browser tab
@@ -25,6 +29,11 @@ DEFAULT_REQUEST_TIMEOUT = (10, 10)  # HTTP request connection and read timeouts,
 USE_DRF_SERIALIZER = False  # test flag for doing deserialization without the Django REST
 # Framework's serializer, which it turns out isn't very useful on the client side anyway.
 
+LINE_ACTIVE_STATUS_PARAM = 'lines_active'
+ALL_LINES_VALUE = 'all'
+ACTIVE_LINES_ONLY = 'active'
+INACTIVE_LINES_ONLY = 'inactive'
+LINES_ACTIVE_DEFAULT = ACTIVE_LINES_ONLY
 
 logger = logging.getLogger(__name__)
 
@@ -143,6 +152,9 @@ class Study(EddRestObject):
 
 
 DJANGO_CSRF_COOKIE_KEY = 'csrftoken'
+PAGE_SIZE_QUERY_PARAM = 'page_size'
+PAGE_NUMBER_QUERY_PARAM = 'page'
+RESULTS_OFFSET_QUERY_PARAM = 'offset'
 
 
 def insert_spoofed_https_csrf_headers(headers, base_url):
@@ -166,6 +178,9 @@ def insert_spoofed_https_csrf_headers(headers, base_url):
     if urlparse(base_url).scheme == 'https':
         headers['Host'] = urlsplit(base_url).netloc
         headers['Referer'] = base_url  # LOL! Bad spelling is now standard :-)
+
+_ASSUME_PAGED_RESOURCE = False
+_DEFAULT_SINGLE_REQUEST_RESULT_LIMIT = None
 
 
 class DrfSessionRequestGenerator(SessionRequestGenerator):
@@ -195,35 +210,39 @@ class DrfSessionRequestGenerator(SessionRequestGenerator):
     #############################################################
 
     def request(self, method, url, **kwargs):
+        print('executing %s.request()' % self.__class__.__name__)
         # if using an "unsafe" HTTP method, include the CSRF header required by DRF
         if method.upper() in UNSAFE_HTTP_METHODS:
-            kwargs = self.get_csrf_headers(kwargs)
+            kwargs = self._get_csrf_headers(**kwargs)
 
-        return super(DrfSessionRequestGenerator, self).request(method, url, **kwargs)
+        return super(self.__class__, self).request(method, url, **kwargs)
 
     def head(self, url, **kwargs):
-        return super(DrfSessionRequestGenerator, self).get(url, **kwargs)
+        return super(self.__class__, self).head(url, **kwargs)
 
     def get(self, url, **kwargs):
-        return super(DrfSessionRequestGenerator, self).get(url, **kwargs)
+        return super(self.__class__, self).get(url, **kwargs)
+
+    def options(self, **kwargs):
+        super(self.__class__, self).options(self, **kwargs)
 
     def post(self, url, data=None, **kwargs):
-        kwargs = self.get_csrf_headers(**kwargs)
-        return super(DrfSessionRequestGenerator, self).post(url, data, **kwargs)
+        kwargs = self._get_csrf_headers(**kwargs)
+        return super(self.__class__, self).post(url, data, **kwargs)
 
     def put(self, url, data=None, **kwargs):
-        kwargs = self.get_csrf_headers(kwargs)
-        return super(DrfSessionRequestGenerator, self).put(url, data, **kwargs)
+        kwargs = self._get_csrf_headers(**kwargs)
+        return super(self.__class__, self).put(url, data, **kwargs)
 
     def patch(self, url, data=None, **kwargs):
-        kwargs = self.get_csrf_headers(kwargs)
-        return super(DrfSessionRequestGenerator, self).patch(url, data, **kwargs)
+        kwargs = self._get_csrf_headers(**kwargs)
+        return super(self.__class__, self).patch(url, data, **kwargs)
 
     def delete(self, url, **kwargs):
-        kwargs = self.get_csrf_headers(kwargs)
-        return super(DrfSessionRequestGenerator, self).delete(url, **kwargs)
+        kwargs = self._get_csrf_headers(**kwargs)
+        return super(self.__class__, self).delete(url, **kwargs)
 
-    def get_csrf_headers(self, **kwargs):
+    def _get_csrf_headers(self, **kwargs):
         """
         Gets an updated dictionary of HTTP request headers, including headers required to satisfy
         Django's CSRF protection. The original input headers dictionary (if any) isn't modified.
@@ -256,8 +275,13 @@ class EddSessionAuth(AuthBase):
     def __init__(self, base_url, session, timeout=DEFAULT_REQUEST_TIMEOUT,
                  verify_ssl_cert=VERIFY_SSL_DEFAULT):
         self._session = session
-        self._request_generator = DrfSessionRequestGenerator(base_url, session, timeout=timeout,
+
+        drf_request_generator = DrfSessionRequestGenerator(base_url, session, timeout=timeout,
                                                              verify_ssl_cert=verify_ssl_cert)
+        paging_request_generator = PagedRequestGenerator(request_api=drf_request_generator,
+                                                         result_limit_param_name=PAGE_SIZE_QUERY_PARAM,
+                                                         result_limit=None)
+        self._request_generator = paging_request_generator
 
     @property
     def request_generator(self):
@@ -360,8 +384,10 @@ class EddSessionAuth(AuthBase):
                 show_response_html(response)
             response.raise_for_status()
 
+DEFAULT_PAGE_SIZE = 30
 
-class EddApi(object):
+
+class EddApi(RestApiClient):
     """
     Defines a high-level interface to EDD's REST API. The initial version of this class is very
     basic, and exposes only a minimal subset of the initial API exposed as part of SYNBIO-1299.
@@ -378,48 +404,28 @@ class EddApi(object):
                     'Media-Type': 'application/json',
                     'Accept': 'application/json'}
 
-    def __init__(self, session_auth, base_url):
+    def __init__(self, session_auth, base_url, result_limit=DEFAULT_PAGE_SIZE):
         """
         Creates a new instance of EddApi, which prevents data changes by default.
         :param base_url: the base URL of the EDD deployment to interface with,
         e.g. https://edd.jbei.org/. Note HTTPS should almost always be used for security.
         :param session_auth: a valid, authenticated EDD session used to authorize all requests to
         the API.
+        :param result_limit: the maximum number of results that can be returned from a single
+        query, or None to apply EDD's default limit
         :return: a new EddApi instance
         """
-        super(self.__class__, self).__init__()
+        super(self.__class__, self).__init__('EDD', base_url,
+                                             session_auth.request_generator,
+                                             result_limit=result_limit)
         self.session_auth = session_auth
-        self._enable_write = False
 
-        # chop off the trailing '/', if any, so we can write easier-to-read URL snippets in our code
-        # (starting w '%s/'). also makes our code trailing-slash agnostic.
-        self.base_url = remove_trailing_slash(base_url)
-
-    def set_write_enabled(self, enabled):
-        """
-        Enables remote changes to EDD's database via method calls made from EddApi. Changes EDD
-        are disabled by default to prevent accidental data loss.
-        :param enabled: True to enabled changes to EDD, false disables changes.
-        """
-        self._enable_write = enabled
-
-    def is_write_enabled(self):
-        return self._enable_write
-
-    def _prevent_write_while_disabled(self):
-        if not self._enable_write:
-            raise RuntimeError('To prevent accidental data loss, changes to EDD data are '
-                               'disabled. Use %s to allow writes, '
-                               'but please use carefully!' % self.set_write_enabled.__name__)
-
-    @property
-    def request_generator(self):
-        return self.session_auth.request_generator
-
-    def search_strains(self, registry_id=None, registry_url_regex=None, name=None, name_regex=None,
-                       case_sensitive=None):
+    def search_strains(self, query_url=None, registry_id=None, registry_url_regex=None, name=None,
+                       name_regex=None, case_sensitive=None, page_number=None):
         """
         Searches EDD for strain(s) matching the search criteria.
+        :param query_url: the entire URL for the search, including query parameters (for example,
+        the value returned for next_page). If present, all other parameters will be ignored.
         :param registry_id: the registry id (UUID) to search for
         :param registry_url_regex: the registry URL to search for
         :param name: the strain name or name fragment to search for (case-sensitivity determined
@@ -428,32 +434,45 @@ class EddApi(object):
         by case_sensitive)
         :param case_sensitive: whether or not to use case-sensitive string comparisons. False or
         None indicates that searches should be case-insensitive.
+        :param result_limit: the upper limit for the number of results that will be returned from
+        this single request. If present, overrides the value provided to the constructor for
+        the duration of this search.
         :return: a PagedResult containing some or all of the EDD strains that matched the search
         criteria
         """
 
-        # build up a dictionary of search parameters based on provided inputs
-        search_params = {}
-
-        if registry_id:
-            search_params['registry_id'] = registry_id
-
-        if registry_url_regex:
-            search_params['registry_url_regex'] = registry_url_regex
-
-        if name:
-            search_params['name'] = name
-
-        elif name_regex:
-            search_params['name_regex'] = name_regex
-
-        if case_sensitive:
-            search_params['case_sensitive'] = case_sensitive
-
-        # make the HTTP request
-        url = '%s/rest/strain' % self.base_url
         request_generator = self.session_auth.request_generator
-        response = request_generator.get(url, params=search_params, headers=self._json_header)
+
+        # build up a dictionary of search parameters based on provided inputs
+        if query_url:
+            response = request_generator.get(query_url, headers=self._json_header)
+        else:
+            search_params = {}
+
+            if registry_id:
+                search_params['registry_id'] = registry_id
+
+            if registry_url_regex:
+                search_params['registry_url_regex'] = registry_url_regex
+
+            if name:
+                search_params['name'] = name
+
+            elif name_regex:
+                search_params['name_regex'] = name_regex
+
+            if case_sensitive:
+                search_params['case_sensitive'] = case_sensitive
+
+            if self.result_limit:
+                search_params[PAGE_SIZE_QUERY_PARAM] = self.result_limit
+
+            if page_number:
+                search_params[PAGE_NUMBER_QUERY_PARAM] = page_number
+
+            # make the HTTP request
+            url = '%s/rest/strain' % self.base_url
+            response = request_generator.get(url, params=search_params, headers=self._json_header)
 
         # throw an error for unexpected reply
         if response.status_code != requests.codes.ok:
@@ -461,14 +480,54 @@ class EddApi(object):
 
         if USE_DRF_SERIALIZER:
             from edd.rest.serializers import StrainSerializer
-            return PagedResult.of(response.content, serializer_class=StrainSerializer.__class__)
+            return DrfPagedResult.of(response.content, serializer_class=StrainSerializer.__class__)
         else:
-            return PagedResult.of(response.content, model_class=Strain)
+            return DrfPagedResult.of(response.content, model_class=Strain)
 
-    def get_study_lines(self, study_pk):
+    def get_strain_studies(self, strain_pk=None, strain_uuid=None, query_url=None,
+                           page_number=None):
+        request_generator = self.session_auth.request_generator
+        response = None
+
+        # if the whole query was provided, just use it
+        if query_url:
+            response = request_generator.get(query_url, headers=self._json_header)
+        # otherwise, build up a dictionary of search parameters based on provided inputs
+        else:
+            search_params = {}
+
+            id = 'id'
+
+            if strain_uuid:
+                search_params[id] = strain_uuid  # TODO: consider renaming the param to ID,
+                                                   # but def use a constant here and in else
+            elif strain_pk:
+                search_params[id] = strain_pk
+            else:
+                raise KeyError('At least one strain identifier must be provided')  # TODO: consider
+                # exception type and message
+
+            if self.result_limit:
+                search_params[PAGE_SIZE_QUERY_PARAM] = self.result_limit
+
+            if page_number:
+                search_params[PAGE_NUMBER_QUERY_PARAM] = page_number
+
+            url = '%s/rest/strain/%d/studies/' % (self.base_url, strain_pk)
+
+            response = request_generator.get(url, params=search_params)
+
+        if response.status_code == requests.codes.ok:
+            query_url = response.url
+            return DrfPagedResult.of(response.content, model_class=Study)
+
+    def get_study_lines(self, study_pk, line_active_status=LINES_ACTIVE_DEFAULT, page_number=None):
 
         """
         Queries EDD for lines associated with a study
+        :param result_limit: the upper limit for the number of results that will be returned from
+        this single request. If present, overrides the value provided to the constructor for
+        the duration of this search.
         :return: a PagedResult containing some or all of the EDD strains that matched the search
         criteria
         """
@@ -476,13 +535,57 @@ class EddApi(object):
         # make the HTTP request
         url = '%s/rest/study/%d/lines/' % (self.base_url, study_pk)
         request_generator = self.session_auth.request_generator
-        response = request_generator.get(url, headers=self._json_header)
+
+        params = {}
+
+        if line_active_status:
+            params[LINE_ACTIVE_STATUS_PARAM]=line_active_status
+
+        if page_number:
+            params[PAGE_NUMBER_QUERY_PARAM] = page_number
+
+        response = request_generator.get(url, headers=self._json_header, params=params)
 
         # throw an error for unexpected reply
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
 
-        return PagedResult.of(response.content, Line)
+        return DrfPagedResult.of(response.content, Line)
+
+    def get_study_strains(self, study_pk, strain_id='',
+                          line_active_status=LINES_ACTIVE_DEFAULT,
+                          page_number=None, query_url=None):
+        """
+
+        :param study_pk:
+        :param strain_id: either EDD's numeric primary key for the strain, or ICE's UUID,
+        or an empty string to get all strains associated with the study
+        :param line_active_status:
+        :param page_number:
+        :param query_url:
+        :return:
+        """
+
+        # make the HTTP request
+        url = '%s/rest/study/%d/strains/%s' % (self.base_url, study_pk, str(strain_pk))
+        request_generator = self.session_auth.request_generator
+
+        # add parameters to
+        params = {}
+
+        if line_active_status:
+            params[LINE_ACTIVE_STATUS_PARAM] = line_active_status
+
+        if page_number:
+            params[PAGE_NUMBER_QUERY_PARAM] = page_number
+
+        response = request_generator.get(url, headers=self._json_header, params=params)
+
+        # throw an error for unexpected reply
+        if response.status_code != requests.codes.ok:
+            response.raise_for_status()
+
+        return DrfPagedResult.of(response.content, Strain)
 
     def create_line(self, study_id, strain_id, name, description=None):
         """
@@ -571,26 +674,16 @@ class EddApi(object):
         kwargs = json.loads(response.content)
 
         # remove Update kwargs, which just have the primary keys...maybe we'll serialize /
-        # deserialize more of this data later
+        # TODO: deserialize more of this data later
         kwargs.pop('created')
         kwargs.pop('updated')
 
         return Study(**kwargs)
 
 
-class PagedResult(object):
+class DrfPagedResult(PagedResult):
     def __init__(self, results, total_result_count, next_page=None, previous_page=None):
-        self.total_result_count = total_result_count
-        self.results = results
-        self.next_page = next_page
-        self.previous_page = previous_page
-
-    def is_paged(self):
-        """
-        Tests whether this PagedResult contains a subset of the full dataset
-        :return: True if this is only one page of a larger dataset, False if these are all the data.
-        """
-        return self.next_page or self.previous_page
+        super(DrfPagedResult, self).__init__(results, total_result_count, next_page, previous_page)
 
     @staticmethod
     def of(json_string, model_class, serializer_class=None, prevent_mods=True):
@@ -609,6 +702,10 @@ class PagedResult(object):
         :return: a PagedResult containing the data and a sufficient information for finding the rest
         of it (if any)
         """
+        # TODO: fix/use serializer_class
+        # TODO: implement or remove prevent_mods
+        # TODO: try to merge with IcePagedResult.of(), then move implementation to parent
+        # class after resolving the reflection problem below for DRF-based serializers
 
         # convert reply to a dictionary of native python data types
         json_dict = json.loads(json_string)
@@ -671,28 +768,15 @@ class PagedResult(object):
                 result_object = model_class(**object_dict)
             results_obj_list.append(result_object)
 
-        return PagedResult(results_obj_list, count, next_page, prev_page)
+        return DrfPagedResult(results_obj_list, count, next_page, prev_page)
 
-    def __str__(self):
-        return '<PagedResult count=%(count)d, next_page=%(next)s, previous_page=%(prev)s' % {
-            'count': len(self.results) if self.results else None,
-            'next': self.next_page,
-            'prev': self.previous_page,
-        }
-
-    def get_current_result_count(self):
+    def get_abs_study_browser_url(self, study_pk):
         """
-        Gets the number of results contained in this PagedResult object, which may or may not be
-        the full dataset.
+        Gets the absolute URL of the study with the provided identifier.
+        :return:
         """
-        if isinstance(self.results, list):
-            return len(self.results)
-        return 1
-
-    def get_total_result_count(self):
-        """
-        Gets the total number of results found, regardless of whether all the results are included
-        in the current page
-        :return: the number of results
-        """
-        return self.total_result_count
+        # Note: we purposefully DON'T use reverse() here since this code runs outside the context
+        # of Django, if the library is even installed (it shouldn't be required).
+        # Note: although it's normally best to abstract the URLs away from clients, in this case
+        # clients will need the URL to push study link updates to ICE.
+        return "%s/study/%s" %(self.base_url, study_pk)
