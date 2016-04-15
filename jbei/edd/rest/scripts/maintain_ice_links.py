@@ -102,7 +102,7 @@ search_ice_part_types = None  # in the future, if any, consider just [STRAIN]
 
 SEPARATOR_CHARS = 75
 OUTPUT_SEPARATOR = ''.join(['*' for index in range(1, SEPARATOR_CHARS)])
-fill_char = '.'
+fill_char = b'.'
 
 NOT_PROCESSED_OUTCOME = 'NOT_PROCESSED'
 REMOVED_DEVELOPMENT_URL_OUTCOME = 'REMOVED_DEV_URL'
@@ -173,7 +173,7 @@ class Performance(object):
 
         for title, value in values_dict.items():
             indented_title = "\t\t%s" % title.ljust(title_col_width, fill_char)
-            print(''.join(indented_title, value.rjust(value_col_width, fill_char)))
+            print(fill_char.join((indented_title, value.rjust(value_col_width, fill_char))))
 
 
 
