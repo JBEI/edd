@@ -2106,6 +2106,41 @@ class measurement_datum_converted_units (object):
         return " ".join(fields)
 
 
+# Container for a computed metabolite flux at a given time interval.
+class timepoint(object):
+    def __init__(self, mname, start, end, y, delta, units, flux, interpolated):
+        self.mname = mname
+        self.start = start
+        self.end = end
+        self.y = y
+        self.delta = delta
+        self.units = units
+        self.flux = flux
+        self.interpolated = interpolated
+
+    @property
+    def elapsed(self):
+        return self.end - self.start
+
+    @property
+    def conc(self):
+        return self.y
+
+    def __float__(self):
+        return self.flux
+
+    @property
+    def y_start(self):
+        return self.y - self.delta
+
+    def __str__(self):
+        base = "time: %8g - %8gh; delta = %8g, flux = %8g" % (
+            self.start, self.end, self.delta, self.flux)
+        if (self.interpolated):
+            return base + " [interpolated]"
+        return base
+
+
 # FIXME this could use some refactoring - maybe move the logic back to the
 # step_7 method above, keep flux_calculation or something like it as the
 # primary result?
@@ -2124,13 +2159,16 @@ class processed_measurement(object):
             is_input,
             is_od_measurement,
             use_interpolation):
-        m = measurement
-        assert (not m.is_carbon_ratio())
+        self._measurement = measurement
         self.protocol_category = protocol_category
-        self.measurement_id = m.id
+        self.measurement_id = self._measurement.id
+        self._metabolite = metabolite
         self.metabolite_id = metabolite.id
         self.metabolite_name = metabolite.short_name
         self.assay_name = assay_name
+        self._y_units = y_units
+        self._category = protocol_category
+        self._od_values = line_od_values
         self.interpolated_measurement_timestamps = set()
         self.skipped_due_to_lack_of_od = []
         self.is_od_measurement = is_od_measurement
@@ -2160,158 +2198,115 @@ class processed_measurement(object):
                     mdata_tuples.append((t, y))
                     self.interpolated_measurement_timestamps.add(t)
         mdata_tuples.sort(key=lambda a: a[0])
-
-        # Container for a computed metabolite flux at a given time interval.
-        class timepoint(object):
-            def __init__(O, mname, start, end, y, delta, units, flux, interpolated):
-                O.mname = mname
-                O.start = start
-                O.end = end
-                O.y = y
-                O.delta = delta
-                O.units = units
-                O.flux = flux
-                O.interpolated = interpolated
-
-            @property
-            def elapsed(O):
-                return O.end - O.start
-
-            @property
-            def conc(O):
-                return O.y
-
-            def __float__(O):
-                return O.flux
-
-            @property
-            def y_start(O):
-                return O.y - O.delta
-
-            def __str__(O):
-                base = "time: %8g - %8gh; delta = %8g, flux = %8g" % (
-                    O.start, O.end, O.delta, O.flux)
-                if (O.interpolated):
-                    return base + " [interpolated]"
-                return base
-
-        def process_md():
-            if m.is_carbon_ratio():  # TODO
-                return
-            # mdata_converted = []
-            # attempt unit conversions.  for convenience we use a simple class
-            # with 'x' and 'y' attributes, capable of handling any measurement
-            # type.
-            for (x, y) in mdata_tuples:
-                md = measurement_datum_converted_units(
-                    x=x, y=y,
-                    units=y_units,
-                    metabolite=metabolite,
-                    interpolated=(x in self.interpolated_measurement_timestamps),
-                    protocol_category=protocol_category)
-                self.data.append(md)
-            # Now, finally, we calculate fluxes and other embeddable values
-            for i_time, md in enumerate(self.data[:-1]):
-                t, y = md.x, md.y
-                od = line_od_values.get(t, None)
-                # Got to have an OD measurements at exactly the start, currently.
-                # It's certainly possible to do fancier stuff, but we'll implement
-                # that later.
-                if (od is None):
-                    self.skipped_due_to_lack_of_od.append(t)
-                    continue
-                elif (od == 0):
-                    # TODO error message?
-                    self.warnings.append("Start OD of 0 means nothing physically present (and "
-                                         "a potential division-by-zero error). Skipping...")
-                    continue
-                # At this point we know we have valid OD and valid Measurements for
-                # the interval.  (Remember, we pre-filtered valid meas. times.)
-                # We'll note the time as one of the columns we will want to offer
-                # in the comprehensive export table on the webpage, even if we
-                # subsequently reject this Measurement based on problems with
-                # unit conversion or lack of an exchange element in the SBML
-                # document. (The zero in the table will be informative to the user.)
-                self.valid_od_mtimes.add(t)
-                # At this point, the next higher timestamp in the list becomes
-                # necessary.  (The loop will only iterate up to the second-to-last.)
-                md_next = self.data[i_time+1]
-                t_end = md_next.x
-                delta_t = t_end - t
-                # This is kind of logically impossible, but, we ARE just drawing
-                # from an array, so...
-                if (delta_t == 0):
-                    self.warnings.append("No zero-width intervals due to duplicate "
-                                         "measurements, please!  Skipping...")
-                    continue
-                # Get the OD and Measurement value for this next timestamp
-                od_next = line_od_values.get(t_end, None)
-                # y_next = self.data[i_time+1].y
-                units = md.units
-                # We know it's not a carbon ratio at this point, so a delta is a
-                # meaningful value to calculate.
-                # TODO
-                delta_y = md_next.y - md.y
-                delta = delta_y
-                flux = None
-                mname = self.metabolite_name
-                if (protocol_category == "OD"):
-                    if (od_next is None):
-                        self.warnings.append("No OD measurement was found at the next interval, "
-                                             "timestamp <b>%g</b>.  Can't calculate a growth rate "
-                                             "at time <b>%g</b>!" % (t_end, t))
-                        continue
-                    # Here we're going to ignore the values we've pulled via the
-                    # Measurement, and use the values we already prepared in the OD
-                    # dict
-                    if self.is_od_measurement:
-                        # OD is converted into exponential growth rate (units
-                        # gCDW/gCDW/hr or 1/hr) by placing successive growth
-                        # observations within the exponential growth formula,
-                        # A1 = A0 * exp(mu * delta-t) where delta-t is the difference
-                        # in time between the growth observations, A0 is the earlier
-                        # OD600, and A1 is the later OD600.
-                        # Rearranged, the formula looks like this:
-                        flux = math.log(od_next / od) / delta_t
-                        units = "OD"
-                elif (protocol_category in ["HPLC", "LCMS", "TPOMICS"]):
-                    # We can assume it's in the right units by now, because if it
-                    # isn't, this code would have been skipped.
-                    if is_input:
-                        delta = 0 - delta_y
-                    # This math was signed off by Dan Weaver, but I'm still not
-                    # entirely sure I'm doing all the other steps right
-                    flux = (delta_y / delta_t) / od
-                elif (protocol_category == "RAMOS"):
-                    # This is already a delta, so we're not using delta_y
-                    if is_input:
-                        md.y = 0 - md.y
-                    flux = md.y / od
-                    delta = md.y
-                # FIXME Since OD and RAMOS "metabolites" are always considered to be
-                # "extracellular", it might make more sense for the contents of the
-                # database to reflect this
-                if not (measurement.is_extracellular() or
-                        self.is_od_measurement or
-                        protocol_category == "RAMOS"):
-                    flux = None
-                self._timepoint_data.append(
-                    timepoint(
-                        mname=mname,
-                        start=t,
-                        end=t_end,
-                        y=md.y,
-                        delta=delta,
-                        units=units,
-                        flux=flux,
-                        interpolated=md.interpolated
-                    )
-                )
         try:
-            process_md()
+            self._process_md(mdata_tuples)
         except ValueError as e:
             self.errors.append(str(e))
         self.have_flux = self.n_fluxes_computed > 0
+
+    def _process_md(self, mdata_tuples):
+        if self._measurement.is_carbon_ratio():  # TODO
+            return
+        # mdata_converted = []
+        # attempt unit conversions.  for convenience we use a simple class
+        # with 'x' and 'y' attributes, capable of handling any measurement
+        # type.
+        for (x, y) in mdata_tuples:
+            md = measurement_datum_converted_units(
+                x=x, y=y,
+                units=self._y_units,
+                metabolite=self._metabolite,
+                interpolated=(x in self.interpolated_measurement_timestamps),
+                protocol_category=self._category)
+            self.data.append(md)
+        # Now, finally, we calculate fluxes and other embeddable values
+        for i_time, md in enumerate(self.data[:-1]):
+            self._process_single_md(i_time, md)
+
+    def _process_single_md(self, i_time, md):
+        t = md.x
+        od = self._od_values.get(t, None)
+        # Got to have an OD measurements at exactly the start, currently.
+        # It's certainly possible to do fancier stuff, but we'll implement that later.
+        if (od is None):
+            self.skipped_due_to_lack_of_od.append(t)
+            return
+        elif (od == 0):
+            # TODO error message?
+            self.warnings.append("Start OD of 0 means nothing physically present (and "
+                                 "a potential division-by-zero error). Skipping...")
+            return
+        # At this point we know we have valid OD and valid Measurements for the interval.
+        # (Remember, we pre-filtered valid meas. times.) We'll note the time as one of the columns
+        # we will want to offer in the comprehensive export table on the webpage, even if we
+        # subsequently reject this Measurement based on problems with unit conversion or lack of
+        # an exchange element in the SBML document. (The zero in the table will be informative to
+        # the user.)
+        self.valid_od_mtimes.add(t)
+        # At this point, the next higher timestamp in the list becomes necessary.
+        # (The loop will only iterate up to the second-to-last.)
+        md_next = self.data[i_time+1]
+        t_end = md_next.x
+        delta_t = t_end - t
+        # This is kind of logically impossible, but, we ARE just drawing from an array, so...
+        if (delta_t == 0):
+            self.warnings.append("No zero-width intervals due to duplicate measurements, please! "
+                                 "Skipping...")
+            return
+        # Get the OD and Measurement value for this next timestamp
+        od_next = self._od_values.get(t_end, None)
+        # y_next = self.data[i_time+1].y
+        units = md.units
+        delta_y = md_next.y - md.y
+        delta = delta_y
+        flux = None
+        mname = self.metabolite_name
+        if (self._category == "OD"):
+            if (od_next is None):
+                self.warnings.append("No OD measurement was found at the next interval, "
+                                     "timestamp <b>%g</b>.  Can't calculate a growth rate "
+                                     "at time <b>%g</b>!" % (t_end, t))
+                return
+            # Here we're going to ignore the values we've pulled via the
+            # Measurement, and use the values we already prepared in the OD
+            # dict
+            if self.is_od_measurement:
+                # OD is converted into exponential growth rate (units
+                # gCDW/gCDW/hr or 1/hr) by placing successive growth
+                # observations within the exponential growth formula,
+                # A1 = A0 * exp(mu * delta-t) where delta-t is the difference
+                # in time between the growth observations, A0 is the earlier
+                # OD600, and A1 is the later OD600.
+                # Rearranged, the formula looks like this:
+                flux = math.log(od_next / od) / delta_t
+                units = "OD"
+        elif (self._category in ["HPLC", "LCMS", "TPOMICS"]):
+            # This math was signed off by Dan Weaver, but I'm still not
+            # entirely sure I'm doing all the other steps right
+            flux = (delta_y / delta_t) / od
+        elif (self._category == "RAMOS"):
+            # This is already a delta, so we're not using delta_y
+            flux = md.y / od
+            delta = md.y
+        # FIXME Since OD and RAMOS "metabolites" are always considered to be
+        # "extracellular", it might make more sense for the contents of the
+        # database to reflect this
+        if not (self._measurement.is_extracellular() or
+                self.is_od_measurement or
+                self._category == "RAMOS"):
+            flux = None
+        self._timepoint_data.append(
+            timepoint(
+                mname=mname,
+                start=t,
+                end=t_end,
+                y=md.y,
+                delta=delta,
+                units=units,
+                flux=flux,
+                interpolated=md.interpolated
+            )
+        )
 
     @property
     def n_errors(self):

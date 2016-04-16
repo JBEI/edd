@@ -1541,7 +1541,7 @@ class Measurement(EDDMetadata, EDDSerialize):
     # may not be the best method name, if we ever want to support other
     # types of data as vectors in the future
     def is_carbon_ratio(self):
-        return (int(self.measurement_format) == 1)
+        return (int(self.measurement_format) == MeasurementFormat.VECTOR)
 
     def valid_data(self):
         """ Data for which the y-value is defined (non-NULL, non-blank). """
@@ -1584,7 +1584,7 @@ class Measurement(EDDMetadata, EDDSerialize):
 
     # this shouldn't need to handle vectors
     def interpolate_at(self, x):
-        assert (int(self.measurement_format) == 0)
+        assert (int(self.measurement_format) == MeasurementFormat.SCALAR)
         from main.utilities import interpolate_at
         return interpolate_at(self.valid_data(), x)
 
