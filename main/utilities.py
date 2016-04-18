@@ -77,7 +77,7 @@ def get_edddata_study(study):
         "children" of a Study, they have been filtered to include only those that are used by
         the given study. """
 
-    metab_types = study.get_metabolite_types_used().prefetch_related("keywords",)
+    metab_types = study.get_metabolite_types_used()
     gene_types = GeneIdentifier.objects.filter(assay__line__study=study).distinct()
     protein_types = ProteinIdentifier.objects.filter(assay__line__study=study).distinct()
     protocols = study.get_protocols_used()
@@ -162,7 +162,7 @@ def get_edddata_carbon_sources():
 # TODO unit test
 def get_edddata_measurement():
     """All data not associated with a study or related objects."""
-    metab_types = Metabolite.objects.all().prefetch_related("keywords")
+    metab_types = Metabolite.objects.all()
     return {
         "MetaboliteTypeIDs": [mt.id for mt in metab_types],
         "MetaboliteTypes": {mt.id: mt.to_json() for mt in metab_types},

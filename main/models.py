@@ -10,10 +10,10 @@ import warnings
 
 from builtins import str
 from collections import defaultdict
+from django import forms
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import ArrayField, HStoreField
-from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.db.models import F, Func, Q
 from django.utils.encoding import python_2_unicode_compatible
@@ -27,6 +27,15 @@ from .export import table
 
 
 logger = logging.getLogger(__name__)
+
+
+class VarCharField(models.TextField):
+    """ Take advantage of postgres VARCHAR = TEXT, to have unlimited CharField, using TextInput
+        widget. """
+    def formfield(self, **kwargs):
+        defaults = {'widget': forms.TextInput}
+        defaults.update(kwargs)
+        return super(VarCharField, self).formfield(**defaults)
 
 
 class UpdateManager(models.Manager):
@@ -641,11 +650,14 @@ class Study(EDDObject):
     def user_permission_q(user, requested_permission, keyword_prefix=''):
         """
         Constructs a django Q object for testing whether the specified user has the
-        required permission for a study as part of a Study-related Django model query. Note that
+        required permission for a study as part of a Study-related Django model query. It's
+        important to note that the provided Q object will return one row for each user/group
+        permission that gives the user access to the study, so clients will often want to use
+        distinct() to limit the returned results. If Django's ORM  Note that
         this only tests
         whether the user or group has specific permissions granted on the Study, not whether the
         user's role (e.g. 'staff', 'admin') gives him/her access to it.  See
-        user_role_has_read_access( user), user_can_read(self, user)
+        user_role_has_read_access( user), user_can_read(self, user).
         :param user: the user
         :param requested_permission: the study permission type to test (e.g. StudyPermission.READ)
         :param keyword_prefix: an optional keyword prefix to prepend to the query keyword arguments.
@@ -1243,30 +1255,6 @@ class MeasurementType(models.Model, EDDSerialize):
 
 
 @python_2_unicode_compatible
-class MetaboliteKeyword(models.Model):
-    class Meta:
-        db_table = "metabolite_keyword"
-    name = models.CharField(max_length=255, unique=True)
-    mod_by = models.ForeignKey(settings.AUTH_USER_MODEL)
-
-    def __str__(self):
-        return self.name
-
-    @classmethod
-    def all_with_metabolite_ids(cls):
-        keywords = []
-        kwd_objects = cls.objects.order_by("name").prefetch_related("metabolite_set")
-        for keyword in kwd_objects:
-            ids_dicts = keyword.metabolite_set.values("id")
-            keywords.append({
-                "id": keyword.id,
-                "name": keyword.name,
-                "metabolites": [i_d['id'] for i_d in ids_dicts],
-            })
-        return keywords
-
-
-@python_2_unicode_compatible
 class Metabolite(MeasurementType):
     """ Defines additional metadata on a metabolite measurement type; charge, carbon count, molar
         mass, and molecular formula.
@@ -1279,8 +1267,7 @@ class Metabolite(MeasurementType):
     carbon_count = models.IntegerField()
     molar_mass = models.DecimalField(max_digits=16, decimal_places=5)
     molecular_formula = models.TextField()
-    keywords = models.ManyToManyField(
-        MetaboliteKeyword, db_table="metabolites_to_keywords")
+    tags = ArrayField(VarCharField(), default=[])
     source = models.ForeignKey(Datasource, blank=True, null=True)
 
     carbon_pattern = re.compile(r'C(\d*)')
@@ -1292,9 +1279,7 @@ class Metabolite(MeasurementType):
         return True
 
     def to_json(self, depth=0):
-        """ Export a serializable dictionary.  Because this will access all associated keyword
-            objects, it is recommended to include a call to query.prefetch_related("keywords")
-            when selecting metabolites in bulk. """
+        """ Export a serializable dictionary. """
         return dict(super(Metabolite, self).to_json(), **{
             # FIXME the alternate names pointed to by the 'ans' key are
             # supposed to come from the 'alternate_metabolite_type_names'
@@ -1305,7 +1290,8 @@ class Metabolite(MeasurementType):
             "cc": self.carbon_count,
             "chg": self.charge,
             "chgn": self.charge,  # TODO find anywhere in typescript using this and fix it
-            "kstr": ",".join(['%s' % k for k in self.keywords.all()]),
+            "kstr": ",".join(self.tags),  # TODO find anywhere in typescript using this and fix
+            "tags": self.tags,
         })
 
     def save(self, *args, **kwargs):
@@ -1314,31 +1300,6 @@ class Metabolite(MeasurementType):
         # force METABOLITE group
         self.type_group = MeasurementGroup.METABOLITE
         super(Metabolite, self).save(*args, **kwargs)
-
-    @property
-    def keywords_str(self):
-        return ", ".join(['%s' % k for k in self.keywords.all()])
-
-    def add_keyword(self, keyword):
-        try:
-            kw_obj = MetaboliteKeyword.objects.get(name=keyword)
-        except MetaboliteKeyword.DoesNotExist:
-            raise ValueError("'%s' is not a valid keyword." % keyword)
-        else:
-            self.keywords.add(kw_obj)
-
-    def set_keywords(self, keywords):
-        """ Given a collection of keywords (as strings), link this metabolite to the equivalent
-            MetaboliteKeyword object(s). """
-        new_keywords = set(keywords)
-        current_kwds = {kw.name: kw for kw in self.keywords.all()}
-        for keyword in keywords:  # step 1: add new keywords
-            if (keyword in current_kwds):
-                continue
-            self.add_keyword(keyword)
-        for keyword in current_kwds:  # step 2: remove obsolete keywords
-            if (keyword not in new_keywords):
-                self.keywords.remove(current_kwds[keyword])
 
     def extract_carbon_count(self):
         count = 0
@@ -1383,6 +1344,29 @@ class ProteinIdentifier(MeasurementType):
     """ Defines additional metadata on gene identifier transcription measurement type. """
     class Meta:
         db_table = 'protein_identifier'
+    length = models.IntegerField(
+        blank=True, null=True,
+        verbose_name=_('Length'), help_text=_('sequence length')
+    )
+    mass = models.DecimalField(
+        blank=True, null=True, max_digits=16, decimal_places=5,
+        verbose_name=_('Mass'), help_text=_('of unprocessed protein, in Daltons'),
+    )
+    source = models.ForeignKey(
+        Datasource, blank=True, null=True,
+    )
+    accession_pattern = re.compile(
+        r'(?:[a-z]{2}\|)?'  # optional identifier for SwissProt or TrEMBL
+        r'([OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9](?:[A-Z][A-Z0-9]{2}[0-9]){1,2})'  # the ID
+        r'(?:\|(\w+))?'  # optional name
+    )
+
+    @classmethod
+    def match_accession_id(cls, text):
+        match = cls.accession_pattern.match(text)
+        if match:
+            return match.group(1)
+        return text
 
     def __str__(self):
         return self.type_name
@@ -1758,7 +1742,7 @@ def User_profile(self):
         return self._profile
     try:
         from edd.profile.models import UserProfile
-        self._profile = UserProfile.get_or_create(
+        (self._profile, created) = UserProfile.objects.get_or_create(
             user=self, defaults={'initials': guess_initials(self)}
         )
         return self._profile
@@ -1768,7 +1752,7 @@ def User_profile(self):
 
 
 def User_initials(self):
-    return self.profile.initials if self.profile else None
+    return self.profile.initials if self.profile else _('?')
 
 
 def User_institution(self):

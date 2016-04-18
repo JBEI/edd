@@ -5,7 +5,6 @@ from __future__ import unicode_literals
 # code in that module will attempt to look for a django settings module and fail if django isn't
 # installed in the current virtualenv
 import os
-
 import arrow
 
 from jbei.utils import to_human_relevant_delta, UserInputTimer
@@ -63,6 +62,9 @@ MAX_EXCEL_COLS = 16384  # max number of columns supported by the Excel format ()
 SEPARATOR_CHARS = 75
 OUTPUT_SEPARATOR = ''.join(['*' for index in range(1, SEPARATOR_CHARS)])
 
+PART_NUMBER_REGEX = r'\s*([A-Z]+_[A-Z]?\d{4,6}[A-Z]?)\s*'  # tested against all strains in ICE!
+                                                           # 3/31/16
+PART_NUMBER_PATTERN = re.compile(PART_NUMBER_REGEX, re.IGNORECASE)
 
 class LineCreationInput:
     """
@@ -117,9 +119,6 @@ def parse_csv(path):
         blank_cell_count = 0
         unmatched_cell_count = 0
         unique_part_numbers_dict = collections.OrderedDict()
-
-        part_number_regex = r'\s*([A-Z]+_\d{6})\s*'
-        part_number_pattern = re.compile(part_number_regex, re.IGNORECASE)
 
         line_name_col_label_regex = r'\s*Line Name\s*'
         line_name_col_pattern = re.compile(line_name_col_label_regex, re.IGNORECASE)
@@ -178,7 +177,7 @@ def parse_csv(path):
                 # part number
                 ###################################################
                 cell_content = cols_list[part_number_col].strip()
-                match = part_number_pattern.match(cell_content)
+                match = PART_NUMBER_PATTERN.match(cell_content)
 
                 # if cell contains a recognized part number, append it to the list
                 if match:
@@ -256,23 +255,26 @@ def print_found_ice_parts(part_number_to_part_dict):
     col5_width = max(
         len(replace_newlines(part.short_description)) for part in
         part_number_to_part_dict.values()) + space
+    col6_width = max(len(part.uuid) for part in part_number_to_part_dict.values()) + space
 
     col1_lbl = 'Search id:'
     col2_lbl = 'Found Part id: '
     col3_lbl = 'Part id:'
     col4_lbl = 'Name:'
     col5_lbl = 'Description:'
+    col6_lbl = 'UUID:'
 
     col1_width = max([col1_width, len(col1_lbl) + space])
     col2_width = max([col2_width, len(col2_lbl) + space])
     col3_width = max([col3_width, len(col3_lbl) + space])
     col4_width = max([col4_width, len(col4_lbl) + space])
     col5_width = max([col5_width, len(col5_lbl) + space])
+    col6_width = max([col6_width, len(col6_lbl) + space])
 
     # print column headers
     print(''.join(
         [col1_lbl.ljust(col1_width), col2_lbl.ljust(col2_width), col3_lbl.ljust(col3_width),
-         col4_lbl.ljust(col4_width), col5_lbl.ljust(col5_width)]))
+         col4_lbl.ljust(col4_width), col5_lbl.ljust(col5_width), col6_lbl.ljust(col6_width)]))
 
     # print output
     for search_id in part_number_to_part_dict.keys():
@@ -280,7 +282,7 @@ def print_found_ice_parts(part_number_to_part_dict):
         short_description = replace_newlines(part.short_description)
         print(''.join([str(search_id).ljust(col1_width), str(part.id).ljust(col2_width),
                        part.part_id.ljust(col3_width), part.name.ljust(col4_width),
-                       short_description.ljust(col5_width)]))
+                       short_description.ljust(col5_width), part.uuid.ljust(col6_width)]))
 
 
 class NonStrainPartsError(RuntimeError):
@@ -312,22 +314,23 @@ def get_ice_parts(base_url, ice_username, password, part_numbers_list,
         print('Searching ICE for %d parts... ' % csv_part_number_count)
         print(OUTPUT_SEPARATOR)
         list_position = 0
-        part_number_regex = re.compile(r'\s*[A-Za-z]+_(\d+)\s*$')
         for local_ice_part_number in part_numbers_list:
             list_position += 1
 
             # get just the numeric part of the part number. for unknown reasons that I can't
             # reproduce in PostMan, searching for the whole part number seems to produce the
             # wrong result.
-            match = part_number_regex.match(local_ice_part_number)
+            match = PART_NUMBER_PATTERN.match(local_ice_part_number)
 
-            if not match:
+            if not match:  # NOTE: can remove this check, but left in place in case we resurrect
+                           # prior attempt to extract local ID's from part numbers (Seems to only
+                           #  work for newer parts, but not for some older ones)
                 logger.warning("Couldn't parse part number \"%s\". Unable to query ICE for this "
                                "part.")
                 continue
 
             search_id = local_ice_part_number
-            part = ice.get_entry(local_ice_part_number)
+            part = ice.get_entry(search_id)
 
             if not part:
                 logger.warning("Couldn't locate part \"%s\" (#%d)" % (local_ice_part_number,
@@ -336,7 +339,7 @@ def get_ice_parts(base_url, ice_username, password, part_numbers_list,
             # double-check for a coding error that occurred during testing. initial test parts
             # had "JBX_*" part numbers that matched their numeric ID, but this isn't always the
             # case!
-            elif part.part_id != search_id:
+            elif part.part_id != local_ice_part_number:
                 logger.warning("Couldn't locate part \"%(csv_part_number)s\" (#%(list_position)d "
                                "in the file) by part number. An ICE part was found with numeric "
                                "ID %(numeric_id)s, but its part number (%(part_number)s) didn't "
@@ -464,7 +467,7 @@ def find_existing_strains(edd, ice_parts, existing_edd_strains, strains_by_part_
 
 
 def create_missing_strains(edd, non_existent_edd_strains, strains_by_part_number, ice_part_count,
-                           input):
+                           input_timer):
     """
     Creates any missing EDD strains, storing the resulting new strains in strains_by_part_number
     :param edd: an authenticated instance of EddApi
@@ -497,9 +500,8 @@ def create_missing_strains(edd, non_existent_edd_strains, strains_by_part_number
     # loop while gathering user input -- gives user a chance to list strains that will
     # be created
     while True:
-        result = input.user_input('Do you want to create EDD strains for all %d of these '
-                                     'parts? ('
-                           'Y/n/list): ' % non_existent_strain_count).upper()
+        result = input_timer.user_input('Do you want to create EDD strains for all %d of these '
+                                     'parts? (Y/n/list): ' % non_existent_strain_count).upper()
 
         if 'Y' == result or 'YES' == result:
             break
@@ -791,12 +793,138 @@ class Performance(object):
         print('')
 
 
+def prevent_duplicate_line_names(edd, study_number, csv_summary, input_timer):
+    """
+    Queries EDD for existing lines in the study, then compares line names in the CSV against
+    existing lines in the study, and with other rows in the CSV to help detect / prevent creation
+    of difficult-to-distinguish lines with the same, or very similiar names. It's considered
+    duplication when line names differ only by case or leading/trailing whitespace.
+    :param edd: the EddApi instance to use for querying EDD
+    :param study_number: the EDD study number whose lines should be examined.
+    :param csv_summary: line creation inputs read from the CSV file
+    :param input_timer: user input timer
+    :return:
+    """
+    print('')
+    print(OUTPUT_SEPARATOR)
+    print("Checking for duplicate line names...")
+    print(OUTPUT_SEPARATOR)
+
+    # build a list existing line names in this study so we can compare names to help catch
+    # user error in line creation.
+    study_line_name_duplication_counts = {}
+    existing_lines_page = edd.get_study_lines(study_number)
+    while existing_lines_page and existing_lines_page.results:
+        # initialize the list of line name duplications in the CSV file (ignoring any
+        # already present in the study)
+        for existing_line in existing_lines_page.results:
+            line_name = existing_line.name.lower().strip()
+            study_line_name_duplication_counts[line_name] = 0
+        if existing_lines_page.next_page:
+            existing_lines_page = edd.get_study_lines(study_number,
+                                                            query_url=existing_lines_page.next_page)
+        else:
+            existing_lines_page = None
+
+    # iterate over line creation inputs in the CSV spreadsheet, testing line names against
+    # existing lines in the study and against other lines in the CSV
+    total_study_line_duplication_counts = 0  # duplications of the CSV for existing lines in the
+                                            # study (ignoring pre-existing duplicates)
+    total_csv_duplication_count = 0 # duplications internal to the CSV document
+    csv_line_duplication_counts = {}
+    max_existing_duplication_count = 0
+    max_csv_line_duplication_count = 0
+    max_line_name_width = max(len(line.name) for line in csv_summary.line_creation_inputs)
+
+    # TODO: sub-optimal efficiency for dictionary lookups here
+    for line_creation_input in csv_summary.line_creation_inputs:
+        line_name = line_creation_input.name.lower().strip()
+        if line_name in study_line_name_duplication_counts.keys():
+            duplicate_use_count = study_line_name_duplication_counts.get(line_name)
+            duplicate_use_count += 1
+            study_line_name_duplication_counts[line_name] = duplicate_use_count
+            total_study_line_duplication_counts += 1
+            max_existing_duplication_count = max(duplicate_use_count, max_existing_duplication_count)
+        if line_name in csv_line_duplication_counts.keys():
+            duplicate_use_count = csv_line_duplication_counts[line_name] + 1
+            csv_line_duplication_counts[line_name] = duplicate_use_count
+            total_csv_duplication_count += 1
+            max_csv_line_duplication_count = max(duplicate_use_count, max_csv_line_duplication_count)
+        else:
+            csv_line_duplication_counts[line_name] = 0
+
+    if not (total_study_line_duplication_counts or total_csv_duplication_count):
+        print("No duplicate line names detected")
+        return True
+
+    print('')
+    print('Found duplicate line names!')
+    print('Line creation inputs in this CSV file would produce duplicate line names for %('
+          'existing_dupes)d existing lines in the study, and %(csv_dupes)d other lines within the '
+          'same CSV file. It will be difficult or impossible to distinguish between lines with '
+          'duplicate names in EDD.' % {
+                'existing_dupes': total_study_line_duplication_counts,
+                'csv_dupes': total_csv_duplication_count,
+    })
+
+    while True:
+
+        response = input_timer.user_input('Do you want to create lines with duplicated names? ['
+                                          'Y/n/list]: ')
+        response = response.lower()
+
+        if ('y' == response) or ('yes' == response):
+            return True
+
+        if ('n' == response) or ('no' == response):
+            return False
+
+        if 'list' == response:
+            line_name_lbl = 'Line Name:'
+            existing_lbl = ' # Duplicates of existing lines:'
+            other_csv_lbl = '# Duplicates of other rows in CSV:'
+
+            space = 3
+            name_col_width = max(max_line_name_width, len(line_name_lbl)) + space
+            existing_col_width = max(len(str(max_existing_duplication_count)), len(existing_lbl)) \
+                                 + space
+            csv_col_width = max(len(str(max_csv_line_duplication_count)), len(other_csv_lbl)) + \
+                            space
+
+            print('')
+            print(''.join(((line_name_lbl.ljust(name_col_width)), existing_lbl.ljust(
+                    name_col_width), other_csv_lbl.rjust(csv_col_width))))
+
+            for line_name, study_duplication_count in \
+                    study_line_name_duplication_counts.iteritems():
+
+                csv_duplication_count = csv_line_duplication_counts.get(line_name)
+
+                if not (study_duplication_count or csv_duplication_count):
+                    continue
+
+                print(''.join((line_name.ljust(name_col_width),
+                              str(study_duplication_count).ljust(existing_col_width),
+                              str(csv_duplication_count).ljust(csv_col_width))))
+
+            for line_name, csv_duplication_count in csv_line_duplication_counts.iteritems():
+                if not csv_duplication_count:
+                    continue
+
+                if study_line_name_duplication_counts.has_key(line_name):
+                    continue # already printed out above
+
+                print(''.join((line_name.ljust(name_col_width),
+                              str(0).ljust(existing_col_width),
+                              str(csv_duplication_count).ljust(csv_col_width))))
+
+
 def main():
     now = arrow.utcnow()
     zero_time_delta = now - now
     performance = Performance(arrow.utcnow())
 
-    input = UserInputTimer()
+    input_timer = UserInputTimer()
     edd = None
 
     try:
@@ -872,7 +1000,7 @@ def main():
             return 0
 
         if not args.s:
-            result = input.user_input('Do these totals make sense [Y/n]: ').upper()
+            result = input_timer.user_input('Do these totals make sense [Y/n]: ').upper()
             if ('Y' != result) and ('YES' != result):
                 print('Aborting line creation. Please verify that your CSV file has the correct '
                       'content before proceeding with this tool.')
@@ -900,8 +1028,9 @@ def main():
             else:
                 if not attempted_login:
                     username = getpass.getuser()
-                username_input = input.user_input('Username [%s]: ' % username)
+                username_input = input_timer.user_input('Username [%s]: ' % username)
                 username = username_input if username_input else username
+
             if args.p and not attempted_login:
                 password = args.p
             else:
@@ -916,9 +1045,14 @@ def main():
             try:
                 print 'Logging into EDD at %s... ' % EDD_URL,
                 edd_login_start_time = arrow.utcnow()
+                workaround_request_timeout = 20  # workaround for lack of paging support in the
+                                                 # initial client-side REST API library. requests to
+                                                 # studies with an  existing large num of lines seem
+                                                 # to take too long to service since they're all
+                                                 # being included.
                 edd_session_auth = EddSessionAuth.login(base_url=EDD_URL, username=username,
-                                                        password=password)
-                performance.edd_login_delta += (arrow.utcnow() - edd_login_start_time)
+                                                        password=password, timeout=workaround_request_timeout)
+                performance.edd_login_delta += (edd_login_start_time - arrow.utcnow())
                 if(edd_session_auth):
                     print('success!')
                 else:
@@ -945,7 +1079,7 @@ def main():
             study_number = str(args.study) if args.study else None
             STUDY_PROMPT = 'Which EDD study number should lines be created in? '
             if not study_number:
-                study_number = input.user_input(STUDY_PROMPT)
+                study_number = input_timer.user_input(STUDY_PROMPT)
 
             # query user regarding which study to use, then verify it exists in EDD
             digit = re.compile(r'^\s*(\d+)\s*$')
@@ -968,12 +1102,19 @@ def main():
                              'edd_url': EDD_URL,
                              'username': username})
 
-                    study_number = input.user_input(STUDY_PROMPT)
+                    study_number = input_timer.user_input(STUDY_PROMPT)
                 else:
                     print('Success!')
 
             if study:
                 print('Found study %d in EDD, named "%s "' % (study_number, study.name))
+
+            continue_creation = prevent_duplicate_line_names(edd, study_number, csv_summary,
+                                                             input_timer)
+            if not continue_creation:
+                print('Aborting line creation.')
+                return 0
+
 
             ########################################################################################
             # Loop over part numbers in the spreadsheet, looking each one up in ICE to get its UUID
@@ -1002,7 +1143,7 @@ def main():
                       "numbers above)")
                 print("Do you want to create EDD lines for the parts that were found? You'll "
                       "have to create the rest manually, using output above as a reference.")
-                result = input.user_input("Create EDD lines for %(found)d of %(total)d parts? "
+                result = input_timer.user_input("Create EDD lines for %(found)d of %(total)d parts? "
                                              "Recall that "
                                    "each ICE part may have many associated lines ("
                                    "Y/n): " %
@@ -1047,7 +1188,7 @@ def main():
 
             # If some strains were missing in EDD, confirm with user, and then create them
             strains_created = create_missing_strains(edd, non_existent_edd_strains,
-                                                     strains_by_part_number, ice_part_count, input)
+                                                     strains_by_part_number, ice_part_count, input_timer)
             if not strains_created:
                 return 1
 
@@ -1070,8 +1211,8 @@ def main():
 
     finally:
         # compute and print a summary of ellapsed time on various expensive tasks
-        if input:
-            performance.waiting_for_user_delta = input.wait_time
+        if input_timer:
+            performance.waiting_for_user_delta = input_timer.wait_time
         if edd:
             performance.edd_communication_delta = edd.request_generator.wait_time
         performance.overall_end_time = arrow.utcnow()

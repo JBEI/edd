@@ -1,0 +1,116 @@
+""" This is an example of modifications to settings to use for local development. You can use this
+    example by renaming the file and removing the -example suffix, and the local version will use
+    these modified settings.
+"""
+
+import environ
+import errno
+import os
+
+# Use everything in the common settings file
+from .base import *  # noqa
+
+root = environ.Path(__file__) - 3  # we get this out of `from .base import *` too
+
+# Store attachments inside the project directory, under 'uploads'
+MEDIA_ROOT = root('uploads')
+MEDIA_URL = '/uploads/'
+
+# Override the default MANAGERS and ADMINS
+MANAGERS = ADMINS = (
+    ('Jay Bay', 'admin@example.org'),  # <-- CHANGE ME
+)
+
+# Set the IPs where the debug toolbar will be available; use localhost IPv4 and IPv6
+INTERNAL_IPS = ['127.0.0.1', '::1', ]
+# Also add the 'external' IP for the nginx service proxying the appserver
+try:
+    import socket
+    INTERNAL_IPS.append(socket.gethostbyname('nginx'))
+except:
+    pass
+# Add the Django Debug Toolbar to local instance
+# Add login providers
+INSTALLED_APPS = INSTALLED_APPS + (
+    'allauth.socialaccount.providers.github',
+    'allauth.socialaccount.providers.google',
+    'allauth.socialaccount.providers.linkedin_oauth2',
+    'debug_toolbar',
+)
+DEBUG_TOOLBAR_CONFIG = {
+    'JQUERY_URL': '/static/main/js/lib/jquery/jquery-2.1.4.min.js',
+}
+
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'http'
+USE_CELERY = True
+PUBLISH_REST_API = True
+EDD_ONLY_SUPERUSER_CREATE = False
+
+
+
+###################################################################################################
+# You can override the default logging configuration
+def get_log_filename(name='edd.log'):
+    logdir = root('log')
+    try:
+        os.mkdir(logdir)
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise e
+    return root('log', name)
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'simple': {
+            'format': '%(asctime)s Thread %(thread)d %(name)-12s %(levelname)-8s %(message)s',
+        },
+    },
+    'filters': {
+        'require_debug_true': {
+            '()': 'django.utils.log.RequireDebugTrue',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'DEBUG',
+            'filters': ['require_debug_true', ],
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        'file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': get_log_filename(),
+            'formatter': 'simple',
+        },
+        'queryfile': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': get_log_filename('query.log'),
+            'formatter': 'simple',
+        },
+    },
+    'loggers': {
+        'django.db.backends': {
+            'level': 'DEBUG',
+            'handlers': ['console', 'queryfile', ],
+            'propagate': False,
+        },
+        'main': {
+            'level': 'DEBUG',
+            'handlers': ['console', 'file', ],
+            'propagate': False,
+        },
+        'edd': {
+            'level': 'DEBUG',
+            'handlers': ['console', 'file', ],
+            'propagate': False,
+        },
+        '': {
+            'level': 'DEBUG',
+            'handlers': ['console', ],
+        }
+    },
+}

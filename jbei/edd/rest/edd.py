@@ -492,6 +492,7 @@ class EddApi(RestApiClient):
         # if the whole query was provided, just use it
         if query_url:
             response = request_generator.get(query_url, headers=self._json_header)
+
         # otherwise, build up a dictionary of search parameters based on provided inputs
         else:
             search_params = {}
@@ -521,7 +522,8 @@ class EddApi(RestApiClient):
             query_url = response.url
             return DrfPagedResult.of(response.content, model_class=Study)
 
-    def get_study_lines(self, study_pk, line_active_status=LINES_ACTIVE_DEFAULT, page_number=None):
+    def get_study_lines(self, study_pk, line_active_status=LINES_ACTIVE_DEFAULT, query_url=None,
+                        page_number=None):
 
         """
         Queries EDD for lines associated with a study
@@ -531,20 +533,25 @@ class EddApi(RestApiClient):
         :return: a PagedResult containing some or all of the EDD strains that matched the search
         criteria
         """
-
-        # make the HTTP request
-        url = '%s/rest/study/%d/lines/' % (self.base_url, study_pk)
         request_generator = self.session_auth.request_generator
 
-        params = {}
+        # if servicing a paged response, just use the provided query URL so clients don't have to
+        # keep track of all the parameters
+        if query_url:
+            response = request_generator.get(query_url, headers=self._json_header)
+        else:
+            # make the HTTP request
+            url = '%s/rest/study/%d/lines/' % (self.base_url, study_pk)
 
-        if line_active_status:
-            params[LINE_ACTIVE_STATUS_PARAM]=line_active_status
+            params = {}
 
-        if page_number:
-            params[PAGE_NUMBER_QUERY_PARAM] = page_number
+            if line_active_status:
+                params[LINE_ACTIVE_STATUS_PARAM]=line_active_status
 
-        response = request_generator.get(url, headers=self._json_header, params=params)
+            if page_number:
+                params[PAGE_NUMBER_QUERY_PARAM] = page_number
+
+            response = request_generator.get(url, headers=self._json_header, params=params)
 
         # throw an error for unexpected reply
         if response.status_code != requests.codes.ok:

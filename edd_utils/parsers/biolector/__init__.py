@@ -1,3 +1,2 @@
-from ..util import RawImportRecord
-from parser import getBiolectorXMLRecordsAsJSON, BiolectorXMLReader, XMLImportError
-
+from ..util import RawImportRecord  # noqa
+from .parser import getRawImportRecordsAsJSON, BiolectorXMLReader, XMLImportError  # noqa

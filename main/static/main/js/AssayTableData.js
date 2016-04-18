@@ -1,5 +1,12 @@
 /// <reference path="typescript-declarations.d.ts" />
 /// <reference path="Utl.ts" />
+JSNumber = Number;
+JSNumber.isFinite = JSNumber.isFinite || function (value) {
+    return typeof value === 'number' && isFinite(value);
+};
+JSNumber.isNaN = JSNumber.isNaN || function (value) {
+    return value !== value;
+};
 // This module encapsulates all the custom code for the data import page.
 // It consists primarily of a series of classes, each corresponding to a step in the import process,
 // with a corresponding chunk of UI on the import page.
@@ -1202,6 +1209,7 @@ var EDDTableImport;
             var seenAssayNames = {};
             var seenMeasurementNames = {};
             var seenMetadataNames = {};
+            var disamRawSets = [];
             // Here are the arrays we will use later
             this.parsedSets = [];
             this.graphSets = [];
@@ -1227,11 +1235,12 @@ var EDDTableImport;
                     if (!ln && ln !== 0) {
                         return;
                     }
-                    if (!an && an !== 0) {
-                        return;
-                    }
                     if (!mn && mn !== 0) {
                         return;
+                    }
+                    if (!an && an !== 0) {
+                        // if just the assay name is missing, set it to the line name
+                        an = ln;
                     }
                     if (!seenLineNames[ln]) {
                         seenLineNames[ln] = true;
@@ -1257,23 +1266,33 @@ var EDDTableImport;
                     });
                     // Validate the provided set of time/value points
                     rawSet.data.forEach(function (xy) {
-                        var time = xy[0] || '';
-                        var value = xy[1];
-                        // Sometimes people - or Excel docs - drop commas into large numbers.
-                        var timeFloat = parseFloat(time.replace(/,/g, ''));
+                        var time, value;
+                        if (!JSNumber.isFinite(xy[0])) {
+                            // Sometimes people - or Excel docs - drop commas into large numbers.
+                            time = parseFloat((xy[0] || '0').replace(/,/g, ''));
+                        }
+                        else {
+                            time = xy[0];
+                        }
                         // If we can't get a usable timestamp, discard this point.
-                        if (isNaN(timeFloat)) {
+                        if (JSNumber.isNaN(time)) {
                             return;
                         }
-                        if (!value && value !== 0) {
+                        if (!xy[1] && xy[1] !== 0) {
                             // If we're ignoring gaps, skip any undefined/null values.
                             //if (ignoreDataGaps) { return; }    // Note: Forced always-off for now
                             // A null is our standard placeholder value
                             value = null;
                         }
-                        if (!times[timeFloat]) {
-                            times[timeFloat] = value;
-                            uniqueTimes.push(timeFloat);
+                        else if (!JSNumber.isFinite(xy[1])) {
+                            value = parseFloat((xy[1] || '').replace(/,/g, ''));
+                        }
+                        else {
+                            value = xy[1];
+                        }
+                        if (!times[time]) {
+                            times[time] = value;
+                            uniqueTimes.push(time);
                             _this.seenAnyTimestamps = true;
                         }
                     });
@@ -1609,7 +1628,7 @@ var EDDTableImport;
                 // when other UI in this step changes.  This pulldown is NOT affected by changes to
                 // the other UI, so it would be pointless to remake it in response to them.
                 assayIn = $('#masterAssay').empty();
-                $('<option>').text('(Create New)').appendTo(assayIn).val('new').prop('selected', true);
+                $('<option>').text('(Create New)').appendTo(assayIn).val('named_or_new').prop('selected', true);
                 currentAssays = ATData.existingAssays[masterP] || [];
                 currentAssays.forEach(function (id) {
                     var assay = EDDData.Assays[id], line = EDDData.Lines[assay.lid], protocol = EDDData.Protocols[assay.pid];
@@ -1902,7 +1921,7 @@ var EDDTableImport;
         // Such changes may affect the available contents of some of the pulldowns in the step.
         TypeDisambiguationStep.prototype.changedAnyMasterPulldown = function () {
             // Show the master line dropdown if the master assay dropdown is set to new
-            $('#masterLineSpan').toggleClass('off', $('#masterAssay').val() !== 'new');
+            $('#masterLineSpan').toggleClass('off', $('#masterAssay').val() !== 'named_or_new');
             this.reconfigure();
         };
         // If the pulldown is being set to 'new', walk down the remaining pulldowns in the section,
@@ -1936,8 +1955,8 @@ var EDDTableImport;
             var changed, v;
             changed = $(assayEl).data('setByUser', true);
             // The span with the corresponding Line pulldown is always right next to the Assay pulldown
-            changed.next().toggleClass('off', changed.val() !== 'new');
-            if (changed.val() !== 'new') {
+            changed.next().toggleClass('off', changed.val() !== 'named_or_new');
+            if (changed.val() !== 'named_or_new') {
                 // stop here for anything other than 'new'; only 'new' cascades to following pulldowns
                 return false;
             }
@@ -1948,7 +1967,7 @@ var EDDTableImport;
                     return;
                 }
                 // set dropdown to 'new' and reveal the line pulldown
-                select.val('new').next().removeClass('off');
+                select.val('named_or_new').next().removeClass('off');
             });
             return false;
         };
@@ -2088,22 +2107,22 @@ var EDDTableImport;
             var masterLine = $('#masterLine').val();
             var masterAssayLine = $('#masterAssayLine').val();
             var masterAssay = $('#masterAssay').val();
-            var masterMType = $('#masterMType').val();
-            var masterMComp = $('#masterMComp').val();
-            var masterMUnits = $('#masterMUnits').val();
+            var masterMType = $('#masterMTypeValue').val();
+            var masterMComp = $('#masterMCompValue').val();
+            var masterMUnits = $('#masterMUnitsValue').val();
             var resolvedSets = [];
             parsedSets.forEach(function (set, c) {
                 var resolvedSet;
                 var line_id = 'new'; // A convenient default
-                var assay_id = 'new';
+                var assay_id = 'named_or_new';
                 var measurement_id = null;
                 var compartment_id = null;
                 var units_id = null;
                 // In modes where we resolve measurement types in the client UI, go with the master values by default.
                 if (mode === "biolector" || mode === "std" || mode === "mdv" || mode === "hplc") {
                     measurement_id = masterMType;
-                    compartment_id = masterMComp || "0";
-                    units_id = masterMUnits || "1";
+                    compartment_id = masterMComp;
+                    units_id = masterMUnits;
                 }
                 var data = set.data;
                 var metaData = {};

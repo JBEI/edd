@@ -293,6 +293,9 @@ $(window).load(function () {
         new AutoOpts('.autocomp_ltype',   'LineMetadataType',      'MetaDataTypes'),
         new AutoOpts('.autocomp_stype',   'StudyMetadataType',     'MetaDataTypes'),
         new AutoOpts('.autocomp_metabol', 'Metabolite',            'MetaboliteTypes'),
+        new AutoOpts('.autocomp_gene',    'GeneIdentifier',        'GeneTypes'),
+        new AutoOpts('.autocomp_protein', 'ProteinIdentifier',     'ProteinTypes'),
+        new AutoOpts('.autocomp_phosphor','Phosphor',              'PhosphorTypes'),
         new AutoOpts('.autocomp_measure', 'MeasurementType',       'MeasurementTypes')
     ];
     setup_info.forEach(function (item) {

@@ -6,6 +6,7 @@ import logging
 from builtins import str
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.mail import mail_admins
 from django.core.urlresolvers import reverse as urlreverse
 from django.db import connection, transaction
 from django.db.models.signals import m2m_changed, post_delete, post_save, pre_save, pre_delete
@@ -236,6 +237,26 @@ def handle_line_post_delete(sender, instance, **kwargs):
 
     # find which user made the update that caused this signal
     update = Update.load_update()
+
+    if not (update and update.mod_by and update.mod_by.email):
+        username = update.mod_by.username if (update and update.mod_by) else 'Unknown user'
+        msg = ('No user email could be found associated with the in-progress deletion of '
+               'line %(line_pk)d "%(line_name)s by user "%(username)s". Line deletion will '
+               'proceed,  but the associated experiment link in ICE will remain in place because '
+               'a user identity is required to update experiment links in  ICE. Please manually '
+               'delete this link using the ICE user interface.\n'
+               'This situation is known to occur when a line is deleted directly from the Django '
+               'shell rather than from the EDD user interface. ' % {
+                    'line_pk': line.pk,
+                    'line_name': line.name,
+                    'username': username
+                })
+        subject = "Stale ICE experiment link won't be deleted"
+        logger.warning(subject)
+        logger.warning(msg)
+        mail_admins(subject, msg)
+        return
+
     user_email = update.mod_by.email
     logger.debug("update performed by user " + user_email)
 

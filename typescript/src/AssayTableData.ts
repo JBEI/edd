@@ -6,6 +6,16 @@ declare var ATData: any; // Setup by the server.
 declare var EDDATDGraphing: any;
 declare var EDD_auto: any;
 
+// Doing this bullshit because TypeScript/InternetExplorer do not recognize static methods on Number
+declare var JSNumber: any;
+JSNumber = Number;
+JSNumber.isFinite = JSNumber.isFinite || function (value: any) {
+    return typeof value === 'number' && isFinite(value);
+};
+JSNumber.isNaN = JSNumber.isNaN || function (value: any) {
+    return value !== value;
+};
+
 
 // Type name for the grid of values pasted in
 interface RawInput extends Array<string[]> { }
@@ -14,7 +24,6 @@ interface RawInputStat {
     input: RawInput;
     columns: number;
 }
-
 
 // This module encapsulates all the custom code for the data import page.
 // It consists primarily of a series of classes, each corresponding to a step in the import process,
@@ -1485,6 +1494,7 @@ module EDDTableImport {
             var seenAssayNames:{[id:string]: boolean} = {};
             var seenMeasurementNames:{[id:string]: boolean} = {};
             var seenMetadataNames:{[id:string]: boolean} = {};
+            var disamRawSets:any[] = [];
 
             // Here are the arrays we will use later
             this.parsedSets = [];
@@ -1516,8 +1526,11 @@ module EDDTableImport {
                     // If the value is blank, we can't build a valid set, so skip to the next set.
                     // If the value is valid but we haven't seen it before, increment and store a uniqueness index.
                     if (!ln && ln !== 0) { return; }
-                    if (!an && an !== 0) { return; }
                     if (!mn && mn !== 0) { return; }
+                    if (!an && an !== 0) {
+                        // if just the assay name is missing, set it to the line name
+                        an = ln;
+                    }
                     if (!seenLineNames[ln]) {
                         seenLineNames[ln] = true;
                         this.uniqueLineNames.push(ln);
@@ -1544,22 +1557,29 @@ module EDDTableImport {
                     });
 
                     // Validate the provided set of time/value points
-                    rawSet.data.forEach((xy: string[]): void => {
-                        var time = xy[0] || '';
-                        var value = xy[1];
-                        // Sometimes people - or Excel docs - drop commas into large numbers.
-                        var timeFloat = parseFloat(time.replace(/,/g, ''));
+                    rawSet.data.forEach((xy: any[]): void => {
+                        var time: number, value: number;
+                        if (!JSNumber.isFinite(xy[0])) {
+                            // Sometimes people - or Excel docs - drop commas into large numbers.
+                            time = parseFloat((xy[0] || '0').replace(/,/g, ''));
+                        } else {
+                            time = <number>xy[0];
+                        }
                         // If we can't get a usable timestamp, discard this point.
-                        if (isNaN(timeFloat)) { return; }
-                        if (!value && <any>value !== 0) {
+                        if (JSNumber.isNaN(time)) { return; }
+                        if (!xy[1] && <Number>xy[1] !== 0) {
                             // If we're ignoring gaps, skip any undefined/null values.
                             //if (ignoreDataGaps) { return; }    // Note: Forced always-off for now
                             // A null is our standard placeholder value
                             value = null;
+                        } else if (!JSNumber.isFinite(xy[1])) {
+                            value = parseFloat((xy[1] || '').replace(/,/g, ''));
+                        } else {
+                            value = <number>xy[1];
                         }
-                        if (!times[timeFloat]) {
-                            times[timeFloat] = value;
-                            uniqueTimes.push(timeFloat);
+                        if (!times[time]) {
+                            times[time] = value;
+                            uniqueTimes.push(time);
                             this.seenAnyTimestamps = true;
                         }
                     });
@@ -1946,7 +1966,7 @@ module EDDTableImport {
                 // when other UI in this step changes.  This pulldown is NOT affected by changes to
                 // the other UI, so it would be pointless to remake it in response to them.
                 assayIn = $('#masterAssay').empty();
-                $('<option>').text('(Create New)').appendTo(assayIn).val('new').prop('selected', true);
+                $('<option>').text('(Create New)').appendTo(assayIn).val('named_or_new').prop('selected', true);
                 currentAssays = ATData.existingAssays[masterP] || [];
                 currentAssays.forEach((id: number): void => {
                     var assay = EDDData.Assays[id],
@@ -2263,7 +2283,7 @@ module EDDTableImport {
         // Such changes may affect the available contents of some of the pulldowns in the step.
         changedAnyMasterPulldown(): void {
             // Show the master line dropdown if the master assay dropdown is set to new
-            $('#masterLineSpan').toggleClass('off', $('#masterAssay').val() !== 'new');
+            $('#masterLineSpan').toggleClass('off', $('#masterAssay').val() !== 'named_or_new');
             this.reconfigure();
         }
 
@@ -2301,8 +2321,8 @@ module EDDTableImport {
             var changed: JQuery, v: number;
             changed = $(assayEl).data('setByUser', true);
             // The span with the corresponding Line pulldown is always right next to the Assay pulldown
-            changed.next().toggleClass('off', changed.val() !== 'new');
-            if (changed.val() !== 'new') {
+            changed.next().toggleClass('off', changed.val() !== 'named_or_new');
+            if (changed.val() !== 'named_or_new') {
                 // stop here for anything other than 'new'; only 'new' cascades to following pulldowns
                 return false;
             }
@@ -2313,7 +2333,7 @@ module EDDTableImport {
                     return;
                 }
                 // set dropdown to 'new' and reveal the line pulldown
-                select.val('new').next().removeClass('off');
+                select.val('named_or_new').next().removeClass('off');
             });
             return false;
         }
@@ -2455,9 +2475,9 @@ module EDDTableImport {
             var masterLine = $('#masterLine').val();
             var masterAssayLine = $('#masterAssayLine').val();
             var masterAssay = $('#masterAssay').val();
-            var masterMType = $('#masterMType').val();
-            var masterMComp = $('#masterMComp').val();
-            var masterMUnits = $('#masterMUnits').val();
+            var masterMType = $('#masterMTypeValue').val();
+            var masterMComp = $('#masterMCompValue').val();
+            var masterMUnits = $('#masterMUnitsValue').val();
 
             var resolvedSets:ResolvedImportSet[] = [];
 
@@ -2465,7 +2485,7 @@ module EDDTableImport {
                 var resolvedSet: ResolvedImportSet;
 
                 var line_id = 'new';    // A convenient default
-                var assay_id = 'new';
+                var assay_id = 'named_or_new';
 
                 var measurement_id = null;
                 var compartment_id = null;
@@ -2473,8 +2493,8 @@ module EDDTableImport {
                 // In modes where we resolve measurement types in the client UI, go with the master values by default.
                 if (mode === "biolector" || mode === "std" || mode === "mdv" || mode === "hplc") {
                     measurement_id = masterMType;
-                    compartment_id = masterMComp || "0";
-                    units_id = masterMUnits || "1";
+                    compartment_id = masterMComp;
+                    units_id = masterMUnits;
                 }
 
                 var data = set.data;

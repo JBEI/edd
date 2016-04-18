@@ -27,6 +27,9 @@ class SolrSearch(object):
             self.settings = {'URL': 'http://localhost:8080/', }
         if url is not None:
             self.settings['URL'] = url
+        # ensure the URL has the trailing slash
+        if self.settings['URL'][-1] != '/':
+            self.settings['URL'] = self.settings['URL'] + '/'
 
     def __repr__(self, *args, **kwargs):
         return self.__str__()

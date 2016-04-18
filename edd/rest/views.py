@@ -147,7 +147,9 @@ class StudyViewSet(viewsets.ReadOnlyModelViewSet):  # read-only for now...see TO
             study_query = Study.objects.filter(pk=study_pk)
         else:
             user_permission_q = Study.user_permission_q(user, permission)
-            study_query = Study.objects.filter(user_permission_q, pk=study_pk)
+            # NOTE: distinct is required since this query can return multiple rows for the same
+            # study, one per permission that gives this user access to it
+            study_query = Study.objects.filter(user_permission_q, pk=study_pk).distinct()
 
         return study_query
 
@@ -276,7 +278,7 @@ class StudyLineView(viewsets.ModelViewSet):  # LineView(APIView):
             study_user_permission_q = Study.user_permission_q(user, requested_permission,
                                                               keyword_prefix='study__')
             line_query = Line.objects.filter(study_user_permission_q,
-                                             study__pk=study_pk)
+                                             study__pk=study_pk).distinct()
         else:
             line_query = Line.objects.filter(study__pk=study_pk)
 
@@ -352,7 +354,8 @@ class StudyLineView(viewsets.ModelViewSet):  # LineView(APIView):
         # return a 403 error if user doesn't have write access
         requested_permission = StudyPermission.WRITE
         study_user_permission_q = Study.user_permission_q(user, requested_permission)
-        user_has_permission_query = Study.objects.filter(study_user_permission_q, pk=study_pk)
+        user_has_permission_query = Study.objects.filter(study_user_permission_q,
+                                                         pk=study_pk).distinct()
 
         # TODO: test raising PermissionDenied() similar to Django
 
