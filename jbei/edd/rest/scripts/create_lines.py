@@ -327,7 +327,7 @@ def get_ice_parts(base_url, ice_username, password, part_numbers_list,
                 continue
 
             search_id = local_ice_part_number
-            part = ice.fetch_part(local_ice_part_number)
+            part = ice.get_entry(local_ice_part_number)
 
             if not part:
                 logger.warning("Couldn't locate part \"%s\" (#%d)" % (local_ice_part_number,

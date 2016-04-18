@@ -160,7 +160,7 @@ class Performance(object):
         values_dict['EDD strain scan duration'] = to_human_relevant_delta(
                 self.edd_strain_scan_time.total_seconds())
         values_dict['ICE entry scan duration:'] = (to_human_relevant_delta(
-                self.ice_entry_scan_time)
+                self.ice_entry_scan_time.total_seconds())
         if self.ice_entry_scan_time else 'Not performed')
         values_dict['Total EDD communication time'] = to_human_relevant_delta(
                 self.edd_communication_time.total_seconds())
@@ -168,8 +168,9 @@ class Performance(object):
                 self.ice_communication_time.total_seconds())
 
         # compute column widths for readable display
-        title_col_width = max(len(title) for title in values_dict.keys())
-        value_col_width = max(len(value) for value in values_dict.values())
+        space = 2
+        title_col_width = max(len(title) for title in values_dict.keys()) + space
+        value_col_width = max(len(value) for value in values_dict.values()) + space
 
         for title, value in values_dict.items():
             indented_title = "\t\t%s" % title.ljust(title_col_width, fill_char)
@@ -832,8 +833,10 @@ def main():
             # This is probably only necessary during the initial run to correct for link maintenance
             # gaps in earlier versions of EDD/ICE
             if PROCESS_ICE_ENTRIES:
+                overall_performance.ice_entry_scan_start_time = arrow.utcnow()
                 process_ice_entries(ice, edd, search_ice_part_types, processing_summary,
                                     cleaning_ice_test_instance, test_ice_entry_limit)
+                overall_performance.ice_entry_scan_time = arrow.utcnow() - overall_performance.ice_entry_scan_start_time
 
     except Exception as e:
         logger.exception('An error occurred')
@@ -1078,14 +1081,14 @@ def build_ice_entry_experiments_cache(ice, entry_uuid):
     """
     all_experiment_links = {}
 
-    results_page = ice.fetch_entry_experiments(entry_uuid)
+    results_page = ice.get_entry_experiments(entry_uuid)
     while results_page and not is_aborted():
         for link in results_page.results:
             all_experiment_links[link.url.lower()] = link
 
         # get another page of results
         if results_page.next_page:
-            results_page = ice.fetch_entry_experiments(
+            results_page = ice.get_entry_experiments(
                     query_url=results_page.next_page)
         else:
             results_page = None
@@ -1115,6 +1118,7 @@ def process_edd_strain(edd_strain, edd, ice, processing_summary, overall_perform
             processing_summary.found_orphaned_edd_strain(edd_strain)
             return False
 
+        # TODO: make this a decorator
         strain_performance = StrainProcessingPerformance(arrow.utcnow(),
                                                          edd.request_generator.wait_time,
                                                          ice.request_generator.wait_time)
@@ -1126,7 +1130,7 @@ def process_edd_strain(edd_strain, edd, ice, processing_summary, overall_perform
         #  around SYNBIO-XXX, which causes ICE to return 500 error instead of 404
         # when experiments can't be found for a non-existent part
 
-        ice_entry = ice.fetch_part(edd_strain.registry_id)
+        ice_entry = ice.get_entry(edd_strain.registry_id)
         if not ice_entry:
             processing_summary.found_stepchild_edd_strain(edd_strain)
             return False
@@ -1199,7 +1203,7 @@ def process_edd_strain(edd_strain, edd, ice, processing_summary, overall_perform
                 strain_studies_page = None
 
         # look over ICE experiment links for this entry that we didn't add, update, or remove as a
-        # result of up-to-date study/strain assocations in EDD. If any remain that match the
+        # result of up-to-date study/strain associations in EDD. If any remain that match the
         # pattern of EDD URL's, they're outdated and need to be removed. This complete processing
         # of the ICE entry's experiment links will also allow us to skip over this entry later
         # in the process if we scan ICE to look for other entries with outdated links to EDD

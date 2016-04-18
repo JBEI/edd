@@ -152,7 +152,7 @@ class RegistryValidator(object):
         try:
             update = Update.load_update()
             ice = IceApi(IceHmacAuth.get(username=update.mod_by.email))
-            (self.part, url) = ice.fetch_part(value)
+            (self.part, url) = ice.get_entry(value)
             self.part['url'] = ''.join((ice.base_url, '/entry/', str(self.part['id']), ))
         except Exception:
             raise ValidationError(

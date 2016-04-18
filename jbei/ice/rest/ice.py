@@ -911,7 +911,7 @@ class IceApi(RestApiClient):
 
         response.raise_for_status()
 
-    def fetch_entry_experiments(self, entry_id, query_url=None, page_number=1):
+    def get_entry_experiments(self, entry_id, query_url=None, page_number=1):
         """
         Retrieves ICE's experiments links for the specified entry, using any of the unique
         identifiers: part id, synthetic id, or UUID.
@@ -961,7 +961,7 @@ class IceApi(RestApiClient):
             # ability to distinguish between a non-existent part and a part with no experiments
             response.raise_for_status()
 
-    def fetch_part(self, entry_id, suppress_errors=False):
+    def get_entry(self, entry_id, suppress_errors=False):
         """
         Retrieves a part using any of the unique identifiers: part number, synthetic id, or
         UUID. Returns a Part object; or None if no part was found or if there were suppressed
