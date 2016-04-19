@@ -858,46 +858,6 @@ class ExportTests(TestCase):
         #   main.views.ExportView
         pass
 
-    # XXX this test does NOT depend on libsbml being available
-    def test_data_export_setup(self):
-        study = Study.objects.get(name="Test Study 1")
-        data = sbml_export.line_assay_data(
-            study=study,
-            lines=[Line.objects.get(name="Line 1"), ],
-            form={})
-        data.run()
-        od_data = data.export_od_measurements()
-        self.assertTrue(od_data[0]['data_points'][-1]['title'] == "0.59 at 24h")
-        self.assertTrue(data.n_hplc_measurements == 2)
-        hplc_data = data.export_hplc_measurements()
-        self.assertTrue(len(hplc_data) > 0)
-        hplc_data_assays = hplc_data[0]['assays']
-        self.assertTrue(len(hplc_data_assays) > 0)
-        hplc_data_measurements = hplc_data_assays[0]['measurements']
-        self.assertTrue(len(hplc_data_measurements) > 0)
-        self.assertTrue(hplc_data_measurements[0]['name'] == "EC Acetate")
-        self.assertTrue(hplc_data_measurements[0]['n_points'] == 6)
-        dp = hplc_data_measurements[0]['data_points'][2]
-        self.assertTrue(dp['title'] == "0.22 at 8h")
-        self.assertTrue(data.n_lcms_measurements == 3)
-        lcms_data = data.export_lcms_measurements()
-        dp = lcms_data[0]['assays'][0]['measurements'][0]['data_points'][2]
-        self.assertTrue(dp['title'] == "0.2 at 8h")
-        self.assertEqual(data.n_ramos_measurements, 2)
-        all_meas = data.processed_measurements()
-        self.assertTrue(len(all_meas) == 8)
-        meas = all_meas[0]
-        self.assertTrue(meas.n_errors == 0)
-        self.assertTrue(meas.n_warnings == 1)
-        self.assertTrue(meas.warnings[0] == 'Start OD of 0 means nothing physically present (and '
-                        'a potential division-by-zero error). Skipping...')
-        # for md in meas.data :
-        #   print md
-        # for fd in meas.flux_data :
-        #   print fd
-        # TODO test interpolation of measurements
-        self.assertTrue(data.available_timepoints == [4.0, 8.0, 12.0, 18.0, ])
-
     def test_sbml_export(self):
         try:
             import libsbml

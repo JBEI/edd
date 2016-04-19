@@ -83,9 +83,25 @@ class SbmlExportSettingsForm(SbmlForm):
     """ Form used for selecting settings on SBML exports. """
     sbml_template = forms.ModelChoiceField(
         SBMLTemplate.objects.all(),  # TODO: potentially narrow options based on current user?
-        empty_label=None,
         label=_('SBML Template'),
     )
+
+    def update_bound_data_with_defaults(self):
+        """ Forces data bound to the form to update to default values. """
+        if self.is_bound:
+            # create mutable copy of QueryDict
+            replace_data = QueryDict(mutable=True)
+            replace_data.update(self.data)
+            # set initial measurementId values
+            field = self.fields['sbml_template']
+            if field.initial:
+                replace_data[self.add_prefix('sbml_template')] = '%s' % field.initial
+            else:
+                self.sbml_warnings.append(
+                    _('No SBML template set for this study; a template must be selected to '
+                      'export data as SBML.')
+                )
+            self.data = replace_data
 
 
 @register.filter(name='scaled_x')
@@ -102,13 +118,19 @@ class MeasurementChoiceField(forms.ModelMultipleChoiceField):
 
 class SbmlExportMeasurementsForm(SbmlForm):
     """ Form used for selecting measurements to include in SBML exports. """
-    measurementId = MeasurementChoiceField(
-        queryset=Measurement.objects.filter(active=True),
+    measurement = MeasurementChoiceField(
+        queryset=Measurement.objects.none(),  # this is overridden in __init__()
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+    )
+    interpolate = forms.ModelMultipleChoiceField(
+        label=_('Allow interpolation for'),
+        queryset=Protocol.objects.none(),  # this is overridden in __init__()
         required=False,
         widget=forms.CheckboxSelectMultiple,
     )
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, selection, *args, **kwargs):
         """
         Required:
             selection = a main.export.ExportSelection object defining the items for export
@@ -118,13 +140,24 @@ class SbmlExportMeasurementsForm(SbmlForm):
             baseline = another SbmlExportMeasurementsForm used to find timepoints where values
                 should be interpolated
         """
-        self._selection = kwargs.pop('selection', None)
+        self._selection = selection
         qfilter = kwargs.pop('qfilter', None)
         self._types = kwargs.pop('types', None)
         self._protocols = kwargs.pop('protocols', None)
         self._baseline = kwargs.pop('baseline', None)
         super(SbmlExportMeasurementsForm, self).__init__(*args, **kwargs)
-        f = self.fields['measurementId']
+        measurement_queryset = self._init_measurement_field(qfilter)
+        # depends on measurement field being initialized
+        self._init_interpolate_field(measurement_queryset)
+
+    def _init_interpolate_field(self, measurement_queryset):
+        f = self.fields['interpolate']
+        f.queryset = Protocol.objects.filter(
+            assay__measurement__in=measurement_queryset
+        ).distinct()
+
+    def _init_measurement_field(self, qfilter):
+        f = self.fields['measurement']
         f.queryset = self._selection.measurements.order_by(
             'assay__protocol__name', 'assay__name',
         ).prefetch_related(
@@ -136,6 +169,7 @@ class SbmlExportMeasurementsForm(SbmlForm):
             self.sbml_warnings.append(_('No protocols have usable data.'))
         else:
             f.initial = f.queryset
+        return f.queryset
 
     def clean(self):
         """ Upon validation, also inserts interpolated value points matching points available in
@@ -145,10 +179,11 @@ class SbmlExportMeasurementsForm(SbmlForm):
         return data
 
     def form_without_measurements(self):
-        """ Returns a copy of the form without the measurementId field; this allows rendering in
+        """ Returns a copy of the form without the measurement field; this allows rendering in
             templates as, e.g. `form_var.form_without_measurements.as_p`. """
         fles = copy(self)
-        fles.fields = {k: v for k, v in fles.fields.items() if k != 'measurementId'}
+        fles.fields = OrderedDict(self.fields)
+        del fles.fields['measurement']
         return fles
 
     def measurement_split(self):
@@ -172,11 +207,12 @@ class SbmlExportMeasurementsForm(SbmlForm):
                 items = []
             items.append((measurement, self.measurement_widgets[index]))
         # at the end, yield the final choices
-        yield (prev_protocol, items)
+        if prev_protocol is not None:
+            yield (prev_protocol, items)
 
     def x_range(self):
         """ Returns the bounding range of X-values used for all Measurements in the form. """
-        f = self.fields['measurementId']
+        f = self.fields['measurement']
         x_range = f.queryset.aggregate(
             max=Max('measurementvalue__x'), min=Min('measurementvalue__x')
         )
@@ -190,7 +226,7 @@ class SbmlExportMeasurementsForm(SbmlForm):
         # lazy eval and try not to query more than once
         # NOTE: still gets evaled at least three times: populating choices, here, and validation
         if not hasattr(self, '_measures'):
-            field = self.fields['measurementId']
+            field = self.fields['measurement']
             self._measures = list(field.queryset)
         return self._measures
     measurement_list = property(_get_measurements,
@@ -199,7 +235,7 @@ class SbmlExportMeasurementsForm(SbmlForm):
     def _get_measurement_widgets(self):
         # lazy eval and try not to query more than once
         if not hasattr(self, '_measure_widgets'):
-            widgets = self['measurementId']
+            widgets = self['measurement']
             self._measure_widgets = list(widgets)
         return self._measure_widgets
     measurement_widgets = property(_get_measurement_widgets,
@@ -225,6 +261,7 @@ class SbmlExportOdForm(SbmlExportMeasurementsForm):
         min_value=Decimal(0),
         required=True,
     )
+    field_order = ['gcdw_default', 'gcdw_conversion', 'interpolate', ]
 
     def clean(self):
         data = super(SbmlExportOdForm, self).clean()
@@ -238,7 +275,7 @@ class SbmlExportOdForm(SbmlExportMeasurementsForm):
         else:
             self._clean_check_for_gcdw(data, gcdw_default, conversion_meta)
         # make sure that at least some OD measurements are selected
-        if len(data.get('measurementId', [])) == 0:
+        if len(data.get('measurement', [])) == 0:
             raise ValidationError(
                 _('No Optical Data measurements were selected. Biomass measurements are essential '
                   'for flux balance analysis.'),
@@ -285,7 +322,7 @@ class SbmlExportOdForm(SbmlExportMeasurementsForm):
             self._lines = {}
             self._measures_by_line = defaultdict(list)
             # get unique lines first
-            for m in data.get('measurementId', []):
+            for m in data.get('measurement', []):
                 self._lines[m.assay.line.pk] = m.assay.line
                 self._measures_by_line[m.assay.line.pk].append(m)
         return self._lines
@@ -308,10 +345,10 @@ class SbmlExportOdForm(SbmlExportMeasurementsForm):
             # create mutable copy of QueryDict
             replace_data = QueryDict(mutable=True)
             replace_data.update(self.data)
-            # set initial measurementId values
-            mfield = self.fields['measurementId']
+            # set initial measurement values
+            mfield = self.fields['measurement']
             replace_data.setlist(
-                self.add_prefix('measurementId'),
+                self.add_prefix('measurement'),
                 ['%s' % v.pk for v in mfield.initial]
             )
             # set initial gcdw_conversion values
@@ -327,9 +364,12 @@ class SbmlExportOdForm(SbmlExportMeasurementsForm):
 
 
 class SbmlExport(object):
-    def __init__(self, *args, **kwargs):
-        # get selected measurements, do processing
-        pass
+    def __init__(self, settings_form, *args, **kwargs):
+        self._sbml_template = settings_form.cleaned_data.get('sbml_template', None)
+
+    def add_measurements(self, measurements):
+        for m in measurements:
+            print(m)
 
 
 ########################################################################
@@ -532,7 +572,7 @@ class sbml_info(object):
         :param sbml_file: SBML file to parse directly instead of pulling this from
             the SBMLTemplate object - TESTING ONLY
     """
-    def __init__(self, i_template=None, template_id=None, sbml_file=None):
+    def __init__(self, sbml_file=None, *args, **kwargs):
         self._sbml_templates = list(SBMLTemplate.objects.all())
         self._chosen_template = None
         self._sbml_doc = None
@@ -561,10 +601,7 @@ class sbml_info(object):
         self._protein_values = {}
         self._reactions_requiring_notes_update = set()
         # XXX the processing can optionally be done at the time of initialization
-        # to facilitate JSON data export independent of assay data
-        if (i_template is not None) or (template_id is not None):
-            self._select_template(i_template=i_template, template_id=template_id)
-            self._process_sbml(sbml_file=sbml_file)
+        self._process_sbml(sbml_file=sbml_file)
 
     def _select_template(self, i_template=None, template_id=None):
         assert ([i_template, template_id].count(None) == 1)
@@ -579,10 +616,7 @@ class sbml_info(object):
             import libsbml
             sbml = libsbml.readSBML(sbml_file.encode('utf-8'))
         else:
-            if (self._chosen_template is None):
-                raise RuntimeError("You must call self._select_template(i) before "
-                                   "self._process_sbml()!")
-            sbml = self._chosen_template.parseSBML()
+            raise RuntimeError("No SBML file specified for processing.")
         model = sbml.getModel()
         self._sbml_doc = sbml
         self._sbml_model = model
@@ -1262,23 +1296,6 @@ class line_assay_data(line_export_base):
         # biomass gets its own
         self._biomass_data = defaultdict(list)
         self._ramos_conversion = {}
-
-    def run(self):
-        """ Run the series of processing steps. """
-        # Okay, ready to extract data!
-        t1 = time.time()
-        self._step_0_pre_fetch_data()
-        t2 = time.time()
-        self._step_2_get_od_data()
-        self._step_3_get_hplc_data()
-        self._step_4_get_lcms_data()
-        self._step_5_get_ramos_data()
-        self._step_6_get_transcriptomics_proteomics()
-        self._step_7_calculate_fluxes()
-        t3 = time.time()
-        self._fetch_time = (t2 - t1)
-        self._setup_time = (t3 - t1)
-        return self
 
     def _get_protocols_by_category(self, category_name):
         protocols = [p for p in self.protocols if p.categorization == category_name]
@@ -2278,6 +2295,7 @@ class processed_measurement(object):
                 # in time between the growth observations, A0 is the earlier
                 # OD600, and A1 is the later OD600.
                 # Rearranged, the formula looks like this:
+                ### Get updated formula from david.ando
                 flux = math.log(od_next / od) / delta_t
                 units = "OD"
         elif (self._category in ["HPLC", "LCMS", "TPOMICS"]):
@@ -2385,14 +2403,13 @@ class carbon_ratio_measurement (object):
 ########################################################################
 class line_sbml_export (line_assay_data, sbml_info):
     """
-    'Manager' class for extracting data for export into SBML format and
-    organizing it for presentation as an HTML form.  This object will be passed
-    to the export page view.  If any steps fail due to lack of approprioate data,
-    a ValueError will be raised (and displayed in the browser).
+    'Manager' class for extracting data for export into SBML format and organizing it for
+    presentation as an HTML form. This object will be passed to the export page view. If any
+    steps fail due to lack of approprioate data, a ValueError will be raised (and displayed
+    in the browser).
     """
-    def __init__(self, *args, **kwds):
-        line_assay_data.__init__(self, *args, **kwds)
-        sbml_info.__init__(self)
+    def __init__(self, *args, **kwargs):
+        super(line_sbml_export, self).__init__(*args, **kwargs)
         # these are used for matching metabolites to species/fluxes
         self._species_match_elements = []
         self._flux_match_elements = []
@@ -2439,21 +2456,15 @@ class line_sbml_export (line_assay_data, sbml_info):
 
     # Step 1: Select the SBML template file to use for export
     def _step_1_select_template_file(self, test_mode=False):
-        """
-        Private method
-        """
+        """ Private method """
         if self.debug:
             logger.debug("STEP 1: get template files")
         # TODO figure out something sensible for unit testing
-        if (len(self._sbml_templates) == 0):
-            if (not test_mode):
-                raise ValueError("No SBML templates have been uploaded!")
+        template_id = self.form.get("chosenmap_id", None)
+        if (template_id is not None):
+            self._select_template(template_id=int(template_id))
         else:
-            template_id = self.form.get("chosenmap_id", None)
-            if (template_id is not None):
-                self._select_template(template_id=int(template_id))
-            else:
-                self._select_template(i_template=int(self.form.get("chosenmap", 0)))
+            self._select_template(i_template=int(self.form.get("chosenmap", 0)))
 
     def _step_8_pre_parse_and_match(self, sbml_file=None):
         """private method"""
@@ -2612,139 +2623,10 @@ class line_sbml_export (line_assay_data, sbml_info):
         import libsbml
         return libsbml.writeSBMLToString(self._sbml_doc)
 
-    # ---------------------------------------------------------------------
-    # SBML NAME RESOLUTION
-    def species_match_elements(self):
-        """
-        Export a list of dictionaries basically giving key-value pairs of
-        metabolite and SMBL species ID.
-        """
-        self._species_match_elements.sort(key=lambda a: a[0].type_name)
-        result = []
-        for metabolite, species_id in self._species_match_elements:
-            result.append({
-                'name': metabolite.type_name,
-                'short_name': metabolite.short_name,
-                'id': metabolite.id,
-                'species': species_id,
-            })
-        return result
-
-    @property
-    def species_match_element_ids(self):
-        """
-        Returns a comma-separated list of IDs that becomes the value of the
-        'speciesmatchelements' form parameter.
-        """
-        return ",".join([str(m.id) for m, s in self._species_match_elements])
-
-    def flux_match_elements(self):
-        """
-        Export a list of dictionaries basically giving key-value pairs of
-        metabolite and SMBL exchange ID.
-        """
-        self._flux_match_elements.sort(key=lambda a: a[0].type_name)
-        result = []
-        for metabolite, exchange_id in self._flux_match_elements:
-            result.append({
-                'name': metabolite.type_name,
-                'short_name': metabolite.short_name,
-                'id': metabolite.id,
-                'exchange': exchange_id,
-            })
-        return result
-
-    @property
-    def flux_match_element_ids(self):
-        """
-        Returns a comma-separated list of IDs that becomes the value of the
-        'fluxmatchelements' form parameter.
-        """
-        return ",".join([str(m.id) for m, s in self._flux_match_elements])
-
-    @property
-    def n_gene_names_resolved(self):
-        return self._transcriptions_in_sbml_model.values().count(True)
-
-    @property
-    def n_gene_names_not_resolved(self):
-        return self._transcriptions_in_sbml_model.values().count(False)
-
-    @property
-    def n_protein_names_resolved(self):
-        return self._proteomics_in_sbml_model.values().count(True)
-
-    @property
-    def n_protein_names_not_resolved(self):
-        return self._proteomics_in_sbml_model.values().count(False)
-
-    def summarize_data_by_timepoint(self):
-        """
-        Export lists of metabolites available for various analyses at each
-        timepoint.
-        """
-        result = []
-        for i, t in enumerate(self.available_timepoints):
-            timepoint_data = {
-                "metabolites": [],
-                "fluxes": [],
-                "genes": len(self._consolidated_transcription_ms.get(t, {})),
-                "proteins": len(self._consolidated_proteomics_ms.get(t, {})),
-            }
-            species_data = self._species_data_by_metabolite[t]
-            flux_data = self._flux_data_by_metabolite[t]
-            carbon_data = self._carbon_data_by_metabolite[t]
-            for mid in sorted(species_data.keys()):
-                interp_flags = [m.interpolated for m in species_data[mid]]
-                timepoint_data["metabolites"].append({
-                    "name": str(self._metabolites_by_id[mid].short_name),
-                    "interpolated": interp_flags.count(True),
-                })
-            for mid in sorted(flux_data.keys()):
-                interp_flags = [f.interpolated for f in flux_data[mid]]
-                timepoint_data["fluxes"].append({
-                    "name": str(self._metabolites_by_id[mid].short_name),
-                    "interpolated": interp_flags.count(True),
-                })
-            if (i < len(self.available_timepoints) - 1):
-                timepoint_data["fluxes"].append("BIOMASS")
-            timepoint_data["carbon_data"] = [str(s) for s in sorted(carbon_data.keys())]
-            timepoint_data["usable_items"] = 0
-            for value in timepoint_data.values():
-                if isinstance(value, list):
-                    timepoint_data["usable_items"] += len(value)
-                elif (value > 0):
-                    timepoint_data["usable_items"] += 1
-            timepoint_data["timestamp"] = t
-            result.append(timepoint_data)
-        return result
-
 
 ########################################################################
 # ADMIN FEATURES
 #
-def sbml_template_info():
-    """
-    Construct a dict summarizing the existing SBML templates for display on
-    the /admin/sbml view.
-    """
-    templates = SBMLTemplate.objects.all()
-    export = []
-    for m in templates:
-        attachment = m.xml_file
-        export.append({
-            "id": m.id,
-            "name": str(attachment.filename),
-            "attachment_id": attachment.id,
-            "description": str(attachment.description),
-            "biomass_calculation": float(m.biomass_calculation),
-            "file_size": attachment.file_size,
-            "user_initials": attachment.created.mod_by.userprofile.initials,
-            "date_added": attachment.created.format_timestamp(),
-        })
-    return export
-
-
 def validate_sbml_attachment(file_data):
         import libsbml
         sbml = libsbml.readSBMLFromString(file_data)
@@ -2754,61 +2636,3 @@ def validate_sbml_attachment(file_data):
         model = sbml.getModel()
         assert (model is not None)
         return sbml
-
-
-def create_sbml_template_from_form(description, uploaded_file, update):
-        """
-        Create a new SBMLTemplate object from the contents of the simple form
-        in the /admin/sbml view.
-        """
-        sbml_data = validate_sbml_attachment(uploaded_file.read())
-        sbml_model = sbml_data.getModel()
-        possible_biomass_ex_ids = set()
-        for rxn in sbml_model.getListOfReactions():
-                if ("biomass" in rxn.getId()) and ("core" in rxn.getId()):
-                        possible_biomass_ex_ids.add(rxn.getId())
-        biomass_ex_id = ""
-        if (len(possible_biomass_ex_ids) == 1):
-                biomass_ex_id = list(possible_biomass_ex_ids)[0]
-        model = SBMLTemplate.objects.create(
-            name=uploaded_file.name,
-            biomass_exchange_name=biomass_ex_id)
-        model.save()
-        model.updates.add(update)
-        attachment = Attachment.objects.create(
-            object_ref=model,
-            file=uploaded_file,
-            filename=uploaded_file.name,
-            created=update,
-            description=description,
-            mime_type="application/sbml+xml",
-            file_size=len(uploaded_file.read()))
-        attachment.save()
-        return model
-
-
-def update_template_from_form(self, filename, biomass_ex_id, description, update, uploaded_file):
-        if (filename == ""):
-                raise ValueError("Filename must not be blank.")
-        if (biomass_ex_id == ""):
-                raise ValueError("Biomass exchange name must not be blank.")
-        xml_file = self.xml_file
-        if (uploaded_file is not None):
-                validate_sbml_attachment(uploaded_file.read())
-                attachment = Attachment.objects.create(
-                    object_ref=self,
-                    file=uploaded_file,
-                    filename=filename,
-                    description=description,
-                    created=update,
-                    mime_type="application/sbml+xml",
-                    file_size=len(uploaded_file.read()))
-                xml_file.delete()
-                self.files.add(attachment)
-        else:
-                xml_file.filename = filename
-                xml_file.description = description
-                xml_file.save()
-        self.biomass_exchange_name = biomass_ex_id
-        self.updates.add(update)
-        self.save()

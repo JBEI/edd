@@ -28,6 +28,7 @@
     /* style for errors */
     .bad { color: red; background-color: transparent; }
   </style>
+  {{ od_select_form.media }}
 {% endblock js_css %}
 
 {% block head_title %}
@@ -79,17 +80,25 @@
       <!--
       Step 1: Choose template
       -->
-      <div class="disclose{% if export_settings_form.errors|length == 0 %} discloseHide{% endif %}" id="step0">
+      {% with warnings_list=export_settings_form.sbml_warnings %}
+      <div class="disclose{% if warnings_list|length == 0 and export_settings_form.errors|length == 0 %} discloseHide{% endif %}" id="step0">
         <div class="sectionChapter">
-          <a href="#" class="discloseLink">
-            {% trans "Step 1: Select the SBML template file to use for export" %}
-          </a>
+          <span>
+            <a href="#" class="discloseLink">
+              {% trans "Step 1: Select the SBML template file to use for export" %}
+            </a>
+          </span>
+          {% include 'main/include/export/warningnotice.html' %}
         </div>
         <div class="sectionContent discloseBody" id="statusstep0main">
+          {% for message in warnings_list %}
+          <div class="warn2">{{ message }}</div>
+          {% endfor %}
           <!-- form method of selecting template -->
           {{ export_settings_form.as_p }}
         </div>
-      </div><!-- #step0 -->
+      </div>
+      {% endwith %}<!-- #step0 -->
       <!--
       Step 2: Optical Density (OD600)
       -->
@@ -107,8 +116,6 @@
           {% for message in warnings_list %}
           <div class="warn2">{{ message }}</div>
           {% endfor %}
-          <!-- custom fields here -->
-          {{ od_select_form.form_without_measurements.as_p }}
           <!-- measurement selection here -->
           {% with section_form=od_select_form %}
           {% include 'main/include/export/sbml/measurement_section.html' %}
@@ -299,243 +306,141 @@
         </div><!-- #statusstep6main -->
       </div><!-- #step6 -->
 
-<!--
-Step 8
--->
-<input type="hidden" id="statusstep7show" name="statusstep7show" value="0"/>
-<div class="disclose discloseHide" id="step7">
-  <div class="sectionChapter">
-    <span>
-      <a href="#" class="discloseLink">
-        Step 8: Pre-parse SBML model and match exchanges and species to
-        measurements
-      </a>
-    </span>
-    <!-- TODO warnings -->
-  </div>
-  <div class="sectionContent discloseBody" id="statusstep7main">
-    {% include "main/include_sbml_info.html" %}
-    <input class="off" type="text" size="5" name="fordebugpurposes" id="fordebugpurposes" value="" />
-    <p>
-      <b>Metabolomics:</b>
-      Matching available metabolite measurements to species defined in the SBML
-      model...
-    </p>
-    <div class="rounded-border" style="display:inline-block;"><!-- margin? -->
-      <table class="dataTable" cellspacing="0">
-        <tr>
-          <td>Metabolite Type</td>
-          <td>Species in model</td>
-        </tr>
-        {% for sp in data.species_match_elements %}
-        <tr>
-          <td>
-            <p>
-              <span class="popup">{{ sp.name }}
-                <span class="popupinfo">{{ sp.short_name }}</span>:
-              </span>
-            </p>
-          </td>
-          <td> 
-            <input type="text"
-                class="autocomplete"
-                autocompletetype="species"
-                autocomplete="off"
-                size="45"
-                name="spmatch{{ sp.id }}"
-                id="spmatch{{ sp.id }}"
-                value="{{ sp.species }}"/>
-          </td>
-        </tr>
-        {% endfor %}
-      </table>
-      <input type="hidden" name="speciesmatchelements" value="{{ data.species_match_element_ids }}"/>
-    </div>
-    <p>
-      <b>Fluxomics:</b> Matching available fluxes to reactants/exchanges
-        defined in the SBML model...
-    </p>
-    <div class="rounded-border" style="display:inline-block;">
-      <table class="dataTable" cellspacing="0">
-        <tr>
-          <td>Metabolite Type</td>
-          <td>Reactant / Exchange in model</td>
-        </tr>
-        <!-- Loop over metabolite fluxomics -->
-        {% for fl in data.flux_match_elements %}
-        <tr>
-          <td>
-            <p>
-              <span class="popup">{{ fl.name }}
-                <span class="popupinfo">{{ fl.short_name }}</span>:
-              </span>
-            </p>
-          </td>
-          <td> 
-            <input type="text"
-                class="autocomplete"
-                autocompletetype="exchange"
-                autocomplete="off"
-                size="55"
-                name="exmatch{{ fl.id }}"
-                id="exmatch{{ fl.id }}"
-                value="{{ fl.exchange }}"/>
-          </td>
-        </tr>
-        {% endfor %}
-      </table>
-      <input type="hidden" name="fluxmatchelements" value="{{ data.flux_match_element_ids }}"/>
-    </div>
-    {% if data.have_transcriptomics_to_embed %}
-    <p>
-      <b>Transcriptomics:</b> Matching available gene transcription values to
-      genes identified in SBML reaction notes...
-    </p>
-    <div>
-      <ul>
-        <li>Resolved {{ data.n_gene_names_resolved }} gene names given in
-          measurement data to gene names in the SBML.</li>
-        <li>Failed to resolve {{ data.n_gene_names_not_resolved }} gene names
-          from measurement data.</li>
-      </ul>
-    </div>
-    {% endif %}
-
-    {% if data.have_proteomics_to_embed %}
-    <p>
-      <b>Proteomics:</b> Matching available protein measurements to proteins
-      identified in SBML reaction notes...
-    </p>
-    <div>
-      <ul>
-        <li>Resolved {{ data.n_protein_names_resolved }} protein names given in
-          measurement data to protein names in the SBML</li>
-        <li>Failed to resolve {{ data.n_protein_names_not_resolved }} protein
-          names from measurement data.</li>
-      </ul>
-    </div>
-    {% endif %}
-  </div><!-- #statusstep7main -->
-</div><!-- #step7 -->
-
-</div><!-- #allstatusmain -->
-
-<!--
-END OF EXPORT SETTINGS
--->
-<div style="width:100%;font-size:13px;vertical-align:bottom;text-align:right;" id="updateSettingsTable"><input style="margin:10px 1em 1em 0;" type="submit" name="action" value="Update Settings" />
-  </div>
-
-
-<!--
-Downloads section
-TODO new layout
--->
-<div class="pageSection" id="dataDownloads" style="width:90%;">
-  <div class="sectionHead">
-    SBML Data Downloads
-  </div>
-
-  <div class="sectionContent">
-    The following table
-    provides links to SBML files prepared for Flux Balance Analysis,
-    one file for each usable timestamp.  The numbers in the table indicate
-    the number of usable items that are embedded in each file.
-    Hover the mouse over any number to display a summary of embedded items,
-    and click any number to download the SBML file.
-  </div>
-
-  <table cellpadding="0" cellspacing="0"
-      class="dataTable sortable"
-      id="linesTable">
-
-    <tr class="columnLabels">
-      {% for t in data.available_timepoints %}
-      <th class="sortheader" style="text-align:right;font-size:0.8em;">
-        {{ t }}h
-      </th>
-      {% endfor %}
-    </tr>
-
-    <tr>
-      <!-- loop over SBML files -->
-      {% for sf in data.summarize_data_by_timepoint %}
-      <td class="popupcell">
-        <div class="p">
-          <div class="q">
-            <div class="r nowrap" style="text-align:right;padding-right:5px;">
-              <a name="sbmldatafiles" href="#sbmldatafiles"
-                onclick="submitForSBMLDownload({{ sf.timestamp }});">
-                {{ sf.usable_items }}
-              </a>
-            </div>
-            <div class="s">
-              <div class="t">
-                <div style="font-weight:bold;">Metabolomics:</div>
-              {% spaceless %}
-                <ul style="margin:2px 2px 4px 2px;padding:0px;">
-              {% for mt in sf.metabolites %}
-                {% if mt.interpolated %}
-                  <li>{{ mt.name }}<span class="warn2">*</span></li>
-                {% else %}
-                  <li>{{ mt.name }}</li>
-                {% endif %}
-              {% endfor %}
-                </ul>
-              {% endspaceless %}
-                <div style="font-weight:bold;">Fluxomics:</div>
-              {% spaceless %}
-                <ul style="margin:2px 2px 4px 2px;padding:0px;">
-              {% for fl in sf.fluxes %}
-                {% if fl.interpolated %}
-                  <li>{{ fl.name }}<span class="warn2">*</span></li>
-                {% else %}
-                  <li>{{ fl.name }}</li>
-                {% endif %}
-              {% endfor %}
-                </ul>
-              {% endspaceless %}
-              {% if sf.carbon_data %}
-                <div style="font-weight:bold;">C-13 ratios:</div>
-                {% spaceless %}
-                <ul style="margin:2px 2px 4px 2px;padding:0px;">
-                {% for met_name in sf.carbon_data %}
-                  <li>{{ met_name }}</li>
-                {% endfor %}
-                </ul>
-                {% endspaceless %}
-              {% endif %}
-              {% if sf.genes %}
-                <div style="font-weight: bold;">Transcriptomics:</div>
-                {% spaceless %}
-                <ul style="margin:2px 2px 4px 2px;padding:0px;">
-                  <li>{{ sf.genes }} genes</li>
-                </ul>
-                {% endspaceless %}
-              {% endif %}
-              {% if sf.proteins %}
-                <div style="font-weight: bold;">Proteomics:</div>
-                {% spaceless %}
-                <ul style="margin:2px 2px 4px 2px;padding:0px;">
-                  <li>{{ sf.proteins }} proteins</li>
-                </ul>
-                {% endspaceless %}
-              {% endif %}
-              </div>
-            </div>
-          </div>
+      <!--
+      Step 8
+      -->
+      <div class="disclose discloseHide" id="step7">
+        <div class="sectionChapter">
+          <span>
+            <a href="#" class="discloseLink">
+              {% trans "Step 8: Pre-parse SBML model and match exchanges and species to measurements" %}
+            </a>
+          </span>
+          <!-- TODO warnings -->
         </div>
-      </td>
-      {% endfor %}
-    </tr>
-  </table>
+        <div class="sectionContent discloseBody" id="statusstep7main">
+          {% include "main/include_sbml_info.html" %}
+          <p>
+            <b>{% trans "Metabolomics:" %}</b>
+            {% trans "Matching available metabolite measurements to species defined in the SBML model…" %}
+          </p>
+          <div class="rounded-border" style="display:inline-block;">
+            <table class="dataTable" cellspacing="0">
+              <thead>
+                <tr>
+                  <td>{% trans "Metabolite Type" %}</td>
+                  <td>{% trans "Species in model" %}</td>
+                </tr>
+              </thead>
+              <tbody>
+              {% for sp in data.species_match_elements %}
+                <tr>
+                  <td>
+                    <p>
+                      <span class="popup">{{ sp.name }}
+                        <span class="popupinfo">{{ sp.short_name }}</span>
+                      </span>
+                    </p>
+                  </td>
+                  <td>
+                    <!-- TODO autocomplete to match Metabolite to MetaboliteSpecies -->
+                  </td>
+                </tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <b>{% trans "Fluxomics:" %}</b>
+            {% trans "Matching available fluxes to reactants/exchanges defined in the SBML model…" %}
+          </p>
+          <div class="rounded-border" style="display:inline-block;">
+            <table class="dataTable" cellspacing="0">
+              <thead>
+                <tr>
+                  <td>{% trans "Metabolite Type" %}</td>
+                  <td>{% trans "Reactant / Exchange in model" %}</td>
+                </tr>
+              </thead>
+              <tbody>
+              <!-- Loop over metabolite fluxomics -->
+              {% for fl in data.flux_match_elements %}
+                <tr>
+                  <td>
+                    <p>
+                      <span class="popup">{{ fl.name }}
+                        <span class="popupinfo">{{ fl.short_name }}</span>:
+                      </span>
+                    </p>
+                  </td>
+                  <td>
+                    <!-- TODO autocomplete to match Metabolite to MetaboliteExchange -->
+                  </td>
+                </tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% if data.have_transcriptomics_to_embed %}
+          <p>
+            <b>{% trans "Transcriptomics:" %}</b>
+            {% trans "Matching available gene transcription values to genes identified in SBML reaction notes…" %}
+          </p>
+          <div>
+            <ul>
+              <li>
+              {% blocktrans count counter=sbml.gene_resolved|length %}
+              Resolved {{ counter }} gene name given in measurement data to gene names in the SBML.
+              {% plural %}
+              Resolved {{ counter }} gene names given in measurement data to gene names in the SBML.
+              {% endblocktrans %}
+              </li>
+              <li>
+              {% blocktrans count counter=sbml.gene_unresolved|length %}
+              Failed to resolve {{ counter }} gene name from measurement data.
+              {% plural %}
+              Failed to resolve {{ counter }} gene names from measurement data.
+              {% endblocktrans %}
+              </li>
+            </ul>
+          </div>
+          {% endif %}
 
-  <input type="hidden" name="download" id="downloadflag" value="" />
-  <input type="hidden" name="timestamp" id="downloadtimestamp" value="" />
-</div><!-- #dataDownloads -->
+          {% if data.have_proteomics_to_embed %}
+          <p>
+            <b>{% trans "Proteomics:" %}</b>
+            {% trans "Matching available protein measurements to proteins identified in SBML reaction notes… " %}
+          </p>
+          <div>
+            <ul>
+              <li>
+              {% blocktrans count counter=sbml.protein_resolved|length %}
+              Resolved {{ counter }} protein name given in measurement data to protein names in the SBML.
+              {% plural %}
+              Resolved {{ counter }} protein names given in measurement data to protein names in the SBML.
+              {% endblocktrans %}
+              </li>
+              <li>
+              {% blocktrans count counter=sbml.protein_unresolved|length %}
+              Failed to resolve {{ counter }} protein name from measurement data.
+              {% plural %}
+              Failed to resolve {{ counter }} protein names from measurement data.
+              {% endblocktrans %}
+              </li>
+            </ul>
+          </div>
+          {% endif %}
+        </div><!-- #statusstep7main -->
+      </div><!-- #step7 -->
+    </div><!-- #allstatusmain -->
 
-</form><!-- #exportForm -->
+    <!--
+    END OF EXPORT SETTINGS
+    -->
+    <div style="width:100%;font-size:13px;vertical-align:bottom;text-align:right;" id="updateSettingsTable">
+      <input style="margin:10px 1em 1em 0;" type="submit" name="action" value="Update Settings" />
+    </div>
 
-<div style="padding:250px 0px 250px 0px;"> </div>
+  </form><!-- #exportForm -->
 
 {% endblock content %}

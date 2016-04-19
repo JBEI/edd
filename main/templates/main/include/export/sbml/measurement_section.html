@@ -1,6 +1,8 @@
 {% load i18n %}
 
-
+<div class="exportOptions">
+  {{ section_form.form_without_measurements.as_p }}
+</div>
 {% with x_range=section_form.x_range %}
 {% for protocol, items in section_form.protocol_split %}
   <div>

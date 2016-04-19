@@ -35,7 +35,7 @@ from .importer import (
     interpret_raw_rna_seq_data,
 )
 from .export.sbml import (
-    SbmlExportMeasurementsForm, SbmlExportOdForm, SbmlExportSettingsForm,
+    SbmlExport, SbmlExportMeasurementsForm, SbmlExportOdForm, SbmlExportSettingsForm,
 )
 from .export.table import ExportSelection, TableExport, WorklistExport
 from .forms import (
@@ -644,10 +644,11 @@ class SbmlView(EDDExportView):
 
     def init_forms(self, request, payload):
         context = super(SbmlView, self).init_forms(request, payload)
-        settings_form_kwargs = {
-            'initial': {'sbml_template': self.selection.studies[0].metabolic_map, },
-        }
-        export_settings = SbmlExportSettingsForm(**settings_form_kwargs)
+        # want to bind export_settings always to allow validation
+        export_settings = SbmlExportSettingsForm(
+            data=request.POST,
+            initial={'sbml_template': self.selection.studies[0].metabolic_map, },
+        )
         # want to bind od_select always to allow validation
         od_select = SbmlExportOdForm(
             data=request.POST, prefix='od', selection=self.selection,
@@ -658,9 +659,10 @@ class SbmlView(EDDExportView):
         form_data = None
         if export_settings.add_prefix('sbml_template') in request.POST:
             form_data = request.POST
-            export_settings = SbmlExportSettingsForm(form_data, **settings_form_kwargs)
         else:
+            export_settings.update_bound_data_with_defaults()
             od_select.update_bound_data_with_defaults()
+        export_settings.is_valid()  # don't care for result
         od_select.is_valid()  # don't care for result right now, just triggering validation
         hplc_select = SbmlExportMeasurementsForm(
             data=form_data, prefix='hplc', selection=self.selection,
@@ -678,10 +680,12 @@ class SbmlView(EDDExportView):
             data=form_data, prefix='ramos', selection=self.selection,
             qfilter=Q(assay__protocol__categorization=Protocol.CATEGORY_TPOMICS),
         )
+        export = SbmlExport(export_settings)
         sbml_warnings = chain(
             export_settings.sbml_warnings, od_select.sbml_warnings, hplc_select.sbml_warnings,
             ms_select.sbml_warnings, ramos_select.sbml_warnings, omics_select.sbml_warnings,
         )
+        export.add_measurements(od_select.cleaned_data['measurement'])
         try:
             context.update(
                 export_settings_form=export_settings,
