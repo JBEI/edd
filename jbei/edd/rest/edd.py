@@ -420,12 +420,34 @@ class EddApi(RestApiClient):
                                              result_limit=result_limit)
         self.session_auth = session_auth
 
-    def search_strains(self, query_url=None, registry_id=None, registry_url_regex=None, name=None,
+    def get_strain(self, local_pk=None, registry_id=None):
+        """
+        A convenience method to get the strain (if any) with the provided primary key and/or
+        registry id (either should be
+        sufficient to uniquely identify the strain within an EDD deployment).
+        :param pk: the integer primary key used to identify this strain within this EDD deployment
+        :param registry_id: the UUID used to uniquely identify this strain within ICE
+        :return: the strain, or None if none was found. Note that providing both parameters makes
+        it possible to miss a strain that matches either one or the other (for instance,
+        if the primary key is from a different EDD deployment)
+        """
+        search_result = self.search_strains(local_pk=local_pk, registry_id=registry_id)
+
+        if not search_result:
+            return None
+
+        return search_result.results[0]
+
+    def search_strains(self, query_url=None, local_pk=None, registry_id=None,
+                       registry_url_regex=None, name=None,
                        name_regex=None, case_sensitive=None, page_number=None):
         """
         Searches EDD for strain(s) matching the search criteria.
         :param query_url: the entire URL for the search, including query parameters (for example,
-        the value returned for next_page). If present, all other parameters will be ignored.
+        the value returned for next_page as a result of a prior search). If present, all other
+        parameters will be ignored.
+        :param local_pk: the integer primary key that idetifies the strain within this EDD
+        deployment
         :param registry_id: the registry id (UUID) to search for
         :param registry_url_regex: the registry URL to search for
         :param name: the strain name or name fragment to search for (case-sensitivity determined
@@ -448,6 +470,9 @@ class EddApi(RestApiClient):
             response = request_generator.get(query_url, headers=self._json_header)
         else:
             search_params = {}
+
+            if local_pk:
+                search_params['pk'] = local_pk
 
             if registry_id:
                 search_params['registry_id'] = registry_id
@@ -634,6 +659,8 @@ class EddApi(RestApiClient):
 
         return Line(**json.loads(response.content))
 
+    # TODO: shouldn't be able to do this via the API...? Investigate use in Admin app.
+    # Will's comment is that line creation / edit should take a strain UUID as input
     def create_strain(self, name, description, registry_id, registry_url):
         """
         Creates a new Strain in EDD
@@ -777,7 +804,7 @@ class DrfPagedResult(PagedResult):
 
         return DrfPagedResult(results_obj_list, count, next_page, prev_page)
 
-    def get_abs_study_browser_url(self, study_pk):
+    def get_abs_study_browser_url(self, study_pk, alternate_base_url=None):
         """
         Gets the absolute URL of the study with the provided identifier.
         :return:
@@ -786,4 +813,5 @@ class DrfPagedResult(PagedResult):
         # of Django, if the library is even installed (it shouldn't be required).
         # Note: although it's normally best to abstract the URLs away from clients, in this case
         # clients will need the URL to push study link updates to ICE.
-        return "%s/study/%s" %(self.base_url, study_pk)
+        base_url = alternate_base_url if alternate_base_url else self.base_url
+        return "%s/study/%s" %(base_url, study_pk)

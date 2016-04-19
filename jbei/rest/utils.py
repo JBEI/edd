@@ -39,7 +39,7 @@ def is_url_secure(uri):
     """
     url_parts = urlparse(uri)
     return url_parts.scheme == 'https' or url_parts.hostname == 'localhost' or \
-           url_parts.hostname == '127.0.0.1'
+           url_parts.hostname == '127.0.0.1' or url_parts.hostname == '192.168.99.100'  # docker
 
 
 def remove_trailing_slash(uri):
