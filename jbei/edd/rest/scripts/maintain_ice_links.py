@@ -313,6 +313,18 @@ def is_ice_test_instance_url(url):
     return bool(ICE_TEST_HOSTNAME_PATTERN.match(hostname))
 
 
+def is_local_edd_docker_deployment(url):
+    url_parts = urlparse(url)
+    hostname = url_parts.hostname
+    return hostname == '192.168.99.100'
+
+
+def is_localhost(url):
+    url_parts = urlparse(url)
+    hostname = url_parts.hostname.lower()
+    return (hostname == 'localhost') or (hostname == '127.0.0.1') or (hostname == '::1')
+
+
 def is_ice_admin_user(ice, username):
     try:
         page_result = ice.search_users(search_string=username)
@@ -746,14 +758,36 @@ def main():
     test_edd_strain_limit = 10  # TODO: set to None following testing, but probably keep in place
     test_ice_entry_limit = 10
 
+    # determine whether or not to verify EDD's / ICE's SSL certificate. Ordinarily, YES,
+    # though we want to allow for local testing of this script on developers' machines using
+    # self-signed certificates.
+    is_edd_docker_deployment = is_local_edd_docker_deployment(EDD_URL)
+    verify_edd_ssl_cert = not is_edd_docker_deployment
+    if not verify_edd_ssl_cert:
+        logger.warning('Skipping EDD certificate verification since %s is a local Docker-based '
+                       'deployment (likely for testing)' % EDD_URL)
+    verify_ice_ssl_cert = not is_localhost(ICE_URL)
+    if not verify_ice_ssl_cert:
+        logger.warning('Skipping ICE SSL certificate validation since %s is running on localhost ('
+                       'likely for testing)' % ICE_URL)
+
+    # turn down the log level on the requests library if we're skipping SSL certificate
+    # verification. otherwise the warnings will swamp useful output from this script.
+    if not (verify_edd_ssl_cert and verify_ice_ssl_cert):
+        requests_logger = logging.getLogger('jbei')
+        requests_logger.setLevel(logging.WARNING)
+        requests_logger.addHandler(console_handler)
+
     try:
         ##############################
         # log into EDD
         ##############################
         login_application = 'EDD'
+
         edd_login_details = session_login(EddSessionAuth, EDD_URL, login_application,
                                           username_arg=args.username, password_arg=args.password,
-                                          user_input=user_input, print_result=True)
+                                          user_input=user_input, print_result=True,
+                                          verify_ssl_cert=verify_edd_ssl_cert)
         edd_session_auth = edd_login_details.session_auth
 
         with edd_session_auth:
@@ -769,10 +803,16 @@ def main():
             ##############################
             login_application = 'ICE'
             ice_login_details = session_login(IceSessionAuth, ICE_URL, login_application,
-                                              username_arg=args.username,
-                                              password_arg=args.password,
-                                              user_input=user_input, print_result=True)
+                                              username_arg=edd_login_details.username,
+                                              password_arg=edd_login_details.password,
+                                              user_input=user_input, print_result=True,
+                                              verify_ssl_cert=verify_ice_ssl_cert)
+
             ice_session_auth = ice_login_details.session_auth
+
+            # remove password(s) from memory as soon as used
+            edd_login_details.password = None
+            ice_login_details.password = None
 
             with ice_session_auth:
                 ice = IceTestStub(ice_session_auth, ICE_URL, result_limit=ICE_RESULT_PAGE_SIZE)
@@ -1174,15 +1214,19 @@ def process_edd_strain(edd_strain, edd, ice, process_all_ice_entry_links, proces
         being processed
 
         """
-
-        if not edd_strain.registry_id:
-            processing_summary.found_orphaned_edd_strain(edd_strain)
-            return False
-
         # TODO: make this a decorator
         strain_performance = StrainProcessingPerformance(arrow.utcnow(),
                                                          edd.request_generator.wait_time,
                                                          ice.request_generator.wait_time)
+
+        if not edd_strain.registry_id:
+            processing_summary.found_orphaned_edd_strain(edd_strain)
+            strain_performance.set_end_time(arrow.utcnow(), edd.request_generator.wait_time,
+                                        ice.request_generator.wait_time)
+            strain_performance.print_summary()
+
+            return False
+
         # get a
         # reference to the ICE part referenced from this EDD strain. because
         # of some initial gaps in EDD's strain creation process, it's possible that
@@ -1194,10 +1238,16 @@ def process_edd_strain(edd_strain, edd, ice, process_all_ice_entry_links, proces
         ice_entry = ice.get_entry(edd_strain.registry_id)
         if not ice_entry:
             processing_summary.found_stepchild_edd_strain(edd_strain)
+            strain_performance.set_end_time(arrow.utcnow(), edd.request_generator.wait_time,
+                                            ice.request_generator.wait_time)
+            strain_performance.print_summary()
             return False
 
         if not isinstance(ice_entry, IceStrain):
             processing_summary.found_non_strain_entry(edd_strain, ice_entry)
+            strain_performance.set_end_time(arrow.utcnow(), edd.request_generator.wait_time,
+                                            ice.request_generator.wait_time)
+            strain_performance.print_summary()
             return False
 
         ice_entry_uuid = edd_strain.registry_id
@@ -1221,7 +1271,7 @@ def process_edd_strain(edd_strain, edd, ice, process_all_ice_entry_links, proces
                 study_url = edd.get_abs_study_browser_url(study.pk).lower()
                 strain_performance.ice_link_search_time = None
                 strain_to_study_link = all_strain_experiment_links.get(study_url)
-                unprocessed_strain_experiment_links.pop(study_url)
+                unprocessed_strain_experiment_links.pop(study_url, None)
 
                 if strain_to_study_link:
                     missing_strain_study_links.pop(study_url)
@@ -1229,10 +1279,10 @@ def process_edd_strain(edd_strain, edd, ice, process_all_ice_entry_links, proces
                     # look for an unmaintained link to the study URL from the older
                     # perl version of EDD (these exist!). If found, update it.
                     perl_study_url = build_perl_study_url(study.pk).lower()
-                    strain_to_study_link = missing_strain_study_links.pop(perl_study_url)
+                    strain_to_study_link = missing_strain_study_links.pop(perl_study_url, None)
                     if not strain_to_study_link:
                         perl_study_url = build_perl_study_url(study.pk, https=True).lower()
-                        strain_to_study_link = missing_strain_study_links.pop(perl_study_url)
+                        strain_to_study_link = missing_strain_study_links.pop(perl_study_url, None)
 
                     if strain_to_study_link:
                         ice.link_entry_to_study(ice_entry_uuid, study.pk, study_url,

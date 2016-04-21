@@ -719,6 +719,18 @@ class EddApi(RestApiClient):
 
         return Study(**kwargs)
 
+    def get_abs_study_browser_url(self, study_pk, alternate_base_url=None):
+        """
+        Gets the absolute URL of the study with the provided identifier.
+        :return:
+        """
+        # Note: we purposefully DON'T use reverse() here since this code runs outside the context
+        # of Django, if the library is even installed (it shouldn't be required).
+        # Note: although it's normally best to abstract the URLs away from clients, in this case
+        # clients will need the URL to push study link updates to ICE.
+        base_url = alternate_base_url if alternate_base_url else self.base_url
+        return "%s/study/%s" % (base_url, study_pk)
+
 
 class DrfPagedResult(PagedResult):
     def __init__(self, results, total_result_count, next_page=None, previous_page=None):
@@ -809,14 +821,3 @@ class DrfPagedResult(PagedResult):
 
         return DrfPagedResult(results_obj_list, count, next_page, prev_page)
 
-    def get_abs_study_browser_url(self, study_pk, alternate_base_url=None):
-        """
-        Gets the absolute URL of the study with the provided identifier.
-        :return:
-        """
-        # Note: we purposefully DON'T use reverse() here since this code runs outside the context
-        # of Django, if the library is even installed (it shouldn't be required).
-        # Note: although it's normally best to abstract the URLs away from clients, in this case
-        # clients will need the URL to push study link updates to ICE.
-        base_url = alternate_base_url if alternate_base_url else self.base_url
-        return "%s/study/%s" %(base_url, study_pk)

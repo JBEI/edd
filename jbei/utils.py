@@ -153,9 +153,11 @@ def to_human_relevant_delta(seconds):
     return formatted_duration
 
 class LoginResult:
-    def __init__(self, session_auth, username):
+    def __init__(self, session_auth, username, password=None):
         self.session_auth = session_auth
         self.username = username
+        self.password = password
+
 
 def session_login(session_auth_class, base_url, application_name, username_arg=None,
                   password_arg=None, user_input=None, print_result=True, timeout=None,
@@ -204,10 +206,11 @@ def session_login(session_auth_class, base_url, application_name, username_arg=N
                 print 'Logging into %s at %s... ' % (application_name, base_url),
             edd_login_start_time = arrow.utcnow()
             session_auth = session_auth_class.login(base_url=base_url, username=username,
-                                                    password=password)
+                                                    password=password,
+                                                    verify_ssl_cert=verify_ssl_cert)
             if(session_auth):
                 if print_result:
                     print('success!')
-                return LoginResult(session_auth, username)
+                return LoginResult(session_auth, username, password)
             elif print_result:
                 print('failed :-{')
