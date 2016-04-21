@@ -113,11 +113,16 @@ class LineViewSet(viewsets.ReadOnlyModelViewSet):
 
 def filter_line_activity(query, line_active_status=ACTIVE_LINES_ONLY, query_prefix=''):
     """
-    Filters the input query by line active status
+    Filters the input query by line active status. Note that this filtering by line active status
+    will return one row for each line active relationship to the input query, so clients will often
+    want to use distinct() to limit the returned results
     :param query: the base query
-    :param line_active_status: a string with the line active status
-    :param query_prefix:
-    :return:
+    :param line_active_status: a string with the line active status. If this isn't one of the
+    recognized values, the default behavior is applied, filtering out inactive lines
+    :param query_prefix: an optional keyword prefix to prepend to the filtering query keyword
+    arguments. For example when querying Line, the default value of '' should by used,
+    or when querying for Study, use 'study__' similar to other queryset keyword arguments.
+    :return: the input query, filtered according to the parameters
     """
     line_active_status = line_active_status.lower()
 
@@ -208,14 +213,15 @@ class StrainStudiesView(viewsets.ReadOnlyModelViewSet):
                                                               keyword_prefix='line__study__')
             studies_query = studies_query.filter(study_user_permission_q)
 
-        studies_query = studies_query.distinct()
+        studies_query = studies_query.distinct()  # required by both line activity and studies
+                                                  # permissions queries
 
         return studies_query
 
 
 class StudyStrainsView(viewsets.ReadOnlyModelViewSet):
     """
-        API endpoint that study strains to be viewed
+        API endpoint that allows viewing the unique strains used within a specific study
     """
     serializer_class = StrainSerializer
     STUDY_URL_KWARG = 'study_pk'
@@ -228,26 +234,24 @@ class StudyStrainsView(viewsets.ReadOnlyModelViewSet):
         study_id_is_pk = re.match('^\d+$', study_id)
         line_active_status = self.kwargs.get(LINE_ACTIVE_STATUS_PARAM, LINES_ACTIVE_DEFAULT)
 
-        # filter by line active status, applying the default (only active lines)
-        active_status = self.kwargs.get(LINE_ACTIVE_STATUS_PARAM, LINES_ACTIVE_DEFAULT)
-        query = filter_line_activity(query, active_status)
-
         user = self.request.user
 
         # build the query, enforcing EDD's custom study access controls. Normally we'd require
         # sysadmin access to view strains, but the names/descriptions of strains in the study should
         # be visible to users with read access to a study that measures them
         study_user_permission_q = Study.user_permission_q(user, StudyPermission.READ,
-                                                              keyword_prefix='study__')
+                                                              keyword_prefix='line__study__')
 
         if study_id_is_pk:
-            strain_query = Study.objects.filter(study_user_permission_q, line__study__pk=study_id)
+            strain_query = Strain.objects.filter(study_user_permission_q, line__study__pk=study_id)
         else:
-            strain_query = Study.objects.filter(study_user_permission_q,
+            strain_query = Strain.objects.filter(study_user_permission_q,
                                                 line__study_registry_id=study_id)
 
         # filter by line active status, applying the default (only active lines)
         strain_query = filter_line_activity(strain_query, line_active_status, query_prefix='line__')
+        strain_query = strain_query.distinct()  # required by both study permission query and
+                                                # line activity filter queries above
 
         return strain_query
 
@@ -278,12 +282,15 @@ class StudyLineView(viewsets.ModelViewSet):  # LineView(APIView):
             study_user_permission_q = Study.user_permission_q(user, requested_permission,
                                                               keyword_prefix='study__')
             line_query = Line.objects.filter(study_user_permission_q,
-                                             study__pk=study_pk).distinct()
+                                             study__pk=study_pk)
         else:
             line_query = Line.objects.filter(study__pk=study_pk)
 
         # filter by line active status, applying the default (only active lines)
         line_query = filter_line_activity(line_query, line_active_status)
+
+        line_query = line_query.distinct()  # distinct required by both study permissions check
+                                            # and line activity filter above
 
         return line_query
 

@@ -406,8 +406,8 @@ class ProcessingSummary:
         return self._development_links_pruned
 
     @property
-    def invalid_links_removed(self):
-        return self._removed_invalid_links
+    def invalid_links_pruned(self):
+        return self._invalid_links_pruned
 
     ################################################################################################
 
@@ -1168,8 +1168,11 @@ def process_edd_strain(edd_strain, edd, ice, process_all_ice_entry_links, proces
         it doesn't have the required ICE URL / UUID
         :param overall_performance: a Performance object for tracking time spent on various tasks
         during the (long) execution time of the whole program
+        :param cleaning_ice_test_instance: True if the ICE instance being examined is a test
+        deployment
         :return true if the strain was successfully processed, false if something prevented it from
         being processed
+
         """
 
         if not edd_strain.registry_id:

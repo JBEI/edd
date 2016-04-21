@@ -598,20 +598,25 @@ class EddApi(RestApiClient):
         :return:
         """
 
-        # make the HTTP request
-        url = '%s/rest/study/%d/strains/%s' % (self.base_url, study_pk, str(strain_pk))
         request_generator = self.session_auth.request_generator
+        response = None
 
-        # add parameters to
-        params = {}
+        if query_url:
+            request_generator.get(query_url, headers=self._json_header)
 
-        if line_active_status:
-            params[LINE_ACTIVE_STATUS_PARAM] = line_active_status
+        else:
+            url = '%s/rest/study/%d/strains/%s' % (self.base_url, study_pk, str(strain_id))
 
-        if page_number:
-            params[PAGE_NUMBER_QUERY_PARAM] = page_number
+            # add parameters to the request
+            params = {}
 
-        response = request_generator.get(url, headers=self._json_header, params=params)
+            if line_active_status:
+                params[LINE_ACTIVE_STATUS_PARAM] = line_active_status
+
+            if page_number:
+                params[PAGE_NUMBER_QUERY_PARAM] = page_number
+
+            response = request_generator.get(url, headers=self._json_header, params=params)
 
         # throw an error for unexpected reply
         if response.status_code != requests.codes.ok:
