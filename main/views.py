@@ -35,7 +35,7 @@ from .importer import (
     interpret_raw_rna_seq_data,
 )
 from .export.sbml import (
-    SbmlExport, SbmlExportMeasurementsForm, SbmlExportOdForm, SbmlExportSettingsForm,
+    SbmlExportMeasurementsForm, SbmlExportOdForm, SbmlExportSettingsForm, SbmlMatchReactions,
 )
 from .export.table import ExportSelection, TableExport, WorklistExport
 from .forms import (
@@ -644,6 +644,7 @@ class SbmlView(EDDExportView):
 
     def init_forms(self, request, payload):
         context = super(SbmlView, self).init_forms(request, payload)
+        form_dict = {}
         # want to bind export_settings always to allow validation
         export_settings = SbmlExportSettingsForm(
             data=request.POST,
@@ -658,43 +659,46 @@ class SbmlView(EDDExportView):
         # detect if we're coming from a form submit on study page or a re-submit from export page
         form_data = None
         if export_settings.add_prefix('sbml_template') in request.POST:
+            # bind POST to following forms
             form_data = request.POST
         else:
+            # update previous forms to use defaults instead of triggering validation errors
             export_settings.update_bound_data_with_defaults()
             od_select.update_bound_data_with_defaults()
-        export_settings.is_valid()  # don't care for result
-        od_select.is_valid()  # don't care for result right now, just triggering validation
-        hplc_select = SbmlExportMeasurementsForm(
-            data=form_data, prefix='hplc', selection=self.selection,
-            qfilter=Q(assay__protocol__categorization=Protocol.CATEGORY_HPLC),
-        )
-        ms_select = SbmlExportMeasurementsForm(
-            data=form_data, prefix='ms', selection=self.selection,
-            qfilter=Q(assay__protocol__categorization=Protocol.CATEGORY_LCMS),
-        )
-        ramos_select = SbmlExportMeasurementsForm(
-            data=form_data, prefix='ramos', selection=self.selection,
-            qfilter=Q(assay__protocol__categorization=Protocol.CATEGORY_RAMOS),
-        )
-        omics_select = SbmlExportMeasurementsForm(
-            data=form_data, prefix='ramos', selection=self.selection,
-            qfilter=Q(assay__protocol__categorization=Protocol.CATEGORY_TPOMICS),
-        )
-        export = SbmlExport(export_settings)
-        sbml_warnings = chain(
-            export_settings.sbml_warnings, od_select.sbml_warnings, hplc_select.sbml_warnings,
-            ms_select.sbml_warnings, ramos_select.sbml_warnings, omics_select.sbml_warnings,
-        )
-        export.add_measurements(od_select.cleaned_data['measurement'])
+        form_dict.update({
+            'hplc_select_form': SbmlExportMeasurementsForm(
+                data=form_data, prefix='hplc', selection=self.selection,
+                qfilter=Q(assay__protocol__categorization=Protocol.CATEGORY_HPLC),
+            ),
+            'ms_select_formm': SbmlExportMeasurementsForm(
+                data=form_data, prefix='ms', selection=self.selection,
+                qfilter=Q(assay__protocol__categorization=Protocol.CATEGORY_LCMS),
+            ),
+            'ramos_select_form': SbmlExportMeasurementsForm(
+                data=form_data, prefix='ramos', selection=self.selection,
+                qfilter=Q(assay__protocol__categorization=Protocol.CATEGORY_RAMOS),
+            ),
+            'omics_select_form': SbmlExportMeasurementsForm(
+                data=form_data, prefix='ramos', selection=self.selection,
+                qfilter=Q(assay__protocol__categorization=Protocol.CATEGORY_TPOMICS),
+            ),
+        })
+        match_form = None
+        if export_settings.is_valid():
+            match_form = SbmlMatchReactions(export_settings)
+            for f in form_dict.itervalues():
+                if f.is_valid():
+                    match_form.add_measurements(f.cleaned_data['measurement'])
+            match_form.order_fields()
+        form_dict.update(match_form=match_form)
+        sbml_warnings = chain(*[f.sbml_warnings for f in form_dict.itervalues()])
         try:
+            context.update(form_dict)
             context.update(
                 export_settings_form=export_settings,
                 od_select_form=od_select,
-                hplc_select_form=hplc_select,
-                ms_select_form=ms_select,
-                ramos_select_form=ramos_select,
-                omics_select_form=omics_select,
-                sbml_warnings=list(sbml_warnings)
+                match_form=match_form,
+                sbml_warnings=list(sbml_warnings),
             )
         except Exception as e:
             logger.exception("Failed to validate forms for export: %s", e)

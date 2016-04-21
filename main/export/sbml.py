@@ -42,6 +42,7 @@
 from __future__ import division, unicode_literals
 
 import json
+import libsbml
 import logging
 import math
 import re
@@ -140,21 +141,24 @@ class SbmlExportMeasurementsForm(SbmlForm):
             baseline = another SbmlExportMeasurementsForm used to find timepoints where values
                 should be interpolated
         """
-        self._selection = selection
         qfilter = kwargs.pop('qfilter', None)
         self._types = kwargs.pop('types', None)
         self._protocols = kwargs.pop('protocols', None)
         self._baseline = kwargs.pop('baseline', None)
         super(SbmlExportMeasurementsForm, self).__init__(*args, **kwargs)
+        self._selection = selection
         measurement_queryset = self._init_measurement_field(qfilter)
         # depends on measurement field being initialized
         self._init_interpolate_field(measurement_queryset)
 
     def _init_interpolate_field(self, measurement_queryset):
-        f = self.fields['interpolate']
-        f.queryset = Protocol.objects.filter(
-            assay__measurement__in=measurement_queryset
-        ).distinct()
+        # do not show when there are no measurements, otherwise show the available protocols
+        if measurement_queryset.count() == 0:
+            del self.fields['interpolate']
+        else:
+            self.fields['interpolate'].queryset = Protocol.objects.filter(
+                assay__measurement__in=measurement_queryset
+            ).distinct()
 
     def _init_measurement_field(self, qfilter):
         f = self.fields['measurement']
@@ -167,6 +171,7 @@ class SbmlExportMeasurementsForm(SbmlForm):
             f.queryset = f.queryset.filter(qfilter)
         if f.queryset.count() == 0:
             self.sbml_warnings.append(_('No protocols have usable data.'))
+            f.initial = []
         else:
             f.initial = f.queryset
         return f.queryset
@@ -363,13 +368,33 @@ class SbmlExportOdForm(SbmlExportMeasurementsForm):
             self.data = replace_data
 
 
-class SbmlExport(object):
+class SbmlMatchReactions(SbmlForm):
     def __init__(self, settings_form, *args, **kwargs):
         self._sbml_template = settings_form.cleaned_data.get('sbml_template', None)
+        if self._sbml_template:
+            self._sbml_obj = self._sbml_template.parseSBML()
+            self._sbml_model = self._sbml_obj.getModel()
+        self._exchange_order = []
+        self._species_order = []
 
     def add_measurements(self, measurements):
         for m in measurements:
-            print(m)
+            species_id = 'species-%s' % m.measurement_type_id
+            exchange_id = 'exchange-%s' % m.measurement_type_id
+            if species_id not in self.fields:
+                self._species_order.append(species_id)
+                self.fields[species_id] = forms.CharField()  # TODO use an autocomplete
+            if exchange_id not in self.fields:
+                self._exchange_order.append(exchange_id)
+                self.fields[exchange_id] = forms.CharField()  # TODO use an autocomplete
+
+    def order_fields(self, field_order=None):
+        if field_order is None:
+            field_order = []
+        # use existing ordering call, making sure the inserted fields are grouped
+        super(SbmlMatchReactions, self).order_fields(
+            field_order + self._species_order + self._exchange_order
+        )
 
 
 ########################################################################
@@ -913,25 +938,6 @@ class sbml_info(object):
             "template_id": m.id,
             "is_selected": m is self._chosen_template,
         } for i, m in enumerate(self._sbml_templates)]
-
-    # SPECIES
-    @property
-    def n_sbml_species(self):
-        return len([s for s in self._sbml_species if not s.is_duplicate])
-
-    @property
-    def n_sbml_species_notes(self):
-        return len([s for s in self._sbml_species if s.n_notes > 0])
-
-    def sbml_species(self):
-        return self._sbml_species
-
-    def species_note_counts(self):
-        detected_notes = defaultdict(int)
-        for sp in self._sbml_species:
-            for key in sp.notes.keys():
-                detected_notes[key] += 1
-        return [{"key": k, "count": v} for k, v in detected_notes.iteritems()]
 
     # REACTIONS
     @property

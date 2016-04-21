@@ -16,7 +16,7 @@
     var dataArea, tables, sep, rsplit, ctrl;
     dataArea = $('#textData').hide();
     tables = dataArea.val().split('\n\n');
-    sep = $('#id_separator').val() === 'csv' ? ',' : '\t';
+    sep = $('#id_separator').val();
     rsplit = function (row) { return row.split(sep); };
     tables = $(tables.map(function (table) {
       var rows, container, hot;
