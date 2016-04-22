@@ -729,7 +729,7 @@ class EddApi(RestApiClient):
         # Note: although it's normally best to abstract the URLs away from clients, in this case
         # clients will need the URL to push study link updates to ICE.
         base_url = alternate_base_url if alternate_base_url else self.base_url
-        return "%s/study/%s" % (base_url, study_pk)
+        return "%s/study/%s/" % (base_url, study_pk)
 
 
 class DrfPagedResult(PagedResult):
