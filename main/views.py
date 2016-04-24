@@ -647,20 +647,20 @@ class SbmlView(EDDExportView):
         form_dict = {}
         # want to bind export_settings always to allow validation
         export_settings = SbmlExportSettingsForm(
-            data=request.POST,
+            data=payload,
             initial={'sbml_template': self.selection.studies[0].metabolic_map, },
         )
         # want to bind od_select always to allow validation
         od_select = SbmlExportOdForm(
-            data=request.POST, prefix='od', selection=self.selection,
+            data=payload, prefix='od', selection=self.selection,
             qfilter=(Q(measurement_type__short_name='OD') &
                      Q(assay__protocol__categorization=Protocol.CATEGORY_OD)),
         )
         # detect if we're coming from a form submit on study page or a re-submit from export page
         form_data = None
-        if export_settings.add_prefix('sbml_template') in request.POST:
+        if export_settings.add_prefix('sbml_template') in payload:
             # bind POST to following forms
-            form_data = request.POST
+            form_data = payload
         else:
             # update previous forms to use defaults instead of triggering validation errors
             export_settings.update_bound_data_with_defaults()
@@ -670,7 +670,7 @@ class SbmlView(EDDExportView):
                 data=form_data, prefix='hplc', selection=self.selection,
                 qfilter=Q(assay__protocol__categorization=Protocol.CATEGORY_HPLC),
             ),
-            'ms_select_formm': SbmlExportMeasurementsForm(
+            'ms_select_form': SbmlExportMeasurementsForm(
                 data=form_data, prefix='ms', selection=self.selection,
                 qfilter=Q(assay__protocol__categorization=Protocol.CATEGORY_LCMS),
             ),
@@ -689,9 +689,17 @@ class SbmlView(EDDExportView):
             for f in form_dict.itervalues():
                 if f.is_valid():
                     match_form.add_measurements(f.cleaned_data['measurement'])
-            match_form.order_fields()
-        form_dict.update(match_form=match_form)
-        sbml_warnings = chain(*[f.sbml_warnings for f in form_dict.itervalues()])
+            form_dict.update(match_form=match_form)
+        else:
+            for f in form_dict.itervalues():
+                f.is_valid()  # triggering validation only
+        od_select.is_valid()  # don't care about result at this point, only triggering validation
+        # collect all the warnings together for counting
+        sbml_warnings = chain(
+            export_settings.sbml_warnings,
+            od_select.sbml_warnings,
+            *map(lambda f: f.sbml_warnings, form_dict.itervalues())
+        )
         try:
             context.update(form_dict)
             context.update(

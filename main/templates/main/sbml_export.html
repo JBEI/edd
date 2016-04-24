@@ -320,7 +320,28 @@
           {% include 'main/include/export/warningnotice.html' %}
         </div>
         <div class="sectionContent discloseBody" id="statusstep7main">
-          {{ match_form.as_table }}
+          <div class="rounded-border" style="display: inline-block;">
+            <table class="dataTable" cellspacing="0">
+              <thead>
+                <tr>
+                  <td>{% trans "Measurement Type" %}</td>
+                  <td>{% trans "Species in model" %}</td>
+                  <td>{% trans "Reactant / Exchange in model" %}</td>
+                </tr>
+              </thead>
+              <tbody>
+              {% for field in match_form %}
+                <tr>
+                  <td>{{ field.label }}</td>
+                  {# The below is a little gross, one TD used for two cells #}
+                  {# SbmlMatchReactionWidget outputs sub-widgets joined by close/open TD tags #}
+                  {# Framework does not provide a nicer way to do custom widget layouts #}
+                  <td>{{ field }}</td>
+                </tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
         </div><!-- #statusstep7main -->
       </div>
       {% endwith %}<!-- #step7 -->

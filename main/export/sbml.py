@@ -42,7 +42,6 @@
 from __future__ import division, unicode_literals
 
 import json
-import libsbml
 import logging
 import math
 import re
@@ -64,7 +63,7 @@ from threadlocals.threadlocals import get_current_request
 
 from ..forms import MetadataTypeAutocompleteWidget
 from ..models import (
-    Attachment, Measurement, MeasurementType, MeasurementUnit, Metabolite, MetaboliteExchange,
+    Measurement, MeasurementType, MeasurementUnit, Metabolite, MetaboliteExchange,
     MetaboliteSpecies, MetadataType, Protocol, SBMLTemplate,
 )
 from ..utilities import interpolate_at, line_export_base
@@ -368,33 +367,55 @@ class SbmlExportOdForm(SbmlExportMeasurementsForm):
             self.data = replace_data
 
 
+class SbmlMatchReactionWidget(forms.widgets.MultiWidget):
+    def __init__(self, attrs=None):
+        widgets = (
+            forms.widgets.TextInput(),  # TODO use an autocomplete
+            forms.widgets.TextInput(),  # TODO use an autocomplete
+        )
+        super(SbmlMatchReactionWidget, self).__init__(widgets, attrs)
+
+    def decompress(self, value):
+        if value is None:
+            return ('', '')
+        return value  # value is a tuple anyway
+
+    def format_output(self, rendered_widgets):
+        return '</td><td>'.join(rendered_widgets)
+
+
+class SbmlMatchReactionField(forms.MultiValueField):
+    widget = SbmlMatchReactionWidget
+
+    def __init__(self, *args, **kwargs):
+        fields = (
+            forms.CharField(),  # TODO use an autocomplete
+            forms.CharField(),  # TODO use an autocomplete
+        )
+        super(SbmlMatchReactionField, self).__init__(fields, *args, **kwargs)
+
+    def compress(self, data_list):
+        if data_list:
+            # TODO validation
+            return (data_list[0], data_list[1])
+        return None
+
+
 class SbmlMatchReactions(SbmlForm):
     def __init__(self, settings_form, *args, **kwargs):
+        super(SbmlMatchReactions, self).__init__(*args, **kwargs)
         self._sbml_template = settings_form.cleaned_data.get('sbml_template', None)
         if self._sbml_template:
             self._sbml_obj = self._sbml_template.parseSBML()
             self._sbml_model = self._sbml_obj.getModel()
-        self._exchange_order = []
-        self._species_order = []
 
     def add_measurements(self, measurements):
         for m in measurements:
-            species_id = 'species-%s' % m.measurement_type_id
-            exchange_id = 'exchange-%s' % m.measurement_type_id
-            if species_id not in self.fields:
-                self._species_order.append(species_id)
-                self.fields[species_id] = forms.CharField()  # TODO use an autocomplete
-            if exchange_id not in self.fields:
-                self._exchange_order.append(exchange_id)
-                self.fields[exchange_id] = forms.CharField()  # TODO use an autocomplete
-
-    def order_fields(self, field_order=None):
-        if field_order is None:
-            field_order = []
-        # use existing ordering call, making sure the inserted fields are grouped
-        super(SbmlMatchReactions, self).order_fields(
-            field_order + self._species_order + self._exchange_order
-        )
+            key = '%s' % m.measurement_type_id
+            if key not in self.fields:
+                self.fields[key] = SbmlMatchReactionField(
+                    label=m.measurement_type.type_name,
+                )
 
 
 ########################################################################
