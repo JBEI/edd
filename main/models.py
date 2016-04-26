@@ -1701,11 +1701,19 @@ class MetaboliteExchange(models.Model):
     """ Mapping for a metabolite to an exchange defined by a SBML template. """
     class Meta:
         db_table = "measurement_type_to_exchange"
-        unique_together = (("sbml_template", "measurement_type"), )
+        index_together = (
+            ("sbml_template", "reactant_name"),  # index implied by unique, making explicit
+            ("sbml_template", "exchange_name"),
+        )
+        unique_together = (
+            ("sbml_template", "reactant_name"),
+            ("sbml_template", "exchange_name"),
+            ("sbml_template", "measurement_type"),
+        )
     sbml_template = models.ForeignKey(SBMLTemplate)
-    measurement_type = models.ForeignKey(MeasurementType)
-    reactant_name = models.CharField(max_length=255)
-    exchange_name = models.CharField(max_length=255)
+    measurement_type = models.ForeignKey(MeasurementType, blank=True, null=True)
+    reactant_name = VarCharField()
+    exchange_name = VarCharField()
 
     def __str__(self):
         return self.exchange_name
@@ -1716,10 +1724,16 @@ class MetaboliteSpecies(models.Model):
     """ Mapping for a metabolite to an species defined by a SBML template. """
     class Meta:
         db_table = "measurement_type_to_species"
-        unique_together = (("sbml_template", "measurement_type"), )
+        index_together = (
+            ("sbml_template", "species"),  # index implied by unique, making explicit
+        )
+        unique_together = (
+            ("sbml_template", "species"),
+            ("sbml_template", "measurement_type"),
+        )
     sbml_template = models.ForeignKey(SBMLTemplate)
-    measurement_type = models.ForeignKey(MeasurementType)
-    species = models.TextField()
+    measurement_type = models.ForeignKey(MeasurementType, blank=True, null=True)
+    species = VarCharField()
 
     def __str__(self):
         return self.species
