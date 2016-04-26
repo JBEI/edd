@@ -30,6 +30,7 @@ from io import BytesIO
 from itertools import chain
 
 from jbei.ice.rest.ice import IceApi, STRAIN, IceHmacAuth
+from . import autocomplete
 from .importer import (
     TableImport, import_rna_seq, import_rnaseq_edgepro, interpret_edgepro_data,
     interpret_raw_rna_seq_data,
@@ -1372,79 +1373,26 @@ def search(request):
     """ Naive implementation of model-independent server-side autocomplete backend,
         paired with autocomplete2.js on the client side. Call out to Solr or ICE where
         needed. """
-    term = request.GET["term"]
-    re_term = re.escape(term)
-    model_name = request.GET["model"]
-    results = []
-    if model_name == "User":
-        solr = UserSearch()
-        found = solr.query(query=term, options={'edismax': True})
-        results = found['response']['docs']
-    elif model_name == "Strain":
-        ice = IceApi(auth=IceHmacAuth.get(username=request.user.email))
-        found = ice.search_entries(term, entry_types=[STRAIN], suppress_errors=True)
-        if found is None:  # there were errors searching
-            results = []
-        else:
-            results = [search_result.entry.to_json_dict() for search_result in found.results]
-    elif model_name == "Group":
-        found = Group.objects.filter(name__iregex=re_term).order_by('name')[:20]
-        results = [{'id': item.pk, 'name': item.name} for item in found]
-    elif model_name == "StudyWrite":
-        found = Study.objects.distinct().filter(
-            Q(name__iregex=re_term) | Q(description__iregex=re_term),
-            Q(userpermission__user=request.user, userpermission__permission_type='W') |
-            Q(grouppermission__group__user=request.user, grouppermission__permission_type='W'))
-        results = [item.to_json() for item in found]
-    elif model_name == "MeasurementCompartment":
-        # Always return the full set of options; no search needed
-        results = [{'id': c[0], 'name': c[1]} for c in MeasurementCompartment.GROUP_CHOICE]
-    elif model_name == "GenericOrMetabolite":
-        # searching for EITHER a generic measurement OR a metabolite
-        found = MeasurementType.objects.filter(
-            Q(type_group__in=(MeasurementGroup.GENERIC, MeasurementGroup.METABOLITE, )) &
-            (Q(type_name__iregex=re_term) | Q(short_name__iregex=re_term)),
-        )[:20]
-        results = [item.to_json() for item in found]
+    return model_search(request, request.GET["model"])
+
+
+AUTOCOMPLETE_VIEW_LOOKUP = {
+    'GenericOrMetabolite': autocomplete.search_metaboliteish,
+    'Group': autocomplete.search_group,
+    'MeasurementCompartment': autocomplete.search_compartment,
+    'Strain': autocomplete.search_strain,
+    'StudyWrite': autocomplete.search_study_writable,
+    'User': autocomplete.search_user,
+}
+
+
+# /search/<model_name>/
+def model_search(request, model_name):
+    searcher = AUTOCOMPLETE_VIEW_LOOKUP.get(model_name, None)
+    if searcher:
+        return searcher(request)
     elif meta_pattern.match(model_name):
-        # add appropriate filters for Assay, AssayLine, Line, Study
         match = meta_pattern.match(model_name)
-        type_filters = []
-        if match.group(1) == 'Study':
-            type_filters.append(Q(for_context='S'))
-        elif match.group(1) == 'Line':
-            type_filters.append(Q(for_context='L'))
-        elif match.group(1) == 'Assay':
-            type_filters.append(Q(for_context='A'))
-        elif match.group(1) == 'AssayLine':
-            type_filters.append(Q(for_context='L'))
-            type_filters.append(Q(for_context='A'))
-        # TODO: search core that will also search resolved i18n values
-        term_filters = [Q(type_name__iregex=re_term), Q(group__group_name__iregex=re_term)]
-        found = MetadataType.objects.filter(
-            reduce(operator.or_, type_filters, Q())
-            ).filter(
-            reduce(operator.or_, term_filters, Q())
-            )[:20]
-        results = [item.to_json() for item in found]
+        return autocomplete.search_metadata(request, match.group(1))
     else:
-        from . import models as edd_models
-        Model = getattr(edd_models, model_name)
-        # gets all the direct field names that can be filtered by terms
-        ifields = [
-            f.get_attname()
-            for f in Model._meta.get_fields()
-            if hasattr(f, 'get_attname') and (
-                f.get_internal_type() == 'TextField' or
-                f.get_internal_type() == 'CharField'
-                )
-            ]
-        # term_filters = []
-        term_filters = [Q(**{f+'__iregex': re_term}) for f in ifields]
-        # construct a Q object for each term/field combination
-        # for term in term.split():
-        #     term_filters.extend([ Q(**{ f+'__iregex': term }) for f in ifields ])
-        # run search with each Q object OR'd together; limit to 20
-        found = Model.objects.filter(reduce(operator.or_, term_filters, Q()))[:20]
-        results = [item.to_json() for item in found]
-    return JsonResponse({"rows": results})
+        return autocomplete.search_generic(request, model_name)
