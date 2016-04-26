@@ -1678,11 +1678,14 @@ class SBMLTemplate(EDDObject):
         return rlist
 
     def parseSBML(self):
-        if not hasattr(self, '_sbml_model'):
+        if not hasattr(self, '_sbml_document'):
+            # self.sbml_file = ForeignKey
+            # self.sbml_file.file = FileField on Attachment
+            # self.sbml_file.file.file = File object on FileField
             contents = self.sbml_file.file.file.read()
             import libsbml
-            self._sbml_model = libsbml.readSBMLFromString(contents)
-        return self._sbml_model
+            self._sbml_document = libsbml.readSBMLFromString(contents)
+        return self._sbml_document
 
     def save(self, *args, **kwargs):
         # may need to do a post-save signal; get sbml attachment and save in sbml_file
@@ -1702,11 +1705,10 @@ class MetaboliteExchange(models.Model):
     class Meta:
         db_table = "measurement_type_to_exchange"
         index_together = (
-            ("sbml_template", "reactant_name"),  # index implied by unique, making explicit
-            ("sbml_template", "exchange_name"),
+            ("sbml_template", "reactant_name"),  # reactants not unique, but should be searchable
+            ("sbml_template", "exchange_name"),  # index implied by unique, making explicit
         )
         unique_together = (
-            ("sbml_template", "reactant_name"),
             ("sbml_template", "exchange_name"),
             ("sbml_template", "measurement_type"),
         )
