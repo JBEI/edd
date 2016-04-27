@@ -1380,6 +1380,8 @@ AUTOCOMPLETE_VIEW_LOOKUP = {
     'GenericOrMetabolite': autocomplete.search_metaboliteish,
     'Group': autocomplete.search_group,
     'MeasurementCompartment': autocomplete.search_compartment,
+    'MetaboliteExchange': autocomplete.search_sbml_exchange,
+    'MetaboliteSpecies': autocomplete.search_sbml_species,
     'Strain': autocomplete.search_strain,
     'StudyWrite': autocomplete.search_study_writable,
     'User': autocomplete.search_user,

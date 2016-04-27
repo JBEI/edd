@@ -184,11 +184,12 @@ EDD_auto.initial_search = function initial_search(selector, term) {
 
 // Sets up the multicolumn autocomplete widget.  Must be called after the
 // $(window).load handler above.
-EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(selector, model_name, cache) {
-    var empty = {}, columns, display_key, value_key, cacheId;
+EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(selector, model_name, cache, options) {
+    var empty = {}, columns, display_key, value_key, cacheId, opt;
     if (typeof model_name === "undefined") {
         throw Error("model_name must be defined!");
     }
+    opt = $.extend({}, options);
     columns = EDD_auto.column_layouts[model_name] || [ new AutoColumn('Name', '300px', 'name') ];
     display_key = EDD_auto.display_keys[model_name] || 'name';
     value_key = EDD_auto.value_keys[model_name] || 'id';
@@ -235,10 +236,10 @@ EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(selector, 
             $.ajax({
                 'url': '/search',
                 'dataType': 'json',
-                'data': {
+                'data': $.extend({
                     'model': model_name,
                     'term': request.term
-                },
+                }, opt.search_extra),
                 // The success event handler will display "No match found" if no items are returned.
                 'success': function (data) {
                     if (!data || !data.rows || data.rows.length === 0) {
@@ -302,6 +303,19 @@ $(window).load(function () {
         };
         $(item.selector).each(setup_func);
     });
+    // the SBML autocomplete's need to send along extra data
+    $('.autocomp_sbml_r').each(function () {
+        var opt = {
+            'search_extra': { 'template': $(this).data('template') }
+        };
+        EDD_auto.setup_field_autocomplete(this, 'MetaboliteExchange', EDDData.Exchange = EDDData.Exchange || {}, opt);
+    });
+    $('.autocomp_sbml_s').each(function () {
+        var opt = {
+            'search_extra': { 'template': $(this).data('template') }
+        };
+        EDD_auto.setup_field_autocomplete(this, 'MetaboliteSpecies', EDDData.Species = EDDData.Species || {}, opt);
+    })
     // this makes the autocomplete work like a dropdown box
     // fires off a search as soon as the element gains focus
     $(document).on('focus', '.autocomp', function (ev) {

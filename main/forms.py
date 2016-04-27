@@ -12,7 +12,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.contrib.postgres.forms import HStoreField
 from django.core.exceptions import ValidationError
-from django.db.models import Prefetch, Q
+from django.db.models import Prefetch
 from django.db.models.base import Model
 from django.db.models.manager import BaseManager
 from django.http import QueryDict
@@ -25,8 +25,8 @@ from jbei.ice.rest.ice import IceApi, HmacAuth, IceHmacAuth
 from .export import table
 from .models import (
     Assay, Attachment, CarbonSource, Comment, Line, Measurement, MeasurementType,
-    MeasurementValue, MetadataType, Protocol, Strain, Study, StudyPermission, Update,
-    WorklistTemplate, WorklistColumn,
+    MeasurementValue, MetaboliteExchange, MetaboliteSpecies, MetadataType, Protocol, Strain,
+    Study, StudyPermission, Update, WorklistTemplate, WorklistColumn,
 )
 
 User = get_user_model()
@@ -56,16 +56,12 @@ class AutocompleteWidget(forms.widgets.MultiWidget):
         self.model = model
         super(AutocompleteWidget, self).__init__(_widgets, attrs)
 
-    def get_model(self):
-        return self.model
-
     def decompress(self, value):
         # if the value is the actual model instance, don't try to look up model
         if isinstance(value, Model):
             return [self.display_value(value), value.pk]
         elif value:
-            SelfModel = self.get_model()
-            o = SelfModel.objects.get(pk=value)
+            o = self.model.objects.get(pk=value)
             return [self.display_value(o), value]
         return ['', None]
 
@@ -256,6 +252,41 @@ class MeasurementTypeAutocompleteWidget(AutocompleteWidget):
         my_opt.update(**opt)
         super(MeasurementTypeAutocompleteWidget, self).__init__(
             attrs=attrs, model=MeasurementType, opt=my_opt,
+        )
+
+
+class SbmlInfoAutocompleteWidget(AutocompleteWidget):
+    """ Autocomplete widget for parts contained within SBMLTemplate """
+    def __init__(self, template, model, attrs=None, opt={}):
+        self._template = template
+        opt.get('text_attr', {}).update({'data-template': template.pk})
+        super(SbmlInfoAutocompleteWidget, self).__init__(attrs=attrs, model=model, opt=opt)
+
+    def decompress(self, value):
+        # if the value is the actual model instance, don't try to look up model
+        if isinstance(value, self.model):
+            return [self.display_value(value), value.pk]
+        elif value:
+            o = self.model.objects.get(pk=value, sbml_template=self.template)
+            return [self.display_value(o), value]
+        return ['', None]
+
+
+class SbmlExchangeAutocompleteWidget(SbmlInfoAutocompleteWidget):
+    """ Autocomplete widget for Exchanges in an SBMLTemplate """
+    def __init__(self, template, attrs=None, opt={}):
+        opt.update(text_attr={'class': 'autocomp autocomp_sbml_r'})
+        super(SbmlExchangeAutocompleteWidget, self).__init__(
+            template=template, attrs=attrs, model=MetaboliteExchange, opt=opt
+        )
+
+
+class SbmlSpeciesAutocompleteWidget(SbmlInfoAutocompleteWidget):
+    """ Autocomplete widget for Species in an SBMLTemplate """
+    def __init__(self, template, attrs=None, opt={}):
+        opt.update(text_attr={'class': 'autocomp autocomp_sbml_s'})
+        super(SbmlSpeciesAutocompleteWidget, self).__init__(
+            template=template, attrs=attrs, model=MetaboliteSpecies, opt=opt
         )
 
 

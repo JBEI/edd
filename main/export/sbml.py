@@ -61,7 +61,9 @@ from django.utils.translation import ugettext as _
 from six import string_types
 from threadlocals.threadlocals import get_current_request
 
-from ..forms import MetadataTypeAutocompleteWidget
+from ..forms import (
+    MetadataTypeAutocompleteWidget, SbmlExchangeAutocompleteWidget, SbmlSpeciesAutocompleteWidget
+)
 from ..models import (
     Measurement, MeasurementType, MeasurementUnit, Metabolite, MetaboliteExchange,
     MetaboliteSpecies, MetadataType, Protocol, SBMLTemplate,
@@ -368,10 +370,10 @@ class SbmlExportOdForm(SbmlExportMeasurementsForm):
 
 
 class SbmlMatchReactionWidget(forms.widgets.MultiWidget):
-    def __init__(self, attrs=None):
+    def __init__(self, template, attrs=None):
         widgets = (
-            forms.widgets.TextInput(),  # TODO use an autocomplete
-            forms.widgets.TextInput(),  # TODO use an autocomplete
+            SbmlSpeciesAutocompleteWidget(template),
+            SbmlExchangeAutocompleteWidget(template),
         )
         super(SbmlMatchReactionWidget, self).__init__(widgets, attrs)
 
@@ -385,13 +387,9 @@ class SbmlMatchReactionWidget(forms.widgets.MultiWidget):
 
 
 class SbmlMatchReactionField(forms.MultiValueField):
-    widget = SbmlMatchReactionWidget
-
-    def __init__(self, *args, **kwargs):
-        fields = (
-            forms.CharField(),  # TODO use an autocomplete
-            forms.CharField(),  # TODO use an autocomplete
-        )
+    def __init__(self, template, *args, **kwargs):
+        fields = (forms.CharField(), forms.CharField())  # these are only placeholders
+        self.widget = SbmlMatchReactionWidget(template)
         super(SbmlMatchReactionField, self).__init__(fields, *args, **kwargs)
 
     def compress(self, data_list):
@@ -414,6 +412,7 @@ class SbmlMatchReactions(SbmlForm):
             key = '%s' % m.measurement_type_id
             if key not in self.fields:
                 self.fields[key] = SbmlMatchReactionField(
+                    template=self._sbml_template,
                     label=m.measurement_type.type_name,
                 )
 

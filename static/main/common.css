@@ -57,6 +57,9 @@ a:hover {
 .nowrap {
     white-space:nowrap;
 }
+.right-txt {
+    text-align: right;
+}
 .off {
     display:none;
     visibility:hidden;
@@ -1297,6 +1300,7 @@ ol.comment-list > li {
 }
 .helptext {
     color: gray;
+    display: block;
     font-size: 11px;
 }
 .meta-remove {
