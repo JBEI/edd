@@ -341,7 +341,8 @@ class Entry(object):
 
 
 class ExperimentLink(object):
-    def __init__(self, id, label, url, owner_email, creation_time, label=None):
+    def __init__(self, id, url, owner_email, creation_time, label=None):
+        self.label = label
         self.id = id
         self.url = url
         self.owner_email = owner_email
