@@ -1053,7 +1053,7 @@ def main():
                 edd_session_auth = EddSessionAuth.login(base_url=EDD_URL, username=username,
                                                         password=password, timeout=workaround_request_timeout)
                 performance.edd_login_delta += (edd_login_start_time - arrow.utcnow())
-                if(edd_session_auth):
+                if edd_session_auth:
                     print('success!')
                 else:
                     print('failed :-{')
