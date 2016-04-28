@@ -9,9 +9,12 @@ import re
 
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
+from rest_framework.permissions import IsAdminUser
+
 from edd.rest.serializers import LineSerializer, StudySerializer, UserSerializer, StrainSerializer
 from jbei.edd.rest.edd import LINE_ACTIVE_STATUS_PARAM, LINES_ACTIVE_DEFAULT, ACTIVE_LINES_ONLY, \
     ALL_LINES_VALUE, INACTIVE_LINES_ONLY
+from jbei.rest.utils import is_numeric_pk
 from main.models import Study, StudyPermission, Line, Strain, User
 from rest_framework import (mixins, permissions, status, viewsets)
 from rest_framework.generics import ListAPIView
@@ -33,61 +36,113 @@ logger = logging.getLogger(__name__)
 #         # studies are only available to users who have read permissions on them
 #         return study.user_can_read(request.user)
 
-STUDY_URL_KWARG='study'
+STRAIN_NESTED_RESOURCE_PARENT_PREFIX = r'strain'
+
+STUDY_URL_KWARG ='study'
+BASE_STRAIN_URL_KWARG = 'id'  # NOTE: value impacts url kwarg names for nested resources
 HTTP_MUTATOR_METHODS = ('POST', 'PUT', 'PATCH', 'UPDATE', 'DELETE')
 
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = UserSerializer
+
     def get_queryset(self):
         return User.objects.filter(self.kwargs['user'])
 
+
 class StrainViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows privileged users to get strain information. Support is provided for
+    :
+    1) flexible searching of strains
+    2) Access to a detailed view of a strain, based on local numeric primary key OR on the UUID
+    from ICE
+    """
     serializer_class = StrainSerializer
-    # TODO: we probably shouldn't expose strains that the user doesn't have view access to in ICE?
-    #  / EDD
+    lookup_url_kwarg = BASE_STRAIN_URL_KWARG
+    #lookup_value_regex = PK_OR_UUID_REGEX # TODO: implement or remove
+
+    def get_object(self):
+        """
+        Overrides the default implementation to provide flexible lookup for Strain detail
+        views (either based on local numeric primary key, or based on the strain UUID from ICE
+        """
+        filters = {}  # unlike the example, just do all the filtering in get_queryset() for
+                      # consistency
+        queryset = self.get_queryset()
+
+        obj = get_object_or_404(queryset, **filters)
+        self.check_object_permissions(self.request, obj)
+        return obj
 
     def get_queryset(self):
+        """
+        Overrides the default implementation to provide:
+        * flexible filtering based on a number of useful input parameters
+        * flexible strain lookup by local numeric pk OR by UUID from ICE
+        :return:
+        """
+
         logger.debug('in %s' % self.get_queryset.__name__)
         # parse optional query parameters
 
-        pk_filter = self.request.query_params.get('pk')
-        registry_id_filter = self.request.query_params.get('registry_id')
-        registry_url_regex_filter = self.request.query_params.get('registry_url_regex')
-        case_sensitive = self.request.query_params.get('case_sensitive')
-        name_filter = self.request.query_params.get('name')
-        name_regex_filter = self.request.query_params.get('name_regex')
-
+        # build a query, filtering by the provided user inputs
         query = Strain.objects.all()
 
-        if pk_filter:
-            query = query.filter(pk=pk_filter)
-
-        if registry_id_filter:
-            query = query.filter(registry_id=registry_id_filter)
-
-        if registry_url_regex_filter:
-            if case_sensitive:
-                query = query.filter(registry_url__regex=registry_url_regex_filter)
+        # if a strain UUID or local numeric pk was provided, get it
+        if self.kwargs:
+            strain_id_filter = self.kwargs.get(self.lookup_url_kwarg)
+            if is_numeric_pk(strain_id_filter):
+                query = Strain.objects.filter(pk=strain_id_filter)
             else:
-                query = query.filter(registry_url__iregex=registry_url_regex_filter)
+                query = Strain.objects.filter(registry_id=strain_id_filter)
+        # otherwise, we're searching strains, so filter them according to the provided params
+        else:
+            strain_id_filter = self.request.query_params.get(self.lookup_url_kwarg)
+            local_pk_filter = self.request.query_params.get('pk')  # NOTE:
+            registry_id_filter = self.request.query_params.get('registry_id')
+            registry_url_regex_filter = self.request.query_params.get('registry_url_regex')
+            case_sensitive = self.request.query_params.get('case_sensitive')
+            name_filter = self.request.query_params.get('name')
+            name_regex_filter = self.request.query_params.get('name_regex')
 
-        if name_filter:
-            if case_sensitive:
-                query = query.filter(name__contains=name_filter)
-            else:
-                query = query.filter(name__icontains=name_filter)
+            # if provided an ambiguously-defined unique ID for the strain, apply it based
+            # on the format of the provided value
+            if strain_id_filter:
+                if is_numeric_pk(strain_id_filter):
+                    query = query.filter(pk=strain_id_filter)
+                else:
+                    query = query.filter(registry_id=strain_id_filter)
 
-        if name_regex_filter:
-            if case_sensitive:
-                query = query.filter(name__regex=name_regex_filter)
-            else:
-                query = query.filter(name__iregex=name_regex_filter)
+            if local_pk_filter:
+                query = query.filter(pk=local_pk_filter)
+
+            if registry_id_filter:
+                query = query.filter(registry_id=registry_id_filter)
+
+            if registry_url_regex_filter:
+                if case_sensitive:
+                    query = query.filter(registry_url__regex=registry_url_regex_filter)
+                else:
+                    query = query.filter(registry_url__iregex=registry_url_regex_filter)
+
+            if name_filter:
+                if case_sensitive:
+                    query = query.filter(name__contains=name_filter)
+                else:
+                    query = query.filter(name__icontains=name_filter)
+
+            if name_regex_filter:
+                if case_sensitive:
+                    query = query.filter(name__regex=name_regex_filter)
+                else:
+                    query = query.filter(name__iregex=name_regex_filter)
 
         query = query.select_related('object_ref')
 
-        print('StrainViewSet query count=%d' % query.count())
-        print(query)
+        logger.debug('StrainViewSet query count=%d' % query.count())
+        if query.count() < 10:
+            logger.debug(query)
 
         return query
 
@@ -169,26 +224,49 @@ class StudyViewSet(viewsets.ReadOnlyModelViewSet):  # read-only for now...see TO
 
 
 NUMERIC_PK_PATTERN = re.compile('^\d+$')
-STRAIN_LOOKUP = 'strain_id'
+
+# Notes on DRF nested views:
+# lookup_url_kwargs doesn't seem to be used/respected by nested routers in the same way as plain DRF
+#           - see StrainStudiesView for an example that works, but isn't clearly the most clear yet
 
 
 class StrainStudiesView(viewsets.ReadOnlyModelViewSet):
     serializer_class = StudySerializer
+    lookup_url_kwarg = 'study_pk'
+
+    def get_object(self):
+        """
+        Overrides the default implementation to provide flexible lookup for nested strain
+        views (either based on local numeric primary key, or based on the strain UUID from ICE
+        """
+        filters = {}  # unlike the example, just do all the filtering in get_queryset() for
+                      # consistency
+        queryset = self.get_queryset()
+
+        obj = get_object_or_404(queryset, **filters)
+        self.check_object_permissions(self.request, obj)
+        return obj
 
     def get_queryset(self):
+        kwarg = '%s_%s' % (STRAIN_NESTED_RESOURCE_PARENT_PREFIX,
+                                               BASE_STRAIN_URL_KWARG)
         # get the strain identifier, which could be either a numeric (local) primary key, or a UUID
-        strain_id = self.kwargs.get('strain_pk')  # NOTE: couldn't easily find a way to change
-        # lookup_field for nested router based resource like this.
+        strain_id = self.kwargs.get(kwarg)
+
+        print('lookup_url_kwarg = %s, kwargs = %s' % (str(self.lookup_url_kwarg), str(self.kwargs)))
 
         # figure out which it is
-        strain_pk = strain_id if NUMERIC_PK_PATTERN.match(strain_id) else None
+        strain_pk = strain_id if is_numeric_pk(strain_id) else None
         strain_uuid = strain_id if not strain_pk else None
 
-        line_active_status = self.kwargs.get(LINE_ACTIVE_STATUS_PARAM, LINES_ACTIVE_DEFAULT)
+        print('strain_pk=%s, strain_uuid=%s' % (strain_pk, strain_uuid))
+
+        line_active_status = self.request.query_params.get(LINE_ACTIVE_STATUS_PARAM,
+                                                        LINES_ACTIVE_DEFAULT)
         user = self.request.user
 
         # only allow superusers through, since this is strain-related data that should only be
-        # accessable to sysadmins
+        # accessible to sysadmins
         if not user.is_superuser:
             #  TODO: user group / merge in recent changes / throw PermissionsError or whatever
             return Response(status=status.HTTP_403_FORBIDDEN)
@@ -202,6 +280,10 @@ class StrainStudiesView(viewsets.ReadOnlyModelViewSet):
         # filter by line active status, applying the default (only active lines)
         studies_query = filter_line_activity(studies_query, line_active_status=line_active_status,
                              query_prefix='line__')
+
+        study_pk = self.kwargs.get(self.lookup_url_kwarg)
+        if study_pk:
+            studies_query = studies_query.filter(pk=study_pk)
 
         # enforce EDD's custom access controls for readability of the associated studies. Note:
         # at present this isn't strictly necessary because of the sysadmin check above but best
@@ -232,7 +314,7 @@ class StudyStrainsView(viewsets.ReadOnlyModelViewSet):
         # extract URL arguments
         study_id = self.kwargs[self.STUDY_URL_KWARG]
         study_id_is_pk = re.match('^\d+$', study_id)
-        line_active_status = self.kwargs.get(LINE_ACTIVE_STATUS_PARAM, LINES_ACTIVE_DEFAULT)
+        line_active_status = self.request.query_params.get(LINE_ACTIVE_STATUS_PARAM, LINES_ACTIVE_DEFAULT)
 
         user = self.request.user
 
@@ -271,7 +353,7 @@ class StudyLineView(viewsets.ModelViewSet):  # LineView(APIView):
         #line_pk = self.kwargs[self.LINE_URL_KWARG]
         study_pk = self.kwargs[self.STUDY_URL_KWARG]
 
-        line_active_status = self.kwargs.get(LINE_ACTIVE_STATUS_PARAM, LINES_ACTIVE_DEFAULT)
+        line_active_status = self.request.query_params.get(LINE_ACTIVE_STATUS_PARAM, LINES_ACTIVE_DEFAULT)
 
         user = self.request.user
         requested_permission = StudyPermission.WRITE if self.request.method in \
@@ -372,26 +454,6 @@ class StudyLineView(viewsets.ModelViewSet):  # LineView(APIView):
         return None
 
 
-    #
-
-    # def put(self, request, format=None):
-    #     logger.error("in put()")
-    #     study_pk = self.kwargs.get(self.STUDY_URL_KWARG)
-    #     study = Study.objects.get(pk=study_pk)
-    #     if not (study and study.user_can_read(request.user)):
-    #         return Response(status=status.HTTP_400_BAD_REQUEST)
-    #
-    #     serializer = LineSerializer(data=request.data)
-    #     if serializer.is_valid():
-    #         serializer.save()
-    #         return Response(serializer.data, stutus=status.HTTP_201_CREATED)
-    #
-    #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-class StrainsView(viewsets.ModelViewSet): # TODO: unused...implement
-    serializer_class = StrainSerializer
-    lookup_field = 'pk'
-
 class StudyListLinesView(mixins.CreateModelMixin, ListAPIView):  # TODO: unused... implement or
                                                                  # remove
     """
@@ -404,15 +466,13 @@ class StudyListLinesView(mixins.CreateModelMixin, ListAPIView):  # TODO: unused.
     STUDY_URL_KWARG = "study"
     LINE_URL_KWARG = "line"
 
-    #lookup_field =
-
     def get_object(self):
         queryset = self.get_queryset()
         filter = {}
         filter['study__pk'] = self.kwargs[self.lookup_field]
 
         if self.LINE_URL_KWARG in self.kwargs:
-            filter['pk'] = self.kwargs[self.LINE_URL_KWARG]
+            filter[self.lookup_field] = self.kwargs[self.LINE_URL_KWARG]
 
         obj = get_object_or_404(queryset, **filter)
         self.check_object_permissions(self.request, obj)

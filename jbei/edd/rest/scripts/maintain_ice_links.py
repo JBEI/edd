@@ -15,14 +15,14 @@ It's safest to schedule runs of this script during off-hours when users are less
 making changes.
 """
 
-from __future__ import unicode_literals
 from __future__ import division
-
+from __future__ import unicode_literals
 
 ####################################################################################################
 # set default source for ICE settings BEFORE importing any code from jbei.ice.rest.ice. Otherwise,
 # code in that module will attempt to look for a django settings module and fail if django isn't
 # installed in the current virtualenv
+import json
 import os
 os.environ.setdefault('ICE_SETTINGS_MODULE', 'jbei.edd.rest.scripts.settings')
 ####################################################################################################
@@ -47,19 +47,16 @@ root_logger = logging.getLogger('root')
 root_logger.setLevel(LOG_LEVEL)
 root_logger.addHandler(console_handler)
 
-jbei_root_logger = logging.getLogger('jbei')
-jbei_root_logger.setLevel(logging.WARNING)
-jbei_root_logger.addHandler(console_handler)
-
 logger = logging.getLogger(__name__)
 logger.setLevel(LOG_LEVEL)
 logger.addHandler(console_handler)
 
-# TODO: why isn't this inherited from root? without these lines, get "No handlers could be found for
-#  logger "jbei.edd.rest.edd""
-# edd_logger = logging.getLogger('jbei.edd.rest.edd')
-# edd_logger.setLevel(logging.ERROR)
-# edd_logger.addHandler(console_handler)
+# silence INFO-levol messages from elsewhere in the JBEI framework
+# (note that order is important here...must be *after getting the logger instance for this module)
+jbei_root_logger = logging.getLogger('jbei')
+jbei_root_logger.setLevel(logging.WARNING)
+jbei_root_logger.addHandler(console_handler)
+
 ####################################################################################################
 
 from collections import OrderedDict
@@ -72,10 +69,11 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 from requests.exceptions import HTTPError
 from urlparse import urlparse
 
-from jbei.edd.rest.edd import (EddApi, EddSessionAuth, Strain as EddStrain)
-from jbei.ice.rest.ice import (IceApi, SessionAuth as IceSessionAuth, Strain as IceStrain, STRAIN)
+from jbei.edd.rest.edd import (EddApi, EddSessionAuth)
+from jbei.ice.rest.ice import (IceApi, SessionAuth as IceSessionAuth, Strain as IceStrain,
+                               ICE_ENTRY_TYPES)
 from jbei.rest.utils import is_url_secure
-from jbei.utils import to_human_relevant_delta, UserInputTimer, session_login
+from jbei.utils import to_human_relevant_delta, UserInputTimer, session_login, UUID_PATTERN
 
 from settings import EDD_URL, ICE_URL
 
@@ -90,25 +88,12 @@ EDD_RESULT_PAGE_SIZE = ICE_RESULT_PAGE_SIZE = 100
 EDD_REQUEST_TIMEOUT = ICE_REQUEST_TIMEOUT = (10, 10)  # timeouts in seconds = (connection, response)
 
 ####################################################################################################
-# Version-specific settings. These control functions that should only be executed during the initial
-# run of this script, then likely not used again afterward.
-####################################################################################################
-DEBUG = True
-PROCESS_ICE_ENTRIES = True  # Examine all ICE entries during the initial run, including those NOT
-                            # referenced from EDD. There's been a lack of updates from EDD, as well
-                            # as a lack of enforcement that EDD can only consume entries of type
-                            # strain from ICE.
-SEARCH_ICE_PART_TYPES = None  # in the future, if any, consider just [STRAIN]
-# TEST_EDD_URL = 'https://edd-test.jbei.org'
-TEST_EDD_URL = 'https://192.168.99.100'  # URL to count during testing as a match for the connected
-                                         # EDD instance, regardless of the URL we use to access it
-
-####################################################################################################
 
 SEPARATOR_CHARS = 75
 OUTPUT_SEPARATOR = ''.join(['*' for index in range(1, SEPARATOR_CHARS)])
 fill_char = b'.'
 
+# link processing outcomes for do_initial_run_entry_link_processing
 NOT_PROCESSED_OUTCOME = 'NOT_PROCESSED'
 REMOVED_DEVELOPMENT_URL_OUTCOME = 'REMOVED_DEV_URL'
 REMOVED_TEST_URL_OUTCOME = 'REMOVED_TEST_URL'
@@ -117,6 +102,9 @@ REMOVED_BAD_STUDY_LINK = 'REMOVED_NON_EXISTENT_STUDY_LINK'
 
 
 class Performance(object):
+    """
+    Tracks simple runtime performance metrics for this script.
+    """
     def __init__(self):
         #######################################
         # time tracking
@@ -129,12 +117,6 @@ class Performance(object):
         self.ice_entry_scan_start_time = None
         self.ice_entry_scan_time = None
         self.edd_strain_scan_time = None
-
-        #######################################
-        # other time-related statistics
-        #######################################
-        self.max_strain_processing_performance = None
-        self.min_strain_processing_performance = None
 
     def completed_edd_strain_scan(self):
         self.edd_strain_scan_time = arrow.utcnow() - self._overall_start_time
@@ -185,6 +167,9 @@ class Performance(object):
 
 
 class StrainProcessingPerformance:
+    """
+    Tracks simple runtime performance metrics for processing of a single EDD strain
+    """
     def __init__(self, strain, start_time, starting_ice_communication_delta,
                  starting_edd_communication_delta):
 
@@ -247,8 +232,9 @@ class StrainProcessingPerformance:
 class IceTestStub(IceApi):
 
     """
-    A variant of IceAPI that masks all capability to change data in ICE. All attempts to change
-    data return success, but don't actually make any changes
+    A variant of IceAPI that masks all capability to change data in ICE, allowing us to test code
+    that would otherwise produce changes. Note that this class needs to be maintained with
+    IceApi in order to remain safe/effective!
     """
     def unlink_entry_from_study(self, ice_entry_id, study_id, study_url, logger):
         return True
@@ -260,28 +246,51 @@ class IceTestStub(IceApi):
     def remove_experiment_link(self, ice_entry_id, link_id):
         pass
 
-# Set experiment link target URL for EDD--for testing, it may be different than the URL we're
-# connected to. Allows for local testing against a copy of the production EDD database
-edd_link_target_hostname = urlparse(EDD_URL).hostname if not TEST_EDD_URL else \
-    urlparse(TEST_EDD_URL).hostname
-ice_hostname = urlparse(ICE_URL).hostname
 
-PERL_STUDY_URL_PATTERN = re.compile(r'^http(?:s?)://%s/study\.cgi\?studyid=(?P<study_id>\d+)/?$' %
-                                    re.escape(edd_link_target_hostname), re.IGNORECASE)
-STUDY_URL_PATTERN = re.compile(r'^http(?:s?)://%s/study/(?P<study_id>\d+)/?$' %
-                               re.escape(edd_link_target_hostname), re.IGNORECASE)
+class EddTestStub(EddApi):
+    """
+    A variant of EddApi that masks all capability to change data in EDD, allowing us to test code
+    that would otherwise produce changes. Note that this class needs to be maintained with EDD in
+    order to remain safe/effective!
+    """
+    def update_strain(self, name=None, description=None, local_pk=None, registry_id=None,
+                      registry_url=None):
+        pass
+
+    def create_strain(self, name, description, registry_id, registry_url):
+        pass
 
 
-def build_perl_study_url(study_pk, https=False, edd_hostname=edd_link_target_hostname):
+def build_study_url_pattern(edd_link_target_hostname):
+    return re.compile(
+        r'^http(?:s?)://%s/study/(?P<study_id>\d+)/?$' %
+        re.escape(edd_link_target_hostname), re.IGNORECASE)
+
+
+def build_perl_study_url_pattern(edd_link_target_hostname):
+    return re.compile(r'^http(?:s?)://%s/study\.cgi\?studyid=(?P<study_id>\d+)/?$'
+                      % re.escape(edd_link_target_hostname), re.IGNORECASE)
+
+
+def build_perl_study_url(local_study_pk, edd_hostname, https=False):
+    """
+    Builds a Perl-style study URL created by the older Perl version of EDD.
+    :param local_study_pk:  the numeric study primary key
+    :param https: True to use HTTPS, False for plain HTTP
+    :param edd_hostname: the host name for EDD
+    """
     scheme = 'https' if https else 'http'
     return '%(scheme)s://%(hostname)s/Study.cgi?studyID=%(study_pk)s' % {
         'hostname': edd_hostname,
         'scheme': scheme,
-        'study_pk': study_pk
+        'study_pk': local_study_pk
     }
 
 
 def is_development_url(url):
+    """
+    Tests whether the input URL references a known list of hard-coded development host names.
+    """
     url_parts = urlparse(url)
     hostname = url_parts.hostname.lower()
 
@@ -322,18 +331,27 @@ def is_ice_test_instance_url(url):
 
 
 def is_local_edd_docker_deployment(url):
+    """
+    Tests whether the URL host matches the IP address used by a local Docker deployment
+    """
     url_parts = urlparse(url)
     hostname = url_parts.hostname
     return hostname == '192.168.99.100'
 
 
 def is_localhost(url):
+    """
+    Tests whether the URL references localhost or one of its well-defined IP addresses
+    """
     url_parts = urlparse(url)
     hostname = url_parts.hostname.lower()
     return (hostname == 'localhost') or (hostname == '127.0.0.1') or (hostname == '::1')
 
 
 def is_ice_admin_user(ice, username):
+    """
+    Contacts ICE to test whether the provided username has administrative privileges in ICE
+    """
     try:
         page_result = ice.search_users(search_string=username)
         user_email_pattern = re.compile('%s@.+' % username, re.IGNORECASE)
@@ -358,13 +376,17 @@ def is_ice_admin_user(ice, username):
 
 
 def is_aborted():
-        # TODO: placeholder for aborting early. Instead use Celery's AbortableTask, assuming the
-        # documentation that states it doesn't support our back-end is outdated (
-        # http://docs.celeryproject.org/en/latest/reference/celery.contrib.abortable.html )
+        # TODO: placeholder for aborting execution early. If possible, use Celery's AbortableTask,
+        # assuming the documentation that states it doesn't support our back-end is outdated (
+        # http://docs.celeryproject.org/en/latest/reference/celery.contrib.abortable.html ).
+        # See EDD-187.
         return False
 
 
 class ProcessingSummary:
+    """
+    Tracks processing results for the known inconsistencies detected by this script.
+    """
     def __init__(self):
         self._total_ice_entries_processed = 0
         self._total_edd_strains_found = 0
@@ -387,6 +409,7 @@ class ProcessingSummary:
         self._orphaned_edd_strains = []
         self._stepchild_edd_strains = []
         self._non_strain_ice_parts_referenced = []
+        self._updated_edd_strain_text = []
 
         self._processed_edd_strain_uuids = {}
 
@@ -436,6 +459,14 @@ class ProcessingSummary:
     def is_edd_strain_processed(self, strain_uuid):
         return self._processed_edd_strain_uuids.get(strain_uuid, False)
 
+    def updated_edd_strain_text(self, edd_strain, ice_entry, old_name=None,
+                                new_name=None, old_description=None, new_description=None):
+        self._updated_edd_strain_text.append(edd_strain)
+        name_change = 'old_name = "%s", new_name="%s"' % (old_name, new_name) if new_name else ''
+        description_change = 'old_desc = "%s", new_desc="%s"' % (old_description, new_description)
+        logger.info('Updated text and/or description to make EDD strain match ICE. %s %s' % (
+                    name_change, description_change))
+
     @property
     def total_edd_strains_found(self):
         return self._total_edd_strains_found
@@ -472,12 +503,18 @@ class ProcessingSummary:
         self._existing_links_processed += 1
         self._invalid_links_pruned += 1
 
-        logger.info('Removed invalid link %(link_url)s from ICE entry %(entry_uuid)s' % {
+        logger.info('Removed invalid link %(link_url)s from ICE entry %(part_id)s %(entry_uuid)s' % {
                     'link_url': experiment_link.url,
+                    'part_id': ice_entry.part_id,
                     'entry_uuid': ice_entry.uuid, })
 
-    def found_up_to_date_strain(self, edd_strain):
-        logger.info('Found up-to-date strain %d' % edd_strain.pk)
+    def found_strain_with_up_to_date_links(self, edd_strain, ice_entry):
+        logger.info('Strain has up-to-date ICE links %(strain_pk)d / %(part_id)s / %('
+                    'entry_uuid)s' % {
+            'strain_pk': edd_strain.pk,
+            'part_id': ice_entry.part_id,
+            'entry_uuid': ice_entry.uuid,
+        })
         self.processed_edd_strain(edd_strain)
         self._up_to_date_strains.append(edd_strain)
 
@@ -486,7 +523,8 @@ class ProcessingSummary:
         self._unmaintained_links_renamed += 1
 
         logger.info('Renamed unmaintained link from %(old_name)s to %(new_name)s to %(link_url)s '
-                    'from ICE entry %(entry_uuid)s' % {
+                    'from ICE entry %(part_id)s (uuid %(entry_uuid)s)' % {
+                        'part_id': ice_entry.part_id,
                         'old_name': existing_link.name,
                         'new_name': new_link_name,
                         'link_url': existing_link.url,
@@ -496,7 +534,9 @@ class ProcessingSummary:
         self._existing_links_processed += 1
         self._valid_links_skipped += 1
 
-        logger.info('Skipped valid link %(link_url)s from ICE entry %(entry_uuid)s' % {
+        logger.info('Skipped valid link %(link_url)s from ICE entry %(part_number)s '
+                    '(uuid %(entry_uuid)s)' % {
+                    'part_number': ice_entry.part_id,
                     'link_url': experiment_link.url,
                     'entry_uuid': ice_entry.uuid, })
 
@@ -504,7 +544,9 @@ class ProcessingSummary:
         self._existing_links_processed += 1
         self._perl_links_updated += 1
 
-        logger.info('Updated perl link %(link_url)s from ICE entry %(entry_uuid)s' % {
+        logger.info('Updated perl link %(link_url)s from ICE entry %(part_number)s '
+                    '(uuid %(entry_uuid)s)' % {
+                       'part_number': ice_entry.part_id,
                        'link_url': experiment_link.url,
                        'entry_uuid': ice_entry.uuid, })
 
@@ -548,7 +590,7 @@ class ProcessingSummary:
                         'part_number': ice_entry.part_id,
                         'entry_uuid': ice_entry.uuid, })
 
-    def processed_strain_with_changes(self, strain):
+    def processed_strain_with_changes(self, strain, ice_entry):
         self.processed_edd_strain(strain)
         self._strains_with_changes.append(strain)
 
@@ -585,7 +627,7 @@ class ProcessingSummary:
               "examined while scanning EDD strains during the first step. If configured, ICE "
               "entries not examined during the first step will also be scanned/processed "
               "independently of EDD to catch any dangling links to studies that no longer exist "
-              "in EDD.")
+              "in EDD, or that no longer reference linked ICE entries.")
         print('')
 
         # TODO: uncertain why processed count is wrong here after several checks...maybe assocaited
@@ -727,8 +769,39 @@ def print_ice_entry_processing_summary(entry, initial_entry_experiment_links_cou
               'runtime': to_human_relevant_delta(runtime_seconds),
           })
 
+INTEGER_PATTERN = re.compile(r'^\d+$')
+
+def parse_entry_types_arg(str):
+    str_list = json.loads(str)
+
+    entry_types = []
+
+    for item in str_list:
+        item = item.upper()
+        if item in ICE_ENTRY_TYPES:
+            entry_types.append(item)
+        else:
+            raise argparse.ArgumentTypeError('%(str)s is not a valid list of ICE entry types. A '
+                                             'valid example value is %(sample)s' % {
+                                                'str': str,
+                                                'sample': str(list(ICE_ENTRY_TYPES)), })
+    return entry_types
+
+
+def parse_int_or_uuid_arg(str):
+    if INTEGER_PATTERN.match(str):
+        return int(str)
+    elif UUID_PATTERN.match(str):
+        return str;
+
+    raise argparse.ArgumentTypeError('%s is not an integer primary key or a UUID of the form '
+                                     'XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX' % str)
+
 
 def main():
+    """
+    Executes the script
+    """
 
     ############################################################################################
     # Configure command line parameters
@@ -739,23 +812,77 @@ def main():
                                                  'versions, or as a result of communication '
                                                  'failures between EDD and ICE.')
     parser.add_argument('-password', '-p', help='provide a password via the command '
-                                                'line (helps with repeated use / testing)')
+                                                'line (helps with repeated use / testing). If not '
+                                                'provided, a user prompt will appear.')
     parser.add_argument('-username', '-u', help='provide username via the command line ('
-                                                'helps with repeated use / testing)')
+                                                'helps with repeated use / testing). If not '
+                                                'provided, a user prompt will appear.')
+    edd_strain_arg_name = '-edd_strain'
+    ice_entry_arg_name = '-ice_entry'
+    scan_ice_entries_arg_name = '-scan_ice_entries'
 
-    parser.add_argument('-edd_strain', type=int, help='the optional integer primary key for the '
-                                                      'EDD strain whose ICE links will be '
-                                                      'examined/repaired in lieu of scanning '
-                                                      'all EDD strains (and possibly ICE parts). '
-                                                      'Both -edd_strain and  -ice_entry may be '
-                                                      'used simultaneously.')
-    parser.add_argument('-ice_entry', type=int, help='the optional identifier (either UUID or '
-                                                     'part number for the ICE part whose '
-                                                     'experiment links will be verified in lieu '
-                                                     'of scanning all EDD strains (and possible '
-                                                     'ICE parts). Both -ice_entry and -edd_strain'
-                                                     ' may be used simultaneously.')
+    parser.add_argument(scan_ice_entries_arg_name, action='store_const', const=True,
+                        help='a flag that indicates ICE entries should be scanned independently '
+                             'of those referenced from EDD. This allows us to catch '
+                             'ICE entries that have stale associations to EDD (most likely during '
+                             'the initial run of this script). This parameter is ignored if '
+                             '%(edd_strain)s or %(ice_entry)s is provided.' % {
+                                    'edd_strain': edd_strain_arg_name,
+                                    'ice_entry': ice_entry_arg_name,})
+    include_entry_types_arg_name = '-include_entry_types'
+    parser.add_argument(include_entry_types_arg_name, type=parse_entry_types_arg,
+                        help='a JSON-formatted string containing a list of ICE entry types to be '
+                             'included in the scan of ICE entries, or if omitted, all ICE entries'
+                             ' will be scanned. This value is ignored if %(scan_ice)s '
+                             'is missing, or if %(edd_strain)s or %(ice_entry)s is provided. An '
+                             'example value that includes all ICE entries in the scan is '
+                             '"%(entry_types)s"' % {
+                                    'entry_types': str(list(ICE_ENTRY_TYPES)),
+                                    'scan_ice': scan_ice_entries_arg_name,
+                                    'edd_strain': edd_strain_arg_name,
+                                    'ice_entry': ice_entry_arg_name, })
+    no_warn_param_name = '-no_warn'
+    dry_run_param_name = '-dry_run'
+
+    parser.add_argument(edd_strain_arg_name, type=parse_int_or_uuid_arg,
+                        help='the optional integer primary key or UUID for the EDD strain whose '
+                             'ICE links will be examined/repaired in lieu of scanning all EDD '
+                             'strains (and possibly ICE parts). If present, no scans will be '
+                             'performed, but both %(edd_strain)s and  %(ice_entry)s may '
+                             'be used simultaneously.' % {
+                                'edd_strain': edd_strain_arg_name,
+                                'ice_entry': ice_entry_arg_name, })
+
+    parser.add_argument(ice_entry_arg_name, type=parse_int_or_uuid_arg,
+                        help='the optional identifier (either UUID or local integer primary key '
+                             'for the ICE part whose experiment links will be verified in lieu of '
+                             'scanning all EDD strains (and possible ICE parts). If present, '
+                             'no scans will be performed, but both %(ice_entry)s and '
+                             '%(edd_strain)s may be used simultaneously.' % {
+                                'edd_strain': edd_strain_arg_name,
+                                'ice_entry': ice_entry_arg_name, })
+
+    parser.add_argument(dry_run_param_name, action='store_const', const=True,
+                        help='prevents data changes to ICE and EDD, simulating them instead to '
+                             'show what the results of a run are likely to be')
+
+    parser.add_argument(no_warn_param_name, action='store_const',
+                        const=True, help='silences the confirmation prompt regarding the '
+                                         'potential risk in using the %(dry_run)s parameter. '
+                                         'Use with care!' % {'dry_run': dry_run_param_name})
+
+    parser.add_argument('-test_edd_url', help='the URL to count during testing as a match '
+                                              'for the connected EDD instance, regardless of the '
+                                              'URL we use to access it')
+
+    parser.add_argument('-test_edd_strain_limit', type=int,
+                        help='the maximum number of EDD strains to scan')
+    parser.add_argument('-test_ice_entry_limit', type=int,
+                        help='the maximum number of ICE entries to scan')
+
     args = parser.parse_args()
+
+    perform_scans = not (args.edd_strain or args.ice_entry)
 
     ############################################################################################
     # Print out important parameters
@@ -764,14 +891,32 @@ def main():
     print(os.path.basename(__file__))
     print(OUTPUT_SEPARATOR)
     print('\tSettings module:\t%s' % os.environ['ICE_SETTINGS_MODULE'])
-    print('\tEDD URL:\t%s' % EDD_URL)
-    print('\tICE URL:\t%s' % ICE_URL)
+    print('\t\tEDD URL:\t%s' % EDD_URL)
+    print('\t\tICE URL:\t%s' % ICE_URL)
+    print('\tCommand-line arguments:')
     if args.username:
-        print('\tEDD/ICE Username:\t%s' % args.username)
+        print('\t\tEDD/ICE Username:\t%s' % args.username)
+    if args.password:
+        print('\t\tEDD/ICE Password:\tprovided')
     if args.edd_strain:
-        print('\tSingle-EDD Strain Search: %d' % args.edd_strain)
+        print('\t\tSingle-EDD Strain Search: %s' % args.edd_strain)
     if args.ice_entry:
-        print('\tSingle ICE Entry Search: %s' % args.ice_entry)
+        print('\t\tSingle ICE Entry Search: Yes')
+    if args.scan_ice_entries:
+        if perform_scans:
+            print('\t\tScan ICE Entries Independently of EDD: %s' % args.scan_ice_entries)
+        else:
+            print('\t\tScan ICE Entries Independently of EDD: %s ignored because a single ICE '
+                  'entry '
+                  'or EDD strain id was provided' % scan_ice_entries_arg_name)
+    if args.dry_run:
+        print('\t\tDry run: Yes')
+    if args.test_edd_url:
+        print('\t\tTest EDD Link Target URL:\t%s' % args.test_edd_url)
+    if args.test_edd_strain_limit:
+        print('\t\tTest EDD Strain Limit:\t%s' % args.test_edd_strain_limit)
+    if args.test_ice_entry_limit:
+        print('\t\tTest ICE Entry Limit:\t%s' % args.test_ice_entry_limit)
     print('')
     print(OUTPUT_SEPARATOR)
 
@@ -787,7 +932,7 @@ def main():
 
     ############################################################################################
     # Verify that URL's start with HTTP*S* for non-local use. Don't allow mistaken config to
-    # expose access credentials! Local testing requires insecure http, so this mistake is
+    # expose access credentials! Pre-Docker local testing required insecure http, so this mistake is
     # easy to make!
     ############################################################################################
     if not is_url_secure(EDD_URL):
@@ -804,9 +949,6 @@ def main():
               "environments (e.g. development/test/production)")
         return 0
 
-    test_edd_strain_limit = 100  # TODO: set to None following testing, but probably keep in place
-    test_ice_entry_limit = 100
-
     # determine whether or not to verify EDD's / ICE's SSL certificate. Ordinarily, YES,
     # though we want to allow for local testing of this script on developers' machines using
     # self-signed certificates.
@@ -820,18 +962,61 @@ def main():
         logger.warning('Skipping ICE SSL certificate validation since %s is running on localhost ('
                        'likely for testing)' % ICE_URL)
 
-    # silence the warning if we're skipping SSL certificate
-    # verification. otherwise the warnings will swamp useful output from this script.
+    # silence library warnings if we're skipping SSL certificate
+    # verification for local testing. otherwise the warnings will swamp useful output from this
+    # script.
     if not (verify_edd_ssl_cert and verify_ice_ssl_cert):
-
         requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
+    # force user to confirm dry-run risks, or else print a warning if they've chosen to silence the
+    # prompt
+    if args.dry_run:
+        if args.no_warn:
+            logger.warning('Proceeding with potentially risky dry-run (confirmation '
+                           'prompt silenced via %s)' % no_warn_param_name)
+        else:
+            print("WARNING: RISKY OPERATION!!! You've requested a dry run of this script, "
+                  "but the dry run feature "
+                  "depends on proper maintenance of test stub classes defined in this script along "
+                  "with the production code in IceApi and EddApi. Both production classes were "
+                  "under active development at the time this script was implemented, "
+                  "so there's a significant risk that the dry run feature will be broken by future "
+                  "development work. Before proceeding, you should inspect the code to "
+                  "double-check that this feature still works as intended. You can short-circuit "
+                  "this prompt using the %s parameter" % no_warn_param_name)
+            reply = user_input.user_input("Do you want to proceed and risk "
+                                          "unintended data changes? (Y/n): ")
+            if not ('y' == reply.strip().lower() or 'yes' == reply.strip().lower()):
+                return 0
+
+    # build URL patterns
+
+    # Set experiment link target URL for EDD. For testing, it may be different than the URL we're
+    # connected to. Allows for local testing against a copy of the production EDD database without
+    # risking any changes to production.
+    EDD_LINK_TARGET_HOSTNAME = urlparse(EDD_URL).hostname if not args.test_edd_url else \
+        urlparse(args.test_edd_url).hostname
+    ice_hostname = urlparse(ICE_URL).hostname
+
+    perl_study_url_pattern = build_perl_study_url_pattern(EDD_LINK_TARGET_HOSTNAME)
+    study_url_pattern = build_study_url_pattern(EDD_LINK_TARGET_HOSTNAME)
+
+    # package up inputs that determine how processing is performed. There are too
+    #  many / they change too often during development to pass around individually as method
+    # parameters
+    processing_inputs = ProcessingInputs(study_url_pattern=study_url_pattern,
+                                         perl_study_url_pattern=perl_study_url_pattern,
+                                         test_edd_base_url=args.test_edd_url,
+                                         cleaning_edd_test_instance=cleaning_edd_test_instance,
+                                         cleaning_ice_test_instance=cleaning_ice_test_instance,
+                                         test_edd_strain_limit=args.test_edd_strain_limit,
+                                         test_ice_entry_limit=args.test_ice_entry_limit)
 
     try:
         ##############################
         # log into EDD
         ##############################
         login_application = 'EDD'
-
         edd_login_details = session_login(EddSessionAuth, EDD_URL, login_application,
                                           username_arg=args.username, password_arg=args.password,
                                           user_input=user_input, print_result=True,
@@ -839,8 +1024,10 @@ def main():
         edd_session_auth = edd_login_details.session_auth
 
         with edd_session_auth:
-            edd = EddApi(edd_session_auth, EDD_URL)
+            edd = (EddApi(edd_session_auth, EDD_URL) if not args.dry_run else
+                   EddTestStub(edd_session_auth, EDD_URL))
             edd.result_limit = EDD_RESULT_PAGE_SIZE
+            processing_inputs.edd = edd
 
             # TODO: consider adding a REST API resource & use it to test whether this user
             # has admin access to EDD. provide an
@@ -863,32 +1050,32 @@ def main():
             ice_login_details.password = None
 
             with ice_session_auth:
-                ice = IceTestStub(ice_session_auth, ICE_URL, result_limit=ICE_RESULT_PAGE_SIZE)
+                ice = (IceApi(ice_session_auth, ICE_URL, result_limit=ICE_RESULT_PAGE_SIZE)
+                       if not args.dry_run else
+                       IceTestStub(ice_session_auth, ICE_URL, result_limit=ICE_RESULT_PAGE_SIZE))
+                processing_inputs.ice = ice
                 # ice.request_generator.timeout = 20
 
                 # test whether this user is an ICE administrator. If not, we won't be able
                 # to proceed until SYNBIO-TODO is resolved (if then, depending on the solution)
-                user_is_ice_admin = is_ice_admin_user(ice=ice,
-                                                      username=ice_login_details.username)
+                user_is_ice_admin = is_ice_admin_user(ice=ice, username=ice_login_details.username)
                 if not user_is_ice_admin:
                     return 0
 
                 # if no specific EDD strain or ICE entry identifier was provided as a parameter,
                 # scan all EDD strains, and possibly ICE entries, as configured
-                perform_scans = not(args.edd_strain or args.ice_entry)
                 if perform_scans:
-                    scan_edd_strains(edd, ice, processing_summary, overall_performance,
-                                     cleaning_ice_test_instance, test_edd_strain_limit)
+                    scan_edd_strains(processing_inputs, processing_summary, overall_performance)
                     overall_performance.ice_entry_scan_start_time = arrow.utcnow()
 
                     # if configured, process entries in ICE that weren't just examined above.
                     # This is probably only necessary during the initial few runs to correct for
                     # link maintenance gaps in earlier versions of EDD/ICE
-                    if PROCESS_ICE_ENTRIES:
-                        process_ice_entries(ice, edd, SEARCH_ICE_PART_TYPES, processing_summary,
-                                            cleaning_ice_test_instance, test_ice_entry_limit)
-                        overall_performance.ice_entry_scan_time = (arrow.utcnow() -
-                                                                   overall_performance.ice_entry_scan_start_time)
+                    if args.scan_ice_entries:
+                        scan_ice_entries(processing_inputs, args.include_entry_types,
+                                         processing_summary)
+                        overall_performance.ice_entry_scan_time = (
+                            arrow.utcnow() - overall_performance.ice_entry_scan_start_time)
 
                 # if specific EDD strain and/or ICE entry ID's were provided, only examine the
                 # requested Things in lieu of an expensive scan
@@ -900,13 +1087,13 @@ def main():
 
                         if edd_strain:
                             process_all_ice_entry_links = False
-                            process_edd_strain(edd_strain, edd, ice, process_all_ice_entry_links,
-                                               processing_summary, overall_performance,
-                                               cleaning_ice_test_instance)
+                            process_edd_strain(edd_strain, processing_inputs,
+                                               process_all_ice_entry_links,
+                                               processing_summary, overall_performance)
                         else:
-                            print('INVALID INPUT: No EDD strain was found with pk %(pk)d at %(url)s'
+                            print('INVALID INPUT: No EDD strain was found with id %(id)d at %(url)s'
                                   % {
-                                    'pk': edd_strain_id,
+                                    'id': edd_strain_id,
                                     'url': EDD_URL, })
 
                     ice_entry_id = args.ice_entry
@@ -914,8 +1101,8 @@ def main():
                         entry = ice.get_entry(ice_entry_id)
                         processing_summary.total_ice_entries_found = 1 if entry else 0
                         if entry:
-                            process_ice_entry(ice, edd, entry, processing_summary,
-                                              cleaning_ice_test_instance)
+                            process_ice_entry(entry, processing_inputs,
+                                              processing_summary)
                         else:
                             print('INVALID INPUT: No ICE entry was found with identifier '
                                   '%(entry_id)s at %(ice_url)s' % {
@@ -938,15 +1125,20 @@ def main():
         overall_performance.print_summary()
 
 
-def scan_edd_strains(edd, ice, processing_summary, overall_performance,
-                     cleaning_ice_test_instance, test_edd_strain_limit):
+def scan_edd_strains(processing_inputs, processing_summary, overall_performance):
     ############################################################
     # Search EDD for strains, checking each one against ICE
     ############################################################
+    # get convenient references to inputs
+    edd = processing_inputs.edd
+    ice = processing_inputs.ice
+    test_edd_strain_limit = processing_inputs.test_edd_strain_limit
+
     print('')
 
     print(OUTPUT_SEPARATOR)
-    print('Comparing all EDD strains to ICE... ')
+    quantity = 'all' if not test_edd_strain_limit else '%d Test' % test_edd_strain_limit
+    print('Comparing %s EDD strains to ICE... ' % quantity)
     print(OUTPUT_SEPARATOR)
 
     tested_edd_strain_count = 0
@@ -969,14 +1161,15 @@ def scan_edd_strains(edd, ice, processing_summary, overall_performance,
         # loop over strains in this results page, updating ICE's links to each one
         for edd_strain in edd_strain_page.results:
             process_all_ice_entry_links = True
-            process_edd_strain(edd_strain, edd, ice, process_all_ice_entry_links,
-                               processing_summary, overall_performance, cleaning_ice_test_instance)
+            process_edd_strain(edd_strain, processing_inputs, process_all_ice_entry_links,
+                               processing_summary, overall_performance)
 
             # enforce a small number of tested strains for starters so tests complete
             # quickly
             tested_edd_strain_count += 1
             hit_test_limit = tested_edd_strain_count == test_edd_strain_limit
             if hit_test_limit or is_aborted():
+                print('')
                 print('Hit test limit of %d EDD strains. Ending strain processing '
                       'early.' % test_edd_strain_limit)
                 break
@@ -992,7 +1185,8 @@ def scan_edd_strains(edd, ice, processing_summary, overall_performance,
             edd_strain_page = None
 
     overall_performance.completed_edd_strain_scan()
-    print('')
+    if not hit_test_limit:
+        print('')
     print('Done processing %(strain_count)d DD strains in %(elapsed_time)s' % {
         'strain_count': processing_summary.total_edd_strains_processed,
         'elapsed_time':
@@ -1000,9 +1194,7 @@ def scan_edd_strains(edd, ice, processing_summary, overall_performance,
             overall_performance.edd_strain_scan_time.total_seconds())})
 
 
-def process_ice_entries(ice, edd, search_ice_part_types,
-                        processing_summary,
-                        cleaning_ice_test_instance, test_ice_entry_limit):
+def scan_ice_entries(processing_inputs, search_ice_part_types, processing_summary):
     """
     Searches ICE for entries of the specified type(s), then examines experiment links for each part
     whose ID isn't in processed_edd_strain_uuids, comparing any EDD-referencing experiment links to
@@ -1015,15 +1207,22 @@ def process_ice_entries(ice, edd, search_ice_part_types,
     If False, all reverences to EDD test instances will be removed on the assumption that they
     were accidental artifacts of software testing with improperly configured URLs.
     """
-    print('')
-    print(OUTPUT_SEPARATOR)
-    print('Comparing ICE entries to EDD... ')
-    print(OUTPUT_SEPARATOR)
+
+    ice = processing_inputs.ice
 
     ice_entry_search_results_page = ice.search_entries(entry_types=search_ice_part_types)
     ice_page_num = 1
     tested_ice_entry_count = 0
+    test_ice_entry_limit = processing_inputs.test_ice_entry_limit
     hit_test_limit = False
+
+    print('')
+    print(OUTPUT_SEPARATOR)
+    entries_summary = '' if not test_ice_entry_limit else '%d Test' % test_ice_entry_limit
+    print('Comparing %s ICE entries to EDD... ' % entries_summary)
+    print(OUTPUT_SEPARATOR)
+
+
 
     # loop over ICE entries, finding and pruning stale links to EDD strains / studies
     # that no longer reference them. We'll skip ICE entries that we just examined from
@@ -1048,10 +1247,11 @@ def process_ice_entries(ice, edd, search_ice_part_types,
             # relationships have changed since our pass through EDD, but most likely that
             # nothing has changed or that EDD properly maintained the ICE links in the interim
             if processing_summary.is_edd_strain_processed(entry.uuid):
+                print('Already processed this strain earlier in the run...skipping it')
                 processing_summary.previously_processed_strains_skipped += 1
                 continue
 
-            process_ice_entry(ice, edd, entry, processing_summary, cleaning_ice_test_instance)
+            process_ice_entry(entry, processing_inputs, processing_summary)
             tested_ice_entry_count += 1
 
             hit_test_limit = tested_ice_entry_count == test_ice_entry_limit
@@ -1074,7 +1274,7 @@ def process_ice_entries(ice, edd, search_ice_part_types,
         logger.warning("Didn't find any ICE parts in the search")
 
 
-def process_ice_entry(ice, edd, entry, processing_summary, cleaning_ice_test_instance):
+def process_ice_entry(entry, processing_inputs, processing_summary):
     """
     Processes a single ICE entry, checking its experiment links and creating / maintaining any
     included links to EDD. The base assumption of this method is that EDD has been recently scanned
@@ -1094,6 +1294,8 @@ def process_ice_entry(ice, edd, entry, processing_summary, cleaning_ice_test_ins
     print(separator)
 
     start_time = arrow.utcnow()
+    ice = processing_inputs.ice
+    edd = processing_inputs.edd
 
     # build a (short-lived) list of experiment links for this entry.
     # Note: possible, but unlikely we're causing race conditions by caching this data
@@ -1103,8 +1305,8 @@ def process_ice_entry(ice, edd, entry, processing_summary, cleaning_ice_test_ins
     # no longer valid, or that were unambiguously created as a result of software
     # testing
     for experiment_link in entry_experiments_list:
-        outcome = do_initial_run_ice_entry_link_processing(ice, edd, entry, experiment_link,
-                                                           cleaning_ice_test_instance,
+        outcome = do_initial_run_ice_entry_link_processing(entry, experiment_link,
+                                                           processing_inputs,
                                                            True, processing_summary)
         # if we've already processed the link, move to the next one
         processed_link = outcome != NOT_PROCESSED_OUTCOME
@@ -1114,7 +1316,8 @@ def process_ice_entry(ice, edd, entry, processing_summary, cleaning_ice_test_ins
         # don't modify any experiment URL that doesn't directly map to
         # a known EDD URL. Researchers can create these automatically, and we
         # don't want to remove any that EDD didn't create
-        study_url_match = STUDY_URL_PATTERN.match(experiment_link.url)
+        study_url_pattern = processing_inputs.study_url_pattern
+        study_url_match = study_url_pattern.match(experiment_link.url)
         if not study_url_match:
             processing_summary.skipped_external_link(entry, experiment_link)
             continue
@@ -1149,9 +1352,9 @@ def process_ice_entry(ice, edd, entry, processing_summary, cleaning_ice_test_ins
                                        run_duration.total_seconds())
 
 
-def do_initial_run_ice_entry_link_processing(ice, edd, ice_entry, experiment_link,
-                                             cleaning_ice_test_instance, query_edd_strains,
-                                             processing_summary):
+def do_initial_run_ice_entry_link_processing(ice_entry, experiment_link,
+                                            processing_inputs, query_edd_strains,
+                                            processing_summary):
     """
     Processes an ICE experiment link and performs updates that are specific to the initial
     successful run of this script, based on the known development & integration history of EDD
@@ -1163,6 +1366,9 @@ def do_initial_run_ice_entry_link_processing(ice, edd, ice_entry, experiment_lin
     :return: True if version-specific processing was completed for this experiment link, indicating
     that  further processing isn't needed
     """
+    ice = processing_inputs.ice
+    edd = processing_inputs.edd
+
     # remove link if it's to a development machine
     if is_development_url(experiment_link.url):
         ice.remove_experiment_link(ice_entry.uuid, experiment_link.id)
@@ -1170,6 +1376,7 @@ def do_initial_run_ice_entry_link_processing(ice, edd, ice_entry, experiment_lin
         return REMOVED_DEVELOPMENT_URL_OUTCOME
 
     # remove link if it's from a production ICE instance to a test EDD instance
+    cleaning_ice_test_instance = processing_inputs.cleaning_ice_test_instance
     if (not cleaning_ice_test_instance) and is_edd_test_instance_url(experiment_link.url):
         ice.remove_experiment_link(ice_entry.uuid, experiment_link.id)
         processing_summary.removed_test_link(ice_entry, experiment_link)
@@ -1178,7 +1385,8 @@ def do_initial_run_ice_entry_link_processing(ice, edd, ice_entry, experiment_lin
     # update link if it references an outdated EDD URL scheme.
     # redirects will work, but old-style URLs will be missed by this scripts / EDD's consistency
     # checks during link maintenance
-    perl_study_url_match = PERL_STUDY_URL_PATTERN.match(experiment_link.url)
+    perl_study_url_pattern = processing_inputs.perl_study_url_pattern
+    perl_study_url_match = perl_study_url_pattern.match(experiment_link.url)
     if not perl_study_url_match:
         return NOT_PROCESSED_OUTCOME
 
@@ -1244,9 +1452,24 @@ def build_ice_entry_experiments_cache(ice, entry_uuid):
     return all_experiment_links
 
 
-def process_edd_strain(edd_strain, edd, ice, process_all_ice_entry_links, processing_summary,
-                       overall_performance,
-                       cleaning_ice_test_instance):
+class ProcessingInputs(object):
+    def __init__(self, study_url_pattern,
+                 perl_study_url_pattern, test_edd_base_url, cleaning_edd_test_instance,
+                 cleaning_ice_test_instance, test_edd_strain_limit, test_ice_entry_limit):
+        self.edd = None
+        self.ice = None
+        self.scan_ice_entries = scan_ice_entries
+        self.study_url_pattern = study_url_pattern
+        self.perl_study_url_pattern = perl_study_url_pattern
+        self.test_edd_base_url = test_edd_base_url
+        self.cleaning_edd_test_instance = cleaning_edd_test_instance
+        self.cleaning_ice_test_instance = cleaning_ice_test_instance
+        self.test_edd_strain_limit = test_edd_strain_limit
+        self.test_ice_entry_limit = test_ice_entry_limit
+
+
+def process_edd_strain(edd_strain, processing_inputs, process_all_ice_entry_links,
+                       processing_summary, overall_performance):
         """
         Processes a single EDD strain, verifying that ICE already has links to its associated
         studies,
@@ -1264,8 +1487,9 @@ def process_edd_strain(edd_strain, edd, ice, process_all_ice_entry_links, proces
         deployment
         :return true if the strain was successfully processed, false if something prevented it from
         being processed
-
         """
+        edd = processing_inputs.edd
+        ice = processing_inputs.ice
 
         print('')
         subheader = 'Processing EDD strain "%(strain_name)s" (pk=%(strain_pk)d)...' % {
@@ -1275,7 +1499,7 @@ def process_edd_strain(edd_strain, edd, ice, process_all_ice_entry_links, proces
         print(separator)
         print(subheader)
         print(separator)
-        # TODO: make this a decorator
+        # TODO: consider making this a decorator
         strain_performance = StrainProcessingPerformance(edd_strain, arrow.utcnow(),
                                                          edd.request_generator.wait_time,
                                                          ice.request_generator.wait_time)
@@ -1310,6 +1534,22 @@ def process_edd_strain(edd_strain, edd, ice, process_all_ice_entry_links, proces
             strain_performance.print_summary()
             return False
 
+        # detect whether the EDD/ICE strain names & descriptions match. If not, apply those in ICE
+        # to EDD, since EDD strains should be derived from those in ICE
+        name_changed = ice_entry.name != edd_strain.name
+        description_changed = ice_entry.short_description != edd_strain.description
+        if name_changed or description_changed:
+
+            edd.update_strain(name=ice_entry.name, description=ice_entry.short_description,
+                              registry_id=ice_entry.uuid)
+
+            old_name = edd_strain.name if name_changed else None
+            new_name = ice_entry.name if name_changed else None
+            old_description = edd_strain.description if description_changed else None
+            new_description = ice_entry.short_description if description_changed else None
+            processing_summary.updated_edd_strain_text(edd_strain, ice_entry, old_name,
+                                                       new_name, old_description, new_description)
+
         ice_entry_uuid = edd_strain.registry_id
         all_strain_experiment_links = build_ice_entry_experiments_cache(ice, ice_entry_uuid)
         unprocessed_strain_experiment_links = all_strain_experiment_links.copy()
@@ -1324,13 +1564,13 @@ def process_edd_strain(edd_strain, edd, ice, process_all_ice_entry_links, proces
 
             for study in strain_studies_page.results:
                 # if is_aborted(): # TODO: consider re-adding if we can't use Celery's
-                # AbortableTask,
-                #  and therefore don't have to worry about the performance hit for testing aborted
-                #  status
+                # AbortableTask, and therefore don't have to worry about the performance hit for
+                # testing aborted status
                 #     break
 
+                alternate_base_url = processing_inputs.test_edd_base_url
                 study_url = edd.get_abs_study_browser_url(study.pk,
-                                                          alternate_base_url=TEST_EDD_URL).lower()
+                                                          alternate_base_url=alternate_base_url).lower()
                 strain_performance.ice_link_search_time = None
                 strain_to_study_link = all_strain_experiment_links.get(study_url)
                 unprocessed_strain_experiment_links.pop(study_url, None)
@@ -1340,10 +1580,14 @@ def process_edd_strain(edd_strain, edd, ice, process_all_ice_entry_links, proces
                 else:
                     # look for an unmaintained link to the study URL from the older
                     # perl version of EDD (these exist!). If found, update it.
-                    perl_study_url = build_perl_study_url(study.pk).lower()
+                    link_target_hostname = urlparse(alternate_base_url).hostname if \
+                        alternate_base_url else urlparse(EDD_URL).hostname
+                    perl_study_url = build_perl_study_url(study.pk, link_target_hostname).lower()
                     strain_to_study_link = missing_strain_study_links.pop(perl_study_url, None)
                     if not strain_to_study_link:
-                        perl_study_url = build_perl_study_url(study.pk, https=True).lower()
+                        perl_study_url = build_perl_study_url(study.pk,
+                                                              link_target_hostname,
+                                                              https=True).lower()
                         strain_to_study_link = missing_strain_study_links.pop(perl_study_url, None)
 
                     if strain_to_study_link:
@@ -1380,9 +1624,9 @@ def process_edd_strain(edd_strain, edd, ice, process_all_ice_entry_links, proces
                 strain_studies_page = None
 
         if changed_something:
-            processing_summary.processed_strain_with_changes(edd_strain)
+            processing_summary.processed_strain_with_changes(edd_strain, ice_entry)
         else:
-            processing_summary.found_up_to_date_strain(edd_strain)
+            processing_summary.found_strain_with_up_to_date_links(edd_strain, ice_entry)
 
         # look over ICE experiment links for this entry that we didn't add, update, or remove as a
         # result of up-to-date study/strain associations in EDD. If any remain that match the
@@ -1391,15 +1635,16 @@ def process_edd_strain(edd_strain, edd, ice, process_all_ice_entry_links, proces
         # in the process if we scan ICE to look for other entries with outdated links to EDD
         if process_all_ice_entry_links:
             for link_url, experiment_link in unprocessed_strain_experiment_links.items():
-                outcome = do_initial_run_ice_entry_link_processing(ice, edd, ice_entry,
+                outcome = do_initial_run_ice_entry_link_processing(ice_entry,
                                                                    experiment_link,
-                                                                   cleaning_ice_test_instance,
+                                                                   processing_inputs,
                                                                    False, processing_summary)
                 if outcome == NOT_PROCESSED_OUTCOME:
                     # don't modify any experiment URL that doesn't directly map to
                     # a known EDD URL. Researchers can create these automatically, and we
                     # don't want to remove any that EDD didn't create
-                    study_url_match = STUDY_URL_PATTERN.match(experiment_link.url)
+                    study_url_pattern = processing_inputs.study_url_pattern
+                    study_url_match = study_url_pattern.match(experiment_link.url)
                     if study_url_match:
                         ice.remove_experiment_link(ice_entry_uuid, experiment_link.id)
                         processing_summary.removed_invalid_link(ice_entry, experiment_link)
@@ -1416,7 +1661,6 @@ def process_edd_strain(edd_strain, edd, ice, process_all_ice_entry_links, proces
             else:
                 print("No experiment links found for this ICE entry that didn't reference this "
                       "EDD strain")
-
 
         # track performance for completed processing
         strain_performance.ice_link_cache_lifetime = arrow.utcnow() - strain_performance.start_time

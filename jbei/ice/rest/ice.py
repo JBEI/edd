@@ -446,7 +446,9 @@ class User(object):
 
 
 class EntrySearchResult(object):
-    def __init__(self,  entry, e_value, query_length, nident, score, max_score, match_details):
+    # TODO: resolve nident changes with Hector P -- not pushed to Github yet, though recently
+    # observed on registry-test
+    def __init__(self,  entry, e_value, query_length, score, max_score, match_details, nident=None,):
         self.entry = entry
         self.e_value = e_value
         self.query_length = query_length
@@ -966,7 +968,7 @@ class IceApi(RestApiClient):
         Retrieves a part using any of the unique identifiers: part number, synthetic id, or
         UUID. Returns a Part object; or None if no part was found or if there were suppressed
         errors in making the request.
-        :param entry_id: the ICE ID for this part
+        :param entry_id: the ICE ID for this entry (either the local numeric primary key, or a UUID)
         :param suppress_errors: true to catch and log exception messages and return None instead of
         raising Exceptions.
         :return: A Part object representing the response from ICE, or None if an an Exception

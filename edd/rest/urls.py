@@ -3,6 +3,8 @@ from django.conf import settings
 from django.conf.urls import include, url, static
 from django.contrib import admin
 import rest_framework.routers as rest_routers
+
+from edd.rest.views import STRAIN_NESTED_RESOURCE_PARENT_PREFIX
 from . import views
 import rest_framework_nested.routers as nested_routers
 from django.conf import settings
@@ -36,7 +38,8 @@ study_nested_resources_router.register(r'lines', views.StudyLineView, base_name=
 study_nested_resources_router.register(r'strains', views.StudyStrainsView,
                                        base_name='study-strains')
 
-strain_nested_resources_router = nested_routers.NestedSimpleRouter(base_rest_api_router, r'strain',
+strain_nested_resources_router = nested_routers.NestedSimpleRouter(base_rest_api_router,
+                                                                   STRAIN_NESTED_RESOURCE_PARENT_PREFIX,
                                                                    lookup='strain')
 strain_nested_resources_router.register(r'studies', views.StrainStudiesView,
                                         base_name='strain-studies')

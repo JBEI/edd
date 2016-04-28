@@ -9,6 +9,7 @@ from __future__ import unicode_literals
 
 import json
 import logging
+import re
 from urlparse import urlparse, urlsplit
 
 import requests
@@ -17,7 +18,7 @@ from requests.auth import AuthBase
 import jbei
 from jbei.rest.api import RestApiClient
 from jbei.rest.request_generators import SessionRequestGenerator, PagedRequestGenerator, PagedResult
-from jbei.rest.utils import remove_trailing_slash, UNSAFE_HTTP_METHODS
+from jbei.rest.utils import remove_trailing_slash, UNSAFE_HTTP_METHODS, CLIENT_ERROR_NOT_FOUND
 from jbei.rest.utils import show_response_html, is_success_code
 
 DEBUG = True  # controls whether error response content is written to temp file, then displayed
@@ -26,14 +27,17 @@ VERIFY_SSL_DEFAULT = jbei.rest.request_generators.RequestGenerator.VERIFY_SSL_DE
 DEFAULT_REQUEST_TIMEOUT = (10, 10)  # HTTP request connection and read timeouts, respectively
                                     # (seconds)
 
-USE_DRF_SERIALIZER = False  # test flag for doing deserialization without the Django REST
-# Framework's serializer, which it turns out isn't very useful on the client side anyway.
-
 LINE_ACTIVE_STATUS_PARAM = 'lines_active'
 ALL_LINES_VALUE = 'all'
 ACTIVE_LINES_ONLY = 'active'
 INACTIVE_LINES_ONLY = 'inactive'
 LINES_ACTIVE_DEFAULT = ACTIVE_LINES_ONLY
+
+
+STRAIN_NAME_KEY = 'name'
+STRAIN_DESCRIPTION_KEY = 'description'
+STRAIN_REG_ID_KEY = 'registry_id'
+STRAIN_REG_URL_KEY = 'registry_url'
 
 logger = logging.getLogger(__name__)
 
@@ -415,37 +419,44 @@ class EddApi(RestApiClient):
         query, or None to apply EDD's default limit
         :return: a new EddApi instance
         """
-        super(self.__class__, self).__init__('EDD', base_url,
-                                             session_auth.request_generator,
+        super(EddApi, self).__init__('EDD', base_url, session_auth.request_generator,
                                              result_limit=result_limit)
         self.session_auth = session_auth
 
-    def get_strain(self, local_pk=None, registry_id=None):
+    def get_strain(self, strain_id=None):
         """
         A convenience method to get the strain (if any) with the provided primary key and/or
         registry id (either should be
         sufficient to uniquely identify the strain within an EDD deployment).
-        :param pk: the integer primary key used to identify this strain within this EDD deployment
-        :param registry_id: the UUID used to uniquely identify this strain within ICE
-        :return: the strain, or None if none was found. Note that providing both parameters makes
-        it possible to miss a strain that matches either one or the other (for instance,
-        if the primary key is from a different EDD deployment)
+        :param strain_id: a unique identifier for the strain (either the numeric primary key or
+        registry_id)
         """
-        search_result = self.search_strains(local_pk=local_pk, registry_id=registry_id)
+        request_generator = self.session_auth.request_generator
 
-        if not search_result:
+        # make the HTTP request
+        url = '%(base_url)s/rest/strain/%(strain_id)s/' % {
+            'base_url': self.base_url,
+            'strain_id': strain_id,
+        }
+        response = request_generator.get(url, headers=self._json_header)
+
+        # throw an error for unexpected reply
+        if response.status_code == requests.codes.ok:
+            return DrfPagedResult.of(response.content, model_class=Strain)
+        elif response.status_code == CLIENT_ERROR_NOT_FOUND:
             return None
 
-        return search_result.results[0]
+        response.raise_for_status()
 
     def search_strains(self, query_url=None, local_pk=None, registry_id=None,
                        registry_url_regex=None, name=None,
                        name_regex=None, case_sensitive=None, page_number=None):
         """
         Searches EDD for strain(s) matching the search criteria.
-        :param query_url: the entire URL for the search, including query parameters (for example,
-        the value returned for next_page as a result of a prior search). If present, all other
-        parameters will be ignored.
+        :param query_url: a convenience for getting the next page of results in multi-page
+        result sets. Query_url is the entire URL for the search, including query parameters (for
+        example, the value returned for next_page as a result of a prior search). If present,
+        all other parameters will be ignored.
         :param local_pk: the integer primary key that idetifies the strain within this EDD
         deployment
         :param registry_id: the registry id (UUID) to search for
@@ -503,14 +514,25 @@ class EddApi(RestApiClient):
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
 
-        if USE_DRF_SERIALIZER:
-            from edd.rest.serializers import StrainSerializer
-            return DrfPagedResult.of(response.content, serializer_class=StrainSerializer.__class__)
-        else:
-            return DrfPagedResult.of(response.content, model_class=Strain)
+        return DrfPagedResult.of(response.content, model_class=Strain)
 
-    def get_strain_studies(self, strain_pk=None, strain_uuid=None, query_url=None,
+    def get_strain_studies(self, local_strain_pk=None, strain_uuid=None, query_url=None,
                            page_number=None):
+        """
+        Queries EDD for all of the studies associated with the given strain.
+        :param local_strain_pk: the integer local primary key for this strain in this EDD
+        deployment. When available, strain_uuid is preferred since it's valid across EDD
+        deployments.
+        :param strain_uuid: the UUID for this strain as created by ICE. When available,
+        strain_uuid is preferred since it's valid across EDD deployments.
+        :param query_url: a convenience for getting the next page of results in multi-page
+        result sets. Query_url is the entire URL for the search, including query parameters (for
+        example, the value returned for next_page as a result of a prior search). If present,
+        all other parameters will be ignored.
+        :param page_number: the results page number (starting with 1)
+        :return: a PagedResult with some or all of the associated studies, or None if none were
+        found for this strain
+        """
         request_generator = self.session_auth.request_generator
         response = None
 
@@ -526,9 +548,9 @@ class EddApi(RestApiClient):
 
             if strain_uuid:
                 search_params[id] = strain_uuid  # TODO: consider renaming the param to ID,
-                                                   # but def use a constant here and in else
-            elif strain_pk:
-                search_params[id] = strain_pk
+                                                 # but def use a constant here and in else
+            elif local_strain_pk:
+                search_params[id] = local_strain_pk
             else:
                 raise KeyError('At least one strain identifier must be provided')  # TODO: consider
                 # exception type and message
@@ -539,23 +561,23 @@ class EddApi(RestApiClient):
             if page_number:
                 search_params[PAGE_NUMBER_QUERY_PARAM] = page_number
 
-            url = '%s/rest/strain/%d/studies/' % (self.base_url, strain_pk)
+            url = '%s/rest/strain/%d/studies/' % (self.base_url, local_strain_pk)
 
             response = request_generator.get(url, params=search_params)
 
         if response.status_code == requests.codes.ok:
-            query_url = response.url
             return DrfPagedResult.of(response.content, model_class=Study)
 
     def get_study_lines(self, study_pk, line_active_status=LINES_ACTIVE_DEFAULT, query_url=None,
                         page_number=None):
 
         """
-        Queries EDD for lines associated with a study
-        :param result_limit: the upper limit for the number of results that will be returned from
-        this single request. If present, overrides the value provided to the constructor for
-        the duration of this search.
-        :return: a PagedResult containing some or all of the EDD strains that matched the search
+        Queries EDD for the lines associated with a specific study
+        :param query_url: a convenience for getting the next page of results in multi-page
+        result sets. Query_url is the entire URL for the search, including query parameters (for
+        example, the value returned for next_page as a result of a prior search). If present,
+        all other parameters will be ignored.
+        :return: a PagedResult containing some or all of the EDD lines that matched the search
         criteria
         """
         request_generator = self.session_auth.request_generator
@@ -594,8 +616,11 @@ class EddApi(RestApiClient):
         or an empty string to get all strains associated with the study
         :param line_active_status:
         :param page_number:
-        :param query_url:
-        :return:
+        :param query_url: a convenience for getting the next page of results in multi-page
+        result sets. Query_url is the entire URL for the search, including query parameters (for
+        example, the value returned for next_page as a result of a prior search). If present,
+        all other parameters will be ignored.
+        :return: a PagedResult containing some or all of the EDD strains used in this study
         """
 
         request_generator = self.session_auth.request_generator
@@ -668,7 +693,7 @@ class EddApi(RestApiClient):
     # Will's comment is that line creation / edit should take a strain UUID as input
     def create_strain(self, name, description, registry_id, registry_url):
         """
-        Creates a new Strain in EDD
+        Creates or updates a Strain in EDD
         :return: the newly-created strain, but containing only the subset of its state serialized
         by the REST API.
         :raises: an Exception if the strain couldn't be created
@@ -677,10 +702,10 @@ class EddApi(RestApiClient):
         self._prevent_write_while_disabled()
 
         post_data = {
-            'name': name,
-            'description': description,
-            'registry_id': registry_id,
-            'registry_url': registry_url,
+            STRAIN_NAME_KEY: name,
+            STRAIN_DESCRIPTION_KEY: description,
+            STRAIN_REG_ID_KEY: registry_id,
+            STRAIN_REG_URL_KEY: registry_url,
         }
 
         # make the HTTP request
@@ -695,8 +720,67 @@ class EddApi(RestApiClient):
                 show_response_html(response)
             response.raise_for_status()
 
-        # return the created strain
+        # return the created/updated strain
         return Strain(**json.loads(response.content))
+
+    def _update_strain(self, http_method, name=None, description=None, local_pk=None,
+                       registry_id=None, registry_url=None):
+        """
+        A helper method that is the workhorse for both setting all of a strains values,
+        or updating just a select subset of them
+        :param http_method: the method to use in updating the strain (determines replacement type by
+        REST convention).
+        :param name: the strain name
+        :param description: the strain description
+        :param local_pk: the numeric primary key for this strain in the local EDD deployment
+        :param registry_id: the ICE UUID for this strain
+        :param registry_url: the ICE URL for this strain
+        :return: the strain if it was created
+        """
+
+        self._prevent_write_while_disabled()
+
+        strain_values = {}
+        if name:
+            strain_values[STRAIN_NAME_KEY] = name
+        if description:
+            strain_values[STRAIN_DESCRIPTION_KEY] = name
+        if registry_id:
+            strain_values[STRAIN_REG_ID_KEY] = registry_id
+        if registry_url:
+            strain_values[STRAIN_REG_URL_KEY] = registry_url
+
+        # determine which identifier to use for the strain. if the local_pk is provided, use that
+        # since we may be trying to update a strain that has no UUID defined
+        strain_id = str(local_pk) if local_pk else str(registry_id)
+
+        # build the URL for this strain resource
+        url = '%(base_url)s/rest/strain/%(strain_id)s' % {
+            'base_url': self.base_url, 'strain_id': strain_id,
+        }
+
+        request_generator = self.session_auth.request_generator
+        response = request_generator.request(http_method, url, data=json.dumps(strain_values),
+                                             headers=self._json_header)
+
+        if not is_success_code(response.status_code):
+            if DEBUG:
+                show_response_html(response)
+            response.raise_for_status()
+
+        return Strain(**json.loads(response.content))
+
+    def update_strain(self, name=None, description=None, local_pk=None, registry_id=None,
+                      registry_url=None):
+        return self._update_strain('PATCH', name, description, local_pk, registry_id, registry_url)
+
+    def set_strain(self, name, description, local_pk=None, registry_id=None, registry_url=None):
+        """
+        Updates the content of a preexisting strain, replacing all of its fields with the ones
+        provided (or null/empty for any except the pk that aren't)
+        :return:
+        """
+        return self._update_strain('PUT', name, description, local_pk, registry_id, registry_url)
 
     def get_study(self, pk):
         url = '%s/rest/study/%d' % (self.base_url, pk)
@@ -737,7 +821,7 @@ class DrfPagedResult(PagedResult):
         super(DrfPagedResult, self).__init__(results, total_result_count, next_page, previous_page)
 
     @staticmethod
-    def of(json_string, model_class, serializer_class=None, prevent_mods=True):
+    def of(json_string, model_class):
         """
         Gets a PagedResult containing object results from the provided JSON input. For consistency,
         the result is always a PagedResult, even if the JSON response actually included the full set
@@ -753,8 +837,6 @@ class DrfPagedResult(PagedResult):
         :return: a PagedResult containing the data and a sufficient information for finding the rest
         of it (if any)
         """
-        # TODO: fix/use serializer_class
-        # TODO: implement or remove prevent_mods
         # TODO: try to merge with IcePagedResult.of(), then move implementation to parent
         # class after resolving the reflection problem below for DRF-based serializers
 
@@ -770,6 +852,7 @@ class DrfPagedResult(PagedResult):
         count = None
         next_page = None
         prev_page = None
+        results_obj_list = []
 
         # IF response is paged, pull out paging context
         if response_content or RESULTS_KEY in json_dict:
@@ -780,44 +863,19 @@ class DrfPagedResult(PagedResult):
             if count == 0:
                 return None
 
+            # iterate through the returned data, deserializing each object found
+            for object_dict in response_content:
+                # using parallel object hierarchy to Django model objects. Note that input isn't
+                # validated, but that shouldn't really be an issue on the client side,
+                # so long as the
+                # server connection is secure / trusted
+                result_object = model_class(**object_dict)
+
+                results_obj_list.append(result_object)
+
         # otherwise just deserialize the data
         else:
-            response_content = json_dict
-
-        # iterate through the returned data, deserializing each object found
-        results_obj_list = []
-        for object_dict in response_content:
-            result_object = None
-
-            # INITIAL attempt to use DRF serializer for de-serialization also. Needs work on
-            # paramaterizing which serializer gets used -- strange issues with reflection
-            # thus far, plus lots of extra library dependencies for not much benefit
-            if USE_DRF_SERIALIZER:
-
-                from edd.rest.serializers import StrainSerializer
-                # serializer = serializer_class(data=object_dict)  # TODO: should work, but doesn't
-                # because of an apparent problem in __new__ in DRF's SerializerMetaClass. huh.
-                serializer = StrainSerializer(data=object_dict)
-                serializer.is_valid(raise_exception=True)
-                model_class = serializer.Meta.model
-                validated_data = serializer.validated_data
-
-                # work around an issue where the default
-                # read only pk field won't get sent back to clients after creating a new strain. See
-                # https://github.com/tomchristie/django-rest-framework/issues/2320 and related
-                # issues and mailing list posts. The solution suggested in these resources suggests
-                # making the serializer's PK field writable, which seems dangerous. Probably best
-                # to just work around it here.
-                pk = object_dict.get('pk')
-                if pk:
-                    validated_data['pk'] = pk
-                result_object = model_class(**validated_data)
-            # using parallel object hierarchy to Django model objects. Note that input isn't
-            # validated, but that shouldn't really be an issue on the client side, so long as the
-            # server connection is secure / trusted
-            else:
-                result_object = model_class(**object_dict)
+            result_object = model_class(**json_dict)
             results_obj_list.append(result_object)
 
         return DrfPagedResult(results_obj_list, count, next_page, prev_page)
-

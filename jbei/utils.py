@@ -1,12 +1,22 @@
 """
 A catch-all module for general utility code that doesn't clearly belong elsewhere.
 """
+import re
+
 import arrow
 import getpass
 import logging
 from requests import ConnectionError
 
 logger = logging.getLogger(__name__)
+
+_WORD_OR_DIGIT_REGEX = r'(?:\w\d)'
+UUID_REGEX = r'(?:\w\d){8}\-(?:\w\d){4}\-(?:\w\d){4}\-(?:\w\d){4}\-(?:\w\d){12}'
+PK_OR_UUID_REGEX = r'(?:\d+)|%(uuid_regex)s' % {
+    'uuid_regex': UUID_REGEX,
+}
+UUID_PATTERN = re.compile(UUID_REGEX)
+PK_OR_UUID_PATTERN = re.compile(PK_OR_UUID_REGEX)
 
 
 class UserInputTimer(object):

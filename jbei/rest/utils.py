@@ -3,6 +3,7 @@ A collection of utility methods for interacting with REST frameworks
 """
 
 import os
+import re
 import tempfile
 import webbrowser
 import time
@@ -50,5 +51,11 @@ def remove_trailing_slash(uri):
 
 def is_success_code(http_status_code):
     return (200 <= http_status_code) and (http_status_code < 300)
+
+INTEGER_PATTERN = re.compile(r'^\d+$', re.UNICODE)
+def is_numeric_pk(id):
+    # print('Pk is of class %s' % id.__class__.__name__) # TODO: remove debug stmt
+    # return isinstance(id, (int, long))
+    return bool(INTEGER_PATTERN.match(id))
 
 CLIENT_ERROR_NOT_FOUND = 404
