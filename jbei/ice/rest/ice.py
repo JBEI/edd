@@ -341,9 +341,8 @@ class Entry(object):
 
 
 class ExperimentLink(object):
-    def __init__(self, id, label, url, owner_email, creation_time):
+    def __init__(self, id, label, url, owner_email, creation_time, label=None):
         self.id = id
-        self.label = label
         self.url = url
         self.owner_email = owner_email
         self.creation_time = creation_time
@@ -352,10 +351,10 @@ class ExperimentLink(object):
     def of(json_dict):
         return ExperimentLink(
                 json_dict['id'],
-                json_dict['label'],
                 json_dict['url'],
                 json_dict.get('ownerEmail'),
-                json_dict['created'])
+                json_dict['created'],
+                label=json_dict.get('label'),)
 
 
 def _construct_part(python_object_params, part_type, class_data_keyword, conversion_dict,
@@ -364,20 +363,18 @@ def _construct_part(python_object_params, part_type, class_data_keyword, convers
 
     class_data = python_object_params.pop(class_data_keyword, None)
     if class_data:
-        for keyword, value in class_data.iteritems():
+        for keyword, value in class_data.items():
             python_keyword = keyword
             if keyword in conversion_dict:
                 python_keyword = conversion_dict[keyword]
             python_object_params[python_keyword] = value
     elif not silence_type_specific_warnings:
-        logger.warning('JSON for %(class_name)s "%(part_id)s" has type=%(type)s, but no %('
-                       'field_name)s '
-                       'field.' % {
-            'class_name': part_derived_class.__name__,
-            'part_id': python_object_params['part_id'],
-            'type': part_type,
-            'field_name': class_data_keyword,
-        })
+        logger.warning('JSON for %(class_name)s "%(part_id)s" has type=%(type)s, but no '
+                       '%(field_name)s field.' % {
+                            'class_name': part_derived_class.__name__,
+                            'part_id': python_object_params['part_id'],
+                            'type': part_type,
+                            'field_name': class_data_keyword, })
     return part_derived_class(**python_object_params)
 
 
