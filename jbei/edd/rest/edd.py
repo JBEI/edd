@@ -442,7 +442,8 @@ class EddApi(RestApiClient):
 
         # throw an error for unexpected reply
         if response.status_code == requests.codes.ok:
-            return DrfPagedResult.of(response.content, model_class=Strain)
+            json_dict = json.loads(response.content)
+            return Strain(**json_dict)
         elif response.status_code == CLIENT_ERROR_NOT_FOUND:
             return None
 

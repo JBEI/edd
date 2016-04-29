@@ -418,6 +418,7 @@ class ProcessingSummary:
     ################################################################################################
 
     def skipped_external_link(self, ice_entry, link):
+        self._existing_links_processed += 1
         self._skipped_external_links += 1
 
         logger.warning('Leaving external ICE link to %(link_url)s in place from ICE part '
@@ -509,11 +510,11 @@ class ProcessingSummary:
                     'entry_uuid': ice_entry.uuid, })
 
     def found_strain_with_up_to_date_links(self, edd_strain, ice_entry):
-        logger.info('Strain has up-to-date ICE links %(strain_pk)d / %(part_id)s / %('
-                    'entry_uuid)s' % {
-            'strain_pk': edd_strain.pk,
-            'part_id': ice_entry.part_id,
-            'entry_uuid': ice_entry.uuid,
+        logger.info('Strain has up-to-date ICE links %(strain_pk)d / %(part_id)s / '
+                    '%(entry_uuid)s' % {
+                        'strain_pk': edd_strain.pk,
+                        'part_id': ice_entry.part_id,
+                        'entry_uuid': ice_entry.uuid,
         })
         self.processed_edd_strain(edd_strain)
         self._up_to_date_strains.append(edd_strain)
@@ -536,9 +537,9 @@ class ProcessingSummary:
 
         logger.info('Skipped valid link %(link_url)s from ICE entry %(part_number)s '
                     '(uuid %(entry_uuid)s)' % {
-                    'part_number': ice_entry.part_id,
-                    'link_url': experiment_link.url,
-                    'entry_uuid': ice_entry.uuid, })
+                        'part_number': ice_entry.part_id,
+                        'link_url': experiment_link.url,
+                        'entry_uuid': ice_entry.uuid, })
 
     def updated_perl_link(self, ice_entry, experiment_link):
         self._existing_links_processed += 1
@@ -609,64 +610,48 @@ class ProcessingSummary:
     def previously_processed_strains_skipped(self, num_skipped):
         self._previously_processed_strains_skipped = num_skipped
 
-    def print_summary(self):
-        print(OUTPUT_SEPARATOR)
-        print('Processing Summary')
-        print(OUTPUT_SEPARATOR)
+    def print_edd_processing_summary(self, space):
 
-        percent_strains_processed = ((self.total_edd_strains_processed /
+        percent_strains_processed = ((
+                                     self.total_edd_strains_processed /
                                      self.total_edd_strains_found) * 100 if
                                      self.total_edd_strains_found else 0)
 
-        ############################################################################################
-        # Print summary of EDD strain processing
-        ############################################################################################
-        print('')
-        print("Note: there's potential for overlap between subsections here! ICE entries "
-              "referenced by EDD strains are "
-              "examined while scanning EDD strains during the first step. If configured, ICE "
-              "entries not examined during the first step will also be scanned/processed "
-              "independently of EDD to catch any dangling links to studies that no longer exist "
-              "in EDD, or that no longer reference linked ICE entries.")
-        print('')
-
-        # TODO: uncertain why processed count is wrong here after several checks...maybe assocaited
+        # TODO: uncertain why processed count is wrong here after several checks...maybe associated
         # with some property-level optimization?
         subsection_header = ('EDD strains (processed/found): %(strains_processed)s / '
                              '%(strains_found)s (%(percent_processed)0.2f%%)' % {
-            'strains_processed': locale.format('%d',
-                                                               self.total_edd_strains_processed,
-                                                               grouping=True),
-                                'strains_found': locale.format('%d',
-                                                                   self.total_edd_strains_found,
-                                                                   grouping=True),
-                                'percent_processed': percent_strains_processed, })
+                                 'strains_processed': locale.format('%d',
+                                                                    self.total_edd_strains_processed,
+                                                                    grouping=True),
+                                 'strains_found': locale.format('%d', self.total_edd_strains_found,
+                                                                grouping=True),
+                                 'percent_processed': percent_strains_processed,
+                             })
         subsection_separator = '-'.rjust(len(subsection_header), '-')
         print(subsection_separator)
         print(subsection_header)
         print(subsection_separator)
 
-        space = 3
         follow_up_items = OrderedDict({
-            'Non-strain ICE entries referenced by EDD': locale.format('%d',
-                    len(self._non_strain_ice_parts_referenced), grouping=True),
-            "Orphaned EDD strains (don't reference an ICE entry)": locale.format('%d',
-                    len(self._orphaned_edd_strains), grouping=True),
+            'Non-strain ICE entries referenced by EDD': locale.format('%d', len(
+                self._non_strain_ice_parts_referenced), grouping=True),
+            "Orphaned EDD strains (don't reference an ICE entry)": locale.format('%d', len(
+                self._orphaned_edd_strains), grouping=True),
             "Stepchild EDD strains (reference a UUID not found in this ICE deployment)":
-                locale.format('%d', len(self._stepchild_edd_strains), grouping=True)
+                locale.format(
+                '%d', len(self._stepchild_edd_strains), grouping=True)
 
         })
 
         rollup_result_items = OrderedDict()
         rollup_result_items['Strains with current links:'] = locale.format('%d', len(
-            self._up_to_date_strains))
-        rollup_result_items['Strains with one or more links maintained:'] = locale.format('%d',
-                                                                                  len(self._strains_with_changes),
-                                                                                  grouping=True)
-        rollup_result_items['Known follow-up items:'] = \
-            locale.format('%d', len(self._non_strain_ice_parts_referenced) +
-                          len(self._orphaned_edd_strains) +
-                          len(self._stepchild_edd_strains), grouping=True)
+                self._up_to_date_strains))
+        rollup_result_items['Strains with one or more links maintained:'] = locale.format('%d', len(
+            self._strains_with_changes), grouping=True)
+        rollup_result_items['Known follow-up items:'] = locale.format('%d', len(
+            self._non_strain_ice_parts_referenced) + len(self._orphaned_edd_strains) + len(
+            self._stepchild_edd_strains), grouping=True)
         title_col_width = max(len(title) for title in rollup_result_items.keys()) + space
         value_col_width = max(len(value) for value in rollup_result_items) + space
         for title, value in rollup_result_items.items():
@@ -680,12 +665,45 @@ class ProcessingSummary:
             aligned_title = '\t%s' % title.ljust(title_col_width, fill_char)
             print(fill_char.join((aligned_title, value.rjust(value_col_width, fill_char))))
 
+    def print_summary(self):
+        did_processing = self.total_edd_strains_processed or self.total_ice_entries_processed
+
+        print(OUTPUT_SEPARATOR)
+        print('Processing Summary')
+        print(OUTPUT_SEPARATOR)
+
+        if not did_processing:
+            print('No processing was completed (though some may have been attempted)')
+            return
+
+        space = 3
+
+        ############################################################################################
+        # Print summary of EDD strain processing
+        ############################################################################################
+        if self.total_edd_strains_processed:
+            if self.total_ice_entries_processed:
+                print('')
+                print("Note: there's potential for overlap between subsections here! ICE entries "
+                      "referenced by EDD strains are "
+                      "examined while scanning EDD strains during the first step. If configured, "
+                      "ICE entries not examined during the first step will also be "
+                      "scanned/processed independently of EDD to catch any dangling links to "
+                      "studies that no longer exist in EDD, or that no longer reference linked "
+                      "ICE entries.")
+                print('')
+
+            self.print_edd_processing_summary(space)
+
         ############################################################################################
         # Print summary of ICE entry processing (some is performed even if ICE isn't scanned
         # independently of EDD)
         ############################################################################################
 
-        # account for configurability of whether ICE entries are scanned independent of their
+        if not self.total_ice_entries_processed:
+            return
+
+            # account for configurability of whether ICE entries are scanned independent of their
         # relation to what's directly referenced from EDD
         entries_found = self.total_ice_entries_found if self.total_ice_entries_processed else \
                             self.total_ice_entries_processed
@@ -901,7 +919,7 @@ def main():
     if args.edd_strain:
         print('\t\tSingle-EDD Strain Search: %s' % args.edd_strain)
     if args.ice_entry:
-        print('\t\tSingle ICE Entry Search: Yes')
+        print('\t\tSingle ICE Entry Search: %s' % args.ice_entry)
     if args.scan_ice_entries:
         if perform_scans:
             print('\t\tScan ICE Entries Independently of EDD: %s' % args.scan_ice_entries)
@@ -1091,7 +1109,7 @@ def main():
                                                process_all_ice_entry_links,
                                                processing_summary, overall_performance)
                         else:
-                            print('INVALID INPUT: No EDD strain was found with id %(id)d at %(url)s'
+                            print('INVALID INPUT: No EDD strain was found with id %(id)s at %(url)s'
                                   % {
                                     'id': edd_strain_id,
                                     'url': EDD_URL, })
@@ -1199,13 +1217,9 @@ def scan_ice_entries(processing_inputs, search_ice_part_types, processing_summar
     Searches ICE for entries of the specified type(s), then examines experiment links for each part
     whose ID isn't in processed_edd_strain_uuids, comparing any EDD-referencing experiment links to
     EDD and maintaining the links as appropriate.
-    :param ice: an authenticated IceApi instance
-    :param edd: an authenticated EddApi instance
     :param search_ice_part_types: a list of entry types to be examined in ICE, or None to examine
     all entries.
-    :param cleaning_ice_test_instance: true if the ICE instance being maintained is a test instance.
-    If False, all reverences to EDD test instances will be removed on the assumption that they
-    were accidental artifacts of software testing with improperly configured URLs.
+
     """
 
     ice = processing_inputs.ice
@@ -1221,8 +1235,6 @@ def scan_ice_entries(processing_inputs, search_ice_part_types, processing_summar
     entries_summary = '' if not test_ice_entry_limit else '%d Test' % test_ice_entry_limit
     print('Comparing %s ICE entries to EDD... ' % entries_summary)
     print(OUTPUT_SEPARATOR)
-
-
 
     # loop over ICE entries, finding and pruning stale links to EDD strains / studies
     # that no longer reference them. We'll skip ICE entries that we just examined from
@@ -1299,12 +1311,12 @@ def process_ice_entry(entry, processing_inputs, processing_summary):
 
     # build a (short-lived) list of experiment links for this entry.
     # Note: possible, but unlikely we're causing race conditions by caching this data
-    entry_experiments_list = build_ice_entry_experiments_cache(ice, entry.uuid)
+    entry_experiments_dict = build_ice_entry_experiments_cache(ice, entry.uuid)
 
     # examine experiment links for this entry, removing or updating those that are
     # no longer valid, or that were unambiguously created as a result of software
     # testing
-    for experiment_link in entry_experiments_list:
+    for url, experiment_link in entry_experiments_dict.items():
         outcome = do_initial_run_ice_entry_link_processing(entry, experiment_link,
                                                            processing_inputs,
                                                            True, processing_summary)
@@ -1348,13 +1360,12 @@ def process_ice_entry(entry, processing_inputs, processing_summary):
 
     processing_summary.total_ice_entries_processed += 1
     run_duration = arrow.utcnow() - start_time
-    print_ice_entry_processing_summary(entry, len(entry_experiments_list),
+    print_ice_entry_processing_summary(entry, len(entry_experiments_dict),
                                        run_duration.total_seconds())
 
 
-def do_initial_run_ice_entry_link_processing(ice_entry, experiment_link,
-                                            processing_inputs, query_edd_strains,
-                                            processing_summary):
+def do_initial_run_ice_entry_link_processing(ice_entry, experiment_link, processing_inputs,
+                                             query_edd_strains, processing_summary):
     """
     Processes an ICE experiment link and performs updates that are specific to the initial
     successful run of this script, based on the known development & integration history of EDD
@@ -1456,6 +1467,11 @@ class ProcessingInputs(object):
     def __init__(self, study_url_pattern,
                  perl_study_url_pattern, test_edd_base_url, cleaning_edd_test_instance,
                  cleaning_ice_test_instance, test_edd_strain_limit, test_ice_entry_limit):
+        """
+        :param cleaning_ice_test_instance: true if the ICE instance being maintained is a test instance.
+        If False, all reverences to EDD test instances will be removed on the assumption that they
+        were accidental artifacts of software testing with improperly configured URLs.
+        """
         self.edd = None
         self.ice = None
         self.scan_ice_entries = scan_ice_entries

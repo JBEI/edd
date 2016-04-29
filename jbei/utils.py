@@ -6,17 +6,16 @@ import re
 import arrow
 import getpass
 import logging
-from requests import ConnectionError
 
 logger = logging.getLogger(__name__)
 
 _WORD_OR_DIGIT_REGEX = r'(?:\w\d)'
-UUID_REGEX = r'(?:\w\d){8}\-(?:\w\d){4}\-(?:\w\d){4}\-(?:\w\d){4}\-(?:\w\d){12}'
+UUID_REGEX = r'\w{8}\-\w{4}\-\w{4}\-\w{4}\-\w{12}'
 PK_OR_UUID_REGEX = r'(?:\d+)|%(uuid_regex)s' % {
     'uuid_regex': UUID_REGEX,
 }
-UUID_PATTERN = re.compile(UUID_REGEX)
-PK_OR_UUID_PATTERN = re.compile(PK_OR_UUID_REGEX)
+UUID_PATTERN = re.compile(UUID_REGEX, re.UNICODE)
+PK_OR_UUID_PATTERN = re.compile(PK_OR_UUID_REGEX, re.UNICODE)
 
 
 class UserInputTimer(object):
@@ -49,7 +48,7 @@ _HOURS_PER_DAY = 24
 _SECONDS_PER_MINUTE = 60
 _SECONDS_PER_MONTH = _SECONDS_PER_HOUR * _HOURS_PER_DAY * 30
 _SECONDS_PER_YEAR = _SECONDS_PER_MONTH * 12   # NOTE: this causes years to have 360 days, but it's
-                                            # consistent / good enough
+                                              # consistent / good enough
 _SECONDS_PER_DAY = _SECONDS_PER_HOUR * _HOURS_PER_DAY
 
 
@@ -162,6 +161,7 @@ def to_human_relevant_delta(seconds):
 
     return formatted_duration
 
+
 class LoginResult:
     def __init__(self, session_auth, username, password=None):
         self.session_auth = session_auth
@@ -192,35 +192,36 @@ def session_login(session_auth_class, base_url, application_name, username_arg=N
     user_input = user_input if user_input else UserInputTimer()
     session_auth = None
     attempted_login = False
+
     while not session_auth:
+        username = None
+        password = None
 
-            # gather user credentials from command line arguments and/or user prompt
-            if (username_arg is not None) and (not attempted_login):
-                username = username_arg
-            else:
-                if not attempted_login:
-                    username = getpass.getuser()
-                username_input = user_input.user_input('Username [%s]: ' % username)
-                username = username_input if username_input else username
-            if (password_arg is not None) and not attempted_login:
-                password = password_arg
-            else:
-                append_prompt = ' [enter to use existing entry]' if attempted_login else ''
-                password_input = getpass.getpass('Password for %s%s: ' % (username, append_prompt))
-                password = password_input if password_input else password
-
-            attempted_login = True
-
-            # attempt login
+        # gather user credentials from command line arguments and/or user prompt
+        if (username_arg is not None) and (not attempted_login):
+            username = username_arg
+        else:
+            if not attempted_login:
+                username = getpass.getuser()
+            username_input = user_input.user_input('Username [%s]: ' % username)
+            username = username_input if username_input else username
+        if (password_arg is not None) and not attempted_login:
+            password = password_arg
+        else:
+            append_prompt = ' [enter to use existing entry]' if attempted_login else ''
+            password_input = getpass.getpass('Password for %s%s: ' % (username, append_prompt))
+            password = password_input if password_input else password
+        attempted_login = True
+        # attempt login
+        if print_result:
+            print 'Logging into %s at %s... ' % (application_name, base_url),
+        edd_login_start_time = arrow.utcnow()
+        session_auth = session_auth_class.login(base_url=base_url, username=username,
+                                                password=password,
+                                                verify_ssl_cert=verify_ssl_cert)
+        if(session_auth):
             if print_result:
-                print 'Logging into %s at %s... ' % (application_name, base_url),
-            edd_login_start_time = arrow.utcnow()
-            session_auth = session_auth_class.login(base_url=base_url, username=username,
-                                                    password=password,
-                                                    verify_ssl_cert=verify_ssl_cert)
-            if(session_auth):
-                if print_result:
-                    print('success!')
-                return LoginResult(session_auth, username, password)
-            elif print_result:
-                print('failed :-{')
+                print('success!')
+            return LoginResult(session_auth, username, password)
+        elif print_result:
+            print('failed :-{')
