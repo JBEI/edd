@@ -307,15 +307,29 @@ class StudyStrainsView(viewsets.ReadOnlyModelViewSet):
     """
     serializer_class = StrainSerializer
     STUDY_URL_KWARG = 'study_pk'
+    STRAIN_URL_KWARG = 'pk'
+
+    def get_object(self):
+        """
+            Overrides the default implementation to provide flexible lookup for nested strain
+            views (either based on local numeric primary key, or based on the strain UUID from ICE
+            """
+        filters = {}  # unlike the example, just do all the filtering in get_queryset() for
+        # consistency
+        queryset = self.get_queryset()
+        obj = get_object_or_404(queryset, **filters)
+        self.check_object_permissions(self.request, obj)
+        return obj
 
     def get_queryset(self):
         print(self.kwargs)
 
         # extract URL arguments
         study_id = self.kwargs[self.STUDY_URL_KWARG]
-        study_id_is_pk = re.match('^\d+$', study_id)
-        line_active_status = self.request.query_params.get(LINE_ACTIVE_STATUS_PARAM, LINES_ACTIVE_DEFAULT)
 
+        study_id_is_pk = is_numeric_pk(study_id)
+        line_active_status = self.request.query_params.get(LINE_ACTIVE_STATUS_PARAM,
+                                                           LINES_ACTIVE_DEFAULT)
         user = self.request.user
 
         # build the query, enforcing EDD's custom study access controls. Normally we'd require
@@ -323,12 +337,21 @@ class StudyStrainsView(viewsets.ReadOnlyModelViewSet):
         # be visible to users with read access to a study that measures them
         study_user_permission_q = Study.user_permission_q(user, StudyPermission.READ,
                                                               keyword_prefix='line__study__')
-
         if study_id_is_pk:
             strain_query = Strain.objects.filter(study_user_permission_q, line__study__pk=study_id)
         else:
-            strain_query = Strain.objects.filter(study_user_permission_q,
-                                                line__study_registry_id=study_id)
+            logger.error("Non-numeric study IDs aren't supported.")
+            return Strain.objects.none()
+
+        strain_id = self.kwargs.get(self.STRAIN_URL_KWARG)
+        if strain_id:
+            strain_id_is_pk = is_numeric_pk(strain_id)
+
+            if strain_id_is_pk:
+                strain_query = strain_query.filter(pk=strain_id)
+            else:
+                strain_query = strain_query.filter(registry_id=strain_id)
+
 
         # filter by line active status, applying the default (only active lines)
         strain_query = filter_line_activity(strain_query, line_active_status, query_prefix='line__')

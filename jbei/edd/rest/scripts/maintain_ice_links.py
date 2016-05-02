@@ -42,7 +42,6 @@ formatter = logging.Formatter('%(asctime)s %(name)s %(levelname)s: %(message)s')
 console_handler.setFormatter(formatter)
 
 # set a higher log level for supporting frameworks to help with debugging
-# TODO: comment out?
 root_logger = logging.getLogger('root')
 root_logger.setLevel(LOG_LEVEL)
 root_logger.addHandler(console_handler)
@@ -433,7 +432,7 @@ class ProcessingSummary:
 
     @property
     def total_edd_strains_processed(self):
-        return len(self._processed_edd_strain_uuids)
+        return len(self._processed_edd_strain_uuids) + self.orphaned_edd_strain_count
 
     @property
     def total_ice_entries_processed(self):
@@ -458,7 +457,7 @@ class ProcessingSummary:
     ################################################################################################
 
     def is_edd_strain_processed(self, strain_uuid):
-        return self._processed_edd_strain_uuids.get(strain_uuid, False)
+        return bool(self._processed_edd_strain_uuids.get(strain_uuid, False))
 
     def updated_edd_strain_text(self, edd_strain, ice_entry, old_name=None,
                                 new_name=None, old_description=None, new_description=None):
@@ -556,7 +555,8 @@ class ProcessingSummary:
                        "Skipping this incomplete strain." % {
                            'strain_pk': strain.pk,
                        })
-        self.processed_edd_strain(strain)
+        self.processed_edd_strain(strain)  # no effect at present, but keep in case we change
+        # implementation
         self._orphaned_edd_strains.append(strain)
 
     def found_stepchild_edd_strain(self, edd_strain):
@@ -596,6 +596,8 @@ class ProcessingSummary:
         self._strains_with_changes.append(strain)
 
     def processed_edd_strain(self, strain):
+        if not strain.registry_id:
+            return  # should be captured by orphaned strains...don't count it twice!
         self._processed_edd_strain_uuids[strain.registry_id] = True
 
     @property
@@ -617,8 +619,6 @@ class ProcessingSummary:
                                      self.total_edd_strains_found) * 100 if
                                      self.total_edd_strains_found else 0)
 
-        # TODO: uncertain why processed count is wrong here after several checks...maybe associated
-        # with some property-level optimization?
         subsection_header = ('EDD strains (processed/found): %(strains_processed)s / '
                              '%(strains_found)s (%(percent_processed)0.2f%%)' % {
                                  'strains_processed': locale.format('%d',
@@ -705,7 +705,7 @@ class ProcessingSummary:
 
             # account for configurability of whether ICE entries are scanned independent of their
         # relation to what's directly referenced from EDD
-        entries_found = self.total_ice_entries_found if self.total_ice_entries_processed else \
+        entries_found = self.total_ice_entries_found if self.total_ice_entries_found else \
                             self.total_ice_entries_processed
         percent_processed = (self.total_ice_entries_processed / entries_found) * 100 if \
             entries_found else 0
@@ -729,8 +729,7 @@ class ProcessingSummary:
         print('ICE entries %s scanned independently of those referenced from EDD' % scanned)
         if scanned_ice_entries:
             print('Previously-processed EDD strains skipped during ICE entry scan: %s' %
-                  locale.format('%d',
-                        self._previously_processed_strains_skipped))
+                  locale.format('%d', self.previously_processed_strains_skipped))
 
         print('')
         subsection_header = 'ICE experiment link processing:'
@@ -922,7 +921,7 @@ def main():
         print('\t\tSingle ICE Entry Search: %s' % args.ice_entry)
     if args.scan_ice_entries:
         if perform_scans:
-            print('\t\tScan ICE Entries Independently of EDD: %s' % args.scan_ice_entries)
+            print('\t\tScan ICE Entries Independently of EDD: Yes')
         else:
             print('\t\tScan ICE Entries Independently of EDD: %s ignored because a single ICE '
                   'entry '
@@ -1075,7 +1074,7 @@ def main():
                 # ice.request_generator.timeout = 20
 
                 # test whether this user is an ICE administrator. If not, we won't be able
-                # to proceed until SYNBIO-TODO is resolved (if then, depending on the solution)
+                # to proceed until EDD-177 is resolved (if then, depending on the solution)
                 user_is_ice_admin = is_ice_admin_user(ice=ice, username=ice_login_details.username)
                 if not user_is_ice_admin:
                     return 0
@@ -1250,6 +1249,19 @@ def scan_ice_entries(processing_inputs, search_ice_part_types, processing_summar
         if ice_page_num == 1:
             processing_summary.total_ice_entries_found = \
                 ice_entry_search_results_page.total_result_count
+        elif ice_entry_search_results_page.total_result_count != \
+                processing_summary.total_ice_entries_found:
+            logger.warning('Search result total for page %(page_num)s (%(new_total)s)is different '
+                           'from the total reflected by page 1 (%(initial_total)s. It appears that '
+                           'some entries have been added or removed while this script was '
+                           'running' % {
+                                'page_num': locale.format('%d', ice_page_num, grouping=True),
+                                'initial_total': locale.format('%d',
+                                                               processing_summary.total_ice_entries_found,
+                                                               grouping=True),
+                                'new_total': locale.format('%d',
+                                                           ice_entry_search_results_page.total_result_count,
+                                                           grouping=True)})
 
         # loop over ICE entries in the current results page
         for ice_entry_search_result in ice_entry_search_results_page.results:
@@ -1326,7 +1338,7 @@ def process_ice_entry(entry, processing_inputs, processing_summary):
             continue
 
         # don't modify any experiment URL that doesn't directly map to
-        # a known EDD URL. Researchers can create these automatically, and we
+        # a known EDD URL. Researchers can create these manually, and we
         # don't want to remove any that EDD didn't create
         study_url_pattern = processing_inputs.study_url_pattern
         study_url_match = study_url_pattern.match(experiment_link.url)
@@ -1340,7 +1352,7 @@ def process_ice_entry(entry, processing_inputs, processing_summary):
         # perspective, check in with EDD again in case this entry was updated
         # following our previous check
         try:
-            edd_study_strains = edd.get_study_strains(study_pk)
+            edd_study_strains = edd.get_study_strains(study_pk=study_pk, strain_id=entry.uuid)
 
             if not edd_study_strains:
                 processing_summary.removed_invalid_link(entry, experiment_link)
@@ -1419,29 +1431,20 @@ def do_initial_run_ice_entry_link_processing(ice_entry, experiment_link, process
 
 
 def build_ice_entry_experiments_cache(ice, entry_uuid):
-    # TODO: consolidate comments here
     """
-    Queries ICE and creates a cache of experiment links for this ICE part. To reduce the chances of
+    Queries ICE and creates a local cache of experiment links for this ICE entry. To reduce the
+    chances of
     encountering a race condition during ongoing user modifications to EDD / ICE, the lifetime of
     this cache data should be minimized. Thankfully, if a race condition is encountered and EDD /
     ICE experiments get out-of-sync, we should be able to re-run this script to correct problems
     (and with low probability, create some new ones).
 
-     NOTE: for absolute consistency with EDD, we'd have to temporarily disable or delay
+     For absolute consistency with EDD, we'd have to temporarily disable or delay
      creations/edits for lines so we don't create a race condition for
      updates to this strain that occur while the script is inspecting this
      it. Instead, we'll opt for simplicity and tolerate a small chance of
      creating new inconsistencies with the script, since we can just run it
-     again to correct errors / potentially create new ones :-
-
-     NOTE: To
-     reduce the risk of race conditions creating consistency issues
-     in ICE, we could just push updates to all of the strains referenced by
-     EDD, but instead we'll accept increased risk of race conditions by
-     temporarily creating and referencing a local cache of ICE's
-     experiment links for this strain to help us
-     avoid unnecessary overhead from messaging (which is much more likely to
-      be a problem at present)
+     again to correct errors / potentially create new ones :-)
 
       :returns a map of lower-case link url -> ExperimentLink for all links associated with this
       entry
@@ -1515,7 +1518,6 @@ def process_edd_strain(edd_strain, processing_inputs, process_all_ice_entry_link
         print(separator)
         print(subheader)
         print(separator)
-        # TODO: consider making this a decorator
         strain_performance = StrainProcessingPerformance(edd_strain, arrow.utcnow(),
                                                          edd.request_generator.wait_time,
                                                          ice.request_generator.wait_time)

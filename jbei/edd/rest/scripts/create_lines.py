@@ -829,8 +829,8 @@ def prevent_duplicate_line_names(edd, study_number, csv_summary, input_timer):
     # iterate over line creation inputs in the CSV spreadsheet, testing line names against
     # existing lines in the study and against other lines in the CSV
     total_study_line_duplication_counts = 0  # duplications of the CSV for existing lines in the
-                                            # study (ignoring pre-existing duplicates)
-    total_csv_duplication_count = 0 # duplications internal to the CSV document
+                                             # study (ignoring pre-existing duplicates)
+    total_csv_duplication_count = 0  # duplications internal to the CSV document
     csv_line_duplication_counts = {}
     max_existing_duplication_count = 0
     max_csv_line_duplication_count = 0
@@ -859,9 +859,9 @@ def prevent_duplicate_line_names(edd, study_number, csv_summary, input_timer):
 
     print('')
     print('Found duplicate line names!')
-    print('Line creation inputs in this CSV file would produce duplicate line names for %('
-          'existing_dupes)d existing lines in the study, and %(csv_dupes)d other lines within the '
-          'same CSV file. It will be difficult or impossible to distinguish between lines with '
+    print('Line creation inputs in this CSV file would produce duplicate line names for '
+          '%(existing_dupes)d existing lines in the study, and %(csv_dupes)d other lines within '
+          'the same CSV file. It will be difficult or impossible to distinguish between lines with '
           'duplicate names in EDD.' % {
                 'existing_dupes': total_study_line_duplication_counts,
                 'csv_dupes': total_csv_duplication_count,
