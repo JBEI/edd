@@ -877,6 +877,7 @@ class DrfPagedResult(PagedResult):
         # otherwise just deserialize the data
         else:
             result_object = model_class(**json_dict)
+            count = 1
             results_obj_list.append(result_object)
 
         return DrfPagedResult(results_obj_list, count, next_page, prev_page)
