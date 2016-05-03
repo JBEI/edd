@@ -1414,7 +1414,8 @@ def do_initial_run_ice_entry_link_processing(ice_entry, experiment_link, process
         return NOT_PROCESSED_OUTCOME
 
     study_pk = int(perl_study_url_match.group('study_id'))
-    study_strains = edd.get_study_strains(study_pk) if query_edd_strains else None
+    study_strains = edd.get_study_strains(study_pk=study_pk, strain_id=ice_entry.uuid) if \
+        query_edd_strains else None
     if not study_strains:
         ice.remove_experiment_link(ice_entry.uuid, experiment_link.id)
         processing_summary.removed_invalid_link(ice_entry, experiment_link)
