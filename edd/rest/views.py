@@ -360,41 +360,74 @@ class StudyStrainsView(viewsets.ReadOnlyModelViewSet):
 
         return strain_query
 
+    #
+    # def get_queryset(self):
+    #
+    #     # extract URL arguments
+    #     line_pk = self.kwargs.get(self.LINE_URL_KWARG) if self.LINE_URL_KWARG in self.kwargs else \
+    #         None
+    #     study_pk = self.kwargs.get(self.STUDY_URL_KWARG)
+    #
+    #     user = self.request.user
+    #
+    #     # if no line primary key was provided, get all the lines associated with this study
+    #     if not line_pk:
+    #         all_lines_queryset = Line.objects.filter(study__pk=study_pk).prefetch_related(
+    #                 'study')  # study determines line access permissions for included lines
+    #
+    #         if all_lines_queryset and all_lines_queryset.first().user_can_read(user):
+    #             return all_lines_queryset
+    #
+    #         return Line.objects.none()
+    #
+    #     # a line pk was provided, so get just the requested line
+    #
+    #     # build the query
+    #     line_query = Line.objects.filter(pk=line_pk, study__pk=study_pk).prefetch_related(
+    #             'study')  # study determines line access permissions for included lines
+    #
+    #     # only return the result if the line exists AND the
+    #     # user has read permissions to the associated study
+    #     if line_query and line_query.get().user_can_read(user):
+    #         return line_query
+    #
+    #     return Line.objects.none()
+
 
 class StudyLineView(viewsets.ModelViewSet):  # LineView(APIView):
     """
         API endpoint that allows lines to be viewed or edited.
     """
     serializer_class = LineSerializer
-    LINE_URL_KWARG = "line"
+    LINE_URL_KWARG = "pk"
     STUDY_URL_KWARG = 'study_pk'
 
     def get_queryset(self):
-        print(self.kwargs)
 
-        # extract URL arguments
-        #line_pk = self.kwargs[self.LINE_URL_KWARG]
+        # extract study pk URL argument. line pk, if present, will be handled automatically by
+        # get_object() inherited from the parent class
         study_pk = self.kwargs[self.STUDY_URL_KWARG]
 
-        line_active_status = self.request.query_params.get(LINE_ACTIVE_STATUS_PARAM, LINES_ACTIVE_DEFAULT)
+        line_active_status = self.request.query_params.get(LINE_ACTIVE_STATUS_PARAM,
+                                                           LINES_ACTIVE_DEFAULT)
 
         user = self.request.user
         requested_permission = StudyPermission.WRITE if self.request.method in \
                                HTTP_MUTATOR_METHODS else StudyPermission.READ
 
-        # build the query, enforcing EDD's custom study access controls
-        if requested_permission == StudyPermission.READ or Study.user_can_read(user):
+        # if the user's admin / staff role gives read access to all Studies, don't bother querying
+        # the database for specific permissions defined on this study
+        if requested_permission == StudyPermission.READ and Study.user_role_can_read(user):
+            line_query = Line.objects.filter(study__pk=study_pk)
+        else:
             study_user_permission_q = Study.user_permission_q(user, requested_permission,
                                                               keyword_prefix='study__')
-            line_query = Line.objects.filter(study_user_permission_q,
-                                             study__pk=study_pk)
-        else:
-            line_query = Line.objects.filter(study__pk=study_pk)
+            line_query = Line.objects.filter(study_user_permission_q, study__pk=study_pk)
 
         # filter by line active status, applying the default (only active lines)
         line_query = filter_line_activity(line_query, line_active_status)
 
-        line_query = line_query.distinct()  # distinct required by both study permissions check
+        line_query = line_query.distinct()  # distinct() required by *both* study permissions check
                                             # and line activity filter above
 
         return line_query
@@ -469,7 +502,7 @@ class StudyLineView(viewsets.ModelViewSet):  # LineView(APIView):
         user_has_permission_query = Study.objects.filter(study_user_permission_q,
                                                          pk=study_pk).distinct()
 
-        # TODO: test raising PermissionDenied() similar to Django
+        # TODO: per William's comment, test raising PermissionDenied() similar to Django
 
         if not user_has_permission_query:
             return Response(status=status.HTTP_403_FORBIDDEN)
@@ -477,81 +510,6 @@ class StudyLineView(viewsets.ModelViewSet):  # LineView(APIView):
         return None
 
 
-class StudyListLinesView(mixins.CreateModelMixin, ListAPIView):  # TODO: unused... implement or
-                                                                 # remove
-    """
-        API endpoint that allows lines to be viewed or edited.
-    """
-
-    serializer_class = LineSerializer
-    lookup_field = 'pk'
-
-    STUDY_URL_KWARG = "study"
-    LINE_URL_KWARG = "line"
-
-    def get_object(self):
-        queryset = self.get_queryset()
-        filter = {}
-        filter['study__pk'] = self.kwargs[self.lookup_field]
-
-        if self.LINE_URL_KWARG in self.kwargs:
-            filter[self.lookup_field] = self.kwargs[self.LINE_URL_KWARG]
-
-        obj = get_object_or_404(queryset, **filter)
-        self.check_object_permissions(self.request, obj)
-        return obj
-
-    def get_queryset(self):
-
-        # extract URL arguments
-        line_pk = self.kwargs.get(self.LINE_URL_KWARG) if self.LINE_URL_KWARG in self.kwargs else\
-            None
-        study_pk = self.kwargs.get(self.STUDY_URL_KWARG)
-
-        user = self.request.user
-
-        # if no line primary key was provided, get all the lines associated with this study
-        if not line_pk:
-            all_lines_queryset = Line.objects.filter(study__pk=study_pk).prefetch_related(
-                    'study') # study determines line access permissions for included lines
-
-            if all_lines_queryset and all_lines_queryset.first().user_can_read(user):
-                return all_lines_queryset
-
-            return Line.objects.none()
-
-        # a line pk was provided, so get just the requested line
-
-        # build the query
-        line_query = Line.objects.filter(pk=line_pk,study__pk=study_pk).prefetch_related(
-                'study') # study determines line access permissions for included lines
-
-        # only return the result if the line exists AND the
-        # user has read permissions to the associated study
-        if line_query and line_query.get().user_can_read(user):
-            return line_query
-
-        return Line.objects.none()
-
-    def get(self, request, args, kwargs):
-        return self.list(request, args, kwargs)
-
-    def post(self, request, args, kwargs):
-        return self.create(request, args, kwargs)
-
-    # def post(self, request, format=None):
-    #     logger.error("in put()")
-    #     study_pk = self.kwargs.get(self.STUDY_URL_KWARG)
-    #     study = Study.objects.get(pk=study_pk)
-    #     if not (study and study.user_can_read(request.user)):
-    #         return Response(status=status.HTTP_400_BAD_REQUEST)
-    #
-    #     serializer = LineSerializer(data=request.data)
-    #     if serializer.is_valid():
-    #         serializer.save()
-    #         return Response(serializer.data, stutus=status.HTTP_201_CREATED)
-    #
-    #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class NotImplementedException(APIException):
