@@ -23,8 +23,8 @@ from urllib import urlencode
 from urlparse import urlunparse, ParseResult, parse_qs
 
 from jbei.rest.utils import remove_trailing_slash, CLIENT_ERROR_NOT_FOUND
-from jbei.rest.request_generators import RequestGenerator, SessionRequestGenerator, PagedResult, \
-    PagedRequestGenerator
+from jbei.rest.request_generators import (RequestGenerator, SessionRequestGenerator, PagedResult,
+    PagedRequestGenerator)
 import json
 import logging
 import os
@@ -102,6 +102,8 @@ ICE_ENTRY_URL_PATTERN = re.compile('^%s$' % _ICE_ENTRY_URL_REGEX, re.IGNORECASE)
 ####################################################################################################
 DEFAULT_RESULT_LIMIT = 15  # ICE's current automatic limit on results returned in the absence of a
                            # specific requested page size
+DEFAULT_PAGE_NUMBER = 1
+
 STRAIN = 'STRAIN'
 PLASMID = 'PLASMID'
 PART = 'PART'
@@ -341,6 +343,10 @@ class Entry(object):
 
 
 class ExperimentLink(object):
+    """
+    The Python implementation of an 'experiment link' stored by ICE to reference
+    another arbitrary URL
+    """
     def __init__(self, id, url, owner_email, creation_time, label=None):
         self.label = label
         self.id = id
@@ -356,6 +362,91 @@ class ExperimentLink(object):
                 json_dict.get('ownerEmail'),
                 json_dict['created'],
                 label=json_dict.get('label'),)
+
+####################################################################################################
+# ICE Sample Location Types. See org.jbei.ice.lib.dto.sample.SampleType
+####################################################################################################
+PLATE96 ='PLATE96'
+PLATE81 = 'PLATE81'
+WELL = 'WELL'
+TUBE = 'TUBE'
+SCHEME = 'SCHEME'
+ADDGENE ='ADDGENE'
+GENERIC = 'GENERIC'
+FREEZER = 'FREEZER'
+SHELF = 'SHELF'
+BOX_INDEXED = 'BOX_INDEXED'
+BOX_UNINDEXED = 'BOX_UNINDEXED'
+
+LOCATION_TYPES = (PLATE96, PLATE81, GENERIC, FREEZER, SHELF, BOX_INDEXED, BOX_UNINDEXED, PLATE81,
+                  WELL, TUBE, SCHEME, )
+
+class Location(object):
+    """
+    The Python representation of a sample storage location
+    """
+    def __init__(self, id, display, type, name, child=None):
+        self.id = id
+        self.display = display
+        self.type = type
+        self.child = child
+        self.name = name
+
+    @staticmethod
+    def of(json_dict):
+        child_dict = json_dict.get('child')
+        child = Location.of(child_dict) if child_dict else None
+
+        return Location(
+            id=json_dict['id'],
+            display=json_dict['display'],
+            type=json_dict['type'],
+            name=json_dict['name'],
+            child=child,
+        )
+
+
+class Sample(object):
+    """
+    The Python representation of a biological sample
+    """
+    def __init__(self, id, depositor, label, location, creation_time, part_id, can_edit,
+                 comments, in_cart=False):
+        self.id = id
+        self.depositor = depositor
+        self.label = label
+        self.location = location
+        self.part_id = part_id
+        self.can_edit = can_edit
+        self.comments = comments
+        self.creation_time = creation_time
+        self.in_cart = in_cart
+
+    @staticmethod
+    def of(json_dict):
+
+        # translate from camel-case JSON keywords to snake case Python data member names
+        json_to_python_keyword_changes = {
+            'partId': 'part_id',
+            'canEdit': 'can_edit',
+            'creationTime': 'creation_time',
+            'inCart': 'in_cart',
+        }
+
+        translated_dict = {}
+        for java_keyword, value in json_dict.items():
+            python_keyword = json_to_python_keyword_changes.get(java_keyword, java_keyword)
+            translated_dict[python_keyword] = value
+
+        # unpack User object
+        depositor_dict = translated_dict.pop('depositor')
+        depositor = User.of(depositor_dict)
+
+        # unpack Location object
+        location_dict = translated_dict.pop('location')
+        location = Location.of(location_dict)
+
+        return Sample(depositor=depositor, location=location, **translated_dict)
 
 
 def _construct_part(python_object_params, part_type, class_data_keyword, conversion_dict,
@@ -412,7 +503,7 @@ class User(object):
         self.institution = institution
         self.description = description
         self.last_login = last_login
-        self.registration_date= registration_date
+        self.registration_date = registration_date
         self.user_entry_count = user_entry_count
         self.visible_entry_count = visible_entry_count
         self.is_admin = is_admin
@@ -436,7 +527,7 @@ class User(object):
         }
 
         translated_dict = {}
-        for java_keyword, value in json_dict.iteritems():
+        for java_keyword, value in json_dict.items():
             python_keyword = json_to_python_keyword_changes.get(java_keyword, java_keyword)
             translated_dict[python_keyword] = value
 
@@ -861,6 +952,16 @@ class IceApi(RestApiClient):
 
         return None
 
+    def _add_page_number_param(self, dict, page_number):
+        if page_number:
+            if not self.result_limit:
+                if page_number != 1:
+                    logger.warning("A non-unity page number was requested, but can't be honored "
+                                   "because no result_limit is known!")
+            else:
+                offset = self.request_generator.result_limit * (page_number - 1)
+                dict[RESULT_OFFSET_PARAMETER] = offset
+
     def _extract_pagination_params(self, query_url):
         query_params_string = urlparse(query_url).query
         query_dict = parse_qs(query_params_string) if query_params_string else None
@@ -869,7 +970,7 @@ class IceApi(RestApiClient):
         if offset:
             offset = offset[0]
 
-    def search_users(self, search_string=None, sort=None, asc=None, page_number=1,
+    def search_users(self, search_string=None, sort=None, asc=None, page_number=DEFAULT_PAGE_NUMBER,
                      query_url=None, ):
         """
         Searches for users known to this instance of ICE, if the authenticated user has the
@@ -903,6 +1004,8 @@ class IceApi(RestApiClient):
             if asc:
                 query_params['asc'] = sort
 
+            self._add_page_number_param(query_params, page_number)
+
             response = self.request_generator.get(url, params=query_params)
 
         if response.status_code == requests.codes.ok:
@@ -911,7 +1014,7 @@ class IceApi(RestApiClient):
 
         response.raise_for_status()
 
-    def get_entry_experiments(self, entry_id, query_url=None, page_number=1):
+    def get_entry_experiments(self, entry_id, query_url=None, page_number=DEFAULT_PAGE_NUMBER):
         """
         Retrieves ICE's experiments links for the specified entry, using any of the unique
         identifiers: part id, synthetic id, or UUID.
@@ -921,17 +1024,12 @@ class IceApi(RestApiClient):
         """
 
         response = None
-        offset=None
         if query_url:
             response = self.request_generator.get(query_url, headers=_JSON_CONTENT_TYPE_HEADER)
 
         else:
             query_params = {}
-
-            # TODO: uncomment/complete if response object doesn't have all the parameter data
-            # offset = self._compute_result_offset(page_number)
-            # if offset:
-            #     query_params[RESULT_OFFSET_PARAMETER] = offset
+            self._add_page_number_param(query_params, page_number)
 
             # execute the query
             url = '%s/rest/parts/%s/experiments/' % (self.base_url, entry_id)
@@ -941,24 +1039,44 @@ class IceApi(RestApiClient):
                 headers=_JSON_CONTENT_TYPE_HEADER
             )
 
-            # TODO: uncomment/complete if response object doesn't have all the parameter data
-            # built up a single-string query URL for the completed query to help with similifying
-            # re-queries for subsequent pages of results
-
-            # url_elts = urlparse(url)
-            # params_dict[RESULT_LIMIT_PARAMETER] = result_limit
-            #         params_dict[RESULT_OFFSET_PARAMETER] = prev_page_index * result_limit
-            #         prev_page_inputs = ParseResult(url_elts.scheme, url_elts.netloc, url_elts.path,
-            #                             params_dict, url_elts.query, url_elts.fragment)
-            # query_url = urlunparse(Result)
-
             query_url = response.url
 
         if response.status_code == requests.codes.ok:
             return IcePagedResult.of(response.content, ExperimentLink, query_url=query_url)
         else:
             # NOTE: we purposefully DON'T return None for 404, since that would remove the clients'
-            # ability to distinguish between a non-existent part and a part with no experiments
+            # ability to distinguish between a non-existent entry and an entry with no experiments
+            response.raise_for_status()
+
+
+    def get_entry_samples(self, entry_id, query_url=None, page_number=DEFAULT_PAGE_NUMBER):
+        """
+        Retrieves ICE's samples for the specified entry, using any of the unique
+        identifiers: part id, local integer primary key, or UUID.
+        :param entry_id: the ICE ID for this entry
+        :return: A PagedResult containing at least one Sample, or None if ICE
+        returned an empty (but successful) response.
+        """
+
+        response = None
+        if query_url:
+            response = self.request_generator.get(query_url, headers=_JSON_CONTENT_TYPE_HEADER)
+
+        else:
+            query_params = {}
+            self._add_page_number_param(query_params, page_number)
+
+            # execute the query
+            url = '%s/rest/parts/%s/samples/' % (self.base_url, entry_id)
+            response = self.request_generator.get(url, params=query_params,
+                                                  headers=_JSON_CONTENT_TYPE_HEADER)
+            query_url = response.url
+
+        if response.status_code == requests.codes.ok:
+            return IcePagedResult.of(response.content, Sample, query_url=query_url)
+        else:
+            # NOTE: we purposefully DON'T return None for 404, since that would remove the clients'
+            # ability to distinguish between a non-existent entry and and entry with no samples
             response.raise_for_status()
 
     def get_entry(self, entry_id, suppress_errors=False):
@@ -1009,7 +1127,7 @@ class IceApi(RestApiClient):
     # TODO: doesn't support field filters yet, though ICE's API does
     def search_entries(self, search_terms=None, entry_types=None, blast_program=None,
                        blast_sequence=None, search_web=False,
-                       sort_field=None, sort_ascending=False, page_number=1,
+                       sort_field=None, sort_ascending=False, page_number=DEFAULT_PAGE_NUMBER,
                        suppress_errors=False):
         # TODO: consider removing suppress_errors and forcing client code to support that function,
         # when/if needed
@@ -1091,6 +1209,7 @@ class IceApi(RestApiClient):
             nonstandard_result_limit_param = 'retrieveCount'
             # override processing normally handled my request_generator
 
+            # apply non-standard page numbering / result limiting needed by this ICE resource
             if page_number:
                 if not self.result_limit:
                     if page_number != 1:
