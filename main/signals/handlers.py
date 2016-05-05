@@ -15,7 +15,9 @@ from django.core.mail import mail_managers
 
 from jbei.ice.rest.ice import parse_entry_id, HmacAuth, IceHmacAuth
 from . import study_modified, study_removed, user_modified
-from ..models import Line, Strain, Study, Update
+from ..models import (
+    Line, MetaboliteExchange, MetaboliteSpecies, SBMLTemplate, Strain, Study, Update,
+)
 from ..solr import StudySearch, UserSearch
 from ..utilities import get_absolute_url
 from requests.exceptions import ConnectionError
@@ -599,3 +601,44 @@ def track_celery_task_submission(async_result):
     """
     logger.warning("TODO: track status of tasks submitted to the Celery library, but maybe not yet "
                    "communicated to the server (SYNBIO-1204)")
+
+
+@receiver(post_save, sender=SBMLTemplate)
+def template_saved(sender, instance, created, raw, using, update_fields, **kwargs):
+    if not raw and (created or update_fields is None or 'sbml_file' in update_fields):
+        # TODO: add celery task for template_sync_species
+        pass
+
+
+def template_sync_species(instance):
+    doc = instance.parseSBML()
+    model = doc.getModel()
+    # filter to only those for the updated template
+    species_qs = MetaboliteSpecies.objects.filter(sbml_template=instance)
+    exchange_qs = MetaboliteExchange.objects.filter(sbml_template=instance)
+    # values_list yields a listing of tuples, unwrap the value we want
+    exist_species = {s[0]: True for s in species_qs.values_list('species')}
+    exist_exchange = {r[0]: True for r in exchange_qs.values_list('exchange_name')}
+    # creating any records not in the database
+    for species in model.getListOfSpecies():
+        if not exist_species[species.getId()]:
+            MetaboliteSpecies.objects.get_or_create(
+                sbml_template=instance,
+                species=species.getId(),
+            )
+        else:
+            del exist_species[species.getId()]
+    for reaction in model.getListOfReactions():
+        reactants = reaction.getListOfReactants()
+        if len(reactants) == 1:
+            if not exist_exchange[reaction.getId()]:
+                (m_exchange, created) = MetaboliteExchange.objects.get_or_create(
+                    sbml_template=instance,
+                    exchange_name=reaction.getId(),
+                    reactant_name=reactants[0].getSpecies()
+                )
+            else:
+                del exist_exchange[reaction.getId()]
+    # removing any records in the database not in the template document
+    species_qs.filter(species__in=exist_species.keys()).delete()
+    exchange_qs.filter(exchange_name__in=exist_exchange.keys()).delete()
