@@ -686,7 +686,7 @@ class SbmlView(EDDExportView):
         })
         match_form = None
         if export_settings.is_valid():
-            match_form = SbmlMatchReactions(export_settings)
+            match_form = SbmlMatchReactions(export_settings, prefix='match')
             for f in form_dict.itervalues():
                 if f.is_valid():
                     match_form.add_measurements(f.cleaned_data['measurement'])

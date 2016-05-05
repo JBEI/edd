@@ -47,22 +47,29 @@ var EDD_auto = EDD_auto || {}, EDDData = EDDData || {};
             ],
         // when it's ambiguous what metadata is targetting, include the 'for' column
         "MetadataType": meta_columns,
-        "AssayLineMetadataType": meta_columns
+        "AssayLineMetadataType": meta_columns,
+        "MetaboliteExchange": [
+            new AutoColumn('Exchange', '200px', 'exchange'),
+            new AutoColumn('Reactant', '200px', 'reactant')
+        ]
     });
     EDD_auto.display_keys = $.extend(EDD_auto.display_keys || {}, {
         "User": 'fullname',
         "Strain": 'name',
-        "CarbonSource": 'name'
+        "CarbonSource": 'name',
+        "MetaboliteExchange": 'exchange'
     });
     EDD_auto.value_cache = $.extend(EDD_auto.value_cache || {}, {
         "User": 'Users',
         "Strain": 'Strains',
-        "CarbonSource": 'CSources'
+        "CarbonSource": 'CSources',
+        "MetaboliteExchange": 'Exchange'
     })
     EDD_auto.value_keys = $.extend(EDD_auto.value_keys || {}, {
         "User": 'id',
         "Strain": 'recordId',
-        "CarbonSource": 'id'
+        "CarbonSource": 'id',
+        "MetaboliteExchange": 'id'
     });
     EDD_auto.request_cache = {};
 
@@ -246,6 +253,12 @@ EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(selector, 
                         result = [ empty ];
                     } else {
                         result = data.rows;
+                        // store returned results in cache
+                        result.forEach(function (item) {
+                            var cacheKey = item[value_key],
+                                record = cache[cacheKey] = cache[cacheKey] || {};
+                            $.extend(record, item);
+                        });
                     }
                     terms[request.term] = result;
                     response(result);

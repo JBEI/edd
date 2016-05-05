@@ -103,10 +103,8 @@ def search_sbml_exchange(request):
     return JsonResponse({
         'rows': [{
             'id': item.pk,
-            'name': '%(exchange)s (%(reactant)s)' % {
-                'exchange': item.exchange_name,
-                'reactant': item.reactant_name,
-            },
+            'exchange': item.exchange_name,
+            'reactant': item.reactant_name,
         } for item in found],
     })
 

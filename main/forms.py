@@ -12,7 +12,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.contrib.postgres.forms import HStoreField
 from django.core.exceptions import ValidationError
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Q
 from django.db.models.base import Model
 from django.db.models.manager import BaseManager
 from django.http import QueryDict
@@ -267,9 +267,12 @@ class SbmlInfoAutocompleteWidget(AutocompleteWidget):
         if isinstance(value, self.model):
             return [self.display_value(value), value.pk]
         elif value:
-            o = self.model.objects.get(pk=value, sbml_template=self.template)
+            o = self.model.objects.get(self.decompress_q(value), sbml_template=self._template)
             return [self.display_value(o), value]
         return ['', None]
+
+    def decompress_q(self, value):
+        return Q(pk=value)
 
 
 class SbmlExchangeAutocompleteWidget(SbmlInfoAutocompleteWidget):
@@ -280,6 +283,9 @@ class SbmlExchangeAutocompleteWidget(SbmlInfoAutocompleteWidget):
             template=template, attrs=attrs, model=MetaboliteExchange, opt=opt
         )
 
+    def decompress_q(self, value):
+        return Q(pk=value) | Q(exchange_name=value)
+
 
 class SbmlSpeciesAutocompleteWidget(SbmlInfoAutocompleteWidget):
     """ Autocomplete widget for Species in an SBMLTemplate """
@@ -288,6 +294,9 @@ class SbmlSpeciesAutocompleteWidget(SbmlInfoAutocompleteWidget):
         super(SbmlSpeciesAutocompleteWidget, self).__init__(
             template=template, attrs=attrs, model=MetaboliteSpecies, opt=opt
         )
+
+    def decompress_q(self, value):
+        return Q(pk=value) | Q(species=value)
 
 
 class CreateStudyForm(forms.ModelForm):

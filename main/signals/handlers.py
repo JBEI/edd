@@ -607,7 +607,7 @@ def track_celery_task_submission(async_result):
 def template_saved(sender, instance, created, raw, using, update_fields, **kwargs):
     if not raw and (created or update_fields is None or 'sbml_file' in update_fields):
         # TODO: add celery task for template_sync_species
-        pass
+        template_sync_species(instance)
 
 
 def template_sync_species(instance):

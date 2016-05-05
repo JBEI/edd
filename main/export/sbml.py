@@ -408,13 +408,69 @@ class SbmlMatchReactions(SbmlForm):
             self._sbml_model = self._sbml_obj.getModel()
 
     def add_measurements(self, measurements):
-        for m in measurements:
-            key = '%s' % m.measurement_type_id
+        types_qs = MeasurementType.objects.filter(measurement__in=measurements)
+        types_list = list(types_qs)
+        species_qs = MetaboliteSpecies.objects.filter(
+            measurement_type__in=types_list,
+            sbml_template=self._sbml_template,
+        )
+        species_match = {s.measurement_type_id: s for s in species_qs}
+        exchange_qs = MetaboliteExchange.objects.filter(
+            measurement_type__in=types_list,
+            sbml_template=self._sbml_template,
+        )
+        exchange_match = {x.measurement_type_id: x for x in exchange_qs}
+        for t in types_list:
+            key = '%s' % t.pk
             if key not in self.fields:
+                i_species = species_match.get(t.pk, self._guess_species(t))
+                i_exchange = exchange_match.get(t.pk, self._guess_exchange(t))
                 self.fields[key] = SbmlMatchReactionField(
+                    initial=(i_species, i_exchange),
+                    label=t.type_name,
                     template=self._sbml_template,
-                    label=m.measurement_type.type_name,
                 )
+
+    def clean(self):
+        # TODO
+        return super(SbmlMatchReactions, self).clean()
+
+    def _guess_exchange(self, measurement_type):
+        mname = measurement_type.short_name
+        mname_transcoded = generate_transcoded_metabolite_name(mname)
+        guesses = [
+            mname,
+            mname_transcoded,
+            "M_" + mname + "_e",
+            "M_" + mname_transcoded + "_e",
+            "M_" + mname_transcoded + "_e_",
+        ]
+        # TODO: multiple exchanges can have the same reactant, how to order?
+        lookup = {
+            x.reactant_name: x
+            for x in MetaboliteExchange.objects.filter(
+                reactant_name__in=guesses,
+                sbml_template=self._sbml_template,
+            )
+        }
+        for guess in guesses:
+            if guess in lookup:
+                return lookup[guess]
+        return None
+
+    def _guess_species(self, measurement_type):
+        guesses = generate_species_name_guesses_from_metabolite_name(measurement_type.short_name)
+        lookup = {
+            s.species: s
+            for s in MetaboliteSpecies.objects.filter(
+                sbml_template=self._sbml_template,
+                species__in=guesses,
+            )
+        }
+        for guess in guesses:
+            if guess in lookup:
+                return lookup[guess]
+        return None
 
 
 ########################################################################
