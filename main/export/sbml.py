@@ -315,11 +315,11 @@ class SbmlExportOdForm(SbmlExportMeasurementsForm):
             if factor is None:
                 self.sbml_warnings.append(
                     _('Could not find metadata %(meta)s on %(line)s; using default factor '
-                      'of <b>%(factor)f</b>.' % {
+                      'of <b>%(factor)f</b>.') % {
                         'factor': gcdw_default,
                         'line': line.name,
                         'meta': conversion_meta.type_name,
-                      })
+                      }
                 )
 
     def _clean_collect_data_lines(self, data):
@@ -445,17 +445,26 @@ class SbmlMatchReactions(SbmlForm):
             "M_" + mname_transcoded + "_e",
             "M_" + mname_transcoded + "_e_",
         ]
-        # TODO: multiple exchanges can have the same reactant, how to order?
-        lookup = {
-            x.reactant_name: x
-            for x in MetaboliteExchange.objects.filter(
-                reactant_name__in=guesses,
-                sbml_template=self._sbml_template,
-            )
-        }
+        lookup = defaultdict(list)
+        exchanges = MetaboliteExchange.objects.filter(
+            reactant_name__in=guesses,
+            sbml_template=self._sbml_template,
+        )
+        for x in exchanges:
+            lookup[x.reactant_name].append(x)
         for guess in guesses:
-            if guess in lookup:
-                return lookup[guess]
+            match = lookup.get(guess, None)
+            if match:
+                if len(match) > 1:
+                    self.sbml_warnings.append(
+                        _('Multiple exchanges found for %(type)s using %(guess)s. Selected '
+                          'exchange %(match)s') % {
+                            'guess': guess,
+                            'match': match[0],
+                            'type': measurement_type.type_name,
+                        }
+                    )
+                return match[0]
         return None
 
     def _guess_species(self, measurement_type):
