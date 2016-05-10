@@ -15,13 +15,15 @@ import requests
 from requests.auth import AuthBase
 
 import jbei
-from edd.rest.views import CASE_SENSITIVE_DEFAULT
-from jbei.edd.rest.constants import (LINES_ACTIVE_DEFAULT, STRAIN_REGISTRY_URL_REGEX,
-                                     STRAIN_REGISTRY_ID, STRAIN_NAME, STRAIN_NAME_REGEX, STRAIN_CASE_SENSITIVE, METADATA_TYPE_GROUP,
-                                     METADATA_TYPE_CONTEXT, METADATA_TYPE_NAME_REGEX,
-                                     CASE_SENSITIVE_PARAM, METADATA_TYPE_LOCALE, METADATA_TYPE_I18N,
-                                     STRAIN_NAME_KEY, STRAIN_DESCRIPTION_KEY, STRAIN_REG_URL_KEY,
-                                     STRAIN_REG_ID_KEY, METADATA_CONTEXT_VALUES)
+from jbei.edd.rest.constants import (CASE_SENSITIVE_DEFAULT, CASE_SENSITIVE_PARAM,
+                                     LINES_ACTIVE_DEFAULT, METADATA_CONTEXT_VALUES,
+                                     METADATA_TYPE_GROUP, METADATA_TYPE_CONTEXT,
+                                     METADATA_TYPE_NAME_REGEX,
+                                     METADATA_TYPE_LOCALE, METADATA_TYPE_I18N,
+                                     STRAIN_CASE_SENSITIVE, STRAIN_DESCRIPTION_KEY, STRAIN_NAME,
+                                     STRAIN_NAME_KEY, STRAIN_NAME_REGEX, STRAIN_REG_ID_KEY,
+                                     STRAIN_REG_URL_KEY, STRAIN_REGISTRY_ID,
+                                     STRAIN_REGISTRY_URL_REGEX, )
 from jbei.edd.rest.constants import LINE_ACTIVE_STATUS_PARAM
 from jbei.rest.api import RestApiClient
 from jbei.rest.request_generators import SessionRequestGenerator, PagedRequestGenerator, PagedResult
