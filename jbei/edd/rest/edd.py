@@ -157,19 +157,21 @@ class Study(EddRestObject):
 
 
 class MetadataType(object):
-    def __init__(self, **kwargs):
-        self.pk = kwargs['pk']
-        self.group = kwargs.get('group')
-        self.type_name = kwargs['type_name']
-        self.type_i18n = kwargs['type_i18n']
-        self.type_field = kwargs.get('type_field')
-        self.input_size = kwargs.get('input_size')
-        self.input_type = kwargs.get('input_type')
-        self.default_value = kwargs['default_value']
-        self.prefix = kwargs['prefix']
-        self.postfix = kwargs['postfix']
-        self.for_context = kwargs['for_context']
-        self.type_class = kwargs.get('type_class')
+    def __init__(self, type_name, for_context, prefix='', postfix='', pk=None, group=None,
+                 type_i18n=None, type_field=None, input_size=None, input_type=None,
+                 default_value=None, type_class=None):
+        self.pk = pk
+        self.group = group
+        self.type_name = type_name
+        self.type_i18n = type_i18n
+        self.type_field = type_field
+        self.input_size = input_size
+        self.input_type = input_type
+        self.default_value = default_value
+        self.prefix = prefix
+        self.postfix = postfix
+        self.for_context = for_context
+        self.type_class = type_class
 
 
 class MetadataGroup(object):
