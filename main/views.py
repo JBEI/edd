@@ -689,7 +689,9 @@ class SbmlView(EDDExportView):
             match_form = SbmlMatchReactions(export_settings, prefix='match')
             for f in form_dict.itervalues():
                 if f.is_valid():
-                    match_form.add_measurements(f.cleaned_data['measurement'])
+                    measurements = f.cleaned_data['measurement']
+                    interpolate = f.cleaned_data.get('interpolate', [])
+                    match_form.add_measurements(measurements, interpolate)
             form_dict.update(match_form=match_form)
         else:
             for f in form_dict.itervalues():

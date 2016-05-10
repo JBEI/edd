@@ -320,6 +320,10 @@
           {% include 'main/include/export/warningnotice.html' %}
         </div>
         <div class="sectionContent discloseBody" id="statusstep7main">
+          {% for message in warnings_list %}
+          <div class="warn2">{{ message }}</div>
+          {% endfor %}
+          <!-- {{ match_form.points }} {{ match_form.min_t }} {{ match_form.max_t }} -->
           <div class="rounded-border" style="display: inline-block;">
             <table class="dataTable" cellspacing="0">
               <thead>
