@@ -176,7 +176,7 @@ def handle_line_pre_save(sender, instance, raw, using, **kwargs):
     # look up and cache the 'active' value stored in the database so we can detect
     # when it's changed
     line = instance
-    line.was_active = Line.objects.get(pk=instance.pk).active == True
+    line.was_active = Line.objects.get(pk=instance.pk).active == True if instance.pk else False
 
 @receiver(post_save, sender=Line, dispatch_uid="main.signals.handlers.handle_line_post_save")
 def handle_study_post_save(sender, instance, created, raw, using, **kwargs):

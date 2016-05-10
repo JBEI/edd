@@ -23,6 +23,8 @@ from itertools import chain
 from six import string_types
 from threadlocals.threadlocals import get_current_request
 
+from jbei.edd.rest.constants import (METADATA_CONTEXT_ASSAY, METADATA_CONTEXT_LINE,
+                                     METADATA_CONTEXT_STUDY)
 from .export import table
 
 
@@ -256,9 +258,9 @@ class MetadataType(models.Model, EDDSerialize):
     """ Type information for arbitrary key-value data stored on EDDObject instances. """
 
     # defining values to use in the for_context field
-    STUDY = 'S'  # metadata stored in a Study
-    LINE = 'L'  # metadata stored in a Line
-    ASSAY = 'A'  # metadata stored in an Assay
+    STUDY = METADATA_CONTEXT_STUDY  # metadata stored in a Study
+    LINE = METADATA_CONTEXT_LINE  # metadata stored in a Line
+    ASSAY = METADATA_CONTEXT_ASSAY  # metadata stored in an Assay
     # TODO: support metadata on other EDDObject types (Protocol, Strain, Carbon Source, etc)
     CONTEXT_SET = (
         (STUDY, 'Study'),

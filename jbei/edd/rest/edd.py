@@ -9,35 +9,30 @@ from __future__ import unicode_literals
 
 import json
 import logging
-import re
 from urlparse import urlparse, urlsplit
 
 import requests
 from requests.auth import AuthBase
 
 import jbei
+from edd.rest.views import CASE_SENSITIVE_DEFAULT
+from jbei.edd.rest.constants import (LINES_ACTIVE_DEFAULT, STRAIN_REGISTRY_URL_REGEX,
+                                     STRAIN_REGISTRY_ID, STRAIN_NAME, STRAIN_NAME_REGEX, STRAIN_CASE_SENSITIVE, METADATA_TYPE_GROUP,
+                                     METADATA_TYPE_CONTEXT, METADATA_TYPE_NAME_REGEX,
+                                     CASE_SENSITIVE_PARAM, METADATA_TYPE_LOCALE, METADATA_TYPE_I18N,
+                                     STRAIN_NAME_KEY, STRAIN_DESCRIPTION_KEY, STRAIN_REG_URL_KEY,
+                                     STRAIN_REG_ID_KEY, METADATA_CONTEXT_VALUES)
+from jbei.edd.rest.constants import LINE_ACTIVE_STATUS_PARAM
 from jbei.rest.api import RestApiClient
 from jbei.rest.request_generators import SessionRequestGenerator, PagedRequestGenerator, PagedResult
 from jbei.rest.utils import remove_trailing_slash, UNSAFE_HTTP_METHODS, CLIENT_ERROR_NOT_FOUND
 from jbei.rest.utils import show_response_html, is_success_code
 
-DEBUG = True  # controls whether error response content is written to temp file, then displayed
+DEBUG = False  # controls whether error response content is written to temp file, then displayed
               # in a browser tab
 VERIFY_SSL_DEFAULT = jbei.rest.request_generators.RequestGenerator.VERIFY_SSL_DEFAULT
 DEFAULT_REQUEST_TIMEOUT = (10, 10)  # HTTP request connection and read timeouts, respectively
                                     # (seconds)
-
-LINE_ACTIVE_STATUS_PARAM = 'lines_active'
-ALL_LINES_VALUE = 'all'
-ACTIVE_LINES_ONLY = 'active'
-INACTIVE_LINES_ONLY = 'inactive'
-LINES_ACTIVE_DEFAULT = ACTIVE_LINES_ONLY
-
-
-STRAIN_NAME_KEY = 'name'
-STRAIN_DESCRIPTION_KEY = 'description'
-STRAIN_REG_ID_KEY = 'registry_id'
-STRAIN_REG_URL_KEY = 'registry_url'
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +77,8 @@ logger = logging.getLogger(__name__)
 
 #############################################################################################
 
-
+# TODO: if continuing with this approach, extract string constants from EddObject & derived classes
+# to a separate file and reference from both here and from edd.rest.serializers
 class EddRestObject(object):
     """
     Defines the plain Python object equivalent of Django model objects persisted to EDD's
@@ -142,6 +138,7 @@ class Line(EddRestObject):
         self.strains = temp.pop('strains', None)
         self.control = temp.pop('control', None)
         self.replicate = temp.pop('replicate', None)
+        self.meta_store = temp.pop('meta_store', None)
         super(Line, self).__init__(**temp)
 
 
@@ -153,6 +150,27 @@ class Study(EddRestObject):
         self.metabolic_map = temp.pop('metabolic_map', None)
         self.protocols = temp.pop('protocols', None)
         super(Study, self).__init__(**temp)
+
+
+class MetadataType(object):
+    def __init__(self, **kwargs):
+        self.pk = kwargs['pk']
+        self.group = kwargs.get('group')
+        self.type_name = kwargs['type_name']
+        self.type_i18n = kwargs['type_i18n']
+        self.type_field = kwargs.get('type_field')
+        self.input_size = kwargs.get('input_size')
+        self.input_type = kwargs.get('input_type')
+        self.default_value = kwargs['default_value']
+        self.prefix = kwargs['prefix']
+        self.postfix = kwargs['postfix']
+        self.for_context = kwargs['for_context']
+        self.type_class = kwargs.get('type_class')
+
+
+class MetadataGroup(object):
+    def __init__(self, **kwargs):
+        self.group_name = kwargs['group_name']
 
 
 DJANGO_CSRF_COOKIE_KEY = 'csrftoken'
@@ -449,6 +467,92 @@ class EddApi(RestApiClient):
 
         response.raise_for_status()
 
+    def get_metadata_type(self, local_pk=None):
+        """
+        Queries EDD to get the MetadataType uniquely identified by local numeric primary key,
+        by i18n string, or by the combination of
+        :param local_pk: the integer primary key that uniquely identifies the metadata type
+        within this EDD deployment
+        :return: the MetadaDataType, or None
+        """
+        # make the HTTP request
+        url = '%(base_url)s/rest/metadata_type/%(pk)d' % {
+            'base_url': self.base_url,
+            'pk': local_pk,
+        }
+        request_generator = self.session_auth.request_generator
+        response = request_generator.get(url, headers=self._json_header)
+
+        # throw an error for unexpected reply
+        if response.status_code != requests.codes.ok:
+            response.raise_for_status()
+
+        return MetadataType(**response.content)
+
+    def search_metadata_types(self, context=None, group=None, local_name_regex=None, locale=b'en_US',
+                              case_sensitive=CASE_SENSITIVE_DEFAULT, type_i18n=None, query_url=None,
+                              page_number=None):
+        """
+        Searches EDD for the MetadataType(s) that match the search criteria
+        :param context: the context for the metadata to be searched. Must be in
+        METADATA_CONTEXT_VALUES
+        :param group: the group this metadat is part of
+        :param local_name_regex: the localized name for the metadata type
+        :param locale: the locale to search for the metadata type
+        :param case_sensitive: True if local_name_regex should be compiled for case-sensitive
+        matching, False otherwise.
+        :param type_i18n:
+        :param query_url:
+        :param page_number:
+        :return:
+        """
+
+        if local_name_regex and not locale:
+            raise RuntimeError('locale is required if local_name_regex is provided')
+
+        if context and context not in METADATA_CONTEXT_VALUES:
+            raise ValueError('context \"%s\" is not a supported value' % context)
+
+        request_generator = self.session_auth.request_generator
+
+        # build up a dictionary of search parameters based on provided inputs
+        if query_url:
+            response = request_generator.get(query_url, headers=self._json_header)
+        else:
+            search_params = {}
+
+            if context:
+                search_params[METADATA_TYPE_CONTEXT] = context
+
+            if group:
+                search_params[METADATA_TYPE_GROUP] = group
+
+            if type_i18n:
+                search_params[METADATA_TYPE_I18N] = type_i18n
+
+            if local_name_regex:
+                search_params[METADATA_TYPE_NAME_REGEX] = local_name_regex
+                search_params[METADATA_TYPE_LOCALE] = locale
+
+            if case_sensitive:
+                search_params[CASE_SENSITIVE_PARAM] = case_sensitive
+
+            if self.result_limit:
+                search_params[PAGE_SIZE_QUERY_PARAM] = self.result_limit
+
+            if page_number:
+                search_params[PAGE_NUMBER_QUERY_PARAM] = page_number
+
+            # make the HTTP request
+            url = '%s/rest/metadata_type' % self.base_url
+            response = request_generator.get(url, params=search_params, headers=self._json_header)
+
+        # throw an error for unexpected reply
+        if response.status_code != requests.codes.ok:
+            response.raise_for_status()
+
+        return DrfPagedResult.of(response.content, model_class=MetadataType)
+
     def search_strains(self, query_url=None, local_pk=None, registry_id=None,
                        registry_url_regex=None, name=None,
                        name_regex=None, case_sensitive=None, page_number=None):
@@ -487,19 +591,19 @@ class EddApi(RestApiClient):
                 search_params['pk'] = local_pk
 
             if registry_id:
-                search_params['registry_id'] = registry_id
+                search_params[STRAIN_REGISTRY_ID] = registry_id
 
             if registry_url_regex:
-                search_params['registry_url_regex'] = registry_url_regex
+                search_params[STRAIN_REGISTRY_URL_REGEX] = registry_url_regex
 
             if name:
-                search_params['name'] = name
+                search_params[STRAIN_NAME] = name
 
             elif name_regex:
-                search_params['name_regex'] = name_regex
+                search_params[STRAIN_NAME_REGEX] = name_regex
 
             if case_sensitive:
-                search_params['case_sensitive'] = case_sensitive
+                search_params[STRAIN_CASE_SENSITIVE] = case_sensitive
 
             if self.result_limit:
                 search_params[PAGE_SIZE_QUERY_PARAM] = self.result_limit
@@ -644,13 +748,16 @@ class EddApi(RestApiClient):
 
             response = request_generator.get(url, headers=self._json_header, params=params)
 
+        if response.status_code == CLIENT_ERROR_NOT_FOUND:
+            return None
+
         # throw an error for unexpected reply
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
 
         return DrfPagedResult.of(response.content, Strain)
 
-    def create_line(self, study_id, strain_id, name, description=None):
+    def create_line(self, study_id, strain_id, name, description=None, metadata={}):
         """
         Creates a new line in EDD
         :return: the newly-created Line, but containing only the subset of its state serialized
@@ -674,6 +781,7 @@ class EddApi(RestApiClient):
             #     1933
             # ],
             "strains": [strain_id],
+            "meta_store": metadata,
         }
 
         if description:

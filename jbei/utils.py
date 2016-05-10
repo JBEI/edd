@@ -215,10 +215,9 @@ def session_login(session_auth_class, base_url, application_name, username_arg=N
         # attempt login
         if print_result:
             print 'Logging into %s at %s... ' % (application_name, base_url),
-        edd_login_start_time = arrow.utcnow()
         session_auth = session_auth_class.login(base_url=base_url, username=username,
                                                 password=password,
-                                                verify_ssl_cert=verify_ssl_cert)
+                                                verify_ssl_cert=verify_ssl_cert, timeout=timeout)
         if(session_auth):
             if print_result:
                 print('success!')

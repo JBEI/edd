@@ -71,7 +71,8 @@ from urlparse import urlparse
 from jbei.edd.rest.edd import (EddApi, EddSessionAuth)
 from jbei.ice.rest.ice import (IceApi, SessionAuth as IceSessionAuth, Strain as IceStrain,
                                ICE_ENTRY_TYPES)
-from jbei.rest.utils import is_url_secure
+from jbei.rest.utils import is_url_secure, verify_edd_cert, is_edd_test_instance_url, \
+    is_ice_test_instance_url, is_localhost, verify_ice_cert
 from jbei.utils import to_human_relevant_delta, UserInputTimer, session_login, UUID_PATTERN
 
 from settings import EDD_URL, ICE_URL
@@ -306,46 +307,6 @@ def is_development_url(url):
                        """but wasn't detected to link to a developer\'s machine""" % {
                             'url': url,
                             'suspicious_suffix': suspicious_suffix, })
-
-EDD_TEST_HOSTNAME_PATTERN = re.compile(r'edd-test(?:\d?).jbei.org', re.IGNORECASE)
-ICE_TEST_HOSTNAME_PATTERN = re.compile(r'registry-test(?:\d?).jbei.org', re.IGNORECASE)
-
-
-def is_edd_test_instance_url(url):
-    """
-    Tests whether the input URL refers to a test deployment of EDD as deployed at JBEI
-    """
-    url_parts = urlparse(url)
-    hostname = url_parts.hostname
-    return bool(EDD_TEST_HOSTNAME_PATTERN.match(hostname))
-
-
-def is_ice_test_instance_url(url):
-    """
-    Tests whether the input URL refers to a test deployment of ICE as deployed at JBEI
-    """
-    url_parts = urlparse(url)
-    hostname = url_parts.hostname
-    return bool(ICE_TEST_HOSTNAME_PATTERN.match(hostname))
-
-
-def is_local_edd_docker_deployment(url):
-    """
-    Tests whether the URL host matches the IP address used by a local Docker deployment
-    """
-    url_parts = urlparse(url)
-    hostname = url_parts.hostname
-    return hostname == '192.168.99.100'
-
-
-def is_localhost(url):
-    """
-    Tests whether the URL references localhost or one of its well-defined IP addresses
-    """
-    url_parts = urlparse(url)
-    hostname = url_parts.hostname.lower()
-    return (hostname == 'localhost') or (hostname == '127.0.0.1') or (hostname == '::1')
-
 
 def is_ice_admin_user(ice, username):
     """
@@ -969,15 +930,8 @@ def main():
     # determine whether or not to verify EDD's / ICE's SSL certificate. Ordinarily, YES,
     # though we want to allow for local testing of this script on developers' machines using
     # self-signed certificates.
-    is_edd_docker_deployment = is_local_edd_docker_deployment(EDD_URL)
-    verify_edd_ssl_cert = not is_edd_docker_deployment
-    if not verify_edd_ssl_cert:
-        logger.warning('Skipping EDD certificate verification since %s is a local Docker-based '
-                       'deployment (likely for testing)' % EDD_URL)
-    verify_ice_ssl_cert = not is_localhost(ICE_URL)
-    if not verify_ice_ssl_cert:
-        logger.warning('Skipping ICE SSL certificate validation since %s is running on localhost ('
-                       'likely for testing)' % ICE_URL)
+    verify_edd_ssl_cert = verify_edd_cert(EDD_URL)
+    verify_ice_ssl_cert = verify_ice_cert(ICE_URL)
 
     # silence library warnings if we're skipping SSL certificate
     # verification for local testing. otherwise the warnings will swamp useful output from this

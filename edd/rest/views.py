@@ -9,18 +9,23 @@ import re
 
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
-from rest_framework.permissions import IsAdminUser
 
-from edd.rest.serializers import LineSerializer, StudySerializer, UserSerializer, StrainSerializer
-from jbei.edd.rest.edd import LINE_ACTIVE_STATUS_PARAM, LINES_ACTIVE_DEFAULT, ACTIVE_LINES_ONLY, \
-    ALL_LINES_VALUE, INACTIVE_LINES_ONLY
+from edd.rest.serializers import (LineSerializer, MetadataTypeSerializer, StudySerializer,
+                                  UserSerializer,
+                                  StrainSerializer, MetadataGroupSerializer)
+from jbei.edd.rest.constants import LINE_ACTIVE_STATUS_PARAM, LINES_ACTIVE_DEFAULT, \
+    ACTIVE_LINES_ONLY, \
+    ALL_LINES_VALUE, INACTIVE_LINES_ONLY, METADATA_TYPE_GROUP, METADATA_TYPE_CONTEXT, \
+    METADATA_TYPE_I18N, METADATA_TYPE_NAME_REGEX, STRAIN_CASE_SENSITIVE, \
+    STRAIN_REGISTRY_ID, STRAIN_REGISTRY_URL_REGEX, STRAIN_NAME_REGEX, STRAIN_NAME, \
+    METADATA_TYPE_CASE_SENSITIVE, CASE_SENSITIVE_PARAM, METADATA_TYPE_LOCALE
 from jbei.rest.utils import is_numeric_pk
-from main.models import Study, StudyPermission, Line, Strain, User
-from rest_framework import (mixins, permissions, status, viewsets)
-from rest_framework.generics import ListAPIView
+from main.models import Line, MetadataType, Strain, Study, StudyPermission, User, MetadataGroup
+from rest_framework import (status, viewsets)
 from rest_framework.exceptions import APIException
 from rest_framework.relations import StringRelatedField
 from rest_framework.response import Response
+from rest_framework.permissions import (DjangoModelPermissions, IsAuthenticated)
 
 import logging
 
@@ -42,8 +47,94 @@ STUDY_URL_KWARG ='study'
 BASE_STRAIN_URL_KWARG = 'id'  # NOTE: value impacts url kwarg names for nested resources
 HTTP_MUTATOR_METHODS = ('POST', 'PUT', 'PATCH', 'UPDATE', 'DELETE')
 
+# TODO: consider for all models below:
+#   queryset = Strain.objects.none()  # Required for DjangoModelPermissions bc of get_queryset()
+                                      # override. See http://www.django-rest-framework.org/api-guide/permissions/#djangomodelpermissions
+#   permissionClasses = (IsAuthenticated,) for views dependent on custom Study permissions
+
+
+class MetadataTypeViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    API endpoint that supports viewing and searching .EDD's metadata types
+    TODO: implement/confirm access controls for unsafe methods, then make writable
+    """
+    queryset = MetadataType.objects.all()  # must be defined for DjangoModelPermissions
+    serializer_class = MetadataTypeSerializer
+
+    def get_queryset(self):
+        pk = self.kwargs.get('pk')
+
+        queryset = MetadataType.objects.all()
+        if pk:
+            queryset = queryset.filter(pk=pk)
+
+        params = self.request.query_params
+        if params:
+            group_id = params.get(METADATA_TYPE_GROUP)
+            if group_id:
+                if is_numeric_pk(group_id):
+                    queryset = queryset.filter(group=group_id)
+                else:
+                    queryset = queryset.filter(group__group_name=group_id)
+
+            for_context = params.get(METADATA_TYPE_CONTEXT)
+            if for_context:
+                queryset = queryset.filter(for_context=for_context)
+
+            type_i18n = params.get(METADATA_TYPE_I18N)
+            if type_i18n:
+                queryset = queryset.filter(type_i18n=type_i18n)
+
+            queryset = _do_optional_regex_filter(params, queryset, 'type_name',
+                                                 METADATA_TYPE_NAME_REGEX,
+                                                 METADATA_TYPE_LOCALE,)
+        return queryset
+
+
+
+def _do_optional_regex_filter(query_params_dict, queryset, data_member_name, regex_param_name,
+                              locale_param_name):
+    """
+    Implements consistent regular expression matching behavior for EDD's REST API. Applies
+    default behaviors re: case-sensitivity to all regex-based searches in the REST API.
+    :param queryset: the queryset to filter based on the regular expression parameter
+    :param data_member_name the django model data member name to be filtered according to the regex,
+    if present
+    :param the query parameter name REST API clients use to pass the regular expression used for
+    the search
+    :return: the queryset, filtered using the regex, if available
+    """
+    # TODO: do something with locale, which we've at least forced clients to provide to simplify
+    # future full i18n support
+
+    regex_value = query_params_dict.get(regex_param_name)
+    if not regex_value:
+        return queryset
+
+    case_sensitive_search = CASE_SENSITIVE_PARAM in query_params_dict
+    search_type = '_regex' if case_sensitive_search else '_iregex'
+    filter_param = '%(data_member_name)s_%(search_type)s' % {
+        'data_member_name': data_member_name,
+        'search_type': search_type
+    }
+
+    return queryset.filter(**{filter_param: regex_value})
+
+
+class MetadataGroupViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    API endpoint that supports view-only access to EDD's metadata groups.
+    TODO: implement/confirm access controls for unsafe methods, then make this writable
+    """
+    queryset = MetadataGroup.objects.all()  # must be defined for DjangoModelPermissions
+    serializer_class = MetadataGroupSerializer
+
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    API endpoint that allows privileged users to get read-only information on the current set of
+    EDD user accounts.
+    """
     serializer_class = UserSerializer
 
     def get_queryset(self):
@@ -52,9 +143,10 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
 
 class StrainViewSet(viewsets.ModelViewSet):
     """
-    API endpoint that allows privileged users to get strain information. Support is provided for
-    :
-    1) flexible searching of strains
+    API endpoint that allows users with appropriate access to get strain information.
+    Support is provided for:
+
+    1) Flexible searching of strains
     2) Access to a detailed view of a strain, based on local numeric primary key OR on the UUID
     from ICE
     """
@@ -98,13 +190,13 @@ class StrainViewSet(viewsets.ModelViewSet):
                 query = Strain.objects.filter(registry_id=strain_id_filter)
         # otherwise, we're searching strains, so filter them according to the provided params
         else:
-            strain_id_filter = self.request.query_params.get(self.lookup_url_kwarg)
-            local_pk_filter = self.request.query_params.get('pk')  # NOTE:
-            registry_id_filter = self.request.query_params.get('registry_id')
-            registry_url_regex_filter = self.request.query_params.get('registry_url_regex')
-            case_sensitive = self.request.query_params.get('case_sensitive')
-            name_filter = self.request.query_params.get('name')
-            name_regex_filter = self.request.query_params.get('name_regex')
+            query_params = self.request.query_params
+            strain_id_filter = query_params.get(self.lookup_url_kwarg)
+            local_pk_filter = query_params.get('pk')
+            registry_id_filter = query_params.get(STRAIN_REGISTRY_ID)
+            registry_url_regex_filter = query_params.get(STRAIN_REGISTRY_URL_REGEX)
+            case_sensitive = query_params.get(STRAIN_CASE_SENSITIVE)
+            name_filter = query_params.get(STRAIN_NAME)
 
             # if provided an ambiguously-defined unique ID for the strain, apply it based
             # on the format of the provided value
@@ -132,11 +224,7 @@ class StrainViewSet(viewsets.ModelViewSet):
                 else:
                     query = query.filter(name__icontains=name_filter)
 
-            if name_regex_filter:
-                if case_sensitive:
-                    query = query.filter(name__regex=name_regex_filter)
-                else:
-                    query = query.filter(name__iregex=name_regex_filter)
+            query = _do_optional_regex_filter(query_params, query, 'name', STRAIN_NAME_REGEX, None)
 
         query = query.select_related('object_ref')
 
@@ -163,6 +251,7 @@ class LineViewSet(viewsets.ReadOnlyModelViewSet):
         # filter by line active status, applying the default (only active lines)
         active_status = self.kwargs.get(LINE_ACTIVE_STATUS_PARAM, LINES_ACTIVE_DEFAULT)
         query = filter_line_activity(query, active_status)
+        query = query.select_related('object_ref')
         return query
 
 
@@ -190,6 +279,10 @@ def filter_line_activity(query, line_active_status=ACTIVE_LINES_ONLY, query_pref
 
 
 class StudyViewSet(viewsets.ReadOnlyModelViewSet):  # read-only for now...see TODO below
+    """
+    API endpoint that provides read-only access to studies, subject to user/role read access
+    controls. Study write access is a TODO.
+    """
     serializer_class = StudySerializer
     contact = StringRelatedField(many=False)
 
@@ -231,6 +324,10 @@ NUMERIC_PK_PATTERN = re.compile('^\d+$')
 
 
 class StrainStudiesView(viewsets.ReadOnlyModelViewSet):
+    """
+    API endpoint that allows read-only access to the studies a given strain is used in (subject to
+    user/role read access privileges on the studies).
+    """
     serializer_class = StudySerializer
     lookup_url_kwarg = 'study_pk'
 
@@ -303,11 +400,13 @@ class StrainStudiesView(viewsets.ReadOnlyModelViewSet):
 
 class StudyStrainsView(viewsets.ReadOnlyModelViewSet):
     """
-        API endpoint that allows viewing the unique strains used within a specific study
+        API endpoint that allows read-only viewing the unique strains used within a specific study
     """
     serializer_class = StrainSerializer
     STUDY_URL_KWARG = 'study_pk'
     STRAIN_URL_KWARG = 'pk'
+
+    # override
 
     def get_object(self):
         """
@@ -351,7 +450,6 @@ class StudyStrainsView(viewsets.ReadOnlyModelViewSet):
                 strain_query = strain_query.filter(pk=strain_id)
             else:
                 strain_query = strain_query.filter(registry_id=strain_id)
-
 
         # filter by line active status, applying the default (only active lines)
         strain_query = filter_line_activity(strain_query, line_active_status, query_prefix='line__')
@@ -399,10 +497,10 @@ class StudyLineView(viewsets.ModelViewSet):  # LineView(APIView):
         API endpoint that allows lines to be viewed or edited.
     """
     serializer_class = LineSerializer
-    LINE_URL_KWARG = "pk"
     STUDY_URL_KWARG = 'study_pk'
 
     def get_queryset(self):
+        print('kwargs: ' + str(self.kwargs))  # TODO: remove debug aid
 
         # extract study pk URL argument. line pk, if present, will be handled automatically by
         # get_object() inherited from the parent class
@@ -425,10 +523,12 @@ class StudyLineView(viewsets.ModelViewSet):  # LineView(APIView):
             line_query = Line.objects.filter(study_user_permission_q, study__pk=study_pk)
 
         # filter by line active status, applying the default (only active lines)
-        line_query = filter_line_activity(line_query, line_active_status)
+        line_pk = self.kwargs.get('pk')
+        if line_pk:
+            line_query = filter_line_activity(line_query, line_active_status)
 
-        line_query = line_query.distinct()  # distinct() required by *both* study permissions check
-                                            # and line activity filter above
+            line_query = line_query.distinct()  # distinct() required by *both* study permissions check
+                                                # and line activity filter above
 
         return line_query
 
@@ -450,7 +550,7 @@ class StudyLineView(viewsets.ModelViewSet):  # LineView(APIView):
 
     def create(self, request, *args, **kwargs):
         ##############################################################
-         # enforce study write privileges
+        # enforce study write privileges
         ##############################################################
         study_pk = self.kwargs[self.STUDY_URL_KWARG]
         user = self.request.user
@@ -465,7 +565,7 @@ class StudyLineView(viewsets.ModelViewSet):  # LineView(APIView):
 
     def update(self, request, *args, **kwargs):
         ##############################################################
-         # enforce study write privileges
+        # enforce study write privileges
         ##############################################################
         study_pk = self.kwargs[self.STUDY_URL_KWARG]
         user = self.request.user
@@ -480,7 +580,7 @@ class StudyLineView(viewsets.ModelViewSet):  # LineView(APIView):
 
     def destroy(self, request, *args, **kwargs):
         ##############################################################
-         # enforce study write privileges
+        # enforce study write privileges
         ##############################################################
         study_pk = self.kwargs[self.STUDY_URL_KWARG]
         user = self.request.user
@@ -508,8 +608,6 @@ class StudyLineView(viewsets.ModelViewSet):  # LineView(APIView):
             return Response(status=status.HTTP_403_FORBIDDEN)
 
         return None
-
-
 
 
 class NotImplementedException(APIException):

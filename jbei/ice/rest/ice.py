@@ -18,7 +18,7 @@ import base64
 import hashlib
 import hmac
 import importlib
-from collections import namedtuple
+
 from urllib import urlencode
 from urlparse import urlunparse, ParseResult, parse_qs
 
@@ -381,14 +381,15 @@ BOX_UNINDEXED = 'BOX_UNINDEXED'
 LOCATION_TYPES = (PLATE96, PLATE81, GENERIC, FREEZER, SHELF, BOX_INDEXED, BOX_UNINDEXED, PLATE81,
                   WELL, TUBE, SCHEME, )
 
+
 class Location(object):
     """
     The Python representation of a sample storage location
     """
-    def __init__(self, id, display, type, name, child=None):
+    def __init__(self, id, display, location_type, name, child=None):
         self.id = id
         self.display = display
-        self.type = type
+        self.location_type = location_type
         self.child = child
         self.name = name
 
@@ -397,13 +398,26 @@ class Location(object):
         child_dict = json_dict.get('child')
         child = Location.of(child_dict) if child_dict else None
 
+        loc_type = json_dict['type']
+        if loc_type not in LOCATION_TYPES:
+            raise ValueError('Location type "%s" is not supported.')
+
         return Location(
             id=json_dict['id'],
             display=json_dict['display'],
-            type=json_dict['type'],
+            location_type=json_dict['type'],
             name=json_dict['name'],
             child=child,
         )
+
+    def is_plate(self):
+        return self.location_type in (PLATE81, PLATE96)
+
+    def is_well(self):
+        return self.location_type == WELL
+
+    def can_contain_plates(self):
+        return self.location_type in (GENERIC, FREEZER, SHELF, BOX_INDEXED, BOX_UNINDEXED)
 
 
 class Sample(object):
