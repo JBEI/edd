@@ -61,10 +61,10 @@ from ..forms import (
     MetadataTypeAutocompleteWidget, SbmlExchangeAutocompleteWidget, SbmlSpeciesAutocompleteWidget
 )
 from ..models import (
-    Measurement, MeasurementType, MeasurementUnit, MeasurementValue, Metabolite,
-    MetaboliteExchange, MetaboliteSpecies, MetadataType, Protocol, SBMLTemplate,
+    Measurement, MeasurementType, MetaboliteExchange, MetaboliteSpecies, MetadataType, Protocol,
+    SBMLTemplate,
 )
-from ..utilities import interpolate_at, line_export_base
+from ..utilities import interpolate_at
 
 
 logger = logging.getLogger(__name__)

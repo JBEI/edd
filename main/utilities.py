@@ -17,8 +17,7 @@ from uuid import UUID
 
 from .models import (
     Assay, CarbonSource, GeneIdentifier, Measurement, MeasurementGroup, MeasurementType,
-    MeasurementUnit, MeasurementValue, Metabolite, MetadataType, ProteinIdentifier, Protocol,
-    Strain,
+    MeasurementUnit, MeasurementValue, Metabolite, MetadataType, ProteinIdentifier, Strain,
 )
 
 
@@ -40,7 +39,8 @@ class ArrayAgg(Aggregate):
 
     def add_to_query(self, query, alias, col, source, is_summary):
         query.aggregates[alias] = SQLArrayAgg(
-            col, source=source, is_summary=is_summary, **self.extra)
+            col, source=source, is_summary=is_summary, **self.extra
+        )
 
 media_types = {
     '--': '-- (No base media used)',
@@ -246,125 +246,6 @@ def get_selected_lines(form, study):
         return list(study.line_set.all())
     else:
         return study.line_set.filter(id__in=selected_line_ids)
-
-
-# XXX I suspect some of this could be replaced by smarter use of
-# prefetch_related and select_related
-class line_export_base(object):
-    """ Helper class for extracting various data associated with a set of lines. Although Django
-        models allow us to traverse a tree-like structure of objects starting from the Study down
-        to individual measurement data, which enables relatively clean, object-oriented code, this
-        can result in tens of thousands of database queries for a large dataset. This class pulls
-        down as many of the required objects out of the database as possible in advance, and tracks
-        them in dictionaries. """
-    def __init__(self, study, lines):
-        self.study = study
-        self.lines = lines
-        assert (len(lines) > 0)
-        # various caches
-        self._assays = defaultdict(list)  # keyed by protocol.id
-        self._assay_names = {}
-        self._measurements = defaultdict(list)  # keyed by assay.id
-        self._measurement_data = defaultdict(list)  # keyed by measurement.id
-        self._measurement_units = {}  # keyed by measurement.id
-        self._measurement_types = {}  # keyed by measurement.id
-        self._metabolites = {}  # keyed by measurement.id
-
-    def _fetch_cache_data(self):
-        assays = Assay.objects.filter(
-            line__in=self.lines, line__study=self.study,
-        ).select_related(
-            "line", "protocol",
-        )
-        for assay in assays:
-            self._assays[assay.protocol_id].append(assay)
-            self._assay_names[assay.id] = "%s-%s-%s" % (
-                assay.line.name, assay.protocol.name, assay.name)
-        measurements = Measurement.objects.filter(
-            assay__line__in=self.lines, assay__line__study=self.study,
-        ).select_related(
-            'assay', 'measurement_type', 'y_units',
-        )
-        measurement_types = MeasurementType.objects.filter(
-            measurement__assay__line__in=self.lines,
-            measurement__assay__line__study=self.study,
-        ).distinct()
-        metabolites = Metabolite.objects.filter(
-            measurement__assay__line__in=self.lines,
-            measurement__assay__line__study=self.study,
-        ).distinct()
-        mtypes_dict = {mt.id: mt for mt in measurement_types}
-        metabolites_dict = {mt.id: mt for mt in metabolites}
-        # FIXME this is a huge bottleneck!  can it be made more efficient?
-        measurement_data = MeasurementValue.objects.filter(
-            measurement__assay__line__in=self.lines,
-            measurement__assay__line__study=self.study,
-            y__isnull=False, y__len__gt=0,
-        )
-        # XXX I think the reason for this is that the old EDD stores the line and
-        # study IDs directly in various other tables, and selects on these instead
-        # of a huge list of measurements.
-        y_units = MeasurementUnit.objects.filter(
-            id__in=list(set([m.y_units_id for m in measurements])))
-        y_units_dict = {yu.id: yu for yu in y_units}
-        # measurement_data.prefetch_related("y_units")
-        for m in measurements:
-            self._measurements[m.assay_id].append(m)
-            self._measurement_types[m.id] = mtypes_dict[m.measurement_type_id]
-            if (m.measurement_type_id in metabolites_dict):
-                self._metabolites[m.id] = metabolites_dict[m.measurement_type_id]
-            if m.id not in self._measurement_units:
-                self._measurement_units[m.id] = y_units_dict[m.y_units_id]
-        for md in measurement_data:
-            meas_id = md.measurement_id
-            self._measurement_data[meas_id].append(md)
-
-    def _get_measurements(self, assay_id):
-        assert isinstance(assay_id, int)
-        return self._measurements.get(assay_id, [])
-
-    def _get_measurement_data(self, measurement_id):
-        assert isinstance(measurement_id, int)
-        return self._measurement_data.get(measurement_id, [])
-
-    def _get_measurement_type(self, measurement_id):
-        assert isinstance(measurement_id, int)
-        return self._measurement_types[measurement_id]
-
-    def _get_y_axis_units_name(self, measurement_id):
-        assert isinstance(measurement_id, int)
-        units = self._measurement_units.get(measurement_id, None)
-        if units is not None:
-            return units.unit_name
-        return None
-
-    def _get_measurements_by_type_group(self, assay_id, group_flag, sort_by_name=None):
-        assert isinstance(assay_id, int)
-        metabolites = []
-        for m in self._get_measurements(assay_id):
-            mtype_group = self._get_measurement_type(m.id).type_group
-            if mtype_group == group_flag:
-                metabolites.append(m)
-        if sort_by_name:
-            m2 = [(m, self._get_measurement_type(m.id)) for m in metabolites]
-            m2.sort(key=lambda a: a[1].type_name)
-            metabolites = [mm[0] for mm in m2]
-        return metabolites
-
-    def _get_metabolite_measurements(self, assay_id, sort_by_name=False):
-        assert isinstance(assay_id, int)
-        return self._get_measurements_by_type_group(
-            assay_id, group_flag=MeasurementGroup.METABOLITE, sort_by_name=sort_by_name)
-
-    def _get_gene_measurements(self, assay_id, sort_by_name=False):
-        assert isinstance(assay_id, int)
-        return self._get_measurements_by_type_group(
-            assay_id, group_flag=MeasurementGroup.GENEID, sort_by_name=sort_by_name)
-
-    def _get_protein_measurements(self, assay_id, sort_by_name=False):
-        assert isinstance(assay_id, int)
-        return self._get_measurements_by_type_group(
-            assay_id, group_flag=MeasurementGroup.PROTEINID, sort_by_name=sort_by_name)
 
 
 def get_absolute_url(relative_url):

@@ -24,7 +24,7 @@ from .solr import StudySearch
 from .utilities import (
     extract_id_list, extract_id_list_as_form_keys, get_selected_lines,
     get_edddata_carbon_sources, get_edddata_measurement, get_edddata_misc, get_edddata_strains,
-    get_edddata_study, get_edddata_users, interpolate_at, line_export_base,
+    get_edddata_study, get_edddata_users, interpolate_at,
 )
 
 
@@ -954,29 +954,6 @@ class UtilityTests(TestCase):
         self.assertTrue(ids1 == ids2 == sorted(ids3))
         study = Study.objects.get(name="Test Study 1")
         get_selected_lines(form1, study)
-
-    def test_line_export_base(self):
-        study = Study.objects.get(name="Test Study 1")
-        data = line_export_base(
-            study=study,
-            lines=study.line_set.all(),
-        )
-        data._fetch_cache_data()
-        assay = Assay.objects.get(name="Assay 1")
-        m = data._get_measurements(assay.id)
-        self.assertTrue(len(m) == 2)
-        m0d = data._get_measurement_data(m[0].id)
-        m1d = data._get_measurement_data(m[1].id)
-        self.assertEqual(len(m0d), 6)
-        self.assertEqual(len(m1d), 6)
-        mt = set()
-        mt.add(data._get_measurement_type(m[0].id).type_name)
-        mt.add(data._get_measurement_type(m[1].id).type_name)
-        self.assertEqual(mt, set(['D-Glucose', 'Acetate']))
-        mu = data._get_y_axis_units_name(m[1].id)
-        self.assertTrue(mu == "mM")
-        met = data._get_metabolite_measurements(assay.id)
-        self.assertTrue(len(met) == 2)
 
 
 class IceTests(TestCase):
