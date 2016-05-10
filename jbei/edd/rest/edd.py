@@ -23,7 +23,8 @@ from jbei.edd.rest.constants import (CASE_SENSITIVE_DEFAULT, CASE_SENSITIVE_PARA
                                      STRAIN_CASE_SENSITIVE, STRAIN_DESCRIPTION_KEY, STRAIN_NAME,
                                      STRAIN_NAME_KEY, STRAIN_NAME_REGEX, STRAIN_REG_ID_KEY,
                                      STRAIN_REG_URL_KEY, STRAIN_REGISTRY_ID,
-                                     STRAIN_REGISTRY_URL_REGEX, )
+                                     STRAIN_REGISTRY_URL_REGEX, PAGE_NUMBER_QUERY_PARAM,
+                                     PAGE_SIZE_QUERY_PARAM)
 from jbei.edd.rest.constants import LINE_ACTIVE_STATUS_PARAM
 from jbei.rest.api import RestApiClient
 from jbei.rest.request_generators import SessionRequestGenerator, PagedRequestGenerator, PagedResult
@@ -176,9 +177,6 @@ class MetadataGroup(object):
 
 
 DJANGO_CSRF_COOKIE_KEY = 'csrftoken'
-PAGE_SIZE_QUERY_PARAM = 'page_size'
-PAGE_NUMBER_QUERY_PARAM = 'page'
-RESULTS_OFFSET_QUERY_PARAM = 'offset'
 
 
 def insert_spoofed_https_csrf_headers(headers, base_url):

@@ -171,35 +171,6 @@ def handle_line_pre_delete(sender, instance, **kwargs):
         # force query evaluation now instead of when we read the result
         len(instance.pre_delete_strains)
 
-@receiver(pre_save, sender=Line, dispatch_uid="main.signals.handlers.handle_line_pre_save")
-def handle_line_pre_save(sender, instance, raw, using, **kwargs):
-    # look up and cache the 'active' value stored in the database so we can detect
-    # when it's changed
-    line = instance
-    line.was_active = Line.objects.get(pk=instance.pk).active == True if instance.pk else False
-
-@receiver(post_save, sender=Line, dispatch_uid="main.signals.handlers.handle_line_post_save")
-def handle_study_post_save(sender, instance, created, raw, using, **kwargs):
-    line = instance
-
-    # test whether the cached 'active' value has changed. if not, return early
-    if line.active == line.was_active:
-        return
-
-    # TODO: query the DB to see whether strain is still connected to this line, then push a
-    # notification to ICE. methods below don't re-query if using direct HTTP
-
-    # wait until the connection commits, then schedule a Celery task to add/remove the
-    # appropriate study link in ICE.
-    # Note that if we don't wait, the Celery task can run before it commits, at which point its
-    # initial DB query will indicate an inconsistent database state. This happened repeatably
-    # during testing.
-    # if line.was_active:
-    #     connection.on_commit(lambda: _post_commit_unlink_ice_entry_from_study(user_email, study_pk,
-    #                                                                       study_creation_datetime,
-    #                                                                       removed_strains))
-    # else:
-
 
 @receiver(post_delete, sender=Line, dispatch_uid="main.signals.handlers.handle_line_post_delete")
 @transaction.atomic(savepoint=False)

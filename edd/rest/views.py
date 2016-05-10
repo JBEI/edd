@@ -10,22 +10,22 @@ import re
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 
-from edd.rest.serializers import (LineSerializer, MetadataTypeSerializer, StudySerializer,
-                                  UserSerializer,
-                                  StrainSerializer, MetadataGroupSerializer)
-from jbei.edd.rest.constants import LINE_ACTIVE_STATUS_PARAM, LINES_ACTIVE_DEFAULT, \
-    ACTIVE_LINES_ONLY, \
-    ALL_LINES_VALUE, INACTIVE_LINES_ONLY, METADATA_TYPE_GROUP, METADATA_TYPE_CONTEXT, \
-    METADATA_TYPE_I18N, METADATA_TYPE_NAME_REGEX, STRAIN_CASE_SENSITIVE, \
-    STRAIN_REGISTRY_ID, STRAIN_REGISTRY_URL_REGEX, STRAIN_NAME_REGEX, STRAIN_NAME, \
-    METADATA_TYPE_CASE_SENSITIVE, CASE_SENSITIVE_PARAM, METADATA_TYPE_LOCALE
+from edd.rest.serializers import (LineSerializer, MetadataGroupSerializer, MetadataTypeSerializer,
+                                  StrainSerializer, StudySerializer, UserSerializer)
+from jbei.edd.rest.constants import (ACTIVE_LINES_ONLY, ALL_LINES_VALUE, CASE_SENSITIVE_PARAM,
+                                     INACTIVE_LINES_ONLY, LINE_ACTIVE_STATUS_PARAM,
+                                     LINES_ACTIVE_DEFAULT,
+                                     METADATA_TYPE_CONTEXT, METADATA_TYPE_GROUP,
+                                     METADATA_TYPE_I18N, METADATA_TYPE_LOCALE,
+                                     METADATA_TYPE_NAME_REGEX,
+                                     STRAIN_CASE_SENSITIVE, STRAIN_NAME, STRAIN_NAME_REGEX,
+                                     STRAIN_REGISTRY_ID, STRAIN_REGISTRY_URL_REGEX)
 from jbei.rest.utils import is_numeric_pk
 from main.models import Line, MetadataType, Strain, Study, StudyPermission, User, MetadataGroup
 from rest_framework import (status, viewsets)
 from rest_framework.exceptions import APIException
 from rest_framework.relations import StringRelatedField
 from rest_framework.response import Response
-from rest_framework.permissions import (DjangoModelPermissions, IsAuthenticated)
 
 import logging
 
@@ -91,7 +91,6 @@ class MetadataTypeViewSet(viewsets.ReadOnlyModelViewSet):
         return queryset
 
 
-
 def _do_optional_regex_filter(query_params_dict, queryset, data_member_name, regex_param_name,
                               locale_param_name):
     """
@@ -100,8 +99,10 @@ def _do_optional_regex_filter(query_params_dict, queryset, data_member_name, reg
     :param queryset: the queryset to filter based on the regular expression parameter
     :param data_member_name the django model data member name to be filtered according to the regex,
     if present
-    :param the query parameter name REST API clients use to pass the regular expression used for
-    the search
+    :param regex_param_name: the query parameter name REST API clients use to pass the regular
+    expression used for the search
+    :param locale_param_name: the query parameter name REST API clients use to pass the locale used
+    to determine which strings the regular expression is tested against
     :return: the queryset, filtered using the regex, if available
     """
     # TODO: do something with locale, which we've at least forced clients to provide to simplify
@@ -457,39 +458,6 @@ class StudyStrainsView(viewsets.ReadOnlyModelViewSet):
                                                 # line activity filter queries above
 
         return strain_query
-
-    #
-    # def get_queryset(self):
-    #
-    #     # extract URL arguments
-    #     line_pk = self.kwargs.get(self.LINE_URL_KWARG) if self.LINE_URL_KWARG in self.kwargs else \
-    #         None
-    #     study_pk = self.kwargs.get(self.STUDY_URL_KWARG)
-    #
-    #     user = self.request.user
-    #
-    #     # if no line primary key was provided, get all the lines associated with this study
-    #     if not line_pk:
-    #         all_lines_queryset = Line.objects.filter(study__pk=study_pk).prefetch_related(
-    #                 'study')  # study determines line access permissions for included lines
-    #
-    #         if all_lines_queryset and all_lines_queryset.first().user_can_read(user):
-    #             return all_lines_queryset
-    #
-    #         return Line.objects.none()
-    #
-    #     # a line pk was provided, so get just the requested line
-    #
-    #     # build the query
-    #     line_query = Line.objects.filter(pk=line_pk, study__pk=study_pk).prefetch_related(
-    #             'study')  # study determines line access permissions for included lines
-    #
-    #     # only return the result if the line exists AND the
-    #     # user has read permissions to the associated study
-    #     if line_query and line_query.get().user_can_read(user):
-    #         return line_query
-    #
-    #     return Line.objects.none()
 
 
 class StudyLineView(viewsets.ModelViewSet):  # LineView(APIView):

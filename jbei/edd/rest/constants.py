@@ -20,6 +20,10 @@ LOCALE_PARAM = 'locale'
 CASE_SENSITIVE_PARAM = 'case_sensitive'
 CASE_SENSITIVE_DEFAULT = False
 
+PAGE_SIZE_QUERY_PARAM = 'page_size'
+PAGE_NUMBER_QUERY_PARAM = 'page'
+RESULTS_OFFSET_QUERY_PARAM = 'offset'
+
 ####################################################################################################
 # /rest/metadata_type
 ####################################################################################################

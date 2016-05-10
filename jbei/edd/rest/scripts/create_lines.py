@@ -59,10 +59,8 @@ from jbei.edd.rest.edd import EddSessionAuth, EddApi
 from jbei.ice.rest.ice import IceApi
 from jbei.ice.rest.ice import SessionAuth as IceSessionAuth
 
-LOCALE_STR = b'en_US'
-locale.setlocale(locale.LC_ALL, LOCALE_STR)
-
-DEBUG = True
+DEFAULT_LOCALE = b'en_US'
+locale.setlocale(locale.LC_ALL, DEFAULT_LOCALE)
 
 MIN_COL_NUM = 1
 MAX_EXCEL_COLS = 16384  # max number of columns supported by the Excel format ()
@@ -299,15 +297,11 @@ class NonStrainPartsError(RuntimeError):
     pass
 
 
-def get_ice_parts(ice, part_numbers_list, print_search_comparison=False):
+def get_ice_entries(ice, part_numbers_list, print_search_comparison=False):
     """
     Queries ICE for parts with the provided (locally-unique) numbers, logging warnings for any
     parts that weren't found, as well as a follow-on summary of the parts that were found vs. the
     number expected.
-    :param base_url: the base ICE URL to use in REST API calls
-    :param ice_username: the ice username
-    :param password: the ice password
-    :return:
     """
     csv_part_number_count = len(part_numbers_list)
     part_number_to_part_dict = collections.OrderedDict()  # order for easy comparison against CSV
@@ -452,9 +446,9 @@ def find_existing_strains(edd, ice_parts, existing_edd_strains, strains_by_part_
 
                 if edd_strains:
                     print('Found %(strain_count)d EDD strains that lacked proper identification, '
-                          'but whose name(s) contained the name of ICE entry %(part_number)s ("%('
-                          'part_name)s"). Please contact the EDD team to correct this issue before '
-                          'you proceed.' % {
+                          'but whose name(s) contained the name of ICE entry %(part_number)s '
+                          '("%(part_name)s"). Please contact the EDD team to correct this issue '
+                          'before you proceed.' % {
                               'strain_count': edd_strains.total_result_count,
                               'part_number': ice_part.part_id,
                               'part_name': ice_part.name,
@@ -552,9 +546,9 @@ def create_missing_strains(edd, non_existent_edd_strains, strains_by_part_number
 
 def cache_archival_well_locations(ice, sample_label_pattern, ice_parts_dict):
     """
-    Searches ICE for archival sample locations for each part in ice_parts_dict.
-    For each ICE entry where exactly one plate/well location is found adds a PlateAndWellLocation
-    object to a dictionary.
+    Searches ICE for archival well locations for each part in ice_parts_dict. For each ICE entry
+    where exactly one plate/well location is found adds a PlateAndWellLocation object to the
+    returned dictionary.
     :param ice: an authenticated instance of IceApi
     :param sample_label_pattern: an optional regular expression pattern to use in narrowing down the
     available samples so that exactly one is found per ICE entry
@@ -594,8 +588,9 @@ def get_archival_well_location(ice, ice_entry, sample_label_pattern):
     """
     Queries ICE for the archival sample location(s) for a given entry, then extracts the sample
     plate and well number for each
-    :param ice:
-    :param entry_uuid:
+    :param ice: an authenticated instance of ICE
+    :param ice_entry: the ICE entry to get archival well locations for
+    :param sample_label_pattern: the pattern to apply filter ICE samples by label
     :return: a list of named tuples containing plate and well number for this ICE entry
     """
     # use the local numeric part ID as a workaround for SYNBIO-1207, which as of 5/9/16 is giving
@@ -661,14 +656,13 @@ def get_archival_well_location(ice, ice_entry, sample_label_pattern):
 def create_lines(edd, ice, study_id, csv_summary, strains_by_part_number):
     """
     Creates lines in an EDD study, then prints summary output
+    :param ice: an authenticated instance of IceApi
     :param study_id: numeric primary key identifying the EDD study that lines should be
     associated with
-    :param csv_summary: the data read from CSV input. Allows us to print out the requested input
-    for any lines whose creation was skipped/aknowleged early in the process
+    :param csv_summary: the data read from CSV input (and possibly supplemented with other
+    metadata if --copy_archival_well_locations was used). Allows us to print out the requested
+    input for any lines whose creation was skipped/aknowleged early in the process
     :param strains_by_part_number: the list of EDD strains the lines will be created from
-    :param copy_archival_well_locations: True to copy sample locations from ICE during line
-    creation, false
-    otherwise
     """
     created_lines = []  # in same order as line creation inputs. None for skipped lines.
     created_line_count = 0
@@ -1049,7 +1043,7 @@ def get_line_metadata_types(edd, metadata_dict):
     for metadata_name in metadata_dict.keys():
         search_results = edd.search_metadata_types(context=METADATA_CONTEXT_LINE,
                                                    local_name_regex='^%s$' % metadata_name,
-                                                   locale=LOCALE_STR)
+                                                   locale=DEFAULT_LOCALE)
 
         if (not search_results) or search_results.total_result_count > 1:
             logger.error(''''The string "%s" doesn't uniquely identify a line metadata type.'''
@@ -1092,21 +1086,17 @@ def main():
                                                      'lines in'
                             )
         parser.add_argument(copy_location_param, action='store_const', const=True,
-                            help='Copy archival sample well locations from ICE to the newly-created '
-                                 'EDD lines. This option should '
-                                 'only be used when experimental '
-                                 'plate/well locations exactly match those of the archival '
-                                 'samples (e.g. when processing the Keio collection)'
-                                 ". Also note that this option won't work if there's more than one "
-                                 "sample for each ICE entry used to create "
-                                 "the EDD lines, or if the provided pattern "
-                                 "matches more than one plate/well "
-                                 "combination."
-                                 'A maximum of one sample per ICE entry '
-                                 'must exist for this option to work, or else a '
-                                 'pattern must be supplied using %s '
-                                 'to narrow the number of samples '
-                                 'down to one per ICE entry.' % SAMPLE_LABEL_PATTERN_PARAM)
+                            help="Copy archival sample well locations from ICE to the "
+                                 "newly-created EDD lines. This option should only be used when "
+                                 "experimental plate/well locations exactly match those of the "
+                                 "archival samples (e.g. when processing the Keio collection). "
+                                 "Also note that this option won't work if there's more than one "
+                                 "sample for each ICE entry used to create the EDD lines, or if " 
+                                 "the provided pattern matches more than one plate/well "
+                                 "combination. A maximum of one sample per ICE entry must exist "
+                                 "for this option to work, or else a pattern must be supplied "
+                                 "using %s to limit the number of samples to one per ICE entry." %
+                                 SAMPLE_LABEL_PATTERN_PARAM)
         parser.add_argument(SAMPLE_LABEL_PATTERN_PARAM,
                             help='An optional regular expression used to narrow down which '
                                  'archival sample well locations to copy to the experemental '
@@ -1280,7 +1270,6 @@ def main():
                         if 'Y' != result and 'YES' != result:
                             return 0
 
-
                 ####################################################################################
                 # Query user for the study to create lines in, verifying that the study exists /
                 # the user has access to it
@@ -1307,8 +1296,8 @@ def main():
                     if not study:
                         print(' failed! :-<')
                         print("Study %(study_num)d couldn't be found in EDD at %(edd_url)s. "
-                              "Maybe this study number is from a different EDD deployment, or has the "
-                              "wrong access privileges for user %(username)s?"
+                              "Maybe this study number is from a different EDD deployment, or has "
+                              "the wrong access privileges for user %(username)s?"
                               % {'study_num': study_number,
                                  'edd_url': EDD_URL,
                                  'username': edd_login_details.username})
@@ -1326,7 +1315,6 @@ def main():
                     print('Aborting line creation.')
                     return 0
 
-
                 ####################################################################################
                 # Loop over part numbers in the spreadsheet, looking each one up in ICE to get its
                 # UUID (the only identifier currently stored in EDD)
@@ -1334,8 +1322,8 @@ def main():
 
                 # extract only the unique part numbers referenced from the CSV. it's likely that
                 # many lines will reference the same strains
-                ice_entires_dict = get_ice_parts(ice, csv_unique_part_numbers,
-                                               print_search_comparison=PRINT_FOUND_ICE_PARTS)
+                ice_entires_dict = get_ice_entries(ice, csv_unique_part_numbers,
+                                                   print_search_comparison=PRINT_FOUND_ICE_PARTS)
 
                 found_ice_entry_count = len(ice_entires_dict)
 
@@ -1420,13 +1408,10 @@ def main():
                         print("Skipping search for archival well locations since "
                               "required metadata types weren't found earlier in the process.")
 
-
                 print('')
                 print(OUTPUT_SEPARATOR)
                 print('Searching for pre-existing strains in EDD...')
                 print(OUTPUT_SEPARATOR)
-
-
 
                 ####################################################################################
                 # Search EDD for existing strains using UUID's queried from ICE
@@ -1456,8 +1441,8 @@ def main():
 
                 # If some strains were missing in EDD, confirm with user, and then create them
                 strains_created = create_missing_strains(edd, non_existent_edd_strains,
-                                                         strains_by_part_number, found_ice_entry_count,
-                                                         user_input)
+                                                         strains_by_part_number,
+                                                         found_ice_entry_count, user_input)
                 if not strains_created:
                     return 1
 
