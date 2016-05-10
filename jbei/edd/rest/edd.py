@@ -36,6 +36,7 @@ DEBUG = False  # controls whether error response content is written to temp file
 VERIFY_SSL_DEFAULT = jbei.rest.request_generators.RequestGenerator.VERIFY_SSL_DEFAULT
 DEFAULT_REQUEST_TIMEOUT = (10, 10)  # HTTP request connection and read timeouts, respectively
                                     # (seconds)
+DEFAULT_PAGE_SIZE = 30
 
 logger = logging.getLogger(__name__)
 
@@ -228,7 +229,7 @@ class DrfSessionRequestGenerator(SessionRequestGenerator):
         return self
 
     def __exit__(self, type, value, traceback):
-        super(self.DrfSessionRequestGenerator, self).__exit__(type, value, traceback)
+        super(DrfSessionRequestGenerator, self).__exit__(type, value, traceback)
     #############################################################
 
     def request(self, method, url, **kwargs):
@@ -237,32 +238,32 @@ class DrfSessionRequestGenerator(SessionRequestGenerator):
         if method.upper() in UNSAFE_HTTP_METHODS:
             kwargs = self._get_csrf_headers(**kwargs)
 
-        return super(self.__class__, self).request(method, url, **kwargs)
+        return super(DrfSessionRequestGenerator, self).request(method, url, **kwargs)
 
     def head(self, url, **kwargs):
-        return super(self.__class__, self).head(url, **kwargs)
+        return super(DrfSessionRequestGenerator, self).head(url, **kwargs)
 
     def get(self, url, **kwargs):
-        return super(self.__class__, self).get(url, **kwargs)
+        return super(DrfSessionRequestGenerator, self).get(url, **kwargs)
 
     def options(self, **kwargs):
-        super(self.__class__, self).options(self, **kwargs)
+        super(DrfSessionRequestGenerator, self).options(self, **kwargs)
 
     def post(self, url, data=None, **kwargs):
         kwargs = self._get_csrf_headers(**kwargs)
-        return super(self.__class__, self).post(url, data, **kwargs)
+        return super(DrfSessionRequestGenerator, self).post(url, data, **kwargs)
 
     def put(self, url, data=None, **kwargs):
         kwargs = self._get_csrf_headers(**kwargs)
-        return super(self.__class__, self).put(url, data, **kwargs)
+        return super(DrfSessionRequestGenerator, self).put(url, data, **kwargs)
 
     def patch(self, url, data=None, **kwargs):
         kwargs = self._get_csrf_headers(**kwargs)
-        return super(self.__class__, self).patch(url, data, **kwargs)
+        return super(DrfSessionRequestGenerator, self).patch(url, data, **kwargs)
 
     def delete(self, url, **kwargs):
         kwargs = self._get_csrf_headers(**kwargs)
-        return super(self.__class__, self).delete(url, **kwargs)
+        return super(DrfSessionRequestGenerator, self).delete(url, **kwargs)
 
     def _get_csrf_headers(self, **kwargs):
         """
@@ -299,7 +300,7 @@ class EddSessionAuth(AuthBase):
         self._session = session
 
         drf_request_generator = DrfSessionRequestGenerator(base_url, session, timeout=timeout,
-                                                             verify_ssl_cert=verify_ssl_cert)
+                                                           verify_ssl_cert=verify_ssl_cert)
         paging_request_generator = PagedRequestGenerator(request_api=drf_request_generator,
                                                          result_limit_param_name=PAGE_SIZE_QUERY_PARAM,
                                                          result_limit=None)
@@ -406,8 +407,6 @@ class EddSessionAuth(AuthBase):
                 show_response_html(response)
             response.raise_for_status()
 
-DEFAULT_PAGE_SIZE = 30
-
 
 class EddApi(RestApiClient):
     """
@@ -438,7 +437,7 @@ class EddApi(RestApiClient):
         :return: a new EddApi instance
         """
         super(EddApi, self).__init__('EDD', base_url, session_auth.request_generator,
-                                             result_limit=result_limit)
+                                     result_limit=result_limit)
         self.session_auth = session_auth
 
     def get_strain(self, strain_id=None):

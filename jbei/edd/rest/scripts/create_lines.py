@@ -65,7 +65,7 @@ locale.setlocale(locale.LC_ALL, DEFAULT_LOCALE)
 MIN_COL_NUM = 1
 MAX_EXCEL_COLS = 16384  # max number of columns supported by the Excel format ()
 SEPARATOR_CHARS = 75
-OUTPUT_SEPARATOR = ''.join(['*' for index in range(1, SEPARATOR_CHARS)])
+OUTPUT_SEPARATOR = ('*' * SEPARATOR_CHARS)
 
 PART_NUMBER_REGEX = r'\s*([A-Z]+_[A-Z]?\d{4,6}[A-Z]?)\s*'  # tested against all strains in ICE!
                                                            # 3/31/16
@@ -312,8 +312,7 @@ def get_ice_entries(ice, part_numbers_list, print_search_comparison=False):
     print('Searching ICE for %d parts... ' % csv_part_number_count)
     print(OUTPUT_SEPARATOR)
     list_position = 0
-    for local_ice_part_number in part_numbers_list:
-        list_position += 1
+    for list_position, local_ice_part_number in enumerate(part_numbers_list):
         # get just the numeric part of the part number. for unknown reasons that I can't
         # reproduce in PostMan, searching for the whole part number seems to produce the
         # wrong result.

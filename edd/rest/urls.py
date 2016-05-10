@@ -38,9 +38,8 @@ study_nested_resources_router = nested_routers.NestedSimpleRouter(base_rest_api_
 study_nested_resources_router.register(r'lines', views.StudyLineView, base_name='study-lines')
 study_nested_resources_router.register(r'strains', views.StudyStrainsView,
                                        base_name='study-strains')
-strain_nested_resources_router = \
-    nested_routers.NestedSimpleRouter(base_rest_api_router, STRAIN_NESTED_RESOURCE_PARENT_PREFIX,
-                                      lookup='strain')
+strain_nested_resources_router = nested_routers.NestedSimpleRouter(
+        base_rest_api_router, STRAIN_NESTED_RESOURCE_PARENT_PREFIX, lookup='strain')
 strain_nested_resources_router.register(r'studies', views.StrainStudiesView,
                                         base_name='strain-studies')
 
