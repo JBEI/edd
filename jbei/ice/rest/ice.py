@@ -1,6 +1,7 @@
+# -*- coding: utf-8 -*-
 from __future__ import division
 from __future__ import unicode_literals
-# -*- coding: utf-8 -*-
+
 from jbei.rest.api import RestApiClient
 
 """
@@ -1382,7 +1383,6 @@ class IceApi(RestApiClient):
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
 
-
     def link_entry_to_study(self, ice_entry_id, study_id, study_url, study_name, logger,
                             old_study_name=None, old_study_url=None):
         """
@@ -1396,7 +1396,8 @@ class IceApi(RestApiClient):
         :param study_url: the URL for the EDD study to link to the ICE strain. Case-insensitive
         matching of this URL against any existing links in ICE determines whether an existing
         link is updated or whether a new link is created.
-        :param study_name: the name of the EDD study
+        :param study_name: the name of the EDD study, which will be used to label the link
+        created in ICE
         :param old_study_name: the previous name of the EDD study (assumption is that it was just
         renamed). If provided, all ICE links with this name and the study_url will be updated to
         use the new name, unless it exactly matches study_name, in which case it's ignored.

@@ -62,7 +62,7 @@ class MetadataTypeViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = MetadataTypeSerializer
 
     def get_queryset(self):
-        pk = self.kwargs.get('pk')
+        pk = self.kwargs.get('pk', None)
 
         queryset = MetadataType.objects.all()
         if pk:
