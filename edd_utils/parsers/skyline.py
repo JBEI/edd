@@ -17,7 +17,7 @@ class Record (object) :
     self.protein = fields[1]
     self.peptide = fields[2]
     try :
-      self.area = int(fields[3])
+      self.area = float(fields[3])
     except ValueError :
       self.area = 0
 
@@ -48,7 +48,7 @@ class ParseCSV (object) :
     return samples
 
   def group_by_protein (self, include_header=True) :
-    by_protein = defaultdict(int)
+    by_protein = defaultdict(float)
     samples = self.samples
     for record in self.table :
       by_protein[(record.sample, record.protein)] += record.area
@@ -74,7 +74,7 @@ class ParseCSV (object) :
     if (include_header) :
       rows.append([ "File", "Protein", "Total_Area" ])
     for sample in self.samples :
-      by_protein = defaultdict(int)
+      by_protein = defaultdict(float)
       for record in self.table :
         if (record.sample == sample) :
           by_protein[record.protein] += record.area
