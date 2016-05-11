@@ -312,6 +312,9 @@ div.pageSection div.sectionContent {
     margin:0px;
     padding:4px 8px 4px 8px;
 }
+div.pageSection div.sectionContent.sectionRight {
+    text-align: right;
+}
 div.pageSection div.sectionContent div.subSectionChapter {
     font-size:14px;
     margin:2px 0px 0px 4px;
