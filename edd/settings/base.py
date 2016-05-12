@@ -28,8 +28,7 @@ if env('SECRET_KEY', default=DOCKER_SENTINEL) is DOCKER_SENTINEL:
 
 
 ###################################################################################################
-# Set ICE configuration used in multiple places, or that we want to be able to override in
-# local_settings.py
+# Set ICE configuration used in multiple places, or that we want to be able to override in local.py
 ###################################################################################################
 ICE_SECRET_HMAC_KEY = env('ICE_HMAC_KEY')
 ICE_URL = 'https://registry-test.jbei.org/'
