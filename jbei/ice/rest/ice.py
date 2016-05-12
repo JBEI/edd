@@ -319,7 +319,7 @@ class Entry(object):
 
         if ARABIDOPSIS == part_type:
             return _construct_part(python_object_params, part_type, ARABIDOPSIS_DATA_JSON_KEYWORD,
-                                   ARABIDOPSIS_KEYWORD_CHANGES, Aribidopsis,
+                                   ARABIDOPSIS_KEYWORD_CHANGES, Arabidopsis,
                                    silence_type_specific_warnings)
 
         if PART == part_type:
@@ -590,12 +590,12 @@ class EntrySearchResult(object):
 
 class Strain(Entry):
     def __init__(self, host=None, genotype_phenotype=None, **kwargs):
-        super(self.__class__, self).__init__(**kwargs)
+        super(Strain, self).__init__(**kwargs)
         self.host = host
         self.genotype_phenotype = genotype_phenotype
 
     def to_json_dict(self):
-        json_dict = super(self.__class__, self).to_json_dict()
+        json_dict = super(Strain, self).to_json_dict()
 
         # remove strain-specific data from the dictionary and re-package it as in ICE's JSON
         host_value = json_dict.pop(HOST_PYTHON_PARAM)
@@ -619,7 +619,7 @@ class Strain(Entry):
 class Plasmid(Entry):
     def __init__(self, backbone=None, origin_of_replication=None, promoters=None, circular=None,
                  replicates_in=None, **kwargs):
-        super(self.__class__, self).__init__(**kwargs)
+        super(Plasmid, self).__init__(**kwargs)
 
         self.backbone = backbone
         self.origin_of_replication = origin_of_replication
@@ -629,10 +629,10 @@ class Plasmid(Entry):
 
 
 # TODO: class is a draft / isn't tested
-class Aribidopsis(Entry):
+class Arabidopsis(Entry):
     def __init__(self, ecotype=None, harvest_date=None, seed_parents=None, generation=None,
                  plant_type=None, sent_to_a_brc=None, **kwargs):
-        super(self.__class__, self).__init__(**kwargs)
+        super(Arabidopsis, self).__init__(**kwargs)
         self.ecotype = ecotype
         self.harvest_date = harvest_date
         self.seed_parents = seed_parents
@@ -783,7 +783,7 @@ class IceHmacAuth(HmacAuth):
         else:
             request_generator.auth = self
 
-        super(self.__class__, self).__init__(request_generator, secret_key)
+        super(IceHmacAuth, self).__init__(request_generator, secret_key)
 
     @staticmethod
     def get(secret_key=ICE_SECRET_KEY, username=None, user_auth=None, request=None):
@@ -1409,7 +1409,7 @@ class IceApi(RestApiClient):
         :raises requests.exceptions.Timeout if a communication timeout occurs.
         """
         logger.info('Start ' + self.link_entry_to_study.__name__ + '()')
-        self._prevent_write_while_disabled(self)
+        self._prevent_write_while_disabled()
 
         # NOTE: this implementation works, but can probably be simplified based on how ICE actually
         # behaves vs. what the original plan was. Probably best to wait for comments and see

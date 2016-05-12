@@ -7,6 +7,7 @@ import requests
 
 logger = logging.getLogger(__name__)
 
+
 class RequestGenerator(object):
     """
     HTTP request generation strategy for client code that wants to transparently
@@ -25,7 +26,7 @@ class RequestGenerator(object):
                  auth=None):
         self._timeout = timeout
         self._verify_ssl_cert = verify_ssl_cert
-        self._auth = auth
+        self.auth = auth
         self._request_api = request_api
 
         # initialize wait time to timedelta zero
@@ -69,7 +70,6 @@ class RequestGenerator(object):
     # Same method signatures as static methods in the requests library. Strategy pattern! :-)
     ################################################################################################
     def request(self, method, url, **kwargs):
-        print('executing %s.request()' % self.__class__.__name__)
         kwargs = self._set_defaults(**kwargs)
         start_time = arrow.utcnow()
         try:
@@ -157,10 +157,10 @@ class RequestGenerator(object):
                 temp = kwargs.copy()
             temp[VERIFY_KEY] = self._verify_ssl_cert
 
-        if self._auth and AUTH_KEY not in kwargs:
+        if self.auth and AUTH_KEY not in kwargs:
             if not temp:
                 temp = kwargs.copy()
-            temp[AUTH_KEY] = self._auth
+            temp[AUTH_KEY] = self.auth
 
         if temp:
             return temp
@@ -182,14 +182,6 @@ class RequestGenerator(object):
         self._timeout = timeout
         if isinstance(self._request_api, RequestGenerator):
             return self._request_api.timeout
-
-    @property
-    def auth(self):
-        return self._auth
-
-    @auth.setter
-    def auth(self, auth):
-        self._auth = auth
 
 
 class SessionRequestGenerator(RequestGenerator):
@@ -233,42 +225,14 @@ class PagedRequestGenerator(RequestGenerator):
     def __init__(self, result_limit_param_name, result_limit=None, request_api=requests,
                  timeout=RequestGenerator.DEFAULT_TIMEOUT,
                  verify_ssl_cert=RequestGenerator.VERIFY_SSL_DEFAULT, auth=None):
-        super(self.__class__, self).__init__(request_api, timeout=timeout,
-                                             verify_ssl_cert=verify_ssl_cert, auth=auth)
+        super(PagedRequestGenerator, self).__init__(request_api, timeout=timeout,
+                                                    verify_ssl_cert=verify_ssl_cert, auth=auth)
         self._result_limit_param_name = result_limit_param_name
         self._result_limit = result_limit
 
-    def request(self, method, url, **kwargs):
-        kwargs = self._add_pagination_params(**kwargs)
-        return super(self.__class__, self).request(method, url, **kwargs)
-
-    def head(self, url, **kwargs):
-        kwargs = self._add_pagination_params(**kwargs)
-        return super(self.__class__, self).head(url, **kwargs)
-
-    def get(self, url, **kwargs):
-        kwargs = self._add_pagination_params(**kwargs)
-        return super(self.__class__, self).get(url, **kwargs)
-
-    def post(self, url, data=None, **kwargs):
-        kwargs = self._add_pagination_params(**kwargs)
-        return super(self.__class__, self).post(url, data, **kwargs)
-
-    def put(self, url, data=None, **kwargs):
-        kwargs = self._add_pagination_params(**kwargs)
-        return super(self.__class__, self).put(url, data, **kwargs)
-
-    def patch(self, url, data=None, **kwargs):
-        kwargs = self._add_pagination_params(**kwargs)
-        return super(self.__class__, self).patch(url, data, **kwargs)
-
-    def delete(self, url, **kwargs):
-        kwargs = self._add_pagination_params(**kwargs)
-        return super(self.__class__, self).delete(url, **kwargs)
-
-    def options(self, **kwargs):
-        kwargs = self._add_pagination_params(**kwargs)
-        return super(self.__class__, self).options(**kwargs)
+    def _set_defaults(self, **kwargs):
+        kwargs = super(PagedRequestGenerator, self)._set_defaults(**kwargs)
+        return self._add_pagination_params(**kwargs)
 
     def _add_pagination_params(self, **kwargs):
         """

@@ -115,7 +115,7 @@ class StrainSerializer(serializers.ModelSerializer):
         depth = 0
 
     # def __init__(self, instance=None, data=empty, **kwargs):
-    #      super(self.__class__, self).__init__(instance, data, **kwargs)
+    #      super(StrainSerializer, self).__init__(instance, data, **kwargs)
 
     # work around an apparent oversite in ModelSerializer's __new__ implementation that prevents us
     # from using it to construct new objects from a class instance with kw arguments similar to its

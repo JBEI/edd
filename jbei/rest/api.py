@@ -5,51 +5,48 @@ class RestApiClient(object):
     """
     The generic parent class for REST API implementations
     """
+    write_enabled = False
+    """ Flag enabling data changes via this RestApiClient instance. When False, any attempts
+        to change data will result in an Exception. Data changes are disabled by default to
+        prevent accidental data loss or corruption."""
+
     def __init__(self, application_name, base_url, request_generator, result_limit=None):
+
         # chop off the trailing '/', if any, so we can write easier-to-read URL snippets in our code
         # (starting w '%s/'). also makes our code trailing-slash agnostic.
-        self._application_name = application_name
         self._base_url = remove_trailing_slash(base_url)
-        self._enable_write = False
+
+        self._application_name = application_name
         self._request_generator = request_generator
         self.result_limit = result_limit
-
-    @property
-    def request_generator(self):
-        return self._request_generator
-
-    @property
-    def write_enabled(self):
         """
-        Tests whether data changes are enabled via this RestApiClient instance. When False,
-        all attempts to call methods that could change data will result in an Exception
+        The requested upper limit for the number of results returned from a single API call. Note
+        that the server may not respect the upper limit, for instance if it has its own hard upper
+        limit
         """
-        return self._enable_write
 
     @property
     def base_url(self):
+        """
+        The base URL of the application this client communicates with. The URL is immutable for
+        each instance of RestApiClient.
+        """
         return self._base_url
 
     @property
-    def application_name(self):
-        return self._application_name
-
-    @write_enabled.setter
-    def write_enabled(self, enabled):
+    def request_generator(self):
         """
-        Enables data changes via method calls made from this RestApiClient instance. Data changes
-        are disabled by default to prevent accidental data loss or corruption.
-        :param enabled: True to enable data changes, False to disable changes
+        The object responsible for low-level generation of HTTP requests to the remote application
+        :return:
         """
-        self._enable_write = enabled
+        return self._request_generator
 
     @property
-    def result_limit(self):
-        return self.request_generator.result_limit
-
-    @result_limit.setter
-    def result_limit(self, limit):
-        self.request_generator.result_limit = limit
+    def application_name(self):
+        """
+        The short, human-readable name of the application this client connects to.
+        """
+        return self._application_name
 
     def _prevent_write_while_disabled(self):
         """
@@ -58,7 +55,7 @@ class RestApiClient(object):
         makes its way into the hands of researchers inexperienced in programming. It's already
         prevented at least one accidental data change during EDD script development!
         """
-        if not self._enable_write:
+        if not self.write_enabled:
             raise RuntimeError('To prevent accidental data loss or corruption, data changes to '
                                '%(application_name)s are disabled. Use write_enabled to allow '
                                'writes, but please use carefully!' % {
