@@ -44,7 +44,7 @@ from __future__ import division, unicode_literals
 import logging
 import re
 
-from collections import defaultdict, OrderedDict
+from collections import defaultdict, namedtuple, OrderedDict
 from copy import copy
 from decimal import Decimal
 from django import forms
@@ -68,6 +68,9 @@ from ..utilities import interpolate_at
 
 
 logger = logging.getLogger(__name__)
+
+
+Range = namedtuple('Range', ['min', 'max'])
 
 
 class SbmlForm(forms.Form):
@@ -439,10 +442,14 @@ class SbmlMatchReactions(SbmlForm):
             self._max = min(trange['max_t'][0], self._max or int(1e9))
         if trange['min_t']:
             self._min = max(trange['min_t'][0], self._min or -int(1e9))
-        # iff no interpolation, capture intersection of t values
+        # iff no interpolation, capture intersection of t values bounded by max & min
         m_inter = measurement_qs.exclude(assay__protocol__in=interpolate)
         for m in m_inter.prefetch_related('measurementvalue_set'):
-            points = set([p.x[0] for p in m.measurementvalue_set.all()])
+            points = set([
+                p.x[0]
+                for p in m.measurementvalue_set.all()
+                if self._min <= p.x[0] <= self._max
+            ])
             if self._points:
                 self._points.intersection_update(points)
             else:
@@ -452,17 +459,15 @@ class SbmlMatchReactions(SbmlForm):
         # TODO
         return super(SbmlMatchReactions, self).clean()
 
-    def _get_max(self):
-        return self._max
-    max_t = property(_get_max)
-
-    def _get_min(self):
-        return self._min
-    min_t = property(_get_min)
-
-    def _get_points(self):
-        return self._points
-    points = property(_get_points)
+    def create_time_select_form(self):
+        # error if no range or if max < min
+        if self._min is None or self._max is None or self._max < self._min:
+            return None
+        points = self._points
+        t_range = Range(min=self._min, max=self._max)
+        if points is not None:
+            points = sorted(points)
+        return SbmlExportSelectionForm(t_range=t_range, points=points)
 
     def _guess_exchange(self, measurement_type):
         mname = measurement_type.short_name
@@ -509,6 +514,28 @@ class SbmlMatchReactions(SbmlForm):
             if guess in lookup:
                 return lookup[guess]
         return None
+
+
+class SbmlExportSelectionForm(forms.Form):
+    time_select = forms.DecimalField(
+        help_text=_('Select the time to compute fluxes for embedding in SBML template'),
+        label=_('Time for export'),
+    )
+
+    def __init__(self, t_range, points=None, *args, **kwargs):
+        super(SbmlExportSelectionForm, self).__init__(*args, **kwargs)
+        time_field = self.fields['time_select']
+        if points:
+            self.fields['time_select'] = forms.TypedChoiceField(
+                choices=[('%s' % t, '%s hr' % t) for t in points],
+                coerce=Decimal,
+                empty_value=None,
+                help_text=time_field.help_text,
+                label=time_field.label,
+            )
+        else:
+            time_field.max_value = t_range.max
+            time_field.min_value = t_range.min
 
 
 def compose(*args):

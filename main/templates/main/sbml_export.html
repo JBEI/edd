@@ -235,7 +235,6 @@
           {% for message in warnings_list %}
           <div class="warn2">{{ message }}</div>
           {% endfor %}
-          <!-- {{ match_form.points }} {{ match_form.min_t }} {{ match_form.max_t }} -->
           <div class="rounded-border" style="display: inline-block;">
             <table class="dataTable" cellspacing="0">
               <thead>
@@ -271,8 +270,11 @@
 
     <div class="pageSection" style="margin:10px;" id="timeselectmain">
       <div class="sectionHead">{% trans "Export SBML at timepoint" %}</div>
-      <div class="sectionContent sectionRight">
+      <div class="sectionContent">
         <!-- Form to select time for export -->
+        {{ time_form.as_p }}
+      </div>
+      <div class="sectionContent sectionRight">
         <button type="submit" name="action" value="download">{% trans "Download SBML" %}</button>
       </div>
     </div>

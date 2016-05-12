@@ -705,15 +705,30 @@ class SbmlView(EDDExportView):
         )
         try:
             context.update(form_dict)
+            time_form = None
+            if match_form:
+                time_form = match_form.create_time_select_form()
             context.update(
                 export_settings_form=export_settings,
                 od_select_form=od_select,
                 match_form=match_form,
+                time_form=time_form,
                 sbml_warnings=list(sbml_warnings),
             )
         except Exception as e:
             logger.exception("Failed to validate forms for export: %s", e)
         return context
+
+    def render_to_response(self, context, **kwargs):
+        if context.get('download', False):
+            # TODO: class to update SBML template with data, export to stream
+            sbml = None
+            response = HttpResponse(sbml.output(), content_type='text/csv')
+            # set download filename as the first name in the exported studies
+            study = self._export.selection.studies.values()[0]
+            response['Content-Disposition'] = 'attachment; filename="%s.csv"' % study.name
+            return response
+        return super(SbmlView, self).render_to_response(context, **kwargs)
 
 
 # /study/<study_id>/lines/
