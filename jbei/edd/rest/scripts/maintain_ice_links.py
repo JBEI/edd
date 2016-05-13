@@ -1488,6 +1488,12 @@ def process_matching_strain(edd_strain, ice_entry, process_all_ice_entry_links,
     edd = processing_inputs.edd
     ice = processing_inputs.ice
 
+    # build a cache of all experiment links from this ICE entry. The cache should be fairly
+    # short-lived, so unlikely to create race conditions
+    ice_entry_uuid = edd_strain.registry_id
+    all_strain_experiment_links = build_ice_entry_links_cache(ice, ice_entry_uuid)
+    strain_performance.ice_link_search_time = (arrow.utcnow() - strain_performance.start_time)
+    unprocessed_strain_experiment_links = all_strain_experiment_links.copy()
 
     # detect whether the EDD/ICE strain names & descriptions match. If not, apply those in ICE
     # to EDD, since EDD strains should be derived from those in ICE
@@ -1502,10 +1508,6 @@ def process_matching_strain(edd_strain, ice_entry, process_all_ice_entry_links,
         new_description = ice_entry.short_description if description_changed else None
         processing_summary.updated_edd_strain_text(edd_strain, ice_entry, old_name, new_name,
                                                    old_description, new_description)
-    ice_entry_uuid = edd_strain.registry_id
-    all_strain_experiment_links = build_ice_entry_links_cache(ice, ice_entry_uuid)
-    unprocessed_strain_experiment_links = all_strain_experiment_links.copy()
-    strain_performance.ice_link_search_time = (arrow.utcnow() - strain_performance.start_time)
 
     # query EDD for all studies that reference this strain
     changed_something = False
@@ -1514,28 +1516,24 @@ def process_matching_strain(edd_strain, ice_entry, process_all_ice_entry_links,
 
         for study in strain_studies_page.results:
             existing_valid_study_links = {}
+            found_dated_urls = {}
 
             # if is_aborted(): # TODO: consider re-adding if we can't use Celery's AbortableTask,
             # and therefore don't have to worry about the performance hit for testing aborted
             # status
             #       break
+
             alternate_base_url = processing_inputs.test_edd_base_url
             study_url = edd.get_abs_study_browser_url(study.pk,
                                                       alternate_base_url=alternate_base_url).lower()
-            strain_performance.ice_link_search_time = None
             strain_to_study_link = all_strain_experiment_links.get(study_url)
             unprocessed_strain_experiment_links.pop(study_url, None)
 
-            # if no up-to-date link was found to this EDD study, check for any links to the study
-            # that are using dated URL schemes. Update or remove them as appropriate.
-            # Note that processing here is very similar to that in process_if_dated_link(), but
-            # should be more efficient in this context since we only have to check for a small,
-            # fixed number of dated URL schemes for each study. Small differences in URL matching
-            # relative to process_if_dated_link() should be fine since we expect the links we're
-            # maintaining to have all been generated automatically by EDD.
+            # if no up-to-date link was found to this EDD study, find all links to the study
+            # that are using dated URL schemes, then pdate or remove them as appropriate.
             if not strain_to_study_link:
                 dated_url_variations = build_dated_url_variations(study.pk, processing_inputs)
-                found_dated_urls = {}
+
                 for dated_url_variant in dated_url_variations:
                     dated_link = unprocessed_strain_experiment_links.pop(dated_url_variant, None)
 
@@ -1575,6 +1573,9 @@ def process_matching_strain(edd_strain, ice_entry, process_all_ice_entry_links,
                         changed_something = True
 
                         # otherwise, track how many existing valid links we skipped over
+            if found_dated_urls:
+                continue
+
             if strain_to_study_link and (strain_to_study_link.label == study.name):
                         existing_valid_study_links[
                             strain_to_study_link.url.lower()] = strain_to_study_link
