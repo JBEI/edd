@@ -4,13 +4,11 @@ from __future__ import unicode_literals
 import collections
 import json
 import logging
-import operator
 import re
 
 from builtins import str
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django.db.models import Count, Prefetch, Q
@@ -25,18 +23,16 @@ from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 from django.views import generic
 from django.views.decorators.csrf import ensure_csrf_cookie
-from functools import reduce
 from io import BytesIO
 from itertools import chain
 
-from jbei.ice.rest.ice import IceApi, STRAIN, IceHmacAuth
 from . import autocomplete
 from .importer import (
     TableImport, import_rna_seq, import_rnaseq_edgepro, interpret_edgepro_data,
     interpret_raw_rna_seq_data,
 )
 from .export.sbml import (
-    SbmlExportMeasurementsForm, SbmlExportOdForm, SbmlExportSettingsForm, SbmlMatchReactions,
+    SbmlExportMeasurementsForm, SbmlExport, SbmlExportOdForm, SbmlExportSettingsForm,
 )
 from .export.table import ExportSelection, TableExport, WorklistExport
 from .forms import (
@@ -44,12 +40,11 @@ from .forms import (
     ExportSelectionForm, LineForm, MeasurementForm, MeasurementValueFormSet, WorklistForm,
 )
 from .models import (
-    Assay, Attachment, Line, Measurement, MeasurementCompartment, MeasurementGroup, MeasurementType,
-    MeasurementValue, Metabolite, MetaboliteSpecies, MetadataType, Protocol, SBMLTemplate, Study,
-    StudyPermission, Update,
+    Assay, Attachment, Line, Measurement, MeasurementType, MeasurementValue, Metabolite,
+    MetaboliteSpecies, MetadataType, Protocol, SBMLTemplate, Study, StudyPermission, Update,
 )
 from .signals import study_modified
-from .solr import StudySearch, UserSearch
+from .solr import StudySearch
 from .utilities import (
     JSONDecimalEncoder, get_edddata_carbon_sources, get_edddata_measurement, get_edddata_misc,
     get_edddata_strains, get_edddata_study, get_edddata_users,
@@ -575,7 +570,7 @@ class EDDExportView(generic.TemplateView):
         return self.render_to_response(context)
 
     def render_to_response(self, context, **kwargs):
-        if context.get('download', False):
+        if context.get('download', False) and self._export:
             response = HttpResponse(self._export.output(), content_type='text/csv')
             # set download filename as the first name in the exported studies
             study = self._export.selection.studies.values()[0]
@@ -639,6 +634,10 @@ class WorklistView(EDDExportView):
 
 
 class SbmlView(EDDExportView):
+    def __init__(self, *args, **kwargs):
+        super(SbmlView, self).__init__(*args, **kwargs)
+        self.sbml_export = None
+
     def get_template_names(self):
         """ Override in child classes to specify alternate templates. """
         return ['main/sbml_export.html', ]
@@ -684,19 +683,21 @@ class SbmlView(EDDExportView):
                 qfilter=Q(assay__protocol__categorization=Protocol.CATEGORY_TPOMICS),
             ),
         })
+        # only makes sense to include the matching and timepoint sections when a valid template
+        # is selected in the export_settings form
         match_form = None
+        time_form = None
         if export_settings.is_valid():
-            match_form = SbmlMatchReactions(export_settings, prefix='match')
-            for f in form_dict.itervalues():
-                if f.is_valid():
-                    measurements = f.cleaned_data['measurement']
-                    interpolate = f.cleaned_data.get('interpolate', [])
-                    match_form.add_measurements(measurements, interpolate)
-            form_dict.update(match_form=match_form)
+            template = export_settings.cleaned_data.get('sbml_template', None)
+            self.sbml_export = SbmlExport(template)
+            od_select.is_valid()  # triggering validation only
+            for sbml_measurements in [f for f in form_dict.itervalues() if f.is_valid()]:
+                self.sbml_export.add_measurements(sbml_measurements)
+            match_form = self.sbml_export.create_match_form(payload, prefix='match')
+            time_form = self.sbml_export.create_time_select_form(payload, prefix='time')
         else:
-            for f in form_dict.itervalues():
+            for f in chain((od_select, ), form_dict.itervalues()):
                 f.is_valid()  # triggering validation only
-        od_select.is_valid()  # don't care about result at this point, only triggering validation
         # collect all the warnings together for counting
         sbml_warnings = chain(
             export_settings.sbml_warnings,
@@ -705,9 +706,6 @@ class SbmlView(EDDExportView):
         )
         try:
             context.update(form_dict)
-            time_form = None
-            if match_form:
-                time_form = match_form.create_time_select_form()
             context.update(
                 export_settings_form=export_settings,
                 od_select_form=od_select,
@@ -720,14 +718,16 @@ class SbmlView(EDDExportView):
         return context
 
     def render_to_response(self, context, **kwargs):
-        if context.get('download', False):
-            # TODO: class to update SBML template with data, export to stream
-            sbml = None
-            response = HttpResponse(sbml.output(), content_type='text/csv')
-            # set download filename as the first name in the exported studies
-            study = self._export.selection.studies.values()[0]
-            response['Content-Disposition'] = 'attachment; filename="%s.csv"' % study.name
-            return response
+        if context.get('download', False) and self.sbml_export:
+            match_form = context.get('match_form', None)
+            time_form = context.get('time_form', None)
+            if match_form and time_form and match_form.is_valid() and time_form.is_valid():
+                time = time_form.cleaned_data['time_select']
+                response = HttpResponse(match_form.output(time), content_type='text/csv')
+                # set download filename as the first name in the exported studies
+                study = self._export.selection.studies.values()[0]
+                response['Content-Disposition'] = 'attachment; filename="%s.csv"' % study.name
+                return response
         return super(SbmlView, self).render_to_response(context, **kwargs)
 
 
