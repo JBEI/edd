@@ -613,18 +613,16 @@ class ProcessingSummary:
     def previously_processed_strains_skipped(self, num_skipped):
         self._previously_processed_strains_skipped = num_skipped
 
-    def print_edd_scan_summary(self, space):
+    def print_edd_summary(self, space):
         """
-        Prints a summary of processing performed during the EDD scan
-        :param space: the number of spaces between output columns
+        Prints a summary data detected from examining some or all of the EDD strains.
         """
         ############################################################
         # build and print summary output subsection header
         ############################################################
-        percent_strains_processed = ((
-                                         self.total_edd_strains_processed /
-                                         self.total_edd_strains_found) * 100 if
-                                     self.total_edd_strains_found else 0)
+        percent_strains_processed = ((self.total_edd_strains_processed /
+                                      self.total_edd_strains_found) * 100 if
+                                      self.total_edd_strains_found else 0)
 
         subsection_header = ('EDD strains (processed/found): %(strains_processed)s / '
                              '%(strains_found)s (%(percent_processed)0.2f%%)' % {
@@ -666,11 +664,11 @@ class ProcessingSummary:
         ############################################################
         # compute column widths and print summary output
         ############################################################
-        title_col_width = max(len(title) for title in rollup_result_items.keys()) + space
-        value_col_width = max(len(value) for value in rollup_result_items) + space
+        main_title_col_width = max(len(title) for title in rollup_result_items.keys()) + space
+        main_value_col_width = max(len(value) for value in rollup_result_items) + space
         for title, value in rollup_result_items.items():
-            aligned_title = title.ljust(title_col_width, fill_char)
-            print(fill_char.join((aligned_title, value.rjust(value_col_width, fill_char))))
+            aligned_title = title.ljust(main_title_col_width, fill_char)
+            print(fill_char.join((aligned_title, value.rjust(main_value_col_width, fill_char))))
 
         ############################################################
         # compute column widths and print follow-up items
@@ -680,6 +678,15 @@ class ProcessingSummary:
         for title, value in follow_up_items.items():
             aligned_title = '\t%s' % title.ljust(title_col_width, fill_char)
             print(fill_char.join((aligned_title, value.rjust(value_col_width, fill_char))))
+
+        ############################################################
+        # strains updated from ICE (print last since this overlaps with other items that
+        # otherwise total to the number processed)
+        ############################################################
+        title = 'Strains with text updated to match ICE'
+        aligned_title = title.ljust(main_title_col_width, fill_char)
+        value = str(len(self._updated_edd_strain_text))
+        print(fill_char.join((aligned_title, value.rjust(main_value_col_width, fill_char))))
 
     def print_summary(self):
         did_processing = self.total_edd_strains_processed or self.total_ice_entries_processed
@@ -709,7 +716,7 @@ class ProcessingSummary:
                       "ICE entries.")
                 print('')
 
-            self.print_edd_scan_summary(space)
+            self.print_edd_summary(space)
 
         ############################################################################################
         # Print summary of ICE entry processing (some is performed even if ICE isn't scanned
