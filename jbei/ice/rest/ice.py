@@ -25,7 +25,7 @@ from urlparse import urlunparse, ParseResult, parse_qs
 
 from jbei.rest.utils import remove_trailing_slash, CLIENT_ERROR_NOT_FOUND
 from jbei.rest.request_generators import (RequestGenerator, SessionRequestGenerator, PagedResult,
-    PagedRequestGenerator)
+                                          PagedRequestGenerator)
 import json
 import logging
 import os
@@ -1350,7 +1350,7 @@ class IceApi(RestApiClient):
             response.raise_for_status()
 
         # Filter out links that aren't for this study
-        json_dict = response.json()
+        json_dict = response.json()  # TODO: doesn't account for
         study_links = [link for link in json_dict if study_url.lower() == link.get('url').lower()]
         logger.debug("Existing links response: " + json_dict.__str__())
 
@@ -1390,6 +1390,11 @@ class IceApi(RestApiClient):
         already exists, updates the labels for the all the existing ICE experiment links that
         uses this URL (even for entries other than the one specified by ice_entry_id). See
         comments on SYNBIO-1196.
+        Note that because of the way ICE's REST API responds, this implementation performs multiple
+        round-trips to  ICE to check whether the link exists before creating it. A future
+        improvement is to fully characterize / unit test the ICE API's behavior, then to provide
+        a more efficient low-level alternative to support clients that have already performed
+        their own checking.
         :param ice_entry_id: the string used to identify the strain ( either the string
         representation of the number displayed in the URL, or the UUID stored in EDD's database)
         :param study_id: the unique ID of this study
@@ -1430,7 +1435,7 @@ class IceApi(RestApiClient):
         # URL
         label_key = 'label'
         url_key = 'url'
-        existing_links = response.json()
+        existing_links = response.json()  # TODO: doesn't account for results paging see EDD-200
         current_study_links = [link for link in existing_links if
                                ((study_url.lower() == link.get(url_key).lower()) and
                                 (study_name == link.get(label_key)))]

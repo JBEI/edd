@@ -19,14 +19,14 @@ base_rest_api_router.register(r'metadata_group', MetadataGroupViewSet)
 # non-working dev code...maybe useful as an example for further work later on.
 # this was the first attempt to create nested resources based on some misleading docs on the django
 # rest framework
-#rest_api_router.register(r'study/(?P<study>\d+)/lines', views.StudyLineView,
+# rest_api_router.register(r'study/(?P<study>\d+)/lines', views.StudyLineView,
 #                         "StudyLine")
 # rest_api_router.register(r'study/(?P<study>\d+)/lines(/(?P<line>\d+))?',
 #                          views.StudyListLinesView.as_view(),
 #                          "StudyListLinesView1")
-#rest_api_router.register(r'study/(?P<study>\d+)/lines',
-                         # views.StudyListLinesView.as_view(),
-                         # "StudyListLinesView")
+# rest_api_router.register(r'study/(?P<study>\d+)/lines',
+#                        views.StudyListLinesView.as_view(),
+#                        "StudyListLinesView")
 
 # define a separate router for nested resources under /study (not clearly supported by normal
 # django rest framework routers)
@@ -44,7 +44,7 @@ strain_nested_resources_router.register(r'studies', StrainStudiesView,
 
 # TODO: consider re-jiggering urlpatterns to make nested resources visible in the browseable API
 urlpatterns = [
-    #url(r'docs/$', include('rest_framework_swagger.urls')),
+#   url(r'docs/$', include('rest_framework_swagger.urls')),
     url(r'', include(base_rest_api_router.urls)),
     url(r'', include(study_nested_resources_router.urls)),
     url(r'', include(strain_nested_resources_router.urls)),

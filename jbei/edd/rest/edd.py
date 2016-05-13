@@ -717,9 +717,11 @@ class EddApi(RestApiClient):
                           page_number=None, query_url=None):
         """
 
-        :param study_pk:
-        :param strain_id: either EDD's numeric primary key for the strain, or ICE's UUID,
-        or an empty string to get all strains associated with the study
+        :param study_pk: the integer primary key for the EDD study whose strain assocations we
+        want to get
+        :param strain_id: an optional unique identifier to test whether a specific strain is used in
+        this EDD study. The unique ID can be either EDD's numeric primary key for the strain,
+        or ICE's UUID, or an empty string to get all strains associated with the study.
         :param line_active_status:
         :param page_number:
         :param query_url: a convenience for getting the next page of results in multi-page
