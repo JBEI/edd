@@ -1594,7 +1594,6 @@ def process_matching_strain(edd_strain, ice_entry, process_all_ice_entry_links,
     all_strain_experiment_links = build_ice_entry_links_cache(ice, ice_entry_uuid)
     unprocessed_strain_experiment_links = all_strain_experiment_links.copy()
     strain_performance.ice_link_search_time = (arrow.utcnow() - strain_performance.start_time)
-    strain_performance.p
 
     # query EDD for all studies that reference this strain
     changed_something = False
