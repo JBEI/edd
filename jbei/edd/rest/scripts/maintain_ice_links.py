@@ -155,8 +155,8 @@ class Performance(object):
         print('Total run time: %s' % to_human_relevant_delta(total_runtime.total_seconds()))
         values_dict = OrderedDict()
 
-        values_dict['EDD strain scan duration'] = to_human_relevant_delta(
-                self.edd_strain_scan_time.total_seconds() if self.edd_strain_scan_time else
+        values_dict['EDD strain scan duration'] = (to_human_relevant_delta(
+                self.edd_strain_scan_time.total_seconds()) if self.edd_strain_scan_time else
                 'Not performed')
         values_dict['ICE entry scan duration:'] = (to_human_relevant_delta(
                 self.ice_entry_scan_time.total_seconds()) if self.ice_entry_scan_time else
@@ -1382,101 +1382,6 @@ class DatedLinkProcessingOutcome:
         self.study_url = study_url
 
 
-def process_if_dated_link(ice_entry, experiment_link, processing_inputs,
-                          preexisting_entry_links, valid_links, all_entry_studies, query_edd_strains,
-                          processing_summary):
-    """
-    Processes an ICE experiment link and checks whether it references EDD using a dated URL scheme,
-    based on the known development & integration history of EDD
-    and ICE at JBEI. Note that processing here needs to be maintained in parallel with
-    process_edd_strain(). Both perform similar processing, but are designed to work efficiently
-    within each different context.
-    :param ice_entry: the ice entry this link originates from
-    :param experiment_link: the link to check for dated
-    :param query_edd_strains: True to query EDD for matching strains if the link is detected to be
-    a dated link to EDD, or a link using the wrong hostname (as a result of a
-    transient configuration issue). If False, and if this is a dated link, it will be
-    removed from ICE without further checking. If True, we'll confirm that the link is valid with
-    EDD before updating or removing it.
-    :return: a DatedLinkProcessingOutcome instance that describes both the outcome of the processing
-    """
-    ice = processing_inputs.ice
-    edd = processing_inputs.edd
-
-    # remove link if it's to a development machine
-    if is_development_url(experiment_link.url):
-        ice.remove_experiment_link(ice_entry.uuid, experiment_link.id)
-        processing_summary.removed_development_link(ice_entry, experiment_link)
-        return DatedLinkProcessingOutcome(REMOVED_DEVELOPMENT_URL_OUTCOME)
-
-    # remove link if it's from a production ICE instance to a test EDD instance
-    cleaning_ice_test_instance = processing_inputs.cleaning_ice_test_instance
-    if (not cleaning_ice_test_instance) and is_edd_test_instance_url(experiment_link.url):
-        ice.remove_experiment_link(ice_entry.uuid, experiment_link.id)
-        processing_summary.removed_test_link(ice_entry, experiment_link)
-        return DatedLinkProcessingOutcome(REMOVED_TEST_URL_OUTCOME)
-
-    # update link if it references an outdated EDD URL scheme.
-    # redirects will work, but old-style URLs will be missed by this scripts / EDD's consistency
-    # checks during link maintenance
-
-    # check for perl-style URLs
-    perl_study_url_pattern = processing_inputs.perl_study_url_pattern
-    perl_study_url_match = perl_study_url_pattern.match(experiment_link.url)
-    wrong_hostname_match = None
-    study_pk = None
-    if perl_study_url_match:
-        study_pk = int(perl_study_url_match.group('study_id'))
-
-    else:
-        # if it wasn't a pearl-style URL, look for a wrong hostname
-        # detect & fix links resulting from an incorrect hostname value briefly in place in EDD's
-        # database following deployment of SYNBIO-1105 / corrected in SYNBIO-1312.
-        wrong_hostname_match = WRONG_HOSTNAME_PATTERN.match(experiment_link.url)
-        if wrong_hostname_match:
-            study_pk = int(wrong_hostname_match.group('study_id'))
-
-    # if the link URL didn't conform to a known EDD URL pattern, it's either a valid / up-to-date
-    # link, or an external link. In either case, leave it alone.
-    if not study_pk:
-        return DatedLinkProcessingOutcome(NOT_PROCESSED_OUTCOME)
-
-    # build the up-to-date URL for this study
-    study_url = edd.get_abs_study_browser_url(study_pk)
-
-    # if an existing valid link was found to this study, just remove the dated one
-    if study_url in valid_links.keys():
-        ice.remove_experiment_link(ice_entry.uuid, experiment_link.id)
-        processing_summary.removed_duplicate_link()
-        return DatedLinkProcessingOutcome(REMOVED_DUPLICATE_STUDY_LINK)
-
-    # if the study isn't in our just-updated cache of studies that use this strain, or if there's
-    #  a preexisting link to the study using a newer URL scheme, just remove the link
-    study = all_entry_studies.get(study_pk, None)
-    if study:
-        valid_links[study_url] = True
-    link_already_exists = study_url.lower() in preexisting_entry_links
-    if not study or link_already_exists:
-        ice.remove_experiment_link(ice_entry.uuid, experiment_link.id)
-        processing_summary.removed_invalid_link(ice_entry, experiment_link)
-        return DatedLinkProcessingOutcome(REMOVED_BAD_STUDY_LINK)
-
-    # update the outdated link to match the new link format
-    ice.link_entry_to_study(ice_entry.uuid, study_pk, study_url, study.name,
-                            old_study_url=experiment_link.url, logger=logger)
-
-    if perl_study_url_match:
-        processing_summary.updated_perl_link(ice_entry, experiment_link)
-        return DatedLinkProcessingOutcome(UPDATED_PERL_URL_OUTCOME, study_pk=study_pk,
-                                          study_url=study_url)
-    elif wrong_hostname_match:
-        processing_summary.updated_wrong_hostname_link(ice_entry, experiment_link)
-        return DatedLinkProcessingOutcome(UPDATED_WRONG_HOSTNAME_OUTCOME, study_pk=study_pk,
-                                          study_url=study_url)
-
-    return DatedLinkProcessingOutcome(NOT_PROCESSED_OUTCOME)
-
-
 def build_ice_entry_links_cache(ice, entry_uuid):
     """
     Queries ICE and creates a local cache of experiment links for this ICE entry. To reduce the
@@ -1603,9 +1508,10 @@ def process_matching_strain(edd_strain, ice_entry, process_all_ice_entry_links,
         for study in strain_studies_page.results:
             existing_valid_study_links = {}
 
-            # if is_aborted(): # TODO: consider re-adding if we can't use Celery's
-            # AbortableTask, and therefore don't have to worry about the performance hit for
-            # testing aborted status break
+            # if is_aborted(): # TODO: consider re-adding if we can't use Celery's AbortableTask,
+            # and therefore don't have to worry about the performance hit for testing aborted
+            # status
+            #       break
             alternate_base_url = processing_inputs.test_edd_base_url
             study_url = edd.get_abs_study_browser_url(study.pk,
                                                       alternate_base_url=alternate_base_url).lower()
@@ -1620,7 +1526,6 @@ def process_matching_strain(edd_strain, ice_entry, process_all_ice_entry_links,
             # fixed number of dated URL schemes for each study. Small differences in URL matching
             # relative to process_if_dated_link() should be fine since we expect the links we're
             # maintaining to have all been generated automatically by EDD.
-            found_dated_links = False
             if not strain_to_study_link:
                 dated_url_variations = build_dated_url_variations(study.pk, processing_inputs)
                 found_dated_urls = {}
@@ -1662,10 +1567,14 @@ def process_matching_strain(edd_strain, ice_entry, process_all_ice_entry_links,
                         strain_performance.links_updated += 1
                         changed_something = True
 
+                        # otherwise, track how many existing valid links we skipped over
+            if strain_to_study_link and (strain_to_study_link.label == study.name):
+                        existing_valid_study_links[
+                            strain_to_study_link.url.lower()] = strain_to_study_link
+                        processing_summary.skipped_valid_link(ice_entry, strain_to_study_link)
             # if no link to the study has been found, or if one exists with an unmaintained
             # name, create / rename the link
-            if (not (strain_to_study_link or found_dated_links)) or (
-                strain_to_study_link.label != study.name):
+            else:
                 old_study_name = strain_to_study_link.label if strain_to_study_link else None
                 ice.link_entry_to_study(ice_entry_uuid, study.pk, study_url, study.name, logger,
                                         old_study_name)
@@ -1676,11 +1585,6 @@ def process_matching_strain(edd_strain, ice_entry, process_all_ice_entry_links,
                     processing_summary.created_missing_link(ice_entry, study_url)
                 changed_something = True
                 strain_performance.links_updated += 1
-
-            # otherwise, track how many existing valid links we skipped over
-            else:
-                existing_valid_study_links[strain_to_study_link.url.lower()] = strain_to_study_link
-                processing_summary.skipped_valid_link(ice_entry, strain_to_study_link)
 
         # get the next page (if any) of studies associated with this strain
         if strain_studies_page.next_page:
