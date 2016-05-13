@@ -26,6 +26,22 @@ class RestApiClient(object):
         """
 
     @property
+    def result_limit(self):
+        return self._request_generator.result_limit
+
+    @result_limit.setter
+    def result_limit(self, limit):
+        self._request_generator.result_limit = limit
+
+    @property
+    def timeout(self):
+        return self._request_generator.timeout
+
+    @timeout.setter
+    def timeout(self, timeout):
+        self._request_generator.timeout = timeout
+
+    @property
     def base_url(self):
         """
         The base URL of the application this client communicates with. The URL is immutable for
