@@ -245,13 +245,16 @@ class IceTestStub(IceApi):
     """
 
     def unlink_entry_from_study(self, ice_entry_id, study_id, study_url, logger):
+        self._prevent_write_while_disabled()
         return True
 
     def link_entry_to_study(self, ice_entry_id, study_id, study_url, study_name, logger,
                             old_study_name=None, old_study_url=None):
+        self._prevent_write_while_disabled()
         pass
 
     def remove_experiment_link(self, ice_entry_id, link_id):
+        self._prevent_write_while_disabled()
         pass
 
 
@@ -1099,6 +1102,7 @@ def main():
                 ice = (IceApi(ice_session_auth, ICE_URL,
                               result_limit=ICE_RESULT_PAGE_SIZE) if not args.dry_run else
                        IceTestStub(ice_session_auth, ICE_URL, result_limit=ICE_RESULT_PAGE_SIZE))
+                ice.write_enabled = True
                 processing_inputs.ice = ice
                 # ice.request_generator.timeout = 20
 
