@@ -272,9 +272,11 @@ class EddTestStub(EddApi):
 
     def update_strain(self, name=None, description=None, local_pk=None, registry_id=None,
                       registry_url=None):
+        self._prevent_write_while_disabled()
         pass
 
     def create_strain(self, name, description, registry_id, registry_url):
+        self._prevent_write_while_disabled()
         pass
 
 
