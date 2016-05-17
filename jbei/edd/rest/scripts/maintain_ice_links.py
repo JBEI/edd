@@ -453,7 +453,7 @@ class ProcessingSummary:
         self._updated_edd_strain_text.append(edd_strain)
         name_change = 'old_name = "%s", new_name="%s"' % (old_name, new_name) if new_name else ''
         description_change = 'old_desc = "%s", new_desc="%s"' % (old_description, new_description)
-        logger.info('Updated text and/or description to make EDD strain match ICE. %s %s' % (
+        logger.info('Updated name and/or description to make EDD strain match ICE. %s %s' % (
             name_change, description_change))
 
     @property
@@ -583,9 +583,8 @@ class ProcessingSummary:
 
         logger.warning('EDD *strain* %(edd_strain_pk)d references ICE entry "%(ice_entry_name)s", '
                        'but is defined as a %(entry_type)s. Links will be examined for this '
-                       'part, but some manual curation is probably also required. ICE entry is %('
-                       'part_number)s ('
-                       'uuid %(entry_uuid)s)' % {
+                       'part, but some manual curation is probably also required. ICE entry is '
+                       '%(part_number)s (uuid %(entry_uuid)s)' % {
                            'edd_strain_pk': edd_strain.pk, 'ice_entry_name': ice_entry.name,
                            'entry_type': ice_entry.__class__.__name__,
                            'part_number': ice_entry.part_id, 'entry_uuid': ice_entry.uuid,
@@ -622,6 +621,7 @@ class ProcessingSummary:
         if uuid in self._previously_processed_strains_skipped:
             logger.error('ICE entry has been skipped twice! This indicates a logic error.')
         self._previously_processed_strains_skipped[uuid] = True
+        self._total_ice_entries_processed += 1
 
     def print_edd_summary(self, space):
         """
@@ -630,17 +630,17 @@ class ProcessingSummary:
         ############################################################
         # build and print summary output subsection header
         ############################################################
-        percent_strains_processed = ((self.total_edd_strains_processed /
-                                      self.total_edd_strains_found) * 100 if
-                                      self.total_edd_strains_found else 0)
+        found = self.total_edd_strains_found if self.total_edd_strains_found else \
+            self.total_edd_strains_processed
+        percent_strains_processed = (self.total_edd_strains_processed / found) * 100
+
 
         subsection_header = ('EDD strains (processed/found): %(strains_processed)s / '
                              '%(strains_found)s (%(percent_processed)0.2f%%)' % {
                                  'strains_processed': locale.format('%d',
                                                                     self.total_edd_strains_processed,
                                                                     grouping=True),
-                                 'strains_found': locale.format('%d', self.total_edd_strains_found,
-                                                                grouping=True),
+                                 'strains_found': locale.format('%d', found, grouping=True),
                                  'percent_processed': percent_strains_processed,
                              })
         subsection_separator = '-'.rjust(len(subsection_header), '-')
@@ -789,29 +789,24 @@ class ProcessingSummary:
         # build a dict of other results to be displayed so we can justify them in columns for
         # printing
         links_processed = OrderedDict()
-        links_processed['Unmaintained links renamed'] = locale.format('%d',
-                                                                      self._unmaintained_links_renamed,
-                                                                      grouping=True)
-        links_processed['Perl-style links updated'] = locale.format('%d', self._perl_links_updated,
-                                                                    grouping=True)
-        links_processed['Wrong hostname links updated'] = locale.format('%d',
-                                                                        self._wrong_hostname_links_updated,
-                                                                        grouping=True)
-        links_processed['Invalid links pruned'] = locale.format('%d', self._invalid_links_pruned,
-                                                                grouping=True)
-        links_processed['Development links pruned'] = locale.format('%d',
-                                                                    self._development_links_pruned,
-                                                                    grouping=True)
-        links_processed['Test links pruned'] = locale.format('%d', self._test_links_pruned,
-                                                             grouping=True)
-        links_processed['Valid links skipped'] = locale.format('%d', self._valid_links_skipped,
-                                                               grouping=True)
-        links_processed['External links skipped'] = locale.format('%d',
-                                                                  self._skipped_external_links,
-                                                                  grouping=True)
-        links_processed['Duplicate links removed'] = locale.format('%d',
-                                                                   self._duplicate_links_removed,
-                                                                   grouping=True)
+        links_processed['Unmaintained links renamed'] = locale.format(
+                '%d', self._unmaintained_links_renamed, grouping=True)
+        links_processed['Perl-style links updated'] = locale.format(
+                '%d', self._perl_links_updated, grouping=True)
+        links_processed['Wrong hostname links updated'] = locale.format(
+                '%d', self._wrong_hostname_links_updated, grouping=True)
+        links_processed['Invalid links pruned'] = locale.format(
+                '%d', self._invalid_links_pruned, grouping=True)
+        links_processed['Development links pruned'] = locale.format(
+                '%d', self._development_links_pruned, grouping=True)
+        links_processed['Test links pruned'] = locale.format(
+                '%d', self._test_links_pruned, grouping=True)
+        links_processed['Valid links skipped'] = locale.format(
+                '%d', self._valid_links_skipped, grouping=True)
+        links_processed['External links skipped'] = locale.format(
+                '%d', self._skipped_external_links, grouping=True)
+        links_processed['Duplicate links removed'] = locale.format(
+                '%d', self._duplicate_links_removed, grouping=True)
 
         # compute column widths
         sub_title_col_width = max(len(title) for title in links_processed.keys()) + space
@@ -1660,10 +1655,12 @@ def process_matching_strain(edd_strain, ice_entry, process_all_ice_entry_links,
             print("No experiment links found for this ICE entry that didn't reference this "
                   "EDD strain")
 
+    # keep track of whether strain links were modified
     if changed_links:
         processing_summary.processed_edd_strain_with_changes(edd_strain, ice_entry)
     else:
         processing_summary.found_edd_strain_with_up_to_date_links(edd_strain, ice_entry)
+
     # track performance for completed processing
     strain_performance.ice_link_cache_lifetime = arrow.utcnow() - strain_performance.start_time
     strain_performance.set_end_time(arrow.utcnow(), edd.request_generator.wait_time,
