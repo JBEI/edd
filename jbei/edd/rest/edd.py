@@ -32,7 +32,7 @@ from jbei.rest.utils import remove_trailing_slash, UNSAFE_HTTP_METHODS, CLIENT_E
 from jbei.rest.utils import show_response_html, is_success_code
 
 DEBUG = False  # controls whether error response content is written to temp file, then displayed
-              # in a browser tab
+               # in a browser tab
 VERIFY_SSL_DEFAULT = jbei.rest.request_generators.RequestGenerator.VERIFY_SSL_DEFAULT
 DEFAULT_REQUEST_TIMEOUT = (10, 10)  # HTTP request connection and read timeouts, respectively
                                     # (seconds)
@@ -504,7 +504,7 @@ class EddApi(RestApiClient):
         matching, False otherwise.
         :param type_i18n:
         :param query_url:
-        :param page_number:
+        :param page_number: the page number of results to be returned (1-indexed)
         :return:
         """
 
@@ -513,6 +513,8 @@ class EddApi(RestApiClient):
 
         if context and context not in METADATA_CONTEXT_VALUES:
             raise ValueError('context \"%s\" is not a supported value' % context)
+
+        self._verify_page_number(page_number)
 
         request_generator = self.session_auth.request_generator
 
@@ -573,12 +575,12 @@ class EddApi(RestApiClient):
         by case_sensitive)
         :param case_sensitive: whether or not to use case-sensitive string comparisons. False or
         None indicates that searches should be case-insensitive.
-        :param result_limit: the upper limit for the number of results that will be returned from
-        this single request. If present, overrides the value provided to the constructor for
-        the duration of this search.
+        :param page_number: the page number of results to be returned (1-indexed)
         :return: a PagedResult containing some or all of the EDD strains that matched the search
         criteria
         """
+
+        self._verify_page_number(page_number)
 
         request_generator = self.session_auth.request_generator
 
@@ -635,10 +637,11 @@ class EddApi(RestApiClient):
         result sets. Query_url is the entire URL for the search, including query parameters (for
         example, the value returned for next_page as a result of a prior search). If present,
         all other parameters will be ignored.
-        :param page_number: the results page number (starting with 1)
+        :param page_number: the page number of results to be returned (1-indexed)
         :return: a PagedResult with some or all of the associated studies, or None if none were
         found for this strain
         """
+        self._verify_page_number(page_number)
         request_generator = self.session_auth.request_generator
         response = None
 
@@ -683,9 +686,11 @@ class EddApi(RestApiClient):
         result sets. Query_url is the entire URL for the search, including query parameters (for
         example, the value returned for next_page as a result of a prior search). If present,
         all other parameters will be ignored.
+        :param page_number: the page number of results to be returned (1-indexed)
         :return: a PagedResult containing some or all of the EDD lines that matched the search
         criteria
         """
+        self._verify_page_number(page_number)
         request_generator = self.session_auth.request_generator
 
         # if servicing a paged response, just use the provided query URL so clients don't have to
@@ -723,7 +728,7 @@ class EddApi(RestApiClient):
         this EDD study. The unique ID can be either EDD's numeric primary key for the strain,
         or ICE's UUID, or an empty string to get all strains associated with the study.
         :param line_active_status:
-        :param page_number:
+        :param page_number: the page number of results to be returned (1-indexed)
         :param query_url: a convenience for getting the next page of results in multi-page
         result sets. Query_url is the entire URL for the search, including query parameters (for
         example, the value returned for next_page as a result of a prior search). If present,
@@ -731,6 +736,7 @@ class EddApi(RestApiClient):
         :return: a PagedResult containing some or all of the EDD strains used in this study
         """
 
+        self._verify_page_number(page_number)
         request_generator = self.session_auth.request_generator
         response = None
 

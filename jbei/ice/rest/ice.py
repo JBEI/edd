@@ -993,11 +993,12 @@ class IceApi(RestApiClient):
         :param filter:
         :param sort:
         :param asc:
-        :param page_number:
+        :param page_number: the page number of results to be returned (1-indexed)
         :return:
         :raise HttpError: if the authenticated user doesn't have access to this ICE
         resource (isn't a sysadmin), or if some other error has occurred.
         """
+        self._verify_page_number(page_number)
         # TODO: investigate / hard-code / check for supported values of 'sort' param
 
         # construct a dictionary of query params in the format ICE expects
@@ -1034,9 +1035,12 @@ class IceApi(RestApiClient):
         Retrieves ICE's experiments links for the specified entry, using any of the unique
         identifiers: part id, synthetic id, or UUID.
         :param entry_id: the ICE ID for this entry
+        :param page_number: the page number of results to be returned (1-indexed)
         :return: A PagedResult containing at least one EntryLink object, or None if the ICE
         returned an empty (but successful) response.
         """
+
+        self._verify_page_number(page_number)
 
         response = None
         if query_url:
@@ -1069,9 +1073,11 @@ class IceApi(RestApiClient):
         Retrieves ICE's samples for the specified entry, using any of the unique
         identifiers: part id, local integer primary key, or UUID.
         :param entry_id: the ICE ID for this entry
+        :param page_number: the page number of results to be returned (1-indexed)
         :return: A PagedResult containing at least one Sample, or None if ICE
         returned an empty (but successful) response.
         """
+        self._verify_page_number(page_number)
 
         response = None
         if query_url:
@@ -1162,6 +1168,7 @@ class IceApi(RestApiClient):
         :param sort_ascending: true to sort in ascending order, False otherwise. Ignored if
         sort_field is None
         :param sort_ascending: True to sort in ascending order, False for descending order
+        :param page_number: the page number of results to be returned (1-indexed)
         :param suppress_errors: True to suppress errors
         :return: a single page of results. Note that this method is a special case since the full
         functionality of ICE's search only seems to be supported by POST, so unlike many other
@@ -1172,6 +1179,7 @@ class IceApi(RestApiClient):
         recognized programs.
         """
 
+        self._verify_page_number(page_number)
         query_url = None  # TODO: re-instate this parameter if we can get ICE to support the same
         # queries in GET as in POST...should simplify client use by allowing
 

@@ -181,7 +181,7 @@ class StrainProcessingPerformance:
     """
 
     def __init__(self, strain, start_time, starting_ice_communication_delta,
-                 starting_edd_communication_delta):
+                 starting_edd_communication_delta, scan_percent_when_complete=None):
         self.strain = strain
         self.start_time = start_time
         self._total_time = None
@@ -202,6 +202,7 @@ class StrainProcessingPerformance:
         self.links_skipped = 0
         self.links_unprocessed = 0
         self.studies_unprocessed = 0
+        self.scan_percent_when_complete = scan_percent_when_complete
 
     def print_summary(self):
         ############################################################################################
@@ -223,6 +224,9 @@ class StrainProcessingPerformance:
 
         if self.links_unprocessed:
             print('\tICE links UNprocessed: %d' % self.links_unprocessed)
+
+        if self.scan_percent_when_complete is not None:
+            print('EDD Scan %0.2f%% complete' % self.scan_percent_when_complete)
 
     @property
     def end_time(self):
@@ -376,7 +380,7 @@ class ProcessingSummary:
         self._wrong_hostname_links_updated = 0
         self._skipped_external_links = 0
 
-        self._previously_processed_strains_skipped = 0
+        self._previously_processed_strains_skipped = {}
 
         self._up_to_date_strains = []
         self._strains_with_changes = []
@@ -610,11 +614,13 @@ class ProcessingSummary:
 
     @property
     def previously_processed_strains_skipped(self):
-        return self._previously_processed_strains_skipped
+        return len(self._previously_processed_strains_skipped)
 
-    @previously_processed_strains_skipped.setter
-    def previously_processed_strains_skipped(self, num_skipped):
-        self._previously_processed_strains_skipped = num_skipped
+    def skipped_previously_processed_entry(self, uuid):
+        print('Already processed entry %s earlier in the run...skipping it' % uuid)
+        if uuid in self._previously_processed_strains_skipped:
+            logger.error('ICE entry has been skipped twice! This indicates a logic error.')
+        self._previously_processed_strains_skipped[uuid] = True
 
     def print_edd_summary(self, space):
         """
@@ -1192,24 +1198,27 @@ def scan_edd_strains(processing_inputs, processing_summary, overall_performance)
     hit_test_limit = False
 
     # loop over EDD strains, processing a page of strains at a time
-    edd_strain_page = edd.search_strains()
-    edd_page_num = 1
-    while edd_strain_page and edd_strain_page.current_result_count:
+    strains_page = edd.search_strains()
+    page_num = 1
+    while strains_page and strains_page.current_result_count:
 
         print('EDD: received %(received)s of %(total)s strains (page %(page_num)s)' % {
-            'received': locale.format('%d', edd_strain_page.current_result_count, grouping=True),
-            'total': locale.format('%d', edd_strain_page.total_result_count, grouping=True),
-            'page_num': locale.format('%d', edd_page_num, grouping=True),
+            'received': locale.format('%d', strains_page.current_result_count, grouping=True),
+            'total': locale.format('%d', strains_page.total_result_count, grouping=True),
+            'page_num': locale.format('%d', page_num, grouping=True),
         })
 
-        if edd_page_num == 1:
-            processing_summary.total_edd_strains_found = edd_strain_page.total_result_count
+        if page_num == 1:
+            processing_summary.total_edd_strains_found = strains_page.total_result_count
 
         # loop over strains in this results page, updating ICE's links to each one
-        for edd_strain in edd_strain_page.results:
+        for strain_index, edd_strain in enumerate(strains_page.results):
             process_all_ice_entry_links = True
+            overall_result_index = float(edd.get_overall_result_index(strain_index, page_num))+1
+            scan_percent_when_complete = ((overall_result_index / strains_page.total_result_count)
+                                          * 100  if overall_result_index else 0)
             process_edd_strain(edd_strain, processing_inputs, process_all_ice_entry_links,
-                               processing_summary)
+                               processing_summary, scan_percent_when_complete)
 
             # enforce a small number of tested strains for starters so tests complete
             # quickly
@@ -1225,11 +1234,11 @@ def scan_edd_strains(processing_inputs, processing_summary, overall_performance)
             break
 
         # get another page of strains from EDD
-        if edd_strain_page.is_paged() and edd_strain_page.next_page:
-            edd_strain_page = edd.search_strains(query_url=edd_strain_page.next_page)
-            edd_page_num += 1
+        if strains_page.is_paged() and strains_page.next_page:
+            strains_page = edd.search_strains(query_url=strains_page.next_page)
+            page_num += 1
         else:
-            edd_strain_page = None
+            strains_page = None
 
     overall_performance.completed_edd_strain_scan()
     if not hit_test_limit:
@@ -1284,16 +1293,16 @@ def scan_ice_entries(processing_inputs, search_ice_part_types, processing_summar
                            'some entries have been added or removed while this script was '
                            'running' % {
                                'page_num': locale.format('%d', page_num, grouping=True),
-                               'initial_total': locale.format('%d',
-                                                              processing_summary.total_ice_entries_found,
-                                                              grouping=True),
+                               'initial_total': locale.format(
+                                       '%d', processing_summary.total_ice_entries_found,
+                                        grouping=True),
                                'new_total': locale.format('%d',
                                                           search_results_page.total_result_count,
                                                           grouping=True)
                            })
 
         # loop over ICE entries in the current results page
-        for search_result in search_results_page.results:
+        for result_index, search_result in enumerate(search_results_page.results):
             entry = search_result.entry
 
             print('')
@@ -1305,23 +1314,36 @@ def scan_ice_entries(processing_inputs, search_ice_part_types, processing_summar
             print(subheading)
             print(separator)
 
+            print('Entry %(result_num)s of %(page_size)s in results page %(page_num)s.' % {
+                    'result_num': locale.format('%d', result_index + 1, grouping=True),
+                    'page_size': locale.format('%d', search_results_page.current_result_count,
+                                               grouping=True),
+                    'page_num': locale.format('%d', page_num, grouping=True),
+            })
+
+            overall_result_index = float(ice.get_overall_result_index(result_index, page_num))
+            scan_percent_when_complete = ((
+                                     overall_result_index /
+                                     search_results_page.total_result_count) * 100 if
+                                     overall_result_index else 0)
+
             # skip entries that we just processed when examining EDD strains. Possible these
             # relationships have changed since our pass through EDD, but most likely that
             # nothing has changed or that EDD properly maintained the ICE links in the interim
             if processing_summary.is_edd_strain_processed(entry.uuid):
-                print('Already processed entry %s earlier in the run...skipping it' % entry.uuid)
-                processing_summary.previously_processed_strains_skipped += 1
+                processing_summary.skipped_previously_processed_entry(entry.uuid)
+                print_ice_scan_completion(scan_percent_when_complete)
                 continue
 
-            process_ice_entry(entry, processing_inputs, processing_summary)
+            process_ice_entry(entry, processing_inputs, processing_summary,
+                              scan_percent_when_complete=scan_percent_when_complete)
             tested_entry_count += 1
 
             hit_test_limit = tested_entry_count == test_entry_limit
 
             if hit_test_limit:
-                print(
-                "Hit test limit of %d ICE entries. Ending ICE entry processing early." %
-                tested_entry_count)
+                print("Hit test limit of %d ICE entries. Ending ICE entry processing early." %
+                        tested_entry_count)
                 break
 
         if hit_test_limit:
@@ -1329,15 +1351,16 @@ def scan_ice_entries(processing_inputs, search_ice_part_types, processing_summar
 
         # if available, get another page of results
         if search_results_page.is_paged() and search_results_page.next_page:
+            page_num += 1
             search_results_page = ice.search_entries(entry_types=search_ice_part_types,
                                                      page_number=page_num)
-            page_num += 1
 
     if not search_results_page:
         logger.warning("Didn't find any ICE parts in the search")
 
 
-def process_ice_entry(entry, processing_inputs, processing_summary):
+def process_ice_entry(entry, processing_inputs, processing_summary,
+                      scan_percent_when_complete=None):
     """
     Processes a single ICE entry, checking its experiment links and creating / maintaining any
     included links to EDD.
@@ -1383,14 +1406,15 @@ def process_ice_entry(entry, processing_inputs, processing_summary):
     processing_summary.total_ice_entries_processed += 1
     run_duration = arrow.utcnow() - start_time
     preexisting_links_count = len(preexisting_entry_links_dict)
-    print_shared_entry_processing_summary(entry, preexisting_links_count, run_duration.total_seconds())
+    print_shared_entry_processing_summary(entry, preexisting_links_count,
+                                          run_duration.total_seconds())
+
+    if scan_percent_when_complete is not None:
+        print_ice_scan_completion(scan_percent_when_complete)
 
 
-class DatedLinkProcessingOutcome:
-    def __init__(self, outcome, study_pk=None, study_url=None):
-        self.outcome = outcome
-        self.study_pk = study_pk
-        self.study_url = study_url
+def print_ice_scan_completion(percent_complete):
+    print('ICE scan %0.2f%% complete' % percent_complete)
 
 
 def build_ice_entry_links_cache(ice, entry_uuid):
@@ -1650,10 +1674,11 @@ def process_matching_strain(edd_strain, ice_entry, process_all_ice_entry_links,
 
 
 def process_edd_strain(edd_strain, processing_inputs, process_all_ice_entry_links,
-                       processing_summary):
+                       processing_summary, scan_percent_when_complete=None):
     """
     Processes a single EDD strain, verifying that ICE already has links to its associated
     studies, or creating / maintaining them as needed to bring ICE up-to-date.
+    :param scan_percent_when_complete:
     :param edd_strain: the edd Strain to process
     :param process_all_ice_entry_links: True to process all experiment links associated with the
     linked ICE entry. This enables us to optimize a later scan of ICE by skipping this ICE entry
@@ -1671,6 +1696,7 @@ def process_edd_strain(edd_strain, processing_inputs, process_all_ice_entry_link
     subheader = 'Processing EDD strain "%(strain_name)s" (pk=%(strain_pk)d)...' % {
         'strain_name': edd_strain.name, 'strain_pk': edd_strain.pk,
     }
+
     separator = '-'.ljust(len(subheader), '-')
     print(separator)
     print(subheader)
@@ -1678,7 +1704,8 @@ def process_edd_strain(edd_strain, processing_inputs, process_all_ice_entry_link
 
     strain_performance = StrainProcessingPerformance(edd_strain, arrow.utcnow(),
                                                      edd.request_generator.wait_time,
-                                                     ice.request_generator.wait_time)
+                                                     ice.request_generator.wait_time,
+                                                     scan_percent_when_complete=scan_percent_when_complete)
     if not edd_strain.registry_id:
         processing_summary.found_orphaned_edd_strain(edd_strain)
         strain_performance.set_end_time(arrow.utcnow(), edd.request_generator.wait_time,
@@ -1706,6 +1733,7 @@ def process_edd_strain(edd_strain, processing_inputs, process_all_ice_entry_link
     # if there's an Ice entry associated with this EDD strain, compare links
     process_matching_strain(edd_strain, ice_entry, process_all_ice_entry_links,
                             processing_inputs, processing_summary, strain_performance)
+
     return True
 
 
