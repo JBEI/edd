@@ -11,12 +11,15 @@ from django.core.urlresolvers import reverse as urlreverse
 from django.db import connection, transaction
 from django.db.models.signals import m2m_changed, post_delete, post_save, pre_save, pre_delete
 from django.dispatch import receiver
+from django.core.mail import send_mail
 
 from jbei.ice.rest.ice import parse_entry_id, HmacAuth
 from . import study_modified, study_removed, user_modified
 from ..models import Line, Strain, Study, Update
 from ..solr import StudySearch, UserSearch
 from ..utilities import get_absolute_url
+
+
 
 solr = StudySearch()
 users = UserSearch()
@@ -57,7 +60,12 @@ def unindex_study(sender, study, **kwargs):
 
 @receiver(user_modified)
 def index_user(sender, user, **kwargs):
-    users.update([user, ])
+    try:
+        users.update([user, ])
+    except Exception as e:
+        email = settings.MANAGERS[0][1]
+        send_mail('Solr Server is down', 'Please fix.', 'support@lbl.gov', [email], fail_silently=False)
+        logging.exception("Solr server needs to be restarted", e)
 
 
 def log_update_warning_msg(study_id):
