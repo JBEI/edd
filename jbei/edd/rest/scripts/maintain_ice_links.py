@@ -112,7 +112,8 @@ WRONG_HOSTNAME_PATTERN = re.compile('^http(?:s?)://edd.jbei.lbl.gov/study/(?P<st
 
 class Performance(object):
     """
-    Tracks simple runtime performance metrics for this script.
+    Tracks simple runtime performance metrics for this script. We can get a lot more granular,
+    but this should be a good initial basis for further investigation/optimization if needed.
     """
 
     def __init__(self):
@@ -1494,7 +1495,7 @@ def build_dated_url_variations(study_pk, processing_inputs):
 
     # wrong hostname link (we only need one protocol variation here since data was only present
     # for a short time)
-    wrong_host_url = 'http://edd.jbei.lbl.gov/study/%d/' % study_pk
+    wrong_host_url = 'https://edd.jbei.lbl.gov/study/%d/' % study_pk
 
     return (perl_http_study_url, perl_https_study_url, wrong_host_url)
 
@@ -1538,7 +1539,7 @@ def process_matching_strain(edd_strain, ice_entry, process_all_ice_entry_links,
                                                    old_description, new_description)
 
     # query EDD for all studies that reference this strain
-    changed_something = False
+    changed_links = False
     strain_studies_page = edd.get_strain_studies(edd_strain.pk) if not is_aborted() else None
     while strain_studies_page and not is_aborted():
 
@@ -1598,7 +1599,7 @@ def process_matching_strain(edd_strain, ice_entry, process_all_ice_entry_links,
                             processing_summary.removed_duplicate_link(ice_entry, dated_link)
 
                         strain_performance.links_updated += 1
-                        changed_something = True
+                        changed_links = True
 
                         # otherwise, track how many existing valid links we skipped over
             if found_dated_urls:
@@ -1619,7 +1620,7 @@ def process_matching_strain(edd_strain, ice_entry, process_all_ice_entry_links,
                                                                  study.name)
                 else:
                     processing_summary.created_missing_link(ice_entry, study_url)
-                changed_something = True
+                changed_links = True
                 strain_performance.links_updated += 1
 
         # get the next page (if any) of studies associated with this strain
@@ -1627,11 +1628,6 @@ def process_matching_strain(edd_strain, ice_entry, process_all_ice_entry_links,
             strain_studies_page = edd.get_strain_studies(query_url=strain_studies_page.next_page)
         else:
             strain_studies_page = None
-
-    if changed_something:
-        processing_summary.processed_edd_strain_with_changes(edd_strain, ice_entry)
-    else:
-        processing_summary.found_edd_strain_with_up_to_date_links(edd_strain, ice_entry)
 
     # look over ICE experiment links for this entry that we didn't add, update, or remove as a
     # result of up-to-date study/strain associations in EDD. If any remain that match the
@@ -1642,13 +1638,14 @@ def process_matching_strain(edd_strain, ice_entry, process_all_ice_entry_links,
         for link_url, experiment_link in unprocessed_strain_experiment_links.items():
             # don't modify any experiment URL that doesn't directly map to
             # a known EDD URL. Researchers can create these manually, and we
-            # don't want to remove any that EDD didn't create. Dated EDD URL's should already
+            # don't want to remove any that EDD didn't create. Dated EDD URL patterns should already
             # have been handled above
             study_url_pattern = processing_inputs.study_url_pattern
             study_url_match = study_url_pattern.match(experiment_link.url)
             if study_url_match:
                 ice.remove_experiment_link(ice_entry_uuid, experiment_link.id)
                 processing_summary.removed_invalid_link(ice_entry, experiment_link)
+                changed_links = True
             else:
                 processing_summary.skipped_external_link(ice_entry, experiment_link)
         unprocessed_strain_experiment_links.clear()
@@ -1662,6 +1659,11 @@ def process_matching_strain(edd_strain, ice_entry, process_all_ice_entry_links,
         else:
             print("No experiment links found for this ICE entry that didn't reference this "
                   "EDD strain")
+
+    if changed_links:
+        processing_summary.processed_edd_strain_with_changes(edd_strain, ice_entry)
+    else:
+        processing_summary.found_edd_strain_with_up_to_date_links(edd_strain, ice_entry)
     # track performance for completed processing
     strain_performance.ice_link_cache_lifetime = arrow.utcnow() - strain_performance.start_time
     strain_performance.set_end_time(arrow.utcnow(), edd.request_generator.wait_time,
