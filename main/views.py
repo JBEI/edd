@@ -718,15 +718,18 @@ class SbmlView(EDDExportView):
         return context
 
     def render_to_response(self, context, **kwargs):
-        if context.get('download', False) and self.sbml_export:
+        download = context.get('download', False)
+        if download and self.sbml_export:
             match_form = context.get('match_form', None)
             time_form = context.get('time_form', None)
             if match_form and time_form and match_form.is_valid() and time_form.is_valid():
                 time = time_form.cleaned_data['time_select']
-                response = HttpResponse(match_form.output(time), content_type='text/csv')
-                # set download filename as the first name in the exported studies
-                study = self._export.selection.studies.values()[0]
-                response['Content-Disposition'] = 'attachment; filename="%s.csv"' % study.name
+                response = HttpResponse(
+                    self.sbml_export.output(time, match_form.cleaned_data),
+                    content_type='application/sbml+xml'
+                )
+                # set download filename
+                response['Content-Disposition'] = 'attachment; filename="%s.sbml"' % 'changeme'
                 return response
         return super(SbmlView, self).render_to_response(context, **kwargs)
 

@@ -90,6 +90,9 @@ class SbmlExport(object):
         self._max = self._min = None
         self._points = None
         self._measures = defaultdict(list)
+        if sbml_template:
+            self._sbml_obj = sbml_template.parseSBML()
+            self._sbml_model = self._sbml_obj.getModel()
 
     def add_measurements(self, sbml_measurements):
         """ Add measurements to the export from a SbmlExportMeasurementsForm. """
@@ -117,6 +120,7 @@ class SbmlExport(object):
                 self._match_fields[key] = SbmlMatchReactionField(
                     initial=(i_species, i_exchange),
                     label=t.type_name,
+                    required=False,
                     template=self._sbml_template,
                 )
         # store measurements keyed off type
@@ -164,36 +168,40 @@ class SbmlExport(object):
             points = sorted(points)
         return SbmlExportSelectionForm(t_range=t_range, points=points, data=payload, **kwargs)
 
-    def output(self, time):
+    def output(self, time, matches):
         import libsbml
         # map species / reaction IDs to measurement IDs
         our_species = {}
         our_reactions = {}
-        for mtype, (species, reaction) in self.cleaned_data:
-            if species and species not in our_species:
-                our_species[species] = mtype
-            if reaction and reaction not in our_reactions:
-                our_reactions[reaction] = mtype
+        for mtype, match in matches.iteritems():
+            if match:  # when not None, match[0] == species and match[1] == reaction
+                if match[0] and match[0] not in our_species:
+                    our_species[match[0]] = mtype
+                if match[1] and match[1] not in our_reactions:
+                    our_reactions[match[1]] = mtype
         print('\t\tour_species = %s\n\t\tour_reactions = %s' % (our_species, our_reactions, ))
         # loop over all template species, if in our_species set the notes section
         for species in self._sbml_model.getListOfSpecies():
             # TODO: convert and calculate
-            species.setNotes(create_sbml_notes_object(
-                CONCENTRATION_CURRENT=[''],
-                CONCENTRATION_HIGHEST=[''],
-                CONCENTRATION_LOWEST=[''],
-            ))
+            if species.getId() in our_species:
+                species.setNotes(create_sbml_notes_object(
+                    CONCENTRATION_CURRENT='',
+                    CONCENTRATION_HIGHEST='',
+                    CONCENTRATION_LOWEST='',
+                ))
         # loop over all template reactions, if in our_reactions set bounds, notes, etc
         for reaction in self._sbml_model.getListOfReactions():
             # TODO: convert and calculate
-            reaction.setNotes(create_sbml_notes_object(
-                GENE_TRANSCRIPTION_VALUES=[''],
-                PROTEIN_COPY_VALUES=[''],
-            ))
+            if reaction.getId() in our_reactions:
+                reaction.setNotes(create_sbml_notes_object(
+                    GENE_TRANSCRIPTION_VALUES='',
+                    PROTEIN_COPY_VALUES='',
+                ))
             flux = 0
             kinetic_law = reaction.getKineticLaw()
-            upper_bound = kinetic_law.getParameter("UPPER_BOUND")
-            lower_bound = kinetic_law.getParameter("LOWER_BOUND")
+            # NOTE: libsbml calls require use of 'binary' CStrings
+            upper_bound = kinetic_law.getParameter(b"UPPER_BOUND")
+            lower_bound = kinetic_law.getParameter(b"LOWER_BOUND")
             upper_bound.setValue(flux)
             lower_bound.setValue(flux)
         # TODO: add carbon data notes
@@ -603,20 +611,24 @@ class SbmlExportSelectionForm(forms.Form):
 
 
 def create_sbml_notes_object(**kwargs):
-    """ Convert arguments to XML for inclusion in SBML. """
+    """ Convert arguments to XML for inclusion in SBML. Values MUST be strings. """
+    # TODO: add a parameter for any existing notes object to extend?
     import libsbml
+    # NOTE: libsbml requires use of 'binary' CStrings
     notes_node = libsbml.XMLNode()
-    body_tag = libsbml.XMLTriple("body", "", "")
+    body_tag = libsbml.XMLTriple(b"body", b"", b"")
     attributes = libsbml.XMLAttributes()
     namespace = libsbml.XMLNamespaces()
-    namespace.add("http://www.w3.org/1999/xhtml", "")
+    namespace.add(b"http://www.w3.org/1999/xhtml", b"")
     body_token = libsbml.XMLToken(body_tag, attributes, namespace)
     body_node = libsbml.XMLNode(body_token)
     namespace.clear()
-    p_tag = libsbml.XMLTriple("p", "", "")
+    p_tag = libsbml.XMLTriple(b"p", b"", b"")
     p_token = libsbml.XMLToken(p_tag, attributes, namespace)
     for key, value in kwargs.iteritems():
-        text_token = libsbml.XMLToken(('%s:%s' % (key, value)).encode('utf-8'))
+        encode_key = key.encode('utf-8')
+        encode_value = value.encode('utf-8')
+        text_token = libsbml.XMLToken(('%s: %s' % (encode_key, encode_value)).encode('utf-8'))
         text_node = libsbml.XMLNode(text_token)
         p_node = libsbml.XMLNode(p_token)
         p_node.addChild(text_node)

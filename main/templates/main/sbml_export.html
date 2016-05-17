@@ -235,6 +235,7 @@
           {% for message in warnings_list %}
           <div class="warn2">{{ message }}</div>
           {% endfor %}
+          {{ match_form.non_field_errors }}
           <div class="rounded-border" style="display: inline-block;">
             <table class="dataTable" cellspacing="0">
               <thead>
@@ -246,6 +247,11 @@
               </thead>
               <tbody>
               {% for field in match_form %}
+                {% if field.errors %}
+                <tr>
+                  <td colspan="3">{{ field.errors }}</td>
+                </tr>
+                {% endif %}
                 <tr>
                   <td>{{ field.label }}</td>
                   {# The below is a little gross, one TD used for two cells #}
