@@ -63,9 +63,9 @@ def index_user(sender, user, **kwargs):
     try:
         users.update([user, ])
     except Exception as e:
-        send_mail('Solr Server is down', 'Please fix.', 'support@lbl.gov', ['tlopez@lbl.gov', 'wcmorrell@lbl.gov',
-                                                                            'mforrer@lbl.gov'], fail_silently=False)
-        #logging.exception("Solr server needs to be restarted", e)
+        email = settings.MANAGERS[0][1]
+        send_mail('Solr Server is down', 'Please fix.', 'support@lbl.gov', [email], fail_silently=False)
+        logging.exception("Solr server needs to be restarted", e)
 
 
 def log_update_warning_msg(study_id):
