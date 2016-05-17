@@ -389,6 +389,7 @@ class ProcessingSummary:
         self._stepchild_edd_strains = []
         self._non_strain_ice_parts_referenced = []
         self._updated_edd_strain_text = []
+        self._edd_strains_w_different_text = []
 
         self._processed_edd_strain_uuids = {}
         self._processed_edd_strain_lookup_counts = {}
@@ -401,7 +402,7 @@ class ProcessingSummary:
         self._existing_links_processed += 1
         self._skipped_external_links += 1
 
-        logger.warning('Leaving external ICE link to %(link_url)s in place from ICE part '
+        logger.warning('Leaving external link to %(link_url)s in place from ICE part '
                        '%(part_id)s (uuid %(entry_uuid)s)' % {
                            'link_url': link.url, 'part_id': ice_entry.part_id,
                            'entry_uuid': ice_entry.uuid,
@@ -443,7 +444,7 @@ class ProcessingSummary:
         self._processed_edd_strain_lookup_counts[entry_uuid] = lookup_count + 1
         if lookup_count > 1:
             logger.warning('Looked up processing status for entry %s %d times' % (entry_uuid,
-                                                                                 lookup_count))
+                                                                                  lookup_count))
 
         processed = self._processed_edd_strain_uuids.get(entry_uuid, False)
         return processed
@@ -455,6 +456,14 @@ class ProcessingSummary:
         description_change = 'old_desc = "%s", new_desc="%s"' % (old_description, new_description)
         logger.info('Updated name and/or description to make EDD strain match ICE. %s %s' % (
             name_change, description_change))
+
+    def found_strain_text_diff(self, edd_strain, ice_entry, edd_name=None, ice_name=None,
+                               edd_description=None, ice_description=None):
+        self._edd_strains_w_different_text.append(edd_strain)
+        name_diff = 'edd_name = "%s", ice_name="%s"' % (edd_name, ice_name) if ice_name else ''
+        description_diff = 'edd_desc = "%s", ice_desc="%s"' % (edd_description, ice_description)
+        logger.warning("Strain name and/or description don't match ICE. %s %s" % (
+            name_diff, description_diff))
 
     @property
     def total_edd_strains_found(self):
@@ -660,6 +669,10 @@ class ProcessingSummary:
                     '%d', len(self._stepchild_edd_strains), grouping=True)
 
         })
+        updated_edd_strain_text = bool(self._updated_edd_strain_text)
+        if not updated_edd_strain_text:
+            follow_up_items["Strains whose name/desc. don't match ICE"] = locale.format('%d',
+                    len(self._edd_strains_w_different_text))
 
         rollup_result_items = OrderedDict()
         rollup_result_items['Strains with current links:'] = locale.format('%d', len(
@@ -692,10 +705,11 @@ class ProcessingSummary:
         # strains updated from ICE (print last since this overlaps with other items that
         # otherwise total to the number processed)
         ############################################################
-        title = 'Strains with text updated to match ICE'
-        aligned_title = title.ljust(main_title_col_width, fill_char)
-        value = str(len(self._updated_edd_strain_text))
-        print(fill_char.join((aligned_title, value.rjust(main_value_col_width, fill_char))))
+        if updated_edd_strain_text:
+            title = 'Strains with name/desc. updated to match ICE'
+            aligned_title = title.ljust(main_title_col_width, fill_char)
+            value = str(len(self._updated_edd_strain_text))
+            print(fill_char.join((aligned_title, value.rjust(main_value_col_width, fill_char))))
 
     def print_summary(self):
         did_processing = self.total_edd_strains_processed or self.total_ice_entries_processed
@@ -878,7 +892,7 @@ def main():
     ice_entry_arg_name = '-ice_entry'
     scan_ice_entries_arg_name = '-scan_ice_entries'
 
-    parser.add_argument(scan_ice_entries_arg_name, action='store_const', const=True,
+    parser.add_argument(scan_ice_entries_arg_name, action='store_true',
                         help='a flag that indicates ICE entries should be scanned independently '
                              'of those referenced from EDD. This allows us to catch '
                              'ICE entries that have stale associations to EDD (most likely during '
@@ -918,12 +932,18 @@ def main():
                              '%(edd_strain)s may be used simultaneously.' % {
                                  'edd_strain': edd_strain_arg_name, 'ice_entry': ice_entry_arg_name,
                              })
+    parser.add_argument('-update_edd_strain_text', action='store_true',
+                        help="a flag that indicates that EDD strains should have their "
+                             "names/descriptions updated in cases where they don't exactly"
+                             "match the values stored in ICE. At present, ICE doesn't yet have"
+                             "a feature to update EDD strains, so this can happen. See "
+                             "SYNBIO-1330.")
 
-    parser.add_argument(dry_run_param_name, action='store_const', const=True,
+    parser.add_argument(dry_run_param_name, action='store_true',
                         help='prevents data changes to ICE and EDD, simulating them instead to '
                              'show what the results of a run are likely to be')
 
-    parser.add_argument(no_warn_param_name, action='store_const', const=True,
+    parser.add_argument(no_warn_param_name, action='store_true',
                         help='silences the confirmation prompt regarding the '
                              'potential risk in using the %(dry_run)s parameter. '
                              'Use with care!' % {'dry_run': dry_run_param_name})
@@ -966,6 +986,8 @@ def main():
             print('\t\tScan ICE Entries Independently of EDD: %s ignored because a single ICE '
                   'entry '
                   'or EDD strain id was provided' % scan_ice_entries_arg_name)
+    print('\t\tUpdate EDD strain name/desc. to match ICE: %s' % ('Yes' if
+          args.update_edd_strain_text else 'No'))
     if args.dry_run:
         print('\t\tDry run: Yes')
     if args.test_edd_url:
@@ -1059,7 +1081,8 @@ def main():
                                          cleaning_edd_test_instance=cleaning_edd_test_instance,
                                          cleaning_ice_test_instance=cleaning_ice_test_instance,
                                          test_edd_strain_limit=args.test_edd_strain_limit,
-                                         test_ice_entry_limit=args.test_ice_entry_limit)
+                                         test_ice_entry_limit=args.test_ice_entry_limit,
+                                         update_edd_strain_text=args.update_edd_strain_text)
 
     try:
         ##############################
@@ -1075,6 +1098,7 @@ def main():
         with edd_session_auth:
             edd = (EddApi(edd_session_auth, EDD_URL) if not args.dry_run else
                    EddTestStub(edd_session_auth, EDD_URL))
+            edd.write_enabled = args.update_edd_strain_text
             edd.result_limit = EDD_RESULT_PAGE_SIZE
             processing_inputs.edd = edd
 
@@ -1450,7 +1474,7 @@ def build_ice_entry_links_cache(ice, entry_uuid):
 class ProcessingInputs(object):
     def __init__(self, study_url_pattern, perl_study_url_pattern, test_edd_base_url,
                  cleaning_edd_test_instance, cleaning_ice_test_instance, test_edd_strain_limit,
-                 test_ice_entry_limit):
+                 test_ice_entry_limit, update_edd_strain_text):
         """
         :param cleaning_ice_test_instance: true if the ICE instance being maintained is a test
         instance. If False, all reverences to EDD test instances will be removed on the assumption
@@ -1466,6 +1490,7 @@ class ProcessingInputs(object):
         self.cleaning_ice_test_instance = cleaning_ice_test_instance
         self.test_edd_strain_limit = test_edd_strain_limit
         self.test_ice_entry_limit = test_ice_entry_limit
+        self.update_edd_strain_text = update_edd_strain_text
 
 
 def build_dated_url_variations(study_pk, processing_inputs):
@@ -1518,19 +1543,24 @@ def process_matching_strain(edd_strain, ice_entry, process_all_ice_entry_links,
     strain_performance.ice_link_search_time = (arrow.utcnow() - strain_performance.start_time)
     unprocessed_strain_experiment_links = all_strain_experiment_links.copy()
 
-    # detect whether the EDD/ICE strain names & descriptions match. If not, apply those in ICE
-    # to EDD, since EDD strains should be derived from those in ICE
+    # detect whether the EDD/ICE strain names & descriptions match. If not, conditionally apply
+    # those in ICE to EDD, since EDD strains should be derived from those in ICE
     name_changed = ice_entry.name != edd_strain.name
     description_changed = ice_entry.short_description != edd_strain.description
     if name_changed or description_changed:
-        edd.update_strain(name=ice_entry.name, description=ice_entry.short_description,
-                          registry_id=ice_entry.uuid)
         old_name = edd_strain.name if name_changed else None
         new_name = ice_entry.name if name_changed else None
         old_description = edd_strain.description if description_changed else None
         new_description = ice_entry.short_description if description_changed else None
-        processing_summary.updated_edd_strain_text(edd_strain, ice_entry, old_name, new_name,
-                                                   old_description, new_description)
+
+        if processing_inputs.update_edd_strain_text:
+            edd.update_strain(name=ice_entry.name, description=ice_entry.short_description,
+                              registry_id=ice_entry.uuid)
+            processing_summary.updated_edd_strain_text(edd_strain, ice_entry, old_name, new_name,
+                                                       old_description, new_description)
+        else:
+            processing_summary.found_strain_text_diff(edd_strain, ice_entry, old_name, new_name,
+                                                      old_description, new_description)
 
     # query EDD for all studies that reference this strain
     changed_links = False
