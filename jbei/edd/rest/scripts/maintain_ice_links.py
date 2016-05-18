@@ -1657,18 +1657,21 @@ def process_matching_strain(edd_strain, ice_entry, process_all_ice_entry_links,
 
     # look over ICE experiment links for this entry that we didn't add, update, or remove as a
     # result of up-to-date study/strain associations in EDD. If any remain that match the
-    # pattern of EDD URL's, they're outdated and need to be removed. This complete processing
+    # pattern of EDD URL's, they're invalid and need to be removed. This complete processing
     # of the ICE entry's experiment links will also allow us to skip over this entry later
     # in the process if we scan ICE to look for other entries with outdated links to EDD
     if process_all_ice_entry_links:
         for link_url, experiment_link in unprocessed_strain_experiment_links.items():
             # don't modify any experiment URL that doesn't directly map to
             # a known EDD URL. Researchers can create these manually, and we
-            # don't want to remove any that EDD didn't create. Dated EDD URL patterns should already
-            # have been handled above
+            # don't want to remove any that EDD didn't create. Valid-but-dated EDD URL
+            # patterns should  already have been handled above
             study_url_pattern = processing_inputs.study_url_pattern
-            study_url_match = study_url_pattern.match(experiment_link.url)
-            if study_url_match:
+            perl_study_url_pattern = processing_inputs.perl_study_url_pattern
+            invalid_edd_url_match = (study_url_pattern.match(experiment_link.url) or
+                              perl_study_url_pattern.match(link_url) or
+                              WRONG_HOSTNAME_PATTERN.match(link_url))
+            if invalid_edd_url_match:
                 ice.remove_experiment_link(ice_entry_uuid, experiment_link.id)
                 processing_summary.removed_invalid_link(ice_entry, experiment_link)
                 changed_links = True
