@@ -11,14 +11,14 @@ from django.core.urlresolvers import reverse as urlreverse
 from django.db import connection, transaction
 from django.db.models.signals import m2m_changed, post_delete, post_save, pre_save, pre_delete
 from django.dispatch import receiver
-from django.core.mail import send_mail
+from django.core.mail import mail_managers
 
 from jbei.ice.rest.ice import parse_entry_id, HmacAuth
 from . import study_modified, study_removed, user_modified
 from ..models import Line, Strain, Study, Update
 from ..solr import StudySearch, UserSearch
 from ..utilities import get_absolute_url
-
+from requests.exceptions import ConnectionError
 
 
 solr = StudySearch()
@@ -29,6 +29,7 @@ if settings.USE_CELERY:
     from edd.remote_tasks import link_ice_entry_to_study, unlink_ice_entry_from_study
 else:
     from jbei.ice.rest.ice import IceApi
+
 
 @receiver(post_save, sender=Study)
 def study_saved(sender, instance, created, raw, using, **kwargs):
@@ -62,11 +63,10 @@ def unindex_study(sender, study, **kwargs):
 def index_user(sender, user, **kwargs):
     try:
         users.update([user, ])
-    except Exception as e:
-        email = settings.MANAGERS[0][1]
-        send_mail('Solr Server is down', 'Please fix.', 'jbei-edd-admin@lists.lbl.gov', [email],
-                  fail_silently=False)
-        logging.exception("Solr server needs to be restarted")
+    except ConnectionError as e:
+        mail_managers("Solr server is down", "please restart")
+        logger.exception("Solr server needs to be restarted")
+
 
 def log_update_warning_msg(study_id):
     logger.warning('ICE URL is not configured. Skipping attempt to link ICE parts to EDD study "%s"'
