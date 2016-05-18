@@ -64,8 +64,8 @@ def index_user(sender, user, **kwargs):
     try:
         users.update([user, ])
     except ConnectionError as e:
-        mail_managers("Solr server is down", "please restart")
-        logger.exception("Solr server needs to be restarted")
+        mail_managers("Error connecting to Solr at login", "support needed")
+        logger.exception("Error connecting to Solr at login")
 
 
 def log_update_warning_msg(study_id):
