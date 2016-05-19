@@ -674,7 +674,7 @@ class ProcessingSummary:
         updated_edd_strain_text = bool(self._updated_edd_strain_text)
         if not updated_edd_strain_text:
             follow_up_items["Strains whose name/desc. don't match ICE"] = locale.format('%d',
-                    len(self._edd_strains_w_different_text))
+                                len(self._edd_strains_w_different_text))
 
         rollup_result_items = OrderedDict()
         rollup_result_items['Strains with current links:'] = locale.format('%d', len(
@@ -844,8 +844,8 @@ def print_shared_entry_processing_summary(entry, initial_entry_experiment_links_
 INTEGER_PATTERN = re.compile(r'^\d+$')
 
 
-def parse_entry_types_arg(str):
-    str_list = json.loads(str)
+def parse_entry_types_arg(arg_value):
+    str_list = json.loads(arg_value)
 
     entry_types = []
 
@@ -854,21 +854,22 @@ def parse_entry_types_arg(str):
         if item in ICE_ENTRY_TYPES:
             entry_types.append(item)
         else:
-            raise argparse.ArgumentTypeError('%(str)s is not a valid list of ICE entry types. A '
-                                             'valid example value is %(sample)s' % {
-                                                 'str': str, 'sample': str(list(ICE_ENTRY_TYPES)),
-                                             })
+            raise argparse.ArgumentTypeError(
+                    '%(str)s is not a valid list of ICE entry types. A valid example value is '
+                    '%(sample)s' % {
+                        'str': arg_value,
+                        'sample': arg_value(list(ICE_ENTRY_TYPES)), })
     return entry_types
 
 
-def parse_int_or_uuid_arg(str):
-    if INTEGER_PATTERN.match(str):
-        return int(str)
-    elif TYPICAL_UUID_PATTERN.match(str):
-        return str;
+def parse_int_or_uuid_arg(arg_value):
+    if INTEGER_PATTERN.match(arg_value):
+        return int(arg_value)
+    elif TYPICAL_UUID_PATTERN.match(arg_value):
+        return arg_value
 
     raise argparse.ArgumentTypeError('%s is not an integer primary key or a UUID of the form '
-                                     'XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX' % str)
+                                     'XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX' % arg_value)
 
 
 def main():
@@ -1016,13 +1017,9 @@ def main():
     # expose access credentials! Pre-Docker local testing required insecure http, so this mistake is
     # easy to make!
     ############################################################################################
-    if not is_url_secure(EDD_URL):
-        print('EDD_BASE_URL %s is insecure. You must use HTTPS to maintain security for non-'
-              'local URL\'s')
+    if not is_url_secure(EDD_URL, print_err_msg=True, app_name='EDD'):
         return 0
-    if not is_url_secure(ICE_URL):
-        print('ICE_BASE_URL %s is insecure. You must use HTTPS to maintain security for non-'
-              'local URL\'s')
+    if not is_url_secure(ICE_URL, print_err_msg=True, app_name='ICE'):
         return 0
 
     if cleaning_edd_test_instance != cleaning_ice_test_instance:
@@ -1036,9 +1033,8 @@ def main():
     verify_edd_ssl_cert = verify_edd_cert(EDD_URL)
     verify_ice_ssl_cert = verify_ice_cert(ICE_URL)
 
-    # silence library warnings if we're skipping SSL certificate
-    # verification for local testing. otherwise the warnings will swamp useful output from this
-    # script.
+    # silence library warnings if we're skipping SSL certificate verification for local testing.
+    # otherwise the warnings will swamp useful output from this script.
     if not (verify_edd_ssl_cert and verify_ice_ssl_cert):
         requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
@@ -1050,17 +1046,16 @@ def main():
                            'prompt silenced via %s)' % no_warn_param_name)
         else:
             print("WARNING: RISKY OPERATION!!! You've requested a dry run of this script, "
-                  "but the dry run feature "
-                  "depends on proper maintenance of test stub classes defined in this script along "
-                  "with the production code in IceApi and EddApi. Both production classes were "
-                  "under active development at the time this script was implemented, "
-                  "so there's a significant risk that the dry run feature will be broken by future "
-                  "development work. Before proceeding, you should inspect the code to "
-                  "double-check that this feature still works as intended. You can short-circuit "
-                  "this prompt using the %s parameter" % no_warn_param_name)
+                  "but the dry run feature depends on proper maintenance of test stub classes "
+                  "defined in this script along with the production code in IceApi and EddApi. "
+                  "Both production classes were under active development at the time this script "
+                  "was implemented, so there's a significant risk that the dry run feature will be "
+                  "broken by future development work. Before proceeding, you should inspect the "
+                  "code to double-check that this feature still works as intended. You can "
+                  "short-circuit this prompt using the %s parameter" % no_warn_param_name)
             reply = user_input.user_input("Do you want to proceed and risk "
-                                          "unintended data changes? (Y/n): ")
-            if not ('y' == reply.strip().lower() or 'yes' == reply.strip().lower()):
+                                          "unintended data changes? (Y/n): ").strip().lower()
+            if not ('y' == reply or 'yes' == reply):
                 return 0
 
     # build URL patterns
@@ -1422,6 +1417,8 @@ def process_ice_entry(entry, processing_inputs, processing_summary,
             study_url_pattern = processing_inputs.study_url_pattern
             if (study_url_pattern.match(url) or perl_link_pattern.match(url) or
                     WRONG_HOSTNAME_PATTERN.match(url)):
+
+                # TODO: SYNBIO-1350: use entry.uuid after prerequisite SYNBIO-1207 is complete.
                 ice.remove_experiment_link(entry.uuid, experiment_link.id)
 
     processing_summary.total_ice_entries_processed += 1
@@ -1610,7 +1607,7 @@ def process_matching_strain(edd_strain, ice_entry, process_all_ice_entry_links,
                             # offender in terms of execution time when the ICE scan is performed.
                             ice.link_entry_to_study(ice_entry_uuid, study.pk, study_url, study.name,
                                                     old_study_name=old_study_name,
-                                                    old_study_url=dated_link, logger=logger)
+                                                    old_study_url=dated_link.url, logger=logger)
                             if processing_inputs.perl_study_url_pattern.match(dated_url_variant):
                                 processing_summary.updated_perl_link(ice_entry, dated_link)
                             elif WRONG_HOSTNAME_PATTERN.match(dated_url_variant):
@@ -1621,6 +1618,8 @@ def process_matching_strain(edd_strain, ice_entry, process_all_ice_entry_links,
                                     'Updated dated link %s not captured in metrics' %
                                     dated_url_variant)
                         else:
+                            # TODO: SYNBIO-1350: use entry.uuid after prerequisite SYNBIO-1207 is
+                            #  complete.
                             ice.remove_experiment_link(ice_entry.id, dated_link.id)
                             processing_summary.removed_duplicate_link(ice_entry, dated_link)
 
@@ -1669,10 +1668,11 @@ def process_matching_strain(edd_strain, ice_entry, process_all_ice_entry_links,
             study_url_pattern = processing_inputs.study_url_pattern
             perl_study_url_pattern = processing_inputs.perl_study_url_pattern
             invalid_edd_url_match = (study_url_pattern.match(experiment_link.url) or
-                              perl_study_url_pattern.match(link_url) or
-                              WRONG_HOSTNAME_PATTERN.match(link_url))
+                                     perl_study_url_pattern.match(link_url) or
+                                     WRONG_HOSTNAME_PATTERN.match(link_url))
             if invalid_edd_url_match:
-                ice.remove_experiment_link(ice_entry_uuid, experiment_link.id)
+                # TODO: SYNBIO-1350: use entry.uuid after prerequisite SYNBIO-1207 is complete.
+                ice.remove_experiment_link(ice_entry.id, experiment_link.id)
                 processing_summary.removed_invalid_link(ice_entry, experiment_link)
                 changed_links = True
             else:

@@ -1347,7 +1347,7 @@ class IceApi(RestApiClient):
         :raises requests.exceptions.Timeout if a communication timeout occurs.
         """
         logger.info('Start ' + self.unlink_entry_from_study.__name__ + "()")
-        self._prevent_write_while_disabled(self)
+        self._prevent_write_while_disabled()
 
         # Look up the links associated with this ICE part
         entry_experiments_rest_url = self._build_entry_experiments_url(ice_entry_id)
@@ -1382,11 +1382,11 @@ class IceApi(RestApiClient):
         """
         Removes the specified experiment link from an ICE entry
         """
-        self._prevent_write_while_disabled(self)
+        self._prevent_write_while_disabled()
 
         entry_experiments_rest_url = self._build_entry_experiments_url(ice_entry_id)
         link_resource_uri = entry_experiments_rest_url + "%s/" % link_id
-        response = self.request_generator.request('DELETE', link_resource_uri)
+        response = self.request_generator.delete(link_resource_uri)
 
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
