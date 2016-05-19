@@ -180,7 +180,6 @@ class SbmlExport(object):
                     our_species[match[0]] = mtype
                 if match[1] and match[1] not in our_reactions:
                     our_reactions[match[1]] = mtype
-        print('\n\t\tspecies = %s :: reactions = %s' % (our_species, our_reactions, ))
         builder = SbmlBuilder()
         self._update_species_notes(builder, our_species, time)
         self._update_reaction_notes(builder, our_reactions, time)
@@ -239,7 +238,12 @@ class SbmlExport(object):
         for reaction_sid, mtype in our_reactions.iteritems():
             reaction = self._sbml_model.getReaction(reaction_sid.encode('utf-8'))
             if reaction is None:
-                print('No reaction found for %s' % reaction_sid)
+                logger.warning(
+                    'No reaction found in %(template)s with ID %(id)s' % {
+                        'template': self._sbml_template,
+                        'id': reaction_sid,
+                    }
+                )
                 continue
             if reaction.isSetNotes():
                 reaction_notes = reaction.getNotes()
@@ -262,13 +266,16 @@ class SbmlExport(object):
     def _update_species_notes(self, builder, our_species, time):
         # loop over all template species, if in our_species set the notes section
         for species_sid, mtype in our_species.iteritems():
-            print("Looking up species '%s'" % species_sid)
             species = self._sbml_model.getSpecies(species_sid.encode('utf-8'))
             if species is None:
-                print('No species found for %s' % species_sid)
+                logger.warning(
+                    'No species found in %(template)s with ID %(id)s' % {
+                        'template': self._sbml_template,
+                        'id': species_sid,
+                    }
+                )
                 continue
             measurements = self._measures.get('%s' % mtype)
-            print('\n\t\tmeasurements = %s' % (measurements, ))
             current = minimum = maximum = ''
             try:
                 values = MeasurementValue.objects.filter(
@@ -277,29 +284,21 @@ class SbmlExport(object):
                 minmax = values.aggregate(max=Max('y'), min=Min('y'))
                 minimum = minmax['min']
                 maximum = minmax['max']
-                print('\n\t\ttime = %s :: values = %s' % (time, values))
                 current = interpolate_at(values, time)
-                print('\n\t\tFound current value = %s' % (current, ))
                 # TODO: any necessary unit conversions
             except Exception as e:
                 logger.warning('hit an error calculating species values: %s', type(e))
-            print("checking for notes")
             if species.isSetNotes():
-                print("using existing notes")
                 species_notes = species.getNotes()
             else:
-                print("creating new notes")
                 species_notes = builder.create_note_body()
-            print("updating notes node")
             species_notes = builder.update_note_body(
                 species_notes,
                 CONCENTRATION_CURRENT=current,
                 CONCENTRATION_HIGHEST=maximum,
                 CONCENTRATION_LOWEST=minimum,
             )
-            print("saving notes node")
             species.setNotes(species_notes)
-            print("saved notes node")
 
 
 class SbmlExportSettingsForm(SbmlForm):
@@ -666,13 +665,15 @@ class SbmlBuilder(object):
         self.libsbml = libsbml
 
     def create_note_body(self):
+        notes_node = self.libsbml.XMLNode()
         body_tag = self.libsbml.XMLTriple(b"body", b"", b"")
         attributes = self.libsbml.XMLAttributes()
         namespace = self.libsbml.XMLNamespaces()
         namespace.add(b"http://www.w3.org/1999/xhtml", b"")
         body_token = self.libsbml.XMLToken(body_tag, attributes, namespace)
         body_node = self.libsbml.XMLNode(body_token)
-        return body_node
+        notes_node.addChild(body_node)
+        return notes_node
 
     def parse_note_body(self, node):
         notes = {}
@@ -695,15 +696,16 @@ class SbmlBuilder(object):
                 notes[key.strip()] = value.strip()
         return notes
 
-    def update_note_body(self, _body_node, **kwargs):
+    def update_note_body(self, _note_node, **kwargs):
         # ensure adding to the <body> node
-        if _body_node.hasChild(b'body'):
-            _body_node = _body_node.getChild(0)
+        body = _note_node
+        if _note_node.hasChild(b'body'):
+            body = _note_node.getChild(0)
         attributes = self.libsbml.XMLAttributes()
         namespace = self.libsbml.XMLNamespaces()
         p_tag = self.libsbml.XMLTriple(b"p", b"", b"")
         p_token = self.libsbml.XMLToken(p_tag, attributes, namespace)
-        notes = self.parse_note_body(_body_node)
+        notes = self.parse_note_body(body)
         notes.update(**kwargs)
         for key, value in notes.iteritems():
             encode_key = key.encode('utf-8')
@@ -719,8 +721,8 @@ class SbmlBuilder(object):
             p_node.addChild(text_node)
             if isinstance(value, self.libsbml.XMLNode):
                 p_node.addChild(value)
-            _body_node.addChild(p_node)
-        return _body_node
+            body.addChild(p_node)
+        return _note_node
 
     def write_to_string(self, document):
         return self.libsbml.writeSBMLToString(document)
