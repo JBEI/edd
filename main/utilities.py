@@ -16,8 +16,8 @@ from threadlocals.threadlocals import get_current_request
 from uuid import UUID
 
 from .models import (
-    Assay, CarbonSource, GeneIdentifier, Measurement, MeasurementGroup, MeasurementType,
-    MeasurementUnit, MeasurementValue, Metabolite, MetadataType, ProteinIdentifier, Strain,
+    CarbonSource, GeneIdentifier, MeasurementUnit, Metabolite, MetadataType, ProteinIdentifier,
+    Strain,
 )
 
 

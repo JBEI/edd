@@ -274,6 +274,13 @@ class SbmlInfoAutocompleteWidget(AutocompleteWidget):
     def decompress_q(self, value):
         return Q(pk=value)
 
+    def value_from_datadict(self, data, files, name):
+        widgets = enumerate(self.widgets)
+        v = [w.value_from_datadict(data, files, name + '_%s' % i) for i, w in widgets]
+        # v[0] is text of field, v[1] is hidden ID
+        # for the SBML widgets we really care about the text value, hidden ID for validation
+        return v[0]
+
 
 class SbmlExchangeAutocompleteWidget(SbmlInfoAutocompleteWidget):
     """ Autocomplete widget for Exchanges in an SBMLTemplate """

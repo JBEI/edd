@@ -43,6 +43,7 @@ from __future__ import division, unicode_literals
 
 import logging
 import re
+import sys
 
 from collections import defaultdict, namedtuple, OrderedDict
 from copy import copy
@@ -55,14 +56,15 @@ from django.template.defaulttags import register
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext as _
 from functools import partial, reduce
+from six import string_types
 from threadlocals.threadlocals import get_current_request
 
 from ..forms import (
     MetadataTypeAutocompleteWidget, SbmlExchangeAutocompleteWidget, SbmlSpeciesAutocompleteWidget
 )
 from ..models import (
-    Measurement, MeasurementType, MetaboliteExchange, MetaboliteSpecies, MetadataType, Protocol,
-    SBMLTemplate,
+    Measurement, MeasurementType, MeasurementValue, MetaboliteExchange, MetaboliteSpecies,
+    MetadataType, Protocol, SBMLTemplate,
 )
 from ..utilities import interpolate_at
 
@@ -96,8 +98,8 @@ class SbmlExport(object):
 
     def add_measurements(self, sbml_measurements):
         """ Add measurements to the export from a SbmlExportMeasurementsForm. """
-        measurements = sbml_measurements.cleaned_data['measurement']
-        interpolate = sbml_measurements.cleaned_data['interpolate']
+        measurements = sbml_measurements.cleaned_data.get('measurement', [])
+        interpolate = sbml_measurements.cleaned_data.get('interpolate', [])
         measurement_qs = Measurement.objects.filter(pk__in=measurements)
         types_qs = MeasurementType.objects.filter(measurement__in=measurements)
         types_list = list(types_qs.distinct())
@@ -132,9 +134,9 @@ class SbmlExport(object):
         )
         # use 1e9 as really big number in place of None, get smallest min:max range over all
         if trange['max_t']:
-            self._max = min(trange['max_t'][0], self._max or int(1e9))
+            self._max = min(trange['max_t'][0], self._max or sys.maxint)
         if trange['min_t']:
-            self._min = max(trange['min_t'][0], self._min or -int(1e9))
+            self._min = max(trange['min_t'][0], self._min or -sys.maxint)
         # iff no interpolation, capture intersection of t values bounded by max & min
         m_inter = measurement_qs.exclude(assay__protocol__in=interpolate)
         for m in m_inter.prefetch_related('measurementvalue_set'):
@@ -169,7 +171,6 @@ class SbmlExport(object):
         return SbmlExportSelectionForm(t_range=t_range, points=points, data=payload, **kwargs)
 
     def output(self, time, matches):
-        import libsbml
         # map species / reaction IDs to measurement IDs
         our_species = {}
         our_reactions = {}
@@ -179,33 +180,13 @@ class SbmlExport(object):
                     our_species[match[0]] = mtype
                 if match[1] and match[1] not in our_reactions:
                     our_reactions[match[1]] = mtype
-        print('\t\tour_species = %s\n\t\tour_reactions = %s' % (our_species, our_reactions, ))
-        # loop over all template species, if in our_species set the notes section
-        for species in self._sbml_model.getListOfSpecies():
-            # TODO: convert and calculate
-            if species.getId() in our_species:
-                species.setNotes(create_sbml_notes_object(
-                    CONCENTRATION_CURRENT='',
-                    CONCENTRATION_HIGHEST='',
-                    CONCENTRATION_LOWEST='',
-                ))
-        # loop over all template reactions, if in our_reactions set bounds, notes, etc
-        for reaction in self._sbml_model.getListOfReactions():
-            # TODO: convert and calculate
-            if reaction.getId() in our_reactions:
-                reaction.setNotes(create_sbml_notes_object(
-                    GENE_TRANSCRIPTION_VALUES='',
-                    PROTEIN_COPY_VALUES='',
-                ))
-            flux = 0
-            kinetic_law = reaction.getKineticLaw()
-            # NOTE: libsbml calls require use of 'binary' CStrings
-            upper_bound = kinetic_law.getParameter(b"UPPER_BOUND")
-            lower_bound = kinetic_law.getParameter(b"LOWER_BOUND")
-            upper_bound.setValue(flux)
-            lower_bound.setValue(flux)
+        print('\n\t\tspecies = %s :: reactions = %s' % (our_species, our_reactions, ))
+        builder = SbmlBuilder()
+        self._update_species_notes(builder, our_species, time)
+        self._update_reaction_notes(builder, our_reactions, time)
         # TODO: add carbon data notes
-        return libsbml.writeSBMLToString(self._sbml_obj)
+        # TODO: add protein and transcription global notes
+        return builder.write_to_string(self._sbml_obj)
 
     def _guess_exchange(self, measurement_type):
         mname = measurement_type.short_name
@@ -252,6 +233,73 @@ class SbmlExport(object):
             if guess in lookup:
                 return lookup[guess]
         return None
+
+    def _update_reaction_notes(self, builder, our_reactions, time):
+        # loop over all template reactions, if in our_reactions set bounds, notes, etc
+        for reaction_sid, mtype in our_reactions.iteritems():
+            reaction = self._sbml_model.getReaction(reaction_sid.encode('utf-8'))
+            if reaction is None:
+                print('No reaction found for %s' % reaction_sid)
+                continue
+            if reaction.isSetNotes():
+                reaction_notes = reaction.getNotes()
+            else:
+                reaction_notes = builder.create_note_body()
+            reaction_notes = builder.update_note_body(
+                reaction_notes,
+                GENE_TRANSCRIPTION_VALUES='',
+                PROTEIN_COPY_VALUES='',
+            )
+            reaction.setNotes(reaction_notes)
+            flux = 0
+            kinetic_law = reaction.getKineticLaw()
+            # NOTE: libsbml calls require use of 'binary' CStrings
+            upper_bound = kinetic_law.getParameter(b"UPPER_BOUND")
+            lower_bound = kinetic_law.getParameter(b"LOWER_BOUND")
+            upper_bound.setValue(flux)
+            lower_bound.setValue(flux)
+
+    def _update_species_notes(self, builder, our_species, time):
+        # loop over all template species, if in our_species set the notes section
+        for species_sid, mtype in our_species.iteritems():
+            print("Looking up species '%s'" % species_sid)
+            species = self._sbml_model.getSpecies(species_sid.encode('utf-8'))
+            if species is None:
+                print('No species found for %s' % species_sid)
+                continue
+            measurements = self._measures.get('%s' % mtype)
+            print('\n\t\tmeasurements = %s' % (measurements, ))
+            current = minimum = maximum = ''
+            try:
+                values = MeasurementValue.objects.filter(
+                    measurement__in=measurements
+                ).order_by('x')
+                minmax = values.aggregate(max=Max('y'), min=Min('y'))
+                minimum = minmax['min']
+                maximum = minmax['max']
+                print('\n\t\ttime = %s :: values = %s' % (time, values))
+                current = interpolate_at(values, time)
+                print('\n\t\tFound current value = %s' % (current, ))
+                # TODO: any necessary unit conversions
+            except Exception as e:
+                logger.warning('hit an error calculating species values: %s', type(e))
+            print("checking for notes")
+            if species.isSetNotes():
+                print("using existing notes")
+                species_notes = species.getNotes()
+            else:
+                print("creating new notes")
+                species_notes = builder.create_note_body()
+            print("updating notes node")
+            species_notes = builder.update_note_body(
+                species_notes,
+                CONCENTRATION_CURRENT=current,
+                CONCENTRATION_HIGHEST=maximum,
+                CONCENTRATION_LOWEST=minimum,
+            )
+            print("saving notes node")
+            species.setNotes(species_notes)
+            print("saved notes node")
 
 
 class SbmlExportSettingsForm(SbmlForm):
@@ -610,31 +658,72 @@ class SbmlExportSelectionForm(forms.Form):
             ) % t_range._asdict()
 
 
-def create_sbml_notes_object(**kwargs):
-    """ Convert arguments to XML for inclusion in SBML. Values MUST be strings. """
-    # TODO: add a parameter for any existing notes object to extend?
-    import libsbml
-    # NOTE: libsbml requires use of 'binary' CStrings
-    notes_node = libsbml.XMLNode()
-    body_tag = libsbml.XMLTriple(b"body", b"", b"")
-    attributes = libsbml.XMLAttributes()
-    namespace = libsbml.XMLNamespaces()
-    namespace.add(b"http://www.w3.org/1999/xhtml", b"")
-    body_token = libsbml.XMLToken(body_tag, attributes, namespace)
-    body_node = libsbml.XMLNode(body_token)
-    namespace.clear()
-    p_tag = libsbml.XMLTriple(b"p", b"", b"")
-    p_token = libsbml.XMLToken(p_tag, attributes, namespace)
-    for key, value in kwargs.iteritems():
-        encode_key = key.encode('utf-8')
-        encode_value = value.encode('utf-8')
-        text_token = libsbml.XMLToken(('%s: %s' % (encode_key, encode_value)).encode('utf-8'))
-        text_node = libsbml.XMLNode(text_token)
-        p_node = libsbml.XMLNode(p_token)
-        p_node.addChild(text_node)
-        body_node.addChild(p_node)
-    notes_node.addChild(body_node)
-    return notes_node
+class SbmlBuilder(object):
+    """ A little facade class to provide better interface to libsbml and some higher-level
+        utilities to work with SBML files. """
+    def __init__(self):
+        import libsbml
+        self.libsbml = libsbml
+
+    def create_note_body(self):
+        body_tag = self.libsbml.XMLTriple(b"body", b"", b"")
+        attributes = self.libsbml.XMLAttributes()
+        namespace = self.libsbml.XMLNamespaces()
+        namespace.add(b"http://www.w3.org/1999/xhtml", b"")
+        body_token = self.libsbml.XMLToken(body_tag, attributes, namespace)
+        body_node = self.libsbml.XMLNode(body_token)
+        return body_node
+
+    def parse_note_body(self, node):
+        notes = {}
+        if node is None:
+            return notes
+        note_body = node
+        if note_body.hasChild(b'body'):
+            note_body = note_body.getChild(0)
+        # API not very pythonic, cannot just iterate over children
+        for index in range(note_body.getNumChildren()):
+            p = note_body.getChild(index)
+            if p.getNumChildren() > 1:
+                text = p.getChild(0).toXMLString()
+                key, value = text.split(':')
+                key = key.strip()
+                notes[key] = p.getChild(1)
+            elif p.getNumChildren() == 1:
+                text = p.getChild(0).toXMLString()
+                key, value = text.split(':')
+                notes[key.strip()] = value.strip()
+        return notes
+
+    def update_note_body(self, _body_node, **kwargs):
+        # ensure adding to the <body> node
+        if _body_node.hasChild(b'body'):
+            _body_node = _body_node.getChild(0)
+        attributes = self.libsbml.XMLAttributes()
+        namespace = self.libsbml.XMLNamespaces()
+        p_tag = self.libsbml.XMLTriple(b"p", b"", b"")
+        p_token = self.libsbml.XMLToken(p_tag, attributes, namespace)
+        notes = self.parse_note_body(_body_node)
+        notes.update(**kwargs)
+        for key, value in notes.iteritems():
+            encode_key = key.encode('utf-8')
+            text = None
+            if isinstance(value, string_types):
+                value = value.encode('utf-8')
+                text = ('%s: %s' % (encode_key, value)).encode('utf-8')
+            else:
+                text = ('%s: ' % encode_key).encode('utf-8')
+            text_token = self.libsbml.XMLToken(text)
+            text_node = self.libsbml.XMLNode(text_token)
+            p_node = self.libsbml.XMLNode(p_token)
+            p_node.addChild(text_node)
+            if isinstance(value, self.libsbml.XMLNode):
+                p_node.addChild(value)
+            _body_node.addChild(p_node)
+        return _body_node
+
+    def write_to_string(self, document):
+        return self.libsbml.writeSBMLToString(document)
 
 
 def compose(*args):
