@@ -11,10 +11,11 @@ maintainability of the API across data member renames in Django's model classes
 ####################################################################################################
 
 LINE_ACTIVE_STATUS_PARAM = 'lines_active'
-ALL_LINES_VALUE = 'all'
-ACTIVE_LINES_ONLY = 'active'
-INACTIVE_LINES_ONLY = 'inactive'
-LINES_ACTIVE_DEFAULT = ACTIVE_LINES_ONLY
+QUERY_ALL_OBJECTS = 'all'
+QUERY_ACTIVE_OBJECTS_ONLY = 'active'
+QUERY_INACTIVE_OBJECTS_ONLY = 'inactive'
+LINES_ACTIVE_DEFAULT = QUERY_ACTIVE_OBJECTS_ONLY
+ACTIVE_STATUS_OPTIONS = (QUERY_ALL_OBJECTS, QUERY_ACTIVE_OBJECTS_ONLY, QUERY_INACTIVE_OBJECTS_ONLY)
 
 LOCALE_PARAM = 'locale'
 CASE_SENSITIVE_PARAM = 'case_sensitive'

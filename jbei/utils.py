@@ -1,6 +1,7 @@
 """
 A catch-all module for general utility code that doesn't clearly belong elsewhere.
 """
+from sys import stdout
 import re
 
 import arrow
@@ -10,12 +11,22 @@ import logging
 logger = logging.getLogger(__name__)
 
 _WORD_OR_DIGIT_REGEX = r'(?:\w\d)'
-UUID_REGEX = r'\w{8}\-\w{4}\-\w{4}\-\w{4}\-\w{12}'
-PK_OR_UUID_REGEX = r'(?:\d+)|%(uuid_regex)s' % {
-    'uuid_regex': UUID_REGEX,
+ALPHANUM_REGEX = '[0-9a-fA-F]'
+
+DOCKER_HOST_ENV_VARIABLE = 'DOCKER_HOST'
+
+# for best UUID results, use UUID(string) in a try/catch. TODO: confirm whether try/catch is
+# significantly slower, then delete this if possible.
+TYPICAL_UUID_REGEX = (
+    r'%(alphanum)s8}\-%(alphanum)s{4}\-%(alphanum)s{4}\-%(alphanum)s{4}\-%(alphanum)s{12}' % {
+        'alphanum': ALPHANUM_REGEX})
+
+PK_OR_TYPICAL_UUID_REGEX = r'(?:\d+)|%(uuid_regex)s' % {
+    'uuid_regex': TYPICAL_UUID_REGEX,
 }
-UUID_PATTERN = re.compile(UUID_REGEX, re.UNICODE)
-PK_OR_UUID_PATTERN = re.compile(PK_OR_UUID_REGEX, re.UNICODE)
+
+TYPICAL_UUID_PATTERN = re.compile(TYPICAL_UUID_REGEX, re.UNICODE)
+PK_OR_TYPICAL_UUID_PATTERN = re.compile(PK_OR_TYPICAL_UUID_REGEX, re.UNICODE)
 
 
 class UserInputTimer(object):
@@ -214,11 +225,12 @@ def session_login(session_auth_class, base_url, application_name, username_arg=N
         attempted_login = True
         # attempt login
         if print_result:
-            print 'Logging into %s at %s... ' % (application_name, base_url),
+            # Python 2/3 cross-compatible print *without* a line break
+            stdout.write('Logging into %s at %s... ' % (application_name, base_url))
         session_auth = session_auth_class.login(base_url=base_url, username=username,
                                                 password=password,
                                                 verify_ssl_cert=verify_ssl_cert, timeout=timeout)
-        if(session_auth):
+        if session_auth:
             if print_result:
                 print('success!')
             return LoginResult(session_auth, username, password)

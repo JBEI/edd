@@ -34,13 +34,11 @@ base_rest_api_router.register(r'metadata_group', MetadataGroupViewSet)
 study_nested_resources_router = nested_routers.NestedSimpleRouter(base_rest_api_router, r'study',
                                                                   lookup='study')
 study_nested_resources_router.register(r'lines', StudyLineView, base_name='study-lines')
-study_nested_resources_router.register(r'strains', StudyStrainsView,
-                                       base_name='study-strains')
-strain_nested_resources_router = \
+study_nested_resources_router.register(r'strains', StudyStrainsView, base_name='study-strains')
+strain_nested_resources_router = (
     nested_routers.NestedSimpleRouter(base_rest_api_router, STRAIN_NESTED_RESOURCE_PARENT_PREFIX,
-                                      lookup='strain')
-strain_nested_resources_router.register(r'studies', StrainStudiesView,
-                                        base_name='strain-studies')
+                                      lookup='strain'))
+strain_nested_resources_router.register(r'studies', StrainStudiesView, base_name='strain-studies')
 
 # TODO: consider re-jiggering urlpatterns to make nested resources visible in the browseable API
 urlpatterns = [

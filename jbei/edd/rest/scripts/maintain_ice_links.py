@@ -73,7 +73,7 @@ from jbei.ice.rest.ice import (IceApi, SessionAuth as IceSessionAuth, Strain as 
                                ICE_ENTRY_TYPES)
 from jbei.rest.utils import is_url_secure, verify_edd_cert, is_edd_test_instance_url, \
     is_ice_test_instance_url, is_localhost, verify_ice_cert
-from jbei.utils import to_human_relevant_delta, UserInputTimer, session_login, UUID_PATTERN
+from jbei.utils import to_human_relevant_delta, UserInputTimer, session_login, TYPICAL_UUID_PATTERN
 
 from settings import EDD_URL, ICE_URL
 
@@ -769,7 +769,7 @@ def parse_entry_types_arg(str):
 def parse_int_or_uuid_arg(str):
     if INTEGER_PATTERN.match(str):
         return int(str)
-    elif UUID_PATTERN.match(str):
+    elif TYPICAL_UUID_PATTERN.match(str):
         return str;
 
     raise argparse.ArgumentTypeError('%s is not an integer primary key or a UUID of the form '

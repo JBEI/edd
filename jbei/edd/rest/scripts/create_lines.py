@@ -349,7 +349,7 @@ def get_ice_entries(ice, part_numbers_list, print_search_comparison=False):
 
     # add a blank line to separate summary from warning output
     if found_parts_count != csv_part_number_count:
-        print ''
+        print('')
 
     print ('Found %(found)d of %(total)d parts in ICE.' %
            {
@@ -701,7 +701,7 @@ def create_lines(edd, ice, study_id, csv_summary, strains_by_part_number):
             line_index += 1
 
         if skipped_some_strains:
-            print ''
+            print ('')
         print('All %d lines were created in EDD. BAM!' % created_line_count)
         print('')
 
@@ -1052,6 +1052,7 @@ def get_line_metadata_types(edd, metadata_dict):
 
 SAMPLE_LABEL_PATTERN_PARAM = '-sample_label_pattern'
 
+
 def main():
     now = arrow.utcnow()
     zero_time_delta = now - now
@@ -1079,8 +1080,9 @@ def main():
 
         silent_param = '-silent'
         parser.add_argument(silent_param, '-s', action='store_const', const=True,
-                            help='skip user prompts to verify CSV content. This option should '
-                                 'only be used during testing of the script.')
+                            help='skip user prompts to verify CSV content and study write '
+                                 'permissions. This option should only be used during testing of '
+                                 'the script.')
         parser.add_argument('-study', type=int, help='the number of the EDD study to create the new '
                                                      'lines in'
                             )
@@ -1130,22 +1132,18 @@ def main():
         # expose access credentials! Local testing requires insecure http, so this mistake is
         # easy to make!
         ############################################################################################
-        if not is_url_secure(EDD_URL):
-            print('EDD_BASE_URL %s is insecure. You must use HTTPS to maintain security for non-'
-                  'local URL\'s')
+
+        if not is_url_secure(EDD_URL, print_err_msg=True, app_name='EDD'):
             return 0
 
-        if not is_url_secure(ICE_URL):
-            print('ICE_BASE_URL %s is insecure. You must use HTTPS to maintain security for non-'
-                  'local URL\'s')
+        if not is_url_secure(ICE_URL, print_err_msg=True, app_name='ICE'):
             return 0
 
         verify_edd_ssl_cert = verify_edd_cert(EDD_URL)
         verify_ice_ssl_cert = verify_ice_cert(ICE_URL)
 
-        # silence library warnings if we're skipping SSL certificate
-        # verification for local testing. otherwise the warnings will swamp useful output from this
-        # script.
+        # silence library warnings if we're skipping SSL certificate verification for local
+        # testing. otherwise the warnings will swamp useful output from this script
         if not (verify_edd_ssl_cert and verify_ice_ssl_cert):
             requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
@@ -1175,13 +1173,15 @@ def main():
             return 0
 
         if not args.silent:
+            # force user to verify the expected # of lines in the study
             result = user_input.user_input('Do these totals make sense [Y/n]: ').upper()
             if ('Y' != result) and ('YES' != result):
                 print('Aborting line creation. Please verify that your CSV file has the correct '
                       'content before proceeding with this tool.')
                 return 0
         else:
-            print('User confirmation of line creation totals was silenced via %s' % silent_param)
+            print('User confirmation of study write permissions and line creation totals was '
+                  'silenced via %s' % silent_param)
 
         ############################################################################################
         # Gather user credentials and verify by logging into EDD, then
@@ -1246,7 +1246,8 @@ def main():
                 line_metadata_types = {}
                 has_required_metadata_types = False
                 if args.copy_archival_well_locations:
-                    print 'Querying EDD to verify requested metatadata types...',
+                    # Python 2/3 cross-compatible print *without* a line break
+                    sys.stdout.write('Querying EDD to verify requested metatadata types...')
                     line_metadata_types[PLATE_LOCATION_METADATA_NAME] = None
                     line_metadata_types[WELL_LOCATION_METADATA_NAME] = None
                     get_line_metadata_types(edd, line_metadata_types)
@@ -1288,7 +1289,7 @@ def main():
                         print('"%s" is not an integer' % study_number)
                         continue
 
-                    print 'Searching EDD for study %s...' % study_number,
+                    sys.stdout.write('Searching EDD for study %s...' % study_number)
                     study_number = int(match.group(1))
                     study = edd.get_study(study_number)
 
@@ -1307,6 +1308,22 @@ def main():
 
                 if study:
                     print('Found study %d in EDD, named "%s "' % (study_number, study.name))
+
+                # force user to manually verify study permissions, which we don't have REST API
+                # support for yet. prevents a line creation error much later in the process after
+                # all the initial communication / checks have finished
+                if not args.silent:
+                    print("Write permissions on the EDD study are required to create lines in it, "
+                          "but this stopgap script doesn't have support for checking for study "
+                          "permissions. You should manually verify study write permissions to "
+                          "prevent an error later in the process (typically in ~20-30 mins from "
+                          "now). ")
+                    result = user_input.user_input("Have you set/verified write permissions on "
+                                                   "study %d? (Y/n): " % args.study).upper()
+                    if ('Y' != result) and ('YES' != result):
+                        print('Aborting line creation. Please set study permissions and re-run '
+                              'this script.')
+                        return 0
 
                 continue_creation = prevent_duplicate_line_names(edd, study_number, csv_summary,
                                                                  user_input)
@@ -1327,14 +1344,14 @@ def main():
                 found_ice_entry_count = len(ice_entires_dict)
 
                 if not found_ice_entry_count:
-                    print ''
+                    print('')
                     print('No ICE entries were found for the part numbers listed in the CSV file. '
                           'Aborting line creation since there\'s insufficient input to create any '
                           'lines in EDD.')
                     return 0
 
                 if found_ice_entry_count < csv_part_number_count:
-                    print ''
+                    print('')
                     print("WARNING: Not all parts listed in the CSV file were found in ICE (see "
                           "part numbers above)")
                     print("Do you want to create EDD lines for the entries that were found? You'll "
@@ -1370,7 +1387,7 @@ def main():
                         found_sample_location_count = len(well_locations_by_part)
                         if not well_locations_by_part or (found_sample_location_count !=
                                                           found_ice_entry_count):
-                            print
+                            print('')
                             print("Unique archival well locations couldn't be found for all of "
                                   "the ICE entries. Do you want to proceed with line creation, "
                                   "only copying sample locations for %(found)d of %(total)d "
@@ -1385,7 +1402,7 @@ def main():
                                 return 0
 
                         else:
-                            print
+                            print('')
                             print("Found unique archival well locations for all %(total)d ICE "
                                   "entries. " % {
                                       'total': found_ice_entry_count, })
@@ -1428,7 +1445,7 @@ def main():
                         if part_number not in ice_entires_dict:
                             logger.warning('Skipping EDD strain creation for part number "%s" that '
                                            'wasn\'t found in ICE' % part_number)
-                    print ''  # add space between the warnings and summary output
+                    print('')  # add space between the warnings and summary output
 
                 success = find_existing_strains(edd, ice_entires_dict, existing_edd_strains,
                                                 strains_by_part_number, non_existent_edd_strains)

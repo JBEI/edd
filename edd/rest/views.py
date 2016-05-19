@@ -12,8 +12,8 @@ from django.shortcuts import get_object_or_404
 
 from edd.rest.serializers import (LineSerializer, MetadataGroupSerializer, MetadataTypeSerializer,
                                   StrainSerializer, StudySerializer, UserSerializer)
-from jbei.edd.rest.constants import (ACTIVE_LINES_ONLY, ALL_LINES_VALUE, CASE_SENSITIVE_PARAM,
-                                     INACTIVE_LINES_ONLY, LINE_ACTIVE_STATUS_PARAM,
+from jbei.edd.rest.constants import (QUERY_ACTIVE_OBJECTS_ONLY, QUERY_ALL_OBJECTS, CASE_SENSITIVE_PARAM,
+                                     QUERY_INACTIVE_OBJECTS_ONLY, LINE_ACTIVE_STATUS_PARAM,
                                      LINES_ACTIVE_DEFAULT,
                                      METADATA_TYPE_CONTEXT, METADATA_TYPE_GROUP,
                                      METADATA_TYPE_I18N, METADATA_TYPE_LOCALE,
@@ -113,8 +113,8 @@ def _do_optional_regex_filter(query_params_dict, queryset, data_member_name, reg
         return queryset
 
     case_sensitive_search = CASE_SENSITIVE_PARAM in query_params_dict
-    search_type = '_regex' if case_sensitive_search else '_iregex'
-    filter_param = '%(data_member_name)s_%(search_type)s' % {
+    search_type = 'regex' if case_sensitive_search else 'iregex'
+    filter_param = '%(data_member_name)s__%(search_type)s' % {
         'data_member_name': data_member_name,
         'search_type': search_type
     }
@@ -250,33 +250,65 @@ class LineViewSet(viewsets.ReadOnlyModelViewSet):
         query = Line.objects.all()
 
         # filter by line active status, applying the default (only active lines)
-        active_status = self.kwargs.get(LINE_ACTIVE_STATUS_PARAM, LINES_ACTIVE_DEFAULT)
-        query = filter_line_activity(query, active_status)
+        active_status = self.request.query_params.get(LINE_ACTIVE_STATUS_PARAM,
+                                                      LINES_ACTIVE_DEFAULT)
+        query = filter_by_active_status(query, active_status, '')
         query = query.select_related('object_ref')
         return query
 
 
-def filter_line_activity(query, line_active_status=ACTIVE_LINES_ONLY, query_prefix=''):
+def filter_by_active_status(queryset, active_status=QUERY_ACTIVE_OBJECTS_ONLY, query_prefix=''):
     """
-    Filters the input query by line active status. Note that this filtering by line active status
-    will return one row for each line active relationship to the input query, so clients will often
-    want to use distinct() to limit the returned results
-    :param query: the base query
-    :param line_active_status: a string with the line active status. If this isn't one of the
-    recognized values, the default behavior is applied, filtering out inactive lines
-    :param query_prefix: an optional keyword prefix to prepend to the filtering query keyword
-    arguments. For example when querying Line, the default value of '' should by used,
-    or when querying for Study, use 'study__' similar to other queryset keyword arguments.
+    A helper method for queryset filtering based on a standard set of HTTP request
+    parameter values that indicate whether EddObjects should be considered in the query based on
+    their 'active' status.
+
+    For a single object class A related to the ORM model class B returned from the query, a call to
+    filter_by_active_status() will filter the query according to A's 'active' status. Note
+    that this filtering by active status will result in the queryset returning one row for each
+    relations of A to B, so clients will often want to use distinct() to limit the returned
+    results.  A typical use of this method is to control which lines are considered
+    in a query.
+
+    Example 1 : Finding only active Lines. This is slightly more code than to just filter the
+                query directly, but that wouldn't be standard across REST resource implementations.
+
+    queryset = Line.objects.all()
+    queryset = filter_by_active_status(queryset, active_status=ACTIVE_ONLY,
+                                       query_prefix='').distinct()
+
+    Example 2: Finding Strains associated with a Study by active lines
+
+    queryset = Strain.objects.filter(line__study__pk=study_id)
+    queryset = filter_by_active_status(queryset, active_status=ACTIVE_ONLY,
+                                       query_prefix=('line__')).distinct()
+
+    :param queryset: the base queryset to apply filtering to
+    :param active_status: the HTTP request query parameter whose value implies the type of
+    filtering to apply based on active status. If this isn't one of the recognized values,
+    the default behavior is applied, filtering out inactive objects. See
+    constants.ACTIVE_STATUS_OPTIONS.
+    :param query_prefix: an optional keyword prefix indicating the relationship of the filtered
+    class to the model we're querying (see examples above)
     :return: the input query, filtered according to the parameters
     """
-    line_active_status = line_active_status.lower()
+    active_status = active_status.lower()
 
-    if ALL_LINES_VALUE:
-        return query
+    # just return the parameter if no extra filtering is required
+    if active_status == QUERY_ALL_OBJECTS:
+        return queryset
 
-    # return requested status, or active lines only if input was bad
-    active_criterion = Q(**{'%sactive' % query_prefix: (line_active_status != INACTIVE_LINES_ONLY)})
-    return query.filter(active_criterion)
+    # construct an ORM query keyword based on the relationship of the filtered model class to the
+    # Django model class being queried. For example 1 above, when querying Line.objects.all(),
+    # we prepend '' and come up with Q(active=True). For example 2, when querying
+    # Strain, we prepend 'line__' and get Q(line__active=True)
+    query_keyword = '%sactive' % query_prefix
+    active_value = (active_status != QUERY_INACTIVE_OBJECTS_ONLY)  # return requested status,
+                                                                   # or active objects only if
+                                                                   # input was bad
+    print('Active query %s' % str({query_keyword: active_value})) # TODO: remove debug stmt
+    active_criterion = Q(**{query_keyword: active_value})
+    return queryset.filter(active_criterion)
 
 
 class StudyViewSet(viewsets.ReadOnlyModelViewSet):  # read-only for now...see TODO below
@@ -342,12 +374,13 @@ class StrainStudiesView(viewsets.ReadOnlyModelViewSet):
         queryset = self.get_queryset()
 
         obj = get_object_or_404(queryset, **filters)
-        self.check_object_permissions(self.request, obj)
+        self.check_object_permissions(self.request, obj) # verify class-level strain access. study
+                                                         # permissions are enforced in
+                                                         # get_queryset()
         return obj
 
     def get_queryset(self):
-        kwarg = '%s_%s' % (STRAIN_NESTED_RESOURCE_PARENT_PREFIX,
-                                               BASE_STRAIN_URL_KWARG)
+        kwarg = '%s_%s' % (STRAIN_NESTED_RESOURCE_PARENT_PREFIX, BASE_STRAIN_URL_KWARG)
         # get the strain identifier, which could be either a numeric (local) primary key, or a UUID
         strain_id = self.kwargs.get(kwarg)
 
@@ -376,8 +409,8 @@ class StrainStudiesView(viewsets.ReadOnlyModelViewSet):
             studies_query = Study.objects.filter(line__strains__registry_id=strain_uuid)
 
         # filter by line active status, applying the default (only active lines)
-        studies_query = filter_line_activity(studies_query, line_active_status=line_active_status,
-                             query_prefix='line__')
+        studies_query = filter_by_active_status(studies_query, active_status=line_active_status,
+                                                query_prefix='line__')
 
         study_pk = self.kwargs.get(self.lookup_url_kwarg)
         if study_pk:
@@ -436,7 +469,7 @@ class StudyStrainsView(viewsets.ReadOnlyModelViewSet):
         # sysadmin access to view strains, but the names/descriptions of strains in the study should
         # be visible to users with read access to a study that measures them
         study_user_permission_q = Study.user_permission_q(user, StudyPermission.READ,
-                                                              keyword_prefix='line__study__')
+                                                          keyword_prefix='line__study__')
         if study_id_is_pk:
             strain_query = Strain.objects.filter(study_user_permission_q, line__study__pk=study_id)
         else:
@@ -453,9 +486,10 @@ class StudyStrainsView(viewsets.ReadOnlyModelViewSet):
                 strain_query = strain_query.filter(registry_id=strain_id)
 
         # filter by line active status, applying the default (only active lines)
-        strain_query = filter_line_activity(strain_query, line_active_status, query_prefix='line__')
+        strain_query = filter_by_active_status(strain_query, line_active_status,
+                                               query_prefix='line__')
         strain_query = strain_query.distinct()  # required by both study permission query and
-                                                # line activity filter queries above
+                                                # line active filters above
 
         return strain_query
 
@@ -469,17 +503,15 @@ class StudyLineView(viewsets.ModelViewSet):  # LineView(APIView):
 
     def get_queryset(self):
         print('kwargs: ' + str(self.kwargs))  # TODO: remove debug aid
+        print('query_params: ' + str(self.request.query_params))  # TODO: remove debug aid
 
         # extract study pk URL argument. line pk, if present, will be handled automatically by
         # get_object() inherited from the parent class
         study_pk = self.kwargs[self.STUDY_URL_KWARG]
 
-        line_active_status = self.request.query_params.get(LINE_ACTIVE_STATUS_PARAM,
-                                                           LINES_ACTIVE_DEFAULT)
-
         user = self.request.user
-        requested_permission = StudyPermission.WRITE if self.request.method in \
-                               HTTP_MUTATOR_METHODS else StudyPermission.READ
+        requested_permission = (StudyPermission.WRITE if self.request.method in
+                               HTTP_MUTATOR_METHODS else StudyPermission.READ)
 
         # if the user's admin / staff role gives read access to all Studies, don't bother querying
         # the database for specific permissions defined on this study
@@ -491,11 +523,10 @@ class StudyLineView(viewsets.ModelViewSet):  # LineView(APIView):
             line_query = Line.objects.filter(study_user_permission_q, study__pk=study_pk)
 
         # filter by line active status, applying the default (only active lines)
-        line_pk = self.kwargs.get('pk')
-        if line_pk:
-            line_query = filter_line_activity(line_query, line_active_status)
-
-            line_query = line_query.distinct()  # distinct() required by *both* study permissions check
+        line_active_status = self.request.query_params.get(LINE_ACTIVE_STATUS_PARAM,
+                                                           LINES_ACTIVE_DEFAULT)
+        line_query = filter_by_active_status(line_query, line_active_status)
+        line_query = line_query.distinct()  # distinct() required by *both* study permissions check
                                                 # and line activity filter above
 
         return line_query

@@ -3,9 +3,9 @@ Defines serializers for EDD's nascent REST API, as supported by the django rest 
 (http://www.django-rest-framework.org/)
 """
 
-from rest_framework import serializers
-from rest_framework import reverse
-from main.models import Line, Strain, Study, MetadataType, MetadataGroup, Update, User
+from main.models import Line, MetadataType, MetadataGroup, Strain, Study, Update, User
+from rest_framework import reverse, serializers
+
 
 ####################################################################################################
 # unused

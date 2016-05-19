@@ -26,7 +26,7 @@ from edd_utils.celery_utils import compute_exp_retry_delay
 from edd_utils.celery_utils import send_stale_input_warning
 from edd_utils.celery_utils import send_resolution_message
 from edd_utils.celery_utils import make_standard_email_subject, email_admins
-from jbei.ice.rest.ice import IceApi, parse_entry_id, HmacAuth, IceHmacAuth
+from jbei.ice.rest.ice import IceApi, parse_entry_id, IceHmacAuth
 from main.models import Line, Strain
 
 
