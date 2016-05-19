@@ -151,12 +151,29 @@ class SbmlExport(object):
                 self._points = points
 
     def create_match_form(self, payload, **kwargs):
+        # create the form
+        print('\n\t\t%s' % (payload, ))
         match = SbmlMatchReactions(
             data=payload,
             sbml_template=self._sbml_template,
             match_fields=self._match_fields,
             **kwargs
         )
+        # if payload does not have keys for some fields, make sure form uses default initial
+        replace_data = QueryDict(mutable=True)
+        # loop the fields
+        for key, field in self._match_fields.iteritems():
+            base_name = match.add_prefix(key)
+            # then loop the values in the field
+            for i0, value in enumerate(field.initial):
+                # finally, loop the decompressed parts of the value
+                for i1, part in enumerate(field.widget.widgets[i0].decompress(value)):
+                    part_key = '%s_%d_%d' % (base_name, i0, i1)
+                    if part_key not in payload:
+                        replace_data[part_key] = part
+        replace_data.update(payload)
+        match.data = replace_data
+        print('\n\t\t%s' % (replace_data, ))
         match.sbml_warnings.extend(self._match_sbml_warnings)
         return match
 
@@ -168,7 +185,15 @@ class SbmlExport(object):
         t_range = Range(min=self._min, max=self._max)
         if points is not None:
             points = sorted(points)
-        return SbmlExportSelectionForm(t_range=t_range, points=points, data=payload, **kwargs)
+        time_form = SbmlExportSelectionForm(t_range=t_range, points=points, data=payload, **kwargs)
+        # if payload does not have the keys for time, insert the default
+        key = time_form.add_prefix('time_select')
+        if key not in payload:
+            replace_data = QueryDict(mutable=True)
+            replace_data[key] = time_form.fields['time_select'].initial
+            replace_data.update(payload)
+            time_form.data = replace_data
+        return time_form
 
     def output(self, time, matches):
         # map species / reaction IDs to measurement IDs
@@ -278,12 +303,16 @@ class SbmlExport(object):
             measurements = self._measures.get('%s' % mtype)
             current = minimum = maximum = ''
             try:
+                # TODO: change to .order_by('x__0') once Django supports ordering on transform
+                # https://code.djangoproject.com/ticket/24747
                 values = MeasurementValue.objects.filter(
                     measurement__in=measurements
                 ).order_by('x')
+                # TODO: change to Max('y__0')
                 minmax = values.aggregate(max=Max('y'), min=Min('y'))
-                minimum = minmax['min']
-                maximum = minmax['max']
+                # minmax items are still arrays
+                minimum = float(minmax['min'][0])
+                maximum = float(minmax['max'][0])
                 current = interpolate_at(values, time)
                 # TODO: any necessary unit conversions
             except Exception as e:
@@ -294,9 +323,9 @@ class SbmlExport(object):
                 species_notes = builder.create_note_body()
             species_notes = builder.update_note_body(
                 species_notes,
-                CONCENTRATION_CURRENT=current,
-                CONCENTRATION_HIGHEST=maximum,
-                CONCENTRATION_LOWEST=minimum,
+                CONCENTRATION_CURRENT='%s' % current,
+                CONCENTRATION_HIGHEST='%s' % maximum,
+                CONCENTRATION_LOWEST='%s' % minimum,
             )
             species.setNotes(species_notes)
 
@@ -599,7 +628,7 @@ class SbmlMatchReactionWidget(forms.widgets.MultiWidget):
 
     def decompress(self, value):
         if value is None:
-            return ('', '')
+            return ['', '']
         return value  # value is a tuple anyway
 
     def format_output(self, rendered_widgets):
@@ -639,12 +668,13 @@ class SbmlExportSelectionForm(forms.Form):
     def __init__(self, t_range, points=None, *args, **kwargs):
         super(SbmlExportSelectionForm, self).__init__(*args, **kwargs)
         time_field = self.fields['time_select']
-        if points:
+        if points and len(points):
             self.fields['time_select'] = forms.TypedChoiceField(
                 choices=[('%s' % t, '%s hr' % t) for t in points],
                 coerce=Decimal,
                 empty_value=None,
                 help_text=time_field.help_text,
+                initial=points[0],
                 label=time_field.label,
             )
         else:
@@ -676,7 +706,7 @@ class SbmlBuilder(object):
         return notes_node
 
     def parse_note_body(self, node):
-        notes = {}
+        notes = OrderedDict()
         if node is None:
             return notes
         note_body = node
@@ -707,6 +737,7 @@ class SbmlBuilder(object):
         p_token = self.libsbml.XMLToken(p_tag, attributes, namespace)
         notes = self.parse_note_body(body)
         notes.update(**kwargs)
+        body.removeChildren()
         for key, value in notes.iteritems():
             encode_key = key.encode('utf-8')
             text = None

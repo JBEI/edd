@@ -274,6 +274,7 @@
       </div>
     </div><!-- #allstatusmain -->
 
+    {% if time_form %}
     <div class="pageSection" style="margin:10px;" id="timeselectmain">
       <div class="sectionHead">{% trans "Export SBML at timepoint" %}</div>
       <div class="sectionContent">
@@ -284,6 +285,7 @@
         <button type="submit" name="action" value="download">{% trans "Download SBML" %}</button>
       </div>
     </div>
+    {% endif %}
 
   </form><!-- #exportForm -->
 

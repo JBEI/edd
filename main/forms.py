@@ -267,19 +267,33 @@ class SbmlInfoAutocompleteWidget(AutocompleteWidget):
         if isinstance(value, self.model):
             return [self.display_value(value), value.pk]
         elif value:
-            o = self.model.objects.get(self.decompress_q(value), sbml_template=self._template)
-            return [self.display_value(o), value]
+            o = self.lookup(value)
+            return [self.display_value(o), o.pk]
         return ['', None]
 
     def decompress_q(self, value):
-        return Q(pk=value)
+        return Q(pk=self._int(value))
+
+    def lookup(self, value):
+        try:
+            return self.model.objects.get(self.decompress_q(value), sbml_template=self._template)
+        except self.model.DoesNotExist:
+            pass
+        return None
 
     def value_from_datadict(self, data, files, name):
         widgets = enumerate(self.widgets)
         v = [w.value_from_datadict(data, files, name + '_%s' % i) for i, w in widgets]
         # v[0] is text of field, v[1] is hidden ID
-        # for the SBML widgets we really care about the text value, hidden ID for validation
-        return v[0]
+        return self.lookup(v[1])
+
+    def _int(self, value):
+        'Try casting a value to int, return None if fails'
+        try:
+            return int(value)
+        except:
+            pass
+        return None
 
 
 class SbmlExchangeAutocompleteWidget(SbmlInfoAutocompleteWidget):
@@ -291,7 +305,8 @@ class SbmlExchangeAutocompleteWidget(SbmlInfoAutocompleteWidget):
         )
 
     def decompress_q(self, value):
-        return Q(pk=value) | Q(exchange_name=value)
+        parent = super(SbmlExchangeAutocompleteWidget, self).decompress_q(value)
+        return parent | Q(exchange_name=value)
 
 
 class SbmlSpeciesAutocompleteWidget(SbmlInfoAutocompleteWidget):
@@ -303,7 +318,8 @@ class SbmlSpeciesAutocompleteWidget(SbmlInfoAutocompleteWidget):
         )
 
     def decompress_q(self, value):
-        return Q(pk=value) | Q(species=value)
+        parent = super(SbmlSpeciesAutocompleteWidget, self).decompress_q(value)
+        return parent | Q(species=value)
 
 
 class CreateStudyForm(forms.ModelForm):
