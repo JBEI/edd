@@ -6,8 +6,12 @@ ENV PYTHONUNBUFFERED 1
 RUN mkdir /code
 WORKDIR /code
 
+# configure apt sources
+COPY docker_services/edd/apt-sources /etc/apt/sources.list.d/
+
 # include Debian packages required to build pip packages
-RUN apt-get update \
+RUN printf 'APT::Default-Release "stable";' > /etc/apt/apt.conf.d/99defaultrelease \
+    && apt-get update \
     && apt-get install -y \
         gfortran \
         libatlas-dev \
@@ -19,18 +23,14 @@ RUN apt-get update \
         libsasl2-dev \
         libssl-dev \
         postgresql-client \
+    && apt-get -t testing install -y \
+        python-sklearn \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Putting this in its own RUN to avoid needing to re-install numpy/scipy every time
 # (since pip will update)
 RUN pip install --upgrade pip setuptools wheel
-
-# Bug in scipy and scikit-learn setup.py causes build to fail if numpy/scipy are installed in
-#   one pip-install command. Installing 'separately' here.
-RUN pip install numpy==1.10.4 \
-    && pip install scipy==0.17.0 \
-    && pip install scikit-learn==0.17.1
 
 # COPY adds a new layer IFF requirements.txt hash has changed
 COPY requirements.txt /tmp/

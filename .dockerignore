@@ -3,6 +3,7 @@
 Brewfile
 celery
 docker*
+!docker_services/edd
 Dockerfile
 Gruntfile.js
 log
