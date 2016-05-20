@@ -58,6 +58,9 @@ class UserTests(TestCase):
         self.assertTrue(user1.initials == "JS")
         self.assertTrue(user2.initials == '')
         self.assertTrue(user2.username == 'John Doe')
+        self.assertTrue(user1.profile is not None)
+        self.assertTrue(user1.profile.initials == "JS")
+        self.assertTrue(user2.profile.initials == '')
         user_json = user1.to_json()
         for key, value in {u'uid': u'Jane Smith', u'firstname': u'Jane', u'lastname': u'Smith', u'description': u'',
                            u'name': u'Jane Smith', u'email': u'jsmith@localhost', u'initials': u'JS'}.iteritems():
