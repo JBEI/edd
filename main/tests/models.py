@@ -10,16 +10,16 @@ from django.core.exceptions import PermissionDenied
 from django.test import TestCase
 
 from edd.profile.models import UserProfile
-from main import data_import, sbml_export, utilities
+from .. import data_import, sbml_export, utilities
 from main.forms import (
     LineForm,
     )
-from main.models import (
+from ..models import (
     Assay, CarbonSource, GeneIdentifier, GroupPermission, Line, MeasurementType, MeasurementUnit,
     Metabolite, MetadataGroup, MetadataType, Protocol, SBMLTemplate, Strain,
     Study, Update, UserPermission,
     )
-from main.solr import StudySearch
+from ..solr import StudySearch
 
 
 # Everything running in this file is a test, but Django only handles test instances of a
