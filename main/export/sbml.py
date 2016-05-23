@@ -321,12 +321,14 @@ class SbmlExport(object):
                 elif next_index == 0 and times[0] != time:
                     logger.warning('tried to calculate beyond lower range of data')
                     continue
+                # interpolate_at returns a float
+                # NOTE: arithmetic operators do not work between float and Decimal
                 density = interpolate_at(self._density, time)
                 y_0 = interpolate_at(values, time)
-                y_next = values[next_index].y[0]
+                y_next = float(values[next_index].y[0])
                 time_next = times[next_index]
                 y_delta = y_next - y_0
-                time_delta = time_next - time
+                time_delta = float(time_next - time)
                 # TODO: find better way to detect ratio units
                 if values[next_index].measurement.y_units.unit_name.endswith('/hr'):
                     flux = y_0 / density
@@ -339,7 +341,7 @@ class SbmlExport(object):
                 upper_bound.setValue(flux)
                 lower_bound.setValue(flux)
             except Exception as e:
-                logger.warning('hit an error calculating reaction values: %s', type(e))
+                logger.exception('hit an error calculating reaction values: %s', type(e))
 
     def _update_species(self, builder, our_species, time):
         # loop over all template species, if in our_species set the notes section
@@ -378,11 +380,11 @@ class SbmlExport(object):
                         logger.warning('unrecognized unit %s', units)
                 # save here so _update_reaction does not need to re-query
                 self._values_by_type[type_key] = values
-                minimum = float(min(values, key=lambda v: v.y[0]))
-                maximum = float(max(values, key=lambda v: v.y[0]))
+                minimum = float(min(values, key=lambda v: v.y[0]).y[0])
+                maximum = float(max(values, key=lambda v: v.y[0]).y[0])
                 current = interpolate_at(values, time)
             except Exception as e:
-                logger.warning('hit an error calculating species values: %s', type(e))
+                logger.exception('hit an error calculating species values: %s', type(e))
             else:
                 if species.isSetNotes():
                     species_notes = species.getNotes()
