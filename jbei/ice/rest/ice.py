@@ -23,7 +23,7 @@ import importlib
 from urllib import urlencode
 from urlparse import urlunparse, ParseResult, parse_qs
 
-from jbei.rest.utils import remove_trailing_slash, CLIENT_ERROR_NOT_FOUND
+from jbei.rest.utils import remove_trailing_slash, CLIENT_ERROR_NOT_FOUND, remove_trailing_slash
 from jbei.rest.request_generators import (RequestGenerator, SessionRequestGenerator, PagedResult,
                                           PagedRequestGenerator)
 import json
@@ -1295,10 +1295,16 @@ class IceApi(RestApiClient):
             logger.exception('Timeout searching ICE for query "%s"' % search_terms)
 
     def _create_or_update_link(self, study_name, study_url, entry_experiments_url,
-                               link_id=None):
+                               link_id=None, created=None):
         """
             A helper method that creates or updates a single study link in ICE. Note that ICE seems
             to do some URL-based matching / link replacement even if no link ID is provided.
+            :param entry_experiments_url: the absolute REST API URL to the list of experiments for
+            this ICE entry (tolerates ending with a slash or not). For example,
+            https://registry.jbei.org/rest/parts/123/experiments/.
+            :param link_id: the link id if it's to be created
+            :param created: the creation timestamp when the link was created. Required if link_id
+            is not None
             :raises requests.exceptions.Timeout if the initial connection or response times out
         """
         # NOTE: this implementation works, but can probably be simplified based on how ICE actually
@@ -1317,8 +1323,9 @@ class IceApi(RestApiClient):
             logger.info("Response: %s " % json_str)
 
         headers = {'Content-Type': 'application/json'}
+        # if we're updating an existing link, use its full url
         if link_id:
-            headers['id'] = link_id
+            json_dict['id'] = link_id
 
         request_generator = self.request_generator
         response = request_generator.request('POST', entry_experiments_url,
@@ -1471,7 +1478,8 @@ class IceApi(RestApiClient):
         if outdated_study_links:
             for outdated_link in outdated_study_links:
                 self._create_or_update_link(study_name, study_url, entry_experiments_rest_url,
-                                            link_id=outdated_link.get('id'))
+                                            link_id=outdated_link.get('id'),
+                                            created=outdated_link.get('created'))
         else:
             self._create_or_update_link(study_name, study_url, entry_experiments_rest_url)
 

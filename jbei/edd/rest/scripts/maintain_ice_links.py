@@ -1605,7 +1605,10 @@ def process_matching_strain(edd_strain, ice_entry, process_all_ice_entry_links,
                             # cached. Used in multiple places in this script, though during
                             # testing, ICE communication during the scan is by far the biggest
                             # offender in terms of execution time when the ICE scan is performed.
-                            ice.link_entry_to_study(ice_entry_uuid, study.pk, study_url, study.name,
+                            # TODO: SYNBIO-1350: use entry.uuid to remove workaround after
+                            # prerequisite SYNBIO-1207 is complete.
+                            workaround_ice_id = ice_entry.id
+                            ice.link_entry_to_study(workaround_ice_id, study.pk, study_url, study.name,
                                                     old_study_name=old_study_name,
                                                     old_study_url=dated_link.url, logger=logger)
                             if processing_inputs.perl_study_url_pattern.match(dated_url_variant):
@@ -1618,9 +1621,10 @@ def process_matching_strain(edd_strain, ice_entry, process_all_ice_entry_links,
                                     'Updated dated link %s not captured in metrics' %
                                     dated_url_variant)
                         else:
-                            # TODO: SYNBIO-1350: use entry.uuid after prerequisite SYNBIO-1207 is
-                            #  complete.
-                            ice.remove_experiment_link(ice_entry.id, dated_link.id)
+                            # TODO: SYNBIO-1350: use entry.uuid to remove workaround after
+                            # prerequisite SYNBIO-1207 is complete.
+                            workaround_ice_id = ice_entry.id
+                            ice.remove_experiment_link(workaround_ice_id, dated_link.id)
                             processing_summary.removed_duplicate_link(ice_entry, dated_link)
 
                         strain_performance.links_updated += 1
@@ -1672,7 +1676,8 @@ def process_matching_strain(edd_strain, ice_entry, process_all_ice_entry_links,
                                      WRONG_HOSTNAME_PATTERN.match(link_url))
             if invalid_edd_url_match:
                 # TODO: SYNBIO-1350: use entry.uuid after prerequisite SYNBIO-1207 is complete.
-                ice.remove_experiment_link(ice_entry.id, experiment_link.id)
+                workaround_ice_id = ice_entry.id
+                ice.remove_experiment_link(workaround_ice_id, experiment_link.id)
                 processing_summary.removed_invalid_link(ice_entry, experiment_link)
                 changed_links = True
             else:
