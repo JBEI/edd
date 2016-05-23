@@ -1413,6 +1413,19 @@ class MeasurementUnit(models.Model):
                                   choices=MeasurementGroup.GROUP_CHOICE,
                                   default=MeasurementGroup.GENERIC)
 
+    # TODO: this should be somehow rolled up into the unit definition
+    conversion_dict = {
+        'g/L': lambda y, metabolite: 1000 * y / metabolite.molar_mass,
+        'mg/L': lambda y, metabolite: y / metabolite.molar_mass,
+        'µg/L': lambda y, metabolite: y / 1000 / metabolite.molar_mass,
+        'Cmol/L': lambda y, metabolite: 1000 * y / metabolite.carbon_count,
+        'mol/L': lambda y, metabolite: 1000 * y,
+        'uM': lambda y, metabolite: y / 1000,
+        'mol/L/hr': lambda y, metabolite: 1000 * y,
+        'mM': lambda y, metabolite: y,
+        'mol/L/hr': lambda y, metabolite: 1000 * y,
+    }
+
     def to_json(self):
         return {"id": self.pk, "name": self.unit_name, }
 

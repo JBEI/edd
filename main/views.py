@@ -690,14 +690,12 @@ class SbmlView(EDDExportView):
         if export_settings.is_valid():
             template = export_settings.cleaned_data.get('sbml_template', None)
             self.sbml_export = SbmlExport(template)
-            od_select.is_valid()  # triggering validation only
-            for sbml_measurements in [f for f in form_dict.itervalues() if f.is_valid()]:
-                self.sbml_export.add_measurements(sbml_measurements)
-            match_form = self.sbml_export.create_match_form(payload, prefix='match')
-            time_form = self.sbml_export.create_time_select_form(payload, prefix='time')
-        else:
-            for f in chain((od_select, ), form_dict.itervalues()):
-                f.is_valid()  # triggering validation only
+            if od_select.is_valid():
+                self.sbml_export.add_density(od_select)
+                for sbml_measurements in [f for f in form_dict.itervalues() if f.is_valid()]:
+                    self.sbml_export.add_measurements(sbml_measurements)
+                match_form = self.sbml_export.create_match_form(payload, prefix='match')
+                time_form = self.sbml_export.create_time_select_form(payload, prefix='time')
         # collect all the warnings together for counting
         sbml_warnings = chain(
             export_settings.sbml_warnings,

@@ -45,12 +45,13 @@ import logging
 import re
 import sys
 
+from bisect import bisect
 from collections import defaultdict, namedtuple, OrderedDict
 from copy import copy
 from decimal import Decimal
 from django import forms
 from django.core.exceptions import ValidationError
-from django.db.models import Max, Min
+from django.db.models import Max, Min, Prefetch
 from django.http import QueryDict
 from django.template.defaulttags import register
 from django.utils.safestring import mark_safe
@@ -63,8 +64,8 @@ from ..forms import (
     MetadataTypeAutocompleteWidget, SbmlExchangeAutocompleteWidget, SbmlSpeciesAutocompleteWidget
 )
 from ..models import (
-    Measurement, MeasurementType, MeasurementValue, MetaboliteExchange, MetaboliteSpecies,
-    MetadataType, Protocol, SBMLTemplate,
+    Measurement, MeasurementType, MeasurementUnit, MeasurementValue, Metabolite,
+    MetaboliteExchange, MetaboliteSpecies, MetadataType, Protocol, SBMLTemplate,
 )
 from ..utilities import interpolate_at
 
@@ -73,6 +74,7 @@ logger = logging.getLogger(__name__)
 
 
 Range = namedtuple('Range', ['min', 'max'])
+Point = namedtuple('Point', ['x', 'y'])
 
 
 class SbmlForm(forms.Form):
@@ -91,16 +93,36 @@ class SbmlExport(object):
         self._match_sbml_warnings = []
         self._max = self._min = None
         self._points = None
+        self._density = []
         self._measures = defaultdict(list)
+        self._values_by_type = defaultdict(list)
         if sbml_template:
             self._sbml_obj = sbml_template.parseSBML()
             self._sbml_model = self._sbml_obj.getModel()
+
+    def add_density(self, density_measurements):
+        measurements = density_measurements.cleaned_data.get('measurement', [])
+        default_factor = density_measurements.cleaned_data.get('gcdw_default', 0.65)
+        factor_meta = density_measurements.cleaned_data.get('gcdw_conversion', None)
+        measurement_qs = self.load_measurement_queryset(measurements)
+        # try to load factor metadata for each assay
+        for m in measurement_qs.select_related('assay__line'):
+            if factor_meta is None:
+                factor = default_factor
+            else:
+                factor = m.assay.metadata_get(factor_meta, default_factor)
+                factor = m.assay.line.metadata_get(factor_meta, factor)
+            for v in m.values:
+                # storing as arrays to keep compatibility with interpolate_at
+                self._density.append(Point([v.x[0]], [v.y[0] * factor]))
+        # make sure it's sorted; potentially out-of-order from multiple measurements
+        sorted(self._density, key=lambda p: p.x[0])
 
     def add_measurements(self, sbml_measurements):
         """ Add measurements to the export from a SbmlExportMeasurementsForm. """
         measurements = sbml_measurements.cleaned_data.get('measurement', [])
         interpolate = sbml_measurements.cleaned_data.get('interpolate', [])
-        measurement_qs = Measurement.objects.filter(pk__in=measurements)
+        measurement_qs = self.load_measurement_queryset(measurements)
         types_qs = MeasurementType.objects.filter(measurement__in=measurements)
         types_list = list(types_qs.distinct())
         species_qs = MetaboliteSpecies.objects.filter(
@@ -139,12 +161,8 @@ class SbmlExport(object):
             self._min = max(trange['min_t'][0], self._min or -sys.maxint)
         # iff no interpolation, capture intersection of t values bounded by max & min
         m_inter = measurement_qs.exclude(assay__protocol__in=interpolate)
-        for m in m_inter.prefetch_related('measurementvalue_set'):
-            points = set([
-                p.x[0]
-                for p in m.measurementvalue_set.all()
-                if self._min <= p.x[0] <= self._max
-            ])
+        for m in m_inter:
+            points = set([p.x[0] for p in m.values if self._min <= p.x[0] <= self._max])
             if self._points:
                 self._points.intersection_update(points)
             else:
@@ -195,6 +213,18 @@ class SbmlExport(object):
             time_form.data = replace_data
         return time_form
 
+    def load_measurement_queryset(self, measurements):
+        """ Creates a queryset from the IDs in the measurements parameter, prefetching values to a
+            values attr on each measurement. """
+        return Measurement.objects.filter(
+                pk__in=measurements
+            ).prefetch_related(
+                # TODO: change to .order_by('x__0') once Django supports ordering on transform
+                # https://code.djangoproject.com/ticket/24747
+                Prefetch('measurementvalue_set', queryset=MeasurementValue.objects.order_by('x'),
+                         to_attr='values'),
+            )
+
     def output(self, time, matches):
         # map species / reaction IDs to measurement IDs
         our_species = {}
@@ -206,8 +236,8 @@ class SbmlExport(object):
                 if match[1] and match[1] not in our_reactions:
                     our_reactions[match[1]] = mtype
         builder = SbmlBuilder()
-        self._update_species_notes(builder, our_species, time)
-        self._update_reaction_notes(builder, our_reactions, time)
+        self._update_species(builder, our_species, time)
+        self._update_reaction(builder, our_reactions, time)
         # TODO: add carbon data notes
         # TODO: add protein and transcription global notes
         return builder.write_to_string(self._sbml_obj)
@@ -258,9 +288,10 @@ class SbmlExport(object):
                 return lookup[guess]
         return None
 
-    def _update_reaction_notes(self, builder, our_reactions, time):
+    def _update_reaction(self, builder, our_reactions, time):
         # loop over all template reactions, if in our_reactions set bounds, notes, etc
         for reaction_sid, mtype in our_reactions.iteritems():
+            type_key = '%s' % mtype
             reaction = self._sbml_model.getReaction(reaction_sid.encode('utf-8'))
             if reaction is None:
                 logger.warning(
@@ -280,17 +311,45 @@ class SbmlExport(object):
                 PROTEIN_COPY_VALUES='',
             )
             reaction.setNotes(reaction_notes)
-            flux = 0
-            kinetic_law = reaction.getKineticLaw()
-            # NOTE: libsbml calls require use of 'binary' CStrings
-            upper_bound = kinetic_law.getParameter(b"UPPER_BOUND")
-            lower_bound = kinetic_law.getParameter(b"LOWER_BOUND")
-            upper_bound.setValue(flux)
-            lower_bound.setValue(flux)
+            try:
+                values = self._values_by_type[type_key]
+                times = [v.x[0] for v in values]
+                next_index = bisect(times, time)
+                if next_index == len(times):
+                    logger.warning('tried to calculate beyond upper range of data')
+                    continue
+                elif next_index == 0 and times[0] != time:
+                    logger.warning('tried to calculate beyond lower range of data')
+                    continue
+                density = interpolate_at(self._density, time)
+                y_0 = interpolate_at(values, time)
+                y_next = values[next_index].y[0]
+                time_next = times[next_index]
+                y_delta = y_next - y_0
+                time_delta = time_next - time
+                # TODO: find better way to detect ratio units
+                if values[next_index].measurement.y_units.unit_name.endswith('/hr'):
+                    flux = y_0 / density
+                else:
+                    flux = (y_delta / time_delta) / density
+                kinetic_law = reaction.getKineticLaw()
+                # NOTE: libsbml calls require use of 'bytes' CStrings
+                upper_bound = kinetic_law.getParameter(b"UPPER_BOUND")
+                lower_bound = kinetic_law.getParameter(b"LOWER_BOUND")
+                upper_bound.setValue(flux)
+                lower_bound.setValue(flux)
+            except Exception as e:
+                logger.warning('hit an error calculating reaction values: %s', type(e))
 
-    def _update_species_notes(self, builder, our_species, time):
+    def _update_species(self, builder, our_species, time):
         # loop over all template species, if in our_species set the notes section
         for species_sid, mtype in our_species.iteritems():
+            type_key = '%s' % mtype
+            metabolite = None
+            try:
+                metabolite = Metabolite.objects.get(pk=type_key)
+            except:
+                logger.warning('Type %s is not a Metabolite', type_key)
             species = self._sbml_model.getSpecies(species_sid.encode('utf-8'))
             if species is None:
                 logger.warning(
@@ -300,34 +359,42 @@ class SbmlExport(object):
                     }
                 )
                 continue
-            measurements = self._measures.get('%s' % mtype)
+            # collected all measurement_id matching type in add_measurements()
+            measurements = self._measures.get(type_key)
             current = minimum = maximum = ''
             try:
                 # TODO: change to .order_by('x__0') once Django supports ordering on transform
                 # https://code.djangoproject.com/ticket/24747
                 values = MeasurementValue.objects.filter(
                     measurement__in=measurements
-                ).order_by('x')
-                # TODO: change to Max('y__0')
-                minmax = values.aggregate(max=Max('y'), min=Min('y'))
-                # minmax items are still arrays
-                minimum = float(minmax['min'][0])
-                maximum = float(minmax['max'][0])
+                ).select_related('measurement__y_units').order_by('x')
+                # convert units
+                for v in values:
+                    units = v.measurement.y_units
+                    f = MeasurementUnit.conversion_dict.get(units.unit_name, None)
+                    if f is not None:
+                        v.y = [f(y, metabolite) for y in v.y]
+                    else:
+                        logger.warning('unrecognized unit %s', units)
+                # save here so _update_reaction does not need to re-query
+                self._values_by_type[type_key] = values
+                minimum = float(min(values, key=lambda v: v.y[0]))
+                maximum = float(max(values, key=lambda v: v.y[0]))
                 current = interpolate_at(values, time)
-                # TODO: any necessary unit conversions
             except Exception as e:
                 logger.warning('hit an error calculating species values: %s', type(e))
-            if species.isSetNotes():
-                species_notes = species.getNotes()
             else:
-                species_notes = builder.create_note_body()
-            species_notes = builder.update_note_body(
-                species_notes,
-                CONCENTRATION_CURRENT='%s' % current,
-                CONCENTRATION_HIGHEST='%s' % maximum,
-                CONCENTRATION_LOWEST='%s' % minimum,
-            )
-            species.setNotes(species_notes)
+                if species.isSetNotes():
+                    species_notes = species.getNotes()
+                else:
+                    species_notes = builder.create_note_body()
+                species_notes = builder.update_note_body(
+                    species_notes,
+                    CONCENTRATION_CURRENT='%s' % current,
+                    CONCENTRATION_HIGHEST='%s' % maximum,
+                    CONCENTRATION_LOWEST='%s' % minimum,
+                )
+                species.setNotes(species_notes)
 
 
 class SbmlExportSettingsForm(SbmlForm):
