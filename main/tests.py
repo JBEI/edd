@@ -9,7 +9,7 @@ from django.contrib.auth.models import User, Group
 from django.core.exceptions import PermissionDenied
 from django.test import TestCase
 
-from . import data_import, sbml_export, utilities
+from . import data_import, sbml_export, utilities, constants
 from .forms import (
     LineForm,
     )
@@ -31,17 +31,19 @@ from .solr import StudySearch
 class UserTests(TestCase):
     def setUp(self):
         TestCase.setUp(self)
+        # Create test users
         User.objects.create_user(
-            username="Jane Smith",
-            email="jsmith@localhost",
-            password='password',
-            first_name="Jane",
-            last_name="Smith"
+            username=constants.USERNAME,
+            email=constants.EMAIL,
+            password=constants.PASSWORD,
+            first_name=constants.FIRST_NAME,
+            last_name=constants.LAST_NAME
             )
         User.objects.create_user(
-            username="John Doe",
-            email="jdoe@localhost",
-            password='password')
+            username=constants.USERNAME2,
+            email=constants.EMAIL2,
+            password=constants.PASSWORD
+        )
         User.objects.create_superuser(
             username="Sally Sue",
             email="ssue@localhost",
@@ -51,10 +53,13 @@ class UserTests(TestCase):
         )
 
     def test_monkey_patches(self):
-        user1 = User.objects.get(email="jsmith@localhost")
+        """ Ensure that user has class fields"""
+        # Load objects
+        user1 = User.objects.get(email=constants.EMAIL)
         user2 = User.objects.get(email="jdoe@localhost")
+        # Asserts
         self.assertTrue(user1.initials == "JS")
-        self.assertTrue(user1.email == 'jsmith@localhost')
+        self.assertTrue(user1.email == constants.EMAIL)
         self.assertTrue(user1.initials == "JS")
         self.assertTrue(user2.initials == '')
         self.assertTrue(user2.username == 'John Doe')
@@ -72,8 +77,11 @@ class UserTests(TestCase):
             self.assertTrue(user_solr[key] == value)
 
     def test__initial_permissions(self):
-        user1 = User.objects.get(email="jsmith@localhost")
+        """ Ensure user permissions"""
+        # Load objects
+        user1 = User.objects.get(email=constants.EMAIL)
         user2 = User.objects.get(email="ssue@localhost")
+        # Asserts
         self.assertFalse(user1.is_staff)
         self.assertFalse(user1.is_superuser)
         self.assertFalse(user1.has_perm('main.change.protocol'))
@@ -88,7 +96,6 @@ class UserTests(TestCase):
 
 
 class StudyTests(TestCase):
-
     def setUp(self):
         TestCase.setUp(self)
         email = 'wcmorrell@lbl.gov'
