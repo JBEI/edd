@@ -9,7 +9,7 @@ from django.contrib.auth.models import User, Group
 from django.core.exceptions import PermissionDenied
 from django.test import TestCase
 
-from . import data_import, sbml_export, utilities, constants
+from . import data_import, sbml_export, utilities
 from .forms import (
     LineForm,
     )
@@ -29,37 +29,46 @@ from .solr import StudySearch
 
 
 class UserTests(TestCase):
+    USERNAME = "Jane Smith"
+    EMAIL = "jsmith@localhost"
+    PASSWORD = 'password'
+    FIRST_NAME = "Jane"
+    LAST_NAME = "Smith"
+
+    USERNAME2 = "John Doe"
+    EMAIL2 = "jdoe@localhost"
+
+    # create test users
     def setUp(self):
-        TestCase.setUp(self)
-        # Create test users
+        super(UserTests, self).setUp()
         User.objects.create_user(
-            username=constants.USERNAME,
-            email=constants.EMAIL,
-            password=constants.PASSWORD,
-            first_name=constants.FIRST_NAME,
-            last_name=constants.LAST_NAME
+            username=self.__class__.USERNAME,
+            email=self.__class__.EMAIL,
+            password=self.__class__.PASSWORD,
+            first_name=self.__class__.FIRST_NAME,
+            last_name=self.__class__.LAST_NAME
             )
         User.objects.create_user(
-            username=constants.USERNAME2,
-            email=constants.EMAIL2,
-            password=constants.PASSWORD
-        )
+            username=self.__class__.USERNAME2,
+            email=self.__class__.EMAIL2,
+            password=self.__class__.PASSWORD
+            )
         User.objects.create_superuser(
             username="Sally Sue",
             email="ssue@localhost",
             password="password",
             first_name="Sally",
             last_name="Sue"
-        )
+            )
 
     def test_monkey_patches(self):
         """ Ensure that user has class fields"""
         # Load objects
-        user1 = User.objects.get(email=constants.EMAIL)
+        user1 = User.objects.get(email=self.__class__.EMAIL)
         user2 = User.objects.get(email="jdoe@localhost")
         # Asserts
         self.assertTrue(user1.initials == "JS")
-        self.assertTrue(user1.email == constants.EMAIL)
+        self.assertTrue(user1.email == self.__class__.EMAIL)
         self.assertTrue(user1.initials == "JS")
         self.assertTrue(user2.initials == '')
         self.assertTrue(user2.username == 'John Doe')
@@ -79,7 +88,7 @@ class UserTests(TestCase):
     def test__initial_permissions(self):
         """ Ensure user permissions"""
         # Load objects
-        user1 = User.objects.get(email=constants.EMAIL)
+        user1 = User.objects.get(email=self.__class__.EMAIL)
         user2 = User.objects.get(email="ssue@localhost")
         # Asserts
         self.assertFalse(user1.is_staff)
@@ -97,7 +106,7 @@ class UserTests(TestCase):
 
 class StudyTests(TestCase):
     def setUp(self):
-        TestCase.setUp(self)
+        super(StudyTests, self).setUp()
         email = 'wcmorrell@lbl.gov'
         user1 = User.objects.create_user(username='test1', email=email, password='password')
         user2 = User.objects.create_user(username='test2', email=email, password='password')
@@ -195,7 +204,7 @@ class StudyTests(TestCase):
 class SolrTests(TestCase):
 
     def setUp(self):
-        TestCase.setUp(self)
+        super(SolrTests, self).setUp()
         email = 'wcmorrell@lbl.gov'
         self.admin = User.objects.create_superuser(username='admin', email=email, password='12345')
         self.user1 = User.objects.create_user(username='test1', email=email, password='password')
@@ -225,7 +234,7 @@ class SolrTests(TestCase):
 
 class LineTests (TestCase):  # XXX also Strain, CarbonSource
     def setUp(self):
-        TestCase.setUp(self)
+        super(LineTests, self).setUp()
         user1 = User.objects.create_user(
             username="admin", email="nechols@lbl.gov", password='12345')
         study1 = Study.objects.create(name='Test Study 1', description='')
@@ -344,7 +353,7 @@ class LineTests (TestCase):  # XXX also Strain, CarbonSource
 class AssayDataTests(TestCase):
 
     def setUp(self):
-        TestCase.setUp(self)
+        super(AssayDataTests, self).setUp()
         user1 = User.objects.create_user(
             username="admin", email="nechols@lbl.gov", password='12345')
         study1 = Study.objects.create(name='Test Study 1', description='')
@@ -499,7 +508,7 @@ class AssayDataTests(TestCase):
 class ImportTests(TestCase):
     """ Test import of assay measurement data. """
     def setUp(self):
-        TestCase.setUp(self)
+        super(ImportTests, self).setUp()
         user1 = User.objects.create_user(
             username="admin", email="nechols@lbl.gov", password='12345')
         user2 = User.objects.create_user(
