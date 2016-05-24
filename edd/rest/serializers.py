@@ -3,10 +3,9 @@ Defines serializers for EDD's nascent REST API, as supported by the django rest 
 (http://www.django-rest-framework.org/)
 """
 
-from rest_framework import serializers
-from rest_framework import reverse
-from main.models import Line, Study, User, Strain, Update
-from rest_framework.fields import empty
+from main.models import Line, MetadataType, MetadataGroup, Strain, Study, Update, User
+from rest_framework import reverse, serializers
+
 
 ####################################################################################################
 # unused
@@ -40,7 +39,7 @@ class StudyLineRelatedField(serializers.HyperlinkedRelatedField):
     """
 
     #view_name='StudyLine'
-    view_name='StudyListLinesView-list'
+    view_name = 'StudyListLinesView-list'
     lookup_field = 'study'
 
     def get_url(self, line, view_name, request, format):
@@ -67,7 +66,7 @@ class LineSerializer(serializers.ModelSerializer):
         # Note: display only a subset of the fields
         # TODO: follow up on contact extra field -- can't be null/blank, but appears unused in GUI
         fields = ('pk', 'study', 'name', 'description', 'control', 'replicate', 'contact',
-                    'experimenter', 'protocols', 'strains',)
+                  'experimenter', 'protocols', 'strains', 'meta_store')
 
         #study = StudyLineRelatedField(many=False, read_only=True)
         #contact = serializers.StringRelatedField(many=False)
@@ -86,10 +85,26 @@ class LineSerializer(serializers.ModelSerializer):
             Update and return an existing Line instance, given the validated new values
             """
 
+
 class UserSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = User
         depth = 0
+
+
+class MetadataTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MetadataType
+        depth = 0
+        fields = ('pk', 'type_name', 'type_i18n', 'input_size', 'input_type', 'default_value',
+                  'prefix', 'postfix', 'for_context', 'type_class', 'group')
+
+
+class MetadataGroupSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MetadataGroup
+        depth = 0
+
 
 class StrainSerializer(serializers.ModelSerializer):
 
@@ -100,7 +115,7 @@ class StrainSerializer(serializers.ModelSerializer):
         depth = 0
 
     # def __init__(self, instance=None, data=empty, **kwargs):
-    #      super(self.__class__, self).__init__(instance, data, **kwargs)
+    #      super(StrainSerializer, self).__init__(instance, data, **kwargs)
 
     # work around an apparent oversite in ModelSerializer's __new__ implementation that prevents us
     # from using it to construct new objects from a class instance with kw arguments similar to its
