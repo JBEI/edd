@@ -5,7 +5,7 @@ import os.path
 import warnings
 
 import arrow
-from django.contrib.auth.models import User, Group
+from django.contrib.auth.models import Group
 from django.core.exceptions import PermissionDenied
 from django.test import TestCase
 
@@ -19,6 +19,8 @@ from .models import (
     Study, Update, UserPermission,
     )
 from .solr import StudySearch
+from django.contrib.auth import get_user_model
+User = get_user_model()
 
 
 # Everything running in this file is a test, but Django only handles test instances of a
@@ -42,16 +44,16 @@ class UserTests(TestCase):
     def setUp(self):
         super(UserTests, self).setUp()
         User.objects.create_user(
-            username=self.__class__.USERNAME,
-            email=self.__class__.EMAIL,
-            password=self.__class__.PASSWORD,
-            first_name=self.__class__.FIRST_NAME,
-            last_name=self.__class__.LAST_NAME
+            username=self.USERNAME,
+            email=self.EMAIL,
+            password=self.PASSWORD,
+            first_name=self.FIRST_NAME,
+            last_name=self.LAST_NAME
             )
         User.objects.create_user(
-            username=self.__class__.USERNAME2,
-            email=self.__class__.EMAIL2,
-            password=self.__class__.PASSWORD
+            username=self.USERNAME2,
+            email=self.EMAIL2,
+            password=self.PASSWORD
             )
         User.objects.create_superuser(
             username="Sally Sue",
