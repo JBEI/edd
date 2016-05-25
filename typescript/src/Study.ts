@@ -2228,7 +2228,10 @@ class DataGridSpecLines extends DataGridSpecBase {
         var selectAllWidget = new DGSelectAllWidget(dataGrid, this);
         selectAllWidget.displayBeforeViewMenu(true);
         widgetSet.push(selectAllWidget);
-
+        // A "deselect all' button
+        var deselectAllWidget = new DGDeselectAllWidget(dataGrid, this);
+        deselectAllWidget.displayBeforeViewMenu(true);
+        widgetSet.push(deselectAllWidget);
         return widgetSet;
     }
 

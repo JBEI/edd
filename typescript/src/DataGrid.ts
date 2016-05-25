@@ -1616,7 +1616,7 @@ class DGSelectAllWidget extends DataGridHeaderWidget {
     createElements(uniqueID:string):void {
         var buttonID:string = this.dataGridSpec.tableSpec.id + 'SelAll' + uniqueID;
         var button = $(this.element = document.createElement("input"));
-        button.attr({ 'id': buttonID, 'name': buttonID, 'value': 'Select All' })
+        button.attr({ 'id': buttonID, 'name': buttonID, 'value': 'Select All!!!' })
             .addClass('tableControl')
             .click(() => this.clickHandler());
         this.element.setAttribute('type', 'button'); // JQuery attr cannot do this
@@ -1641,6 +1641,45 @@ class DGSelectAllWidget extends DataGridHeaderWidget {
     }
 }
 
+// A generic "Deselect All" header widget, appearing as a button.
+// When clicked, it walks through every row and cell looking for DataGrid-created checkboxes,
+// and checks every one it finds.
+class DGDeselectAllWidget extends DataGridHeaderWidget {
+
+    constructor(dataGridOwnerObject:DataGrid, dataGridSpec:DataGridSpecBase) {
+        super(dataGridOwnerObject, dataGridSpec);
+    }
+
+
+    // The uniqueID is provided to assist the widget in avoiding collisions
+    // when creating input element labels or other things requiring an ID.
+    createElements(uniqueID:string):void {
+        var buttonID:string = this.dataGridSpec.tableSpec.id + 'DelAll' + uniqueID;
+        var button = $(this.element = document.createElement("input"));
+        button.attr({ 'id': buttonID, 'name': buttonID, 'value': 'Deselect All' })
+            .addClass('tableControl')
+            .click(() => this.clickHandler());
+        this.element.setAttribute('type', 'button'); // JQuery attr cannot do this
+    }
+
+
+    clickHandler():void {
+        var sequence = this.dataGridOwnerObject.currentSequence();
+        // Have DataGrid apply function to everything in current sequence
+        this.dataGridOwnerObject.applyToRecordSet((rows) => {
+            // each row in sequence
+            rows.forEach((row) => {
+                // each cell in row
+                row.dataGridDataCells.forEach((cell) => {
+                    // if the cell has a checkbox, uncheck it
+                    cell.checkboxElement &&
+                        (cell.checkboxElement.checked = false) &&
+                        $(cell.checkboxElement).trigger('change');
+                });
+            });
+        }, sequence);
+    }
+}
 
 
 // Here's an example of a working DataGridHeaderWidget.
