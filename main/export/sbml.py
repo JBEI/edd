@@ -81,14 +81,20 @@ class SbmlForm(forms.Form):
     def __init__(self, *args, **kwargs):
         kwargs.setdefault('label_suffix', '')
         super(SbmlForm, self).__init__(*args, **kwargs)
-        self.sbml_warnings = []
+        self._sbml_warnings = []
+
+    @property
+    def sbml_warnings(self):
+        self.is_valid()  # trigger validation if needed
+        return self._sbml_warnings
 
 
 class SbmlExport(object):
     """ Controller class handling the data coming from SbmlForm objects, creating further SbmlForm
         objects based on previous input, and exporting an SBML file based on the inputs. """
-    def __init__(self, sbml_template, *args, **kwargs):
+    def __init__(self, sbml_template, selection, *args, **kwargs):
         self._sbml_template = sbml_template
+        self._selection = selection
         self._match_fields = {}
         self._match_sbml_warnings = []
         self._max = self._min = None
@@ -170,7 +176,6 @@ class SbmlExport(object):
 
     def create_match_form(self, payload, **kwargs):
         # create the form
-        print('\n\t\t%s' % (payload, ))
         match = SbmlMatchReactions(
             data=payload,
             sbml_template=self._sbml_template,
@@ -191,7 +196,6 @@ class SbmlExport(object):
                         replace_data[part_key] = part
         replace_data.update(payload)
         match.data = replace_data
-        print('\n\t\t%s' % (replace_data, ))
         match.sbml_warnings.extend(self._match_sbml_warnings)
         return match
 
@@ -203,26 +207,21 @@ class SbmlExport(object):
         t_range = Range(min=self._min, max=self._max)
         if points is not None:
             points = sorted(points)
-        time_form = SbmlExportSelectionForm(t_range=t_range, points=points, data=payload, **kwargs)
-        # if payload does not have the keys for time, insert the default
-        key = time_form.add_prefix('time_select')
-        if key not in payload:
-            replace_data = QueryDict(mutable=True)
-            replace_data[key] = time_form.fields['time_select'].initial
-            replace_data.update(payload)
-            time_form.data = replace_data
+        time_form = SbmlExportSelectionForm(
+            t_range=t_range, points=points, selection=self._selection, data=payload, **kwargs
+        )
         return time_form
 
     def load_measurement_queryset(self, measurements):
         """ Creates a queryset from the IDs in the measurements parameter, prefetching values to a
             values attr on each measurement. """
+        # TODO: change to .order_by('x__0') once Django supports ordering on transform
+        # https://code.djangoproject.com/ticket/24747
+        values_qs = MeasurementValue.objects.filter(x__len=1, y__len=1).order_by('x')
         return Measurement.objects.filter(
-                pk__in=measurements
+                pk__in=measurements,
             ).prefetch_related(
-                # TODO: change to .order_by('x__0') once Django supports ordering on transform
-                # https://code.djangoproject.com/ticket/24747
-                Prefetch('measurementvalue_set', queryset=MeasurementValue.objects.order_by('x'),
-                         to_attr='values'),
+                Prefetch('measurementvalue_set', queryset=values_qs, to_attr='values'),
             )
 
     def output(self, time, matches):
@@ -417,7 +416,7 @@ class SbmlExportSettingsForm(SbmlForm):
             if field.initial:
                 replace_data[self.add_prefix('sbml_template')] = '%s' % field.initial
             else:
-                self.sbml_warnings.append(
+                self._sbml_warnings.append(
                     _('No SBML template set for this study; a template must be selected to '
                       'export data as SBML.')
                 )
@@ -457,13 +456,8 @@ class SbmlExportMeasurementsForm(SbmlForm):
         Optional:
             qfilter = arguments to filter a measurement queryset from
                 main.export.table.ExportSelection
-            baseline = another SbmlExportMeasurementsForm used to find timepoints where values
-                should be interpolated
         """
         qfilter = kwargs.pop('qfilter', None)
-        self._types = kwargs.pop('types', None)
-        self._protocols = kwargs.pop('protocols', None)
-        self._baseline = kwargs.pop('baseline', None)
         super(SbmlExportMeasurementsForm, self).__init__(*args, **kwargs)
         self._selection = selection
         measurement_queryset = self._init_measurement_field(qfilter)
@@ -489,7 +483,7 @@ class SbmlExportMeasurementsForm(SbmlForm):
         if qfilter is not None:
             f.queryset = f.queryset.filter(qfilter)
         if f.queryset.count() == 0:
-            self.sbml_warnings.append(_('No protocols have usable data.'))
+            self._sbml_warnings.append(_('No protocols have usable data.'))
             f.initial = []
         else:
             f.initial = f.queryset
@@ -592,7 +586,7 @@ class SbmlExportOdForm(SbmlExportMeasurementsForm):
         gcdw_default = data.get('gcdw_default', self.DEFAULT_GCDW_FACTOR)
         conversion_meta = data.get('gcdw_conversion', None)
         if conversion_meta is None:
-            self.sbml_warnings.append(mark_safe(
+            self._sbml_warnings.append(mark_safe(
                 _('No gCDW/L/OD metadata selected, all measurements will be converted with the '
                   'default factor of <b>%(factor)f</b>.') % {'factor': gcdw_default}
             ))
@@ -631,7 +625,7 @@ class SbmlExportOdForm(SbmlExportMeasurementsForm):
             factor = line.metadata_get(conversion_meta)
             # TODO: also check that the factor in metadata is a valid value
             if factor is None:
-                self.sbml_warnings.append(
+                self._sbml_warnings.append(
                     _('Could not find metadata %(meta)s on %(line)s; using default factor '
                       'of <b>%(factor)f</b>.') % {
                         'factor': gcdw_default,
@@ -733,8 +727,15 @@ class SbmlExportSelectionForm(forms.Form):
         help_text=_('Select the time to compute fluxes for embedding in SBML template'),
         label=_('Time for export'),
     )
+    filename = forms.CharField(
+        help_text=_('Choose the filename for the downloaded SBML file'),
+        initial=_('changeme.sbml'),
+        label=_('SBML Filename'),
+        max_length=255,
+        required=False,
+    )
 
-    def __init__(self, t_range, points=None, *args, **kwargs):
+    def __init__(self, t_range, points=None, selection=None, *args, **kwargs):
         super(SbmlExportSelectionForm, self).__init__(*args, **kwargs)
         time_field = self.fields['time_select']
         if points and len(points):
@@ -754,6 +755,16 @@ class SbmlExportSelectionForm(forms.Form):
                 'Select the time to compute fluxes for embedding in SBML template (in the range '
                 '%(min)s to %(max)s)'
             ) % t_range._asdict()
+        if selection is not None:
+            self.fields['filename'].initial = '%s.sbml' % selection.lines[0].name
+        # update self.data with defaults for fields
+        replace_data = QueryDict(mutable=True)
+        for fn in ['time_select', 'filename']:
+            fk = self.add_prefix(fn)
+            if fk not in self.data:
+                replace_data[fk] = self.fields[fn].initial
+        replace_data.update(self.data)
+        self.data = replace_data
 
 
 class SbmlBuilder(object):

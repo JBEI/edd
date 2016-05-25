@@ -193,6 +193,19 @@ class ExportOption(object):
         (DATA_COLUMN_BY_POINT, _('columns of metadata types, and rows of single points')),
         (LINE_COLUMN_BY_DATA, _('columns of lines/assays, and rows of metadata types')),
     )
+    COMMA_SEPARATED = ','
+    COMMA_SEPARATED_TOKEN = ','
+    TAB_SEPARATED = '\t'
+    TAB_SEPARATED_TOKEN = '\\t'
+    # need to choose value tokens that can be displayed as HTML
+    SEPARATOR_CHOICE = (
+        (COMMA_SEPARATED_TOKEN, _('Comma-separated (CSV)')),
+        (TAB_SEPARATED_TOKEN, _('Tab-separated')),
+    )
+    SEPARATOR_LOOKUP = {
+        COMMA_SEPARATED_TOKEN: COMMA_SEPARATED,
+        TAB_SEPARATED_TOKEN: TAB_SEPARATED,
+    }
     ALL_DATA = 'all'
     SUMMARY_DATA = 'summary'
     NONE_DATA = 'none'
@@ -202,7 +215,7 @@ class ExportOption(object):
         (NONE_DATA, _('None')),
     )
 
-    def __init__(self, layout=DATA_COLUMN_BY_LINE, separator=',', data_format=ALL_DATA,
+    def __init__(self, layout=DATA_COLUMN_BY_LINE, separator=COMMA_SEPARATED, data_format=ALL_DATA,
                  line_section=False, protocol_section=False, columns=[], blank_columns=[],
                  blank_mod=0):
         self.layout = layout
@@ -213,6 +226,10 @@ class ExportOption(object):
         self.columns = columns
         self.blank_columns = blank_columns
         self.blank_mod = blank_mod
+
+    @classmethod
+    def coerce_separator(cls, value):
+        return cls.SEPARATOR_LOOKUP.get(value, cls.COMMA_SEPARATED)
 
 
 def value_str(value):
@@ -319,16 +336,6 @@ class TableExport(object):
                 row.append(squashed)
                 table[measurement.id] = row
 
-    def _init_row_for_line(self, tables, line):
-        line_section = self.options.line_section
-        row = self._output_row_with_line(line, None)
-        if line_section:
-            if line.id not in tables['line']:
-                tables['line'][line.id] = row
-            # reset row after this point
-            row = []
-        return row
-
     def _init_tables_for_protocol(self, tables, protocol):
         if self.options.protocol_section:
             if protocol.id not in tables:
@@ -350,6 +357,9 @@ class TableExport(object):
         for column in self.options.columns:
             if models is None or column._model in models:
                 row.append(column.get_heading())
+        if self.options.layout == ExportOption.DATA_COLUMN_BY_POINT:
+            row.append('X')
+            row.append('Y')
         return row
 
     def _output_line_header(self):

@@ -31,13 +31,14 @@ from .importer import (
     TableImport, import_rna_seq, import_rnaseq_edgepro, interpret_edgepro_data,
     interpret_raw_rna_seq_data,
 )
+from .export.forms import (ExportOptionForm, ExportSelectionForm,  WorklistForm,)
 from .export.sbml import (
     SbmlExportMeasurementsForm, SbmlExport, SbmlExportOdForm, SbmlExportSettingsForm,
 )
 from .export.table import ExportSelection, TableExport, WorklistExport
 from .forms import (
-    AssayForm, CreateAttachmentForm, CreateCommentForm, CreateStudyForm, ExportOptionForm,
-    ExportSelectionForm, LineForm, MeasurementForm, MeasurementValueFormSet, WorklistForm,
+    AssayForm, CreateAttachmentForm, CreateCommentForm, CreateStudyForm, LineForm, MeasurementForm,
+    MeasurementValueFormSet,
 )
 from .models import (
     Assay, Attachment, Line, Measurement, MeasurementType, MeasurementValue, Metabolite,
@@ -557,11 +558,11 @@ class EDDExportView(generic.TemplateView):
         try:
             self._selection = select_form.get_selection()
         except Exception as e:
-            logger.error("Failed to validate forms for export: %s", e)
+            logger.exception("Failed to validate forms for export: %s", e)
         return {
             'download': payload.get('action', None) == 'download',
             'select_form': select_form,
-            'selection': self._selection,
+            'selection': self.selection,
         }
 
     def post(self, request, *args, **kwargs):
@@ -595,7 +596,7 @@ class ExportView(EDDExportView):
                 self._export = TableExport(self.selection, option_form.options, None)
                 context.update(output=self._export.output())
         except Exception as e:
-            logger.error("Failed to validate forms for export: %s", e)
+            logger.exception("Failed to validate forms for export: %s", e)
         return context
 
 
@@ -623,7 +624,7 @@ class WorklistView(EDDExportView):
             )
             if worklist_form.is_valid():
                 self._export = WorklistExport(
-                    self._selection,
+                    self.selection,
                     worklist_form.options,
                     worklist_form.worklist,
                 )
@@ -689,7 +690,7 @@ class SbmlView(EDDExportView):
         time_form = None
         if export_settings.is_valid():
             template = export_settings.cleaned_data.get('sbml_template', None)
-            self.sbml_export = SbmlExport(template)
+            self.sbml_export = SbmlExport(template, self.selection)
             if od_select.is_valid():
                 self.sbml_export.add_density(od_select)
                 for sbml_measurements in [f for f in form_dict.itervalues() if f.is_valid()]:
@@ -700,6 +701,7 @@ class SbmlView(EDDExportView):
         sbml_warnings = chain(
             export_settings.sbml_warnings,
             od_select.sbml_warnings,
+            match_form.sbml_warnings if match_form else [],
             *map(lambda f: f.sbml_warnings, form_dict.itervalues())
         )
         try:
@@ -727,7 +729,8 @@ class SbmlView(EDDExportView):
                     content_type='application/sbml+xml'
                 )
                 # set download filename
-                response['Content-Disposition'] = 'attachment; filename="%s.sbml"' % 'changeme'
+                filename = time_form.cleaned_data['filename']
+                response['Content-Disposition'] = 'attachment; filename="%s"' % filename
                 return response
         return super(SbmlView, self).render_to_response(context, **kwargs)
 
