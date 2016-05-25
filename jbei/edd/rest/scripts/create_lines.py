@@ -59,7 +59,7 @@ from jbei.edd.rest.edd import EddSessionAuth, EddApi
 from jbei.ice.rest.ice import IceApi
 from jbei.ice.rest.ice import SessionAuth as IceSessionAuth
 
-DEFAULT_LOCALE = b'en_US'
+DEFAULT_LOCALE = b'en_US.UTF-8'
 locale.setlocale(locale.LC_ALL, DEFAULT_LOCALE)
 
 MIN_COL_NUM = 1
