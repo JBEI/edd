@@ -1311,7 +1311,6 @@ var DGSelectAllWidget = (function (_super) {
         var _this = this;
         var buttonID = this.dataGridSpec.tableSpec.id + 'SelAll' + uniqueID;
         var button = $(this.element = document.createElement("input"));
-        console.log('is this working? ')
         button.attr({ 'id': buttonID, 'name': buttonID, 'value': 'Select All' })
             .addClass('tableControl')
             .click(function () { return _this.clickHandler(); });

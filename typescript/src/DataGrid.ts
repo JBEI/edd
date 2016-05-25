@@ -1616,7 +1616,7 @@ class DGSelectAllWidget extends DataGridHeaderWidget {
     createElements(uniqueID:string):void {
         var buttonID:string = this.dataGridSpec.tableSpec.id + 'SelAll' + uniqueID;
         var button = $(this.element = document.createElement("input"));
-        button.attr({ 'id': buttonID, 'name': buttonID, 'value': 'Select All!!!' })
+        button.attr({ 'id': buttonID, 'name': buttonID, 'value': 'Select All' })
             .addClass('tableControl')
             .click(() => this.clickHandler());
         this.element.setAttribute('type', 'button'); // JQuery attr cannot do this
