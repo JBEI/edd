@@ -66,11 +66,11 @@ class UserTests(TestCase):
     def test_monkey_patches(self):
         """ Ensure that user has class fields"""
         # Load objects
-        user1 = User.objects.get(email=self.__class__.EMAIL)
+        user1 = User.objects.get(email=self.EMAIL)
         user2 = User.objects.get(email="jdoe@localhost")
         # Asserts
         self.assertTrue(user1.initials == "JS")
-        self.assertTrue(user1.email == self.__class__.EMAIL)
+        self.assertTrue(user1.email == self.EMAIL)
         self.assertTrue(user1.initials == "JS")
         self.assertTrue(user2.initials == '')
         self.assertTrue(user2.username == 'John Doe')
@@ -90,7 +90,7 @@ class UserTests(TestCase):
     def test__initial_permissions(self):
         """ Ensure user permissions"""
         # Load objects
-        user1 = User.objects.get(email=self.__class__.EMAIL)
+        user1 = User.objects.get(email=self.EMAIL)
         user2 = User.objects.get(email="ssue@localhost")
         # Asserts
         self.assertFalse(user1.is_staff)

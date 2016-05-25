@@ -19,21 +19,21 @@ class UserProfileTest(TestCase):
     def setUp(self):
         super(UserProfileTest, self).setUp()
         User.objects.create_user(
-            username=self.__class__.USERNAME,
-            email=self.__class__.EMAIL,
-            password=self.__class__.PASSWORD,
-            first_name=self.__class__.FIRST_NAME,
-            last_name=self.__class__.LAST_NAME
+            username=self.USERNAME,
+            email=self.EMAIL,
+            password=self.PASSWORD,
+            first_name=self.FIRST_NAME,
+            last_name=self.LAST_NAME
             )
         User.objects.create_user(
-            username=self.__class__.USERNAME2,
-            email=self.__class__.EMAIL2,
-            password=self.__class__.PASSWORD)
+            username=self.USERNAME2,
+            email=self.EMAIL2,
+            password=self.PASSWORD)
 
     def test_profile(self):
         """ Ensure user profile has appropriate fields"""
         # Load objects
-        user1 = User.objects.get(email=self.__class__.EMAIL)
+        user1 = User.objects.get(email=self.EMAIL)
         user2 = User.objects.get(email="jdoe@localhost")
         # Asserts
         self.assertTrue(user1.profile is not None)
