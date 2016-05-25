@@ -1,45 +1,9 @@
-
-# FIXME need to track intracellular and extracellular measurements separately
-# (and assign to SBML species differently)
-# TODO clean this up, get rid of unnecessary code and make it internally
-# consistent
-# TODO Garrett says we can get rid of the input checkboxes
-
-# NOTE the structure of this module is more complicated than really necessary -
-# basically I am using a class hierarchy to separate out three different areas
-# of functionality:
-#   1. processing the SBML model and determining what reactants/fluxes to use,
-#      independently of the line(s) and assay(s) of interest (sbml_info)
-#   2. processing the raw assay data and calculating fluxes (line_assay_data)
-#   3. combining the assay data with the SBML model to export a new SBML file
-#      (line_sbml_export)
-# and technically, actually pulling down the relevant database records is
-# handled by yet another class in utilities.py.
-#
-# Note that some "private" method names imply an ordering of steps which
-# matches the layout export HTML view, but broken up among two classes.  These
-# may be refactored in the future.
-#
-# There is no reason why this hierarchy can't be merged into a single class,
-# but given the complexity of the module and the more-or-less discrete sets
-# of functions, I find it more convenient to break them up.  This also
-# facilitates later re-use, e.g. the analyses done by the sbml_info class are
-# also used in the view for administration of metabolic maps, independently
-# of assay data.  (To that extent, the structure mimics that of the old EDD,
-# where this functionality and HTML output resided in UtilitiesSBML.pm.)
-#
-# -Nat 2015-03-27
-
-# NOTE 2: a lot of Garrett's comments have been ported from the Perl code.
-# some of these may need updating or removing.
-
-# NOTE 3: I apologize for my reliance on underscores to indicate
-# pseudo-"private" attributes and methods; it looks gross but it helps
-# clarify the intent (at least in my own mind).
+# -*- coding: utf-8 -*-
+from __future__ import division, unicode_literals
 
 """ Backend for exporting SBML files. """
-
-from __future__ import division, unicode_literals
+# FIXME need to track intracellular and extracellular measurements separately
+# (and assign to SBML species differently)
 
 import logging
 import re
