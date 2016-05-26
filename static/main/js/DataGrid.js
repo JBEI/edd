@@ -1325,9 +1325,10 @@ var DGSelectAllWidget = (function (_super) {
                 // each cell in row
                 row.dataGridDataCells.forEach(function (cell) {
                     // if the cell has a checkbox, check it
-                    cell.checkboxElement &&
-                        (cell.checkboxElement.checked = true) &&
+                    if (cell.checkboxElement) {
+                        cell.checkboxElement.checked = false;
                         $(cell.checkboxElement).trigger('change');
+                    }
                 });
             });
         }, sequence);
