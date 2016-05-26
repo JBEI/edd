@@ -5,27 +5,30 @@ import os.path
 import warnings
 
 import arrow
-from django.contrib.auth.models import User, Group
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.core.exceptions import PermissionDenied
 from django.test import TestCase
 
-from edd.profile.models import UserProfile
-from .export import sbml as sbml_export
-from .forms import LineForm
-from .importer import (
+from ..export import sbml as sbml_export
+from ..forms import LineForm
+from ..importer import (
     TableImport, import_rna_seq, import_rnaseq_edgepro, interpret_raw_rna_seq_data,
 )
-from .models import (
+from ..models import (
     Assay, CarbonSource, GeneIdentifier, GroupPermission, Line, MeasurementType, MeasurementUnit,
-    Metabolite, MetadataGroup, MetadataType, Protocol, SBMLTemplate, Strain, Study, Update,
-    UserPermission,
+    Metabolite, MetadataGroup, MetadataType, Protocol, SBMLTemplate, Strain,
+    Study, Update, UserPermission,
 )
-from .solr import StudySearch
-from .utilities import (
+from ..solr import StudySearch
+from ..utilities import (
     extract_id_list, extract_id_list_as_form_keys, get_selected_lines,
     get_edddata_carbon_sources, get_edddata_measurement, get_edddata_misc, get_edddata_strains,
     get_edddata_study, get_edddata_users, interpolate_at,
 )
+
+
+User = get_user_model()
 
 
 # Everything running in this file is a test, but Django only handles test instances of a
@@ -36,36 +39,84 @@ from .utilities import (
 
 
 class UserTests(TestCase):
+    USERNAME = "Jane Smith"
+    EMAIL = "jsmith@localhost"
+    PASSWORD = 'password'
+    FIRST_NAME = "Jane"
+    LAST_NAME = "Smith"
+
+    USERNAME2 = "John Doe"
+    EMAIL2 = "jdoe@localhost"
+
+    # create test users
     def setUp(self):
-        TestCase.setUp(self)
-        user1 = User.objects.create_user(
-            username='James Smith',
-            email="jsmith@localhost",
-            password='password')
+        super(UserTests, self).setUp()
         User.objects.create_user(
-            username='John Doe',
-            email="jdoe@localhost",
-            password='password')
-        UserProfile.objects.create(
-            user=user1,
-            initials="JS",
-            description="random postdoc")
+            username=self.USERNAME,
+            email=self.EMAIL,
+            password=self.PASSWORD,
+            first_name=self.FIRST_NAME,
+            last_name=self.LAST_NAME
+            )
+        User.objects.create_user(
+            username=self.USERNAME2,
+            email=self.EMAIL2,
+            password=self.PASSWORD
+            )
+        User.objects.create_superuser(
+            username="Sally Sue",
+            email="ssue@localhost",
+            password="password",
+            first_name="Sally",
+            last_name="Sue"
+            )
 
     def test_monkey_patches(self):
-        user1 = User.objects.get(username="James Smith")
-        user2 = User.objects.get(username="John Doe")
+        """ Ensure that user has class fields"""
+        # Load objects
+        user1 = User.objects.get(email=self.EMAIL)
+        user2 = User.objects.get(email="jdoe@localhost")
+        # Asserts
         self.assertTrue(user1.initials == "JS")
-        self.assertTrue(user2.initials is None)
+        self.assertTrue(user1.email == self.EMAIL)
+        self.assertTrue(user1.initials == "JS")
+        self.assertTrue(user2.initials == '')
+        self.assertTrue(user2.username == 'John Doe')
+        self.assertTrue(user1.profile is not None)
+        self.assertTrue(user1.profile.initials == "JS")
+        self.assertTrue(user2.profile.initials == '')
         user_json = user1.to_json()
-        for key, value in {'initials': u'JS', 'uid': u'James Smith', 'name': u'',
-                           'email': u'jsmith@localhost'}.iteritems():
+        for key, value in {u'uid': u'Jane Smith', u'firstname': u'Jane', u'lastname': u'Smith', u'description': u'',
+                           u'name': u'Jane Smith', u'email': u'jsmith@localhost', u'initials': u'JS'}.iteritems():
             self.assertTrue(user_json[key] == value)
+        user_solr = user1.to_solr_json()
+        for key, value in {u'username': u'Jane Smith', u'is_active': True,
+                            u'name': [u'Jane', u'Smith'], u'is_superuser': False, u'fullname': u'Jane Smith',
+                            u'email': u'jsmith@localhost', u'initials': u'JS'}.iteritems():
+            self.assertTrue(user_solr[key] == value)
+
+    def test__initial_permissions(self):
+        """ Ensure user permissions"""
+        # Load objects
+        user1 = User.objects.get(email=self.EMAIL)
+        user2 = User.objects.get(email="ssue@localhost")
+        # Asserts
+        self.assertFalse(user1.is_staff)
+        self.assertFalse(user1.is_superuser)
+        self.assertFalse(user1.has_perm('main.change.protocol'))
+        self.assertTrue(user2.is_staff)
+        self.assertTrue(user2.is_superuser)
+        self.assertTrue(user2.has_perm('main.change.protocol'))
+        user1.is_superuser = True
+        user1.is_staff = True
+        self.assertTrue(user1.is_staff)
+        self.assertTrue(user1.is_superuser)
+        self.assertTrue(user1.has_perm('main.change.protocol'))
 
 
 class StudyTests(TestCase):
-
     def setUp(self):
-        TestCase.setUp(self)
+        super(StudyTests, self).setUp()
         email = 'wcmorrell@lbl.gov'
         user1 = User.objects.create_user(username='test1', email=email, password='password')
         user2 = User.objects.create_user(username='test2', email=email, password='password')
@@ -163,7 +214,7 @@ class StudyTests(TestCase):
 class SolrTests(TestCase):
 
     def setUp(self):
-        TestCase.setUp(self)
+        super(SolrTests, self).setUp()
         email = 'wcmorrell@lbl.gov'
         self.admin = User.objects.create_superuser(username='admin', email=email, password='12345')
         self.user1 = User.objects.create_user(username='test1', email=email, password='password')
@@ -193,7 +244,7 @@ class SolrTests(TestCase):
 
 class LineTests (TestCase):  # XXX also Strain, CarbonSource
     def setUp(self):
-        TestCase.setUp(self)
+        super(LineTests, self).setUp()
         user1 = User.objects.create_user(
             username="admin", email="nechols@lbl.gov", password='12345')
         study1 = Study.objects.create(name='Test Study 1', description='')
@@ -312,7 +363,7 @@ class LineTests (TestCase):  # XXX also Strain, CarbonSource
 class AssayDataTests(TestCase):
 
     def setUp(self):
-        TestCase.setUp(self)
+        super(AssayDataTests, self).setUp()
         user1 = User.objects.create_user(
             username="admin", email="nechols@lbl.gov", password='12345')
         study1 = Study.objects.create(name='Test Study 1', description='')
@@ -393,7 +444,7 @@ class AssayDataTests(TestCase):
 
     def test_assay(self):
         assay = Assay.objects.get(description="GC-MS assay 1")
-        self.assertTrue(len(assay.get_metabolite_measurements()) == 1)
+        self.assertTrue(len(assay.get_metabolite_measurements()) == 1) #no. equal to 0
         self.assertTrue(len(assay.get_gene_measurements()) == 1)
         self.assertTrue(len(assay.get_protein_measurements()))
         assay.to_json()
@@ -409,6 +460,7 @@ class AssayDataTests(TestCase):
         meas1 = assay.measurement_set.filter(
             measurement_type__short_name="ac")[0]
         mt1 = meas1.measurement_type
+        # ((<MeasurementType: Acetate>, mt1.is_metabolite() == False, False, False))
         self.assertTrue(mt1.is_metabolite() and not mt1.is_protein() and not mt1.is_gene())
 
     def test_measurement_unit(self):
@@ -419,7 +471,7 @@ class AssayDataTests(TestCase):
 
     def test_measurement(self):
         assay = Assay.objects.get(description="GC-MS assay 1")
-        metabolites = list(assay.get_metabolite_measurements())
+        metabolites = list(assay.get_metabolite_measurements()) #[]
         self.assertTrue(len(metabolites) == 1)
         meas1 = metabolites[0]
         self.assertTrue(meas1.y_axis_units_name == "mM")
@@ -436,8 +488,8 @@ class AssayDataTests(TestCase):
 
     def test_measurement_extract(self):
         assay = Assay.objects.get(description="GC-MS assay 1")
-        meas1 = list(assay.get_metabolite_measurements())[0]
-        meas2 = list(assay.get_gene_measurements())[0]
+        meas1 = list(assay.get_metabolite_measurements())[0] #returns []
+        meas2 = list(assay.get_gene_measurements())[0]  # returns FFMeasurement{22}{Gene name 1}
         xval = meas1.extract_data_xvalues()
         self.assertTrue(xval == [0.0, 4.0, 8.0, 12.0, 18.0, 24.0, 32.0])
         xval2 = meas1.extract_data_xvalues(defined_only=True)
@@ -447,10 +499,9 @@ class AssayDataTests(TestCase):
 
     def test_measurement_interpolate(self):
         assay = Assay.objects.get(description="GC-MS assay 1")
-        meas1 = list(assay.get_metabolite_measurements())[0]
+        meas1 = list(assay.get_metabolite_measurements())[0] #returns []
         meas2 = list(assay.get_gene_measurements())[0]
         y_interp = meas1.interpolate_at(21)
-        # XXX I hate floating-point math
         self.assertTrue('%s' % y_interp == "1.2")
         y_interp2 = meas1.interpolate_at(25)
         self.assertTrue(y_interp2 is None)
@@ -465,7 +516,7 @@ class AssayDataTests(TestCase):
 class ImportTests(TestCase):
     """ Test import of assay measurement data. """
     def setUp(self):
-        TestCase.setUp(self)
+        super(ImportTests, self).setUp()
         user1 = User.objects.create_user(
             username="admin", email="nechols@lbl.gov", password='12345')
         user2 = User.objects.create_user(
@@ -837,7 +888,7 @@ class SBMLUtilTests(TestCase):
         else:
             libsbml.SBML_DOCUMENT  # check to make sure it loaded
             dir_name = os.path.dirname(__file__)
-            sbml_file = os.path.join(dir_name, "fixtures", "misc_data", "simple.sbml")
+            sbml_file = os.path.join(dir_name, "../fixtures", "misc_data", "simple.sbml")
             s = sbml_export.sbml_info(i_template=0, sbml_file=sbml_file)
             self.assertEquals(s.n_sbml_species, 4)
             self.assertEquals(s.n_sbml_reactions, 5)
@@ -870,7 +921,7 @@ class ExportTests(TestCase):
                 lines=[Line.objects.get(name="Line 1"), ],
                 form={"chosenmap": 0})
             dir_name = os.path.dirname(__file__)
-            sbml_file = os.path.join(dir_name, "fixtures", "misc_data", "simple.sbml")
+            sbml_file = os.path.join(dir_name, "../fixtures", "misc_data", "simple.sbml")
             data.run(test_mode=True, sbml_file=sbml_file)
             sbml_out = data.as_sbml(8.0)
             sbml_in = libsbml.readSBMLFromString(sbml_out)

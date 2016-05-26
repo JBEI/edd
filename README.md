@@ -174,6 +174,8 @@ This section contains directions for setting up a development environment on EDD
         * View logs: `docker-compose logs`
         * Bringing down all services: `docker-compose down`
         * See more in the [Docker Compose documentation][32]
+	* Other useful sample commands:
+	    * Connect to the postgres command line: docker exec -it edd_postgres_1  psql -U postgres
     * Startup in new shell sessions
         * Load the Docker environment with:
           `eval "$(docker-machine env default)"`

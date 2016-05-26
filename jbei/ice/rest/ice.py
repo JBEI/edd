@@ -23,9 +23,9 @@ import importlib
 from urllib import urlencode
 from urlparse import urlunparse, ParseResult, parse_qs
 
-from jbei.rest.utils import remove_trailing_slash, CLIENT_ERROR_NOT_FOUND
+from jbei.rest.utils import remove_trailing_slash, CLIENT_ERROR_NOT_FOUND, remove_trailing_slash
 from jbei.rest.request_generators import (RequestGenerator, SessionRequestGenerator, PagedResult,
-    PagedRequestGenerator)
+                                          PagedRequestGenerator)
 import json
 import logging
 import os
@@ -993,11 +993,12 @@ class IceApi(RestApiClient):
         :param filter:
         :param sort:
         :param asc:
-        :param page_number:
+        :param page_number: the page number of results to be returned (1-indexed)
         :return:
         :raise HttpError: if the authenticated user doesn't have access to this ICE
         resource (isn't a sysadmin), or if some other error has occurred.
         """
+        self._verify_page_number(page_number)
         # TODO: investigate / hard-code / check for supported values of 'sort' param
 
         # construct a dictionary of query params in the format ICE expects
@@ -1034,9 +1035,12 @@ class IceApi(RestApiClient):
         Retrieves ICE's experiments links for the specified entry, using any of the unique
         identifiers: part id, synthetic id, or UUID.
         :param entry_id: the ICE ID for this entry
+        :param page_number: the page number of results to be returned (1-indexed)
         :return: A PagedResult containing at least one EntryLink object, or None if the ICE
         returned an empty (but successful) response.
         """
+
+        self._verify_page_number(page_number)
 
         response = None
         if query_url:
@@ -1069,9 +1073,11 @@ class IceApi(RestApiClient):
         Retrieves ICE's samples for the specified entry, using any of the unique
         identifiers: part id, local integer primary key, or UUID.
         :param entry_id: the ICE ID for this entry
+        :param page_number: the page number of results to be returned (1-indexed)
         :return: A PagedResult containing at least one Sample, or None if ICE
         returned an empty (but successful) response.
         """
+        self._verify_page_number(page_number)
 
         response = None
         if query_url:
@@ -1162,6 +1168,7 @@ class IceApi(RestApiClient):
         :param sort_ascending: true to sort in ascending order, False otherwise. Ignored if
         sort_field is None
         :param sort_ascending: True to sort in ascending order, False for descending order
+        :param page_number: the page number of results to be returned (1-indexed)
         :param suppress_errors: True to suppress errors
         :return: a single page of results. Note that this method is a special case since the full
         functionality of ICE's search only seems to be supported by POST, so unlike many other
@@ -1172,6 +1179,7 @@ class IceApi(RestApiClient):
         recognized programs.
         """
 
+        self._verify_page_number(page_number)
         query_url = None  # TODO: re-instate this parameter if we can get ICE to support the same
         # queries in GET as in POST...should simplify client use by allowing
 
@@ -1287,10 +1295,16 @@ class IceApi(RestApiClient):
             logger.exception('Timeout searching ICE for query "%s"' % search_terms)
 
     def _create_or_update_link(self, study_name, study_url, entry_experiments_url,
-                               link_id=None):
+                               link_id=None, created=None):
         """
             A helper method that creates or updates a single study link in ICE. Note that ICE seems
             to do some URL-based matching / link replacement even if no link ID is provided.
+            :param entry_experiments_url: the absolute REST API URL to the list of experiments for
+            this ICE entry (tolerates ending with a slash or not). For example,
+            https://registry.jbei.org/rest/parts/123/experiments/.
+            :param link_id: the link id if it's to be created
+            :param created: the creation timestamp when the link was created. Required if link_id
+            is not None
             :raises requests.exceptions.Timeout if the initial connection or response times out
         """
         # NOTE: this implementation works, but can probably be simplified based on how ICE actually
@@ -1309,8 +1323,9 @@ class IceApi(RestApiClient):
             logger.info("Response: %s " % json_str)
 
         headers = {'Content-Type': 'application/json'}
+        # if we're updating an existing link, use its full url
         if link_id:
-            headers['id'] = link_id
+            json_dict['id'] = link_id
 
         request_generator = self.request_generator
         response = request_generator.request('POST', entry_experiments_url,
@@ -1339,7 +1354,7 @@ class IceApi(RestApiClient):
         :raises requests.exceptions.Timeout if a communication timeout occurs.
         """
         logger.info('Start ' + self.unlink_entry_from_study.__name__ + "()")
-        self._prevent_write_while_disabled(self)
+        self._prevent_write_while_disabled()
 
         # Look up the links associated with this ICE part
         entry_experiments_rest_url = self._build_entry_experiments_url(ice_entry_id)
@@ -1350,7 +1365,7 @@ class IceApi(RestApiClient):
             response.raise_for_status()
 
         # Filter out links that aren't for this study
-        json_dict = response.json()
+        json_dict = response.json()  # TODO: doesn't account for
         study_links = [link for link in json_dict if study_url.lower() == link.get('url').lower()]
         logger.debug("Existing links response: " + json_dict.__str__())
 
@@ -1374,11 +1389,11 @@ class IceApi(RestApiClient):
         """
         Removes the specified experiment link from an ICE entry
         """
-        self._prevent_write_while_disabled(self)
+        self._prevent_write_while_disabled()
 
         entry_experiments_rest_url = self._build_entry_experiments_url(ice_entry_id)
         link_resource_uri = entry_experiments_rest_url + "%s/" % link_id
-        response = self.request_generator.request('DELETE', link_resource_uri)
+        response = self.request_generator.delete(link_resource_uri)
 
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
@@ -1390,6 +1405,11 @@ class IceApi(RestApiClient):
         already exists, updates the labels for the all the existing ICE experiment links that
         uses this URL (even for entries other than the one specified by ice_entry_id). See
         comments on SYNBIO-1196.
+        Note that because of the way ICE's REST API responds, this implementation performs multiple
+        round-trips to  ICE to check whether the link exists before creating it. A future
+        improvement is to fully characterize / unit test the ICE API's behavior, then to provide
+        a more efficient low-level alternative to support clients that have already performed
+        their own checking.
         :param ice_entry_id: the string used to identify the strain ( either the string
         representation of the number displayed in the URL, or the UUID stored in EDD's database)
         :param study_id: the unique ID of this study
@@ -1430,7 +1450,7 @@ class IceApi(RestApiClient):
         # URL
         label_key = 'label'
         url_key = 'url'
-        existing_links = response.json()
+        existing_links = response.json()  # TODO: doesn't account for results paging see EDD-200
         current_study_links = [link for link in existing_links if
                                ((study_url.lower() == link.get(url_key).lower()) and
                                 (study_name == link.get(label_key)))]
@@ -1458,7 +1478,8 @@ class IceApi(RestApiClient):
         if outdated_study_links:
             for outdated_link in outdated_study_links:
                 self._create_or_update_link(study_name, study_url, entry_experiments_rest_url,
-                                            link_id=outdated_link.get('id'))
+                                            link_id=outdated_link.get('id'),
+                                            created=outdated_link.get('created'))
         else:
             self._create_or_update_link(study_name, study_url, entry_experiments_rest_url)
 
