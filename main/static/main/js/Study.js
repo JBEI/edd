@@ -1916,10 +1916,12 @@ var DataGridSpecLines = (function (_super) {
         this.carbonBalanceWidget = showCarbonBalanceWidget;
         // A "select all" button
         var selectAllWidget = new DGSelectAllWidget(dataGrid, this);
-        var deselectAllWidget = new DGDeselectAllWidget(dataGrid, this);
         selectAllWidget.displayBeforeViewMenu(true);
+        widgetSet.push(selectAllWidget);
+        // A "deselect all" button
+        var deselectAllWidget = new DGDeselectAllWidget(dataGrid, this);
         deselectAllWidget.displayBeforeViewMenu(true);
-        widgetSet.push( deselectAllWidget, selectAllWidget);
+        widgetSet.push(deselectAllWidget);
         return widgetSet;
     };
     // This is called to generate the array of custom options menu widgets. The order of the array
@@ -2765,10 +2767,6 @@ var DataGridSpecAssays = (function (_super) {
         var selectAllWidget = new DGSelectAllWidget(dataGrid, this);
         selectAllWidget.displayBeforeViewMenu(true);
         widgetSet.push(selectAllWidget);
-
-        var deselectAllWidget = new DGDeselectAllWidget(dataGrid, this);
-        selectAllWidget.displayBeforeViewMenu(true);
-        widgetSet.push(deselectAllWidget);
         return widgetSet;
     };
     // This is called to generate the array of custom options menu widgets.

@@ -1918,6 +1918,10 @@ var DataGridSpecLines = (function (_super) {
         var selectAllWidget = new DGSelectAllWidget(dataGrid, this);
         selectAllWidget.displayBeforeViewMenu(true);
         widgetSet.push(selectAllWidget);
+        // A "deselect all" button
+        var deselectAllWidget = new DGDeselectAllWidget(dataGrid, this);
+        deselectAllWidget.displayBeforeViewMenu(true);
+        widgetSet.push(deselectAllWidget);
         return widgetSet;
     };
     // This is called to generate the array of custom options menu widgets. The order of the array

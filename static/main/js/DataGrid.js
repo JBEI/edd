@@ -1334,7 +1334,9 @@ var DGSelectAllWidget = (function (_super) {
     };
     return DGSelectAllWidget;
 })(DataGridHeaderWidget);
-
+// A generic "Deselect All" header widget, appearing as a button.
+// When clicked, it walks through every row and cell looking for DataGrid-created checkboxes,
+// and checks every one it finds.
 var DGDeselectAllWidget = (function (_super) {
     __extends(DGDeselectAllWidget, _super);
     function DGDeselectAllWidget(dataGridOwnerObject, dataGridSpec) {
@@ -1344,7 +1346,7 @@ var DGDeselectAllWidget = (function (_super) {
     // when creating input element labels or other things requiring an ID.
     DGDeselectAllWidget.prototype.createElements = function (uniqueID) {
         var _this = this;
-        var buttonID = this.dataGridSpec.tableSpec.id + 'SelAll' + uniqueID;
+        var buttonID = this.dataGridSpec.tableSpec.id + 'DelAll' + uniqueID;
         var button = $(this.element = document.createElement("input"));
         button.attr({ 'id': buttonID, 'name': buttonID, 'value': 'Deselect All' })
             .addClass('tableControl')
@@ -1359,7 +1361,7 @@ var DGDeselectAllWidget = (function (_super) {
             rows.forEach(function (row) {
                 // each cell in row
                 row.dataGridDataCells.forEach(function (cell) {
-                    // if the cell has a checkbox, check it
+                    // if the cell has a checkbox, uncheck it
                     cell.checkboxElement &&
                         (cell.checkboxElement.checked = false) &&
                         $(cell.checkboxElement).trigger('change');
