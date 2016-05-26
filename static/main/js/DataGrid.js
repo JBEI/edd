@@ -1325,10 +1325,7 @@ var DGSelectAllWidget = (function (_super) {
                 // each cell in row
                 row.dataGridDataCells.forEach(function (cell) {
                     // if the cell has a checkbox, check it
-                    if (cell.checkboxElement) {
-                        cell.checkboxElement.checked = false;
-                        $(cell.checkboxElement).trigger('change');
-                    }
+                    $(cell.checkboxElement).prop('checked', true).trigger('change');
                 });
             });
         }, sequence);
@@ -1363,9 +1360,7 @@ var DGDeselectAllWidget = (function (_super) {
                 // each cell in row
                 row.dataGridDataCells.forEach(function (cell) {
                     // if the cell has a checkbox, uncheck it
-                    cell.checkboxElement &&
-                        (cell.checkboxElement.checked = false) &&
-                        $(cell.checkboxElement).trigger('change');
+                    $(cell.checkboxElement).prop('checked', false).trigger('change');
                 });
             });
         }, sequence);

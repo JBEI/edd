@@ -1632,10 +1632,7 @@ class DGSelectAllWidget extends DataGridHeaderWidget {
                 // each cell in row
                 row.dataGridDataCells.forEach((cell) => {
                     // if the cell has a checkbox, check it
-                     if (cell.checkboxElement) {
-                        cell.checkboxElement.checked = false;
-                        $(cell.checkboxElement).trigger('change');
-                    }
+                     $(cell.checkboxElement).prop('checked', true).trigger('change');
                 });
             });
         }, sequence);
@@ -1673,9 +1670,7 @@ class DGDeselectAllWidget extends DataGridHeaderWidget {
                 // each cell in row
                 row.dataGridDataCells.forEach((cell) => {
                     // if the cell has a checkbox, uncheck it
-                    cell.checkboxElement &&
-                        (cell.checkboxElement.checked = false) &&
-                        $(cell.checkboxElement).trigger('change');
+                    $(cell.checkboxElement).prop('checked', false).trigger('change');
                 });
             });
         }, sequence);
