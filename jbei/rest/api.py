@@ -76,3 +76,25 @@ class RestApiClient(object):
                                '%(application_name)s are disabled. Use write_enabled to allow '
                                'writes, but please use carefully!' % {
                                     'application_name': self.application_name,})
+
+    def _verify_page_number(self, page_number):
+        """
+        Checks that results page numbering is consistently 1-indexed for RestApiClient
+        implementations, regardless of how the underlying application indexes pages
+        :param page_number: the requested results page number
+        :raises ValueError: if page_number < 1
+        """
+        if (page_number is not None) and (page_number < 1):
+            raise ValueError('Page number must be an integer >= 1')
+
+    def get_overall_result_index(self, page_rel_index, page_number):
+        """
+        Gets the overall index for a page-relative result.
+        :param page_rel_index: the page-relative index of a specific result
+        :param page_number: the result page number (1-indexed)
+        :return: the overall index, or None if result_limit is None
+        """
+        if self.result_limit is None:
+            return None
+
+        return page_rel_index + ((page_number-1) * self.result_limit)

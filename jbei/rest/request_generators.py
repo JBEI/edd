@@ -249,7 +249,7 @@ class PagedRequestGenerator(RequestGenerator):
         params = kwargs.get('params')
         if not params:
             params = {}
-        else:
+        elif param_name in params.keys():
             existing_value = params.get(param_name)
             if existing_value != self._result_limit:
                 logger.warning('An existing request parameter named "%s" was present. This '
