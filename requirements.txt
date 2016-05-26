@@ -22,6 +22,7 @@ django-threadlocals==0.8
 djangorestframework==3.3.2
 drf-nested-routers==0.11.1
 enum34==1.1.2
+factory-boy==2.7.0
 future==0.15.2
 gunicorn==19.4.5
 idna==2.0
