@@ -19,6 +19,6 @@ PRINT_FOUND_EDD_STRAINS = True
 #  local_settings.py: enables any configuration here to be overridden without changing this file.
 ####################################################################################################
 try:
-    from .local_settings import *  # noqa
+    from local_settings import *  # noqa
 except ImportError:
     pass

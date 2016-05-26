@@ -11,12 +11,15 @@ from django.core.urlresolvers import reverse as urlreverse
 from django.db import connection, transaction
 from django.db.models.signals import m2m_changed, post_delete, post_save, pre_save, pre_delete
 from django.dispatch import receiver
+from django.core.mail import mail_managers
 
-from jbei.ice.rest.ice import parse_entry_id, HmacAuth
+from jbei.ice.rest.ice import parse_entry_id, HmacAuth, IceHmacAuth
 from . import study_modified, study_removed, user_modified
 from ..models import Line, Strain, Study, Update
 from ..solr import StudySearch, UserSearch
 from ..utilities import get_absolute_url
+from requests.exceptions import ConnectionError
+
 
 solr = StudySearch()
 users = UserSearch()
@@ -26,6 +29,7 @@ if settings.USE_CELERY:
     from edd.remote_tasks import link_ice_entry_to_study, unlink_ice_entry_from_study
 else:
     from jbei.ice.rest.ice import IceApi
+
 
 @receiver(post_save, sender=Study)
 def study_saved(sender, instance, created, raw, using, **kwargs):
@@ -57,7 +61,11 @@ def unindex_study(sender, study, **kwargs):
 
 @receiver(user_modified)
 def index_user(sender, user, **kwargs):
-    users.update([user, ])
+    try:
+        users.update([user, ])
+    except ConnectionError as e:
+        mail_managers("Error connecting to Solr at login", "support needed")
+        logger.exception("Error connecting to Solr at login")
 
 
 def log_update_warning_msg(study_id):
@@ -65,7 +73,7 @@ def log_update_warning_msg(study_id):
                    % study_id)
 
 
-@receiver(pre_save, sender=Study, dispatch_uid="main.signals.handlers_study_pre_save")
+@receiver(pre_save, sender=Study, dispatch_uid="main.signals.handlers.handle_study_pre_save")
 def handle_study_pre_save(sender, instance, raw, using, **kwargs):
     if not settings.ICE_URL:
         logger.warning('ICE URL is not configured. Skipping ICE experiment link updates.')
@@ -82,7 +90,7 @@ def handle_study_pre_save(sender, instance, raw, using, **kwargs):
         instance.pre_save_name = None
 
 
-@receiver(post_save, sender=Study, dispatch_uid="main.signals.handlers_study_post_save")
+@receiver(post_save, sender=Study, dispatch_uid="main.signals.handlers.handle_study_post_save")
 def handle_study_post_save(sender, instance, created, raw, using, **kwargs):
     """
     Checks whether the study has been renamed by comparing its current name with the one set in
@@ -190,7 +198,7 @@ def handle_line_post_delete(sender, instance, **kwargs):
     line = instance
 
     # extract study-related data cached prior to the line deletion. Note that line deletion signals
-    # are also send during/after study deletion, so this information may not be in the database
+    # are also sent during/after study deletion, so this information may not be in the database
     # any more
     study_pk = line.pre_delete_study_id
     study_creation_datetime = line.pre_delete_study_timestamp
@@ -250,7 +258,7 @@ def _post_commit_unlink_ice_entry_from_study(user_email, study_pk, study_creatio
     """
     logger.info('Start ' + _post_commit_unlink_ice_entry_from_study.__name__ + '()')
 
-    ice = IceApi(auth=HmacAuth.get(username=user_email)) if not settings.USE_CELERY else None
+    ice = IceApi(auth=IceHmacAuth(username=user_email)) if not settings.USE_CELERY else None
 
     study_url = get_abs_study_url(study_pk)
     index = 0
@@ -290,6 +298,7 @@ def _post_commit_unlink_ice_entry_from_study(user_email, study_pk, study_creatio
                                                                  workaround_strain_id)
                 track_celery_task_submission(async_result)
             else:
+                ice.write_enabled = True
                 ice.unlink_entry_from_study(workaround_strain_id, study_pk, study_url, logger)
             change_count += 1
             index += 1
@@ -317,7 +326,7 @@ def _post_commit_link_ice_entry_to_study(user_email, study, linked_strains):
     django-commit-hooks limitation that a no-arg method be passed to the post-commit hook.
     :param linked_strains cached strain information
     """
-    ice = IceApi(auth=HmacAuth.get(username=user_email)) if not settings.USE_CELERY else None
+    ice = IceApi(auth=IceHmacAuth.get(username=user_email)) if not settings.USE_CELERY else None
 
     index = 0
 
@@ -345,6 +354,7 @@ def _post_commit_link_ice_entry_to_study(user_email, study, linked_strains):
                 # strain.registry_id.__str__(), or if using Python 3,
                 # maybe strain.registry_id.to_python()
                 workaround_strain_id = parse_entry_id(strain.registry_url)
+                ice.write_enabled = True
                 ice.link_entry_to_study(workaround_strain_id, study.pk, study_url, study.name,
                                         logger)
 

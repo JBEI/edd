@@ -9,18 +9,22 @@ from django.contrib.auth.models import Group
 from django.core.exceptions import PermissionDenied
 from django.test import TestCase
 
-from . import data_import, sbml_export, utilities
-from .forms import (
+from .. import data_import, sbml_export, utilities
+from main.forms import (
+
     LineForm,
     )
-from .models import (
+from ..models import (
     Assay, CarbonSource, GeneIdentifier, GroupPermission, Line, MeasurementType, MeasurementUnit,
     Metabolite, MetadataGroup, MetadataType, Protocol, SBMLTemplate, Strain,
     Study, Update, UserPermission,
     )
-from .solr import StudySearch
+
+from ..solr import StudySearch
 from django.contrib.auth import get_user_model
 User = get_user_model()
+
+
 
 
 # Everything running in this file is a test, but Django only handles test instances of a
@@ -861,7 +865,7 @@ class SBMLUtilTests(TestCase):
         else:
             libsbml.SBML_DOCUMENT  # check to make sure it loaded
             dir_name = os.path.dirname(__file__)
-            sbml_file = os.path.join(dir_name, "fixtures", "misc_data", "simple.sbml")
+            sbml_file = os.path.join(dir_name, "../fixtures", "misc_data", "simple.sbml")
             s = sbml_export.sbml_info(i_template=0, sbml_file=sbml_file)
             self.assertEquals(s.n_sbml_species, 4)
             self.assertEquals(s.n_sbml_reactions, 5)
@@ -934,7 +938,7 @@ class ExportTests(TestCase):
                 lines=[Line.objects.get(name="Line 1"), ],
                 form={"chosenmap": 0})
             dir_name = os.path.dirname(__file__)
-            sbml_file = os.path.join(dir_name, "fixtures", "misc_data", "simple.sbml")
+            sbml_file = os.path.join(dir_name, "../fixtures", "misc_data", "simple.sbml")
             data.run(test_mode=True, sbml_file=sbml_file)
             sbml_out = data.as_sbml(8.0)
             sbml_in = libsbml.readSBMLFromString(sbml_out)

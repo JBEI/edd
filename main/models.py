@@ -23,6 +23,8 @@ from itertools import chain
 from six import string_types
 from threadlocals.threadlocals import get_current_request
 
+from jbei.edd.rest.constants import (METADATA_CONTEXT_ASSAY, METADATA_CONTEXT_LINE,
+                                     METADATA_CONTEXT_STUDY)
 from .export import table
 
 
@@ -256,9 +258,9 @@ class MetadataType(models.Model, EDDSerialize):
     """ Type information for arbitrary key-value data stored on EDDObject instances. """
 
     # defining values to use in the for_context field
-    STUDY = 'S'  # metadata stored in a Study
-    LINE = 'L'  # metadata stored in a Line
-    ASSAY = 'A'  # metadata stored in an Assay
+    STUDY = METADATA_CONTEXT_STUDY  # metadata stored in a Study
+    LINE = METADATA_CONTEXT_LINE  # metadata stored in a Line
+    ASSAY = METADATA_CONTEXT_ASSAY  # metadata stored in an Assay
     # TODO: support metadata on other EDDObject types (Protocol, Strain, Carbon Source, etc)
     CONTEXT_SET = (
         (STUDY, 'Study'),
@@ -647,32 +649,29 @@ class Study(EDDObject):
         }
 
     @staticmethod
-    def user_permission_q(user, requested_permission, keyword_prefix=''):
+    def user_permission_q(user, permission, keyword_prefix=''):
         """
         Constructs a django Q object for testing whether the specified user has the
         required permission for a study as part of a Study-related Django model query. It's
         important to note that the provided Q object will return one row for each user/group
         permission that gives the user access to the study, so clients will often want to use
-        distinct() to limit the returned results. If Django's ORM  Note that
-        this only tests
-        whether the user or group has specific permissions granted on the Study, not whether the
-        user's role (e.g. 'staff', 'admin') gives him/her access to it.  See
+        distinct() to limit the returned results. Note that
+        this only tests whether the user or group has specific permissions granted on the Study,
+        not whether the user's role (e.g. 'staff', 'admin') gives him/her access to it.  See
         user_role_has_read_access( user), user_can_read(self, user).
         :param user: the user
-        :param requested_permission: the study permission type to test (e.g. StudyPermission.READ)
+        :param permission: the study permission type to test (e.g. StudyPermission.READ)
         :param keyword_prefix: an optional keyword prefix to prepend to the query keyword arguments.
-        For example when querying Study, the default value of '' should by used, or when querying
+        For example when querying Study, the default value of '' should be used, or when querying
         for Lines, whose permissions depend on the related Study, use 'study__' similar to other
         queryset keyword arguments.
         :return: true if the user has explicit read permission to the study
         """
 
         return ((Q(**{'%suserpermission__user' % keyword_prefix: user}) &
-                 Q(**{'%suserpermission__permission_type' % keyword_prefix:
-                          requested_permission})) |
+                 Q(**{'%suserpermission__permission_type' % keyword_prefix: permission})) |
                 (Q(**{'%sgrouppermission__group__user' % keyword_prefix: user}) &
-                 Q(**{'%sgrouppermission__permission_type' % keyword_prefix:
-                          requested_permission})))
+                 Q(**{'%sgrouppermission__permission_type' % keyword_prefix: permission})))
 
     @staticmethod
     def user_role_can_read(user):
