@@ -4,7 +4,7 @@ A simple manage.py command to help in testing EDD/ICE communication and related 
 from django.core.management import BaseCommand
 from django.core.management.base import CommandError
 
-from jbei.ice.rest.ice import *
+from jbei.ice.rest.ice import (IceHmacAuth, IceApi)
 
 
 class Command(BaseCommand):
