@@ -75,7 +75,6 @@ services:
     env_file: secrets.env
     environment:
       SEARCH_URL: "solr://solr:8983/solr/"
-      EDD_DEBUG: "false"
     volumes:
       - .:/code/
   worker:
