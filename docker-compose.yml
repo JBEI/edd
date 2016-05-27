@@ -6,6 +6,17 @@ volumes:
   solrdata:
     external:  # change name below to swap out alternate volumes
       name: solrdata
+  attachdata:
+    external:  # change name below to swap out alternate volumes
+      # NOTE: creation of this volume not covered in README
+      name: attachdata
+  staticdata:
+    external:  # change name below to swap out alternate volumes
+      # NOTE: creation of this volume not covered in README
+      name: staticdata
+  redisdata:
+    external:  # change name below to swap out alternate volumes
+      name: redisdata
 services:
   postgres:
     image: postgres:9.4
@@ -14,6 +25,13 @@ services:
     ports:
       - "5432:5432"
     env_file: secrets.env
+  redis:
+    image: redis:3.2
+    volumes:
+      - redisdata:/data
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
   solr:
     image: solr:5.5
     volumes:
@@ -53,10 +71,11 @@ services:
   edd:
     build: .
     image: edd
+    command: "true"
     env_file: secrets.env
     environment:
       SEARCH_URL: "solr://solr:8983/solr/"
-    command: "true"
+      EDD_DEBUG: "false"
     volumes:
       - .:/code/
   worker:
@@ -64,11 +83,19 @@ services:
       service: edd
     restart: always
     command: celery -A edd worker -l info
+    depends_on:
+      - postgres
+      - rabbitmq
+      - redis
+      - smtp
+      - solr
     links:
       - postgres
       - rabbitmq
       - smtp
       - solr
+    volumes:
+      - attachdata:/var/www/uploads
     environment:
       - C_FORCE_ROOT=true
   appserver:
@@ -76,11 +103,21 @@ services:
       service: edd
     restart: always
     command: python manage.py runserver 0.0.0.0:8000
+    depends_on:
+      - postgres
+      - rabbitmq
+      - redis
+      - smtp
+      - solr
     links:
       - postgres
       - rabbitmq
+      - redis
       - smtp
       - solr
+    volumes:
+      - attachdata:/var/www/uploads
+      - staticdata:/var/www/static
     ports:
       - "8000:8000"
   nginx:
@@ -94,6 +131,6 @@ services:
       - "80:80"
       - "443:443"
     volumes_from:
-      - edd
+      - appserver
     volumes:
       - ./docker_services/nginx/nginx.conf:/etc/nginx/nginx.conf:ro

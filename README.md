@@ -105,9 +105,17 @@ This section contains directions for setting up a development environment on EDD
           changes will go here.
         * Create Docker volumes for each of the volumes in `docker-compose.yml`
             * Volumes are containers used to persist data between runs
-            * There are `pgdata` and `solrdata` volumes used.
-                * `docker volume create --name pgdata`
-                * `docker volume create --name solrdata`
+            * There are several volumes used:
+                * `docker volume create --name pgdata` creates the `pgdata` volume allowing the
+                  postgres service to persist its databases across container restarts.
+                * `docker volume create --name solrdata` creates the `solrdata` volume containing
+                  the data used to run the search index.
+                * `docker volume create --name attachdata` creates the `attachdata` volume where
+                  EDD will store attachment uploads locally.
+                * `docker volume create --name staticdata` creates the `staticdata` volume for
+                  static file resources used in EDD (stylesheets, images, scripts, etc.).
+                * `docker volume create --name redisdata` creates the `redisdata` volume allowing
+                  the redis service to persist its databases across container restarts.
             * Initialize the postgres volume
                 * Launch a temporary postgres service container with the data volume mounted
                   (replace `secret#` values with appropriate passwords for the `postgres` and
