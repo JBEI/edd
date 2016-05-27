@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+import arrow
+import factory
 import os.path
 import warnings
 
-import arrow
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.core.exceptions import PermissionDenied
@@ -31,6 +32,8 @@ from ..utilities import (
 User = get_user_model()
 
 
+# TODO: This comment is not up-to-date; need to find better way to indicate to tests to use a
+#   testing solr instance
 # Everything running in this file is a test, but Django only handles test instances of a
 #   database; there is no concept of a Solr test instance as far as test framework is
 #   concerned. Tests should be run with:
@@ -38,80 +41,69 @@ User = get_user_model()
 #   Otherwise, tests will pollute the search index with several entries for testing data.
 
 
+class UserFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = User
+    username = factory.Sequence(lambda n: 'user%03d' % n)  # username is unique
+
+
 class UserTests(TestCase):
-    USERNAME = "Jane Smith"
     EMAIL = "jsmith@localhost"
-    PASSWORD = 'password'
+    EMAIL2 = "jdoe@localhost"
     FIRST_NAME = "Jane"
     LAST_NAME = "Smith"
 
-    USERNAME2 = "John Doe"
-    EMAIL2 = "jdoe@localhost"
+    ADMIN_EMAIL = "ssue@localhost"
+    ADMIN_FIRST_NAME = "Sally"
+    ADMIN_LAST_NAME = "Sue"
+
+    JSON_KEYS = [
+        'description', 'disabled', 'email', 'firstname', 'groups', 'id', 'initials', 'institution',
+        'lastname', 'name', 'uid',
+    ]
+    SOLR_KEYS = [
+        'date_joined', 'email', 'fullname', 'group', 'id', 'initials', 'institution', 'is_active',
+        'is_staff', 'is_superuser', 'last_login', 'name', 'username',
+    ]
 
     # create test users
     def setUp(self):
         super(UserTests, self).setUp()
-        User.objects.create_user(
-            username=self.USERNAME,
-            email=self.EMAIL,
-            password=self.PASSWORD,
-            first_name=self.FIRST_NAME,
-            last_name=self.LAST_NAME
-            )
-        User.objects.create_user(
-            username=self.USERNAME2,
-            email=self.EMAIL2,
-            password=self.PASSWORD
-            )
-        User.objects.create_superuser(
-            username="Sally Sue",
-            email="ssue@localhost",
-            password="password",
-            first_name="Sally",
-            last_name="Sue"
-            )
+        UserFactory(email=self.EMAIL, first_name=self.FIRST_NAME, last_name=self.LAST_NAME)
+        UserFactory(email=self.EMAIL2)
+        UserFactory(email=self.ADMIN_EMAIL,  is_staff=True, is_superuser=True,
+                    first_name=self.ADMIN_FIRST_NAME, last_name=self.ADMIN_LAST_NAME)
 
     def test_monkey_patches(self):
-        """ Ensure that user has class fields"""
+        """ Checking the properties monkey-patched on to the User model. """
         # Load objects
         user1 = User.objects.get(email=self.EMAIL)
-        user2 = User.objects.get(email="jdoe@localhost")
+        user2 = User.objects.get(email=self.EMAIL2)
         # Asserts
-        self.assertTrue(user1.initials == "JS")
-        self.assertTrue(user1.email == self.EMAIL)
-        self.assertTrue(user1.initials == "JS")
-        self.assertTrue(user2.initials == '')
-        self.assertTrue(user2.username == 'John Doe')
-        self.assertTrue(user1.profile is not None)
-        self.assertTrue(user1.profile.initials == "JS")
-        self.assertTrue(user2.profile.initials == '')
+        self.assertIsNotNone(user1.profile)
+        self.assertEqual(user1.initials, 'JS')
+        self.assertEqual(user1.profile.initials, 'JS')
+        self.assertIsNone(user1.institution)
+        self.assertEqual(len(user1.institutions), 0)
+        self.assertIsNotNone(user2.profile)
+        self.assertEqual(user2.initials, '')
+        self.assertEqual(user2.profile.initials, '')
+        # ensure keys exist in JSON and Solr dict repr
         user_json = user1.to_json()
-        for key, value in {u'uid': u'Jane Smith', u'firstname': u'Jane', u'lastname': u'Smith', u'description': u'',
-                           u'name': u'Jane Smith', u'email': u'jsmith@localhost', u'initials': u'JS'}.iteritems():
-            self.assertTrue(user_json[key] == value)
+        for key in self.JSON_KEYS:
+            self.assertIn(key, user_json)
         user_solr = user1.to_solr_json()
-        for key, value in {u'username': u'Jane Smith', u'is_active': True,
-                            u'name': [u'Jane', u'Smith'], u'is_superuser': False, u'fullname': u'Jane Smith',
-                            u'email': u'jsmith@localhost', u'initials': u'JS'}.iteritems():
-            self.assertTrue(user_solr[key] == value)
+        for key in self.SOLR_KEYS:
+            self.assertIn(key, user_solr)
 
-    def test__initial_permissions(self):
-        """ Ensure user permissions"""
+    def test_initial_permissions(self):
+        """ Checking initial class-based permissions for normal vs admin user. """
         # Load objects
         user1 = User.objects.get(email=self.EMAIL)
-        user2 = User.objects.get(email="ssue@localhost")
+        admin = User.objects.get(email=self.ADMIN_EMAIL)
         # Asserts
-        self.assertFalse(user1.is_staff)
-        self.assertFalse(user1.is_superuser)
         self.assertFalse(user1.has_perm('main.change.protocol'))
-        self.assertTrue(user2.is_staff)
-        self.assertTrue(user2.is_superuser)
-        self.assertTrue(user2.has_perm('main.change.protocol'))
-        user1.is_superuser = True
-        user1.is_staff = True
-        self.assertTrue(user1.is_staff)
-        self.assertTrue(user1.is_superuser)
-        self.assertTrue(user1.has_perm('main.change.protocol'))
+        self.assertTrue(admin.has_perm('main.change.protocol'))
 
 
 class StudyTests(TestCase):
