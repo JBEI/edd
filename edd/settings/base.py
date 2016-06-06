@@ -276,7 +276,6 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 ###################################################################################################
 # https://docs.djangoproject.com/en/dev/howto/static-files/
-# Keeping all static files in the static directory of the project
 STATIC_ROOT = '/var/www/static'
 STATIC_URL = '/static/'
 STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.CachedStaticFilesStorage'

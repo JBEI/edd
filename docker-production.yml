@@ -8,11 +8,9 @@ volumes:
       name: solrdata
   attachdata:
     external:  # change name below to swap out alternate volumes
-      # NOTE: creation of this volume not covered in README
       name: attachdata
   staticdata:
     external:  # change name below to swap out alternate volumes
-      # NOTE: creation of this volume not covered in README
       name: staticdata
   redisdata:
     external:  # change name below to swap out alternate volumes
