@@ -24,7 +24,6 @@ from django.utils.translation import ugettext_lazy as _
 from django.views import generic
 from django.views.decorators.csrf import ensure_csrf_cookie
 from io import BytesIO
-from itertools import chain
 
 from . import autocomplete
 from .importer import (
@@ -32,9 +31,7 @@ from .importer import (
     interpret_raw_rna_seq_data,
 )
 from .export.forms import (ExportOptionForm, ExportSelectionForm,  WorklistForm,)
-from .export.sbml import (
-    SbmlExportMeasurementsForm, SbmlExport, SbmlExportOdForm, SbmlExportSettingsForm,
-)
+from .export.sbml import SbmlExport, SbmlExportSettingsForm
 from .export.table import ExportSelection, TableExport, WorklistExport
 from .forms import (
     AssayForm, CreateAttachmentForm, CreateCommentForm, CreateStudyForm, LineForm, MeasurementForm,
@@ -645,76 +642,21 @@ class SbmlView(EDDExportView):
 
     def init_forms(self, request, payload):
         context = super(SbmlView, self).init_forms(request, payload)
-        form_dict = {}
         # want to bind export_settings always to allow validation
         export_settings = SbmlExportSettingsForm(
             data=payload,
             initial={'sbml_template': self.selection.studies[0].metabolic_map, },
         )
-        # want to bind od_select always to allow validation
-        od_select = SbmlExportOdForm(
-            data=payload, prefix='od', selection=self.selection,
-            qfilter=(Q(measurement_type__short_name='OD') &
-                     Q(assay__protocol__categorization=Protocol.CATEGORY_OD)),
-        )
-        # detect if we're coming from a form submit on study page or a re-submit from export page
-        form_data = None
-        if export_settings.add_prefix('sbml_template') in payload:
-            # bind POST to following forms
-            form_data = payload
-        else:
-            # update previous forms to use defaults instead of triggering validation errors
+        from_study_page = export_settings.add_prefix('sbml_template') not in payload
+        if from_study_page:  # coming from study page, make sure bound data has default value
             export_settings.update_bound_data_with_defaults()
-            od_select.update_bound_data_with_defaults()
-        form_dict.update({
-            'hplc_select_form': SbmlExportMeasurementsForm(
-                data=form_data, prefix='hplc', selection=self.selection,
-                qfilter=Q(assay__protocol__categorization=Protocol.CATEGORY_HPLC),
-            ),
-            'ms_select_form': SbmlExportMeasurementsForm(
-                data=form_data, prefix='ms', selection=self.selection,
-                qfilter=Q(assay__protocol__categorization=Protocol.CATEGORY_LCMS),
-            ),
-            'ramos_select_form': SbmlExportMeasurementsForm(
-                data=form_data, prefix='ramos', selection=self.selection,
-                qfilter=Q(assay__protocol__categorization=Protocol.CATEGORY_RAMOS),
-            ),
-            'omics_select_form': SbmlExportMeasurementsForm(
-                data=form_data, prefix='ramos', selection=self.selection,
-                qfilter=Q(assay__protocol__categorization=Protocol.CATEGORY_TPOMICS),
-            ),
-        })
-        # only makes sense to include the matching and timepoint sections when a valid template
-        # is selected in the export_settings form
-        match_form = None
-        time_form = None
         if export_settings.is_valid():
-            template = export_settings.cleaned_data.get('sbml_template', None)
-            self.sbml_export = SbmlExport(template, self.selection)
-            if od_select.is_valid():
-                self.sbml_export.add_density(od_select)
-                for sbml_measurements in [f for f in form_dict.itervalues() if f.is_valid()]:
-                    self.sbml_export.add_measurements(sbml_measurements)
-                match_form = self.sbml_export.create_match_form(payload, prefix='match')
-                time_form = self.sbml_export.create_time_select_form(payload, prefix='time')
-        # collect all the warnings together for counting
-        sbml_warnings = chain(
-            export_settings.sbml_warnings,
-            od_select.sbml_warnings,
-            match_form.sbml_warnings if match_form else [],
-            *map(lambda f: f.sbml_warnings, form_dict.itervalues())
-        )
-        try:
-            context.update(form_dict)
-            context.update(
-                export_settings_form=export_settings,
-                od_select_form=od_select,
-                match_form=match_form,
-                time_form=time_form,
-                sbml_warnings=list(sbml_warnings),
-            )
-        except Exception as e:
-            logger.exception("Failed to validate forms for export: %s", e)
+            self.sbml_export = SbmlExport(export_settings, self.selection)
+            self.sbml_export.create_measurement_forms(payload, from_study_page)
+            self.sbml_export.create_output_forms(payload)
+            self.sbml_export.update_view_context(context)
+        else:
+            context.update(export_settings_form=export_settings)
         return context
 
     def render_to_response(self, context, **kwargs):

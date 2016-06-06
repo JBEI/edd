@@ -15,12 +15,13 @@ from copy import copy
 from decimal import Decimal
 from django import forms
 from django.core.exceptions import ValidationError
-from django.db.models import Max, Min, Prefetch
+from django.db.models import Max, Min, Prefetch, Q
 from django.http import QueryDict
 from django.template.defaulttags import register
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext as _
 from functools import partial, reduce
+from itertools import chain
 from six import string_types
 from threadlocals.threadlocals import get_current_request
 
@@ -56,9 +57,11 @@ class SbmlForm(forms.Form):
 class SbmlExport(object):
     """ Controller class handling the data coming from SbmlForm objects, creating further SbmlForm
         objects based on previous input, and exporting an SBML file based on the inputs. """
-    def __init__(self, sbml_template, selection, *args, **kwargs):
+    def __init__(self, export_settings, selection, *args, **kwargs):
+        sbml_template = export_settings.cleaned_data.get('sbml_template', None)
         self._sbml_template = sbml_template
         self._selection = selection
+        self._forms = {'export_settings_form': export_settings}
         self._match_fields = {}
         self._match_sbml_warnings = []
         self._max = self._min = None
@@ -163,6 +166,50 @@ class SbmlExport(object):
         match.sbml_warnings.extend(self._match_sbml_warnings)
         return match
 
+    def create_measurement_forms(self, payload, from_study_page=False, **kwargs):
+        form_data = None
+        if not from_study_page:
+            form_data = payload
+        m_forms = {
+            'od_select_form': SbmlExportOdForm(
+                data=form_data, prefix='od', selection=self.selection,
+                qfilter=(Q(measurement_type__short_name='OD') &
+                         Q(assay__protocol__categorization=Protocol.CATEGORY_OD)),
+            ),
+            'hplc_select_form': SbmlExportMeasurementsForm(
+                data=form_data, prefix='hplc', selection=self.selection,
+                qfilter=Q(assay__protocol__categorization=Protocol.CATEGORY_HPLC),
+            ),
+            'ms_select_form': SbmlExportMeasurementsForm(
+                data=form_data, prefix='ms', selection=self.selection,
+                qfilter=Q(assay__protocol__categorization=Protocol.CATEGORY_LCMS),
+            ),
+            'ramos_select_form': SbmlExportMeasurementsForm(
+                data=form_data, prefix='ramos', selection=self.selection,
+                qfilter=Q(assay__protocol__categorization=Protocol.CATEGORY_RAMOS),
+            ),
+            'omics_select_form': SbmlExportMeasurementsForm(
+                data=form_data, prefix='omics', selection=self.selection,
+                qfilter=Q(assay__protocol__categorization=Protocol.CATEGORY_TPOMICS),
+            ),
+        }
+        for m_form in [f for f in m_forms if f.is_valid()]:
+            is_density = isinstance(m_form, SbmlExportOdForm)
+            if is_density:
+                self.add_density(m_form)
+            else:
+                self.add_measurements(m_form)
+        self._forms.update(m_forms)
+
+    def create_output_forms(self, payload, **kwargs):
+        """ Create forms altering output of SBML; depends on measurement forms already existing. """
+        match_form = self.create_match_form(payload, prefix='match', **kwargs)
+        time_form = self.create_time_select_form(payload, prefix='time', **kwargs)
+        self._forms.update({
+            'match_form': match_form,
+            'time_form': time_form,
+        })
+
     def create_time_select_form(self, payload, **kwargs):
         # error if no range or if max < min
         if self._min is None or self._max is None or self._max < self._min:
@@ -204,6 +251,12 @@ class SbmlExport(object):
         # TODO: add carbon data notes
         # TODO: add protein and transcription global notes
         return builder.write_to_string(self._sbml_obj)
+
+    def update_view_context(self, context):
+        # collect all the warnings together for counting
+        sbml_warnings = chain(*map(lambda f: f.sbml_warnings, self._forms.itervalues()))
+        context.update(self._forms)
+        context.update(sbml_warnings=list(sbml_warnings))
 
     def _guess_exchange(self, measurement_type):
         mname = measurement_type.short_name
