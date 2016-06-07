@@ -642,22 +642,8 @@ class SbmlView(EDDExportView):
 
     def init_forms(self, request, payload):
         context = super(SbmlView, self).init_forms(request, payload)
-        # want to bind export_settings always to allow validation
-        export_settings = SbmlExportSettingsForm(
-            data=payload,
-            initial={'sbml_template': self.selection.studies[0].metabolic_map, },
-        )
-        from_study_page = export_settings.add_prefix('sbml_template') not in payload
-        if from_study_page:  # coming from study page, make sure bound data has default value
-            export_settings.update_bound_data_with_defaults()
-        if export_settings.is_valid():
-            self.sbml_export = SbmlExport(export_settings, self.selection)
-            self.sbml_export.create_measurement_forms(payload, from_study_page)
-            self.sbml_export.create_output_forms(payload)
-            self.sbml_export.update_view_context(context)
-        else:
-            context.update(export_settings_form=export_settings)
-        return context
+        self.sbml_export = SbmlExport(self.selection)
+        return self.sbml_export.init_forms(payload, context)
 
     def render_to_response(self, context, **kwargs):
         download = context.get('download', False)

@@ -617,28 +617,24 @@ def template_sync_species(instance):
     species_qs = MetaboliteSpecies.objects.filter(sbml_template=instance)
     exchange_qs = MetaboliteExchange.objects.filter(sbml_template=instance)
     # values_list yields a listing of tuples, unwrap the value we want
-    exist_species = {s[0]: True for s in species_qs.values_list('species')}
-    exist_exchange = {r[0]: True for r in exchange_qs.values_list('exchange_name')}
+    exist_species = {s[0] for s in species_qs.values_list('species')}
+    exist_exchange = {r[0] for r in exchange_qs.values_list('exchange_name')}
     # creating any records not in the database
-    for species in model.getListOfSpecies():
-        if not exist_species[species.getId()]:
-            MetaboliteSpecies.objects.get_or_create(
+    for species in map(lambda s: s.getId(), model.getListOfSpecies()):
+        if species not in exist_species:
+            MetaboliteSpecies.objects.get_or_create(sbml_template=instance, species=species)
+        else:
+            exist_species.remove(species)
+    reactions = map(lambda r: (r.getId(), r.getListOfReactants()), model.getListOfReactions())
+    for reaction, reactants in reactions:
+        if len(reactants) == 1 and reaction not in exist_exchange:
+            MetaboliteExchange.objects.get_or_create(
                 sbml_template=instance,
-                species=species.getId(),
+                exchange_name=reaction,
+                reactant_name=reactants[0].getSpecies()
             )
         else:
-            del exist_species[species.getId()]
-    for reaction in model.getListOfReactions():
-        reactants = reaction.getListOfReactants()
-        if len(reactants) == 1:
-            if not exist_exchange[reaction.getId()]:
-                (m_exchange, created) = MetaboliteExchange.objects.get_or_create(
-                    sbml_template=instance,
-                    exchange_name=reaction.getId(),
-                    reactant_name=reactants[0].getSpecies()
-                )
-            else:
-                del exist_exchange[reaction.getId()]
+            exist_exchange.remove(reaction)
     # removing any records in the database not in the template document
-    species_qs.filter(species__in=exist_species.keys()).delete()
-    exchange_qs.filter(exchange_name__in=exist_exchange.keys()).delete()
+    species_qs.filter(species__in=exist_species).delete()
+    exchange_qs.filter(exchange_name__in=exist_exchange).delete()

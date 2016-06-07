@@ -5,6 +5,7 @@ from __future__ import division, unicode_literals
 # FIXME need to track intracellular and extracellular measurements separately
 # (and assign to SBML species differently)
 
+import libsbml
 import logging
 import re
 import sys
@@ -57,11 +58,11 @@ class SbmlForm(forms.Form):
 class SbmlExport(object):
     """ Controller class handling the data coming from SbmlForm objects, creating further SbmlForm
         objects based on previous input, and exporting an SBML file based on the inputs. """
-    def __init__(self, export_settings, selection, *args, **kwargs):
-        sbml_template = export_settings.cleaned_data.get('sbml_template', None)
-        self._sbml_template = sbml_template
+    def __init__(self, selection, *args, **kwargs):
+        self._sbml_template = None
         self._selection = selection
-        self._forms = {'export_settings_form': export_settings}
+        self._from_study_page = False
+        self._forms = {}
         self._match_fields = {}
         self._match_sbml_warnings = []
         self._max = self._min = None
@@ -69,9 +70,6 @@ class SbmlExport(object):
         self._density = []
         self._measures = defaultdict(list)
         self._values_by_type = defaultdict(list)
-        if sbml_template:
-            self._sbml_obj = sbml_template.parseSBML()
-            self._sbml_model = self._sbml_obj.getModel()
 
     def add_density(self, density_measurements):
         measurements = density_measurements.cleaned_data.get('measurement', [])
@@ -141,6 +139,21 @@ class SbmlExport(object):
             else:
                 self._points = points
 
+    def create_export_form(self, payload, **kwargs):
+        export_settings_form = SbmlExportSettingsForm(
+            data=payload,
+            initial={'sbml_template': self._selection.studies[0].metabolic_map, },
+        )
+        self._from_study_page = export_settings_form.add_prefix('sbml_template') not in payload
+        if self._from_study_page:  # coming from study page, make sure bound data has default value
+            export_settings_form.update_bound_data_with_defaults()
+        self._forms.update(export_settings_form=export_settings_form)
+        if export_settings_form.is_valid():
+            self._sbml_template = export_settings_form.cleaned_data['sbml_template']
+            self._sbml_obj = self._sbml_template.parseSBML()
+            self._sbml_model = self._sbml_obj.getModel()
+        return export_settings_form
+
     def create_match_form(self, payload, **kwargs):
         # create the form
         match = SbmlMatchReactions(
@@ -166,49 +179,50 @@ class SbmlExport(object):
         match.sbml_warnings.extend(self._match_sbml_warnings)
         return match
 
-    def create_measurement_forms(self, payload, from_study_page=False, **kwargs):
-        form_data = None
-        if not from_study_page:
-            form_data = payload
+    def create_measurement_forms(self, payload, **kwargs):
         m_forms = {
             'od_select_form': SbmlExportOdForm(
-                data=form_data, prefix='od', selection=self.selection,
+                data=payload, prefix='od', selection=self._selection,
                 qfilter=(Q(measurement_type__short_name='OD') &
                          Q(assay__protocol__categorization=Protocol.CATEGORY_OD)),
             ),
             'hplc_select_form': SbmlExportMeasurementsForm(
-                data=form_data, prefix='hplc', selection=self.selection,
+                data=payload, prefix='hplc', selection=self._selection,
                 qfilter=Q(assay__protocol__categorization=Protocol.CATEGORY_HPLC),
             ),
             'ms_select_form': SbmlExportMeasurementsForm(
-                data=form_data, prefix='ms', selection=self.selection,
+                data=payload, prefix='ms', selection=self._selection,
                 qfilter=Q(assay__protocol__categorization=Protocol.CATEGORY_LCMS),
             ),
             'ramos_select_form': SbmlExportMeasurementsForm(
-                data=form_data, prefix='ramos', selection=self.selection,
+                data=payload, prefix='ramos', selection=self._selection,
                 qfilter=Q(assay__protocol__categorization=Protocol.CATEGORY_RAMOS),
             ),
             'omics_select_form': SbmlExportMeasurementsForm(
-                data=form_data, prefix='omics', selection=self.selection,
+                data=payload, prefix='omics', selection=self._selection,
                 qfilter=Q(assay__protocol__categorization=Protocol.CATEGORY_TPOMICS),
             ),
         }
-        for m_form in [f for f in m_forms if f.is_valid()]:
-            is_density = isinstance(m_form, SbmlExportOdForm)
-            if is_density:
-                self.add_density(m_form)
-            else:
-                self.add_measurements(m_form)
+        for m_form in m_forms.itervalues():
+            if self._from_study_page:
+                m_form.update_bound_data_with_defaults()
+            if m_form.is_valid() and self._sbml_template:
+                is_density = isinstance(m_form, SbmlExportOdForm)
+                if is_density:
+                    self.add_density(m_form)
+                else:
+                    self.add_measurements(m_form)
         self._forms.update(m_forms)
 
     def create_output_forms(self, payload, **kwargs):
         """ Create forms altering output of SBML; depends on measurement forms already existing. """
-        match_form = self.create_match_form(payload, prefix='match', **kwargs)
-        time_form = self.create_time_select_form(payload, prefix='time', **kwargs)
-        self._forms.update({
-            'match_form': match_form,
-            'time_form': time_form,
-        })
+        if all(map(lambda f: f.is_valid(), self._forms.itervalues())):
+            match_form = self.create_match_form(payload, prefix='match', **kwargs)
+            time_form = self.create_time_select_form(payload, prefix='time', **kwargs)
+            self._forms.update({
+                'match_form': match_form,
+                'time_form': time_form,
+            })
 
     def create_time_select_form(self, payload, **kwargs):
         # error if no range or if max < min
@@ -222,6 +236,12 @@ class SbmlExport(object):
             t_range=t_range, points=points, selection=self._selection, data=payload, **kwargs
         )
         return time_form
+
+    def init_forms(self, payload, context):
+        self.create_export_form(payload)
+        self.create_measurement_forms(payload)
+        self.create_output_forms(payload)
+        return self.update_view_context(context)
 
     def load_measurement_queryset(self, measurements):
         """ Creates a queryset from the IDs in the measurements parameter, prefetching values to a
@@ -254,9 +274,11 @@ class SbmlExport(object):
 
     def update_view_context(self, context):
         # collect all the warnings together for counting
-        sbml_warnings = chain(*map(lambda f: f.sbml_warnings, self._forms.itervalues()))
+        forms = [f for f in self._forms.itervalues() if isinstance(f, SbmlForm)]
+        sbml_warnings = chain(*map(lambda f: f.sbml_warnings if f else [], forms))
         context.update(self._forms)
         context.update(sbml_warnings=list(sbml_warnings))
+        return context
 
     def _guess_exchange(self, measurement_type):
         mname = measurement_type.short_name
@@ -557,6 +579,20 @@ class SbmlExportMeasurementsForm(SbmlForm):
         # max and min are both still arrays, grab the first element
         return (x_min[0], x_max[0])
 
+    def update_bound_data_with_defaults(self):
+        """ Forces data bound to the form to update to default values. """
+        if self.is_bound:
+            # create mutable copy of QueryDict
+            replace_data = QueryDict(mutable=True)
+            replace_data.update(self.data)
+            # set initial measurement values
+            mfield = self.fields['measurement']
+            replace_data.setlist(
+                self.add_prefix('measurement'),
+                ['%s' % v.pk for v in mfield.initial]
+            )
+            self.data = replace_data
+
     def _get_measurements(self):
         # lazy eval and try not to query more than once
         # NOTE: still gets evaled at least three times: populating choices, here, and validation
@@ -676,16 +712,11 @@ class SbmlExportOdForm(SbmlExportMeasurementsForm):
 
     def update_bound_data_with_defaults(self):
         """ Forces data bound to the form to update to default values. """
+        super(SbmlExportOdForm, self).update_bound_data_with_defaults()
         if self.is_bound:
             # create mutable copy of QueryDict
             replace_data = QueryDict(mutable=True)
             replace_data.update(self.data)
-            # set initial measurement values
-            mfield = self.fields['measurement']
-            replace_data.setlist(
-                self.add_prefix('measurement'),
-                ['%s' % v.pk for v in mfield.initial]
-            )
             # set initial gcdw_conversion values
             cfield = self.fields['gcdw_conversion']
             if cfield.initial:
@@ -735,7 +766,7 @@ class SbmlMatchReactions(SbmlForm):
         self.fields.update(match_fields)
 
     def clean(self):
-        # TODO
+        # TODO validate the choices
         return super(SbmlMatchReactions, self).clean()
 
 
@@ -787,18 +818,14 @@ class SbmlExportSelectionForm(forms.Form):
 class SbmlBuilder(object):
     """ A little facade class to provide better interface to libsbml and some higher-level
         utilities to work with SBML files. """
-    def __init__(self):
-        import libsbml
-        self.libsbml = libsbml
-
     def create_note_body(self):
-        notes_node = self.libsbml.XMLNode()
-        body_tag = self.libsbml.XMLTriple(b"body", b"", b"")
-        attributes = self.libsbml.XMLAttributes()
-        namespace = self.libsbml.XMLNamespaces()
+        notes_node = libsbml.XMLNode()
+        body_tag = libsbml.XMLTriple(b"body", b"", b"")
+        attributes = libsbml.XMLAttributes()
+        namespace = libsbml.XMLNamespaces()
         namespace.add(b"http://www.w3.org/1999/xhtml", b"")
-        body_token = self.libsbml.XMLToken(body_tag, attributes, namespace)
-        body_node = self.libsbml.XMLNode(body_token)
+        body_token = libsbml.XMLToken(body_tag, attributes, namespace)
+        body_node = libsbml.XMLNode(body_token)
         notes_node.addChild(body_node)
         return notes_node
 
@@ -828,10 +855,10 @@ class SbmlBuilder(object):
         body = _note_node
         if _note_node.hasChild(b'body'):
             body = _note_node.getChild(0)
-        attributes = self.libsbml.XMLAttributes()
-        namespace = self.libsbml.XMLNamespaces()
-        p_tag = self.libsbml.XMLTriple(b"p", b"", b"")
-        p_token = self.libsbml.XMLToken(p_tag, attributes, namespace)
+        attributes = libsbml.XMLAttributes()
+        namespace = libsbml.XMLNamespaces()
+        p_tag = libsbml.XMLTriple(b"p", b"", b"")
+        p_token = libsbml.XMLToken(p_tag, attributes, namespace)
         notes = self.parse_note_body(body)
         notes.update(**kwargs)
         body.removeChildren()
@@ -843,17 +870,17 @@ class SbmlBuilder(object):
                 text = ('%s: %s' % (encode_key, value)).encode('utf-8')
             else:
                 text = ('%s: ' % encode_key).encode('utf-8')
-            text_token = self.libsbml.XMLToken(text)
-            text_node = self.libsbml.XMLNode(text_token)
-            p_node = self.libsbml.XMLNode(p_token)
+            text_token = libsbml.XMLToken(text)
+            text_node = libsbml.XMLNode(text_token)
+            p_node = libsbml.XMLNode(p_token)
             p_node.addChild(text_node)
-            if isinstance(value, self.libsbml.XMLNode):
+            if isinstance(value, libsbml.XMLNode):
                 p_node.addChild(value)
             body.addChild(p_node)
         return _note_node
 
     def write_to_string(self, document):
-        return self.libsbml.writeSBMLToString(document)
+        return libsbml.writeSBMLToString(document)
 
 
 def compose(*args):
@@ -902,7 +929,6 @@ def generate_species_name_guesses_from_metabolite_name(mname):
 # ADMIN FEATURES
 #
 def validate_sbml_attachment(file_data):
-    import libsbml
     sbml = libsbml.readSBMLFromString(file_data)
     errors = sbml.getErrorLog()
     if (errors.getNumErrors() > 0):
