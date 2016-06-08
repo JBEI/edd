@@ -4,13 +4,13 @@
   "description": "Nodejs code associated with the Django port of EDD.",
   "main": "index.js",
   "dependencies": {
-    "grunt": "^0.4.5"
+    "grunt": "^1.0.1"
   },
   "devDependencies": {
-    "grunt-contrib-clean": "^0.7.0",
-    "grunt-contrib-copy": "^0.8.2",
-    "grunt-contrib-uglify": "^0.11.0",
-    "grunt-contrib-watch": "^0.6.1",
+    "grunt-contrib-clean": "^1.0.0",
+    "grunt-contrib-copy": "^1.0.0",
+    "grunt-contrib-uglify": "^1.0.1",
+    "grunt-contrib-watch": "^1.0.0",
     "grunt-exec": "^0.4.6",
     "grunt-insert-timestamp": "^0.1.0",
     "grunt-typescript": "^0.8.0"
