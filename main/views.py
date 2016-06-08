@@ -287,12 +287,7 @@ class StudyDetailView(generic.DetailView):
         # allow any who can view to export
         if line_action == 'export':
             export_type = request.POST.get('export', 'csv')
-            if export_type == 'sbml':
-                return SbmlView.as_view()
-            else:
-                return ExportView.as_view()
-        elif line_action == 'worklist':
-            return WorklistView.as_view()
+            return self._get_export_types().get(export_type, ExportView.as_view())
         # but not edit
         elif not can_write:
             messages.error(request, 'You do not have permission to modify this study.')
@@ -516,6 +511,13 @@ class StudyDetailView(generic.DetailView):
         except Assay.DoesNotExist:
             logger.warning('Failed to load assay,study combo %s,%s' % (assay_id, study.pk))
         return None
+
+    def _get_export_types(self):
+        return {
+            'csv': ExportView.as_view(),
+            'sbml': SbmlView.as_view(),
+            'worklist': WorklistView.as_view(),
+        }
 
     def _get_line(self, line_id):
         study = self.get_object()
