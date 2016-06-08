@@ -147,7 +147,7 @@ def handle_study_post_save(sender, instance, created, raw, using, **kwargs):
 
         # if an error occurs, print a helpful log message, then re-raise it so Django will email
         # administrators
-        except RuntimeError as rte:
+        except StandardError as rte:
             if settings.USE_CELERY:
                 logger.exception("Error submitting study link rename task(s) to Celery for study "
                                  "id= %d" % study.pk)
@@ -310,7 +310,7 @@ def _post_commit_unlink_ice_entry_from_study(user_email, study_pk, study_creatio
 
     # if an error occurs, print a helpful log message, then re-raise it so Django will email
     # administrators
-    except RuntimeError as rte:
+    except StandardError as rte:
         if settings.USE_CELERY:
             logger.exception("Exception submitting job to Celery (index=%d)" % index)
         else:
@@ -362,7 +362,7 @@ def _post_commit_link_ice_entry_to_study(user_email, study, linked_strains):
 
     # if an error occurs, print a helpful log message, then re-raise it so Django will email
     # administrators
-    except RuntimeError as rte:
+    except StandardError as rte:
         if settings.USE_CELERY:
             logger.exception("Error submitting jobs to Celery (index=%d)" % index)
         else:
@@ -500,7 +500,7 @@ def handle_line_strain_changed(sender, instance, action, reverse, model, pk_set,
             logger.warning("Detected changes from fixtures, skipping ICE signal handling.")
         # if an error occurs, print a helpful log message, then re-raise it so Django will email
         # administrators
-        except RuntimeError:
+        except StandardError:
             logger.exception("Exception scheduling post-commit work. Failed on strain with id %d" %
                              strain_pk)
     elif 'pre_remove' == action:
@@ -568,7 +568,7 @@ def handle_line_strain_changed(sender, instance, action, reverse, model, pk_set,
             logger.warning("Detected changes from fixtures, skipping ICE signal handling.")
         # if an error occurs, print a helpful log message, then re-raise it so Django will email
         # administrators
-        except RuntimeError:
+        except StandardError:
             logger.exception("Exception scheduling post-commit work. Failed on strain with id %d" %
                              strain_pk)
 

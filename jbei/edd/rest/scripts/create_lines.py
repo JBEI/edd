@@ -1024,8 +1024,8 @@ def prevent_duplicate_line_names(edd, study_number, csv_summary, input_timer):
                               str(0).ljust(existing_col_width),
                               str(csv_duplication_count).ljust(csv_col_width))))
 
-WELL_LOCATION_METADATA_NAME = 'Well Location'
-PLATE_LOCATION_METADATA_NAME = 'Plate Location'
+WELL_LOCATION_METADATA_NAME = 'Sample Position'
+PLATE_LOCATION_METADATA_NAME = 'Plate Name'
 
 
 def get_line_metadata_types(edd, metadata_dict):
