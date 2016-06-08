@@ -1915,6 +1915,10 @@ var DataGridSpecLines = (function (_super) {
         showCarbonBalanceWidget.displayBeforeViewMenu(true);
         widgetSet.push(showCarbonBalanceWidget);
         this.carbonBalanceWidget = showCarbonBalanceWidget;
+        // A "deselect all" button
+        var deselectAllWidget = new DGDeselectAllWidget(dataGrid, this);
+        deselectAllWidget.displayBeforeViewMenu(true);
+        widgetSet.push(deselectAllWidget);
         // A "select all" button
         var selectAllWidget = new DGSelectAllWidget(dataGrid, this);
         selectAllWidget.displayBeforeViewMenu(true);
