@@ -297,7 +297,8 @@ def _post_commit_unlink_ice_entry_from_study(user_email, study_pk, study_creatio
     # if an error occurs, print a helpful log message, then re-raise it so Django will email
     # administrators
     except StandardError as err:
-        _handle_post_commit_ice_lambda_error(err, index)
+        strain_pks = [strain.pk for strain in removed_strains]
+        _handle_post_commit_ice_lambda_error(err, 'remove', study_pk, strain_pks, index)
 
 
 def _post_commit_link_ice_entry_to_study(user_email, study, linked_strains):
@@ -345,10 +346,11 @@ def _post_commit_link_ice_entry_to_study(user_email, study, linked_strains):
     # if an error occurs, print a helpful log message, then re-raise it so Django will email
     # administrators
     except StandardError as err:
-        _handle_post_commit_ice_lambda_error(err, index)
+        linked_strain_pks = [strain.pk for strain in linked_strains]
+        _handle_post_commit_ice_lambda_error(err, 'add/update', study.pk, linked_strain_pks, index)
 
 
-def _handle_post_commit_ice_lambda_error(err, index):
+def _handle_post_commit_ice_lambda_error(err, operation, study_pk, strains_to_update, index):
     """
     Handles exceptions from post-commit lambda's used to communicate with ICE. Note that although
     Django typically automatically handles uncaught exceptions by emailing admins, it doesn't seem
@@ -358,7 +360,12 @@ def _handle_post_commit_ice_lambda_error(err, index):
     """
     error_msg = None
     if settings.USE_CELERY:
-        error_msg = "Error submitting jobs to Celery (index=%d)" % index
+        error_msg = ("Error submitting Celery jobs to %(operation)s ICE strain link(s) for study "
+                     "%(study_pk)d. Strains to update: %(strains)s (index=%(index)d)" % {
+                        'operation': operation,
+                        'study_pk': study_pk,
+                        'strains': str(strains_to_update),
+                        'index': index, })
     else:
         error_msg = "Error updating ICE links via direct HTTP request (index=%d)" % index
 
