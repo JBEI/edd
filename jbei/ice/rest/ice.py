@@ -1147,8 +1147,8 @@ class IceApi(RestApiClient):
 
     # TODO: doesn't support field filters yet, though ICE's API does
     def search_entries(self, search_terms=None, entry_types=None, blast_program=None,
-                       blast_sequence=None, search_web=False,
-                       sort_field=None, sort_ascending=False, page_number=DEFAULT_PAGE_NUMBER,
+                       blast_sequence=None, search_web=False, sort_field=None,
+                       sort_ascending=False, page_number=DEFAULT_PAGE_NUMBER,
                        suppress_errors=False):
         # TODO: consider removing suppress_errors and forcing client code to support that function,
         # when/if needed
@@ -1194,7 +1194,7 @@ class IceApi(RestApiClient):
         query_dict = {}
         if not query_url:
             if search_terms:
-                query_dict['q'] = search_terms
+                query_dict['queryString'] = search_terms
             if entry_types:
                 if not set(entry_types).issubset(set(ICE_ENTRY_TYPES)):
                     raise KeyError('')
@@ -1365,7 +1365,7 @@ class IceApi(RestApiClient):
             response.raise_for_status()
 
         # Filter out links that aren't for this study
-        json_dict = response.json()  # TODO: doesn't account for
+        json_dict = response.json()  # TODO: doesn't account for results paging see EDD-200
         study_links = [link for link in json_dict if study_url.lower() == link.get('url').lower()]
         logger.debug("Existing links response: " + json_dict.__str__())
 
