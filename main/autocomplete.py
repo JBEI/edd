@@ -9,7 +9,7 @@ from django.http import JsonResponse
 from django.contrib.auth.models import Group
 from functools import reduce
 
-from jbei.ice.rest.ice import HmacAuth, IceApi
+from jbei.ice.rest.ice import IceHmacAuth, IceApi
 from . import models as edd_models
 from .solr import UserSearch
 
@@ -127,13 +127,13 @@ def search_sbml_species(request):
 
 def search_strain(request):
     """ Autocomplete delegates to ICE search API. """
-    auth = HmacAuth.get(username=request.user.email)
+    auth = IceHmacAuth.get(username=request.user.email)
     ice = IceApi(auth=auth)
     term = request.GET.get('term', '')
-    found = ice.search_for_part(term, suppress_errors=True)
+    found = ice.search_entries(term, suppress_errors=True)
     results = []
     if found is not None:  # None == there were errors searching
-        results = [match.get('entryInfo', dict()) for match in found.get('results', [])]
+        results = [match.entry.to_json_dict() for match in found.results]
     return JsonResponse({
         'rows': results,
     })
