@@ -31,7 +31,7 @@ from .importer import (
     interpret_raw_rna_seq_data,
 )
 from .export.forms import (ExportOptionForm, ExportSelectionForm,  WorklistForm,)
-from .export.sbml import SbmlExport, SbmlExportSettingsForm
+from .export.sbml import SbmlExport
 from .export.table import ExportSelection, TableExport, WorklistExport
 from .forms import (
     AssayForm, CreateAttachmentForm, CreateCommentForm, CreateStudyForm, LineForm, MeasurementForm,
