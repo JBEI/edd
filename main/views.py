@@ -573,7 +573,7 @@ class EDDExportView(generic.TemplateView):
         if context.get('download', False) and self._export:
             response = HttpResponse(self._export.output(), content_type='text/csv')
             # set download filename as the first name in the exported studies
-            study = self._export.selection.studies.values()[0]
+            study = self._export.selection.studies[0]
             response['Content-Disposition'] = 'attachment; filename="%s.csv"' % study.name
             return response
         return super(EDDExportView, self).render_to_response(context, **kwargs)
