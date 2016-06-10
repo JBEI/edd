@@ -3,6 +3,15 @@ FROM python:2.7
 MAINTAINER William Morrell "WCMorrell@lbl.gov"
 
 ENV PYTHONUNBUFFERED 1
+ENV DOCKERIZE_VERSION v0.2.0
+
+RUN apt-get update \
+    && apt-get install -y \
+        wget \
+    && apt-get autoremove -y \
+    && rm -rf /var/lib/apt/lists/* \
+    && wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
+    && tar -C /usr/local/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
 
 RUN pip install --upgrade pip setuptools wheel
 
@@ -14,6 +23,5 @@ WORKDIR /opt/celery-flower
 
 EXPOSE 5555
 
-ENTRYPOINT ["/usr/local/bin/celery"]
-CMD ["--loglevel=info","-P", "gevent", "flower"]
+CMD ["dockerize", "-wait", "tcp://rabbitmq:5672", "-timeout", "1m", "/usr/local/bin/celery", "--loglevel=info","-P", "gevent", "flower"]
 
