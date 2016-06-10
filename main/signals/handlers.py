@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 import logging
+import traceback
 
 from builtins import str
 from django.conf import settings
@@ -13,7 +14,7 @@ from django.db.models.signals import m2m_changed, post_delete, post_save, pre_sa
 from django.dispatch import receiver
 from django.core.mail import mail_managers
 
-from jbei.ice.rest.ice import parse_entry_id, HmacAuth, IceHmacAuth
+from jbei.ice.rest.ice import IceHmacAuth, parse_entry_id
 from . import study_modified, study_removed, user_modified
 from ..models import (
     Line, MetaboliteExchange, MetaboliteSpecies, SBMLTemplate, Strain, Study, Update,
@@ -67,7 +68,7 @@ def index_user(sender, user, **kwargs):
         users.update([user, ])
     except ConnectionError as e:
         mail_managers("Error connecting to Solr at login", "support needed")
-        logger.exception("Error connecting to Solr at login")
+        logger.exception("Error connecting to Solr at login: %s", e)
 
 
 def log_update_warning_msg(study_id):
@@ -125,38 +126,23 @@ def handle_study_post_save(sender, instance, created, raw, using, **kwargs):
         update = Update.load_update()  # find which user made the update that caused this signal
         user_email = update.mod_by.email
 
-        try:
-
-            # filter out strains that don't have enough information to link to ICE
-            strains_to_link = []
-            for strain in strains.all():
-                if not _is_linkable(strain):
-                    logger.warning(
-                        "Strain with id %d is no longer linked to study id %d, but doesn't have "
-                        "enough data to link to ICE. It's possible (though unlikely) that the EDD "
-                        "strain has been modified since an ICE link was created for it."
-                        % (strain.pk, study.pk))
-                    continue
-
-                strains_to_link.append(strain)
-
-            # schedule ICE updates as soon as the database changes commit
-            connection.on_commit(lambda: _post_commit_link_ice_entry_to_study(user_email, study,
-                                                                              strains_to_link))
-            logger.info("Scheduled post-commit work to update labels for %d of %d strains "
-                        "associated with study %d"
-                        % (len(strains_to_link), strains.count(), study.pk))
-
-        # if an error occurs, print a helpful log message, then re-raise it so Django will email
-        # administrators
-        except RuntimeError as rte:
-            if settings.USE_CELERY:
-                logger.exception("Error submitting study link rename task(s) to Celery for study "
-                                 "id= %d" % study.pk)
-            else:
-                logger.exception("Error making direct HTTP requests to ICE to rename study id = %d"
-                                 % study.pk)
-            raise rte
+        # filter out strains that don't have enough information to link to ICE
+        strains_to_link = []
+        for strain in strains.all():
+            if not _is_linkable(strain):
+                logger.warning(
+                    "Strain with id %d is no longer linked to study id %d, but doesn't have "
+                    "enough data to link to ICE. It's possible (though unlikely) that the EDD "
+                    "strain has been modified since an ICE link was created for it."
+                    % (strain.pk, study.pk))
+                continue
+            strains_to_link.append(strain)
+        # schedule ICE updates as soon as the database changes commit
+        connection.on_commit(lambda: _post_commit_link_ice_entry_to_study(user_email, study,
+                                                                          strains_to_link))
+        logger.info("Scheduled post-commit work to update labels for %d of %d strains "
+                    "associated with study %d"
+                    % (len(strains_to_link), strains.count(), study.pk))
 
 
 @receiver(pre_delete, sender=Line, dispatch_uid="main.signals.handlers.handle_line_pre_delete")
@@ -312,12 +298,9 @@ def _post_commit_unlink_ice_entry_from_study(user_email, study_pk, study_creatio
 
     # if an error occurs, print a helpful log message, then re-raise it so Django will email
     # administrators
-    except RuntimeError as rte:
-        if settings.USE_CELERY:
-            logger.exception("Exception submitting job to Celery (index=%d)" % index)
-        else:
-            logger.exception("Exception updating ICE links via HTTP requests (index=%d)" % index)
-        raise rte
+    except Exception as err:
+        strain_pks = [strain.pk for strain in removed_strains]
+        _handle_post_commit_ice_lambda_error(err, 'remove', study_pk, strain_pks, index)
 
 
 def _post_commit_link_ice_entry_to_study(user_email, study, linked_strains):
@@ -364,12 +347,42 @@ def _post_commit_link_ice_entry_to_study(user_email, study, linked_strains):
 
     # if an error occurs, print a helpful log message, then re-raise it so Django will email
     # administrators
-    except RuntimeError as rte:
-        if settings.USE_CELERY:
-            logger.exception("Error submitting jobs to Celery (index=%d)" % index)
-        else:
-            logger.exception("Error updating ICE links via direct HTTP request (index=%d)" % index)
-        raise rte
+    except Exception as err:
+        linked_strain_pks = [strain.pk for strain in linked_strains]
+        _handle_post_commit_ice_lambda_error(err, 'add/update', study.pk, linked_strain_pks, index)
+
+
+def _handle_post_commit_ice_lambda_error(err, operation, study_pk, strains_to_update, index):
+    """
+    Handles exceptions from post-commit lambda's used to communicate with ICE. Note that although
+    Django typically automatically handles uncaught exceptions by emailing admins, it doesn't seem
+    to be handling them in the case of post-commit lambda's (see EDD-178)
+    :param err:
+    :return:
+    """
+    error_msg = None
+    if settings.USE_CELERY:
+        error_msg = ("Error submitting Celery jobs to %(operation)s ICE strain link(s) for study "
+                     "%(study_pk)d. Strains to update: %(strains)s (index=%(index)d)" % {
+                        'operation': operation,
+                        'study_pk': study_pk,
+                        'strains': str(strains_to_update),
+                        'index': index, })
+    else:
+        error_msg = "Error updating ICE links via direct HTTP request (index=%d)" % index
+
+    logger.exception(error_msg)
+    traceback_str = build_traceback_msg()
+    msg = '%s\n\n%s' % (error_msg, traceback_str)
+
+    # Workaround EDD-176. Django doesn't seem to be picking up errors / emailing admins
+    # for uncaught exceptions in signal handlers. Note that even if Django resolves this,
+    # we *still* won't want to raise the exception since that would cause the EDD user to get an
+    # error message for a process that from their perspective was a success. We can consider
+    # changing this behavior after deploying Celery in production, which will effectively mask
+    # the error from EDD users (EDD-176). At that point, errors generated here will just reflect
+    # errors communicating with Celery, which should probably still be masked from users.
+    mail_admins(error_msg, msg)
 
 
 def _is_linkable(strain):
@@ -502,7 +515,7 @@ def handle_line_strain_changed(sender, instance, action, reverse, model, pk_set,
             logger.warning("Detected changes from fixtures, skipping ICE signal handling.")
         # if an error occurs, print a helpful log message, then re-raise it so Django will email
         # administrators
-        except RuntimeError:
+        except Exception:
             logger.exception("Exception scheduling post-commit work. Failed on strain with id %d" %
                              strain_pk)
     elif 'pre_remove' == action:
@@ -570,7 +583,7 @@ def handle_line_strain_changed(sender, instance, action, reverse, model, pk_set,
             logger.warning("Detected changes from fixtures, skipping ICE signal handling.")
         # if an error occurs, print a helpful log message, then re-raise it so Django will email
         # administrators
-        except RuntimeError:
+        except Exception:
             logger.exception("Exception scheduling post-commit work. Failed on strain with id %d" %
                              strain_pk)
 
@@ -638,3 +651,13 @@ def template_sync_species(instance):
     # removing any records in the database not in the template document
     species_qs.filter(species__in=exist_species).delete()
     exchange_qs.filter(exchange_name__in=exist_exchange).delete()
+
+
+def build_traceback_msg():
+    """
+    Builds an error message for inclusion into an email to sysadmins
+    :return:
+    """
+    formatted_lines = traceback.format_exc().splitlines()
+    traceback_str = '\n'.join(formatted_lines)
+    return 'The contents of the full traceback was:\n\n%s' % traceback_str
