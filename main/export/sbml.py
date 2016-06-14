@@ -26,6 +26,7 @@ from itertools import chain
 from six import string_types
 from threadlocals.threadlocals import get_current_request
 
+from .. import models
 from ..forms import (
     MetadataTypeAutocompleteWidget, SbmlExchangeAutocompleteWidget, SbmlSpeciesAutocompleteWidget
 )
@@ -73,6 +74,7 @@ class SbmlExport(object):
 
     def add_density(self, density_measurements):
         measurements = density_measurements.cleaned_data.get('measurement', [])
+        interpolate = density_measurements.cleaned_data.get('interpolate', [])
         default_factor = density_measurements.cleaned_data.get('gcdw_default', 0.65)
         factor_meta = density_measurements.cleaned_data.get('gcdw_conversion', None)
         measurement_qs = self.load_measurement_queryset(measurements)
@@ -88,56 +90,26 @@ class SbmlExport(object):
                 self._density.append(Point([v.x[0]], [v.y[0] * factor]))
         # make sure it's sorted; potentially out-of-order from multiple measurements
         sorted(self._density, key=lambda p: p.x[0])
+        # capture lower/upper bounds of t values for all measurements
+        self._update_range_bounds(measurements, interpolate)
 
     def add_measurements(self, sbml_measurements):
         """ Add measurements to the export from a SbmlExportMeasurementsForm. """
         measurements = sbml_measurements.cleaned_data.get('measurement', [])
         interpolate = sbml_measurements.cleaned_data.get('interpolate', [])
-        measurement_qs = self.load_measurement_queryset(measurements)
-        types_qs = MeasurementType.objects.filter(measurement__in=measurements)
-        types_list = list(types_qs.distinct())
-        species_qs = MetaboliteSpecies.objects.filter(
-            measurement_type__in=types_list,
-            sbml_template=self._sbml_template,
-        )
-        species_match = {s.measurement_type_id: s for s in species_qs}
-        exchange_qs = MetaboliteExchange.objects.filter(
-            measurement_type__in=types_list,
-            sbml_template=self._sbml_template,
-        )
-        exchange_match = {x.measurement_type_id: x for x in exchange_qs}
-        # add fields matching species/exchange for every measurement type
-        for t in types_list:
-            key = '%s' % t.pk
-            if key not in self._match_fields:
-                i_species = species_match.get(t.pk, self._guess_species(t))
-                i_exchange = exchange_match.get(t.pk, self._guess_exchange(t))
-                self._match_fields[key] = SbmlMatchReactionField(
-                    initial=(i_species, i_exchange),
-                    label=t.type_name,
-                    required=False,
-                    template=self._sbml_template,
-                )
+        # process all the scalar measurements
+        types_qs = MeasurementType.objects.filter(
+            measurement__in=measurements,
+            measurement__measurement_format=models.MeasurementFormat.SCALAR,
+        ).distinct()
+        types_list = list(types_qs)
+        # add fields matching species/exchange for every scalar measurement type
+        self._build_match_fields(types_list)
         # store measurements keyed off type
         for m in measurements:
             self._measures['%s' % m.measurement_type_id].append(m)
         # capture lower/upper bounds of t values for all measurements
-        trange = measurement_qs.aggregate(
-            max_t=Max('measurementvalue__x'), min_t=Min('measurementvalue__x'),
-        )
-        # use 1e9 as really big number in place of None, get smallest min:max range over all
-        if trange['max_t']:
-            self._max = min(trange['max_t'][0], self._max or sys.maxint)
-        if trange['min_t']:
-            self._min = max(trange['min_t'][0], self._min or -sys.maxint)
-        # iff no interpolation, capture intersection of t values bounded by max & min
-        m_inter = measurement_qs.exclude(assay__protocol__in=interpolate)
-        for m in m_inter:
-            points = set([p.x[0] for p in m.values if self._min <= p.x[0] <= self._max])
-            if self._points:
-                self._points.intersection_update(points)
-            else:
-                self._points = points
+        self._update_range_bounds(measurements, interpolate)
 
     def create_export_form(self, payload, **kwargs):
         export_settings_form = SbmlExportSettingsForm(
@@ -250,12 +222,13 @@ class SbmlExport(object):
         # https://code.djangoproject.com/ticket/24747
         values_qs = MeasurementValue.objects.filter(x__len=1, y__len=1).order_by('x')
         return Measurement.objects.filter(
-                pk__in=measurements,
+                pk__in=measurements, measurement_format=models.MeasurementFormat.SCALAR
             ).prefetch_related(
                 Prefetch('measurementvalue_set', queryset=values_qs, to_attr='values'),
             )
 
     def output(self, time, matches):
+        # TODO: make matches param match_form instead of match_form.cleaned_data
         # map species / reaction IDs to measurement IDs
         our_species = {}
         our_reactions = {}
@@ -266,9 +239,10 @@ class SbmlExport(object):
                 if match[1] and match[1] not in our_reactions:
                     our_reactions[match[1]] = mtype
         builder = SbmlBuilder()
+        # TODO: update biomass reaction based on density data
         self._update_species(builder, our_species, time)
         self._update_reaction(builder, our_reactions, time)
-        # TODO: add carbon data notes
+        self._update_carbon_ratio(builder, time)
         # TODO: add protein and transcription global notes
         return builder.write_to_string(self._sbml_obj)
 
@@ -279,6 +253,29 @@ class SbmlExport(object):
         context.update(self._forms)
         context.update(sbml_warnings=list(sbml_warnings))
         return context
+
+    def _build_match_fields(self, types_list):
+        species_qs = MetaboliteSpecies.objects.filter(
+            measurement_type__in=types_list,
+            sbml_template=self._sbml_template,
+        )
+        species_match = {s.measurement_type_id: s for s in species_qs}
+        exchange_qs = MetaboliteExchange.objects.filter(
+            measurement_type__in=types_list,
+            sbml_template=self._sbml_template,
+        )
+        exchange_match = {x.measurement_type_id: x for x in exchange_qs}
+        for t in types_list:
+            key = '%s' % t.pk
+            if key not in self._match_fields:
+                i_species = species_match.get(t.pk, self._guess_species(t))
+                i_exchange = exchange_match.get(t.pk, self._guess_exchange(t))
+                self._match_fields[key] = SbmlMatchReactionField(
+                    initial=(i_species, i_exchange),
+                    label=t.type_name,
+                    required=False,
+                    template=self._sbml_template,
+                )
 
     def _guess_exchange(self, measurement_type):
         mname = measurement_type.short_name
@@ -325,6 +322,49 @@ class SbmlExport(object):
             if guess in lookup:
                 return lookup[guess]
         return None
+
+    def _update_carbon_ratio(self, builder, time):
+        notes = defaultdict(list)
+        for mlist in self._measures.itervalues():
+            for m in mlist:
+                if m.is_carbon_ratio():
+                    magnitudes = models.MeasurementValue.objects.filter(
+                        measurement=m, x__0=time,
+                    ).values_list('y')[0][0]
+                    combined = ['%s(0.02)' % v for v in magnitudes]
+                    # pad out to 13 elements
+                    combined += ['-'] * (13 - len(magnitudes))
+                    name = m.measurement_type.short_name
+                    value = '\t'.join(combined)
+                    notes[m.assay.protocol.name].append('%s\tM-0\t%s' % (name, value))
+        if self._sbml_model.isSetNotes():
+            notes_obj = self._sbml_model.getNotes()
+        else:
+            notes_obj = builder.create_note_body()
+        notes_obj = builder.update_note_body(notes_obj, **notes)
+        self._sbml_model.setNotes(notes_obj)
+
+    def _update_range_bounds(self, measurements, interpolate):
+        measurement_qs = Measurement.objects.filter(pk__in=measurements)
+        values_qs = MeasurementValue.objects.filter(x__len=1).order_by('x')
+        # capture lower/upper bounds of t values for all measurements
+        trange = measurement_qs.aggregate(
+            max_t=Max('measurementvalue__x'), min_t=Min('measurementvalue__x'),
+        )
+        if trange['max_t']:
+            self._max = min(trange['max_t'][0], self._max or sys.maxint)
+        if trange['min_t']:
+            self._min = max(trange['min_t'][0], self._min or -sys.maxint)
+        # iff no interpolation, capture intersection of t values bounded by max & min
+        m_inter = measurement_qs.exclude(assay__protocol__in=interpolate).prefetch_related(
+            Prefetch('measurementvalue_set', queryset=values_qs, to_attr='values'),
+        )
+        for m in m_inter:
+            points = {p.x[0] for p in m.values if self._min <= p.x[0] <= self._max}
+            if self._points:
+                self._points.intersection_update(points)
+            else:
+                self._points = points
 
     def _update_reaction(self, builder, our_reactions, time):
         # loop over all template reactions, if in our_reactions set bounds, notes, etc
@@ -383,6 +423,7 @@ class SbmlExport(object):
 
     def _update_species(self, builder, our_species, time):
         # loop over all template species, if in our_species set the notes section
+        # TODO: keep MeasurementType in match_form, remove need to re-query Metabolite
         for species_sid, mtype in our_species.iteritems():
             type_key = '%s' % mtype
             metabolite = None
@@ -855,32 +896,38 @@ class SbmlBuilder(object):
         body = _note_node
         if _note_node.hasChild(b'body'):
             body = _note_node.getChild(0)
-        attributes = libsbml.XMLAttributes()
-        namespace = libsbml.XMLNamespaces()
-        p_tag = libsbml.XMLTriple(b"p", b"", b"")
-        p_token = libsbml.XMLToken(p_tag, attributes, namespace)
         notes = self.parse_note_body(body)
         notes.update(**kwargs)
         body.removeChildren()
         for key, value in notes.iteritems():
-            encode_key = key.encode('utf-8')
-            text = None
             if isinstance(value, string_types):
-                value = value.encode('utf-8')
-                text = ('%s: %s' % (encode_key, value)).encode('utf-8')
+                self._add_p_tag(body, '%s: %s' % (key, value))
             else:
-                text = ('%s: ' % encode_key).encode('utf-8')
-            text_token = libsbml.XMLToken(text)
-            text_node = libsbml.XMLNode(text_token)
-            p_node = libsbml.XMLNode(p_token)
-            p_node.addChild(text_node)
-            if isinstance(value, libsbml.XMLNode):
-                p_node.addChild(value)
-            body.addChild(p_node)
+                try:
+                    # add a p-tag for every element in list
+                    for line in value:
+                        self._add_p_tag(body, '%s:%s' % (key, line))
+                except TypeError:
+                    # add p-tag and append any XML contained in value
+                    p_node = self._add_p_tag(body, '%s: ' % (key, ))
+                    if isinstance(value, libsbml.XMLNode):
+                        p_node.addChild(value)
         return _note_node
 
     def write_to_string(self, document):
         return libsbml.writeSBMLToString(document)
+
+    def _add_p_tag(self, body, text):
+        attributes = libsbml.XMLAttributes()
+        namespace = libsbml.XMLNamespaces()
+        p_tag = libsbml.XMLTriple(b"p", b"", b"")
+        p_token = libsbml.XMLToken(p_tag, attributes, namespace)
+        text_token = libsbml.XMLToken(text.encode('utf-8'))
+        text_node = libsbml.XMLNode(text_token)
+        p_node = libsbml.XMLNode(p_token)
+        p_node.addChild(text_node)
+        body.addChild(p_node)
+        return p_node
 
 
 def compose(*args):
