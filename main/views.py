@@ -1339,7 +1339,8 @@ def search(request):
         results = found['response']['docs']
     elif model_name == "Strain":
         ice = IceApi(auth=IceHmacAuth.get(username=request.user.email))
-        found = ice.search_entries(term, entry_types=[STRAIN], suppress_errors=True)
+        found = ice.search_entries(search_terms=term, entry_types=[STRAIN], sort_field='RELEVANCE',
+                                   suppress_errors=True)
         if found is None:  # there were errors searching
             results = []
         else:
