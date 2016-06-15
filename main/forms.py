@@ -153,8 +153,8 @@ class RegistryValidator(object):
         user_email = update.mod_by.email
         try:
             ice = IceApi(HmacAuth.get(username=user_email))
-            (self.part, url) = ice.fetch_part(registry_id)
-            self.part['url'] = ''.join((ice.base_url, '/entry/', str(self.part['id']), ))
+            self.part = ice.fetch_part(registry_id)
+            self.part.url = ''.join((ice.base_url, '/entry/', str(self.part.id), ))
         except Exception:
             logger.exception('Exception loading part %(part_id)s from ICE for user '
                              '%(user_email)s' % {
@@ -168,15 +168,15 @@ class RegistryValidator(object):
 
     def save_strain(self):
         if self.part and self.existing_strain:
-            self.existing_strain.registry_id = self.part['recordId']
-            self.existing_strain.registry_url = self.part['url']
+            self.existing_strain.registry_id = self.part.uuid
+            self.existing_strain.registry_url = self.part.url
             self.existing_strain.save()
         elif self.part:
             Strain.objects.create(
-                name=self.part['name'],
-                description=self.part['shortDescription'],
-                registry_id=self.part['recordId'],
-                registry_url=self.part['url'],
+                name=self.part.name,
+                description=self.part.short_description,
+                registry_id=self.part.uuid,
+                registry_url=self.part.url,
             )
 
     def validate(self, value):

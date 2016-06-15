@@ -256,7 +256,7 @@ class StrainAdmin(EDDObjectAdmin):
             messages.error(request, _('A strain record already exists for that ICE entry!'))
             return
         if self.ice_validator.part:
-            obj.registry_url = self.ice_validator.part['url']
+            obj.registry_url = self.ice_validator.part.url
         super(StrainAdmin, self).save_model(request, obj, form, change)
 
     def study_list(self, instance):
