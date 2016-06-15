@@ -148,22 +148,22 @@ class RegistryValidator(object):
         self.count = None
         self.part = None
 
-    def load_part_from_ice(self, value):
+    def load_part_from_ice(self, registry_id):
         update = Update.load_update()
         user_email = update.mod_by.email
         try:
             ice = IceApi(HmacAuth.get(username=user_email))
-            (self.part, url) = ice.fetch_part(value)
+            (self.part, url) = ice.fetch_part(registry_id)
             self.part['url'] = ''.join((ice.base_url, '/entry/', str(self.part['id']), ))
         except Exception:
             logger.exception('Exception loading part %(part_id)s from ICE for user '
                              '%(user_email)s' % {
-                                'part_id': value,
+                                'part_id': registry_id,
                                 'user_email': user_email, })
             raise ValidationError(
                 _('Failed to load strain %(uuid)s from ICE'),
                 code='ice failure',
-                params={"uuid": value, },
+                params={"uuid": registry_id,},
             )
 
     def save_strain(self):
