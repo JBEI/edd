@@ -1664,8 +1664,7 @@ class SBMLTemplate(EDDObject):
     class Meta:
         db_table = "sbml_template"
     object_ref = models.OneToOneField(EDDObject, parent_link=True)
-    biomass_calculation = models.DecimalField(
-        default=-1, decimal_places=5, max_digits=16)  # XXX check that these parameters make sense!
+    biomass_calculation = models.DecimalField(default=-1, decimal_places=5, max_digits=16)
     biomass_calculation_info = models.TextField(default='')
     biomass_exchange_name = models.TextField()
     # FIXME would like to limit this to attachments only on parent EDDObject, and remove null=True

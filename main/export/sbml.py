@@ -7,6 +7,7 @@ from __future__ import division, unicode_literals
 
 import libsbml
 import logging
+import math
 import re
 import sys
 
@@ -29,10 +30,6 @@ from threadlocals.threadlocals import get_current_request
 from .. import models
 from ..forms import (
     MetadataTypeAutocompleteWidget, SbmlExchangeAutocompleteWidget, SbmlSpeciesAutocompleteWidget
-)
-from ..models import (
-    Measurement, MeasurementType, MeasurementUnit, MeasurementValue, Metabolite,
-    MetaboliteExchange, MetaboliteSpecies, MetadataType, Protocol, SBMLTemplate,
 )
 from ..utilities import interpolate_at
 
@@ -70,6 +67,7 @@ class SbmlExport(object):
         self._points = None
         self._density = []
         self._measures = defaultdict(list)
+        self._omics = defaultdict(list)
         self._values_by_type = defaultdict(list)
 
     def add_density(self, density_measurements):
@@ -83,8 +81,10 @@ class SbmlExport(object):
             if factor_meta is None:
                 factor = default_factor
             else:
-                factor = m.assay.metadata_get(factor_meta, default_factor)
-                factor = m.assay.line.metadata_get(factor_meta, factor)
+                # check for factor on line first
+                factor = m.assay.line.metadata_get(factor_meta, default_factor)
+                # allow for factor on assay to override the one on line
+                factor = m.assay.metadata_get(factor_meta, factor)
             for v in m.values:
                 # storing as arrays to keep compatibility with interpolate_at
                 self._density.append(Point([v.x[0]], [v.y[0] * factor]))
@@ -98,7 +98,7 @@ class SbmlExport(object):
         measurements = sbml_measurements.cleaned_data.get('measurement', [])
         interpolate = sbml_measurements.cleaned_data.get('interpolate', [])
         # process all the scalar measurements
-        types_qs = MeasurementType.objects.filter(
+        types_qs = models.MeasurementType.objects.filter(
             measurement__in=measurements,
             measurement__measurement_format=models.MeasurementFormat.SCALAR,
         ).distinct()
@@ -108,6 +108,16 @@ class SbmlExport(object):
         # store measurements keyed off type
         for m in measurements:
             self._measures['%s' % m.measurement_type_id].append(m)
+        # capture lower/upper bounds of t values for all measurements
+        self._update_range_bounds(measurements, interpolate)
+
+    def add_omics(self, sbml_measurements):
+        measurements = sbml_measurements.cleaned_data.get('measurement', [])
+        interpolate = sbml_measurements.cleaned_data.get('interpolate', [])
+        # store measurements keyed off type_name
+        # TODO: should probably link off another identifier mapping types to SBML names
+        for m in measurements:
+            self._omics[m.measurement_type.type_name].append(m)
         # capture lower/upper bounds of t values for all measurements
         self._update_range_bounds(measurements, interpolate)
 
@@ -154,25 +164,25 @@ class SbmlExport(object):
     def create_measurement_forms(self, payload, **kwargs):
         m_forms = {
             'od_select_form': SbmlExportOdForm(
-                data=payload, prefix='od', selection=self._selection,
+                data=payload, prefix='od', line=self._selection.lines[0],
                 qfilter=(Q(measurement_type__short_name='OD') &
-                         Q(assay__protocol__categorization=Protocol.CATEGORY_OD)),
+                         Q(assay__protocol__categorization=models.Protocol.CATEGORY_OD)),
             ),
             'hplc_select_form': SbmlExportMeasurementsForm(
-                data=payload, prefix='hplc', selection=self._selection,
-                qfilter=Q(assay__protocol__categorization=Protocol.CATEGORY_HPLC),
+                data=payload, prefix='hplc', line=self._selection.lines[0],
+                qfilter=Q(assay__protocol__categorization=models.Protocol.CATEGORY_HPLC),
             ),
             'ms_select_form': SbmlExportMeasurementsForm(
-                data=payload, prefix='ms', selection=self._selection,
-                qfilter=Q(assay__protocol__categorization=Protocol.CATEGORY_LCMS),
+                data=payload, prefix='ms', line=self._selection.lines[0],
+                qfilter=Q(assay__protocol__categorization=models.Protocol.CATEGORY_LCMS),
             ),
             'ramos_select_form': SbmlExportMeasurementsForm(
-                data=payload, prefix='ramos', selection=self._selection,
-                qfilter=Q(assay__protocol__categorization=Protocol.CATEGORY_RAMOS),
+                data=payload, prefix='ramos', line=self._selection.lines[0],
+                qfilter=Q(assay__protocol__categorization=models.Protocol.CATEGORY_RAMOS),
             ),
             'omics_select_form': SbmlExportMeasurementsForm(
-                data=payload, prefix='omics', selection=self._selection,
-                qfilter=Q(assay__protocol__categorization=Protocol.CATEGORY_TPOMICS),
+                data=payload, prefix='omics', line=self._selection.lines[0],
+                qfilter=Q(assay__protocol__categorization=models.Protocol.CATEGORY_TPOMICS),
             ),
         }
         for m_form in m_forms.itervalues():
@@ -180,8 +190,11 @@ class SbmlExport(object):
                 m_form.update_bound_data_with_defaults()
             if m_form.is_valid() and self._sbml_template:
                 is_density = isinstance(m_form, SbmlExportOdForm)
+                is_omics = isinstance(m_form, SbmlExportOmicsForm)
                 if is_density:
                     self.add_density(m_form)
+                elif is_omics:
+                    self.add_omics(m_form)
                 else:
                     self.add_measurements(m_form)
         self._forms.update(m_forms)
@@ -205,7 +218,7 @@ class SbmlExport(object):
         if points is not None:
             points = sorted(points)
         time_form = SbmlExportSelectionForm(
-            t_range=t_range, points=points, selection=self._selection, data=payload, **kwargs
+            t_range=t_range, points=points, line=self._selection.lines[0], data=payload, **kwargs
         )
         return time_form
 
@@ -220,8 +233,8 @@ class SbmlExport(object):
             values attr on each measurement. """
         # TODO: change to .order_by('x__0') once Django supports ordering on transform
         # https://code.djangoproject.com/ticket/24747
-        values_qs = MeasurementValue.objects.filter(x__len=1, y__len=1).order_by('x')
-        return Measurement.objects.filter(
+        values_qs = models.MeasurementValue.objects.filter(x__len=1, y__len=1).order_by('x')
+        return models.Measurement.objects.filter(
                 pk__in=measurements, measurement_format=models.MeasurementFormat.SCALAR
             ).prefetch_related(
                 Prefetch('measurementvalue_set', queryset=values_qs, to_attr='values'),
@@ -239,11 +252,10 @@ class SbmlExport(object):
                 if match[1] and match[1] not in our_reactions:
                     our_reactions[match[1]] = mtype
         builder = SbmlBuilder()
-        # TODO: update biomass reaction based on density data
+        self._update_biomass(builder, time)
         self._update_species(builder, our_species, time)
         self._update_reaction(builder, our_reactions, time)
         self._update_carbon_ratio(builder, time)
-        # TODO: add protein and transcription global notes
         return builder.write_to_string(self._sbml_obj)
 
     def update_view_context(self, context):
@@ -255,12 +267,12 @@ class SbmlExport(object):
         return context
 
     def _build_match_fields(self, types_list):
-        species_qs = MetaboliteSpecies.objects.filter(
+        species_qs = models.MetaboliteSpecies.objects.filter(
             measurement_type__in=types_list,
             sbml_template=self._sbml_template,
         )
         species_match = {s.measurement_type_id: s for s in species_qs}
-        exchange_qs = MetaboliteExchange.objects.filter(
+        exchange_qs = models.MetaboliteExchange.objects.filter(
             measurement_type__in=types_list,
             sbml_template=self._sbml_template,
         )
@@ -288,7 +300,7 @@ class SbmlExport(object):
             "M_" + mname_transcoded + "_e_",
         ]
         lookup = defaultdict(list)
-        exchanges = MetaboliteExchange.objects.filter(
+        exchanges = models.MetaboliteExchange.objects.filter(
             reactant_name__in=guesses,
             sbml_template=self._sbml_template,
         )
@@ -313,7 +325,7 @@ class SbmlExport(object):
         guesses = generate_species_name_guesses_from_metabolite_name(measurement_type.short_name)
         lookup = {
             s.species: s
-            for s in MetaboliteSpecies.objects.filter(
+            for s in models.MetaboliteSpecies.objects.filter(
                 sbml_template=self._sbml_template,
                 species__in=guesses,
             )
@@ -322,6 +334,28 @@ class SbmlExport(object):
             if guess in lookup:
                 return lookup[guess]
         return None
+
+    def _update_biomass(self, builder, time):
+        biomass = self._sbml_template.biomass_exchange_name
+        reaction = self._sbml_model.getReaction(biomass.encode('utf-8'))
+        flux = 0
+        try:
+            times = [p.x[0] for p in self._density]
+            next_index = bisect(times, time)
+            # already converted with gCDW in SbmlExport#addDensity()
+            y_0 = interpolate_at(self._density, time)
+            y_next = float(self._density[next_index].y[0])
+            time_next = times[next_index]
+            time_delta = float(time_next - time)
+            flux = math.log(y_next / y_0) / time_delta
+            kinetic_law = reaction.getKineticLaw()
+            # NOTE: libsbml calls require use of 'bytes' CStrings
+            upper_bound = kinetic_law.getParameter(b"UPPER_BOUND")
+            lower_bound = kinetic_law.getParameter(b"LOWER_BOUND")
+            upper_bound.setValue(flux)
+            lower_bound.setValue(flux)
+        except Exception as e:
+            logger.exception('hit an error calculating biomass flux: %s', e)
 
     def _update_carbon_ratio(self, builder, time):
         notes = defaultdict(list)
@@ -344,9 +378,35 @@ class SbmlExport(object):
         notes_obj = builder.update_note_body(notes_obj, **notes)
         self._sbml_model.setNotes(notes_obj)
 
+    def _update_omics(self, builder, reaction, time):
+        transcripts = []
+        p_copies = []
+        if reaction.isSetNotes():
+            reaction_note_body = reaction.getNotes()
+        else:
+            reaction_note_body = builder.create_note_body()
+        notes = builder.parse_note_body(reaction_note_body)
+        for name in builder.read_note_associations(notes):
+            values = models.MeasurementValue.objects.filter(
+                measurement__in=self._omics.get(name, []),
+                x__0=time,
+            ).select_related('measurement__measurement_type')
+            for v in values:
+                text = '%s=%d' % (name, v.y[0])
+                if v.measurement.measurement_type.is_gene():
+                    transcripts.append(text)
+                elif v.measurement.measurement_type.is_protein():
+                    p_copies.append(text)
+        reaction_note_body = builder.update_note_body(
+            reaction_note_body,
+            GENE_TRANSCRIPTION_VALUES=' '.join(transcripts),
+            PROTEIN_COPY_VALUES=' '.join(p_copies),
+        )
+        reaction.setNotes(reaction_note_body)
+
     def _update_range_bounds(self, measurements, interpolate):
-        measurement_qs = Measurement.objects.filter(pk__in=measurements)
-        values_qs = MeasurementValue.objects.filter(x__len=1).order_by('x')
+        measurement_qs = models.Measurement.objects.filter(pk__in=measurements)
+        values_qs = models.MeasurementValue.objects.filter(x__len=1).order_by('x')
         # capture lower/upper bounds of t values for all measurements
         trange = measurement_qs.aggregate(
             max_t=Max('measurementvalue__x'), min_t=Min('measurementvalue__x'),
@@ -379,16 +439,7 @@ class SbmlExport(object):
                     }
                 )
                 continue
-            if reaction.isSetNotes():
-                reaction_notes = reaction.getNotes()
-            else:
-                reaction_notes = builder.create_note_body()
-            reaction_notes = builder.update_note_body(
-                reaction_notes,
-                GENE_TRANSCRIPTION_VALUES='',
-                PROTEIN_COPY_VALUES='',
-            )
-            reaction.setNotes(reaction_notes)
+            self._update_omics(builder, reaction, time)
             try:
                 values = self._values_by_type[type_key]
                 times = [v.x[0] for v in values]
@@ -428,7 +479,7 @@ class SbmlExport(object):
             type_key = '%s' % mtype
             metabolite = None
             try:
-                metabolite = Metabolite.objects.get(pk=type_key)
+                metabolite = models.Metabolite.objects.get(pk=type_key)
             except:
                 logger.warning('Type %s is not a Metabolite', type_key)
             species = self._sbml_model.getSpecies(species_sid.encode('utf-8'))
@@ -441,18 +492,18 @@ class SbmlExport(object):
                 )
                 continue
             # collected all measurement_id matching type in add_measurements()
-            measurements = self._measures.get(type_key)
+            measurements = self._measures.get(type_key, [])
             current = minimum = maximum = ''
             try:
                 # TODO: change to .order_by('x__0') once Django supports ordering on transform
                 # https://code.djangoproject.com/ticket/24747
-                values = MeasurementValue.objects.filter(
+                values = models.MeasurementValue.objects.filter(
                     measurement__in=measurements
                 ).select_related('measurement__y_units').order_by('x')
                 # convert units
                 for v in values:
                     units = v.measurement.y_units
-                    f = MeasurementUnit.conversion_dict.get(units.unit_name, None)
+                    f = models.MeasurementUnit.conversion_dict.get(units.unit_name, None)
                     if f is not None:
                         v.y = [f(y, metabolite) for y in v.y]
                     else:
@@ -481,7 +532,8 @@ class SbmlExport(object):
 class SbmlExportSettingsForm(SbmlForm):
     """ Form used for selecting settings on SBML exports. """
     sbml_template = forms.ModelChoiceField(
-        SBMLTemplate.objects.all(),  # TODO: potentially narrow options based on current user?
+        # TODO: potentially narrow options based on current user?
+        models.SBMLTemplate.objects.all(),
         label=_('SBML Template'),
     )
 
@@ -518,28 +570,28 @@ class MeasurementChoiceField(forms.ModelMultipleChoiceField):
 class SbmlExportMeasurementsForm(SbmlForm):
     """ Form used for selecting measurements to include in SBML exports. """
     measurement = MeasurementChoiceField(
-        queryset=Measurement.objects.none(),  # this is overridden in __init__()
+        queryset=models.Measurement.objects.none(),  # this is overridden in __init__()
         required=False,
         widget=forms.CheckboxSelectMultiple,
     )
     interpolate = forms.ModelMultipleChoiceField(
         label=_('Allow interpolation for'),
-        queryset=Protocol.objects.none(),  # this is overridden in __init__()
+        queryset=models.Protocol.objects.none(),  # this is overridden in __init__()
         required=False,
         widget=forms.CheckboxSelectMultiple,
     )
 
-    def __init__(self, selection, *args, **kwargs):
+    def __init__(self, line, *args, **kwargs):
         """
         Required:
-            selection = a main.export.ExportSelection object defining the items for export
+            line = a main.models.Line object defining the items for export
         Optional:
             qfilter = arguments to filter a measurement queryset from
                 main.export.table.ExportSelection
         """
         qfilter = kwargs.pop('qfilter', None)
         super(SbmlExportMeasurementsForm, self).__init__(*args, **kwargs)
-        self._selection = selection
+        self._line = line
         measurement_queryset = self._init_measurement_field(qfilter)
         # depends on measurement field being initialized
         self._init_interpolate_field(measurement_queryset)
@@ -549,16 +601,18 @@ class SbmlExportMeasurementsForm(SbmlForm):
         if measurement_queryset.count() == 0:
             del self.fields['interpolate']
         else:
-            self.fields['interpolate'].queryset = Protocol.objects.filter(
+            self.fields['interpolate'].queryset = models.Protocol.objects.filter(
                 assay__measurement__in=measurement_queryset
             ).distinct()
 
     def _init_measurement_field(self, qfilter):
         f = self.fields['measurement']
-        f.queryset = self._selection.measurements.order_by(
+        f.queryset = models.Measurement.objects.filter(
+            assay__line=self._line,
+        ).order_by(
             'assay__protocol__name', 'assay__name',
-        ).prefetch_related(
-            'measurementvalue_set',
+        ).select_related(
+            'measurement_type',
         )
         if qfilter is not None:
             f.queryset = f.queryset.filter(qfilter)
@@ -568,13 +622,6 @@ class SbmlExportMeasurementsForm(SbmlForm):
         else:
             f.initial = f.queryset
         return f.queryset
-
-    def clean(self):
-        """ Upon validation, also inserts interpolated value points matching points available in
-            baseline measurements for the same line. """
-        data = super(SbmlExportMeasurementsForm, self).clean()
-        # TODO
-        return data
 
     def form_without_measurements(self):
         """ Returns a copy of the form without the measurement field; this allows rendering in
@@ -654,6 +701,10 @@ class SbmlExportMeasurementsForm(SbmlForm):
                                    doc='A list of widgets used to select Measurements')
 
 
+class SbmlExportOmicsForm(SbmlExportMeasurementsForm):
+    pass
+
+
 class SbmlExportOdForm(SbmlExportMeasurementsForm):
     DEFAULT_GCDW_FACTOR = Decimal('0.65')
     PREF_GCDW_META = 'export.sbml.gcdw_metadata'
@@ -662,7 +713,7 @@ class SbmlExportOdForm(SbmlExportMeasurementsForm):
         help_text=_('Select the metadata containing the conversion factor for Optical Density '
                     'to grams carbon dry-weight per liter.'),
         label=_('gCDW/L/OD factor metadata'),
-        queryset=MetadataType.objects.filter(),
+        queryset=models.MetadataType.objects.filter(),
         required=False,
         widget=MetadataTypeAutocompleteWidget,
     )
@@ -745,7 +796,7 @@ class SbmlExportOdForm(SbmlExportMeasurementsForm):
         if request and request.user:
             prefs = request.user.profile.prefs
             try:
-                return MetadataType.objects.get(pk=prefs[self.PREF_GCDW_META])
+                return models.MetadataType.objects.get(pk=prefs[self.PREF_GCDW_META])
             except:
                 pass
         # TODO: load preferences from the system user if no request user
@@ -824,7 +875,7 @@ class SbmlExportSelectionForm(forms.Form):
         required=False,
     )
 
-    def __init__(self, t_range, points=None, selection=None, *args, **kwargs):
+    def __init__(self, t_range, points=None, line=None, *args, **kwargs):
         super(SbmlExportSelectionForm, self).__init__(*args, **kwargs)
         time_field = self.fields['time_select']
         if points and len(points):
@@ -844,8 +895,8 @@ class SbmlExportSelectionForm(forms.Form):
                 'Select the time to compute fluxes for embedding in SBML template (in the range '
                 '%(min)s to %(max)s)'
             ) % t_range._asdict()
-        if selection is not None:
-            self.fields['filename'].initial = '%s.sbml' % selection.lines[0].name
+        if line is not None:
+            self.fields['filename'].initial = '%s.sbml' % line.name
         # update self.data with defaults for fields
         replace_data = QueryDict(mutable=True)
         for fn in ['time_select', 'filename']:
@@ -890,6 +941,19 @@ class SbmlBuilder(object):
                 key, value = text.split(':')
                 notes[key.strip()] = value.strip()
         return notes
+
+    def read_note_associations(self, notes):
+        # previous code tried to parse out based on boolean operators, but that info was never
+        #   used; now using simpler method of finding 'word' tokens, discarding matches to:
+        #   'and', 'or', 'None', and 'N.A.'
+        ignore = {'and', 'or', 'None', 'N.A.'}
+        pattern = re.compile(r'\b\w+\b')
+        g_assoc = notes.get('GENE_ASSOCIATION', '')
+        p_assoc = notes.get('PROTEIN_ASSOCIATION', '')
+        return chain(
+            [name for name in pattern.findall(g_assoc) if name not in ignore],
+            [name for name in pattern.findall(p_assoc) if name not in ignore],
+        )
 
     def update_note_body(self, _note_node, **kwargs):
         # ensure adding to the <body> node
