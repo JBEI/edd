@@ -75,9 +75,10 @@ class SbmlExport(object):
         interpolate = density_measurements.cleaned_data.get('interpolate', [])
         default_factor = density_measurements.cleaned_data.get('gcdw_default', 0.65)
         factor_meta = density_measurements.cleaned_data.get('gcdw_conversion', None)
-        measurement_qs = self.load_measurement_queryset(measurements)
+        measurement_qs = self.load_measurement_queryset(density_measurements)
+        measurement_set = set(measurements)
         # try to load factor metadata for each assay
-        for m in measurement_qs.select_related('assay__line'):
+        for m in [m for m in measurement_qs if m.pk in measurement_set]:
             if factor_meta is None:
                 factor = default_factor
             else:
@@ -162,26 +163,27 @@ class SbmlExport(object):
         return match
 
     def create_measurement_forms(self, payload, **kwargs):
+        line = self._selection.lines[0]
         m_forms = {
             'od_select_form': SbmlExportOdForm(
-                data=payload, prefix='od', line=self._selection.lines[0],
+                data=payload, prefix='od', line=line,
                 qfilter=(Q(measurement_type__short_name='OD') &
                          Q(assay__protocol__categorization=models.Protocol.CATEGORY_OD)),
             ),
             'hplc_select_form': SbmlExportMeasurementsForm(
-                data=payload, prefix='hplc', line=self._selection.lines[0],
+                data=payload, prefix='hplc', line=line,
                 qfilter=Q(assay__protocol__categorization=models.Protocol.CATEGORY_HPLC),
             ),
             'ms_select_form': SbmlExportMeasurementsForm(
-                data=payload, prefix='ms', line=self._selection.lines[0],
+                data=payload, prefix='ms', line=line,
                 qfilter=Q(assay__protocol__categorization=models.Protocol.CATEGORY_LCMS),
             ),
             'ramos_select_form': SbmlExportMeasurementsForm(
-                data=payload, prefix='ramos', line=self._selection.lines[0],
+                data=payload, prefix='ramos', line=line,
                 qfilter=Q(assay__protocol__categorization=models.Protocol.CATEGORY_RAMOS),
             ),
             'omics_select_form': SbmlExportMeasurementsForm(
-                data=payload, prefix='omics', line=self._selection.lines[0],
+                data=payload, prefix='omics', line=line,
                 qfilter=Q(assay__protocol__categorization=models.Protocol.CATEGORY_TPOMICS),
             ),
         }
@@ -228,14 +230,16 @@ class SbmlExport(object):
         self.create_output_forms(payload)
         return self.update_view_context(context)
 
-    def load_measurement_queryset(self, measurements):
+    def load_measurement_queryset(self, m_form):
         """ Creates a queryset from the IDs in the measurements parameter, prefetching values to a
             values attr on each measurement. """
         # TODO: change to .order_by('x__0') once Django supports ordering on transform
         # https://code.djangoproject.com/ticket/24747
         values_qs = models.MeasurementValue.objects.filter(x__len=1, y__len=1).order_by('x')
-        return models.Measurement.objects.filter(
-                pk__in=measurements, measurement_format=models.MeasurementFormat.SCALAR
+        return m_form.measurement_qs.filter(
+                measurement_format=models.MeasurementFormat.SCALAR
+            ).select_related(
+                'assay__line',
             ).prefetch_related(
                 Prefetch('measurementvalue_set', queryset=values_qs, to_attr='values'),
             )
@@ -592,20 +596,9 @@ class SbmlExportMeasurementsForm(SbmlForm):
         qfilter = kwargs.pop('qfilter', None)
         super(SbmlExportMeasurementsForm, self).__init__(*args, **kwargs)
         self._line = line
-        measurement_queryset = self._init_measurement_field(qfilter)
-        # depends on measurement field being initialized
-        self._init_interpolate_field(measurement_queryset)
+        self._init_fields(qfilter)
 
-    def _init_interpolate_field(self, measurement_queryset):
-        # do not show when there are no measurements, otherwise show the available protocols
-        if measurement_queryset.count() == 0:
-            del self.fields['interpolate']
-        else:
-            self.fields['interpolate'].queryset = models.Protocol.objects.filter(
-                assay__measurement__in=measurement_queryset
-            ).distinct()
-
-    def _init_measurement_field(self, qfilter):
+    def _init_fields(self, qfilter):
         f = self.fields['measurement']
         f.queryset = models.Measurement.objects.filter(
             assay__line=self._line,
@@ -619,8 +612,12 @@ class SbmlExportMeasurementsForm(SbmlForm):
         if f.queryset.count() == 0:
             self._sbml_warnings.append(_('No protocols have usable data.'))
             f.initial = []
+            del self.fields['interpolate']
         else:
             f.initial = f.queryset
+            self.fields['interpolate'].queryset = models.Protocol.objects.filter(
+                assay__measurement__in=f.queryset
+            ).distinct()
         return f.queryset
 
     def form_without_measurements(self):
@@ -690,6 +687,12 @@ class SbmlExportMeasurementsForm(SbmlForm):
         return self._measures
     measurement_list = property(_get_measurements,
                                 doc='A list of Measurements included in the form')
+
+    def _get_measurement_qs(self):
+        field = self.fields.get('measurement', None)
+        return field.queryset if field else models.Measurement.objects.none()
+    measurement_qs = property(_get_measurement_qs,
+                              doc='A queryset of the Measurements included in the form')
 
     def _get_measurement_widgets(self):
         # lazy eval and try not to query more than once
