@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Defines remote tasks to be executed asynchronously by the Celery distributed task queue. To
 implement an asychronous task to be remotely executed by Celery, define a carefully-defined
@@ -7,37 +8,30 @@ See celeryconfig.py for EDD's Celery configuration and defaults. Also see JBEI r
 Celery task implementation. See celery_utils.py for common supporting utility methods.
 """
 
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 from builtins import str
 from celery import shared_task
 from celery.utils.log import get_task_logger
 from celery.exceptions import SoftTimeLimitExceeded
+from django.conf import settings
 from django.core.exceptions import MultipleObjectsReturned
+from django.db import transaction
 from django.utils.translation import ugettext
 
-from django.db import transaction
-from edd.celeryconfig import (CELERY_INITIAL_ICE_RETRY_DELAY,
-                              CELERY_WARN_AFTER_RETRY_NUM_FOR_ICE,
-                              CELERY_MAX_ICE_RETRIES)
 from edd_utils.celery_utils import (
-    INVALID_DELAY,
-    compute_exp_retry_delay,
-    email_admins,
-    make_standard_email_subject,
-    send_resolution_message,
-    send_retry_warning_if_applicable,
-    send_stale_input_warning,
-    test_time_limit_consistency,
+    INVALID_DELAY, send_retry_warning_if_applicable, test_time_limit_consistency,
 )
-from jbei.ice.rest.ice import IceApi, parse_entry_id, HmacAuth
+from edd_utils.celery_utils import compute_exp_retry_delay
+from edd_utils.celery_utils import send_stale_input_warning
+from edd_utils.celery_utils import send_resolution_message
+from edd_utils.celery_utils import make_standard_email_subject, email_admins
+from jbei.ice.rest.ice import IceApi, parse_entry_id, IceHmacAuth
 from main.models import Line, Strain
 
-# import server email address, which is dynamically computed and can't be included in the config
-# file. ADMINS has to be reformatted from JSON, so just reference that too
 
 # use the built-in Celery worker logging
-celery_logger = get_task_logger(__name__)
+logger = get_task_logger(__name__)
 
 _INVALID_DELAY = -1
 
@@ -47,7 +41,7 @@ _STALE_OR_ERR_INPUT = ugettext('Stale or erroneous input')
 
 @shared_task(bind=True)
 def debug_task(self):
-    celery_logger.info('Request: {0!r}'.format(self.request))
+    logger.info('Request: {0!r}'.format(self.request))
 
 
 @shared_task
@@ -82,7 +76,7 @@ def test_repeated_retry_failure(self, fail_for_outdated_input=False, succeed_on_
 
     # verify that dynamically-configurable time limits are self-consistent, and email administrators
     # if they aren't
-    test_time_limit_consistency(self, celery_logger, est_execution_time, use_exponential_backoff)
+    test_time_limit_consistency(self, logger, est_execution_time, use_exponential_backoff)
 
     if fail_for_outdated_input:
         raise LookupError('Task inputs were detected to be stale')
@@ -102,7 +96,7 @@ def test_repeated_retry_failure(self, fail_for_outdated_input=False, succeed_on_
     except LookupError:
         specific_cause = 'Test program configured to simulate stale data'
         send_stale_input_warning(self, specific_cause, est_execution_time, use_exponential_backoff,
-                                 celery_logger)
+                                 logger)
         return _STALE_OR_ERR_INPUT
 
     # assume all other Exceptions are the result of communication errors with EDD and/or ICE. Warn
@@ -112,7 +106,7 @@ def test_repeated_retry_failure(self, fail_for_outdated_input=False, succeed_on_
         # if conditions are met, send a warning email to administrators so they can take action
         # before the task fails and requires more manual effort to correct
         send_retry_warning_if_applicable(self, est_execution_time,
-                                         warn_at_retry_num, celery_logger,
+                                         warn_at_retry_num, logger,
                                          skip_moot_warnings=False)
 
         # compute a reasonable delay and schedule a retry
@@ -127,19 +121,19 @@ def test_repeated_retry_failure(self, fail_for_outdated_input=False, succeed_on_
     # for anyone to address the warning before the final execution attempt, but the resolution
     # message may still be useful to have
     if self.request.retries > warn_at_retry_num:
-        send_resolution_message(self, est_execution_time, celery_logger)
+        send_resolution_message(self, est_execution_time, logger)
 
     return ugettext('Success')
 
 
-@shared_task(bind=True, default_retry_delay=CELERY_INITIAL_ICE_RETRY_DELAY,
-             max_retries=CELERY_MAX_ICE_RETRIES)
+@shared_task(bind=True,
+             default_retry_delay=settings.CELERY_INITIAL_ICE_RETRY_DELAY,
+             max_retries=settings.CELERY_MAX_ICE_RETRIES)
 def link_ice_entry_to_study(self, edd_user_email, strain_pk, study_pk, study_url,
                             old_study_name=None, **kwargs):
     """
-    TODO: line instead of cell line
     Contacts ICE to link an ICE strain to an EDD study that uses it. In the
-    anticipated common case, this is triggered by creation of a single cell line within the confines
+    anticipated common case, this is triggered by creation of a single line within the confines
     of an EDD study. However, to avoid (though not entirely prevent) race conditions, EDD updates
     the entire list of study links associated with that strain. As a future improvement, we could
     request that ICE expose atomic add/remove operations in its API, since that would cover the
@@ -168,7 +162,7 @@ def link_ice_entry_to_study(self, edd_user_email, strain_pk, study_pk, study_url
     try:
         # verify that dynamically-configurable time limits are self-consistent, and email
         # administrators if they aren't
-        test_time_limit_consistency(self, celery_logger, est_execution_time,
+        test_time_limit_consistency(self, logger, est_execution_time,
                                     uses_exponential_backoff)
 
         # Verify that the EDD study->line->strain relationship that motivated this ICE push is still
@@ -214,27 +208,28 @@ def link_ice_entry_to_study(self, edd_user_email, strain_pk, study_pk, study_url
         # finish early if we don't have enough information to find the ICE entry for this strain
         # TODO: raise an exception here once strain data are more dependable (SYNBIO-1350)
         if (not registry_url) or (not registry_id):
-            celery_logger.warning("Registry URL and registry ID must both be entered in order to "
-                                  "create push an EDD  study ID to ICE. Cannot create a link for "
-                                  "strain with id %s" % strain.name)
+            logger.warning("Registry URL and registry ID must both be entered in order to "
+                           "create push an EDD  study ID to ICE. Cannot create a link for "
+                           "strain with id %s" % strain.name)
             return ugettext('EDD strain contains insufficient data')
 
         # make a request via ICE's REST API to link the ICE strain to the EDD study that references
         # it
         study = line.study
-        ice = IceApi(auth=HmacAuth.get(username=edd_user_email))
+        ice = IceApi(auth=IceHmacAuth.get(username=edd_user_email))
+        ice.write_enabled = True
         ice.link_entry_to_study(str(workaround_strain_entry_id), study.pk, study_url, study.name,
-                                logger=celery_logger, old_study_name=old_study_name)
+                                logger=logger, old_study_name=old_study_name)
 
     # catch Exceptions that indicate the database relationships have changed
     except (Line.DoesNotExist, Strain.DoesNotExist):
-        celery_logger.warning("Marking task %s as complete without taking any action since its "
-                              "inputs are stale.  One or more relationships that motivated task "
-                              "submission been removed." % self.request.id)
+        logger.warning("Marking task %s as complete without taking any action since its "
+                       "inputs are stale.  One or more relationships that motivated task "
+                       "submission been removed." % self.request.id)
         specific_cause = ("No (strain, line, study) relationship was found in the EDD database "
                           "matching the one implied by inputs")
         send_stale_input_warning(self, specific_cause, est_execution_time, uses_exponential_backoff,
-                                 celery_logger)
+                                 logger)
 
         return _STALE_OR_ERR_INPUT  # succeed after sending the warning
 
@@ -251,29 +246,31 @@ def link_ice_entry_to_study(self, edd_user_email, strain_pk, study_pk, study_url
     except Exception as exc:
         # if conditions are met, send a warning email to administrators so they can take action
         # before the task fails and requires more manual effort to correct
-        send_retry_warning_if_applicable(self, est_execution_time,
-                                         CELERY_WARN_AFTER_RETRY_NUM_FOR_ICE, celery_logger)
+        send_retry_warning_if_applicable(
+            self, est_execution_time, settings.CELERY_WARN_AFTER_RETRY_NUM_FOR_ICE, logger
+        )
 
         # compute a reasonable delay and schedule a retry
         retry_delay = compute_exp_retry_delay(self)
         if retry_delay == INVALID_DELAY:
             raise exc
 
-        celery_logger.info("%s: retrying again in %d seconds" % (__name__, retry_delay))
+        logger.info("%s: retrying again in %d seconds" % (__name__, retry_delay))
         raise self.retry(exc=exc, countdown=retry_delay)
 
     # on success, publish a resolution message if a warning message was previously published.
     # possible this will be delivered without any warning message if there wasn't time for anyone to
     # address the warning before the final execution attempt, but the resolution message may
     # still be useful to have
-    if self.request.retries > CELERY_WARN_AFTER_RETRY_NUM_FOR_ICE:
-        send_resolution_message(self, est_execution_time, celery_logger)
+    if self.request.retries > settings.CELERY_WARN_AFTER_RETRY_NUM_FOR_ICE:
+        send_resolution_message(self, est_execution_time, logger)
 
     return ugettext('Link added/updated')
 
 
-@shared_task(bind=True, default_retry_delay=CELERY_INITIAL_ICE_RETRY_DELAY,
-             max_retries=CELERY_MAX_ICE_RETRIES)
+@shared_task(bind=True,
+             default_retry_delay=settings.CELERY_INITIAL_ICE_RETRY_DELAY,
+             max_retries=settings.CELERY_MAX_ICE_RETRIES)
 def unlink_ice_entry_from_study(self, edd_user_email, study_pk, study_url, strain_registry_url,
                                 strain_registry_id, **kwargs):
     """
@@ -289,7 +286,7 @@ def unlink_ice_entry_from_study(self, edd_user_email, study_pk, study_url, strai
      EDD database)
     """
 
-    celery_logger.info("Start unlink_part_from_study()")
+    logger.info("Start unlink_part_from_study()")
 
     est_execution_time = 0.025
     use_exponential_backoff = True
@@ -298,7 +295,7 @@ def unlink_ice_entry_from_study(self, edd_user_email, study_pk, study_url, strai
 
         # verify that dynamically-configurable time limits are self-consistent, and email
         # administrators if they aren't
-        test_time_limit_consistency(self, celery_logger, est_execution_time,
+        test_time_limit_consistency(self, logger, est_execution_time,
                                     use_exponential_backoff)
 
         # verify that no lines exist that link this study to an ICE strain with the provided URL
@@ -328,18 +325,19 @@ def unlink_ice_entry_from_study(self, edd_user_email, study_pk, study_url, strai
                 specific_cause = msg
 
                 # warn administrators that this occurred
-                celery_logger.warning("Marking task %s as complete without taking any action since "
-                                      "its inputs are stale.  One or more relationships that "
-                                      "motivated task submission have been modified."
-                                      % self.request.id)
+                logger.warning("Marking task %s as complete without taking any action since "
+                               "its inputs are stale.  One or more relationships that "
+                               "motivated task submission have been modified."
+                               % self.request.id)
                 send_stale_input_warning(self, specific_cause, est_execution_time,
-                                         use_exponential_backoff, celery_logger)
+                                         use_exponential_backoff, logger)
                 return _STALE_OR_ERR_INPUT  # succeed after sending the warning
 
         # remove the study link from ICE
-        ice = IceApi(auth=HmacAuth.get(username=edd_user_email))
+        ice = IceApi(auth=IceHmacAuth.get(username=edd_user_email))
+        ice.write_enabled = True
         removed = ice.unlink_entry_from_study(strain_registry_id, study_pk, study_url,
-                                              celery_logger)
+                                              logger)
 
         # if no link existed to remove, send a warning email, since something may have gone wrong.
         # seems likely that this task should never have been scheduled in the first place
@@ -352,7 +350,7 @@ def unlink_ice_entry_from_study(self, edd_user_email, study_pk, study_url, strai
                        '''instance. Note that  the links are user-editable in ICE, so it's '''
                        '''possible that the link was manually deleted  (verifiable via the GUI).'''
                        % (self.name, study_url, strain_registry_url))
-            email_admins(subject, message, celery_logger)
+            email_admins(subject, message, logger)
             return ugettext('Non-existent link')
 
     # if Celery is about to forcibly terminate the worker, perform cleanup and then fail the task by
@@ -364,19 +362,19 @@ def unlink_ice_entry_from_study(self, edd_user_email, study_pk, study_url, strai
     except Exception as exc:
         # if conditions are met, send a warning email to administrators so they can take action
         # before the task fails and requires more manual effort to correct
-        send_retry_warning_if_applicable(self, est_execution_time,
-                                         CELERY_WARN_AFTER_RETRY_NUM_FOR_ICE, celery_logger)
+        send_retry_warning_if_applicable(
+            self, est_execution_time, settings.CELERY_WARN_AFTER_RETRY_NUM_FOR_ICE, logger)
 
         # compute a reasonable delay and schedule a retry
         retry_delay = compute_exp_retry_delay(self)
-        celery_logger.info(__name__ + ": retrying again in %d seconds" % retry_delay)
+        logger.info(__name__ + ": retrying again in %d seconds" % retry_delay)
         raise self.retry(exc=exc, countdown=retry_delay)
 
     # on success, publish a resolution message if a warning message was previously published.
     # possible this will be delivered without any warning message if there wasn't time for anyone to
     # address the warning before the final execution attempt, but the resolution message may
     # still be useful to have
-    if self.request.retries > CELERY_WARN_AFTER_RETRY_NUM_FOR_ICE:
-        send_resolution_message(self, est_execution_time, celery_logger)
+    if self.request.retries > settings.CELERY_WARN_AFTER_RETRY_NUM_FOR_ICE:
+        send_resolution_message(self, est_execution_time, logger)
 
     return ugettext('Link removed')

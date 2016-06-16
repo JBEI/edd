@@ -939,7 +939,7 @@ table.formTable tr > td p {
     padding:0px;
 }
 #assaysMeasSelectedTD {
-    border-right: 1px solid rgba(164, 164, 164, 0.7)
+    border-right: 1px solid rgba(164, 164, 164, 0.7);
     float: left;
     vertical-align: top;
 }

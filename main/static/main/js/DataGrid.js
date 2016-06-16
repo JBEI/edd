@@ -1325,14 +1325,47 @@ var DGSelectAllWidget = (function (_super) {
                 // each cell in row
                 row.dataGridDataCells.forEach(function (cell) {
                     // if the cell has a checkbox, check it
-                    cell.checkboxElement &&
-                        (cell.checkboxElement.checked = true) &&
-                        $(cell.checkboxElement).trigger('change');
+                    $(cell.checkboxElement).prop('checked', true).trigger('change');
                 });
             });
         }, sequence);
     };
     return DGSelectAllWidget;
+})(DataGridHeaderWidget);
+// A generic "Deselect All" header widget, appearing as a button.
+// When clicked, it walks through every row and cell looking for DataGrid-created checkboxes,
+// and checks every one it finds.
+var DGDeselectAllWidget = (function (_super) {
+    __extends(DGDeselectAllWidget, _super);
+    function DGDeselectAllWidget(dataGridOwnerObject, dataGridSpec) {
+        _super.call(this, dataGridOwnerObject, dataGridSpec);
+    }
+    // The uniqueID is provided to assist the widget in avoiding collisions
+    // when creating input element labels or other things requiring an ID.
+    DGDeselectAllWidget.prototype.createElements = function (uniqueID) {
+        var _this = this;
+        var buttonID = this.dataGridSpec.tableSpec.id + 'DelAll' + uniqueID;
+        var button = $(this.element = document.createElement("input"));
+        button.attr({ 'id': buttonID, 'name': buttonID, 'value': 'Deselect All' })
+            .addClass('tableControl')
+            .click(function () { return _this.clickHandler(); });
+        this.element.setAttribute('type', 'button'); // JQuery attr cannot do this
+    };
+    DGDeselectAllWidget.prototype.clickHandler = function () {
+        var sequence = this.dataGridOwnerObject.currentSequence();
+        // Have DataGrid apply function to everything in current sequence
+        this.dataGridOwnerObject.applyToRecordSet(function (rows) {
+            // each row in sequence
+            rows.forEach(function (row) {
+                // each cell in row
+                row.dataGridDataCells.forEach(function (cell) {
+                    // if the cell has a checkbox, uncheck it
+                    $(cell.checkboxElement).prop('checked', false).trigger('change');
+                });
+            });
+        }, sequence);
+    };
+    return DGDeselectAllWidget;
 })(DataGridHeaderWidget);
 // Here's an example of a working DataGridHeaderWidget.
 // It's a search field that narrows the set of rows to ones that contain the given string.
