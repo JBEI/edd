@@ -1,7 +1,32 @@
 """
 A catch-all module for general utility code that doesn't clearly belong elsewhere.
 """
+from sys import stdout
+import re
+
 import arrow
+import getpass
+import logging
+
+logger = logging.getLogger(__name__)
+
+_WORD_OR_DIGIT_REGEX = r'(?:\w\d)'
+ALPHANUM_REGEX = '[0-9a-fA-F]'
+
+DOCKER_HOST_ENV_VARIABLE = 'DOCKER_HOST'
+
+# for best UUID results, use UUID(string) in a try/catch. TODO: confirm whether try/catch is
+# significantly slower, then delete this if possible.
+TYPICAL_UUID_REGEX = (
+    r'%(alphanum)s8}\-%(alphanum)s{4}\-%(alphanum)s{4}\-%(alphanum)s{4}\-%(alphanum)s{12}' % {
+        'alphanum': ALPHANUM_REGEX})
+
+PK_OR_TYPICAL_UUID_REGEX = r'(?:\d+)|%(uuid_regex)s' % {
+    'uuid_regex': TYPICAL_UUID_REGEX,
+}
+
+TYPICAL_UUID_PATTERN = re.compile(TYPICAL_UUID_REGEX, re.UNICODE)
+PK_OR_TYPICAL_UUID_PATTERN = re.compile(PK_OR_TYPICAL_UUID_REGEX, re.UNICODE)
 
 
 class UserInputTimer(object):
@@ -34,7 +59,7 @@ _HOURS_PER_DAY = 24
 _SECONDS_PER_MINUTE = 60
 _SECONDS_PER_MONTH = _SECONDS_PER_HOUR * _HOURS_PER_DAY * 30
 _SECONDS_PER_YEAR = _SECONDS_PER_MONTH * 12   # NOTE: this causes years to have 360 days, but it's
-                                            # consistent / good enough
+                                              # consistent / good enough
 _SECONDS_PER_DAY = _SECONDS_PER_HOUR * _HOURS_PER_DAY
 
 
@@ -146,3 +171,68 @@ def to_human_relevant_delta(seconds):
             formatted_duration = _append(formatted_duration, int_sec_str)
 
     return formatted_duration
+
+
+class LoginResult:
+    def __init__(self, session_auth, username, password=None):
+        self.session_auth = session_auth
+        self.username = username
+        self.password = password
+
+
+def session_login(session_auth_class, base_url, application_name, username_arg=None,
+                  password_arg=None, user_input=None, print_result=True, timeout=None,
+                  verify_ssl_cert=True):
+    """
+    A helper method to simplify work in gathering user access credentials and attempting to log into
+    a remote service from a terminal-based application. If user credentials are provided,
+    they're used to attempt to log into the service. If not, or if the login attempt fails, the
+    user will be prompted to re-enter credentials on the assumption that they weren't entered
+    correctly the first time.
+    :param session_auth_class: the class responsible to implement session authentication for the
+    specified service
+    :param username_arg: optional username, or None to prompt
+    :param password_arg: optional password, or None to prompt
+    :param user_input: optional object responsible to gather user input
+    :param timeout:
+    :param verify_ssl_cert:
+    :return:
+    :raises ConnectionError: if no connection could be made to the remote service
+    """
+
+    user_input = user_input if user_input else UserInputTimer()
+    session_auth = None
+    attempted_login = False
+
+    while not session_auth:
+        username = None
+        password = None
+
+        # gather user credentials from command line arguments and/or user prompt
+        if (username_arg is not None) and (not attempted_login):
+            username = username_arg
+        else:
+            if not attempted_login:
+                username = getpass.getuser()
+            username_input = user_input.user_input('Username [%s]: ' % username)
+            username = username_input if username_input else username
+        if (password_arg is not None) and not attempted_login:
+            password = password_arg
+        else:
+            append_prompt = ' [enter to use existing entry]' if attempted_login else ''
+            password_input = getpass.getpass('Password for %s%s: ' % (username, append_prompt))
+            password = password_input if password_input else password
+        attempted_login = True
+        # attempt login
+        if print_result:
+            # Python 2/3 cross-compatible print *without* a line break
+            stdout.write('Logging into %s at %s... ' % (application_name, base_url))
+        session_auth = session_auth_class.login(base_url=base_url, username=username,
+                                                password=password,
+                                                verify_ssl_cert=verify_ssl_cert, timeout=timeout)
+        if session_auth:
+            if print_result:
+                print('success!')
+            return LoginResult(session_auth, username, password)
+        elif print_result:
+            print('failed :-{')
