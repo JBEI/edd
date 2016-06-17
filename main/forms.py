@@ -20,7 +20,6 @@ from form_utils.forms import BetterModelForm
 from functools import partial
 
 from jbei.ice.rest.ice import IceApi, IceHmacAuth
-from .export import table
 from .models import (
     Assay, Attachment, CarbonSource, Comment, Line, Measurement, MeasurementType,
     MeasurementValue, MetaboliteExchange, MetaboliteSpecies, MetadataType, Protocol, Strain,
