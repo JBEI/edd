@@ -20,6 +20,7 @@ from form_utils.forms import BetterModelForm
 from functools import partial
 
 from jbei.ice.rest.ice import IceApi, IceHmacAuth
+from .export import table
 from .models import (
     Assay, Attachment, CarbonSource, Comment, Line, Measurement, MeasurementType,
     MeasurementValue, MetaboliteExchange, MetaboliteSpecies, MetadataType, Protocol, Strain,
@@ -139,15 +140,15 @@ class RegistryValidator(object):
     def __init__(self, existing_strain=None):
         self.existing_strain = existing_strain
         self.count = None
-        self.part = None
+        self.entry = None
 
     def load_part_from_ice(self, registry_id):
         update = Update.load_update()
         user_email = update.mod_by.email
         try:
-            ice = IceApi(IceHmacAuth.get(username=update.mod_by.email))
-            self.part = ice.fetch_part(registry_id)
-            self.part.url = ''.join((ice.base_url, '/entry/', str(self.part.id), ))
+            ice = IceApi(IceHmacAuth.get(username=user_email))
+            self.entry = ice.get_entry(registry_id)
+            self.entry.url = ''.join((ice.base_url, '/entry/', str(self.entry.id),))
         except Exception:
             logger.exception('Exception loading part %(part_id)s from ICE for user '
                              '%(user_email)s' % {
@@ -160,16 +161,16 @@ class RegistryValidator(object):
             )
 
     def save_strain(self):
-        if self.part and self.existing_strain:
-            self.existing_strain.registry_id = self.part.uuid
-            self.existing_strain.registry_url = self.part.url
+        if self.entry and self.existing_strain:
+            self.existing_strain.registry_id = self.entry.uuid
+            self.existing_strain.registry_url = self.entry.url
             self.existing_strain.save()
-        elif self.part:
+        elif self.entry:
             Strain.objects.create(
-                name=self.part.name,
-                description=self.part.short_description,
-                registry_id=self.part.uuid,
-                registry_url=self.part.url,
+                name=self.entry.name,
+                description=self.entry.short_description,
+                registry_id=self.entry.uuid,
+                registry_url=self.entry.url,
             )
 
     def validate(self, value):
