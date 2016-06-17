@@ -1506,9 +1506,19 @@ class IcePagedResult(PagedResult):
         IceApi respond similarly to EddApi despite having different JSON paging support
         :param results_key: the JSON keyword used to differentiate results from the rest of the
         content (e.g. a total result count)
+        :param result_limit: the maximum number of results returned in a each page of results.
+        Note that  this may be different from the requested result limit if the server enforces
+        a maximum page size. If not provided via this parameter, an attempt will be made to
+        extract it from query_url. For consistency with DrfPagedResult, this value is required to
+        compute the current page offset and next/previous links, which aren't included in the
+        JSON data returned by ICE.
+        :param offset
         :return:
         """
-        # TODO: merge with EddPagedResult.of() if serialization problems there can be resolved
+        # TODO: merge with EddPagedResult.of() if serialization problems there can be resolved,
+        # then move implementation to parent. Otherwise, more Pythonic to make this a factory method
+        # since IcePagedResult can't be an abstract class. Also update DrfPagedResult for
+        # consistency.
 
         # convert reply to a dictionary of native python data types
         json_dict = json.loads(json_string)
