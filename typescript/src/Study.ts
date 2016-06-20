@@ -9,11 +9,14 @@
 
 declare var EDDData:EDDData;
 declare var createLineGraph;
+declare var createAssayGraph;
+declare var createTimeGraph; 
 declare var objectSize;
 declare var yvalues;
 declare var xvalues;
 declare var sortValues;
-declare var transformData;
+declare var transformLineData;
+declare var transformBarData;
 declare var labels;
 
 
@@ -1522,9 +1525,32 @@ module StudyD {
         if (!this.progressiveFilteringWidget.checkRedrawRequired(force)) {
             return;
         }
+
+        //toggle between view
+         d3.select('#chart')
+              .on('click', function() {
+                      d3.select('#bar').style('display', 'block');
+                      d3.select('#container').style('display', 'none');
+                      d3.select('#metrics').style('display', 'none');
+        });
+        d3.select('#chart1')
+              .on('click', function() {
+                      d3.select('#bar').style('display', 'none');
+                      d3.select('#container').style('display', 'none');
+                      d3.select('#metrics').style('display', 'block');
+        });
+
+            d3.select('#chart2')
+            .on('click', function() {
+                    d3.select('#bar').style('display', 'none');
+                    d3.select('#container').style('display', 'block');
+                    d3.select('#metrics').style('display', 'none');
+        });
         //point to mainGraph div
         var data = EDDData.AssayMeasurements;
-            var transformedData = transformData(data);
+        debugger
+            var transformedLineData = transformLineData(data);
+            var transformedBarData = transformBarData(data);
             var yvals = yvalues(data);
             var xvals = xvalues(data);
             var ysorted = sortValues(yvals) ;
@@ -1534,7 +1560,9 @@ module StudyD {
             var minXvalue = xsorted[xsorted.length - 1];
             var maxXvalue = xsorted[0];
             labels = labels(data);
-            createLineGraph(transformedData, minValue, maxValue, labels, minXvalue, maxXvalue);
+            createLineGraph(transformedLineData, minValue, maxValue, labels, minXvalue, maxXvalue);
+            createAssayGraph(transformedBarData, minValue, maxValue, labels);
+            createTimeGraph(transformedBarData, minValue, maxValue, labels);
     }
 
 
