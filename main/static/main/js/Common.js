@@ -40,8 +40,37 @@ function make_y_axis() {
     }
 **/
 
-function transformData(data) {
+function transformBarData(data) {
   var linedata = [] 
+  var size = objectSize(data);
+
+  for (var i = 0; i < size; i++) {
+    //returns first object
+    var first = (data[Object.keys(data)[i]].values);
+
+    for (var j = 0; j < first.length; j++ ) {
+      dataset = {};
+      if (first[j][0].length > 0 && first[j][1].length > 0) {
+        dataset.x = parseInt(first[j][0].join());
+        dataset.y = parseFloat(first[j][1].join());
+        dataset.i = i
+        linedata.push(dataset);
+         }
+       else {
+        console.log("missing data for object " + i + " time " + first[j][0])
+       }
+    }
+
+  }
+      //sort data
+     // linedata.sort(function(a, b) {
+     //      return parseFloat(a.x) - parseFloat(b.x);
+     //    })
+    return linedata;
+}
+
+function transformLineData(data) {
+  var linedata = [];
   var size = objectSize(data);
   for (var i = 0; i < size; i++) {
     //returns first object 
@@ -71,7 +100,6 @@ function transformData(data) {
       })
     return(linedata);
 }
-
 /**
 * this function returns an array of y values  
 **/

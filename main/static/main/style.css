@@ -5,10 +5,9 @@
   shape-rendering: crispEdges;
 }
 
-.bar {
-  fill: steelblue;
+#bar {
+  display: none;
 }
-
 .bar:hover {
   fill: orangered ;
 }
@@ -105,6 +104,20 @@ div.tooltip {
   margin-top: 20px;
 }
 
+.svg-container {
+    display: inline-block;
+    position: relative;
+    width: 80%;
+    padding-bottom: 0%; /* aspect ratio */
+    vertical-align: top;
+    overflow: hidden;
+}
+.svg-content-responsive {
+    display: inline-block;
+    position: absolute;
+    top: 10px;
+    left: 0;
+}
 
 .tick text{
   font-size: 12px;
