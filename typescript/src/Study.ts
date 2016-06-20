@@ -5,8 +5,18 @@
 /// <reference path="CarbonSummation.ts" />
 /// <reference path="DataGrid.ts" />
 /// <reference path="StudyGraphing.ts" />
+/// <reference path="../typings/d3/d3.d.ts"/>;
 
 declare var EDDData:EDDData;
+declare var createLineGraph;
+declare var objectSize;
+declare var yvalues;
+declare var xvalues;
+declare var sortValues;
+declare var transformData;
+declare var labels;
+
+
 
 module StudyD {
     'use strict';
@@ -1142,6 +1152,7 @@ module StudyD {
             },
             'success': (data) => {
                 EDDData = $.extend(EDDData || {}, data);
+                console.log(EDDData);
                 this.progressiveFilteringWidget.prepareFilteringSection();
                 // Instantiate a table specification for the Lines table
                 this.linesDataGridSpec = new DataGridSpecLines();
@@ -1325,7 +1336,7 @@ module StudyD {
 
         // Hacky button for changing the metabolic map
         $("#metabolicMapName").click( () => this.onClickedMetabolicMapName() );
-
+        //pulling in protocol measurements AssayMeasurements
         $.each(EDDData.Protocols, (id, protocol) => {
             $.ajax({
                 url: 'measurements/' + id + '/',
@@ -1361,6 +1372,7 @@ module StudyD {
             count_total:number = 0,
             count_rec:number = 0;
         EDDData.AssayMeasurements = EDDData.AssayMeasurements || {};
+        console.log(EDDData.AssayMeasurements);
         EDDData.MeasurementTypes = $.extend(EDDData.MeasurementTypes || {}, data.types);
         // attach measurement counts to each assay
         $.each(data.total_measures, (assayId:string, count:number):void => {
@@ -1510,51 +1522,19 @@ module StudyD {
         if (!this.progressiveFilteringWidget.checkRedrawRequired(force)) {
             return;
         }
-        // Start out with a blank graph.  We will re-add all the relevant sets.
-        this.mainGraphObject.clearAllSets();
-        postFilteringMeasurements = this.progressiveFilteringWidget.buildFilteredMeasurements();
-
-        $.each(postFilteringMeasurements, (i, measurementId) => {
-            var measure:AssayMeasurementRecord = EDDData.AssayMeasurements[measurementId],
-                mtype:MeasurementTypeRecord = EDDData.MeasurementTypes[measure.type],
-                points = (measure.values ? measure.values.length : 0),
-                assay, line, protocol, newSet;
-            dataPointsTotal += points;
-            if (dataPointsDisplayed > 15000) {
-                return; // Skip the rest if we've hit our limit
-            }
-            dataPointsDisplayed += points;
-            assay = EDDData.Assays[measure.assay] || {};
-            line = EDDData.Lines[assay.lid] || {};
-            protocol = EDDData.Protocols[assay.pid] || {};
-            newSet = {
-                'label': 'dt' + measurementId,
-                'measurementname': Utl.EDD.resolveMeasurementRecordToName(measure),
-                'name': [line.name, protocol.name, assay.name].join('-'),
-                'units': Utl.EDD.resolveMeasurementRecordToUnits(measure),
-                'data': $.map(measure.values, convert).sort(compare)
-            };
-            if (line.control) newSet.iscontrol = 1;
-            if (separateAxes) {
-                // If the measurement is a metabolite, choose the axis by type. If it's any
-                // other subtype, choose the axis based on that subtype, with an offset to avoid
-                // colliding with the metabolite axes.
-                if (mtype.family === 'm') {
-                    newSet.yaxisByMeasurementTypeID = mtype.id;
-                } else {
-                    newSet.yaxisByMeasurementTypeID = mtype.family;
-                }
-            }
-            this.mainGraphObject.addNewSet(newSet);
-        });
-
-        var displayText = dataPointsDisplayed + " points displayed";
-        if (dataPointsDisplayed != dataPointsTotal) {
-            displayText += " (out of " + dataPointsTotal + ")";
-        }
-        $('#pointsDisplayedSpan').empty().text(displayText);
-
-        this.mainGraphObject.drawSets();
+        //point to mainGraph div
+        var data = EDDData.AssayMeasurements;
+            var transformedData = transformData(data);
+            var yvals = yvalues(data);
+            var xvals = xvalues(data);
+            var ysorted = sortValues(yvals) ;
+            var xsorted = sortValues(xvals);
+            var minValue = ysorted[ysorted.length - 1];
+            var maxValue = ysorted[0];
+            var minXvalue = xsorted[xsorted.length - 1];
+            var maxXvalue = xsorted[0];
+            labels = labels(data);
+            createLineGraph(transformedData, minValue, maxValue, labels, minXvalue, maxXvalue);
     }
 
 
