@@ -5,6 +5,7 @@
 /// <reference path="CarbonSummation.ts" />
 /// <reference path="DataGrid.ts" />
 /// <reference path="StudyGraphing.ts" />
+/// <reference path="../typings/d3/d3.d.ts"/>;
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -981,6 +982,7 @@ var StudyD;
             },
             'success': function (data) {
                 EDDData = $.extend(EDDData || {}, data);
+                console.log(EDDData);
                 _this.progressiveFilteringWidget.prepareFilteringSection();
                 // Instantiate a table specification for the Lines table
                 _this.linesDataGridSpec = new DataGridSpecLines();
@@ -1150,6 +1152,7 @@ var StudyD;
         });
         // Hacky button for changing the metabolic map
         $("#metabolicMapName").click(function () { return _this.onClickedMetabolicMapName(); });
+        //pulling in protocol measurements AssayMeasurements
         $.each(EDDData.Protocols, function (id, protocol) {
             $.ajax({
                 url: 'measurements/' + id + '/',
@@ -1181,6 +1184,7 @@ var StudyD;
     function processMeasurementData(protocol, data) {
         var assaySeen = {}, protocolToAssay = {}, count_total = 0, count_rec = 0;
         EDDData.AssayMeasurements = EDDData.AssayMeasurements || {};
+        console.log(EDDData.AssayMeasurements);
         EDDData.MeasurementTypes = $.extend(EDDData.MeasurementTypes || {}, data.types);
         // attach measurement counts to each assay
         $.each(data.total_measures, function (assayId, count) {
@@ -1309,7 +1313,6 @@ var StudyD;
     }
     StudyD.queueMainGraphRemake = queueMainGraphRemake;
     function remakeMainGraphArea(force) {
-        var _this = this;
         var previousIDSet, postFilteringMeasurements, dataPointsDisplayed = 0, dataPointsTotal = 0, separateAxes = $('#separateAxesCheckbox').prop('checked'), 
         // FIXME assumes (x0, y0) points
         convert = function (d) { return [[d[0][0], d[1][0]]]; }, compare = function (a, b) { return a[0] - b[0]; };
@@ -1317,47 +1320,19 @@ var StudyD;
         if (!this.progressiveFilteringWidget.checkRedrawRequired(force)) {
             return;
         }
-        // Start out with a blank graph.  We will re-add all the relevant sets.
-        this.mainGraphObject.clearAllSets();
-        postFilteringMeasurements = this.progressiveFilteringWidget.buildFilteredMeasurements();
-        $.each(postFilteringMeasurements, function (i, measurementId) {
-            var measure = EDDData.AssayMeasurements[measurementId], mtype = EDDData.MeasurementTypes[measure.type], points = (measure.values ? measure.values.length : 0), assay, line, protocol, newSet;
-            dataPointsTotal += points;
-            if (dataPointsDisplayed > 15000) {
-                return; // Skip the rest if we've hit our limit
-            }
-            dataPointsDisplayed += points;
-            assay = EDDData.Assays[measure.assay] || {};
-            line = EDDData.Lines[assay.lid] || {};
-            protocol = EDDData.Protocols[assay.pid] || {};
-            newSet = {
-                'label': 'dt' + measurementId,
-                'measurementname': Utl.EDD.resolveMeasurementRecordToName(measure),
-                'name': [line.name, protocol.name, assay.name].join('-'),
-                'units': Utl.EDD.resolveMeasurementRecordToUnits(measure),
-                'data': $.map(measure.values, convert).sort(compare)
-            };
-            if (line.control)
-                newSet.iscontrol = 1;
-            if (separateAxes) {
-                // If the measurement is a metabolite, choose the axis by type. If it's any
-                // other subtype, choose the axis based on that subtype, with an offset to avoid
-                // colliding with the metabolite axes.
-                if (mtype.family === 'm') {
-                    newSet.yaxisByMeasurementTypeID = mtype.id;
-                }
-                else {
-                    newSet.yaxisByMeasurementTypeID = mtype.family;
-                }
-            }
-            _this.mainGraphObject.addNewSet(newSet);
-        });
-        var displayText = dataPointsDisplayed + " points displayed";
-        if (dataPointsDisplayed != dataPointsTotal) {
-            displayText += " (out of " + dataPointsTotal + ")";
-        }
-        $('#pointsDisplayedSpan').empty().text(displayText);
-        this.mainGraphObject.drawSets();
+        //point to mainGraph div
+        var data = EDDData.AssayMeasurements;
+        var transformedData = transformData(data);
+        var yvals = yvalues(data);
+        var xvals = xvalues(data);
+        var ysorted = sortValues(yvals);
+        var xsorted = sortValues(xvals);
+        var minValue = ysorted[ysorted.length - 1];
+        var maxValue = ysorted[0];
+        var minXvalue = xsorted[xsorted.length - 1];
+        var maxXvalue = xsorted[0];
+        labels = labels(data);
+        createLineGraph(transformedData, minValue, maxValue, labels, minXvalue, maxXvalue);
     }
     function clearAssayForm() {
         var form = $('#id_assay-assay_id').closest('.disclose');
