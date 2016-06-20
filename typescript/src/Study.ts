@@ -1372,7 +1372,7 @@ module StudyD {
             count_total:number = 0,
             count_rec:number = 0;
         EDDData.AssayMeasurements = EDDData.AssayMeasurements || {};
-        console.log(EDDData.AssayMeasurements);
+
         EDDData.MeasurementTypes = $.extend(EDDData.MeasurementTypes || {}, data.types);
         // attach measurement counts to each assay
         $.each(data.total_measures, (assayId:string, count:number):void => {

@@ -8,9 +8,9 @@ function createLineGraph(linedata, minValue, maxValue, labels, minXvalue, maxXva
     .attr("class", "tooltip")               
     .style("opacity", 0);
 
-  var margin = {top: 20, right: 20, bottom: 30, left: 40},
-      width = 960 - margin.left - margin.right,
-      height = 500 - margin.top - margin.bottom;
+  var margin = {top: 20, right: 40, bottom: 30, left: 20},
+      width = 1000 - margin.left - margin.right,
+      height = 250 - margin.top - margin.bottom;
 
   var color = d3.scale.category10();
 
@@ -28,6 +28,7 @@ function createLineGraph(linedata, minValue, maxValue, labels, minXvalue, maxXva
 
   //create svg graph object
   var svg = d3.select("#maingraph").append("svg")
+      .attr("class", "graphContainer")
       .attr("width", width + margin.left + margin.right)
       .attr("height", height + margin.top + margin.bottom)
     .append("g")
@@ -71,7 +72,7 @@ function createLineGraph(linedata, minValue, maxValue, labels, minXvalue, maxXva
     legend
       .enter()
       .append("text")
-        .attr("x", width-24)// spacing
+        .attr("x", width + 4)// spacing
         .attr("y", 9 + (i * 15) )
         .attr("class", "legend")    // style the legend
         .attr("dy", ".35em")
