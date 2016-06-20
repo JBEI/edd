@@ -75,7 +75,7 @@ StudyDGraphing = {
 
 		this.graphOptions.yaxes = []; // Default: Show 1 y axis, fit all data to it.
 
-		this.plotObject = $.plot(this.graphDiv, this.dataSets, this.graphOptions);
+		//this.plotObject = $.plot(this.graphDiv, this.dataSets, this.graphOptions);
 	},
 
 

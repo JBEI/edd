@@ -65,7 +65,7 @@ StudyDGraphing = {
         this.graphOptions.xaxis.ticks = this.tickGeneratorFunction;
         this.graphOptions.xaxis.currentGraphDOMObject = this.graphDiv;
         this.graphOptions.yaxes = []; // Default: Show 1 y axis, fit all data to it.
-        this.plotObject = $.plot(this.graphDiv, this.dataSets, this.graphOptions);
+        //this.plotObject = $.plot(this.graphDiv, this.dataSets, this.graphOptions);
     },
     clearAllSets: function () {
         this.graphOptions.yaxes = [];

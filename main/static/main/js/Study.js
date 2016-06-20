@@ -1184,7 +1184,6 @@ var StudyD;
     function processMeasurementData(protocol, data) {
         var assaySeen = {}, protocolToAssay = {}, count_total = 0, count_rec = 0;
         EDDData.AssayMeasurements = EDDData.AssayMeasurements || {};
-        console.log(EDDData.AssayMeasurements);
         EDDData.MeasurementTypes = $.extend(EDDData.MeasurementTypes || {}, data.types);
         // attach measurement counts to each assay
         $.each(data.total_measures, function (assayId, count) {
