@@ -10,25 +10,6 @@ function objectSize(obj) {
     return size;
 };
 
-/**
-* this function creates the x axis tick marks for grid 
-**/
-function make_x_axis() {		
-    return d3.svg.axis()
-        .scale(x)
-        .orient("bottom")
-        .ticks(5)
-}
-
-/**
-* this function creates the y axis tick marks for grid 
-**/
-function make_y_axis() {		
-    return d3.svg.axis()
-        .scale(y)
-        .orient("left")
-        .ticks(5)
-}
 
 /**
 *  This function takes in data and transforms it into the following

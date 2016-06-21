@@ -107,15 +107,13 @@ div.tooltip {
 .svg-container {
     display: inline-block;
     position: relative;
-    width: 80%;
-    padding-bottom: 0%; /* aspect ratio */
+    width: 100%;
     vertical-align: top;
     overflow: hidden;
 }
 .svg-content-responsive {
     display: inline-block;
     position: absolute;
-    top: 10px;
     left: 0;
 }
 
@@ -144,7 +142,11 @@ div.tooltip {
 }
 
 .x.axis path {
-  display: none;
+  opacity: .2;
+}
+
+.y.axis path {
+  opacity: .2;
 }
 
 

@@ -179,7 +179,7 @@
         </div>
     </div>
 
-    <div class="pageSectionTabs" id="graphTabsOverviewSelected">
+<div class="pageSectionTabs" id="graphTabsOverviewSelected">
         <div class="active absoverlay">Data Overview</div>
         <div class="active">Data Overview</div>
     </div>
@@ -193,9 +193,11 @@
                 <button class="mdl-button mdl-js-button" id="chart1" value="container">Bar graph by
                     time</button>
              </div>
-            <div id="container" class="svg-container"></div>
-            <div id="bar"></div>
-            <div id="metrics"></div>
+            <div class="svg-container">
+                <div id="container"></div>
+                <div id="bar"></div>
+                <div id="metrics"></div>
+            </div>
             <div id="maingraph" class="graphContainer"></div>
         </div>
         <div class="sectionChapter disclose discloseHide">
@@ -210,7 +212,7 @@
             </div>
         </div>
     </div>
-    
+
 
     {% if writable %}
     <div class="bare-header">

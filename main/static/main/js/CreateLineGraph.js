@@ -1,9 +1,29 @@
-////// multi line
+////// grouped bar chart based on time
 function createTimeGraph(linedata, minValue, maxValue, labels) {
 
-var margin = {top: 20, right: 20, bottom: 30, left: 40},
-    width = 960 - margin.left - margin.right,
-    height = 500 - margin.top - margin.bottom;
+    /**
+* this function creates the x axis tick marks for grid
+**/
+function make_x_axis() {
+    return d3.svg.axis()
+        .scale(x0)
+        .orient("bottom")
+        .ticks(5)
+}
+
+/**
+* this function creates the y axis tick marks for grid
+**/
+function make_y_axis() {
+    return d3.svg.axis()
+        .scale(y)
+        .orient("left")
+        .ticks(5)
+}
+
+  var margin = {top: 20, right: 40, bottom: 30, left: 40},
+      width = 1000 - margin.left - margin.right,
+      height = 270 - margin.top - margin.bottom;
 
 
   var color = d3.scale.ordinal()
@@ -34,13 +54,12 @@ var yAxis = d3.svg.axis()
         return "<strong>Time:</strong> <span style='color:red'>" + d.key + "</span>";
       })
 
-
-//CHART 1
-  var svg = d3.select("#metrics").append("svg")
-    .attr("width", width + margin.left + margin.right)
-    .attr("height", height + margin.top + margin.bottom)
-  .append("g")
-    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+      //create svg graph object
+    var svg = d3.select("div#metrics")
+      .append("svg")
+      .attr("preserveAspectRatio", "xMinYMin meet")
+      .attr("viewBox", "-30 -40 1100 280")
+      .classed("svg-content", true);
 
   svg.call(tip);
 
@@ -59,7 +78,22 @@ console.log(JSON.stringify(data))
     svg.append("g")
       .attr("class", "x axis")
       .attr("transform", "translate(0," + height + ")")
-      .call(xAxis);
+      .call(xAxis)
+      // Draw the x Grid lines
+    svg.append("g")
+        .attr("class", "grid")
+        .attr("transform", "translate(0," + height + ")")
+        .call(make_x_axis()
+            .tickSize(-height, 0, 0)
+            .tickFormat("")
+        )
+        // Draw the y Grid lines
+    svg.append("g")
+        .attr("class", "grid")
+        .call(make_y_axis()
+            .tickSize(-width, 0, 0)
+            .tickFormat("")
+        )
     
 
   svg.append("g")
@@ -100,13 +134,13 @@ console.log(JSON.stringify(data))
 
 
   legend.append("rect")
-      .attr("x", width - 18)
+      .attr("x", width + 38)
       .attr("width", 18)
       .attr("height", 18)
       .style("fill", color);
 
   legend.append("text")
-      .attr("x", width - 24)
+      .attr("x", width + 35)
       .attr("y", 9)
       .attr("dy", ".35em")
       .style("text-anchor", "end")
@@ -121,9 +155,29 @@ console.log(JSON.stringify(data))
 **/
 function createAssayGraph(linedata, minValue, maxValue) {
 
-    var margin = {top: 20, right: 20, bottom: 30, left: 40},
-    width = 960 - margin.left - margin.right,
-    height = 500 - margin.top - margin.bottom;
+        /**
+* this function creates the x axis tick marks for grid
+**/
+function make_x_axis() {
+    return d3.svg.axis()
+        .scale(x0)
+        .orient("bottom")
+        .ticks(5)
+}
+
+/**
+* this function creates the y axis tick marks for grid
+**/
+function make_y_axis() {
+    return d3.svg.axis()
+        .scale(y)
+        .orient("left")
+        .ticks(5)
+}
+
+     var margin = {top: 20, right: 40, bottom: 30, left: 40},
+      width = 1000 - margin.left - margin.right,
+      height = 270 - margin.top - margin.bottom;
 
 
   var color = d3.scale.ordinal()
@@ -145,7 +199,7 @@ var yAxis = d3.svg.axis()
     .scale(y)
     .orient("left")
     .tickFormat(d3.format(".2s"));
-console.log(linedata)
+
     var tip = d3.tip()
       .attr('class', 'd3-tip')
       .offset([-10, 0])
@@ -155,11 +209,11 @@ console.log(linedata)
       })
 
   var assays = [0, 1, 2, 3, 4, 5, 6, 7]
-  var svg = d3.select("#bar").append("svg")
-    .attr("width", width + margin.left + margin.right)
-    .attr("height", height + margin.top + margin.bottom)
-  .append("g")
-    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+    var svg = d3.select("div#bar")
+      .append("svg")
+      .attr("preserveAspectRatio", "xMinYMin meet")
+      .attr("viewBox", "-30 -40 1100 280")
+      .classed("svg-content", true);
 
   svg.call(tip);
 
@@ -177,6 +231,22 @@ console.log(JSON.stringify(data))
     .attr("class", "x axis")
     .attr("transform", "translate(0," + height + ")")
     .call(xAxis)
+
+    // Draw the x Grid lines
+    svg.append("g")
+        .attr("class", "grid")
+        .attr("transform", "translate(0," + height + ")")
+        .call(make_x_axis()
+            .tickSize(-height, 0, 0)
+            .tickFormat("")
+        )
+        // Draw the y Grid lines
+    svg.append("g")
+        .attr("class", "grid")
+        .call(make_y_axis()
+            .tickSize(-width, 0, 0)
+            .tickFormat("")
+        )
 
   svg.append("g")
       .attr("class", "y axis")
@@ -216,13 +286,13 @@ console.log(JSON.stringify(data))
 
 
   legend.append("rect")
-      .attr("x", width - 18)
+      .attr("x", width + 25)
       .attr("width", 18)
       .attr("height", 18)
       .style("fill", color);
 
   legend.append("text")
-      .attr("x", width - 24)
+      .attr("x", width + 20)
       .attr("y", 9)
       .attr("dy", ".35em")
       .style("text-anchor", "end")
@@ -233,6 +303,26 @@ console.log(JSON.stringify(data))
 * this function creates the line graph 
 **/
 function createLineGraph(linedata, minValue, maxValue, labels, minXvalue, maxXvalue) {
+
+            /**
+* this function creates the x axis tick marks for grid
+**/
+function make_x_axis() {
+    return d3.svg.axis()
+        .scale(x)
+        .orient("bottom")
+        .ticks(5)
+}
+
+/**
+* this function creates the y axis tick marks for grid
+**/
+function make_y_axis() {
+    return d3.svg.axis()
+        .scale(y)
+        .orient("left")
+        .ticks(5)
+}
 
 
   var div = d3.select("body").append("div")   
@@ -251,7 +341,8 @@ function createLineGraph(linedata, minValue, maxValue, labels, minXvalue, maxXva
   var yAxis = d3.svg.axis()
     .scale(y)
     .orient("left")
-    .ticks(5);
+    .tickFormat(d3.format(".2s"));
+
   var xAxis = d3.svg.axis()
     .scale(x)
     .orient("bottom")
@@ -261,13 +352,30 @@ function createLineGraph(linedata, minValue, maxValue, labels, minXvalue, maxXva
     var svg = d3.select("div#container")
       .append("svg")
       .attr("preserveAspectRatio", "xMinYMin meet")
-      .attr("viewBox", "-100 0 1100 300")
+      .attr("viewBox", "-30 -40 1100 280")
       .classed("svg-content", true);
 
   svg.append("g")
       .attr("class", "x axis")
       .attr("transform", "translate(0," + height + ")")
       .call(xAxis);
+
+
+    // Draw the x Grid lines
+    svg.append("g")
+        .attr("class", "grid")
+        .attr("transform", "translate(0," + height + ")")
+        .call(make_x_axis()
+            .tickSize(-height, 0, 0)
+            .tickFormat("")
+        )
+        // Draw the y Grid lines
+    svg.append("g")
+        .attr("class", "grid")
+        .call(make_y_axis()
+            .tickSize(-width, 0, 0)
+            .tickFormat("")
+        )
 
   svg.append("g")
       .attr("class", "y axis")
@@ -302,7 +410,7 @@ function createLineGraph(linedata, minValue, maxValue, labels, minXvalue, maxXva
     legend
       .enter()
       .append("text")
-        .attr("x", width + 4)// spacing
+        .attr("x", width + 30)// spacing
         .attr("y", 9 + (i * 15) )
         .attr("class", "legend")    // style the legend
         .attr("dy", ".35em")
