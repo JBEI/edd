@@ -750,7 +750,7 @@ div.pageSectionTabs > div {
 div.pageSectionTabs > div.active {
     border-width:1px 1px 0px 1px;
     padding-bottom:1px;
-    z-index:4;
+    /*z-index:4;*/
 }
 div.pageSectionTabs > div.inactive {
     cursor: pointer;
