@@ -4,62 +4,59 @@
 /**
 * this function takes in input min y value, max y value, and the transformed data. Outputs the graph
 **/
-function createAssayGraph(linedata, minValue, maxValue) {
+function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize) {
 
-        /**
-* this function creates the x axis tick marks for grid
-**/
-function make_x_axis() {
-    return d3.svg.axis()
-        .scale(x0)
-        .orient("bottom")
-        .ticks(5)
-}
+    arraySize = arraySize.pop();
+    /**
+    * this function creates the x axis tick marks for grid
+    **/
+    function make_x_axis() {
+        return d3.svg.axis()
+            .scale(x0)
+            .orient("bottom")
+            .ticks(5)
+    }
 
-/**
-* this function creates the y axis tick marks for grid
-**/
-function make_y_axis() {
-    return d3.svg.axis()
-        .scale(y)
-        .orient("left")
-        .ticks(5)
-}
+    /**
+    * this function creates the y axis tick marks for grid
+    **/
+    function make_y_axis() {
+        return d3.svg.axis()
+            .scale(y)
+            .orient("left")
+            .ticks(5)
+    }
 
      var margin = {top: 20, right: 40, bottom: 30, left: 40},
       width = 1000 - margin.left - margin.right,
       height = 270 - margin.top - margin.bottom;
 
+  var colorrange = ["#98abc5", "#8a89a6", "#7b6888", "#6b486b", "#a05d56", "#d0743c", "#ff8c00", "grey"]
 
-  var color = d3.scale.ordinal()
-    .range(["#98abc5", "#8a89a6", "#7b6888", "#6b486b", "#a05d56", "#d0743c", "#ff8c00", "grey"]);
+    thisColorRange = colorrange.splice(0, labels.length);
+
+    var color = d3.scale.ordinal()
+    .range(thisColorRange);
 
   var x0 = d3.scale.ordinal()
-    .rangeRoundBands([0, width], .1);
+    .domain(d3.range(size))
+    .rangeBands([0, width], .1);
 
-var x1 = d3.scale.ordinal();
+  var x1 = d3.scale.ordinal().domain(d3.range(arraySize))
+      .rangeBands([0, x0.rangeBand()]);
 
-var y = d3.scale.linear()
-    .range([height, 0]);
+     var y = d3.scale.linear()
+        .range([height, 0]);
 
-var xAxis = d3.svg.axis()
-    .scale(x0)
-    .orient("bottom");
+     var xAxis = d3.svg.axis()
+        .scale(x0)
+        .orient("bottom");
 
-var yAxis = d3.svg.axis()
-    .scale(y)
-    .orient("left")
-    .tickFormat(d3.format(".2s"));
+     var yAxis = d3.svg.axis()
+        .scale(y)
+        .orient("left")
+        .tickFormat(d3.format(".2s"));
 
-    var tip = d3.tip()
-      .attr('class', 'd3-tip')
-      .offset([-10, 0])
-      .html(function(d) {
-        //console.log(parse(d))
-        return "<strong>Assay:</strong> <span style='color:red'>" + d.key + "</span>";
-      })
-
-  var assays = [0, 1, 2, 3, 4, 5, 6, 7]
     var svg = d3.select("div#bar")
       .append("svg")
       .attr("preserveAspectRatio", "xMinYMin meet")
@@ -71,8 +68,6 @@ var yAxis = d3.svg.axis()
   .key(function(d) { return d.i; })
   .entries(linedata);
 
-  x0.domain(data.map(function(d) { return d.key; }));
-  x1.domain(assays).rangeRoundBands([.5, x0.rangeBand()]);
   y.domain([0, d3.max(data, function(d) { return d3.max(d.values, function(d) { return d.y; }); })]);
 
 
@@ -113,7 +108,6 @@ var yAxis = d3.svg.axis()
     .attr("class", "bar")
     .attr("transform", function(d) { return "translate(" + x0(d.key) + ",0)"; })
 
-
   c1.selectAll("rect")
     .data(function(d) {return d.values})
      .enter().append("rect")
@@ -123,7 +117,6 @@ var yAxis = d3.svg.axis()
       .attr("height", function(d) { return height - y(d.y); })
       .style("fill", function(d) { return color(d.i); })
     .on("mouseover", function(d) {
-
         //Get this bar's x/y values, then augment for the tooltip
       var barPos = parseFloat(d3.select(this.parentNode).attr('transform').split("(")[1]);
 
@@ -139,7 +132,7 @@ var yAxis = d3.svg.axis()
           .attr("font-size", "11px")
           .attr("font-weight", "bold")
           .attr("fill", "black")
-          .text(d.y);
+          .text(labels[d.i] + ": " + "time: " + d.x + ", value: " + d.y);
       })
       .on("mouseout", function() {
         //Remove the tooltip
@@ -149,22 +142,25 @@ var yAxis = d3.svg.axis()
 
  //legend
  var legend = svg.selectAll(".legend")
-      .data(labels.slice().reverse())
+      .data(labels)
     .enter().append("g")
       .attr("class", "legend")
-      .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
-
-
-
+     .attr( "transform", function(d,i) {
+        var xOff = (i % 4) * 40;
+        var yOff = Math.floor(i  / 4) * 10;
+        return "translate(" + xOff + "," + yOff + ")"
+} );
+      // .attr("transform", function(d, i) {
+      //     return "translate(0," + i * 20 + ")"; });
+      //
   legend.append("rect")
-      .attr("x", width + 25)
+      .attr("x", width + 3)
       .attr("width", 18)
-      .attr("height", 18)
+      .attr("height", 10)
       .style("fill", color);
 
   legend.append("text")
-      .attr("x", width + 20)
-      .attr("y", 9)
+      .attr("x", width)
       .attr("dy", ".35em")
       .style("text-anchor", "end")
       .text(function(d) { return d; })

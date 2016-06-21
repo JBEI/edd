@@ -1351,10 +1351,12 @@ var StudyD;
         var maxValue = ysorted[0];
         var minXvalue = xsorted[xsorted.length - 1];
         var maxXvalue = xsorted[0];
+        var size = objectSize(data); // number of assays
+        var arraySize = arrSize(data); // number of data points
         labels = labels(data);
         createLineGraph(transformedLineData, minValue, maxValue, labels, minXvalue, maxXvalue);
-        createAssayGraph(transformedBarData, minValue, maxValue, labels);
-        createTimeGraph(transformedBarData, minValue, maxValue, labels);
+        createAssayGraph(transformedBarData, minValue, maxValue, labels, size, arraySize);
+        createTimeGraph(transformedBarData, minValue, maxValue, labels, size, arraySize);
     }
     function clearAssayForm() {
         var form = $('#id_assay-assay_id').closest('.disclose');

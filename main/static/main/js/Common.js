@@ -10,6 +10,25 @@ function objectSize(obj) {
     return size;
 };
 
+/**
+* this function takes in the data object and returns the size of each assays'
+* data points
+**/
+function arrSize(data) {
+
+  var size = objectSize(data);
+  var maxArrSize = []
+  for (var i = 0; i < size; i++) {
+    //returns first object
+    var first = (data[Object.keys(data)[i]].values);
+    maxArrSize.push(first.length)
+
+  }
+  maxArrSize.sort(function(a, b) {
+          return a - b;
+        })
+  return maxArrSize
+}
 
 /**
 *  This function takes in data and transforms it into the following

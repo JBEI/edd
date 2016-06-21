@@ -1,5 +1,9 @@
 ////// grouped bar chart based on time
-function createTimeGraph(linedata, minValue, maxValue, labels) {
+function createTimeGraph(linedata, minValue, maxValue, labels, size, arraySize) {
+
+         linedata = linedata.sort(function(a, b) {
+          return parseFloat(a.x) - parseFloat(b.x);
+        });
 
     var margin = {top: 20, right: 40, bottom: 30, left: 40},
         width = 1000 - margin.left - margin.right,
@@ -115,13 +119,13 @@ function createTimeGraph(linedata, minValue, maxValue, labels) {
           .attr("font-size", "11px")
           .attr("font-weight", "bold")
           .attr("fill", "black")
-          .text(d.y);
+          .text(labels[d.i] + ": " + "time: " + d.x + ", value: " + d.y);
       })
       .on("mouseout", function() {
         //Remove the tooltip
         d3.select("#tooltip").remove();
 
-        }); 
+        });
 
      //legend
     var legend = svg.selectAll(".legend")
