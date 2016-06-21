@@ -66,7 +66,6 @@ var yAxis = d3.svg.axis()
       .attr("viewBox", "-30 -40 1100 280")
       .classed("svg-content", true);
 
-  svg.call(tip);
 
  var data = d3.nest()
   .key(function(d) { return d.i; })
@@ -76,7 +75,6 @@ var yAxis = d3.svg.axis()
   x1.domain(assays).rangeRoundBands([.5, x0.rangeBand()]);
   y.domain([0, d3.max(data, function(d) { return d3.max(d.values, function(d) { return d.y; }); })]);
 
-console.log(JSON.stringify(data))
 
   svg.append("g")
     .attr("class", "x axis")
@@ -114,8 +112,6 @@ console.log(JSON.stringify(data))
     .enter().append('g')
     .attr("class", "bar")
     .attr("transform", function(d) { return "translate(" + x0(d.key) + ",0)"; })
-    .on('mouseover', tip.show)
-    .on('mouseout', tip.hide);
 
 
   c1.selectAll("rect")
@@ -126,6 +122,30 @@ console.log(JSON.stringify(data))
       .attr("y", function(d) { return y(d.y); })
       .attr("height", function(d) { return height - y(d.y); })
       .style("fill", function(d) { return color(d.i); })
+    .on("mouseover", function(d) {
+
+        //Get this bar's x/y values, then augment for the tooltip
+      var barPos = parseFloat(d3.select(this.parentNode).attr('transform').split("(")[1]);
+
+      var xPosition = barPos + x1(d.x);
+      var yPosition = parseFloat(d3.select(this).attr("y"));
+
+        svg.append("text")
+          .attr("id", "tooltip")
+          .attr("x", xPosition)
+          .attr("y", yPosition)
+          .attr("text-anchor", "middle")
+          .attr("font-family", "sans-serif")
+          .attr("font-size", "11px")
+          .attr("font-weight", "bold")
+          .attr("fill", "black")
+          .text(d.y);
+      })
+      .on("mouseout", function() {
+        //Remove the tooltip
+        d3.select("#tooltip").remove();
+
+        });
 
  //legend
  var legend = svg.selectAll(".legend")

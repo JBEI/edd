@@ -1,58 +1,37 @@
 ////// grouped bar chart based on time
 function createTimeGraph(linedata, minValue, maxValue, labels) {
 
-    /**
-* this function creates the x axis tick marks for grid
-**/
-function make_x_axis() {
-    return d3.svg.axis()
-        .scale(x0)
-        .orient("bottom")
-        .ticks(5)
-}
+    var margin = {top: 20, right: 40, bottom: 30, left: 40},
+        width = 1000 - margin.left - margin.right,
+        height = 270 - margin.top - margin.bottom;
 
-/**
-* this function creates the y axis tick marks for grid
-**/
-function make_y_axis() {
-    return d3.svg.axis()
+
+    var color = d3.scale.ordinal()
+        .range(["#98abc5", "#8a89a6", "#7b6888", "#6b486b", "#a05d56", "#d0743c", "#ff8c00", "grey"]);
+
+    var x0 = d3.scale.ordinal()
+        .rangeRoundBands([0, width], .1);
+
+    var x1 = d3.scale.ordinal();
+
+    var y = d3.scale.linear()
+        .range([height, 0]);
+
+    var xAxis = d3.svg.axis()
+        .scale(x0)
+        .orient("bottom");
+
+    var yAxis = d3.svg.axis()
         .scale(y)
         .orient("left")
-        .ticks(5)
-}
+        .tickFormat(d3.format(".2s"));
 
-  var margin = {top: 20, right: 40, bottom: 30, left: 40},
-      width = 1000 - margin.left - margin.right,
-      height = 270 - margin.top - margin.bottom;
-
-
-  var color = d3.scale.ordinal()
-    .range(["#98abc5", "#8a89a6", "#7b6888", "#6b486b", "#a05d56", "#d0743c", "#ff8c00", "grey"]);
-
-  var x0 = d3.scale.ordinal()
-    .rangeRoundBands([0, width], .1);
-
-var x1 = d3.scale.ordinal();
-
-var y = d3.scale.linear()
-    .range([height, 0]);
-
-var xAxis = d3.svg.axis()
-    .scale(x0)
-    .orient("bottom");
-
-var yAxis = d3.svg.axis()
-    .scale(y)
-    .orient("left")
-    .tickFormat(d3.format(".2s"));
-
-    var tip = d3.tip()
-      .attr('class', 'd3-tip')
-      .offset([-10, 0])
-      .html(function(d) {
-        //console.log(parse(d))
-        return "<strong>Time:</strong> <span style='color:red'>" + d.key + "</span>";
-      })
+    // var tip = d3.tip()
+    //   .attr('class', 'd3-tip')
+    //   .offset([-10, 0])
+    //   .html(function(d) {
+    //     return "<strong>Time:</strong> <span style='color:red'>" + d.key + "</span>";
+    //   })
 
       //create svg graph object
     var svg = d3.select("div#metrics")
@@ -61,19 +40,17 @@ var yAxis = d3.svg.axis()
       .attr("viewBox", "-30 -40 1100 280")
       .classed("svg-content", true);
 
-  svg.call(tip);
+    //svg.call(tip);
 
-  var assays = [0, 1, 2, 3, 4, 5, 6, 7]
+    var assays = [0, 1, 2, 3, 4, 5, 6, 7]
 
- var data = d3.nest()
-  .key(function(d) { return d.x; })
-  .entries(linedata);
+    var data = d3.nest()
+      .key(function(d) { return d.x; })
+      .entries(linedata);
 
-  x0.domain(data.map(function(d) { return d.key; }));
-  x1.domain(assays).rangeRoundBands([0, x0.rangeBand()]);
-  y.domain([0, d3.max(data, function(d) { return d3.max(d.values, function(d) { return d.y; }); })]);
-
-console.log(JSON.stringify(data))
+    x0.domain(data.map(function(d) { return d.key; }));
+    x1.domain(assays).rangeRoundBands([0, x0.rangeBand()]);
+    y.domain([0, d3.max(data, function(d) { return d3.max(d.values, function(d) { return d.y; }); })]);
 
     svg.append("g")
       .attr("class", "x axis")
@@ -96,7 +73,7 @@ console.log(JSON.stringify(data))
         )
     
 
-  svg.append("g")
+    svg.append("g")
       .attr("class", "y axis")
       .call(yAxis)
     .append("text")
@@ -106,44 +83,88 @@ console.log(JSON.stringify(data))
       .style("text-anchor", "end")
       .text("Frequency");
 
-  var c1 = svg.selectAll(".bar")
-    .data(data)
-    .enter().append('g')
-    .attr("class", "bar")
-    .attr("transform", function(d) { return "translate(" + x0(d.key) + ",0)"; })
-    .on('mouseover', tip.show)
-    .on('mouseout', tip.hide);
+    var c1 = svg.selectAll(".bar")
+        .data(data)
+        .enter().append('g')
+        .attr("class", "bar")
+        .attr("transform", function(d) { return "translate(" + x0(d.key) + ",0)"; })
 
 
-  c1.selectAll("rect")
-    .data(function(d) {return d.values})
-     .enter().append("rect")
-      .attr("width", x1.rangeBand())
-      .attr("x", function(d) { return x1(d.i); })
-      .attr("y", function(d) { return y(d.y); })
-      .attr("height", function(d) { return height - y(d.y); })
-      .style("fill", function(d) { return color(d.i); })
+    c1.selectAll("rect")
+        .data(function(d) {return d.values})
+         .enter().append("rect")
+          .attr("width", x1.rangeBand())
+          .attr("x", function(d) { return x1(d.i); })
+          .attr("y", function(d) { return y(d.y); })
+          .attr("height", function(d) { return height - y(d.y); })
+          .style("fill", function(d) { return color(d.i); })
+    .on("mouseover", function(d) {
 
- //legend 
- var legend = svg.selectAll(".legend")
-      .data(labels.slice().reverse())
-    .enter().append("g")
-      .attr("class", "legend")
-      .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
+        //Get this bar's x/y values, then augment for the tooltip
+      var barPos = parseFloat(d3.select(this.parentNode).attr('transform').split("(")[1]);
+
+      var xPosition = barPos + x1(d.x);
+      var yPosition = parseFloat(d3.select(this).attr("y"));
+
+        svg.append("text")
+          .attr("id", "tooltip")
+          .attr("x", xPosition)
+          .attr("y", yPosition)
+          .attr("text-anchor", "middle")
+          .attr("font-family", "sans-serif")
+          .attr("font-size", "11px")
+          .attr("font-weight", "bold")
+          .attr("fill", "black")
+          .text(d.y);
+      })
+      .on("mouseout", function() {
+        //Remove the tooltip
+        d3.select("#tooltip").remove();
+
+        }); 
+
+     //legend
+    var legend = svg.selectAll(".legend")
+          .data(labels.slice().reverse())
+        .enter().append("g")
+          .attr("class", "legend")
+          .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
 
 
 
-  legend.append("rect")
-      .attr("x", width + 38)
-      .attr("width", 18)
-      .attr("height", 18)
-      .style("fill", color);
+    legend.append("rect")
+          .attr("x", width + 38)
+          .attr("width", 18)
+          .attr("height", 18)
+          .style("fill", color);
 
-  legend.append("text")
-      .attr("x", width + 35)
-      .attr("y", 9)
-      .attr("dy", ".35em")
-      .style("text-anchor", "end")
-      .text(function(d) { return d; })
-}  
+    legend.append("text")
+          .attr("x", width + 35)
+          .attr("y", 9)
+          .attr("dy", ".35em")
+          .style("text-anchor", "end")
+          .text(function(d) { return d; })
+
+    /**
+    * this function creates the x axis tick marks for grid
+    **/
+    function make_x_axis() {
+        return d3.svg.axis()
+            .scale(x0)
+            .orient("bottom")
+            .ticks(5)
+    }
+
+    /**
+    * this function creates the y axis tick marks for grid
+    **/
+    function make_y_axis() {
+        return d3.svg.axis()
+            .scale(y)
+            .orient("left")
+            .ticks(5)
+    }
+
+
+}
 
