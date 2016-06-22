@@ -1,17 +1,14 @@
-FROM python:2.7
+FROM buildpack-deps:stretch
 
 MAINTAINER William Morrell "WCMorrell@lbl.gov"
 
 ENV PYTHONUNBUFFERED 1
+ENV LANG C.UTF-8
 RUN mkdir /code
 WORKDIR /code
 
-# configure apt sources
-COPY docker_services/edd/apt-sources /etc/apt/sources.list.d/
-
 # include Debian packages required to build pip packages
-RUN printf 'APT::Default-Release "stable";' > /etc/apt/apt.conf.d/99defaultrelease \
-    && apt-get update \
+RUN apt-get update \
     && apt-get install -y \
         gfortran \
         libatlas-dev \
@@ -23,14 +20,16 @@ RUN printf 'APT::Default-Release "stable";' > /etc/apt/apt.conf.d/99defaultrelea
         libsasl2-dev \
         libssl-dev \
         postgresql-client \
-    && apt-get -t testing install -y \
+        python-all \
+        python-all-dev \
+        python-pip \
         python-sklearn \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Putting this in its own RUN to avoid needing to re-install numpy/scipy every time
 # (since pip will update)
-RUN pip install --upgrade pip setuptools wheel
+RUN pip install --upgrade pip setuptools wheel && pip install --no-cache-dir virtualenv
 
 # COPY adds a new layer IFF requirements.txt hash has changed
 COPY requirements.txt /tmp/
