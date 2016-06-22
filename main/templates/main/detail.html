@@ -41,6 +41,7 @@
     <script type="text/javascript" src="{% static 'main/js/CreateLineGraph.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/GroupedBarAssay.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/GroupedBarTime.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/IndividualBarCharts.js' %}"></script>
 {% endblock js_css %}
 
 
@@ -194,11 +195,14 @@
                      assay</button>
                 <button class="mdl-button mdl-js-button" id="chart1" value="container">Bar graph by
                     time</button>
+                <button class="mdl-button mdl-js-button" id="chart3" value="single">Bar graph by
+                    time</button>
              </div>
             <div class="svg-container">
                 <div id="container"></div>
                 <div id="bar"></div>
                 <div id="metrics"></div>
+                <div id="single"></div>
             </div>
             <div id="maingraph" class="graphContainer"></div>
         </div>

@@ -60,7 +60,8 @@
           if (first[j][0].length > 0 && first[j][1].length > 0) {
             dataset.x = parseInt(first[j][0].join());
             dataset.y = parseFloat(first[j][1].join());
-            dataset.i = i
+            dataset.i = i;
+            dataset.visable = true; 
             n.push(dataset);
              }
            else {

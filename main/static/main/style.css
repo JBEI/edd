@@ -8,6 +8,11 @@
 #bar {
   display: none;
 }
+
+.bar {
+  fill: steelblue;
+}
+
 .bar:hover {
   fill: orangered ;
 }
@@ -106,6 +111,11 @@ overflow: auto;
   float: left;
   margin-left: 20px;
   margin-top: 20px;
+}
+
+#single {
+    display: none;
+
 }
 
 .svg-container {

@@ -9,26 +9,41 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
 
      arraySize = arraySize.pop();
 
-      var margin = {top: 20, right: 40, bottom: 30, left: 40},
+     var margin = {top: 20, right: 40, bottom: 30, left: 40},
         width = 1000 - margin.left - margin.right,
         height = 270 - margin.top - margin.bottom;
 
-     var color = d3.scale.ordinal().range(["#48A36D",  "#56AE7C",  "#64B98C", "#72C39B", "#80CEAA",
+     var colorrange = ["#48A36D",  "#56AE7C",  "#64B98C", "#72C39B", "#80CEAA",
          "#80CCB3", "#7FC9BD", "#7FC7C6", "#7EC4CF", "#7FBBCF", "#7FB1CF", "#80A8CE", "#809ECE",
          "#8897CE", "#8F90CD", "#9788CD", "#9E81CC", "#AA81C5", "#B681BE", "#C280B7", "#CE80B0",
          "#D3779F", "#D76D8F", "#DC647E", "#E05A6D", "#E16167", "#E26962", "#E2705C", "#E37756",
          "#E38457", "#E39158", "#E29D58", "#E2AA59", "#E0B15B", "#DFB95C", "#DDC05E", "#DBC75F",
-         "#E3CF6D", "#EAD67C", "#F2DE8A"]);
+         "#E3CF6D", "#EAD67C", "#F2DE8A", "#48A36D",  "#56AE7C",  "#64B98C", "#72C39B", "#80CEAA",
+         "#80CCB3", "#7FC9BD", "#7FC7C6", "#7EC4CF", "#7FBBCF", "#7FB1CF", "#80A8CE", "#809ECE",
+         "#8897CE", "#8F90CD", "#9788CD", "#9E81CC", "#AA81C5", "#B681BE", "#C280B7", "#CE80B0",
+         "#D3779F", "#D76D8F", "#DC647E", "#E05A6D", "#E16167", "#E26962", "#E2705C", "#E37756",
+         "#E38457", "#E39158", "#E29D58", "#E2AA59", "#E0B15B", "#DFB95C", "#DDC05E", "#DBC75F",
+         "#E3CF6D", "#EAD67C", "#F2DE8A"];
+
+
+     var thisColorRange = colorrange.splice(0, labels.length);
+
+     var color = d3.scale.ordinal()
+        .range(thisColorRange);
 
       var x0 = d3.scale.ordinal()
         .domain(d3.range(size))
-        .rangeBands([0, width], .1);
+        .rangeBands([0, width], .3, .3);
 
       var x1 = d3.scale.ordinal().domain(d3.range(arraySize))
           .rangeBands([0, x0.rangeBand()]);
 
       var y = d3.scale.linear()
         .range([height, 0]);
+
+      var zoom = d3.behavior.zoom()
+        .scaleExtent([0, x0.rangeBand()])
+        .on("zoom", zoomed);
 
       var xAxis = d3.svg.axis()
         .scale(x0)
@@ -43,24 +58,29 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
         .append("svg")
         .attr("preserveAspectRatio", "xMinYMin meet")
         .attr("viewBox", "-30 -40 1100 280")
-        .classed("svg-content", true);
+        .classed("svg-content", true)
+        .call(zoom);
 
-
-      var data = d3.nest()
+      //nest data
+    var data = d3.nest()
         .key(function(d) { return d.i; })
         .entries(linedata);
 
+    color.domain(data.filter(function(key) { // Set the domain of the color ordinal
+        // scale to be all the csv headers except "i", matching a color to an issue
+        return (key == "i");
+    }));
 
-      y.domain([0, d3.max(data, function(d) { return d3.max(d.values, function(d) { return d.y; }); })]);
+    y.domain([0, d3.max(data, function(d) { return d3.max(d.values, function(d) { return d.y; }); })]);
 
 
-      svg.append("g")
+    svg.append("g")
         .attr("class", "x axis")
         .attr("transform", "translate(0," + height + ")")
         .call(xAxis)
 
     // Draw the x Grid lines
-      svg.append("g")
+    svg.append("g")
         .attr("class", "grid")
         .attr("transform", "translate(0," + height + ")")
         .call(make_x_axis()
@@ -68,14 +88,14 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
             .tickFormat("")
         )
         // Draw the y Grid lines
-      svg.append("g")
+    svg.append("g")
         .attr("class", "grid")
         .call(make_y_axis()
             .tickSize(-width, 0, 0)
             .tickFormat("")
         )
 
-      svg.append("g")
+    svg.append("g")
           .attr("class", "y axis")
           .call(yAxis)
         .append("text")
@@ -85,16 +105,17 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
           .style("text-anchor", "end")
           .text("Frequency");
 
-      var bar = svg.selectAll(".bar")
+    var bar = svg.selectAll(".bar")
         .data(data)
         .enter().append('g')
         .attr("class", "bar")
         .attr("transform", function(d) { return "translate(" + x0(d.key) + ",0)"; })
 
-      bar.selectAll("rect")
+
+    bar.selectAll("rect")
         .data(function(d) {return d.values})
          .enter().append("rect")
-          .attr("width", x1.rangeBand()/ data.length + 7)
+          .attr("width", x1.rangeBand() + 2)
           .attr("x", function(d) { return x1(d.x); })
           .attr("y", function(d) { return y(d.y); })
           .attr("height", function(d) { return height - y(d.y); })
@@ -109,11 +130,12 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
             tooltip.select("text").text(labels[d.i] + "- x: " + d.x + " y: " + d.y);
           });
 
+
      //legend
     var legendSpace = 200 / labels.length;
 
     var legend = svg.selectAll(".legend")
-          .data(labels.slice().reverse())
+          .data(labels)
         .enter().append("g")
           .attr("class", "legend")
           .attr("transform", function(d, i) { return "translate(0," + i + ")"; });
@@ -170,4 +192,9 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
             .orient("left")
             .ticks(5)
     }
+
+    function zoomed() {
+        svg.attr("transform", "translate(" + d3.event.translate +
+                      ")scale(" + d3.event.scale + ")");
+        }
 }
