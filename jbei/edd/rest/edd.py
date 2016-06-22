@@ -935,6 +935,7 @@ class EddApi(RestApiClient):
 
 
 class DrfPagedResult(PagedResult):
+
     def __init__(self, results, total_result_count, next_page=None, previous_page=None):
         super(DrfPagedResult, self).__init__(results, total_result_count, next_page, previous_page)
 
@@ -956,7 +957,10 @@ class DrfPagedResult(PagedResult):
         of it (if any)
         """
         # TODO: try to merge with IcePagedResult.of(), then move implementation to parent
-        # class after resolving the reflection problem below for DRF-based serializers
+        # class.  Initial attempt here was to use DRF serializers for de-serialization, which may be
+        # worth another shot following corrected use of super() in those classes.
+        # Otherwise, more Pythonic to just use a factory method. Also update IcePagedResult for
+        # consistency.
 
         # convert reply to a dictionary of native python data types
         json_dict = json.loads(json_string)
