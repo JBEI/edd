@@ -16,7 +16,7 @@ declare var yvalues;
 declare var xvalues;
 declare var sortValues;
 declare var transformLineData;
-declare var transformBarData;
+declare var sortBarData;
 declare var labels;
 declare var arrSize;
 
@@ -1549,9 +1549,8 @@ module StudyD {
         });
         //point to mainGraph div
         var data = EDDData.AssayMeasurements;
-        debugger
-            var transformedLineData = transformLineData(data);
-            var transformedBarData = transformBarData(data);
+            var lineAssayObj = transformLineData(data);
+            var barAssayObj  = sortBarData(lineAssayObj);
             var yvals = yvalues(data);
             var xvals = xvalues(data);
             var ysorted = sortValues(yvals) ;
@@ -1563,9 +1562,9 @@ module StudyD {
             var size = objectSize(data); // number of assays
             var arraySize = arrSize(data); // number of data points
             labels = labels(data);
-            createLineGraph(transformedLineData, minValue, maxValue, labels, minXvalue, maxXvalue);
-            createAssayGraph(transformedBarData, minValue, maxValue, labels, size, arraySize);
-            createTimeGraph(transformedBarData, minValue, maxValue, labels, size, arraySize);
+            createLineGraph(lineAssayObj, minValue, maxValue, labels, minXvalue, maxXvalue);
+            createAssayGraph(barAssayObj, minValue, maxValue, labels, size, arraySize);
+            createTimeGraph(barAssayObj, minValue, maxValue, labels, size, arraySize);
     }
 
 

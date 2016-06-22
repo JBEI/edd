@@ -1340,9 +1340,8 @@ var StudyD;
         });
         //point to mainGraph div
         var data = EDDData.AssayMeasurements;
-        debugger;
-        var transformedLineData = transformLineData(data);
-        var transformedBarData = transformBarData(data);
+        var lineAssayObj = transformLineData(data);
+        var barAssayObj = sortBarData(lineAssayObj);
         var yvals = yvalues(data);
         var xvals = xvalues(data);
         var ysorted = sortValues(yvals);
@@ -1354,9 +1353,9 @@ var StudyD;
         var size = objectSize(data); // number of assays
         var arraySize = arrSize(data); // number of data points
         labels = labels(data);
-        createLineGraph(transformedLineData, minValue, maxValue, labels, minXvalue, maxXvalue);
-        createAssayGraph(transformedBarData, minValue, maxValue, labels, size, arraySize);
-        createTimeGraph(transformedBarData, minValue, maxValue, labels, size, arraySize);
+        createLineGraph(lineAssayObj, minValue, maxValue, labels, minXvalue, maxXvalue);
+        createAssayGraph(barAssayObj, minValue, maxValue, labels, size, arraySize);
+        createTimeGraph(barAssayObj, minValue, maxValue, labels, size, arraySize);
     }
     function clearAssayForm() {
         var form = $('#id_assay-assay_id').closest('.disclose');
