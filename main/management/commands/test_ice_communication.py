@@ -1,10 +1,12 @@
 """
 A simple manage.py command to help in testing EDD/ICE communication and related configuration data.
 """
+from django.conf import settings
 from django.core.management import BaseCommand
 from django.core.management.base import CommandError
 
-from jbei.ice.rest.ice import (IceHmacAuth, IceApi)
+from jbei.rest.auth import HmacAuth
+from jbei.ice.rest.ice import IceApi
 
 
 class Command(BaseCommand):
@@ -20,7 +22,7 @@ class Command(BaseCommand):
 
         # get ICE authentication configured via EDD's config files (secrets.env and / or
         # settings/local.py)
-        auth = IceHmacAuth.get(username=username)
+        auth = HmacAuth(key_id=settings.ICE_KEY_ID, username=username)
         ice = IceApi(auth)
 
         try:
@@ -39,4 +41,3 @@ class Command(BaseCommand):
                       "this." % username)
         except Exception as e:
             raise CommandError(e)
-

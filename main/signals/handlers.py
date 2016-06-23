@@ -13,13 +13,14 @@ from django.db import connection, transaction
 from django.db.models.signals import m2m_changed, post_delete, post_save, pre_save, pre_delete
 from django.dispatch import receiver
 from django.core.mail import mail_managers
+from requests.exceptions import ConnectionError
 
-from jbei.ice.rest.ice import parse_entry_id, HmacAuth, IceHmacAuth
+from jbei.rest.auth import HmacAuth
+from jbei.ice.rest.ice import parse_entry_id
 from . import study_modified, study_removed, user_modified
 from ..models import Line, Strain, Study, Update
 from ..solr import StudySearch, UserSearch
 from ..utilities import get_absolute_url
-from requests.exceptions import ConnectionError
 
 
 solr = StudySearch()
@@ -65,7 +66,7 @@ def index_user(sender, user, **kwargs):
     try:
         users.update([user, ])
     except ConnectionError as e:
-        mail_managers("Error connecting to Solr at login", "support needed")
+        mail_managers("Error connecting to Solr at login", "Exception message = %s" % e)
         logger.exception("Error connecting to Solr at login")
 
 
@@ -244,7 +245,9 @@ def _post_commit_unlink_ice_entry_from_study(user_email, study_pk, study_creatio
     """
     logger.info('Start ' + _post_commit_unlink_ice_entry_from_study.__name__ + '()')
 
-    ice = IceApi(auth=IceHmacAuth(username=user_email)) if not settings.USE_CELERY else None
+    ice = None
+    if not settings.USE_CELERY:
+        ice = IceApi(auth=HmacAuth(key_id=settings.ICE_KEY_ID, username=user_email))
 
     study_url = get_abs_study_url(study_pk)
     index = 0
@@ -296,7 +299,7 @@ def _post_commit_unlink_ice_entry_from_study(user_email, study_pk, study_creatio
 
     # if an error occurs, print a helpful log message, then re-raise it so Django will email
     # administrators
-    except StandardError as err:
+    except Exception as err:
         strain_pks = [strain.pk for strain in removed_strains]
         _handle_post_commit_ice_lambda_error(err, 'remove', study_pk, strain_pks, index)
 
@@ -309,7 +312,9 @@ def _post_commit_link_ice_entry_to_study(user_email, study, linked_strains):
     django-commit-hooks limitation that a no-arg method be passed to the post-commit hook.
     :param linked_strains cached strain information
     """
-    ice = IceApi(auth=IceHmacAuth.get(username=user_email)) if not settings.USE_CELERY else None
+    ice = None
+    if not settings.USE_CELERY:
+        ice = IceApi(auth=HmacAuth(key_id=settings.ICE_KEY_ID, username=user_email))
 
     index = 0
 
@@ -345,7 +350,7 @@ def _post_commit_link_ice_entry_to_study(user_email, study, linked_strains):
 
     # if an error occurs, print a helpful log message, then re-raise it so Django will email
     # administrators
-    except StandardError as err:
+    except Exception as err:
         linked_strain_pks = [strain.pk for strain in linked_strains]
         _handle_post_commit_ice_lambda_error(err, 'add/update', study.pk, linked_strain_pks, index)
 
@@ -513,7 +518,7 @@ def handle_line_strain_changed(sender, instance, action, reverse, model, pk_set,
             logger.warning("Detected changes from fixtures, skipping ICE signal handling.")
         # if an error occurs, print a helpful log message, then re-raise it so Django will email
         # administrators
-        except StandardError:
+        except Exception:
             logger.exception("Exception scheduling post-commit work. Failed on strain with id %d" %
                              strain_pk)
     elif 'pre_remove' == action:
@@ -581,7 +586,7 @@ def handle_line_strain_changed(sender, instance, action, reverse, model, pk_set,
             logger.warning("Detected changes from fixtures, skipping ICE signal handling.")
         # if an error occurs, print a helpful log message, then re-raise it so Django will email
         # administrators
-        except StandardError:
+        except Exception:
             logger.exception("Exception scheduling post-commit work. Failed on strain with id %d" %
                              strain_pk)
 

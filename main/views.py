@@ -28,7 +28,8 @@ from django.utils.translation import ugettext_lazy as _
 from django.views import generic
 from django.views.decorators.csrf import ensure_csrf_cookie
 
-from jbei.ice.rest.ice import IceApi, HmacAuth, STRAIN, IceHmacAuth
+from jbei.rest.auth import HmacAuth
+from jbei.ice.rest.ice import IceApi, STRAIN
 from . import data_import, models, sbml_export
 from .export import table
 from .forms import (
@@ -1338,7 +1339,7 @@ def search(request):
         found = solr.query(query=term, options={'edismax': True})
         results = found['response']['docs']
     elif model_name == "Strain":
-        ice = IceApi(auth=IceHmacAuth.get(username=request.user.email))
+        ice = IceApi(auth=HmacAuth.get(key_id=settings.ICE_KEY_ID, username=request.user.email))
         found = ice.search_entries(search_terms=term, entry_types=[STRAIN], sort_field='RELEVANCE',
                                    suppress_errors=True)
         if found is None:  # there were errors searching

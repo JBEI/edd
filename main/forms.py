@@ -3,16 +3,17 @@ from __future__ import unicode_literals
 
 import json
 import logging
-from collections import OrderedDict
-from copy import deepcopy
 
 from builtins import str
+from collections import OrderedDict
+from copy import deepcopy
 from django import forms
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.contrib.postgres.forms import HStoreField
 from django.core.exceptions import ValidationError
-from django.db.models import Prefetch, Q
+from django.db.models import Prefetch
 from django.db.models.base import Model
 from django.db.models.manager import BaseManager
 from django.http import QueryDict
@@ -21,7 +22,8 @@ from django.utils.translation import ugettext_lazy as _
 from form_utils.forms import BetterModelForm
 from functools import partial
 
-from jbei.ice.rest.ice import IceApi, IceHmacAuth
+from jbei.rest.auth import HmacAuth
+from jbei.ice.rest.ice import IceApi
 from .export import table
 from .models import (
     Assay, Attachment, CarbonSource, Comment, Line, Measurement, MeasurementType,
@@ -152,7 +154,7 @@ class RegistryValidator(object):
         update = Update.load_update()
         user_email = update.mod_by.email
         try:
-            ice = IceApi(IceHmacAuth.get(username=user_email))
+            ice = IceApi(auth=HmacAuth(key_id=settings.ICE_KEY_ID, username=user_email))
             self.entry = ice.get_entry(registry_id)
             self.entry.url = ''.join((ice.base_url, '/entry/', str(self.entry.id),))
         except Exception:
@@ -163,7 +165,7 @@ class RegistryValidator(object):
             raise ValidationError(
                 _('Failed to load strain %(uuid)s from ICE'),
                 code='ice failure',
-                params={"uuid": registry_id,},
+                params={"uuid": registry_id, },
             )
 
     def save_strain(self):

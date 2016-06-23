@@ -26,7 +26,8 @@ from edd_utils.celery_utils import compute_exp_retry_delay
 from edd_utils.celery_utils import send_stale_input_warning
 from edd_utils.celery_utils import send_resolution_message
 from edd_utils.celery_utils import make_standard_email_subject, email_admins
-from jbei.ice.rest.ice import IceApi, parse_entry_id, IceHmacAuth
+from jbei.rest.auth import HmacAuth
+from jbei.ice.rest.ice import IceApi, parse_entry_id
 from main.models import Line, Strain
 
 
@@ -216,7 +217,7 @@ def link_ice_entry_to_study(self, edd_user_email, strain_pk, study_pk, study_url
         # make a request via ICE's REST API to link the ICE strain to the EDD study that references
         # it
         study = line.study
-        ice = IceApi(auth=IceHmacAuth.get(username=edd_user_email))
+        ice = IceApi(auth=HmacAuth(key_id=settings.ICE_KEY_ID, username=edd_user_email))
         ice.write_enabled = True
         ice.link_entry_to_study(str(workaround_strain_entry_id), study.pk, study_url, study.name,
                                 logger=logger, old_study_name=old_study_name)
@@ -334,7 +335,7 @@ def unlink_ice_entry_from_study(self, edd_user_email, study_pk, study_url, strai
                 return _STALE_OR_ERR_INPUT  # succeed after sending the warning
 
         # remove the study link from ICE
-        ice = IceApi(auth=IceHmacAuth.get(username=edd_user_email))
+        ice = IceApi(auth=HmacAuth(key_id=settings.ICE_KEY_ID, username=edd_user_email))
         ice.write_enabled = True
         removed = ice.unlink_entry_from_study(strain_registry_id, study_pk, study_url,
                                               logger)
