@@ -1189,4 +1189,3 @@ var DataGridHelperBase = (function () {
 window.addEventListener('load', function () {
     DataGridServerSide.scanPageForTables();
 }, false);
-//# sourceMappingURL=DataGridServerSide.js.map
