@@ -4,7 +4,6 @@ from __future__ import unicode_literals
 import logging
 import traceback
 
-from builtins import str
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import mail_admins
@@ -14,12 +13,11 @@ from django.db.models.signals import m2m_changed, post_delete, post_save, pre_sa
 from django.dispatch import receiver
 from django.core.mail import mail_managers
 
-from jbei.ice.rest.ice import parse_entry_id, HmacAuth, IceHmacAuth
+from jbei.ice.rest.ice import parse_entry_id, IceHmacAuth
 from . import study_modified, study_removed, user_modified
 from ..models import Line, Strain, Study, Update
 from ..solr import StudySearch, UserSearch
 from ..utilities import get_absolute_url
-from requests.exceptions import ConnectionError
 
 
 solr = StudySearch()
@@ -50,23 +48,57 @@ def study_delete(sender, instance, using, **kwargs):
         study_removed.send(sender=sender, study=instance)
 
 
+####################################################################################################
+# Index study
+####################################################################################################
 @receiver(study_modified)
 def index_study(sender, study, **kwargs):
-    solr.update([study, ])
+    # schedule an update to the Solr index *after* the database commit
+    connection.on_commit(lambda: _post_commit_index_study(study))
+
+def _post_commit_index_study(study):
+    try:
+        solr.update([study, ])
+    except IOError:
+        _handle_post_commit_lambda_error('Error updating Solr study index for study %d' % study.pk)
 
 
+####################################################################################################
+# Un-index study
+####################################################################################################
 @receiver(study_removed)
 def unindex_study(sender, study, **kwargs):
-    solr.remove([study, ])
+    # schedule an update to the Solr index *after* the database commit
+    connection.on_commit(lambda: _post_commit_unindex_study(study))
 
 
+def _post_commit_unindex_study(study):
+    try:
+        solr.remove([study, ])
+    except IOError:
+        _handle_post_commit_lambda_error('Error updating Solr study index for study %d' % study.pk)
+
+
+####################################################################################################
+# Index user
+####################################################################################################
 @receiver(user_modified)
 def index_user(sender, user, **kwargs):
-    try:
-        users.update([user, ])
-    except ConnectionError as e:
-        mail_managers("Error connecting to Solr at login", "support needed")
-        logger.exception("Error connecting to Solr at login")
+    # schedule an update to the Solr index *after* the database commit
+    connection.on_commit(lambda: _post_commit_index_user(user))
+
+
+def _post_commit_index_user(user):
+        try:
+            users.update([user, ])
+        # catch Solr/connection errors that occur during the user login process / email admins
+        # regarding the error. users may not be able to do much without Solr, but they can still
+        # access existing studies (provided the URL), and create new ones. Solr being down
+        # shouldn't prevent the login process (EDD-201)
+        except IOError as e:
+            _handle_post_commit_lambda_error("Error updating Solr at login")
+
+####################################################################################################
 
 
 def log_update_warning_msg(study_id):
@@ -369,19 +401,36 @@ def _handle_post_commit_ice_lambda_error(err, operation, study_pk, strains_to_up
     else:
         error_msg = "Error updating ICE links via direct HTTP request (index=%d)" % index
 
-    logger.exception(error_msg)
+    _handle_post_commit_lambda_error(error_msg)
+
+
+def _handle_post_commit_lambda_error(err_msg, re_raise_error=None):
+    """
+        A workaround for EDD-176: Django doesn't seem to be picking up errors / emailing admins
+        for uncaught exceptions in post-commit signal handler lambdas. Note that even if Django
+        resolves this we *still* often won't want to raise the exception since that would cause
+        the EDD user to get an error message for a process that from their perspective was a
+        partial/total success. For ICE messaging tasks, we can consider changing this behavior
+        after  deploying Celery in production (EDD-176), which will effectively mask ICE
+        communication / integration errors from EDD users since they'll occur outside the context
+        of the browser's request. At that point, errors generated here will just reflect errors
+        communicating with Celery, which should probably still be masked from users.
+        :param err_msg: a brief string description of the error that will get logged / emailed to
+        admins
+        :param re_raise_error: a reference to the Error/Exception that was thrown if it should be
+        re-raised after being logged / emailed to admins. Often this should only be done if the
+        error is severe enough that it justifies interrupting the users current workflow. Note that
+        a traceback will be logged / emailed even if this parameter isn't included.
+    """
+
+    logger.exception(err_msg)  # Note: purposeful to not pass the error here! Often the cause of
+                               # unicode exceptions! See SYNBIO-1267.
     traceback_str = build_traceback_msg()
-    msg = '%s\n\n%s' % (error_msg, traceback_str)
+    msg = '%s\n\n%s' % (err_msg, traceback_str)
+    mail_admins(err_msg, msg)
 
-    # Workaround EDD-176. Django doesn't seem to be picking up errors / emailing admins
-    # for uncaught exceptions in signal handlers. Note that even if Django resolves this,
-    # we *still* won't want to raise the exception since that would cause the EDD user to get an
-    # error message for a process that from their perspective was a success. We can consider
-    # changing this behavior after deploying Celery in production, which will effectively mask
-    # the error from EDD users (EDD-176). At that point, errors generated here will just reflect
-    # errors communicating with Celery, which should probably still be masked from users.
-    mail_admins(error_msg, msg)
-
+    if re_raise_error:
+        raise re_raise_error
 
 def _is_linkable(strain):
     return _is_strain_linkable(strain.registry_url, strain.registry_id)
