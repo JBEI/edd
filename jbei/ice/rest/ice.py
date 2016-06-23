@@ -658,7 +658,7 @@ def parse_entry_id(ice_entry_url):
 
     return match.group(3)
 
-DEFAULT_HMAC_KEY_OWNER = 'edd'
+DEFAULT_HMAC_KEY_ID = 'edd'
 
 
 class HmacAuth(AuthBase):
@@ -674,18 +674,18 @@ class HmacAuth(AuthBase):
     # TODO: remove remaining ICE-specific code/variable names to make this code more generic,
     # then relocate. May need to create an ICE-specific subclass.
 
-    def __init__(self, request_generator, secret_key, key_owner=None, username=None, ):
+    def __init__(self, request_generator, secret_key, key_id=None, username=None, ):
         """
 
         :param secret_key:
-        :param key_owner:
+        :param key_id:
         :param username:
         :param request_generator: the request generator to use
         :return:
         """
         if not secret_key:
             raise ValueError("A secret key is required input for HMAC authentication")
-        self._KEY_OWNER = key_owner
+        self._KEY_ID = key_id
         self._USERNAME = username
         self._SECRET_KEY = secret_key
 
@@ -712,8 +712,7 @@ class HmacAuth(AuthBase):
         sig = self._build_signature(request)
 
         # add message headers including the username (if present) and message
-        # TODO: maybe this is ICE-specific?
-        header = ':'.join(filter(bool, ('1', self._KEY_OWNER, self._USERNAME, sig)))
+        header = ':'.join(('1', self._KEY_ID, self._USERNAME, sig))
         request.headers['Authorization'] = header
         return request
 
@@ -726,15 +725,14 @@ class HmacAuth(AuthBase):
 
         # build up the message, using only components that evaluate to True
         delimiter = '\n'
-        msg = delimiter.join(filter(bool, (self._USERNAME,
-                             request.method,
-                             url.netloc,
-                             url.path,
-                             self._sort_parameters(url.query),
-                             )))
-
-        # append msg body even if empty
-        msg = delimiter.join((msg, request.body or ''))
+        msg = delimiter.join((
+            self._USERNAME or '',
+            request.method,
+            url.netloc,
+            url.path,
+            self._sort_parameters(url.query),
+            request.body or '',
+        ))
         return msg
 
     def _build_signature(self, request):
@@ -763,18 +761,19 @@ class HmacAuth(AuthBase):
 
 
 class IceHmacAuth(HmacAuth):
-    def __init__(self, secret_key, key_owner=DEFAULT_HMAC_KEY_OWNER, username=None,
+    def __init__(self, secret_key, key_id=DEFAULT_HMAC_KEY_ID, username=None,
                  request_generator=None):
         """
 
         :param secret_key:
-        :param key_owner:
+        :param key_id:
         :param username:
         :param request_generator: the RequestGenerator instance to use, or None to create a new
         PagedRequestGenerator.
         :return:
         """
-        self.__KEY_OWNER = key_owner
+        super(IceHmacAuth, self).__init__(request_generator, secret_key, key_id=key_id, username=username)
+        self.__KEY_ID = key_id
         self.__USER_EMAIL = username
 
         if not request_generator:
@@ -783,7 +782,6 @@ class IceHmacAuth(HmacAuth):
         else:
             request_generator.auth = self
 
-        super(IceHmacAuth, self).__init__(request_generator, secret_key)
 
     @staticmethod
     def get(secret_key=ICE_SECRET_KEY, username=None, user_auth=None, request=None):

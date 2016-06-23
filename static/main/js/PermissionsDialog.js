@@ -479,4 +479,3 @@ var Permissions;
     })();
     Permissions.Permission = Permission;
 })(Permissions || (Permissions = {}));
-//# sourceMappingURL=PermissionsDialog.js.map
