@@ -319,7 +319,7 @@ StudyDGraphing = {
             // Take the location of this tick, plus our scaled spacer, and use that as the
             // new left edge of our tick search.
             apertureLeftEdge = ((tickArray[i][0] - fullaxis.min) * (graphDivWidth / axisApertureSize)) + stepSize;
-            //			console.log("val: " + tickArray[i][0] + " edge: " + apertureLeftEdge);				
+            //			console.log("val: " + tickArray[i][0] + " edge: " + apertureLeftEdge);
             // If, for any reason, we end up on the same index twice in a row,
             // bail out to prevent an infinite loop.
             if (i == prevI) {

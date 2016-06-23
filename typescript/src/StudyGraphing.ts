@@ -65,9 +65,9 @@ StudyDGraphing = {
 		if (graphdiv) {
 			this.graphDiv = $("#" + graphdiv);
 		} else {
-			this.graphDiv = $("#graphDiv");	
+			this.graphDiv = $("#graphDiv");
 		}
-	
+
 		this.graphDiv.bind("plothover", this.hoverFunction);
 		this.graphDiv.bind("plotclick", this.plotClickFunction);
 		this.graphOptions.xaxis.ticks = this.tickGeneratorFunction;
@@ -86,7 +86,7 @@ StudyDGraphing = {
 		this.axesCount = 0;
 		this.setsFetched = {};
 	},
-	
+
 
 	addNewSet:function(newSet) {
 
@@ -214,7 +214,7 @@ StudyDGraphing = {
 		var r:any = Math.floor((lineColors[lIndex][0] * lfraction) + (lineColors[rIndex][0] * rfraction));
 		var g = Math.floor((lineColors[lIndex][1] * lfraction) + (lineColors[rIndex][1] * rfraction));
 		var b = Math.floor((lineColors[lIndex][2] * lfraction) + (lineColors[rIndex][2] * rfraction));
-		
+
 		return 'rgb(' + r + ', ' + g + ', ' + b + ')';
 	},
 
@@ -241,7 +241,7 @@ StudyDGraphing = {
 
 
 	rebuildXAxis:function() {
-	
+
 		this.tickArray = [];
 
 		this.dataSets.forEach((series) => {
@@ -275,10 +275,10 @@ StudyDGraphing = {
 				}
 			}
 		});
-		
+
 		// Embed it in the options for eventual passing through flot and into the custom tick generator just below
 		this.graphOptions.xaxis.fullTickArray = this.tickArray;
-	},	
+	},
 
 
 	tickGeneratorFunction:function(fullaxis) {
@@ -349,7 +349,7 @@ StudyDGraphing = {
 				} else {
 					i = i + tickArrayStepSize;
 				}
-//				console.log("v: " + v + " i: " + i + " tickArrayStepSize: " + tickArrayStepSize);				
+//				console.log("v: " + v + " i: " + i + " tickArrayStepSize: " + tickArrayStepSize);
 			} while (tickArrayStepSize > 0.4);
 
 			// The index is meant to end up pointing between the two values on either side
@@ -360,20 +360,20 @@ StudyDGraphing = {
 			if (((tickArray[i][0] - fullaxis.min) * (graphDivWidth / axisApertureSize)) < apertureLeftEdge) {
 				i = i + 1;
 			}
-	
+
 			// If, by seeking the higher value, we end up off the end of the array, then
 			// there are no more values we can add.
 			if (i >= tickArrayLength) {
 				break;
 			}
-			
+
 			res.push([tickArray[i][0], tickArray[i][1]]);
-	
+
 			// Take the location of this tick, plus our scaled spacer, and use that as the
 			// new left edge of our tick search.
 			apertureLeftEdge = ((tickArray[i][0] - fullaxis.min) * (graphDivWidth / axisApertureSize)) + stepSize;
 
-//			console.log("val: " + tickArray[i][0] + " edge: " + apertureLeftEdge);				
+//			console.log("val: " + tickArray[i][0] + " edge: " + apertureLeftEdge);
 
 			// If, for any reason, we end up on the same index twice in a row,
 			// bail out to prevent an infinite loop.
@@ -387,13 +387,13 @@ StudyDGraphing = {
 
 		return res;
 	},
-	
-    
+
+
     hoverFunction:function(event, pos, item) {
 		if (item) {
 			if ((StudyDGraphing.previousHoverPoint != item.dataIndex) ||
 				(StudyDGraphing.previousHoverPointSeries != item.series)) {
-				
+
 				StudyDGraphing.previousHoverPoint = item.dataIndex;
 				StudyDGraphing.previousHoverPointSeries = item.series;
 
@@ -404,7 +404,7 @@ StudyDGraphing = {
 
 				if ((StudyDGraphing.previousClickPoint != StudyDGraphing.previousHoverPoint) ||
 					(StudyDGraphing.previousClickPointSeries != StudyDGraphing.previousHoverPointSeries)) {
-	
+
 					StudyDGraphing.hoverWidget = StudyDGraphing.createWidget('graphHoverWidget', item);
 				}
 			}
@@ -415,12 +415,12 @@ StudyDGraphing = {
 				StudyDGraphing.hoverWidget = null;
 			}
 
-			StudyDGraphing.previousHoverPoint = null;            
-			StudyDGraphing.previousHoverPointSeries = null;            
+			StudyDGraphing.previousHoverPoint = null;
+			StudyDGraphing.previousHoverPointSeries = null;
 		}
     },
-    
-    
+
+
 	plotClickFunction:function(event, pos, item) {
         if (item) {
 			// If we're re-clicking a current item
@@ -460,7 +460,7 @@ StudyDGraphing = {
         }
     },
 
-       
+
     createPointSelectionOverlay:function(widgetStyle, item) {
 
 		var tx = item.pageX - 6;
@@ -490,7 +490,7 @@ StudyDGraphing = {
 		newPt.appendTo("body");
 
 		return newPt;
-    },   
+    },
 
 
     createWidget:function(widgetStyle, item) {

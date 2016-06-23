@@ -2,7 +2,7 @@
 /**
 * this function takes in input min y value, max y value, and the transformed data. Outputs the graph 
 **/
-function createSideBySide(linedata, minValue, maxValue) {
+function createSideBySide(linedata, minValue, maxValue, labels) {
 
   //iterate through each assay
   for (var i = 0; i < linedata.length; i++) {
@@ -17,9 +17,6 @@ function createSideBySide(linedata, minValue, maxValue) {
 
     var x = d3.scale.ordinal()
       .rangeRoundBands([0, width], .1);
-
-    var x2 = d3.scale.ordinal()
-      .rangeBands([0, width], 0);
    
     var y = d3.scale.linear()
       .range([height, 0]);
@@ -36,7 +33,7 @@ function createSideBySide(linedata, minValue, maxValue) {
       .attr('class', 'd3-tip')
       .offset([-10, 0])
       .html(function(d) {
-        return "<strong>y value</strong> <span style='color:red'>" + d.y + "</span>";
+        return "<strong>y value</strong> <span style='color:red'>" + d.y + " " + d.y_unit + "</span>";
       })
 
     var svg = d3.select("#single").append("svg")
@@ -48,13 +45,17 @@ function createSideBySide(linedata, minValue, maxValue) {
     svg.call(tip);
 
       x.domain(linedata[i].map(function(d) { return d.x; }));
-      x2.domain(linedata[i].map(function(d) { return d.x; }));
       y.domain([0, d3.max(linedata[i], function(d) { return d.y; })]);
 
     svg.append("g")
         .attr("class", "x axis")
         .attr("transform", "translate(0," + height + ")")
-        .call(xAxis);
+        .call(xAxis)
+        svg.append("text")      // text label for the x axis
+        .attr("x", width / 2 )
+        .attr("y",  height + 40)
+        .style("text-anchor", "middle")
+        .text(labels[i] + ", entry " + i);
 
     svg.append("g")
         .attr("class", "y axis")

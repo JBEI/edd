@@ -33,7 +33,7 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
 
       var x0 = d3.scale.ordinal()
         .domain(d3.range(size))
-        .rangeBands([0, width], .1, 1);
+        .rangeBands([0, width], .3, .3);
 
       var x1 = d3.scale.ordinal().domain(d3.range(arraySize))
           .rangeBands([0, x0.rangeBand()]);
@@ -54,27 +54,17 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
         .orient("left")
         .tickFormat(d3.format(".2s"));
 
-      //create svg graph object
-    var svg = d3.select("div#bar").append("svg")
-        .attr("width", width + margin.left + margin.right)
-        .attr("height", height + margin.top + margin.bottom)
-        .call(d3.behavior.zoom().on("zoom", function () {
-            svg.attr("transform", "translate(" + d3.event.translate + ")" + " scale(" + d3.event.scale + ")")
-         }))
-        .append("g")
-        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+      var svg = d3.select("div#bar")
+        .append("svg")
+        .attr("preserveAspectRatio", "xMinYMin meet")
+        .attr("viewBox", "-30 -40 1100 280")
+        .classed("svg-content", true)
+        .call(zoom);
 
-    /**
-    *  This method transforms our data object into the following
-    *  {
-    *  {key: 0, values: {x, y, i}, {x, y, i}, {x, y, i}},
-    *  {key: 1, values: {x, y, i}, {x, y, i}, {x, y, i}},
-    *  }
-    *  ...
-    **/
+      //nest data
     var data = d3.nest()
-      .key(function(d) { return d.x; })
-      .entries(linedata);
+        .key(function(d) { return d.i; })
+        .entries(linedata);
 
     color.domain(data.filter(function(key) { // Set the domain of the color ordinal
         // scale to be all the csv headers except "i", matching a color to an issue
@@ -137,7 +127,7 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
             var xPosition = barPos + d3.mouse(this)[0] - 15;
             var yPosition = d3.mouse(this)[1] - 25;
             tooltip.attr("transform", "translate(" + xPosition + "," + yPosition + ")");
-            tooltip.select("text").text(labels[d.i] + "- x: " + d.x + " y: " + d.y);
+            tooltip.select("text").text(labels[d.i] + ": " + d.y + " " + d.y_unit);
           });
 
 
