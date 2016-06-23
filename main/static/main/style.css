@@ -19,6 +19,7 @@
 body {
   font: 10px sans-serif;
   padding-left: 20px;
+    overflow: scroll
 }
 
 .d3-tip {
@@ -85,14 +86,16 @@ div.tooltip {
 }
 .legend {
       /*cursor: pointer;*/
-    overflow: auto;
+    overflow: scroll;
+    position: fixed;
 }
 
 .legend1 {
     width:45px;
+    position: fixed;
     height: 5px;
     padding: 0px;
-    overflow: auto;
+    overflow: scroll;
     font: 10px sans-serif;
     background: yellow;
     border: 1px solid #bbb;
@@ -113,6 +116,7 @@ div.tooltip {
 
 #metrics {
   display: none;
+    overflow: scroll
 }
 
 .metrics-container {
@@ -126,6 +130,7 @@ div.tooltip {
 
 #single {
     display: none;
+    overflow: scroll
 
 }
 

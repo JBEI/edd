@@ -49,13 +49,9 @@ function make_y_axis() {
 
   //create svg graph object
     var svg = d3.select("div#container").append("svg")
-        .attr("width", width + margin.left + margin.right)
-        .attr("height", height + margin.top + margin.bottom)
-        .call(d3.behavior.zoom().on("zoom", function () {
-            svg.attr("transform", "translate(" + d3.event.translate + ")" + " scale(" + d3.event.scale + ")")
-         }))
-        .append("g")
-        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+        .attr("preserveAspectRatio", "xMinYMin meet")
+        .attr("viewBox", "-30 -40 1100 280")
+        .classed("svg-content", true)
 
   svg.append("g")
       .attr("class", "x axis")
