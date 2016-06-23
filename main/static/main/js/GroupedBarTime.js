@@ -32,13 +32,9 @@ function createTimeGraph(linedata, minValue, maxValue, labels, size, arraySize) 
 
       //create svg graph object
     var svg = d3.select("div#metrics").append("svg")
-        .attr("width", width + margin.left + margin.right)
-        .attr("height", height + margin.top + margin.bottom)
-        .call(d3.behavior.zoom().on("zoom", function () {
-            svg.attr("transform", "translate(" + d3.event.translate + ")" + " scale(" + d3.event.scale + ")")
-         }))
-        .append("g")
-        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+        .attr("preserveAspectRatio", "xMinYMin meet")
+        .attr("viewBox", "-30 -40 1100 280")
+        .classed("svg-content", true)
     
     /**
     *  This method transforms our data object into the following 
@@ -60,11 +56,6 @@ function createTimeGraph(linedata, minValue, maxValue, labels, size, arraySize) 
       .attr("class", "x axis")
       .attr("transform", "translate(0," + height + ")")
       .call(xAxis)
-    svg.append("text")      // text label for the x axis
-        .attr("x", width / 2 )
-        .attr("y",  height + 40)
-        .style("text-anchor", "middle")
-        .text(labels);
       // Draw the x Grid lines
     svg.append("g")
         .attr("class", "grid")
@@ -118,29 +109,24 @@ function createTimeGraph(linedata, minValue, maxValue, labels, size, arraySize) 
           });
 
      //legend
-    var legendSpace = 200 / labels.length;
-
-    var legend = svg.selectAll(".legend")
+     var legend = svg.selectAll(".legend")
           .data(labels.slice().reverse())
         .enter().append("g")
           .attr("class", "legend")
-          .attr("transform", function(d, i) { return "translate(0," + i + ")"; });
+          .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
 
-
-
-    legend.append("rect")
-          .attr("width", legendSpace)
-          .attr("height", legendSpace)
-          .attr("x", width + 25)
-          .attr("y", function(d, i) {return (legendSpace) + i * (legendSpace) - 5   ;})
+      legend.append("rect")
+          .attr("x", width - 18)
+          .attr("width", 18)
+          .attr("height", 18)
           .style("fill", color);
 
-    legend.append("text")
-          .attr("x", width + 20)
-          .attr("y", function(d, i) {return (legendSpace) + i * (legendSpace);})
+      legend.append("text")
+          .attr("x", width - 24)
+          .attr("y", 9)
           .attr("dy", ".35em")
           .style("text-anchor", "end")
-          .text(function(d) { return d; });
+          .text(function(d) { return d; })
 
 
     //tooltip
@@ -160,10 +146,6 @@ function createTimeGraph(linedata, minValue, maxValue, labels, size, arraySize) 
       .style("text-anchor", "middle")
       .attr("font-size", "12px")
       .attr("font-weight", "bold");
-
-
-    console.log(JSON.stringify(data));
-
 
     /**
     * this function creates the x axis tick marks for grid
