@@ -1,6 +1,7 @@
 ////// grouped bar chart based on time
 function createTimeGraph(linedata, minValue, maxValue, labels, size, arraySize) {
 
+    console.log(size)
     var margin = {top: 20, right: 40, bottom: 30, left: 40},
         width = 1000 - margin.left - margin.right,
         height = 270 - margin.top - margin.bottom;
@@ -59,6 +60,11 @@ function createTimeGraph(linedata, minValue, maxValue, labels, size, arraySize) 
       .attr("class", "x axis")
       .attr("transform", "translate(0," + height + ")")
       .call(xAxis)
+    svg.append("text")      // text label for the x axis
+        .attr("x", width / 2 )
+        .attr("y",  height + 40)
+        .style("text-anchor", "middle")
+        .text(labels);
       // Draw the x Grid lines
     svg.append("g")
         .attr("class", "grid")
@@ -108,7 +114,7 @@ function createTimeGraph(linedata, minValue, maxValue, labels, size, arraySize) 
             var xPosition = barPos + d3.mouse(this)[0] - 15;
             var yPosition = d3.mouse(this)[1] - 25;
             tooltip.attr("transform", "translate(" + xPosition + "," + yPosition + ")");
-            tooltip.select("text").text("x: " + d.x + " y: " + d.y);
+            tooltip.select("text").html(labels[d.i] + ": " + d.y + " " + d.y_unit)
           });
 
      //legend
@@ -154,6 +160,10 @@ function createTimeGraph(linedata, minValue, maxValue, labels, size, arraySize) 
       .style("text-anchor", "middle")
       .attr("font-size", "12px")
       .attr("font-weight", "bold");
+
+
+    console.log(JSON.stringify(data));
+
 
     /**
     * this function creates the x axis tick marks for grid

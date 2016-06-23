@@ -39,6 +39,13 @@
         return [].concat.apply([], assays);
 }
     /**
+    *  This function takes a unit id and returns the unit name
+    **/
+
+    function unitName(unitId, unitTypes) {
+      return unitTypes[unitId].name
+    }
+        /**
     *  This function takes in data and transforms it into the following
     *  [
         ...
@@ -47,38 +54,47 @@
         ...
         }
     **/
-    function transformLineData(data) {
-      var linedata = [];
+    function transformLineData(data, names) {
+      var unitTypes = data.UnitTypes;
+      data = data.AssayMeasurements;
+      var linedata = []
       var size = objectSize(data);
       for (var i = 0; i < size; i++) {
-        //returns first object 
-        var first = (data[Object.keys(data)[i]].values);
-        //data 
+        //returns first object
+        var first = (data[Object.keys(data)[i]]);
+        var values = first.values;
+        //data
         var n = [];
-        for (var j = 0; j < first.length; j++ ) {
+        for (var j = 0; j < values.length; j++ ) {
           dataset = {};
-          if (first[j][0].length > 0 && first[j][1].length > 0) {
-            dataset.x = parseInt(first[j][0].join());
-            dataset.y = parseFloat(first[j][1].join());
+          if (values[j][0].length > 0 && values[j][1].length > 0) {
+            dataset.x = parseInt(values[j][0].join());
+            dataset.y = parseFloat(values[j][1].join());
             dataset.i = i;
-            dataset.visable = true; 
+            dataset.x_unit = unitName(first.x_units, unitTypes);
+            dataset.y_unit = unitName(first.y_units, unitTypes);
+            dataset.name = names[i];
             n.push(dataset);
              }
            else {
-            console.log("missing data for object " + i + " time " + first[j][0])
+            console.log("missing data for object " + i + " time " + values[j][0])
            }
         }
-    
+
         linedata.push(n);
       }
-          //sort data               
+          //sort data
          linedata.forEach(function(d) {
             d.sort(function(a, b) {
-              return parseFloat(a.x) - parseFloat(b.x);
+              return a.x - b.x;
             })
           })
+
         return(linedata);
     }
+
+
+
     /**
     * this function takes in the data array and returns an array of y values  
     **/
@@ -130,3 +146,68 @@
     function labels(data) { 
       return Object.keys(data)
     }
+
+     /**
+  *  This function takes in the EDDData.AssayMeasurements object and returns
+  *  an array of Assay ids. 
+  **/
+
+    function findAssayIds(assayMeasurements) {
+     var assayIds = [];
+     for (key in assayMeasurements) {
+          assayIds.push(assayMeasurements[key].assay)
+     }
+        return assayIds
+    }
+
+    /**
+  *  This function takes in the EDDData.Assays object and array of Assay ids 
+  *  and returns an array of LID ids. 
+  **/
+
+    function findLidIds(assays, assayIds) {
+        var lidIds = [];
+        for (var i = 0; i < assayIds.length; i++) {
+            lidIds.push(assays[assayIds[i]].lid)
+        }
+    return lidIds
+    }
+
+    /**
+  *  This function takes in the EDDData.Lines object and lidIds and returns
+  *  an array of measurements names.  
+  **/
+
+    function lineName(lines, lidIds) {
+        var lineNames = [];
+        for (var i = 0; i < lidIds.length; i++) {
+            lineNames.push(lines[lidIds[i]].name)
+        }
+        return lineNames;
+    }
+
+  /**
+  *  This function takes in the EDDData object and returns
+  *  an array of measurements names.  
+  **/
+
+  function names(EDDData) {
+      var assayIds = findAssayIds(EDDData.AssayMeasurements)
+      var lidIds = findLidIds(EDDData.Assays, assayIds)
+      var names = lineName(EDDData.Lines, lidIds)
+      return names; 
+  }
+
+  /**
+  *  This function takes in the d3 nested data object and returns
+  *  the max array size.
+  **/
+  function maxSize(data) {
+    var max = 0;
+    data.forEach(function(d) {
+    if (d.values.length > max) {
+      max = d.values.length
+    }
+  });
+    console.log(max)
+  }

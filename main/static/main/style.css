@@ -64,7 +64,7 @@ body {
 div.tooltip {
   position: absolute;
   text-align: center;
-  width: 75px;
+  width: 100px;
 
   padding: 2px;
   font: 12px sans-serif;
@@ -85,15 +85,26 @@ div.tooltip {
 }
 .legend {
       /*cursor: pointer;*/
-overflow: auto;
+    overflow: auto;
 }
 
-.legend rect {
+.legend1 {
+    width:45px;
+    height: 5px;
+    padding: 0px;
+    overflow: auto;
+    font: 10px sans-serif;
+    background: yellow;
+    border: 1px solid #bbb;
+    background-color: #cccccc;
+    box-shadow: 2px 2px 1px #888;
+        }
+/*.legend rect {*/
 
-  fill:white;
-  stroke:black;
-  opacity:0.8;
-}
+  /*fill:white;*/
+  /*stroke:black;*/
+  /*opacity:0.8;*/
+/*}*/
 
 .line {
   fill: none;

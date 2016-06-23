@@ -19,7 +19,8 @@ declare var transformLineData;
 declare var sortBarData;
 declare var labels;
 declare var arrSize;
-declare var createSideBySide; 
+declare var createSideBySide;
+declare var names;
 
 
 
@@ -1559,24 +1560,24 @@ module StudyD {
                     d3.select('#single').style('display', 'block');
         })
         //point to mainGraph div
-        var data = EDDData.AssayMeasurements;
-            var lineAssayObj = transformLineData(data);
+            var data = EDDData;
+            var labels = names(data);
+            var lineAssayObj = transformLineData(data, labels);
             var barAssayObj  = sortBarData(lineAssayObj);
-            var yvals = yvalues(data);
-            var xvals = xvalues(data);
+            var yvals = yvalues(data.AssayMeasurements);
+            var xvals = xvalues(data.AssayMeasurements);
             var ysorted = sortValues(yvals) ;
             var xsorted = sortValues(xvals);
             var minValue = ysorted[ysorted.length - 1];
             var maxValue = ysorted[0];
             var minXvalue = xsorted[xsorted.length - 1];
             var maxXvalue = xsorted[0];
-            var size = objectSize(data); // number of assays
-            var arraySize = arrSize(data); // number of data points
-            labels = labels(data);
+            var size = objectSize(data.AssayMeasurements); // number of assays
+            var arraySize = arrSize(data.AssayMeasurements); // number of data points
             createLineGraph(lineAssayObj, minValue, maxValue, labels, minXvalue, maxXvalue);
             createAssayGraph(barAssayObj, minValue, maxValue, labels, size, arraySize);
-            createTimeGraph(barAssayObj, minValue, maxValue, labels, size, arraySize);
-            createSideBySide(lineAssayObj, minValue, maxValue);
+            createTimeGraph(barAssayObj, minValue, maxValue, minXvalue, maxXvalue, labels, size, arraySize);
+            createSideBySide(lineAssayObj, minValue, maxValue, labels, minXvalue, maxXvalue);
     }
 
 
@@ -2591,7 +2592,7 @@ class DataGridAssays extends DataGrid {
                     'data': $.map(measure.values, convert).sort(compare)
                 };
                 if (line.control) set.iscontrol = true;
-                g.addNewSet(set);
+                g.addNewSet("SET " + set.units);
             });
         });
 
