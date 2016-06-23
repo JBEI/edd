@@ -85,6 +85,8 @@ class HmacAuth(AuthBase):
         sig = self._build_signature(request)
 
         # add message headers including the username (if present) and message
+        # The version 1 spec of the HmacSignature class calls for the Authorization HTTP header
+        #   of the form: {Version}:{KeyId}:{UserId}:{Signature}
         header = ':'.join(('1', self._KEY_ID, self._USERNAME, sig))
         request.headers['Authorization'] = header
         return request
@@ -96,7 +98,14 @@ class HmacAuth(AuthBase):
         """
         url = urlparse(request.url)
 
-        # build up the message, using only components that evaluate to True
+        # THe version 1 spec of the HmacSignature class calls for the message to be signed
+        #   formatted as the following elements, each separated by a newline character:
+        #   * UserId (same value as used in Authorization header)
+        #   * HTTP Method (e.g. GET, POST)
+        #   * HTTP Host (e.g. server.example.org)
+        #   * Request path (e.g. /path/to/resource/)
+        #   * SORTED query string, keyed by natural UTF8 byte-ordering of names
+        #   * Request Body
         delimiter = '\n'
         msg = delimiter.join((
             self._USERNAME or '',
