@@ -22,6 +22,10 @@ class HmacTests(TestCase):
         request = FakeRequest()
         request.url = 'http://registry-test.jbei.org/rest/accesstoken'
         request.method = 'GET'
+        request.headers = {}
         request.body = None
-        auth = HmacAuth(request, self.KEY_ID, self.USER_ID)
-        self.assertEqual(auth(), 'j7iHK4iYiELZlEtDWD8GJm04CWc=')
+        auth = HmacAuth(self.KEY_ID, self.USER_ID)
+        self.assertEqual(
+            auth(request).headers['Authorization'],
+            ':'.join(('1', self.KEY_ID, self.USER_ID, 'j7iHK4iYiELZlEtDWD8GJm04CWc='))
+        )
