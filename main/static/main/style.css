@@ -212,6 +212,9 @@ div.tooltip {
 	line-height: 20px;
 }
 
+.x.axis {
+    line: .1;
+}
 .x.axis path {
   opacity: .2;
 }
