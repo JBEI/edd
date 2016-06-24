@@ -138,14 +138,6 @@
         });
         return values
      }
-    
-    /**
-    * this function takes in data input and returns an array of labels ie: 219023 
-    **/
-    
-    function labels(data) { 
-      return Object.keys(data)
-    }
 
      /**
   *  This function takes in the EDDData.AssayMeasurements object and returns

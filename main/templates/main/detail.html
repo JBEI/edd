@@ -17,14 +17,6 @@
     <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
-{#    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.js' %}"></script>#}
-{#    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.crosshair.js' %}"></script>#}
-{#    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.resize.js' %}"></script>#}
-{#    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.navigate.js' %}"></script>#}
-{#    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.dashes.js' %}"></script>#}
-{#    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.threshold.js' %}"></script>#}
-{#    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.orderbars.js' %}"></script>#}
-{#    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.stack.js' %}"></script>#}
     <script type="text/javascript" src="{% static 'main/js/BiomassCalculationUI.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/Study.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/StudyGraphing.js' %}"></script>
@@ -39,8 +31,9 @@
     <link rel="stylesheet" type="text/css" href="{% static "main/style.css" %}">
     <script type="text/javascript" src="{% static 'main/js/common.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/CreateLineGraph.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/GroupedBarAssay.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/GroupedBarLines.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/GroupedBarTime.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/GroupedBarAssay.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/IndividualBarCharts.js' %}"></script>
 {% endblock js_css %}
 
@@ -192,17 +185,20 @@
                  <button class="mdl-button mdl-js-button" id="chart2" value="metrics">Line
                     Graph</button>
                  <button class="mdl-button mdl-js-button" id="chart" value="bar">Bar graph by
-                     assay</button>
+                     line entry</button>
                 <button class="mdl-button mdl-js-button" id="chart1" value="container">Bar graph by
                     time</button>
                 <button class="mdl-button mdl-js-button" id="chart3"
-                        value="single">Individual bar graphs</button>
+                        value="single">Bar graphs for each line</button>
+                <button class="mdl-button mdl-js-button" id="chart4"
+                        value="groupedAssay">Bar graph by assay</button>
              </div>
             <div class="svg-container">
                 <div id="container"></div>
                 <div id="bar"></div>
                 <div id="metrics"></div>
                 <div id="single"></div>
+                <div id="groupedAssay"></div>
             </div>
             <div id="maingraph" class="graphContainer"></div>
         </div>

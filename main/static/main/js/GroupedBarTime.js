@@ -1,7 +1,6 @@
 ////// grouped bar chart based on time
 function createTimeGraph(linedata, minValue, maxValue, labels, size, arraySize) {
 
-    console.log(size)
     var margin = {top: 20, right: 40, bottom: 30, left: 40},
         width = 1000 - margin.left - margin.right,
         height = 270 - margin.top - margin.bottom;
@@ -35,9 +34,9 @@ function createTimeGraph(linedata, minValue, maxValue, labels, size, arraySize) 
         .attr("preserveAspectRatio", "xMinYMin meet")
         .attr("viewBox", "-30 -40 1100 280")
         .classed("svg-content", true)
-    
+
     /**
-    *  This method transforms our data object into the following 
+    *  This method transforms our data object into the following
     *  {
     *  {key: 0, values: {x, y, i}, {x, y, i}, {x, y, i}},
     *  {key: 1, values: {x, y, i}, {x, y, i}, {x, y, i}},
@@ -48,8 +47,10 @@ function createTimeGraph(linedata, minValue, maxValue, labels, size, arraySize) 
       .key(function(d) { return d.x; })
       .entries(linedata);
 
+    var assays = [0, 1, 2, 3, 4, 5, 6, 7]
+
     x0.domain(data.map(function(d) { return d.key; }));
-    x1.domain(labels).rangeRoundBands([0, x0.rangeBand()]);
+    x1.domain(assays).rangeRoundBands([0, x0.rangeBand()]);
     y.domain([0, d3.max(data, function(d) { return d3.max(d.values, function(d) { return d.y; }); })]);
 
     svg.append("g")
@@ -71,7 +72,7 @@ function createTimeGraph(linedata, minValue, maxValue, labels, size, arraySize) 
             .tickSize(-width, 0, 0)
             .tickFormat("")
         )
-    
+
 
     svg.append("g")
       .attr("class", "y axis")
@@ -110,7 +111,7 @@ function createTimeGraph(linedata, minValue, maxValue, labels, size, arraySize) 
 
      //legend
      var legend = svg.selectAll(".legend")
-          .data(labels.slice().reverse())
+          .data(labels)
         .enter().append("g")
           .attr("class", "legend")
           .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
@@ -167,4 +168,3 @@ function createTimeGraph(linedata, minValue, maxValue, labels, size, arraySize) 
             .ticks(5)
     }
 }
-
