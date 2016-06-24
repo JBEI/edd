@@ -71,6 +71,9 @@ class SbmlExport(object):
         self._values_by_type = defaultdict(list)
 
     def add_density(self, density_measurements):
+        """ Collect biomass density measurements to calculate final SBML values.
+
+            :param density_measurements: an initialized SbmlExportOdForm """
         measurements = density_measurements.cleaned_data.get('measurement', [])
         interpolate = density_measurements.cleaned_data.get('interpolate', [])
         default_factor = density_measurements.cleaned_data.get('gcdw_default', 0.65)
@@ -95,7 +98,9 @@ class SbmlExport(object):
         self._update_range_bounds(measurements, interpolate)
 
     def add_measurements(self, sbml_measurements):
-        """ Add measurements to the export from a SbmlExportMeasurementsForm. """
+        """ Add measurements to the export from a SbmlExportMeasurementsForm.
+
+            :param sbml_measurements: an initialized SbmlExportMeasurementsForm """
         measurements = sbml_measurements.cleaned_data.get('measurement', [])
         interpolate = sbml_measurements.cleaned_data.get('interpolate', [])
         # process all the scalar measurements
@@ -113,6 +118,9 @@ class SbmlExport(object):
         self._update_range_bounds(measurements, interpolate)
 
     def add_omics(self, sbml_measurements):
+        """ Collect omics measurements to calculate final SBML values.
+
+            :param sbml_measurements: an initialized SbmlExportOmicsForm """
         measurements = sbml_measurements.cleaned_data.get('measurement', [])
         interpolate = sbml_measurements.cleaned_data.get('interpolate', [])
         # store measurements keyed off type_name
@@ -123,9 +131,16 @@ class SbmlExport(object):
         self._update_range_bounds(measurements, interpolate)
 
     def create_export_form(self, payload, **kwargs):
+        """ Constructs an SbmlExportSettingsForm based on data contained in a POST.
+
+            :param payload: the QueryDict from POST attribute of a request
+            :param kwargs: any additional kwargs to pass to the form; see Django Forms
+                documentation.
+            :return: a SbmlExportSettingsForm """
         export_settings_form = SbmlExportSettingsForm(
             data=payload,
             initial={'sbml_template': self._selection.studies[0].metabolic_map, },
+            **kwargs
         )
         self._from_study_page = export_settings_form.add_prefix('sbml_template') not in payload
         if self._from_study_page:  # coming from study page, make sure bound data has default value
@@ -138,6 +153,13 @@ class SbmlExport(object):
         return export_settings_form
 
     def create_match_form(self, payload, **kwargs):
+        """ Constructs an SbmlMatchReactions form, linking SBML reaction elements to specific
+            measurements.
+
+            :param payload: the QueryDict from POST attribute of a request
+            :param kwargs: any additional kwargs to pass to the form; see Django Forms
+                documentation.
+            :return: a SbmlMatchReactions form """
         # create the form
         match = SbmlMatchReactions(
             data=payload,
@@ -163,28 +185,39 @@ class SbmlExport(object):
         return match
 
     def create_measurement_forms(self, payload, **kwargs):
+        """ Constructs a series of forms used to select which measurements to include in an SBML
+            export.
+
+            :param payload: the QueryDict from POST attribute of a request
+            :param kwargs: any additional kwargs to pass to ALL forms; see Django Forms
+                documentation. """
         line = self._selection.lines[0]
         m_forms = {
             'od_select_form': SbmlExportOdForm(
                 data=payload, prefix='od', line=line,
                 qfilter=(Q(measurement_type__short_name='OD') &
                          Q(assay__protocol__categorization=models.Protocol.CATEGORY_OD)),
+                **kwargs
             ),
             'hplc_select_form': SbmlExportMeasurementsForm(
                 data=payload, prefix='hplc', line=line,
                 qfilter=Q(assay__protocol__categorization=models.Protocol.CATEGORY_HPLC),
+                **kwargs
             ),
             'ms_select_form': SbmlExportMeasurementsForm(
                 data=payload, prefix='ms', line=line,
                 qfilter=Q(assay__protocol__categorization=models.Protocol.CATEGORY_LCMS),
+                **kwargs
             ),
             'ramos_select_form': SbmlExportMeasurementsForm(
                 data=payload, prefix='ramos', line=line,
                 qfilter=Q(assay__protocol__categorization=models.Protocol.CATEGORY_RAMOS),
+                **kwargs
             ),
-            'omics_select_form': SbmlExportMeasurementsForm(
+            'omics_select_form': SbmlExportOmicsForm(
                 data=payload, prefix='omics', line=line,
                 qfilter=Q(assay__protocol__categorization=models.Protocol.CATEGORY_TPOMICS),
+                **kwargs
             ),
         }
         for m_form in m_forms.itervalues():
@@ -202,7 +235,11 @@ class SbmlExport(object):
         self._forms.update(m_forms)
 
     def create_output_forms(self, payload, **kwargs):
-        """ Create forms altering output of SBML; depends on measurement forms already existing. """
+        """ Create forms altering output of SBML; depends on measurement forms already existing.
+
+            :param payload: the QueryDict from POST attribute of a request
+            :param kwargs: any additional kwargs to pass to ALL forms; see Django Forms
+                documentation. """
         if all(map(lambda f: f.is_valid(), self._forms.itervalues())):
             match_form = self.create_match_form(payload, prefix='match', **kwargs)
             time_form = self.create_time_select_form(payload, prefix='time', **kwargs)
@@ -212,6 +249,13 @@ class SbmlExport(object):
             })
 
     def create_time_select_form(self, payload, **kwargs):
+        """ Constructs a form to select the timepoint of data to export to SBML and the output
+            filename. Depends on measurement forms already existing.
+
+            :param payload: the QueryDict from POST attribute of a request
+            :param kwargs: any additional kwargs to pass to ALL forms; see Django Forms
+                documentation.
+            :return: a SbmlExportSelectionForm """
         # error if no range or if max < min
         if self._min is None or self._max is None or self._max < self._min:
             return None
@@ -225,6 +269,11 @@ class SbmlExport(object):
         return time_form
 
     def init_forms(self, payload, context):
+        """ Constructs all the forms used in an SBML export based on data from a POST request.
+
+            :param payload: the QueryDict from POST attribute of a request
+            :param context: the view context object, for passing information to templates
+            :return: an updated context """
         self.create_export_form(payload)
         self.create_measurement_forms(payload)
         self.create_output_forms(payload)
@@ -232,7 +281,10 @@ class SbmlExport(object):
 
     def load_measurement_queryset(self, m_form):
         """ Creates a queryset from the IDs in the measurements parameter, prefetching values to a
-            values attr on each measurement. """
+            values attr on each measurement.
+
+            :param m_form: an SbmlExportMeasurementsForm
+            :return: a QuerySet of measurements referenced in the form """
         # TODO: change to .order_by('x__0') once Django supports ordering on transform
         # https://code.djangoproject.com/ticket/24747
         values_qs = models.MeasurementValue.objects.filter(x__len=1, y__len=1).order_by('x')
@@ -245,6 +297,12 @@ class SbmlExport(object):
             )
 
     def output(self, time, matches):
+        """ Writes the output SBML as a string.
+
+            :param time: the selected time from a SbmlExportSelectionForm
+            :param matches: the selected reaction<->measurement maches from a SbmlMatchReactions
+                form
+            :return: a SBML document serialized to a string """
         # TODO: make matches param match_form instead of match_form.cleaned_data
         # map species / reaction IDs to measurement IDs
         our_species = {}
@@ -263,6 +321,11 @@ class SbmlExport(object):
         return builder.write_to_string(self._sbml_obj)
 
     def update_view_context(self, context):
+        """ Adds additional display information to the view context, to be used by the template
+            processor.
+
+            :param context: the view context object, for passing information to templates
+            :return: an updated context """
         # collect all the warnings together for counting
         forms = [f for f in self._forms.itervalues() if isinstance(f, SbmlForm)]
         sbml_warnings = chain(*map(lambda f: f.sbml_warnings if f else [], forms))
@@ -705,10 +768,12 @@ class SbmlExportMeasurementsForm(SbmlForm):
 
 
 class SbmlExportOmicsForm(SbmlExportMeasurementsForm):
+    """ Specific named class for selection of Omics measurements. """
     pass
 
 
 class SbmlExportOdForm(SbmlExportMeasurementsForm):
+    """ Specific class for selection of density measurements. """
     DEFAULT_GCDW_FACTOR = Decimal('0.65')
     PREF_GCDW_META = 'export.sbml.gcdw_metadata'
     gcdw_conversion = forms.ModelChoiceField(
@@ -825,6 +890,8 @@ class SbmlExportOdForm(SbmlExportMeasurementsForm):
 
 
 class SbmlMatchReactionWidget(forms.widgets.MultiWidget):
+    """ Widget combining both SBML species selection and SBML reaction selection for a particular
+        MeasurementType. """
     def __init__(self, template, attrs=None):
         widgets = (
             SbmlSpeciesAutocompleteWidget(template),
@@ -842,6 +909,7 @@ class SbmlMatchReactionWidget(forms.widgets.MultiWidget):
 
 
 class SbmlMatchReactionField(forms.MultiValueField):
+    """ A form Field combining the selected values of SBML species and SBML reaction. """
     def __init__(self, template, *args, **kwargs):
         fields = (forms.CharField(), forms.CharField())  # these are only placeholders
         self.widget = SbmlMatchReactionWidget(template)
@@ -855,6 +923,8 @@ class SbmlMatchReactionField(forms.MultiValueField):
 
 
 class SbmlMatchReactions(SbmlForm):
+    """ A form to match selected MeasurementTypes to species and reactions contained in an
+        SBMLTemplate. """
     def __init__(self, sbml_template, match_fields, *args, **kwargs):
         super(SbmlMatchReactions, self).__init__(*args, **kwargs)
         self._sbml_template = sbml_template
@@ -866,6 +936,7 @@ class SbmlMatchReactions(SbmlForm):
 
 
 class SbmlExportSelectionForm(forms.Form):
+    """ Form determining output timepoint and filename for an SBML download. """
     time_select = forms.DecimalField(
         help_text=_('Select the time to compute fluxes for embedding in SBML template'),
         label=_('Time for export'),
@@ -914,6 +985,9 @@ class SbmlBuilder(object):
     """ A little facade class to provide better interface to libsbml and some higher-level
         utilities to work with SBML files. """
     def create_note_body(self):
+        """ Creates an empty notes element.
+
+            :return: an empty notes XMLNode """
         notes_node = libsbml.XMLNode()
         body_tag = libsbml.XMLTriple(b"body", b"", b"")
         attributes = libsbml.XMLAttributes()
@@ -925,6 +999,10 @@ class SbmlBuilder(object):
         return notes_node
 
     def parse_note_body(self, node):
+        """ Reads a notes element into an OrderedDict (keys will iterate in order read).
+
+            :param node: the notes SBML node
+            :return: an OrderedDict of contents of the notes element """
         notes = OrderedDict()
         if node is None:
             return notes
@@ -946,6 +1024,10 @@ class SbmlBuilder(object):
         return notes
 
     def read_note_associations(self, notes):
+        """ Parses gene and protein associations from SBML notes.
+
+            :param notes: a dict parsed from SbmlBuilder#parse_note_body
+            :return: an iterable of names (strings) associated with a reaction """
         # previous code tried to parse out based on boolean operators, but that info was never
         #   used; now using simpler method of finding 'word' tokens, discarding matches to:
         #   'and', 'or', 'None', and 'N.A.'
@@ -959,6 +1041,11 @@ class SbmlBuilder(object):
         )
 
     def update_note_body(self, _note_node, **kwargs):
+        """ Writes keys to a notes element.
+
+            :param _note_node: a notes XMLNode
+            :param kwargs: arbitrary key-values to add to the notes
+            :return: the notes element passed in """
         # ensure adding to the <body> node
         body = _note_node
         if _note_node.hasChild(b'body'):
@@ -982,6 +1069,9 @@ class SbmlBuilder(object):
         return _note_node
 
     def write_to_string(self, document):
+        """ Writes an in-memory SBML document to a string.
+
+            :return: a string serialization of an SBML document """
         return libsbml.writeSBMLToString(document)
 
     def _add_p_tag(self, body, text):
