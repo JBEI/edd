@@ -3,12 +3,16 @@
 
 /**
 * this function takes in input min y value, max y value, and the sorted json object.
-* the graph
+*  outputs a grouped bar graph with values grouped by assay name
 **/
 function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize) {
      //nest data by name. returns [name: 'glucose", values: [{x, y, z}, ..]]
-     var data = d3.nest()
+
+    var time = d3.keys(linedata[0]).filter(function(key) { return key !== "State"; });
+
+    var data = d3.nest()
         .key(function(d) { return d.name; })
+        // .key(function(d) { return d.i; })
         .entries(linedata);
 
      function maxSize(data) {
@@ -22,10 +26,21 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
       }
 
      maxArrSize = maxSize(data);
-    debugger
      maxGroupSize = data.length;
 
-     var margin = {top: 20, right: 40, bottom: 30, left: 40},
+    // function iValues(data) {
+    //     for (var i = 0; i < data.length; i++) {
+    //         var data2 = data[i].values;
+    //         console.log(data2[i].values.length)
+    //         // for (var j = 0; j < data2.length; j++) {
+    //         //     console.log(data2[i].values.length)
+    //         // }
+    //     }
+    // }
+    // debugger
+    // iValues(data);
+
+     var margin = {top: 20, right: 40, bottom: 100, left: 40},
         width = 1000 - margin.left - margin.right,
         height = 270 - margin.top - margin.bottom;
 
@@ -70,14 +85,17 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
         .attr("viewBox", "-30 -40 1100 280")
         .classed("svg-content", true)
 
-    color.domain(data.filter(function(key) { // Set the domain of the color ordinal
-        // scale to be all the csv headers except "i", matching a color to an issue
-        return (key == "values");
-    }));
-
+    // color.domain(data.filter(function(key) { // Set the domain of the color ordinal
+    //     // scale to be all the csv headers except "i", matching a color to an issue
+    //     return (key == "values");
+    // }));
+    // function xValues(data) {
+    //
+    // }
+    var assays = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 13, 13, 13, 13, 13, 13, 14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 16, 16, 16, 16, 16, 16]
 
     x0.domain(data.map(function(d) { return d.key; }));
-    x1.domain(data).rangeRoundBands([0, x0.rangeBand()]);
+    x1.domain(assays).rangeRoundBands([0, x0.rangeBand()]);
     y.domain([0, d3.max(data, function(d) { return d3.max(d.values, function(d) { return d.y; }); })]);
 
 
@@ -85,6 +103,13 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
         .attr("class", "x axis")
         .attr("transform", "translate(0," + height + ")")
         .call(xAxis)
+        .selectAll("text")
+        .style("text-anchor", "end")
+        .attr("dx", "-.8em")
+        .attr("dy", ".15em")
+        .attr("transform", function(d) {
+            return "rotate(-35)"
+            });
 
     // Draw the x Grid lines
     svg.append("g")
@@ -141,7 +166,7 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
 
      //legend
      var legend = svg.selectAll(".legend")
-          .data(labels.slice().reverse())
+          .data(data.map(function(d) { return d.key; }))
         .enter().append("g")
           .attr("class", "legend")
           .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
