@@ -26,9 +26,11 @@ from urllib import urlencode
 from urlparse import urlunparse, ParseResult, parse_qs
 
 from jbei.rest.utils import CLIENT_ERROR_NOT_FOUND
-from jbei.rest.request_generators import PagedResult
+from jbei.rest.request_generators import PagedResult, PagedRequestGenerator
+
 
 logger = logging.getLogger(__name__)
+
 
 ####################################################################################################
 # Set reasonable defaults where possible
@@ -45,36 +47,26 @@ ICE_SECRET_KEY = None
 
 # if an ICE-specific settings module has been defined, override defaults with values provided there.
 settings_module_name = os.environ.get('ICE_SETTINGS_MODULE')
+settings_django_name = os.environ.get('DJANGO_SETTINGS_MODULE')
+settings = None
 if settings_module_name:
     settings = importlib.import_module(settings_module_name)
-    if hasattr(settings, 'ICE_REQUEST_TIMEOUT'):
-        ICE_REQUEST_TIMEOUT = settings.ICE_REQUEST_TIMEOUT
-    if hasattr(settings, 'ICE_URL'):
-        ICE_URL = settings.ICE_URL
-    if hasattr(settings, 'ICE_SECRET_HMAC_KEY'):
-        ICE_SECRET_KEY = settings.ICE_SECRET_KEY
-
 # otherwise, if an a django settings module is defined, get configuration from there instead
-else:
-    settings_module_name = os.environ.get('DJANGO_SETTINGS_MODULE')
-    if settings_module_name:
-        # override defaults with values provided by Django settings. This dependency on
-        # Django should be kept as contained as possible to prevent non-Django clients from
-        # having to load a LOT of unnecessary libraries.
-        try:
-            import django.conf
-            django_settings = django.conf.settings
-            if hasattr(django_settings, 'ICE_REQUEST_TIMEOUT'):
-                ICE_REQUEST_TIMEOUT = django_settings.ICE_REQUEST_TIMEOUT
-            if hasattr(django_settings, 'ICE_URL'):
-                ICE_URL = django_settings.ICE_URL
-            if hasattr(django_settings, 'ICE_SECRET_HMAC_KEY'):
-                ICE_SECRET_KEY = django_settings.ICE_SECRET_HMAC_KEY
-        except ImportError as i:
-            logger.error('DJANGO_SETTINGS_MODULE environment variable was provided as a source of '
-                         'settings, but an import error occurred while trying to load Django '
-                         'settings.')
-            raise i
+elif settings_django_name:
+    try:
+        # Django may not be present, don't try to import unless settings environment exists
+        import django.conf
+        settings = django.conf.settings
+    except ImportError as i:
+        logger.error('DJANGO_SETTINGS_MODULE environment variable was provided as a source of '
+                     'settings, but an import error occurred while trying to load Django '
+                     'settings.')
+        raise i
+# try to grab values from settings object which may have been set above; default to originals
+#   if not found
+ICE_REQUEST_TIMEOUT = getattr(settings, 'ICE_REQUEST_TIMEOUT', ICE_REQUEST_TIMEOUT)
+ICE_URL = getattr(settings, 'ICE_URL', ICE_URL)
+ICE_SECRET_KEY = getattr(settings, 'ICE_SECRET_KEY', ICE_SECRET_KEY)
 
 
 ####################################################################################################
@@ -648,6 +640,7 @@ def parse_entry_id(ice_entry_url):
 
 DEFAULT_HMAC_KEY_ID = 'edd'
 
+ice_paged_requests = PagedRequestGenerator(RESULT_LIMIT_PARAMETER, RESULT_OFFSET_PARAMETER)
 
 class IceApi(RestApiClient):
     """
@@ -662,10 +655,13 @@ class IceApi(RestApiClient):
     # TODO: when returning model objects, prevent database changes via partially-populated model
     # object instances. See draft code in edd.py
 
-    def __init__(self, auth, base_url=ICE_URL, result_limit=DEFAULT_RESULT_LIMIT):
+    def __init__(self, auth, request_generator=ice_paged_requests, base_url=ICE_URL,
+                 result_limit=DEFAULT_RESULT_LIMIT):
         """
         Creates a new instance of IceApi
         :param auth: the authentication strategy for communication with ICE
+        :param request_generator: object implementing the Requests API; defaults to
+            PagedRequestGenerator
         :param base_url: the base URL of the ICE install.
         :param result_limit: the maximum number of results that can be returned from a single
         query. The default is ICE's default limit at the time of writing. Note that ICE
@@ -675,7 +671,7 @@ class IceApi(RestApiClient):
         if not auth:
             raise ValueError("A valid authentication mechanism must be provided")
 
-        super(IceApi, self).__init__('ICE', base_url, auth.request_generator, result_limit)
+        super(IceApi, self).__init__('ICE', base_url, request_generator, result_limit)
 
     def _compute_result_offset(self, page_number):
         result_limit = self.result_limit
@@ -1169,8 +1165,8 @@ class IceApi(RestApiClient):
         # query ICE to get the list of existing links for this part
         entry_experiments_rest_url = self._build_entry_experiments_url(ice_entry_id)
         logger.info(entry_experiments_rest_url)
-        response = self.request_generator.request('GET', entry_experiments_rest_url,
-                                                  headers=_JSON_CONTENT_TYPE_HEADER)
+        response = self.request_generator.get(entry_experiments_rest_url,
+                                              headers=_JSON_CONTENT_TYPE_HEADER)
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
 

@@ -12,7 +12,7 @@ import requests
 from requests.auth import AuthBase
 from requests.compat import urlparse
 
-from .request_generators import PagedRequestGenerator, RequestGenerator, SessionRequestGenerator
+from .request_generators import PagedRequestGenerator, SessionRequestGenerator
 from .utils import remove_trailing_slash
 
 
@@ -48,12 +48,10 @@ class HmacAuth(AuthBase):
     def register_key(cls, key_id, secret_key):
         cls.KEYSTORE[key_id] = secret_key
 
-    def __init__(self, request_generator, key_id, username=None, ):
+    def __init__(self, key_id, username=None):
         """
-        :param request_generator: the request generator (object conforming to Requests API) to use
-        :param key_id:
-        :param username:
-        :return:
+        :param key_id: identifier of the key registered with HmacAuth
+        :param username: the ID of the user to send to the remote service
         """
         secret_key = self.KEYSTORE.get(key_id, None)
         if not secret_key:
@@ -61,19 +59,6 @@ class HmacAuth(AuthBase):
         self._KEY_ID = key_id
         self._USERNAME = username
         self._SECRET_KEY = secret_key
-
-        if not request_generator:
-            request_generator = RequestGenerator(auth=self)
-        else:
-            request_generator.auth = self
-        self._request_generator = request_generator
-
-    @property
-    def request_generator(self):
-        """
-        Get the request generator responsible for creating all requests to the remote server.
-        """
-        return self._request_generator
 
     def __call__(self, request):
         """
