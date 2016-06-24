@@ -2,28 +2,12 @@
 ////// multi bar
 
 /**
-* this function takes in input min y value, max y value, and the sorted json object.
+* this function takes in input min y value, max y value, and the sorted json object. 
 * the graph
 **/
-function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize) {
-     //nest data by name. returns [name: 'glucose", values: [{x, y, z}, ..]]
-     var data = d3.nest()
-        .key(function(d) { return d.name; })
-        .entries(linedata);
+function createBarLineGraph(linedata, minValue, maxValue, labels, size, arraySize) {
 
-     function maxSize(data) {
-        var max = 0
-        data.forEach(function(d) {
-            if (d.values.length > max) {
-              max = d.values.length
-            }
-         })
-        return max;
-      }
-
-     maxArrSize = maxSize(data);
-    debugger
-     maxGroupSize = data.length;
+     arraySize = arraySize.pop();
 
      var margin = {top: 20, right: 40, bottom: 30, left: 40},
         width = 1000 - margin.left - margin.right,
@@ -48,9 +32,11 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
         .range(thisColorRange);
 
       var x0 = d3.scale.ordinal()
+        .domain(d3.range(size)) //
         .rangeBands([0, width], .3, .3);
 
-      var x1 = d3.scale.ordinal()
+      var x1 = d3.scale.ordinal().domain(d3.range(arraySize))
+          .rangeBands([0, x0.rangeBand()]);
 
       var y = d3.scale.linear()
         .range([height, 0]);
@@ -64,20 +50,22 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
         .orient("left")
         .tickFormat(d3.format(".2s"));
 
-      var svg = d3.select("div#groupedAssay")
+      var svg = d3.select("div#bar")
         .append("svg")
         .attr("preserveAspectRatio", "xMinYMin meet")
         .attr("viewBox", "-30 -40 1100 280")
         .classed("svg-content", true)
 
+      //nest data
+    var data = d3.nest()
+        .key(function(d) { return d.i; })
+        .entries(linedata);
+
     color.domain(data.filter(function(key) { // Set the domain of the color ordinal
         // scale to be all the csv headers except "i", matching a color to an issue
-        return (key == "values");
+        return (key == "i");
     }));
 
-
-    x0.domain(data.map(function(d) { return d.key; }));
-    x1.domain(data).rangeRoundBands([0, x0.rangeBand()]);
     y.domain([0, d3.max(data, function(d) { return d3.max(d.values, function(d) { return d.y; }); })]);
 
 
@@ -127,7 +115,6 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
           .attr("y", function(d) { return y(d.y); })
           .attr("height", function(d) { return height - y(d.y); })
           .style("fill", function(d) { return color(d.i); })
-          .style("opacity", .2)
           .on("mouseover", function() { tooltip.style("display", null); })
           .on("mouseout", function() { tooltip.style("display", "none"); })
           .on("mousemove", function(d) {
@@ -135,7 +122,7 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
             var xPosition = barPos + d3.mouse(this)[0] - 15;
             var yPosition = d3.mouse(this)[1] - 25;
             tooltip.attr("transform", "translate(" + xPosition + "," + yPosition + ")");
-            tooltip.select("text").text(d.x + " , " + d.y + " " + d.y_unit);
+            tooltip.select("text").text(labels[d.i] + ": " + d.y + " " + d.y_unit);
           });
 
 

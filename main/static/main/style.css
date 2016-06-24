@@ -84,6 +84,11 @@ div.tooltip {
 .grid path {
           stroke-width: 0;
 }
+
+#groupedAssay {
+  display: none;
+}
+
 .legend {
       /*cursor: pointer;*/
     overflow: scroll;
