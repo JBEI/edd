@@ -118,7 +118,7 @@ services:
     ports:
       - "8000:8000"
   nginx:
-    image: nginx:1.9
+    build: ./docker_services/nginx/
     links:
       - appserver
       - flower
@@ -129,5 +129,3 @@ services:
       - "443:443"
     volumes_from:
       - appserver
-    volumes:
-      - ./docker_services/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
