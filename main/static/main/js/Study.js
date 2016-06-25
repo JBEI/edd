@@ -196,6 +196,7 @@ var StudyD;
                 var assay = EDDData.Assays[assayId];
                 $.merge(measurementIds, assay.measures || []);
             });
+            console.log("measurement ids first: " + measurementIds);
             // We start out with four references to the array of available measurement IDs, one for each major category.
             // Each of these will become its own array in turn as we narrow it down.
             // This is to prevent a sub-selection in one category from overriding a sub-selection in the others.
@@ -237,7 +238,7 @@ var StudyD;
             // If the user checks 'Acetate', they expect only Acetate to be displayed, even though no change has been made to
             // the Measurement section where Optical Density is listed.
             // In the code below, by testing for any checked boxes in the metaboliteFilters filters,
-            // we realize that the selection has been narrowed doown, so we append the Acetate measurements onto dSM.
+            // we realize that the selection has been narrowed down, so we append the Acetate measurements onto dSM.
             // Then when we check the measurementFilters filters, we see that the Measurement section has
             // not narrowed down its set of measurements, so we skip appending those to dSM.
             // The end result is only the Acetate measurements.
@@ -261,8 +262,10 @@ var StudyD;
             if (dSM.length) {
                 return dSM;
             }
+            console.log("MEASUREMENT IDS: " + measurementIds);
             return measurementIds;
         };
+        // redraw graph with new measurement types.
         ProgressiveFilteringWidget.prototype.checkRedrawRequired = function (force) {
             var redraw = false;
             // do not redraw if graph is not initialized yet
