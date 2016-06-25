@@ -8,38 +8,6 @@
 function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize) {
      //nest data by name. returns [name: 'glucose", values: [{x, y, z}, ..]]
 
-    var time = d3.keys(linedata[0]).filter(function(key) { return key !== "State"; });
-
-    var data = d3.nest()
-        .key(function(d) { return d.name; })
-        // .key(function(d) { return d.i; })
-        .entries(linedata);
-
-     function maxSize(data) {
-        var max = 0
-        data.forEach(function(d) {
-            if (d.values.length > max) {
-              max = d.values.length
-            }
-         })
-        return max;
-      }
-
-     maxArrSize = maxSize(data);
-     maxGroupSize = data.length;
-
-    // function iValues(data) {
-    //     for (var i = 0; i < data.length; i++) {
-    //         var data2 = data[i].values;
-    //         console.log(data2[i].values.length)
-    //         // for (var j = 0; j < data2.length; j++) {
-    //         //     console.log(data2[i].values.length)
-    //         // }
-    //     }
-    // }
-    // debugger
-    // iValues(data);
-
      var margin = {top: 20, right: 40, bottom: 100, left: 40},
         width = 1000 - margin.left - margin.right,
         height = 270 - margin.top - margin.bottom;
@@ -56,22 +24,33 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
          "#E38457", "#E39158", "#E29D58", "#E2AA59", "#E0B15B", "#DFB95C", "#DDC05E", "#DBC75F",
          "#E3CF6D", "#EAD67C", "#F2DE8A"];
 
-
      var thisColorRange = colorrange.splice(0, labels.length);
 
      var color = d3.scale.ordinal()
         .range(thisColorRange);
 
-      var x0 = d3.scale.ordinal()
-        .rangeBands([0, width], .3, .3);
-
-      var x1 = d3.scale.ordinal()
+      //grouped by name
+      var x_name = d3.scale.ordinal()
+        .rangeRoundBands([0, width], .3, .3);
+      //grouped by i
+      var x_i = d3.scale.ordinal();
+      //x values
+      var x_values = d3.scale.ordinal();
 
       var y = d3.scale.linear()
         .range([height, 0]);
 
-      var xAxis = d3.svg.axis()
-        .scale(x0)
+      //grouped by name
+      var groups_axis = d3.svg.axis()
+        .scale(x_name)
+        .orient("bottom");
+
+      var categories_axis = d3.svg.axis()
+        .scale(x_i)
+        .orient("bottom");
+
+      var values_axis = d3.svg.axis()
+        .scale(x_i)
         .orient("bottom");
 
       var yAxis = d3.svg.axis()
@@ -85,47 +64,33 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
         .attr("viewBox", "-30 -40 1100 280")
         .classed("svg-content", true)
 
-    // color.domain(data.filter(function(key) { // Set the domain of the color ordinal
-    //     // scale to be all the csv headers except "i", matching a color to an issue
-    //     return (key == "values");
-    // }));
-    // function xValues(data) {
-    //
-    // }
-    var assays = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 13, 13, 13, 13, 13, 13, 14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 16, 16, 16, 16, 16, 16]
 
-    x0.domain(data.map(function(d) { return d.key; }));
-    x1.domain(assays).rangeRoundBands([0, x0.rangeBand()]);
-    y.domain([0, d3.max(data, function(d) { return d3.max(d.values, function(d) { return d.y; }); })]);
+    var data = d3.nest()
+        .key(function(d) { return d.name; })
+        .key(function(d) {return d.x})
+        .entries(linedata);
+
+    //["A", "B", "C"]
+    var iCategory = data.map(function(d) { return (d.values[0].key)}) // returns: ["0", "5", "10",
+    // "15", "20", "25", "30", "36", "42", "47", "53", "59"]
+    console.log(iCategory)
+    var values = data[0].values[0].values.map(function(d, i) {
+        return d.i;
+      });  //returns [0, 1, 2, 3, 4]
+    console.log(values);
+    //data.map(function(d) { return (d.values[0].key)})
+    x_name.domain(data.map(function(d) { return d.key; })); // groups
+    x_i.domain(iCategory).rangeRoundBands([0, x_name.rangeBand()]);
+    x_values.domain(values).rangeRoundBands([0, x_i.rangeBand()]);
+
+    y.domain([0, d3.max(linedata, function(d) { return d.y})]);
 
 
     svg.append("g")
         .attr("class", "x axis")
         .attr("transform", "translate(0," + height + ")")
-        .call(xAxis)
-        .selectAll("text")
-        .style("text-anchor", "end")
-        .attr("dx", "-.8em")
-        .attr("dy", ".15em")
-        .attr("transform", function(d) {
-            return "rotate(-35)"
-            });
+        .call(groups_axis);
 
-    // Draw the x Grid lines
-    svg.append("g")
-        .attr("class", "grid")
-        .attr("transform", "translate(0," + height + ")")
-        .call(make_x_axis()
-            .tickSize(-height, 0, 0)
-            .tickFormat("")
-        )
-        // Draw the y Grid lines
-    svg.append("g")
-        .attr("class", "grid")
-        .call(make_y_axis()
-            .tickSize(-width, 0, 0)
-            .tickFormat("")
-        )
 
     svg.append("g")
           .attr("class", "y axis")
@@ -137,87 +102,99 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
           .style("text-anchor", "end")
           .text("Frequency");
 
-    var bar = svg.selectAll(".bar")
+
+    var names_g = svg.selectAll(".group")
         .data(data)
-        .enter().append('g')
-        .attr("class", "bar")
-        .attr("transform", function(d) { return "translate(" + x0(d.key) + ",0)"; })
-
-
-    bar.selectAll("rect")
-        .data(function(d) {return d.values})
-         .enter().append("rect")
-          .attr("width", x1.rangeBand())
-          .attr("x", function(d) { return x1(d.x); })
-          .attr("y", function(d) { return y(d.y); })
-          .attr("height", function(d) { return height - y(d.y); })
-          .style("fill", function(d) { return color(d.i); })
-          .style("opacity", .2)
-          .on("mouseover", function() { tooltip.style("display", null); })
-          .on("mouseout", function() { tooltip.style("display", "none"); })
-          .on("mousemove", function(d) {
-            var barPos = parseFloat(d3.select(this.parentNode).attr('transform').split("(")[1]);
-            var xPosition = barPos + d3.mouse(this)[0] - 15;
-            var yPosition = d3.mouse(this)[1] - 25;
-            tooltip.attr("transform", "translate(" + xPosition + "," + yPosition + ")");
-            tooltip.select("text").text(d.x + " , " + d.y + " " + d.y_unit);
-          });
-
-
-     //legend
-     var legend = svg.selectAll(".legend")
-          .data(data.map(function(d) { return d.key; }))
         .enter().append("g")
-          .attr("class", "legend")
-          .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
+        .attr("class", function(d) {
+          return 'group group-' + d.key;  //returns assay names
+        })
+        .attr("transform", function(d) {
+          return "translate(" + x_name(d.key) + ",0)";
+        });
 
-      legend.append("rect")
-          .attr("x", width - 18)
-          .attr("width", 18)
-          .attr("height", 18)
-          .style("fill", color);
+    var categories_g = names_g.selectAll(".category")
+        .data(function(d) {
+          return d.values;  // values = [0, 12, 15, 18, 23, 36, 45, 60]
+        })
+        .enter().append("g")
+        .attr("class", function(d) {
+          return d;   // returns objects with key = value
+        })
+        .attr("transform", function(d) {
+          return "translate(" + x_i(d.key) + ",0)";
+        });
 
-      legend.append("text")
-          .attr("x", width - 24)
-          .attr("y", 9)
-          .attr("dy", ".35em")
-          .style("text-anchor", "end")
-          .text(function(d) { return d; })
-  //tooltip
-    var tooltip = svg.append("g")
-      .attr("class", "tooltip")
-      .style("display", "none");
+    var categories_labels = categories_g.selectAll('.category-label')
+        .data(function(d) {
+          return [d.key]; // returns ["0"]
+        })
+        .enter().append("text")
+        .attr("class", function(d) {
+          return 'category-label category-label-' + d;   //returns 0 - 64...
+        })
+        .attr("x", function(d) {
+          return x_i.rangeBand() / 2;
+        })
+        .attr('y', function(d) {
+          return height + 25;
+        })
+        .attr('text-anchor', 'middle')
+        .text(function(d) {
+          return d;
+        })
 
-    tooltip.append("rect")
-      .attr("width", 100)
-      .attr("height", 20)
-      .attr("fill", "white")
-      .style("opacity", 0.5);
+    var values_g = categories_g.selectAll(".value")
+        .data(function(d) {
+          return d.values;
+        })
+        .enter().append("g")
+        .attr("class", function(d) {
+          return 'value value-' + d.i;
+        })
+        .attr("transform", function(d) {
+          return "translate(" + x_values(d.i) + ",0)";
+        });
 
-    tooltip.append("text")
-      .attr("x", 50)
-      .attr("dy", "1.2em")
-      .style("text-anchor", "middle")
-      .attr("font-size", "12px")
-      .attr("font-weight", "bold");
+    var values_labels = values_g.selectAll('.value-label')
+        .data(function(d) {
+          return [d.x]; //undefined! should returns ["v-a"]
+        })
+        .enter().append("text")
+        .attr("class", function(d) {
+          return d;
+        })
+        .attr("x", function(d) {
+          return x_values.rangeBand() / 2;
+        })
+        .attr('y', function(d) {
+          return height + 10;
+        })
+        .attr('text-anchor', 'middle')
+        .text(function(d) {
+          return d;
+        })
 
-        /**
-    * this function creates the x axis tick marks for grid
-    **/
-    function make_x_axis() {
-        return d3.svg.axis()
-            .scale(x0)
-            .orient("bottom")
-            .ticks(5)
-    }
+      var rects = values_g.selectAll('.rect')
+        .data(function(d) {
+          return [d]; // returns [{i:, x:, y:, ...}]
+        })
+        .enter().append("rect")
+        .attr("class", "rect")
+        .attr("width", x_i.rangeBand())
+        .attr("x", function(d) {
+          return 0;
+        })
+        .attr("y", function(d) {
+          return y(d.y);
+        })
+        .attr("height", function(d) {
+          return height - y(d.y);
+        })
+        .style("fill", function(d) {
+          return color(d.i);
+        });
 
-    /**
-    * this function creates the y axis tick marks for grid
-    **/
-    function make_y_axis() {
-        return d3.svg.axis()
-            .scale(y)
-            .orient("left")
-            .ticks(5)
-    }
 }
+
+//ONLY MISSING WIDTH!
