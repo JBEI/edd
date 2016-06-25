@@ -12,19 +12,8 @@ experimentation.  See the deployed version at [edd.jbei.org][1].
        * [Docker](#Docker)
        * [Running EDD](#Run_OSX)
    * [Debian (for deployment)](#Debian)
-       * [Required Debian Packages](#Debian_Packages)
-       * [Configure LDAP](#Configure_LDAP)
-       * [Check Out Code](#Check_Out)
-       * [Python packages](#Python_Packages_Deb)
-       * [Solr/Tomcat](#Solr_Tomcat_Deb)
-       * [Django](#Django_Deb)
-       * [Apache Setup](#Apache_Deb)
-       * TODO: update TOC when Debian directions are complete
 * [Helpful Python Packages](#Helpful_Python)
 * [Build Tools](#BuildTools)
-* [Solr Tests](#Solr_Test)
-* [Required Python Package Reference](#PythonPackages)
-* [Setting up multiple Apache VHOST](#Apache_VHOST)
 * [Configuring social logins](#Social)
 
 ---------------------------------------------------------------------------------------------------
@@ -99,101 +88,22 @@ This section contains directions for setting up a development environment on EDD
         * Any local-specific settings changes will go here. The local settings are loaded last,
           and will override any settings contained in other files in the `./edd/settings` folder.
     * Create `secrets.env` based on the example in `secrets.env-example`
-        * `SECRET_KEY` is the Django server key; pick some random text
+        * the value of `SECRET_KEY` is the Django server key; pick some random text
+        * `secret1` is a password you choose for the `postgres` PostgreSQL user
         * `secret2` is a password you choose for the `edduser` PostgreSQL user
         * `secret3` is a password you choose for the `edd_user` RabbitMQ user
         * `secret4` is a password you choose for the `flower` Flower user
-        * `ICE_HMAC_KEY` is the key used to authenticate to ICE; set this to the secret used
-          in the ICE instance you connect to for test
-        * `LDAP_PASS` is the password for the `jbei_auth` user by default; you may use your own
-          password by including in your `./edd/settings/local.py`:
+        * the value of `ICE_HMAC_KEY` is the key used to authenticate to ICE; set this to the
+          secret used in the ICE instance you connect to for test
+        * the value of `LDAP_PASS` is the password for the `jbei_auth` user by default; you may
+          use your own password by including in your `./edd/settings/local.py`:
           `AUTH_LDAP_BIND_DN = 'lblEmpNum=[your-six-digit-id],ou=People,dc=lbl,dc=gov'`
-    * Allocate Docker volumes used to persist data saved by the various Docker services. By design,
-      Docker images are read-only. Any data or state that needs to carry over between restarts
-      must be written to a Docker volume. Also any data that is shared across services should be
-      shared via volumes.
-        * `docker volume create --name pgdata` creates the `pgdata` volume used to persist
-          postgres databases.
-        * `docker volume create --name solrdata` creates the `solrdata` volume containing the
-          search index managed by the Solr service.
-        * `docker volume create --name attachdata` creates the `attachdata` volume where EDD will
-          store attachment uploads locally.
-        * `docker volume create --name staticdata` creates the `staticdata` volume containing
-          static file resources used in EDD (stylesheets, images, scripts, etc.).
-        * `docker volume create --name redisdata` creates the `redisdata` volume for the EDD cache
-          service.
-    * Once allocated, some Docker volumes require further initialization:
-        * Initialize the `pgdata` postgres volume
-            * Launch a temporary postgres service container with the `pgdata` volume mounted.
-              Replace `secret#` values with appropriate passwords for the `postgres` and
-              `edduser` users, respectively. The `secret2` value is the value set in `secrets.env`
-              above:
-
-                  docker run --name temp_pg -d \
-                      -v pgdata:/var/lib/postgresql/data \
-                      -e POSTGRES_PASSWORD=secret1 \
-                      -e EDD_PGPASS=secret2 \
-                      postgres:9.4
-
-            * To create a new (empty) database:
-                * Connect to the temporary postgres service and run the init script (this may
-                  prompt you for the `secret1` password for `postgres` user):
-
-                      cat ./docker_services/postgres/init.sql | \
-                          docker exec -i temp_pg psql -U postgres template1
-
-            * To copy an existing database:
-                * Dump from the existing database and pipe to the temporary postgres service
-                  (replace `{remote_host}` e.g. with `postgres.jbei.org`, and `{remote_db}`
-                  with database name):
-
-                      pg_dump -Fp -C -E UTF8 -h {remote_host} {remote_db} | \
-                          docker exec -i temp_pg psql -U postgres
-        * Initialize the `solrdata` solr volume
-            * Launch a temporary solr service container with the data volume mounted:
-
-                  docker run --name temp_solr -dt \
-                      -v solrdata:/opt/solr/server/solr \
-                      -p "8983:8983" \
-                      solr:5.5
-
-            * Copy configuration from EDD source tree to the `temp_solr` container:
-
-                  tar -cf - -C ./docker_services/solr/cores . | \
-                      docker exec -i --user=solr temp_solr \
-                      tar xf - -C /opt/solr/server/solr/
-
-            * Restart the solr container to read in the just-added config:
-
-                  docker restart temp_solr
-
-        * Run database migrations
-            * Build an image for the EDD codebase:  `docker build -t edd .`
-                * This will take a long time on first build
-                * TODO: set up a Docker image repo, include instructions for use. This will
-                  eliminate the wait time to build the `edd` image.
-            * Run the `migrate` management command using the EDD image linked to the temporary
-              postgres and solr images:
-
-                  docker run --name temp_edd --rm -i \
-                      --link temp_pg:postgres \
-                      --link temp_solr:solr \
-                      --volume `pwd`:/code/ -w /code/ \
-                      edd python manage.py migrate
-
-        * Initialize the `staticdata` shared static files volume
-
-                  docker run --name temp_edd --rm -i \
-                      --link temp_pg:postgres \
-                      --link temp_solr:solr \
-                      --volume `pwd`:/code/ -w /code/ \
-                      --volume staticdata:/var/www/static \
-                      edd python manage.py collectstatic -y
-
-        * Clean-up
-            * `docker stop temp_pg && docker rm -v temp_pg`
-            * `docker stop temp_solr && docker rm -v temp_solr`
-
+    * Run the initialization configuration through Docker Compose:
+        * `docker-compose -f docker-init.yml up`
+        * This will create the data volumes used to run EDD, and run setup tasks to make them
+          ready for use.
+        * After some time, you should see a message instructing you to
+          `docker-compose -f docker-init.yml down`. Do that.
 * Running EDD <a name="Run_OSX"/>
     * `docker-compose` commands
         * Build all services:  `docker-compose build`
@@ -221,115 +131,31 @@ This section contains directions for setting up a development environment on EDD
 
 ### Debian (for deployment) <a name="Debian"/>
 
-* Required `.deb` packages <a name="Debian_Packages"/>
-    * `sudo apt-get install python-pip` for PyPI/pip python package manager
-    * `sudo apt-get install postgresql-client` for commands used to copy database
-    * `sudo apt-get install libpq-dev` for headers required by psycopg2
-    * `sudo apt-get install libldap2-dev libsasl2-dev libssl-dev` for headers required by
-      python-ldap
-    * `sudo apt-get install python-dev libffi-dev` for headers required by cryptography
-    * `sudo apt-get install libatlas-dev liblapack-dev gfortran` for packages required by SciPy
-    * `sudo apt-get install libbz2-dev` for packages required by libsmbl
-
-* Configuration changes: <a name="Debian_Config"/>
-    * Create a user for running EDD; assuming user `jbeideploy` exists for further instructions
-    * Configure LDAP SSL handling in `/etc/ldap/ldap.conf`
-        * Add line `TLS_CACERTDIR   /etc/ssl/certs`
-        * Add line `TLS_CACERT  /etc/ssl/certs/ca-certificates.crt`
-
-* As `jbeideploy`, check out code to `/var/www/${SITE}`
-
-* Python packages <a name="Python_Packages_Deb"/>
-    * Install virtualenvwrapper in global environment:
-      `sudo pip install virtualenvwrapper`
-    * Create a location to contain virtualenvs:
-        * `sudo mkdir -p /usr/local/virtualenvs`
-    * As `jbeideploy`, add shell startup (e.g. `~/.bashrc`):
-
-            if [ -f /usr/local/bin/virtualenvwrapper.sh ]; then
-                export WORKON_HOME=/usr/local/virtualenvs
-                source /usr/local/bin/virtualenvwrapper.sh
-            fi
-
-    * Run `source ~/.bashrc` to apply changes
-    * Set up virtualenv for the `${SITE}` where code is checked out
-        * `mkvirtualenv ${SITE}` will create the virtualenv
-        * `workon ${SITE}` will load the virtualenv into current shell session
-        * `pip install -r /var/www/${SITE}/requirements.txt` to install python packages to virtualenv
-            * If you get a compiler error complaining about “missing sasl.h” when installing ldap,
-              `sudo apt-get install libsasl2-dev` and install the requirements again.
-        * Use `deactivate` to exit the virtualenv but retain your shell session.
-
-* Set up Tomcat/Solr
-    * TODO: these instructions are for version 4 of Solr, should update to Solr5
-    * Install Tomcat 7:
-        * `sudo apt-get install tomcat7`
-        * This will automatically create a “tomcat7” user.
-    * Force the server to only listen on localhost:
-        * Edit ‘/etc/tomcat7/server.xml’ and change the line:
-          `<Connector port="8080" protocol="HTTP/1.1"`
-          to:
-          `<Connector port="8080" protocol="HTTP/1.1" address="localhost"`
-    * [Download solr v4][31] and unzip to /tmp/solr
-    * Copy Solr main war file:
-        * `cp /tmp/solr/dist/solr-4.10.4.war /var/lib/tomcat7/webapps/solr.war`
-        * `sudo chown tomcat7:tomcat7 /var/lib/tomcat7/webapps/solr.war`
-        * `sudo chmod 644 /var/lib/tomcat7/webapps/solr.war`
-    * Copy Solr libraries to Tomcat lib and set proper permissions:
-        * `sudo cp /tmp/solr/example/lib/ext/*.jar /usr/share/tomcat7/lib/`
-        * `sudo cp /tmp/solr/dist/solrj-lib/*.jar /usr/share/tomcat7/lib/`
-        * `sudo chmod a+rx /usr/share/tomcat7/lib/*.jar`
-        * `sudo cp /tmp/solr/example/resources/log4j.properties /etc/tomcat7/log4j.properties`
-        * `sudo chgrp tomcat7 /etc/tomcat7/log4j.properties`
-    * Create a home folder for Solr:
-        `sudo mkdir -p /var/solr/data`
-    * Copy in edd-django solr config files:
-        `sudo cp -R /var/www/${SITE}/solr/* /var/solr/``
-        `sudo chown -R tomcat7:tomcat7 /var/solr`
-    * Set up the Solr config file:
-        * `sudo pico /etc/tomcat7/Catalina/localhost/solr.xml` and enter the following:
-
-                <Context docBase="/var/lib/tomcat7/webapps/solr.war" debug="0" crossContext="true">
-                    <Environment name="solr/home" type="java.lang.String" value="/var/lib/tomcat7/solr" override="true" />
-                </Context>
-
-    * Start Tomcat/Solr:
-        * `sudo /etc/init.d/tomcat7 start`
-    * Optional:
-        * Install the tomcat admin page with `sudo apt-get install tomcat7-admin`
-        * Add a user capable of accessing the admin page by editing `/etc/tomcat7/tomcat-users.xml`.
-          Instructions are in the file.
-        * Diagnose startup issues by inspecting `/var/log/tomcat7/catalina.out`
-
-* Django setup <a name="Django_Deb"/>
-    * See section Database Conversion below if migrating from CGI EDD database
-    * `./manage.py collectstatic` to ensure that all static files are in one spot
-    * `./manage.py edd_index` to populate search indices
-
-* Apache setup <a name="Apache_Deb"/>
-    * mod_wsgi: `sudo apt-get install libapache2-mod-wsgi`
-    * Make sure the apache modules are enabled, with `a2enmod ssl`, and `a2enmod wsgi`
-    * See `apache.conf-sample` for example of how to configure Apache
-    * Ensure that `/var/www/uploads/` exists and is writable by user `www-data`
-
-* TODO complete Debian instructions
-
-### Deploying code changes (debian)
-
-* `sudo su username_tbd`
-* `git branch`
-* `git pull`
-* `git checkout`
-* `manage.py migrate`
-* `service apache2 restart`
-* `service edd_celeryd restart`
+* `sudo apt-get install docker.io` for Docker daemon
+* Create a user for running EDD; assuming user `jbeideploy` exists for further instructions
+* As `jbeideploy`, check out code to `/usr/local/edd`
+    * Create a `./edd/settings/local.py` file, based on the example in
+      `./edd/settings/local.py-example`
+        * Any local-specific settings changes will go here. The local settings are loaded last,
+          and will override any settings contained in other files in the `./edd/settings` folder.
+    * Create `secrets.env` based on the example in `secrets.env-example`
+        * `SECRET_KEY` is the Django server key; pick some random text
+        * `secret2` is a password you choose for the `edduser` PostgreSQL user
+        * `secret3` is a password you choose for the `edd_user` RabbitMQ user
+        * `secret4` is a password you choose for the `flower` Flower user
+        * `ICE_HMAC_KEY` is the key used to authenticate to ICE; set this to the secret used
+          in the ICE instance you connect to for test
+        * `LDAP_PASS` is the password for the `jbei_auth` user by default; you may use your own
+          password by including in your `./edd/settings/local.py`:
+          `AUTH_LDAP_BIND_DN = 'lblEmpNum=[your-six-digit-id],ou=People,dc=lbl,dc=gov'`
+    * TODO: instructions for deploying to a remote docker daemon
  
 ---------------------------------------------------------------------------------------------------
 
 ## Helpful Python Packages <a name="Helpful_Python"/>
 
 * django-debug-toolbar `pip install django-debug-toolbar`
-    * Include `debug_toolbar` in local_settings.py INSTALLED_APPS
+    * Include `debug_toolbar` in `./edd/settings/local.py` INSTALLED_APPS
 
 
 ## Build Tools <a name="BuildTools"/>
@@ -355,76 +181,6 @@ This section contains directions for setting up a development environment on EDD
 * EDD uses [TypeScript][19] for its client-side interface
     * Dependencies are listed in `packages.json` and may be installed with `npm install`
     * Compile changes in `*.ts` to `*.js` by simply running `grunt` from the edd base directory
-
-
-## Solr Tests <a name="Solr_Test"/>
-
-* Tests in this project make use of a `test` core, which will need to be created
-    * Create a new data directory `mkdir -p /usr/local/var/solr/data/test`
-    * Add new line to `solr.xml` using same studies `instanceDir` and new data directory
-        `<core name="tests" instanceDir="./cores/studies" dataDir="/usr/local/var/solr/data/test"/>`
-
-
-## Required Python Package Reference <a name="PythonPackages"/>
-This section describes required Python packages for EDD. This listing is for reference only,
-since EDD's requirements.txt should normally be used to install required packages.
-
-* On JBEI Debian servers, home directories are NFS-mounted, and `pip` can be slow, especially
-  with `scikit-learn` and `scipy`
-    * run `pip install` with `-b /path/to/local/disk` to use a non-NFS directory
-* N.B. probably need to re-install `cryptography` to compile in correct OpenSSL (on OS X)
-* [Arrow][10]
-      * "Arrow is a Python library that offers a sensible, human-friendly approach to creating,
-        manipulating, formatting and converting dates, times, and timestamps."
-      * `pip install arrow`
-* [cryptography][11]
-    * Adds some crypto libraries to help play nice with TLS certificates
-    * Needs additional env flags to ensure using Brew-installed OpenSSL
-    * `env ARCHFLAGS="-arch x86_64" LDFLAGS="-L/usr/local/opt/openssl/lib"
-        CFLAGS="-I/usr/local/opt/openssl/include" pip install cryptography`
-        * May need to include `--upgrade --force-reinstall` flags after `install` in prior
-          command
-* [Django][12]
-    * MVC web framework used to develop EDD.
-    * `pip install Django`
-* [django-allauth][25]
-    * A Django application providing for both local and social logins
-    * `pip install django-allauth`
-* [django-auth-ldap][13]
-    * A Django application providing authentication with an LDAP backend.
-    * `pip install django-auth-ldap`
-* [django-extensions][14]
-    * Adds additional management extensions to the Django management script.
-    * `pip install django-extensions`
-* [django-threadlocals][15]
-    * A Django middleware for storing the current request in a thread.local
-* [requests][16]
-    * "Requests is an Apache2 Licensed HTTP library, written in Python, for human beings."
-    * `pip install requests[security]`
-* [psycopg2][17]
-    * Database driver/adapter for PostgreSQL in Python.
-    * `pip install psycopg2`
-* [python-ldap][18]
-    * Object-oriented client API for accessing LDAP directories.
-    * `pip install python-ldap`
-
-
-## Setting up multiple Apache VHOST <a name="Apache_VHOST"/>
-* Clone code into a new directory
-    * Create `server.cfg` and `edd/local_settings.py` based on example files
-* Create a new virtualenv for the virtual host
-    * fast way is copy another virtualenv with `virtualenv-clone /path/to/old /path/to/new`
-    * easiest and/or more repeatable to `pip install -r requirements.txt` in new virtualenv
-        * remember there is a separate requriements.txt for Celery dependencies
-* Clone a new database
-    * depending on code version of 'donor' database and target code version, `./manage.py migrate`
-    * TODO: SYNBIO-1245, should be able to bootstrap from empty database
-* In the VirtualHost directive:
-    * Set the hostname to the correct host
-    * Update the WSGI Process Group
-    * Update the python-path for the WSGI process to reference new directory and virtualenv
-    * Set the logging for error.log and access.log to vhost-specific files
-* TODO: punting on handling multiple solr indexes
 
 
 ## Configuring Social Logins <a name="Social"/>

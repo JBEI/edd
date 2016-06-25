@@ -18,6 +18,7 @@ volumes:
 services:
   postgres:
     image: postgres:9.4
+    restart: always
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
@@ -25,6 +26,7 @@ services:
     env_file: secrets.env
   redis:
     image: redis:3.2
+    restart: always
     volumes:
       - redisdata:/data
     ports:
@@ -32,12 +34,14 @@ services:
     command: redis-server --appendonly yes
   solr:
     image: solr:5.5
+    restart: always
     volumes:
       - solrdata:/opt/solr/server/solr
     ports:
       - "8983:8983"
   rabbitmq:
     image: rabbitmq:3.6-management
+    restart: always
     hostname: rabbitmq
     env_file: secrets.env
     environment:
@@ -51,6 +55,7 @@ services:
       - "15672:15672"
   flower:
     build: ./docker_services/flower/
+    restart: always
     env_file: secrets.env
     environment:
       AMQP_ADMIN_HOST: rabbitmq
@@ -64,6 +69,7 @@ services:
       - "5555:5555"
   smtp:
     image: namshi/smtp
+    restart: always
     expose:
       - "25"
   edd:
@@ -119,6 +125,7 @@ services:
       - "8000:8000"
   nginx:
     build: ./docker_services/nginx/
+    restart: always
     links:
       - appserver
       - flower

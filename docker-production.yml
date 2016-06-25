@@ -74,14 +74,14 @@ services:
     expose:
       - "25"
   edd:
-    build:
-      context: .
-      dockerfile: Dockerprod
+    build: .
     command: "true"
     env_file: secrets.env
     environment:
       SEARCH_URL: "solr://solr:8983/solr/"
       EDD_DEBUG: "false"
+    volumes:
+      - /usr/local/edd/:/code/
   worker:
     extends:
       service: edd
@@ -106,7 +106,7 @@ services:
     extends:
       service: edd
     restart: always
-    command: ./appserver_entrypoint.sh
+    command: ./docker_services/appserver_entrypoint.sh
     depends_on:
       - postgres
       - rabbitmq
