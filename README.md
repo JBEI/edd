@@ -127,7 +127,7 @@ This section contains directions for setting up a development environment on EDD
 
 * `sudo apt-get install docker.io` for Docker daemon
 * Create a user for running EDD; assuming user `jbeideploy` exists for further instructions
-* As `jbeideploy`, check out code to `/usr/local/edd`
+* As `jbeideploy`, check out code to `/usr/local/edd/`
     * Create a `./edd/settings/local.py` file, based on the example in
       `./edd/settings/local.py-example`
         * Any local-specific settings changes will go here. The local settings are loaded last,
@@ -142,7 +142,24 @@ This section contains directions for setting up a development environment on EDD
         * `LDAP_PASS` is the password for the `jbei_auth` user by default; you may use your own
           password by including in your `./edd/settings/local.py`:
           `AUTH_LDAP_BIND_DN = 'lblEmpNum=[your-six-digit-id],ou=People,dc=lbl,dc=gov'`
-    * TODO: instructions for deploying to a remote docker daemon
+* Launching EDD and services
+    * _If using docker client on same host_: work from the `/usr/local/edd/` directory
+    * _If using docker client on a different host, i.e. with docker-machine_
+        * Ensure you have a public key in `jbeideploy`'s `~/.ssh/authorized_keys2` file
+        * Create an environment for the remote host (replace `{REMOTE_HOST}` with hostname)
+
+            docker-machine create --driver generic --generic-ip-address {REMOTE_HOST} \
+                --generic-ssh-user jbeideploy --generic-ssh-key /path/to/private.key \
+                {NAME_OF_ENVIRONMENT}
+
+        * Activate the machine with `eval $(docker-machine env {NAME_OF_ENVIRONMENT})`
+        * Set environment variable on docker client host `EDD_HOST_DIR` to `/usr/local/edd/`
+            * Prepend `EDD_HOST_DIR=/usr/local/edd/` to any `docker-compose` commands
+            * Alternatively, `export EDD_HOST_DIR=/usr/local/edd/` before running commands
+            * The trailing `/` is important!
+    * (Re)build the container images with `docker-compose -f docker-production.yml build`
+    * Start EDD services with `docker-compose -f docker-production.yml up -d`
+
  
 ---------------------------------------------------------------------------------------------------
 

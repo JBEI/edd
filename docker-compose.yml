@@ -30,6 +30,7 @@ services:
     restart: always
     volumes:
       - solrdata:/opt/solr/server/solr
+      - "${EDD_HOST_DIR}.:/code/"
     ports:
       - "8983:8983"
   rabbitmq:
@@ -73,7 +74,7 @@ services:
     environment:
       SEARCH_URL: "solr://solr:8983/solr/"
     volumes:
-      - .:/code/
+      - "${EDD_HOST_DIR}.:/code/"
   worker:
     extends:
       service: edd
@@ -98,7 +99,7 @@ services:
     extends:
       service: edd
     restart: always
-    command: ./docker_services/appserver_entrypoint.sh
+    command: /code/docker_services/appserver_entrypoint.sh
     depends_on:
       - postgres
       - rabbitmq
