@@ -7,6 +7,8 @@ import requests
 
 from django.conf import settings as django_settings
 
+from builtins import str
+
 
 logger = logging.getLogger(__name__)
 timeout = (10, 10)  # tuple for request connection and read timeouts, respectively, in seconds
@@ -52,7 +54,7 @@ class SolrSearch(object):
         response = requests.post(url, data=command, headers=headers, timeout=timeout)
 
         if response.status_code != requests.codes.ok:
-                response.raise_for_status()  # raises HttpError (extends IOError)
+            response.raise_for_status()  # raises HttpError (extends IOError)
 
     def remove(self, docs=[]):
         """

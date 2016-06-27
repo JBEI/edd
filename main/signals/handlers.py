@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+import functools
 import logging
 import traceback
+from collections import namedtuple
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -53,14 +55,18 @@ def study_delete(sender, instance, using, **kwargs):
 ####################################################################################################
 @receiver(study_modified)
 def index_study(sender, study, **kwargs):
-    # schedule an update to the Solr index *after* the database commit
-    connection.on_commit(lambda: _post_commit_index_study(study))
+    # package up work to be performed when the database change commits
+    partial = functools.partial(_post_commit_index_study, study)
+    # schedule the work for after the commit (or immediately if there's no transaction)
+    connection.on_commit(partial)
+
 
 def _post_commit_index_study(study):
     try:
         solr.update([study, ])
     except IOError:
-        _handle_post_commit_lambda_error('Error updating Solr study index for study %d' % study.pk)
+        _handle_post_commit_function_error('Error updating Solr index for study %d' % study.pk)
+
 
 
 ####################################################################################################
@@ -68,15 +74,23 @@ def _post_commit_index_study(study):
 ####################################################################################################
 @receiver(study_removed)
 def unindex_study(sender, study, **kwargs):
-    # schedule an update to the Solr index *after* the database commit
-    connection.on_commit(lambda: _post_commit_unindex_study(study))
+    # package up work to be performed when the database change commits
+
+    # cache the study's primary key, which will be removed from the Study object itself during
+    # deletion
+    PrimaryKeyCache = namedtuple('PrimaryKeyCache', ['id'])
+    post_remove_pk_cache = PrimaryKeyCache(study.pk)
+
+    # schedule the work for after the commit (or immediately if there's no transaction)
+    partial = functools.partial(_post_commit_unindex_study, post_remove_pk_cache)
+    connection.on_commit(partial)
 
 
 def _post_commit_unindex_study(study):
     try:
         solr.remove([study, ])
     except IOError:
-        _handle_post_commit_lambda_error('Error updating Solr study index for study %d' % study.pk)
+        _handle_post_commit_function_error('Error updating Solr index for study %d' % study.id)
 
 
 ####################################################################################################
@@ -84,8 +98,10 @@ def _post_commit_unindex_study(study):
 ####################################################################################################
 @receiver(user_modified)
 def index_user(sender, user, **kwargs):
-    # schedule an update to the Solr index *after* the database commit
-    connection.on_commit(lambda: _post_commit_index_user(user))
+    # package up work to be performed when the database change commits
+    partial = functools.partial(_post_commit_index_user, user)
+    # schedule the work for after the commit (or immediately if there's no transaction)
+    connection.on_commit(partial)
 
 
 def _post_commit_index_user(user):
@@ -96,7 +112,7 @@ def _post_commit_index_user(user):
         # access existing studies (provided the URL), and create new ones. Solr being down
         # shouldn't prevent the login process (EDD-201)
         except IOError as e:
-            _handle_post_commit_lambda_error("Error updating Solr at login")
+            _handle_post_commit_function_error("Error updating Solr at login")
 
 ####################################################################################################
 
@@ -168,8 +184,9 @@ def handle_study_post_save(sender, instance, created, raw, using, **kwargs):
                 continue
             strains_to_link.append(strain)
         # schedule ICE updates as soon as the database changes commit
-        connection.on_commit(lambda: _post_commit_link_ice_entry_to_study(user_email, study,
-                                                                          strains_to_link))
+        partial = functools.partial(_post_commit_link_ice_entry_to_study, user_email, study,
+                                                                          strains_to_link)
+        connection.on_commit(partial)
         logger.info("Scheduled post-commit work to update labels for %d of %d strains "
                     "associated with study %d"
                     % (len(strains_to_link), strains.count(), study.pk))
@@ -261,9 +278,9 @@ def handle_line_post_delete(sender, instance, **kwargs):
     # Note that if we don't wait, the Celery task can run before it commits, at which point its
     # initial DB query
     # will indicate an inconsistent database state. This happened repeatably during testing.
-    connection.on_commit(lambda: _post_commit_unlink_ice_entry_from_study(user_email, study_pk,
-                                                                          study_creation_datetime,
-                                                                          removed_strains))
+    partial = functools.partial(_post_commit_unlink_ice_entry_from_study, user_email, study_pk,
+                                study_creation_datetime, removed_strains)
+    connection.on_commit(partial)
 
 
 def _post_commit_unlink_ice_entry_from_study(user_email, study_pk, study_creation_datetime,
@@ -330,7 +347,7 @@ def _post_commit_unlink_ice_entry_from_study(user_email, study_pk, study_creatio
     # administrators
     except StandardError as err:
         strain_pks = [strain.pk for strain in removed_strains]
-        _handle_post_commit_ice_lambda_error(err, 'remove', study_pk, strain_pks, index)
+        _handle_ice_post_commit_error(err, 'remove', study_pk, strain_pks, index)
 
 
 def _post_commit_link_ice_entry_to_study(user_email, study, linked_strains):
@@ -379,14 +396,14 @@ def _post_commit_link_ice_entry_to_study(user_email, study, linked_strains):
     # administrators
     except StandardError as err:
         linked_strain_pks = [strain.pk for strain in linked_strains]
-        _handle_post_commit_ice_lambda_error(err, 'add/update', study.pk, linked_strain_pks, index)
+        _handle_ice_post_commit_error(err, 'add/update', study.pk, linked_strain_pks, index)
 
 
-def _handle_post_commit_ice_lambda_error(err, operation, study_pk, strains_to_update, index):
+def _handle_ice_post_commit_error(err, operation, study_pk, strains_to_update, index):
     """
-    Handles exceptions from post-commit lambda's used to communicate with ICE. Note that although
+    Handles exceptions from post-commit functions used to communicate with ICE. Note that although
     Django typically automatically handles uncaught exceptions by emailing admins, it doesn't seem
-    to be handling them in the case of post-commit lambda's (see EDD-178)
+    to be handling them in the case of post-commit functions/lambda's (see EDD-178)
     :param err:
     :return:
     """
@@ -401,13 +418,14 @@ def _handle_post_commit_ice_lambda_error(err, operation, study_pk, strains_to_up
     else:
         error_msg = "Error updating ICE links via direct HTTP request (index=%d)" % index
 
-    _handle_post_commit_lambda_error(error_msg)
+    _handle_post_commit_function_error(error_msg)
 
 
-def _handle_post_commit_lambda_error(err_msg, re_raise_error=None):
+def _handle_post_commit_function_error(err_msg, re_raise_error=None):
     """
         A workaround for EDD-176: Django doesn't seem to be picking up errors / emailing admins
-        for uncaught exceptions in post-commit signal handler lambdas. Note that even if Django
+        for uncaught exceptions in post-commit signal handler functions.
+        Note that even if Django
         resolves this we *still* often won't want to raise the exception since that would cause
         the EDD user to get an error message for a process that from their perspective was a
         partial/total success. For ICE messaging tasks, we can consider changing this behavior
@@ -542,9 +560,9 @@ def handle_line_strain_changed(sender, instance, action, reverse, model, pk_set,
                 # in ICE. Note that if we don't wait, the Celery task can run before it commits,
                 # at which point its initial DB query will indicate an inconsistent database
                 # state. This happened repeatably during testing.
-                connection.on_commit(
-                    lambda: _post_commit_link_ice_entry_to_study(user_email, study,
-                                                                 add_on_commit_strains))
+                partial = functools.partial(_post_commit_link_ice_entry_to_study, user_email, study,
+                                            add_on_commit_strains)
+                connection.on_commit(partial)
 
             exp_add_count = len(pk_set)
             linkable_count = len(add_on_commit_strains)
@@ -622,10 +640,9 @@ def handle_line_strain_changed(sender, instance, action, reverse, model, pk_set,
                 # from ICE. Note that if we don't wait, the Celery task can run before it commits,
                 # at which point its initial DB query will indicate an inconsistent database
                 # state. This happened repeatably during testing.
-                connection.on_commit(
-                    lambda: _post_commit_unlink_ice_entry_from_study(user_email, study.pk,
-                                                                     study.created.mod_time,
-                                                                     remove_on_commit))
+                partial = functools.partial(_post_commit_unlink_ice_entry_from_study,user_email,
+                                            study.pk, study.created.mod_time, remove_on_commit)
+                connection.on_commit(partial)
         except ChangeFromFixture:
             logger.warning("Detected changes from fixtures, skipping ICE signal handling.")
         # if an error occurs, print a helpful log message, then re-raise it so Django will email
