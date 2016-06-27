@@ -70,14 +70,40 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
         .key(function(d) {return d.x})
         .entries(linedata);
 
+    /* returns y values.
+       .rollup(function(leaves) {
+            leaves.forEach(function(d) {return [{
+                key: 'y',
+                value: (d.y)
+            }]})
+        })
+    */
+
+    function yValues(data3) {
+        for (var i = 0; i < data3.length; i++) {
+                    data3[i].key = 'y' + i
+            }
+        return data3;
+    }
+
+    var data2 = data.map(function(d) { return (d.values)})
     //["A", "B", "C"]
-    var iCategory = data.map(function(d) { return (d.values[0].key)}) // returns: ["0", "5", "10",
+
+    function findValues(data) {
+        for (var i = 0; i < data.length; i++) {
+            for (var j = 0; j < data[i][0].values.length; j++) {
+                yValues(data[i][j].values)
+            }
+        }
+        return data
+    }
+    findValues(data2);
+
+    var iCategory = data2[0].map(function(d) { return (d.key)})  // returns: ["0", "5", "10",
     // "15", "20", "25", "30", "36", "42", "47", "53", "59"]
-    console.log(iCategory)
-    var values = data[0].values[0].values.map(function(d, i) {
-        return d.i;
-      });  //returns [0, 1, 2, 3, 4]
-    console.log(values);
+    var values = data2[0][0].values.map(function(d) {return d.key})
+    console.log(values)
+    //returns [0, 1, 2, 3, 4]
     //data.map(function(d) { return (d.values[0].key)})
     x_name.domain(data.map(function(d) { return d.key; })); // groups
     x_i.domain(iCategory).rangeRoundBands([0, x_name.rangeBand()]);
@@ -153,12 +179,12 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
           return 'value value-' + d.i;
         })
         .attr("transform", function(d) {
-          return "translate(" + x_values(d.i) + ",0)";
+          return "translate(" + x_values(d.key) + ",0)";
         });
 
     var values_labels = values_g.selectAll('.value-label')
         .data(function(d) {
-          return [d.x]; //undefined! should returns ["v-a"]
+          return [d.key]; //undefined! should returns ["v-a"]
         })
         .enter().append("text")
         .attr("class", function(d) {
@@ -192,8 +218,9 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
           return height - y(d.y);
         })
         .style("fill", function(d) {
-          return color(d.i);
-        });
+          return color(d.name);
+        })
+        .style("opacity", .2);
 
 }
 
