@@ -1,20 +1,12 @@
 version: '2'
 volumes:
-  pgdata:
-    external:  # change name below to swap out alternate volumes
-      name: pgdata
-  solrdata:
-    external:  # change name below to swap out alternate volumes
-      name: solrdata
-  attachdata:
-    external:  # change name below to swap out alternate volumes
-      name: attachdata
-  staticdata:
-    external:  # change name below to swap out alternate volumes
-      name: staticdata
-  redisdata:
-    external:  # change name below to swap out alternate volumes
-      name: redisdata
+  # To use an alternate, existing volume, replace {} with a sub-item external, containing sub-item
+  #   name, with value of the volume name you wish to use.
+  pgdata: {}
+  solrdata: {}
+  attachdata: {}
+  staticdata: {}
+  redisdata: {}
 services:
   postgres:
     image: postgres:9.4
@@ -34,6 +26,7 @@ services:
     command: redis-server --appendonly yes
   solr:
     image: solr:5.5
+    command: /code/docker_services/solr/init_solr.sh
     restart: always
     volumes:
       - solrdata:/opt/solr/server/solr
@@ -105,7 +98,7 @@ services:
     extends:
       service: edd
     restart: always
-    command: python manage.py runserver 0.0.0.0:8000
+    command: ./docker_services/appserver_entrypoint.sh
     depends_on:
       - postgres
       - rabbitmq

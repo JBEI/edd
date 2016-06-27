@@ -98,12 +98,6 @@ This section contains directions for setting up a development environment on EDD
         * the value of `LDAP_PASS` is the password for the `jbei_auth` user by default; you may
           use your own password by including in your `./edd/settings/local.py`:
           `AUTH_LDAP_BIND_DN = 'lblEmpNum=[your-six-digit-id],ou=People,dc=lbl,dc=gov'`
-    * Run the initialization configuration through Docker Compose:
-        * `docker-compose -f docker-init.yml up`
-        * This will create the data volumes used to run EDD, and run setup tasks to make them
-          ready for use.
-        * After some time, you should see a message instructing you to
-          `docker-compose -f docker-init.yml down`. Do that.
 * Running EDD <a name="Run_OSX"/>
     * `docker-compose` commands
         * Build all services:  `docker-compose build`
