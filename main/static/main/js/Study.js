@@ -124,7 +124,7 @@ var StudyD;
         ProgressiveFilteringWidget.prototype.processIncomingMeasurementRecords = function (measures, types) {
             var process;
             var filterIds = { 'm': [], 'p': [], 'g': [], '_': [] };
-            // loop over all downloaded measurements
+            // loop over all downloaded measurements. measures corresponds to AssayMeasurements
             $.each(measures || {}, function (index, measurement) {
                 var assay = EDDData.Assays[measurement.assay], line, mtype;
                 if (!assay || !assay.active)
@@ -1378,7 +1378,7 @@ var StudyD;
         var maxXvalue = xsorted[0];
         var size = objectSize(data.AssayMeasurements); // number of assays
         var arraySize = arrSize(data.AssayMeasurements); // number of data points
-        createLineGraph(lineAssayObj, minValue, maxValue, labels, minXvalue, maxXvalue);
+        createLineGraph(barAssayObj, minValue, maxValue, labels, minXvalue, maxXvalue);
         createAssayGraph(barAssayObj, minValue, maxValue, labels, size, arraySize);
         createBarLineGraph(barAssayObj, minValue, maxValue, labels, size, arraySize);
         createTimeGraph(barAssayObj, minValue, maxValue, minXvalue, maxXvalue, labels, size, arraySize);

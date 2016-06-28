@@ -70,15 +70,6 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
         .key(function(d) {return d.x})
         .entries(linedata);
 
-    /* returns y values.
-       .rollup(function(leaves) {
-            leaves.forEach(function(d) {return [{
-                key: 'y',
-                value: (d.y)
-            }]})
-        })
-    */
-
     function yValues(data3) {
         for (var i = 0; i < data3.length; i++) {
                     data3[i].key = 'y' + i
@@ -97,15 +88,13 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
         }
         return data
     }
-    findValues(data2);
 
     var iCategory = data2[0].map(function(d) { return (d.key)})  // returns: ["0", "5", "10",
     // "15", "20", "25", "30", "36", "42", "47", "53", "59"]
     var values = data2[0][0].values.map(function(d) {return d.key})
-    console.log(values)
-    //returns [0, 1, 2, 3, 4]
-    //data.map(function(d) { return (d.values[0].key)})
-    x_name.domain(data.map(function(d) { return d.key; })); // groups
+
+    var proteinNames = data.map(function(d) { return d.key; });
+    x_name.domain(proteinNames);
     x_i.domain(iCategory).rangeRoundBands([0, x_name.rangeBand()]);
     x_values.domain(values).rangeRoundBands([0, x_i.rangeBand()]);
 
@@ -155,7 +144,8 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
         .data(function(d) {
           return [d.key]; // returns ["0"]
         })
-        .enter().append("text")
+        .enter()
+        .append("text")
         .attr("class", function(d) {
           return 'category-label category-label-' + d;   //returns 0 - 64...
         })
@@ -166,9 +156,7 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
           return height + 25;
         })
         .attr('text-anchor', 'middle')
-        .text(function(d) {
-          return d;
-        })
+
 
     var values_g = categories_g.selectAll(".value")
         .data(function(d) {
@@ -197,9 +185,9 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
           return height + 10;
         })
         .attr('text-anchor', 'middle')
-        .text(function(d) {
-          return d;
-        })
+        // .text(function(d) {
+        //   return d;
+        // })
 
       var rects = values_g.selectAll('.rect')
         .data(function(d) {
@@ -222,6 +210,6 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
         })
         .style("opacity", .2);
 
-}
+      
 
-//ONLY MISSING WIDTH!
+}

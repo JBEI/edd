@@ -1,6 +1,7 @@
 ////// grouped bar chart based on time
 function createTimeGraph(linedata, minValue, maxValue, minXvalue, maxXvalue, labels, size, arraySize) {
 
+
     var margin = {top: 20, right: 40, bottom: 30, left: 40},
         width = 1000 - margin.left - margin.right,
         height = 270 - margin.top - margin.bottom;
@@ -39,12 +40,19 @@ function createTimeGraph(linedata, minValue, maxValue, minXvalue, maxXvalue, lab
         .orient("left")
         .tickFormat(d3.format(".2s"));
 
-      //create svg graph object
-    var svg = d3.select("div#metrics").append("svg")
-        .attr("preserveAspectRatio", "xMinYMin meet")
-        .attr("viewBox", "-30 -40 1100 280")
-        .classed("svg-content", true)
+    var svgViewport = d3.select("div#metrics").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+    .style("border", "2px solid")
 
+    var zoom = d3.behavior.zoom()
+        .scaleExtent([1, 10])
+        .on("zoom", zoomed);
+
+    var innerSpace = svgViewport.append("g")
+        .attr("class", "inner_space")
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+        .call(zoom);
     /**
     *  This method transforms our data object into the following
     *  {
@@ -61,12 +69,12 @@ function createTimeGraph(linedata, minValue, maxValue, minXvalue, maxXvalue, lab
     x1.domain(labels).rangeRoundBands([0, x0.rangeBand()]);
     y.domain([0, d3.max(data, function(d) { return d3.max(d.values, function(d) { return d.y; }); })]);
 
-    svg.append("g")
+    innerSpace.append("g")
       .attr("class", "x axis")
       .attr("transform", "translate(0," + height + ")")
       .call(xAxis)
       // Draw the x Grid lines
-    svg.append("g")
+    innerSpace.append("g")
         .attr("class", "grid")
         .attr("transform", "translate(0," + height + ")")
         .call(make_x_axis()
@@ -74,7 +82,7 @@ function createTimeGraph(linedata, minValue, maxValue, minXvalue, maxXvalue, lab
             .tickFormat("")
         )
         // Draw the y Grid lines
-    svg.append("g")
+    innerSpace.append("g")
         .attr("class", "grid")
         .call(make_y_axis()
             .tickSize(-width, 0, 0)
@@ -82,7 +90,7 @@ function createTimeGraph(linedata, minValue, maxValue, minXvalue, maxXvalue, lab
         )
 
 
-    svg.append("g")
+    innerSpace.append("g")
       .attr("class", "y axis")
       .call(yAxis)
     .append("text")
@@ -92,7 +100,7 @@ function createTimeGraph(linedata, minValue, maxValue, minXvalue, maxXvalue, lab
       .style("text-anchor", "end")
       .text("Frequency");
 
-    var bar = svg.selectAll(".bar")
+    var bar = innerSpace.selectAll(".bar")
         .data(data)
         .enter().append('g')
         .attr("class", "bar")
@@ -107,6 +115,7 @@ function createTimeGraph(linedata, minValue, maxValue, minXvalue, maxXvalue, lab
           .attr("y", function(d) { return y(d.y); })
           .attr("height", function(d) { return height - y(d.y); })
           .style("fill", function(d) { return color(d.i); })
+          .style("opacity", .3)
           .on("mouseover", function() { tooltip.style("display", null); })
           .on("mouseout", function() { tooltip.style("display", "none"); })
           .on("mousemove", function(d) {
@@ -117,8 +126,10 @@ function createTimeGraph(linedata, minValue, maxValue, minXvalue, maxXvalue, lab
             tooltip.select("text").html(labels[d.i] + ": " + d.y + " " + d.y_unit)
           });
 
+    d3.select("body").append("div").attr("id", "v_scale").text("D3 Zoom Scale: ");
+    d3.select("#v_scale").append("span").attr("id", "v_scale_val");
      //legend
-     var legend = svg.selectAll(".legend")
+     var legend = innerSpace.selectAll(".legend")
           .data(labels)
         .enter().append("g")
           .attr("class", "legend")
@@ -139,7 +150,7 @@ function createTimeGraph(linedata, minValue, maxValue, minXvalue, maxXvalue, lab
 
 
     //tooltip
-    var tooltip = svg.append("g")
+    var tooltip = innerSpace.append("g")
       .attr("class", "tooltip")
       .style("display", "none");
 
@@ -174,5 +185,9 @@ function createTimeGraph(linedata, minValue, maxValue, minXvalue, maxXvalue, lab
             .scale(y)
             .orient("left")
             .ticks(5)
+    }
+
+    function zoomed() {
+        innerSpace.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
     }
 }

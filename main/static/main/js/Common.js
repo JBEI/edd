@@ -39,7 +39,7 @@
         return [].concat.apply([], assays);
 }
     /**
-    *  This function takes a unit id and returns the unit name
+    *  This function takes a unit id and unit type json and returns the unit name
     **/
 
     function unitName(unitId, unitTypes) {
