@@ -212,8 +212,7 @@ module StudyD {
             var process: (ids: string[], i: number, widget: GenericFilterSection) => void;
 
             var filterIds = { 'm': [], 'p': [], 'g': [], '_': [] };
-
-            // loop over all downloaded measurements
+            // loop over all downloaded measurements. measures corresponds to AssayMeasurements
             $.each(measures || {}, (index, measurement) => {
                 var assay = EDDData.Assays[measurement.assay], line, mtype;
                 if (!assay || !assay.active) return;
@@ -1161,7 +1160,6 @@ module StudyD {
             },
             'success': (data) => {
                 EDDData = $.extend(EDDData || {}, data);
-                console.log(EDDData);
                 this.progressiveFilteringWidget.prepareFilteringSection();
                 // Instantiate a table specification for the Lines table
                 this.linesDataGridSpec = new DataGridSpecLines();
@@ -1589,7 +1587,7 @@ module StudyD {
             var maxXvalue = xsorted[0];
             var size = objectSize(data.AssayMeasurements); // number of assays
             var arraySize = arrSize(data.AssayMeasurements); // number of data points
-            createLineGraph(lineAssayObj, minValue, maxValue, labels, minXvalue, maxXvalue);
+            createLineGraph(barAssayObj, minValue, maxValue, labels, minXvalue, maxXvalue);
             createAssayGraph(barAssayObj, minValue, maxValue, labels, size, arraySize);
             createBarLineGraph(barAssayObj, minValue, maxValue, labels, size, arraySize);
             createTimeGraph(barAssayObj, minValue, maxValue, minXvalue, maxXvalue, labels, size, arraySize);

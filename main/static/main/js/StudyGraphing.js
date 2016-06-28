@@ -193,6 +193,7 @@ StudyDGraphing = {
         for (var oneSet in this.setsFetched) {
             this.dataSets.push(this.setsFetched[oneSet]);
         }
+        console.log(this.dataSets);
         this.rebuildXAxis();
         if (StudyDGraphing.clickWidget) {
             StudyDGraphing.clickWidget.remove();
