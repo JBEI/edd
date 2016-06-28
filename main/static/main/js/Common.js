@@ -67,7 +67,12 @@
         var n = [];
         for (var j = 0; j < values.length; j++ ) {
           dataset = {};
-          if (values[j][0].length > 0 && values[j][1].length > 0) {
+            if (values[j][0].length == 0) {
+                values[j][0] = ["0"];
+            } else if (values[j][1].length == 0) {
+                values[j][1] = ["0"];
+            }
+            dataset.label = 'dt' + first.assay; 
             dataset.x = parseInt(values[j][0].join());
             dataset.y = parseFloat(values[j][1].join());
             dataset.i = i;
@@ -75,10 +80,6 @@
             dataset.y_unit = unitName(first.y_units, unitTypes);
             dataset.name = names[i];
             n.push(dataset);
-             }
-           else {
-            console.log("missing data for object " + i + " time " + values[j][0])
-           }
         }
 
         linedata.push(n);
@@ -91,6 +92,31 @@
           })
 
         return(linedata);
+    }
+    
+    function transformSingleLineItem(data, singleData, names) {
+        var unitTypes = data.UnitTypes;
+        var xAndYValues = [];
+        singleDataValues = singleData.values;
+        for (var i = 0; i < singleDataValues.length; i++) {
+            dataset = {};
+            if (singleDataValues[i][0].length == 0) {
+                singleDataValues[i][0] = ["0"];
+            } else if (singleDataValues[i][1].length == 0) {
+                singleDataValues[i][1] = ["0"];
+            }
+            dataset.label = 'dt' + singleData.assay;
+            dataset.x = parseInt(singleDataValues[i][0].join());
+            dataset.y = parseFloat(singleDataValues[i][1].join());
+            dataset.x_unit = unitName(singleData.x_units, unitTypes);
+            dataset.y_unit = unitName(singleData.y_units, unitTypes);
+            dataset.name = names;
+            xAndYValues.push(dataset);
+        }
+        xAndYValues.sort(function(a, b) {
+              return a.x - b.x;
+            });
+        return xAndYValues;
     }
 
 
@@ -189,6 +215,7 @@
       var names = lineName(EDDData.Lines, lidIds)
       return names; 
   }
+    
 
   /**
   *  This function takes in the d3 nested data object and returns

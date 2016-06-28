@@ -72,15 +72,15 @@ var StudyD;
             // Create filters on assay tables
             // TODO media is now a metadata type, strain and carbon source should be too
             var assayFilters = [];
-            assayFilters.push(new StrainFilterSection());
+            assayFilters.push(new StrainFilterSection()); // first column in filtering section
             assayFilters.push(new CarbonSourceFilterSection());
             assayFilters.push(new CarbonLabelingFilterSection());
             for (var id in seenInLinesHash) {
                 assayFilters.push(new LineMetaDataFilterSection(id));
             }
-            assayFilters.push(new LineNameFilterSection());
-            assayFilters.push(new ProtocolFilterSection());
-            assayFilters.push(new AssaySuffixFilterSection());
+            assayFilters.push(new LineNameFilterSection()); // LINE
+            assayFilters.push(new ProtocolFilterSection()); // Protocol
+            assayFilters.push(new AssaySuffixFilterSection()); //Assasy suffix
             for (var id in seenInAssaysHash) {
                 assayFilters.push(new AssayMetaDataFilterSection(id));
             }
@@ -262,6 +262,7 @@ var StudyD;
             if (dSM.length) {
                 return dSM;
             }
+            //line 291 prints the same measurementIds...
             console.log("MEASUREMENT IDS: " + measurementIds);
             return measurementIds;
         };
@@ -438,6 +439,7 @@ var StudyD;
             this.anyCheckboxesChecked = false;
             $.each(this.checkboxes || {}, function (uniqueId, checkbox) {
                 var current, previous;
+                // "C" - checked, "U" - unchecked, "N" - doesn't exist
                 current = (checkbox.prop('checked') && !checkbox.prop('disabled')) ? 'C' : 'U';
                 previous = _this.previousCheckboxState[uniqueId] || 'N';
                 if (current !== previous)
@@ -985,7 +987,6 @@ var StudyD;
             },
             'success': function (data) {
                 EDDData = $.extend(EDDData || {}, data);
-                console.log(EDDData);
                 _this.progressiveFilteringWidget.prepareFilteringSection();
                 // Instantiate a table specification for the Lines table
                 _this.linesDataGridSpec = new DataGridSpecLines();
@@ -1126,7 +1127,7 @@ var StudyD;
         var csIDs;
         // Prepare the main data overview graph at the top of the page
         if (this.mainGraphObject === null && $('#maingraph').size() === 1) {
-            this.mainGraphObject = Object.create(StudyDGraphing);
+            this.mainGraphObject = Object.create(StudyDGraphing); //flot code.
             this.mainGraphObject.Setup('maingraph');
             this.progressiveFilteringWidget.mainGraphObject = this.mainGraphObject;
         }
@@ -1315,13 +1316,55 @@ var StudyD;
     }
     StudyD.queueMainGraphRemake = queueMainGraphRemake;
     function remakeMainGraphArea(force) {
+        var _this = this;
         var previousIDSet, postFilteringMeasurements, dataPointsDisplayed = 0, dataPointsTotal = 0, separateAxes = $('#separateAxesCheckbox').prop('checked'), 
         // FIXME assumes (x0, y0) points
         convert = function (d) { return [[d[0][0], d[1][0]]]; }, compare = function (a, b) { return a[0] - b[0]; };
         this.mainGraphRefreshTimerID = 0;
+        //contains all checkboxes.
         if (!this.progressiveFilteringWidget.checkRedrawRequired(force)) {
             return;
         }
+        //remove SVG.
+        this.mainGraphObject.clearAllSets();
+        //Gives ids of lines to show.
+        postFilteringMeasurements = this.progressiveFilteringWidget.buildFilteredMeasurements();
+        $.each(postFilteringMeasurements, function (i, measurementId) {
+            var measure = EDDData.AssayMeasurements[measurementId], mtype = EDDData.MeasurementTypes[measure.type], points = (measure.values ? measure.values.length : 0), assay, line, protocol, newSet;
+            dataPointsTotal += points;
+            if (dataPointsDisplayed > 15000) {
+                return; // Skip the rest if we've hit our limit
+            }
+            dataPointsDisplayed += points;
+            assay = EDDData.Assays[measure.assay] || {};
+            line = EDDData.Lines[assay.lid] || {};
+            protocol = EDDData.Protocols[assay.pid] || {};
+            var name = [line.name, protocol.name, assay.name].join('-');
+            var singleAssayObj = transformSingleLineItem(EDDData, measure, name);
+            newSet = {
+                'label': 'dt' + measurementId,
+                'measurementname': Utl.EDD.resolveMeasurementRecordToName(measure),
+                'name': [line.name, protocol.name, assay.name].join('-'),
+                'units': Utl.EDD.resolveMeasurementRecordToUnits(measure),
+                'data': $.map(measure.values, convert).sort(compare)
+            };
+            if (line.control)
+                newSet.iscontrol = 1;
+            if (separateAxes) {
+                // If the measurement is a metabolite, choose the axis by type. If it's any
+                // other subtype, choose the axis based on that subtype, with an offset to avoid
+                // colliding with the metabolite axes.
+                if (mtype.family === 'm') {
+                    newSet.yaxisByMeasurementTypeID = mtype.id;
+                }
+                else {
+                    newSet.yaxisByMeasurementTypeID = mtype.family;
+                }
+            }
+            _this.mainGraphObject.addNewSet(singleAssayObj);
+            //draw 1 line.
+            //this.mainGraphObject.addNewSet(newSet);
+        });
         //toggle between view
         d3.select('#chart')
             .on('click', function () {
@@ -1364,11 +1407,12 @@ var StudyD;
             d3.select('#groupedAssay').style('display', 'block');
         });
         //point to mainGraph div
-        var data = EDDData;
-        var labels = names(data);
-        var lineAssayObj = transformLineData(data, labels);
+        var data = EDDData; // main data
+        var labels = names(data); // names of proteins..
+        var lineAssayObj = transformLineData(data, labels); //returns an array of array of
+        // objects
         var barAssayObj = sortBarData(lineAssayObj);
-        var yvals = yvalues(data.AssayMeasurements);
+        var yvals = yvalues(data.AssayMeasurements); //an array of y values
         var xvals = xvalues(data.AssayMeasurements);
         var ysorted = sortValues(yvals);
         var xsorted = sortValues(xvals);
@@ -1378,11 +1422,11 @@ var StudyD;
         var maxXvalue = xsorted[0];
         var size = objectSize(data.AssayMeasurements); // number of assays
         var arraySize = arrSize(data.AssayMeasurements); // number of data points
-        createLineGraph(barAssayObj, minValue, maxValue, labels, minXvalue, maxXvalue);
-        createAssayGraph(barAssayObj, minValue, maxValue, labels, size, arraySize);
-        createBarLineGraph(barAssayObj, minValue, maxValue, labels, size, arraySize);
-        createTimeGraph(barAssayObj, minValue, maxValue, minXvalue, maxXvalue, labels, size, arraySize);
-        createSideBySide(lineAssayObj, minValue, maxValue, labels, minXvalue, maxXvalue);
+        //         createLineGraph(barAssayObj, minValue, maxValue, labels, minXvalue, maxXvalue);
+        //         createAssayGraph(barAssayObj, minValue, maxValue, labels, size, arraySize);
+        //         createBarLineGraph(barAssayObj, minValue, maxValue, labels, size, arraySize);
+        //         createTimeGraph(barAssayObj, minValue, maxValue, minXvalue, maxXvalue, labels, size, arraySize);
+        //         createSideBySide(lineAssayObj, minValue, maxValue, labels, minXvalue, maxXvalue);
     }
     function clearAssayForm() {
         var form = $('#id_assay-assay_id').closest('.disclose');

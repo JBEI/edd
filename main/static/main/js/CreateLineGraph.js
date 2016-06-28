@@ -2,7 +2,6 @@
 * this function creates the line graph 
 **/
 function createLineGraph(linedata, minValue, maxValue, labels, minXvalue, maxXvalue) {
-
     /**
      * this function creates the x axis tick marks for grid
      **/
@@ -102,8 +101,6 @@ function createLineGraph(linedata, minValue, maxValue, labels, minXvalue, maxXva
         })
         .entries(linedata);
 
-    var legendSpace = width / data.length;
-
     for (var k = 0; k < data.length; k++) {
         var color1 = color(data[k].key)
         //label name coincides with same color
@@ -118,21 +115,7 @@ function createLineGraph(linedata, minValue, maxValue, labels, minXvalue, maxXva
                 .attr('stroke', color1)
                 .attr('stroke-width', 2)
                 .attr("class", "experiment")
-                .attr('fill', 'none')
-                // .on("mouseover", function () {
-                //     //highlight path mouse overed
-                //       d3.select(this).style("stroke-width",'6px')
-                //       var self = this;
-                //       var paths = d3.selectAll('.experiment');
-                //       // All other elements transition opacity.
-                //       paths.filter(function (x) { return self != this; })
-                //           .style("opacity", .1);
-                //        })
-                //   .on("mouseout", function(d) {
-                //      d3.select(this)                          //on mouseover of each line, give it a nice thick stroke
-                //           .style("stroke-width", 2)
-                //           d3.selectAll('path').style("opacity", 1);
-                //   })
+                .attr('fill', 'none');
 
         var dataCirclesGroup = svg.append('svg:g');
         var circles = dataCirclesGroup.selectAll('.data-point')
@@ -192,22 +175,13 @@ function createLineGraph(linedata, minValue, maxValue, labels, minXvalue, maxXva
                   })
                   .on("click", function(d, i) {
                     var id = d.key.split(' ').join('_')
-                   // d3.selectAll("#"+id).style("stroke-width", 2)
-                    // All other elements transition opacity.
                     d3.selectAll('.experiment').style("opacity", function() {
                         return this.id == id ? 1 : 0
                     });
-
                   })
                   // .on("mouseout", function(d, i) {
                   //   d3.selectAll("#"+d.key.split(' ').join('_')).style("stroke", "white");
                   // });
 
-    }
-
-
-
-    function findName(data, name) {
-        return data.filter(function(d) { return d.key == name})
     }
 }

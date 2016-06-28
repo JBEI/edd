@@ -6,7 +6,6 @@
 *  outputs a grouped bar graph with values grouped by assay name
 **/
 function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize) {
-     //nest data by name. returns [name: 'glucose", values: [{x, y, z}, ..]]
 
      var margin = {top: 20, right: 40, bottom: 100, left: 40},
         width = 1000 - margin.left - margin.right,
@@ -29,13 +28,13 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
      var color = d3.scale.ordinal()
         .range(thisColorRange);
 
-      //grouped by name
+      //grouped by protein name
       var x_name = d3.scale.ordinal()
         .rangeRoundBands([0, width], .3, .3);
-      //grouped by i
-      var x_i = d3.scale.ordinal();
-      //x values
-      var x_values = d3.scale.ordinal();
+      //grouped by x values
+      var x_xValue = d3.scale.ordinal();
+      //y Ids
+      var x_yId = d3.scale.ordinal();
 
       var y = d3.scale.linear()
         .range([height, 0]);
@@ -46,11 +45,11 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
         .orient("bottom");
 
       var categories_axis = d3.svg.axis()
-        .scale(x_i)
+        .scale(x_xValue)
         .orient("bottom");
 
       var values_axis = d3.svg.axis()
-        .scale(x_i)
+        .scale(x_xValue)
         .orient("bottom");
 
       var yAxis = d3.svg.axis()
@@ -64,7 +63,7 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
         .attr("viewBox", "-30 -40 1100 280")
         .classed("svg-content", true)
 
-
+    //nest data by name. nest again by x label
     var data = d3.nest()
         .key(function(d) { return d.name; })
         .key(function(d) {return d.x})
@@ -89,14 +88,15 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
         return data
     }
 
-    var iCategory = data2[0].map(function(d) { return (d.key)})  // returns: ["0", "5", "10",
+    var xValueLabels = data2[0].map(function(d) { return (d.key)})  // returns: ["0", "5", "10",
     // "15", "20", "25", "30", "36", "42", "47", "53", "59"]
-    var values = data2[0][0].values.map(function(d) {return d.key})
+    var yvalueIds = data2[0][0].values.map(function(d) {return d.key})
 
     var proteinNames = data.map(function(d) { return d.key; });
+
     x_name.domain(proteinNames);
-    x_i.domain(iCategory).rangeRoundBands([0, x_name.rangeBand()]);
-    x_values.domain(values).rangeRoundBands([0, x_i.rangeBand()]);
+    x_xValue.domain(xValueLabels).rangeRoundBands([0, x_name.rangeBand()]);
+    x_yId.domain(yvalueIds).rangeRoundBands([0, x_xValue.rangeBand()]);
 
     y.domain([0, d3.max(linedata, function(d) { return d.y})]);
 
@@ -137,7 +137,7 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
           return d;   // returns objects with key = value
         })
         .attr("transform", function(d) {
-          return "translate(" + x_i(d.key) + ",0)";
+          return "translate(" + x_xValue(d.key) + ",0)";
         });
 
     var categories_labels = categories_g.selectAll('.category-label')
@@ -150,7 +150,7 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
           return 'category-label category-label-' + d;   //returns 0 - 64...
         })
         .attr("x", function(d) {
-          return x_i.rangeBand() / 2;
+          return x_xValue.rangeBand() / 2;
         })
         .attr('y', function(d) {
           return height + 25;
@@ -167,7 +167,7 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
           return 'value value-' + d.i;
         })
         .attr("transform", function(d) {
-          return "translate(" + x_values(d.key) + ",0)";
+          return "translate(" + x_yId(d.key) + ",0)";
         });
 
     var values_labels = values_g.selectAll('.value-label')
@@ -179,15 +179,15 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
           return d;
         })
         .attr("x", function(d) {
-          return x_values.rangeBand() / 2;
+          return x_yId.rangeBand() / 2;
         })
         .attr('y', function(d) {
           return height + 10;
         })
         .attr('text-anchor', 'middle')
-        // .text(function(d) {
-        //   return d;
-        // })
+        .text(function(d) {
+          return d;
+        })
 
       var rects = values_g.selectAll('.rect')
         .data(function(d) {
@@ -195,7 +195,7 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
         })
         .enter().append("rect")
         .attr("class", "rect")
-        .attr("width", x_i.rangeBand())
+        .attr("width", x_xValue.rangeBand())
         .attr("x", function(d) {
           return 0;
         })
