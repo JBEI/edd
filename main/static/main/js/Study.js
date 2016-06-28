@@ -1316,7 +1316,6 @@ var StudyD;
     }
     StudyD.queueMainGraphRemake = queueMainGraphRemake;
     function remakeMainGraphArea(force) {
-        var _this = this;
         var previousIDSet, postFilteringMeasurements, dataPointsDisplayed = 0, dataPointsTotal = 0, separateAxes = $('#separateAxesCheckbox').prop('checked'), 
         // FIXME assumes (x0, y0) points
         convert = function (d) { return [[d[0][0], d[1][0]]]; }, compare = function (a, b) { return a[0] - b[0]; };
@@ -1328,6 +1327,7 @@ var StudyD;
         //remove SVG.
         this.mainGraphObject.clearAllSets();
         //Gives ids of lines to show.
+        var dataSets = [];
         postFilteringMeasurements = this.progressiveFilteringWidget.buildFilteredMeasurements();
         $.each(postFilteringMeasurements, function (i, measurementId) {
             var measure = EDDData.AssayMeasurements[measurementId], mtype = EDDData.MeasurementTypes[measure.type], points = (measure.values ? measure.values.length : 0), assay, line, protocol, newSet;
@@ -1361,10 +1361,12 @@ var StudyD;
                     newSet.yaxisByMeasurementTypeID = mtype.family;
                 }
             }
-            _this.mainGraphObject.addNewSet(singleAssayObj);
+            dataSets.push(singleAssayObj);
             //draw 1 line.
             //this.mainGraphObject.addNewSet(newSet);
         });
+        console.log(sortBarData(dataSets));
+        this.mainGraphObject.addNewSet(sortBarData(dataSets));
         //toggle between view
         d3.select('#chart')
             .on('click', function () {
