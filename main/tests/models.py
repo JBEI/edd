@@ -1,32 +1,39 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+import arrow
+import factory
 import os.path
 import warnings
 
-import arrow
+from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.core.exceptions import PermissionDenied
 from django.test import TestCase
 
-from .. import data_import, sbml_export, utilities
-from main.forms import (
-
-    LineForm,
-    )
+from ..export import sbml as sbml_export
+from ..forms import LineForm
+from ..importer import (
+    TableImport, import_rna_seq, import_rnaseq_edgepro, interpret_raw_rna_seq_data,
+)
 from ..models import (
     Assay, CarbonSource, GeneIdentifier, GroupPermission, Line, MeasurementType, MeasurementUnit,
     Metabolite, MetadataGroup, MetadataType, Protocol, SBMLTemplate, Strain,
     Study, Update, UserPermission,
-    )
-
+)
 from ..solr import StudySearch
-from django.contrib.auth import get_user_model
+from ..utilities import (
+    extract_id_list, extract_id_list_as_form_keys, get_selected_lines,
+    get_edddata_carbon_sources, get_edddata_measurement, get_edddata_misc, get_edddata_strains,
+    get_edddata_study, get_edddata_users, interpolate_at,
+)
+
+
 User = get_user_model()
 
 
-
-
+# TODO: This comment is not up-to-date; need to find better way to indicate to tests to use a
+#   testing solr instance
 # Everything running in this file is a test, but Django only handles test instances of a
 #   database; there is no concept of a Solr test instance as far as test framework is
 #   concerned. Tests should be run with:
@@ -34,80 +41,69 @@ User = get_user_model()
 #   Otherwise, tests will pollute the search index with several entries for testing data.
 
 
+class UserFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = User
+    username = factory.Sequence(lambda n: 'user%03d' % n)  # username is unique
+
+
 class UserTests(TestCase):
-    USERNAME = "Jane Smith"
     EMAIL = "jsmith@localhost"
-    PASSWORD = 'password'
+    EMAIL2 = "jdoe@localhost"
     FIRST_NAME = "Jane"
     LAST_NAME = "Smith"
 
-    USERNAME2 = "John Doe"
-    EMAIL2 = "jdoe@localhost"
+    ADMIN_EMAIL = "ssue@localhost"
+    ADMIN_FIRST_NAME = "Sally"
+    ADMIN_LAST_NAME = "Sue"
+
+    JSON_KEYS = [
+        'description', 'disabled', 'email', 'firstname', 'groups', 'id', 'initials', 'institution',
+        'lastname', 'name', 'uid',
+    ]
+    SOLR_KEYS = [
+        'date_joined', 'email', 'fullname', 'group', 'id', 'initials', 'institution', 'is_active',
+        'is_staff', 'is_superuser', 'last_login', 'name', 'username',
+    ]
 
     # create test users
     def setUp(self):
         super(UserTests, self).setUp()
-        User.objects.create_user(
-            username=self.USERNAME,
-            email=self.EMAIL,
-            password=self.PASSWORD,
-            first_name=self.FIRST_NAME,
-            last_name=self.LAST_NAME
-            )
-        User.objects.create_user(
-            username=self.USERNAME2,
-            email=self.EMAIL2,
-            password=self.PASSWORD
-            )
-        User.objects.create_superuser(
-            username="Sally Sue",
-            email="ssue@localhost",
-            password="password",
-            first_name="Sally",
-            last_name="Sue"
-            )
+        UserFactory(email=self.EMAIL, first_name=self.FIRST_NAME, last_name=self.LAST_NAME)
+        UserFactory(email=self.EMAIL2)
+        UserFactory(email=self.ADMIN_EMAIL,  is_staff=True, is_superuser=True,
+                    first_name=self.ADMIN_FIRST_NAME, last_name=self.ADMIN_LAST_NAME)
 
     def test_monkey_patches(self):
-        """ Ensure that user has class fields"""
+        """ Checking the properties monkey-patched on to the User model. """
         # Load objects
         user1 = User.objects.get(email=self.EMAIL)
-        user2 = User.objects.get(email="jdoe@localhost")
+        user2 = User.objects.get(email=self.EMAIL2)
         # Asserts
-        self.assertTrue(user1.initials == "JS")
-        self.assertTrue(user1.email == self.EMAIL)
-        self.assertTrue(user1.initials == "JS")
-        self.assertTrue(user2.initials == '')
-        self.assertTrue(user2.username == 'John Doe')
-        self.assertTrue(user1.profile is not None)
-        self.assertTrue(user1.profile.initials == "JS")
-        self.assertTrue(user2.profile.initials == '')
+        self.assertIsNotNone(user1.profile)
+        self.assertEqual(user1.initials, 'JS')
+        self.assertEqual(user1.profile.initials, 'JS')
+        self.assertIsNone(user1.institution)
+        self.assertEqual(len(user1.institutions), 0)
+        self.assertIsNotNone(user2.profile)
+        self.assertEqual(user2.initials, '')
+        self.assertEqual(user2.profile.initials, '')
+        # ensure keys exist in JSON and Solr dict repr
         user_json = user1.to_json()
-        for key, value in {u'uid': u'Jane Smith', u'firstname': u'Jane', u'lastname': u'Smith', u'description': u'',
-                           u'name': u'Jane Smith', u'email': u'jsmith@localhost', u'initials': u'JS'}.iteritems():
-            self.assertTrue(user_json[key] == value)
+        for key in self.JSON_KEYS:
+            self.assertIn(key, user_json)
         user_solr = user1.to_solr_json()
-        for key, value in {u'username': u'Jane Smith', u'is_active': True,
-                            u'name': [u'Jane', u'Smith'], u'is_superuser': False, u'fullname': u'Jane Smith',
-                            u'email': u'jsmith@localhost', u'initials': u'JS'}.iteritems():
-            self.assertTrue(user_solr[key] == value)
+        for key in self.SOLR_KEYS:
+            self.assertIn(key, user_solr)
 
-    def test__initial_permissions(self):
-        """ Ensure user permissions"""
+    def test_initial_permissions(self):
+        """ Checking initial class-based permissions for normal vs admin user. """
         # Load objects
         user1 = User.objects.get(email=self.EMAIL)
-        user2 = User.objects.get(email="ssue@localhost")
+        admin = User.objects.get(email=self.ADMIN_EMAIL)
         # Asserts
-        self.assertFalse(user1.is_staff)
-        self.assertFalse(user1.is_superuser)
         self.assertFalse(user1.has_perm('main.change.protocol'))
-        self.assertTrue(user2.is_staff)
-        self.assertTrue(user2.is_superuser)
-        self.assertTrue(user2.has_perm('main.change.protocol'))
-        user1.is_superuser = True
-        user1.is_staff = True
-        self.assertTrue(user1.is_staff)
-        self.assertTrue(user1.is_superuser)
-        self.assertTrue(user1.has_perm('main.change.protocol'))
+        self.assertTrue(admin.has_perm('main.change.protocol'))
 
 
 class StudyTests(TestCase):
@@ -470,14 +466,12 @@ class AssayDataTests(TestCase):
         metabolites = list(assay.get_metabolite_measurements()) #[]
         self.assertTrue(len(metabolites) == 1)
         meas1 = metabolites[0]
-        meas2 = list(assay.get_gene_measurements())[0]
         self.assertTrue(meas1.y_axis_units_name == "mM")
         self.assertTrue(meas1.name == "Acetate")
         self.assertTrue(meas1.short_name == "ac")
         self.assertTrue(meas1.full_name == "IC Acetate")
         self.assertTrue(meas1.is_concentration_measurement())
         self.assertTrue(not meas1.is_carbon_ratio())
-        self.assertTrue(meas2.is_gene_measurement())
         mdata = list(meas1.measurementvalue_set.all())
         self.assertTrue(mdata[0].x[0] == 0)
         self.assertTrue(mdata[0].y[0] == 0)
@@ -544,26 +538,46 @@ class ImportTests(TestCase):
         m_id_b = str(Metabolite.objects.get(short_name="glc-D").pk)
         u_id = str(MeasurementUnit.objects.get(unit_name="mM").pk)
         # breaking up big text blob
-        json = "".join(['[{',
-                '"kind":"std",',
-                '"protocol_name":"GC-MS","protocol_id":"',p_id,'",',
-                '"line_name":"","line_id":"',l_id,'",',
-                '"assay_name":"Column 0","assay_id":"named_or_new",',
-                '"measurement_name":"ac","measurement_id":"',m_id_a,'",',
-                '"comp_name":"ic","comp_id":"1",',
-                '"units_name":"units","units_id":"',u_id,'",',
-                '"metadata":{},',
-                '"data":[[0,"0.1"],[1,"0.2"],[2,"0.4"],[4,"1.7"],[8,"5.9"]]',
-                '},{',
-                '"kind":"std",',
-                '"protocol_name":"GC-MS","protocol_id":"',p_id,'",',
-                '"line_name":"","line_id":"',l_id,'",',
-                '"assay_name":"Column 0","assay_id":"named_or_new",',
-                '"measurement_name":"glc-D","measurement_id":"',m_id_b,'",',
-                '"comp_name":"ic","comp_id":"1",',
-                '"units_name":"units","units_id":"',u_id,'",',
-                '"metadata":{},',
-                '"data":[[0,"0.2"],[1,"0.4"],[2,"0.6"],[4,"0.8"],[8,"1.2"]]}]'])
+        json = (
+            '[{'
+            '"kind":"std",'
+            '"protocol_name":"GC-MS",'
+            '"protocol_id":"%(protocol_id)s",'
+            '"line_name":"",'
+            '"line_id":"%(line_id)s",'
+            '"assay_name":"Column 0",'
+            '"assay_id":"named_or_new",'
+            '"measurement_name":"ac",'
+            '"measurement_id":"%(measurement_id_a)s",'
+            '"comp_name":"ic",'
+            '"comp_id":"1",'
+            '"units_name":"units",'
+            '"units_id":"%(units_id)s",',
+            '"metadata":\{\},',
+            '"data":[[0,"0.1"],[1,"0.2"],[2,"0.4"],[4,"1.7"],[8,"5.9"]]',
+            '},{',
+            '"kind":"std",',
+            '"protocol_name":"GC-MS",'
+            '"protocol_id":"%(protocol_id)s",'
+            '"line_name":"",'
+            '"line_id":"%(line_id)s",'
+            '"assay_name":"Column 0",'
+            '"assay_id":"named_or_new",',
+            '"measurement_name":"glc-D",'
+            '"measurement_id":"%(measurement_id_b)s",'
+            '"comp_name":"ic",'
+            '"comp_id":"1",',
+            '"units_name":"units",'
+            '"units_id":"%(units_id)s",',
+            '"metadata":\{\},',
+            '"data":[[0,"0.2"],[1,"0.4"],[2,"0.6"],[4,"0.8"],[8,"1.2"]]}]'
+        ) % {
+            'line_id': l_id,
+            'measurement_id_a': m_id_a,
+            'measurement_id_b': m_id_b,
+            'protocol_id': p_id,
+            'units_id': u_id,
+        }
         # XXX not proud of this, but we need actual IDs in here
         return {
             'action': "Submit Data",
@@ -575,9 +589,10 @@ class ImportTests(TestCase):
         }
 
     def test_import_gc_ms_metabolites(self):
-        table = data_import.TableImport(
+        table = TableImport(
             Study.objects.get(name="Test Study 1"),
-            User.objects.get(username="admin"))
+            User.objects.get(username="admin"),
+        )
         added = table.import_data(self.get_form())
         self.assertEqual(added, 10)
         data_literal = ("""[[(0.0, 0.1), (1.0, 0.2), (2.0, 0.4), (4.0, 1.7), (8.0, 5.9)], """
@@ -593,9 +608,10 @@ class ImportTests(TestCase):
 
     def test_error(self):
         try:  # failed user permissions check
-            table = data_import.TableImport(
+            table = TableImport(
                 Study.objects.get(name="Test Study 1"),
-                User.objects.get(username="postdoc"))
+                User.objects.get(username="postdoc"),
+            )
             table.import_data(self.get_form())
         except PermissionDenied:
             pass
@@ -615,7 +631,7 @@ class ImportTests(TestCase):
             mod_time=arrow.utcnow(),
             mod_by=user)
         # two assays per line (replicas)
-        result = data_import.import_rna_seq(
+        result = import_rna_seq(
             study=Study.objects.get(name="Test Study 1"),
             user=user,
             update=update,
@@ -627,14 +643,14 @@ class ImportTests(TestCase):
             meas_times=[0]*4)
         self.assertTrue(result.n_meas == result.n_meas_data == 8)
         self.assertTrue(result.n_assay == 4 and result.n_meas_type == 2)
-        result = data_import.interpret_raw_rna_seq_data(
+        result = interpret_raw_rna_seq_data(
             raw_data="\n".join(["\t".join(row) for row in table1]),
             study=Study.objects.get(name="Test Study 1"))
         self.assertTrue(result["guessed_data_type"] == "fpkm")
         self.assertTrue(result["samples"][0]["line_id"] == line1.pk)
         self.assertTrue(result["samples"][2]["line_id"] == line2.pk)
         # one assay, two timepoints per line
-        result = data_import.import_rna_seq(
+        result = import_rna_seq(
             study=Study.objects.get(name="Test Study 1"),
             user=user,
             update=update,
@@ -652,7 +668,7 @@ class ImportTests(TestCase):
             ["gene1", "64", "67", "89", "91"],
             ["gene2", "27", "30", "5", "4"],
         ]
-        result = data_import.import_rna_seq(
+        result = import_rna_seq(
             study=Study.objects.get(name="Test Study 1"),
             user=user,
             update=update,
@@ -670,7 +686,7 @@ class ImportTests(TestCase):
             ["gene2", "27,1.79", "30,1.94", "5,0.15", "4,0.33"],
         ]
         # one assay, two timepoints, counts+fpkms
-        result = data_import.import_rna_seq(
+        result = import_rna_seq(
             study=Study.objects.get(name="Test Study 1"),
             user=user,
             update=update,
@@ -684,7 +700,7 @@ class ImportTests(TestCase):
         self.assertTrue(result.n_meas_type == 0 and result.n_assay == 2)
         self.assertTrue(result.n_meas == 8 and result.n_meas_data == 16)
         # two timepoints per condition, separate assays
-        result = data_import.import_rna_seq(
+        result = import_rna_seq(
             study=Study.objects.get(name="Test Study 1"),
             user=user,
             update=update,
@@ -703,7 +719,7 @@ class ImportTests(TestCase):
         assay2 = line2.assay_set.create(
             name="assay1", description="", protocol=p, experimenter=user)
         try:
-            result = data_import.import_rna_seq(
+            result = import_rna_seq(
                 study=Study.objects.get(name="Test Study 1"),
                 user=user,
                 update=update,
@@ -718,7 +734,7 @@ class ImportTests(TestCase):
         else:
             raise Exception("ValueError expected")
         # use existing Assays instead of creating new ones
-        result = data_import.import_rna_seq(
+        result = import_rna_seq(
             study=Study.objects.get(name="Test Study 1"),
             user=user,
             update=update,
@@ -732,7 +748,7 @@ class ImportTests(TestCase):
         self.assertTrue(result.n_meas == 8 and result.n_meas_data == 16)
         self.assertTrue(assay1.measurement_set.count() == 4)
         #
-        result = data_import.interpret_raw_rna_seq_data(
+        result = interpret_raw_rna_seq_data(
             raw_data="\n".join(["\t".join(row) for row in table3]),
             study=Study.objects.get(name="Test Study 1"))
         self.assertTrue(result["guessed_data_type"] == "combined")
@@ -758,7 +774,7 @@ b0006                     5683            6459           183.9             565  
             description="EDGE-pro result",
             protocol=Protocol.objects.get(name="Transcriptomics"),
             experimenter=user)
-        result = data_import.import_rnaseq_edgepro(
+        result = import_rnaseq_edgepro(
             form={
                 "assay": assay.pk,
                 "timepoint": "0",
@@ -769,7 +785,7 @@ b0006                     5683            6459           183.9             565  
         self.assertTrue(result.n_meas_type == 6)
         self.assertTrue(result.n_meas == result.n_meas_data == 12)
         # overwriting old data
-        result = data_import.import_rnaseq_edgepro(
+        result = import_rnaseq_edgepro(
             form={
                 "assay": assay.pk,
                 "timepoint": "0",
@@ -780,7 +796,7 @@ b0006                     5683            6459           183.9             565  
         self.assertTrue(result.n_meas_type == result.n_meas == 0)
         self.assertTrue(result.n_meas_data == 12)
         # adding a timepoint
-        result = data_import.import_rnaseq_edgepro(
+        result = import_rnaseq_edgepro(
             form={
                 "assay": assay.pk,
                 "timepoint": "4",
@@ -791,7 +807,7 @@ b0006                     5683            6459           183.9             565  
         self.assertTrue(result.n_meas_type == result.n_meas == 0)
         self.assertTrue(result.n_meas_data == 12)
         # erasing all existing data
-        result = data_import.import_rnaseq_edgepro(
+        result = import_rnaseq_edgepro(
             form={
                 "assay": assay.pk,
                 "timepoint": "0",
@@ -806,7 +822,7 @@ b0006                     5683            6459           183.9             565  
         assay.measurement_set.filter(y_units__unit_name="counts").delete()
         # ... and reload, which will update the unchanged RPKMs and add new
         # count measurements
-        result = data_import.import_rnaseq_edgepro(
+        result = import_rnaseq_edgepro(
             form={
                 "assay": assay.pk,
                 "timepoint": "0",
@@ -832,8 +848,7 @@ class SBMLUtilTests(TestCase):
             molecular_formula="", molar_mass=0)
 
     def test_metabolite_name(self):
-        guesses = sbml_export.generate_species_name_guesses_from_metabolite_name(
-            "acetyl-CoA")
+        guesses = sbml_export.generate_species_name_guesses_from_metabolite_name("acetyl-CoA")
         self.assertTrue(
             guesses == ['acetyl-CoA', 'acetyl_DASH_CoA', 'M_acetyl-CoA_c',
                         'M_acetyl_DASH_CoA_c', 'M_acetyl_DASH_CoA_c_'])
@@ -885,46 +900,6 @@ class ExportTests(TestCase):
         # TODO tests using main.forms.ExportSelectionForm, main.forms.ExportOptionForm, and
         #   main.views.ExportView
         pass
-
-    # XXX this test does NOT depend on libsbml being available
-    def test_data_export_setup(self):
-        study = Study.objects.get(name="Test Study 1")
-        data = sbml_export.line_assay_data(
-            study=study,
-            lines=[Line.objects.get(name="Line 1"), ],
-            form={})
-        data.run()
-        od_data = data.export_od_measurements()
-        self.assertTrue(od_data[0]['data_points'][-1]['title'] == "0.59 at 24h")
-        self.assertTrue(data.n_hplc_measurements == 2)
-        hplc_data = data.export_hplc_measurements()
-        self.assertTrue(len(hplc_data) > 0)
-        hplc_data_assays = hplc_data[0]['assays']
-        self.assertTrue(len(hplc_data_assays) > 0)
-        hplc_data_measurements = hplc_data_assays[0]['measurements']
-        self.assertTrue(len(hplc_data_measurements) > 0)
-        self.assertTrue(hplc_data_measurements[0]['name'] == "EC Acetate")
-        self.assertTrue(hplc_data_measurements[0]['n_points'] == 6)
-        dp = hplc_data_measurements[0]['data_points'][2]
-        self.assertTrue(dp['title'] == "0.22 at 8h")
-        self.assertTrue(data.n_lcms_measurements == 3)
-        lcms_data = data.export_lcms_measurements()
-        dp = lcms_data[0]['assays'][0]['measurements'][0]['data_points'][2]
-        self.assertTrue(dp['title'] == "0.2 at 8h")
-        self.assertEqual(data.n_ramos_measurements, 2)
-        all_meas = data.processed_measurements()
-        self.assertTrue(len(all_meas) == 8)
-        meas = all_meas[0]
-        self.assertTrue(meas.n_errors == 0)
-        self.assertTrue(meas.n_warnings == 1)
-        self.assertTrue(meas.warnings[0] == 'Start OD of 0 means nothing physically present (and '
-                        'a potential division-by-zero error). Skipping...')
-        # for md in meas.data :
-        #   print md
-        # for fd in meas.flux_data :
-        #   print fd
-        # TODO test interpolation of measurements
-        self.assertTrue(data.available_timepoints == [4.0, 8.0, 12.0, 18.0, ])
 
     def test_sbml_export(self):
         try:
@@ -982,24 +957,24 @@ class UtilityTests(TestCase):
     fixtures = ['export_data_1', ]
 
     def test_get_edddata(self):
-        utilities.get_edddata_users()
+        get_edddata_users()
         # TODO validate output of get_edddata_users()
         # print(users)
-        meas = utilities.get_edddata_measurement()
+        meas = get_edddata_measurement()
         self.assertTrue(
           sorted([m['name'] for k, m in meas['MetaboliteTypes'].iteritems()]) ==
           [u'Acetate', u'CO2', u'CO2 production', u'D-Glucose', u'O2',
            u'O2 consumption', u'Optical Density'])
-        utilities.get_edddata_carbon_sources()
+        get_edddata_carbon_sources()
         # TODO validate output of get_edddata_carbon_sources()
-        strains = utilities.get_edddata_strains()
+        strains = get_edddata_strains()
         self.assertTrue(len(strains['EnabledStrainIDs']) == 1)
-        misc = utilities.get_edddata_misc()
+        misc = get_edddata_misc()
         misc_keys = sorted(["UnitTypes", "MediaTypes", "Users", "MetaDataTypes",
                             "MeasurementTypeCompartments"])
         self.assertTrue(sorted(misc.keys()) == misc_keys)
         study = Study.objects.get(name="Test Study 1")
-        utilities.get_edddata_study(study)
+        get_edddata_study(study)
         # TODO validate output of get_edddata_study()
 
     def test_interpolate(self):
@@ -1007,7 +982,7 @@ class UtilityTests(TestCase):
         mt1 = Metabolite.objects.get(type_name="Acetate")
         meas = assay.measurement_set.get(measurement_type=mt1)
         data = meas.data()
-        self.assertTrue(abs(utilities.interpolate_at(data, 10)-0.3) < 0.00001)
+        self.assertTrue(abs(interpolate_at(data, 10)-0.3) < 0.00001)
 
     def test_form_data(self):
         lines = Line.objects.all()
@@ -1016,35 +991,12 @@ class UtilityTests(TestCase):
         form3 = {}
         for l in lines:
             form3["line%dinclude" % l.id] = 1
-        ids1 = utilities.extract_id_list(form1, "selectedLineIDs")
-        ids2 = utilities.extract_id_list(form2, "selectedLineIDs")
-        ids3 = utilities.extract_id_list_as_form_keys(form3, "line")
+        ids1 = extract_id_list(form1, "selectedLineIDs")
+        ids2 = extract_id_list(form2, "selectedLineIDs")
+        ids3 = extract_id_list_as_form_keys(form3, "line")
         self.assertTrue(ids1 == ids2 == sorted(ids3))
         study = Study.objects.get(name="Test Study 1")
-        utilities.get_selected_lines(form1, study)
-
-    def test_line_export_base(self):
-        study = Study.objects.get(name="Test Study 1")
-        data = utilities.line_export_base(
-            study=study,
-            lines=study.line_set.all())
-        data._fetch_cache_data()
-        assay = Assay.objects.get(name="Assay 1")
-        m = data._get_measurements(assay.id)
-        self.assertTrue(len(m) == 2)
-        m0d = data._get_measurement_data(m[0].id)
-        m1d = data._get_measurement_data(m[1].id)
-        self.assertEqual(len(m0d), 6)
-        self.assertEqual(len(m1d), 6)
-        mt = set()
-        mt.add(data._get_measurement_type(m[0].id).type_name)
-        mt.add(data._get_measurement_type(m[1].id).type_name)
-        self.assertEqual(mt, set(['D-Glucose', 'Acetate']))
-        mu = data._get_y_axis_units_name(m[1].id)
-        self.assertTrue(mu == "mM")
-        met = data._get_metabolite_measurements(assay.id)
-        #(met = [], len(met) = 0)
-        self.assertTrue(len(met) == 2)
+        get_selected_lines(form1, study)
 
 
 class IceTests(TestCase):

@@ -1,1087 +1,292 @@
-
-<!--
-
-FIXME far too much logic encoded in this template
-
--->
-
 {% extends "edd_base.html" %}
 {% load staticfiles %}
+{% load i18n %}
 
 {% block js_css %}
   {{ block.super }}
+  <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
+  <script type="text/javascript">
+  // FIXME move this somewhere central
+  function disclose() {
+    $(this).closest('.disclose').toggleClass('discloseHide');
+    return false;
+  }
+  $(window).load(function () {
+    $('.disclose').find('a.discloseLink').on('click', disclose);
+  });
+  </script>
+  <script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/StudySBMLExport.js' %}"></script>
 
-<script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.js' %}"></script>
-<script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
-
-<!-- Declare JS objects for later (will be fetched via AJAX) -->
-<script type="text/javascript">
-EDDData = JSON.parse("{{ data.export_JSON|escapejs }}"); // FIXME this is gross
-
-EDDData.currentUserID = {{ user.pk }};
-EDDData.currentStudyID = {{ study.id }};
-
-// FIXME move this somewhere central
-function disclose() {
-  $(this).closest('.disclose').toggleClass('discloseHide');
-  return false;
-}
-$(window).load(function () {
-  $('.disclose').find('a.discloseLink').on('click', disclose);
-});
-
-</script>
-<script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
-<script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
-<script type="text/javascript" src="{% static 'main/js/StudySBMLExport.js' %}"></script>
-
-<!-- style for SVG graphics -->
-<style type="text/css">
-  .cP { stroke:rgba(0,0,0,1); stroke-width:4px; stroke-linecap:round; }
-  .cV { stroke:rgba(0,0,230,1); stroke-width:4px; stroke-linecap:round; }
-  .cE { stroke:rgba(255,128,0,1); stroke-width:4px; stroke-linecap:round; }
-  .cT { stroke:rgba(0,0,0,1); stroke-width:4px; stroke-linecap:round; }
-</style>
-
-<style type="text/css">
-  .bad { color: red; background-color: transparent; }
-</style>
-
+  <style type="text/css">
+    /* style for SVG graphics */
+    .cP { stroke:rgba(0,0,0,1); stroke-width:4px; stroke-linecap:round; }
+    .cV { stroke:rgba(0,0,230,1); stroke-width:4px; stroke-linecap:round; }
+    .cE { stroke:rgba(255,128,0,1); stroke-width:4px; stroke-linecap:round; }
+    .cT { stroke:rgba(0,0,0,1); stroke-width:4px; stroke-linecap:round; }
+    /* style for errors */
+    .bad { color: red; background-color: transparent; }
+  </style>
+  {{ od_select_form.media }}
 {% endblock js_css %}
 
 {% block head_title %}
-  SBML Export For {{ study.name }}
+  {% if selection.studies|length == 1 %}
+    SBML Export For {{ selection.studies.0.name }} - Experiment Data Depot
+  {% else %}
+    SBML Export For {{ selection.studies|length }} Studies - Experiment Data Depot
+  {% endif %}
 {% endblock head_title %}
 
+
 {% block body_title %}
-  SBML Export For {{ study.name }}
+  SBML Export For {% for study in selection.studies %}
+   <a href="{% url 'main:detail' study.id %}">{{ study.name }}</a>{% if not forloop.last %},{% endif %}
+  {% endfor %}
 {% endblock body_title %}
 
+
+{% block status %}
+  {% if error_message %}
+    <h3 class="bad">{{ error_message }}</h3>
+  {% endif %}
+  {{ block.super }}
+{% endblock status %}
+
+
 {% block content %}
+  <!-- Line info section -->
+  {% include "main/include/export/linetable.html" %}
 
-{% if error_message %}
-
-<h3 class="bad">{{ error_message }}</h3>
-
-{% endif %}
-
-<!-- Line info section -->
-<div class="pageSection">
-  {% include "main/include_linetable.html" %}
-</div>
-
-
-<form method="post" id="exportForm" action="/study/{{ study.id }}/sbml/">
-{% csrf_token %}
-
-<input type="hidden" name="selectedLineIDs" value="{{ data.selected_line_ids }}" />
-<input type="hidden" name="formSubmittedFromSBMLExport" value="1" />
-
-<!-- Export settings section -->
-<div class="pageSection" style="margin:10px;" id="allstatusmain">
-
-<div class="sectionHead">Export Settings:
-  {% with n_warnings=data.n_warnings %}
-    {% if n_warnings %}
-      <span class="warn2">{{ n_warnings }} warnings</span>
-    {% endif %}
-  {% endwith %}
-</div>
-
-<!-- Step 1 -->
-<input type="hidden"
-  id="statusstep0show"
-  name="statusstep0show"
-  value="0"/>
-<div class="disclose discloseHide" id="step0">
-  <div class="sectionChapter">
-    <span><a href="#" class="discloseLink">
-      Step 1: Select the SBML template file to use for export
-    </a></span>
-  </div>
-
-<div class="sectionContent discloseBody" id="statusstep0main">
-  <table style="width:95%">
-    <tr>
-      <td>
-        SBML Template:
-      <select name="chosenmap_id" id="chosenmap" onchange="submitForRefresh();">
-        {% for template in data.template_info %}
-          {% if template.is_selected %}
-            <option value="{{ template.template_id }}" selected="selected">
-              {{ template.file_name }}</option>
-          {% else %}
-            <option value="{{ template.template_id }}">
-              {{ template.file_name }}</option>
-          {% endif %}
-        {% endfor %}
-      </select>
-      <span id="templateWaitBadge" class="waitbadge"></span>
-      </td>
-      <td style="text-align:right">
-        <!-- XXX actual URL TBD -->
-        <a href="/admin/sbml">Manage Templates</a>
-      </td>
-    </tr>
-  </table>
-</div>
-</div><!-- #step0 -->
-
-<!--
-
-Step 2: Optical Density (OD600)
-
--->
-<input type="hidden"
-      id="statusstep1show"
-      name="statusstep1show"
-      value="0"/>
-{% with n_warnings=data.n_od_warnings %}
-    {% if n_warnings %}
-<div class="disclose" id="step1">
-    {% else %}
-<div class="disclose discloseHide" id="step1">
-    {% endif %}
-  <div class="sectionChapter">
-    <span>
-      <a href="#" class="discloseLink">
-        Step 2: Find OD Data:
-      </a>
-    </span>
-    {% if n_warnings %}
-      <span class="warn2">{{ n_warnings }} warnings</span>
-    {% endif %}
-  </div>
-{% endwith %}
-
-<div class="sectionContent discloseBody" id="statusstep1main">
-  {% if not data.have_gcdw_metadata %}
-    <div class="warn2">
-      Cannot find the gCDW/L/OD600 metadata type by name!
-      You should probably create one.
-    </div>
-  {% endif %}
-    <div class="rounded-border">
-      <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
-        <tr>
-          <td>Assay</td>
-          <td colspan="2">Measurement</td>
-          <td></td>
-          <td colspan="2"></td>
-        </tr>
-    {% for measurement in data.export_od_measurements %}
-        <tr>
-          <td class="nowrap">
-            {{ measurement.assay_name }}
-          </td>
-          <td class="nowrap popupcell">
-            <input type="checkbox"
-                name="measurement{{ measurement.id }}include"
-                id="measurement{{ measurement.id }}include"
-                checked="checked"
-                value="{{ measurement.id }}"/>Optical Density
-          </td>
-          <td class="nowrap" style="text-align:right;">
-          </td>
-          <td></td>
-          <td style="text-align:right;width:30px;">
-            {{ measurement.n_points }}
-          </td>
-          <td style="padding:3px 2px 0px 2px;width:60%;">
-            <svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"
-                version="1.2" width="100%" height="10px" viewBox="0 0 470 10">
-              <path fill="rgba(0,0,0,0.0.05)"
-                stroke="rgba(0,0,0,0.05)"
-                d="M10,5h450"
-                style="stroke-width:2px;"
-                stroke-width="2"></path>
-        {% for md in measurement.data_points %}
-              <path class="cP" d="M{{ md.rx }},1v8">
-                <title>{{ md.title }}</title>
-              </path>
-        {% endfor %}
-            </svg>
-          </td>
-        </tr>
-    {% endfor %}<!-- measurements -->
-      </table>
-    </div>
-  {% if data.used_generic_GCDW_in_assays %}
-    <div class="warn2">OD600 measurements need a calibration factor to be
-        converted into gCDW/L.  You can add this as metadata, at the Assay or
-        Line level.  For now, the EDD is using the default gCDW/L/OD600 value
-        of <b>0.65</b> for {{ data.used_generic_GCDW_in_assays }} of your
-        selected Measurements.</div>
-  {% endif %}
-    <div>Located and consolidated useful Optical Data for
-      {{ data.n_lines_with_useful_od }} Lines.</div>
-  </div>
-</div><!-- #step1 -->
-
-<!--
-
-Step 3 (HPLC) 
-
-This is more complicated than the previous section, because it is designed to
-handle multiple protocols, and there is an additional "input" checkbox for
-each measurement.
-
--->
-<input type="hidden"
-    id="statusstep2show"
-    name="statusstep2show"
-    value="0"/>
-
-<div class="disclose discloseHide" id="step2">
-  <div class="sectionChapter">
-    <span>
-      <a href="#" class="discloseLink">
-        Step 3: Select HPLC-like Measurements, and inputs
-      </a>
-    </span>
-    <!-- TODO warnings -->
-  </div>
-
-<div class="sectionContent discloseBody" id="statusstep2main">
-{% if data.n_hplc_measurements %}
-  {% for protocol in data.export_hplc_measurements %}
-  <div>Protocol <b>{{ protocol.name }}</b></div>
-  <div class="rounded-border">
-    <!-- TODO make as much of this as possible more modular, and/or use JS -->
-    <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
-      <tr>
-        <td>Assay</td>
-        <td colspan="2">Measurement</td>
-        <td style="text-align:right;width:60px;">Is Input</td>
-        <td colspan="2"></td>
-      </tr>
-      {% for assay in protocol.assays %}
-        {% for measurement in assay.measurements %}
-      <tr>
-        <td class="nowrap">
-          {% if forloop.counter == 1 %}
-            {{ assay.name }}
-          {% endif %}
-        </td>
-        <td class="nowrap popupcell">
-          <input type="checkbox"
-            name="{{ measurement.type }}{{ measurement.id }}include"
-            id="{{ measurement.type }}{{ measurement.id }}include"
-            {% if measurement.include %}
-              checked="checked"
-            {% endif %}
-            value="{{ measurement.id }}"/>{{ measurement.name }}
-        </td>
-        <td class="nowrap" style="text-align:right;">{{ measurement.units }}
-        </td>
-        <td style="text-align:right;">
-          {% if measurement.type == "measurement" %}
-            {% if measurement.format == 0 %}<!-- not a carbon ratio -->
-            <input type="checkbox"
-              name="measurement{{ measurement.id }}input"
-              id="measurement{{ measurement.id }}input"
-              {% if measurement.input %}
-                checked="checked"
-              {% endif %}
-              value="{{ measurement.id }}"/>
-            {% endif %}
-          {% endif %}
-        </td>
-        <td style="text-align:right;width:30px;">
-          ({{ measurement.n_points }})
-        </td>
-        <td style="padding:3px 2px 0px 2px;width:60%;">
-          <svg xmlns="http://www.w3.org/2000/svg"
-              version="1.2"
-              width="100%"
-              height="10px"
-              viewBox="0 0 470 10"
-              preserveAspectRatio="none">
-            <path fill="rgba(0,0,0,0.0.05)"
-              stroke="rgba(0,0,0,0.05)"
-              d="M10,5h450"
-              style="stroke-width:2px;"
-              stroke-width="2"></path>
-            {% for md in measurement.data_points %}
-              {% if measurement.type != "measurement" %}
-                <path class="cT" d="M{{ md.rx }},1v8">
-              {% elif md.y == None %}
-                <path class="cE" d="M{{ md.rx }},1v8">
-              {% elif measurement.format == 0 %}
-                <path class="cP" d="M{{ md.rx }},1v8">
-              {% else %}
-                <path class="cV" d="M{{ md.rx }},1v8">
-              {% endif %}
-                  <title>{{ md.title }}</title>
-                </path>
-            {% endfor %}
-          </svg>
-        </td>
-      </tr>
-      {% endfor %}<!-- assay.measurements -->
-      {% endfor %}<!-- protocol.assays -->
-    </table>
-  </div>
-  {% endfor %}<!-- protocols -->
-
-{% elif data.n_hplc_protocols %}
-  <div class="warn2">
-    No usable HPLC-based measurements are present.
-    To be usable, measurements must have a timestamp somewhere inside the
-    range of the OD measurements.  Metabolite measurements must be in any
-    of the following units:<b>mg/L</b>, <b>g/L</b>, <b>mol/L</b>,
-    <b>mM</b>, <b>uM</b>, or <b>Cmol/L</b>.
-  </div>
-{% else %}
-  <div class="warn2">Cannot find any Protocols with "HPLC" in the name!</div>
-{% endif %}<!-- if data.n_usable_hplc_protocols -->
-
-</div><!-- #statusstep2main -->
-</div><!-- #step3 -->
-
-<!--
-
-Step 4 (LC-MS)
-
-(This is almost identical to the previous section for HPLC protocols)
-
--->
-
-<input type="hidden"
-      id="statusstep3show"
-      name="statusstep3show"
-      value="0"/>
-
-<div class="disclose discloseHide" id="step3">
-  <div class="sectionChapter">
-    <span>
-      <a href="#" class="discloseLink">
-  Step 4: Select LCMS-like Measurements, and inputs
-      </a>
-    </span>
-    <!-- TODO warnings -->
-  </div>
-
-<div class="sectionContent discloseBody" id="statusstep3main">
-{% if data.n_lcms_measurements %}
-  {% for protocol in data.export_lcms_measurements %}
-  <div>Protocol <b>{{ protocol.name }}</b></div>
-  <div class="rounded-border">
-    <!-- TODO make as much of this as possible more modular, and/or use JS -->
-    <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
-      <tr>
-        <td>Assay</td>
-        <td colspan="2">Measurement</td>
-        <td style="text-align:right;width:60px;">Is Input</td>
-        <td colspan="2"></td>
-      </tr>
-      {% for assay in protocol.assays %}
-        {% for measurement in assay.measurements %}
-      <tr>
-        <td class="nowrap">
-          {% if forloop.counter == 1 %}
-            {{ assay.name }}
-          {% endif %}
-        </td>
-        <td class="nowrap popupcell">
-          <input type="checkbox"
-            name="{{ measurement.type }}{{ measurement.id }}include"
-            id="{{ measurement.type }}{{ measurement.id }}include"
-            {% if measurement.include %}
-              checked="checked"
-            {% endif %}
-            value="{{ measurement.id }}"/>{{ measurement.name }}
-        </td>
-        <td class="nowrap" style="text-align:right;">
-          {{ measurement.units }}
-        </td>
-        <td style="text-align:right;">
-          {% if measurement.type == "measurement" %}
-            {% if measurement.format == 0 %}<!-- not a carbon ratio -->
-          <input type="checkbox"
-            name="measurement{{ measurement.id }}input"
-            id="measurement{{ measurement.id }}input"
-              {% if measurement.input %}
-              checked="checked"
-              {% endif %}
-            value="{{ measurement.id }}"/>
-            {% endif %}
-          {% endif %}
-        </td>
-        <td style="text-align:right;width:30px;">
-          {{ measurement.n_points }}
-        </td>
-        <td style="padding:3px 2px 0px 2px;width:60%;">
-          <svg xmlns="http://www.w3.org/2000/svg"
-              version="1.2"
-              width="100%"
-              height="10px"
-              viewBox="0 0 470 10"
-              preserveAspectRatio="none">
-            <path fill="rgba(0,0,0,0.0.05)"
-              stroke="rgba(0,0,0,0.05)"
-              d="M10,5h450"
-              style="stroke-width:2px;"
-              stroke-width="2"></path>
-            {% for md in measurement.data_points %}
-              {% if measurement.type != "measurement" %}
-                <path class="cT" d="M{{ md.rx }},1v8">
-              {% elif md.y == None %}
-                <path class="cE" d="M{{ md.rx }},1v8">
-              {% elif measurement.format == 0 %}
-                <path class="cP" d="M{{ md.rx }},1v8">
-              {% else %}
-                <path class="cV" d="M{{ md.rx }},1v8">
-              {% endif %}
-                  <title>{{ md.title }}</title>
-                </path>
-            {% endfor %}
-          </svg>
-        </td>
-      </tr>
-      {% endfor %}<!-- measurements -->
-      {% endfor %}<!-- assays -->
-    </table>
-  </div>
-  {% endfor %}<!-- protocols -->
-
-{% elif data.n_lcms_protocols %}
-  <div>
-    No usable LC-MS-based measurements are present.
-    To be usable, measurements must have a timestamp somewhere inside the
-    range of the OD measurements, and either be carbon ratios, or a single
-    number in any of the following units: <b>mg/L</b>, <b>g/L</b>,
-    <b>mol/L</b>, <b>mM</b>, <b>uM</b>, or <b>Cmol/L</b>.
-  </div>
-{% else %}
-  <div class="warn2">
-    Cannot find any Protocols with "GCMS", "LCMS", or variants like "LC-MS" or
-    "LC/MS" in the name!
-  </div>
-{% endif %}<!-- data.n_usable_lcms_measurements -->
-
-</div>
-</div><!-- #step3 -->
-
-<!--
-
-Step 5 (RAMOS O2/CO2)
-
--->
-
-<input type="hidden"
-        id="statusstep4show"
-        name="statusstep4show"
-        value="0"/>
-
-{% if data.need_ramos_units_warning %}
-<div class="disclose" id="step4">
-{% else %}
-<div class="disclose discloseHide" id="step4">
-{% endif %}
-  <div class="sectionChapter">
-    <span>
-      <a href="#" class="discloseLink">
-        Step 5: Select RAMOS O2/CO2 Measurements
-      </a>
-    </span>
-    <!-- TODO warnings -->
-  </div>
-
-<div class="sectionContent discloseBody" id="statusstep4main">
-  {% if data.n_ramos_measurements %}
-    {% if data.need_ramos_units_warning %}
-  <div class="warn2">
-    RAMOS measurements must be supplied in units of <b>mol/L/hr</b>,
-    but some of your data has no units labels assigned at all.
-    Since the RAMOS equipment generates measurements in units of
-    <b>mol/L/hr</b> by default, we will assume your data is in the correct
-    units.  This is dangerous, and at some point you should probably add unit
-    labels to your data.
-  </div>
-    {% endif %}
-    {% for protocol in data.export_ramos_measurements %}
-  <div class="rounded-border">
-    <!-- TODO make as much of this as possible more modular, and/or use JS -->
-    <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
-      <tr>
-        <td>Assay</td>
-        <td colspan="2">Measurement</td>
-        <td style="text-align:right;width:60px;">Is Input</td>
-        <td colspan="2"></td>
-      </tr>
-      {% for assay in protocol.assays %}
-        {% for measurement in assay.measurements %}
-      <tr>
-        <td class="nowrap">
-          {% if forloop.counter == 1 %}
-            {{ assay.name }}
-          {% endif %}
-        </td>
-        <td class="nowrap popupcell">
-          <input type="checkbox"
-            name="{{ measurement.type }}{{ measurement.id }}include"
-            id="{{ measurement.type }}{{ measurement.id }}include"
-            {% if measurement.include %}
-            checked="checked"
-            {% endif %}
-            value="{{ measurement.id }}"/>{{ measurement.name }}
-        </td>
-        <td class="nowrap" style="text-align:right;">
-          {{ measurement.units }}
-        </td>
-        <td style="text-align:right;">
-          {% if measurement.type == "measurement" %}
-          <input type="checkbox"
-            name="measurement{{ measurement.id }}input"
-            id="measurement{{ measurement.id }}input"
-            {% if measurement.input %}
-            checked="checked"
-            {% endif %}
-            value="{{ measurement.id }}"/>
-          {% endif %}
-        </td>
-        <td style="text-align:right;width:30px;">
-          {{ measurement.n_points }}
-        </td>
-        <td style="padding:3px 2px 0px 2px;width:60%;">
-          <svg xmlns="http://www.w3.org/2000/svg"
-              version="1.2"
-              width="100%"
-              height="10px"
-              viewBox="0 0 470 10"
-              preserveAspectRatio="none">
-            <path fill="rgba(0,0,0,0.0.05)"
-              stroke="rgba(0,0,0,0.05)"
-              d="M10,5h450"
-              style="stroke-width:2px;"
-              stroke-width="2"></path>
-            {% for md in measurement.data_points %}
-              {% if md.y == None %}
-                <path class="cE" d="M{{ md.rx }},1v8">
-              {% elif measurement.format == 0 %}
-                <path class="cP" d="M{{ md.rx }},1v8">
-              {% endif %}
-                  <title>{{ md.title }}</title>
-                </path>
-            {% endfor %}
-          </svg>
-        </td>
-      </tr>
-      {% endfor %}
-      {% endfor %}
-    </table>
-  </div>
-  {% endfor %}<!-- data.export_ramos_measurements -->
-
-  {% elif data.n_ramos_protocols %}
-    <div>No usable O2/CO2 (RAMOS-based) measurements are present.
-      To be usable, measurements must have a timestamp somewhere inside the
-      range of the OD measurements, and be in units of <b>mol/L/hr</b>.
-    </div>
-  {% else %}
-    <div class="warn2">
-      Cannot find any Protocols with "O2" and "CO2" in the name!
-    </div>
-  {% endif %}
-</div>
-</div><!-- #step4 -->
-
-<!--
-
-Step 6: transcriptomics and proteomics
-
--->
-
-<input type="hidden"
-        id="statusstep5show"
-        name="statusstep5show"
-        value="0"/>
-
-<div class="disclose discloseHide" id="step5">
-  <div class="sectionChapter">
-    <span>
-      <a href="#" class="discloseLink">
-         Step 6: Select Transcriptomics/Proteomics Measurements
-      </a>
-    </span>
-    <!-- TODO warnings -->
-  </div>
-
-<div class="sectionContent discloseBody" id="statusstep5main">
-{% if data.n_trans_prot_protocols %}
-  {% if data.n_trans_prot_measurements %}
-    {% for protocol in data.export_trans_prot_measurements %}
-  <div>Protocol <b>{{ protocol.name }}</b></div>
-  <div class="rounded-border">
-    <!-- TODO make as much of this as possible more modular, and/or use JS -->
-    <table cellpadding="0" cellspacing="0" class="dataTable dragboxes">
-      <tr>
-        <td>Assay</td>
-        <td colspan="2">Measurement</td>
-        <td style="text-align:right;width:60px;">Is Input</td>
-        <td colspan="2"></td>
-      </tr>
-      {% for assay in protocol.assays %}
-        {% for measurement in assay.measurements %}
-      <tr>
-        <td class="nowrap">
-          {% if forloop.counter == 1 %}
-            {{ assay.name }}
-          {% endif %}
-        </td>
-        <td class="nowrap popupcell">
-          <input type="checkbox"
-            name="{{ measurement.type }}{{ measurement.id }}include"
-            id="{{ measurement.type }}{{ measurement.id }}include"
-            {% if measurement.include %}
-              checked="checked"
-            {% endif %}
-            value="{{ measurement.id }}"/>{{ measurement.name }}
-        </td>
-        <td class="nowrap" style="text-align:right;">
-          {{ measurement.units }}
-        </td>
-        <td style="text-align:right;">
-          {% if measurement.type == "measurement" %}
-            {% if measurement.format == 0 %}<!-- not a carbon ratio -->
-          <input type="checkbox"
-            name="measurement{{ measurement.id }}input"
-            id="measurement{{ measurement.id }}input"
-              {% if measurement.input %}
-              checked="checked"
-              {% endif %}
-            value="{{ measurement.id }}"/>
-            {% endif %}
-          {% endif %}
-        </td>
-        <td style="text-align:right;width:30px;">
-          {{ measurement.n_points }}
-        </td>
-        <td style="padding:3px 2px 0px 2px;width:60%;">
-          <svg xmlns="http://www.w3.org/2000/svg"
-              version="1.2"
-              width="100%"
-              height="10px"
-              viewBox="0 0 470 10"
-              preserveAspectRatio="none">
-            <path fill="rgba(0,0,0,0.0.05)"
-              stroke="rgba(0,0,0,0.05)"
-              d="M10,5h450"
-              style="stroke-width:2px;"
-              stroke-width="2"></path>
-            {% for md in measurement.data_points %}
-              {% if measurement.type != "measurement" %}
-                <path class="cT" d="M{{ md.rx }},1v8">
-              {% elif md.y == None %}
-                <path class="cE" d="M{{ md.rx }},1v8">
-              {% elif measurement.format == 0 %}
-                <path class="cP" d="M{{ md.rx }},1v8">
-              {% else %}
-                <path class="cV" d="M{{ md.rx }},1v8">
-              {% endif %}
-                  <title>{{ md.title }}</title>
-                </path>
-            {% endfor %}
-          </svg>
-        </td>
-      </tr>
-      {% endfor %}<!-- measurements -->
-      {% endfor %}<!-- assays -->
-    </table>
-  </div>
-    {% endfor %}
-  {% else %}
-  <div class="warn2">
-    No usable Transcriptomics- or Proteomics-based Protocols have usable data.
-  </div>
-  {% endif %}
-{% else %}
-  <div class="warn2">
-    Cannot find any Protocols with "Proteomics" or "Transcriptomics" in the
-    name!
-  </div>
-{% endif %}
-</div>
-</div><!-- #step5 -->
-
-<!--
-
-Step 7: convert units and calculate flux values
-
--->
-
-<input type="hidden"
-       id="statusstep6show"
-       name="statusstep6show"
-       value="0"/>
-
-{% with data.n_conversion_warnings as n_warnings %}
-    {% if n_warnings %}
-<div class="disclose" id="step6">
-    {% else %}
-<div class="disclose discloseHide" id="step6">
-    {% endif %}
-  <div class="sectionChapter">
-    <span>
-      <a href="#" class="discloseLink">
-        Step 7: Convert units and calculate all selected flux values
-      </a>
-    </span>
-  {% if n_warnings > 1 %}
-    <span class="warn2">{{ n_warnings }} warnings</span>
-  {% elif n_warnings == 1 %}
-    <span class="warn2">{{ n_warnings }} warning</span>
-  {% endif %}
-{% endwith %}
-  </div>
-
-<div class="sectionContent discloseBody" id="statusstep6main">
-
-<!-- loop over metabolites -->
-{% for measurement in data.processed_measurements %}
-  <div class="disclose discloseHide" id="FCStep{{ forloop.counter }}">
-    <div class="subSectionChapter">
-      <span>
-        <a href="#" class="discloseLink">
-        Metabolite <b>{{ measurement.metabolite_name }}</b> for Assay
-          <b>{{ measurement.assay_name }}</b>:
-        </a>
-      </span>
-    </div>
-  {% if measurement.n_errors %}
-    {% for msg in measurement.errors %}
-    <span class="warn2">{{ msg }}</span>
-    {% endfor %}
-  {% else %}
-    <div class="subSectionContent discloseBody"
-         id="FCStep{{ forloop.counter }}main">
-    {% if measurement.is_carbon_ratio %}
-      {% for md in measurement.cr_data %}
-        <!-- TODO handle skipped measurements -->
-        <div>Using carbon ratios of <b>{{ md.y }}</b>.</div>
-      {% endfor %}
-    {% elif measurement.is_od_measurement %}
-      {% for interval in measurement.flux_data %}
-        <div>
-          Time <b>{{ interval.start }}</b> to <b>{{ interval.end }}</b> is an
-          interval of {{ interval.elapsed }}. OD goes from
-          <b>{{ interval.y_start }}</b> to <b>{{ interval.y }}</b> in that time.
-        </div>
-        <div>
-        Exponential growth rate: log({{ interval.y }} / {{ interval.y_start }})
-          / {{ interval.elapsed }} = <b>{{ interval.flux }}</b>
-        </div>
-      {% endfor %}
-    {% else %}
-      {% for md in measurement.data %}
-        <div>
-          Time <b>{{ md.time }}</b>h has a value of {{ md.value }}<b>
-            {{ md.units }}</b>.
-        {% if md.interpolated %}
-            <span class="warn2">(Interpolated.)</span>
+  <form method="post" id="exportForm" action="{% url 'main:sbml' %}">
+    {% csrf_token %}
+    <!-- carry over selection -->
+    {{ select_form.as_p }}
+    <!-- Export settings section -->
+    <div class="pageSection" style="margin:10px;" id="allstatusmain">
+      <!-- Show warnings count, if applicable -->
+      <div class="sectionHead">{% trans "Export Settings:" %}
+        {% if sbml_warnings|length > 0 %}
+          <span class="warn2">
+            {% blocktrans count counter=sbml_warnings|length %}
+            {{ counter }} warning
+            {% plural %}
+            {{ counter }} warnings
+            {% endblocktrans %}
+          </span>
         {% endif %}
+      </div>
+      <!--
+      Step 1: Choose template
+      -->
+      {% with warnings_list=export_settings_form.sbml_warnings %}
+      <div class="disclose{% if warnings_list|length == 0 and export_settings_form.errors|length == 0 %} discloseHide{% endif %}" id="step0">
+        <div class="sectionChapter">
+          <span>
+            <a href="#" class="discloseLink">
+              {% trans "Step 1: Select the SBML template file to use for export" %}
+            </a>
+          </span>
+          {% include 'main/include/export/warningnotice.html' %}
         </div>
-        {% if md.conversion_equation %}
-        <div>
-          Convert from <b>{{ md.initial_units }}</b> to {{ md.units }}:
-          {{ md.conversion_equation }} = <b>{{ md.y }}</b>{{ md.units }}
-        {% endif %}
+        <div class="sectionContent discloseBody" id="statusstep0main">
+          {% for message in warnings_list %}
+          <div class="warn2">{{ message }}</div>
+          {% endfor %}
+          <!-- form method of selecting template -->
+          {{ export_settings_form.as_p }}
         </div>
-      {% endfor %}<!-- measurement.data -->
-      {% for interval in measurement.flux_data %}
-        <div>Interval <b>{{ interval.start }}</b> to <b>{{ interval.end }}</b>
-              has delta of <b>{{ interval.delta }}</b>{{ interval.units }}.
+      </div>
+      {% endwith %}<!-- #step0 -->
+      <!--
+      Step 2: Optical Density (OD600)
+      -->
+      {% with warnings_list=od_select_form.sbml_warnings %}
+      <div class="disclose{% if warnings_list|length == 0 and od_select_form.errors|length == 0 %} discloseHide{% endif %}" id="step1">
+        <div class="sectionChapter">
+          <span>
+            <a href="#" class="discloseLink">
+              {% trans "Step 2: Find OD Data" %}
+            </a>
+          </span>
+          {% include 'main/include/export/warningnotice.html' %}
         </div>
-        <div>
-          Calculated Flux: {{ interval.flux_eqn }} = <b>{{ interval.flux }}</b>
-        {% if interval.interpolated %}
-          <span class="warn2">(Interpolated.)</span>
-        {% endif %}
+        <div class="sectionContent discloseBody" id="statusstep1main">
+          {% for message in warnings_list %}
+          <div class="warn2">{{ message }}</div>
+          {% endfor %}
+          <!-- measurement selection here -->
+          {% with section_form=od_select_form %}
+          {% include 'main/include/export/sbml/measurement_section.html' %}
+          {% endwith %}
         </div>
-      {% endfor %}<!-- measurement.intervals -->
-      {% if measurement.n_skipped_measurements %}
-        Skipped measurements at times <b>{{ measurement.skipped_measurements }}
-        </b>due to lack of a corresponding OD value. If you want a good flux
-        map at time <b>t</b>, you need OD measurements for time <b>t</b>!
-      {% endif %}
-    {% endif %}<!-- measurement.is_carbon_ratio -->
-    </div><!-- #FCStepXmain -->
-  {% endif %}<!-- measurement.n_errors -->
-  </div><!-- #FCStepX -->
-
-{% endfor %}<!-- data.processed_measurements -->
-</div><!-- #statusstep6main -->
-</div><!-- #step6 -->
-
-<!--
-
-Step 8
-
--->
-<input type="hidden"
-    id="statusstep7show"
-    name="statusstep7show"
-    value="0"/>
-
-<div class="disclose discloseHide" id="step7">
-  <div class="sectionChapter">
-    <span>
-      <a href="#" class="discloseLink">
-        Step 8: Pre-parse SBML model and match exchanges and species to
-        measurements
-      </a>
-    </span>
-    <!-- TODO warnings -->
-  </div>
-
-  <div class="sectionContent discloseBody" id="statusstep7main">
-
-  {% include "main/include_sbml_info.html" %}
-
-    <input class="off" type="text" size="5" name="fordebugpurposes"
-      id="fordebugpurposes" value="" />
-  
-    <p>
-      <b>Metabolomics:</b>
-      Matching available metabolite measurements to species defined in the SBML
-      model...
-    </p>
-  
-    <div class="rounded-border" style="display:inline-block;"><!-- margin? -->
-      <table class="dataTable" cellspacing="0">
-        <tr>
-          <td>Metabolite Type</td>
-          <td>Species in model</td>
-        </tr>
-        {% for sp in data.species_match_elements %}
-        <tr>
-          <td>
-            <p>
-              <span class="popup">{{ sp.name }}
-                <span class="popupinfo">{{ sp.short_name }}
-                </span>:
-              </span>
-            </p>
-          </td>
-          <td> 
-            <input  type="text"
-                class="autocomplete"
-                autocompletetype="species"
-                autocomplete="off"
-                size="45"
-                name="spmatch{{ sp.id }}"
-                id="spmatch{{ sp.id }}"
-                value="{{ sp.species }}"/>
-          </td>
-        </tr>
-        {% endfor %}
-      </table>
-  
-  
-      <input type="hidden" name="speciesmatchelements"
-        value="{{ data.species_match_element_ids }}"/>
-    </div>
-  
-    <p>
-      <b>Fluxomics:</b> Matching available fluxes to reactants/exchanges
-        defined in the SBML model...
-    </p>
-    <div class="rounded-border" style="display:inline-block;">
-      <table class="dataTable" cellspacing="0">
-        <tr>
-          <td>Metabolite Type</td>
-          <td>Reactant / Exchange in model</td>
-        </tr>
-        <!-- Loop over metabolite fluxomics -->
-        {% for fl in data.flux_match_elements %}
-        <tr>
-          <td>
-            <p>
-              <span class="popup">{{ fl.name }}
-                <span class="popupinfo">{{ fl.short_name }}</span>:
-              </span>
-            </p>
-          </td>
-          <td> 
-            <input  type="text"
-                class="autocomplete"
-                autocompletetype="exchange"
-                autocomplete="off"
-                size="55"
-                name="exmatch{{ fl.id }}"
-                id="exmatch{{ fl.id }}"
-                value="{{ fl.exchange }}"/>
-          </td>
-        </tr>
-        {% endfor %}
-      </table>
-      <input type="hidden" name="fluxmatchelements"
-             value="{{ data.flux_match_element_ids }}"/>
-    </div>
-<!-- FIXME this shouldn't be necessary but the list items end up being placed
-far to the left for some reason -->
-<style>
-li {
-  margin-left: 40px;
-}
-</style>
-
-    {% if data.have_transcriptomics_to_embed %}
-    <p>
-      <b>Transcriptomics:</b> Matching available gene transcription values to
-      genes identified in SBML reaction notes...
-    </p>
-    <div>
-      <ul>
-        <li>Resolved {{ data.n_gene_names_resolved }} gene names given in
-          measurement data to gene names in the SBML.</li>
-        <li>Failed to resolve {{ data.n_gene_names_not_resolved }} gene names
-          from measurement data.</li>
-      </ul>
-    </div>
-    {% endif %}
-
-    {% if data.have_proteomics_to_embed %}
-    <p>
-      <b>Proteomics:</b> Matching available protein measurements to proteins
-      identified in SBML reaction notes...
-    </p>
-    <div>
-      <ul>
-        <li>Resolved {{ data.n_protein_names_resolved }} protein names given in
-          measurement data to protein names in the SBML</li>
-        <li>Failed to resolve {{ data.n_protein_names_not_resolved }} protein
-          names from measurement data.</li>
-      </ul>
-    </div>
-    {% endif %}
-  </div><!-- #statusstep7main -->
-</div><!-- #step7 -->
-
-</div><!-- #allstatusmain -->
-
-<!--
-
-END OF EXPORT SETTINGS
-
--->
-<div style="width:100%;font-size:13px;vertical-align:bottom;text-align:right;" id="updateSettingsTable"><input style="margin:10px 1em 1em 0;" type="submit" name="action" value="Update Settings" />
-  </div>
-
-
-<!--
-
-Downloads section
-
-TODO new layout
-
--->
-<div class="pageSection" id="dataDownloads" style="width:90%;">
-  <div class="sectionHead">
-    SBML Data Downloads
-  </div>
-
-  <div class="sectionContent">
-    The following table
-    provides links to SBML files prepared for Flux Balance Analysis,
-    one file for each usable timestamp.  The numbers in the table indicate
-    the number of usable items that are embedded in each file.
-    Hover the mouse over any number to display a summary of embedded items,
-    and click any number to download the SBML file.
-  </div>
-
-  <table cellpadding="0" cellspacing="0"
-      class="dataTable sortable"
-      id="linesTable">
-
-    <tr class="columnLabels">
-      {% for t in data.available_timepoints %}
-      <th class="sortheader" style="text-align:right;font-size:0.8em;">
-        {{ t }}h
-      </th>
-      {% endfor %}
-    </tr>
-
-    <tr>
-      <!-- loop over SBML files -->
-      {% for sf in data.summarize_data_by_timepoint %}
-      <td class="popupcell">
-        <div class="p">
-          <div class="q">
-            <div class="r nowrap" style="text-align:right;padding-right:5px;">
-              <a name="sbmldatafiles" href="#sbmldatafiles"
-                onclick="submitForSBMLDownload({{ sf.timestamp }});">
-                {{ sf.usable_items }}
-              </a>
-            </div>
-            <div class="s">
-              <div class="t">
-                <div style="font-weight:bold;">Metabolomics:</div>
-              {% spaceless %}
-                <ul style="margin:2px 2px 4px 2px;padding:0px;">
-              {% for mt in sf.metabolites %}
-                {% if mt.interpolated %}
-                  <li>{{ mt.name }}<span class="warn2">*</span></li>
-                {% else %}
-                  <li>{{ mt.name }}</li>
+      </div>
+      {% endwith %}<!-- #step1 -->
+      <!--
+      Step 3 (HPLC) 
+      This is more complicated than the previous section, because it is designed to handle multiple
+      protocols, and there is an additional "input" checkbox for each measurement.
+      -->
+      {% with warnings_list=hplc_select_form.sbml_warnings %}
+      <div class="disclose{% if warnings_list|length == 0 and hplc_select_form.errors|length == 0 %} discloseHide {% endif %}" id="step2">
+        <div class="sectionChapter">
+          <span>
+            <a href="#" class="discloseLink">
+              {% trans "Step 3: Select HPLC-like Measurements, and inputs" %}
+            </a>
+          </span>
+          {% include 'main/include/export/warningnotice.html' %}
+        </div>
+        <div class="sectionContent discloseBody" id="statusstep2main">
+          {% for message in warnings_list %}
+          <div class="warn2">{{ message }}</div>
+          {% endfor %}
+          {% with section_form=hplc_select_form %}
+          {% include 'main/include/export/sbml/measurement_section.html' %}
+          {% endwith %}
+        </div>
+      </div>
+      {% endwith %}<!-- #step2 -->
+      <!--
+      Step 4 (LC-MS)
+      (This is almost identical to the previous section for HPLC protocols)
+      -->
+      {% with warnings_list=ms_select_form.sbml_warnings %}
+      <div class="disclose{% if warnings_list|length == 0 and ms_select_form.errors|length == 0 %} discloseHide{% endif %}" id="step3">
+        <div class="sectionChapter">
+          <span>
+            <a href="#" class="discloseLink">
+              {% trans "Step 4: Select LCMS-like Measurements, and inputs" %}
+            </a>
+          </span>
+          {% include 'main/include/export/warningnotice.html' %}
+        </div>
+        <div class="sectionContent discloseBody" id="statusstep3main">
+          {% for message in warnings_list %}
+          <div class="warn2">{{ message }}</div>
+          {% endfor %}
+          {% with section_form=ms_select_form %}
+          {% include 'main/include/export/sbml/measurement_section.html' %}
+          {% endwith %}
+        </div>
+      </div>
+      {% endwith %}<!-- #step3 -->
+      <!--
+      Step 5 (RAMOS O2/CO2)
+      -->
+      {% with warnings_list=ramos_select_form.sbml_warnings %}
+      <div class="disclose{% if warnings_list|length == 0 and ramos_select_form.errors|length == 0 %} discloseHide{% endif %}" id="step4">
+        <div class="sectionChapter">
+          <span>
+            <a href="#" class="discloseLink">
+              {% trans "Step 5: Select RAMOS O2/CO2 Measurements" %}
+            </a>
+          </span>
+          {% include 'main/include/export/warningnotice.html' %}
+        </div>
+        <div class="sectionContent discloseBody" id="statusstep4main">
+          {% for message in warnings_list %}
+          <div class="warn2">{{ message }}</div>
+          {% endfor %}
+          {% with section_form=ramos_select_form %}
+          {% include 'main/include/export/sbml/measurement_section.html' %}
+          {% endwith %}
+        </div>
+      </div>
+      {% endwith %}<!-- #step4 -->
+      <!--
+      Step 6: transcriptomics and proteomics
+      -->
+      {% with warnings_list=omics_select_form.sbml_warnings %}
+      <div class="disclose{% if warnings_list|length == 0 and omics_select_form.errors|length == 0 %} discloseHide{% endif %}" id="step5">
+        <div class="sectionChapter">
+          <span>
+            <a href="#" class="discloseLink">
+              {% trans "Step 6: Select Transcriptomics/Proteomics Measurements" %}
+            </a>
+          </span>
+          {% include 'main/include/export/warningnotice.html' %}
+        </div>
+        <div class="sectionContent discloseBody" id="statusstep5main">
+          {% for message in warnings_list %}
+          <div class="warn2">{{ message }}</div>
+          {% endfor %}
+          {% with section_form=omics_select_form %}
+          {% include 'main/include/export/sbml/measurement_section.html' %}
+          {% endwith %}
+        </div>
+      </div>
+      {% endwith %}<!-- #step5 -->
+      <!--
+      Step 7
+      -->
+      {% with warnings_list=match_form.sbml_warnings %}
+      <div class="disclose{% if warnings_list|length == 0 and match_form.errors|length == 0 %} discloseHide{% endif %}" id="step6">
+        <div class="sectionChapter">
+          <span>
+            <a href="#" class="discloseLink">
+              {% trans "Step 7: Pre-parse SBML model and match exchanges and species to measurements" %}
+            </a>
+          </span>
+          {% include 'main/include/export/warningnotice.html' %}
+        </div>
+        <div class="sectionContent discloseBody" id="statusstep6main">
+          {% for message in warnings_list %}
+          <div class="warn2">{{ message }}</div>
+          {% endfor %}
+          {{ match_form.non_field_errors }}
+          <div class="rounded-border" style="display: inline-block;">
+            <table class="dataTable" cellspacing="0">
+              <thead>
+                <tr>
+                  <td>{% trans "Measurement Type" %}</td>
+                  <td>{% trans "Species in model" %}</td>
+                  <td>{% trans "Reactant / Exchange in model" %}</td>
+                </tr>
+              </thead>
+              <tbody>
+              {% for field in match_form %}
+                {% if field.errors %}
+                <tr>
+                  <td colspan="3">{{ field.errors }}</td>
+                </tr>
                 {% endif %}
+                <tr>
+                  <td>{{ field.label }}</td>
+                  {# The below is a little gross, one TD used for two cells #}
+                  {# SbmlMatchReactionWidget outputs sub-widgets joined by close/open TD tags #}
+                  {# Framework does not provide a nicer way to do custom widget layouts #}
+                  <td>{{ field }}</td>
+                </tr>
               {% endfor %}
-                </ul>
-              {% endspaceless %}
-                <div style="font-weight:bold;">Fluxomics:</div>
-              {% spaceless %}
-                <ul style="margin:2px 2px 4px 2px;padding:0px;">
-              {% for fl in sf.fluxes %}
-                {% if fl.interpolated %}
-                  <li>{{ fl.name }}<span class="warn2">*</span></li>
-                {% else %}
-                  <li>{{ fl.name }}</li>
-                {% endif %}
-              {% endfor %}
-                </ul>
-              {% endspaceless %}
-              {% if sf.carbon_data %}
-                <div style="font-weight:bold;">C-13 ratios:</div>
-                {% spaceless %}
-                <ul style="margin:2px 2px 4px 2px;padding:0px;">
-                {% for met_name in sf.carbon_data %}
-                  <li>{{ met_name }}</li>
-                {% endfor %}
-                </ul>
-                {% endspaceless %}
-              {% endif %}
-              {% if sf.genes %}
-                <div style="font-weight: bold;">Transcriptomics:</div>
-                {% spaceless %}
-                <ul style="margin:2px 2px 4px 2px;padding:0px;">
-                  <li>{{ sf.genes }} genes</li>
-                </ul>
-                {% endspaceless %}
-              {% endif %}
-              {% if sf.proteins %}
-                <div style="font-weight: bold;">Proteomics:</div>
-                {% spaceless %}
-                <ul style="margin:2px 2px 4px 2px;padding:0px;">
-                  <li>{{ sf.proteins }} proteins</li>
-                </ul>
-                {% endspaceless %}
-              {% endif %}
-              </div>
-            </div>
+              </tbody>
+            </table>
           </div>
-        </div>
-      </td>
-      {% endfor %}
-    </tr>
-  </table>
+        </div><!-- #statusstep6main -->
+      </div>
+      {% endwith %}<!-- #step6 -->
+      <!--
+      END OF EXPORT SETTINGS
+      -->
+      <div class="sectionContent sectionRight">
+        <button type="submit" name="action" value="update">{% trans "Update Settings" %}</button>
+      </div>
+    </div><!-- #allstatusmain -->
 
-  <input type="hidden" name="download" id="downloadflag" value="" />
-  <input type="hidden" name="timestamp" id="downloadtimestamp" value="" />
-</div><!-- #dataDownloads -->
+    {% if time_form %}
+    <div class="pageSection" style="margin:10px;" id="timeselectmain">
+      <div class="sectionHead">{% trans "Export SBML at timepoint" %}</div>
+      <div class="sectionContent">
+        <!-- Form to select time for export -->
+        {{ time_form.as_p }}
+      </div>
+      <div class="sectionContent sectionRight">
+        <button type="submit" name="action" value="download">{% trans "Download SBML" %}</button>
+      </div>
+    </div>
+    {% endif %}
 
-</form><!-- #exportForm -->
-
-<div style="padding:250px 0px 250px 0px;"> </div>
+  </form><!-- #exportForm -->
 
 {% endblock content %}

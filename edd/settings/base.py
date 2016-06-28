@@ -30,8 +30,7 @@ if env('SECRET_KEY', default=DOCKER_SENTINEL) is DOCKER_SENTINEL:
 
 
 ###################################################################################################
-# Set ICE configuration used in multiple places, or that we want to be able to override in
-# local_settings.py
+# Set ICE configuration used in multiple places, or that we want to be able to override in local.py
 ###################################################################################################
 ICE_KEY_ID = 'edd'
 ICE_SECRET_HMAC_KEY = env('ICE_HMAC_KEY')
@@ -171,6 +170,18 @@ DATABASES = {
 DATABASES['default'].update(OPTIONS={'isolation_level': ISOLATION_LEVEL_SERIALIZABLE})
 
 
+###################################################################################################
+# Caches
+###################################################################################################
+# https://docs.djangoproject.com/en/1.9/topics/cache/
+CACHES = {
+    'default': env.cache(),
+}
+
+SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+SESSION_CACHE_ALIAS = 'default'
+
+
 ####################################################################################################
 # REST API Framework
 ####################################################################################################
@@ -269,9 +280,9 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 ###################################################################################################
 # https://docs.djangoproject.com/en/dev/howto/static-files/
-# Keeping all static files in the static directory of the project
-STATIC_ROOT = root('static')
+STATIC_ROOT = '/var/www/static'
 STATIC_URL = '/static/'
+STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.CachedStaticFilesStorage'
 
 
 ###################################################################################################

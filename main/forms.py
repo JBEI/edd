@@ -13,10 +13,9 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.contrib.postgres.forms import HStoreField
 from django.core.exceptions import ValidationError
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Q
 from django.db.models.base import Model
 from django.db.models.manager import BaseManager
-from django.http import QueryDict
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 from form_utils.forms import BetterModelForm
@@ -27,8 +26,8 @@ from jbei.ice.rest.ice import IceApi
 from .export import table
 from .models import (
     Assay, Attachment, CarbonSource, Comment, Line, Measurement, MeasurementType,
-    MeasurementValue, MetadataType, Protocol, Strain, Study, StudyPermission, Update,
-    WorklistTemplate, WorklistColumn,
+    MeasurementValue, MetaboliteExchange, MetaboliteSpecies, MetadataType, Protocol, Strain,
+    Study, StudyPermission, Update,
 )
 
 User = get_user_model()
@@ -58,16 +57,12 @@ class AutocompleteWidget(forms.widgets.MultiWidget):
         self.model = model
         super(AutocompleteWidget, self).__init__(_widgets, attrs)
 
-    def get_model(self):
-        return self.model
-
     def decompress(self, value):
         # if the value is the actual model instance, don't try to look up model
         if isinstance(value, Model):
             return [self.display_value(value), value.pk]
         elif value:
-            SelfModel = self.get_model()
-            o = SelfModel.objects.get(pk=value)
+            o = self.model.objects.get(pk=value)
             return [self.display_value(o), value]
         return ['', None]
 
@@ -165,7 +160,7 @@ class RegistryValidator(object):
             raise ValidationError(
                 _('Failed to load strain %(uuid)s from ICE'),
                 code='ice failure',
-                params={"uuid": registry_id, },
+                params={"uuid": registry_id},
             )
 
     def save_strain(self):
@@ -264,6 +259,73 @@ class MeasurementTypeAutocompleteWidget(AutocompleteWidget):
         super(MeasurementTypeAutocompleteWidget, self).__init__(
             attrs=attrs, model=MeasurementType, opt=my_opt,
         )
+
+
+class SbmlInfoAutocompleteWidget(AutocompleteWidget):
+    """ Autocomplete widget for parts contained within SBMLTemplate """
+    def __init__(self, template, model, attrs=None, opt={}):
+        self._template = template
+        opt.get('text_attr', {}).update({'data-template': template.pk})
+        super(SbmlInfoAutocompleteWidget, self).__init__(attrs=attrs, model=model, opt=opt)
+
+    def decompress(self, value):
+        # if the value is the actual model instance, don't try to look up model
+        if isinstance(value, self.model):
+            return [self.display_value(value), value.pk]
+        elif value:
+            o = self.lookup(value)
+            return [self.display_value(o), o.pk]
+        return ['', None]
+
+    def decompress_q(self, value):
+        return Q(pk=self._int(value))
+
+    def lookup(self, value):
+        try:
+            return self.model.objects.get(self.decompress_q(value), sbml_template=self._template)
+        except self.model.DoesNotExist:
+            pass
+        return None
+
+    def value_from_datadict(self, data, files, name):
+        widgets = enumerate(self.widgets)
+        v = [w.value_from_datadict(data, files, name + '_%s' % i) for i, w in widgets]
+        # v[0] is text of field, v[1] is hidden ID
+        return self.lookup(v[1])
+
+    def _int(self, value):
+        'Try casting a value to int, return None if fails'
+        try:
+            return int(value)
+        except:
+            pass
+        return None
+
+
+class SbmlExchangeAutocompleteWidget(SbmlInfoAutocompleteWidget):
+    """ Autocomplete widget for Exchanges in an SBMLTemplate """
+    def __init__(self, template, attrs=None, opt={}):
+        opt.update(text_attr={'class': 'autocomp autocomp_sbml_r'})
+        super(SbmlExchangeAutocompleteWidget, self).__init__(
+            template=template, attrs=attrs, model=MetaboliteExchange, opt=opt
+        )
+
+    def decompress_q(self, value):
+        parent = super(SbmlExchangeAutocompleteWidget, self).decompress_q(value)
+        return parent | Q(exchange_name=value)
+
+
+class SbmlSpeciesAutocompleteWidget(SbmlInfoAutocompleteWidget):
+    """ Autocomplete widget for Species in an SBMLTemplate """
+    def __init__(self, template, attrs=None, opt={}):
+        opt.update(text_attr={'class': 'autocomp autocomp_sbml_s'})
+        super(SbmlSpeciesAutocompleteWidget, self).__init__(
+            template=template, attrs=attrs, model=MetaboliteSpecies, opt=opt
+        )
+
+    def decompress_q(self, value):
+        parent = super(SbmlSpeciesAutocompleteWidget, self).decompress_q(value)
+        return parent | Q(species=value)
 
 
 class CreateStudyForm(forms.ModelForm):
@@ -596,337 +658,5 @@ class MeasurementValueForm(BetterModelForm):
 
 
 MeasurementValueFormSet = forms.models.inlineformset_factory(
-    Measurement, MeasurementValue, can_delete=False, extra=0, form=MeasurementValueForm, )
-
-
-class ExportSelectionForm(forms.Form):
-    """ Form used for selecting objects to export. """
-    studyId = forms.ModelMultipleChoiceField(
-        queryset=Study.objects.filter(active=True),
-        required=False,
-        widget=forms.MultipleHiddenInput
-        )
-    lineId = forms.ModelMultipleChoiceField(
-        queryset=Line.objects.filter(active=True),
-        required=False,
-        widget=forms.MultipleHiddenInput
-        )
-    assayId = forms.ModelMultipleChoiceField(
-        queryset=Assay.objects.filter(active=True),
-        required=False,
-        widget=forms.MultipleHiddenInput
-        )
-    measurementId = forms.ModelMultipleChoiceField(
-        queryset=Measurement.objects.filter(active=True),
-        required=False,
-        widget=forms.MultipleHiddenInput
-        )
-
-    def __init__(self, *args, **kwargs):
-        # removes default hard-coded suffix of colon character on all labels
-        kwargs.setdefault('label_suffix', '')
-        self._user = kwargs.pop('user', None)
-        if self._user is None:
-            raise ValueError("ExportSelectionForm requires a user parameter")
-        self._selection = None
-        super(ExportSelectionForm, self).__init__(*args, **kwargs)
-
-    def clean(self):
-        data = super(ExportSelectionForm, self).clean()
-        # incoming IDs
-        studyId = data.get('studyId', [])
-        lineId = data.get('lineId', [])
-        assayId = data.get('assayId', [])
-        measureId = data.get('measurementId', [])
-        self._selection = table.ExportSelection(self._user, studyId, lineId, assayId, measureId)
-        return data
-
-    def get_selection(self):
-        if self._selection is None:
-            if self.is_valid():
-                return self._selection
-            else:
-                raise ValueError("Export Selection is invalid")
-        return self._selection
-
-
-class WorklistForm(forms.Form):
-    """ Form used for selecting worklist export options. """
-    template = forms.ModelChoiceField(
-        queryset=WorklistTemplate.objects.prefetch_related(
-            Prefetch('worklistcolumn_set', queryset=WorklistColumn.objects.order_by('ordering', )),
-        ),
-        required=False,
-    )
-
-    def __init__(self, *args, **kwargs):
-        # removes default hard-coded suffix of colon character on all labels
-        kwargs.setdefault('label_suffix', '')
-        super(WorklistForm, self).__init__(*args, **kwargs)
-        self.defaults_form = None
-        self.flush_form = None
-        self._options = None
-        self._worklist = None
-
-    def clean(self):
-        data = super(WorklistForm, self).clean()
-        template = data.get('template', None)
-        columns = []
-        blank_mod = 0
-        blank_columns = []
-        if template:
-            dform = self.create_defaults_form(template)
-            fform = self.create_flush_form(template)
-            if dform.is_valid():
-                columns = dform.columns
-            if fform.is_valid():
-                blank_mod = fform.cleaned_data['row_count']
-                blank_columns = fform.columns
-        self._options = table.ExportOption(
-            layout=table.ExportOption.DATA_COLUMN_BY_LINE,
-            separator=table.ExportOption.COMMA_SEPARATED,
-            data_format=table.ExportOption.ALL_DATA,
-            line_section=False,
-            protocol_section=False,
-            columns=columns,
-            blank_columns=blank_columns,
-            blank_mod=blank_mod,
-        )
-        self._worklist = template
-        return data
-
-    def create_defaults_form(self, template):
-        self.defaults_form = WorklistDefaultsForm(
-            self.data, self.files, prefix='defaults', template=template,
-        )
-        return self.defaults_form
-
-    def create_flush_form(self, template):
-        self.flush_form = WorklistFlushForm(
-            self.data, self.files, prefix='flush', template=template,
-        )
-        return self.flush_form
-
-    def get_options(self):
-        if self._options is None:
-            if not self.is_valid():
-                raise ValueError("Export options are invalid")
-        return self._options
-    options = property(get_options)
-
-    def get_worklist(self):
-        if self._worklist is None:
-            if not self.is_valid():
-                raise ValueError("Worklist options are invalid")
-        return self._worklist
-    worklist = property(get_worklist)
-
-
-class WorklistDefaultsForm(forms.Form):
-    """ Sub-form used to select the default values used in columns of a worklist export. """
-
-    def __init__(self, *args, **kwargs):
-        self._template = kwargs.pop('template', None)
-        self._lookup = OrderedDict()
-        self._created_fields = {}
-        super(WorklistDefaultsForm, self).__init__(*args, **kwargs)
-        # create a field for default values in each column of template
-        for x in self._template.worklistcolumn_set.order_by('ordering', ):
-            form_name = 'col.%s' % (x.pk, )
-            self.initial[form_name] = x.get_default()
-            self.fields[form_name] = self._created_fields[form_name] = forms.CharField(
-                help_text=x.help_text,
-                initial=x.get_default(),
-                label=str(x),
-                required=False,
-                widget=forms.TextInput(attrs={'size': 30}),
-            )
-            self._lookup[form_name] = x
-
-    def clean(self):
-        data = super(WorklistDefaultsForm, self).clean()
-        # this is SUPER GROSS, but apparently the only way to change the form output from here is
-        #   to muck with the source data, by poking the undocumented _mutable property of QueryDict
-        self.data._mutable = True
-        # if no incoming data for field, fall back to default (initial) instead of empty string
-        for name, field in self._created_fields.items():
-            key = self.add_prefix(name)
-            value = field.widget.value_from_datadict(self.data, self.files, key)
-            if not value:
-                value = field.initial
-            self.data[key] = data[key] = value
-            self._lookup[name].default_value = value
-        # flip back _mutable property
-        self.data._mutable = False
-        return data
-
-    def get_columns(self):
-        return [x.get_column() for x in self._lookup.values()]
-    columns = property(get_columns)
-
-
-class WorklistFlushForm(WorklistDefaultsForm):
-    """ Adds a field to take a number of rows to output before inserting a flush row with selected
-        defaults. Entering 0 means no flush rows. """
-    row_count = forms.IntegerField(
-        initial=0, help_text='The number of worklist rows before a flush row is inserted',
-        min_value=0, required=False, widget=forms.NumberInput(attrs={'size': 5}),
-    )
-
-
-class ExportOptionForm(forms.Form):
-    """ Form used for changing options on exports. """
-    DATA_COLUMN_BY_LINE = 'dbyl'
-    DATA_COLUMN_BY_POINT = 'dbyp'
-    LINE_COLUMN_BY_DATA = 'lbyd'
-    LAYOUT_CHOICE = (
-        (DATA_COLUMN_BY_LINE, _('columns of metadata types, and rows of lines/assays')),
-        (DATA_COLUMN_BY_POINT, _('columns of metadata types, and rows of single points')),
-        (LINE_COLUMN_BY_DATA, _('columns of lines/assays, and rows of metadata types')),
-    )
-    COMMA_SEPARATED = 'csv'
-    TAB_SEPARATED = 'tsv'
-    SEPARATOR_CHOICE = (
-        (COMMA_SEPARATED, _('Comma-separated (CSV)')),
-        (TAB_SEPARATED, _('Tab-separated')),
-    )
-    ALL_DATA = 'all'
-    SUMMARY_DATA = 'summary'
-    NONE_DATA = 'none'
-    FORMAT_CHOICE = (
-        (ALL_DATA, _('All')),
-        (SUMMARY_DATA, _('Summarize')),
-        (NONE_DATA, _('None')),
-    )
-
-    layout = forms.ChoiceField(
-        choices=LAYOUT_CHOICE,
-        label=_('Layout export with'),
-        required=False,
-    )
-    separator = forms.ChoiceField(
-        choices=SEPARATOR_CHOICE,
-        label=_('Field separators'),
-        required=False,
-    )
-    data_format = forms.ChoiceField(
-        choices=FORMAT_CHOICE,
-        label=_('Include measurement data'),
-        required=False,
-    )
-    line_section = forms.BooleanField(
-        label=_('Include Lines in own section'),
-        required=False,
-    )
-    protocol_section = forms.BooleanField(
-        label=_('Include a section for each Protocol'),
-        required=False,
-    )
-    study_meta = forms.TypedMultipleChoiceField(
-        choices=map(table.ColumnChoice.get_field_choice, Study.export_columns()),
-        coerce=table.ColumnChoice.coerce(Study.export_columns()),
-        label=_('Study fields to include'),
-        required=False,
-        widget=forms.CheckboxSelectMultiple,
-    )
-    line_meta = forms.TypedMultipleChoiceField(
-        choices=map(table.ColumnChoice.get_field_choice, Line.export_columns()),
-        coerce=table.ColumnChoice.coerce(Line.export_columns()),
-        label=_('Line fields to include'),
-        required=False,
-        widget=forms.CheckboxSelectMultiple,
-    )
-    protocol_meta = forms.TypedMultipleChoiceField(
-        choices=map(table.ColumnChoice.get_field_choice, Protocol.export_columns()),
-        coerce=table.ColumnChoice.coerce(Protocol.export_columns()),
-        label=_('Protocol fields to include'),
-        required=False,
-        widget=forms.CheckboxSelectMultiple,
-    )
-    assay_meta = forms.TypedMultipleChoiceField(
-        choices=map(table.ColumnChoice.get_field_choice, Assay.export_columns()),
-        coerce=table.ColumnChoice.coerce(Assay.export_columns()),
-        label=_('Assay fields to include'),
-        required=False,
-        widget=forms.CheckboxSelectMultiple,
-    )
-    measure_meta = forms.TypedMultipleChoiceField(
-        choices=map(table.ColumnChoice.get_field_choice, Measurement.export_columns()),
-        coerce=table.ColumnChoice.coerce(Measurement.export_columns()),
-        label=_('Measurement fields to include'),
-        required=False,
-        widget=forms.CheckboxSelectMultiple,
-    )
-
-    def __init__(self, *args, **kwargs):
-        # removes default hard-coded suffix of colon character on all labels
-        kwargs.setdefault('label_suffix', '')
-        self._selection = kwargs.pop('selection', None)
-        super(ExportOptionForm, self).__init__(*args, **kwargs)
-        self._options = None
-        self._init_options()
-
-    @classmethod
-    def initial_from_user_settings(cls, user):
-        """ Looks for preferences in user profile to set form choices; if found, apply, otherwise
-            sets all options. """
-        prefs = {}
-        if hasattr(user, 'userprofile'):
-            prefs = user.userprofile.prefs
-        return {
-            "layout": prefs.get('export.csv.layout', cls.DATA_COLUMN_BY_LINE),
-            "separator": prefs.get('export.csv.separator', cls.COMMA_SEPARATED),
-            "data_format": prefs.get('export.csv.data_format', cls.ALL_DATA),
-            "study_meta": prefs.get('export.csv.study_meta', '__all__'),
-            "line_meta": prefs.get('export.csv.line_meta', '__all__'),
-            "protocol_meta": prefs.get('export.csv.protocol_meta', '__all__'),
-            "assay_meta": prefs.get('export.csv.assay_meta', '__all__'),
-            "measure_meta": prefs.get('export.csv.measure_meta', '__all__'),
-        }
-
-    def clean(self):
-        data = super(ExportOptionForm, self).clean()
-        columns = []
-        for m in ['study_meta', 'line_meta', 'protocol_meta', 'assay_meta', 'measure_meta']:
-            columns.extend(data.get(m, []))
-        self._options = table.ExportOption(
-            layout=data.get('layout', table.ExportOption.DATA_COLUMN_BY_LINE),
-            separator=data.get('separator', table.ExportOption.COMMA_SEPARATED),
-            data_format=data.get('data_format', table.ExportOption.ALL_DATA),
-            line_section=data.get('line_section', False),
-            protocol_section=data.get('protocol_section', False),
-            columns=columns,
-        )
-        return data
-
-    def get_options(self):
-        if self._options is None:
-            if not self.is_valid():
-                raise ValueError("Export options are invalid")
-        return self._options
-
-    def get_separator(self):
-        choice = self.cleaned_data.get('separator', self.COMMA_SEPARATED)
-        if choice == self.TAB_SEPARATED:
-            return '\t'
-        return ','
-
-    def _init_options(self):
-        # sometimes self.data is a plain dict instead of a QueryDict
-        data = QueryDict(mutable=True)
-        data.update(self.data)
-        # update available choices based on instances in self._selection
-        if self._selection and hasattr(self._selection, 'lines'):
-            columns = self._selection.line_columns
-            self.fields['line_meta'].choices = map(table.ColumnChoice.get_field_choice, columns)
-            self.fields['line_meta'].coerce = table.ColumnChoice.coerce(columns)
-        # set all _meta options if no list of options was passed in
-        for meta in ['study_meta', 'line_meta', 'protocol_meta', 'assay_meta', 'measure_meta']:
-            if self.initial.get(meta, None) == '__all__':
-                self.initial.update({
-                    meta: [choice[0] for choice in self.fields[meta].choices],
-                })
-                # update incoming data with default initial if not already set
-                if meta not in data and 'layout' not in data:
-                    data.setlist(meta, self.initial.get(meta, []))
-        self.data = data
+    Measurement, MeasurementValue, can_delete=False, extra=0, form=MeasurementValueForm,
+)

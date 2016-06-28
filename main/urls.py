@@ -37,12 +37,10 @@ urlpatterns = [
         login_required(views.study_import_rnaseq_process)),
     url(r'^study/(?P<study>\d+)/import/rnaseq/edgepro$',
         login_required(views.study_import_rnaseq_edgepro)),
-    url(r'^study/(?P<study>\d+)/sbml/$',
-        login_required(views.study_export_sbml),
-        name='sbml_export'),
 
     url(r'^export/$', login_required(views.ExportView.as_view()), name='export'),
     url(r'^worklist/$', login_required(views.WorklistView.as_view()), name='worklist'),
+    url(r'^sbml/$', login_required(views.SbmlView.as_view()), name='sbml'),
 
     url(r'^file/download/(?P<file_id>\d+)$', login_required(views.download)),
     url(r'^file/delete/(?P<file_id>\d+)$', login_required(views.delete_file)),
@@ -58,7 +56,8 @@ urlpatterns = [
         login_required(views.data_sbml_reaction_species)),
     url(r'^data/strains/$', login_required(views.data_strains)),
     url(r'^data/users/$', login_required(views.data_users)),
-    url(r'^search$', login_required(views.search)),
+    url(r'^search/$', login_required(views.search)),
+    url(r'^search/(?P<model>\w+)/$', login_required(views.model_search)),
     url(r'^favicon\.ico$',
         RedirectView.as_view(
             url=staticfiles_storage.url('favicon.ico'),
