@@ -72,13 +72,14 @@ def _post_commit_index_study(study):
 ####################################################################################################
 # Un-index study
 ####################################################################################################
+PrimaryKeyCache = namedtuple('PrimaryKeyCache', ['id'])
+
 @receiver(study_removed)
 def unindex_study(sender, study, **kwargs):
     # package up work to be performed when the database change commits
 
     # cache the study's primary key, which will be removed from the Study object itself during
     # deletion
-    PrimaryKeyCache = namedtuple('PrimaryKeyCache', ['id'])
     post_remove_pk_cache = PrimaryKeyCache(study.pk)
 
     # schedule the work for after the commit (or immediately if there's no transaction)
