@@ -98,46 +98,13 @@ StudyDGraphing = {
             $('#debug').text('Failed to fetch series.');
             return;
         }
-        this.setsFetched[newSet.label] = newSet;
-        //		this.reassignGraphColors();
-        //		this.redrawGraph();
     },
-    drawSets: function () {
-        this.reassignGraphColors();
-        this.redrawGraph();
-    },
-    reassignGraphColors: function () {
-        var setCount = 0; // Damn, there has to be a better way to do this.
-        var activeSetCount = 0;
-        for (var i in this.setsFetched) {
-            setCount++;
-            var oneSet = this.setsFetched[i];
-            if (oneSet.data) {
-                activeSetCount++;
-            }
+    redrawGraph: function () {
+        this.dataSets = [];
+        for (var oneSet in this.setsFetched) {
+            this.dataSets.push(this.setsFetched[oneSet]);
         }
-        var setIndex = 0;
-        for (var i in this.setsFetched) {
-            var oneSet = this.setsFetched[i];
-            if (oneSet.data) {
-                // If we have multiple axes, then choose the color based on which axis the line is assigned to
-                if (this.graphOptions.yaxes.length > 1) {
-                    // We're banking on yaxis always being 1 or greater, never 0, to get correct color
-                    // This should be true because flot itself never uses 0 to refer to an axis internally.
-                    oneSet.color = this.intAndRangeToLineColor(oneSet.yaxis - 1, this.graphOptions.yaxes.length);
-                    this.graphOptions.yaxes[oneSet.yaxis - 1].color = oneSet.color;
-                }
-                else {
-                    oneSet.color = this.intAndRangeToLineColor(setIndex, activeSetCount);
-                }
-                var ts = document.getElementById(oneSet.label + 'Label');
-                if (ts) {
-                    ts.style.backgroundColor = oneSet.color;
-                    ts.style.color = '#FFF';
-                }
-            }
-            setIndex++;
-        }
+        console.log(this.dataSets);
     },
     intAndRangeToLineColor: function (i, r) {
         // 17 intermediate spots on the color wheel, adjusted for visibility,
@@ -167,21 +134,6 @@ StudyDGraphing = {
         var g = Math.floor((lineColors[lIndex][1] * lfraction) + (lineColors[rIndex][1] * rfraction));
         var b = Math.floor((lineColors[lIndex][2] * lfraction) + (lineColors[rIndex][2] * rfraction));
         return 'rgb(' + r + ', ' + g + ', ' + b + ')';
-    },
-    redrawGraph: function () {
-        this.dataSets = [];
-        for (var oneSet in this.setsFetched) {
-            this.dataSets.push(this.setsFetched[oneSet]);
-        }
-        console.log(this.dataSets);
-        this.rebuildXAxis();
-        if (StudyDGraphing.clickWidget) {
-            StudyDGraphing.clickWidget.remove();
-        }
-        if (StudyDGraphing.highlightedClickPoint) {
-            StudyDGraphing.highlightedClickPoint.remove();
-        }
-        this.plotObject = $.plot(this.graphDiv, this.dataSets, this.graphOptions);
     },
     rebuildXAxis: function () {
         var _this = this;
