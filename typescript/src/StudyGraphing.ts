@@ -1,4 +1,21 @@
 var StudyDGraphing:any;
+
+declare var createLineGraph;
+declare var createAssayGraph;
+declare var createTimeGraph;
+declare var createBarLineGraph;
+declare var objectSize;
+declare var yvalues;
+declare var xvalues;
+declare var sortValues;
+declare var transformLineData;
+declare var sortBarData;
+declare var labels;
+declare var arrSize;
+declare var createSideBySide;
+declare var names;
+declare var transformSingleLineItem;
+
 StudyDGraphing = {
 
 	graphDiv:null,
@@ -62,80 +79,66 @@ StudyDGraphing = {
 
 
 	Setup:function(graphdiv) {
+		
+		//define svg space
+		
+		
+		
 		if (graphdiv) {
 			this.graphDiv = $("#" + graphdiv);
 		} else {
 			this.graphDiv = $("#graphDiv");
 		}
 
-		this.graphDiv.bind("plothover", this.hoverFunction);
-		this.graphDiv.bind("plotclick", this.plotClickFunction);
-		this.graphOptions.xaxis.ticks = this.tickGeneratorFunction;
-		this.graphOptions.xaxis.currentGraphDOMObject = this.graphDiv;
+		this.div = d3.select("body").append("div")
+        	.attr("class", "tooltip")
+        	.style("opacity", 0);
 
-		this.graphOptions.yaxes = []; // Default: Show 1 y axis, fit all data to it.
+    	this.margin = {top: 20, right: 150, bottom: 30, left: 40},
+        this.width = 1000 - this.margin.left - this.margin.right,
+        this.height = 270 - this.margin.top - this.margin.bottom;
+		this.color = d3.scale.category10();
+		
+		//this.graphOptions.xaxis.ticks = this.tickGeneratorFunction;
+		//this.graphOptions.xaxis.currentGraphDOMObject = this.graphDiv;
+
+		//this.graphOptions.yaxes = []; // Default: Show 1 y axis, fit all data to it.
 
 		//this.plotObject = $.plot(this.graphDiv, this.dataSets, this.graphOptions);
 	},
 
+    
+	
+
 
 	clearAllSets:function() {
-
-		this.graphOptions.yaxes = [];
-		this.axesSeen = {};
-		this.axesCount = 0;
-		this.setsFetched = {};
+		d3.selectAll("svg").remove();
 	},
 
 
 	addNewSet:function(newSet) {
+		//taking single line of data and add it. only 1 line. 
+		    var data = EDDData; // main data
+            var labels = names(data); // names of proteins..
+            var lineAssayObj = transformLineData(data, labels);  //returns an array of array of
+        // objects
+            var barAssayObj  = sortBarData(lineAssayObj);
+            var yvals = yvalues(data.AssayMeasurements); //an array of y values
+            var xvals = xvalues(data.AssayMeasurements);
+            var ysorted = sortValues(yvals) ;
+            var xsorted = sortValues(xvals);
+            var minValue = ysorted[ysorted.length - 1];
+            var maxValue = ysorted[0];
+            var minXvalue = xsorted[xsorted.length - 1];
+            var maxXvalue = xsorted[0];
+            var size = objectSize(data.AssayMeasurements); // number of assays
+            var arraySize = arrSize(data.AssayMeasurements); // number of data points
 
+		 createLineGraph(newSet, minValue, maxValue, labels, minXvalue, maxXvalue);
 		if (!newSet.label) {
 			$('#debug').text('Failed to fetch series.');
 			return;
 		}
-
-		var leftAxis = {   show: true, position:"left" };
-		var rightAxis = {   show: true, position:"right" };
-		var blankAxis = {   show: false };
-
-		// If we get any data sets that are not assigned to the default y axis (or y axis 1),
-		// then we need to create a set of "hidden" y axis objects in the graphOptions to
-		// inform flot.
-		if (newSet.yaxisByMeasurementTypeID) {
-			if (typeof this.axesSeen[newSet.yaxisByMeasurementTypeID] === "undefined") {
-				this.axesCount++;
-				this.axesSeen[newSet.yaxisByMeasurementTypeID] = this.axesCount;
-			}
-			// This has the effect of remaking the numbers by the sequence encountered
-			newSet.yaxis = this.axesSeen[newSet.yaxisByMeasurementTypeID];
-
-			while (this.graphOptions.yaxes.length < newSet.yaxis) {
-				var chosenAxis:any = leftAxis;
-				if (this.graphOptions.yaxes.length > 1) {
-					chosenAxis = blankAxis;
-				} else if (this.graphOptions.yaxes.length > 0) {
-					chosenAxis = rightAxis;
-				}
-				if (newSet.logscale) {
-					chosenAxis.transform = function (v) {
-														if (v == 0) v = 0.00001;
-														return Math.log(v);
-													};
-					chosenAxis.inverseTransform = function (v) {
-														return Math.exp(v);
-													};
-					chosenAxis.autoscaleMargin = null;
-				}
-				this.graphOptions.yaxes.push(chosenAxis);
-			}
-		}
-		if (newSet.iscontrol) {
-			newSet.lines = {show:false};
-			newSet.dashes = {show:true, lineWidth:2, dashLength:[3, 1]};
-		}
-
-//		console.log(this.graphOptions.yaxes);
 
 		this.setsFetched[newSet.label] = newSet;
 
@@ -186,7 +189,41 @@ StudyDGraphing = {
 		}
 	},
 
-
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 	intAndRangeToLineColor:function(i,r) {
 		// 17 intermediate spots on the color wheel, adjusted for visibility,
 		// with the 18th a clone of the 1st.
