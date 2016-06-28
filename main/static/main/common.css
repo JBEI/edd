@@ -57,6 +57,9 @@ a:hover {
 .nowrap {
     white-space:nowrap;
 }
+.right-txt {
+    text-align: right;
+}
 .off {
     display:none;
     visibility:hidden;
@@ -308,6 +311,9 @@ div.pageSection div.sectionChapter {
 div.pageSection div.sectionContent {
     margin:0px;
     padding:4px 8px 4px 8px;
+}
+div.pageSection div.sectionContent.sectionRight {
+    text-align: right;
 }
 div.pageSection div.sectionContent div.subSectionChapter {
     font-size:14px;
@@ -1297,6 +1303,7 @@ ol.comment-list > li {
 }
 .helptext {
     color: gray;
+    display: block;
     font-size: 11px;
 }
 .meta-remove {

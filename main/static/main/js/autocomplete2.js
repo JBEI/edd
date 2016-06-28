@@ -47,22 +47,29 @@ var EDD_auto = EDD_auto || {}, EDDData = EDDData || {};
             ],
         // when it's ambiguous what metadata is targetting, include the 'for' column
         "MetadataType": meta_columns,
-        "AssayLineMetadataType": meta_columns
+        "AssayLineMetadataType": meta_columns,
+        "MetaboliteExchange": [
+            new AutoColumn('Exchange', '200px', 'exchange'),
+            new AutoColumn('Reactant', '200px', 'reactant')
+        ]
     });
     EDD_auto.display_keys = $.extend(EDD_auto.display_keys || {}, {
         "User": 'fullname',
         "Strain": 'name',
-        "CarbonSource": 'name'
+        "CarbonSource": 'name',
+        "MetaboliteExchange": 'exchange'
     });
     EDD_auto.value_cache = $.extend(EDD_auto.value_cache || {}, {
         "User": 'Users',
         "Strain": 'Strains',
-        "CarbonSource": 'CSources'
+        "CarbonSource": 'CSources',
+        "MetaboliteExchange": 'Exchange'
     })
     EDD_auto.value_keys = $.extend(EDD_auto.value_keys || {}, {
         "User": 'id',
         "Strain": 'recordId',
-        "CarbonSource": 'id'
+        "CarbonSource": 'id',
+        "MetaboliteExchange": 'id'
     });
     EDD_auto.request_cache = {};
 
@@ -184,11 +191,12 @@ EDD_auto.initial_search = function initial_search(selector, term) {
 
 // Sets up the multicolumn autocomplete widget.  Must be called after the
 // $(window).load handler above.
-EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(selector, model_name, cache) {
-    var empty = {}, columns, display_key, value_key, cacheId;
+EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(selector, model_name, cache, options) {
+    var empty = {}, columns, display_key, value_key, cacheId, opt;
     if (typeof model_name === "undefined") {
         throw Error("model_name must be defined!");
     }
+    opt = $.extend({}, options);
     columns = EDD_auto.column_layouts[model_name] || [ new AutoColumn('Name', '300px', 'name') ];
     display_key = EDD_auto.display_keys[model_name] || 'name';
     value_key = EDD_auto.value_keys[model_name] || 'id';
@@ -235,16 +243,22 @@ EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(selector, 
             $.ajax({
                 'url': '/search',
                 'dataType': 'json',
-                'data': {
+                'data': $.extend({
                     'model': model_name,
                     'term': request.term
-                },
+                }, opt.search_extra),
                 // The success event handler will display "No match found" if no items are returned.
                 'success': function (data) {
                     if (!data || !data.rows || data.rows.length === 0) {
                         result = [ empty ];
                     } else {
                         result = data.rows;
+                        // store returned results in cache
+                        result.forEach(function (item) {
+                            var cacheKey = item[value_key],
+                                record = cache[cacheKey] = cache[cacheKey] || {};
+                            $.extend(record, item);
+                        });
                     }
                     terms[request.term] = result;
                     response(result);
@@ -302,6 +316,19 @@ $(window).load(function () {
         };
         $(item.selector).each(setup_func);
     });
+    // the SBML autocomplete's need to send along extra data
+    $('.autocomp_sbml_r').each(function () {
+        var opt = {
+            'search_extra': { 'template': $(this).data('template') }
+        };
+        EDD_auto.setup_field_autocomplete(this, 'MetaboliteExchange', EDDData.Exchange = EDDData.Exchange || {}, opt);
+    });
+    $('.autocomp_sbml_s').each(function () {
+        var opt = {
+            'search_extra': { 'template': $(this).data('template') }
+        };
+        EDD_auto.setup_field_autocomplete(this, 'MetaboliteSpecies', EDDData.Species = EDDData.Species || {}, opt);
+    })
     // this makes the autocomplete work like a dropdown box
     // fires off a search as soon as the element gains focus
     $(document).on('focus', '.autocomp', function (ev) {

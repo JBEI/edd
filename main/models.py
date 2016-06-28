@@ -1168,7 +1168,6 @@ class Line(EDDObject):
             assay_start_id = max(existing_assay_numbers) + 1
         return assay_start_id
 
-
     def user_can_read(self, user):
         return self.study.user_can_read(user)
 
@@ -1413,6 +1412,19 @@ class MeasurementUnit(models.Model):
                                   choices=MeasurementGroup.GROUP_CHOICE,
                                   default=MeasurementGroup.GENERIC)
 
+    # TODO: this should be somehow rolled up into the unit definition
+    conversion_dict = {
+        'g/L': lambda y, metabolite: 1000 * y / metabolite.molar_mass,
+        'mg/L': lambda y, metabolite: y / metabolite.molar_mass,
+        'µg/L': lambda y, metabolite: y / 1000 / metabolite.molar_mass,
+        'Cmol/L': lambda y, metabolite: 1000 * y / metabolite.carbon_count,
+        'mol/L': lambda y, metabolite: 1000 * y,
+        'uM': lambda y, metabolite: y / 1000,
+        'mol/L/hr': lambda y, metabolite: 1000 * y,
+        'mM': lambda y, metabolite: y,
+        'mol/L/hr': lambda y, metabolite: 1000 * y,
+    }
+
     def to_json(self):
         return {"id": self.pk, "name": self.unit_name, }
 
@@ -1538,16 +1550,10 @@ class Measurement(EDDMetadata, EDDSerialize):
     def __str__(self):
         return 'Measurement{%d}{%s}' % (self.assay.id, self.measurement_type)
 
-    def is_gene_measurement(self):
-        return self.measurement_type.type_group == MeasurementGroup.GENEID
-
-    def is_protein_measurement(self):
-        return self.measurement_type.type_group == MeasurementGroup.PROTEINID
-
     # may not be the best method name, if we ever want to support other
     # types of data as vectors in the future
     def is_carbon_ratio(self):
-        return (int(self.measurement_format) == 1)
+        return (int(self.measurement_format) == MeasurementFormat.VECTOR)
 
     def valid_data(self):
         """ Data for which the y-value is defined (non-NULL, non-blank). """
@@ -1582,15 +1588,15 @@ class Measurement(EDDMetadata, EDDSerialize):
 
     # TODO also handle vectors
     def extract_data_xvalues(self, defined_only=False):
-        mdata = list(self.data())
+        qs = self.measurementvalue_set.all()
         if defined_only:
-            return [m.x[0] for m in mdata if m.is_defined()]
-        else:
-            return [m.x[0] for m in mdata]
+            qs = qs.exclude(y=None, y__len=0)
+        # first index unpacks single value from tuple; second index unpacks first value from X
+        return map(lambda x: x[0][0], qs.values_list('x'))
 
     # this shouldn't need to handle vectors
     def interpolate_at(self, x):
-        assert (int(self.measurement_format) == 0)
+        assert (int(self.measurement_format) == MeasurementFormat.SCALAR)
         from main.utilities import interpolate_at
         return interpolate_at(self.valid_data(), x)
 
@@ -1658,8 +1664,7 @@ class SBMLTemplate(EDDObject):
     class Meta:
         db_table = "sbml_template"
     object_ref = models.OneToOneField(EDDObject, parent_link=True)
-    biomass_calculation = models.DecimalField(
-        default=-1, decimal_places=5, max_digits=16)  # XXX check that these parameters make sense!
+    biomass_calculation = models.DecimalField(default=-1, decimal_places=5, max_digits=16)
     biomass_calculation_info = models.TextField(default='')
     biomass_exchange_name = models.TextField()
     # FIXME would like to limit this to attachments only on parent EDDObject, and remove null=True
@@ -1684,11 +1689,14 @@ class SBMLTemplate(EDDObject):
         return rlist
 
     def parseSBML(self):
-        if not hasattr(self, '_sbml_model'):
+        if not hasattr(self, '_sbml_document'):
+            # self.sbml_file = ForeignKey
+            # self.sbml_file.file = FileField on Attachment
+            # self.sbml_file.file.file = File object on FileField
             contents = self.sbml_file.file.file.read()
             import libsbml
-            self._sbml_model = libsbml.readSBMLFromString(contents)
-        return self._sbml_model
+            self._sbml_document = libsbml.readSBMLFromString(contents)
+        return self._sbml_document
 
     def save(self, *args, **kwargs):
         # may need to do a post-save signal; get sbml attachment and save in sbml_file
@@ -1707,11 +1715,18 @@ class MetaboliteExchange(models.Model):
     """ Mapping for a metabolite to an exchange defined by a SBML template. """
     class Meta:
         db_table = "measurement_type_to_exchange"
-        unique_together = (("sbml_template", "measurement_type"), )
+        index_together = (
+            ("sbml_template", "reactant_name"),  # reactants not unique, but should be searchable
+            ("sbml_template", "exchange_name"),  # index implied by unique, making explicit
+        )
+        unique_together = (
+            ("sbml_template", "exchange_name"),
+            ("sbml_template", "measurement_type"),
+        )
     sbml_template = models.ForeignKey(SBMLTemplate)
-    measurement_type = models.ForeignKey(MeasurementType)
-    reactant_name = models.CharField(max_length=255)
-    exchange_name = models.CharField(max_length=255)
+    measurement_type = models.ForeignKey(MeasurementType, blank=True, null=True)
+    reactant_name = VarCharField()
+    exchange_name = VarCharField()
 
     def __str__(self):
         return self.exchange_name
@@ -1722,10 +1737,16 @@ class MetaboliteSpecies(models.Model):
     """ Mapping for a metabolite to an species defined by a SBML template. """
     class Meta:
         db_table = "measurement_type_to_species"
-        unique_together = (("sbml_template", "measurement_type"), )
+        index_together = (
+            ("sbml_template", "species"),  # index implied by unique, making explicit
+        )
+        unique_together = (
+            ("sbml_template", "species"),
+            ("sbml_template", "measurement_type"),
+        )
     sbml_template = models.ForeignKey(SBMLTemplate)
-    measurement_type = models.ForeignKey(MeasurementType)
-    species = models.TextField()
+    measurement_type = models.ForeignKey(MeasurementType, blank=True, null=True)
+    species = VarCharField()
 
     def __str__(self):
         return self.species
@@ -1737,14 +1758,12 @@ def guess_initials(user):
 
 
 def User_profile(self):
-    if hasattr(self, '_profile'):
-        return self._profile
     try:
         from edd.profile.models import UserProfile
-        (self._profile, created) = UserProfile.objects.get_or_create(
-            user=self, defaults={'initials': guess_initials(self)}
-        )
-        return self._profile
+        try:
+            return self.userprofile
+        except UserProfile.DoesNotExist:
+            return UserProfile.objects.create(user=self, initials=guess_initials(self))
     except:
         logger.exception('Failed to load a profile object for %s', self)
         return None
@@ -1756,7 +1775,7 @@ def User_initials(self):
 
 def User_institution(self):
     if self.profile and self.profile.institutions.count():
-        return self.profile.institutions.values_list('institution_name')[0][0]
+        return self.profile.institutions.all()[:1][0].institution_name
     return None
 
 

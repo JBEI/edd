@@ -14,9 +14,11 @@ from django.db.models.signals import m2m_changed, post_delete, post_save, pre_sa
 from django.dispatch import receiver
 from django.core.mail import mail_managers
 
-from jbei.ice.rest.ice import parse_entry_id, HmacAuth, IceHmacAuth
+from jbei.ice.rest.ice import IceHmacAuth, parse_entry_id
 from . import study_modified, study_removed, user_modified
-from ..models import Line, Strain, Study, Update
+from ..models import (
+    Line, MetaboliteExchange, MetaboliteSpecies, SBMLTemplate, Strain, Study, Update,
+)
 from ..solr import StudySearch, UserSearch
 from ..utilities import get_absolute_url
 from requests.exceptions import ConnectionError
@@ -66,7 +68,7 @@ def index_user(sender, user, **kwargs):
         users.update([user, ])
     except ConnectionError as e:
         mail_managers("Error connecting to Solr at login", "support needed")
-        logger.exception("Error connecting to Solr at login")
+        logger.exception("Error connecting to Solr at login: %s", e)
 
 
 def log_update_warning_msg(study_id):
@@ -296,7 +298,7 @@ def _post_commit_unlink_ice_entry_from_study(user_email, study_pk, study_creatio
 
     # if an error occurs, print a helpful log message, then re-raise it so Django will email
     # administrators
-    except StandardError as err:
+    except Exception as err:
         strain_pks = [strain.pk for strain in removed_strains]
         _handle_post_commit_ice_lambda_error(err, 'remove', study_pk, strain_pks, index)
 
@@ -345,7 +347,7 @@ def _post_commit_link_ice_entry_to_study(user_email, study, linked_strains):
 
     # if an error occurs, print a helpful log message, then re-raise it so Django will email
     # administrators
-    except StandardError as err:
+    except Exception as err:
         linked_strain_pks = [strain.pk for strain in linked_strains]
         _handle_post_commit_ice_lambda_error(err, 'add/update', study.pk, linked_strain_pks, index)
 
@@ -513,7 +515,7 @@ def handle_line_strain_changed(sender, instance, action, reverse, model, pk_set,
             logger.warning("Detected changes from fixtures, skipping ICE signal handling.")
         # if an error occurs, print a helpful log message, then re-raise it so Django will email
         # administrators
-        except StandardError:
+        except Exception:
             logger.exception("Exception scheduling post-commit work. Failed on strain with id %d" %
                              strain_pk)
     elif 'pre_remove' == action:
@@ -581,7 +583,7 @@ def handle_line_strain_changed(sender, instance, action, reverse, model, pk_set,
             logger.warning("Detected changes from fixtures, skipping ICE signal handling.")
         # if an error occurs, print a helpful log message, then re-raise it so Django will email
         # administrators
-        except StandardError:
+        except Exception:
             logger.exception("Exception scheduling post-commit work. Failed on strain with id %d" %
                              strain_pk)
 
@@ -612,6 +614,43 @@ def track_celery_task_submission(async_result):
     """
     logger.warning("TODO: track status of tasks submitted to the Celery library, but maybe not yet "
                    "communicated to the server (SYNBIO-1204)")
+
+
+@receiver(post_save, sender=SBMLTemplate)
+def template_saved(sender, instance, created, raw, using, update_fields, **kwargs):
+    if not raw and (created or update_fields is None or 'sbml_file' in update_fields):
+        # TODO: add celery task for template_sync_species
+        template_sync_species(instance)
+
+
+def template_sync_species(instance):
+    doc = instance.parseSBML()
+    model = doc.getModel()
+    # filter to only those for the updated template
+    species_qs = MetaboliteSpecies.objects.filter(sbml_template=instance)
+    exchange_qs = MetaboliteExchange.objects.filter(sbml_template=instance)
+    # values_list yields a listing of tuples, unwrap the value we want
+    exist_species = {s[0] for s in species_qs.values_list('species')}
+    exist_exchange = {r[0] for r in exchange_qs.values_list('exchange_name')}
+    # creating any records not in the database
+    for species in map(lambda s: s.getId(), model.getListOfSpecies()):
+        if species not in exist_species:
+            MetaboliteSpecies.objects.get_or_create(sbml_template=instance, species=species)
+        else:
+            exist_species.remove(species)
+    reactions = map(lambda r: (r.getId(), r.getListOfReactants()), model.getListOfReactions())
+    for reaction, reactants in reactions:
+        if len(reactants) == 1 and reaction not in exist_exchange:
+            MetaboliteExchange.objects.get_or_create(
+                sbml_template=instance,
+                exchange_name=reaction,
+                reactant_name=reactants[0].getSpecies()
+            )
+        else:
+            exist_exchange.remove(reaction)
+    # removing any records in the database not in the template document
+    species_qs.filter(species__in=exist_species).delete()
+    exchange_qs.filter(exchange_name__in=exist_exchange).delete()
 
 
 def build_traceback_msg():

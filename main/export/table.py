@@ -111,6 +111,11 @@ class ExportSelection(object):
             'y_units',
             'update_ref__mod_by',
             'experimenter',
+            'assay__experimenter',
+            'assay__protocol',
+            'assay__line__contact',
+            'assay__line__experimenter',
+            'assay__line__study',
         )
         self._assays = Assay.objects.filter(
             Q(line__study__in=self._allowed_study),
@@ -128,6 +133,8 @@ class ExportSelection(object):
             Q(assay__in=assayId, assay__active=True) |
             Q(assay__measurement__in=measureId, assay__measurement__active=True),
         ).distinct(
+        ).select_related(
+            'experimenter__userprofile', 'updated',
         ).prefetch_related(
             Prefetch('strains', queryset=Strain.objects.order_by('id')),
             Prefetch('carbon_source', queryset=CarbonSource.objects.order_by('id')),
@@ -135,44 +142,45 @@ class ExportSelection(object):
 
     @property
     def studies(self):
-        """ A dict mapping Study.pk to Study for those studies included in the export and
-            allowed to be viewed by the user. """
-        studies = {s.id: s for s in self._allowed_study}
-        return studies
+        """ List of studies allowed to be viewed in the selection. """
+        return self._allowed_study
 
     @property
     def study_columns(self):
         from main.models import Study
-        return Study.export_columns(self._studies.values())
+        return Study.export_columns(self.studies)
 
     @property
     def lines(self):
-        """ A dict mapping Line.pk to Line for those lines included in the export. """
-        lines = {l.id: l for l in self._lines}
-        return lines
+        """ A queryset of lines included in the selection. """
+        return self._lines
 
     @property
     def line_columns(self):
         from main.models import Line
-        return Line.export_columns(self._lines.values())
+        return Line.export_columns(self.lines)
 
     @property
     def assays(self):
-        """ A dict mapping Assay.pk to Assay for those assays included in the export. """
-        assays = {a.id: a for a in self._assays}
-        return assays
+        """ A queryset of assays included in the selection. """
+        return self._assays
 
     @property
     def assay_columns(self):
         from main.models import Assay
-        return Assay.export_columns(self._assays.values())
+        return Assay.export_columns(self.assays)
 
     @property
     def measurements(self):
-        """ A dict mapping Measurement.pk to Measurement for those measurements included in
-            the export. """
+        """ A queryset of measurements to include. """
         # TODO: add in empty measurements for assays that have none
         return self._measures
+
+    @property
+    def measurements_list(self):
+        if not hasattr(self, '_measures_list'):
+            self._measures_list = list(self._measures)
+        return self._measures_list
 
 
 class ExportOption(object):
@@ -185,12 +193,19 @@ class ExportOption(object):
         (DATA_COLUMN_BY_POINT, _('columns of metadata types, and rows of single points')),
         (LINE_COLUMN_BY_DATA, _('columns of lines/assays, and rows of metadata types')),
     )
-    COMMA_SEPARATED = 'csv'
-    TAB_SEPARATED = 'tsv'
+    COMMA_SEPARATED = ','
+    COMMA_SEPARATED_TOKEN = ','
+    TAB_SEPARATED = '\t'
+    TAB_SEPARATED_TOKEN = '\\t'
+    # need to choose value tokens that can be displayed as HTML
     SEPARATOR_CHOICE = (
-        (COMMA_SEPARATED, _('Comma-separated (CSV)')),
-        (TAB_SEPARATED, _('Tab-separated')),
+        (COMMA_SEPARATED_TOKEN, _('Comma-separated (CSV)')),
+        (TAB_SEPARATED_TOKEN, _('Tab-separated')),
     )
+    SEPARATOR_LOOKUP = {
+        COMMA_SEPARATED_TOKEN: COMMA_SEPARATED,
+        TAB_SEPARATED_TOKEN: TAB_SEPARATED,
+    }
     ALL_DATA = 'all'
     SUMMARY_DATA = 'summary'
     NONE_DATA = 'none'
@@ -212,6 +227,10 @@ class ExportOption(object):
         self.blank_columns = blank_columns
         self.blank_mod = blank_mod
 
+    @classmethod
+    def coerce_separator(cls, value):
+        return cls.SEPARATOR_LOOKUP.get(value, cls.COMMA_SEPARATED)
+
 
 def value_str(value):
     """ used to format value lists to a colon-delimited (unicode) string """
@@ -228,12 +247,14 @@ class TableExport(object):
         self._x_values = {}
 
     def output(self):
-        # store tables
+        """ Builds the CSV of the table export output. """
+        # store tables; protocol PK keys table for measurements under a protocol, 'line' keys table
+        #   for line-only section (if enabled), 'all' keys table including everything.
         tables = OrderedDict()
         if self.options.line_section:
             tables['line'] = OrderedDict()
             tables['line']['header'] = self._output_line_header()
-        elif not self.options.protocol_section:
+        if not self.options.protocol_section:
             tables['all'] = OrderedDict()
             tables['all']['header'] = self._output_header()
         self._do_export(tables)
@@ -243,7 +264,7 @@ class TableExport(object):
         layout = self.options.layout
         table_separator = '\n\n'
         row_separator = '\n'
-        cell_separator = '\t' if self.options.separator == ExportOption.TAB_SEPARATED else ','
+        cell_separator = self.options.separator
         if layout == ExportOption.DATA_COLUMN_BY_POINT:
             # data is already in correct orientation, join and return
             return table_separator.join([
@@ -275,12 +296,17 @@ class TableExport(object):
         return table_separator.join(out)
 
     def _do_export(self, tables):
-        from main.models import Assay, Line, Measurement, Protocol, Study
+        from main.models import Assay, Line, Measurement, MeasurementValue, Protocol, Study
         # add data from each exported measurement; already sorted by protocol
-        for measurement in self.selection.measurements:
-            assay = self.selection.assays.get(measurement.assay_id, None)
+        measures = self.selection.measurements.prefetch_related(
+            Prefetch('measurementvalue_set', queryset=MeasurementValue.objects.order_by('x')),
+            Prefetch('assay__line__strains'),
+            Prefetch('assay__line__carbon_source'),
+        )
+        for measurement in measures:
+            assay = measurement.assay
             protocol = assay.protocol
-            line = self.selection.lines.get(assay.line_id, None)
+            line = assay.line
             if self.options.line_section:
                 line_only = [Line, Study, ]
                 other_only = [Assay, Measurement, Protocol, ]
@@ -294,7 +320,7 @@ class TableExport(object):
                 # create row for protocol/all table
                 row = self._output_row_with_measure(measurement)
             table, table_key = self._init_tables_for_protocol(tables, protocol)
-            values = measurement.measurementvalue_set.order_by('x')
+            values = measurement.measurementvalue_set.all()  # prefetched above
             if self.options.layout == ExportOption.DATA_COLUMN_BY_POINT:
                 for value in values:
                     arow = row[:]
@@ -309,16 +335,6 @@ class TableExport(object):
                 squashed = {value_str(v.x): value_str(v.y) for v in values}
                 row.append(squashed)
                 table[measurement.id] = row
-
-    def _init_row_for_line(self, tables, line):
-        line_section = self.options.line_section
-        row = self._output_row_with_line(line, None)
-        if line_section:
-            if line.id not in tables['line']:
-                tables['line'][line.id] = row
-            # reset row after this point
-            row = []
-        return row
 
     def _init_tables_for_protocol(self, tables, protocol):
         if self.options.protocol_section:
@@ -341,6 +357,9 @@ class TableExport(object):
         for column in self.options.columns:
             if models is None or column._model in models:
                 row.append(column.get_heading())
+        if self.options.layout == ExportOption.DATA_COLUMN_BY_POINT:
+            row.append('X')
+            row.append('Y')
         return row
 
     def _output_line_header(self):
@@ -398,7 +417,7 @@ class WorklistExport(TableExport):
         protocol = self.worklist.protocol
         table = tables['all']
         counter = 0
-        for i, (pk, line) in enumerate(lines.items()):
+        for i, (pk, line) in enumerate(lines):
             # build row with study/line info
             row = self._output_row_with_line(line, protocol)
             table['%s' % (pk, )] = row

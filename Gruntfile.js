@@ -1,7 +1,7 @@
 module.exports = function(grunt) {
 
     grunt.loadNpmTasks('grunt-typescript');
-    grunt.loadNpmTasks("grunt-contrib-watch");
+    grunt.loadNpmTasks('grunt-contrib-watch');
     grunt.loadNpmTasks('grunt-contrib-copy');
     grunt.loadNpmTasks('grunt-contrib-clean');
     grunt.loadNpmTasks('grunt-exec');
@@ -117,7 +117,7 @@ module.exports = function(grunt) {
         },
         exec: {
             collect: {
-                command: './manage.py collectstatic --noinput',
+                command: 'docker-compose exec appserver python manage.py collectstatic --noinput',
                 stdout: true
             }
         },
