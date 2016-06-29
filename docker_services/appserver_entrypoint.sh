@@ -1,5 +1,17 @@
 #!/bin/bash
 
+set -o pipefail -e
+
+# TODO: check for $EDD_HOST_DIR; if found, proceed
+#   if $EDD_HOST_DIR not found, test for contents of /code
+#   if /code does not contain EDD code, run git clone
+
+# Wait for redis to become available
+until nc -z redis 6379; do
+    echo "Waiting for redis server …"
+    sleep 1
+done
+
 # Collect static first, worker will complain if favicons are missing
 python /code/manage.py collectstatic --noinput
 

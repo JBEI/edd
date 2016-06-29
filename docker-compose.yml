@@ -118,7 +118,7 @@ services:
     ports:
       - "8000:8000"
   nginx:
-    build: ./docker_services/nginx/
+    image: nginx:1.11
     restart: always
     links:
       - appserver
@@ -130,3 +130,6 @@ services:
       - "443:443"
     volumes_from:
       - appserver
+    volumes:
+      - /etc/ssl/edd/:/etc/ssl/edd/
+    command: /code/docker_services/nginx/nginx_entrypoint.sh
