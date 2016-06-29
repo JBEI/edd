@@ -8,14 +8,6 @@ StudyDGraphing = {
         else {
             this.graphDiv = $("#graphDiv");
         }
-        // this.div = d3.select("body").append("div")
-        // .attr("class", "tooltip")
-        // .style("opacity", 0);
-        //
-        // this.margin = {top: 20, right: 150, bottom: 30, left: 40},
-        // this.width = 1000 - this.margin.left - this.margin.right,
-        // this.height = 270 - this.margin.top - this.margin.bottom;
-        // this.color = d3.scale.category10();
     },
     clearAllSets: function () {
         d3.selectAll("svg").remove();
@@ -61,11 +53,8 @@ StudyDGraphing = {
             d3.select('#single').style('display', 'none');
             d3.select('#groupedAssay').style('display', 'block');
         });
-        //taking single line of data and add it. only 1 line. 
         var data = EDDData; // main data
         var labels = names(data); // names of proteins..
-        var lineAssayObj = transformLineData(data, labels); //returns an array of array of
-        // objects
         var barAssayObj = sortBarData(newSet);
         var yvals = yvalues(data.AssayMeasurements); //an array of y values
         var xvals = xvalues(data.AssayMeasurements);
@@ -80,8 +69,8 @@ StudyDGraphing = {
         createLineGraph(barAssayObj, minValue, maxValue, labels, minXvalue, maxXvalue);
         createAssayGraph(barAssayObj, minValue, maxValue, labels, size, arraySize);
         createBarLineGraph(barAssayObj, minValue, maxValue, labels, size, arraySize);
-        createTimeGraph(barAssayObj, minValue, maxValue, minXvalue, maxXvalue, labels, size, arraySize);
-        createSideBySide(newSet, minValue, maxValue, labels, minXvalue, maxXvalue);
+        createTimeGraph(barAssayObj, labels, size);
+        createSideBySide(newSet, labels);
         if (!newSet.label) {
             $('#debug').text('Failed to fetch series.');
             return;

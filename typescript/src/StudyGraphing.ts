@@ -8,7 +8,6 @@ declare var objectSize;
 declare var yvalues;
 declare var xvalues;
 declare var sortValues;
-declare var transformLineData;
 declare var sortBarData;
 declare var labels;
 declare var arrSize;
@@ -75,28 +74,26 @@ StudyDGraphing = {
                     d3.select('#single').style('display', 'none');
                     d3.select('#groupedAssay').style('display', 'block');
         })
-		//taking single line of data and add it. only 1 line. 
-		    var data = EDDData; // main data
-            var labels = names(data); // names of proteins..
-            var lineAssayObj = transformLineData(data, labels);  //returns an array of array of
-        // objects
-            var barAssayObj  = sortBarData(newSet);
-            var yvals = yvalues(data.AssayMeasurements); //an array of y values
-            var xvals = xvalues(data.AssayMeasurements);
-            var ysorted = sortValues(yvals) ;
-            var xsorted = sortValues(xvals);
-            var minValue = ysorted[ysorted.length - 1];
-            var maxValue = ysorted[0];
-            var minXvalue = xsorted[xsorted.length - 1];
-            var maxXvalue = xsorted[0];
-            var size = objectSize(data.AssayMeasurements); // number of assays
-            var arraySize = arrSize(data.AssayMeasurements); // number of data points
+
+        var data = EDDData; // main data
+        var labels = names(data); // names of proteins..
+        var barAssayObj  = sortBarData(newSet);
+        var yvals = yvalues(data.AssayMeasurements); //an array of y values
+        var xvals = xvalues(data.AssayMeasurements);
+        var ysorted = sortValues(yvals) ;
+        var xsorted = sortValues(xvals);
+        var minValue = ysorted[ysorted.length - 1];
+        var maxValue = ysorted[0];
+        var minXvalue = xsorted[xsorted.length - 1];
+        var maxXvalue = xsorted[0];
+        var size = objectSize(data.AssayMeasurements); // number of assays
+        var arraySize = arrSize(data.AssayMeasurements); // number of data points
 
 		 createLineGraph(barAssayObj, minValue, maxValue, labels, minXvalue, maxXvalue);
 		 createAssayGraph(barAssayObj, minValue, maxValue, labels, size, arraySize);
 		 createBarLineGraph(barAssayObj, minValue, maxValue, labels, size, arraySize);
-         createTimeGraph(barAssayObj, minValue, maxValue, minXvalue, maxXvalue, labels, size, arraySize);
-         createSideBySide(newSet, minValue, maxValue, labels, minXvalue, maxXvalue);
+         createTimeGraph(barAssayObj, labels, size);
+         createSideBySide(newSet, labels);
 		
 		if (!newSet.label) {
 			$('#debug').text('Failed to fetch series.');

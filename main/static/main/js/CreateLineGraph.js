@@ -109,14 +109,12 @@ function createLineGraph(linedata, minValue, maxValue, labels, minXvalue, maxXva
         //lines
         for (var j = 0; j < data[k].values.length; j++) {
             var line = svg.append('path')
-                //.attr("id", data[k].key + "-" + data[k].values[j].i)
                 .attr("id", data[k].key.split(' ').join('_'))
                 .attr('d', lineGen(data[k].values[j].values))
                 .attr('stroke', color1)
                 .attr('stroke-width', 2)
                 .attr("class", "experiment")
                 .attr('fill', 'none');
-
         var dataCirclesGroup = svg.append('svg:g');
         var circles = dataCirclesGroup.selectAll('.data-point')
             .data(data[k].values[j].values);
@@ -124,6 +122,7 @@ function createLineGraph(linedata, minValue, maxValue, labels, minXvalue, maxXva
             .enter()
             .append('svg:circle')
             .attr('class', 'dot')
+            //.attr('id', ("circle" + data[k].key).split(' ').join('_') )
             .attr('fill', 'grey')
             .attr('cx', function (d) {
                 return x(d["x"]);
@@ -134,6 +133,7 @@ function createLineGraph(linedata, minValue, maxValue, labels, minXvalue, maxXva
             .attr('r', function () {
                 return 3;
             })
+            .style("fill", color1)
             .on("mouseover", function (d) {
                 div.transition()
                     .duration(200)
@@ -142,7 +142,7 @@ function createLineGraph(linedata, minValue, maxValue, labels, minXvalue, maxXva
                     .style("left", (d3.event.pageX) + "px")
                     .style("top", (d3.event.pageY - 30) + "px");
             })
-            .on("mousemove", function (d) {
+            .on("mouseout", function (d) {
                 div.transition()
                     .duration(500)
                     .style("opacity", 0);
@@ -172,12 +172,17 @@ function createLineGraph(linedata, minValue, maxValue, labels, minXvalue, maxXva
                   .text(function(d) {
                     return d.key;
                   })
-                  .on("click", function(d, i) {
-                    var id = d.key.split(' ').join('_')
-                    d3.selectAll('.experiment').style("opacity", function() {
-                        return this.id == id ? 1 : 0
-                    });
-                  })
+                  // .on("click", function(d, i) {
+                  //   var id = d.key.split(' ').join('_')
+                  //   d3.selectAll('.experiment').style("opacity", function() {
+                  //       return this.id == id ? 1 : 0
+                  //   });
+                    // var circleId = ("circle" + d.key).split(' ').join('_')
+                    //
+                    //   d3.selectAll('.dot').style("opacity", function() {
+                    //     return this.circleId == circleId ? 1 : 0
+                    // });
+                  // })
                   // .on("mouseout", function(d, i) {
                   //   d3.selectAll("#"+d.key.split(' ').join('_')).style("stroke", "white");
                   // });

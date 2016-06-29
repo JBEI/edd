@@ -2,7 +2,7 @@
 /**
 * this function takes in input min y value, max y value, and the transformed data. Outputs the graph 
 **/
-function createSideBySide(linedata, minValue, maxValue, labels) {
+function createSideBySide(linedata, labels) {
 
   //iterate through each assay
   for (var i = 0; i < linedata.length; i++) {

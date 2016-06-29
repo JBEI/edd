@@ -1,7 +1,6 @@
 ////// grouped bar chart based on time
-function createTimeGraph(linedata, minValue, maxValue, minXvalue, maxXvalue, labels, size, arraySize) {
-
-
+function createTimeGraph(linedata, labels, size) {
+    
     var margin = {top: 20, right: 40, bottom: 30, left: 40},
         width = 1000 - margin.left - margin.right,
         height = 270 - margin.top - margin.bottom;
@@ -40,19 +39,11 @@ function createTimeGraph(linedata, minValue, maxValue, minXvalue, maxXvalue, lab
         .orient("left")
         .tickFormat(d3.format(".2s"));
 
-    var svgViewport = d3.select("div#metrics").append("svg")
+    var svg = d3.select("div#metrics").append("svg")
     .attr("width", width + margin.left + margin.right)
     .attr("height", height + margin.top + margin.bottom)
-    .style("border", "2px solid")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-    var zoom = d3.behavior.zoom()
-        .scaleExtent([1, 10])
-        .on("zoom", zoomed);
-
-    var innerSpace = svgViewport.append("g")
-        .attr("class", "inner_space")
-        .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
-        .call(zoom);
     /**
     *  This method transforms our data object into the following
     *  {
@@ -61,20 +52,24 @@ function createTimeGraph(linedata, minValue, maxValue, minXvalue, maxXvalue, lab
     *  }
     *  ...
     **/
+    var proteinNames = d3.nest()
+      .key(function(d) { return d.name; })
+      .entries(linedata);
+
     var data = d3.nest()
       .key(function(d) { return d.x; })
       .entries(linedata);
 
     x0.domain(data.map(function(d) { return d.key; }));
-    x1.domain(labels).rangeRoundBands([0, x0.rangeBand()]);
+    x1.domain(proteinNames.map(function(d) { return d.key; })).rangeRoundBands([0, x0.rangeBand()]);
     y.domain([0, d3.max(data, function(d) { return d3.max(d.values, function(d) { return d.y; }); })]);
 
-    innerSpace.append("g")
+    svg.append("g")
       .attr("class", "x axis")
       .attr("transform", "translate(0," + height + ")")
       .call(xAxis)
       // Draw the x Grid lines
-    innerSpace.append("g")
+    svg.append("g")
         .attr("class", "grid")
         .attr("transform", "translate(0," + height + ")")
         .call(make_x_axis()
@@ -82,7 +77,7 @@ function createTimeGraph(linedata, minValue, maxValue, minXvalue, maxXvalue, lab
             .tickFormat("")
         )
         // Draw the y Grid lines
-    innerSpace.append("g")
+    svg.append("g")
         .attr("class", "grid")
         .call(make_y_axis()
             .tickSize(-width, 0, 0)
@@ -90,7 +85,7 @@ function createTimeGraph(linedata, minValue, maxValue, minXvalue, maxXvalue, lab
         )
 
 
-    innerSpace.append("g")
+    svg.append("g")
       .attr("class", "y axis")
       .call(yAxis)
     .append("text")
@@ -100,7 +95,7 @@ function createTimeGraph(linedata, minValue, maxValue, minXvalue, maxXvalue, lab
       .style("text-anchor", "end")
       .text("Frequency");
 
-    var bar = innerSpace.selectAll(".bar")
+    var bar = svg.selectAll(".bar")
         .data(data)
         .enter().append('g')
         .attr("class", "bar")
@@ -129,7 +124,7 @@ function createTimeGraph(linedata, minValue, maxValue, minXvalue, maxXvalue, lab
     d3.select("body").append("div").attr("id", "v_scale").text("D3 Zoom Scale: ");
     d3.select("#v_scale").append("span").attr("id", "v_scale_val");
      //legend
-     var legend = innerSpace.selectAll(".legend")
+     var legend = svg.selectAll(".legend")
           .data(labels)
         .enter().append("g")
           .attr("class", "legend")
@@ -147,10 +142,9 @@ function createTimeGraph(linedata, minValue, maxValue, minXvalue, maxXvalue, lab
           .attr("dy", ".35em")
           .style("text-anchor", "end")
           .text(function(d) { return d; })
-
-
+    
     //tooltip
-    var tooltip = innerSpace.append("g")
+    var tooltip = svg.append("g")
       .attr("class", "tooltip")
       .style("display", "none");
 
@@ -185,9 +179,5 @@ function createTimeGraph(linedata, minValue, maxValue, minXvalue, maxXvalue, lab
             .scale(y)
             .orient("left")
             .ticks(5)
-    }
-
-    function zoomed() {
-        innerSpace.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
     }
 }

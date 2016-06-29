@@ -1316,11 +1316,8 @@ var StudyD;
     }
     StudyD.queueMainGraphRemake = queueMainGraphRemake;
     function remakeMainGraphArea(force) {
-        var previousIDSet, postFilteringMeasurements, dataPointsDisplayed = 0, dataPointsTotal = 0, separateAxes = $('#separateAxesCheckbox').prop('checked'), 
-        // FIXME assumes (x0, y0) points
-        convert = function (d) { return [[d[0][0], d[1][0]]]; }, compare = function (a, b) { return a[0] - b[0]; };
+        var postFilteringMeasurements, dataPointsDisplayed = 0, dataPointsTotal = 0, separateAxes = $('#separateAxesCheckbox').prop('checked');
         this.mainGraphRefreshTimerID = 0;
-        //contains all checkboxes.
         if (!this.progressiveFilteringWidget.checkRedrawRequired(force)) {
             return;
         }
@@ -1341,48 +1338,22 @@ var StudyD;
             protocol = EDDData.Protocols[assay.pid] || {};
             var name = [line.name, protocol.name, assay.name].join('-');
             var singleAssayObj = transformSingleLineItem(EDDData, measure, name);
-            newSet = {
-                'label': 'dt' + measurementId,
-                'measurementname': Utl.EDD.resolveMeasurementRecordToName(measure),
-                'name': [line.name, protocol.name, assay.name].join('-'),
-                'units': Utl.EDD.resolveMeasurementRecordToUnits(measure),
-                'data': $.map(measure.values, convert).sort(compare)
-            };
             if (line.control)
-                newSet.iscontrol = 1;
+                singleAssayObj.iscontrol = 1;
             if (separateAxes) {
                 // If the measurement is a metabolite, choose the axis by type. If it's any
                 // other subtype, choose the axis based on that subtype, with an offset to avoid
                 // colliding with the metabolite axes.
                 if (mtype.family === 'm') {
-                    newSet.yaxisByMeasurementTypeID = mtype.id;
+                    singleAssayObj.yaxisByMeasurementTypeID = mtype.id;
                 }
                 else {
-                    newSet.yaxisByMeasurementTypeID = mtype.family;
+                    singleAssayObj.yaxisByMeasurementTypeID = mtype.family;
                 }
             }
             dataSets.push(singleAssayObj);
-            //draw 1 line.
-            //this.mainGraphObject.addNewSet(newSet);
         });
         this.mainGraphObject.addNewSet(dataSets);
-        //toggle between view
-        //point to mainGraph div
-        var data = EDDData; // main data
-        var labels = names(data); // names of proteins..
-        var lineAssayObj = transformLineData(data, labels); //returns an array of array of
-        // objects
-        var barAssayObj = sortBarData(lineAssayObj);
-        var yvals = yvalues(data.AssayMeasurements); //an array of y values
-        var xvals = xvalues(data.AssayMeasurements);
-        var ysorted = sortValues(yvals);
-        var xsorted = sortValues(xvals);
-        var minValue = ysorted[ysorted.length - 1];
-        var maxValue = ysorted[0];
-        var minXvalue = xsorted[xsorted.length - 1];
-        var maxXvalue = xsorted[0];
-        var size = objectSize(data.AssayMeasurements); // number of assays
-        var arraySize = arrSize(data.AssayMeasurements); // number of data points
     }
     function clearAssayForm() {
         var form = $('#id_assay-assay_id').closest('.disclose');
