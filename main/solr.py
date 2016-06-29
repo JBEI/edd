@@ -113,8 +113,7 @@ class SolrSearch(object):
                 else:
                     raise Exception('Commit to Solr failed')
             else:
-                raise Exception('Adding studies to Solr failed: %s' %
-                                response.json()['error']['msg'])
+                raise Exception('Adding studies to Solr failed: %s' % response)
         except requests.exceptions.Timeout as e:
             log.error("Timeout updating solr: %s", e)
             raise e

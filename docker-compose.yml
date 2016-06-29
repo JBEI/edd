@@ -120,6 +120,11 @@ services:
   nginx:
     image: nginx:1.11
     restart: always
+    depends_on:
+      - appserver
+      - flower
+      - rabbitmq
+      - solr
     links:
       - appserver
       - flower
@@ -131,5 +136,6 @@ services:
     volumes_from:
       - appserver
     volumes:
+      - staticdata:/usr/share/nginx/html:ro
       - /etc/ssl/edd/:/etc/ssl/edd/
     command: /code/docker_services/nginx/nginx_entrypoint.sh

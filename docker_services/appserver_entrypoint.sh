@@ -24,7 +24,7 @@ done
 # Test if our database exists; run init script if missing
 # TODO: support applying a database dump instead of init.sql
 PGPASSWORD=$POSTGRES_PASSWORD psql -lqt -h postgres -U postgres | cut -d \| -f 1 | grep -qw edd
-if ! $?; then
+if [ ! $? ]; then
     PGPASSWORD=$POSTGRES_PASSWORD psql -h postgres -U postgres template1 < /code/docker_services/postgres/init.sql
 fi
 
