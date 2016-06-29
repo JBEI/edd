@@ -1365,49 +1365,8 @@ var StudyD;
             //draw 1 line.
             //this.mainGraphObject.addNewSet(newSet);
         });
-        console.log(sortBarData(dataSets));
-        this.mainGraphObject.addNewSet(sortBarData(dataSets));
+        this.mainGraphObject.addNewSet(dataSets);
         //toggle between view
-        d3.select('#chart')
-            .on('click', function () {
-            d3.select('#bar').style('display', 'block');
-            d3.select('#container').style('display', 'none');
-            d3.select('#metrics').style('display', 'none');
-            d3.select('#single').style('display', 'none');
-            d3.select('#groupedAssay').style('display', 'none');
-        });
-        d3.select('#chart1')
-            .on('click', function () {
-            d3.select('#bar').style('display', 'none');
-            d3.select('#container').style('display', 'none');
-            d3.select('#metrics').style('display', 'block');
-            d3.select('#single').style('display', 'none');
-            d3.select('#groupedAssay').style('display', 'none');
-        });
-        d3.select('#chart2')
-            .on('click', function () {
-            d3.select('#bar').style('display', 'none');
-            d3.select('#container').style('display', 'block');
-            d3.select('#metrics').style('display', 'none');
-            d3.select('#single').style('display', 'none');
-            d3.select('#groupedAssay').style('display', 'none');
-        });
-        d3.select('#chart3')
-            .on('click', function () {
-            d3.select('#bar').style('display', 'none');
-            d3.select('#container').style('display', 'none');
-            d3.select('#metrics').style('display', 'none');
-            d3.select('#single').style('display', 'block');
-            d3.select('#groupedAssay').style('display', 'none');
-        });
-        d3.select('#chart4')
-            .on('click', function () {
-            d3.select('#bar').style('display', 'none');
-            d3.select('#container').style('display', 'none');
-            d3.select('#metrics').style('display', 'none');
-            d3.select('#single').style('display', 'none');
-            d3.select('#groupedAssay').style('display', 'block');
-        });
         //point to mainGraph div
         var data = EDDData; // main data
         var labels = names(data); // names of proteins..
@@ -1424,11 +1383,6 @@ var StudyD;
         var maxXvalue = xsorted[0];
         var size = objectSize(data.AssayMeasurements); // number of assays
         var arraySize = arrSize(data.AssayMeasurements); // number of data points
-        //         createLineGraph(barAssayObj, minValue, maxValue, labels, minXvalue, maxXvalue);
-        //         createAssayGraph(barAssayObj, minValue, maxValue, labels, size, arraySize);
-        //         createBarLineGraph(barAssayObj, minValue, maxValue, labels, size, arraySize);
-        //         createTimeGraph(barAssayObj, minValue, maxValue, minXvalue, maxXvalue, labels, size, arraySize);
-        //         createSideBySide(lineAssayObj, minValue, maxValue, labels, minXvalue, maxXvalue);
     }
     function clearAssayForm() {
         var form = $('#id_assay-assay_id').closest('.disclose');

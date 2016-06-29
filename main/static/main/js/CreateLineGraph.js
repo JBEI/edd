@@ -123,7 +123,7 @@ function createLineGraph(linedata, minValue, maxValue, labels, minXvalue, maxXva
         circles
             .enter()
             .append('svg:circle')
-            .attr('class', 'experiment')
+            .attr('class', 'dot')
             .attr('fill', 'grey')
             .attr('cx', function (d) {
                 return x(d["x"]);
@@ -135,11 +135,10 @@ function createLineGraph(linedata, minValue, maxValue, labels, minXvalue, maxXva
                 return 3;
             })
             .on("mouseover", function (d) {
-                circleLabel = label
                 div.transition()
                     .duration(200)
                     .style("opacity", .9);
-                div.html('<strong>' + circleLabel + '</strong>' + ": " + d.y + " " + d.y_unit)
+                div.html('<strong>' + d.name + '</strong>' + ": " + d.y + " " + d.y_unit)
                     .style("left", (d3.event.pageX) + "px")
                     .style("top", (d3.event.pageY - 30) + "px");
             })
@@ -149,7 +148,7 @@ function createLineGraph(linedata, minValue, maxValue, labels, minXvalue, maxXva
                     .style("opacity", 0);
             });
         }
-                 var legend = svg.selectAll(".legend")
+            var legend = svg.selectAll(".legend")
                   .data(data)
                   .enter().append("g")
                   .attr("class", "legend")
@@ -158,7 +157,7 @@ function createLineGraph(linedata, minValue, maxValue, labels, minXvalue, maxXva
                   });
 
                 legend.append("rect")
-                  .attr("x", width - 18)
+                  .attr("x", width + 5)
                   .attr("width", 18)
                   .attr("height", 18)
                   .style("fill", function (d) { // Add the colours dynamically
@@ -166,10 +165,10 @@ function createLineGraph(linedata, minValue, maxValue, labels, minXvalue, maxXva
                  })
 
                 legend.append("text")
-                  .attr("x", width - 24)
+                  .attr("x", width + 25)
                   .attr("y", 9)
                   .attr("dy", ".35em")
-                  .style("text-anchor", "end")
+                  .style("text-anchor", "start")
                   .text(function(d) {
                     return d.key;
                   })
