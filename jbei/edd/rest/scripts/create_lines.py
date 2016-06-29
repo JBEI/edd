@@ -406,8 +406,20 @@ def find_existing_strains(edd, ice_parts, existing_edd_strains, strains_by_part_
                           'registry_id %(uuid)s). Please see the EDD team to resolve the '
                           'discrepancy before continuing.' % {
                               'part_number': ice_part.part_id,
-                              'uuid': ice_part.record_id
+                              'uuid': ice_part.uuid
                           })
+                    print('%(total)d EDD strains were found with this UUID. The first '
+                          '%(first_page)d are displayed below:' % {
+                            'total': edd_strains.total_result_count,
+                            'first_page': len(edd_strains.results)})
+
+                    print('Name\tpk\tdescription')
+                    for edd_strain in edd_strains.results:
+                        print('"%(name)s"\t%(pk)d\t%(description)s' % {
+                            'name': edd_strain.name,
+                            'pk': edd_strain.pk,
+                            'description': edd_strain.description
+                        })
                     return False
 
                 existing_strain = edd_strains.results[0]
