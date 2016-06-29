@@ -155,6 +155,18 @@
       return x;
     }
     
+    function findAllXValues(xvalues) {
+        var fullxList = [];
+        xvalues.forEach(function(d) {
+            if (! _.contains(fullxList, d)) {
+                fullxList.push(d)
+            }
+        })
+        return fullxList.sort(function(a, b) {
+            return a - b;
+        })
+    }
+    
     /**
     * this function sorts an array of values in ascending order 
     **/

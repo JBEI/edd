@@ -5,7 +5,7 @@
 * this function takes in input min y value, max y value, and the sorted json object.
 *  outputs a grouped bar graph with values grouped by assay name
 **/
-function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize) {
+function createAssayGraph(assayMeasurements) {
 
      var margin = {top: 20, right: 40, bottom: 100, left: 40},
         width = 1000 - margin.left - margin.right,
@@ -51,7 +51,7 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
     var data = d3.nest()
         .key(function(d) { return d.label; })
         .key(function(d) {return d.x})
-        .entries(linedata);
+        .entries(assayMeasurements);
 
     function yValues(data3) {
         for (var i = 0; i < data3.length; i++) {
@@ -59,8 +59,6 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
             }
         return data3;
     }
-
-    var data2 = data.map(function(d) { return (d.values)})
     //["A", "B", "C"]
     function findValues(data) {
         for (var exp = 0; exp < data.length; exp++) {
@@ -73,7 +71,8 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
     }
 
     data = findValues(data);
-    console.log(data)
+    var data2 = data.map(function(d) { return (d.values)})
+
     //returns y0..
     var yvalueIds =  data[0].values[0].values.map(function(d) { return d.key})
     // returns x values
@@ -83,7 +82,7 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
     x_name.domain(proteinNames);
     x_xValue.domain(xValueLabels).rangeRoundBands([0, x_name.rangeBand()]);
     x_yId.domain(yvalueIds).rangeRoundBands([0, x_xValue.rangeBand()]);
-    y.domain([0, d3.max(linedata, function(d) { return d.y})]);
+    y.domain([0, d3.max(assayMeasurements, function(d) { return d.y})]);
 
     svg.append("g")
         .attr("class", "x axis")
@@ -189,4 +188,35 @@ function createAssayGraph(linedata, minValue, maxValue, labels, size, arraySize)
         .style("fill", function(d) {
             return color(d.key)
         })
+
+    var hover = categories_g.selectAll('.rect')
+        .on("mouseover", function() { tooltip.style("display", null); })
+        .on("mouseout", function() { tooltip.style("display", "none"); })
+        .on("mousemove", function(d) {
+            // var barPos = parseFloat(d3.select(this.parentNode).attr('transform').split("(")[1]);
+            // var xPosition = barPos + d3.mouse(this)[0] - 15;
+            // var yPosition = d3.mouse(this)[1] - 25;
+            // tooltip.attr("transform", "translate(" + xPosition + "," + yPosition + ")");
+            tooltip.select("text").html(d.y + " " + d.y_unit)
+          });
+
+
+
+        //tooltip
+    var tooltip = svg.append("g")
+      .attr("class", "tooltip")
+      .style("display", "none");
+
+    tooltip.append("rect")
+      .attr("width", 100)
+      .attr("height", 20)
+      .attr("fill", "white")
+      .style("opacity", 0.5);
+
+    tooltip.append("text")
+      .attr("x", 50)
+      .attr("dy", "1.2em")
+      .style("text-anchor", "middle")
+      .attr("font-size", "12px")
+      .attr("font-weight", "bold");
 }

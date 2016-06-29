@@ -1316,7 +1316,7 @@ var StudyD;
     }
     StudyD.queueMainGraphRemake = queueMainGraphRemake;
     function remakeMainGraphArea(force) {
-        var postFilteringMeasurements, dataPointsDisplayed = 0, dataPointsTotal = 0, separateAxes = $('#separateAxesCheckbox').prop('checked');
+        var postFilteringMeasurements, dataPointsDisplayed = 0, dataPointsTotal = 0;
         this.mainGraphRefreshTimerID = 0;
         if (!this.progressiveFilteringWidget.checkRedrawRequired(force)) {
             return;
@@ -1327,7 +1327,7 @@ var StudyD;
         var dataSets = [];
         postFilteringMeasurements = this.progressiveFilteringWidget.buildFilteredMeasurements();
         $.each(postFilteringMeasurements, function (i, measurementId) {
-            var measure = EDDData.AssayMeasurements[measurementId], mtype = EDDData.MeasurementTypes[measure.type], points = (measure.values ? measure.values.length : 0), assay, line, protocol, newSet;
+            var measure = EDDData.AssayMeasurements[measurementId], points = (measure.values ? measure.values.length : 0), assay, line, protocol;
             dataPointsTotal += points;
             if (dataPointsDisplayed > 15000) {
                 return; // Skip the rest if we've hit our limit
@@ -1338,19 +1338,9 @@ var StudyD;
             protocol = EDDData.Protocols[assay.pid] || {};
             var name = [line.name, protocol.name, assay.name].join('-');
             var singleAssayObj = transformSingleLineItem(EDDData, measure, name);
+            var yaxis = {};
             if (line.control)
                 singleAssayObj.iscontrol = 1;
-            if (separateAxes) {
-                // If the measurement is a metabolite, choose the axis by type. If it's any
-                // other subtype, choose the axis based on that subtype, with an offset to avoid
-                // colliding with the metabolite axes.
-                if (mtype.family === 'm') {
-                    singleAssayObj.yaxisByMeasurementTypeID = mtype.id;
-                }
-                else {
-                    singleAssayObj.yaxisByMeasurementTypeID = mtype.family;
-                }
-            }
             dataSets.push(singleAssayObj);
         });
         this.mainGraphObject.addNewSet(dataSets);

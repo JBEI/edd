@@ -14,6 +14,7 @@ declare var arrSize;
 declare var createSideBySide;
 declare var names;
 declare var transformSingleLineItem;
+declare var findAllXValues;
 
 StudyDGraphing = {
 
@@ -24,7 +25,8 @@ StudyDGraphing = {
 			this.graphDiv = $("#" + graphdiv);
 		} else {
 			this.graphDiv = $("#graphDiv");
-		}
+        }
+        // this.graphOptions.yaxes = [];
 	},
 
 	clearAllSets:function() {
@@ -80,6 +82,7 @@ StudyDGraphing = {
         var barAssayObj  = sortBarData(newSet);
         var yvals = yvalues(data.AssayMeasurements); //an array of y values
         var xvals = xvalues(data.AssayMeasurements);
+        var allXvals = findAllXValues(xvals);
         var ysorted = sortValues(yvals) ;
         var xsorted = sortValues(xvals);
         var minValue = ysorted[ysorted.length - 1];
@@ -90,7 +93,7 @@ StudyDGraphing = {
         var arraySize = arrSize(data.AssayMeasurements); // number of data points
 
 		 createLineGraph(barAssayObj, minValue, maxValue, labels, minXvalue, maxXvalue);
-		 createAssayGraph(barAssayObj, minValue, maxValue, labels, size, arraySize);
+		 createAssayGraph(barAssayObj);
 		 createBarLineGraph(barAssayObj, minValue, maxValue, labels, size, arraySize);
          createTimeGraph(barAssayObj, labels, size);
          createSideBySide(newSet, labels);
