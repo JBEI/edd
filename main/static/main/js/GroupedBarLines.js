@@ -32,7 +32,7 @@ function createBarLineGraph(linedata, minValue, maxValue, labels, size, arraySiz
         .range(thisColorRange);
 
       var x0 = d3.scale.ordinal()
-        .domain(d3.range(size)) //
+        .domain(d3.range(size))
         .rangeBands([0, width], .3, .3);
 
       var x1 = d3.scale.ordinal().domain(d3.range(arraySize))
