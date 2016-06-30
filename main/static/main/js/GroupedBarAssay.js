@@ -22,7 +22,7 @@ function createAssayGraph(assayMeasurements) {
 
       var y = d3.scale.linear()
         .range([height, 0]);
-
+    
       //grouped by name
       var groups_axis = d3.svg.axis()
         .scale(x_name)
@@ -49,15 +49,14 @@ function createAssayGraph(assayMeasurements) {
 
     //nest data by name. nest again by x label
     var data = d3.nest()
-        .key(function(d) { return d.label; })
+        .key(function(d) { return d.name; })
         .key(function(d) {return d.x})
         .entries(assayMeasurements);
 
     function yValues(data3) {
-        for (var i = 0; i < data3.length; i++) {
-                    data3[i].key = 'y' + i
-            }
-        return data3;
+        return _.map(data3, function(d, i) {
+            d.key = 'y' + i;
+        })
     }
     //["A", "B", "C"]
     function findValues(data) {
@@ -72,14 +71,18 @@ function createAssayGraph(assayMeasurements) {
 
     data = findValues(data);
     var data2 = data.map(function(d) { return (d.values)})
-
+    var proteinNames = data.map(function(d) { return d.key; });
+    
+    var names = _.map(proteinNames, function(d, i) {
+        return i;
+    })
     //returns y0..
     var yvalueIds =  data[0].values[0].values.map(function(d) { return d.key})
     // returns x values
     var xValueLabels = data2[0].map(function(d) { return (d.key)})
-    var proteinNames = data.map(function(d) { return d.key; });
 
-    x_name.domain(proteinNames);
+
+    x_name.domain(names);
     x_xValue.domain(xValueLabels).rangeRoundBands([0, x_name.rangeBand()]);
     x_yId.domain(yvalueIds).rangeRoundBands([0, x_xValue.rangeBand()]);
     y.domain([0, d3.max(assayMeasurements, function(d) { return d.y})]);
@@ -188,19 +191,22 @@ function createAssayGraph(assayMeasurements) {
         .style("fill", function(d) {
             return color(d.key)
         })
+        .style("opacity", 0.3)
 
-    var hover = categories_g.selectAll('.rect')
+    //
+    var hover = categories_g.selectAll('.value')
+        .data(function(d) {
+            return d.values// returns [{i:, x:, y:, ...}]
+        })
         .on("mouseover", function() { tooltip.style("display", null); })
         .on("mouseout", function() { tooltip.style("display", "none"); })
         .on("mousemove", function(d) {
-            // var barPos = parseFloat(d3.select(this.parentNode).attr('transform').split("(")[1]);
-            // var xPosition = barPos + d3.mouse(this)[0] - 15;
-            // var yPosition = d3.mouse(this)[1] - 25;
-            // tooltip.attr("transform", "translate(" + xPosition + "," + yPosition + ")");
+            var barPos = parseFloat(d3.select(this.parentNode).attr('transform').split("(")[1]);
+            var xPosition = barPos + d3.mouse(this)[0] - 15;
+            var yPosition = d3.mouse(this)[1] - 25;
+            tooltip.attr("transform", "translate(" + xPosition + "," + yPosition + ")");
             tooltip.select("text").html(d.y + " " + d.y_unit)
           });
-
-
 
         //tooltip
     var tooltip = svg.append("g")

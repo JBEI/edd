@@ -100,6 +100,14 @@ function createLineGraph(linedata, minValue, maxValue, labels, minXvalue, maxXva
             return d.i;
         })
         .entries(linedata);
+    
+    var proteinNames = d3.nest()
+        .key(function (d) {
+            return d.name;
+        })
+        .entries(linedata);
+    var names = proteinNames.map(function (d) {return d.key;})
+
 
     for (var k = 0; k < data.length; k++) {
         var color1 = color(data[k].key)
@@ -170,5 +178,9 @@ function createLineGraph(linedata, minValue, maxValue, labels, minXvalue, maxXva
                   .text(function(d) {
                     return d.key;
                   })
+        //hide legend for too many entries. 
+        if (names.length > 10) {
+            d3.selectAll(".legend").style("display", "none");
+        }   
     }
 }
