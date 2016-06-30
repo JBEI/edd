@@ -713,7 +713,7 @@ def create_lines(edd, ice, study_id, csv_summary, strains_by_part_number, line_m
     line_name = None
     ice_part_number = None
     line_index = 0
-    strain_content_width = 0
+    strain_col_width = 0
     skipped_some_strains = False
 
     line_creation_inputs = csv_summary.line_creation_inputs
@@ -735,7 +735,7 @@ def create_lines(edd, ice, study_id, csv_summary, strains_by_part_number, line_m
                 created_lines.append(None)
                 continue
 
-            strain_content_width = max([len(str(strain.pk)), strain_content_width])
+            strain_col_width = max([len(str(strain.pk)), strain_col_width])
 
             # create the line in EDD, or raise an Exception if creation can't occur
             line_name = line_creation_input.name
@@ -787,7 +787,7 @@ def create_lines(edd, ice, study_id, csv_summary, strains_by_part_number, line_m
         col_widths[desc_col_index] = (max([desc_content_width, len(col_labels[desc_col_index])]) +
                                       space)
         col_widths[strain_id_col_index] = max((len(col_labels[strain_id_col_index]),
-                                               strain_content_width)) + space
+                                               strain_col_width))
 
         # compute widths of metadata columns
         metadata_start_col = len(fixed_col_labels)
@@ -837,7 +837,7 @@ def create_lines(edd, ice, study_id, csv_summary, strains_by_part_number, line_m
             print(''.join([str(edd_pk).ljust(col_widths[pk_col_index]), created_line.name.ljust(
                     col_widths[name_col_index]),
                            description.ljust(col_widths[desc_col_index]), str(strain_id).ljust(
-                        col_widths[strain_id_col_index])] + spaced_metadata_values))
+                        strain_col_width)] + spaced_metadata_values))
 
         print(summary_msg)
         print('')
@@ -1187,7 +1187,7 @@ def main():
                                          'the inputs for creating a single line in an EDD study. '
                                          'The minimum required columns are "%(line_name_col)s" '
                                          'and "%(part_id_col)s", but optional support is also '
-                                         'provided for a "%(line_desc_col)s# column, as well as '
+                                         'provided for a "%(line_desc_col)s" column, as well as '
                                          'for any column whose name exactly matches line metadata '
                                          'defined in EDD\'s database.' % {
                                              'line_name_col': LINE_NAME_COL_LABEL,
@@ -1196,24 +1196,30 @@ def main():
         })
         parser.add_argument('file_name', help='The input file (must be a CSV file)')
 
-        parser.add_argument('-password', '-p', help='provide a password via the command '
-                                                    'line (helps with repeated use / testing)')
-        parser.add_argument('-username', '-u', help='provide username via the command line ('
-                                                    'helps with repeated use / testing)')
+        parser.add_argument('-password', '-p', help='Provide an EDD/ICE password via the command '
+                                                    'line (user is prompted otherwise) '
+                                                    'A convenience for repeated use / '
+                                                    'testing of this script.')
+        parser.add_argument('-username', '-u', help='Provide an EDD/ICE username via the command '
+                                                    'line (helps with repeated use / testing of '
+                                                    'this script)')
 
         silent_param = '-silent'
         parser.add_argument(silent_param, '-s', action='store_const', const=True,
-                            help='skip user prompts to verify CSV content and study write '
+                            help='Skip user prompts to verify CSV content and study write '
                                  'permissions. This option should only be used during testing of '
                                  'the script.')
-        parser.add_argument('-study', type=int, help='the number of the EDD study to create the new '
-                                                     'lines in'
-                            )
+        parser.add_argument('-study', type=int, help="The number of the EDD study to create the "
+                                                     "new lines in. The user is prompted if this "
+                                                     "isn't present. This option is primarily a "
+                                                     "convenience for testing the script.")
         parser.add_argument(copy_location_param, action='store_const', const=True,
                             help="Copy archival sample well locations from ICE to the "
                                  "newly-created EDD lines. This option should only be used when "
                                  "experimental plate/well locations exactly match those of the "
-                                 "archival samples (e.g. when processing the Keio collection). "
+                                 "archival samples (e.g. when processing samples from a well-"
+                                 "defined library that share the same plate layout as the archival "
+                                 "copies). "
                                  "Also note that this option won't work if there's more than one "
                                  "sample for each ICE entry used to create the EDD lines, or if " 
                                  "the provided pattern matches more than one plate/well "
@@ -1222,9 +1228,10 @@ def main():
                                  "using %s to limit the number of samples to one per ICE entry." %
                                  SAMPLE_LABEL_PATTERN_PARAM)
         parser.add_argument(SAMPLE_LABEL_PATTERN_PARAM,
-                            help='An optional regular expression used to narrow down which '
-                                 'archival sample well locations to copy to the experemental '
-                                 'lines created in EDD. Ignored when %s is missing.'
+                            help="An optional regular expression used to narrow down which "
+                                 "plates' archival sample well locations to copy to the "
+                                 "experimental lines created in EDD (in cases where there are "
+                                 "multiple archival plates). Ignored when %s is missing."
                                  % copy_location_param)
 
         args = parser.parse_args()
