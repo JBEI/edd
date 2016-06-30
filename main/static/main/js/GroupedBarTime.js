@@ -1,9 +1,9 @@
 ////// grouped bar chart based on time
-function createTimeGraph(linedata, labels, size) {
+function createTimeGraph(assayMeasurements, labels, size) {
 
     var numberOfLines = _.range(size);
-    
-    var margin = {top: 20, right: 40, bottom: 30, left: 40},
+
+    var margin = {top: 20, right: 120, bottom: 30, left: 40},
         width = 1000 - margin.left - margin.right,
         height = 270 - margin.top - margin.bottom;
 
@@ -13,6 +13,8 @@ function createTimeGraph(linedata, labels, size) {
         .rangeRoundBands([0, width], .1);
 
     var x1 = d3.scale.ordinal();
+    
+    var x2 = d3.scale.ordinal();
 
     var y = d3.scale.linear()
         .range([height, 0]);
@@ -27,9 +29,9 @@ function createTimeGraph(linedata, labels, size) {
         .tickFormat(d3.format(".2s"));
 
     var svg = d3.select("div#metrics").append("svg")
-        .attr("width", width + margin.left + margin.right)
-        .attr("height", height + margin.top + margin.bottom)
-        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+        .attr("preserveAspectRatio", "xMinYMin meet")
+        .attr("viewBox", "-30 -40 1100 280")
+        .classed("svg-content", true)
 
     /**
      *  This method transforms our data object into the following
@@ -39,24 +41,23 @@ function createTimeGraph(linedata, labels, size) {
     *  }
      *  ...
      **/
-    var proteinNames = d3.nest()
-        .key(function (d) {
-            return d.name;
-        })
-        .entries(linedata);
-
     var data = d3.nest()
         .key(function (d) {
             return d.x;
         })
-        .entries(linedata);
+        .entries(assayMeasurements);
 
-    x0.domain(data.map(function (d) {
-        return d.key;
-    }));
-    x1.domain(proteinNames.map(function (d) {
-        return d.key;
-    })).rangeRoundBands([0, x0.rangeBand()]);
+    //same as above but with protein names as keys
+    var proteinNames = d3.nest()
+        .key(function (d) {
+            return d.name;
+        })
+        .entries(assayMeasurements);
+    
+    var names = proteinNames.map(function (d) {return d.key;})
+
+    x0.domain(data.map(function (d) {return d.key;}));
+    x1.domain(proteinNames.map(function (d) {return d.key;})).rangeRoundBands([0, x0.rangeBand()]);
     y.domain([0, d3.max(data, function (d) {
         return d3.max(d.values, function (d) {
             return d.y;
@@ -102,7 +103,6 @@ function createTimeGraph(linedata, labels, size) {
             return "translate(" + x0(d.key) + ",0)";
         })
 
-    for (var i = 0; i < data.length; i++) {
 
         bar.selectAll("rect")
             .data(function (d) {
@@ -129,36 +129,44 @@ function createTimeGraph(linedata, labels, size) {
             .on("mouseout", function () {
                 tooltip.style("display", "none");
             })
-            .on("mousemove", function (d) {
+            .on("mousemove", function (d, i) {
                 var barPos = parseFloat(d3.select(this.parentNode).attr('transform').split("(")[1]);
                 var xPosition = barPos + d3.mouse(this)[0] - 15;
                 var yPosition = d3.mouse(this)[1] - 25;
                 tooltip.attr("transform", "translate(" + xPosition + "," + yPosition + ")");
-                tooltip.select("text").html(labels[d.i] + ": " + d.y + " " + d.y_unit)
+                tooltip.select("text").html(d.y + " " + d.y_unit)
             });
-    }
-    d3.select("body").append("div").attr("id", "v_scale").text("D3 Zoom Scale: ");
-    d3.select("#v_scale").append("span").attr("id", "v_scale_val");
      //legend
-     var legend = svg.selectAll(".legend")
-          .data(proteinNames)
-        .enter().append("g")
-          .attr("class", "legend")
-          .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
+      var legend = svg.selectAll(".legend")
+                  .data(proteinNames)
+                  .enter().append("g")
+                  .attr("class", "legend")
+                  .attr("transform", function(d, i) {
+                    return "translate(0," + i * 20 + ")";
+                  });
 
-      legend.append("rect")
-          .attr("x", width - 18)
-          .attr("width", 18)
-          .attr("height", 18)
-          .style("fill", color);
+                legend.append("rect")
+                  .attr("x", width + 5)
+                  .attr("width", 18)
+                  .attr("height", 18)
+                  .style("fill", function (d) { // Add the colours dynamically
+                    return data.color = color(d.key);
+                 })
 
-      legend.append("text")
-          .attr("x", width - 24)
-          .attr("y", 9)
-          .attr("dy", ".35em")
-          .style("text-anchor", "end")
-          .text(function(d) { return d.key; })
-    
+                legend.append("text")
+                  .attr("x", width + 25)
+                  .attr("y", 9)
+                  .attr("dy", ".35em")
+                  .style("text-anchor", "start")
+                  .text(function(d) {
+                    return d.key;
+                  })
+
+    //hide legend for too many entries.
+    if (names.length > 10) {
+            d3.selectAll(".legend").style("display", "none");
+    }
+
     //tooltip
     var tooltip = svg.append("g")
       .attr("class", "tooltip")

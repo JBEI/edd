@@ -3,7 +3,7 @@ var StudyDGraphing:any;
 declare var createLineGraph;
 declare var createAssayGraph;
 declare var createTimeGraph;
-declare var createBarLineGraph;
+declare var createBarTimeGraphByLine;
 declare var objectSize;
 declare var yvalues;
 declare var xvalues;
@@ -34,18 +34,9 @@ StudyDGraphing = {
 	},
 
 	addNewSet:function(newSet) {
-		
-		d3.select('#chart')
-              .on('click', function() {
-                      d3.select('#bar').style('display', 'block');
-                      d3.select('#container').style('display', 'none');
-                      d3.select('#metrics').style('display', 'none');
-                      d3.select('#single').style('display', 'none');
-                      d3.select('#groupedAssay').style('display', 'none');
-        });
+
         d3.select('#chart1')
               .on('click', function() {
-                      d3.select('#bar').style('display', 'none');
                       d3.select('#container').style('display', 'none');
                       d3.select('#metrics').style('display', 'block');
                       d3.select('#single').style('display', 'none');
@@ -54,7 +45,6 @@ StudyDGraphing = {
 
             d3.select('#chart2')
             .on('click', function() {
-                    d3.select('#bar').style('display', 'none');
                     d3.select('#container').style('display', 'block');
                     d3.select('#metrics').style('display', 'none');
                     d3.select('#single').style('display', 'none');
@@ -62,7 +52,6 @@ StudyDGraphing = {
         })
         d3.select('#chart3')
             .on('click', function() {
-                    d3.select('#bar').style('display', 'none');
                     d3.select('#container').style('display', 'none');
                     d3.select('#metrics').style('display', 'none');
                     d3.select('#single').style('display', 'block');
@@ -70,7 +59,6 @@ StudyDGraphing = {
         })
         d3.select('#chart4')
             .on('click', function() {
-                    d3.select('#bar').style('display', 'none');
                     d3.select('#container').style('display', 'none');
                     d3.select('#metrics').style('display', 'none');
                     d3.select('#single').style('display', 'none');
@@ -94,7 +82,6 @@ StudyDGraphing = {
 
 		 createLineGraph(barAssayObj, minValue, maxValue, labels, minXvalue, maxXvalue);
 		 createAssayGraph(barAssayObj);
-		 createBarLineGraph(barAssayObj, minValue, maxValue, labels, size, arraySize);
          createTimeGraph(barAssayObj, labels, size);
          createSideBySide(newSet, labels);
 		
