@@ -91,7 +91,7 @@ function createLineGraph(linedata, minValue, maxValue, labels, minXvalue, maxXva
             return y(d.y)
         });
 
-    //iterate through different arrays 
+    //iterate through different arrays. right now i is undefined.. not sure what is happening. 
     var data = d3.nest()
         .key(function (d) {
             return d.name;
@@ -104,8 +104,6 @@ function createLineGraph(linedata, minValue, maxValue, labels, minXvalue, maxXva
     for (var k = 0; k < data.length; k++) {
         var color1 = color(data[k].key)
         //label name coincides with same color
-        var label = data[k].key;
-
         //lines
         for (var j = 0; j < data[k].values.length; j++) {
             var line = svg.append('path')
@@ -172,20 +170,5 @@ function createLineGraph(linedata, minValue, maxValue, labels, minXvalue, maxXva
                   .text(function(d) {
                     return d.key;
                   })
-                  // .on("click", function(d, i) {
-                  //   var id = d.key.split(' ').join('_')
-                  //   d3.selectAll('.experiment').style("opacity", function() {
-                  //       return this.id == id ? 1 : 0
-                  //   });
-                    // var circleId = ("circle" + d.key).split(' ').join('_')
-                    //
-                    //   d3.selectAll('.dot').style("opacity", function() {
-                    //     return this.circleId == circleId ? 1 : 0
-                    // });
-                  // })
-                  // .on("mouseout", function(d, i) {
-                  //   d3.selectAll("#"+d.key.split(' ').join('_')).style("stroke", "white");
-                  // });
-
     }
 }
