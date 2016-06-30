@@ -57,7 +57,7 @@ function createTimeGraph(assayMeasurements, labels, size) {
     var names = proteinNames.map(function (d) {return d.key;})
 
     x0.domain(data.map(function (d) {return d.key;}));
-    x1.domain(proteinNames.map(function (d) {return d.key;})).rangeRoundBands([0, x0.rangeBand()]);
+    x1.domain(names).rangeRoundBands([0, x0.rangeBand()]);
     y.domain([0, d3.max(data, function (d) {
         return d3.max(d.values, function (d) {
             return d.y;
