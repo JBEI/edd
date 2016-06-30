@@ -8,6 +8,7 @@
 function createBarLineGraph(linedata, minValue, maxValue, labels, size, arraySize) {
 
      arraySize = arraySize.pop();
+     var numberOfLines = _.range(size);
 
      var margin = {top: 20, right: 40, bottom: 30, left: 40},
         width = 1000 - margin.left - margin.right,
@@ -32,10 +33,10 @@ function createBarLineGraph(linedata, minValue, maxValue, labels, size, arraySiz
         .range(thisColorRange);
 
       var x0 = d3.scale.ordinal()
-        .domain(d3.range(size))
+        .domain(d3.range(arraySize))
         .rangeBands([0, width], .3, .3);
 
-      var x1 = d3.scale.ordinal().domain(d3.range(arraySize))
+      var x1 = d3.scale.ordinal().domain(d3.range(size))
           .rangeBands([0, x0.rangeBand()]);
 
       var y = d3.scale.linear()
@@ -58,13 +59,8 @@ function createBarLineGraph(linedata, minValue, maxValue, labels, size, arraySiz
 
       //nest data
     var data = d3.nest()
-        .key(function(d) { return d.i; })
+        .key(function(d, i) { return numberOfLines[i]; })
         .entries(linedata);
-
-    color.domain(data.filter(function(key) { // Set the domain of the color ordinal
-        // scale to be all the csv headers except "i", matching a color to an issue
-        return (key == "i");
-    }));
 
     y.domain([0, d3.max(data, function(d) { return d3.max(d.values, function(d) { return d.y; }); })]);
 
@@ -122,7 +118,7 @@ function createBarLineGraph(linedata, minValue, maxValue, labels, size, arraySiz
             var xPosition = barPos + d3.mouse(this)[0] - 15;
             var yPosition = d3.mouse(this)[1] - 25;
             tooltip.attr("transform", "translate(" + xPosition + "," + yPosition + ")");
-            tooltip.select("text").text(labels[d.i] + ": " + d.y + " " + d.y_unit);
+            tooltip.select("text").text(labels[d.key] + ": " + d.y + " " + d.y_unit);
           });
 
 
