@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+from __future__ import division
 
 ####################################################################################################
 # set default source for ICE settings BEFORE importing any code from jbei.ice.rest.ice. Otherwise,
@@ -7,10 +8,11 @@ from __future__ import unicode_literals
 import os
 import arrow
 import requests
+from django.utils.translation import ugettext
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 from jbei.edd.rest.constants import METADATA_CONTEXT_LINE
-from jbei.utils import to_human_relevant_delta, UserInputTimer, session_login
+from jbei.utils import to_human_relevant_delta, UserInputTimer, session_login, TerminalFormats
 
 os.environ.setdefault('ICE_SETTINGS_MODULE', 'jbei.edd.rest.scripts.settings')
 ####################################################################################################
@@ -67,9 +69,13 @@ MAX_EXCEL_COLS = 16384  # max number of columns supported by the Excel format ()
 SEPARATOR_CHARS = 75
 OUTPUT_SEPARATOR = ('*' * SEPARATOR_CHARS)
 
+LINE_NAME_COL_LABEL = 'Line Name'
+LINE_DESCRIPTION_COL_LABEL = 'Line Description'
+PART_ID_COL_LABEL = 'Part ID'
 PART_NUMBER_REGEX = r'\s*([A-Z]+_[A-Z]?\d{4,6}[A-Z]?)\s*'  # tested against all strains in ICE!
                                                            # 3/31/16
 PART_NUMBER_PATTERN = re.compile(PART_NUMBER_REGEX, re.IGNORECASE)
+
 
 class LineCreationInput:
     """
@@ -78,11 +84,11 @@ class LineCreationInput:
     line's strain up in ICE. This approach should work because this script will only be used on
     JBEI's local EDD and ICE instances.
     """
-    def __init__(self, local_ice_part_number, name, description=None):
+    def __init__(self, local_ice_part_number, name, description=None, metadata={}):
         self.local_ice_part_number = local_ice_part_number
         self.name = name
         self.description = description
-        self.metadata = {}
+        self.metadata = metadata
 
 
 class CsvSummary:
@@ -90,17 +96,17 @@ class CsvSummary:
     Defines the set of line creation inputs read from CSV file, as well as some other helpful
     context that may help catch parsing or data entry errors.
     """
-    def __init__(self, line_generation_inputs, unique_part_numbers, unmatched_non_blank_cell_count,
-                 blank_cell_count,
-                 total_rows):
+    def __init__(self, line_generation_inputs, unique_part_numbers, unmatched_data_row_count,
+                 blank_cell_count, total_rows, metadata_columns):
         self.line_creation_inputs = line_generation_inputs
         self.unique_part_numbers = unique_part_numbers
-        self.unmatched_cell_count = unmatched_non_blank_cell_count
+        self.unmatched_data_row_count = unmatched_data_row_count
         self.blank_cell_count = blank_cell_count
         self.total_rows = total_rows
+        self.metadata_columns = metadata_columns
 
 
-def parse_csv(path):
+def parse_csv(path, line_metadata_types):
     """
     Parses a comma-separated values (CSV) file to extract ICE part numbers and other EDD line
     creation inputs. Also generates helpful output regarding areas of the file where parsing
@@ -110,11 +116,13 @@ def parse_csv(path):
     as well as counts of cells that were skipped during the parsing process.
     """
     col_index = 0
-    row_number = 1
+    row_number = 0
 
     part_number_col = None
     line_name_col = None
     line_desc_col = None
+    # keep order read from file for convenient print output from the script
+    line_metadata_cols = collections.OrderedDict()
 
     # open the CSV file and read its contents
     with open(path, 'rU') as csv_file:
@@ -123,24 +131,25 @@ def parse_csv(path):
         # loop over rows in the CSV, growing a list of ICE part numbers found in each row
         line_creation_inputs = []
         blank_cell_count = 0
-        unmatched_cell_count = 0
+        unmatched_data_row_count = 0
         unique_part_numbers_dict = collections.OrderedDict()
 
-        line_name_col_label_regex = r'\s*Line Name\s*'
+        line_name_col_label_regex = r'\s*%s\s*' % LINE_NAME_COL_LABEL
         line_name_col_pattern = re.compile(line_name_col_label_regex, re.IGNORECASE)
-        line_desc_col_label_regex = r'\s*Line Description\s*'
+        line_desc_col_label_regex = r'\s*%s\s*' % LINE_DESCRIPTION_COL_LABEL
         line_desc_col_label_pattern = re.compile(line_desc_col_label_regex, re.IGNORECASE)
 
-        part_number_col_label_pattern = re.compile(r'\s*Part ID\s*', re.IGNORECASE)
+        part_number_col_label_pattern = re.compile(r'\s*%s\s*' % PART_ID_COL_LABEL, re.IGNORECASE)
 
         found_col_labels = False
 
-        for cols_list in csv_row_reader:
+        for row_number, cols_list in enumerate(csv_row_reader):
 
             # identify columns of interest first by looking for required labels
             if not found_col_labels:
 
-                # loop over columns, looking for labels that identify the columns we want
+                # loop over columns in the first row, looking for labels that identify the columns
+                # of interest to us
                 for col_index in range(len(cols_list)):
                     cell_content = cols_list[col_index].strip()
                     # print a warning message and skip this row if the cell has no non-whitespace
@@ -156,20 +165,27 @@ def parse_csv(path):
                         line_name_col = col_index
                     elif line_desc_col_label_pattern.match(cell_content):
                         line_desc_col = col_index
+                    else:
+                        upper_content = cell_content.upper()
+                        for metadata_type_name in line_metadata_types.keys():
+                            if upper_content == metadata_type_name.upper():
+                                line_metadata_cols[col_index] = metadata_type_name
+                                # print('Found metadata column %s in col %d' % (metadata_type_name,
+                                #                                               col_index+1))
 
-                    # stop looking if all columns are found, or if only the required columns are
-                    # found, but we've reached the end of the row
-                    if (part_number_col is not None) and (line_name_col is not None) and \
-                       ((line_desc_col is not None) or (col_index == len(cols_list)-1)):
-                        found_col_labels = True
-                        break
-
-                if(not found_col_labels) and ((part_number_col is None) or (line_name_col is None)):
-                    logger.debug('Couldn\'t find the minimum required column labels ("%s", '
-                                 '%s) in row  %d. Skipping this row.')
+                found_col_labels = ((part_number_col is not None) and (line_name_col is not None))
+                if not found_col_labels:
+                    logger.debug('Couldn\'t find the minimum required column labels '
+                                 '("%(line_name)s", %(part_number)s) in row %(row)d. Skipping this '
+                                 'row.' % {
+                                     'line_name': LINE_NAME_COL_LABEL,
+                                     'part_number': PART_ID_COL_LABEL,
+                                     'row': row_number
+                    })
                     part_number_col = None
                     line_name_col = None
                     line_desc_col = None
+                    line_metadata_cols = {}
 
                     continue
 
@@ -178,6 +194,7 @@ def parse_csv(path):
                 part_number = None
                 line_name = None
                 line_desc = None
+                metadata = {}
 
                 ###################################################
                 # part number
@@ -191,15 +208,15 @@ def parse_csv(path):
 
                 # print a separate warning message
                 else:
-                    logger.warning('Cell content "%(content)s"in row %(row)d, column %(col)d '
-                                   'didn\'t match the expected ICE part number pattern. Skipping '
-                                   'this row.' %
+                    logger.warning('Cell content "%(content)s" in row %(row)d, column %(col)d '
+                                   "didn't match the expected ICE part number pattern. Skipping "
+                                   "this row." %
                                    {
                                        'content': cell_content,
                                        'row': row_number,
                                        'col': col_index+1,
                                    })
-                    unmatched_cell_count += 1
+                    unmatched_data_row_count += 1
                     continue
 
                 ###################################################
@@ -219,7 +236,7 @@ def parse_csv(path):
                                        'row': row_number,
                                        'col': col_index+1,
                                    })
-                    unmatched_cell_count += 1
+                    unmatched_data_row_count += 1
                     continue
 
                 ###################################################
@@ -232,18 +249,26 @@ def parse_csv(path):
                     if cell_content:
                         line_desc = cell_content
 
-                unique_part_numbers_dict[part_number] = True
-                line_creation_inputs.append(LineCreationInput(part_number, line_name, line_desc))
+                ###################################################
+                # line metadata
+                ###################################################
+                if line_metadata_cols:
+                    for col_index, metadata_type_name in line_metadata_cols.items():
+                        cell_content = cols_list[col_index].strip()
+                        line_metadata_pk = line_metadata_types[metadata_type_name].pk
+                        metadata[line_metadata_pk] = cell_content
 
-            row_number += 1
+                unique_part_numbers_dict[part_number] = True
+                line_creation_inputs.append(LineCreationInput(part_number, line_name, line_desc,
+                                                              metadata))
 
     if not found_col_labels:
         print("The minimum set of required column labels wasn't found in this CSV file. Required "
               "column labels are ['Part ID', 'Line Name']. A 'Line Description' column is "
               "optional.")
     unique_part_numbers_list = unique_part_numbers_dict.keys()
-    return CsvSummary(line_creation_inputs, unique_part_numbers_list, unmatched_cell_count,
-                      blank_cell_count, row_number)
+    return CsvSummary(line_creation_inputs, unique_part_numbers_list, unmatched_data_row_count,
+                      blank_cell_count, row_number, line_metadata_cols)
 
 
 def replace_newlines(str):
@@ -351,11 +376,11 @@ def get_ice_entries(ice, part_numbers_list, print_search_comparison=False):
     if found_parts_count != csv_part_number_count:
         print('')
 
-    print ('Found %(found)d of %(total)d parts in ICE.' %
-           {
-               'found': found_parts_count,
-               'total': csv_part_number_count,
-           })
+    print('Found %(found)d of %(total)d parts in ICE.' %
+          {
+              'found': found_parts_count,
+              'total': csv_part_number_count,
+          })
 
     # enforce the restriction that only ICE Strains may be used to create EDD lines. Plasmids
     #  / Parts should cause the script to abort
@@ -375,6 +400,12 @@ def get_ice_entries(ice, part_numbers_list, print_search_comparison=False):
 
     if print_search_comparison:
         print_found_ice_parts(part_number_to_part_dict)
+
+    print('')
+    print('Found %(found)d of %(total)d parts in ICE. See found part summary and/or '
+          'related warnings above' % {
+        'found': found_parts_count, 'total': csv_part_number_count,
+    })
 
     return part_number_to_part_dict
 
@@ -396,7 +427,8 @@ def find_existing_strains(edd, ice_parts, existing_edd_strains, strains_by_part_
     """
     for ice_part in ice_parts.values():
 
-            # search for the strain by registry ID. Note we use search instead of .get() until
+            # search for the strain by registry ID. Note we use search instead of .get() until the
+            # database enforces uniqueness constrains for UUID (EDD-158)
             edd_strains = edd.search_strains(registry_id=ice_part.uuid)
 
             # if one or more strains are found with this UUID
@@ -456,7 +488,7 @@ def find_existing_strains(edd, ice_parts, existing_edd_strains, strains_by_part_
                 edd_strains = edd.search_strains(name=ice_part.name)
 
                 if edd_strains:
-                    print('Found %(strain_count)d EDD strains that lacked proper identification, '
+                    print('Found %(strain_count)d EDD strain(s) that lacked proper identification, '
                           'but whose name(s) contained the name of ICE entry %(part_number)s '
                           '("%(part_name)s"). Please contact the EDD team to correct this issue '
                           'before you proceed.' % {
@@ -664,7 +696,7 @@ def get_archival_well_location(ice, ice_entry, sample_label_pattern):
     return found_locations
 
 
-def create_lines(edd, ice, study_id, csv_summary, strains_by_part_number):
+def create_lines(edd, ice, study_id, csv_summary, strains_by_part_number, line_metadata_types):
     """
     Creates lines in an EDD study, then prints summary output
     :param ice: an authenticated instance of IceApi
@@ -681,12 +713,16 @@ def create_lines(edd, ice, study_id, csv_summary, strains_by_part_number):
     line_name = None
     ice_part_number = None
     line_index = 0
-    strain_col_width = 0
+    strain_content_width = 0
     skipped_some_strains = False
 
+    line_creation_inputs = csv_summary.line_creation_inputs
+
     try:
-        # loop over lines, attempting to create them in EDD
-        for line_creation_input in csv_summary.line_creation_inputs:
+        ############################################################################################
+        # loop over inputs attempting to create lines in EDD
+        ############################################################################################
+        for line_creation_input in line_creation_inputs:
             ice_part_number = line_creation_input.local_ice_part_number
             strain = strains_by_part_number.get(ice_part_number)
 
@@ -699,7 +735,7 @@ def create_lines(edd, ice, study_id, csv_summary, strains_by_part_number):
                 created_lines.append(None)
                 continue
 
-            strain_col_width = max([len(str(strain.pk)), strain_col_width])
+            strain_content_width = max([len(str(strain.pk)), strain_content_width])
 
             # create the line in EDD, or raise an Exception if creation can't occur
             line_name = line_creation_input.name
@@ -712,34 +748,73 @@ def create_lines(edd, ice, study_id, csv_summary, strains_by_part_number):
             created_lines.append(line)
             line_index += 1
 
+        summary_msg = None
         if skipped_some_strains:
-            print ('')
-        print('All %d lines were created in EDD. BAM!' % created_line_count)
+            summary_msg = ("Created %(created)d of %(planned)d lines in EDD. See above for a "
+                           "summary of lines that couldn't be created because the matching part "
+                           "numbers weren't found in ICE" % {
+                                'created': created_line_count,
+                                'planned': len(csv_summary.line_creation_inputs)})
+        else:
+            summary_msg = 'All %d lines were created in EDD. BAM!' % created_line_count
+
+        print(summary_msg)
         print('')
 
+        ############################################################################################
         # determine sizing for columnar summary output
-        col1_lbl = 'EDD ID'
-        col2_lbl = 'Name:'
-        col3_lbl = 'Description:'
-        col4_lbl = 'Strain ID:'
+        ############################################################################################
 
+        metadata_col_labels = csv_summary.metadata_columns.values()
+        fixed_col_labels = ['EDD PK', 'Name:', 'Description:', 'Strain ID:']
+        col_labels = fixed_col_labels + metadata_col_labels
+
+        pk_col_index = 0
+        name_col_index = 1
+        desc_col_index = 2
+        strain_id_col_index = 3
+
+        # compute widths of hard-coded columns
         space = 3
-        col1_width = len(col1_lbl) + space
-        col2_width = max([len(csv_line.name) for csv_line in csv_summary.line_creation_inputs]) + \
-                     space
-        col3_width = max(
-            [len(line2.description) if line2.description else 0 for line2 in
-             csv_summary.line_creation_inputs]) + space
+        col_widths = [0] * len(col_labels)  # initialize to the correct size
+        col_widths[pk_col_index] = len(col_labels[pk_col_index]) + space
+        col_widths[name_col_index] = (max([len(csv_line.name) for csv_line in
+                                      line_creation_inputs] + [len(col_labels[name_col_index])]) +
+                                      space)
+        desc_content_width = max( [len(line2.description) if line2.description else 0 for line2 in
+             csv_summary.line_creation_inputs])
 
-        col3_width = max([col3_width, len(col3_lbl) + space])
+        col_widths[desc_col_index] = (max([desc_content_width, len(col_labels[desc_col_index])]) +
+                                      space)
+        col_widths[strain_id_col_index] = max((len(col_labels[strain_id_col_index]),
+                                               strain_content_width)) + space
 
+        # compute widths of metadata columns
+        metadata_start_col = len(fixed_col_labels)
+        for index, metadata_col_label in enumerate(metadata_col_labels):
+            metadata_pk = line_metadata_types[metadata_col_label].pk
+            max_value_width = max([len(line_creation_input.metadata[metadata_pk]) for
+                                   line_creation_input in line_creation_inputs])
+            col_width = max((max_value_width, len(metadata_col_label))) + space
+            col_widths[index+metadata_start_col] = col_width
+
+        print('Col widths: %s' % col_widths)
+
+        ############################################################################################
         # print column headers
-        print(''.join(
-            [col1_lbl.ljust(col1_width), col2_lbl.ljust(col2_width), col3_lbl.ljust(col3_width),
-             col4_lbl.ljust(strain_col_width)]))
+        ############################################################################################
+        print(''.join([label.ljust(col_widths[index]) for index, label in enumerate(col_labels)]))
 
+        ############################################################################################
         # print created lines, also reiterating inputs for any lines that weren't created because
         # the associated ICE entries couldn't be found
+        ############################################################################################
+        # get a list of metadata_type primary keys in the same order the related metadata
+        # columns were read from the CSV column headers. Makes for better output that can be
+        # compared directly to the spreadsheet
+        ordered_metadata_pks = [line_metadata_types[metadata_type_name].pk for metadata_type_name in
+                                csv_summary.metadata_columns.values()]
+
         for line_index, line_creation_input in enumerate(csv_summary.line_creation_inputs):
             ice_part_number = line_creation_input.local_ice_part_number
             strain = strains_by_part_number.get(ice_part_number)
@@ -752,10 +827,20 @@ def create_lines(edd, ice, study_id, csv_summary, strains_by_part_number):
             if not created_line:
                 continue
 
-            edd_id = created_line.pk if created_line else '*****'
+            edd_pk = created_line.pk if created_line else '*****'
             description = created_line.description if created_line.description else ' '
-            print(''.join([str(edd_id).ljust(col1_width), created_line.name.ljust(col2_width),
-                           description.ljust(col3_width), str(strain_id).ljust(strain_col_width)]))
+            ordered_metadata_values = [line_creation_input.metadata[pk] for pk in
+                                       ordered_metadata_pks]
+            spaced_metadata_values = [meta_value.ljust(col_widths[metadata_start_col + idx]) for
+                                      idx, meta_value in enumerate(ordered_metadata_values)]
+
+            print(''.join([str(edd_pk).ljust(col_widths[pk_col_index]), created_line.name.ljust(
+                    col_widths[name_col_index]),
+                           description.ljust(col_widths[desc_col_index]), str(strain_id).ljust(
+                        col_widths[strain_id_col_index])] + spaced_metadata_values))
+
+        print(summary_msg)
+        print('')
 
     except Exception:
         line_creation_input_count = len(csv_summary.line_creation_inputs)
@@ -809,14 +894,25 @@ def print_edd_strains(existing_edd_strains, non_existent_edd_strains):
     col4_width += space
     col5_width += space
 
+    search_summary_msg = None
+    print('')
     if not non_existent_edd_strains:
-        print('Found all %d ICE entries already defined as strains in EDD' % len(
-            existing_edd_strains))
+        search_summary_msg = 'Found all %d ICE entries already defined as strains in EDD' % len(
+            existing_edd_strains)
+        print('%s:' % search_summary_msg)
     else:
         found_strains = len(existing_edd_strains)
         total_strains = found_strains + len(non_existent_edd_strains)
-        print('Found %d of %d ICE entries defined as strains in EDD' % (found_strains,
-                                                                       total_strains))
+
+        search_summary_msg = ("Found %(found)d of %(total)d ICE entries defined as strains in "
+                              "EDD. See output above for %(not_found)d entries that weren't "
+                              "found." % {
+                                'found': found_strains,
+                                'total': total_strains,
+                                'not_found': (total_strains - found_strains)})
+        print(search_summary_msg)
+        print('')
+        print('Found strains:')
 
     # print column labels
     print(''.join([col1_lbl.ljust(col1_width), col2_lbl.ljust(col2_width), col3_lbl.ljust(
@@ -830,6 +926,10 @@ def print_edd_strains(existing_edd_strains, non_existent_edd_strains):
                        strain.registry_url.ljust(col3_width),
                        str(strain.registry_id).ljust(col4_width),
                        strain.description.ljust(col5_width)]))
+
+    print('--End of ICE entries found already defined as EDD strains--')
+    print('')
+    print(search_summary_msg)
 
 
 class Performance(object):
@@ -1040,27 +1140,27 @@ WELL_LOCATION_METADATA_NAME = 'Sample Position'
 PLATE_LOCATION_METADATA_NAME = 'Plate Name'
 
 
-def get_line_metadata_types(edd, metadata_dict):
+def get_line_metadata_types(edd):
     """
-    Queries EDD to get the metadata types associated with keys in the
-    dictionary parameter
+    Queries EDD to get the definitions of all line-specific metadata types
     :param edd: an authenticated instance of EddApi
-    :param metadata_dict: a dictionary with metadata type names as keys. Values will be replaced
-    with MetadataTypes returned by EDD.
-    :return: a dictionary of found metadata types, or None in cases where the search didn't yield
-    a result
+    :return metadata_dict: a dictionary with metadata type names as keys. Values will be MetadataTypes returned by EDD.
     """
 
-    for metadata_name in metadata_dict.keys():
-        search_results = edd.search_metadata_types(context=METADATA_CONTEXT_LINE,
-                                                   local_name_regex='^%s$' % metadata_name,
-                                                   locale=DEFAULT_LOCALE)
+    metadata_dict = {}
+    first_request = True
+    next_page_url = None
+    while first_request or next_page_url:
+        first_request = False
 
-        if (not search_results) or search_results.total_result_count > 1:
-            logger.error(''''The string "%s" doesn't uniquely identify a line metadata type.'''
-                         'Unable to create lines with this metadata' % metadata_name)
-        else:
-            metadata_dict[metadata_name] = search_results.results[0]
+        search_results = edd.search_metadata_types(context=METADATA_CONTEXT_LINE, )
+
+        for metadata_type in search_results.results:
+            metadata_dict[metadata_type.type_name] = metadata_type
+
+        next_page_url = search_results.next_page
+
+    return metadata_dict
 
 SAMPLE_LABEL_PATTERN_PARAM = '-sample_label_pattern'
 
@@ -1070,7 +1170,7 @@ def main():
     zero_time_delta = now - now
     performance = Performance(arrow.utcnow())
 
-    user_input = UserInputTimer()
+    input_timer = UserInputTimer(default_format=TerminalFormats.OKGREEN)
     edd = None
     ice = None
 
@@ -1081,9 +1181,20 @@ def main():
         ############################################################################################
         # Configure command line parameters
         ############################################################################################
-        parser = argparse.ArgumentParser(description='Create EDD lines/strains from a list of ICE '
-                                                     'entries')
-        parser.add_argument('file_name', help='A CSV file containing strains exported from ICE')
+        parser = argparse.ArgumentParser(description='Creates EDD lines/strains with input from a '
+                                         'CSV file. \n\nWith the exception of the first column '
+                                         'header row, each subsequent row in the file represents '
+                                         'the inputs for creating a single line in an EDD study. '
+                                         'The minimum required columns are "%(line_name_col)s" '
+                                         'and "%(part_id_col)s", but optional support is also '
+                                         'provided for a "%(line_desc_col)s# column, as well as '
+                                         'for any column whose name exactly matches line metadata '
+                                         'defined in EDD\'s database.' % {
+                                             'line_name_col': LINE_NAME_COL_LABEL,
+                                             'part_id_col': PART_ID_COL_LABEL,
+                                             'line_desc_col': LINE_DESCRIPTION_COL_LABEL,
+        })
+        parser.add_argument('file_name', help='The input file (must be a CSV file)')
 
         parser.add_argument('-password', '-p', help='provide a password via the command '
                                                     'line (helps with repeated use / testing)')
@@ -1164,36 +1275,19 @@ def main():
                                                             else None)
 
         ############################################################################################
-        # Read in part numbers from the CSV
+        # Prompt user to verify we've targeted the correct EDD / ICE instances.
+        # Related configuration data gets changed a lot during development / testing, and we don't
+        # want to accidentally apply data changes from a test to production, or waste time making
+        # changes in the wrong environment.
         ############################################################################################
-        print('Reading CSV file...')
-        print(OUTPUT_SEPARATOR)
-        csv_parse_start_time = arrow.utcnow()
-        csv_summary = parse_csv(args.file_name)
-        performance.csv_parse_delta = arrow.utcnow() - csv_parse_start_time
-        csv_line_creation_count = len(csv_summary.line_creation_inputs)
-        csv_unique_part_numbers = csv_summary.unique_part_numbers
-        csv_part_number_count = len(csv_unique_part_numbers)
-
-        print('Done reading file %s:' % os.path.basename(args.file_name))
-        print('\tUnique ICE part numbers read: %d ' % len(csv_unique_part_numbers))
-        print('\tLine creation inputs read: %d ' % csv_line_creation_count)
-        print('\tTotal rows in file: %d' % csv_summary.total_rows)
-
-        if not csv_line_creation_count:
-            print('Aborting line creation. No lines to create!')
+        print('')
+        print("Please verify the inputs above, particularly the EDD and ICE URL's! It's vital to "
+              "target line creation to the correct EDD / ICE instances.")
+        result = input_timer.user_input('Are the inputs listed above correct? (Y/n): ').upper()
+        if not (('Y' == result) or ('YES' == result)):
+            print('Line creation aborted. Please fix inputs and re-run this script.')
             return 0
 
-        if not args.silent:
-            # force user to verify the expected # of lines in the study
-            result = user_input.user_input('Do these totals make sense [Y/n]: ').upper()
-            if ('Y' != result) and ('YES' != result):
-                print('Aborting line creation. Please verify that your CSV file has the correct '
-                      'content before proceeding with this tool.')
-                return 0
-        else:
-            print('User confirmation of study write permissions and line creation totals was '
-                  'silenced via %s' % silent_param)
 
         ############################################################################################
         # Gather user credentials and verify by logging into EDD, then
@@ -1216,15 +1310,15 @@ def main():
         workaround_request_timeout = 20
         performance.edd_login_delta = zero_time_delta
         login_start_time = arrow.utcnow()
-        prior_user_input_delta = user_input.wait_time
+        prior_user_input_delta = input_timer.wait_time
         edd_login_details = session_login(EddSessionAuth, EDD_URL, login_application,
                                           username_arg=args.username, password_arg=args.password,
-                                          user_input=user_input, print_result=True,
+                                          user_input=input_timer, print_result=True,
                                           timeout=workaround_request_timeout,
                                           verify_ssl_cert=verify_edd_ssl_cert)
         edd_session_auth = edd_login_details.session_auth
         performance.edd_login_delta = (arrow.utcnow() - login_start_time) + \
-                                      (user_input.wait_time - prior_user_input_delta)
+                                      (input_timer.wait_time - prior_user_input_delta)
 
         with edd_session_auth:
 
@@ -1238,7 +1332,7 @@ def main():
             ice_login_details = session_login(IceSessionAuth, ICE_URL, 'ICE',
                                           username_arg=edd_login_details.username,
                                           password_arg=edd_login_details.password,
-                                          user_input=user_input, print_result=True,
+                                          user_input=input_timer, print_result=True,
                                           verify_ssl_cert=verify_ice_ssl_cert)
 
             ice_session_auth = ice_login_details.session_auth
@@ -1255,32 +1349,96 @@ def main():
                 # present, we've hard-coded known JBEI values for the -copy-sample-locations
                 # parameter, but in the future we'll probably allow for arbitrary metadata
                 # additions based on CSV input. Note: we should do this early to detect input errors
-                line_metadata_types = {}
+                # Python 2/3 cross-compatible print *without* a line break
+
+                sys.stdout.write('Querying EDD for line metatadata types...')
+                line_metadata_types = get_line_metadata_types(edd)
+                print('done')
                 has_required_metadata_types = False
-                if args.copy_archival_well_locations:
-                    # Python 2/3 cross-compatible print *without* a line break
-                    sys.stdout.write('Querying EDD to verify requested metatadata types...')
-                    line_metadata_types[PLATE_LOCATION_METADATA_NAME] = None
-                    line_metadata_types[WELL_LOCATION_METADATA_NAME] = None
-                    get_line_metadata_types(edd, line_metadata_types)
-                    print('done')
+                if not line_metadata_types:
+                    print('No line metadata types were found in EDD. As a result, no metadata can '
+                          'be copied to the lines created by this script, including archival '
+                          'plate/well locations.')
+                    result = input_timer.user_input('Do you want to continue and create lines '
+                                                    'without any metadata? (Y/n): ')
+                    if 'Y' != result and 'YES' != result:
+                        return 0
+                else:
+                    print('Found %(count)d line metadata types: \n\t%(type_names)s' % {
+                        'count': len(line_metadata_types),
+                        'type_names': '\n\t'.join(line_metadata_types.keys())
+                    })
 
-                    has_required_metadata_types = (line_metadata_types[
-                                                       PLATE_LOCATION_METADATA_NAME]) and (
-                                            line_metadata_types[WELL_LOCATION_METADATA_NAME])
+                    if args.copy_archival_well_locations:
 
-                    if not has_required_metadata_types:
-                        result = user_input.user_input(
-                                "EDD line metadata types couldn't be found matching the search "
-                                'names "%s" and "%s". \nAs a result, archival plate/well locations '
-                                "can't be copied to experimental lines in EDD as they're "
-                                "created. \nDo you want to continue without copying archival "
-                                "sample locations to the "
-                                "experimental lines? (Y/n): " % (PLATE_LOCATION_METADATA_NAME,
-                                                                 WELL_LOCATION_METADATA_NAME
-                                                                 )).upper()
-                        if 'Y' != result and 'YES' != result:
-                            return 0
+                        has_required_metadata_types = (line_metadata_types[
+                                                           PLATE_LOCATION_METADATA_NAME]) and (
+                                                line_metadata_types[WELL_LOCATION_METADATA_NAME])
+
+                        if not has_required_metadata_types:
+                            result = input_timer.user_input(
+                                    "EDD line metadata types couldn't be found matching the search "
+                                    'names "%s" and "%s". \nAs a result, archival plate/well locations '
+                                    "can't be copied to experimental lines in EDD as they're "
+                                    "created. \nDo you want to continue without copying archival "
+                                    "sample locations to the experimental lines? (Y/n): " % (
+                                        PLATE_LOCATION_METADATA_NAME,
+                                        WELL_LOCATION_METADATA_NAME)).upper()
+                            if 'Y' != result and 'YES' != result:
+                                return 0
+
+                ####################################################################################
+                # Read in line creation inputs from the CSV, comparing with metadata from EDD
+                ####################################################################################
+                print('')
+                print('Reading CSV file...')
+                print(OUTPUT_SEPARATOR)
+                csv_parse_start_time = arrow.utcnow()
+                csv_summary = parse_csv(args.file_name, line_metadata_types)
+                performance.csv_parse_delta = arrow.utcnow() - csv_parse_start_time
+                csv_line_creation_count = len(csv_summary.line_creation_inputs)
+                csv_unique_part_numbers = csv_summary.unique_part_numbers
+                csv_part_number_count = len(csv_unique_part_numbers)
+                metadata_columns = csv_summary.metadata_columns.values()
+
+                print('')
+                print('Done reading file "%s":' % os.path.basename(args.file_name))
+                print('\tLine creation inputs read: %d ' % csv_line_creation_count)
+                print('\tUnique ICE part numbers read: %d ' % len(csv_unique_part_numbers))
+                print('\tMetadata columns found: %(count)d %(list)s' % {
+                    'count': len(csv_summary.metadata_columns),
+                    'list': str(metadata_columns) if metadata_columns else ''})
+                print('\tIgnored line creation rows (missing line name or unparseable part '
+                      'number): %d' % csv_summary.unmatched_data_row_count)
+                full_plate_count = ((csv_line_creation_count + csv_summary.unmatched_data_row_count)
+                                    / 96)
+                unmatched = ' (incl. unmatched)' if csv_summary.unmatched_data_row_count else ''
+                print('\t# 96-well plates these lines would fit into%(unmatched)s: '
+                      '%(plate_count).2f' % {
+                            'unmatched': unmatched,
+                            'plate_count': full_plate_count,
+                        })
+                print('\tTotal rows in file: %d' % csv_summary.total_rows)
+
+                if not csv_line_creation_count:
+                    print('Aborting line creation. No lines to create!')
+                    return 0
+
+                if not args.silent:
+                    # force user to verify the expected # of lines in the study
+                    print('')
+                    result = input_timer.user_input(
+                        'Does this summary match your expectations [Y/n]: ').upper()
+                    if ('Y' != result) and ('YES' != result):
+                        print(
+                        'Aborting line creation. Please verify that your CSV file has '
+                        'the correct content before proceeding with this tool.')
+                        return 0
+                else:
+                    print(
+                    'User confirmation of study write permissions and line creation totals was '
+                    'silenced via %s' % silent_param)
+
 
                 ####################################################################################
                 # Query user for the study to create lines in, verifying that the study exists /
@@ -1291,7 +1449,7 @@ def main():
                 study_number = str(args.study) if args.study else None
                 STUDY_PROMPT = 'Which EDD study number should lines be created in? '
                 if not study_number:
-                    study_number = user_input.user_input(STUDY_PROMPT)
+                    study_number = input_timer.user_input(STUDY_PROMPT)
 
                 # query user regarding which study to use, then verify it exists in EDD
                 digit = re.compile(r'^\s*(\d+)\s*$')
@@ -1314,7 +1472,7 @@ def main():
                                  'edd_url': EDD_URL,
                                  'username': edd_login_details.username})
 
-                        study_number = user_input.user_input(STUDY_PROMPT)
+                        study_number = input_timer.user_input(STUDY_PROMPT)
                     else:
                         print('Success!')
 
@@ -1327,18 +1485,18 @@ def main():
                 if not args.silent:
                     print("Write permissions on the EDD study are required to create lines in it, "
                           "but this stopgap script doesn't have support for checking for study "
-                          "permissions. You should manually verify study write permissions to "
+                          "permissions. \nYou should manually verify study write permissions to "
                           "prevent an error later in the process (typically in ~20-30 mins from "
                           "now). ")
-                    result = user_input.user_input("Have you set/verified write permissions on "
-                                                   "study %d? (Y/n): " % args.study).upper()
+                    result = input_timer.user_input("Have you set/verified write permissions on "
+                                                   "study %d? (Y/n): " % study_number).upper()
                     if ('Y' != result) and ('YES' != result):
                         print('Aborting line creation. Please set study permissions and re-run '
                               'this script.')
                         return 0
 
                 continue_creation = prevent_duplicate_line_names(edd, study_number, csv_summary,
-                                                                 user_input)
+                                                                 input_timer)
                 if not continue_creation:
                     print('Aborting line creation.')
                     return 0
@@ -1350,10 +1508,10 @@ def main():
 
                 # extract only the unique part numbers referenced from the CSV. it's likely that
                 # many lines will reference the same strains
-                ice_entires_dict = get_ice_entries(ice, csv_unique_part_numbers,
+                ice_entries_dict = get_ice_entries(ice, csv_unique_part_numbers,
                                                    print_search_comparison=PRINT_FOUND_ICE_PARTS)
 
-                found_ice_entry_count = len(ice_entires_dict)
+                found_ice_entry_count = len(ice_entries_dict)
 
                 if not found_ice_entry_count:
                     print('')
@@ -1368,10 +1526,10 @@ def main():
                           "part numbers above)")
                     print("Do you want to create EDD lines for the entries that were found? You'll "
                           "have to create the rest manually, using output above as a reference.")
-                    result = user_input.user_input("Create EDD lines for %(found)d of %(total)d "
+                    result = input_timer.user_input("Create EDD lines for %(found)d of %(total)d "
                                                    "ICE entries? Recall that each ICE entry may "
                                                    "have many associated lines (Y/n): " % {
-                                                        'found': len(ice_entires_dict),
+                                                        'found': len(ice_entries_dict),
                                                         'total': len(csv_unique_part_numbers)
                                                    }).upper()
                     if ('Y' != result) and ('YES' != result):
@@ -1393,7 +1551,7 @@ def main():
 
                         well_locations_by_part = cache_archival_well_locations(ice,
                                                                          sample_label_pattern,
-                                                                         ice_entires_dict)
+                                                                         ice_entries_dict)
 
                         # prompt user if any archival sample locations were'nt found
                         found_sample_location_count = len(well_locations_by_part)
@@ -1407,7 +1565,7 @@ def main():
                                   "for many experimental lines in EDD." % {
                                      'found': found_sample_location_count,
                                      'total': found_ice_entry_count, })
-                            reply = user_input.user_input('Create lines with partial or missing '
+                            reply = input_timer.user_input('Create lines with partial or missing '
                                                           'location data? (Y/n): ')
                             reply = reply.lower()
                             if ('y' != reply) and ('yes' != reply):
@@ -1454,12 +1612,12 @@ def main():
                 # in EDD because they couldn't be found in ICE
                 if found_ice_entry_count != csv_part_number_count:
                     for part_number in csv_unique_part_numbers:
-                        if part_number not in ice_entires_dict:
+                        if part_number not in ice_entries_dict:
                             logger.warning('Skipping EDD strain creation for part number "%s" that '
                                            'wasn\'t found in ICE' % part_number)
                     print('')  # add space between the warnings and summary output
 
-                success = find_existing_strains(edd, ice_entires_dict, existing_edd_strains,
+                success = find_existing_strains(edd, ice_entries_dict, existing_edd_strains,
                                                 strains_by_part_number, non_existent_edd_strains)
                 if not success:
                     return 0
@@ -1470,7 +1628,7 @@ def main():
                 # If some strains were missing in EDD, confirm with user, and then create them
                 strains_created = create_missing_strains(edd, non_existent_edd_strains,
                                                          strains_by_part_number,
-                                                         found_ice_entry_count, user_input)
+                                                         found_ice_entry_count, input_timer)
                 if not strains_created:
                     return 1
 
@@ -1484,7 +1642,8 @@ def main():
                                                                     study_number))
                 print(OUTPUT_SEPARATOR)
 
-                create_lines(edd, ice, study_number, csv_summary, strains_by_part_number)
+                create_lines(edd, ice, study_number, csv_summary, strains_by_part_number,
+                             line_metadata_types)
     except NonStrainPartsError as nsp:
         # user output already handled above
         return 1
@@ -1493,8 +1652,8 @@ def main():
 
     finally:
         # compute and print a summary of ellapsed time on various expensive tasks
-        if user_input:
-            performance.waiting_for_user_delta = user_input.wait_time
+        if input_timer:
+            performance.waiting_for_user_delta = input_timer.wait_time
         if edd:
             performance.edd_communication_delta = edd.request_generator.wait_time
         if ice:
