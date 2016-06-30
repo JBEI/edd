@@ -109,9 +109,10 @@ This section contains directions for setting up a development environment on EDD
         * View logs: `docker-compose logs`
         * Bringing down all services: `docker-compose down`
         * See more in the [Docker Compose documentation][3]
-        * Compose may complain about a missing EDD_HOST_DIR. If this bothers you:
+        * Compose may complain about a missing EDD_HOST_DIR. If this bothers you, run an export
+          command to assign the EDD directory _with_ a trailing slash:
 
-            export EDD_HOST_DIR=`pwd`/
+              export EDD_HOST_DIR=`pwd`/
 
     * Other useful sample commands:
 	      * Connect to the Postgres command line: `docker-compose exec postgres psql -U postgres`
@@ -169,9 +170,9 @@ This section contains directions for setting up a development environment on EDD
         * Ensure you have a public key in `jbeideploy`'s `~/.ssh/authorized_keys2` file
         * Create an environment for the remote host (replace `{REMOTE_HOST}` with hostname or IP)
 
-            docker-machine create --driver generic --generic-ip-address {REMOTE_HOST} \
-                --generic-ssh-user jbeideploy --generic-ssh-key /path/to/private.key \
-                {NAME_OF_ENVIRONMENT}
+              docker-machine create --driver generic --generic-ip-address {REMOTE_HOST} \
+                  --generic-ssh-user jbeideploy --generic-ssh-key /path/to/private.key \
+                  {NAME_OF_ENVIRONMENT}
 
         * Activate the machine with `eval $(docker-machine env {NAME_OF_ENVIRONMENT})`
         * Set environment variable on docker client host `EDD_HOST_DIR` to `$EDD_HOME`
