@@ -194,9 +194,9 @@ function createAssayGraph(assayMeasurements) {
         .style("opacity", 0.3)
 
     //
-    var hover = categories_g.selectAll('.value')
+    var hover = categories_g.selectAll('.rect')
         .data(function(d) {
-            return d.values// returns [{i:, x:, y:, ...}]
+            return d.values  // returns [{i:, x:, y:, ...}]
         })
         .on("mouseover", function() { tooltip.style("display", null); })
         .on("mouseout", function() { tooltip.style("display", "none"); })
