@@ -655,8 +655,8 @@ class IceApi(RestApiClient):
     # TODO: when returning model objects, prevent database changes via partially-populated model
     # object instances. See draft code in edd.py
 
-    def __init__(self, auth, request_generator=ice_paged_requests, base_url=ICE_URL,
-                 result_limit=DEFAULT_RESULT_LIMIT):
+    def __init__(self, auth, base_url=ICE_URL, result_limit=DEFAULT_RESULT_LIMIT,
+                 request_generator=ice_paged_requests):
         """
         Creates a new instance of IceApi
         :param auth: the authentication strategy for communication with ICE
