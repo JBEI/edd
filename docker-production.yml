@@ -1,20 +1,13 @@
 version: '2'
 volumes:
-  pgdata:
-    external:  # change name below to swap out alternate volumes
-      name: pgdata
-  solrdata:
-    external:  # change name below to swap out alternate volumes
-      name: solrdata
-  attachdata:
-    external:  # change name below to swap out alternate volumes
-      name: attachdata
-  staticdata:
-    external:  # change name below to swap out alternate volumes
-      name: staticdata
-  redisdata:
-    external:  # change name below to swap out alternate volumes
-      name: redisdata
+  # To use an alternate, existing volume, replace {} with a sub-item external, containing sub-item
+  #   name, with value of the volume name you wish to use.
+  pgdata: {}
+  solrdata: {}
+  attachdata: {}
+  staticdata: {}
+  redisdata: {}
+  tlsdata: {}
 services:
   postgres:
     image: postgres:9.4
@@ -83,12 +76,12 @@ services:
       SEARCH_URL: "solr://solr:8983/solr/"
       EDD_DEBUG: "false"
     volumes:
-      - /usr/local/edd/:/code/
+      - "${EDD_HOST_DIR}.:/code/"
   worker:
     extends:
       service: edd
     restart: always
-    command: celery -A edd worker -l info
+    command: /code/docker_services/worker_entrypoint.sh
     depends_on:
       - postgres
       - rabbitmq

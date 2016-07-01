@@ -7,6 +7,7 @@ volumes:
   attachdata: {}
   staticdata: {}
   redisdata: {}
+  tlsdata: {}
 services:
   postgres:
     image: postgres:9.4
@@ -79,7 +80,7 @@ services:
     extends:
       service: edd
     restart: always
-    command: celery -A edd worker -l info
+    command: /code/docker_services/worker_entrypoint.sh
     depends_on:
       - postgres
       - rabbitmq
