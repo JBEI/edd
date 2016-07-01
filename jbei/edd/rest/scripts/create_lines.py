@@ -526,19 +526,21 @@ def create_missing_strains(edd, non_existent_edd_strains, strains_by_part_number
     print('Creating %d EDD Strains...' % non_existent_strain_count)
     print(OUTPUT_SEPARATOR)
 
-
     print('Warning: %(non_existent)d of %(total)d ICE entries did not have an '
           'existing strain in EDD.' % {
               'non_existent': len(non_existent_edd_strains),
               'total': ice_part_count,
           })
+    print("You may proceed with creating the required strains, provided that your account has "
+          "permission to create strains in EDD. If not, you'll get an error message.")
 
     # loop while gathering user input -- gives user a chance to list strains that will
     # be created
     while True:
-        result = input_timer.user_input('Do you want to create EDD strains for all %d of these '
-                                     'ICE entries? (Y/n/list): ' %
-                                        non_existent_strain_count).upper()
+        result = input_timer.user_input(
+                'Do you want to create EDD strains for all %d of these ICE entries? Do you have '
+                'permission to create EDD strains? (Y/n/list): ' %
+                non_existent_strain_count).upper()
 
         if 'Y' == result or 'YES' == result:
             break
@@ -1181,20 +1183,25 @@ def main():
         ############################################################################################
         # Configure command line parameters
         ############################################################################################
-        parser = argparse.ArgumentParser(description='Creates EDD lines/strains with input from a '
-                                         'CSV file. \n\nWith the exception of the first column '
-                                         'header row, each subsequent row in the file represents '
-                                         'the inputs for creating a single line in an EDD study. '
-                                         'The minimum required columns are "%(line_name_col)s" '
-                                         'and "%(part_id_col)s", but optional support is also '
-                                         'provided for a "%(line_desc_col)s" column, as well as '
-                                         'for any column whose name exactly matches line metadata '
-                                         'defined in EDD\'s database.' % {
+        parser = argparse.ArgumentParser(
+                description='Creates EDD lines/strains in bulk with input from a CSV file.',
+                # usage='python -m jbei.edd.rest.scripts.%(prog)s file.csv [options]',
+        )
+        parser.add_argument(
+                'file_name', help=
+                'The input file (must be a CSV file). With the exception of the first column '
+                'header row, each subsequent row in the file represents the input for creating a '
+                'single line in an EDD study.  The minimum required columns are '
+                '"%(line_name_col)s" and "%(part_id_col)s", but optional support is also provided '
+                'for a "%(line_desc_col)s" column, as well as for any column whose name exactly '
+                'matches line metadata defined in EDD\'s database. "%(line_name_col)s" is an '
+                'arbitrary name for each line to be created in EDD, but should be unique within '
+                'the file, and also avoid duplicating the names of any lines already added to '
+                'the EDD study. "%(part_id_col)s" is the ICE part ID for the strain '
+                'measured in the EDD line.' % {
                                              'line_name_col': LINE_NAME_COL_LABEL,
                                              'part_id_col': PART_ID_COL_LABEL,
-                                             'line_desc_col': LINE_DESCRIPTION_COL_LABEL,
-        })
-        parser.add_argument('file_name', help='The input file (must be a CSV file)')
+                                             'line_desc_col': LINE_DESCRIPTION_COL_LABEL, })
 
         parser.add_argument('-password', '-p', help='Provide an EDD/ICE password via the command '
                                                     'line (user is prompted otherwise) '
@@ -1435,7 +1442,7 @@ def main():
                     # force user to verify the expected # of lines in the study
                     print('')
                     result = input_timer.user_input(
-                        'Does this summary match your expectations [Y/n]: ').upper()
+                        'Does this file summary match your expectations [Y/n]: ').upper()
                     if ('Y' != result) and ('YES' != result):
                         print(
                         'Aborting line creation. Please verify that your CSV file has '
@@ -1454,6 +1461,9 @@ def main():
                 study = None
 
                 study_number = str(args.study) if args.study else None
+                print("You'll need to provide the number of the EDD study to create lines in.")
+                print('You can find the study number by loading the study in a browser and looking '
+                      'at the URL (e.g. https://edd.jbei.org/study/{study number}/')
                 STUDY_PROMPT = 'Which EDD study number should lines be created in? '
                 if not study_number:
                     study_number = input_timer.user_input(STUDY_PROMPT)
