@@ -4,8 +4,9 @@ from __future__ import unicode_literals
 import functools
 import logging
 import traceback
-from collections import namedtuple
 
+from builtins import str
+from collections import namedtuple
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import mail_admins
