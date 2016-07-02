@@ -658,7 +658,7 @@ def parse_entry_id(ice_entry_url):
 
     return match.group(3)
 
-DEFAULT_HMAC_KEY_OWNER = 'edd'
+DEFAULT_HMAC_KEY_ID = 'edd'
 
 
 class HmacAuth(AuthBase):
@@ -674,18 +674,18 @@ class HmacAuth(AuthBase):
     # TODO: remove remaining ICE-specific code/variable names to make this code more generic,
     # then relocate. May need to create an ICE-specific subclass.
 
-    def __init__(self, request_generator, secret_key, key_owner=None, username=None, ):
+    def __init__(self, request_generator, secret_key, key_id=None, username=None, ):
         """
 
         :param secret_key:
-        :param key_owner:
+        :param key_id:
         :param username:
         :param request_generator: the request generator to use
         :return:
         """
         if not secret_key:
             raise ValueError("A secret key is required input for HMAC authentication")
-        self._KEY_OWNER = key_owner
+        self._KEY_ID = key_id
         self._USERNAME = username
         self._SECRET_KEY = secret_key
 
@@ -712,8 +712,7 @@ class HmacAuth(AuthBase):
         sig = self._build_signature(request)
 
         # add message headers including the username (if present) and message
-        # TODO: maybe this is ICE-specific?
-        header = ':'.join(filter(bool, ('1', self._KEY_OWNER, self._USERNAME, sig)))
+        header = ':'.join(('1', self._KEY_ID, self._USERNAME, sig))
         request.headers['Authorization'] = header
         return request
 
@@ -726,15 +725,14 @@ class HmacAuth(AuthBase):
 
         # build up the message, using only components that evaluate to True
         delimiter = '\n'
-        msg = delimiter.join(filter(bool, (self._USERNAME,
-                             request.method,
-                             url.netloc,
-                             url.path,
-                             self._sort_parameters(url.query),
-                             )))
-
-        # append msg body even if empty
-        msg = delimiter.join((msg, request.body or ''))
+        msg = delimiter.join((
+            self._USERNAME or '',
+            request.method,
+            url.netloc,
+            url.path,
+            self._sort_parameters(url.query),
+            request.body or '',
+        ))
         return msg
 
     def _build_signature(self, request):
@@ -763,18 +761,19 @@ class HmacAuth(AuthBase):
 
 
 class IceHmacAuth(HmacAuth):
-    def __init__(self, secret_key, key_owner=DEFAULT_HMAC_KEY_OWNER, username=None,
+    def __init__(self, secret_key, key_id=DEFAULT_HMAC_KEY_ID, username=None,
                  request_generator=None):
         """
 
         :param secret_key:
-        :param key_owner:
+        :param key_id:
         :param username:
         :param request_generator: the RequestGenerator instance to use, or None to create a new
         PagedRequestGenerator.
         :return:
         """
-        self.__KEY_OWNER = key_owner
+        super(IceHmacAuth, self).__init__(request_generator, secret_key, key_id=key_id, username=username)
+        self.__KEY_ID = key_id
         self.__USER_EMAIL = username
 
         if not request_generator:
@@ -783,7 +782,6 @@ class IceHmacAuth(HmacAuth):
         else:
             request_generator.auth = self
 
-        super(IceHmacAuth, self).__init__(request_generator, secret_key)
 
     @staticmethod
     def get(secret_key=ICE_SECRET_KEY, username=None, user_auth=None, request=None):
@@ -1180,8 +1178,6 @@ class IceApi(RestApiClient):
         """
 
         self._verify_page_number(page_number)
-        query_url = None  # TODO: re-instate this parameter if we can get ICE to support the same
-        # queries in GET as in POST...should simplify client use by allowing
 
         logger.info('Searching for ICE entries using search terms "%s"' % search_terms)
 
@@ -1192,6 +1188,8 @@ class IceApi(RestApiClient):
         # package up provided parameters (if any) for insertion into the request
         # optional_query_data = json.dumps({'queryString': query}) if query else None
         query_dict = {}
+        query_url = None  # TODO: re-instate this parameter if we can get ICE to support the same
+        # queries in GET as in POST...should simplify client use
         if not query_url:
             if search_terms:
                 query_dict['queryString'] = search_terms
@@ -1201,7 +1199,7 @@ class IceApi(RestApiClient):
                 query_dict['entryTypes'] = entry_types
             if blast_program:
                 if blast_program not in BLAST_PROGRAMS:
-                    raise KeyError('Blast program %s is not one of the recognized programs: ' %
+                    raise KeyError('Blast program %s is not one of the recognized programs: %s' %
                                    (blast_program, str(BLAST_PROGRAMS)))
                 if blast_sequence:
                     query_dict['blastQuery'] = {
@@ -1214,8 +1212,8 @@ class IceApi(RestApiClient):
             elif blast_sequence:
                 logger.warning('A blast sequence was specified, but no blast program. Ignoring the '
                                'sequence.')
-            if search_web:
-                query_dict['webSearch'] = search_web
+
+            query_dict['webSearch'] = search_web  # Note: affects results even if false?
 
 
             ########################################################################################
@@ -1230,14 +1228,14 @@ class IceApi(RestApiClient):
 
             nonstandard_offset_param = 'start'
             nonstandard_result_limit_param = 'retrieveCount'
-            # override processing normally handled my request_generator
 
+            # override processing normally handled my request_generator to
             # apply non-standard page numbering / result limiting needed by this ICE resource
             if page_number:
                 if not self.result_limit:
                     if page_number != 1:
-                        logger.warning("A non-unity page number was requested, but can't be honored "
-                                       "because no result_limit is known!")
+                        logger.warning("A non-unity page number was requested, but can't be honored"
+                                       " because no result_limit is known!")
                 else:
                     offset = self.request_generator.result_limit * (page_number - 1)
                     parameters[nonstandard_offset_param] = offset
@@ -1255,24 +1253,31 @@ class IceApi(RestApiClient):
         # convert query data to JSON, if there is any. Otherwise, we'll query for all the parts
         # visible to this user
         optional_query_data = json.dumps(query_dict) if query_dict else None
+        logger.info('Searching ICE entries. Query data = %s' % optional_query_data)
 
         # execute the query
         try:
-            response = self.request_generator.post(url,
-                data=optional_query_data,
-                headers=_JSON_CONTENT_TYPE_HEADER
-            )
+            response = self.request_generator.post(url, data=optional_query_data,
+                                                   headers=_JSON_CONTENT_TYPE_HEADER)
+
             # if response was good, deconstruct the query url, then build a separate 'get' URL
-            # to use in
+            # to use in next/prev page links. Note that for now, we're leaving this code / incorrect
+            # URL in place as a placeholder for future code. Presence / absence of next/prev page
+            # links should be available to allow clients to test for existence of those pages, but
+            # we don't allow query_url param to this method since the query can't be represented as
+            # a single URL
             if response.status_code == requests.codes.ok:
 
-                if not query_url:
-                    url_elts = urlparse(url)
-                    query_string = urlencode(query_dict, True)
-                    query_temp = ParseResult(url_elts.scheme, url_elts.netloc,
-                                                   url_elts.path, url_elts.params,
-                                                   query_string, url_elts.fragment)
-                    query_url = urlunparse(query_temp)
+                # TODO: consider reinstating / fixing this flawed method of computing a query_url
+                # for use by client programs. See other TODO above.
+                # if not query_url:
+                #     url_elts = urlparse(url)
+                #     query_string = urlencode(query_dict, True)
+                #     query_temp = ParseResult(url_elts.scheme, url_elts.netloc,
+                #                                    url_elts.path, url_elts.params,
+                #                                    query_string, url_elts.fragment)
+                #     query_url = urlunparse(query_temp)
+                query_url = response.url
 
                 return IcePagedResult.of(response.content, EntrySearchResult,
                                          query_url=query_url,
@@ -1488,19 +1493,30 @@ class IcePagedResult(PagedResult):
     # TODO: think more about whether / how to propagate JSON query parameters as part of POST
     # requests
     @staticmethod
-    def of(json_string, factory_class, query_url, results_key=u'results', result_limit=None,
+    def of(json_string, factory_class, query_url=None, results_key=u'results', result_limit=None,
            offset=0):
         """
         Reads a JSON string into a PagedResult containing Python objects.
         :param json_string: the result string to read / deserialize
-        :param query_url: the complete URL for this query. Used to construct the prev_page/
-        next_page links that should help simplify client code and make IceApi respond similarly
-        to EddApi despite having different JSON paging support
+        :param query_url: the complete URL for this query, or if query can't be accessed as a
+        URL only, the URL that most closely matches that used to perform the query. Used to
+        construct the prev_page/next_page links that should help simplify client code and make
+        IceApi respond similarly to EddApi despite having different JSON paging support
         :param results_key: the JSON keyword used to differentiate results from the rest of the
         content (e.g. a total result count)
+        :param result_limit: the maximum number of results returned in a each page of results.
+        Note that  this may be different from the requested result limit if the server enforces
+        a maximum page size. If not provided via this parameter, an attempt will be made to
+        extract it from query_url. For consistency with DrfPagedResult, this value is required to
+        compute the current page offset and next/previous links, which aren't included in the
+        JSON data returned by ICE.
+        :param offset
         :return:
         """
-        # TODO: merge with EddPagedResult.of() if serialization problems there can be resolved
+        # TODO: merge with EddPagedResult.of() if serialization problems there can be resolved,
+        # then move implementation to parent. Otherwise, more Pythonic to make this a factory method
+        # since IcePagedResult can't be an abstract class. Also update DrfPagedResult for
+        # consistency.
 
         # convert reply to a dictionary of native python data types
         json_dict = json.loads(json_string)
@@ -1511,8 +1527,10 @@ class IcePagedResult(PagedResult):
         # pull out the 'results' subsection *if* the data is paged
         response_content = None
         count = None
-        next_page = None
-        prev_page = None
+        next_page_url = None
+        prev_page_url = None
+        next_page_index = None
+        prev_page_index = None
 
         # if response is paged, infer paging context to provide a consistent client interface
         # with PagedResults returned by EDD. ICE doesn't include next/previous explicitly in EDD's
@@ -1520,6 +1538,7 @@ class IcePagedResult(PagedResult):
         if results_key in json_dict:
             response_content = json_dict.get(results_key)
             count = json_dict.get(u'resultCount', None)
+            query_params_dict = None
             # for consistency, construct next/prev page URLs for ICE results that are automatically
             if query_url:
 
@@ -1536,38 +1555,39 @@ class IcePagedResult(PagedResult):
                     offset_temp = int(offset_temp[0]) if offset_temp else None
                     offset = offset if offset is not None else offset_temp
 
-                # if required inputs are available, attempt to compute next/prev URLs similar
-                # to those included in EDD's JSON so we can provide a standard client-side interface
-                # for both REST API's, despite the differing implementations
-                if result_limit:
-                    # compute page indexes for the current page and prev/next pages
-                    current_page_index = (offset // result_limit)
-                    next_page_index = current_page_index + 1
-                    next_page_index = next_page_index if ((next_page_index * result_limit) +
-                                                         result_limit <= count) or (
-                        current_page_index * result_limit < count) else None
-                    prev_page_index = current_page_index - 1 if current_page_index >= 1 else None
+            # if required inputs are available, attempt to compute next/prev URLs similar
+            # to those included in EDD's JSON so we can provide a standard client-side interface
+            # for both REST API's, despite the differing implementations
+            if result_limit:
+                # compute page indexes for the current page and prev/next pages
+                current_page_index = (offset // result_limit)
+                next_page_index = current_page_index + 1
+                next_page_index = next_page_index if ((next_page_index * result_limit) +
+                                                     result_limit <= count) or (
+                    current_page_index * result_limit < count) else None
+                prev_page_index = current_page_index - 1 if current_page_index >= 1 else None
 
-                    query_string = urlencode(query_params_dict, True) if query_params_dict else None
+            # if a query URL was provided, construct next/prev URL's by deconstructing the URL for
+            # the current query, then reconstructing it using the next/prev page indices computed
+            # above
+            if query_params_dict:
+                query_string = urlencode(query_params_dict, True) if query_params_dict else None
 
-                    # construct next/prev URL's by deconstructing the URL for the current
-                    # query, then reconstructing it using the next/prev page indices
-                    # computed above
-                    if next_page_index:
-                        query_params_dict[RESULT_LIMIT_PARAMETER] = result_limit
-                        query_params_dict[RESULT_OFFSET_PARAMETER] = next_page_index * result_limit
-                        query_string = urlencode(query_params_dict, True)
-                        next_page_inputs = ParseResult(url_elts.scheme, url_elts.netloc,
-                                                       url_elts.path, url_elts.params,
-                                                       query_string, url_elts.fragment)
-                        next_page = urlunparse(next_page_inputs)
+                if next_page_index:
+                    query_params_dict[RESULT_LIMIT_PARAMETER] = result_limit
+                    query_params_dict[RESULT_OFFSET_PARAMETER] = next_page_index * result_limit
+                    query_string = urlencode(query_params_dict, True)
+                    next_page_inputs = ParseResult(url_elts.scheme, url_elts.netloc,
+                                                   url_elts.path, url_elts.params,
+                                                   query_string, url_elts.fragment)
+                    next_page_url = urlunparse(next_page_inputs)
 
-                    if prev_page_index:
-                        query_params_dict[RESULT_LIMIT_PARAMETER] = result_limit
-                        query_params_dict[RESULT_OFFSET_PARAMETER] = prev_page_index * result_limit
-                        prev_page_inputs = ParseResult(url_elts.scheme, url_elts.netloc, url_elts.path,
-                                            url_elts.params, query_string, url_elts.fragment)
-                        prev_page = urlunparse(prev_page_inputs)
+                if prev_page_index:
+                    query_params_dict[RESULT_LIMIT_PARAMETER] = result_limit
+                    query_params_dict[RESULT_OFFSET_PARAMETER] = prev_page_index * result_limit
+                    prev_page_inputs = ParseResult(url_elts.scheme, url_elts.netloc, url_elts.path,
+                                        url_elts.params, query_string, url_elts.fragment)
+                    prev_page_url = urlunparse(prev_page_inputs)
 
             if count == 0:
                 return None
@@ -1582,4 +1602,4 @@ class IcePagedResult(PagedResult):
             result_object = factory_class.of(object_dict)
             results_obj_list.append(result_object)
 
-        return IcePagedResult(results_obj_list, count, next_page, prev_page)
+        return IcePagedResult(results_obj_list, count, next_page_url, prev_page_url)

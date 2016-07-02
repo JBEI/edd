@@ -16,7 +16,7 @@
     var dataArea, tables, sep, rsplit, ctrl;
     dataArea = $('#textData').hide();
     tables = dataArea.val().split('\n\n');
-    sep = $('#id_separator').val() === 'csv' ? ',' : '\t';
+    sep = $('#id_separator').val();
     rsplit = function (row) { return row.split(sep); };
     tables = $(tables.map(function (table) {
       var rows, container, hot;
@@ -67,15 +67,15 @@
 {% endblock js_css %}
 
 {% block head_title %}
-  {% if selection.studies.values|length == 1 %}
-    Data Export For {{ selection.studies.values.0.name }}
+  {% if selection.studies|length == 1 %}
+    Data Export For {{ selection.studies.0.name }}
   {% else %}
-    Data Export For {{ selection.studies.values|length }} Studies
+    Data Export For {{ selection.studies|length }} Studies
   {% endif %}
 {% endblock head_title %}
 
 {% block body_title %}
-  Data Export For {% for study in selection.studies.values %}
+  Data Export For {% for study in selection.studies %}
    <a href="{% url 'main:detail' study.id %}">{{ study.name }}</a>{% if not forloop.last %},{% endif %}
   {% endfor %}
 {% endblock body_title %}
@@ -86,16 +86,8 @@
 <h3 style="color: #ff0000; font-weight: bold">{{ error_message }}</h3>
 {% endif %}
 
-<div class="disclose discloseHide" id="existinglineshide">
-  <div style="margin:10px">
-    <a href="#" class="discloseLink">
-      {{ selection.measurements|length }} Measurements in {{ selection.assays|length }} Assays in {{ selection.lines|length }} Lines Selected
-    </a>
-  </div>
-  <div id="existingLinesSection" class="pageSection discloseBody" style="border-width:1px;margin:10px;">  
-    {% include "main/include_linetable.html" %}
-  </div>
-</div>
+<!-- Line info section -->
+{% include "main/include/export/linetable.html" %}
 
 <!-- start of main form -->
 <form method="post" id="exportForm" action="{% url 'main:export' %}">

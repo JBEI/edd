@@ -18,10 +18,12 @@ django-debug-toolbar==1.4
 django-environ==0.4.0
 django-extensions==1.6.1
 django-form-utils==1.0.3
+django-redis==4.4.3 
 django-threadlocals==0.8
 djangorestframework==3.3.2
 drf-nested-routers==0.11.1
 enum34==1.1.2
+factory-boy==2.7.0
 future==0.15.2
 gunicorn==19.4.5
 idna==2.0
@@ -43,6 +45,7 @@ python-ldap==2.4.25
 python-libsbml==5.12.1
 python-openid==2.2.5
 pytz==2016.1
+redis==2.10.5
 requests==2.9.1
 requests-oauthlib==0.6.1
 scikit-learn==0.17.1

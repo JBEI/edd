@@ -4,15 +4,11 @@ from __future__ import unicode_literals
 import collections
 import json
 import logging
-import operator
 import re
-from functools import reduce
-from io import BytesIO
 
 from builtins import str
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django.db.models import Count, Prefetch, Q
@@ -27,24 +23,29 @@ from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 from django.views import generic
 from django.views.decorators.csrf import ensure_csrf_cookie
+from io import BytesIO
 
-from jbei.ice.rest.ice import IceApi, HmacAuth, STRAIN, IceHmacAuth
-from . import data_import, models, sbml_export
-from .export import table
+from . import autocomplete
+from .importer import (
+    TableImport, import_rna_seq, import_rnaseq_edgepro, interpret_edgepro_data,
+    interpret_raw_rna_seq_data,
+)
+from .export.forms import (ExportOptionForm, ExportSelectionForm,  WorklistForm,)
+from .export.sbml import SbmlExport
+from .export.table import ExportSelection, TableExport, WorklistExport
 from .forms import (
-    AssayForm, CreateAttachmentForm, CreateCommentForm, CreateStudyForm, ExportOptionForm,
-    ExportSelectionForm, LineForm, MeasurementForm, MeasurementValueFormSet, WorklistForm
+    AssayForm, CreateAttachmentForm, CreateCommentForm, CreateStudyForm, LineForm, MeasurementForm,
+    MeasurementValueFormSet,
 )
 from .models import (
-    Assay, Attachment, Line, Measurement, MeasurementCompartment, MeasurementGroup, MeasurementType,
-    MeasurementValue, Metabolite, MetaboliteSpecies, MetadataType, Protocol, SBMLTemplate, Study,
-    StudyPermission, Update,
+    Assay, Attachment, Line, Measurement, MeasurementType, MeasurementValue, Metabolite,
+    MetaboliteSpecies, MetadataType, Protocol, SBMLTemplate, Study, StudyPermission, Update,
 )
 from .signals import study_modified
-from .solr import StudySearch, UserSearch
+from .solr import StudySearch
 from .utilities import (
     JSONDecimalEncoder, get_edddata_carbon_sources, get_edddata_measurement, get_edddata_misc,
-    get_edddata_strains, get_edddata_study, get_edddata_users, get_selected_lines,
+    get_edddata_strains, get_edddata_study, get_edddata_users,
 )
 
 logger = logging.getLogger(__name__)
@@ -148,7 +149,7 @@ class StudyDetailView(generic.DetailView):
             Q(grouppermission__group__user=self.request.user,
               grouppermission__permission_type__in=['R', 'W', ])).distinct()
 
-    def handle_assay(self, request, context):
+    def handle_assay(self, request, context, *args, **kwargs):
         assay_id = request.POST.get('assay-assay_id', None)
         assay = self._get_assay(assay_id) if assay_id else None
         if assay:
@@ -167,6 +168,32 @@ class StudyDetailView(generic.DetailView):
             return True
         return False
 
+    def handle_assay_action(self, request, context, *args, **kwargs):
+        assay_action = request.POST.get('assay_action', None)
+        can_write = self.object.user_can_write(request.user)
+        form_valid = False
+        # allow any who can view to export
+        if assay_action == 'export':
+            export_type = request.POST.get('export', 'csv')
+            if export_type == 'sbml':
+                return SbmlView.as_view()
+            else:
+                return ExportView.as_view()
+        # but not edit
+        elif not can_write:
+            messages.error(request, 'You do not have permission to modify this study.')
+        elif assay_action == 'mark':
+            form_valid = self.handle_assay_mark(request)
+        elif assay_action == 'delete':
+            form_valid = self.handle_measurement_delete(request)
+        elif assay_action == 'edit':
+            return self.handle_measurement_edit(request)
+        elif assay_action == 'update':
+            return self.handle_measurement_update(request, context)
+        else:
+            messages.error(request, 'Unknown assay action %s' % (assay_action))
+        return form_valid
+
     def handle_assay_mark(self, request):
         ids = request.POST.getlist('assayId', [])
         study = self.get_object()
@@ -184,7 +211,7 @@ class StudyDetailView(generic.DetailView):
             })
         return True
 
-    def handle_attach(self, request, context):
+    def handle_attach(self, request, context, *args, **kwargs):
         form = CreateAttachmentForm(request.POST, request.FILES, edd_object=self.get_object())
         if form.is_valid():
             form.save()
@@ -193,7 +220,7 @@ class StudyDetailView(generic.DetailView):
             context['new_attach'] = form
         return False
 
-    def handle_clone(self, request):
+    def handle_clone(self, request, context, *args, **kwargs):
         ids = request.POST.getlist('lineId', [])
         study = self.get_object()
         cloned = 0
@@ -214,7 +241,7 @@ class StudyDetailView(generic.DetailView):
             })
         return True
 
-    def handle_comment(self, request, context):
+    def handle_comment(self, request, context, *args, **kwargs):
         form = CreateCommentForm(request.POST, edd_object=self.get_object())
         if form.is_valid():
             form.save()
@@ -232,7 +259,7 @@ class StudyDetailView(generic.DetailView):
         messages.success(request, '%s %s Lines' % ('Enabled' if active else 'Disabled', count))
         return True
 
-    def handle_group(self, request):
+    def handle_group(self, request, context, *args, **kwargs):
         ids = request.POST.getlist('lineId', [])
         study = self.get_object()
         if len(ids) > 1:
@@ -243,7 +270,7 @@ class StudyDetailView(generic.DetailView):
         messages.error(request, 'Must select more than one Line to group.')
         return False
 
-    def handle_line(self, request, context):
+    def handle_line(self, request, context, *args, **kwargs):
         ids = [v for v in request.POST.get('line-ids', '').split(',') if v.strip() != '']
         if len(ids) == 0:
             return self.handle_line_new(request, context)
@@ -252,6 +279,23 @@ class StudyDetailView(generic.DetailView):
         else:
             return self.handle_line_bulk(request, ids)
         return False
+
+    def handle_line_action(self, request, context, *args, **kwargs):
+        can_write = self.object.user_can_write(request.user)
+        line_action = request.POST.get('line_action', None)
+        form_valid = False
+        # allow any who can view to export
+        if line_action == 'export':
+            export_type = request.POST.get('export', 'csv')
+            return self._get_export_types().get(export_type, ExportView.as_view())
+        # but not edit
+        elif not can_write:
+            messages.error(request, 'You do not have permission to modify this study.')
+        elif line_action == 'edit':
+            form_valid = self.handle_disable(request)
+        else:
+            messages.error(request, 'Unknown line action %s' % (line_action))
+        return form_valid
 
     def handle_line_bulk(self, request, ids):
         study = self.get_object()
@@ -300,7 +344,7 @@ class StudyDetailView(generic.DetailView):
             context['new_line'] = form
         return False
 
-    def handle_measurement(self, request, context):
+    def handle_measurement(self, request, context, *args, **kwargs):
         ids = request.POST.getlist('assayId', [])
         form = MeasurementForm(request.POST, assays=ids, prefix='measurement')
         if len(ids) == 0:
@@ -406,7 +450,13 @@ class StudyDetailView(generic.DetailView):
             return self.handle_measurement_edit_response(request, lines, measures)
         return self.post_response(request, context, True)
 
-    def handle_update(self, request, context):
+    def handle_unknown(self, request, context, *args, **kwargs):
+        messages.error(
+            request, 'Unknown action, or you do not have permission to modify this study.'
+        )
+        return False
+
+    def handle_update(self, request, context, *args, **kwargs):
         study = self.get_object()
         form = CreateStudyForm(request.POST or None, instance=study, prefix='study')
         if form.is_valid():
@@ -418,71 +468,35 @@ class StudyDetailView(generic.DetailView):
         self.object = self.get_object()
         action = request.POST.get('action', None)
         context = self.get_context_data(object=self.object, action=action, request=request)
-        form_valid = False
         can_write = self.object.user_can_write(request.user)
-        # allow any who can view to comment
-        if action == 'comment':
-            form_valid = self.handle_comment(request, context)
-        elif action == 'line_action':
-            line_action = request.POST.get('line_action', None)
-            # allow any who can view to export
-            if line_action == 'export':
-                export_type = request.POST.get('export', 'csv')
-                if export_type == 'sbml':
-                    return HttpResponseRedirect(
-                        reverse('main:sbml_export', kwargs={'study': self.object.pk}))
-                else:
-                    return ExportView.as_view()(request, *args, **kwargs)
-            elif line_action == 'worklist':
-                return WorklistView.as_view()(request, *args, **kwargs)
-            # but not edit
-            elif not can_write:
-                messages.error(request, 'You do not have permission to modify this study.')
-            elif line_action == 'edit':
-                form_valid = self.handle_disable(request)
-            else:
-                messages.error(request, 'Unknown line action %s' % (line_action))
-        elif action == 'assay_action':
-            assay_action = request.POST.get('assay_action', None)
-            # allow any who can view to export
-            if assay_action == 'export':
-                export_type = request.POST.get('export', 'csv')
-                if export_type == 'sbml':
-                    return HttpResponseRedirect(
-                        reverse('main:sbml_export', kwargs={'study': self.object.pk}))
-                else:
-                    return ExportView.as_view()(request, *args, **kwargs)
-            # but not edit
-            elif not can_write:
-                messages.error(request, 'You do not have permission to modify this study.')
-            elif assay_action == 'mark':
-                form_valid = self.handle_assay_mark(request)
-            elif assay_action == 'delete':
-                form_valid = self.handle_measurement_delete(request)
-            elif assay_action == 'edit':
-                return self.handle_measurement_edit(request)
-            elif assay_action == 'update':
-                return self.handle_measurement_update(request, context)
-            else:
-                messages.error(request, 'Unknown assay action %s' % (assay_action))
-        # all following require write permissions
-        elif not can_write:
-            messages.error(request, 'You do not have permission to modify this study.')
-        elif action == 'attach':
-            form_valid = self.handle_attach(request, context)
-        elif action == 'line':
-            form_valid = self.handle_line(request, context)
-        elif action == 'clone':
-            form_valid = self.handle_clone(request)
-        elif action == 'group':
-            form_valid = self.handle_group(request)
-        elif action == 'assay':
-            form_valid = self.handle_assay(request, context)
-        elif action == 'measurement':
-            form_valid = self.handle_measurement(request, context)
-        elif action == 'update':
-            form_valid = self.handle_update(request, context)
-        return self.post_response(request, context, form_valid)
+        # actions that may not require write permissions
+        action_lookup = {
+            'assay_action': self.handle_assay_action,
+            'comment': self.handle_comment,
+            'line_action': self.handle_line_action,
+        }
+        # actions that require write permissions
+        writable_lookup = {
+            'assay': self.handle_assay,
+            'attach': self.handle_attach,
+            'clone': self.handle_clone,
+            'group': self.handle_group,
+            'line': self.handle_line,
+            'measurement': self.handle_measurement,
+            'update': self.handle_update,
+        }
+        if can_write:
+            action_lookup.update(writable_lookup)
+        # find appropriate handler function for the submitted action
+        view_or_valid = action_lookup.get(action, self.handle_unknown)(
+            request, context, *args, **kwargs
+        )
+        if type(view_or_valid) == bool:
+            # boolean means a response to same page, with flag noting whether form was valid
+            return self.post_response(request, context, view_or_valid)
+        else:
+            # otherwise got a view function, call it
+            return view_or_valid(request, *args, **kwargs)
 
     def post_response(self, request, context, form_valid):
         if form_valid:
@@ -498,6 +512,13 @@ class StudyDetailView(generic.DetailView):
             logger.warning('Failed to load assay,study combo %s,%s' % (assay_id, study.pk))
         return None
 
+    def _get_export_types(self):
+        return {
+            'csv': ExportView.as_view(),
+            'sbml': SbmlView.as_view(),
+            'worklist': WorklistView.as_view(),
+        }
+
     def _get_line(self, line_id):
         study = self.get_object()
         try:
@@ -512,45 +533,35 @@ class EDDExportView(generic.TemplateView):
     def __init__(self, *args, **kwargs):
         super(EDDExportView, self).__init__(*args, **kwargs)
         self._export = None
-        self._selection = table.ExportSelection(None)
-
-    def get_context_data(self, **kwargs):
-        context = super(EDDExportView, self).get_context_data(**kwargs)
-        return context
-
-    def get_template_names(self):
-        """ Override in child classes to specify alternate templates. """
-        return ['main/export.html', ]
+        self._selection = ExportSelection(None)
 
     def get(self, request, *args, **kwargs):
         context = self.get_context_data(**kwargs)
         context.update(self.init_forms(request, request.GET))
         return self.render_to_response(context)
 
+    def get_context_data(self, **kwargs):
+        context = super(EDDExportView, self).get_context_data(**kwargs)
+        return context
+
+    def get_selection(self):
+        return self._selection
+    selection = property(get_selection)
+
+    def get_template_names(self):
+        """ Override in child classes to specify alternate templates. """
+        return ['main/export.html', ]
+
     def init_forms(self, request, payload):
-        initial = ExportOptionForm.initial_from_user_settings(request.user)
         select_form = ExportSelectionForm(data=payload, user=request.user)
         try:
             self._selection = select_form.get_selection()
-            option_form = ExportOptionForm(
-                data=payload,
-                initial=initial,
-                selection=self._selection,
-            )
-            if option_form.is_valid():
-                self._export = table.TableExport(
-                    self._selection,
-                    option_form.get_options(),
-                    None,
-                )
         except Exception as e:
-            logger.error("Failed to validate forms for export: %s", e)
+            logger.exception("Failed to validate forms for export: %s", e)
         return {
             'download': payload.get('action', None) == 'download',
-            'output': self._export.output() if self._export else '',
-            'option_form': option_form,
             'select_form': select_form,
-            'selection': self._selection,
+            'selection': self.selection,
         }
 
     def post(self, request, *args, **kwargs):
@@ -559,10 +570,10 @@ class EDDExportView(generic.TemplateView):
         return self.render_to_response(context)
 
     def render_to_response(self, context, **kwargs):
-        if context.get('download', False):
+        if context.get('download', False) and self._export:
             response = HttpResponse(self._export.output(), content_type='text/csv')
             # set download filename as the first name in the exported studies
-            study = self._export.selection.studies.values()[0]
+            study = self._export.selection.studies[0]
             response['Content-Disposition'] = 'attachment; filename="%s.csv"' % study.name
             return response
         return super(EDDExportView, self).render_to_response(context, **kwargs)
@@ -570,7 +581,22 @@ class EDDExportView(generic.TemplateView):
 
 class ExportView(EDDExportView):
     """ View to export EDD information in a table/CSV format. """
-    pass
+    def init_forms(self, request, payload):
+        context = super(ExportView, self).init_forms(request, payload)
+        context.update(
+            option_form=None,
+            output='',
+        )
+        try:
+            initial = ExportOptionForm.initial_from_user_settings(request.user)
+            option_form = ExportOptionForm(data=payload, initial=initial, selection=self.selection)
+            context.update(option_form=option_form)
+            if option_form.is_valid():
+                self._export = TableExport(self.selection, option_form.options, None)
+                context.update(output=self._export.output())
+        except Exception as e:
+            logger.exception("Failed to validate forms for export: %s", e)
+        return context
 
 
 class WorklistView(EDDExportView):
@@ -580,30 +606,63 @@ class WorklistView(EDDExportView):
         return ['main/worklist.html', ]
 
     def init_forms(self, request, payload):
-        select_form = ExportSelectionForm(data=payload, user=request.user)
+        context = super(WorklistView, self).init_forms(request, payload)
         worklist_form = WorklistForm()
+        context.update(
+            defaults_form=worklist_form.defaults_form,
+            flush_form=worklist_form.flush_form,
+            output='',
+            worklist_form=worklist_form,
+        )
         try:
-            self._selection = select_form.get_selection()
-            worklist_form = WorklistForm(
-                data=payload,
+            worklist_form = WorklistForm(data=payload)
+            context.update(
+                defaults_form=worklist_form.defaults_form,
+                flush_form=worklist_form.flush_form,
+                worklist_form=worklist_form,
             )
             if worklist_form.is_valid():
-                self._export = table.WorklistExport(
-                    self._selection,
+                self._export = WorklistExport(
+                    self.selection,
                     worklist_form.options,
                     worklist_form.worklist,
                 )
+                context.update(output=self._export.output())
         except Exception as e:
             logger.exception("Failed to validate forms for export: %s", e)
-        return {
-            'defaults_form': worklist_form.defaults_form,
-            'download': payload.get('action', None) == 'download',
-            'flush_form': worklist_form.flush_form,
-            'output': self._export.output() if self._export else '',
-            'select_form': select_form,
-            'selection': self._selection,
-            'worklist_form': worklist_form,
-        }
+        return context
+
+
+class SbmlView(EDDExportView):
+    def __init__(self, *args, **kwargs):
+        super(SbmlView, self).__init__(*args, **kwargs)
+        self.sbml_export = None
+
+    def get_template_names(self):
+        """ Override in child classes to specify alternate templates. """
+        return ['main/sbml_export.html', ]
+
+    def init_forms(self, request, payload):
+        context = super(SbmlView, self).init_forms(request, payload)
+        self.sbml_export = SbmlExport(self.selection)
+        return self.sbml_export.init_forms(payload, context)
+
+    def render_to_response(self, context, **kwargs):
+        download = context.get('download', False)
+        if download and self.sbml_export:
+            match_form = context.get('match_form', None)
+            time_form = context.get('time_form', None)
+            if match_form and time_form and match_form.is_valid() and time_form.is_valid():
+                time = time_form.cleaned_data['time_select']
+                response = HttpResponse(
+                    self.sbml_export.output(time, match_form.cleaned_data),
+                    content_type='application/sbml+xml'
+                )
+                # set download filename
+                filename = time_form.cleaned_data['filename']
+                response['Content-Disposition'] = 'attachment; filename="%s"' % filename
+                return response
+        return super(SbmlView, self).render_to_response(context, **kwargs)
 
 
 # /study/<study_id>/lines/
@@ -833,7 +892,7 @@ def study_import_table(request, study):
                 for key in sorted(request.POST)
             ]))
         try:
-            table = data_import.TableImport(model, request.user, request=request)
+            table = TableImport(model, request.user, request=request)
             added = table.import_data(request.POST)
             messages.success(request, 'Imported %s measurement values.' % added)
         except ValueError as e:
@@ -951,7 +1010,7 @@ def study_import_rnaseq(request, study):
     lines = model.line_set.all()
     if request.method == "POST":
         try:
-            result = data_import.import_rna_seq.from_form(request, model)
+            result = import_rna_seq.from_form(request, model)
             messages["success"] = "Added %d measurements in %d assays." % (
                 result.n_assay, result.n_meas)
         except ValueError as e:
@@ -983,9 +1042,7 @@ def study_import_rnaseq_edgepro(request, study):
         try:
             if assay_id is None or assay_id == "":
                 raise ValueError("Assay ID required for form submission.")
-            result = data_import.import_rnaseq_edgepro.from_form(
-                request=request,
-                study=model)
+            result = import_rnaseq_edgepro.from_form(request=request, study=model)
             messages["success"] = result.format_message()
         except ValueError as e:
             messages["error"] = str(e)
@@ -1031,11 +1088,10 @@ def study_import_rnaseq_parse(request, study):
     # functions
     try:
         if "edgepro" in referrer:
-            result = data_import.interpret_edgepro_data(raw_data=request.read())
+            result = interpret_edgepro_data(raw_data=request.read())
             result['format'] = "edgepro"
         else:
-            result = data_import.interpret_raw_rna_seq_data(
-                raw_data=request.read(), study=model)
+            result = interpret_raw_rna_seq_data(raw_data=request.read(), study=model)
             result['format'] = "generic"
     except ValueError as e:
         return JsonResponse({"python_error": str(e)})
@@ -1062,15 +1118,9 @@ def study_import_rnaseq_process(request, study):
             file_name = data_file.name
         result = None
         if request.POST.get("format") == "htseq-combined":
-            result = data_import.interpret_raw_rna_seq_data(
-                raw_data=data,
-                study=model,
-                file_name=file_name)
+            result = interpret_raw_rna_seq_data(raw_data=data, study=model, file_name=file_name)
         elif request.POST.get("format") == "edgepro":
-            result = data_import.interpret_edgepro_data(
-                raw_data=data,
-                study=model,
-                file_name=file_name)
+            result = interpret_edgepro_data(raw_data=data, study=model, file_name=file_name)
         else:
             raise ValueError("Format needs to be specified!")
     except ValueError as e:
@@ -1079,61 +1129,6 @@ def study_import_rnaseq_process(request, study):
         logger.error('Exception in RNASeq import process: %s', e)
     else:
         return JsonResponse(result)
-
-
-# /study/<study_id>/sbml
-# FIXME should have trailing slash?
-def study_export_sbml(request, study):
-    model = load_study(request, study)
-    if request.method == "POST":
-        form = request.POST
-    else:
-        form = request.GET
-    try:
-        lines = get_selected_lines(form, model)
-        manager = sbml_export.line_sbml_export(
-            study=model,
-            lines=lines,
-            form=form,
-            debug=True)
-    except ValueError as e:
-        return render(
-            request,
-            "main/error.html",
-            context={
-                "error_source": "SBML export for %s" % model.name,
-                "error_message": str(e),
-            },
-        )
-    else:
-        # two levels of exception handling allow us to view whatever steps
-        # were completed successfully even if a later step fails
-        error_message = None
-        try:
-            manager.run()
-        except ValueError as e:
-            error_message = str(e)
-        else:
-            if form.get("download", None):
-                timestamp_str = form["timestamp"]
-                if timestamp_str != "":
-                    timestamp = float(timestamp_str)
-                    sbml = manager.as_sbml(timestamp)
-                    response = HttpResponse(
-                        sbml, content_type="application/sbml+xml")
-                    file_name = manager.output_file_name(timestamp)
-                    response['Content-Disposition'] = 'attachment; filename="%s"' % file_name
-                    return response
-        return render(
-            request,
-            "main/sbml_export.html",
-            context={
-                "data": manager,
-                "study": model,
-                "lines": lines,
-                "error_message": error_message,
-            },
-        )
 
 
 # /data/users
@@ -1329,78 +1324,28 @@ def search(request):
     """ Naive implementation of model-independent server-side autocomplete backend,
         paired with autocomplete2.js on the client side. Call out to Solr or ICE where
         needed. """
-    term = request.GET["term"]
-    re_term = re.escape(term)
-    model_name = request.GET["model"]
-    results = []
-    if model_name == "User":
-        solr = UserSearch()
-        found = solr.query(query=term, options={'edismax': True})
-        results = found['response']['docs']
-    elif model_name == "Strain":
-        ice = IceApi(auth=IceHmacAuth.get(username=request.user.email))
-        found = ice.search_entries(term, entry_types=[STRAIN], suppress_errors=True)
-        if found is None:  # there were errors searching
-            results = []
-        else:
-            results = [search_result.entry.to_json_dict() for search_result in found.results]
-    elif model_name == "Group":
-        found = Group.objects.filter(name__iregex=re_term).order_by('name')[:20]
-        results = [{'id': item.pk, 'name': item.name} for item in found]
-    elif model_name == "StudyWrite":
-        found = Study.objects.distinct().filter(
-            Q(name__iregex=re_term) | Q(description__iregex=re_term),
-            Q(userpermission__user=request.user, userpermission__permission_type='W') |
-            Q(grouppermission__group__user=request.user, grouppermission__permission_type='W'))
-        results = [item.to_json() for item in found]
-    elif model_name == "MeasurementCompartment":
-        # Always return the full set of options; no search needed
-        results = [{'id': c[0], 'name': c[1]} for c in MeasurementCompartment.GROUP_CHOICE]
-    elif model_name == "GenericOrMetabolite":
-        # searching for EITHER a generic measurement OR a metabolite
-        found = MeasurementType.objects.filter(
-            Q(type_group__in=(MeasurementGroup.GENERIC, MeasurementGroup.METABOLITE, )) &
-            (Q(type_name__iregex=re_term) | Q(short_name__iregex=re_term)),
-        )[:20]
-        results = [item.to_json() for item in found]
+    return model_search(request, request.GET["model"])
+
+
+AUTOCOMPLETE_VIEW_LOOKUP = {
+    'GenericOrMetabolite': autocomplete.search_metaboliteish,
+    'Group': autocomplete.search_group,
+    'MeasurementCompartment': autocomplete.search_compartment,
+    'MetaboliteExchange': autocomplete.search_sbml_exchange,
+    'MetaboliteSpecies': autocomplete.search_sbml_species,
+    'Strain': autocomplete.search_strain,
+    'StudyWrite': autocomplete.search_study_writable,
+    'User': autocomplete.search_user,
+}
+
+
+# /search/<model_name>/
+def model_search(request, model_name):
+    searcher = AUTOCOMPLETE_VIEW_LOOKUP.get(model_name, None)
+    if searcher:
+        return searcher(request)
     elif meta_pattern.match(model_name):
-        # add appropriate filters for Assay, AssayLine, Line, Study
         match = meta_pattern.match(model_name)
-        type_filters = []
-        if match.group(1) == 'Study':
-            type_filters.append(Q(for_context='S'))
-        elif match.group(1) == 'Line':
-            type_filters.append(Q(for_context='L'))
-        elif match.group(1) == 'Assay':
-            type_filters.append(Q(for_context='A'))
-        elif match.group(1) == 'AssayLine':
-            type_filters.append(Q(for_context='L'))
-            type_filters.append(Q(for_context='A'))
-        # TODO: search core that will also search resolved i18n values
-        term_filters = [Q(type_name__iregex=re_term), Q(group__group_name__iregex=re_term)]
-        found = MetadataType.objects.filter(
-            reduce(operator.or_, type_filters, Q())
-            ).filter(
-            reduce(operator.or_, term_filters, Q())
-            )[:20]
-        results = [item.to_json() for item in found]
+        return autocomplete.search_metadata(request, match.group(1))
     else:
-        Model = getattr(models, model_name)
-        # gets all the direct field names that can be filtered by terms
-        ifields = [
-            f.get_attname()
-            for f in Model._meta.get_fields()
-            if hasattr(f, 'get_attname') and (
-                f.get_internal_type() == 'TextField' or
-                f.get_internal_type() == 'CharField'
-                )
-            ]
-        # term_filters = []
-        term_filters = [Q(**{f+'__iregex': re_term}) for f in ifields]
-        # construct a Q object for each term/field combination
-        # for term in term.split():
-        #     term_filters.extend([ Q(**{ f+'__iregex': term }) for f in ifields ])
-        # run search with each Q object OR'd together; limit to 20
-        found = Model.objects.filter(reduce(operator.or_, term_filters, Q()))[:20]
-        results = [item.to_json() for item in found]
-    return JsonResponse({"rows": results})
+        return autocomplete.search_generic(request, model_name)

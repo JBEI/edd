@@ -1,0 +1,11 @@
+{% load i18n %}
+
+{% if warnings_list %}
+<span class="warn2">
+  {% blocktrans count counter=warnings_list|length %}
+  {{ counter }} warning
+  {% plural %}
+  {{ counter }} warnings
+  {% endblocktrans %}
+</span>
+{% endif %}

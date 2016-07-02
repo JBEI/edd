@@ -1740,7 +1740,8 @@ var DataGridSpecLines = (function (_super) {
                 'checkboxWithID': function (id) { return 'line' + id + 'include'; },
                 'sideMenuItems': [
                     '<a href="#editline" class="line-edit-link">Edit Line</a>',
-                    '<a href="/export?lineId=' + index + '">Export Data as CSV/etc</a>'
+                    '<a href="/export?lineId=' + index + '">Export Data as CSV/Excel</a>',
+                    '<a href="/sbml?lineId=' + index + '">Export Data as SBML</a>'
                 ],
                 'hoverEffect': true,
                 'nowrap': true,

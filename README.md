@@ -51,30 +51,38 @@ experimentation.  See the deployed version at [edd.jbei.org][1].
 This section contains directions for setting up a development environment on EDD in OSX.
 
 * XCode <a name="XCode"/>
-    Install XCode (and associated Developer Tools) via the App Store
+    * Install XCode (and associated Developer Tools) via the App Store
     * As of OS X 10.9 "Mavericks": `xcode-select --install` to just get command-line tools
 * [Homebrew][2] <a name="HomeBrew"/>
+    * Homebrew is a package manager for OS X. The Homebrew packages handle installation and
+      dependency management for Terminal software. The Caskroom extension to Homebrew does the
+      same for GUI applications.
     * To install:
       `ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"`
       and follow prompts.
     * `brew doctor` should say `Your system is ready to brew.` or describe any problems.
-    * From the edd code directory, `brew bundle` should install additional software dependencies
+    * From the edd root directory, `brew bundle` should install additional software dependencies.
+    * It is a good idea to occaisionally run `brew update` to refresh Homebrew's list of available
+      packages and versions; and run `brew upgrade` to install updated versions of your installed
+      Homebrew packages.
 * [Docker][29] <a name="Docker"/>
-    * Will be installed already via Homebrew
-    * Set up Docker Machine
+    * Docker is a container virtualization platform: all software, configuration, and dependencies
+      required to run a service are packaged into standalone images. These images are ready to run
+      immediately upon being copied to a new host running a Docker daemon.
+    * Docker will be installed already via Homebrew in the previous step.
+    * Set up Docker Machine; a tool to manage Docker daemons running on other hosts.
         * Create a VM to run containers:
           `docker-machine create --driver virtualbox default`
         * Confirm VM is running with:
           `docker-machine ls`
         * Stop and start VMs with:
           `docker-machine stop default` and `docker-machine start default`
-        * Configure the `docker` command to use the VM to run containers with:
+        * Configure the `docker` command to use the virtualbox VM as the container host:
           `eval "$(docker-machine env default)"`
         * See more in the [Docker Machine documentation][30]
     * Running Docker images
-        * Verify Docker is configured by running:
-          `docker run --rm hello-world`
-            * Get `docker: command not found`? You didn't successfully install from Homebrew
+        * Verify Docker is configured by running: `docker run --rm hello-world`
+            * Get `docker: command not found`? You didn't successfully install from Homebrew.
             * Get `docker: Cannot connect to the Docker daemon.`? You have not run the `eval`
               command in the Docker Machine section.
     * Try the command `docker-compose`
@@ -82,95 +90,114 @@ This section contains directions for setting up a development environment on EDD
           compiled binary provided by the Homebrew packages; run `pip install docker-compose` to
           fix the error.
         * Normal output is helptext showing the commands to use with `docker-compose`.
+* Setting up Docker for EDD
+    * The default virtualbox settings allocate 1 CPU core and 1 GB RAM for the container host VM.
+      You will probably want to increase the allocated resources, by stopping the VM and changing
+      settings in the "System" tab of the virtualbox Settings GUI.
+    * Create a `./edd/settings/local.py` file, based on the example in
+      `./edd/settings/local.py-example`
+        * Any local-specific settings changes will go here. The local settings are loaded last,
+          and will override any settings contained in other files in the `./edd/settings` folder.
+    * Create `secrets.env` based on the example in `secrets.env-example`
+        * `SECRET_KEY` is the Django server key; pick some random text
+        * `secret2` is a password you choose for the `edduser` PostgreSQL user
+        * `secret3` is a password you choose for the `edd_user` RabbitMQ user
+        * `secret4` is a password you choose for the `flower` Flower user
+        * `ICE_HMAC_KEY` is the key used to authenticate to ICE; set this to the secret used
+          in the ICE instance you connect to for test
+        * `LDAP_PASS` is the password for the `jbei_auth` user by default; you may use your own
+          password by including in your `./edd/settings/local.py`:
+          `AUTH_LDAP_BIND_DN = 'lblEmpNum=[your-six-digit-id],ou=People,dc=lbl,dc=gov'`
+    * Allocate Docker volumes used to persist data saved by the various Docker services. By design,
+      Docker images are read-only. Any data or state that needs to carry over between restarts
+      must be written to a Docker volume. Also any data that is shared across services should be
+      shared via volumes.
+        * `docker volume create --name pgdata` creates the `pgdata` volume used to persist
+          postgres databases.
+        * `docker volume create --name solrdata` creates the `solrdata` volume containing the
+          search index managed by the Solr service.
+        * `docker volume create --name attachdata` creates the `attachdata` volume where EDD will
+          store attachment uploads locally.
+        * `docker volume create --name staticdata` creates the `staticdata` volume containing
+          static file resources used in EDD (stylesheets, images, scripts, etc.).
+        * `docker volume create --name redisdata` creates the `redisdata` volume for the EDD cache
+          service.
+    * Once allocated, some Docker volumes require further initialization:
+        * Initialize the `pgdata` postgres volume
+            * Launch a temporary postgres service container with the `pgdata` volume mounted.
+              Replace `secret#` values with appropriate passwords for the `postgres` and
+              `edduser` users, respectively. The `secret2` value is the value set in `secrets.env`
+              above:
+
+                  docker run --name temp_pg -d \
+                      -v pgdata:/var/lib/postgresql/data \
+                      -e POSTGRES_PASSWORD=secret1 \
+                      -e EDD_PGPASS=secret2 \
+                      postgres:9.4
+
+            * To create a new (empty) database:
+                * Connect to the temporary postgres service and run the init script (this may
+                  prompt you for the `secret1` password for `postgres` user):
+
+                      cat ./docker_services/postgres/init.sql | \
+                          docker exec -i temp_pg psql -U postgres template1
+
+            * To copy an existing database:
+                * Dump from the existing database and pipe to the temporary postgres service
+                  (replace `{remote_host}` e.g. with `postgres.jbei.org`, and `{remote_db}`
+                  with database name):
+
+                      pg_dump -Fp -C -E UTF8 -h {remote_host} {remote_db} | \
+                          docker exec -i temp_pg psql -U postgres
+        * Initialize the `solrdata` solr volume
+            * Launch a temporary solr service container with the data volume mounted:
+
+                  docker run --name temp_solr -dt \
+                      -v solrdata:/opt/solr/server/solr \
+                      -p "8983:8983" \
+                      solr:5.5
+
+            * Copy configuration from EDD source tree to the `temp_solr` container:
+
+                  tar -cf - -C ./docker_services/solr/cores . | \
+                      docker exec -i --user=solr temp_solr \
+                      tar xf - -C /opt/solr/server/solr/
+
+            * Restart the solr container to read in the just-added config:
+
+                  docker restart temp_solr
+
+        * Run database migrations
+            * Build an image for the EDD codebase:  `docker build -t edd .`
+                * This will take a long time on first build
+                * TODO: set up a Docker image repo, include instructions for use. This will
+                  eliminate the wait time to build the `edd` image.
+            * Run the `migrate` management command using the EDD image linked to the temporary
+              postgres and solr images:
+
+                  docker run --name temp_edd --rm -i \
+                      --link temp_pg:postgres \
+                      --link temp_solr:solr \
+                      --volume `pwd`:/code/ -w /code/ \
+                      edd python manage.py migrate
+
+        * Initialize the `staticdata` shared static files volume
+
+                  docker run --name temp_edd --rm -i \
+                      --link temp_pg:postgres \
+                      --link temp_solr:solr \
+                      --volume `pwd`:/code/ -w /code/ \
+                      --volume staticdata:/var/www/static \
+                      edd python manage.py collectstatic -y
+
+        * Clean-up
+            * `docker stop temp_pg && docker rm -v temp_pg`
+            * `docker stop temp_solr && docker rm -v temp_solr`
+
 * Running EDD <a name="Run_OSX"/>
-    * First-time setup
-        * If you have not already done so, create a host VM to run containers:
-          `docker-machine create --driver virtualbox default`
-            * You probably want to give the VM increased resources; default is 1 CPU + 1GB RAM.
-              In the VirtualBox application, stop the VM, then edit the settings to increase
-              available resources. Restart the VM before proceeding.
-        * Load the Docker environment with:
-          `eval "$(docker-machine env default)"`
-        * Create `secrets.env` based on the example in `secrets.env-example`
-            * `SECRET_KEY` is the Django server key; pick some random text
-            * `secret2` is a password you choose for the `edduser` PostgreSQL user
-            * `secret3` is a password you choose for the `edd_user` RabbitMQ user
-            * `secret4` is a password you choose for the `flower` Flower user
-            * `ICE_HMAC_KEY` is the key used to authenticate to ICE; set this to the secret used
-              in the ICE instance you connect to for test
-            * `LDAP_PASS` is the password for the `jbei_auth` user by default; you may use your own
-              password by including in your `./settings/local.py`:
-              `AUTH_LDAP_BIND_DN = 'lblEmpNum=[your-six-digit-id],ou=People,dc=lbl,dc=gov'`
-        * Copy `./settings/local.py-example` to `./settings/local.py`; any local-specific settings
-          changes will go here.
-        * Create Docker volumes for each of the volumes in `docker-compose.yml`
-            * Volumes are containers used to persist data between runs
-            * There are `pgdata` and `solrdata` volumes used.
-                * `docker volume create --name pgdata`
-                * `docker volume create --name solrdata`
-            * Initialize the postgres volume
-                * Launch a temporary postgres service container with the data volume mounted
-                  (replace `secret#` values with appropriate passwords for the `postgres` and
-                  `edduser` users, respectively):
-
-                      docker run --name temp_pg -d \
-                          -v pgdata:/var/lib/postgresql/data \
-                          -e POSTGRES_PASSWORD=secret1 \
-                          -e EDD_PGPASS=secret2 \
-                          postgres:9.4
-
-                * To create a new (empty) database:
-                    * Connect to the temporary postgres service and run the init script (this will
-                      prompt you for the `secret1` password for `postgres` user):
-
-                          cat ./docker_services/postgres/init.sql | \
-                              docker exec -i temp_pg psql -U postgres template1
-
-                * To copy an existing database:
-                    * Dump from the existing database and pipe to the temporary postgres service
-                      (replace `{remote_host}` e.g. with `postgres.jbei.org`, and `{remote_db}`
-                      with database name):
-
-                          pg_dump -Fp -C -E UTF8 -h {remote_host} {remote_db} | \
-                              docker exec -i temp_pg psql -U postgres
-
-            * Initialize the solr volume
-                * Launch a temporary solr service container with the data volume mounted:
-
-                      docker run --name temp_solr -dt \
-                          -v solrdata:/opt/solr/server/solr \
-                          -p "8983:8983" \
-                          solr:5.5
-
-                * Copy configuration from EDD source tree to the `temp_solr` container:
-
-                      tar -cf - -C ./docker_services/solr/cores . | \
-                          docker exec -i --user=solr temp_solr \
-                          tar xf - -C /opt/solr/server/solr/
-
-                * Restart the solr container to read in the just-added config:
-
-                      docker restart temp_solr
-
-            * Run database migrations
-                * Build an image for the EDD codebase:  `docker build -t edd .`
-                    * This will take a long time on first build
-                    * TODO: set up a Docker image repo, include instructions for use
-                * Run the migrate management command using the EDD image linked to the temporary
-                  postgres and solr images:
-
-                      docker run --name temp_edd --rm -i \
-                          --link temp_pg:postgres \
-                          --link temp_solr:solr \
-                          --volume `pwd`:/code/ -w /code/ \
-                          edd python manage.py migrate
-
-            * Clean-up
-                * `docker stop temp_pg && docker rm -v temp_pg`
-                * `docker stop temp_solr && docker rm -v temp_solr`
     * `docker-compose` commands
         * Build all services:  `docker-compose build`
-        * Startup all services: `docker-compose up -d`
+        * Startup all services in detached mode: `docker-compose up -d`
         * View logs: `docker-compose logs`
         * Bringing down all services: `docker-compose down`
         * See more in the [Docker Compose documentation][32]

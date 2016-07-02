@@ -1,0 +1,68 @@
+{% load i18n %}
+
+<div class="disclose discloseHide" id="existinglineshide">
+  <div style="margin:10px">
+    <a href="#" class="discloseLink">
+      {% blocktrans with measurement=selection.measurements|length assays=selection.assays|length lines=selection.lines|length %}
+        {{ measurements }} Measurements in {{ assays }} Assays in {{ lines }} Lines Selected
+      {% endblocktrans %}
+    </a>
+  </div>
+  <div id="existingLinesSection" class="pageSection discloseBody" style="border-width:1px;margin:10px;"> 
+    <!--
+    Table displaying selected lines; used for table and SBML export pages
+    -->
+    <div class="sectionHead">{% trans "Lines selected for export" %}</div>
+    <table cellpadding="0" cellspacing="0" class="dataTable" id="lineSelectionsTable">
+      <tr class="columnLabels">
+        <th class="sortheader" style="text-align:left">
+          <div>{% trans "Name" %}</div>
+        </th>
+        <th class="sortheader" style="text-align:left" id="hStrain">
+          <div>{% trans "Strain" %}</div>
+        </th>
+        <th class="sortheader" style="text-align:left" id="hMedia">
+          <div>{% trans "Media" %}</div>
+        </th>
+        <th class="sortheader" style="text-align:left" id="hCSource">
+          <div>{% trans "Carbon Source" %}</div>
+        </th>
+        <th class="sortheader" style="text-align:left" id="hLabeling">
+          <div>{% trans "Labeling" %}</div>
+        </th>
+        <th class="sortheader" style="text-align:center" id="hExperimenter">
+          <div>{% trans "Experimenter" %}</div>
+        </th>
+        <th class="sortheader" style="text-align:left;border-right-width:0px" id="hModified">
+          <div>{% trans "Last Modified" %}</div>
+        </th>
+      </tr>
+      {% for line in selection.lines %}
+      {% with carbon_source=line.carbon_source.all %}
+      <!-- {{ id }} {{ line }} -->
+      <tr class="stripeRow{% if forloop.counter|divisibleby:'2' %}A{% else %}B{% endif %}" data-line-id="{{ line.id }}">
+        <td>{{ line.name }}</td>
+        <td>{{ line.strain_ids }}</td>
+        <td>{{ line.media }}</td>
+        <td>
+          <ul>
+          {% for carbon in carbon_source %}
+            <li>{{ carbon.name }}</li>
+          {% endfor %}
+          </ul>
+        </td>
+        <td>
+          <ul>
+          {% for carbon in carbon_source %}
+            <li>{{ carbon.labeling }}</li>
+          {% endfor %}
+          </ul>
+        </td>
+        <td style="text-align:center;">{{ line.experimenter.profile.initials }}</td>
+        <td>{{ line.last_modified }}</td>
+      </tr>
+      {% endwith %}
+      {% endfor %}
+    </table>
+  </div>
+</div>

@@ -365,7 +365,6 @@ module StudyD {
     }
 
 
-
     // A generic version of a filtering column in the filtering section beneath the graph area on the page,
     // meant to be subclassed for specific criteria.
     // When initialized with a set of record IDs, the column is filled with labeled checkboxes, one for each
@@ -726,7 +725,6 @@ module StudyD {
     }
 
 
-
     export class StrainFilterSection extends GenericFilterSection {
         configure():void {
             this.sectionTitle = 'Strain';
@@ -751,7 +749,6 @@ module StudyD {
             });
         }
     }
-
 
 
     export class CarbonSourceFilterSection extends GenericFilterSection {
@@ -780,7 +777,6 @@ module StudyD {
     }
 
 
-
     export class CarbonLabelingFilterSection extends GenericFilterSection {
         configure():void {
             this.sectionTitle = 'Labeling';
@@ -807,7 +803,6 @@ module StudyD {
     }
 
 
-
     export class LineNameFilterSection extends GenericFilterSection {
         configure():void {
             this.sectionTitle = 'Line';
@@ -828,7 +823,6 @@ module StudyD {
             });
         }
     }
-
 
 
     export class ProtocolFilterSection extends GenericFilterSection {
@@ -853,7 +847,6 @@ module StudyD {
     }
 
 
-
     export class AssaySuffixFilterSection extends GenericFilterSection {
         configure():void {
             this.sectionTitle = 'Assay Suffix';
@@ -874,7 +867,6 @@ module StudyD {
             });
         }
     }
-
 
 
     export class MetaDataFilterSection extends GenericFilterSection {
@@ -899,7 +891,6 @@ module StudyD {
     }
 
 
-
     export class LineMetaDataFilterSection extends MetaDataFilterSection {
 
         updateUniqueIndexesHash(ids: string[]): void {
@@ -918,7 +909,6 @@ module StudyD {
     }
 
 
-
     export class AssayMetaDataFilterSection extends MetaDataFilterSection {
 
         updateUniqueIndexesHash(ids: string[]): void {
@@ -935,7 +925,6 @@ module StudyD {
             });
         }
     }
-
 
 
     export class MetaboliteCompartmentFilterSection extends GenericFilterSection {
@@ -1033,7 +1022,6 @@ module StudyD {
     }
 
 
-
     export class ProteinFilterSection extends GenericFilterSection {
         // NOTE: this filter class works with Measurement IDs rather than Assay IDs
         loadPending:boolean;
@@ -1071,7 +1059,6 @@ module StudyD {
     }
 
 
-
     export class GeneFilterSection extends GenericFilterSection {
         // NOTE: this filter class works with Measurement IDs rather than Assay IDs
         loadPending:boolean;
@@ -1107,7 +1094,6 @@ module StudyD {
             this.loadPending = false;
         }
     }
-
 
 
     // Called when the page loads.
@@ -2015,7 +2001,8 @@ class DataGridSpecLines extends DataGridSpecBase {
                 'checkboxWithID': (id) => { return 'line' + id + 'include'; },
                 'sideMenuItems': [
                     '<a href="#editline" class="line-edit-link">Edit Line</a>',
-                    '<a href="/export?lineId=' + index + '">Export Data as CSV/etc</a>'
+                    '<a href="/export?lineId=' + index + '">Export Data as CSV/Excel</a>',
+                    '<a href="/sbml?lineId=' + index + '">Export Data as SBML</a>'
                 ],
                 'hoverEffect': true,
                 'nowrap': true,
