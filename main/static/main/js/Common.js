@@ -1,5 +1,5 @@
     /**
-    * this function returns object size  
+    * this function takes in an object and returns its size
     **/
     function objectSize(obj) {
     
@@ -9,26 +9,6 @@
         }
         return size;
     };
-    
-    /**
-    * this function takes in the data object and returns the size of each assays'
-    * data points
-    **/
-    function arrSize(data) {
-    
-      var size = objectSize(data);
-      var maxArrSize = [];
-      for (var i = 0; i < size; i++) {
-        //returns first object
-        var first = (data[Object.keys(data)[i]].values);
-        maxArrSize.push(first.length)
-    
-      }
-      maxArrSize.sort(function(a, b) {
-              return a - b;
-            })
-      return maxArrSize
-    }
     
     /**
     *  This function takes in data and transforms it into the following
@@ -45,148 +25,60 @@
     function unitName(unitId, unitTypes) {
       return unitTypes[unitId].name
     }
-        /**
-    *  This function takes in data and transforms it into the following
-    *  [
-        ...
-        [{x, y}, {x, y}, ...],
-        [{x, y}, {x, y}, ...],
-        ...
-        }
+
+
+    /**
+    *  This function takes in EDDdata, a singleAssay line entry, and measurement names and
+    *  transforms it into the following schema:
+    *    [{label: "dt9304, x: 1, y: 2.5, x_unit: "n/a", y_unit: "cmol",  name: "i'm a protein
+     *    name"},
+    *    {label: "dt3903, x: 1, y: 23.5, x_unit: "n/a", y_unit: "cmol",  name: "i'm another protein
+     *    name"}
+    *    ...
+    *    ]
     **/
-    function transformLineData(data, names) {
-      var unitTypes = data.UnitTypes;
-      data = data.AssayMeasurements;
-      var linedata = []
-      var size = objectSize(data);
-      for (var i = 0; i < size; i++) {
-        //returns first object
-        var first = (data[Object.keys(data)[i]]);
-        var values = first.values;
-        //data
-        var n = [];
-        for (var j = 0; j < values.length; j++ ) {
-          dataset = {};
-            if (values[j][0].length == 0) {
-                values[j][0] = ["0"];
-            } else if (values[j][1].length == 0) {
-                values[j][1] = ["0"];
-            }
-            dataset.label = 'dt' + first.assay; 
-            dataset.x = parseInt(values[j][0].join());
-            dataset.y = parseFloat(values[j][1].join());
-            dataset.i = i;
-            dataset.x_unit = unitName(first.x_units, unitTypes);
-            dataset.y_unit = unitName(first.y_units, unitTypes);
-            dataset.name = names[i];
-            n.push(dataset);
-        }
-
-        linedata.push(n);
-      }
-          //sort data
-         linedata.forEach(function(d) {
-            d.sort(function(a, b) {
-              return a.x - b.x;
-            })
-          })
-
-        return(linedata);
-    }
     
     function transformSingleLineItem(data, singleData, names) {
+        // unit type ids
         var unitTypes = data.UnitTypes;
+        // array of x and y values for sortin
         var xAndYValues = [];
-        singleDataValues = singleData.values;
-        for (var i = 0; i < singleDataValues.length; i++) {
+        //data for one line entry
+        var singleDataValues = singleData.values;
+
+        _.forEach(singleDataValues, function(dataValue) {
             dataset = {};
-            if (singleDataValues[i][0].length == 0) {
-                singleDataValues[i][0] = ["0"];
-            } else if (singleDataValues[i][1].length == 0) {
-                singleDataValues[i][1] = ["0"];
+
+            //can also change to omit data point with null  
+            if (dataValue[0].length == 0) {
+                dataValue[0] = ["0"];
+            } else if (dataValue[1].length == 0) {
+                dataValue[1] = ["0"];
             }
             dataset.label = 'dt' + singleData.assay;
-            dataset.x = parseInt(singleDataValues[i][0].join());
-            dataset.y = parseFloat(singleDataValues[i][1].join());
+            dataset.x = parseInt(dataValue[0].join());
+            dataset.y = parseFloat(dataValue[1].join());
             dataset.x_unit = unitName(singleData.x_units, unitTypes);
             dataset.y_unit = unitName(singleData.y_units, unitTypes);
             dataset.name = names;
             xAndYValues.push(dataset);
-        }
+        });
         xAndYValues.sort(function(a, b) {
               return a.x - b.x;
             });
         return xAndYValues;
     }
 
-
-
     /**
-    * this function takes in the data array and returns an array of y values  
+    *  This function takes in the EDDData.AssayMeasurements object and returns
+    *  an array of Assay ids.
     **/
-    function yvalues(data) {
-      var y = [];
-      var size = objectSize(data);
-      for (var i = 0; i < size; i++) {
-        var firstobj = (data[Object.keys(data)[i]].values);
-        for (var j = 0; j < firstobj.length; j++) {
-          var yval = firstobj[j][1]
-          if (yval.length == 1)
-          y.push(parseFloat(yval.join()))
-        }
-      }
-      return y;
-    }
-    
-    /**
-    * this function returns an array of x values  
-    **/
-    function xvalues(data) {
-      var x = [];
-      var size = objectSize(data);
-      for (var i = 0; i < size; i++) {
-        var firstobj = (data[Object.keys(data)[i]].values);
-        for (var j = 0; j < firstobj.length; j++) {
-          var xval = firstobj[j][0]
-          if (xval.length == 1)
-          x.push(parseFloat(xval.join()))
-        }
-      }
-      return x;
-    }
-    
-    function findAllXValues(xvalues) {
-        var fullxList = [];
-        xvalues.forEach(function(d) {
-            if (! _.contains(fullxList, d)) {
-                fullxList.push(d)
-            }
-        })
-        return fullxList.sort(function(a, b) {
-            return a - b;
-        })
-    }
-    
-    /**
-    * this function sorts an array of values in ascending order 
-    **/
-     function sortValues(values) {
-        values.sort(function(a,b) {
-          return parseFloat(b) - parseFloat(a);
-        });
-        return values
-     }
-
-     /**
-  *  This function takes in the EDDData.AssayMeasurements object and returns
-  *  an array of Assay ids. 
-  **/
 
     function findAssayIds(assayMeasurements) {
-     var assayIds = [];
-     for (key in assayMeasurements) {
+        var assayIds = [];
+        for (key in assayMeasurements) {
           assayIds.push(assayMeasurements[key].assay)
-     }
+        }
         return assayIds
     }
 
@@ -197,10 +89,10 @@
 
     function findLidIds(assays, assayIds) {
         var lidIds = [];
-        for (var i = 0; i < assayIds.length; i++) {
-            lidIds.push(assays[assayIds[i]].lid)
-        }
-    return lidIds
+        _.forEach(assayIds, function(assayId) {
+            lidIds.push(assays[assayId].lid)
+        })
+        return lidIds
     }
 
     /**
@@ -209,10 +101,10 @@
   **/
 
     function lineName(lines, lidIds) {
-        var lineNames = [];
-        for (var i = 0; i < lidIds.length; i++) {
-            lineNames.push(lines[lidIds[i]].name)
-        }
+       var lineNames = [];
+       _.forEach(lidIds, function(lidId) {
+            lineNames.push(lines[lidId.name])
+        });
         return lineNames;
     }
 
@@ -222,23 +114,7 @@
   **/
 
   function names(EDDData) {
-      var assayIds = findAssayIds(EDDData.AssayMeasurements)
-      var lidIds = findLidIds(EDDData.Assays, assayIds)
-      var names = lineName(EDDData.Lines, lidIds)
-      return names; 
-  }
-    
-
-  /**
-  *  This function takes in the d3 nested data object and returns
-  *  the max array size.
-  **/
-  function maxSize(data) {
-    var max = 0;
-    data.forEach(function(d) {
-    if (d.values.length > max) {
-      max = d.values.length
-    }
-  });
-    console.log(max)
+      var assayIds = findAssayIds(EDDData.AssayMeasurements);
+      var lidIds = findLidIds(EDDData.Assays, assayIds);
+      return lineName(EDDData.Lines, lidIds);
   }
