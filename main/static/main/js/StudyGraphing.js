@@ -28,7 +28,7 @@ StudyDGraphing = {
             d3.select('#single').style('display', 'none');
             d3.select('#groupedAssay').style('display', 'none');
         });
-        d3.select('singleBar')
+        d3.select('#singleBar')
             .on('click', function () {
             d3.select('#linechart').style('display', 'none');
             d3.select('#timeBar').style('display', 'none');
