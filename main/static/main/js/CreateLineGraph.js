@@ -1,7 +1,7 @@
 /**
 * this function creates the line graph 
 **/
-function createLineGraph(linedata, minValue, maxValue, labels, minXvalue, maxXvalue) {
+function createLineGraph(assayMeasurements) {
     /**
      * this function creates the x axis tick marks for grid
      **/
@@ -32,8 +32,9 @@ function createLineGraph(linedata, minValue, maxValue, labels, minXvalue, maxXva
 
     var color = d3.scale.category10();
 
-    var y = d3.scale.linear().domain([minValue - (.1 * minValue), maxValue + (.1 * maxValue)]).range([height, 0]);
-    var x = d3.scale.linear().domain([minXvalue - 1, maxXvalue]).range([0, width]);
+    var y = d3.scale.linear().range([height, 0]);
+     var x = d3.scale.ordinal()
+      .rangeRoundBands([0, width], .1);
 
     var yAxis = d3.svg.axis()
         .scale(y)
@@ -46,7 +47,7 @@ function createLineGraph(linedata, minValue, maxValue, labels, minXvalue, maxXva
         .ticks(5);
 
     //create svg graph object
-    var svg = d3.select("div#container").append("svg")
+    var svg = d3.select("div#linechart").append("svg")
         .attr("preserveAspectRatio", "xMinYMin meet")
         .attr("viewBox", "-30 -40 1100 280")
         .classed("svg-content", true)
@@ -91,6 +92,9 @@ function createLineGraph(linedata, minValue, maxValue, labels, minXvalue, maxXva
             return y(d.y)
         });
 
+    y.domain([0, d3.max(assayMeasurements, function(d) { return d.y})]);
+    x.domain(assayMeasurements.map(function(d) { return d.x; }));
+
     //iterate through different arrays. right now i is undefined.. not sure what is happening. 
     var data = d3.nest()
         .key(function (d) {
@@ -99,13 +103,13 @@ function createLineGraph(linedata, minValue, maxValue, labels, minXvalue, maxXva
         .key(function (d) {
             return d.i;
         })
-        .entries(linedata);
+        .entries(assayMeasurements);
     
     var proteinNames = d3.nest()
         .key(function (d) {
             return d.name;
         })
-        .entries(linedata);
+        .entries(assayMeasurements);
     var names = proteinNames.map(function (d) {return d.key;})
 
 

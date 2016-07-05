@@ -13,8 +13,6 @@ function createTimeGraph(assayMeasurements, labels, size) {
         .rangeRoundBands([0, width], .1);
 
     var x1 = d3.scale.ordinal();
-    
-    var x2 = d3.scale.ordinal();
 
     var y = d3.scale.linear()
         .range([height, 0]);
@@ -28,7 +26,7 @@ function createTimeGraph(assayMeasurements, labels, size) {
         .orient("left")
         .tickFormat(d3.format(".2s"));
 
-    var svg = d3.select("div#metrics").append("svg")
+    var svg = d3.select("div#timeBar").append("svg")
         .attr("preserveAspectRatio", "xMinYMin meet")
         .attr("viewBox", "-30 -40 1100 280")
         .classed("svg-content", true)
@@ -53,8 +51,9 @@ function createTimeGraph(assayMeasurements, labels, size) {
             return d.name;
         })
         .entries(assayMeasurements);
-    
-    var names = proteinNames.map(function (d) {return d.key;})
+
+    //protein names
+    var names = proteinNames.map(function (d) {return d.key;});
 
     x0.domain(data.map(function (d) {return d.key;}));
     x1.domain(names).rangeRoundBands([0, x0.rangeBand()]);
@@ -75,14 +74,14 @@ function createTimeGraph(assayMeasurements, labels, size) {
         .call(make_x_axis()
             .tickSize(-height, 0, 0)
             .tickFormat("")
-        )
+        );
     // Draw the y Grid lines
     svg.append("g")
         .attr("class", "grid")
         .call(make_y_axis()
             .tickSize(-width, 0, 0)
             .tickFormat("")
-        )
+        );
 
 
     svg.append("g")
@@ -101,7 +100,7 @@ function createTimeGraph(assayMeasurements, labels, size) {
         .attr("class", "bar")
         .attr("transform", function (d) {
             return "translate(" + x0(d.key) + ",0)";
-        })
+        });
 
 
         bar.selectAll("rect")
@@ -138,52 +137,52 @@ function createTimeGraph(assayMeasurements, labels, size) {
             });
      //legend
       var legend = svg.selectAll(".legend")
-                  .data(proteinNames)
-                  .enter().append("g")
-                  .attr("class", "legend")
-                  .attr("transform", function(d, i) {
-                    return "translate(0," + i * 20 + ")";
-                  });
+          .data(proteinNames)
+          .enter().append("g")
+          .attr("class", "legend")
+          .attr("transform", function(d, i) {
+            return "translate(0," + i * 20 + ")";
+          });
 
-                legend.append("rect")
-                  .attr("x", width + 5)
-                  .attr("width", 18)
-                  .attr("height", 18)
-                  .style("fill", function (d) { // Add the colours dynamically
-                    return data.color = color(d.key);
-                 })
+        legend.append("rect")
+          .attr("x", width + 5)
+          .attr("width", 18)
+          .attr("height", 18)
+          .style("fill", function (d) { // Add the colours dynamically
+            return data.color = color(d.key);
+         });
 
-                legend.append("text")
-                  .attr("x", width + 25)
-                  .attr("y", 9)
-                  .attr("dy", ".35em")
-                  .style("text-anchor", "start")
-                  .text(function(d) {
-                    return d.key;
-                  })
+        legend.append("text")
+          .attr("x", width + 25)
+          .attr("y", 9)
+          .attr("dy", ".35em")
+          .style("text-anchor", "start")
+          .text(function(d) {
+            return d.key;
+          });
 
     //hide legend for too many entries.
     if (names.length > 10) {
-            d3.selectAll(".legend").style("display", "none");
+        d3.selectAll(".legend").style("display", "none");
     }
 
     //tooltip
     var tooltip = svg.append("g")
-      .attr("class", "tooltip")
-      .style("display", "none");
+          .attr("class", "tooltip")
+          .style("display", "none");
 
-    tooltip.append("rect")
-      .attr("width", 100)
-      .attr("height", 20)
-      .attr("fill", "white")
-      .style("opacity", 0.5);
-
-    tooltip.append("text")
-      .attr("x", 50)
-      .attr("dy", "1.2em")
-      .style("text-anchor", "middle")
-      .attr("font-size", "12px")
-      .attr("font-weight", "bold");
+        tooltip.append("rect")
+          .attr("width", 100)
+          .attr("height", 20)
+          .attr("fill", "white")
+          .style("opacity", 0.5);
+    
+        tooltip.append("text")
+          .attr("x", 50)
+          .attr("dy", "1.2em")
+          .style("text-anchor", "middle")
+          .attr("font-size", "12px")
+          .attr("font-weight", "bold");
 
     /**
     * this function creates the x axis tick marks for grid
