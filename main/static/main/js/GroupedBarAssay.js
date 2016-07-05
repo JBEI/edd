@@ -46,49 +46,38 @@ function createAssayGraph(assayMeasurements) {
         .append("svg")
         .attr("preserveAspectRatio", "xMinYMin meet")
         .attr("viewBox", "-30 -40 1100 280")
-        .classed("svg-content", true)
+        .classed("svg-content", true);
+
+    var div = d3.select("body").append("div")
+        .attr("class", "tooltip")
+        .style("opacity", 0);
 
     //nest data by name. nest again by x label
     var nested = d3.nest()
         .key(function(d) { return d.name; })
         .key(function(d) {return d.x})
         .entries(assayMeasurements);
-
-    /**
-    * this function takes in input a protein's line values and inserts a y id key for
-    * each x, y object.
-    **/
-    function addYIdentifier(data3) {
-        return _.map(data3, function(d, i) {
-            d.key = 'y' + i;
-        })
-    }
-
-    /**
-     *  function takes in nested assayMeasurements and inserts a y id key for each value object
-     *  returns data
-     */
-
-    //DOUBLE CHECK
-    function getXYValues(nested) {
-        return _.forEach(nested, function(nameValues) {
-            _.map(nameValues, function(xValue){
-                addYIdentifier(xValue.values)
-            })
-        });
-        // can I do this? above. return nested
-    }
-
+    
     data = getXYValues(nested);
-    var data2 = data.map(function(d) { return (d.values)})
+
     var proteinNames = data.map(function(d) { return d.key; });
-    var names = _.map(proteinNames, function(d, i) {
+
+    var data2 = data.map(function (d) {
+        return (d.values)
+    });
+
+    var names = _.map(proteinNames, function (d, i) {
         return i;
-    })
-    //returns y0..
-    var yvalueIds =  data[0].values[0].values.map(function(d) { return d.key})
+    });
+
+    var yvalueIds = data[0].values[0].values.map(function (d) {
+        return d.key
+    });
+    
     // returns x values
-    var xValueLabels = data2[0].map(function(d) { return (d.key)})
+    var xValueLabels = data2[0].map(function (d) {
+        return (d.key)
+    });
 
 
     x_name.domain(names);
@@ -150,10 +139,10 @@ function createAssayGraph(assayMeasurements) {
           return height + 25;
         })
         .attr('text-anchor', 'middle')
-        .text(function(d) {
-              return d;
-            })
-        .style("font-size", 8)
+        .text(function (d) {
+            return d;
+        })
+        .style("font-size", 8);
 
 
     var values_g = categories_g.selectAll(".value")
@@ -201,37 +190,43 @@ function createAssayGraph(assayMeasurements) {
             return color(d.key)
         })
         .style("opacity", 0.3);
-
-    //
+    
     var hover = categories_g.selectAll('.rect')
         .data(function(d) {
             return d.values  // returns [{i:, x:, y:, ...}]
         })
-        .on("mouseover", function() { tooltip.style("display", null); })
-        .on("mouseout", function() { tooltip.style("display", "none"); })
-        .on("mousemove", function(d) {
-            var barPos = parseFloat(d3.select(this.parentNode).attr('transform').split("(")[1]);
-            var xPosition = barPos + d3.mouse(this)[0] - 15;
-            var yPosition = d3.mouse(this)[1] - 25;
-            tooltip.attr("transform", "translate(" + xPosition + "," + yPosition + ")");
-            tooltip.select("text").html(d.y + " " + d.y_unit)
+        .on("mouseover", function(d) {
+                div.transition()
+                    .style("opacity", .9);
+                div .html(d.y + "<br/>"  + d.y_unit)
+                    .style("left", (d3.event.pageX) + "px")
+                    .style("top", (d3.event.pageY - 28) + "px");
+                })
+        .on("mouseout", function(d) {
+                div.transition()
+                    .style("opacity", 0);
+            });
+
+
+    /**
+     * this function takes in input a protein's line values and inserts a y id key for
+     * each x, y object.
+     **/
+    function addYIdentifier(data3) {
+        return _.map(data3, function (d, i) {
+            d.key = 'y' + i;
+        })
+    }
+
+    /**
+     *  function takes in nested assayMeasurements and inserts a y id key for each value object
+     *  returns data
+     */
+    function getXYValues(nested) {
+        return _.forEach(nested, function (nameValues) {
+            _.map(nameValues, function (xValue) {
+                addYIdentifier(xValue.values)
+            })
         });
-
-        //tooltip
-    var tooltip = svg.append("g")
-      .attr("class", "tooltip")
-      .style("display", "none");
-
-    tooltip.append("rect")
-      .attr("width", 100)
-      .attr("height", 20)
-      .attr("fill", "white")
-      .style("opacity", 0.5);
-
-    tooltip.append("text")
-      .attr("x", 50)
-      .attr("dy", "1.2em")
-      .style("text-anchor", "middle")
-      .attr("font-size", "12px")
-      .attr("font-weight", "bold");
+    }
 }
