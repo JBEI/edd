@@ -16,10 +16,22 @@
 .bar:hover {
   fill: orangered ;
 }
+
 body {
   font: 10px sans-serif;
   padding-left: 20px;
     overflow: scroll
+}
+
+.btn-default {
+    outline: none;
+    border-color: #fff;
+}
+
+.btn:focus, .btn:active:focus, .btn.active:focus{
+    outline:none;
+    box-shadow:none;
+    border-color: #fff;
 }
 
 .d3-tip {
@@ -65,15 +77,29 @@ body {
 div.tooltip {
   position: absolute;
   text-align: center;
-  width: 100px;
-
+  width: 50px;
+  opacity: 0.3;
   padding: 2px;
   font: 12px sans-serif;
-  background: lightsteelblue;
+  background: white;
   border: 0px;
   border-radius: 8px;
   pointer-events: none;
 }
+
+div.tooltip2 {
+  position: absolute;
+  text-align: center;
+  width: 100px;
+  opacity: 0.3;
+  padding: 2px;
+  font: 12px sans-serif;
+  background: white;
+  border: 0px;
+  border-radius: 8px;
+  pointer-events: none;
+}
+
 
 .grid .tick {
     stroke: lightgrey;

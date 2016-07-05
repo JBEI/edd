@@ -1,8 +1,6 @@
 ////// grouped bar chart based on time
 function createTimeGraph(assayMeasurements, labels, size) {
 
-    var numberOfLines = _.range(size);
-
     var margin = {top: 20, right: 120, bottom: 30, left: 40},
         width = 1000 - margin.left - margin.right,
         height = 270 - margin.top - margin.bottom;
@@ -31,6 +29,9 @@ function createTimeGraph(assayMeasurements, labels, size) {
         .attr("viewBox", "-30 -40 1100 280")
         .classed("svg-content", true)
 
+    var div = d3.select("body").append("div")
+        .attr("class", "tooltip")
+        .style("opacity", 0);
     /**
      *  This method transforms our data object into the following
      *  {
@@ -103,7 +104,7 @@ function createTimeGraph(assayMeasurements, labels, size) {
         });
 
 
-        bar.selectAll("rect")
+    bar.selectAll("rect")
             .data(function (d) {
                 return d.values
             })
@@ -122,18 +123,16 @@ function createTimeGraph(assayMeasurements, labels, size) {
                 return color(d.name);
             })
             .style("opacity", .3)
-            .on("mouseover", function () {
-                tooltip.style("display", null);
-            })
-            .on("mouseout", function () {
-                tooltip.style("display", "none");
-            })
-            .on("mousemove", function (d, i) {
-                var barPos = parseFloat(d3.select(this.parentNode).attr('transform').split("(")[1]);
-                var xPosition = barPos + d3.mouse(this)[0] - 15;
-                var yPosition = d3.mouse(this)[1] - 25;
-                tooltip.attr("transform", "translate(" + xPosition + "," + yPosition + ")");
-                tooltip.select("text").html(d.y + " " + d.y_unit)
+            .on("mouseover", function(d) {
+                div.transition()
+                    .style("opacity", .9);
+                div .html(d.y + "<br/>"  + d.y_unit)
+                    .style("left", (d3.event.pageX) + "px")
+                    .style("top", (d3.event.pageY - 28) + "px");
+                })
+            .on("mouseout", function(d) {
+                div.transition()
+                    .style("opacity", 0);
             });
      //legend
       var legend = svg.selectAll(".legend")
@@ -164,26 +163,7 @@ function createTimeGraph(assayMeasurements, labels, size) {
     //hide legend for too many entries.
     if (names.length > 10) {
         d3.selectAll(".legend").style("display", "none");
-    }
-
-    //tooltip
-    var tooltip = svg.append("g")
-          .attr("class", "tooltip")
-          .style("display", "none");
-
-        tooltip.append("rect")
-          .attr("width", 100)
-          .attr("height", 20)
-          .attr("fill", "white")
-          .style("opacity", 0.5);
-    
-        tooltip.append("text")
-          .attr("x", 50)
-          .attr("dy", "1.2em")
-          .style("text-anchor", "middle")
-          .attr("font-size", "12px")
-          .attr("font-weight", "bold");
-
+    } 
     /**
     * this function creates the x axis tick marks for grid
     **/

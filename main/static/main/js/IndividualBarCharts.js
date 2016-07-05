@@ -36,7 +36,7 @@ function createSideBySide(linedata, labels) {
         return "<strong>y value</strong> <span style='color:red'>" + d.y + " " + d.y_unit + "</span>";
       })
 
-    var svg = d3.select("#single").append("svg")
+    var svg = d3.select("div#single").append("svg")
       .attr("width", width + margin.left + margin.right)
       .attr("height", height + margin.top + margin.bottom)
     .append("g")
@@ -44,8 +44,8 @@ function createSideBySide(linedata, labels) {
 
     svg.call(tip);
 
-      x.domain(linedata[i].map(function(d) { return d.x; }));
-      y.domain([0, d3.max(linedata[i], function(d) { return d.y; })]);
+    x.domain(linedata[i].map(function(d) { return d.x; }));
+    y.domain([0, d3.max(linedata[i], function(d) { return d.y; })]);
 
     svg.append("g")
         .attr("class", "x axis")

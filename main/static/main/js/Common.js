@@ -45,11 +45,10 @@
         var xAndYValues = [];
         //data for one line entry
         var singleDataValues = singleData.values;
-
+        
         _.forEach(singleDataValues, function(dataValue) {
-            dataset = {};
-
-            //can also change to omit data point with null  
+             var dataset = {};
+            //can also change to omit data point with null which was done before..
             if (dataValue[0].length == 0) {
                 dataValue[0] = ["0"];
             } else if (dataValue[1].length == 0) {
@@ -75,8 +74,8 @@
     **/
 
     function findAssayIds(assayMeasurements) {
-        var assayIds = [];
-        for (key in assayMeasurements) {
+     var assayIds = [];
+     for (var key in assayMeasurements) {
           assayIds.push(assayMeasurements[key].assay)
         }
         return assayIds
@@ -103,7 +102,7 @@
     function lineName(lines, lidIds) {
        var lineNames = [];
        _.forEach(lidIds, function(lidId) {
-            lineNames.push(lines[lidId.name])
+            lineNames.push(lines[lidId].name)
         });
         return lineNames;
     }
