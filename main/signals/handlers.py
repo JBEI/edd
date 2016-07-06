@@ -244,7 +244,7 @@ def _post_commit_unlink_ice_entry_from_study(user_email, study_pk, study_creatio
     """
     logger.info('Start ' + _post_commit_unlink_ice_entry_from_study.__name__ + '()')
 
-    ice = IceApi(auth=IceHmacAuth(username=user_email)) if not settings.USE_CELERY else None
+    ice = IceApi(auth=IceHmacAuth.get(username=user_email)) if not settings.USE_CELERY else None
 
     study_url = get_abs_study_url(study_pk)
     index = 0
