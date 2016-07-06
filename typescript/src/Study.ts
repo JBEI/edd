@@ -2496,9 +2496,9 @@ class DataGridAssays extends DataGrid {
             this.sectionCurrentlyDisclosed = true;
             // Start a timer to wait before calling the routine that remakes a table. This breaks up
             // table recreation into separate events, so the browser can update UI.
-            if (this.recordsCurrentlyInvalidated.length) {
+            // if (this.recordsCurrentlyInvalidated.length) {
                 setTimeout(() => this.triggerAssayRecordsRefresh(), 10);
-            }
+           // }
         } else {
             this.sectionCurrentlyDisclosed = false;
         }
@@ -2526,7 +2526,7 @@ class DataGridAssays extends DataGrid {
 
     // Start a timer to wait before calling the routine that remakes the graph.
     queueGraphRemake() {
-        this._cancelGraph();
+        //this._cancelGraph();
         this.graphRefreshTimerID = setTimeout( () => this.remakeGraphArea(), 100 );
     }
 
