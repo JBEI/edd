@@ -33,6 +33,9 @@ fi
 if [ -r /code/docker_services/nginx/ssl/trustchain.crt ]; then
     echo "Copying trustchain to Docker TLS volume …"
     cp /code/docker_services/nginx/ssl/trustchain.crt /etc/ssl/edd/trustchain.crt
+elif [ ! -r /etc/ssl/edd/trustchain.crt ]; then
+    echo "Copying self-signed certificate as trustchain …"
+    cp /etc/ssl/edd/certificate.chained.crt /etc/ssl/edd/trustchain.crt
 fi
 
 # Potentially do some variable replacement of nginx config
