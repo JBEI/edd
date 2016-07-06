@@ -28,15 +28,36 @@ PK_OR_TYPICAL_UUID_REGEX = r'(?:\d+)|%(uuid_regex)s' % {
 TYPICAL_UUID_PATTERN = re.compile(TYPICAL_UUID_REGEX, re.UNICODE)
 PK_OR_TYPICAL_UUID_PATTERN = re.compile(PK_OR_TYPICAL_UUID_REGEX, re.UNICODE)
 
+# colors to help user prompts stand out in the mess of (helpful, but overwhelming) output from this
+# script. See http://stackoverflow.com/questions/287871/print-in-terminal-with-colors-using-python
+class TerminalFormats:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
 
 class UserInputTimer(object):
     """
     A simple wrapper over tha raw_input() builtin that handles tracking the amount of time spent
-    waiting on user input.
+    waiting on user input. Also adds option functionality to color the terminal output to help it
+    stand out from other information on the command line (may not work on every OS, or may need
+    configuration on Windows. See
+    http://stackoverflow.com/questions/287871/print-in-terminal-with-colors-using-python)
     """
-    def __init__(self):
+    def __init__(self, default_format=None):
+        """
+        Creates a new UserInputTimer with the time spent waiting for user input initialized to zero.
+        :param default_format: the default format for printing prompts to the terminal (see
+        TerminalFormats)
+        """
         now = arrow.utcnow()
         self._waiting_on_user_delta = now - now
+        self.default_format = default_format
 
     def user_input(self, prompt=None):
         """
@@ -45,7 +66,14 @@ class UserInputTimer(object):
         """
         start = arrow.utcnow()
         try:
-            return raw_input(prompt)
+            if self.default_format and prompt:
+                return raw_input('%(format)s%(prompt)s%(end)s' % {
+                    'format': self.default_format,
+                    'prompt': prompt,
+                    'end': TerminalFormats.ENDC
+                })
+            else:
+                return raw_input(prompt)
         finally:
             end = arrow.utcnow()
             self._waiting_on_user_delta += end - start
