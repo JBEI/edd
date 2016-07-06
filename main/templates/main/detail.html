@@ -182,23 +182,22 @@
     <div class="pageSection pageSectionTabContent" id="overviewSection">
         <div class="sectionContent">
             <div class="btn-toolbar" id="chartType">
-                 <button class="btn btn-default btn-sm" type="button" id="line" value="linechart">Line
+                 <button class="btn btn-default btn-sm line" type="button" id="line"
+                         value="linechart">Line
                     Graph</button>
-                <button class="btn btn-default btn-sm" type="button" id="groupByTimeBar"
+                <button class="btn btn-default btn-sm groupByTimeBar" type="button" id="groupByTimeBar"
                         value="timeBar">Bar
                     graph by
                     time</button>
-                <button class="btn btn-default btn-sm" id="singleBar"
+                <button class="btn btn-default btn-sm singleBar" id="singleBar"
                         value="single">Bar graphs for each line</button>
-                <button class="btn btn-default btn-sm" id="groupByProteinBar"
+                <button class="btn btn-default btn-sm groupByProteinBar" id="groupByProteinBar"
                         value="groupedAssay">Bar graph by assay</button>
              </div>
-            <div class="svg-container">
-                <div id="linechart"></div>
-                <div id="timeBar"></div>
-                <div id="single"></div>
-                <div id="groupedAssay"></div>
-            </div>
+                <div class="linechart"></div>
+                <div class="timeBar"></div>
+                <div class="single"></div>
+                <div class="groupedAssay"></div>
             <div id="maingraph" class="graphContainer"></div>
         </div>
         <div class="sectionChapter disclose discloseHide">
