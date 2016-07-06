@@ -12,63 +12,65 @@ StudyDGraphing = {
         d3.selectAll("svg").remove();
     },
     addNewSet: function (newSet) {
-        var count = StudyDGraphing.getElementIndex(this.graphDiv);
         var buttons = StudyDGraphing.getButtonElement(this.graphDiv);
         var selector = StudyDGraphing.getSelectorElement(this.graphDiv);
-        d3.select(buttons[count + 1])
+        //group by tim
+        d3.select(buttons[1])
             .on('click', function () {
+            event.preventDefault();
             d3.select(selector[1]).style('display', 'none');
             d3.select(selector[2]).style('display', 'block');
             d3.select(selector[3]).style('display', 'none');
             d3.select(selector[4]).style('display', 'none');
+            return false;
         });
-        d3.select(buttons[count])
+        //line chart
+        d3.select(buttons[0])
             .on('click', function () {
+            event.preventDefault();
             d3.select(selector[1]).style('display', 'block');
             d3.select(selector[2]).style('display', 'none');
             d3.select(selector[3]).style('display', 'none');
             d3.select(selector[4]).style('display', 'none');
+            return false;
         });
-        d3.select(buttons[count + 2])
+        //bar charts for each line entry
+        d3.select(buttons[2])
             .on('click', function () {
+            event.preventDefault();
             d3.select(selector[1]).style('display', 'none');
             d3.select(selector[2]).style('display', 'none');
             d3.select(selector[3]).style('display', 'block');
             d3.select(selector[4]).style('display', 'none');
+            return false;
         });
         //group by assay
-        d3.select(buttons[count + 3])
+        d3.select(buttons[3])
             .on('click', function () {
+            event.preventDefault();
             d3.select(selector[1]).style('display', 'none');
             d3.select(selector[2]).style('display', 'none');
             d3.select(selector[3]).style('display', 'none');
             d3.select(selector[4]).style('display', 'block');
+            return false;
         });
         var data = EDDData; // main data
         var labels = names(data); // names of proteins..
         var barAssayObj = sortBarData(newSet);
         //create respective graphs
         createLineGraph(barAssayObj, selector[1]);
-        createAssayGraph(barAssayObj, selector[2]);
-        createTimeGraph(barAssayObj, selector[3]);
-        createSideBySide(newSet, labels, selector[4]);
-        if (!newSet.label) {
-            $('#debug').text('Failed to fetch series.');
-            return;
-        }
+        createTimeGraph(barAssayObj, selector[2]);
+        createSideBySide(newSet, labels, selector[3]);
+        createAssayGraph(barAssayObj, selector[4]);
+        // if (!newSet.label) {
+        // 	$('#debug').text('Failed to fetch series.');
+        // 	return;
+        // }
     },
     //takes in element and returns an array of selectors
     // d3.select(this.graphDiv.siblings().siblings()[1], '.linechart')
     // [<div id=​"linechart">​</div>​, <div id=​"timeBar">​</div>​, <div id=​"single">​</div>​,
     // <div id=​"groupedAssay">​</div>​]
-    getElementIndex: function (element) {
-        if (($(element).siblings().siblings()).size() < 7) {
-            return 0;
-        }
-        else {
-            return 1;
-        }
-    },
     getButtonElement: function (element) {
         if (($(element).siblings().siblings()).size() < 7) {
             return $(element.siblings()[0]).find("button");

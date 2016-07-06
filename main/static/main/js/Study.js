@@ -2138,9 +2138,8 @@ var DataGridAssays = (function (_super) {
             this.sectionCurrentlyDisclosed = true;
             // Start a timer to wait before calling the routine that remakes a table. This breaks up
             // table recreation into separate events, so the browser can update UI.
-            if (this.recordsCurrentlyInvalidated.length) {
-                setTimeout(function () { return _this.triggerAssayRecordsRefresh(); }, 10);
-            }
+            // if (this.recordsCurrentlyInvalidated.length) {
+            setTimeout(function () { return _this.triggerAssayRecordsRefresh(); }, 10);
         }
         else {
             this.sectionCurrentlyDisclosed = false;
@@ -2165,7 +2164,7 @@ var DataGridAssays = (function (_super) {
     // Start a timer to wait before calling the routine that remakes the graph.
     DataGridAssays.prototype.queueGraphRemake = function () {
         var _this = this;
-        this._cancelGraph();
+        //this._cancelGraph();
         this.graphRefreshTimerID = setTimeout(function () { return _this.remakeGraphArea(); }, 100);
     };
     DataGridAssays.prototype.remakeGraphArea = function () {
