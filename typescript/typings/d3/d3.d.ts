@@ -16,7 +16,7 @@ declare namespace d3 {
     /**
      * Create a selection from the given node reference.
      */
-    export function select(node: EventTarget): Selection<any>;
+    export function select(selector:string, s:string): d3.Selection<any>;
 
     /**
      * Find all elements that match the given selector string.

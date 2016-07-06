@@ -5,10 +5,6 @@
   shape-rendering: crispEdges;
 }
 
-#timeBar {
-  display: none;
-}
-
 .bar {
   fill: steelblue;
 }
@@ -111,7 +107,7 @@ div.tooltip2 {
           stroke-width: 0;
 }
 
-#groupedAssay {
+.groupedAssay {
   display: none;
 }
 
@@ -145,24 +141,9 @@ div.tooltip2 {
   stroke-width: 1.5px;
 }
 
-#metrics {
-  display: none;
-    overflow: scroll
-}
-
-.metrics-container {
-  width: auto;
-  height: auto;
-  padding: 10px 10px 10px 10px;
-  float: left;
-  margin-left: 20px;
-  margin-top: 20px;
-}
-
-#single {
+.single {
     display: none;
     overflow: scroll
-
 }
 
 .svg-container {
@@ -184,6 +165,10 @@ div.tooltip2 {
 
 .tick line{
   opacity: 0.2;
+}
+
+.timeBar {
+  display: none;
 }
 
 .toolTip {

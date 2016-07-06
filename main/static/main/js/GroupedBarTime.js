@@ -1,5 +1,5 @@
 ////// grouped bar chart based on time
-function createTimeGraph(assayMeasurements, labels, size) {
+function createTimeGraph(assayMeasurements, selector) {
 
     var margin = {top: 20, right: 120, bottom: 30, left: 40},
         width = 1000 - margin.left - margin.right,
@@ -24,7 +24,7 @@ function createTimeGraph(assayMeasurements, labels, size) {
         .orient("left")
         .tickFormat(d3.format(".2s"));
 
-    var svg = d3.select("div#timeBar").append("svg")
+    var svg = d3.select(selector).append("svg")
         .attr("preserveAspectRatio", "xMinYMin meet")
         .attr("viewBox", "-30 -40 1100 280")
         .classed("svg-content", true)

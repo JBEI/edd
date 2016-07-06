@@ -5,7 +5,7 @@
 * this function takes in input min y value, max y value, and the sorted json object.
 *  outputs a grouped bar graph with values grouped by assay name
 **/
-function createAssayGraph(assayMeasurements) {
+function createAssayGraph(assayMeasurements, selector) {
 
     var margin = {top: 20, right: 40, bottom: 100, left: 40},
          width = 1000 - margin.left - margin.right,
@@ -42,7 +42,7 @@ function createAssayGraph(assayMeasurements) {
         .orient("left")
         .tickFormat(d3.format(".2s"));
 
-    var svg = d3.select("div#groupedAssay")
+    var svg = d3.select(selector)
         .append("svg")
         .attr("preserveAspectRatio", "xMinYMin meet")
         .attr("viewBox", "-30 -40 1100 280")

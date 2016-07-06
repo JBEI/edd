@@ -2,7 +2,7 @@
 /**
 * this function takes in input min y value, max y value, and the transformed data. Outputs the graph 
 **/
-function createSideBySide(linedata, labels) {
+function createSideBySide(linedata, labels, selector) {
 
   //iterate through each assay
   for (var i = 0; i < linedata.length; i++) {
@@ -36,7 +36,7 @@ function createSideBySide(linedata, labels) {
         return "<strong>y value</strong> <span style='color:red'>" + d.y + " " + d.y_unit + "</span>";
       })
 
-    var svg = d3.select("div#single").append("svg")
+    var svg = d3.select(selector).append("svg")
       .attr("width", width + margin.left + margin.right)
       .attr("height", height + margin.top + margin.bottom)
     .append("g")

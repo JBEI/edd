@@ -1,7 +1,7 @@
 /**
 * this function creates the line graph 
 **/
-function createLineGraph(assayMeasurements) {
+function createLineGraph(assayMeasurements, selector) {
 
     //get x values
     var xDomain = assayMeasurements.map(function(d) { return d.x; })
@@ -36,7 +36,7 @@ function createLineGraph(assayMeasurements) {
         .ticks(5);
 
     //create svg graph object
-    var svg = d3.select("div#linechart").append("svg")
+    var svg = d3.select(selector).append("svg")
         .attr("preserveAspectRatio", "xMinYMin meet")
         .attr("viewBox", "-30 -40 1100 280")
         .classed("svg-content", true);

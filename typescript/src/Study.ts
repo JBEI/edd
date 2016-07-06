@@ -1549,7 +1549,6 @@ module StudyD {
             protocol = EDDData.Protocols[assay.pid] || {};
             var name = [line.name, protocol.name, assay.name].join('-');
             var singleAssayObj = transformSingleLineItem(EDDData, measure, name);
-            var yaxis:any = {}
             if (line.control) singleAssayObj.iscontrol = 1;
 
             dataSets.push(singleAssayObj);
@@ -2544,13 +2543,7 @@ class DataGridAssays extends DataGrid {
         g = spec.graphObject;
         g.clearAllSets();
 
-        // function converts downloaded data point to form usable by flot
-        // FIXME assumes (x0, y0) points only
-        convert = (d) => { return [[ d[0][0], d[1][0] ]]; };
-
-        // function comparing two points, to sort data sent to flot
-        compare = (a, b) => { return a[0] - b[0]; };
-
+        var dataSets = [];
         spec.getRecordIDs().forEach((id) => {
             var assay:any = EDDData.Assays[id] || {},
                 line:any = EDDData.Lines[assay.lid] || {},
@@ -2559,21 +2552,15 @@ class DataGridAssays extends DataGrid {
             measures = assay.measures || [];
             measures.forEach((m) => {
                 var measure = EDDData.AssayMeasurements[m], set;
-                set = {
-                    'label': 'dt' + m,
-                    'measurementname': Utl.EDD.resolveMeasurementRecordToName(m),
-                    'name': assay.name,
-                    'aid': id,
-                    'mtid': measure.type,
-                    'units': Utl.EDD.resolveMeasurementRecordToUnits(m),
-                    'data': $.map(measure.values, convert).sort(compare)
-                };
+                var name = assay.name;
+                var singleAssayObj = transformSingleLineItem(EDDData, measure, name);
+
                 if (line.control) set.iscontrol = true;
-                g.addNewSet("SET " + set.units);
+                dataSets.push(singleAssayObj);
             });
         });
 
-        g.drawSets();
+        g.addNewSet(dataSets);
     }
 
 
@@ -3264,10 +3251,46 @@ class DataGridSpecAssays extends DataGridSpecBase {
 
         var p = this.protocolID;
         var graphid = "pro" + p + "graph";
-        if (this.graphAreaHeaderSpec) {
+          if (this.graphAreaHeaderSpec) {
             if (this.measuringTimesHeaderSpec.element) {
-                $(this.graphAreaHeaderSpec.element).html('<div id="' + graphid +
-                        '" class="graphContainer"></div>');
+                //html element of the entire table
+                 var html =
+                        '                                                                       \
+                           <div class ="btn-toolbar" id="chartType">                            \
+                            <button class="btn btn-default btn-sm" type="button"                \
+                            id="line" value="linechart">Line Graph </button>                    \
+                            <button class="btn btn-default btn-sm" type="button"                \
+                                id="groupByTimeBar" value="timeBar">Bar graph by time</button>  \
+                           <button class="btn btn-default btn-sm" id="singleBar"                \
+                           value="single">Bar graphs for each line</button>                     \
+                             <button class="btn btn-default btn-sm" id="groupByProteinBar"      \
+                            value="groupedAssay">Bar graph by assay</button>                    \
+                          </div>                                                                \
+                            <div class="linechart"></div>                                       \
+                            <div class="timeBar"></div>                                         \
+                            <div class="single"></div>                                          \
+                            <div class="groupedAssay"></div>                                    \
+                            <div class="graphContainer" id= ' + graphid + '></div>              \
+                        '
+                    var dom = $( html );
+                    $(this.graphAreaHeaderSpec.element).append(dom);
+
+                /* create this from this.graphDiv:
+                   [<div class=​"btn-toolbar" id=​"chartType">​::before​<button class=​"btn
+                  btn-default btn-sm" type=​"button" id=​"line" value=​"linechart">​Line
+                    Graph​</button>​<button class=​"btn btn-default btn-sm" type=​"button"
+                    id=​"groupByTimeBar" value=​"timeBar">​Bar graph by
+                    time​</button>​<button class=​"btn btn-default btn-sm"
+                    id=​"singleBar" value=​"single">​Bar graphs for each line​</button>
+                    ​<button class=​"btn btn-default btn-sm" id=​"groupByProteinBar"
+                    value=​"groupedAssay">​Bar graph by assay​</button>​::after​</div>​,
+                    <div id=​"linechart">​</div>​, <div id=​"timeBar">​</div>​, <div id=​"single">​
+                    </div>​, <div id=​"groupedAssay">​</div>​]
+                */
+                //use jQuery to build out my divs, sets ids, and classes.
+                //Document.createElement.
+                //use <div><div> set ids, class.
+
                 // Initialize the graph object
                 this.graphObject = Object.create(StudyDGraphing);
                 this.graphObject.Setup(graphid);
