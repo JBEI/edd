@@ -22,22 +22,24 @@ until nc -z postgres 5432; do
 done
 
 # Test if our database exists; run init script if missing
-PGPASSWORD=$POSTGRES_PASSWORD psql -lqt -h postgres -U postgres | cut -d \| -f 1 | grep -qw edd
-if [ ! $? ]; then
+export PGPASSWORD=$POSTGRES_PASSWORD
+if ! psql -lqt -h postgres -U postgres | cut -d \| -f 1 | grep -qw edd; then
     echo "Initializing the database for first-time use …"
-    PGPASSWORD=$POSTGRES_PASSWORD psql -h postgres -U postgres \
-        template1 < /code/docker_services/postgres/init.sql
+    psql -h postgres -U postgres template1 < /code/docker_services/postgres/init.sql
 fi
 # If database dump URL is provided, dump and restore database
-if [ ! -z "$POSTGRES_DUMP_URL" ]; then
+if [ ! -z $POSTGRES_DUMP_URL ]; then
     echo "Copying database from remote $POSTGRES_DUMP_URL …"
-    pg_dump "$POSTGRES_DUMP_URL" | PGPASSWORD=$POSTGRES_PASSWORD pg_restore \
-        -h postgres -U postgres --clean -d edd
-elif [ ! -z "$POSTGRES_DUMP_FILE" -a -r "$POSTGRES_DUMP_FILE" ]; then
+    pg_dump "$POSTGRES_DUMP_URL" | psql -h postgres -U postgres edd
+elif [ ! -z $POSTGRES_DUMP_FILE ] && [ -r $POSTGRES_DUMP_FILE ]; then
     echo "Copying database from local file $POSTGRES_DUMP_FILE …"
-    PGPASSWORD=$POSTGRES_PASSWORD pg_restore -h postgres -U posgtres --clean -d edd \
-        < "$POSTGRES_DUMP_FILE"
+    psql -h postgres -U posgtres edd < "$POSTGRES_DUMP_FILE"
+else
+    echo "Skipping database restore …"
 fi
+unset PGPASSWORD
+unset POSTGRES_DUMP_FILE
+unset POSTGRES_DUMP_URL
 
 # Wait for solr to become available
 until nc -z solr 8983; do

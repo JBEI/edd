@@ -102,6 +102,9 @@ services:
       service: edd
     restart: always
     command: ./docker_services/appserver_entrypoint.sh
+    environment:
+      POSTGRES_DUMP_FILE: ${POSTGRES_DUMP_FILE}
+      POSTGRES_DUMP_URL: ${POSTGRES_DUMP_URL}
     depends_on:
       - postgres
       - rabbitmq
@@ -122,6 +125,11 @@ services:
   nginx:
     image: nginx:1.11
     restart: always
+    depends_on:
+      - appserver
+      - flower
+      - rabbitmq
+      - solr
     links:
       - appserver
       - flower
@@ -133,5 +141,6 @@ services:
     volumes_from:
       - appserver
     volumes:
-      - /etc/ssl/edd/:/etc/ssl/edd/
+      - ${EDD_HOST_TLS}.:/code/docker_services/nginx/ssl:ro
+      - tlsdata:/etc/ssl/edd
     command: /code/docker_services/nginx/nginx_entrypoint.sh
