@@ -19,13 +19,7 @@ from .utils import remove_trailing_slash
 logger = logging.getLogger(__name__)
 
 
-# TODO: now mis-named, should not be ICE-specific
-ICE_REQUEST_TIMEOUT = (10, 10)  # request and read timeout, respectively, in seconds
-# ICE's current automatic limit on results returned in the absence of a specific requested page size
-DEFAULT_RESULT_LIMIT = 15
-DEFAULT_PAGE_NUMBER = 1
-RESULT_LIMIT_PARAMETER = 'limit'
-_JSON_CONTENT_TYPE_HEADER = {'Content-Type': 'application/json; charset=utf8'}
+REQUEST_TIMEOUT = (10, 10)  # request and read timeout, respectively, in seconds
 
 
 class HmacAuth(AuthBase):
@@ -127,6 +121,14 @@ class HmacAuth(AuthBase):
     ############################################
 
 
+# ICE's current automatic limit on results returned in the absence of a specific requested page size
+DEFAULT_RESULT_LIMIT = 15
+DEFAULT_PAGE_NUMBER = 1
+RESULT_LIMIT_PARAMETER = 'limit'
+_JSON_CONTENT_TYPE_HEADER = {'Content-Type': 'application/json; charset=utf8'}
+
+
+# TODO: mis-named; should be IceSessionAuth
 class SessionAuth(AuthBase):
     """
     Implements session-based authentication for ICE. At the time of initial implementation,
@@ -138,7 +140,7 @@ class SessionAuth(AuthBase):
 
     Clients should first call login() to get a valid ice session id
     """
-    def __init__(self, session_id, session, timeout=ICE_REQUEST_TIMEOUT, verify_ssl_cert=True):
+    def __init__(self, session_id, session, timeout=REQUEST_TIMEOUT, verify_ssl_cert=True):
         self._session_id = session_id
         self._session = session
 
@@ -179,7 +181,7 @@ class SessionAuth(AuthBase):
     ############################################
 
     @staticmethod
-    def login(base_url, username, password, user_auth=None, timeout=ICE_REQUEST_TIMEOUT,
+    def login(base_url, username, password, user_auth=None, timeout=REQUEST_TIMEOUT,
               verify_ssl_cert=True):
         """
         Logs into ICE at the provided base URL or raises an Exception if an unexpected response is
