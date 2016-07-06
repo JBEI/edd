@@ -110,16 +110,6 @@ class HmacAuth(AuthBase):
         params = sorted(map(lambda p: p.split('=', 1), query.split('&')), key=lambda p: p[0])
         return '&'.join(map(lambda p: '='.join(p), params))
 
-    ############################################
-    # 'with' context manager implementation ###
-    ############################################
-    def __enter__(self):
-        return self
-
-    def __exit__(self, type, value, traceback):
-        pass
-    ############################################
-
 
 # ICE's current automatic limit on results returned in the absence of a specific requested page size
 DEFAULT_RESULT_LIMIT = 15
