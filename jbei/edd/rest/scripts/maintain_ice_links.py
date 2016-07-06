@@ -70,9 +70,9 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 from requests.exceptions import HTTPError
 from urlparse import urlparse
 
+from jbei.rest.auth import SessionAuth as IceSessionAuth
 from jbei.edd.rest.edd import (EddApi, EddSessionAuth)
-from jbei.ice.rest.ice import (IceApi, SessionAuth as IceSessionAuth, Strain as IceStrain,
-                               ICE_ENTRY_TYPES)
+from jbei.ice.rest.ice import IceApi, Strain as IceStrain, ICE_ENTRY_TYPES
 from jbei.rest.utils import is_url_secure, verify_edd_cert, is_edd_test_instance_url, \
     is_ice_test_instance_url, verify_ice_cert
 from jbei.utils import to_human_relevant_delta, UserInputTimer, session_login, TYPICAL_UUID_PATTERN
