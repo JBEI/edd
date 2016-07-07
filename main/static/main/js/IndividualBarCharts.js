@@ -9,11 +9,9 @@ function createSideBySide(linedata, labels, selector) {
 
     var width = 300, height = 300;
     var margin = {top: 30, right: 100, bottom: 150, left: 60}, width = width - margin.left - margin.right, height = height - margin.top - margin.bottom;
-
-
+    
     var color = d3.scale.ordinal()
       .range(["#98abc5", "#8a89a6", "#7b6888", "#6b486b", "#a05d56", "#d0743c", "#ff8c00"]);
-
 
     var x = d3.scale.ordinal()
       .rangeRoundBands([0, width], .1);
@@ -27,14 +25,14 @@ function createSideBySide(linedata, labels, selector) {
 
     var yAxis = d3.svg.axis()
         .scale(y)
-        .orient("left")
+        .orient("left");
 
     var tip = d3.tip()
       .attr('class', 'd3-tip')
       .offset([-10, 0])
       .html(function(d) {
         return "<strong>y value</strong> <span style='color:red'>" + d.y + " " + d.y_unit + "</span>";
-      })
+      });
 
     var svg = d3.select(selector).append("svg")
       .attr("width", width + margin.left + margin.right)
@@ -65,7 +63,7 @@ function createSideBySide(linedata, labels, selector) {
         .attr("y", 6)
         .attr("dy", ".71em")
         .style("text-anchor", "end")
-        .text("Frequenc");
+        .text("Frequency");
 
     svg.selectAll(".bar")
         .data(linedata[i])
@@ -76,9 +74,7 @@ function createSideBySide(linedata, labels, selector) {
         .attr("y", function(d) { return y(d.y); })
         .attr("height", function(d) {return height - y(d.y)})
         .on('mouseover', tip.show)
-        .on('mouseout', tip.hide)
+        .on('mouseout', tip.hide);
     
   }
-
 }
-

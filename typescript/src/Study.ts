@@ -8,23 +8,6 @@
 /// <reference path="../typings/d3/d3.d.ts"/>;
 
 declare var EDDData:EDDData;
-declare var createLineGraph;
-declare var createAssayGraph;
-declare var createTimeGraph;
-declare var createBarLineGraph;
-declare var objectSize;
-declare var yvalues;
-declare var xvalues;
-declare var sortValues;
-declare var transformLineData;
-declare var sortBarData;
-declare var labels;
-declare var arrSize;
-declare var createSideBySide;
-declare var names;
-declare var transformSingleLineItem;
-
-
 
 module StudyD {
     'use strict';
@@ -2496,9 +2479,9 @@ class DataGridAssays extends DataGrid {
             this.sectionCurrentlyDisclosed = true;
             // Start a timer to wait before calling the routine that remakes a table. This breaks up
             // table recreation into separate events, so the browser can update UI.
-            // if (this.recordsCurrentlyInvalidated.length) {
+            if (this.recordsCurrentlyInvalidated.length) {
                 setTimeout(() => this.triggerAssayRecordsRefresh(), 10);
-           // }
+            }
         } else {
             this.sectionCurrentlyDisclosed = false;
         }
@@ -2526,7 +2509,7 @@ class DataGridAssays extends DataGrid {
 
     // Start a timer to wait before calling the routine that remakes the graph.
     queueGraphRemake() {
-        //this._cancelGraph();
+        this._cancelGraph();
         this.graphRefreshTimerID = setTimeout( () => this.remakeGraphArea(), 100 );
     }
 
@@ -3274,22 +3257,6 @@ class DataGridSpecAssays extends DataGridSpecBase {
                         '
                     var dom = $( html );
                     $(this.graphAreaHeaderSpec.element).append(dom);
-
-                /* create this from this.graphDiv:
-                   [<div class=​"btn-toolbar" id=​"chartType">​::before​<button class=​"btn
-                  btn-default btn-sm" type=​"button" id=​"line" value=​"linechart">​Line
-                    Graph​</button>​<button class=​"btn btn-default btn-sm" type=​"button"
-                    id=​"groupByTimeBar" value=​"timeBar">​Bar graph by
-                    time​</button>​<button class=​"btn btn-default btn-sm"
-                    id=​"singleBar" value=​"single">​Bar graphs for each line​</button>
-                    ​<button class=​"btn btn-default btn-sm" id=​"groupByProteinBar"
-                    value=​"groupedAssay">​Bar graph by assay​</button>​::after​</div>​,
-                    <div id=​"linechart">​</div>​, <div id=​"timeBar">​</div>​, <div id=​"single">​
-                    </div>​, <div id=​"groupedAssay">​</div>​]
-                */
-                //use jQuery to build out my divs, sets ids, and classes.
-                //Document.createElement.
-                //use <div><div> set ids, class.
 
                 // Initialize the graph object
                 this.graphObject = Object.create(StudyDGraphing);

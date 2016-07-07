@@ -193,7 +193,7 @@ function createAssayGraph(assayMeasurements, selector) {
     
     var hover = categories_g.selectAll('.rect')
         .data(function(d) {
-            return d.values  // returns [{i:, x:, y:, ...}]
+            return d.values
         })
         .on("mouseover", function(d) {
                 div.transition()
@@ -206,7 +206,7 @@ function createAssayGraph(assayMeasurements, selector) {
                 div.transition()
                     .style("opacity", 0);
             });
-
+}
 
     /**
      * this function takes in input a protein's line values and inserts a y id key for
@@ -229,4 +229,3 @@ function createAssayGraph(assayMeasurements, selector) {
             })
         });
     }
-}

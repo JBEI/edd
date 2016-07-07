@@ -2138,8 +2138,9 @@ var DataGridAssays = (function (_super) {
             this.sectionCurrentlyDisclosed = true;
             // Start a timer to wait before calling the routine that remakes a table. This breaks up
             // table recreation into separate events, so the browser can update UI.
-            // if (this.recordsCurrentlyInvalidated.length) {
-            setTimeout(function () { return _this.triggerAssayRecordsRefresh(); }, 10);
+            if (this.recordsCurrentlyInvalidated.length) {
+                setTimeout(function () { return _this.triggerAssayRecordsRefresh(); }, 10);
+            }
         }
         else {
             this.sectionCurrentlyDisclosed = false;
@@ -2164,7 +2165,7 @@ var DataGridAssays = (function (_super) {
     // Start a timer to wait before calling the routine that remakes the graph.
     DataGridAssays.prototype.queueGraphRemake = function () {
         var _this = this;
-        //this._cancelGraph();
+        this._cancelGraph();
         this.graphRefreshTimerID = setTimeout(function () { return _this.remakeGraphArea(); }, 100);
     };
     DataGridAssays.prototype.remakeGraphArea = function () {
@@ -2785,21 +2786,6 @@ var DataGridSpecAssays = (function (_super) {
                         ';
                 var dom = $(html);
                 $(this.graphAreaHeaderSpec.element).append(dom);
-                /* create this from this.graphDiv:
-                   [<div class=​"btn-toolbar" id=​"chartType">​::before​<button class=​"btn
-                  btn-default btn-sm" type=​"button" id=​"line" value=​"linechart">​Line
-                    Graph​</button>​<button class=​"btn btn-default btn-sm" type=​"button"
-                    id=​"groupByTimeBar" value=​"timeBar">​Bar graph by
-                    time​</button>​<button class=​"btn btn-default btn-sm"
-                    id=​"singleBar" value=​"single">​Bar graphs for each line​</button>
-                     ​<button class=​"btn btn-default btn-sm" id=​"groupByProteinBar"
-                    value=​"groupedAssay">​Bar graph by assay​</button>​::after​</div>​,
-                    <div id=​"linechart">​</div>​, <div id=​"timeBar">​</div>​, <div id=​"single">​
-                    </div>​, <div id=​"groupedAssay">​</div>​]
-                */
-                //use jQuery to build out my divs, sets ids, and classes.
-                //Document.createElement.
-                //use <div><div> set ids, class.
                 // Initialize the graph object
                 this.graphObject = Object.create(StudyDGraphing);
                 this.graphObject.Setup(graphid);

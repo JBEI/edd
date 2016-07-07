@@ -3,12 +3,14 @@ var StudyDGraphing:any;
 declare var createLineGraph;
 declare var createAssayGraph;
 declare var createTimeGraph;
-declare var objectSize;
 declare var sortBarData;
 declare var labels;
 declare var createSideBySide;
 declare var names;
 declare var transformSingleLineItem;
+declare var legend;
+declare var make_y_axis;
+declare var make_x_axis;
 
 StudyDGraphing = {
 
@@ -74,22 +76,21 @@ StudyDGraphing = {
         var barAssayObj  = sortBarData(newSet);
 
         //create respective graphs
-        createLineGraph(barAssayObj, selector[1]);
-        createTimeGraph(barAssayObj, selector[2]);
+        createLineGraph(barAssayObj, selector[1], legend, make_x_axis, make_y_axis);
+        createTimeGraph(barAssayObj, selector[2], legend, make_x_axis, make_y_axis);
         createSideBySide(newSet, labels, selector[3]);
         createAssayGraph(barAssayObj, selector[4]);
 		
-		// if (!newSet.label) {
-		// 	$('#debug').text('Failed to fetch series.');
-		// 	return;
-		// }
+		if (!newSet.label) {
+			$('#debug').text('Failed to fetch series.');
+			return;
+		}
 	},
 
-    //takes in element and returns an array of selectors
-    // d3.select(this.graphDiv.siblings().siblings()[1], '.linechart')
-    // [<div id=​"linechart">​</div>​, <div id=​"timeBar">​</div>​, <div id=​"single">​</div>​,
-    // <div id=​"groupedAssay">​</div>​]
-
+    /* this function takes in element and returns an array of selectors
+    * [<div id=​"linechart">​</div>​, <div id=​"timeBar">​</div>​, <div id=​"single">​</div>​,
+    * <div id=​"groupedAssay">​</div>​]
+    */
     getButtonElement:function (element) {
         if (($(element).siblings().siblings()).size() < 7) {
             return $(element.siblings()[0]).find("button")
@@ -97,13 +98,12 @@ StudyDGraphing = {
             return $(element.siblings()[1]).find("button")
         }
     },
-    // takes in graphDiv and returns array of 4 buttons
 
+    // takes in graphDiv and returns array of 4 buttons
     getSelectorElement:function (element) {
         return element.siblings().siblings()
     }
-
-    //d3.select(this.graphDiv.siblings().siblings()[3], '.timeBar')
+    
 };
 
 
