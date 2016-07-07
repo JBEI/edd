@@ -1,31 +1,30 @@
+
     /**
-    *  This function takes in data and transforms it into the following
-    *  {x, y, i}, {x, y, i}, {x, y, i} .... 
+     *  This function takes in data and transforms it into the following
+     *  {x, y, i}, {x, y, i}, {x, y, i} ....
     **/
-    
     function sortBarData(assays) {
         return [].concat.apply([], assays);
     }
+
     /**
-    *  This function takes a unit id and unit type json and returns the unit name
+     *  This function takes a unit id and unit type json and returns the unit name
     **/
-    
     function unitName(unitId, unitTypes) {
-      return unitTypes[unitId].name
+      return unitTypes[unitId].name;
     }
     
     
     /**
-    *  This function takes in EDDdata, a singleAssay line entry, and measurement names and
-    *  transforms it into the following schema:
-    *    [{label: "dt9304, x: 1, y: 2.5, x_unit: "n/a", y_unit: "cmol",  name: "i'm a protein
+     *  This function takes in EDDdata, a singleAssay line entry, and measurement names and
+     *  transforms it into the following schema:
+     *    [{label: "dt9304, x: 1, y: 2.5, x_unit: "n/a", y_unit: "cmol",  name: "i'm a protein
      *    name"},
-    *    {label: "dt3903, x: 1, y: 23.5, x_unit: "n/a", y_unit: "cmol",  name: "i'm another protein
+     *    {label: "dt3903, x: 1, y: 23.5, x_unit: "n/a", y_unit: "cmol",  name: "i'm another protein
      *    name"}
-    *    ...
-    *    ]
+     *    ...
+     *    ]
     **/
-    
     function transformSingleLineItem(data, singleData, names) {
         // unit type ids
         var unitTypes = data.UnitTypes;
@@ -55,12 +54,57 @@
             });
         return xAndYValues;
     }
-    
+
+
+
     /**
-    *  This function takes in the EDDData.AssayMeasurements object and returns
-    *  an array of Assay ids.
+     * this function returns an object of y units with counts
     **/
-    
+    function findY_Units(data) {
+
+        var yUnits = {};
+
+        _.each(data, function(lineEntry){
+
+          var y_unit = lineEntry.y_unit;
+
+          if (yUnits.hasOwnProperty(lineEntry.y_unit)){
+              yUnits[y_unit]++;
+          }
+          else {
+              yUnits[y_unit] = 0;
+          }
+        });
+
+      return Object.keys(yUnits);
+    }
+
+    /**
+     * this function returns an object of x_values
+    **/
+    function findX_Units(data) {
+
+        var xUnits = {};
+
+        _.each(data, function(lineEntry){
+
+          var x_unit = lineEntry.x_unit;
+
+          if (xUnits.hasOwnProperty(lineEntry.x_unit)){
+              xUnits[x_unit]++;
+          }
+          else {
+              xUnits[x_unit] = 0;
+          }
+        });
+      return Object.keys(xUnits)
+    }
+
+
+    /**
+     *  This function takes in the EDDData.AssayMeasurements object and returns
+     *  an array of Assay ids.
+    **/
     function findAssayIds(assayMeasurements) {
      var assayIds = [];
      for (var key in assayMeasurements) {
@@ -70,10 +114,9 @@
     }
     
     /**
-    *  This function takes in the EDDData.Assays object and array of Assay ids 
-    *  and returns an array of LID ids. 
+     *  This function takes in the EDDData.Assays object and array of Assay ids
+     *  and returns an array of LID ids.
     **/
-
     function findLidIds(assays, assayIds) {
         var lidIds = [];
         _.forEach(assayIds, function(assayId) {
@@ -83,10 +126,9 @@
     }
     
     /**
-    *  This function takes in the EDDData.Lines object and lidIds and returns
-    *  an array of measurements names.  
+     *  This function takes in the EDDData.Lines object and lidIds and returns
+     *  an array of measurements names.
     **/
-
     function lineName(lines, lidIds) {
        var lineNames = [];
        _.forEach(lidIds, function(lidId) {
@@ -94,12 +136,22 @@
         });
         return lineNames;
     }
+    
+    /**
+     * This function returns object size
+    **/
+    function objectSize(object) {
+        var size = 0, key;
+        for (key in object) {
+            if (object.hasOwnProperty(key)) size++;
+        }
+        return size;
+    }
 
     /**
-    *  This function takes in the EDDData object and returns
-    *  an array of measurements names.  
+     *   This function takes in the EDDData object and returns
+     *  an array of measurements names.
     **/
-
     function names(EDDData) {
       var assayIds = findAssayIds(EDDData.AssayMeasurements);
       var lidIds = findLidIds(EDDData.Assays, assayIds);
@@ -107,9 +159,8 @@
     }
 
     /**
-    *  This function returns the legend svg object. 
+     *  This function returns the legend svg object.
     **/
-
     function legend(data, color, svg, width) {
         var legend = svg.selectAll(".legend")
             .data(data)
@@ -142,10 +193,9 @@
         return legend;
     }
     
-    
     /**
-     * this function creates the y axis tick marks for grid
-     **/
+     *  This function creates the y axis tick marks for grid
+    **/
     function make_y_axis(y) {
         return d3.svg.axis()
             .scale(y)
@@ -153,12 +203,25 @@
             .ticks(5)
     }
     
-            /**
-     * this function creates the x axis tick marks for grid
-     **/
+    /**
+     *  This function creates the x axis tick marks for grid
+    **/
     function make_x_axis(x) {
         return d3.svg.axis()
             .scale(x)
             .orient("bottom")
             .ticks(5)
     }
+
+    /**
+     *  This function takes in the unit type for each array and returns the text to display on
+     *  the axis
+    **/
+    function displayUnit(units) {
+        if (units.length == 1) {
+            return units[0]
+        }
+        else {
+            return "Mixed measurements"
+        }
+    };

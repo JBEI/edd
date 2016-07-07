@@ -1,7 +1,10 @@
 /**
 * this function creates the line graph 
 **/
-function createLineGraph(assayMeasurements, selector, legend) {
+function createLineGraph(graphSet, selector) {
+
+    legend = graphSet.legend;
+    var assayMeasurements = graphSet.assayMeasurements;
 
     //get x values
     var xDomain = assayMeasurements.map(function(assayMeasurement) { return assayMeasurement.x; });
@@ -52,12 +55,15 @@ function createLineGraph(assayMeasurements, selector, legend) {
         .attr("viewBox", "-30 -40 1100 280")
         .classed("svg-content", true);
 
+    //x axis
     svg.append("g")
         .attr("class", "x axis")
         .attr("transform", "translate(0," + height + ")")
-        .call(xAxis);
-
-
+        .call(xAxis)
+        .append('text')
+        .attr("y", 20)
+        .attr("x", width)
+        .text(graphSet.x_unit);
     // Draw the x Grid lines
     svg.append("g")
         .attr("class", "grid")
@@ -66,14 +72,8 @@ function createLineGraph(assayMeasurements, selector, legend) {
             .tickSize(-height, 0, 0)
             .tickFormat("")
         )
-    // Draw the y Grid lines
-    svg.append("g")
-        .attr("class", "grid")
-        .call(make_y_axis(y)
-            .tickSize(-width, 0, 0)
-            .tickFormat("")
-        );
 
+    //y axis
     svg.append("g")
         .attr("class", "y axis")
         .call(yAxis)
@@ -82,7 +82,15 @@ function createLineGraph(assayMeasurements, selector, legend) {
         .attr("y", 6)
         .attr("dy", ".71em")
         .style("text-anchor", "end")
-        .text("Frequency");
+        .text(graphSet.y_unit);
+
+    // Draw the y Grid lines
+    svg.append("g")
+        .attr("class", "grid")
+        .call(make_y_axis(y)
+            .tickSize(-width, 0, 0)
+            .tickFormat("")
+        );
 
     var lineGen = d3.svg.line()
         .x(function (d) {
@@ -107,6 +115,7 @@ function createLineGraph(assayMeasurements, selector, legend) {
             return d.name;
         })
         .entries(assayMeasurements);
+    
     var names = proteinNames.map(function (d) {return d.key;});
 
 

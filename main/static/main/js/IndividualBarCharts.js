@@ -2,8 +2,10 @@
 /**
 * this function takes in input min y value, max y value, and the transformed data. Outputs the graph 
 **/
-function createSideBySide(linedata, labels, selector) {
-
+function createSideBySide(graphSet, selector) {
+  
+  var linedata = graphSet.individualData;
+  
   //iterate through each assay
   for (var i = 0; i < linedata.length; i++) {
 
@@ -53,7 +55,7 @@ function createSideBySide(linedata, labels, selector) {
         .attr("x", width / 2 )
         .attr("y",  height + 40)
         .style("text-anchor", "middle")
-        .text(labels[i] + ", entry " + i);
+        .text(graphSet.labels[i] + ", entry " + i);
 
     svg.append("g")
         .attr("class", "y axis")
@@ -63,7 +65,7 @@ function createSideBySide(linedata, labels, selector) {
         .attr("y", 6)
         .attr("dy", ".71em")
         .style("text-anchor", "end")
-        .text("Frequency");
+        .text(graphSet.y_unit);
 
     svg.selectAll(".bar")
         .data(linedata[i])
