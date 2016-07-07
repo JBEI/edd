@@ -25,19 +25,21 @@ StudyDGraphing = {
 
 	clearAllSets:function() {
 		d3.selectAll("svg").remove();
+
+        //loop through svgs and remove them. 
 	},
 
 	addNewSet:function(newSet) {
         var buttons = StudyDGraphing.getButtonElement(this.graphDiv);
         var selector = StudyDGraphing.getSelectorElement(this.graphDiv);
-        //group by tim
+        //ar chart grouped by time
         d3.select(buttons[1])
               .on('click', function() {
                   event.preventDefault();
-                      d3.select(selector [1]).style('display', 'none');
-                      d3.select(selector [2]).style('display', 'block');
-                      d3.select(selector [3]).style('display', 'none');
-                      d3.select(selector [4]).style('display', 'none');
+                      d3.select(selector[1]).style('display', 'none');
+                      d3.select(selector[2]).style('display', 'block');
+                      d3.select(selector[3]).style('display', 'none');
+                      d3.select(selector[4]).style('display', 'none');
                   return false
         });
         //line chart
@@ -60,7 +62,7 @@ StudyDGraphing = {
                       d3.select(selector[4]).style('display', 'none');
                 return false;
         });
-        //group by assay
+        //bar chart grouped by assay
         d3.select(buttons[3])
             .on('click', function() {
                 event.preventDefault();
@@ -91,6 +93,8 @@ StudyDGraphing = {
     * [<div id=​"linechart">​</div>​, <div id=​"timeBar">​</div>​, <div id=​"single">​</div>​,
     * <div id=​"groupedAssay">​</div>​]
     */
+
+    //make this return an object with keys and values. or take second argument..
     getButtonElement:function (element) {
         if (($(element).siblings().siblings()).size() < 7) {
             return $(element.siblings()[0]).find("button")
@@ -103,7 +107,7 @@ StudyDGraphing = {
     getSelectorElement:function (element) {
         return element.siblings().siblings()
     }
-    
+
 };
 
 

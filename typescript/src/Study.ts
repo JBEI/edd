@@ -271,8 +271,6 @@ module StudyD {
                 $.merge(measurementIds, assay.measures || []);
             });
 
-            console.log("measurement ids first: " + measurementIds);
-
             // We start out with four references to the array of available measurement IDs, one for each major category.
             // Each of these will become its own array in turn as we narrow it down.
             // This is to prevent a sub-selection in one category from overriding a sub-selection in the others.
@@ -341,8 +339,6 @@ module StudyD {
             if (dSM.length) {
                 return dSM;
             }
-            //line 291 prints the same measurementIds...
-            console.log("MEASUREMENT IDS: " + measurementIds);
             return measurementIds;
         }
 
@@ -2524,7 +2520,7 @@ class DataGridAssays extends DataGrid {
         }
 
         g = spec.graphObject;
-        g.clearAllSets();
+        //g.clearAllSets();
 
         var dataSets = [];
         spec.getRecordIDs().forEach((id) => {
@@ -3239,15 +3235,15 @@ class DataGridSpecAssays extends DataGridSpecBase {
                 //html element of the entire table
                  var html =
                         '                                                                       \
-                           <div class ="btn-toolbar" id="chartType">                            \
-                            <button class="btn btn-default btn-sm" type="button"                \
-                            id="line" value="linechart">Line Graph </button>                    \
-                            <button class="btn btn-default btn-sm" type="button"                \
-                                id="groupByTimeBar" value="timeBar">Bar graph by time</button>  \
-                           <button class="btn btn-default btn-sm" id="singleBar"                \
-                           value="single">Bar graphs for each line</button>                     \
-                             <button class="btn btn-default btn-sm" id="groupByProteinBar"      \
-                            value="groupedAssay">Bar graph by assay</button>                    \
+                           <div class ="btn-toolbar">                            \
+                                <button class="btn btn-default btn-sm" type="button"                \
+                                 value="linechart">Line Graph </button>                    \
+                                <button class="btn btn-default btn-sm" type="button"                \
+                                   value="timeBar">Bar graph by time</button>  \
+                               <button class="btn btn-default btn-sm"               \
+                               value="single">Bar graphs for each line</button>                     \
+                                 <button class="btn btn-default btn-sm"      \
+                                value="groupedAssay">Bar graph by assay</button>                    \
                           </div>                                                                \
                             <div class="linechart"></div>                                       \
                             <div class="timeBar"></div>                                         \

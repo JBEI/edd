@@ -21,7 +21,7 @@ function createLineGraph(assayMeasurements, selector, legend) {
 
     var color = d3.scale.category10();
 
-    var y = d3.scale.linear().range([height, 0]);
+    var y = d3.scale.linear().rangeRound([height, 0]);
     var x = d3.scale.linear().domain([xDomain[0] - 1, xDomain[xDomain.length -1]]).range([0, width]);
 
 
@@ -81,7 +81,17 @@ function createLineGraph(assayMeasurements, selector, legend) {
             return y(d.y)
         });
 
-    y.domain([0, d3.max(assayMeasurements, function(d) { return d.y})]);
+    var getValues = d3.nest()
+        .key(function (d) {
+            return d.y;
+        })
+        .entries(assayMeasurements);
+
+    y.domain([0, d3.max(getValues, function (d) {
+        return d3.max(d.values, function (d) {
+            return d.y;
+        });
+    })]);
 
     //iterate through different arrays. right now i is undefined.. not sure what is happening. 
     var data = d3.nest()
