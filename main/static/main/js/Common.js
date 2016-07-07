@@ -106,7 +106,10 @@
       return lineName(EDDData.Lines, lidIds);
     }
 
- 
+    /**
+    *  This function returns the legend svg object. 
+    **/
+
     function legend(data, color, svg, width) {
         var legend = svg.selectAll(".legend")
             .data(data)
