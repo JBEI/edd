@@ -24,10 +24,20 @@ StudyDGraphing = {
 	},
 
 	clearAllSets:function() {
-		d3.selectAll("svg").remove();
 
-        //loop through svgs and remove them. 
+        var divs =  this.graphDiv.siblings();
+
+        if ($(divs[1]).find( "svg" ).length == 0 ){
+             d3.selectAll("svg").remove();
+        }
+        else {
+            for (var div = 1; div < divs.length; div++) {
+                $(divs[div]).find("svg").remove()
+            }
+        }
 	},
+
+       // d3.selectAll("svg").remove();
 
 	addNewSet:function(newSet) {
         var buttons = StudyDGraphing.getButtonElement(this.graphDiv);
