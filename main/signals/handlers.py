@@ -15,8 +15,10 @@ from django.db import connection, transaction
 from django.db.models.signals import m2m_changed, post_delete, post_save, pre_save, pre_delete
 from django.dispatch import receiver
 from django.core.mail import mail_managers
+from requests.exceptions import ConnectionError
 
-from jbei.ice.rest.ice import IceHmacAuth, parse_entry_id
+from jbei.rest.auth import HmacAuth
+from jbei.ice.rest.ice import parse_entry_id
 from . import study_modified, study_removed, user_modified
 from ..models import (
     Line, MetaboliteExchange, MetaboliteSpecies, SBMLTemplate, Strain, Study, Update,
@@ -116,7 +118,7 @@ def _post_commit_index_user(user):
         # access existing studies (provided the URL), and create new ones. Solr being down
         # shouldn't prevent the login process (EDD-201)
         except IOError as e:
-            _handle_post_commit_function_error("Error updating Solr at login")
+            _handle_post_commit_function_error("Error updating Solr with user information")
 
 ####################################################################################################
 
@@ -297,7 +299,9 @@ def _post_commit_unlink_ice_entry_from_study(user_email, study_pk, study_creatio
     """
     logger.info('Start ' + _post_commit_unlink_ice_entry_from_study.__name__ + '()')
 
-    ice = IceApi(auth=IceHmacAuth.get(username=user_email)) if not settings.USE_CELERY else None
+    ice = None
+    if not settings.USE_CELERY:
+        ice = IceApi(auth=HmacAuth(key_id=settings.ICE_KEY_ID, username=user_email))
 
     study_url = get_abs_study_url(study_pk)
     index = 0
@@ -362,7 +366,9 @@ def _post_commit_link_ice_entry_to_study(user_email, study, linked_strains):
     django-commit-hooks limitation that a no-arg method be passed to the post-commit hook.
     :param linked_strains cached strain information
     """
-    ice = IceApi(auth=IceHmacAuth.get(username=user_email)) if not settings.USE_CELERY else None
+    ice = None
+    if not settings.USE_CELERY:
+        ice = IceApi(auth=HmacAuth(key_id=settings.ICE_KEY_ID, username=user_email))
 
     index = 0
 

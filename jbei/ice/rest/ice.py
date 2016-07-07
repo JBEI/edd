@@ -14,27 +14,23 @@ a physically separate server from EDD itself, where Django model objects shouldn
 the network.
 """
 
-
-import base64
-import hashlib
-import hmac
 import importlib
-
-from urllib import urlencode
-from urlparse import urlunparse, ParseResult, parse_qs
-
-from jbei.rest.utils import remove_trailing_slash, CLIENT_ERROR_NOT_FOUND, remove_trailing_slash
-from jbei.rest.request_generators import (RequestGenerator, SessionRequestGenerator, PagedResult,
-                                          PagedRequestGenerator)
 import json
 import logging
 import os
 import re
 import requests
-from requests.auth import AuthBase
+
 from requests.compat import urlparse
+from urllib import urlencode
+from urlparse import urlunparse, ParseResult, parse_qs
+
+from jbei.rest.utils import CLIENT_ERROR_NOT_FOUND
+from jbei.rest.request_generators import PagedResult, PagedRequestGenerator
+
 
 logger = logging.getLogger(__name__)
+
 
 ####################################################################################################
 # Set reasonable defaults where possible
@@ -51,36 +47,26 @@ ICE_SECRET_KEY = None
 
 # if an ICE-specific settings module has been defined, override defaults with values provided there.
 settings_module_name = os.environ.get('ICE_SETTINGS_MODULE')
+settings_django_name = os.environ.get('DJANGO_SETTINGS_MODULE')
+settings = None
 if settings_module_name:
     settings = importlib.import_module(settings_module_name)
-    if hasattr(settings, 'ICE_REQUEST_TIMEOUT'):
-        ICE_REQUEST_TIMEOUT = settings.ICE_REQUEST_TIMEOUT
-    if hasattr(settings, 'ICE_URL'):
-        ICE_URL = settings.ICE_URL
-    if hasattr(settings, 'ICE_SECRET_HMAC_KEY'):
-        ICE_SECRET_KEY = settings.ICE_SECRET_KEY
-
 # otherwise, if an a django settings module is defined, get configuration from there instead
-else:
-    settings_module_name = os.environ.get('DJANGO_SETTINGS_MODULE')
-    if settings_module_name:
-        # override defaults with values provided by Django settings. This dependency on
-        # Django should be kept as contained as possible to prevent non-Django clients from
-        # having to load a LOT of unnecessary libraries.
-        try:
-            import django.conf
-            django_settings = django.conf.settings
-            if hasattr(django_settings, 'ICE_REQUEST_TIMEOUT'):
-                ICE_REQUEST_TIMEOUT = django_settings.ICE_REQUEST_TIMEOUT
-            if hasattr(django_settings, 'ICE_URL'):
-                ICE_URL = django_settings.ICE_URL
-            if hasattr(django_settings, 'ICE_SECRET_HMAC_KEY'):
-                ICE_SECRET_KEY = django_settings.ICE_SECRET_HMAC_KEY
-        except ImportError as i:
-            logger.error('DJANGO_SETTINGS_MODULE environment variable was provided as a source of '
-                         'settings, but an import error occurred while trying to load Django '
-                         'settings.')
-            raise i
+elif settings_django_name:
+    try:
+        # Django may not be present, don't try to import unless settings environment exists
+        import django.conf
+        settings = django.conf.settings
+    except ImportError as i:
+        logger.error('DJANGO_SETTINGS_MODULE environment variable was provided as a source of '
+                     'settings, but an import error occurred while trying to load Django '
+                     'settings.')
+        raise i
+# try to grab values from settings object which may have been set above; default to originals
+#   if not found
+ICE_REQUEST_TIMEOUT = getattr(settings, 'ICE_REQUEST_TIMEOUT', ICE_REQUEST_TIMEOUT)
+ICE_URL = getattr(settings, 'ICE_URL', ICE_URL)
+ICE_SECRET_KEY = getattr(settings, 'ICE_SECRET_KEY', ICE_SECRET_KEY)
 
 
 ####################################################################################################
@@ -101,8 +87,8 @@ ICE_ENTRY_URL_PATTERN = re.compile('^%s$' % _ICE_ENTRY_URL_REGEX, re.IGNORECASE)
 # String constants used to communicate with ICE.
 # TODO: most/all of these should be enums after upgrading to Python 3
 ####################################################################################################
-DEFAULT_RESULT_LIMIT = 15  # ICE's current automatic limit on results returned in the absence of a
-                           # specific requested page size
+# ICE's current automatic limit on results returned in the absence of a specific requested page size
+DEFAULT_RESULT_LIMIT = 15
 DEFAULT_PAGE_NUMBER = 1
 
 STRAIN = 'STRAIN'
@@ -175,6 +161,7 @@ ARABIDOPSIS_KEYWORD_CHANGES = {
     'plantType': 'plant_type',
     'sentToAbrc': 'sent_to_a_brc',
 }
+
 
 class Entry(object):
     """
@@ -249,19 +236,11 @@ class Entry(object):
         # build up a list of keyword arguments to use in constructing the Part.
         python_object_params = {}
 
-        ############################################################################################
-        # Convert data we have a custom Python object for, where the trivial JSON conversion
-        # won't cover it.
-        #  TODO: untested / no known examples of these...may be wrong. If just strings, no need for
-        # parsing here
-        ############################################################################################
-        parameters = json_dict.get('parameters', [])
-
         # linked parts
         LINKED_PARTS_JSON_KEYWORD = 'linkedParts'
         linked_parts_temp = json_dict.get(LINKED_PARTS_JSON_KEYWORD)
         linked_parts = (Entry.of(linked_part_dict) for linked_part_dict in linked_parts_temp) if \
-                       linked_parts_temp else []
+            linked_parts_temp else []
         python_object_params['linked_parts'] = linked_parts
 
         # parents
@@ -289,7 +268,6 @@ class Entry(object):
         # http://stackoverflow.com/questions/1175208/elegant-python-function-to
         #  -convert-camelcase-to-camel-case, but seems a bit problematic, license-wise.
 
-
         # TODO: investigate JSON data in this dictionary that we don't currently understand /
         # support.
         IGNORED_PART_KEYWORDS = [
@@ -315,7 +293,7 @@ class Entry(object):
 
         if STRAIN == part_type:
             return _construct_part(python_object_params, part_type, STRAIN_DATA_JSON_KEYWORD,
-                             STRAIN_KEYWORD_CHANGES, Strain, silence_type_specific_warnings)
+                                   STRAIN_KEYWORD_CHANGES, Strain, silence_type_specific_warnings)
 
         if ARABIDOPSIS == part_type:
             return _construct_part(python_object_params, part_type, ARABIDOPSIS_DATA_JSON_KEYWORD,
@@ -367,12 +345,12 @@ class ExperimentLink(object):
 ####################################################################################################
 # ICE Sample Location Types. See org.jbei.ice.lib.dto.sample.SampleType
 ####################################################################################################
-PLATE96 ='PLATE96'
+PLATE96 = 'PLATE96'
 PLATE81 = 'PLATE81'
 WELL = 'WELL'
 TUBE = 'TUBE'
 SCHEME = 'SCHEME'
-ADDGENE ='ADDGENE'
+ADDGENE = 'ADDGENE'
 GENERIC = 'GENERIC'
 FREEZER = 'FREEZER'
 SHELF = 'SHELF'
@@ -490,8 +468,8 @@ def _convert_json_keywords(json_dict, conversion_dict):
     Makes a shallow copy of a dictionary with JSON-formatted, producing a dictionary with
     Python-formatted keys
     :param json_dict: the JSON dictionary
-    :param conversion_dict: a dictionary that maps JSON keywords to their Python equivalents. Any keywords
-    not present here are assumed to be identical in both.
+    :param conversion_dict: a dictionary that maps JSON keywords to their Python equivalents. Any
+        keywords not present here are assumed to be identical in both.
     :return: a new dictionary with Python-formatted keys
     """
     converted_dict = {}
@@ -505,6 +483,7 @@ def _convert_json_keywords(json_dict, conversion_dict):
 NORMAL_ACCOUNT_TYPE = 'NORMAL'
 ADMIN_ACCOUNT_TYPE = 'ADMIN'
 USER_ACCOUNT_TYPES = (NORMAL_ACCOUNT_TYPE, ADMIN_ACCOUNT_TYPE)
+
 
 class User(object):
     def __init__(self, id, email, initials, first_name, last_name, institution, description,
@@ -524,7 +503,7 @@ class User(object):
         self.is_admin = is_admin
         self.new_message_count = new_message_count
         self.account_type = account_type
-        self.default_permissions_list = default_permissions_list # TODO: check possible values
+        self.default_permissions_list = default_permissions_list  # TODO: check possible values
 
     @staticmethod
     def of(json_dict):
@@ -552,7 +531,8 @@ class User(object):
 class EntrySearchResult(object):
     # TODO: resolve nident changes with Hector P -- not pushed to Github yet, though recently
     # observed on registry-test
-    def __init__(self,  entry, e_value, query_length, score, max_score, match_details, nident=None,):
+    def __init__(self,  entry, e_value, query_length, score, max_score, match_details,
+                 nident=None, ):
         self.entry = entry
         self.e_value = e_value
         self.query_length = query_length
@@ -613,7 +593,7 @@ class Strain(Entry):
         return json_dict
 
 
-### Design note: all part-specific params are currently optional so that we can still at least
+# Design note: all part-specific params are currently optional so that we can still at least
 # capture the part type when the part gets returned from a search without any of its type-specific
 # data. TODO: confirm with Hector P. that this is intentional, then make them non-optional if needed
 class Plasmid(Entry):
@@ -660,269 +640,7 @@ def parse_entry_id(ice_entry_url):
 
 DEFAULT_HMAC_KEY_ID = 'edd'
 
-
-class HmacAuth(AuthBase):
-    """
-    Implements Hash-based Message Authentication Codes (HMAC). HMAC guarantees that: A) a message
-    has been generated by a holder of the secret key, and B) that its contents haven't been
-    altered since the auth code was generated.
-    Instances of HmacAuth are immutable and are therefore safe to use in multiple threads.
-    :param username the username of the ice user who ICE activity will be attributed to.
-    Overrides the value provided by user_auth if both are present. At least one is required.
-    :raises ValueError if no user email address is provided.
-    """
-    # TODO: remove remaining ICE-specific code/variable names to make this code more generic,
-    # then relocate. May need to create an ICE-specific subclass.
-
-    def __init__(self, request_generator, secret_key, key_id=None, username=None, ):
-        """
-
-        :param secret_key:
-        :param key_id:
-        :param username:
-        :param request_generator: the request generator to use
-        :return:
-        """
-        if not secret_key:
-            raise ValueError("A secret key is required input for HMAC authentication")
-        self._KEY_ID = key_id
-        self._USERNAME = username
-        self._SECRET_KEY = secret_key
-
-        if not request_generator:
-            request_generator = RequestGenerator(auth=self)
-        else:
-            request_generator.auth = self
-        self._request_generator = request_generator
-
-    @property
-    def request_generator(self):
-        """
-        Get the request generator responsible for creating all requests to the remote server.
-        """
-        return self._request_generator
-
-    def __call__(self, request):
-        """
-        Overrides the empty base implementation to provide authentication for the provided request
-        object.
-        """
-
-        # generate a signature for the message by hashing the request using the secret key
-        sig = self._build_signature(request)
-
-        # add message headers including the username (if present) and message
-        header = ':'.join(('1', self._KEY_ID, self._USERNAME, sig))
-        request.headers['Authorization'] = header
-        return request
-
-    def _build_message(self, request):
-        """
-        Builds a string representation of the message contained in the request so it can be digested
-        for HMAC generation
-        """
-        url = urlparse(request.url)
-
-        # build up the message, using only components that evaluate to True
-        delimiter = '\n'
-        msg = delimiter.join((
-            self._USERNAME or '',
-            request.method,
-            url.netloc,
-            url.path,
-            self._sort_parameters(url.query),
-            request.body or '',
-        ))
-        return msg
-
-    def _build_signature(self, request):
-        """
-        Builds a signature for the provided request message based on the secret key.
-        """
-        key = base64.b64decode(self._SECRET_KEY)
-        msg = self._build_message(request)
-        digest = hmac.new(key, msg=msg, digestmod=hashlib.sha1).digest()
-        sig = base64.b64encode(digest).decode()
-        return sig
-
-    def _sort_parameters(self, query):
-        params = sorted(map(lambda p: p.split('=', 1), query.split('&')), key=lambda p: p[0])
-        return '&'.join(map(lambda p: '='.join(p), params))
-
-    ############################################
-    # 'with' context manager implementation ###
-    ############################################
-    def __enter__(self):
-        return self
-
-    def __exit__(self, type, value, traceback):
-        pass
-    ############################################
-
-
-class IceHmacAuth(HmacAuth):
-    def __init__(self, secret_key, key_id=DEFAULT_HMAC_KEY_ID, username=None,
-                 request_generator=None):
-        """
-
-        :param secret_key:
-        :param key_id:
-        :param username:
-        :param request_generator: the RequestGenerator instance to use, or None to create a new
-        PagedRequestGenerator.
-        :return:
-        """
-        super(IceHmacAuth, self).__init__(request_generator, secret_key, key_id=key_id, username=username)
-        self.__KEY_ID = key_id
-        self.__USER_EMAIL = username
-
-        if not request_generator:
-            request_generator = PagedRequestGenerator(RESULT_LIMIT_PARAMETER,
-                                                      RESULT_OFFSET_PARAMETER, auth=self)
-        else:
-            request_generator.auth = self
-
-
-    @staticmethod
-    def get(secret_key=ICE_SECRET_KEY, username=None, user_auth=None, request=None):
-        """
-        Factory method for creating an HMAC authentication instance for communicating with ICE using
-        a combination of HMAC and the user ID of an *authenticated* EDD user. All actions
-        performed in ICE using the resulting authentication instance
-        will be attributed to the user with this ID, but trusted by ICE since they're signed by
-        the secret key. It's crucial for security communications using this mechanism only be
-        exposed to authenticated users or trusted systems.
-
-        At least one of the last three parameters must be provided as a source of ICE username.
-        :param secret_key: the secret key used to sign messages as the basis of HMAC authentication.
-        if no key is provided, an attempt is made to read it from django's settings.
-        :param username: the username of the ICE user to which subsequent ICE activity will
-        be attributed
-        :param user_auth: the user auth for an EDD user, which is assumed to contain a
-        :param request: the authenticated EDD request to get user information from
-        :return: a new HmacAuth instance
-        """
-
-        if username:
-            return IceHmacAuth(secret_key=secret_key, username=username)
-        elif user_auth and user_auth.email:
-            return IceHmacAuth(secret_key=secret_key, username=user_auth.email)
-        elif request and request.user:
-            return IceHmacAuth(secret_key=secret_key, username=request.user)
-        else:
-            raise ValueError("At least one source of ICE username for an authenticated EDD user is "
-                             "required")
-
-
-class SessionAuth(AuthBase):
-    """
-    Implements session-based authentication for ICE. At the time of initial implementation,
-    "session-based" is a bit misleading for the processing performed here, since ICE's login
-    mechanism doesn't reply with set-cookie headers or read the session ID in the session cookie.
-    Instead, ICE's REST API responds to a successful login with a JSON object containing the session
-    ID, and authenticates subsequent requests by requiring the session ID in each subsequent
-    request header.
-
-    Clients should first call login() to get a valid ice session id
-    """
-    def __init__(self, session_id, session, timeout=ICE_REQUEST_TIMEOUT, verify_ssl_cert=True):
-        self._session_id = session_id
-        self._session = session
-
-        session_request_generator = SessionRequestGenerator(session, auth=self, timeout=timeout,
-                                                          verify_ssl_cert=verify_ssl_cert)
-
-        paging_request_generator = PagedRequestGenerator(request_api=session_request_generator,
-                                                         result_limit_param_name=RESULT_LIMIT_PARAMETER ,
-                                                         result_limit=DEFAULT_RESULT_LIMIT)
-
-        self._request_generator = paging_request_generator
-
-    @property
-    def request_generator(self):
-        """
-        Get the request generator responsible for creating all requests to the remote server.
-        """
-        return self._request_generator
-
-    def __call__(self, request):
-        """
-        Overrides the empty base implementation to provide authentication for the provided request
-        object (which should normally be _session). ICE doesn't seem to read the session ID from
-        cookies, so there's no specific need to provide those here.
-        """
-        request.headers['X-ICE-Authentication-SessionId'] = self._session_id
-        return request
-
-    ############################################
-    # 'with' context manager implementation ###
-    ############################################
-    def __enter__(self):
-        return self
-
-    def __exit__(self, type, value, traceback):
-        self._session.__exit__(type, value, traceback)
-    ############################################
-
-    @staticmethod
-    def login(password, username=None, user_auth=None, base_url=ICE_URL,
-              timeout=ICE_REQUEST_TIMEOUT, verify_ssl_cert=True):
-
-        """
-        Logs into ICE at the provided base URL or raises an Exception if an unexpected response is
-        received from the server.
-        :param base_url: the base URL of the ICE installation (not including the protocol
-        :param timeout a tuple representing the connection and read timeouts, respectively, in
-        seconds, for the login request to ICE's REST API
-        :param verify_ssl_cert True to verify ICE's SSL certificate. Provided so clients can ignore
-        self-signed certificates during *local* EDD / ICE testing on a single development machine.
-        Note that it's very dangerous to skip certificate verification when communicating across
-        the network, and this should NEVER be done in production.
-        :return: new SessionAuth containing the newly-created session. Note that at present the
-        session isn't strictly required, but is provided for completeness in case ICE's
-        behavior changes to store the session ID as a cookie instead of requiring it as a request
-        header.
-        """
-
-        if not username:
-            username = user_auth.email if user_auth else None
-
-        if not username:
-            raise ValueError("At least one source of ICE username is required")
-
-        # chop off the trailing '/', if any, so we can write easier-to-read URL snippets in our code
-        # (starting w '%s/'). also makes our code trailing-slash agnostic.
-        base_url = remove_trailing_slash(base_url)
-
-        # begin a session to track any persistent state required by the server
-        session = requests.session()
-
-        # build request parameters for login
-        login_dict = {'email': username,
-                      'password': password}
-        login_resource_url = '%(base_url)s/rest/accesstokens/' % {'base_url': base_url}
-
-        # issue a POST to request login from the ICE REST API
-        response = session.post(login_resource_url, headers=_JSON_CONTENT_TYPE_HEADER,
-                                data=json.dumps(login_dict), timeout=timeout,
-                                verify=verify_ssl_cert)
-
-        # raise an exception if the server didn't give the expected response
-        if response.status_code != requests.codes.ok:
-            response.raise_for_status()
-
-        json_response = response.json()
-        session_id = json_response['sessionId']
-
-        # if login failed for any other reason,
-        if not session_id:
-            raise ValueError("Server responded successfully, but response did not include the "
-                             "required session id")
-
-        logger.info('Successfully logged into ICE at %s' % base_url)
-
-        return SessionAuth(session_id, session)
-
+ice_paged_requests = PagedRequestGenerator(RESULT_LIMIT_PARAMETER, RESULT_OFFSET_PARAMETER)
 
 class IceApi(RestApiClient):
     """
@@ -937,10 +655,13 @@ class IceApi(RestApiClient):
     # TODO: when returning model objects, prevent database changes via partially-populated model
     # object instances. See draft code in edd.py
 
-    def __init__(self, auth, base_url=ICE_URL, result_limit=DEFAULT_RESULT_LIMIT):
+    def __init__(self, auth, base_url=ICE_URL, result_limit=DEFAULT_RESULT_LIMIT,
+                 request_generator=ice_paged_requests):
         """
         Creates a new instance of IceApi
         :param auth: the authentication strategy for communication with ICE
+        :param request_generator: object implementing the Requests API; defaults to
+            PagedRequestGenerator
         :param base_url: the base URL of the ICE install.
         :param result_limit: the maximum number of results that can be returned from a single
         query. The default is ICE's default limit at the time of writing. Note that ICE
@@ -950,8 +671,7 @@ class IceApi(RestApiClient):
         if not auth:
             raise ValueError("A valid authentication mechanism must be provided")
 
-        super(IceApi, self).__init__('ICE', base_url, auth.request_generator,
-                                             result_limit)
+        super(IceApi, self).__init__('ICE', base_url, request_generator, result_limit)
 
     def _compute_result_offset(self, page_number):
         result_limit = self.result_limit
@@ -1051,7 +771,8 @@ class IceApi(RestApiClient):
             # execute the query
             url = '%s/rest/parts/%s/experiments/' % (self.base_url, entry_id)
 
-            response = self.request_generator.get(url,
+            response = self.request_generator.get(
+                url,
                 params=query_params,
                 headers=_JSON_CONTENT_TYPE_HEADER
             )
@@ -1064,7 +785,6 @@ class IceApi(RestApiClient):
             # NOTE: we purposefully DON'T return None for 404, since that would remove the clients'
             # ability to distinguish between a non-existent entry and an entry with no experiments
             response.raise_for_status()
-
 
     def get_entry_samples(self, entry_id, query_url=None, page_number=DEFAULT_PAGE_NUMBER):
         """
@@ -1215,7 +935,6 @@ class IceApi(RestApiClient):
 
             query_dict['webSearch'] = search_web  # Note: affects results even if false?
 
-
             ########################################################################################
             # Build a list of query parameters that get bundled together in a slightly non-standard
             # way
@@ -1333,9 +1052,7 @@ class IceApi(RestApiClient):
             json_dict['id'] = link_id
 
         request_generator = self.request_generator
-        response = request_generator.request('POST', entry_experiments_url,
-                                             data=json_str,
-                                             headers=headers)
+        response = request_generator.post(entry_experiments_url, data=json_str, headers=headers)
 
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
@@ -1364,8 +1081,10 @@ class IceApi(RestApiClient):
         # Look up the links associated with this ICE part
         entry_experiments_rest_url = self._build_entry_experiments_url(ice_entry_id)
 
-        response = self.request_generator.request('GET', entry_experiments_rest_url,
-                                             headers=_JSON_CONTENT_TYPE_HEADER)
+        response = self.request_generator.get(
+            entry_experiments_rest_url,
+            headers=_JSON_CONTENT_TYPE_HEADER
+        )
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
 
@@ -1446,8 +1165,8 @@ class IceApi(RestApiClient):
         # query ICE to get the list of existing links for this part
         entry_experiments_rest_url = self._build_entry_experiments_url(ice_entry_id)
         logger.info(entry_experiments_rest_url)
-        response = self.request_generator.request('GET', entry_experiments_rest_url,
-                                                  headers=_JSON_CONTENT_TYPE_HEADER)
+        response = self.request_generator.get(entry_experiments_rest_url,
+                                              headers=_JSON_CONTENT_TYPE_HEADER)
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
 
@@ -1562,9 +1281,9 @@ class IcePagedResult(PagedResult):
                 # compute page indexes for the current page and prev/next pages
                 current_page_index = (offset // result_limit)
                 next_page_index = current_page_index + 1
-                next_page_index = next_page_index if ((next_page_index * result_limit) +
-                                                     result_limit <= count) or (
-                    current_page_index * result_limit < count) else None
+                if ((next_page_index + 1) * result_limit > count or
+                        current_page_index * result_limit >= count):
+                    next_page_index = None
                 prev_page_index = current_page_index - 1 if current_page_index >= 1 else None
 
             # if a query URL was provided, construct next/prev URL's by deconstructing the URL for
@@ -1586,7 +1305,7 @@ class IcePagedResult(PagedResult):
                     query_params_dict[RESULT_LIMIT_PARAMETER] = result_limit
                     query_params_dict[RESULT_OFFSET_PARAMETER] = prev_page_index * result_limit
                     prev_page_inputs = ParseResult(url_elts.scheme, url_elts.netloc, url_elts.path,
-                                        url_elts.params, query_string, url_elts.fragment)
+                                                   url_elts.params, query_string, url_elts.fragment)
                     prev_page_url = urlunparse(prev_page_inputs)
 
             if count == 0:

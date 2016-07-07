@@ -4,12 +4,14 @@ from __future__ import unicode_literals
 import operator
 import re
 
+from django.conf import settings
 from django.db.models import Q
 from django.http import JsonResponse
 from django.contrib.auth.models import Group
 from functools import reduce
 
-from jbei.ice.rest.ice import IceHmacAuth, IceApi
+from jbei.rest.auth import HmacAuth
+from jbei.ice.rest.ice import IceApi
 from . import models as edd_models
 from .solr import UserSearch
 
@@ -127,7 +129,7 @@ def search_sbml_species(request):
 
 def search_strain(request):
     """ Autocomplete delegates to ICE search API. """
-    auth = IceHmacAuth.get(username=request.user.email)
+    auth = HmacAuth.get(key_id=settings.ICE_KEY_ID, username=request.user.email)
     ice = IceApi(auth=auth)
     term = request.GET.get('term', '')
     found = ice.search_entries(term, suppress_errors=True)
