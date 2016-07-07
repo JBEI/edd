@@ -1,12 +1,11 @@
-
-////// multi bar
-
 /**
 * this function takes in input min y value, max y value, and the sorted json object.
 *  outputs a grouped bar graph with values grouped by assay name
 **/
-function createAssayGraph(assayMeasurements, selector) {
-
+function createAssayGraph(graphSet, selector) {
+    
+    var assayMeasurements = graphSet.assayMeasurements;
+    
     var margin = {top: 20, right: 40, bottom: 100, left: 40},
          width = 1000 - margin.left - margin.right,
          height = 270 - margin.top - margin.bottom;
@@ -88,7 +87,11 @@ function createAssayGraph(assayMeasurements, selector) {
     svg.append("g")
         .attr("class", "x axis")
         .attr("transform", "translate(0," + height + ")")
-        .call(protein_axis);
+        .call(protein_axis)
+        .append('text')
+        .attr("y", 20)
+        .attr("x", width)
+        .text(graphSet.x_unit);
 
     svg.append("g")
           .attr("class", "y axis")
@@ -98,8 +101,7 @@ function createAssayGraph(assayMeasurements, selector) {
           .attr("y", 6)
           .attr("dy", ".71em")
           .style("text-anchor", "end")
-          .text("Frequency");
-
+          .text(graphSet.y_unit);
 
     var names_g = svg.selectAll(".group")
         .data(data)
@@ -113,7 +115,7 @@ function createAssayGraph(assayMeasurements, selector) {
 
     var categories_g = names_g.selectAll(".category")
         .data(function(d) {
-          return d.values;  // values = [0, 12, 15, 18, 23, 36, 45, 60]
+          return d.values;
         })
         .enter().append("g")
         .attr("class", function(d) {
@@ -125,12 +127,12 @@ function createAssayGraph(assayMeasurements, selector) {
 
     var categories_labels = categories_g.selectAll('.category-label')
         .data(function(d) {
-          return [d.key]; // returns ["0"]
+          return [d.key];
         })
         .enter()
         .append("text")
         .attr("class", function(d) {
-          return 'category-label category-label-' + d;   //returns 0 - 64...
+          return 'category-label category-label-' + d;
         })
         .attr("x", function(d) {
           return x_xValue.rangeBand() / 2;
@@ -159,7 +161,7 @@ function createAssayGraph(assayMeasurements, selector) {
 
     var values_labels = values_g.selectAll('.value-label')
         .data(function(d) {
-         return [d.key]; //["y0"]
+         return [d.key];
         })
         .enter().append("text")
         .attr("class", function(d) {
@@ -175,7 +177,7 @@ function createAssayGraph(assayMeasurements, selector) {
 
     var rects = values_g.selectAll('.rect')
         .data(function(d) {
-          return [d]; // returns [{i:, x:, y:, ...}]
+          return [d];
         })
         .enter().append("rect")
         .attr("class", "rect")

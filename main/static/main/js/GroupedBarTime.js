@@ -1,5 +1,7 @@
 ////// grouped bar chart based on time
-function createTimeGraph(assayMeasurements, selector, legend, make_x_axis, make_y_axis) {
+function createTimeGraph(graphSet, selector) {
+
+    var assayMeasurements = graphSet.assayMeasurements;
 
     var margin = {top: 20, right: 120, bottom: 30, left: 40},
         width = 1000 - margin.left - margin.right,
@@ -64,27 +66,25 @@ function createTimeGraph(assayMeasurements, selector, legend, make_x_axis, make_
         });
     })]);
 
+    //x -axis
     svg.append("g")
         .attr("class", "x axis")
         .attr("transform", "translate(0," + height + ")")
         .call(xAxis)
+        .append('text')
+        .attr("y", 20)
+        .attr("x", width)
+        .text(graphSet.x_unit);
     // Draw the x Grid lines
     svg.append("g")
         .attr("class", "grid")
         .attr("transform", "translate(0," + height + ")")
-        .call(make_x_axis(x0)
+        .call(graphSet.x_axis(x0)
             .tickSize(-height, 0, 0)
             .tickFormat("")
         );
-    // Draw the y Grid lines
-    svg.append("g")
-        .attr("class", "grid")
-        .call(make_y_axis(y)
-            .tickSize(-width, 0, 0)
-            .tickFormat("")
-        );
 
-
+    //y-axis
     svg.append("g")
         .attr("class", "y axis")
         .call(yAxis)
@@ -93,7 +93,17 @@ function createTimeGraph(assayMeasurements, selector, legend, make_x_axis, make_
         .attr("y", 6)
         .attr("dy", ".71em")
         .style("text-anchor", "end")
-        .text("Frequency");
+        .text(graphSet.y_unit);
+    // Draw the y Grid lines
+    svg.append("g")
+        .attr("class", "grid")
+        .call(graphSet.y_axis(y)
+            .tickSize(-width, 0, 0)
+            .tickFormat("")
+        );
+
+
+
 
     var bar = svg.selectAll(".bar")
         .data(data)
@@ -134,5 +144,4 @@ function createTimeGraph(assayMeasurements, selector, legend, make_x_axis, make_
                 div.transition()
                     .style("opacity", 0);
             });
-    legend(data, color, svg, width);
 }

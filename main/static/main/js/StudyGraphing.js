@@ -9,6 +9,7 @@ StudyDGraphing = {
         }
     },
     clearAllSets: function () {
+        //
         var divs = this.graphDiv.siblings();
         if ($(divs[1]).find("svg").length == 0) {
             d3.selectAll("svg").remove();
@@ -21,10 +22,11 @@ StudyDGraphing = {
     },
     // d3.selectAll("svg").remove();
     addNewSet: function (newSet) {
-        var buttons = StudyDGraphing.getButtonElement(this.graphDiv);
+        var buttonArr = StudyDGraphing.getButtonElement(this.graphDiv);
+        var buttons = StudyDGraphing.convertObjectToArr(buttonArr);
         var selector = StudyDGraphing.getSelectorElement(this.graphDiv);
         //ar chart grouped by time
-        d3.select(buttons[1])
+        d3.select(buttons["timeBar"])
             .on('click', function () {
             event.preventDefault();
             d3.select(selector[1]).style('display', 'none');
@@ -34,7 +36,7 @@ StudyDGraphing = {
             return false;
         });
         //line chart
-        d3.select(buttons[0])
+        d3.select(buttons["linechart"])
             .on('click', function () {
             event.preventDefault();
             d3.select(selector[1]).style('display', 'block');
@@ -44,7 +46,7 @@ StudyDGraphing = {
             return false;
         });
         //bar charts for each line entry
-        d3.select(buttons[2])
+        d3.select(buttons["single"])
             .on('click', function () {
             event.preventDefault();
             d3.select(selector[1]).style('display', 'none');
@@ -54,7 +56,7 @@ StudyDGraphing = {
             return false;
         });
         //bar chart grouped by assay
-        d3.select(buttons[3])
+        d3.select(buttons["groupedAssay"])
             .on('click', function () {
             event.preventDefault();
             d3.select(selector[1]).style('display', 'none');
@@ -64,13 +66,26 @@ StudyDGraphing = {
             return false;
         });
         var data = EDDData; // main data
-        var labels = names(data); // names of proteins..
         var barAssayObj = sortBarData(newSet);
+        var x_units = findX_Units(barAssayObj);
+        var y_units = findY_Units(barAssayObj);
+        //data for graphs
+        var graphSet = {
+            barAssayObj: sortBarData(newSet),
+            labels: names(data),
+            y_unit: displayUnit(y_units),
+            x_unit: displayUnit(x_units),
+            x_axis: make_x_axis,
+            y_axis: make_y_axis,
+            individualData: newSet,
+            assayMeasurements: barAssayObj,
+            legend: legend
+        };
         //create respective graphs
-        createLineGraph(barAssayObj, selector[1], legend, make_x_axis, make_y_axis);
-        createTimeGraph(barAssayObj, selector[2], legend, make_x_axis, make_y_axis);
-        createSideBySide(newSet, labels, selector[3]);
-        createAssayGraph(barAssayObj, selector[4]);
+        createLineGraph(graphSet, selector[1]);
+        createTimeGraph(graphSet, selector[2]);
+        createSideBySide(graphSet, selector[3]);
+        createAssayGraph(graphSet, selector[4]);
         if (!newSet.label) {
             $('#debug').text('Failed to fetch series.');
             return;
@@ -92,5 +107,13 @@ StudyDGraphing = {
     // takes in graphDiv and returns array of 4 buttons
     getSelectorElement: function (element) {
         return element.siblings().siblings();
-    }
+    },
+    convertObjectToArr: function (arr) {
+        var rv = {};
+        for (var i = 0; i < arr.length; ++i) {
+            var key = arr[i].value;
+            rv[key] = arr[i];
+        }
+        return rv;
+    },
 };
