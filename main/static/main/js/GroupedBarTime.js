@@ -1,5 +1,5 @@
 ////// grouped bar chart based on time
-function createTimeGraph(assayMeasurements, selector) {
+function createTimeGraph(assayMeasurements, selector, legend, make_x_axis, make_y_axis) {
 
     var margin = {top: 20, right: 120, bottom: 30, left: 40},
         width = 1000 - margin.left - margin.right,
@@ -72,14 +72,14 @@ function createTimeGraph(assayMeasurements, selector) {
     svg.append("g")
         .attr("class", "grid")
         .attr("transform", "translate(0," + height + ")")
-        .call(make_x_axis()
+        .call(make_x_axis(x0)
             .tickSize(-height, 0, 0)
             .tickFormat("")
         );
     // Draw the y Grid lines
     svg.append("g")
         .attr("class", "grid")
-        .call(make_y_axis()
+        .call(make_y_axis(y)
             .tickSize(-width, 0, 0)
             .tickFormat("")
         );
@@ -134,53 +134,5 @@ function createTimeGraph(assayMeasurements, selector) {
                 div.transition()
                     .style("opacity", 0);
             });
-     //legend
-      var legend = svg.selectAll(".legend")
-          .data(proteinNames)
-          .enter().append("g")
-          .attr("class", "legend")
-          .attr("transform", function(d, i) {
-            return "translate(0," + i * 20 + ")";
-          });
-
-        legend.append("rect")
-          .attr("x", width + 5)
-          .attr("width", 18)
-          .attr("height", 18)
-          .style("fill", function (d) { // Add the colours dynamically
-            return data.color = color(d.key);
-         });
-
-        legend.append("text")
-          .attr("x", width + 25)
-          .attr("y", 9)
-          .attr("dy", ".35em")
-          .style("text-anchor", "start")
-          .text(function(d) {
-            return d.key;
-          });
-
-    //hide legend for too many entries.
-    if (names.length > 10) {
-        d3.selectAll(".legend").style("display", "none");
-    } 
-    /**
-    * this function creates the x axis tick marks for grid
-    **/
-    function make_x_axis() {
-        return d3.svg.axis()
-            .scale(x0)
-            .orient("bottom")
-            .ticks(5)
-    }
-
-    /**
-    * this function creates the y axis tick marks for grid
-    **/
-    function make_y_axis() {
-        return d3.svg.axis()
-            .scale(y)
-            .orient("left")
-            .ticks(5)
-    }
+    legend(data, color, svg, width);
 }

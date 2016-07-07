@@ -1,10 +1,10 @@
 /**
 * this function creates the line graph 
 **/
-function createLineGraph(assayMeasurements, selector) {
+function createLineGraph(assayMeasurements, selector, legend) {
 
     //get x values
-    var xDomain = assayMeasurements.map(function(d) { return d.x; })
+    var xDomain = assayMeasurements.map(function(assayMeasurement) { return assayMeasurement.x; });
 
     //sort x values
     xDomain.sort(function(a, b) {
@@ -51,17 +51,17 @@ function createLineGraph(assayMeasurements, selector) {
     svg.append("g")
         .attr("class", "grid")
         .attr("transform", "translate(0," + height + ")")
-        .call(make_x_axis()
+        .call(make_x_axis(x)
             .tickSize(-height, 0, 0)
             .tickFormat("")
         )
     // Draw the y Grid lines
     svg.append("g")
         .attr("class", "grid")
-        .call(make_y_axis()
+        .call(make_y_axis(y)
             .tickSize(-width, 0, 0)
             .tickFormat("")
-        )
+        );
 
     svg.append("g")
         .attr("class", "y axis")
@@ -98,7 +98,7 @@ function createLineGraph(assayMeasurements, selector) {
             return d.name;
         })
         .entries(assayMeasurements);
-    var names = proteinNames.map(function (d) {return d.key;})
+    var names = proteinNames.map(function (d) {return d.key;});
 
 
     for (var k = 0; k < data.length; k++) {
@@ -146,53 +146,6 @@ function createLineGraph(assayMeasurements, selector) {
                     .style("opacity", 0);
             });
         }
-
-        var legend = svg.selectAll(".legend")
-                  .data(data)
-                  .enter().append("g")
-                  .attr("class", "legend")
-                  .attr("transform", function(d, i) {
-                    return "translate(0," + i * 20 + ")";
-                  });
-
-                legend.append("rect")
-                  .attr("x", width + 5)
-                  .attr("width", 18)
-                  .attr("height", 18)
-                  .style("fill", function (d) { // Add the colours dynamically
-                    return data.color = color(d.key);
-                 })
-
-                legend.append("text")
-                  .attr("x", width + 25)
-                  .attr("y", 9)
-                  .attr("dy", ".35em")
-                  .style("text-anchor", "start")
-                  .text(function(d) {
-                    return d.key;
-                  })
-        //hide legend for too many entries. 
-        if (names.length > 10) {
-            d3.selectAll(".legend").style("display", "none");
-        }   
     }
-        /**
-     * this function creates the x axis tick marks for grid
-     **/
-    function make_x_axis() {
-        return d3.svg.axis()
-            .scale(x)
-            .orient("bottom")
-            .ticks(5)
-    }
-
-    /**
-     * this function creates the y axis tick marks for grid
-     **/
-    function make_y_axis() {
-        return d3.svg.axis()
-            .scale(y)
-            .orient("left")
-            .ticks(5)
-    }
+    legend(data, color, svg, width);
 }

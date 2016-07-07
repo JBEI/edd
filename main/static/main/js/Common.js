@@ -1,32 +1,20 @@
     /**
-    * this function takes in an object and returns its size
-    **/
-    function objectSize(obj) {
-    
-        var size = 0, key;
-        for (key in obj) {
-            if (obj.hasOwnProperty(key)) size++;
-        }
-        return size;
-    };
-    
-    /**
     *  This function takes in data and transforms it into the following
     *  {x, y, i}, {x, y, i}, {x, y, i} .... 
     **/
     
     function sortBarData(assays) {
         return [].concat.apply([], assays);
-}
+    }
     /**
     *  This function takes a unit id and unit type json and returns the unit name
     **/
-
+    
     function unitName(unitId, unitTypes) {
       return unitTypes[unitId].name
     }
-
-
+    
+    
     /**
     *  This function takes in EDDdata, a singleAssay line entry, and measurement names and
     *  transforms it into the following schema:
@@ -67,12 +55,12 @@
             });
         return xAndYValues;
     }
-
+    
     /**
     *  This function takes in the EDDData.AssayMeasurements object and returns
     *  an array of Assay ids.
     **/
-
+    
     function findAssayIds(assayMeasurements) {
      var assayIds = [];
      for (var key in assayMeasurements) {
@@ -80,24 +68,24 @@
         }
         return assayIds
     }
-
+    
     /**
-  *  This function takes in the EDDData.Assays object and array of Assay ids 
-  *  and returns an array of LID ids. 
-  **/
+    *  This function takes in the EDDData.Assays object and array of Assay ids 
+    *  and returns an array of LID ids. 
+    **/
 
     function findLidIds(assays, assayIds) {
         var lidIds = [];
         _.forEach(assayIds, function(assayId) {
             lidIds.push(assays[assayId].lid)
-        })
+        });
         return lidIds
     }
-
+    
     /**
-  *  This function takes in the EDDData.Lines object and lidIds and returns
-  *  an array of measurements names.  
-  **/
+    *  This function takes in the EDDData.Lines object and lidIds and returns
+    *  an array of measurements names.  
+    **/
 
     function lineName(lines, lidIds) {
        var lineNames = [];
@@ -107,13 +95,67 @@
         return lineNames;
     }
 
-  /**
-  *  This function takes in the EDDData object and returns
-  *  an array of measurements names.  
-  **/
+    /**
+    *  This function takes in the EDDData object and returns
+    *  an array of measurements names.  
+    **/
 
-  function names(EDDData) {
+    function names(EDDData) {
       var assayIds = findAssayIds(EDDData.AssayMeasurements);
       var lidIds = findLidIds(EDDData.Assays, assayIds);
       return lineName(EDDData.Lines, lidIds);
-  }
+    }
+
+ 
+    function legend(data, color, svg, width) {
+        var legend = svg.selectAll(".legend")
+            .data(data)
+            .enter().append("g")
+            .attr("class", "legend")
+            .attr("transform", function (d, i) {
+                return "translate(0," + i * 20 + ")";
+            });
+    
+        legend.append("rect")
+            .attr("x", width + 5)
+            .attr("width", 18)
+            .attr("height", 18)
+            .style("fill", function (d) { // Add the colours dynamically
+                return data.color = color(d.key);
+            });
+    
+        legend.append("text")
+            .attr("x", width + 25)
+            .attr("y", 9)
+            .attr("dy", ".35em")
+            .style("text-anchor", "start")
+            .text(function (d) {
+                return d.key;
+            });
+        //hide legend for too many entries.
+        if (names.length > 10) {
+            d3.selectAll(".legend").style("display", "none");
+        }
+        return legend;
+    }
+    
+    
+    /**
+     * this function creates the y axis tick marks for grid
+     **/
+    function make_y_axis(y) {
+        return d3.svg.axis()
+            .scale(y)
+            .orient("left")
+            .ticks(5)
+    }
+    
+            /**
+     * this function creates the x axis tick marks for grid
+     **/
+    function make_x_axis(x) {
+        return d3.svg.axis()
+            .scale(x)
+            .orient("bottom")
+            .ticks(5)
+    }
