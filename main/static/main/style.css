@@ -96,7 +96,6 @@ div.tooltip2 {
   pointer-events: none;
 }
 
-
 .grid .tick {
     stroke: lightgrey;
     stroke-opacity: 0.7;
@@ -129,17 +128,32 @@ div.tooltip2 {
     background-color: #cccccc;
     box-shadow: 2px 2px 1px #888;
         }
-/*.legend rect {*/
-
-  /*fill:white;*/
-  /*stroke:black;*/
-  /*opacity:0.8;*/
-/*}*/
 
 .line {
   fill: none;
   stroke-width: 1.5px;
 }
+
+#loading {
+   width: 100%;
+   height: 100%;
+   top: 0;
+   left: 0;
+   position: fixed;
+   display: block;
+   opacity: 0.7;
+   background-color: #fff;
+   z-index: 99;
+   text-align: center;
+}
+
+#loading-image {
+  position: absolute;
+  top: 100px;
+  left: 240px;
+  z-index: 100;
+}
+
 
 .single {
     display: none;

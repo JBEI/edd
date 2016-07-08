@@ -7,6 +7,10 @@
     <script type="text/javascript" src="{% static 'main/js/lib/jquery-ui/jquery-ui.min.js' %}"></script>
     <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/jquery-ui/jquery-ui.min.css' %}" />
     <script type="text/javascript" src="{% static 'main/js/lib/qtip/jquery.qtip.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/lib/underscore/underscore.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/lib/d3/d3.v2.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/lib/d3/d3.tip.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/lib/bootstrap/bootstrap.js' %}"></script>
     <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/qtip/jquery.qtip.min.css' %}" />
     <script type="text/javascript" src="{% static 'main/js/autocomplete2.js' %}"></script>
     <script type="text/javascript">
@@ -23,14 +27,9 @@
     <script type="text/javascript" src="{% static 'main/js/CarbonSummation.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/StudyCarbonBalance.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/StudySBMLExport.js' %}"></script>
-    <script src="http://d3js.org/d3.v2.js"></script>
-    <script src="http://labratrevenge.com/d3-tip/javascripts/d3.tip.v0.6.3.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.8.3/underscore-min.js"></script>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
-
     <link rel="stylesheet" type="text/css" href="{% static "main/style.css" %}">
-    <script type="text/javascript" src="{% static 'main/js/common.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/Common.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/CreateLineGraph.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/GroupedBarTime.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/GroupedBarAssay.js' %}"></script>
@@ -174,7 +173,6 @@
             </div>
         </div>
     </div>
-
 <div class="pageSectionTabs" id="graphTabsOverviewSelected">
         <div class="active absoverlay">Data Overview</div>
         <div class="active">Data Overview</div>
@@ -186,18 +184,17 @@
                          value="linechart">Line
                     Graph</button>
                 <button class="btn btn-default btn-sm groupByTimeBar" type="button"
-                        value="timeBar">Bar
-                    graph by
-                    time</button>
+                        value="timeBar">Bar graph grouped by time</button>
                 <button class="btn btn-default btn-sm singleBar"
-                        value="single">Bar graphs for each line</button>
+                        value="single">Bar graphs for each measurement</button>
                 <button class="btn btn-default btn-sm groupByProteinBar"
-                        value="groupedAssay">Bar graph by assay</button>
-             </div>
+                        value="groupedAssay">Bar graph grouped by line name</button>
+            </div>
                 <div class="linechart"></div>
                 <div class="timeBar"></div>
                 <div class="single"></div>
                 <div class="groupedAssay"></div>
+
             <div id="maingraph" class="graphContainer"></div>
         </div>
         <div class="sectionChapter disclose discloseHide">

@@ -1,18 +1,20 @@
+var GraphHelperMethods;
 
+GraphHelperMethods = {
     /**
      *  This function takes in data and transforms it into the following
      *  {x, y, i}, {x, y, i}, {x, y, i} ....
     **/
-    function sortBarData(assays) {
+    sortBarData: function (assays) {
         return [].concat.apply([], assays);
-    }
+    },
 
     /**
      *  This function takes a unit id and unit type json and returns the unit name
     **/
-    function unitName(unitId, unitTypes) {
+    unitName: function (unitId, unitTypes) {
       return unitTypes[unitId].name;
-    }
+    },
     
     
     /**
@@ -25,7 +27,7 @@
      *    ...
      *    ]
     **/
-    function transformSingleLineItem(data, singleData, names) {
+    transformSingleLineItem: function (data, singleData, names) {
         // unit type ids
         var unitTypes = data.UnitTypes;
         // array of x and y values for sortin
@@ -44,8 +46,8 @@
             dataset.label = 'dt' + singleData.assay;
             dataset.x = parseInt(dataValue[0].join());
             dataset.y = parseFloat(dataValue[1].join());
-            dataset.x_unit = unitName(singleData.x_units, unitTypes);
-            dataset.y_unit = unitName(singleData.y_units, unitTypes);
+            dataset.x_unit = GraphHelperMethods.unitName(singleData.x_units, unitTypes);
+            dataset.y_unit = GraphHelperMethods.unitName(singleData.y_units, unitTypes);
             dataset.name = names;
             xAndYValues.push(dataset);
         });
@@ -53,14 +55,14 @@
               return a.x - b.x;
             });
         return xAndYValues;
-    }
+    },
 
 
 
     /**
      * this function returns an object of y units with counts
     **/
-    function findY_Units(data) {
+    findY_Units: function (data) {
 
         var yUnits = {};
 
@@ -77,12 +79,12 @@
         });
 
       return Object.keys(yUnits);
-    }
+    },
 
     /**
      * this function returns an object of x_values
     **/
-    function findX_Units(data) {
+    findX_Units: function (data) {
 
         var xUnits = {};
 
@@ -98,70 +100,70 @@
           }
         });
       return Object.keys(xUnits)
-    }
+    },
 
 
     /**
      *  This function takes in the EDDData.AssayMeasurements object and returns
      *  an array of Assay ids.
     **/
-    function findAssayIds(assayMeasurements) {
+    findAssayIds: function (assayMeasurements) {
      var assayIds = [];
      for (var key in assayMeasurements) {
           assayIds.push(assayMeasurements[key].assay)
         }
         return assayIds
-    }
+    },
     
     /**
      *  This function takes in the EDDData.Assays object and array of Assay ids
      *  and returns an array of LID ids.
     **/
-    function findLidIds(assays, assayIds) {
+    findLidIds: function(assays, assayIds) {
         var lidIds = [];
         _.forEach(assayIds, function(assayId) {
             lidIds.push(assays[assayId].lid)
         });
         return lidIds
-    }
+    },
     
     /**
      *  This function takes in the EDDData.Lines object and lidIds and returns
      *  an array of measurements names.
     **/
-    function lineName(lines, lidIds) {
+    lineName: function(lines, lidIds) {
        var lineNames = [];
        _.forEach(lidIds, function(lidId) {
             lineNames.push(lines[lidId].name)
         });
         return lineNames;
-    }
+    },
     
     /**
      * This function returns object size
     **/
-    function objectSize(object) {
+    objectSize: function(object) {
         var size = 0, key;
         for (key in object) {
             if (object.hasOwnProperty(key)) size++;
         }
         return size;
-    }
+    },
 
     /**
      *   This function takes in the EDDData object and returns
      *  an array of measurements names.
     **/
-    function names(EDDData) {
-      var assayIds = findAssayIds(EDDData.AssayMeasurements);
-      var lidIds = findLidIds(EDDData.Assays, assayIds);
-      return lineName(EDDData.Lines, lidIds);
-    }
+    names: function (EDDData) {
+      var assayIds = GraphHelperMethods.findAssayIds(EDDData.AssayMeasurements);
+      var lidIds = GraphHelperMethods.findLidIds(EDDData.Assays, assayIds);
+      return GraphHelperMethods.lineName(EDDData.Lines, lidIds);
+    },
 
     /**
      *  This function returns the legend svg object.
     **/
-    function legend(data, color, svg, width) {
+    legend: function(data, color, svg, width, names) {
         var legend = svg.selectAll(".legend")
             .data(data)
             .enter().append("g")
@@ -191,37 +193,39 @@
             d3.selectAll(".legend").style("display", "none");
         }
         return legend;
-    }
+    },
     
     /**
      *  This function creates the y axis tick marks for grid
     **/
-    function make_y_axis(y) {
+    make_y_axis: function (y) {
         return d3.svg.axis()
             .scale(y)
             .orient("left")
             .ticks(5)
-    }
+    },
     
     /**
      *  This function creates the x axis tick marks for grid
     **/
-    function make_x_axis(x) {
+    make_x_axis: function(x) {
         return d3.svg.axis()
             .scale(x)
             .orient("bottom")
             .ticks(5)
-    }
+    },
 
     /**
      *  This function takes in the unit type for each array and returns the text to display on
      *  the axis
     **/
-    function displayUnit(units) {
+    displayUnit: function(units) {
         if (units.length == 1) {
             return units[0]
         }
         else {
             return "Mixed measurements"
         }
-    };
+    }
+};
+

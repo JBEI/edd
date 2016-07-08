@@ -8,6 +8,7 @@
 /// <reference path="../typings/d3/d3.d.ts"/>;
 
 declare var EDDData:EDDData;
+declare var GraphHelperMethods;
 
 module StudyD {
     'use strict';
@@ -1527,8 +1528,7 @@ module StudyD {
             line = EDDData.Lines[assay.lid] || {};
             protocol = EDDData.Protocols[assay.pid] || {};
             var name = [line.name, protocol.name, assay.name].join('-');
-            var singleAssayObj = transformSingleLineItem(EDDData, measure, name);
-            if (line.control) singleAssayObj.iscontrol = 1;
+            var singleAssayObj = GraphHelperMethods.transformSingleLineItem(EDDData, measure, name);
 
             dataSets.push(singleAssayObj);
         });
@@ -2532,7 +2532,7 @@ class DataGridAssays extends DataGrid {
             measures.forEach((m) => {
                 var measure = EDDData.AssayMeasurements[m], set;
                 var name = assay.name;
-                var singleAssayObj = transformSingleLineItem(EDDData, measure, name);
+                var singleAssayObj = GraphHelperMethods.transformSingleLineItem(EDDData, measure, name);
 
                 if (line.control) set.iscontrol = true;
                 dataSets.push(singleAssayObj);
