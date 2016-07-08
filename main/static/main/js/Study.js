@@ -5,6 +5,7 @@
 /// <reference path="CarbonSummation.ts" />
 /// <reference path="DataGrid.ts" />
 /// <reference path="StudyGraphing.ts" />
+/// <reference path="GraphHelperMethods.ts" />
 /// <reference path="../typings/d3/d3.d.ts"/>;
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -1124,7 +1125,7 @@ var StudyD;
         var csIDs;
         // Prepare the main data overview graph at the top of the page
         if (this.mainGraphObject === null && $('#maingraph').size() === 1) {
-            this.mainGraphObject = Object.create(StudyDGraphing); //flot code.
+            this.mainGraphObject = Object.create(StudyDGraphing);
             this.mainGraphObject.Setup('maingraph');
             this.progressiveFilteringWidget.mainGraphObject = this.mainGraphObject;
         }
@@ -1313,6 +1314,7 @@ var StudyD;
     }
     StudyD.queueMainGraphRemake = queueMainGraphRemake;
     function remakeMainGraphArea(force) {
+        var _this = this;
         var postFilteringMeasurements, dataPointsDisplayed = 0, dataPointsTotal = 0;
         this.mainGraphRefreshTimerID = 0;
         if (!this.progressiveFilteringWidget.checkRedrawRequired(force)) {
@@ -1334,7 +1336,8 @@ var StudyD;
             line = EDDData.Lines[assay.lid] || {};
             protocol = EDDData.Protocols[assay.pid] || {};
             var name = [line.name, protocol.name, assay.name].join('-');
-            var singleAssayObj = GraphHelperMethods.transformSingleLineItem(EDDData, measure, name);
+            _this.graphHelper = Object.create(GraphHelperMethods);
+            var singleAssayObj = _this.graphHelper.transformSingleLineItem(EDDData, measure, name);
             dataSets.push(singleAssayObj);
         });
         this.mainGraphObject.addNewSet(dataSets);

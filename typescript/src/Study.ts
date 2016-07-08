@@ -5,10 +5,10 @@
 /// <reference path="CarbonSummation.ts" />
 /// <reference path="DataGrid.ts" />
 /// <reference path="StudyGraphing.ts" />
+/// <reference path="GraphHelperMethods.ts" />
 /// <reference path="../typings/d3/d3.d.ts"/>;
 
 declare var EDDData:EDDData;
-declare var GraphHelperMethods;
 
 module StudyD {
     'use strict';
@@ -1293,7 +1293,7 @@ module StudyD {
         var csIDs;
         // Prepare the main data overview graph at the top of the page
         if (this.mainGraphObject === null && $('#maingraph').size() === 1) {
-            this.mainGraphObject = Object.create(StudyDGraphing); //flot code.
+            this.mainGraphObject = Object.create(StudyDGraphing);
             this.mainGraphObject.Setup('maingraph');
 
             this.progressiveFilteringWidget.mainGraphObject = this.mainGraphObject;
@@ -1528,7 +1528,8 @@ module StudyD {
             line = EDDData.Lines[assay.lid] || {};
             protocol = EDDData.Protocols[assay.pid] || {};
             var name = [line.name, protocol.name, assay.name].join('-');
-            var singleAssayObj = GraphHelperMethods.transformSingleLineItem(EDDData, measure, name);
+            this.graphHelper = Object.create(GraphHelperMethods);
+            var singleAssayObj = this.graphHelper.transformSingleLineItem(EDDData, measure, name);
 
             dataSets.push(singleAssayObj);
         });

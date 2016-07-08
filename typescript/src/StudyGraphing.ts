@@ -1,3 +1,4 @@
+/// <reference path="GraphHelperMethods.ts" />
 
 var StudyDGraphing:any;
 
