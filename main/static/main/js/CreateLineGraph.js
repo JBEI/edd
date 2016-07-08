@@ -2,8 +2,7 @@
 * this function creates the line graph 
 **/
 function createLineGraph(graphSet, selector) {
-
-    legend = graphSet.legend;
+    
     var assayMeasurements = graphSet.assayMeasurements;
 
     //get x values
@@ -55,7 +54,7 @@ function createLineGraph(graphSet, selector) {
         .attr("viewBox", "-30 -40 1100 280")
         .classed("svg-content", true);
 
-    //x axis
+
     svg.append("g")
         .attr("class", "x axis")
         .attr("transform", "translate(0," + height + ")")
@@ -68,12 +67,18 @@ function createLineGraph(graphSet, selector) {
     svg.append("g")
         .attr("class", "grid")
         .attr("transform", "translate(0," + height + ")")
-        .call(make_x_axis(x)
-            .tickSize(-height, 0, 0)
-            .tickFormat("")
-        )
+        // .call(graphSet.make_x_axis(x)
+        //     .tickSize(-height, 0, 0)
+        //     .tickFormat("")
+        // );
+    // Draw the y Grid lines
+    svg.append("g")
+        .attr("class", "grid")
+        // .call(graphSet.make_y_axis(y)
+        //     .tickSize(-width, 0, 0)
+        //     .tickFormat("")
+        // );
 
-    //y axis
     svg.append("g")
         .attr("class", "y axis")
         .call(yAxis)
@@ -83,14 +88,6 @@ function createLineGraph(graphSet, selector) {
         .attr("dy", ".71em")
         .style("text-anchor", "end")
         .text(graphSet.y_unit);
-
-    // Draw the y Grid lines
-    svg.append("g")
-        .attr("class", "grid")
-        .call(make_y_axis(y)
-            .tickSize(-width, 0, 0)
-            .tickFormat("")
-        );
 
     var lineGen = d3.svg.line()
         .x(function (d) {
@@ -165,5 +162,5 @@ function createLineGraph(graphSet, selector) {
             });
         }
     }
-    legend(data, color, svg, width);
+    graphSet.legend(data, color, svg, width, names);
 }

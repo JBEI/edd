@@ -1,19 +1,10 @@
+
 var StudyDGraphing:any;
 
+declare var GroupedByLineName;
 declare var createLineGraph;
-declare var createAssayGraph;
 declare var createTimeGraph;
-declare var sortBarData;
-declare var labels;
 declare var createSideBySide;
-declare var names;
-declare var transformSingleLineItem;
-declare var legend;
-declare var make_y_axis;
-declare var make_x_axis;
-declare var findY_Units;
-declare var findX_Units;
-declare var displayUnit;
 
 StudyDGraphing = {
 
@@ -89,27 +80,27 @@ StudyDGraphing = {
         });
 
         var data = EDDData; // main data
-        var barAssayObj  = sortBarData(newSet);
-        var x_units = findX_Units(barAssayObj);
-        var y_units = findY_Units(barAssayObj);
+        var barAssayObj  = GraphHelperMethods.sortBarData(newSet);
+        var x_units = GraphHelperMethods.findX_Units(barAssayObj);
+        var y_units = GraphHelperMethods.findY_Units(barAssayObj);
         //data for graphs
         var graphSet = {
-            barAssayObj: sortBarData(newSet),
-            labels: names(data),
-            y_unit: displayUnit(y_units),
-            x_unit: displayUnit(x_units),
-            x_axis: make_x_axis,
-            y_axis: make_y_axis,
+            barAssayObj: GraphHelperMethods.sortBarData(newSet),
+            labels: GraphHelperMethods.names(data),
+            y_unit: GraphHelperMethods.displayUnit(y_units),
+            x_unit: GraphHelperMethods.displayUnit(x_units),
+            x_axis: GraphHelperMethods.make_x_axis,
+            y_axis: GraphHelperMethods.make_y_axis,
             individualData: newSet,
             assayMeasurements: barAssayObj,
-            legend: legend
+            legend: GraphHelperMethods.legend
         };
         //create respective graphs
         createLineGraph(graphSet, selector[1]);
         createTimeGraph(graphSet, selector[2]);
         createSideBySide(graphSet, selector[3]);
-        createAssayGraph(graphSet, selector[4]);
-		
+        GroupedByLineName.createAssayGraph(graphSet, selector[4]);
+
 		if (!newSet.label) {
 			$('#debug').text('Failed to fetch series.');
 			return;
@@ -143,7 +134,6 @@ StudyDGraphing = {
         }
         return rv;
     },
-
 };
 
 

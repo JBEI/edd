@@ -1334,9 +1334,7 @@ var StudyD;
             line = EDDData.Lines[assay.lid] || {};
             protocol = EDDData.Protocols[assay.pid] || {};
             var name = [line.name, protocol.name, assay.name].join('-');
-            var singleAssayObj = transformSingleLineItem(EDDData, measure, name);
-            if (line.control)
-                singleAssayObj.iscontrol = 1;
+            var singleAssayObj = GraphHelperMethods.transformSingleLineItem(EDDData, measure, name);
             dataSets.push(singleAssayObj);
         });
         this.mainGraphObject.addNewSet(dataSets);
@@ -2184,7 +2182,7 @@ var DataGridAssays = (function (_super) {
             measures.forEach(function (m) {
                 var measure = EDDData.AssayMeasurements[m], set;
                 var name = assay.name;
-                var singleAssayObj = transformSingleLineItem(EDDData, measure, name);
+                var singleAssayObj = GraphHelperMethods.transformSingleLineItem(EDDData, measure, name);
                 if (line.control)
                     set.iscontrol = true;
                 dataSets.push(singleAssayObj);
