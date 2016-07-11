@@ -11,7 +11,7 @@ experimentation.  See the deployed version at [public-edd.jbei.org][1].
        * [HomeBrew](#HomeBrew)
        * [Docker](#Docker)
        * [Running EDD](#Run_OSX)
-   * [Debian](#Debian)
+   * [Linux / Debian](#Debian)
 * [Helpful Python Packages](#Helpful_Python)
 * [Build Tools](#BuildTools)
 * [Configuring social logins](#Social)
@@ -22,6 +22,7 @@ experimentation.  See the deployed version at [public-edd.jbei.org][1].
 
 Launching the entire EDD software stack is as simple as cloning the git repository and running:
 
+    ./init-config.sh
     docker-compose up -d
 
 This requires [Docker][2] and [docker-compose][3] are already installed. The launched copy of EDD
@@ -110,8 +111,9 @@ This section contains directions for setting up a development environment on EDD
         * Normal output is helptext showing the commands to use with `docker-compose`.
     * Setting up Docker for EDD
         * The default virtualbox settings allocate 1 CPU core and 1 GB RAM for the container host
-          VM. You will probably want to increase the allocated resources, by stopping the VM and
-          changing settings in the "System" tab of the virtualbox Settings GUI.
+          VM. This should be fine for small or testing deployments. For better performance, it is
+          recommended to increase the allocated resources to at least 2 CPU and 2 GB RAM, by
+          stopping the VM and changing settings in the "System" tab of the virtualbox Settings GUI.
         * Create a `./edd/settings/local.py` file, based on the example in
           `./edd/settings/local.py-example`
             * Any local-specific settings changes will go here. The local settings are loaded last,
@@ -163,10 +165,12 @@ This section contains directions for setting up a development environment on EDD
                 * access RabbitMQ Management Plugin via http://192.168.99.100/rabbitmq
             * Restart misbehaving services with:  `docker-compose restart $SERVICE`
 
-### Debian <a name="Debian"/>
+### Linux / Debian <a name="Debian"/>
 
-* `sudo apt-get install docker.io` for Docker daemon
-* Create a user for running EDD; assuming user `jbeideploy` exists for further instructions
+* Follow the Docker-recommended instructions for [installing the daemon for your distro][11].
+    * There is a `docker` package in the Debian apt repos. It is not [Docker][2].
+    * There is a `docker.io` package too; this can work, but it will generally be outdated.
+* Create a user for running EDD; assuming user `jbeideploy` exists for further instructions.
 * As `jbeideploy`, check out code to `/usr/local/edd/` (this will be `$EDD_HOME` below)
     * Create a `$EDD_HOME/edd/settings/local.py` file, based on the example in
       `$EDD_HOME/edd/settings/local.py-example`
@@ -190,8 +194,10 @@ This section contains directions for setting up a development environment on EDD
         * Ensure you have a public key in `jbeideploy`'s `~/.ssh/authorized_keys2` file
         * Create an environment for the remote host (replace `{REMOTE_HOST}` with hostname or IP)
 
-              docker-machine create --driver generic --generic-ip-address {REMOTE_HOST} \
-                  --generic-ssh-user jbeideploy --generic-ssh-key /path/to/private.key \
+              docker-machine create --driver generic \
+                  --generic-ip-address {REMOTE_HOST} \
+                  --generic-ssh-user jbeideploy \
+                  --generic-ssh-key /path/to/private.key \
                   {NAME_OF_ENVIRONMENT}
 
         * Activate the machine with `eval $(docker-machine env {NAME_OF_ENVIRONMENT})`
@@ -261,3 +267,4 @@ This section contains directions for setting up a development environment on EDD
 [8]:    https://github.com/settings/applications/new
 [9]:    https://console.developers.google.com/
 [10]:   https://www.linkedin.com/secure/developer?newapp=
+[11]:   https://docs.docker.com/engine/installation/linux/
