@@ -12,6 +12,7 @@
     <script type="text/javascript" src="{% static 'main/js/lib/d3/d3.tip.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/lib/bootstrap/bootstrap.js' %}"></script>
     <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/qtip/jquery.qtip.min.css' %}" />
+    <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/bootstrap/bootstrap.min.css' %}" />
     <script type="text/javascript" src="{% static 'main/js/autocomplete2.js' %}"></script>
     <script type="text/javascript">
 
@@ -28,7 +29,6 @@
     <script type="text/javascript" src="{% static 'main/js/CarbonSummation.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/StudyCarbonBalance.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/StudySBMLExport.js' %}"></script>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
     <link rel="stylesheet" type="text/css" href="{% static "main/style.css" %}">
     <script type="text/javascript" src="{% static 'main/js/CreateLineGraph.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/GroupedBarTime.js' %}"></script>
@@ -183,12 +183,12 @@
                  <button class="btn btn-default btn-sm line" type="button"
                          value="linechart">Line
                     Graph</button>
-                <button class="btn btn-default btn-sm groupByTimeBar" type="button"
-                        value="timeBar">Bar graph grouped by time</button>
-                <button class="btn btn-default btn-sm singleBar"
-                        value="single">Bar graphs for each measurement</button>
-                <button class="btn btn-default btn-sm groupByProteinBar"
-                        value="groupedAssay">Bar graph grouped by line name</button>
+                <button class="btn btn-default btn-sm groupByTimeBar" value="timeBar">
+                        Bar graph grouped by time</button>
+                <button class="btn btn-default btn-sm singleBar" value="single">
+                        Bar graphs for each measurement</button>
+                <button class="btn btn-default btn-sm groupByProteinBar" value="groupedAssay">
+                        Bar graph grouped by line name</button>
             </div>
                 <div class="linechart"></div>
                 <div class="timeBar"></div>

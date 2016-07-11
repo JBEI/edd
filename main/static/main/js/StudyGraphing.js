@@ -21,12 +21,11 @@ StudyDGraphing = {
             }
         }
     },
-    // d3.selectAll("svg").remove();
     addNewSet: function (newSet) {
         var buttonArr = StudyDGraphing.getButtonElement(this.graphDiv);
-        var buttons = StudyDGraphing.convertObjectToArr(buttonArr);
+        var buttons = StudyDGraphing.convertArrToObject(buttonArr);
         var selector = StudyDGraphing.getSelectorElement(this.graphDiv);
-        //ar chart grouped by time
+        //bar chart grouped by time
         d3.select(buttons["timeBar"])
             .on('click', function () {
             event.preventDefault();
@@ -96,7 +95,6 @@ StudyDGraphing = {
     * [<div id=​"linechart">​</div>​, <div id=​"timeBar">​</div>​, <div id=​"single">​</div>​,
     * <div id=​"groupedAssay">​</div>​]
     */
-    //make this return an object with keys and values. or take second argument..
     getButtonElement: function (element) {
         if (($(element).siblings().siblings()).size() < 7) {
             return $(element.siblings()[0]).find("button");
@@ -105,11 +103,12 @@ StudyDGraphing = {
             return $(element.siblings()[1]).find("button");
         }
     },
-    // takes in graphDiv and returns array of 4 buttons
+    // this function takes in the graphDiv element and returns an array of 4 buttons
     getSelectorElement: function (element) {
         return element.siblings().siblings();
     },
-    convertObjectToArr: function (arr) {
+    // this function takes in and array and returns an object
+    convertArrToObject: function (arr) {
         var rv = {};
         for (var i = 0; i < arr.length; ++i) {
             var key = arr[i].value;
