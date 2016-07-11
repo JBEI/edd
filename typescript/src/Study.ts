@@ -5,10 +5,10 @@
 /// <reference path="CarbonSummation.ts" />
 /// <reference path="DataGrid.ts" />
 /// <reference path="StudyGraphing.ts" />
+/// <reference path="GraphHelperMethods.ts" />
 /// <reference path="../typings/d3/d3.d.ts"/>;
 
 declare var EDDData:EDDData;
-declare var GraphHelperMethods;
 
 module StudyD {
     'use strict';
@@ -1293,7 +1293,7 @@ module StudyD {
         var csIDs;
         // Prepare the main data overview graph at the top of the page
         if (this.mainGraphObject === null && $('#maingraph').size() === 1) {
-            this.mainGraphObject = Object.create(StudyDGraphing); //flot code.
+            this.mainGraphObject = Object.create(StudyDGraphing);
             this.mainGraphObject.Setup('maingraph');
 
             this.progressiveFilteringWidget.mainGraphObject = this.mainGraphObject;
@@ -1504,9 +1504,9 @@ module StudyD {
         var postFilteringMeasurements:any[],
             dataPointsDisplayed = 0,
             dataPointsTotal = 0
-        
+
         this.mainGraphRefreshTimerID = 0;
-        
+
         if (!this.progressiveFilteringWidget.checkRedrawRequired(force)) {
             return;
         }
@@ -1528,7 +1528,8 @@ module StudyD {
             line = EDDData.Lines[assay.lid] || {};
             protocol = EDDData.Protocols[assay.pid] || {};
             var name = [line.name, protocol.name, assay.name].join('-');
-            var singleAssayObj = GraphHelperMethods.transformSingleLineItem(EDDData, measure, name);
+            this.graphHelper = Object.create(GraphHelperMethods);
+            var singleAssayObj = this.graphHelper.transformSingleLineItem(EDDData, measure, name);
 
             dataSets.push(singleAssayObj);
         });
@@ -1824,8 +1825,8 @@ class DataGridSpecLines extends DataGridSpecBase {
     defineTableSpec():DataGridTableSpec {
         return new DataGridTableSpec('lines', { 'name': 'Lines' });
     }
-    
-    
+
+
     private loadLineName(index:string):string {
         var line;
         if ((line = EDDData.Lines[index])) {
@@ -1833,8 +1834,8 @@ class DataGridSpecLines extends DataGridSpecBase {
         }
         return '';
     }
-    
-    
+
+
     private loadStrainName(index:string):string {
         // ensure a strain ID exists on line, is a known strain, uppercase first found name or '?'
         var line, strain;
@@ -1858,8 +1859,8 @@ class DataGridSpecLines extends DataGridSpecBase {
         }
         return undefined;
     }
-    
-    
+
+
     private loadCarbonSource(index:string):string {
         var source = this.loadFirstCarbonSource(index);
         if (source) {
@@ -1867,8 +1868,8 @@ class DataGridSpecLines extends DataGridSpecBase {
         }
         return '?';
     }
-    
-    
+
+
     private loadCarbonSourceLabeling(index:string):string {
         var source = this.loadFirstCarbonSource(index);
         if (source) {
@@ -1876,8 +1877,8 @@ class DataGridSpecLines extends DataGridSpecBase {
         }
         return '?';
     }
-    
-    
+
+
     private loadExperimenterInitials(index:string):string {
         // ensure index ID exists, ensure experimenter user ID exists, uppercase initials or ?
         var line, experimenter;
@@ -1888,8 +1889,8 @@ class DataGridSpecLines extends DataGridSpecBase {
         }
         return '?';
     }
-    
-    
+
+
     private loadLineModification(index:string):number {
         var line;
         if ((line = EDDData.Lines[index])) {
@@ -2266,7 +2267,7 @@ class DGDisabledLinesWidget extends DataGridOptionWidget {
             // Here is the condition that determines whether the rows associated with this ID are
             // shown or hidden.
             if (EDDData.Lines[id].active) {
-                filteredIDs.push(id);            
+                filteredIDs.push(id);
             }
         }
         return filteredIDs;
@@ -2294,7 +2295,7 @@ class DGGroupStudyReplicatesWidget extends DataGridOptionWidget {
                 if (pThis.checkBoxElement.checked) {
                     pThis.dataGridOwnerObject.turnOnRowGrouping();
                 } else {
-                    pThis.dataGridOwnerObject.turnOffRowGrouping();                
+                    pThis.dataGridOwnerObject.turnOffRowGrouping();
                 }
             }
         );
@@ -2359,7 +2360,7 @@ class DGShowCarbonBalanceWidget extends DataGridHeaderWidget {
         this.highlighted = false;
         this._lineSpec = dataGridSpec;
     }
-    
+
 
     createElements(uniqueID:any):void {
         var cbID:string = this.dataGridSpec.tableSpec.id + 'CarBal' + uniqueID;
@@ -2553,7 +2554,7 @@ class DataGridAssays extends DataGrid {
         if (!graphObj.plotObject) {
             return;
         }
-    
+
         graphObj.plotObject.resize();
         graphObj.plotObject.setupGrid();
         graphObj.plotObject.draw();
@@ -2705,8 +2706,8 @@ class DataGridSpecAssays extends DataGridSpecBase {
         }
         return '';
     }
-    
-    
+
+
     private loadExperimenterInitials(index:any):string {
         // ensure index ID exists, ensure experimenter user ID exists, uppercase initials or ?
         var assay, experimenter;
@@ -2717,8 +2718,8 @@ class DataGridSpecAssays extends DataGridSpecBase {
         }
         return '?';
     }
-    
-    
+
+
     private loadAssayModification(index:any):number {
         return EDDData.Assays[index].mod;
     }
@@ -2731,7 +2732,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
             var mdType = EDDData.MetaDataTypes[id];
             return new DataGridHeaderSpec(2 + index, 'hAssaysMeta'+this.protocolID+'id' + id, {
                 'name': mdType.name,
-                'headerRow': 2, 
+                'headerRow': 2,
                 'size': 's',
                 'sortBy': this.makeMetaDataSortFunction(id),
                 'sortAfter': 1
@@ -2745,7 +2746,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
             this.graphAreaHeaderSpec,
             new DataGridHeaderSpec(1, 'hAssaysName'+this.protocolID, {
                 'name': 'Name',
-                'headerRow': 2, 
+                'headerRow': 2,
                 'sortBy': this.loadAssayName
             })
         ];
@@ -3120,7 +3121,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
         paths.push('</svg>');
         return paths.join('\n');
     }
-    
+
 
     // Specification for each of the data columns that will make up the body of the table
     defineColumnSpec():DataGridColumnSpec[] {
@@ -3235,16 +3236,17 @@ class DataGridSpecAssays extends DataGridSpecBase {
                 //html element of the entire table
                  var html =
                         '                                                                       \
-                           <div class ="btn-toolbar">                            \
-                                <button class="btn btn-default btn-sm" type="button"                \
-                                 value="linechart">Line Graph </button>                    \
-                                <button class="btn btn-default btn-sm" type="button"                \
-                                   value="timeBar">Bar graph by time</button>  \
-                               <button class="btn btn-default btn-sm"               \
-                               value="single">Bar graphs for each line</button>                     \
-                                 <button class="btn btn-default btn-sm"      \
-                                value="groupedAssay">Bar graph by assay</button>                    \
-                          </div>                                                                \
+                           <div class ="btn-toolbar">                                           \
+                                <button class="btn btn-default btn-sm" value="linechart">       \
+                                        Line Graph </button>                                    \
+                                <button class="btn btn-default btn-sm" value="timeBar">         \
+                                        Bar graph by time</button>                              \
+                                <button class="btn btn-default btn-sm" value="single">          \
+                                        Bar graphs for each line</button>                       \
+                                 <button class="btn btn-default btn-sm" value="groupedAssay">   \
+                                        Bar graph by assay</button>                             \
+                            </div>                                                              \
+                                                                                                \
                             <div class="linechart"></div>                                       \
                             <div class="timeBar"></div>                                         \
                             <div class="single"></div>                                          \
@@ -3295,7 +3297,7 @@ class DGDisabledAssaysWidget extends DataGridOptionWidget {
             // Here is the condition that determines whether the rows associated with this ID are
             // shown or hidden.
             if (EDDData.Assays[id].active) {
-                filteredIDs.push(id);            
+                filteredIDs.push(id);
             }
         }
         return filteredIDs;
@@ -3345,4 +3347,3 @@ class DGAssaysSearchWidget extends DGSearchWidget {
 
 // use JQuery ready event shortcut to call prepareIt when page is ready
 $(() => StudyD.prepareIt());
-

@@ -1,3 +1,4 @@
+/// <reference path="GraphHelperMethods.ts" />
 
 var StudyDGraphing:any;
 
@@ -135,5 +136,4 @@ StudyDGraphing = {
         return rv;
     },
 };
-
 

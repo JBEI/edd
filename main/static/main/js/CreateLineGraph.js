@@ -45,8 +45,7 @@ function createLineGraph(graphSet, selector) {
 
     var xAxis = d3.svg.axis()
         .scale(x)
-        .orient("bottom")
-        .ticks(5);
+        .orient("bottom");
 
     //create svg graph object
     var svg = d3.select(selector).append("svg")
@@ -67,17 +66,17 @@ function createLineGraph(graphSet, selector) {
     svg.append("g")
         .attr("class", "grid")
         .attr("transform", "translate(0," + height + ")")
-        // .call(graphSet.make_x_axis(x)
-        //     .tickSize(-height, 0, 0)
-        //     .tickFormat("")
-        // );
+        .call(graphSet.x_axis(x)
+            .tickSize(-height, 0, 0)
+            .tickFormat("")
+        );
     // Draw the y Grid lines
     svg.append("g")
         .attr("class", "grid")
-        // .call(graphSet.make_y_axis(y)
-        //     .tickSize(-width, 0, 0)
-        //     .tickFormat("")
-        // );
+        .call(graphSet.y_axis(y)
+            .tickSize(-width, 0, 0)
+            .tickFormat("")
+        );
 
     svg.append("g")
         .attr("class", "y axis")

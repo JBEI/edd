@@ -1,4 +1,7 @@
-var GraphHelperMethods;
+/// <reference path="../typings/underscore/underscore.d.ts"/>;
+
+var GraphHelperMethods:any;
+
 
 GraphHelperMethods = {
     /**
@@ -15,8 +18,8 @@ GraphHelperMethods = {
     unitName: function (unitId, unitTypes) {
       return unitTypes[unitId].name;
     },
-    
-    
+
+
     /**
      *  This function takes in EDDdata, a singleAssay line entry, and measurement names and
      *  transforms it into the following schema:
@@ -34,7 +37,7 @@ GraphHelperMethods = {
         var xAndYValues = [];
         //data for one line entry
         var singleDataValues = singleData.values;
-        
+
         _.forEach(singleDataValues, function(dataValue) {
              var dataset = {};
             //can also change to omit data point with null which was done before..
@@ -43,12 +46,12 @@ GraphHelperMethods = {
             } else if (dataValue[1].length == 0) {
                 dataValue[1] = ["0"];
             }
-            dataset.label = 'dt' + singleData.assay;
-            dataset.x = parseInt(dataValue[0].join());
-            dataset.y = parseFloat(dataValue[1].join());
-            dataset.x_unit = GraphHelperMethods.unitName(singleData.x_units, unitTypes);
-            dataset.y_unit = GraphHelperMethods.unitName(singleData.y_units, unitTypes);
-            dataset.name = names;
+            dataset['label'] = 'dt' + singleData.assay;
+            dataset['x'] = parseInt(dataValue[0].join());
+            dataset['y'] = parseFloat(dataValue[1].join());
+            dataset['x_unit'] = GraphHelperMethods.unitName(singleData.x_units, unitTypes);
+            dataset['y_unit'] = GraphHelperMethods.unitName(singleData.y_units, unitTypes);
+            dataset['name'] = names;
             xAndYValues.push(dataset);
         });
         xAndYValues.sort(function(a, b) {
@@ -66,7 +69,7 @@ GraphHelperMethods = {
 
         var yUnits = {};
 
-        _.each(data, function(lineEntry){
+        _.each(data, function(lineEntry:any){
 
           var y_unit = lineEntry.y_unit;
 
@@ -88,7 +91,7 @@ GraphHelperMethods = {
 
         var xUnits = {};
 
-        _.each(data, function(lineEntry){
+        _.each(data, function(lineEntry:any){
 
           var x_unit = lineEntry.x_unit;
 
@@ -114,31 +117,31 @@ GraphHelperMethods = {
         }
         return assayIds
     },
-    
+
     /**
      *  This function takes in the EDDData.Assays object and array of Assay ids
      *  and returns an array of LID ids.
     **/
     findLidIds: function(assays, assayIds) {
         var lidIds = [];
-        _.forEach(assayIds, function(assayId) {
+        _.forEach(assayIds, function(assayId:any) {
             lidIds.push(assays[assayId].lid)
         });
         return lidIds
     },
-    
+
     /**
      *  This function takes in the EDDData.Lines object and lidIds and returns
      *  an array of measurements names.
     **/
     lineName: function(lines, lidIds) {
        var lineNames = [];
-       _.forEach(lidIds, function(lidId) {
+       _.forEach(lidIds, function(lidId:any) {
             lineNames.push(lines[lidId].name)
         });
         return lineNames;
     },
-    
+
     /**
      * This function returns object size
     **/
@@ -171,7 +174,7 @@ GraphHelperMethods = {
             .attr("transform", function (d, i) {
                 return "translate(0," + i * 20 + ")";
             });
-    
+
         legend.append("rect")
             .attr("x", width + 5)
             .attr("width", 18)
@@ -179,7 +182,7 @@ GraphHelperMethods = {
             .style("fill", function (d) { // Add the colours dynamically
                 return data.color = color(d.key);
             });
-    
+
         legend.append("text")
             .attr("x", width + 25)
             .attr("y", 9)
@@ -194,7 +197,7 @@ GraphHelperMethods = {
         }
         return legend;
     },
-    
+
     /**
      *  This function creates the y axis tick marks for grid
     **/
@@ -204,7 +207,7 @@ GraphHelperMethods = {
             .orient("left")
             .ticks(5)
     },
-    
+
     /**
      *  This function creates the x axis tick marks for grid
     **/
@@ -228,4 +231,3 @@ GraphHelperMethods = {
         }
     }
 };
-
