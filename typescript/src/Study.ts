@@ -3236,7 +3236,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
                 //html element of the entire table
                  var html =
                         '                                                                       \
-                           <div class ="btn-toolbar">                                           \
+                           <div class ="btn-toolbar">                                             \
                                 <button class="btn btn-default btn-sm" value="linechart">       \
                                         Line Graph </button>                                    \
                                 <button class="btn btn-default btn-sm" value="timeBar">         \
