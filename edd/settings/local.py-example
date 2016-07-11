@@ -12,16 +12,13 @@ from .base import *  # noqa
 
 root = environ.Path(__file__) - 3  # we get this out of `from .base import *` too
 
-# Store attachments inside the project directory, under 'uploads'
-MEDIA_ROOT = root('uploads')
-MEDIA_URL = '/uploads/'
-
 # Override the default MANAGERS and ADMINS
 MANAGERS = ADMINS = (
     ('Jay Bay', 'admin@example.org'),  # <-- CHANGE ME
 )
 
 # Set the IPs where the debug toolbar will be available; use localhost IPv4 and IPv6
+ALLOWED_HOSTS = ['*', ]
 INTERNAL_IPS = ['127.0.0.1', '::1', ]
 # Also add the 'external' IP for the nginx service proxying the appserver
 try:
@@ -41,11 +38,9 @@ DEBUG_TOOLBAR_CONFIG = {
     'JQUERY_URL': '/static/main/js/lib/jquery/jquery-2.1.4.min.js',
 }
 
-ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'http'
 USE_CELERY = True
 PUBLISH_REST_API = True
 EDD_ONLY_SUPERUSER_CREATE = False
-
 
 
 ###################################################################################################
