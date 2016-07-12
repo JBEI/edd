@@ -60,7 +60,11 @@ function createTimeGraph(graphSet, selector) {
 
     x0.domain(data.map(function (d) {return d.key;}));
     x1.domain(names).rangeRoundBands([0, x0.rangeBand()]);
-    y.domain([0, d3.max(data, function (d) {
+    y.domain([d3.min(data, function (d) {
+        return d3.min(d.values, function (d) {
+            return d.y;
+        });
+    }), d3.max(data, function (d) {
         return d3.max(d.values, function (d) {
             return d.y;
         });
@@ -127,7 +131,7 @@ function createTimeGraph(graphSet, selector) {
                 return y(d.y);
             })
             .attr("height", function (d) {
-                return height - y(d.y);
+                return Math.abs(height - y(d.y));
             })
             .style("fill", function (d) {
                 return color(d.name);

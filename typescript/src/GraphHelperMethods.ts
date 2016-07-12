@@ -47,7 +47,7 @@ GraphHelperMethods = {
                 dataValue[1] = ["0"];
             }
             dataset['label'] = 'dt' + singleData.assay;
-            dataset['x'] = parseInt(dataValue[0].join());
+            dataset['x'] = parseFloat(dataValue[0].join());
             dataset['y'] = parseFloat(dataValue[1].join());
             dataset['x_unit'] = GraphHelperMethods.unitName(singleData.x_units, unitTypes);
             dataset['y_unit'] = GraphHelperMethods.unitName(singleData.y_units, unitTypes);

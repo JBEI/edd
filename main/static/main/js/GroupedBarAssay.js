@@ -93,7 +93,9 @@ GroupedByLineName = {
         x_name.domain(names);
         x_xValue.domain(xValueLabels).rangeRoundBands([0, x_name.rangeBand()]);
         lineID.domain(yvalueIds).rangeRoundBands([0, x_xValue.rangeBand()]);
-        y.domain([0, d3.max(assayMeasurements, function (d) {
+        y.domain([d3.min(assayMeasurements, function (d) {
+            return d.y
+        }), d3.max(assayMeasurements, function (d) {
             return d.y
         })]);
 

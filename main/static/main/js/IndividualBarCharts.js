@@ -45,7 +45,7 @@ function createSideBySide(graphSet, selector) {
     svg.call(tip);
 
     x.domain(linedata[i].map(function(d) { return d.x; }));
-    y.domain([0, d3.max(linedata[i], function(d) { return d.y; })]);
+    y.domain([d3.min(linedata[i], function(d) { return d.y; }), d3.max(linedata[i], function(d) { return d.y; })]);
 
     svg.append("g")
         .attr("class", "x axis")

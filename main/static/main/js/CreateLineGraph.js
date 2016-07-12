@@ -32,7 +32,11 @@ function createLineGraph(graphSet, selector) {
         })
         .entries(assayMeasurements);
 
-    y.domain([0, d3.max(getValues, function (d) {
+    y.domain([d3.min(getValues, function (d) {
+        return d3.min(d.values, function (d) {
+            return d.y;
+        });
+    }), d3.max(getValues, function (d) {
         return d3.max(d.values, function (d) {
             return d.y;
         });
