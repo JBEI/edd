@@ -10,7 +10,6 @@ StudyDGraphing = {
         }
     },
     clearAllSets: function () {
-        //
         var divs = this.graphDiv.siblings();
         if ($(divs[1]).find("svg").length == 0) {
             d3.selectAll("svg").remove();
@@ -75,8 +74,8 @@ StudyDGraphing = {
             labels: GraphHelperMethods.names(data),
             y_unit: GraphHelperMethods.displayUnit(y_units),
             x_unit: GraphHelperMethods.displayUnit(x_units),
-            x_axis: GraphHelperMethods.make_x_axis,
-            y_axis: GraphHelperMethods.make_y_axis,
+            x_axis: GraphHelperMethods.createXAxis,
+            y_axis: GraphHelperMethods.createYAxis,
             individualData: newSet,
             assayMeasurements: barAssayObj,
             legend: GraphHelperMethods.legend,

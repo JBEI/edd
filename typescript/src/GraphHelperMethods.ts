@@ -210,26 +210,6 @@ GraphHelperMethods = {
     },
 
     /**
-     *  This function creates the y axis tick marks for grid
-    **/
-    make_y_axis: function (y) {
-        return d3.svg.axis()
-            .scale(y)
-            .orient("left")
-            .ticks(5)
-    },
-
-    /**
-     *  This function creates the x axis tick marks for grid
-    **/
-    make_x_axis: function(x) {
-        return d3.svg.axis()
-            .scale(x)
-            .orient("bottom")
-            .ticks(5)
-    },
-
-    /**
      *  This function takes in the unit type for each array and returns the text to display on
      *  the axis
     **/
@@ -240,6 +220,63 @@ GraphHelperMethods = {
         else {
             return "Mixed measurements"
         }
+    },
+    
+    /**
+     *  This function takes in the unit type for each array and returns the text to display on
+     *  the axis
+    **/
+    createXAxis: function(graphSet, x, svg) {
+        
+        var xAxis = d3.svg.axis()
+            .scale(x)
+            .orient("bottom");
+
+        svg.append("g")
+            .attr("class", "x axis")
+            .attr("transform", "translate(0," + graphSet.height + ")")
+            .call(xAxis)
+            .append('text')
+            .attr("y", 20)
+            .attr("x", graphSet.width)
+            .text(graphSet.x_unit);
+        // Draw the x Grid lines
+        // svg.append("g")
+        //     .attr("class", "grid")
+        //     .attr("transform", "translate(0," + graphSet.height + ")")
+        //     .call(xAxis
+        //         .tickSize(-graphSet.height, 0, 0)
+        //         .tickFormat(""));
+    },
+    
+    /**
+     *  This function takes in the unit type for each array and returns the text to display on
+     *  the axis
+    **/
+    createYAxis: function(graphSet, y, svg) {
+         
+        var yAxis = d3.svg.axis()
+        .scale(y)
+        .orient("left")
+        .tickFormat(d3.format(".2s"));
+        
+        // Draw the y Grid lines
+        // svg.append("g")
+        //     .attr("class", "grid")
+        //     .call(yAxis
+        //         .tickSize(-graphSet.width, 0, 0)
+        //         .tickFormat(""));
+    
+        svg.append("g")
+            .attr("class", "y axis")
+            .call(yAxis)
+            .append("text")
+            .attr("transform", "rotate(-90)")
+            .attr("y", 6)
+            .attr("dy", ".71em")
+            .style("text-anchor", "end")
+            .text(graphSet.y_unit);
     }
+    
 };
 

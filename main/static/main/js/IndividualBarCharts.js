@@ -11,9 +11,6 @@ function createSideBySide(graphSet, selector) {
 
     var width = 300, height = 300;
     var margin = {top: 30, right: 100, bottom: 150, left: 60}, width = width - margin.left - margin.right, height = height - margin.top - margin.bottom;
-    
-    var color = d3.scale.ordinal()
-      .range(["#98abc5", "#8a89a6", "#7b6888", "#6b486b", "#a05d56", "#d0743c", "#ff8c00"]);
 
     var x = d3.scale.ordinal()
       .rangeRoundBands([0, width], .1);

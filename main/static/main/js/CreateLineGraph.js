@@ -35,49 +35,6 @@ function createLineGraph(graphSet, svg) {
             return d.y;
         });
     })]);
-    
-    var yAxis = d3.svg.axis()
-        .scale(y)
-        .orient("left")
-        .tickFormat(d3.format(".2s"));
-
-    var xAxis = d3.svg.axis()
-        .scale(x)
-        .orient("bottom");
-
-    svg.append("g")
-        .attr("class", "x axis")
-        .attr("transform", "translate(0," + graphSet.height + ")")
-        .call(xAxis)
-        .append('text')
-        .attr("y", 20)
-        .attr("x", graphSet.width)
-        .text(graphSet.x_unit);
-    // Draw the x Grid lines
-    svg.append("g")
-        .attr("class", "grid")
-        .attr("transform", "translate(0," + graphSet.height + ")")
-        .call(graphSet.x_axis(x)
-            .tickSize(-graphSet.height, 0, 0)
-            .tickFormat("")
-        );
-    // Draw the y Grid lines
-    svg.append("g")
-        .attr("class", "grid")
-        .call(graphSet.y_axis(y)
-            .tickSize(-graphSet.width, 0, 0)
-            .tickFormat("")
-        );
-
-    svg.append("g")
-        .attr("class", "y axis")
-        .call(yAxis)
-        .append("text")
-        .attr("transform", "rotate(-90)")
-        .attr("y", 6)
-        .attr("dy", ".71em")
-        .style("text-anchor", "end")
-        .text(graphSet.y_unit);
 
     var lineGen = d3.svg.line()
         .x(function (d) {
@@ -87,7 +44,6 @@ function createLineGraph(graphSet, svg) {
             return y(d.y)
         });
 
-    //iterate through different arrays. right now i is undefined.. not sure what is happening. 
     var data = d3.nest()
         .key(function (d) {
             return d.name;
@@ -105,10 +61,14 @@ function createLineGraph(graphSet, svg) {
     
     var names = proteinNames.map(function (d) {return d.key;});
 
+    graphSet.x_axis(graphSet, x, svg);
+    graphSet.y_axis(graphSet, y, svg);
 
     for (var k = 0; k < data.length; k++) {
+        
+        //color of line and legend rect
         var color1 = graphSet.color(data[k].key)
-        //label name coincides with same color
+
         //lines
         for (var j = 0; j < data[k].values.length; j++) {
             var line = svg.append('path')
@@ -118,9 +78,14 @@ function createLineGraph(graphSet, svg) {
                 .attr('stroke-width', 2)
                 .attr("class", "experiment")
                 .attr('fill', 'none');
+        
+        //svg object for data points     
         var dataCirclesGroup = svg.append('svg:g');
+        
+        // data point circles     
         var circles = dataCirclesGroup.selectAll('.data-point')
             .data(data[k].values[j].values);
+        
         circles
             .enter()
             .append('svg:circle')
@@ -152,5 +117,6 @@ function createLineGraph(graphSet, svg) {
             });
         }
     }
+    //create legend 
     graphSet.legend(data, graphSet.color, svg, graphSet.width, names);
 }

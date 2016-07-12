@@ -11,26 +11,20 @@ function createTimeGraph(graphSet, svg) {
     var y = d3.scale.linear()
         .range([graphSet.height, 0]);
 
-    var xAxis = d3.svg.axis()
-        .scale(x0)
-        .orient("bottom");
-
-    var yAxis = d3.svg.axis()
-        .scale(y)
-        .orient("left")
-        .tickFormat(d3.format(".2s"));
 
     var div = d3.select("body").append("div")
         .attr("class", "tooltip")
         .style("opacity", 0);
+
+
     /**
-     *  This method transforms our data object into the following
+     *  This d3 method transforms our data object into the following
      *  {
-    *  {key: 0, values: {x, y, i}, {x, y, i}, {x, y, i}},
-    *  {key: 1, values: {x, y, i}, {x, y, i}, {x, y, i}},
-    *  }
+     *  {key: 0, values: {x, y, i}, {x, y, i}, {x, y, i}},
+     *  {key: 1, values: {x, y, i}, {x, y, i}, {x, y, i}},
+     *  }
      *  ...
-     **/
+    **/
     var data = d3.nest()
         .key(function (d) {
             return d.x;
@@ -44,11 +38,8 @@ function createTimeGraph(graphSet, svg) {
         })
         .entries(assayMeasurements);
 
-    //protein names
-    var names = proteinNames.map(function (d) {return d.key;});
-
     x0.domain(data.map(function (d) {return d.key;}));
-    x1.domain(names).rangeRoundBands([0, x0.rangeBand()]);
+    x1.domain(proteinNames.map(function (d) {return d.key;})).rangeRoundBands([0, x0.rangeBand()]);
     y.domain([d3.min(data, function (d) {
         return d3.min(d.values, function (d) {
             return d.y;
@@ -59,44 +50,8 @@ function createTimeGraph(graphSet, svg) {
         });
     })]);
 
-    //x -axis
-    svg.append("g")
-        .attr("class", "x axis")
-        .attr("transform", "translate(0," + graphSet.height + ")")
-        .call(xAxis)
-        .append('text')
-        .attr("y", 20)
-        .attr("x", graphSet.width)
-        .text(graphSet.x_unit);
-    // Draw the x Grid lines
-    svg.append("g")
-        .attr("class", "grid")
-        .attr("transform", "translate(0," + graphSet.height + ")")
-        .call(graphSet.x_axis(x0)
-            .tickSize(-graphSet.height, 0, 0)
-            .tickFormat("")
-        );
-
-    //y-axis
-    svg.append("g")
-        .attr("class", "y axis")
-        .call(yAxis)
-        .append("text")
-        .attr("transform", "rotate(-90)")
-        .attr("y", 6)
-        .attr("dy", ".71em")
-        .style("text-anchor", "end")
-        .text(graphSet.y_unit);
-    // Draw the y Grid lines
-    svg.append("g")
-        .attr("class", "grid")
-        .call(graphSet.y_axis(y)
-            .tickSize(-graphSet.width, 0, 0)
-            .tickFormat("")
-        );
-
-
-
+    graphSet.x_axis(graphSet, x0, svg);
+    graphSet.y_axis(graphSet, y, svg);
 
     var bar = svg.selectAll(".bar")
         .data(data)

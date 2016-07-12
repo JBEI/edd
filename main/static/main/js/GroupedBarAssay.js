@@ -11,33 +11,17 @@
     //x axis scale for assay's protein name
     var x_name = d3.scale.ordinal()
         .rangeRoundBands([0, graphSet.width], .1);
+    
     //x axis scale for x values
     var x_xValue = d3.scale.ordinal();
+    
     //x axis scale for line id to differentiate multiple lines associated with the same protein
     var lineID = d3.scale.ordinal();
 
     // y axis range scale
     var y = d3.scale.linear()
         .range([graphSet.height, 0]);
-
-    //x axis scale for protein names
-    var protein_axis = d3.svg.axis()
-        .scale(x_name)
-        .orient("bottom");
-
-    var xValue_axis = d3.svg.axis()
-        .scale(x_xValue)
-        .orient("bottom");
-
-    var lineID_axis = d3.svg.axis()
-        .scale(x_xValue)
-        .orient("bottom");
-
-    var yAxis = d3.svg.axis()
-        .scale(y)
-        .orient("left")
-        .tickFormat(d3.format(".2s"));
-
+    
     var div = d3.select("body").append("div")
         .attr("class", "tooltip")
         .style("opacity", 0);
@@ -77,7 +61,9 @@
 
 
     x_name.domain(names);
+
     x_xValue.domain(xValueLabels).rangeRoundBands([0, x_name.rangeBand()]);
+
     lineID.domain(yvalueIds).rangeRoundBands([0, x_xValue.rangeBand()]);
     y.domain([d3.min(assayMeasurements, function (d) {
         return d.y
@@ -85,24 +71,9 @@
         return d.y
     })]);
 
-    svg.append("g")
-        .attr("class", "x axis")
-        .attr("transform", "translate(0," + graphSet.height + ")")
-        .call(protein_axis)
-        .append('text')
-        .attr("y", 20)
-        .attr("x", graphSet.width)
-        .text(graphSet.x_unit);
-
-    svg.append("g")
-        .attr("class", "y axis")
-        .call(yAxis)
-        .append("text")
-        .attr("transform", "rotate(-90)")
-        .attr("y", 6)
-        .attr("dy", ".71em")
-        .style("text-anchor", "end")
-        .text(graphSet.y_unit);
+    //create x and y axis 
+    graphSet.x_axis(graphSet, x_name, svg);
+    graphSet.y_axis(graphSet, y, svg);
 
     var names_g = svg.selectAll(".group")
         .data(data)
@@ -159,22 +130,6 @@
         .attr("transform", function (d) {
             return "translate(" + lineID(d.key) + ",0)";
         });
-
-    var values_labels = values_g.selectAll('.value-label')
-        .data(function (d) {
-            return [d.key];
-        })
-        .enter().append("text")
-        .attr("class", function (d) {
-            return 'value-label value-label-' + d;
-        })
-        .attr("x", function (d) {
-            return lineID.rangeBand() / 2;
-        })
-        .attr('y', function (d) {
-            return graphSet.height + 10;
-        })
-        .attr('text-anchor', 'middle');
 
     var rects = values_g.selectAll('.rect')
         .data(function (d) {
