@@ -19,6 +19,7 @@ RUN apt-get update \
         libpq-dev \
         libsasl2-dev \
         libssl-dev \
+        netcat \
         postgresql-client \
         python-all \
         python-all-dev \

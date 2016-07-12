@@ -1,23 +1,17 @@
 version: '2'
 volumes:
-  pgdata:
-    external:  # change name below to swap out alternate volumes
-      name: pgdata
-  solrdata:
-    external:  # change name below to swap out alternate volumes
-      name: solrdata
-  attachdata:
-    external:  # change name below to swap out alternate volumes
-      name: attachdata
-  staticdata:
-    external:  # change name below to swap out alternate volumes
-      name: staticdata
-  redisdata:
-    external:  # change name below to swap out alternate volumes
-      name: redisdata
+  # To use an alternate, existing volume, replace {} with a sub-item external, containing sub-item
+  #   name, with value of the volume name you wish to use.
+  pgdata: {}
+  solrdata: {}
+  attachdata: {}
+  staticdata: {}
+  redisdata: {}
+  tlsdata: {}
 services:
   postgres:
     image: postgres:9.4
+    restart: always
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
@@ -25,6 +19,7 @@ services:
     env_file: secrets.env
   redis:
     image: redis:3.2
+    restart: always
     volumes:
       - redisdata:/data
     ports:
@@ -32,12 +27,16 @@ services:
     command: redis-server --appendonly yes
   solr:
     image: solr:5.5
+    command: /code/docker_services/solr/init_solr.sh
+    restart: always
     volumes:
       - solrdata:/opt/solr/server/solr
+      - "${EDD_HOST_DIR}.:/code/"
     ports:
       - "8983:8983"
   rabbitmq:
     image: rabbitmq:3.6-management
+    restart: always
     hostname: rabbitmq
     env_file: secrets.env
     environment:
@@ -51,6 +50,7 @@ services:
       - "15672:15672"
   flower:
     build: ./docker_services/flower/
+    restart: always
     env_file: secrets.env
     environment:
       AMQP_ADMIN_HOST: rabbitmq
@@ -64,6 +64,7 @@ services:
       - "5555:5555"
   smtp:
     image: namshi/smtp
+    restart: always
     expose:
       - "25"
   edd:
@@ -74,12 +75,12 @@ services:
     environment:
       SEARCH_URL: "solr://solr:8983/solr/"
     volumes:
-      - .:/code/
+      - "${EDD_HOST_DIR}.:/code/"
   worker:
     extends:
       service: edd
     restart: always
-    command: celery -A edd worker -l info
+    command: /code/docker_services/worker_entrypoint.sh
     depends_on:
       - postgres
       - rabbitmq
@@ -99,7 +100,10 @@ services:
     extends:
       service: edd
     restart: always
-    command: python manage.py runserver 0.0.0.0:8000
+    command: /code/docker_services/appserver_entrypoint.sh
+    environment:
+      POSTGRES_DUMP_FILE: ${POSTGRES_DUMP_FILE}
+      POSTGRES_DUMP_URL: ${POSTGRES_DUMP_URL}
     depends_on:
       - postgres
       - rabbitmq
@@ -118,7 +122,13 @@ services:
     ports:
       - "8000:8000"
   nginx:
-    build: ./docker_services/nginx/
+    image: nginx:1.11
+    restart: always
+    depends_on:
+      - appserver
+      - flower
+      - rabbitmq
+      - solr
     links:
       - appserver
       - flower
@@ -129,3 +139,7 @@ services:
       - "443:443"
     volumes_from:
       - appserver
+    volumes:
+      - ${EDD_HOST_TLS}.:/code/docker_services/nginx/ssl:ro
+      - tlsdata:/etc/ssl/edd
+    command: /code/docker_services/nginx/nginx_entrypoint.sh
