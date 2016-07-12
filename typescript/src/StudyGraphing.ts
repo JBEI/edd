@@ -2,7 +2,7 @@
 
 var StudyDGraphing:any;
 
-declare var GroupedByLineName;
+declare var createAssayGraph;
 declare var createLineGraph;
 declare var createTimeGraph;
 declare var createSideBySide;
@@ -102,7 +102,7 @@ StudyDGraphing = {
         createLineGraph(graphSet, GraphHelperMethods.createSvg(selector[1]));
         createTimeGraph(graphSet, GraphHelperMethods.createSvg(selector[2]));
         createSideBySide(graphSet, selector[3]);
-        GroupedByLineName.createAssayGraph(graphSet, GraphHelperMethods.createSvg(selector[4]));
+        createAssayGraph(graphSet, GraphHelperMethods.createSvg(selector[4]));
 
 		if (!newSet.label) {
 			$('#debug').text('Failed to fetch series.');

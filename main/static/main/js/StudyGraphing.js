@@ -88,7 +88,7 @@ StudyDGraphing = {
         createLineGraph(graphSet, GraphHelperMethods.createSvg(selector[1]));
         createTimeGraph(graphSet, GraphHelperMethods.createSvg(selector[2]));
         createSideBySide(graphSet, selector[3]);
-        GroupedByLineName.createAssayGraph(graphSet, GraphHelperMethods.createSvg(selector[4]));
+        createAssayGraph(graphSet, GraphHelperMethods.createSvg(selector[4]));
         if (!newSet.label) {
             $('#debug').text('Failed to fetch series.');
             return;
