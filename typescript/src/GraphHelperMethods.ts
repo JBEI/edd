@@ -18,7 +18,18 @@ GraphHelperMethods = {
     unitName: function (unitId, unitTypes) {
       return unitTypes[unitId].name;
     },
-
+    
+    /**
+     *  This function takes a unit id and unit type json and returns the unit name
+    **/
+     createSvg: function (selector) {
+      var svg = d3.select(selector).append("svg")
+        .attr("preserveAspectRatio", "xMinYMin meet")
+        .attr("viewBox", "-45 -30 1100 280")
+        .classed("svg-content", true)
+      
+      return svg; 
+    },
 
     /**
      *  This function takes in EDDdata, a singleAssay line entry, and measurement names and

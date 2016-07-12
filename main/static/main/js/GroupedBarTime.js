@@ -1,21 +1,15 @@
 ////// grouped bar chart based on time
-function createTimeGraph(graphSet, selector) {
+function createTimeGraph(graphSet, svg) {
 
     var assayMeasurements = graphSet.assayMeasurements;
 
-    var margin = {top: 20, right: 120, bottom: 30, left: 40},
-        width = 1000 - margin.left - margin.right,
-        height = 270 - margin.top - margin.bottom;
-
-    var color = d3.scale.category10();
-
     var x0 = d3.scale.ordinal()
-        .rangeRoundBands([0, width], .1);
+        .rangeRoundBands([0, graphSet.width], .1);
 
     var x1 = d3.scale.ordinal();
 
     var y = d3.scale.linear()
-        .range([height, 0]);
+        .range([graphSet.height, 0]);
 
     var xAxis = d3.svg.axis()
         .scale(x0)
@@ -25,11 +19,6 @@ function createTimeGraph(graphSet, selector) {
         .scale(y)
         .orient("left")
         .tickFormat(d3.format(".2s"));
-
-    var svg = d3.select(selector).append("svg")
-        .attr("preserveAspectRatio", "xMinYMin meet")
-        .attr("viewBox", "-30 -40 1100 280")
-        .classed("svg-content", true)
 
     var div = d3.select("body").append("div")
         .attr("class", "tooltip")
@@ -73,18 +62,18 @@ function createTimeGraph(graphSet, selector) {
     //x -axis
     svg.append("g")
         .attr("class", "x axis")
-        .attr("transform", "translate(0," + height + ")")
+        .attr("transform", "translate(0," + graphSet.height + ")")
         .call(xAxis)
         .append('text')
         .attr("y", 20)
-        .attr("x", width)
+        .attr("x", graphSet.width)
         .text(graphSet.x_unit);
     // Draw the x Grid lines
     svg.append("g")
         .attr("class", "grid")
-        .attr("transform", "translate(0," + height + ")")
+        .attr("transform", "translate(0," + graphSet.height + ")")
         .call(graphSet.x_axis(x0)
-            .tickSize(-height, 0, 0)
+            .tickSize(-graphSet.height, 0, 0)
             .tickFormat("")
         );
 
@@ -102,7 +91,7 @@ function createTimeGraph(graphSet, selector) {
     svg.append("g")
         .attr("class", "grid")
         .call(graphSet.y_axis(y)
-            .tickSize(-width, 0, 0)
+            .tickSize(-graphSet.width, 0, 0)
             .tickFormat("")
         );
 
@@ -131,10 +120,10 @@ function createTimeGraph(graphSet, selector) {
                 return y(d.y);
             })
             .attr("height", function (d) {
-                return Math.abs(height - y(d.y));
+                return Math.abs(graphSet.height - y(d.y));
             })
             .style("fill", function (d) {
-                return color(d.name);
+                return graphSet.color(d.name);
             })
             .style("opacity", .3)
             .on("mouseover", function(d) {

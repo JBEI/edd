@@ -7,18 +7,13 @@ GroupedByLineName = {
      * this function takes in input min y value, max y value, and the sorted json object.
      *  outputs a grouped bar graph with values grouped by assay name
      **/
-    createAssayGraph: function (graphSet, selector) {
+    createAssayGraph: function (graphSet, svg) {
 
         var assayMeasurements = graphSet.assayMeasurements;
-
-        var margin = {top: 20, right: 40, bottom: 100, left: 40},
-            width = 1000 - margin.left - margin.right,
-            height = 270 - margin.top - margin.bottom;
-
-        var color = d3.scale.category10();
+        
         //x axis scale for assay's protein name
         var x_name = d3.scale.ordinal()
-            .rangeRoundBands([0, width], .1);
+            .rangeRoundBands([0, graphSet.width], .1);
         //x axis scale for x values
         var x_xValue = d3.scale.ordinal();
         //x axis scale for line id to differentiate multiple lines associated with the same protein
@@ -26,7 +21,7 @@ GroupedByLineName = {
 
         // y axis range scale
         var y = d3.scale.linear()
-            .range([height, 0]);
+            .range([graphSet.height, 0]);
 
         //x axis scale for protein names
         var protein_axis = d3.svg.axis()
@@ -45,12 +40,6 @@ GroupedByLineName = {
             .scale(y)
             .orient("left")
             .tickFormat(d3.format(".2s"));
-
-        var svg = d3.select(selector)
-            .append("svg")
-            .attr("preserveAspectRatio", "xMinYMin meet")
-            .attr("viewBox", "-30 -40 1100 280")
-            .classed("svg-content", true);
 
         var div = d3.select("body").append("div")
             .attr("class", "tooltip")
@@ -101,11 +90,11 @@ GroupedByLineName = {
 
         svg.append("g")
             .attr("class", "x axis")
-            .attr("transform", "translate(0," + height + ")")
+            .attr("transform", "translate(0," + graphSet.height + ")")
             .call(protein_axis)
             .append('text')
             .attr("y", 20)
-            .attr("x", width)
+            .attr("x", graphSet.width)
             .text(graphSet.x_unit);
 
         svg.append("g")
@@ -153,7 +142,7 @@ GroupedByLineName = {
                 return x_xValue.rangeBand() / 2;
             })
             .attr('y', function (d) {
-                return height + 25;
+                return graphSet.height + 25;
             })
             .attr('text-anchor', 'middle')
             .text(function (d) {
@@ -186,7 +175,7 @@ GroupedByLineName = {
                 return lineID.rangeBand() / 2;
             })
             .attr('y', function (d) {
-                return height + 10;
+                return graphSet.height + 10;
             })
             .attr('text-anchor', 'middle');
 
@@ -201,10 +190,10 @@ GroupedByLineName = {
                 return y(d.y);
             })
             .attr("height", function (d) {
-                return height - y(d.y);
+                return graphSet.height - y(d.y);
             })
             .style("fill", function (d) {
-                return color(d.key)
+                return graphSet.color(d.key)
             })
             .style("opacity", 0.3);
 

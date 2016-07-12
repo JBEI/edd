@@ -79,13 +79,16 @@ StudyDGraphing = {
             y_axis: GraphHelperMethods.make_y_axis,
             individualData: newSet,
             assayMeasurements: barAssayObj,
-            legend: GraphHelperMethods.legend
+            legend: GraphHelperMethods.legend,
+            color: d3.scale.category10(),
+            width: 750,
+            height: 220
         };
         //create respective graphs
-        createLineGraph(graphSet, selector[1]);
-        createTimeGraph(graphSet, selector[2]);
+        createLineGraph(graphSet, GraphHelperMethods.createSvg(selector[1]));
+        createTimeGraph(graphSet, GraphHelperMethods.createSvg(selector[2]));
         createSideBySide(graphSet, selector[3]);
-        GroupedByLineName.createAssayGraph(graphSet, selector[4]);
+        GroupedByLineName.createAssayGraph(graphSet, GraphHelperMethods.createSvg(selector[4]));
         if (!newSet.label) {
             $('#debug').text('Failed to fetch series.');
             return;

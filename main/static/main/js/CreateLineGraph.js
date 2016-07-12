@@ -1,7 +1,7 @@
 /**
 * this function creates the line graph 
 **/
-function createLineGraph(graphSet, selector) {
+function createLineGraph(graphSet, svg) {
     
     var assayMeasurements = graphSet.assayMeasurements;
 
@@ -17,14 +17,8 @@ function createLineGraph(graphSet, selector) {
         .attr("class", "tooltip2")
         .style("opacity", 0);
 
-    var margin = {top: 20, right: 150, bottom: 30, left: 40},
-        width = 1000 - margin.left - margin.right,
-        height = 270 - margin.top - margin.bottom;
-
-    var color = d3.scale.category10();
-
-    var y = d3.scale.linear().rangeRound([height, 0]);
-    var x = d3.scale.linear().domain([xDomain[0] - 1, xDomain[xDomain.length -1]]).range([0, width]);
+    var y = d3.scale.linear().rangeRound([graphSet.height, 0]);
+    var x = d3.scale.linear().domain([xDomain[0] - 1, xDomain[xDomain.length -1]]).range([0, graphSet.width]);
 
     var getValues = d3.nest()
         .key(function (d) {
@@ -51,34 +45,27 @@ function createLineGraph(graphSet, selector) {
         .scale(x)
         .orient("bottom");
 
-    //create svg graph object
-    var svg = d3.select(selector).append("svg")
-        .attr("preserveAspectRatio", "xMinYMin meet")
-        .attr("viewBox", "-30 -40 1100 280")
-        .classed("svg-content", true);
-
-
     svg.append("g")
         .attr("class", "x axis")
-        .attr("transform", "translate(0," + height + ")")
+        .attr("transform", "translate(0," + graphSet.height + ")")
         .call(xAxis)
         .append('text')
         .attr("y", 20)
-        .attr("x", width)
+        .attr("x", graphSet.width)
         .text(graphSet.x_unit);
     // Draw the x Grid lines
     svg.append("g")
         .attr("class", "grid")
-        .attr("transform", "translate(0," + height + ")")
+        .attr("transform", "translate(0," + graphSet.height + ")")
         .call(graphSet.x_axis(x)
-            .tickSize(-height, 0, 0)
+            .tickSize(-graphSet.height, 0, 0)
             .tickFormat("")
         );
     // Draw the y Grid lines
     svg.append("g")
         .attr("class", "grid")
         .call(graphSet.y_axis(y)
-            .tickSize(-width, 0, 0)
+            .tickSize(-graphSet.width, 0, 0)
             .tickFormat("")
         );
 
@@ -120,7 +107,7 @@ function createLineGraph(graphSet, selector) {
 
 
     for (var k = 0; k < data.length; k++) {
-        var color1 = color(data[k].key)
+        var color1 = graphSet.color(data[k].key)
         //label name coincides with same color
         //lines
         for (var j = 0; j < data[k].values.length; j++) {
@@ -165,5 +152,5 @@ function createLineGraph(graphSet, selector) {
             });
         }
     }
-    graphSet.legend(data, color, svg, width, names);
+    graphSet.legend(data, graphSet.color, svg, graphSet.width, names);
 }
