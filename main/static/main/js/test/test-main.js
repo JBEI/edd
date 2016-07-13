@@ -1,6 +1,6 @@
  var tests = [];
 for (var file in window.__karma__.files) {
-    if (/Spec\.js$/.test(file)) {
+    if (/spec\.js$/.test(file)) {
         tests.push(file);
     }
 }
@@ -12,6 +12,7 @@ requirejs.config({
     paths: {
         'jquery': '../lib/jquery',
         'underscore': '../lib/underscore',
+        'GraphHelperMethods': '../GraphHelperMethods'
     },
 
     shim: {

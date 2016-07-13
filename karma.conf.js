@@ -16,16 +16,9 @@ module.exports = function(config) {
     // list of files / patterns to load in the browser
     files: [
       'main/static/main/js/lib/underscore/underscore.js',
-        
-      {pattern: '"test/**/*spec.js"', included: false},
-      {pattern: '"js/*.js"', included: false},
-      {pattern: '"**/**.js"', included: false},
-      {pattern: '"js/*.js"', included: false},
-      {pattern: '"/*.js"', included: false},
-      {pattern: '"**/.js"', included: false},
-      {pattern: '"/.js"', included: false},
-      {pattern: '"**/**/**.js"', included: false},
-      {pattern: '""', included: false}
+      'main/static/main/js/test/test-main.js',
+      {pattern: 'main/static/main/js/GraphHelperMethods.js', included: false},
+      {pattern: 'main/static/main/js/test/*.js', included: false}
     ],
 
 
@@ -47,7 +40,7 @@ module.exports = function(config) {
 
 
     // web server port
-    port: 9876,
+    port: 8080,
 
 
     // enable / disable colors in the output (reporters and logs)
@@ -65,7 +58,7 @@ module.exports = function(config) {
 
     // start these browsers
     // available browser launchers: https://npmjs.org/browse/keyword/karma-launcher
-    browsers: ['Chrome'],
+    browsers: ['PhantomJS'],
 
 
     // Continuous Integration mode

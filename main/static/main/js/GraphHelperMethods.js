@@ -1,5 +1,4 @@
 /// <reference path="../typings/underscore/underscore.d.ts"/>;
-
 var GraphHelperMethods;
 GraphHelperMethods = {
     /**
@@ -16,7 +15,7 @@ GraphHelperMethods = {
         return unitTypes[unitId].name;
     },
     /**
-     *  This function takes a unit id and unit type json and returns the unit name
+     *  This function takes a selector element and returns an svg element
     **/
     createSvg: function (selector) {
         var svg = d3.select(selector).append("svg")
