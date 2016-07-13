@@ -164,6 +164,75 @@ This section contains directions for setting up a development environment on EDD
                 * access Solr via http://192.168.99.100/solr/
                 * access RabbitMQ Management Plugin via http://192.168.99.100/rabbitmq
             * Restart misbehaving services with:  `docker-compose restart $SERVICE`
+			
+### Common Development Tasks
+
+Some of these sample commands will only work as written at JBEI, but should serve as useful examples for common development tasks.
+Directions assume that docker containers are already running in the development environment.
+
+* Create an unprivileged test account
+
+    docker-compose exec appserver /bin/bash
+	python manage.py shell
+	from main.models import User
+	user=User.objects.create_user('unprivileged_user', 'test_user@nowhere.com', 'insecure_pwd_ok_for_local_testing')
+	^D
+	^D
+	
+	Enable the test account:
+	
+	docker-compose exec postgres psql -U postgres edd
+	select * from account_emailaddress where email = 'test_user@nowhere.com'; 
+	update account_emailaddress set verified = true where email = 'test_user@nowhere.com';
+	
+* Dump the production database to file and load into a local test deployment:
+
+  Unlike simpler directions below, this process maintains other databases
+  in use in the existing postgres volume, and may avoid rebuilding other containers.
+  By modifying the dump / load process, this process can potentially be used
+  to load a subset of data into an EDD deployment while leaving some existing
+  data in place. It also enables holders of the administrative production password
+  to create dumps and pass them off to developers without distributing the
+  production database password.
+  
+  Untested draft! Please verify during the first use.
+
+    Create a dump file:
+    pg_dump -h postgres.jbei.org -d eddprod -f edd-prod-dump.sql -U your_username'
+    
+    Load a dump file:
+    docker-compose stop appserver
+    docker-compose stop celery
+    docker-compose exec postgres psql -U postgres
+    drop database edd;
+    create database edd;
+    ^d
+    docker-compose exec postgres psql -U postgres edd < edd-prod-dump.sql
+    docker-compose up -d
+    docker-compose exec appserver /bin/bash
+	python manage.py migrate
+	python manage.py edd_index
+	
+	
+* Load a production database by remaking the local postgres docker volume:
+    This process requires the production database password. It can alternatively be
+    modified to use the POSTGRES_DUMP_FILE environment variable to load a database
+    dump without need for the password.
+    
+    Untested draft! Please verify during the first use.
+
+	docker-compose down
+	docker volume rm edd_pgdata
+	export POSTGRES_DUMP_URL='postgres://edduser:password@postgres.jbei.org:5432/eddprod'
+	docker-compose up -d
+	docker-compose exec appserver /bin/bash
+	python manage.py migrate
+	python manage.py edd_index
+	
+
+	
+	
+	
 
 ### Linux / Debian <a name="Debian"/>
 
