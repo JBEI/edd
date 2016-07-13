@@ -2,6 +2,8 @@
 * this function creates the line graph 
 **/
 function createLineGraph(graphSet, svg) {
+
+    var that = {};
     
     var assayMeasurements = graphSet.assayMeasurements;
 
@@ -58,6 +60,7 @@ function createLineGraph(graphSet, svg) {
             return d.name;
         })
         .entries(assayMeasurements);
+        
     
     var names = proteinNames.map(function (d) {return d.key;});
 
@@ -65,7 +68,7 @@ function createLineGraph(graphSet, svg) {
     graphSet.y_axis(graphSet, y, svg);
 
     for (var k = 0; k < data.length; k++) {
-        
+
         //color of line and legend rect
         var color1 = graphSet.color(data[k].key)
 
@@ -78,14 +81,14 @@ function createLineGraph(graphSet, svg) {
                 .attr('stroke-width', 2)
                 .attr("class", "experiment")
                 .attr('fill', 'none');
-        
-        //svg object for data points     
+
+        //svg object for data points
         var dataCirclesGroup = svg.append('svg:g');
-        
-        // data point circles     
+
+        // data point circles
         var circles = dataCirclesGroup.selectAll('.data-point')
             .data(data[k].values[j].values);
-        
+
         circles
             .enter()
             .append('svg:circle')
@@ -119,4 +122,5 @@ function createLineGraph(graphSet, svg) {
     }
     //create legend 
     graphSet.legend(data, graphSet.color, svg, graphSet.width, names);
+     return that; 
 }

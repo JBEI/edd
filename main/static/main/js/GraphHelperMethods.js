@@ -1,4 +1,5 @@
 /// <reference path="../typings/underscore/underscore.d.ts"/>;
+
 var GraphHelperMethods;
 GraphHelperMethods = {
     /**

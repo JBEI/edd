@@ -13,7 +13,10 @@
     "grunt-contrib-watch": "^1.0.0",
     "grunt-exec": "^0.4.6",
     "grunt-insert-timestamp": "^0.1.0",
-    "grunt-typescript": "^0.8.0"
+    "grunt-typescript": "^0.8.0",
+    "jasmine-core": "^2.4.1",
+    "karma": "^1.1.1",
+    "phantomjs-prebuilt": "^2.1.7"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
