@@ -19,8 +19,7 @@ module.exports = function(config) {
      'main/static/main/js/GraphHelperMethods.js',
       'main/static/main/js/StudyGraphing.js',
       'main/static/main/js/test/*.js',
-
-      'main/static/main/js/lib/underscore/underscore.js',
+      'main/static/main/js/lib/underscore/underscore.js'
     ],
 
 

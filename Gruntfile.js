@@ -7,6 +7,7 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-exec');
     grunt.loadNpmTasks('grunt-insert-timestamp');
     grunt.loadNpmTasks('grunt-contrib-uglify');
+    grunt.loadNpmTasks('grunt-karma');
 
     grunt.initConfig({
     	clean: {
@@ -82,6 +83,20 @@ module.exports = function(grunt) {
                 }
             }
         },
+        karma: {
+          unit: {
+            configFile: 'karma.conf.js'
+          }
+        },
+        concat: {
+          options: {},
+          dist: {
+            files: [
+                 'static/main/js/**/*.js',
+                 '!main/static/main/js/test/*.js'
+               ]
+          }
+        },
         uglify: {
             options: {
                 mangle: false
@@ -137,6 +152,10 @@ module.exports = function(grunt) {
     var commit = grunt.option('commit');
     var watch = grunt.option('watch');
 
+    grunt.registerTask('test', [
+          'karma'
+        ]);
+
     if (production) {
         // One-time production build
         grunt.registerTask('default', ["clean:build", "copy:prep", "typescript:prod", "uglify:prod", "copy:mergeProd", "exec:collect"]);
@@ -150,6 +169,7 @@ module.exports = function(grunt) {
         // Standard one-time dev build
         grunt.registerTask('default', ["clean:build", "copy:prep", "insert_timestamp:js", "typescript:dev", "copy:mergeDev", "exec:collect"]);
     }
+
 };
 
 
