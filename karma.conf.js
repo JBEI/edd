@@ -10,46 +10,19 @@ module.exports = function(config) {
 
     // frameworks to use
     // available frameworks: https://npmjs.org/browse/keyword/karma-adapter
-    frameworks: ['jasmine', 'requirejs'],
+    frameworks: ['jasmine'],
 
 
     // list of files / patterns to load in the browser
     files: [
+
+     'main/static/main/js/GraphHelperMethods.js',
+      'main/static/main/js/StudyGraphing.js',
+      'main/static/main/js/test/*.js',
+
       'main/static/main/js/lib/underscore/underscore.js',
-      'main/static/main/js/test/test-main.js',
-      {pattern: 'main/static/main/js/GraphHelperMethods.js', included: false},
-      {pattern: 'main/static/main/js/test/*.js', included: false}
     ],
 
-
-    // list of files to exclude
-    exclude: [
-    ],
-
-
-    // preprocess matching files before serving them to the browser
-    // available preprocessors: https://npmjs.org/browse/keyword/karma-preprocessor
-    preprocessors: {
-    },
-
-
-    // test results reporter to use
-    // possible values: 'dots', 'progress'
-    // available reporters: https://npmjs.org/browse/keyword/karma-reporter
-    reporters: ['progress'],
-
-
-    // web server port
-    port: 8080,
-
-
-    // enable / disable colors in the output (reporters and logs)
-    colors: true,
-
-
-    // level of logging
-    // possible values: config.LOG_DISABLE || config.LOG_ERROR || config.LOG_WARN || config.LOG_INFO || config.LOG_DEBUG
-    logLevel: config.LOG_INFO,
 
 
     // enable / disable watching file and executing tests whenever any file changes
@@ -58,15 +31,6 @@ module.exports = function(config) {
 
     // start these browsers
     // available browser launchers: https://npmjs.org/browse/keyword/karma-launcher
-    browsers: ['PhantomJS'],
-
-
-    // Continuous Integration mode
-    // if true, Karma captures browsers, runs the tests and exits
-    singleRun: false,
-
-    // Concurrency level
-    // how many browser should be started simultaneous
-    concurrency: Infinity
+    browsers: ['PhantomJS']
   })
 }
