@@ -2,6 +2,7 @@
 *.pyc
 *.swp
 .pydevproject
+.idea
 
 # per-machine configuration file; contains secrets, DO NOT CHECK-IN
 server.cfg
