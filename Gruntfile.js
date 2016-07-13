@@ -8,6 +8,7 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-insert-timestamp');
     grunt.loadNpmTasks('grunt-contrib-uglify');
     grunt.loadNpmTasks('grunt-karma');
+    grunt.loadNpmTasks('grunt-contrib-jshint');
 
     grunt.initConfig({
     	clean: {
@@ -26,7 +27,7 @@ module.exports = function(grunt) {
                       fileList.forEach(function(filepath) {
                         statsObj = fs.statSync(filepath);
                         mTime = statsObj.mtime.getTime();
-                        if (mTime > mostRecentMTime) { mostRecentMTime = mTime }
+                        if (mTime > mostRecentMTime) { mostRecentMTime = mTime; }
                       });
                       return new Date(mostRecentMTime);
                     },
@@ -97,6 +98,15 @@ module.exports = function(grunt) {
                ]
           }
         },
+        jshint: {
+            //include 'main/static/main/js/*.js' to lint all js files  
+          files: ['Gruntfile.js'],
+          options: {
+            globals: {
+              jQuery: true
+            }
+          }
+        },
         uglify: {
             options: {
                 mangle: false
@@ -153,6 +163,7 @@ module.exports = function(grunt) {
     var watch = grunt.option('watch');
 
     grunt.registerTask('test', [
+          'jshint',
           'karma'
         ]);
 

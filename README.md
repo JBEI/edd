@@ -440,6 +440,8 @@ since EDD's requirements.txt should normally be used to install required package
         * Each provider may require additional details about the application, allowed domains
           and/or URLs, etc.
 
+## Javascript Tests <a name="Javascript Tests"/>
+* run `$ grunt test` to test javascript files.
 
 [1]:    https://edd.jbei.org
 [2]:    http://brew.sh
