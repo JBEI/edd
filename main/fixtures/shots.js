@@ -1,10 +1,9 @@
 var CLASSIDS = ['.single', '.groupedAssay', '.timeBar'],
     BUTTONIDS = ['.singleBar', '.groupByProteinBar', '.groupByTimeBar'];
-
-var SCREENSHOT_WIDTH = 1280; 
-var SCREENSHOT_HEIGHT = 900; 
-var LOAD_WAIT_TIME = 5000; 
-
+    SCREENSHOT_WIDTH = 1280; 
+    SCREENSHOT_HEIGHT = 900; 
+    LOAD_WAIT_TIME = 5000; 
+    page = require("webpage").create();
 
 phantom.addCookie({
     'name': 'sessionid',
@@ -15,8 +14,8 @@ phantom.addCookie({
 var renderPage = function(page, elementId, buttonId){
 
   var clipRect = page.evaluate(function(buttonId, elementId) {
-    document.querySelector(buttonId).click();
-    return document.querySelector(elementId).getBoundingClientRect();
+        document.querySelector(buttonId).click();
+        return document.querySelector(elementId).getBoundingClientRect();
     }, buttonId, elementId);
     
     console.log("this is the clipRect " + JSON.stringify(clipRect));
@@ -28,9 +27,9 @@ var renderPage = function(page, elementId, buttonId){
                 width:  clipRect.width,
                 height: clipRect.height
         };
-    var sliced = elementId.slice(1);
-    page.render('screenshots/' + sliced + 'png');
-    console.log("rendered:", sliced+".png")
+    var filename = elementId.slice(1) + '.png';
+    page.render('screenshots/' + filename);
+    console.log("rendered:", filename);
 }
 
 
@@ -48,7 +47,6 @@ var takeScreenshot = function(elementId, buttonId){
 
     console.log("opening with: ", elementId)
     console.log('button ', buttonId)
-    var page = require("webpage").create();
 
     page.viewportSize = {width:SCREENSHOT_WIDTH, height:SCREENSHOT_HEIGHT};
 
@@ -61,7 +59,7 @@ var takeScreenshot = function(elementId, buttonId){
             console.log("that's long enough")
             renderPage(page, elementId, buttonId)
             exitIfLast(index,CLASSIDS)
-            index++; 
+            index++;
             takeScreenshot(CLASSIDS[index], BUTTONIDS[index]);
         },LOAD_WAIT_TIME)
     }
