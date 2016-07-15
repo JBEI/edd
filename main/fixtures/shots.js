@@ -28,7 +28,7 @@ var renderPage = function(page, elementId, buttonId){
                 height: clipRect.height
         };
     var filename = elementId.slice(1) + '.png';
-    page.render('originalshots/' + filename);
+    page.render('newshots/' + filename);
     console.log("rendered:", filename);
 }
 
@@ -45,26 +45,26 @@ var exitIfLast = function(index,array){
 
 var takeScreenshot = function(elementId, buttonId){
 
-    console.log("opening with: ", elementId)
-    console.log('button ', buttonId)
+    console.log("opening with: ", elementId);
+    console.log('button ', buttonId);
 
     page.viewportSize = {width:SCREENSHOT_WIDTH, height:SCREENSHOT_HEIGHT};
 
     page.open('http://192.168.99.100/study/30/');
 
-    console.log("waiting for page to load...")
+    console.log("waiting for page to load...");
 
     page.onLoadFinished = function() {
         setTimeout(function(){
-            console.log("that's long enough")
-            renderPage(page, elementId, buttonId)
-            exitIfLast(index,CLASSIDS)
+            console.log("that's long enough");
+            renderPage(page, elementId, buttonId);
+            exitIfLast(index,CLASSIDS);
             index++;
             takeScreenshot(CLASSIDS[index], BUTTONIDS[index]);
         },LOAD_WAIT_TIME)
     }
 
-}
+};
 
 var index = 0; 
 
