@@ -1,5 +1,5 @@
-var CLASSIDS = ['.single', '.groupedAssay', '.timeBar'],
-    BUTTONIDS = ['.singleBar', '.groupByProteinBar', '.groupByTimeBar'];
+var CLASSIDS = ['.linechart', '.single', '.groupedAssay', '.timeBar'],
+    BUTTONIDS = ['.line', '.singleBar', '.groupByProteinBar', '.groupByTimeBar'];
     SCREENSHOT_WIDTH = 1280; 
     SCREENSHOT_HEIGHT = 900; 
     LOAD_WAIT_TIME = 5000; 
@@ -24,7 +24,7 @@ var renderPage = function(page, elementId, buttonId){
                 top:    clipRect.top,
                 left:   clipRect.left,
                 bottom: clipRect.bottom,
-                width:  clipRect.width,
+                width:  clipRect.width - 300,
                 height: clipRect.height
         };
     var filename = elementId.slice(1) + '.png';
