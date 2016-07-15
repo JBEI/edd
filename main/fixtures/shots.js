@@ -28,7 +28,7 @@ var renderPage = function(page, elementId, buttonId){
                 height: clipRect.height
         };
     var filename = elementId.slice(1) + '.png';
-    page.render('screenshots/' + filename);
+    page.render('originalshots/' + filename);
     console.log("rendered:", filename);
 }
 
