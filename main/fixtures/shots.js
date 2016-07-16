@@ -9,7 +9,7 @@ phantom.addCookie({
     'name': 'sessionid',
     'value': '3msg90gtxs2u0vglhb8fzyzubrwe3lt4',
     'domain': '192.168.99.100'
-})
+});
 
 var renderPage = function(page, elementId, buttonId){
 
@@ -30,7 +30,7 @@ var renderPage = function(page, elementId, buttonId){
     var filename = elementId.slice(1) + '.png';
     page.render('newshots/' + filename);
     console.log("rendered:", filename);
-}
+};
 
 
 

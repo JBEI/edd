@@ -9,6 +9,8 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-contrib-uglify');
     grunt.loadNpmTasks('grunt-karma');
     grunt.loadNpmTasks('grunt-contrib-jshint');
+    grunt.loadNpmTasks('grunt-nose');
+    grunt.loadNpmTasks('grunt-docker-compose');
 
     grunt.initConfig({
     	clean: {
@@ -107,6 +109,23 @@ module.exports = function(grunt) {
             }
           }
         },
+        nose: {
+          specificTests: {
+            options: {
+              tests: [
+                  'hash'
+              ],
+              include: "passing"
+            },
+            src: 'main/tests/'
+          },
+        },
+        dockerCompose: {
+   		options: {
+   			mappedComposeFile: 'docker-compose-mapped.yml',
+   			dockerRegistryNamespace: 'EDDprod'
+   		}
+    },
         uglify: {
             options: {
                 mangle: false
@@ -119,6 +138,12 @@ module.exports = function(grunt) {
                     dest: './typescript/build/'
                 }]
             }
+        },
+        screenshots: {
+          default_options: {
+            options: {
+            }
+          }
         },
         copy: {
             prep: {
@@ -164,8 +189,21 @@ module.exports = function(grunt) {
 
     grunt.registerTask('test', [
           'jshint',
+          'nose',
           'karma'
         ]);
+
+    var screenshot = require( "./main/fixtures/shot-wrapper.js" );
+
+    grunt.registerMultiTask( 'screenshots', 'Use Grunt and PhantomJS to generate Screenshots' +
+        ' of pages', function(){
+        var done = this.async();
+        // Merge task-specific and/or target-specific options with these defaults.
+
+        screenshot.takeShot(function(){
+            done();
+        });
+    });
 
     if (production) {
         // One-time production build
