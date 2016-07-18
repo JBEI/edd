@@ -176,7 +176,7 @@ module.exports = function(grunt) {
 
     var screenshot = require( "./main/fixtures/shot-wrapper" );
 
-     grunt.registerMultiTask( 'screenshots', 'Use Grunt and PhantomJS to generate Screenshots of pages', function(){
+    grunt.registerMultiTask( 'screenshots', 'Use Grunt and PhantomJS to generate Screenshots of pages', function(){
         var done = this.async();
 
         screenshot.takeShot( function(){

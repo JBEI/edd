@@ -29,7 +29,7 @@ var renderPage = function(page, elementId, buttonId){
                 height: clipRect.height
         };
     var filename = elementId.slice(1) + '.png';
-    page.render('newshots/' + filename);
+    page.render('main/fixtures/newshots/' + filename);
     console.log("rendered:", filename);
 };
 
