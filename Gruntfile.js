@@ -9,8 +9,6 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-contrib-uglify');
     grunt.loadNpmTasks('grunt-karma');
     grunt.loadNpmTasks('grunt-contrib-jshint');
-    grunt.loadNpmTasks('grunt-nose');
-    grunt.loadNpmTasks('grunt-docker-compose');
 
     grunt.initConfig({
     	clean: {
@@ -96,6 +94,7 @@ module.exports = function(grunt) {
           dist: {
             files: [
                  'static/main/js/**/*.js',
+                 'fixtures/*.js',
                  '!main/static/main/js/test/*.js'
                ]
           }
@@ -109,23 +108,6 @@ module.exports = function(grunt) {
             }
           }
         },
-        nose: {
-          specificTests: {
-            options: {
-              tests: [
-                  'hash'
-              ],
-              include: "passing"
-            },
-            src: 'main/tests/'
-          },
-        },
-        dockerCompose: {
-   		options: {
-   			mappedComposeFile: 'docker-compose-mapped.yml',
-   			dockerRegistryNamespace: 'EDDprod'
-   		}
-    },
         uglify: {
             options: {
                 mangle: false
@@ -189,21 +171,19 @@ module.exports = function(grunt) {
 
     grunt.registerTask('test', [
           'jshint',
-          'nose',
           'karma'
-        ]);
+    ]);
 
-    var screenshot = require( "./main/fixtures/shot-wrapper.js" );
+    var screenshot = require( "./main/fixtures/shot-wrapper" );
 
-    grunt.registerMultiTask( 'screenshots', 'Use Grunt and PhantomJS to generate Screenshots' +
-        ' of pages', function(){
+     grunt.registerMultiTask( 'screenshots', 'Use Grunt and PhantomJS to generate Screenshots of pages', function(){
         var done = this.async();
-        // Merge task-specific and/or target-specific options with these defaults.
 
-        screenshot.takeShot(function(){
+        screenshot.takeShot( function(){
             done();
         });
     });
+
 
     if (production) {
         // One-time production build
