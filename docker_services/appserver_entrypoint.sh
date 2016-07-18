@@ -36,7 +36,9 @@ done
 export PGPASSWORD=$POSTGRES_PASSWORD
 if [ ! -z $POSTGRES_DUMP_URL ] || ([ ! -z $POSTGRES_DUMP_FILE ] && [ -r $POSTGRES_DUMP_FILE ]); then
     REINDEX_EDD=true
-    psql -h postgres -U postgres -c 'DROP DATABASE IF EXISTS edd; CREATE DATABASE edd;'
+    psql -h postgres -U postgres -c 'DROP DATABASE IF EXISTS edd;'
+    psql -h postgres -U postgres -c 'CREATE DATABASE edd;'  # must be separate commands! Psql
+    # complains! 'ERROR:  DROP DATABASE cannot be executed from a function or multi-command string'
 # Test if our database exists; run init script if missing
 elif ! psql -lqt -h postgres -U postgres | cut -d \| -f 1 | grep -qw edd; then
     echo "Initializing the database for first-time use ..."
@@ -47,7 +49,6 @@ fi
 # If database dump URL is provided, dump the reference database and restore the local one from
 # the dump
 if [ ! -z $POSTGRES_DUMP_URL ]; then
-    PASSWORD_REMOVED = perl -pe ""
     echo "Copying database from remote $POSTGRES_DUMP_URL ..." # TODO: blank out password
     REINDEX_EDD=true
     pg_dump "$POSTGRES_DUMP_URL" | psql -h postgres -U postgres edd
@@ -77,19 +78,25 @@ echo "$SEPARATOR"
 # for unchecked boxes, e.g. ' [ ]'. We can run no-op migrations with impunity, but this way we're
 # printing output that's consistent with the logic below, which also controls whether the Solr index
 # gets rebuilt
-MIGRATIONS_NEEDED=0
+#MIGRATIONS_NEEDED=0
 #MIGRATIONS_NEEDED=$(python /code/manage.py showmigrations --list | grep --perl-regexp
 # '\s+\[\s+\].*' | wc -l)
 #MIGRATIONS_NEEDED=`python /code/manage.py showmigrations --list | grep --perl-regexp '\s+\[\s+\]
 # .*' | wc -l`
-MIGRATIONS_NEEDED=$(python /code/manage.py showmigrations --list |\
-    grep --perl-regexp '\s+\[\s+\].*' | \
-    wc -l)
-echo "$MIGRATIONS_NEEDED migrations needed. TODO: remove debug stmt"
+#MIGRATIONS_NEEDED=$(python /code/manage.py showmigrations --list | \
+#    grep --perl-regexp '\s+\[\s+\].*' | \
+#    wc -l)
+# echo "$MIGRATIONS_NEEDED migrations needed. TODO: remove debug stmt"
+
+MIGRATIONS_NEEDED=1 # short-circuit commented-out logic above for detecting the number of
+# migrations. Works on the command line after the appserver is started, but fails when attempted
+# during container start. hmmm... TODO: consider implementing/testing other patterns that detect #
+# of applied migrations by just always running them -- though presently unclear whether that will
+# fare any better. Need to prevent re-indexing when migrations weren't run.
 
 # if needed, run migrations and rebuild the Solr index
 if [ $MIGRATIONS_NEEDED -gt 0 ]; then
-    echo "Running $MIGRATIONS_NEEDED migrations..."
+    echo "Running migrations..."
     REINDEX_EDD=true
     python /code/manage.py migrate
     echo
