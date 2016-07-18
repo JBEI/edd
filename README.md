@@ -179,13 +179,15 @@ Directions assume that docker containers are already running in the development 
 
 * Create an unprivileged test account
 
-    docker-compose exec appserver manage.py shell
+
+    docker-compose exec appserver /code/manage.py shell
 	from main.models import User
 	user=User.objects.create_user('unprivileged_user', 'test_user@nowhere.com', 'insecure_pwd_ok_for_local_testing')
 	^D
 	
-	Enable the test account:
+	# Attempt login using the UI -- this is necessary to enable the following step
 	
+    # Enable the test account:
 	docker-compose exec postgres psql -U postgres edd
 	select * from account_emailaddress where email = 'test_user@nowhere.com'; 
 	update account_emailaddress set verified = true where email = 'test_user@nowhere.com';
