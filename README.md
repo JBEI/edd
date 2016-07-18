@@ -442,6 +442,7 @@ since EDD's requirements.txt should normally be used to install required package
 
 ## Javascript Tests <a name="Javascript Tests"/>
 * run `$ grunt test` to test javascript files.
+* run `$ grunt screenshots` to test graphs
 
 [1]:    https://edd.jbei.org
 [2]:    http://brew.sh
