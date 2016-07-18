@@ -3,8 +3,6 @@
 **/
 function createLineGraph(graphSet, svg) {
 
-    var that = {};
-    
     var assayMeasurements = graphSet.assayMeasurements;
 
     //get x values
@@ -122,5 +120,5 @@ function createLineGraph(graphSet, svg) {
     }
     //create legend 
     graphSet.legend(data, graphSet.color, svg, graphSet.width, names);
-     return that; 
+
 }
