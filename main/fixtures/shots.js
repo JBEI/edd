@@ -1,3 +1,4 @@
+console.log('was this called')
 var CLASSIDS = ['.linechart', '.single', '.groupedAssay', '.timeBar'],
     BUTTONIDS = ['.line', '.singleBar', '.groupByProteinBar', '.groupByTimeBar'];
     SCREENSHOT_WIDTH = 1280; 

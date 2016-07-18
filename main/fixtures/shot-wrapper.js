@@ -1,11 +1,12 @@
 var path = require( "path" );
 var execFile = require( "child_process" ).execFile;
-var phantomPath = "./node_modules/phantomjs/bin/phantomjs"
+var phantomPath = require( "phantomjs" ).path;
 var phantomscript = path.resolve( path.join( __dirname, "shots.js" ) );
+var md5File = require('md5-file/promise')
 
 exports.takeShot = function(cb){
     execFile( phantomPath, [
-            phantomscript,
+            phantomscript
     ],
     function( err, stdout, stderr ){
         if( err ){
@@ -16,11 +17,16 @@ exports.takeShot = function(cb){
             console.error( stderr );
         }
 
-        if( stdout ){
-            console.log( stdout );
+        if( stdout ) {
+            md5File('newshots/linechart.png').then(function(hash) {
+            if (hash != '294bbd84b8276e8b696e9b307a7409b0') {
+                console.log('FAIL');
+            }
+            else {
+                console.log('great success!');
+            }
+            })
         }
-        if( cb ){
-            cb();
-        }
-    });
+    })
 };
+
