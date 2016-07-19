@@ -50,26 +50,14 @@
         return i;
     });
 
-    var yvalueIds = function() {
-        if (data[0] == undefined) {
-            return 0
-        } else {
-            data[0].values[0].values.map(function (d) {
-                return d.key
-            });
-        }
-    }
+    var yvalueIds = data[0].values[0].values.map(function (d) {
+        return d.key
+    });
 
     // returns x values
-    var xValueLabels = function() {
-        if (data[0] == undefined) {
-            return 0;
-        } else {
-            data2[0].map(function (d) {
-                return (d.key)
-            });
-        }
-    }
+    var xValueLabels = data2[0].map(function (d) {
+        return (d.key)
+    });
 
 
     x_name.domain(names);
@@ -94,7 +82,7 @@
             return 'group group-' + d.key;  //returns assay names
         })
         .attr("transform", function (d) {
-            return "translate(" + x_name(parseFloat(d.key)) + ",0)";
+            return "translate(" + x_name(d.key) + ",0)";
         });
 
     var categories_g = names_g.selectAll(".category")
@@ -106,7 +94,7 @@
             return 'category category-' + d.key;   // returns objects with key = value
         })
         .attr("transform", function (d) {
-            return "translate(" + x_xValue(parseFloat(d.key)) + ",0)";
+            return "translate(" + x_xValue(d.key) + ",0)";
         });
 
     var categories_labels = categories_g.selectAll('.category-label')
@@ -140,7 +128,7 @@
             return 'value value-' + d.i;
         })
         .attr("transform", function (d) {
-            return "translate(" + lineID(parseFloat(d.key)) + ",0)";
+            return "translate(" + lineID(d.key) + ",0)";
         });
 
     var rects = values_g.selectAll('.rect')

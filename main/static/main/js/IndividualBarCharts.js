@@ -44,15 +44,20 @@ function createSideBySide(graphSet, selector) {
     x.domain(linedata[i].map(function(d) { return d.x; }));
     y.domain([d3.min(linedata[i], function(d) { return d.y; }), d3.max(linedata[i], function(d) { return d.y; })]);
 
+    if (graphSet.labels.length == 0) {
+      var x_label = 'n/a'
+    } else {
+      x_label = graphSet.labels[i] + ", entry " + i;
+    }
     svg.append("g")
         .attr("class", "x axis")
         .attr("transform", "translate(0," + height + ")")
         .call(xAxis)
-        svg.append("text")      // text label for the x axis
+        svg.append("text")
         .attr("x", width / 2 )
         .attr("y",  height + 40)
         .style("text-anchor", "middle")
-        .text(graphSet.labels[i] + ", entry " + i);
+        .text(linedata[i][i].name);
 
     svg.append("g")
         .attr("class", "y axis")
