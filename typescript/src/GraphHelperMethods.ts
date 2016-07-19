@@ -71,7 +71,32 @@ GraphHelperMethods = {
         return xAndYValues;
     },
 
+    transformNewLineItem: function (data, singleData) {
 
+        // array of x and y values for sortin
+        var xAndYValues = [];
+        //data for one line entry
+        var singleDataValues = singleData.data;
+
+        _.forEach(singleDataValues, function(dataValue) {
+             var dataset = {};
+            //can also change to omit data point with null which was done before..
+            if (dataValue[0] == null) {
+                dataValue[0] = ["0"];
+            } else if (dataValue[1] == null) {
+                dataValue[1] = ["0"];
+            }
+            dataset['label'] = 'dt' + singleData.assay;
+            dataset['x'] = dataValue[0];
+            dataset['y'] = parseFloat(dataValue[1]);
+            dataset['name'] = singleData.name;
+            xAndYValues.push(dataset);
+        });
+        xAndYValues.sort(function(a, b) {
+              return a.x - b.x;
+            });
+        return xAndYValues;
+    },
 
     /**
      * this function returns an object of y units with counts
@@ -214,10 +239,13 @@ GraphHelperMethods = {
      *  the axis
     **/
     displayUnit: function(units) {
-        if (units.length == 1) {
+        if (units.length == 0) {
+            return 'n/a'
+        } if (units.length == 1 && units[0] == "undefined") {
+            return 'n/a'
+        } else if (units.length == 1) {
             return units[0]
-        }
-        else {
+        } else {
             return "Mixed measurements"
         }
     },
@@ -232,6 +260,10 @@ GraphHelperMethods = {
             .scale(x)
             .orient("bottom");
 
+        if (graphSet.x_unit == undefined) {
+            graphSet.x_unit == 'n/a'
+        }
+
         svg.append("g")
             .attr("class", "x axis")
             .attr("transform", "translate(0," + graphSet.height + ")")
@@ -240,7 +272,7 @@ GraphHelperMethods = {
             .attr("y", 20)
             .attr("x", graphSet.width)
             .text(graphSet.x_unit);
-        // Draw the x Grid lines
+        //Draw the x Grid lines
         // svg.append("g")
         //     .attr("class", "grid")
         //     .attr("transform", "translate(0," + graphSet.height + ")")
@@ -266,7 +298,10 @@ GraphHelperMethods = {
         //     .call(yAxis
         //         .tickSize(-graphSet.width, 0, 0)
         //         .tickFormat(""));
-    
+        if (graphSet.y_unit == undefined) {
+            graphSet.y_unit == 'n/a'
+        }
+
         svg.append("g")
             .attr("class", "y axis")
             .call(yAxis)

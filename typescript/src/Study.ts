@@ -2521,7 +2521,6 @@ class DataGridAssays extends DataGrid {
         }
 
         g = spec.graphObject;
-        //g.clearAllSets();
 
         var dataSets = [];
         spec.getRecordIDs().forEach((id) => {

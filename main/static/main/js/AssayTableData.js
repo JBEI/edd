@@ -1,5 +1,6 @@
 /// <reference path="typescript-declarations.d.ts" />
-/// <reference path="Utl.ts" />
+/// <reference path="../typings/d3/d3.d.ts"/>;
+/// <reference path="AssayTableDataGraphing.ts" />
 JSNumber = Number;
 JSNumber.isFinite = JSNumber.isFinite || function (value) {
     return typeof value === 'number' && isFinite(value);
@@ -1150,6 +1151,7 @@ var EDDTableImport;
             this.interpretDataTable();
             this.queueGraphRemake();
             this.nextStepCallback();
+            this.setElements();
         };
         IdentifyStructuresStep.prototype.toggleTableRow = function (box) {
             var value, input;
@@ -1571,7 +1573,31 @@ var EDDTableImport;
                 this.graphRefreshTimerID = setTimeout(this.remakeGraphArea.bind(this), 700);
             }
         };
+        IdentifyStructuresStep.prototype.setElements = function () {
+            var html = '                                                                       \
+                           <div class ="btn-toolbar">                                           \
+                                <button class="btn btn-default btn-sm" value="linechart">       \
+                                        Line Graph </button>                                    \
+                                <button class="btn btn-default btn-sm" value="timeBar">         \
+                                        Bar graph by time</button>                              \
+                                <button class="btn btn-default btn-sm" value="single">          \
+                                        Bar graphs for each line</button>                       \
+                                 <button class="btn btn-default btn-sm" value="groupedAssay">   \
+                                        Bar graph by assay</button>                             \
+                            </div>                                                              \
+                                                                                                \
+                            <div class="linechart"></div>                                       \
+                            <div class="timeBar"></div>                                         \
+                            <div class="single"></div>                                          \
+                            <div class="groupedAssay"></div>                                    \
+                            <div class="graphContainer"></div>              \
+                        ';
+            var dom = $(html);
+            dom.appendTo($('#disambiguateMetadataSection'));
+            EDDATDGraphing.Setup;
+        };
         IdentifyStructuresStep.prototype.remakeGraphArea = function () {
+            var graphHelper = Object.create(GraphHelperMethods);
             var mode = this.selectMajorKindStep.interpretationMode;
             this.graphRefreshTimerID = 0;
             if (!EDDATDGraphing || !this.graphEnabled) {
@@ -1579,11 +1605,15 @@ var EDDTableImport;
             }
             EDDATDGraphing.clearAllSets();
             var sets = this.graphSets;
+            var dataSets = [];
             // If we're not in either of these modes, drawing a graph is nonsensical.
             if (mode === "std" || mode === 'biolector' || mode === 'hplc') {
-                sets.forEach(function (set) { return EDDATDGraphing.addNewSet(set); });
+                sets.forEach(function (set) {
+                    var singleAssayObj = graphHelper.transformNewLineItem(EDDData, set);
+                    dataSets.push(singleAssayObj);
+                });
             }
-            EDDATDGraphing.drawSets();
+            EDDATDGraphing.addNewSet(dataSets);
         };
         return IdentifyStructuresStep;
     })();
@@ -2042,7 +2072,7 @@ var EDDTableImport;
                 else if (highest < 0.6 && line.name.indexOf(assayOrLine) >= 0) {
                     // Finding the whole string inside the originating Line name is good too.
                     // It means that the user may intend to pair with this Assay even though the
-                    // Assay name is different.  
+                    // Assay name is different.
                     highest = 0.6;
                     selections.assayID = id;
                 }

@@ -2174,7 +2174,6 @@ var DataGridAssays = (function (_super) {
             return;
         }
         g = spec.graphObject;
-        //g.clearAllSets();
         var dataSets = [];
         spec.getRecordIDs().forEach(function (id) {
             var assay = EDDData.Assays[id] || {}, line = EDDData.Lines[assay.lid] || {}, measures;

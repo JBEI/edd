@@ -107,7 +107,12 @@ function createLineGraph(graphSet, svg) {
                 div.transition()
                     .duration(200)
                     .style("opacity", .9);
-                div.html('<strong>' + d.name + '</strong>' + ": " + d.y + " " + d.y_unit)
+                if (d.y_unit == undefined) {
+                    var unit = 'n/a'
+                } else {
+                    unit = d.y_unit
+                }
+                div.html('<strong>' + d.name + '</strong>' + ": " + d.y + " " + unit)
                     .style("left", (d3.event.pageX) + "px")
                     .style("top", (d3.event.pageY - 30) + "px");
             })
