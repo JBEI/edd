@@ -104,7 +104,6 @@ services:
     environment:
       POSTGRES_DUMP_FILE: ${POSTGRES_DUMP_FILE}
       POSTGRES_DUMP_URL: ${POSTGRES_DUMP_URL}
-      EDD_DEPLOYMENT_ENVIRONMENT: ${EDD_DEPLOYMENT_ENVIRONMENT}
     depends_on:
       - postgres
       - rabbitmq
