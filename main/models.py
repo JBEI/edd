@@ -1219,21 +1219,21 @@ class MeasurementType(models.Model, EDDSerialize):
         return self.type_name
 
     def is_metabolite(self):
-        return self.type_group == Group.METABOLITE
+        return self.type_group == MeasurementType.Group.METABOLITE
 
     def is_protein(self):
-        return self.type_group == Group.PROTEINID
+        return self.type_group == MeasurementType.Group.PROTEINID
 
     def is_gene(self):
-        return self.type_group == Group.GENEID
+        return self.type_group == MeasurementType.Group.GENEID
 
     def is_phosphor(self):
-        return self.type_group == Group.PHOSPHOR
+        return self.type_group == MeasurementType.Group.PHOSPHOR
 
     @classmethod
     def proteins(cls):
         """ Return all instances of protein measurements. """
-        return cls.objects.filter(type_group=Group.PROTEINID)
+        return cls.objects.filter(type_group=MeasurementType.Group.PROTEINID)
 
     @classmethod
     def proteins_by_name(cls):
@@ -1245,7 +1245,7 @@ class MeasurementType(models.Model, EDDSerialize):
         return cls.objects.create(
             type_name=type_name,
             short_name=short_name,
-            type_group=Group.PROTEINID
+            type_group=MeasurementType.Group.PROTEINID
         )
 
 
@@ -1490,7 +1490,7 @@ class Measurement(EDDMetadata, EDDSerialize):
             INTRACELLULAR = measurement inside of a cell, in cytosol
             EXTRACELLULAR = measurement outside of a cell
         """
-        UNKNOWN, INTRACELLULAR, EXTRACELLULAR = range(3)
+        UNKNOWN, INTRACELLULAR, EXTRACELLULAR = map(str, range(3))
         short_names = ["", "IC", "EC"]
         names = ["N/A", "Intracellular/Cytosol (Cy)", "Extracellular"]
         CHOICE = [('%s' % i, cn) for i, cn in enumerate(names)]
@@ -1504,7 +1504,7 @@ class Measurement(EDDMetadata, EDDSerialize):
                 population measured within bin value, bin size/range set via y_units)
             SIGMA = single timepoint X value, 3-item-list Y value (average, variance, sample size)
         """
-        SCALAR, VECTOR, HISTOGRAM, SIGMA = range(4)
+        SCALAR, VECTOR, HISTOGRAM, SIGMA = map(str, range(4))
         names = ['scalar', 'vector', 'histogram', 'sigma', ]
         CHOICE = [('%s' % i, n) for i, n in enumerate(names)]
 
