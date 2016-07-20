@@ -56,8 +56,8 @@ function createTimeGraph(graphSet, svg) {
         });
     })]);
 
-    graphSet.x_axis(graphSet, x0, svg);
-    graphSet.y_axis(graphSet, y, svg);
+    graphSet.create_x_axis(graphSet, x0, svg);
+    graphSet.create_y_axis(graphSet, y, svg);
 
     var bar = svg.selectAll(".bar")
         .data(data)

@@ -65,7 +65,7 @@ function createSideBySide(graphSet, selector) {
         .attr("x", width / 2 )
         .attr("y",  height + 40)
         .style("text-anchor", "middle")
-        .text(linedata[i][i].name);
+        .text(graphSet.labels[i]);
 
     svg.append("g")
         .attr("class", "y axis")

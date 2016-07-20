@@ -228,11 +228,9 @@ GraphHelperMethods = {
      *  the axis
     **/
     createXAxis: function (graphSet, x, svg) {
-        var xAxis = d3.svg.axis()
-            .scale(x)
-            .orient("bottom");
+        var xAxis = graphSet.x_axis(x);
         if (graphSet.x_unit == undefined) {
-            graphSet.x_unit == 'n/a';
+            graphSet.x_unit = 'n/a';
         }
         svg.append("g")
             .attr("class", "x axis")
@@ -241,32 +239,23 @@ GraphHelperMethods = {
             .append('text')
             .attr("y", 20)
             .attr("x", graphSet.width)
-            .text("Time in " + graphSet.x_unit);
+            .text(graphSet.x_unit);
         //Draw the x Grid lines
-        // svg.append("g")
-        //     .attr("class", "grid")
-        //     .attr("transform", "translate(0," + graphSet.height + ")")
-        //     .call(xAxis
-        //         .tickSize(-graphSet.height, 0, 0)
-        //         .tickFormat(""));
+        svg.append("g")
+            .attr("class", "grid")
+            .attr("transform", "translate(0," + graphSet.height + ")")
+            .call(xAxis
+            .tickSize(-graphSet.height, 0, 0)
+            .tickFormat(""));
     },
     /**
      *  This function takes in the unit type for each array and returns the text to display on
      *  the axis
     **/
     createYAxis: function (graphSet, y, svg) {
-        var yAxis = d3.svg.axis()
-            .scale(y)
-            .orient("left")
-            .tickFormat(d3.format(".2s"));
-        // Draw the y Grid lines
-        // svg.append("g")
-        //     .attr("class", "grid")
-        //     .call(yAxis
-        //         .tickSize(-graphSet.width, 0, 0)
-        //         .tickFormat(""));
+        var yAxis = graphSet.y_axis(y);
         if (graphSet.y_unit == undefined) {
-            graphSet.y_unit == 'n/a';
+            graphSet.y_unit = 'n/a';
         }
         svg.append("g")
             .attr("class", "y axis")
@@ -277,5 +266,26 @@ GraphHelperMethods = {
             .attr("dy", ".71em")
             .style("text-anchor", "end")
             .text(graphSet.y_unit);
+        // Draw the y Grid lines
+        svg.append("g")
+            .attr("class", "grid")
+            .call(yAxis
+            .tickSize(-graphSet.width, 0, 0)
+            .tickFormat(""));
+    },
+    /**
+     *  This function creates the y axis tick marks for grid
+    **/
+    make_y_axis: function (y) {
+        return d3.svg.axis()
+            .scale(y)
+            .orient("left")
+            .ticks(5);
+    },
+    make_x_axis: function (x) {
+        return d3.svg.axis()
+            .scale(x)
+            .orient("bottom")
+            .ticks(5);
     }
 };

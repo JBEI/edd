@@ -77,8 +77,8 @@
     })]);
 
     //create x and y axis 
-    graphSet.x_axis(graphSet, x_name, svg);
-    graphSet.y_axis(graphSet, y, svg);
+    graphSet.create_x_axis(graphSet, x_name, svg);
+    graphSet.create_y_axis(graphSet, y, svg);
 
     var names_g = svg.selectAll(".group")
         .data(data)

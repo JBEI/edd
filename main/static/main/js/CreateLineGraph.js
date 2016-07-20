@@ -30,7 +30,7 @@ function createLineGraph(graphSet, svg) {
         return d3.min(d.values, function (d) {
             return d.y;
         });
-    });
+    })
 
     if (ymin >= 0) {
       ymin = 0
@@ -67,42 +67,9 @@ function createLineGraph(graphSet, svg) {
         
     
     var names = proteinNames.map(function (d) {return d.key;});
-    
-    //Create x-axis
-    svg.append("g")
-        .attr("class", "x axis")
-        .attr("transform", "translate(0," +graphSet.height + ")")
-        .call(graphSet.x_grid(x))
-        .append('text')
-        .attr("y", 20)
-        .attr("x", graphSet.width)
-        .text(graphSet.x_unit);
-    // Draw the x Grid lines
-    svg.append("g")
-        .attr("class", "grid")
-        .attr("transform", "translate(0," + graphSet.height + ")")
-        .call(graphSet.x_grid(x)
-            .tickSize(-graphSet.height, 0, 0)
-            .tickFormat("")
-        );
-    
-    //Create y-axis 
-    svg.append("g")
-        .attr("class", "y axis")
-        .call(graphSet.y_grid(y))
-        .append("text")
-        .attr("transform", "rotate(-90)")
-        .attr("y", 6)
-        .attr("dy", ".71em")
-        .style("text-anchor", "end")
-        .text(graphSet.y_unit);
-    // Draw the y Grid lines
-    svg.append("g")
-        .attr("class", "grid")
-        .call(graphSet.y_grid(y)
-            .tickSize(-graphSet.width, 0, 0)
-            .tickFormat("")
-        );
+
+    graphSet.create_x_axis(graphSet, x, svg);
+    graphSet.create_y_axis(graphSet, y, svg);
 
     for (var k = 0; k < data.length; k++) {
 
