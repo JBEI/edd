@@ -30,6 +30,9 @@ function createSideBySide(graphSet, selector) {
       .attr('class', 'd3-tip')
       .offset([-10, 0])
       .html(function(d) {
+        if (d.y_unit == undefined) {
+        d.y_unit = 'n/a'
+      }
         return "<strong>y value</strong> <span style='color:red'>" + d.y + " " + d.y_unit + "</span>";
       });
 

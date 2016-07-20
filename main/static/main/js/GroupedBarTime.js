@@ -66,8 +66,6 @@ function createTimeGraph(graphSet, svg) {
         .attr("transform", function (d) {
             return "translate(" + x0(d.key) + ",0)";
         });
-
-
     bar.selectAll("rect")
             .data(function (d) {
                 return d.values
@@ -88,6 +86,9 @@ function createTimeGraph(graphSet, svg) {
             })
             .style("opacity", .3)
             .on("mouseover", function(d) {
+                if (d.y_unit == undefined) {
+                    d.y_unit = 'n/a'
+                  } 
                 div.transition()
                     .style("opacity", .9);
                 div .html(d.y + "<br/>"  + d.y_unit)
