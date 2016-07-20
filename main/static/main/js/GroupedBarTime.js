@@ -4,7 +4,7 @@ function createTimeGraph(graphSet, svg) {
     var assayMeasurements = graphSet.assayMeasurements;
 
     var x0 = d3.scale.ordinal()
-        .rangeRoundBands([0, graphSet.width], .1);
+        .rangeRoundBands([0, graphSet.width], 0.1);
 
     var x1 = d3.scale.ordinal();
 
@@ -45,7 +45,7 @@ function createTimeGraph(graphSet, svg) {
     });
 
     if (ymin >= 0) {
-      ymin = 0
+      ymin = 0;
     }
 
     x0.domain(data.map(function (d) {return d.key;}));
@@ -68,7 +68,7 @@ function createTimeGraph(graphSet, svg) {
         });
     bar.selectAll("rect")
             .data(function (d) {
-                return d.values
+                return d.values;
             })
             .enter().append("rect")
             .attr("width", x1.rangeBand())
@@ -84,13 +84,13 @@ function createTimeGraph(graphSet, svg) {
             .style("fill", function (d) {
                 return graphSet.color(d.name);
             })
-            .style("opacity", .3)
+            .style("opacity", 0.3)
             .on("mouseover", function(d) {
-                if (d.y_unit == undefined) {
-                    d.y_unit = 'n/a'
+                if (d.y_unit === undefined) {
+                    d.y_unit = 'n/a';
                   } 
                 div.transition()
-                    .style("opacity", .9);
+                    .style("opacity", 0.9);
                 div .html(d.y + "<br/>"  + d.y_unit)
                     .style("left", (d3.event.pageX) + "px")
                     .style("top", (d3.event.pageY - 28) + "px");

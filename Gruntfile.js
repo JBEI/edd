@@ -101,7 +101,10 @@ module.exports = function(grunt) {
         },
         jshint: {
             //include 'main/static/main/js/*.js' to lint all js files  
-          files: ['Gruntfile.js'],
+          files: ['Gruntfile.js',
+                  './main/static/main/js/GroupedBarAssay.js',
+                  './main/static/main/js/GroupedBarTime.js',
+                  './main/static/main/js/GroupedBarTime.js'],
           options: {
             globals: {
               jQuery: true

@@ -10,7 +10,7 @@ function createLineGraph(graphSet, svg) {
 
     //sort x values
     xDomain.sort(function(a, b) {
-        return a - b
+        return a - b;
     });
 
     var div = d3.select("body").append("div")
@@ -30,10 +30,10 @@ function createLineGraph(graphSet, svg) {
         return d3.min(d.values, function (d) {
             return d.y;
         });
-    })
+    });
 
     if (ymin >= 0) {
-      ymin = 0
+      ymin = 0;
     }
 
     y.domain([ymin, d3.max(getValues, function (d) {
@@ -47,7 +47,7 @@ function createLineGraph(graphSet, svg) {
             return x(d.x);
         })
         .y(function (d) {
-            return y(d.y)
+            return y(d.y);
         });
 
     var data = d3.nest()
@@ -74,7 +74,7 @@ function createLineGraph(graphSet, svg) {
     for (var k = 0; k < data.length; k++) {
 
         //color of line and legend rect
-        var color1 = graphSet.color(data[k].key)
+        var color1 = graphSet.color(data[k].key);
 
         //lines
         for (var j = 0; j < data[k].values.length; j++) {
@@ -100,10 +100,10 @@ function createLineGraph(graphSet, svg) {
             //.attr('id', ("circle" + data[k].key).split(' ').join('_') )
             .attr('fill', 'grey')
             .attr('cx', function (d) {
-                return x(d["x"]);
+                return x(d.x);
             })
             .attr('cy', function (d) {
-                return y(d["y"]);
+                return y(d.y);
             })
             .attr('r', function () {
                 return 3;
@@ -112,11 +112,11 @@ function createLineGraph(graphSet, svg) {
             .on("mouseover", function (d) {
                 div.transition()
                     .duration(200)
-                    .style("opacity", .9);
-                if (d.y_unit == undefined) {
-                    var unit = 'n/a'
+                    .style("opacity", 0.9);
+                if (d.y_unit === undefined) {
+                    var unit = 'n/a';
                 } else {
-                    unit = d.y_unit
+                    unit = d.y_unit;
                 }
                 div.html('<strong>' + d.name + '</strong>' + ": " + d.y + " " + unit)
                     .style("left", (d3.event.pageX) + "px")

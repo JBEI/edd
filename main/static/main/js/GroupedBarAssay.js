@@ -10,7 +10,7 @@
 
     //x axis scale for assay's protein name
     var x_name = d3.scale.ordinal()
-        .rangeRoundBands([0, graphSet.width], .1);
+        .rangeRoundBands([0, graphSet.width], 0.1);
     
     //x axis scale for x values
     var x_xValue = d3.scale.ordinal();
@@ -32,7 +32,7 @@
             return d.name;
         })
         .key(function (d) {
-            return d.x
+            return d.x;
         })
         .entries(assayMeasurements);
 
@@ -43,7 +43,7 @@
     });
 
     var data2 = data.map(function (d) {
-        return (d.values)
+        return (d.values);
     });
 
     var names = _.map(proteinNames, function (d, i) {
@@ -51,20 +51,20 @@
     });
 
     var yvalueIds = data[0].values[0].values.map(function (d) {
-        return d.key
+        return d.key;
     });
 
     // returns x values
     var xValueLabels = data2[0].map(function (d) {
-        return (d.key)
+        return (d.key);
     });
     
     ymin = d3.min(assayMeasurements, function (d) {
-        return d.y
+        return d.y;
     });
     
     if (ymin >= 0) {
-      ymin = 0
+      ymin = 0;
     }
 
     x_name.domain(names);
@@ -73,7 +73,7 @@
 
     lineID.domain(yvalueIds).rangeRoundBands([0, x_xValue.rangeBand()]);
     y.domain([ymin, d3.max(assayMeasurements, function (d) {
-        return d.y
+        return d.y;
     })]);
 
     //create x and y axis 
@@ -150,26 +150,26 @@
             return graphSet.height - y(d.y);
         })
         .style("fill", function (d) {
-            return graphSet.color(d.key)
+            return graphSet.color(d.key);
         })
         .style("opacity", 0.3);
 
     var hover = categories_g.selectAll('.rect')
         .data(function (d) {
-            return d.values
+            return d.values;
         })
         .on("mouseover", function (d) {
             div.transition()
-                .style("opacity", .9);
+                .style("opacity", 0.9);
             div.html(d.y + "<br/>" + d.y_unit)
                 .style("left", (d3.event.pageX) + "px")
                 .style("top", (d3.event.pageY - 28) + "px");
         })
-        .on("mouseout", function (d) {
+        .on("mouseout", function () {
             div.transition()
                 .style("opacity", 0);
         });
-};
+}
 
 /**
  * this function takes in input a protein's line values and inserts a y id key for
@@ -178,8 +178,8 @@
 function addYIdentifier(data3) {
     return _.map(data3, function (d, i) {
         d.key = 'y' + i;
-    })
-};
+    });
+}
 
 /**
  *  function takes in nested assayMeasurements and inserts a y id key for each value object
@@ -188,7 +188,7 @@ function addYIdentifier(data3) {
 function getXYValues(nested) {
     return _.forEach(nested, function (nameValues) {
         _.map(nameValues, function (xValue) {
-            addYIdentifier(xValue.values)
-        })
+            addYIdentifier(xValue.values);
+        });
     });
 }
