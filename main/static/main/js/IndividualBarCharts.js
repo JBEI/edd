@@ -33,7 +33,7 @@ function createSideBySide(graphSet, selector) {
         if (d.y_unit == undefined) {
         d.y_unit = 'n/a'
       }
-        return "<strong>y value</strong> <span style='color:red'>" + d.y + " " + d.y_unit + "</span>";
+        return "<strong>" + d.y + " " + d.y_unit + "</strong>";
       });
 
     var svg = d3.select(selector).append("svg")

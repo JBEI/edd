@@ -271,7 +271,7 @@ GraphHelperMethods = {
             .append('text')
             .attr("y", 20)
             .attr("x", graphSet.width)
-            .text(graphSet.x_unit);
+            .text("Time in " + graphSet.x_unit);
         //Draw the x Grid lines
         // svg.append("g")
         //     .attr("class", "grid")
