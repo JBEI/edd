@@ -201,7 +201,7 @@ Directions assume that docker containers are already running in the development 
     pg_dump -h postgres.jbei.org -d eddprod -f edd-prod-dump.sql -U your_username'
     
     Load a dump file:
-    docker-compose stop appserver
+    docker-compose down
     POSTGRES_DUMP_FILE=edd-prod-dump.sql docker-compose up -d
 
 ### Linux / Debian <a name="Debian"/>
