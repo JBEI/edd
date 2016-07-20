@@ -24,10 +24,10 @@ exports.takeShot = function(cb){
                        'main/fixtures/newshots/timeBar.png'];
 
             // original hash values from main/fixtures/originalshots
-            var originalHash = ['d6d3bbc3981d4cc782653aa91cfa920a',
-                                '294bbd84b8276e8b696e9b307a7409b0',
-                                '480184f1c8f23a8df887297ec6dac253',
-                                'b25f14a9358025f2d18820391d5b294a'];
+            var originalHash = ['dbafafa82f734b9056742038b83980af',
+                                '75e5c192b28f7886775c42e35bae177a',
+                                '8d33e364790f911825b442d7fb13d404',
+                                '57ee7b6d7ca9e70b570446d74dacb18b'];
             //new hash values created from newshots
             var newHash = [];
 
@@ -37,10 +37,10 @@ exports.takeShot = function(cb){
 
             for (var index in newHash) {
                 if (newHash[index] == originalHash[index]) {
-                    console.log('success: ' + arr[index].slice(23))
+                    console.log('success: ' + arr[index].slice(23) + 'newHash' + newHash[index])
                 }
                 else {
-                    console.log('fail: '  + arr[index].slice(23))
+                    console.log('fail: '  + arr[index].slice(23) + 'newHash' + newHash[index])
                 }
             }
         }
