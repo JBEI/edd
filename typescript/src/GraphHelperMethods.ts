@@ -271,7 +271,7 @@ GraphHelperMethods = {
             .append('text')
             .attr("y", 20)
             .attr("x", graphSet.width)
-            .text("Time in " + graphSet.x_unit);
+            .text("Time in " + graphSet .x_unit);
         //Draw the x Grid lines
         // svg.append("g")
         //     .attr("class", "grid")
@@ -291,7 +291,7 @@ GraphHelperMethods = {
         .scale(y)
         .orient("left")
         .tickFormat(d3.format(".2s"));
-        
+
         // Draw the y Grid lines
         // svg.append("g")
         //     .attr("class", "grid")
@@ -311,7 +311,22 @@ GraphHelperMethods = {
             .attr("dy", ".71em")
             .style("text-anchor", "end")
             .text(graphSet.y_unit);
-    }
-    
-};
+    },
 
+        /**
+     *  This function creates the y axis tick marks for grid
+    **/
+    make_y_axis: function (y) {
+        return d3.svg.axis()
+            .scale(y)
+            .orient("left")
+            .ticks(5)
+    },
+
+     make_x_axis: function(x) {
+        return d3.svg.axis()
+            .scale(x)
+            .orient("bottom")
+            .ticks(5)
+    }
+};
