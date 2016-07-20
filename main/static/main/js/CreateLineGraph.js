@@ -26,11 +26,17 @@ function createLineGraph(graphSet, svg) {
         })
         .entries(assayMeasurements);
 
-    y.domain([d3.min(getValues, function (d) {
+    ymin = d3.min(getValues, function (d) {
         return d3.min(d.values, function (d) {
             return d.y;
         });
-    }), d3.max(getValues, function (d) {
+    });
+
+    if (ymin >= 0) {
+      ymin = 0
+    }
+
+    y.domain([ymin, d3.max(getValues, function (d) {
         return d3.max(d.values, function (d) {
             return d.y;
         });

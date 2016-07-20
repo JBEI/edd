@@ -38,13 +38,19 @@ function createTimeGraph(graphSet, svg) {
         })
         .entries(assayMeasurements);
 
-    x0.domain(data.map(function (d) {return d.key;}));
-    x1.domain(proteinNames.map(function (d) {return d.key;})).rangeRoundBands([0, x0.rangeBand()]);
-    y.domain([d3.min(data, function (d) {
+    var ymin = d3.min(data, function (d) {
         return d3.min(d.values, function (d) {
             return d.y;
         });
-    }), d3.max(data, function (d) {
+    });
+
+    if (ymin >= 0) {
+      ymin = 0
+    }
+
+    x0.domain(data.map(function (d) {return d.key;}));
+    x1.domain(proteinNames.map(function (d) {return d.key;})).rangeRoundBands([0, x0.rangeBand()]);
+    y.domain([ymin, d3.max(data, function (d) {
         return d3.max(d.values, function (d) {
             return d.y;
         });

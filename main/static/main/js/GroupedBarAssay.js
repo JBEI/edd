@@ -58,16 +58,21 @@
     var xValueLabels = data2[0].map(function (d) {
         return (d.key)
     });
-
+    
+    ymin = d3.min(assayMeasurements, function (d) {
+        return d.y
+    });
+    
+    if (ymin >= 0) {
+      ymin = 0
+    }
 
     x_name.domain(names);
 
     x_xValue.domain(xValueLabels).rangeRoundBands([0, x_name.rangeBand()]);
 
     lineID.domain(yvalueIds).rangeRoundBands([0, x_xValue.rangeBand()]);
-    y.domain([d3.min(assayMeasurements, function (d) {
-        return d.y
-    }), d3.max(assayMeasurements, function (d) {
+    y.domain([ymin, d3.max(assayMeasurements, function (d) {
         return d.y
     })]);
 

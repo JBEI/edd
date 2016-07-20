@@ -41,8 +41,13 @@ function createSideBySide(graphSet, selector) {
 
     svg.call(tip);
 
+    var ymin = d3.min(linedata[i], function(d) { return d.y; })
+
+    if (ymin >= 0) {
+      ymin = 0
+    }
     x.domain(linedata[i].map(function(d) { return d.x; }));
-    y.domain([d3.min(linedata[i], function(d) { return d.y; }), d3.max(linedata[i], function(d) { return d.y; })]);
+    y.domain([ymin, d3.max(linedata[i], function(d) { return d.y; })]);
 
     if (graphSet.labels.length == 0) {
       var x_label = 'n/a'
