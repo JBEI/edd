@@ -69,8 +69,12 @@
     {% endblock content %}
     </div>
     <div class="footer">
-        {% if request.edd_deployment == "PRODUCTION" %}
-        {% elif request.edd_deployment == "DEVELOPMENT" %}
+        {% if request.edd_deployment == "DEVELOPMENT" %}
+            <span class="dev">DEVELOPMENT</span>
+        {% elif request.edd_deployment == "TEST" %}
+            <span class="test">TEST</span>
+        {% elif request.edd_deployment == "INTEGRATION" %}
+            <span class="int">INTEGRATION</span>
         {% else %}
         {% endif %}
         <div class="footer-text">

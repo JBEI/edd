@@ -112,6 +112,18 @@ a:hover {
     height:16px;
     vertical-align:-25%;
 }
+
+.test {
+    color: yellow;
+}
+
+.dev {
+    color: green
+}
+
+.int {
+    color: orange;
+}
 .disclose {
     clear: both;
 }
