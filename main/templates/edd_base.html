@@ -69,6 +69,10 @@
     {% endblock content %}
     </div>
     <div class="footer">
+        {% if request.edd_deployment == "PRODUCTION" %}
+        {% elif request.edd_deployment == "DEVELOPMENT" %}
+        {% else %}
+        {% endif %}
         <div class="footer-text">
             <span class="footer-text-app">JBEI Experiment Data Depot</span>
             <span class="footer-text-contact"><a href="mailto:jbei-help@lbl.gov?subject=EDD">Contact</a></span>
