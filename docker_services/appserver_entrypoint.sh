@@ -78,15 +78,7 @@ echo "$SEPARATOR"
 # for unchecked boxes, e.g. ' [ ]'. We can run no-op migrations with impunity, but this way we're
 # printing output that's consistent with the logic below, which also controls whether the Solr index
 # gets rebuilt
-#MIGRATIONS_NEEDED=0
-#MIGRATIONS_NEEDED=$(python /code/manage.py showmigrations --list | grep --perl-regexp
-# '\s+\[\s+\].*' | wc -l)
-#MIGRATIONS_NEEDED=`python /code/manage.py showmigrations --list | grep --perl-regexp '\s+\[\s+\]
-# .*' | wc -l`
-#MIGRATIONS_NEEDED=$(python /code/manage.py showmigrations --list | \
-#    grep --perl-regexp '\s+\[\s+\].*' | \
-#    wc -l)
-# echo "$MIGRATIONS_NEEDED migrations needed. TODO: remove debug stmt"
+#MIGRATIONS_NEEDED=$(python /code/manage.py showmigrations --plan | grep -v '[X]' | wc -l)
 
 MIGRATIONS_NEEDED=1 # short-circuit commented-out logic above for detecting the number of
 # migrations. Works on the command line after the appserver is started, but fails when attempted
