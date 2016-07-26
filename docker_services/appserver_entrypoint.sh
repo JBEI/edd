@@ -34,22 +34,27 @@ until nc -z postgres 5432; do
 done
 
 export PGPASSWORD=$POSTGRES_PASSWORD
-if [ ! -z $POSTGRES_DUMP_URL ] || ([ ! -z $POSTGRES_DUMP_FILE ] && [ -r $POSTGRES_DUMP_FILE ]); then
-    REINDEX_EDD=true
-    psql -h postgres -U postgres -c 'DROP DATABASE IF EXISTS edd;'
-    psql -h postgres -U postgres -c 'CREATE DATABASE edd;'  # must be separate commands! Psql
-    # complains! 'ERROR:  DROP DATABASE cannot be executed from a function or multi-command string'
 # Test if our database exists; run init script if missing
-elif ! psql -lqt -h postgres -U postgres | cut -d \| -f 1 | grep -qw edd; then
+if ! psql -lqt -h postgres -U postgres | cut -d \| -f 1 | grep -qw edd; then
     echo "Initializing the database for first-time use ..."
-    REINDEX_EDD=true
     psql -h postgres -U postgres template1 < /code/docker_services/postgres/init.sql
+    # Flag for re-indexing
+    REINDEX_EDD=true
+fi
+if [ ! -z $POSTGRES_DUMP_URL ] || ([ ! -z $POSTGRES_DUMP_FILE ] && [ -r $POSTGRES_DUMP_FILE ]); then
+    # Don't bother dropping and recreating if database just initialized
+    if [ "$REINDEX_EDD" != "true" ]; then
+        echo 'DROP DATABASE IF EXISTS edd; CREATE DATABASE edd;' | psql -h postgres -U postgres
+    fi
+    # Flag for re-indexing
+    REINDEX_EDD=true
 fi
 
 # If database dump URL is provided, dump the reference database and restore the local one from
 # the dump
 if [ ! -z $POSTGRES_DUMP_URL ]; then
-    echo "Copying database from remote $POSTGRES_DUMP_URL ..." # TODO: blank out password
+    echo "Copying database from remote $POSTGRES_DUMP_URL ..." | \
+        sed -E -e 's/(\w+):\/\/([^:]+):[^@]*@/\1:\/\/\2:****@/'
     REINDEX_EDD=true
     pg_dump "$POSTGRES_DUMP_URL" | psql -h postgres -U postgres edd
 elif [ ! -z $POSTGRES_DUMP_FILE ] && [ -r $POSTGRES_DUMP_FILE ]; then
@@ -74,27 +79,14 @@ echo "$SEPARATOR"
 echo "Running database migrations..."
 echo "$SEPARATOR"
 
-# without running them, figure out how many migrations are needed by grepping django command output
-# for unchecked boxes, e.g. ' [ ]'. We can run no-op migrations with impunity, but this way we're
-# printing output that's consistent with the logic below, which also controls whether the Solr index
-# gets rebuilt
-#MIGRATIONS_NEEDED=$(python /code/manage.py showmigrations --plan | grep -v '[X]' | wc -l)
+# List any pending migrations
+MIGRATIONS=$(python /code/manage.py showmigrations --plan 2> /dev/null | grep -v '[X]')
 
-MIGRATIONS_NEEDED=1 # short-circuit commented-out logic above for detecting the number of
-# migrations. Works on the command line after the appserver is started, but fails when attempted
-# during container start. hmmm... TODO: consider implementing/testing other patterns that detect #
-# of applied migrations by just always running them -- though presently unclear whether that will
-# fare any better. Need to prevent re-indexing when migrations weren't run.
-
-# if needed, run migrations and rebuild the Solr index
-if [ $MIGRATIONS_NEEDED -gt 0 ]; then
-    echo "Running migrations..."
+# Run migrations; if any detected, flag for re-indexing
+python /code/manage.py migrate
+if [ ! -z "$MIGRATIONS" ]; then
+    echo "Detected pending migrations..."
     REINDEX_EDD=true
-    python /code/manage.py migrate
-    echo
-    echo "End of database migrations"
-else
-    echo "No pending database migrations."
 fi
 
 echo
