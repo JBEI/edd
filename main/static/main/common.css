@@ -118,7 +118,8 @@ a:hover {
 }
 
 .dev {
-    color: green
+    color: green;
+    font-size: 12px;
 }
 
 .int {

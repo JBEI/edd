@@ -56,6 +56,14 @@
         </div>
     </div>
     <div class="statusMessage">
+       {% if request.edd_deployment == "DEVELOPMENT" %}
+            <span class="dev">Development</span>
+        {% elif request.edd_deployment == "TEST" %}
+            <span class="test">Test</span>
+        {% elif request.edd_deployment == "INTEGRATION" %}
+            <span class="int">Integration</span>
+        {% else %}
+        {% endif %}
     {% block status %}
         {% if messages %}
             {% for message in messages %}
@@ -69,14 +77,6 @@
     {% endblock content %}
     </div>
     <div class="footer">
-        {% if request.edd_deployment == "DEVELOPMENT" %}
-            <span class="dev">DEVELOPMENT</span>
-        {% elif request.edd_deployment == "TEST" %}
-            <span class="test">TEST</span>
-        {% elif request.edd_deployment == "INTEGRATION" %}
-            <span class="int">INTEGRATION</span>
-        {% else %}
-        {% endif %}
         <div class="footer-text">
             <span class="footer-text-app">JBEI Experiment Data Depot</span>
             <span class="footer-text-contact"><a href="mailto:jbei-help@lbl.gov?subject=EDD">Contact</a></span>
