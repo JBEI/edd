@@ -74,6 +74,7 @@ SECRET_KEY = env('SECRET_KEY', default='I was awake and dreaming at the same tim
 
 ALLOWED_HOSTS = []
 SITE_ID = 1
+USE_X_FORWARDED_HOST = True
 LOGIN_REDIRECT_URL = '/'
 
 # Application definition
@@ -182,9 +183,9 @@ SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
 SESSION_CACHE_ALIAS = 'default'
 
 
-####################################################################################################
+###################################################################################################
 # REST API Framework
-####################################################################################################
+###################################################################################################
 
 PUBLISH_REST_API = False  # by default, don't publish the API until we can do more testing
 REST_FRAMEWORK = {
