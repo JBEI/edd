@@ -68,7 +68,6 @@ services:
     expose:
       - "25"
   edd:
-    build: .
     image: edd
     command: "true"
     env_file: secrets.env
