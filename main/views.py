@@ -80,11 +80,9 @@ def load_study(request, study_id, permission_type=['R', 'W', ]):
         return get_object_or_404(Study, pk=study_id)
     return get_object_or_404(
         Study.objects.distinct(),
-        Q(userpermission__user=request.user,
-          userpermission__permission_type__in=permission_type) |
-        Q(grouppermission__group__user=request.user,
-          grouppermission__permission_type__in=permission_type),
-        pk=study_id)
+        Study.user_permission_q(request.user, permission_type),
+        pk=study_id,
+    )
 
 
 class StudyCreateView(generic.edit.CreateView):
@@ -143,11 +141,9 @@ class StudyDetailView(generic.DetailView):
         qs = super(StudyDetailView, self).get_queryset()
         if self.request.user.is_superuser:
             return qs
-        return qs.filter(
-            Q(userpermission__user=self.request.user,
-              userpermission__permission_type__in=['R', 'W', ]) |
-            Q(grouppermission__group__user=self.request.user,
-              grouppermission__permission_type__in=['R', 'W', ])).distinct()
+        return qs.filter(Study.user_permission_q(
+            self.request.user, (StudyPermission.READ, StudyPermission.WRITE, ),
+        )).distinct()
 
     def handle_assay(self, request, context, *args, **kwargs):
         assay_id = request.POST.get('assay-assay_id', None)
@@ -843,6 +839,7 @@ def permissions(request, study):
             for perm in perms:
                 user = perm.get('user', None)
                 group = perm.get('group', None)
+                everyone = perm.get('public', None)
                 ptype = perm.get('type', StudyPermission.NONE)
                 manager = None
                 lookup = {}
@@ -852,6 +849,9 @@ def permissions(request, study):
                 elif user is not None:
                     lookup = {'user_id': user.get('id', 0), 'study_id': study}
                     manager = obj.userpermission_set.filter(**lookup)
+                elif everyone is not None:
+                    lookup = {'study_id': study}
+                    manager = obj.everyonepermission_set.filter(**lookup)
                 if manager is None:
                     logger.warning('Invalid permission type for add')
                 elif ptype == StudyPermission.NONE:
@@ -860,17 +860,18 @@ def permissions(request, study):
                     lookup['permission_type'] = ptype
                     manager.update_or_create(**lookup)
         except Exception as e:
-            logger.error('Error modifying study (%s) permissions: %s' % (study, str(e)))
+            logger.exception('Error modifying study (%s) permissions: %s', study, e)
             return HttpResponse(status=500)
         return HttpResponse(status=204)
     elif request.method == 'DELETE':
         if not obj.user_can_write(request.user):
             return HttpResponseForbidden("You do not have permission to modify this study.")
         try:
+            obj.everyonepermission_set.all().delete()
             obj.grouppermission_set.all().delete()
             obj.userpermission_set.all().delete()
         except Exception as e:
-            logger.error('Error deleting study (%s) permissions: %s' % (study, str(e)))
+            logger.exception('Error deleting study (%s) permissions: %s', study, e)
             return HttpResponse(status=500)
         return HttpResponse(status=204)
     else:

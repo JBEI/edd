@@ -651,27 +651,42 @@ class Study(EDDObject):
     @staticmethod
     def user_permission_q(user, permission, keyword_prefix=''):
         """
-        Constructs a django Q object for testing whether the specified user has the
-        required permission for a study as part of a Study-related Django model query. It's
-        important to note that the provided Q object will return one row for each user/group
-        permission that gives the user access to the study, so clients will often want to use
-        distinct() to limit the returned results. Note that
-        this only tests whether the user or group has specific permissions granted on the Study,
-        not whether the user's role (e.g. 'staff', 'admin') gives him/her access to it.  See
-        user_role_has_read_access( user), user_can_read(self, user).
+        Constructs a django Q object for testing whether the specified user has the required
+        permission for a study as part of a Study-related Django model query. It's important to
+        note that the provided Q object will return one row for each user/group permission that
+        gives the user access to the study, so clients will often want to use distinct() to limit
+        the returned results. Note that this only tests whether the user or group has specific
+        permissions granted on the Study, not whether the user's role (e.g. 'staff', 'admin')
+        gives him/her access to it.  See user_role_has_read_access(user), user_can_read(self, user).
         :param user: the user
-        :param permission: the study permission type to test (e.g. StudyPermission.READ)
+        :param permission: the study permission type to test (e.g. StudyPermission.READ); can be
+            any iterable of permissions or a single permission
         :param keyword_prefix: an optional keyword prefix to prepend to the query keyword arguments.
         For example when querying Study, the default value of '' should be used, or when querying
         for Lines, whose permissions depend on the related Study, use 'study__' similar to other
         queryset keyword arguments.
-        :return: true if the user has explicit read permission to the study
+        :return: true if the user has the specified permission to the study
         """
-
-        return ((Q(**{'%suserpermission__user' % keyword_prefix: user}) &
-                 Q(**{'%suserpermission__permission_type' % keyword_prefix: permission})) |
-                (Q(**{'%sgrouppermission__group__user' % keyword_prefix: user}) &
-                 Q(**{'%sgrouppermission__permission_type' % keyword_prefix: permission})))
+        prefix = keyword_prefix
+        perm = permission
+        if isinstance(permission, string_types):
+            perm = (permission, )
+        user_perm = '%suserpermission' % prefix
+        group_perm = '%sgrouppermission' % prefix
+        all_perm = '%severyonepermission' % prefix
+        return (
+            Q(**{
+                '%s__user' % user_perm: user,
+                '%s__permission_type__in' % user_perm: perm,
+            }) |
+            Q(**{
+                '%s__group__user' % group_perm: user,
+                '%s__permission_type__in' % group_perm: perm,
+            }) |
+            Q(**{
+                '%s__permission_type__in' % all_perm: perm,
+            })
+        )
 
     @staticmethod
     def user_role_can_read(user):
@@ -679,16 +694,18 @@ class Study(EDDObject):
 
     def user_can_read(self, user):
         """ Utility method testing if a user has read access to a Study. """
-        return user and (Study.user_role_can_read(user) or any(p.is_read() for p in chain(
+        return user and (self.user_role_can_read(user) or any(p.is_read() for p in chain(
             self.userpermission_set.filter(user=user),
-            self.grouppermission_set.filter(group__user=user)
+            self.grouppermission_set.filter(group__user=user),
+            self.everyonepermission_set.all(),
         )))
 
     def user_can_write(self, user):
         """ Utility method testing if a user has write access to a Study. """
         return super(Study, self).user_can_write(user) or any(p.is_write() for p in chain(
             self.userpermission_set.filter(user=user),
-            self.grouppermission_set.filter(group__user=user)
+            self.grouppermission_set.filter(group__user=user),
+            self.everyonepermission_set.all(),
         ))
 
     @staticmethod
@@ -699,7 +716,11 @@ class Study(EDDObject):
 
     def get_combined_permission(self):
         """ Returns a chained iterator over all user and group permissions on a Study. """
-        return chain(self.userpermission_set.all(), self.grouppermission_set.all())
+        return chain(
+            self.userpermission_set.all(),
+            self.grouppermission_set.all(),
+            self.everyonepermission_set.all(),
+        )
 
     def get_contact(self):
         """ Returns the contact email, or supplementary contact information if no contact user is
@@ -834,7 +855,7 @@ class GroupPermission(StudyPermission):
 
     def to_json(self):
         return {
-            'user': {
+            'group': {
                 'id': self.group.pk,
                 'name': self.group.name,
             },
@@ -843,6 +864,26 @@ class GroupPermission(StudyPermission):
 
     def __str__(self):
         return 'g:%(group)s' % {'group': self.group.name}
+
+
+@python_2_unicode_compatible
+class EveryonePermission(StudyPermission):
+    class Meta:
+        db_table = 'study_public_permission'
+
+    def applies_to_user(self, user):
+        return True
+
+    def get_who_label(self):
+        return _('Everyone')
+
+    def to_json(self):
+        return {
+            'type': self.permission_type
+        }
+
+    def __str__(self):
+        return 'g:__Everyone__'
 
 
 @python_2_unicode_compatible
