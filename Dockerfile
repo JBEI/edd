@@ -9,6 +9,7 @@ WORKDIR /code
 
 # include Debian packages required to build pip packages
 RUN apt-get update \
+    && apt-get upgrade -y \
     && apt-get install -y \
         gfortran \
         libatlas-dev \
