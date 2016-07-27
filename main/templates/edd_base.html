@@ -20,11 +20,11 @@
 </head>
 <body>
     <div class="topBanner">
-        <div id="wrapper" class="siteLogo">
+        <div class="siteLogo">
             <body bgcolor="
-                {% if request.edd_deployment == "DEVELOPMENT" %}#f4fef4
-                {% elif request.edd_deployment|slice:":4" == "TEST" %}#fff0f2
-                {% elif request.edd_deployment == "INTEGRATION" %}#fff6e5
+                {% if request.edd_deployment == "DEVELOPMENT" %} #f4fef4
+                {% elif request.edd_deployment|slice:":4" == "TEST" %} #fff0f2
+                {% elif request.edd_deployment == "INTEGRATION" %} #fff6e5
                 {% endif %}">
             </body>
             <a href="{% url 'main:index' %}">
