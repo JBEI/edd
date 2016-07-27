@@ -74,7 +74,7 @@ SECRET_KEY = env('SECRET_KEY', default='I was awake and dreaming at the same tim
 
 ALLOWED_HOSTS = []
 SITE_ID = 1
-
+USE_X_FORWARDED_HOST = True
 EDD_DEPLOYMENT_ENVIRONMENT = env('EDD_DEPLOYMENT_ENVIRONMENT',  default='PRODUCTION')
 
 LOGIN_REDIRECT_URL = '/'
