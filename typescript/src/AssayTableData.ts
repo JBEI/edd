@@ -2222,8 +2222,9 @@ module EDDTableImport {
                     defaultSel = this.disambiguateAnAssayOrLine(name, i);
                     // First make a table row, and save a reference to it
                     row = <HTMLTableRowElement>body.insertRow();
-                    disam.rowElementJQ = $(row);
+                    nRows++;
 
+                    disam.rowElementJQ = $(row);
                     // Next, add a table cell with the string we are disambiguating
                     $('<div>').text(name).appendTo(row.insertCell());
                     // Now build another table cell that will contain the pulldowns
@@ -2270,7 +2271,7 @@ module EDDTableImport {
 
             var endTime = new Date();
             var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
-            console.log("End of TypeDisambiguationStep.remakeAssaySection(). Table is ", nRows, " rows X ", nColumns, " cols.",  "Elapsed time: " +
+            console.log("End of TypeDisambiguationStep.remakeAssaySection(). Table is ", nRows, " rows X ", nColumns, " cols, with ", ATData.existingLines.length, " line options. Elapsed time: " +
                 " time: ", elapsedSeconds, " s. Avg row creation time: ", avgRowCreationSeconds, " s");
         }
 
