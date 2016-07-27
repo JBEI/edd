@@ -11,6 +11,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
+from django.db import transaction
 from django.db.models import Count, Prefetch, Q
 from django.http import (
     Http404, HttpResponse, HttpResponseNotAllowed, HttpResponseRedirect, JsonResponse,
@@ -824,52 +825,60 @@ def study_map(request, study):
         raise e
 
 
-# /study/<study_id>/permissions/
 def permissions(request, study):
-    obj = load_study(request, study)
+    """
+    Implements the REST-style view for /study/<study>/permissions/
+    :param request: the HttpRequest
+    :param study: the study primary key
+    :return: the response
+    """
+    logger.info('Start of main.views.permissions(request, study)')
+    study_model = load_study(request, study)
     if request.method == 'HEAD':
         return HttpResponse(status=200)
     elif request.method == 'GET':
-        return JsonResponse([p.to_json() for p in obj.get_combined_permission()])
+        return JsonResponse([p.to_json() for p in study_model.get_combined_permission()])
     elif request.method == 'PUT' or request.method == 'POST':
-        if not obj.user_can_write(request.user):
+        if not study_model.user_can_write(request.user):
             return HttpResponseForbidden("You do not have permission to modify this study.")
         try:
             perms = json.loads(request.POST['data'])
-            for perm in perms:
-                user = perm.get('user', None)
-                group = perm.get('group', None)
-                everyone = perm.get('public', None)
-                ptype = perm.get('type', StudyPermission.NONE)
-                manager = None
-                lookup = {}
-                if group is not None:
-                    lookup = {'group_id': group.get('id', 0), 'study_id': study}
-                    manager = obj.grouppermission_set.filter(**lookup)
-                elif user is not None:
-                    lookup = {'user_id': user.get('id', 0), 'study_id': study}
-                    manager = obj.userpermission_set.filter(**lookup)
-                elif everyone is not None:
-                    lookup = {'study_id': study}
-                    manager = obj.everyonepermission_set.filter(**lookup)
-                if manager is None:
-                    logger.warning('Invalid permission type for add')
-                elif ptype == StudyPermission.NONE:
-                    manager.delete()
-                else:
-                    lookup['permission_type'] = ptype
-                    manager.update_or_create(**lookup)
+            with transaction.atomic():  # make requested changes as a group, or not at all
+                for perm in perms:
+                    user = perm.get('user', None)
+                    group = perm.get('group', None)
+                    everyone = perm.get('public', None)
+                    ptype = perm.get('type', StudyPermission.NONE)
+                    manager = None
+                    lookup = {}
+                    if group is not None:
+                        lookup = {'group_id': group.get('id', 0), 'study_id': study_model.pk}
+                        manager = study_model.grouppermission_set.filter(**lookup)
+                    elif user is not None:
+                        lookup = {'user_id': user.get('id', 0), 'study_id': study_model.pk}
+                        manager = study_model.userpermission_set.filter(**lookup)
+                    elif everyone is not None:
+                        lookup = {'study_id': study}
+                        manager = study_model.everyonepermission_set.filter(**lookup)
+                    if manager is None:
+                        logger.warning('Invalid permission type for add')
+                    elif ptype == StudyPermission.NONE:
+                        manager.delete()
+                    else:
+                        lookup['permission_type'] = ptype
+                        manager.update_or_create(**lookup)
         except Exception as e:
             logger.exception('Error modifying study (%s) permissions: %s', study, e)
             return HttpResponse(status=500)
         return HttpResponse(status=204)
     elif request.method == 'DELETE':
-        if not obj.user_can_write(request.user):
+        if not study_model.user_can_write(request.user):
             return HttpResponseForbidden("You do not have permission to modify this study.")
         try:
-            obj.everyonepermission_set.all().delete()
-            obj.grouppermission_set.all().delete()
-            obj.userpermission_set.all().delete()
+            with transaction.atomic():
+                study_model.everyonepermission_set.all().delete()
+                study_model.grouppermission_set.all().delete()
+                study_model.userpermission_set.all().delete()
         except Exception as e:
             logger.exception('Error deleting study (%s) permissions: %s', study, e)
             return HttpResponse(status=500)
