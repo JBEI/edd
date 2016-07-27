@@ -9,6 +9,7 @@ WORKDIR /code
 
 # include Debian packages required to build pip packages
 RUN apt-get update \
+    && apt-get upgrade -y \
     && apt-get install -y \
         gfortran \
         libatlas-dev \
@@ -19,6 +20,7 @@ RUN apt-get update \
         libpq-dev \
         libsasl2-dev \
         libssl-dev \
+        netcat \
         postgresql-client \
         python-all \
         python-all-dev \

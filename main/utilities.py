@@ -91,13 +91,13 @@ def get_edddata_study(study):
     # …
     # assays = assays.annotate(
     #     metabolites=Count(Case(When(
-    #         measurement__measurement_type__type_group=MeasurementGroup.METABOLITE,
+    #         measurement__measurement_type__type_group=MeasurementType.Group.METABOLITE,
     #         then=Value(1)))),
     #     transcripts=Count(Case(When(
-    #         measurement__measurement_type__type_group=MeasurementGroup.GENEID,
+    #         measurement__measurement_type__type_group=MeasurementType.Group.GENEID,
     #         then=Value(1)))),
     #     proteins=Count(Case(When(
-    #         measurement__measurement_type__type_group=MeasurementGroup.PROTEINID,
+    #         measurement__measurement_type__type_group=MeasurementType.Group.PROTEINID,
     #         then=Value(1)))),
     # )
     strains = study.get_strains_used()
