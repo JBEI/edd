@@ -24,7 +24,6 @@ function createSideBySide(graphSet, selector) {
     var yAxis = d3.svg.axis()
         .scale(y)
         .orient("left");
-
     var tip = d3.tip()
       .attr('class', 'd3-tip')
       .offset([-10, 0])
@@ -32,7 +31,8 @@ function createSideBySide(graphSet, selector) {
         if (d.y_unit === undefined) {
         d.y_unit = 'n/a';
       }
-        return "<strong>" + d.y + " " + d.y_unit + "</strong>";
+        return "<span>" + "measurement: " + "</span><span style='color:red'>" + d.y + " " + d.y_unit + "</span>" +
+               "</br><span>" + "time: " + "</span><span style='color:red'>" + d.x + " " + d.x_unit + "</span>" ;
       });
 
     var svg = d3.select(selector).append("svg")
