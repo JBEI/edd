@@ -20,7 +20,13 @@
 </head>
 <body>
     <div class="topBanner">
-        <div class="siteLogo">
+        <div id="wrapper" class="siteLogo">
+            <body bgcolor="
+                {% if request.edd_deployment == "DEVELOPMENT" %}#f4fef4
+                {% elif request.edd_deployment|slice:":4" == "TEST" %}#fff0f2
+                {% elif request.edd_deployment == "INTEGRATION" %}#fff6e5
+                {% endif %}">
+            </body>
             <a href="{% url 'main:index' %}">
                 <img src="{% static 'main/images/JBEI_Corner_Logo-EDD.png' %}"
                         alt="EDD Logo - Home"/>
@@ -57,11 +63,11 @@
     </div>
     <div class="statusMessage">
         {% if request.edd_deployment == "DEVELOPMENT" %}
-            <span class="dev">Development</span>
+            <span class="dev">{{ request.edd_deployment}}</span>
         {% elif request.edd_deployment|slice:":4" == "TEST" %}
-            <span class="test">Test</span>
+            <span class="test">{{ request.edd_deployment }}</span>
         {% elif request.edd_deployment == "INTEGRATION" %}
-            <span class="int">Integration</span>
+            <span class="int">{{ request.edd_deployment }}</span>
         {% endif %}
     {% block status %}
         {% if messages %}
