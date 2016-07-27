@@ -22,7 +22,7 @@ def search_compartment(request):
     return JsonResponse({
         'rows': [
             {'id': c[0], 'name': c[1]}
-            for c in edd_models.MeasurementCompartment.GROUP_CHOICE
+            for c in edd_models.Measurement.Compartment.CHOICE
         ],
     })
 
@@ -60,7 +60,7 @@ def search_metaboliteish(request):
     """ Autocomplete for "metaboliteish" values; metabolites and general measurements. """
     term = request.GET.get('term', '')
     re_term = re.escape(term)
-    groups = (edd_models.MeasurementGroup.GENERIC, edd_models.MeasurementGroup.METABOLITE)
+    groups = (edd_models.MeasurementType.Group.GENERIC, edd_models.MeasurementType.Group.METABOLITE)
     found = edd_models.MeasurementType.objects.filter(
         Q(type_group__in=groups), Q(type_name__iregex=re_term) | Q(short_name__iregex=re_term)
     )[:20]
