@@ -13,8 +13,8 @@ from django.db.models import Q
 from django.utils.translation import ugettext as _
 
 from ..models import (
-    Assay, Datasource, GeneIdentifier, Line, MeasurementCompartment, MeasurementFormat,
-    MeasurementType, MeasurementUnit, MeasurementValue, MetadataType, ProteinIdentifier, Protocol
+    Assay, Datasource, GeneIdentifier, Line, Measurement, MeasurementType, MeasurementUnit,
+    MeasurementValue, MetadataType, ProteinIdentifier, Protocol
 )
 
 
@@ -268,7 +268,7 @@ class TableImport(object):
 
     def _mtype(self, item):
         hours = MeasurementUnit.objects.get(unit_name='hours')
-        NO_TYPE = MType(MeasurementCompartment.UNKNOWN, None, hours)
+        NO_TYPE = MType(Measurement.Compartment.UNKNOWN, None, hours)
         # In Transcriptomics and Proteomics mode, we attempt to resolve measurements client-side,
         # so we go by the measurement_name, ignoring the measurement_id and related fields (which
         # will be blank)
@@ -278,7 +278,7 @@ class TableImport(object):
                 type_id = item.get('measurement_id', 0)
                 units_id = item.get('units_id', 0)
                 found_type = MType(
-                    item.get('compartment_id', MeasurementCompartment.UNKNOWN),
+                    item.get('compartment_id', Measurement.Compartment.UNKNOWN),
                     MeasurementType.objects.get(pk=type_id),
                     MeasurementUnit.objects.get(pk=units_id)
                 )
@@ -318,7 +318,7 @@ class TableImport(object):
         if layout == 'tr':
             genes = GeneIdentifier.objects.filter(type_name=label)
             if len(genes) == 1:
-                found_type = MType(MeasurementCompartment.UNKNOWN, genes[0], hours)
+                found_type = MType(Measurement.Compartment.UNKNOWN, genes[0], hours)
             else:
                 logger.warning('Found %(length)s GeneIdentifier instances for %(label)s' % {
                     'length': len(genes),
@@ -331,7 +331,7 @@ class TableImport(object):
                 Q(type_name=label)
             )
             if len(proteins) == 1:
-                found_type = MType(MeasurementCompartment.UNKNOWN, proteins[0], hours)
+                found_type = MType(Measurement.Compartment.UNKNOWN, proteins[0], hours)
             else:
                 logger.warning('Found %(length)s ProteinIdentifier instances for %(label)s' % {
                     'length': len(proteins),
@@ -339,7 +339,7 @@ class TableImport(object):
                 })
                 if len(proteins) > 1:
                     # FIXME: choosing the first one for now, should be error?
-                    found_type = MType(MeasurementCompartment.UNKNOWN, proteins[0], hours)
+                    found_type = MType(Measurement.Compartment.UNKNOWN, proteins[0], hours)
                 else:
                     # FIXME: this blindly creates a new type; should try external lookups first?
                     try:
@@ -347,21 +347,21 @@ class TableImport(object):
                     except:
                         logger.error('Failed to create ProteinIdentifier %s' % label)
                     else:
-                        found_type = MType(MeasurementCompartment.UNKNOWN, p.pk, hours)
+                        found_type = MType(Measurement.Compartment.UNKNOWN, p.pk, hours)
         return found_type
 
     def _mtype_guess_format(self, points):
         layout = self._layout()
         if layout == 'mdv':
-            return MeasurementFormat.VECTOR    # carbon ratios are vectors
+            return Measurement.Format.VECTOR    # carbon ratios are vectors
         elif layout in ('tr', 'pr'):
-            return MeasurementFormat.SCALAR    # always single values
+            return Measurement.Format.SCALAR    # always single values
         else:
             # if any value looks like carbon ratio (vector), treat all as vector
             for (x, y) in points:
                 if y is not None and ('/' in y or ':' in y):
-                    return MeasurementFormat.VECTOR
-            return MeasurementFormat.SCALAR
+                    return Measurement.Format.VECTOR
+            return Measurement.Format.SCALAR
 
     def _replace(self):
         return self._data.get('writemode', None) == 'r'
