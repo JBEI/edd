@@ -106,7 +106,7 @@ class SbmlExport(object):
         # process all the scalar measurements
         types_qs = models.MeasurementType.objects.filter(
             measurement__in=measurements,
-            measurement__measurement_format=models.MeasurementFormat.SCALAR,
+            measurement__measurement_format=models.Measurement.Format.SCALAR,
         ).distinct()
         types_list = list(types_qs)
         # add fields matching species/exchange for every scalar measurement type
@@ -289,7 +289,7 @@ class SbmlExport(object):
         # https://code.djangoproject.com/ticket/24747
         values_qs = models.MeasurementValue.objects.filter(x__len=1, y__len=1).order_by('x')
         return m_form.measurement_qs.filter(
-                measurement_format=models.MeasurementFormat.SCALAR
+                measurement_format=models.Measurement.Format.SCALAR
             ).select_related(
                 'assay__line',
             ).prefetch_related(

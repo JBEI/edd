@@ -21,8 +21,8 @@ from .forms import (
     RegistryValidator, UserAutocompleteWidget
 )
 from .models import (
-    Assay, Attachment, CarbonSource, GeneIdentifier, GroupPermission, Line, MeasurementGroup,
-    Measurement, MeasurementType, Metabolite, MetadataGroup, MetadataType, Phosphor,
+    Assay, Attachment, CarbonSource, GeneIdentifier, GroupPermission, Line, Measurement,
+    MeasurementType, Metabolite, MetadataGroup, MetadataType, Phosphor,
     ProteinIdentifier, Protocol, SBMLTemplate, Strain, Study, Update, UserPermission,
     WorklistColumn, WorklistTemplate,
 )
@@ -313,7 +313,7 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         qs = super(MeasurementTypeAdmin, self).get_queryset(request)
         if self.model == MeasurementType:
-            qs = qs.filter(type_group=MeasurementGroup.GENERIC)
+            qs = qs.filter(type_group=MeasurementType.Group.GENERIC)
         qs = qs.annotate(num_studies=Count('measurement__assay__line__study', distinct=True))
         return qs
 
