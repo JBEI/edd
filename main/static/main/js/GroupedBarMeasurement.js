@@ -73,7 +73,7 @@ function createMeasurementGraph(graphSet, svg) {
             .enter().append("rect")
             .attr("width", x1.rangeBand())
             .attr("x", function (d) {
-                return x1(d.name);
+                return x1(d.nameid);
             })
             .attr("y", function (d) {
                 return y(d.y);

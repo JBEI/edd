@@ -4,24 +4,24 @@
  * this function takes in input min y value, max y value, and the sorted json object.
  *  outputs a grouped bar graph with values grouped by assay name
  **/
- function createAssayGraph(graphSet, svg) {
+ function createBarMeasurement2(graphSet, svg) {
 
     var assayMeasurements = graphSet.assayMeasurements;
 
     //x axis scale for assay's protein name
     var x_name = d3.scale.ordinal()
         .rangeRoundBands([0, graphSet.width], 0.1);
-    
+
     //x axis scale for x values
     var x_xValue = d3.scale.ordinal();
-    
+
     //x axis scale for line id to differentiate multiple lines associated with the same protein
     var lineID = d3.scale.ordinal();
 
     // y axis range scale
     var y = d3.scale.linear()
         .range([graphSet.height, 0]);
-    
+
     var div = d3.select("body").append("div")
         .attr("class", "tooltip")
         .style("opacity", 0);
@@ -29,7 +29,7 @@
     //nest data by name. nest again by x label
     var nested = d3.nest()
         .key(function (d) {
-            return d.name;
+            return d.nameid;
         })
         .key(function (d) {
             return d.x;
@@ -58,11 +58,11 @@
     var xValueLabels = data2[0].map(function (d) {
         return (d.key);
     });
-    
+
     ymin = d3.min(assayMeasurements, function (d) {
         return d.y;
     });
-    
+
     if (ymin >= 0) {
       ymin = 0;
     }
@@ -76,7 +76,7 @@
         return d.y;
     })]);
 
-    //create x and y axis 
+    //create x and y axis
     graphSet.create_x_axis(graphSet, x_name, svg);
     graphSet.create_y_axis(graphSet, y, svg);
 
@@ -176,7 +176,7 @@
  * each x, y object.
  **/
 function addYIdentifier(data3) {
-    return _.each(data3, function (d, i) {
+    return _.map(data3, function (d, i) {
         d.key = 'y' + i;
     });
 }
@@ -186,11 +186,9 @@ function addYIdentifier(data3) {
  *  returns data
  */
 function getXYValues(nested) {
-    return _.each(nested, function (nameValues) {
-        return _.each(nameValues.values, function (xValue) {
+    return _.forEach(nested, function (nameValues) {
+        _.map(nameValues, function (xValue) {
             addYIdentifier(xValue.values);
         });
     });
 }
-
-//nameValues.values[0].values
