@@ -115,6 +115,7 @@ a:hover {
 
 .test {
     color: yellow;
+    font-size: 12px;
 }
 
 .dev {
@@ -124,6 +125,7 @@ a:hover {
 
 .int {
     color: orange;
+    font-size: 12px;
 }
 .disclose {
     clear: both;
