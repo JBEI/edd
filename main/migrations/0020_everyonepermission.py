@@ -9,7 +9,7 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('main', '0017_parse-sbml-for-reactions'),
+        ('main', '0019_auto_20160713_0935'),
     ]
 
     operations = [
