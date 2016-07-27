@@ -18,11 +18,19 @@ GraphHelperMethods = {
     unitName: function (unitId, unitTypes) {
       return unitTypes[unitId].name;
     },
+
+    /**
+     *  This function takes a measurement id and measurement type json and returns the
+     *  measurement name
+    **/
+    measurementName: function (measurementId, measurementTypes) {
+      return measurementTypes[measurementId].name;
+    },
     
     /**
      *  This function takes a selector element and returns an svg element 
     **/
-     createSvg: function (selector) {
+    createSvg: function (selector) {
       var svg = d3.select(selector).append("svg")
         .attr("preserveAspectRatio", "xMinYMin meet")
         .attr("viewBox", "-45 -30 1100 280")
@@ -42,8 +50,10 @@ GraphHelperMethods = {
      *    ]
     **/
     transformSingleLineItem: function (data, singleData, names) {
-        // unit type ids
+        // unit types
         var unitTypes = data.UnitTypes;
+        // measurement types
+        var measurementTypes = data.MeasurementTypes
         // array of x and y values for sortin
         var xAndYValues = [];
         //data for one line entry
@@ -63,6 +73,7 @@ GraphHelperMethods = {
             dataset['x_unit'] = GraphHelperMethods.unitName(singleData.x_units, unitTypes);
             dataset['y_unit'] = GraphHelperMethods.unitName(singleData.y_units, unitTypes);
             dataset['name'] = names;
+            dataset['measurement'] = GraphHelperMethods.measurementName(singleData.type, measurementTypes);
             xAndYValues.push(dataset);
         });
         xAndYValues.sort(function(a, b) {
@@ -153,6 +164,7 @@ GraphHelperMethods = {
         }
         return assayIds
     },
+
 
     /**
      *  This function takes in the EDDData.Assays object and array of Assay ids

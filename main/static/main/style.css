@@ -110,6 +110,10 @@ div.tooltip2 {
   display: none;
 }
 
+.groupedMeasurement {
+    display: none;
+}
+
 .legend {
       /*cursor: pointer;*/
     overflow: scroll;

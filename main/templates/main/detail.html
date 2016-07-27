@@ -34,6 +34,7 @@
     <script type="text/javascript" src="{% static 'main/js/GroupedBarTime.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/GroupedBarAssay.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/IndividualBarCharts.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/GroupedBarMeasurement.js' %}"></script>
 {% endblock js_css %}
 
 
@@ -186,14 +187,18 @@
                 <button class="btn btn-default btn-sm groupByTimeBar" value="timeBar">
                         Bar graph grouped by time</button>
                 <button class="btn btn-default btn-sm singleBar" value="single">
-                        Bar graphs for each measurement</button>
+                        Bar graphs for each line entry</button>
                 <button class="btn btn-default btn-sm groupByProteinBar" value="groupedAssay">
                         Bar graph grouped by line name</button>
+                <button class="btn btn-default btn-sm groupByMeasurementBar"
+                        value="groupedMeasurement">
+                        Bar graph grouped by measurement type</button>
             </div>
                 <div class="linechart"></div>
                 <div class="timeBar"></div>
                 <div class="single"></div>
                 <div class="groupedAssay"></div>
+                <div class="groupedMeasurement"></div>
 
             <div id="maingraph" class="graphContainer"></div>
         </div>

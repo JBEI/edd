@@ -33,6 +33,7 @@ StudyDGraphing = {
             d3.select(selector[2]).style('display', 'block');
             d3.select(selector[3]).style('display', 'none');
             d3.select(selector[4]).style('display', 'none');
+            d3.select(selector[5]).style('display', 'none');
             return false;
         });
         //line chart
@@ -43,6 +44,7 @@ StudyDGraphing = {
             d3.select(selector[2]).style('display', 'none');
             d3.select(selector[3]).style('display', 'none');
             d3.select(selector[4]).style('display', 'none');
+            d3.select(selector[5]).style('display', 'none');
             return false;
         });
         //bar charts for each line entry
@@ -53,6 +55,7 @@ StudyDGraphing = {
             d3.select(selector[2]).style('display', 'none');
             d3.select(selector[3]).style('display', 'block');
             d3.select(selector[4]).style('display', 'none');
+            d3.select(selector[5]).style('display', 'none');
             return false;
         });
         //bar chart grouped by assay
@@ -63,6 +66,17 @@ StudyDGraphing = {
             d3.select(selector[2]).style('display', 'none');
             d3.select(selector[3]).style('display', 'none');
             d3.select(selector[4]).style('display', 'block');
+            d3.select(selector[5]).style('display', 'none');
+            return false;
+        });
+        d3.select(buttons["groupedMeasurement"])
+            .on('click', function () {
+            event.preventDefault();
+            d3.select(selector[1]).style('display', 'none');
+            d3.select(selector[2]).style('display', 'none');
+            d3.select(selector[3]).style('display', 'none');
+            d3.select(selector[4]).style('display', 'none');
+            d3.select(selector[5]).style('display', 'block');
             return false;
         });
         var data = EDDData; // main data
@@ -91,6 +105,7 @@ StudyDGraphing = {
         createTimeGraph(graphSet, GraphHelperMethods.createSvg(selector[2]));
         createSideBySide(graphSet, selector[3]);
         createAssayGraph(graphSet, GraphHelperMethods.createSvg(selector[4]));
+        createMeasurementGraph(graphSet, GraphHelperMethods.createSvg(selector[5]));
         if (!newSet.label) {
             $('#debug').text('Failed to fetch series.');
             return;
@@ -101,7 +116,7 @@ StudyDGraphing = {
     * <div id=​"groupedAssay">​</div>​]
     */
     getButtonElement: function (element) {
-        if (($(element).siblings().siblings()).size() < 7) {
+        if (($(element).siblings().siblings()).size() < 8) {
             return $(element.siblings()[0]).find("button");
         }
         else {
