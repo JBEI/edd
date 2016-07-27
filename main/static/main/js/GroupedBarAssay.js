@@ -161,7 +161,7 @@
         .on("mouseover", function (d) {
             div.transition()
                 .style("opacity", 0.9);
-            div.html(d.y + "<br/>" + d.y_unit)
+            div.html(d.y + ": " + d.y_unit + "</br>" + d.x + " " + d.x_unit)
                 .style("left", (d3.event.pageX) + "px")
                 .style("top", (d3.event.pageY - 28) + "px");
         })
@@ -192,5 +192,3 @@ function getXYValues(nested) {
         });
     });
 }
-
-//nameValues.values[0].values

@@ -102,10 +102,10 @@ StudyDGraphing = {
         };
         //create respective graphs
         createLineGraph(graphSet, GraphHelperMethods.createSvg(selector[1]));
-        createTimeGraph(graphSet, GraphHelperMethods.createSvg(selector[2]));
         createSideBySide(graphSet, selector[3]);
-        createAssayGraph(graphSet, GraphHelperMethods.createSvg(selector[4]));
-        createMeasurementGraph(graphSet, GraphHelperMethods.createSvg(selector[5]));
+        createMeasurementGraph(graphSet, GraphHelperMethods.createSvg(selector[2]), 'x');
+        createMeasurementGraph(graphSet, GraphHelperMethods.createSvg(selector[4]), 'name');
+        createMeasurementGraph(graphSet, GraphHelperMethods.createSvg(selector[5]), 'measurement');
         if (!newSet.label) {
             $('#debug').text('Failed to fetch series.');
             return;
