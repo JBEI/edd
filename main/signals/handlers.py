@@ -15,14 +15,13 @@ from django.db import connection, transaction
 from django.db.models.signals import m2m_changed, post_delete, post_save, pre_save, pre_delete
 from django.dispatch import receiver
 
-from edd.profile.models import UserProfile
 from jbei.rest.auth import HmacAuth
 from jbei.ice.rest.ice import parse_entry_id
 from . import study_modified, user_modified
 from .. import models as edd_models
 from ..models import (
     Line, MetaboliteExchange, MetaboliteSpecies, SBMLTemplate, Strain, Study, Update,
-    UserPermission, GroupPermission, )
+)
 from ..solr import StudySearch, UserSearch
 from ..utilities import get_absolute_url
 
@@ -58,7 +57,7 @@ def user_saved(sender, instance, created, raw, using, **kwargs):
 ###################################################################################################
 
 
-@receiver(post_delete, sender=UserPermission,
+@receiver(post_delete, sender=edd_models.UserPermission,
           dispatch_uid=("%s.study_user_permission_post_delete" % __name__))
 def study_user_permission_post_delete(sender, instance, using, **kwargs):
     permissions = list(instance.study.userpermission_set.all())
@@ -66,7 +65,7 @@ def study_user_permission_post_delete(sender, instance, using, **kwargs):
     _schedule_post_commit_study_permission_index(instance)
 
 
-@receiver(post_save, sender=UserPermission,
+@receiver(post_save, sender=edd_models.UserPermission,
           dispatch_uid=("%s.study_user_permission_post_save" % __name__))
 def study_user_permission_post_save(sender, instance, created, raw, using, **kwargs):
     permissions = list(instance.study.userpermission_set.all())
@@ -74,13 +73,13 @@ def study_user_permission_post_save(sender, instance, created, raw, using, **kwa
     _schedule_post_commit_study_permission_index(instance)
 
 
-@receiver(post_delete, sender=GroupPermission,
+@receiver(post_delete, sender=edd_models.GroupPermission,
           dispatch_uid=("%s.study_group_permission_post_delete" % __name__))
 def study_group_permission_post_delete(sender, instance, using, **kwargs):
     _schedule_post_commit_study_permission_index(instance)
 
 
-@receiver(post_save, sender=GroupPermission,
+@receiver(post_save, sender=edd_models.GroupPermission,
           dispatch_uid=("%s.study_group_permission_post_save" % __name__))
 def study_group_permission_post_save(sender, instance, created, raw, using, **kwargs):
     _schedule_post_commit_study_permission_index(instance)
