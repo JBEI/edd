@@ -162,6 +162,11 @@ class StrainAdmin(EDDObjectAdmin):
         super(StrainAdmin, self).__init__(*args, **kwargs)
         self.ice_validator = RegistryValidator()
 
+    def has_add_permission(self, request):
+        """ Disable adding via admin interface. Strains are automatically added when referenced
+            via the main.forms.RegistryValidator. """
+        return False
+
     def get_fields(self, request, obj=None):
         self.ice_validator = RegistryValidator(existing_strain=obj)
         if not obj:  # creating a strain
