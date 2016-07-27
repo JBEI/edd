@@ -50,7 +50,7 @@ GraphHelperMethods = {
         var xAndYValues = [];
         //data for one line entry
         var singleDataValues = singleData.values;
-        _.forEach(singleDataValues, function (dataValue) {
+        _.each(singleDataValues, function (dataValue, index) {
             var dataset = {};
             //can also change to omit data point with null which was done before..
             if (dataValue[0].length == 0) {
@@ -65,6 +65,7 @@ GraphHelperMethods = {
             dataset['x_unit'] = GraphHelperMethods.unitName(singleData.x_units, unitTypes);
             dataset['y_unit'] = GraphHelperMethods.unitName(singleData.y_units, unitTypes);
             dataset['name'] = names;
+            dataset['nameid'] = names + index;
             dataset['measurement'] = GraphHelperMethods.measurementName(singleData.type, measurementTypes);
             xAndYValues.push(dataset);
         });
