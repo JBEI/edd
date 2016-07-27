@@ -124,10 +124,17 @@ def _post_commit_index_study(study):
         _handle_post_commit_function_error('Error updating Solr index for study %d' % study.pk)
 
 
-PrimaryKeyCache = namedtuple('PrimaryKeyCache', ['id'])
-PrimaryKeyCache.__doc__ = """
+# Python2 does not allow writing of docstrings to the __doc__ attr, commented section is for
+# Python3 only
+# PrimaryKeyCache = namedtuple('PrimaryKeyCache', ['id'])
+# PrimaryKeyCache.__doc__ = """
+#     Defines a cache for objects to-be-deleted so their primary keys can be available in
+#     post-commit hooks """
+class PrimaryKeyCache(namedtuple('PrimaryKeyCache', ['id'])):
+    """
     Defines a cache for objects to-be-deleted so their primary keys can be available in
-    post-commit hooks """
+    post-commit hooks
+    """
 
 
 @receiver(pre_delete, sender=Study, dispatch_uid="main.signals.handlers.study_pre_delete")
