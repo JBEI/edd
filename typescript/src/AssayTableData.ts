@@ -212,7 +212,8 @@ module EDDTableImport {
             // irritating Chrome inconsistency
             // For some of these, changing them shouldn't actually affect processing until we implement
             // an overwrite-checking feature or something similar
-            $(reProcessOnChange.join(',')).on('click', this.queueReconfigure.bind(this));
+            $(reProcessOnChange.join(',')).on('click', this.reconfigure.bind(this));  // TODO:
+            // change back to queueReconfigure() for optimization!
         }
 
 
@@ -971,6 +972,8 @@ module EDDTableImport {
         selectMajorKindStep: SelectMajorKindStep;
         nextStepCallback: any;
 
+        interpretRowTypePullDownTImerID: number;
+
 
         constructor(selectMajorKindStep: SelectMajorKindStep, rawInputStep: RawInputStep, nextStepCallback: any) {
 
@@ -1146,6 +1149,9 @@ module EDDTableImport {
                 table: HTMLTableElement, colgroup: JQuery, body: HTMLTableElement,
                 row: HTMLTableRowElement;
 
+            var startTime = new Date();
+            console.log("Start of IdentifyStructuresStep.constructDataTable()")
+
             this.dataCells = [];
             this.colCheckboxCells = [];
             this.colObjects = [];
@@ -1212,10 +1218,15 @@ module EDDTableImport {
                 $('<col>').appendTo(colgroup);
             });
             // add col elements for each data column
+            var nColumns = 0;
             (grid[0] || []).forEach((): void => {
                 this.colObjects.push($('<col>').appendTo(colgroup)[0]);
+                nColumns++;
             });
+
+            ///////////////////////////////////////////////////////////////////////////////////////
             // First row: spacer cells, followed by checkbox cells for each data column
+            ///////////////////////////////////////////////////////////////////////////////////
             row = <HTMLTableRowElement>body.insertRow();
             // spacer cells have x and y set to 0 to remove from highlight grid
             controlCols.forEach((): void => {
@@ -1232,7 +1243,10 @@ module EDDTableImport {
                 this.colCheckboxCells.push(cell[0]);
             });
             this.pulldownObjects = [];  // We don't want any lingering old objects in this
+
+            ///////////////////////////////////////////////////////////////////////////////////////
             // The rest of the rows: A pulldown, a checkbox, a row label, and a row of data.
+            //////////////////////////////////////////////////////////////////////////////////////
             grid.forEach((values: string[], i: number): void => {
                 var cell: JQuery;
                 row = <HTMLTableRowElement>body.insertRow();
@@ -1245,7 +1259,10 @@ module EDDTableImport {
                     .prop('checked', this.activeRowFlags[i])
                     .appendTo(cell);
                 this.rowCheckboxCells.push(cell[0]);
+
+                ////////////////////
                 // pulldown cell
+                ///////////////////
                 cell = $(row.insertCell()).addClass('pulldownCell')
                     .attr({ 'id': 'rowPCell' + i, 'x': 0, 'y': i + 1 });
                 // use existing setting, or use the last if rows.length > settings.length, or blank
@@ -1259,11 +1276,17 @@ module EDDTableImport {
                     this.pulldownSettings[i]
                 );
                 this.pulldownObjects.push(cell[0]);
+
+                /////////////////////
                 // label cell
+                ////////////////////
                 cell = $(row.insertCell()).attr({ 'id': 'rowMCell' + i, 'x': 0, 'y': i + 1 });
                 $('<div>').text(gridRowMarkers[i]).appendTo(cell);
                 this.rowLabelCells.push(cell[0]);
+
+                /////////////////////////
                 // the table data itself
+                /////////////////////////
                 this.dataCells[i] = [];
                 values.forEach((value: string, x: number): void => {
                     var short: string;
@@ -1283,6 +1306,10 @@ module EDDTableImport {
                 });
             });
             this.applyTableDataTypeStyling(grid);
+            var endTime = new Date();
+            var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
+            console.log("End of IdentifyStructuresStep.constructDataTable(). Table: ", grid.length,
+                " rows X ", nColumns, " columns. Elapsed time: ", elapsedSeconds, " s" )
         }
 
 
@@ -1401,31 +1428,53 @@ module EDDTableImport {
                 //   Anyway, here we run through the pulldowns, making sure that if the user selected
                 // "Metabolite Name", we blank out all references to "Timestamp" and "Metadata", and
                 // vice-versa.
-                grid.forEach((_, i: number): void => {
-                    var c: number = this.pulldownSettings[i];
-                    if (value === TypeEnum.Metabolite_Name) {
-                        if (c === TypeEnum.Timestamp || c === TypeEnum.Metadata_Name) {
+                if (value === TypeEnum.Metabolite_Name || value === TypeEnum.Timestamp || value === TypeEnum.Metadata_Name) {
+
+                    grid.forEach((_, i: number): void => {
+                        var c: number = this.pulldownSettings[i];
+                        if (value === TypeEnum.Metabolite_Name) {
+                            if (c === TypeEnum.Timestamp || c === TypeEnum.Metadata_Name) {
+                                this.pulldownObjects[i].selectedIndex = 0;
+                                this.pulldownSettings[i] = 0;
+                            } else if (c === TypeEnum.Metabolite_Names) { // Can't allow "Measurement Types" setting either
+                                this.pulldownObjects[i].selectedIndex = TypeEnum.Assay_Line_Names;
+                                this.pulldownSettings[i] = TypeEnum.Assay_Line_Names;
+                            }
+                        } else if ((value === TypeEnum.Timestamp || value === TypeEnum.Metadata_Name) && c === TypeEnum.Metabolite_Name) {
                             this.pulldownObjects[i].selectedIndex = 0;
                             this.pulldownSettings[i] = 0;
-                        } else if (c === TypeEnum.Metabolite_Names) { // Can't allow "Measurement Types" setting either
-                            this.pulldownObjects[i].selectedIndex = TypeEnum.Assay_Line_Names;
-                            this.pulldownSettings[i] = TypeEnum.Assay_Line_Names;
                         }
-                    } else if ((value === TypeEnum.Timestamp || value === TypeEnum.Metadata_Name) && c === TypeEnum.Metabolite_Name) {
-                        this.pulldownObjects[i].selectedIndex = 0;
-                        this.pulldownSettings[i] = 0;
-                    }
-                });
-                // It would seem logical to require a similar check for "Protein Name", but in practice
-                // the user is disallowed from selecting any of the other single-table-cell types when the
-                // page is in Proteomics mode.  So the check is redundant.
+                    });
+                    // It would seem logical to require a similar check for "Protein Name", but in practice
+                    // the user is disallowed from selecting any of the other single-table-cell types when the
+                    // page is in Proteomics mode.  So the check is redundant.
+                }
             }
+
+            this.queueInterpretRowTypePullDowns()
+        }
+
+        // Start a timer to wait before calling interpretRowDataTypePulldowns().
+        // This way we condense multiple events from pulldown auto-selection into a single event
+        queueInterpretRowTypePullDowns(): void {
+            if (this.interpretRowTypePullDownTImerID) {
+                clearTimeout(this.interpretRowTypePullDownTImerID);
+            }
+            this.interpretRowTypePullDownTImerID = setTimeout(this.interpretRowDataTypePulldowns.bind(this), 0.25);
+        }
+
+        // update state as a result of row datatype pulldown selection
+        interpretRowDataTypePulldowns(): void {
+            console.log('Starting interpretRowDataTypePullDowns()');
+            var start = new Date();
+            var grid = this.rawInputStep.getGrid();
             this.applyTableDataTypeStyling(grid);
             this.interpretDataTable();
             this.queueGraphRemake();
+            var ellapsedSeconds = (new Date().getTime() - start.getTime()) / 1000;
+            console.log("End interpretRowDataTypePullDowns(). Elapsed time", ellapsedSeconds, " s. Calling next step.");
             this.nextStepCallback();
         }
-
 
         toggleTableRow(box: Element):void {
             var value: number, input: JQuery;
@@ -1919,6 +1968,8 @@ module EDDTableImport {
         selectMajorKindStep: SelectMajorKindStep;
         nextStepCallback: any;
 
+        inputRefreshTimerID: number;
+
 
         constructor(selectMajorKindStep: SelectMajorKindStep, identifyStructuresStep: IdentifyStructuresStep, nextStepCallback: any) {
 
@@ -1978,13 +2029,24 @@ module EDDTableImport {
                 // Always reveal this, since the default for the Assay pulldown is always 'new'.
                 $('#masterLineSpan').removeClass('off');
             }
-            this.reconfigure();
+            this.reconfigure(); //TODO: reset to queueReconfigure to re-enable optimization
+        }
+
+        // Start a timer to wait before calling the reconfigure routine.
+        // This way we condense multiple possible events from the radio buttons and/or pulldown into one.
+        queueReconfigure(): void {
+            if (this.inputRefreshTimerID) {
+                clearTimeout(this.inputRefreshTimerID);
+            }
+            this.inputRefreshTimerID = setTimeout(this.reconfigure.bind(this), 0.25);
         }
 
 
         // Create the Step 4 tables:  Sets of rows, one for each y-axis column of values,
         // where the user can fill out additional information for the pasted table.
         reconfigure(): void {
+            var startTime = new Date();
+            console.log("Start of TypeDisambiguationStep.reconfigure()");
             var mode = this.selectMajorKindStep.interpretationMode;
 
             var parsedSets = this.identifyStructuresStep.parsedSets;
@@ -1997,11 +2059,13 @@ module EDDTableImport {
             $('#masterAssayLineDiv').addClass('off');
             $('#disambiguateMeasurementsSection').addClass('off');
             $('#masterMTypeDiv').addClass('off');
+            $('#createNewProteinsDiv').addClass('off')
             $('#disambiguateMetadataSection').addClass('off');
 
             // If no sets to show, leave the area blank and show the 'enter some data!' banner
             if (parsedSets.length === 0) {
                 $('#emptyDisambiguationLabel').removeClass('off');
+                console.log("End TypeDisambiguationStep.reconfigure() -- no data to show yet.");
                 return;
             }
 
@@ -2014,8 +2078,16 @@ module EDDTableImport {
             } else {
                 this.remakeAssaySection();
             }
+
+            if (mode === "pr") {
+                $('#createNewProteinsDiv').removeClass('off')
+            }
+
             this.remakeMeasurementSection();
             this.remakeMetadataSection();
+            var endTime = new Date();
+            var elapsedSeconds = (new Date().getTime() - startTime.getTime()) / 1000
+            console.log("End of TypeDisambiguationStep.reconfigure(). Elapsed time: ", elapsedSeconds, " s. Calling next step.")
             this.nextStepCallback();
         }
 
@@ -2037,6 +2109,9 @@ module EDDTableImport {
             var table: HTMLTableElement, body: HTMLTableElement;
             var uniqueLineNames = this.identifyStructuresStep.uniqueLineNames;
 
+            var startTime = new Date();
+            console.log("Start of TypeDisambiguationStep.remakeLineSection()");
+
             this.currentlyVisibleLineObjSets.forEach((disam:any): void => {
                 disam.rowElementJQ.detach();
             });
@@ -2044,6 +2119,8 @@ module EDDTableImport {
 
             if (uniqueLineNames.length === 0) {
                 $('#masterLineDiv').removeClass('off');
+                console.log("End of TypeDisambiguationStep.remakeLineSection() -- no unique line" +
+                    " names to process.");
                 return;
             }
 
@@ -2086,6 +2163,10 @@ module EDDTableImport {
                 disam.rowElementJQ.appendTo(body);
                 this.currentlyVisibleLineObjSets.push(disam);
             });
+
+            var endTime = new Date();
+            var elapsedSeconds = endTime.getTime() - startTime.getTime();
+            console.log("End of TypeDisambiguationStep.remakeLineSection(). Elapsed time: ", elapsedSeconds, " s");
         }
 
 
@@ -2099,6 +2180,8 @@ module EDDTableImport {
             var table: HTMLTableElement, body: HTMLTableElement;
             var uniqueAssayNames = this.identifyStructuresStep.uniqueAssayNames;
             var masterP = this.protocolCurrentlyDisplayed;
+            var startTime = new Date();
+            console.log("Start of TypeDisambiguationStep.remakeAssaySection()");
 
             this.currentlyVisibleAssayObjSets.forEach((disam:any): void => {
                 disam.rowElementJQ.detach();
@@ -2110,6 +2193,8 @@ module EDDTableImport {
 
             if (uniqueAssayNames.length === 0) {
                 $('#masterAssayLineDiv').removeClass('off');
+                console.log("End of TypeDisambiguationStep.remakeAssaySection() -- no unique" +
+                    " assay names to process");
                 return;
             }
 
@@ -2122,7 +2207,14 @@ module EDDTableImport {
                     t.userChangedAssayDisam(ev.target);
                 })[0];
             body = <HTMLTableElement>$('<tbody>').appendTo(table)[0];
+
+            var nRows = 0;
+            var nControls = 4;
+            var nColumns = 5;
+            var maxRowCreationSeconds = 0;
+            var totalRowCreationSeconds = 0;
             uniqueAssayNames.forEach((name: string, i: number): void => {
+                var rowCreationStartTime = new Date();
                 var disam: any, row: HTMLTableRowElement, defaultSel: any, cell: JQuery, aSelect: JQuery, lSelect: JQuery;
                 disam = this.assayObjSets[masterP][name];
                 if (!disam) {
@@ -2131,6 +2223,7 @@ module EDDTableImport {
                     // First make a table row, and save a reference to it
                     row = <HTMLTableRowElement>body.insertRow();
                     disam.rowElementJQ = $(row);
+
                     // Next, add a table cell with the string we are disambiguating
                     $('<div>').text(name).appendTo(row.insertCell());
                     // Now build another table cell that will contain the pulldowns
@@ -2168,7 +2261,17 @@ module EDDTableImport {
                 disam.selectAssayJQElement.data({ 'visibleIndex': i });
                 disam.rowElementJQ.appendTo(body);
                 this.currentlyVisibleAssayObjSets.push(disam);
+                var rowCreationEndTime = new Date();
+                var rowCreationElapsedSeconds = (rowCreationEndTime.getTime() - rowCreationStartTime.getTime()) / 1000;
+                totalRowCreationSeconds += rowCreationElapsedSeconds;
             });
+
+            var avgRowCreationSeconds = totalRowCreationSeconds / nRows;
+
+            var endTime = new Date();
+            var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
+            console.log("End of TypeDisambiguationStep.remakeAssaySection(). Table is ", nRows, " rows X ", nColumns, " cols.",  "Elapsed time: " +
+                " time: ", elapsedSeconds, " s. Avg row creation time: ", avgRowCreationSeconds, " s");
         }
 
 
@@ -2178,13 +2281,20 @@ module EDDTableImport {
             var mode = this.selectMajorKindStep.interpretationMode;
             var uniqueMeasurementNames = this.identifyStructuresStep.uniqueMeasurementNames;
             var seenAnyTimestamps = this.identifyStructuresStep.seenAnyTimestamps;
+            var startTime = new Date();
+
+            console.log("Start of TypeDisambiguationStep.remakeMeasurementSection()")
 
             $('#disambiguateMeasurementsSection').addClass('off');
             $('#masterMTypeDiv').addClass('off');
 
             // If in 'Transcription' or 'Proteomics' mode, there are no measurement types involved.
             // skip the measurement section, and provide statistics about the gathered records.
-            if (mode === "tr" || mode === "pr") { return; }
+            if (mode === "tr" || mode === "pr") {
+                console.log("End of TypeDisambiguationStep.remakeMeasurementSection() - not" +
+                    " required for mode ", mode);
+                return;
+            }
 
             // No measurements for disambiguation, have timestamp data:  That means we need to choose one measurement.
             // You might think that we should display this even without timestamp data, to handle the case where we're importing
@@ -2192,6 +2302,8 @@ module EDDTableImport {
             // one other object with multiple types to work with (lines/assays).  We're not going to bother supporting that.
             if (uniqueMeasurementNames.length === 0 && seenAnyTimestamps) {
                 $('#masterMTypeDiv').removeClass('off');
+                console.log("End of TypeDisambiguationStep.remakeMeasurementSection() - no" +
+                    " measurements for disambiguation.");
                 return;
             }
 
@@ -2240,14 +2352,25 @@ module EDDTableImport {
                 this.currentlyVisibleMeasurementObjSets.push(disam);
             });
             this.checkAllMeasurementCompartmentDisam();
+            var endTime = new Date();
+            var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
+            console.log("End of TypeDisambiguationStep.remakeMeasurementSection(). Elapsed time:" +
+                " ", elapsedSeconds, " s.");
         }
 
 
         remakeMetadataSection(): void {
             var table: HTMLTableElement, body: HTMLTableElement, row: HTMLTableRowElement;
 
+            var startTime = new Date();
+            console.log("Start of TypeDisambiguationStep.remakeMetadataSection()");
+
             var uniqueMetadataNames = this.identifyStructuresStep.uniqueMetadataNames;
-            if (uniqueMetadataNames.length < 1) { return; }
+            if (uniqueMetadataNames.length < 1) {
+                console.log("End of TypeDisambiguationStep.remakeMetadataSection(). Returning" +
+                    " early");
+                return;
+            }
 
             $('#disambiguateMetadataTable').remove();
             // put together a disambiguation section for metadata
@@ -2276,6 +2399,9 @@ module EDDTableImport {
                     .next().attr('name', 'disamMetaHidden' + i);
                 EDD_auto.setup_field_autocomplete(disam.metaObj, 'AssayLineMetadataType', this.autoCache.meta);
             });
+            var endTime = new Date();
+            var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
+            console.log("End of TypeDisambiguationStep.remakeMetadataSection(). Elapsed time: ", elapsedSeconds, " s.");
         }
 
 
@@ -2318,12 +2444,15 @@ module EDDTableImport {
         //    in order, setting them to 'new' as well, stopping just before any pulldown marked as
         //    being 'set by the user'.
         userChangedAssayDisam(assayEl: Element):boolean {
+            var startTime = new Date();
+            console.log("Start of TypeDisambiguationStep.userChangedAssayDisam()");
             var changed: JQuery, v: number;
             changed = $(assayEl).data('setByUser', true);
             // The span with the corresponding Line pulldown is always right next to the Assay pulldown
             changed.next().toggleClass('off', changed.val() !== 'named_or_new');
             if (changed.val() !== 'named_or_new') {
                 // stop here for anything other than 'new'; only 'new' cascades to following pulldowns
+                console.log("End of TypeDisambiguationStep.userChangedAssayDisam()");
                 return false;
             }
             v = changed.data('visibleIndex') || 0;
@@ -2335,6 +2464,9 @@ module EDDTableImport {
                 // set dropdown to 'new' and reveal the line pulldown
                 select.val('named_or_new').next().removeClass('off');
             });
+            var endTime = new Date();
+            var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
+            console.log("End of TypeDisambiguationStep.userChangedAssayDisam(). Elapsed time: ", elapsedSeconds, " s");
             return false;
         }
 
@@ -2383,6 +2515,8 @@ module EDDTableImport {
 
 
         disambiguateAnAssayOrLine(assayOrLine: string, currentIndex: number):any {
+            console.log("Start of TypeDisambiguationStep.disambiguateAnAssayOrLine()");
+            var startTime = new Date();
             var selections: any, highest: number, assays: number[];
             selections = {
                 lineID: 0,
@@ -2456,11 +2590,19 @@ module EDDTableImport {
                 }
                 return true;
             });
+
+            var endTime = new Date();
+            var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
+            console.log("End of TypeDisambiguationStep.disambiguateAnAssayOrLine(). Elapsed" +
+                " time: ", elapsedSeconds, " s");
             return selections;
         }
 
 
         createSetsForSubmission():ResolvedImportSet[] {
+            var startTime = new Date();
+            console.log("Start of TypeDisambiguationStep.createSetsForSubmission().");
+
 
             // From Step 1
             var mode = this.selectMajorKindStep.interpretationMode;
@@ -2586,6 +2728,9 @@ module EDDTableImport {
                 };
                 resolvedSets.push(resolvedSet);
             });
+            var endTime = new Date();
+            var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
+            console.log("End of TypeDisambiguationStep.createSetsForSubmission(). Elapsed time: ", elapsedSeconds, " s");
             return resolvedSets;
         }
     }
