@@ -169,10 +169,7 @@ class StrainAdmin(EDDObjectAdmin):
 
     def get_fields(self, request, obj=None):
         self.ice_validator = RegistryValidator(existing_strain=obj)
-        if not obj:  # creating a strain
-            return ['registry_id', ]
-        elif not obj.registry_id:  # existing strain without link to ICE
-            return ['name', 'description', 'registry_id', 'study_list', ]
+        assert(obj)
         # existing strain with link to ICE
         return ['name', 'description', 'registry_url', 'study_list', ]
 
@@ -183,9 +180,8 @@ class StrainAdmin(EDDObjectAdmin):
         return super(StrainAdmin, self).formfield_for_dbfield(db_field, **kwargs)
 
     def get_readonly_fields(self, request, obj=None):
-        if not obj:  # creating a strain
-            return []
-        elif not obj.registry_id:  # existing strain without link to ICE
+        assert(obj)
+        if not obj.registry_id:  # existing strain without link to ICE
             return ['study_list', ]
         return ['name', 'description', 'registry_url', 'study_list', ]
 
