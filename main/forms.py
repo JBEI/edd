@@ -5,7 +5,6 @@ import json
 import logging
 
 from builtins import str
-from collections import OrderedDict
 from copy import deepcopy
 from django import forms
 from django.conf import settings
@@ -14,7 +13,7 @@ from django.contrib.auth.models import Group
 from django.contrib.postgres.forms import HStoreField
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.db.models import Prefetch, Q
+from django.db.models import Q
 from django.db.models.base import Model
 from django.db.models.manager import BaseManager
 from django.utils.safestring import mark_safe
@@ -24,7 +23,6 @@ from functools import partial
 
 from jbei.rest.auth import HmacAuth
 from jbei.ice.rest.ice import IceApi
-from .export import table
 from .models import (
     Assay, Attachment, CarbonSource, Comment, Line, Measurement, MeasurementType,
     MeasurementValue, MetaboliteExchange, MetaboliteSpecies, MetadataType, Protocol, Strain,
@@ -367,7 +365,7 @@ class CreateStudyForm(forms.ModelForm):
             # in a way that tolerates non-existence / removal of the default group used at JBEI
             default_group_name = 'ESE'
             try:
-                default_group= Group.objects.get(name=default_group_name)
+                default_group = Group.objects.get(name=default_group_name)
                 s.grouppermission_set.update_or_create(
                         group_id=default_group.pk,
                         permission_type=StudyPermission.READ, )
