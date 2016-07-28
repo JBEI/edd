@@ -4,8 +4,10 @@ describe('Test GraphHelperMethods with jasmine', function() {
  
 
     var unitTypes = {1:{"id":1,"name":"n/a"},2:{"id":2,"name":"hours"}},
-        dataTest = {UnitTypes: {1:{"id":1,"name":"n/a"},2:{"id":2,"name":"hours"}}},
-        transformedData = { label: 'dt4934', x: 11, y: 0.0455, x_unit: 'n/a', y_unit: 'n/a', name: 'test' };
+        dataTest = {UnitTypes: {1:{"id":1,"name":"n/a"},2:{"id":2,"name":"hours"}},
+                    MeasurementTypes: {3:{name: "Optical Density"}}},
+        transformedData = { label: 'dt4934', x: 11, y: 0.0455, x_unit: 'n/a',  nameid: 'test5', y_unit: 'n/a',
+                            name: 'test', measurement: "Optical Density"};
 
     describe('method: objectSize' ,function() {
       it('should return length', function() {
@@ -47,7 +49,7 @@ describe('Test GraphHelperMethods with jasmine', function() {
         expect(GraphHelperMethods.transformSingleLineItem(dataTest, single, "test")[0]).toEqual(transformedData);
         });
       it('should sort the x values', function() {
-         var transformedData2 = { label: 'dt4934', x: 20, y: 3.186, x_unit: 'n/a', y_unit: 'n/a', name: 'test' };
+         var transformedData2 ={ label: 'dt4934', x: 20, y: 3.186, x_unit: 'n/a', y_unit: 'n/a', name: 'test', nameid: 'test9', measurement: 'Optical Density' }
          var objectLength = GraphHelperMethods.transformSingleLineItem(dataTest, single, "test").length;
         expect(GraphHelperMethods.transformSingleLineItem(dataTest, single, "test")[objectLength - 1]).toEqual(transformedData2);
       });

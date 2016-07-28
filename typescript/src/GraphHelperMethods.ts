@@ -38,40 +38,7 @@ GraphHelperMethods = {
       
       return svg; 
     },
-
-    // /**
-    //  * This functions takes in assaymeasurements and nests data according to measurement type
-    //  */
-    //
-    //  nestDataForMeasurements: function(assayMeasurements) {
-    //     //nest data by measurement. nest again by x label
-    //     var nested = d3.nest()
-    //         .key(function (d) {
-    //             return d.measurement;
-    //         })
-    //         .key(function (d) {
-    //             return d.x;
-    //         })
-    //         .entries(assayMeasurements);
-    //     return nested;
-    // },
-    //
-    //  /**
-    //  * This functions takes in assaymeasurements and nests data
-    //  */
-    //
-    //  nestDataForAssays: function(assayMeasurements) {
-    //     //nest data by measurement. nest again by x label
-    //     var nested = d3.nest()
-    //         .key(function (d) {
-    //             return d.name;
-    //         })
-    //         .key(function (d) {
-    //             return d.x;
-    //         })
-    //         .entries(assayMeasurements);
-    //      return nested;
-    // },
+    
     /**
      *  This function takes in EDDdata, a singleAssay line entry, and measurement names and
      *  transforms it into the following schema:
