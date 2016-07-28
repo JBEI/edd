@@ -93,7 +93,7 @@ class StudyCreateView(generic.edit.CreateView):
     View for request to create a study, and the index page.
     """
     form_class = CreateStudyForm
-    template_name = 'main/index.html'
+    template_name = 'main/create_study.html'
 
     def form_valid(self, form):
         update = Update.load_request_update(self.request)
@@ -110,6 +110,10 @@ class StudyCreateView(generic.edit.CreateView):
 
     def get_success_url(self):
         return reverse('main:detail', kwargs={'pk': self.object.pk})
+
+
+class StudyIndexView(StudyCreateView):
+    template_name = 'main/index.html'
 
 
 class StudyDetailView(generic.DetailView):

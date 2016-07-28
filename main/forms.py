@@ -329,6 +329,13 @@ class SbmlSpeciesAutocompleteWidget(SbmlInfoAutocompleteWidget):
 
 class CreateStudyForm(forms.ModelForm):
     """ Form to create a new study. """
+    # include hidden field for copying multiple Line instances by ID
+    copy_lines = forms.ModelMultipleChoiceField(
+        queryset=Line.objects.none(),
+        required=False,
+        widget=forms.MultipleHiddenInput
+    )
+
     class Meta:
         model = Study
         fields = ['name', 'description', 'contact', ]
@@ -346,10 +353,18 @@ class CreateStudyForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         # removes default hard-coded suffix of colon character on all labels
         kwargs.setdefault('label_suffix', '')
+        self._user = kwargs.pop('user', None)
         super(CreateStudyForm, self).__init__(*args, **kwargs)
+        if self._user:
+            # make sure lines are in a readable study
+            q = Study.user_permission_q(
+                self._user,
+                StudyPermission.READ,
+                keyword_prefix='study__',
+            )
+            self.fields['copy_lines'].queryset = Line.objects.filter(q)
 
     def save(self, commit=True, force_insert=False, force_update=False, *args, **kwargs):
-
         # perform updates atomically to the study and related user permissions
         with transaction.atomic():
             # save the study
@@ -359,7 +374,6 @@ class CreateStudyForm(forms.ModelForm):
                 user=s.created.mod_by,
                 permission_type=StudyPermission.WRITE,
             )
-
             # get the ID of the group that should have study read permissions by default.
             # TODO: this should be configurable in a later version, but for now we'll hard/code
             # in a way that tolerates non-existence / removal of the default group used at JBEI
@@ -367,15 +381,28 @@ class CreateStudyForm(forms.ModelForm):
             try:
                 default_group = Group.objects.get(name=default_group_name)
                 s.grouppermission_set.update_or_create(
-                        group_id=default_group.pk,
-                        permission_type=StudyPermission.READ, )
+                    group_id=default_group.pk,
+                    permission_type=StudyPermission.READ,
+                )
             except Group.DoesNotExist as dne:
-                logger.exception('Error retrieving information for the hard-coded default-read '
-                                 'group for studies, "%s". Studies will not default to visible '
-                                 'for any particular group.' %
-                                 default_group_name)
-
+                logger.exception(
+                    'Error retrieving information for the hard-coded default-read group for '
+                    'studies, "%s". Studies will not default to visible for any particular '
+                    'group.',
+                    default_group_name
+                )
+            # create copies of passed in Line IDs
+            self.save_lines(s)
         return s
+
+    def save_lines(self, study):
+        to_add = []
+        for line in self.cleaned_data['copy_lines']:
+            line.pk = line.id = None
+            line.study = study
+            line.study_id = study.id
+            to_add.append(line)
+        study.line_set.add(*to_add, bulk=False)
 
 
 class CreateAttachmentForm(forms.ModelForm):
