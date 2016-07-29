@@ -330,7 +330,7 @@ class SbmlSpeciesAutocompleteWidget(SbmlInfoAutocompleteWidget):
 class CreateStudyForm(forms.ModelForm):
     """ Form to create a new study. """
     # include hidden field for copying multiple Line instances by ID
-    copy_lines = forms.ModelMultipleChoiceField(
+    lineId = forms.ModelMultipleChoiceField(
         queryset=Line.objects.none(),
         required=False,
         widget=forms.MultipleHiddenInput
@@ -355,6 +355,7 @@ class CreateStudyForm(forms.ModelForm):
         kwargs.setdefault('label_suffix', '')
         self._user = kwargs.pop('user', None)
         super(CreateStudyForm, self).__init__(*args, **kwargs)
+        # self.fields exists after super.__init__()
         if self._user:
             # make sure lines are in a readable study
             q = Study.user_permission_q(
@@ -362,7 +363,11 @@ class CreateStudyForm(forms.ModelForm):
                 StudyPermission.READ,
                 keyword_prefix='study__',
             )
-            self.fields['copy_lines'].queryset = Line.objects.filter(q)
+            if self._user.is_superuser:
+                queryset = Line.objects.filter()
+            else:
+                queryset = Line.objects.filter(q)
+            self.fields['lineId'].queryset = queryset
 
     def save(self, commit=True, force_insert=False, force_update=False, *args, **kwargs):
         # perform updates atomically to the study and related user permissions
@@ -397,7 +402,7 @@ class CreateStudyForm(forms.ModelForm):
 
     def save_lines(self, study):
         to_add = []
-        for line in self.cleaned_data['copy_lines']:
+        for line in self.cleaned_data['lineId']:
             line.pk = line.id = None
             line.study = study
             line.study_id = study.id
