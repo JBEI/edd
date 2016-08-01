@@ -21,13 +21,15 @@ exports.takeShot = function(cb){
             var arr = ['main/fixtures/newshots/groupedAssay.png',
                        'main/fixtures/newshots/linechart.png',
                        'main/fixtures/newshots/single.png',
-                       'main/fixtures/newshots/timeBar.png'];
+                       'main/fixtures/newshots/timeBar.png',
+                       'main/fixtures/newshots/groupedMeasurement.png'];
 
             // original hash values from main/fixtures/originalshots
-            var originalHash = ['dbafafa82f734b9056742038b83980af',
-                                '75e5c192b28f7886775c42e35bae177a',
-                                '8d33e364790f911825b442d7fb13d404',
-                                '57ee7b6d7ca9e70b570446d74dacb18b'];
+            var originalHash = ['83ee2c402f6901ec378d34a212ca7058',
+                                '575388bb060b856c618fc0669f6729f6',
+                                'db3419cb33e1e54e2d8a1e66787f4632',
+                                '573908f6c11dee1d721363bba7155a4d',
+                                '22e50c27d91a87c36b3fef85bcedec07'];
             //new hash values created from newshots
             var newHash = [];
 

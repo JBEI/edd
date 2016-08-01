@@ -1,16 +1,10 @@
-console.log('was this called')
-var CLASSIDS = ['.linechart', '.single', '.groupedAssay', '.timeBar'],
-    BUTTONIDS = ['.line', '.singleBar', '.groupByProteinBar', '.groupByTimeBar'];
-    SCREENSHOT_WIDTH = 1280; 
-    SCREENSHOT_HEIGHT = 900; 
-    LOAD_WAIT_TIME = 5000; 
-    page = require("webpage").create();
 
-phantom.addCookie({
-    'name': 'sessionid',
-    'value': '3msg90gtxs2u0vglhb8fzyzubrwe3lt4',
-    'domain': '192.168.99.100'
-});
+var CLASSIDS = ['.linechart', '.single', '.groupedAssay', '.timeBar', '.groupedMeasurement'],
+    BUTTONIDS = ['.line', '.singleBar', '.groupByProteinBar', '.groupByTimeBar', '.groupByMeasurementBar'],
+    SCREENSHOT_WIDTH = 1280,
+    SCREENSHOT_HEIGHT = 900,
+    LOAD_WAIT_TIME = 5000,
+    page = require("webpage").create();
 
 var renderPage = function(page, elementId, buttonId){
 
@@ -25,7 +19,7 @@ var renderPage = function(page, elementId, buttonId){
                 top:    clipRect.top,
                 left:   clipRect.left,
                 bottom: clipRect.bottom,
-                width:  clipRect.width - 300,
+                width:  clipRect.width,
                 height: clipRect.height
         };
     var filename = elementId.slice(1) + '.png';
@@ -51,7 +45,7 @@ var takeScreenshot = function(elementId, buttonId){
 
     page.viewportSize = {width:SCREENSHOT_WIDTH, height:SCREENSHOT_HEIGHT};
 
-    page.open('http://192.168.99.100/study/30/');
+    page.open('http://127.0.0.1:8081/');
 
     console.log("waiting for page to load...");
 
