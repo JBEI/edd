@@ -14,9 +14,7 @@
 }
 
 body {
-  font: 10px sans-serif;
-  padding-left: 20px;
-    overflow: scroll
+  overflow: scroll
 }
 
 .btn-default {
