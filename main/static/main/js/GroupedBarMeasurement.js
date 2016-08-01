@@ -42,6 +42,7 @@
         return d.key;
     });
 
+
     var data2 = data.map(function (d) {
         return (d.values);
     });
@@ -167,6 +168,8 @@
             div.transition()
                 .style("opacity", 0);
         });
+
+
 }
 
 /**

@@ -33,7 +33,19 @@ GraphHelperMethods = {
     createSvg: function (selector) {
       var svg = d3.select(selector).append("svg")
         .attr("preserveAspectRatio", "xMinYMin meet")
-        .attr("viewBox", "-45 -30 1100 280")
+        .attr("viewBox", "-45 -30 820 280")
+        .classed("svg-content", true)
+      
+      return svg; 
+    },
+    
+    /**
+     *  This function takes a selector element and returns an svg element 
+    **/
+    createLineSvg: function (selector)  {
+      var svg = d3.select(selector).append("svg")
+        .attr("preserveAspectRatio", "xMinYMin meet")
+        .attr("viewBox", "-45 -30 950 280")
         .classed("svg-content", true)
       
       return svg; 

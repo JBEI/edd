@@ -115,7 +115,7 @@ StudyDGraphing = {
             height: 220
         };
         //create respective graphs
-        createLineGraph(graphSet, GraphHelperMethods.createSvg(selector[1]));
+        createLineGraph(graphSet, GraphHelperMethods.createLineSvg(selector[1]));
         createSideBySide(graphSet, selector[3]);
         createMeasurementGraph(graphSet, GraphHelperMethods.createSvg(selector[2]), 'x');
         createMeasurementGraph(graphSet, GraphHelperMethods.createSvg(selector[4]), 'name');

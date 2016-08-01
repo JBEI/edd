@@ -27,43 +27,20 @@ GraphHelperMethods = {
     createSvg: function (selector) {
         var svg = d3.select(selector).append("svg")
             .attr("preserveAspectRatio", "xMinYMin meet")
-            .attr("viewBox", "-45 -30 1100 280")
+            .attr("viewBox", "-45 -30 820 280")
             .classed("svg-content", true);
         return svg;
     },
-    // /**
-    //  * This functions takes in assaymeasurements and nests data according to measurement type
-    //  */
-    //
-    //  nestDataForMeasurements: function(assayMeasurements) {
-    //     //nest data by measurement. nest again by x label
-    //     var nested = d3.nest()
-    //         .key(function (d) {
-    //             return d.measurement;
-    //         })
-    //         .key(function (d) {
-    //             return d.x;
-    //         })
-    //         .entries(assayMeasurements);
-    //     return nested;
-    // },
-    //
-    //  /**
-    //  * This functions takes in assaymeasurements and nests data
-    //  */
-    //
-    //  nestDataForAssays: function(assayMeasurements) {
-    //     //nest data by measurement. nest again by x label
-    //     var nested = d3.nest()
-    //         .key(function (d) {
-    //             return d.name;
-    //         })
-    //         .key(function (d) {
-    //             return d.x;
-    //         })
-    //         .entries(assayMeasurements);
-    //      return nested;
-    // },
+    /**
+     *  This function takes a selector element and returns an svg element
+    **/
+    createLineSvg: function (selector) {
+        var svg = d3.select(selector).append("svg")
+            .attr("preserveAspectRatio", "xMinYMin meet")
+            .attr("viewBox", "-45 -30 950 280")
+            .classed("svg-content", true);
+        return svg;
+    },
     /**
      *  This function takes in EDDdata, a singleAssay line entry, and measurement names and
      *  transforms it into the following schema:
