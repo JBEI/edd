@@ -38,9 +38,8 @@ StudyDGraphing = {
         var selector = StudyDGraphing.getSelectorElement(this.graphDiv);
 
         //bar chart grouped by time
-        d3.select(buttons["timeBar"])
-              .on('click', function() {
-                  event.preventDefault();
+        $(buttons["timeBar"]).click(function(event) {
+                  event.stopPropagation();
                       d3.select(selector[1]).style('display', 'none');
                       d3.select(selector[2]).style('display', 'block');
                       d3.select(selector[3]).style('display', 'none');
@@ -49,8 +48,7 @@ StudyDGraphing = {
                   return false
         });
         //line chart
-        d3.select(buttons["linechart"])
-            .on('click', function() {
+        $(buttons["linechart"]).click(function(event) {
                 event.preventDefault();
                       d3.select(selector[1]).style('display', 'block');
                       d3.select(selector[2]).style('display', 'none');
@@ -60,8 +58,7 @@ StudyDGraphing = {
                 return false
         });
         //bar charts for each line entry
-        d3.select(buttons["single"])
-            .on('click', function() {
+        $(buttons["single"]).click(function(event) {
                 event.preventDefault();
                       d3.select(selector[1]).style('display', 'none');
                       d3.select(selector[2]).style('display', 'none');
@@ -71,8 +68,7 @@ StudyDGraphing = {
                 return false;
         });
         //bar chart grouped by assay
-        d3.select(buttons["groupedAssay"])
-            .on('click', function() {
+        $(buttons["groupedAssay"]).click(function(event) {
                 event.preventDefault();
                       d3.select(selector[1]).style('display', 'none');
                       d3.select(selector[2]).style('display', 'none');
@@ -81,8 +77,7 @@ StudyDGraphing = {
                       d3.select(selector[5]).style('display', 'none');
                 return false;
         });
-        d3.select(buttons["groupedMeasurement"])
-            .on('click', function() {
+        $(buttons["groupedMeasurement"]).click(function(event) {
                 event.preventDefault();
                       d3.select(selector[1]).style('display', 'none');
                       d3.select(selector[2]).style('display', 'none');
