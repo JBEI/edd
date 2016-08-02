@@ -32,7 +32,7 @@
             return d[type];
         })
         .key(function (d) {
-            return d.x;
+            return parseFloat(d.x);
         })
         .entries(assayMeasurements);
 
@@ -42,6 +42,8 @@
         return d.key;
     });
 
+    //sort x values
+    proteinNames.sort(function(a, b) { return a - b});
 
     var data2 = data.map(function (d) {
         return (d.values);
@@ -56,7 +58,11 @@
     var xValueLabels = data2[0].map(function (d) {
         return (d.key);
     });
-    
+
+    var checking = xValueLabels.sort(function(a, b) { return parseFloat(a) - parseFloat(b)});
+    // checking.sort(function(a, b) { return parseFloat(a) - parseFloat(b)});
+    // checking.sort(function(a, b) { return parseFloat(a) - parseFloat(b)});
+    // checking.sort(function(a, b) { return parseFloat(a) - parseFloat(b)});
     ymin = d3.min(assayMeasurements, function (d) {
         return d.y;
     });
@@ -67,7 +73,7 @@
 
     x_name.domain(proteinNames);
 
-    x_xValue.domain(xValueLabels).rangeRoundBands([0, x_name.rangeBand()]);
+    x_xValue.domain(checking).rangeRoundBands([0, x_name.rangeBand()]);
 
     lineID.domain(yvalueIds).rangeRoundBands([0, x_xValue.rangeBand()]);
     y.domain([ymin, d3.max(assayMeasurements, function (d) {
@@ -97,7 +103,11 @@
             return 'category category-' + d.key;   // returns objects with key = value
         })
         .attr("transform", function (d) {
-            return "translate(" + x_xValue(d.key) + ",0)";
+            if (nested.length > 7) {
+                return
+            } else {
+                return "translate(" + x_xValue(d.key) + ",0)";
+            }
         });
 
     var categories_labels = categories_g.selectAll('.category-label')
@@ -117,7 +127,13 @@
         })
         .attr('text-anchor', 'middle')
         .text(function (d) {
-            return d;
+            if (type == 'x') {
+                return
+            } else if (nested.length > 6) {
+                return
+            } else {
+                return d;
+            }
         })
         .style("font-size", 8);
 

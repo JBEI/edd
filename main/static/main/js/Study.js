@@ -1315,7 +1315,7 @@ var StudyD;
     StudyD.queueMainGraphRemake = queueMainGraphRemake;
     function remakeMainGraphArea(force) {
         var _this = this;
-        var postFilteringMeasurements, dataPointsDisplayed = 0, dataPointsTotal = 0;
+        var postFilteringMeasurements, dataPointsDisplayed = 0, dataPointsTotal = 0, labels = 0;
         this.mainGraphRefreshTimerID = 0;
         if (!this.progressiveFilteringWidget.checkRedrawRequired(force)) {
             return;
@@ -1327,6 +1327,8 @@ var StudyD;
         postFilteringMeasurements = this.progressiveFilteringWidget.buildFilteredMeasurements();
         $.each(postFilteringMeasurements, function (i, measurementId) {
             var measure = EDDData.AssayMeasurements[measurementId], points = (measure.values ? measure.values.length : 0), assay, line, protocol;
+            labels++;
+            console.log(labels);
             dataPointsTotal += points;
             if (dataPointsDisplayed > 15000) {
                 return; // Skip the rest if we've hit our limit
@@ -1339,6 +1341,11 @@ var StudyD;
             _this.graphHelper = Object.create(GraphHelperMethods);
             var singleAssayObj = _this.graphHelper.transformSingleLineItem(EDDData, measure, name);
             dataSets.push(singleAssayObj);
+            var displayText = dataPointsDisplayed + " points displayed";
+            if (dataPointsDisplayed != dataPointsTotal) {
+                displayText += " (out of " + dataPointsTotal + ")";
+            }
+            $('#pointsDisplayedSpan').empty().text(displayText);
         });
         this.mainGraphObject.addNewSet(dataSets);
     }

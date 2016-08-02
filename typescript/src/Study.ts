@@ -1503,7 +1503,8 @@ module StudyD {
     function remakeMainGraphArea(force?:boolean) {
         var postFilteringMeasurements:any[],
             dataPointsDisplayed = 0,
-            dataPointsTotal = 0
+            dataPointsTotal = 0,
+            labels = 0;
 
         this.mainGraphRefreshTimerID = 0;
 
@@ -1519,6 +1520,8 @@ module StudyD {
             var measure:AssayMeasurementRecord = EDDData.AssayMeasurements[measurementId],
                 points = (measure.values ? measure.values.length : 0),
                 assay, line, protocol;
+            labels++;
+            console.log(labels);
             dataPointsTotal += points;
             if (dataPointsDisplayed > 15000) {
                 return; // Skip the rest if we've hit our limit
@@ -1532,6 +1535,11 @@ module StudyD {
             var singleAssayObj = this.graphHelper.transformSingleLineItem(EDDData, measure, name);
 
             dataSets.push(singleAssayObj);
+            var displayText = dataPointsDisplayed + " points displayed";
+            if (dataPointsDisplayed != dataPointsTotal) {
+                displayText += " (out of " + dataPointsTotal + ")";
+            }
+            $('#pointsDisplayedSpan').empty().text(displayText);
         });
         this.mainGraphObject.addNewSet(dataSets);
     }
