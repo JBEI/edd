@@ -60,7 +60,10 @@ def search_metaboliteish(request):
     """ Autocomplete for "metaboliteish" values; metabolites and general measurements. """
     term = request.GET.get('term', '')
     re_term = re.escape(term)
-    groups = (edd_models.MeasurementType.Group.GENERIC, edd_models.MeasurementType.Group.METABOLITE)
+    groups = (
+        edd_models.MeasurementType.Group.GENERIC,
+        edd_models.MeasurementType.Group.METABOLITE,
+    )
     found = edd_models.MeasurementType.objects.filter(
         Q(type_group__in=groups), Q(type_name__iregex=re_term) | Q(short_name__iregex=re_term)
     )[:20]
@@ -129,7 +132,7 @@ def search_sbml_species(request):
 
 def search_strain(request):
     """ Autocomplete delegates to ICE search API. """
-    auth = HmacAuth.get(key_id=settings.ICE_KEY_ID, username=request.user.email)
+    auth = HmacAuth(key_id=settings.ICE_KEY_ID, username=request.user.email)
     ice = IceApi(auth=auth)
     term = request.GET.get('term', '')
     found = ice.search_entries(term, suppress_errors=True)
