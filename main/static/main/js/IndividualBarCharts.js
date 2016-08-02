@@ -24,6 +24,7 @@ function createSideBySide(graphSet, selector) {
     var yAxis = d3.svg.axis()
         .scale(y)
         .orient("left");
+
     var tip = d3.tip()
       .attr('class', 'd3-tip')
       .offset([-10, 0])
@@ -72,9 +73,10 @@ function createSideBySide(graphSet, selector) {
         .call(yAxis)
       .append("text")
         .attr("transform", "rotate(-90)")
-        .attr("y", 6)
-        .attr("dy", ".71em")
-        .style("text-anchor", "end")
+        .attr("y", -5)
+        .attr("x", -60)
+        .attr("dy", "-3em")
+        .style("text-anchor", "middle ")
         .text(graphSet.y_unit);
 
     svg.selectAll(".bar")
