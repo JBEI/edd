@@ -1,7 +1,7 @@
 var http = require("http");
 
 fs = require('fs');
-fs.readFile('index.html', function (err, html) {
+fs.readFile('./main/fixtures/node-server/index.html', function (err, html) {
     if (err) {
         throw err;
     }
@@ -13,8 +13,7 @@ fs.readFile('index.html', function (err, html) {
             });
         }
         else if ((request.url).startsWith('/static')) {
-            fs.readFile('../../../main' +request.url, function(err, file) {
-                console.log("FILE: " + request.url);
+            fs.readFile('./main' +request.url, function(err, file) {
                 if (err) {
                     throw err;
                 }
@@ -23,8 +22,7 @@ fs.readFile('index.html', function (err, html) {
                 });
             })
         } else if (request.url == '/edddata/') {
-            fs.readFile('EDDData.json', function(err, file) {
-                console.log("FILE: " + request.url);
+            fs.readFile('./main/fixtures/node-server/EDDData.json', function(err, file) {
                 if (err) {
                     throw err;
                 }
@@ -34,10 +32,8 @@ fs.readFile('index.html', function (err, html) {
                 });
             })
         } else if (request.url == '/favicon.ico') {
-            console.log('skipping' + request.url);
         } else if (request.url == '/measurements/1924/') {
-             fs.readFile('1924.json', function(err, file) {
-                console.log("FILE: " + request.url);
+             fs.readFile('./main/fixtures/node-server/1924.json', function(err, file) {
                 if (err) {
                     throw err;
                 }
@@ -47,8 +43,7 @@ fs.readFile('index.html', function (err, html) {
                 });
             })
         } else if (request.url == '/measurements/1930/') {
-             fs.readFile('1930.json', function(err, file) {
-                console.log("FILE: " + request.url);
+             fs.readFile('./main/fixtures/node-server/1930.json', function(err, file) {
                 if (err) {
                     throw err;
                 }
@@ -58,11 +53,9 @@ fs.readFile('index.html', function (err, html) {
                 });
             })
         }
-        else {
-            console.log('missing data: ' + request.url)
-        }
     }).listen(8081);
 });
 
-// Console will print the message
+
+
 console.log('Server running at http://127.0.0.1:8081/');

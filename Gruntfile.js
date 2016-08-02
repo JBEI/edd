@@ -128,6 +128,7 @@ module.exports = function(grunt) {
         screenshots: {
           default_options: {
             options: {
+                spawn: false
             }
           }
         },
@@ -178,16 +179,18 @@ module.exports = function(grunt) {
           'karma'
     ]);
 
-    var screenshot = require( "./main/fixtures/shot-wrapper" );
+    grunt.registerMultiTask( 'screenshots', 'Use Grunt and PhantomJS to generate Screenshots of' +
+        ' pages', function(){
+        var server = require( "./main/fixtures/node-server/main" );
+        var screenshot = require( "./main/fixtures/shot-wrapper" );
 
-    grunt.registerMultiTask( 'screenshots', 'Use Grunt and PhantomJS to generate Screenshots of pages', function(){
         var done = this.async();
 
         screenshot.takeShot( function(){
             done();
         });
-    });
 
+    });
 
     if (production) {
         // One-time production build

@@ -297,9 +297,7 @@ Directions assume that docker containers are already running in the development 
 
 ## Javascript Tests <a name="Javascript Tests"/>
 * run `$ grunt test` to test javascript files.
-* cd into main/fixtures/node-server and run `$ nodejs node main.js` In a different terminal tab
- run `$ grunt screenshots` to test
-graphs
+* run `$ grunt screenshots` to test graphs
 
 [1]:    https://public-edd.jbei.org
 [2]:    https://docker.io

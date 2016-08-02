@@ -2,7 +2,7 @@ var path = require( "path" );
 var execFile = require( "child_process" ).execFile;
 var phantomPath = require( "phantomjs" ).path;
 var phantomscript = path.resolve( path.join( __dirname, "shots.js" ) );
-var md5File = require('md5-file')
+var md5File = require('md5-file');
 
 exports.takeShot = function(cb){
     execFile( phantomPath, [
@@ -27,7 +27,7 @@ exports.takeShot = function(cb){
             // original hash values from main/fixtures/originalshots
             var originalHash = ['83ee2c402f6901ec378d34a212ca7058',
                                 '575388bb060b856c618fc0669f6729f6',
-                                'db3419cb33e1e54e2d8a1e66787f4632',
+                                '2437c217c4c65cbc493e473f181300bd',
                                 '573908f6c11dee1d721363bba7155a4d',
                                 '22e50c27d91a87c36b3fef85bcedec07'];
             //new hash values created from newshots
@@ -45,6 +45,7 @@ exports.takeShot = function(cb){
                     console.log('fail: '  + arr[index].slice(23) + 'newHash' + newHash[index])
                 }
             }
+            process.exit(1);
         }
     })
 };
