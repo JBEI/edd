@@ -25,11 +25,11 @@ exports.takeShot = function(cb){
                        'main/fixtures/newshots/groupedMeasurement.png'];
 
             // original hash values from main/fixtures/originalshots
-            var originalHash = ['83ee2c402f6901ec378d34a212ca7058',
-                                '575388bb060b856c618fc0669f6729f6',
-                                '2437c217c4c65cbc493e473f181300bd',
-                                '573908f6c11dee1d721363bba7155a4d',
-                                '22e50c27d91a87c36b3fef85bcedec07'];
+            var originalHash = ['e7e30a6399026842efba2a9fc47455fb',
+                                '8d352252ea759d86063396bad715b799',
+                                'f52d467fbcd49b0fdd4ff1a817ad05f7',
+                                'bb8442da463044321604e86a40eae7fa',
+                                '198ad0f5cd34435eca033ef01275e7da'];
             //new hash values created from newshots
             var newHash = [];
 
