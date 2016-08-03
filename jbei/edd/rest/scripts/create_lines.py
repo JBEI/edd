@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 from __future__ import division
 
 ####################################################################################################
-# set default source for ICE settings BEFORE importing any code from jbei.ice.rest.ice. Otherwise,
+# set default source for ICE settings BEFORE importing any code from jbei.rest.clients.ice. Otherwise,
 # code in that module will attempt to look for a django settings module and fail if django isn't
 # installed in the current virtualenv
 import os
@@ -41,7 +41,7 @@ root_logger.addHandler(console_handler)
 
 # TODO: why isn't this inherited from root? without these lines, get "No handlers could be found for
 #  logger "jbei.edd.rest.edd""
-edd_logger = logging.getLogger('jbei.edd.rest.edd')
+edd_logger = logging.getLogger('jbei.rest.clients.edd')
 edd_logger.setLevel(logging.ERROR)
 edd_logger.addHandler(console_handler)
 ####################################################################################################

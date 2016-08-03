@@ -1002,7 +1002,7 @@ class UtilityTests(TestCase):
 class IceTests(TestCase):
 
     def test_entry_uri_pattern(self):
-        from jbei.ice.rest.ice import ICE_ENTRY_URL_PATTERN
+        from jbei.rest.clients.ice.api import ICE_ENTRY_URL_PATTERN
 
         # test matching against ICE URI's with a numeric ID
         uri = 'https://registry-test.jbei.org/entry/49194/'
