@@ -18,15 +18,13 @@
     {% endif %}
     {% endblock js_css%}
 </head>
-<body>
-    <div class="topBanner">
-        <div class="siteLogo">
-            <body bgcolor="
+<body style="background-color:
                 {% if request.edd_deployment|slice:":11" == "DEVELOPMENT" %} #f4fef4
                 {% elif request.edd_deployment|slice:":4" == "TEST" %} #fff0f2
                 {% elif request.edd_deployment|slice:":11" == "INTEGRATION" %} #fff6e5
                 {% endif %}">
-            </body>
+    <div class="topBanner">
+        <div class="siteLogo">
             <a href="{% url 'main:index' %}">
                 <img src="{% static 'main/images/JBEI_Corner_Logo-EDD.png' %}"
                         alt="EDD Logo - Home"/>
@@ -83,7 +81,7 @@
     </div>
     <div class="footer">
         <div class="footer-text">
-            <span class="footer-text-app">JBEI Experiment Data Depot</span>
+            <span class="footer-text-app">JBEI Experiment Data Depot {{ request.edd_deployment }}</span>
             <span class="footer-text-contact"><a href="mailto:jbei-help@lbl.gov?subject=EDD">Contact</a></span>
         </div>
     </div>
