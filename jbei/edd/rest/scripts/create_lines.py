@@ -11,7 +11,7 @@ import requests
 from django.utils.translation import ugettext
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
-from jbei.edd.rest.constants import METADATA_CONTEXT_LINE
+from jbei.rest.clients.edd.constants import METADATA_CONTEXT_LINE
 from jbei.utils import to_human_relevant_delta, UserInputTimer, session_login, TerminalFormats
 
 os.environ.setdefault('ICE_SETTINGS_MODULE', 'jbei.edd.rest.scripts.settings')
@@ -40,7 +40,7 @@ root_logger.setLevel(logging.DEBUG)
 root_logger.addHandler(console_handler)
 
 # TODO: why isn't this inherited from root? without these lines, get "No handlers could be found for
-#  logger "jbei.edd.rest.edd""
+#  logger "jbei.rest.clients.edd""
 edd_logger = logging.getLogger('jbei.rest.clients.edd')
 edd_logger.setLevel(logging.ERROR)
 edd_logger.addHandler(console_handler)
