@@ -12,30 +12,27 @@ import logging
 from urlparse import urlparse, urlsplit
 
 import requests
-from requests.auth import AuthBase
 
-import jbei
-from jbei.edd.rest.constants import (CASE_SENSITIVE_DEFAULT, CASE_SENSITIVE_PARAM,
-                                     LINES_ACTIVE_DEFAULT, METADATA_CONTEXT_VALUES,
-                                     METADATA_TYPE_GROUP, METADATA_TYPE_CONTEXT,
-                                     METADATA_TYPE_NAME_REGEX,
-                                     METADATA_TYPE_LOCALE, METADATA_TYPE_I18N,
-                                     STRAIN_CASE_SENSITIVE, STRAIN_DESCRIPTION_KEY, STRAIN_NAME,
-                                     STRAIN_NAME_KEY, STRAIN_NAME_REGEX, STRAIN_REG_ID_KEY,
-                                     STRAIN_REG_URL_KEY, STRAIN_REGISTRY_ID,
-                                     STRAIN_REGISTRY_URL_REGEX, PAGE_NUMBER_QUERY_PARAM,
-                                     PAGE_SIZE_QUERY_PARAM)
-from jbei.edd.rest.constants import LINE_ACTIVE_STATUS_PARAM
+from jbei.edd.rest.constants import (
+    CASE_SENSITIVE_DEFAULT, CASE_SENSITIVE_PARAM, LINE_ACTIVE_STATUS_PARAM, LINES_ACTIVE_DEFAULT,
+    METADATA_CONTEXT_VALUES, METADATA_TYPE_CONTEXT, METADATA_TYPE_GROUP, METADATA_TYPE_I18N,
+    METADATA_TYPE_LOCALE, METADATA_TYPE_NAME_REGEX, PAGE_NUMBER_QUERY_PARAM,
+    PAGE_SIZE_QUERY_PARAM, STRAIN_CASE_SENSITIVE, STRAIN_DESCRIPTION_KEY, STRAIN_NAME,
+    STRAIN_NAME_KEY, STRAIN_NAME_REGEX, STRAIN_REG_ID_KEY, STRAIN_REG_URL_KEY, STRAIN_REGISTRY_ID,
+    STRAIN_REGISTRY_URL_REGEX,
+)
 from jbei.rest.api import RestApiClient
-from jbei.rest.request_generators import SessionRequestGenerator, PagedRequestGenerator, PagedResult
-from jbei.rest.utils import remove_trailing_slash, UNSAFE_HTTP_METHODS, CLIENT_ERROR_NOT_FOUND
-from jbei.rest.utils import show_response_html, is_success_code
+from jbei.rest.sessions import Session, PagedResult
+from jbei.rest.utils import (
+    is_success_code, show_response_html, CLIENT_ERROR_NOT_FOUND, UNSAFE_HTTP_METHODS
+)
 
-DEBUG = False  # controls whether error response content is written to temp file, then displayed
-               # in a browser tab
-VERIFY_SSL_DEFAULT = jbei.rest.request_generators.RequestGenerator.VERIFY_SSL_DEFAULT
-DEFAULT_REQUEST_TIMEOUT = (10, 10)  # HTTP request connection and read timeouts, respectively
-                                    # (seconds)
+
+# controls whether error response content is written to temp file, then displayed in a browser tab
+DEBUG = False
+VERIFY_SSL_DEFAULT = Session.VERIFY_SSL_DEFAULT
+# HTTP request connection and read timeouts, respectively (in seconds)
+DEFAULT_REQUEST_TIMEOUT = (10, 10)
 DEFAULT_PAGE_SIZE = 30
 
 logger = logging.getLogger(__name__)
@@ -81,6 +78,7 @@ logger = logging.getLogger(__name__)
 
 #############################################################################################
 
+
 # TODO: if continuing with this approach, extract string constants from EddObject & derived classes
 # to a separate file and reference from both here and from edd.rest.serializers
 class EddRestObject(object):
@@ -92,18 +90,18 @@ class EddRestObject(object):
     This separate object hierarchy that mirrors EDD's is necessary for a couple of reasons:
     1) It prevents EDD's REST API clients from having to install Django libraries that won't really
     provide any benefit on the client side
-    2) It allows client and server-side code to be versioned independently, allowing for some wiggle
-    room during for non-breaking API changes. For example, REST API additions on the server side
-    shouldn't require updates to client code.
+    2) It allows client and server-side code to be versioned independently, allowing for some
+    wiggle room during for non-breaking API changes. For example, REST API additions on the server
+    side shouldn't require updates to client code.
 
     As a result, it creates a separate object hierarchy that closely matches EDD's Django
     models, but needs to be maintained separately.
 
-    Note that there con be some differences in defaults between EddRestObjects and the Django models
-    on which they're based. While Django modules have defaults defined for application to related
-    database records, EddRestObjects, which may only be partially populated from the ground truth in
-    the database, use None for all attributes that arent' specifically set. This should hopefully
-    help to distinguish unknown values from those that have defaults applied.
+    Note that there con be some differences in defaults between EddRestObjects and the Django
+    models on which they're based. While Django modules have defaults defined for application to
+    related database records, EddRestObjects, which may only be partially populated from the
+    ground truth in the database, use None for all attributes that arent' specifically set. This
+    should hopefully help to distinguish unknown values from those that have defaults applied.
 
     TODO: alternatively, and BEFORE putting a lot of additional work into this, consider
     finding/implementing a reflection-based solution that dynamically inspects EDD's Django model
@@ -208,64 +206,26 @@ _ASSUME_PAGED_RESOURCE = False
 _DEFAULT_SINGLE_REQUEST_RESULT_LIMIT = None
 
 
-class DrfSessionRequestGenerator(SessionRequestGenerator):
+class DrfSession(Session):
     """
-    A special-case SessionRequestGenerator to support CSRF token headers required by the Django /
-    Django Rest Framework (DRF) to make requests to "unsafe" (mutator) REST resources. Clients of
-    DrfSessionRequestGenerator can just transparently call request/post/delete/etc methods here
-    without needing to worry about which methods need DRF'S CSRF header set, or the mechanics of
-    how that's accomplished.
+    A special-case Session to support CSRF token headers required by Django and the Django Rest
+    Framework (DRF) to make requests to "unsafe" (mutator) REST resources. Clients of DrfSession
+    can just transparently call request/post/delete/etc methods here without needing to worry
+    about which methods need DRF'S CSRF header set, or the mechanics of how that's accomplished.
     :param base_url: the base url of the site where Django REST framework is being connected to.
     """
 
     def __init__(self, base_url, session, timeout=DEFAULT_REQUEST_TIMEOUT,
                  verify_ssl_cert=VERIFY_SSL_DEFAULT):
-        super(DrfSessionRequestGenerator, self).__init__(session, timeout=timeout,
-                                                         verify_ssl_cert=verify_ssl_cert)
+        super(DrfSession, self).__init__(session, timeout=timeout, verify_ssl_cert=verify_ssl_cert)
         self._base_url = base_url
-
-    #############################################################
-    # 'with' context manager implementation
-    #############################################################
-    def __enter__(self):
-        return self
-
-    def __exit__(self, type, value, traceback):
-        super(DrfSessionRequestGenerator, self).__exit__(type, value, traceback)
-    #############################################################
 
     def request(self, method, url, **kwargs):
         print('executing %s.request()' % self.__class__.__name__)
         # if using an "unsafe" HTTP method, include the CSRF header required by DRF
         if method.upper() in UNSAFE_HTTP_METHODS:
             kwargs = self._get_csrf_headers(**kwargs)
-
-        return super(DrfSessionRequestGenerator, self).request(method, url, **kwargs)
-
-    def head(self, url, **kwargs):
-        return super(DrfSessionRequestGenerator, self).head(url, **kwargs)
-
-    def get(self, url, **kwargs):
-        return super(DrfSessionRequestGenerator, self).get(url, **kwargs)
-
-    def options(self, **kwargs):
-        super(DrfSessionRequestGenerator, self).options(self, **kwargs)
-
-    def post(self, url, data=None, **kwargs):
-        kwargs = self._get_csrf_headers(**kwargs)
-        return super(DrfSessionRequestGenerator, self).post(url, data, **kwargs)
-
-    def put(self, url, data=None, **kwargs):
-        kwargs = self._get_csrf_headers(**kwargs)
-        return super(DrfSessionRequestGenerator, self).put(url, data, **kwargs)
-
-    def patch(self, url, data=None, **kwargs):
-        kwargs = self._get_csrf_headers(**kwargs)
-        return super(DrfSessionRequestGenerator, self).patch(url, data, **kwargs)
-
-    def delete(self, url, **kwargs):
-        kwargs = self._get_csrf_headers(**kwargs)
-        return super(DrfSessionRequestGenerator, self).delete(url, **kwargs)
+        return super(DrfSession, self).request(method, url, **kwargs)
 
     def _get_csrf_headers(self, **kwargs):
         """
@@ -281,133 +241,20 @@ class DrfSessionRequestGenerator(SessionRequestGenerator):
         else:
             headers = []
 
-        csrf_token = self._session.cookies[DJANGO_CSRF_COOKIE_KEY]  # grab cookie value set by
-                                                                    # Django
-        headers['X-CSRFToken'] = csrf_token  # set the header value needed by DRF (inexplicably
-                                             # different than the one Django uses)
+        # grab cookie value set by Django
+        csrf_token = self._session.cookies[DJANGO_CSRF_COOKIE_KEY]
+        # set the header value needed by DRF (inexplicably different than the one Django uses)
+        headers['X-CSRFToken'] = csrf_token
 
         insert_spoofed_https_csrf_headers(headers, self._base_url)
         kwargs['headers'] = headers
         return kwargs
 
 
-class EddSessionAuth(AuthBase):
-    """
-    Implements session-based authentication for EDD.
-    """
-    SESSION_ID_KEY = 'sessionid'
-
-    def __init__(self, base_url, session, timeout=DEFAULT_REQUEST_TIMEOUT,
-                 verify_ssl_cert=VERIFY_SSL_DEFAULT):
-        self._session = session
-
-        drf_request_generator = DrfSessionRequestGenerator(base_url, session, timeout=timeout,
-                                                           verify_ssl_cert=verify_ssl_cert)
-        paging_request_generator = PagedRequestGenerator(request_api=drf_request_generator,
-                                                         result_limit_param_name=PAGE_SIZE_QUERY_PARAM,
-                                                         result_limit=None)
-        self._request_generator = paging_request_generator
-
-    @property
-    def request_generator(self):
-        """
-        Get the request generator responsible for creating all requests to the remote server.
-        """
-        return self._request_generator
-
-    def __call__(self, request):
-        """
-        Overrides the empty base implementation to provide authentication for the provided request
-        object (which should normally be _session)
-        """
-        if request != self._session:  # TODO: not super helpful!!
-            logger.warning('Requests using EddSessionAuth should originate from the session '
-                           'rather than from a new request.')
-            request.cookies[self.SESSION_ID_KEY] = self._session.cookies[self.SESSION_ID_KEY]
-
-    ############################################
-    # 'with' context manager implementation ###
-    ############################################
-    def __enter__(self):
-        return self
-
-    def __exit__(self, type, value, traceback):
-        self._session.__exit__(type, value, traceback)
-    ############################################
-
-    @staticmethod
-    def login(username, password, base_url='https://edd.jbei.org',
-              timeout=DEFAULT_REQUEST_TIMEOUT, verify_ssl_cert=VERIFY_SSL_DEFAULT):
-        """
-        Logs into EDD at the provided URL
-        :param login_page_url: the URL of the login page,
-        (e.g. https://localhost:8000/accounts/login/).
-        Note that it's a security flaw to use HTTP for anything but local testing.
-        :return: an authentication object that encapsulates the newly-created user session, or None
-        if authentication failed (likely because of user error in entering credentials).
-        :raises Exception: if an HTTP error occurs
-        """
-
-        # chop off the trailing '/', if any, so we can write easier-to-read URL snippets in our code
-        # (starting w '%s/'). also makes our code trailing-slash agnostic.
-        base_url = remove_trailing_slash(base_url)
-
-        # issue a GET to get the CRSF token for use in auto-login
-
-        login_page_url = '%s/accounts/login/' % base_url  # Django login page URL
-        # login_page_url = '%s/rest/auth/login/' % base_url  # Django REST framework login page URL
-        session = requests.session()
-        response = session.get(login_page_url, timeout=timeout, verify=verify_ssl_cert)
-
-        if response.status_code != requests.codes.ok:
-            response.raise_for_status()
-
-        # extract the CSRF token from the server response to include as a form header
-        # with the login request (doesn't work without it, even though it's already present in the
-        # session cookie). Note: NOT the same key as the header we send with requests
-
-        csrf_token = response.cookies[DJANGO_CSRF_COOKIE_KEY]
-        if not csrf_token:
-            logger.error("No CSRF token received from EDD. Something's wrong.")
-            raise Exception('Server response did not include the required CSRF token')
-
-        # package up credentials and CSRF token to send with the login request
-        login_dict = {
-            'login': username,
-            'password': password,
-        }
-        csrf_request_headers = {'csrfmiddlewaretoken': csrf_token}
-        login_dict.update(csrf_request_headers)
-
-        # work around Django's additional CSRF protection for HTTPS, which doesn't apply outside of
-        # the browser context
-        headers = {}
-        insert_spoofed_https_csrf_headers(headers, base_url)
-
-        # issue a POST to log in
-        response = session.post(login_page_url, data=login_dict, headers=headers, timeout=timeout,
-                                verify=verify_ssl_cert)
-
-        # return the session if it's successfully logged in, or print error messages/raise
-        # exceptions as appropriate
-        if response.status_code == requests.codes.ok:
-            DJANGO_LOGIN_FAILURE_CONTENT = 'Login failed'
-            DJANGO_REST_API_FAILURE_CONTENT = 'This field is required'
-            if DJANGO_LOGIN_FAILURE_CONTENT in response.content or \
-               DJANGO_REST_API_FAILURE_CONTENT in response.content:
-                logger.warning('Login failed. Please try again.')
-                logger.info(response.headers)
-                if DEBUG:
-                    show_response_html(response)
-                return None
-            else:
-                logger.info('Successfully logged into EDD at %s' % base_url)
-                return EddSessionAuth(base_url, session, timeout=timeout,
-                                      verify_ssl_cert=verify_ssl_cert)
-        else:
-            if DEBUG:
-                show_response_html(response)
-            response.raise_for_status()
+def _set_if_value_valid(dictionary, key, value):
+    # utility method to get rid of long blocks of setting dictionary keys only if values valid
+    if value:
+        dictionary[key] = value
 
 
 class EddApi(RestApiClient):
@@ -490,18 +337,18 @@ class EddApi(RestApiClient):
 
         return MetadataType(**response.content)
 
-    def search_metadata_types(self, context=None, group=None, local_name_regex=None, locale=b'en_US',
-                              case_sensitive=CASE_SENSITIVE_DEFAULT, type_i18n=None, query_url=None,
-                              page_number=None):
+    def search_metadata_types(self, context=None, group=None, local_name_regex=None,
+                              locale=b'en_US', case_sensitive=CASE_SENSITIVE_DEFAULT,
+                              type_i18n=None, query_url=None, page_number=None):
         """
         Searches EDD for the MetadataType(s) that match the search criteria
         :param context: the context for the metadata to be searched. Must be in
-        METADATA_CONTEXT_VALUES
+            METADATA_CONTEXT_VALUES
         :param group: the group this metadat is part of
         :param local_name_regex: the localized name for the metadata type
         :param locale: the locale to search for the metadata type
         :param case_sensitive: True if local_name_regex should be compiled for case-sensitive
-        matching, False otherwise.
+            matching, False otherwise.
         :param type_i18n:
         :param query_url:
         :param page_number: the page number of results to be returned (1-indexed)
@@ -523,28 +370,15 @@ class EddApi(RestApiClient):
             response = request_generator.get(query_url, headers=self._json_header)
         else:
             search_params = {}
-
-            if context:
-                search_params[METADATA_TYPE_CONTEXT] = context
-
-            if group:
-                search_params[METADATA_TYPE_GROUP] = group
-
-            if type_i18n:
-                search_params[METADATA_TYPE_I18N] = type_i18n
-
+            _set_if_value_valid(search_params, METADATA_TYPE_CONTEXT, context)
+            _set_if_value_valid(search_params, METADATA_TYPE_GROUP, group)
+            _set_if_value_valid(search_params, METADATA_TYPE_I18N, type_i18n)
             if local_name_regex:
                 search_params[METADATA_TYPE_NAME_REGEX] = local_name_regex
                 search_params[METADATA_TYPE_LOCALE] = locale
-
-            if case_sensitive:
-                search_params[CASE_SENSITIVE_PARAM] = case_sensitive
-
-            if self.result_limit:
-                search_params[PAGE_SIZE_QUERY_PARAM] = self.result_limit
-
-            if page_number:
-                search_params[PAGE_NUMBER_QUERY_PARAM] = page_number
+            _set_if_value_valid(search_params, CASE_SENSITIVE_PARAM, case_sensitive)
+            _set_if_value_valid(search_params, PAGE_SIZE_QUERY_PARAM, self.result_limit)
+            _set_if_value_valid(search_params, PAGE_NUMBER_QUERY_PARAM, page_number)
 
             # make the HTTP request
             url = '%s/rest/metadata_type' % self.base_url
@@ -589,30 +423,14 @@ class EddApi(RestApiClient):
             response = request_generator.get(query_url, headers=self._json_header)
         else:
             search_params = {}
-
-            if local_pk:
-                search_params['pk'] = local_pk
-
-            if registry_id:
-                search_params[STRAIN_REGISTRY_ID] = registry_id
-
-            if registry_url_regex:
-                search_params[STRAIN_REGISTRY_URL_REGEX] = registry_url_regex
-
-            if name:
-                search_params[STRAIN_NAME] = name
-
-            elif name_regex:
-                search_params[STRAIN_NAME_REGEX] = name_regex
-
-            if case_sensitive:
-                search_params[STRAIN_CASE_SENSITIVE] = case_sensitive
-
-            if self.result_limit:
-                search_params[PAGE_SIZE_QUERY_PARAM] = self.result_limit
-
-            if page_number:
-                search_params[PAGE_NUMBER_QUERY_PARAM] = page_number
+            _set_if_value_valid(search_params, 'pk', local_pk)
+            _set_if_value_valid(search_params, STRAIN_REGISTRY_ID, registry_id)
+            _set_if_value_valid(search_params, STRAIN_REGISTRY_URL_REGEX, registry_url_regex)
+            _set_if_value_valid(search_params, STRAIN_NAME, name)
+            _set_if_value_valid(search_params, STRAIN_NAME_REGEX, name_regex)
+            _set_if_value_valid(search_params, STRAIN_CASE_SENSITIVE, case_sensitive)
+            _set_if_value_valid(search_params, PAGE_SIZE_QUERY_PARAM, self.result_limit)
+            _set_if_value_valid(search_params, PAGE_NUMBER_QUERY_PARAM, page_number)
 
             # make the HTTP request
             url = '%s/rest/strain' % self.base_url
@@ -653,13 +471,13 @@ class EddApi(RestApiClient):
         else:
             search_params = {}
 
-            id = 'id'
+            id_key = 'id'
 
             if strain_uuid:
-                search_params[id] = strain_uuid  # TODO: consider renaming the param to ID,
-                                                 # but def use a constant here and in else
+                # TODO: consider renaming the param to ID, but def use a constant here and in else
+                search_params[id_key] = strain_uuid
             elif local_strain_pk:
-                search_params[id] = local_strain_pk
+                search_params[id_key] = local_strain_pk
             else:
                 raise KeyError('At least one strain identifier must be provided')  # TODO: consider
                 # exception type and message
@@ -704,7 +522,7 @@ class EddApi(RestApiClient):
             params = {}
 
             if line_active_status:
-                params[LINE_ACTIVE_STATUS_PARAM]=line_active_status
+                params[LINE_ACTIVE_STATUS_PARAM] = line_active_status
 
             if page_number:
                 params[PAGE_NUMBER_QUERY_PARAM] = page_number
@@ -723,16 +541,16 @@ class EddApi(RestApiClient):
         """
 
         :param study_pk: the integer primary key for the EDD study whose strain assocations we
-        want to get
-        :param strain_id: an optional unique identifier to test whether a specific strain is used in
-        this EDD study. The unique ID can be either EDD's numeric primary key for the strain,
-        or ICE's UUID, or an empty string to get all strains associated with the study.
+            want to get
+        :param strain_id: an optional unique identifier to test whether a specific strain is used
+            in this EDD study. The unique ID can be either EDD's numeric primary key for the
+            strain, or ICE's UUID, or an empty string to get all strains associated with the study.
         :param line_active_status:
         :param page_number: the page number of results to be returned (1-indexed)
         :param query_url: a convenience for getting the next page of results in multi-page
-        result sets. Query_url is the entire URL for the search, including query parameters (for
-        example, the value returned for next_page as a result of a prior search). If present,
-        all other parameters will be ignored.
+            result sets. Query_url is the entire URL for the search, including query parameters
+            (for example, the value returned for next_page as a result of a prior search). If
+            present, all other parameters will be ignored.
         :return: a PagedResult containing some or all of the EDD strains used in this study
         """
 
@@ -797,7 +615,9 @@ class EddApi(RestApiClient):
             new_line['description'] = description
 
         request_generator = self.session_auth.request_generator
-        response = request_generator.post(url, headers=self._json_header, data=json.dumps(new_line))
+        response = request_generator.post(
+            url, headers=self._json_header, data=json.dumps(new_line),
+        )
 
         # throw an error for unexpected reply
         if not is_success_code(response.status_code):
@@ -846,8 +666,8 @@ class EddApi(RestApiClient):
         """
         A helper method that is the workhorse for both setting all of a strains values,
         or updating just a select subset of them
-        :param http_method: the method to use in updating the strain (determines replacement type by
-        REST convention).
+        :param http_method: the method to use in updating the strain (determines replacement type
+            by REST convention).
         :param name: the strain name
         :param description: the strain description
         :param local_pk: the numeric primary key for this strain in the local EDD deployment
@@ -943,22 +763,22 @@ class DrfPagedResult(PagedResult):
     def of(json_string, model_class):
         """
         Gets a PagedResult containing object results from the provided JSON input. For consistency,
-        the result is always a PagedResult, even if the JSON response actually included the full set
-        of results.
+        the result is always a PagedResult, even if the JSON response actually included the full
+        set of results.
         :param json_string: the raw content of the HTTP response containing potentially paged
-        content
+            content
         :param model_class: the class object to use in instantiating object instances to capture
-        individual query results
+            individual query results
         :param serializer_class: the serializer class to use in deserializing result data
         :param prevent_mods: True to prevent database modifications via returned Django model
-        objects, which may not be fully populated with the full compliment of data required for
-        database storage.
-        :return: a PagedResult containing the data and a sufficient information for finding the rest
-        of it (if any)
+            objects, which may not be fully populated with the full compliment of data required for
+            database storage.
+        :return: a PagedResult containing the data and a sufficient information for finding the
+            rest of it (if any)
         """
         # TODO: try to merge with IcePagedResult.of(), then move implementation to parent
-        # class.  Initial attempt here was to use DRF serializers for de-serialization, which may be
-        # worth another shot following corrected use of super() in those classes.
+        # class.  Initial attempt here was to use DRF serializers for de-serialization, which may
+        # be worth another shot following corrected use of super() in those classes.
         # Otherwise, more Pythonic to just use a factory method. Also update IcePagedResult for
         # consistency.
 

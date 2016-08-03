@@ -11,8 +11,9 @@ import requests
 
 from requests.auth import AuthBase
 from requests.compat import urlparse
+from urlparse import urlsplit
 
-from .utils import remove_trailing_slash
+from .utils import remove_trailing_slash, show_response_html
 
 
 logger = logging.getLogger(__name__)
@@ -130,14 +131,12 @@ class IceSessionAuth(AuthBase):
 
     Clients should first call login() to get a valid ice session id
     """
-    def __init__(self, session_id, timeout=REQUEST_TIMEOUT, verify_ssl_cert=True):
+    def __init__(self, session_id):
         self._session_id = session_id
 
     def __call__(self, request):
         """
-        Overrides the empty base implementation to provide authentication for the provided request
-        object (which should normally be _session). ICE doesn't seem to read the session ID from
-        cookies, so there's no specific need to provide those here.
+        Sets the request header X-ICE-Authentication-SessionId with the ICE session ID.
         """
         request.headers['X-ICE-Authentication-SessionId'] = self._session_id
         return request
@@ -201,4 +200,120 @@ class IceSessionAuth(AuthBase):
 
         logger.info('Successfully logged into ICE at %s' % base_url)
 
-        return SessionAuth(session_id)
+        return IceSessionAuth(session_id)
+
+
+DJANGO_CSRF_COOKIE_KEY = 'csrftoken'
+
+
+def insert_spoofed_https_csrf_headers(headers, base_url):
+    """
+    Creates HTTP headers that help to work around Django's CSRF protection, which shouldn't apply
+    outside of the browser context.
+    :param headers: a dictionary into which headers will be inserted, if needed
+    :param base_url: the base URL of the Django application being contacted
+    """
+    # if connecting to Django/DRF via HTTPS, spoof the 'Host' and 'Referer' headers that Django
+    # uses to help prevent cross-site scripting attacks for secure browser connections. This
+    # should be OK for a standalone Python REST API client, since the origin of a
+    # cross-site scripting attack is malicious website code that executes in a browser,
+    # but accesses another site's credentials via the browser or via user prompts within the
+    # browser. Not applicable in this case for a standalone REST API client.
+    # References:
+    # https://docs.djangoproject.com/en/dev/ref/csrf/#how-it-works
+    # http://security.stackexchange.com/questions/96114/why-is-referer-checking-needed-for-django
+    # http://mathieu.fenniak.net/is-your-web-api-susceptible-to-a-csrf-exploit/
+    # -to-prevent-csrf
+    if urlparse(base_url).scheme == 'https':
+        headers['Host'] = urlsplit(base_url).netloc
+        headers['Referer'] = base_url  # LOL! Bad spelling is now standard :-)
+
+
+class EddSessionAuth(AuthBase):
+    """
+    Implements session-based authentication for EDD.
+    """
+    SESSION_ID_KEY = 'sessionid'
+
+    def __init__(self, session_id):
+        self._session_id = session_id
+
+    def __call__(self, request):
+        """
+        Sets the Django session cookie with the session ID.
+        """
+        request.cookies[self.SESSION_ID_KEY] = self._session_id
+
+    @staticmethod
+    def login(username, password, base_url='https://edd.jbei.org', timeout=REQUEST_TIMEOUT,
+              verify_ssl_cert=True, debug=False):
+        """
+        Logs into EDD at the provided URL
+        :param login_page_url: the URL of the login page,
+            (e.g. https://localhost:8000/accounts/login/).
+            Note that it's a security flaw to use HTTP for anything but local testing.
+        :return: an authentication object that encapsulates the newly-created user session, or None
+            if authentication failed (likely because of user error in entering credentials).
+        :raises Exception: if an HTTP error occurs
+        """
+
+        # chop off the trailing '/', if any, so we can write easier-to-read URL snippets in our
+        # code (starting w '%s/'). also makes our code trailing-slash agnostic.
+        base_url = remove_trailing_slash(base_url)
+
+        # issue a GET to get the CRSF token for use in auto-login
+
+        login_page_url = '%s/accounts/login/' % base_url  # Django login page URL
+        # login_page_url = '%s/rest/auth/login/' % base_url  # Django REST framework login page URL
+        session = requests.session()
+        response = session.get(login_page_url, timeout=timeout, verify=verify_ssl_cert)
+
+        if response.status_code != requests.codes.ok:
+            response.raise_for_status()
+
+        # extract the CSRF token from the server response to include as a form header
+        # with the login request (doesn't work without it, even though it's already present in the
+        # session cookie). Note: NOT the same key as the header we send with requests
+
+        csrf_token = response.cookies[DJANGO_CSRF_COOKIE_KEY]
+        if not csrf_token:
+            logger.error("No CSRF token received from EDD. Something's wrong.")
+            raise Exception('Server response did not include the required CSRF token')
+
+        # package up credentials and CSRF token to send with the login request
+        login_dict = {
+            'login': username,
+            'password': password,
+        }
+        csrf_request_headers = {'csrfmiddlewaretoken': csrf_token}
+        login_dict.update(csrf_request_headers)
+
+        # work around Django's additional CSRF protection for HTTPS, which doesn't apply outside of
+        # the browser context
+        headers = {}
+        insert_spoofed_https_csrf_headers(headers, base_url)
+
+        # issue a POST to log in
+        response = session.post(login_page_url, data=login_dict, headers=headers, timeout=timeout,
+                                verify=verify_ssl_cert)
+
+        # return the session if it's successfully logged in, or print error messages/raise
+        # exceptions as appropriate
+        if response.status_code == requests.codes.ok:
+            DJANGO_LOGIN_FAILURE_CONTENT = 'Login failed'
+            DJANGO_REST_API_FAILURE_CONTENT = 'This field is required'
+            if (DJANGO_LOGIN_FAILURE_CONTENT in response.content or
+                    DJANGO_REST_API_FAILURE_CONTENT in response.content):
+                logger.warning('Login failed. Please try again.')
+                logger.info(response.headers)
+                if debug:
+                    show_response_html(response)
+                return None
+            else:
+                logger.info('Successfully logged into EDD at %s' % base_url)
+                return EddSessionAuth(base_url, session, timeout=timeout,
+                                      verify_ssl_cert=verify_ssl_cert)
+        else:
+            if debug:
+                show_response_html(response)
+            response.raise_for_status()

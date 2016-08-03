@@ -25,7 +25,7 @@ from urlparse import urlunparse, ParseResult, parse_qs
 
 from jbei.rest.api import RestApiClient
 from jbei.rest.utils import CLIENT_ERROR_NOT_FOUND
-from jbei.rest.request_generators import PagedResult, PagedRequestGenerator
+from jbei.rest.sessions import PagedResult, PagedSession
 
 
 logger = logging.getLogger(__name__)
@@ -647,7 +647,7 @@ def parse_entry_id(ice_entry_url):
 
 
 DEFAULT_HMAC_KEY_ID = 'edd'
-ice_paged_requests = PagedRequestGenerator(RESULT_LIMIT_PARAMETER, RESULT_OFFSET_PARAMETER)
+ice_paged_requests = PagedSession(RESULT_LIMIT_PARAMETER, RESULT_OFFSET_PARAMETER)
 
 
 class IceApi(RestApiClient):
@@ -668,8 +668,7 @@ class IceApi(RestApiClient):
         """
         Creates a new instance of IceApi
         :param auth: the authentication strategy for communication with ICE
-        :param request_generator: object implementing the Requests API; defaults to
-            PagedRequestGenerator
+        :param request_generator: object implementing the Requests API; defaults to PagedSession
         :param base_url: the base URL of the ICE install.
         :param result_limit: the maximum number of results that can be returned from a single
         query. The default is ICE's default limit at the time of writing. Note that ICE
