@@ -107,11 +107,7 @@
             return 'category category-' + d.key;   // returns objects with key = value
         })
         .attr("transform", function (d) {
-            if (nested.length > 7) {
-                return
-            } else {
-                return "translate(" + x_xValue(d.key) + ",0)";
-            }
+            return "translate(" + x_xValue(d.key) + ",0)";
         });
 
     var categories_labels = categories_g.selectAll('.category-label')
@@ -133,7 +129,9 @@
         .text(function (d) {
             if (type == 'x') {
                 return
-            } if (labelLength > 5 && xValueLabels.length > 10) {
+            } if (labelLength > 4 && xValueLabels.length > 15) {
+                return
+            } if (labelLength > 12 && xValueLabels.length > 6) {
                 return
             } else {
                 return d;

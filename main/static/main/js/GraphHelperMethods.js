@@ -27,7 +27,7 @@ GraphHelperMethods = {
     createSvg: function (selector) {
         var svg = d3.select(selector).append("svg")
             .attr("preserveAspectRatio", "xMinYMin meet")
-            .attr("viewBox", "-45 -30 820 280")
+            .attr("viewBox", "-45 -30 820 300")
             .classed("svg-content", true);
         return svg;
     },
@@ -258,9 +258,10 @@ GraphHelperMethods = {
             .attr("transform", "translate(0," + graphSet.height + ")")
             .call(xAxis)
             .append('text')
-            .attr("y", 20)
+            .attr("y", 30)
             .attr("x", graphSet.width)
-            .text(graphSet.x_unit);
+            .style("text-anchor", "middle")
+            .text("Hours");
         //Draw the x Grid lines
         svg.append("g")
             .attr("class", "grid")
@@ -283,8 +284,8 @@ GraphHelperMethods = {
             .call(yAxis)
             .append("text")
             .attr("transform", "rotate(-90)")
-            .attr("y", 6)
-            .attr("dy", ".71em")
+            .attr("y", -6)
+            .attr("dy", "-1.7em")
             .style("text-anchor", "end")
             .text(graphSet.y_unit);
         // Draw the y Grid lines
