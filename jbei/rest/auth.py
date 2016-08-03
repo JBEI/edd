@@ -12,7 +12,6 @@ import requests
 from requests.auth import AuthBase
 from requests.compat import urlparse
 
-from .request_generators import PagedRequestGenerator, SessionRequestGenerator
 from .utils import remove_trailing_slash
 
 
@@ -72,8 +71,8 @@ class HmacAuth(AuthBase):
 
     def _build_message(self, request):
         """
-        Builds a string representation of the message contained in the request so it can be digested
-        for HMAC generation
+        Builds a string representation of the message contained in the request so it can be
+        digested for HMAC generation
         """
         url = urlparse(request.url)
 
@@ -111,7 +110,8 @@ class HmacAuth(AuthBase):
         return '&'.join(map(lambda p: '='.join(p), params))
 
 
-# ICE's current automatic limit on results returned in the absence of a specific requested page size
+# ICE's current automatic limit on results returned in the absence of a specific requested
+# page size
 DEFAULT_RESULT_LIMIT = 15
 DEFAULT_PAGE_NUMBER = 1
 RESULT_LIMIT_PARAMETER = 'limit'
@@ -119,37 +119,19 @@ _JSON_CONTENT_TYPE_HEADER = {'Content-Type': 'application/json; charset=utf8'}
 
 
 # TODO: mis-named; should be IceSessionAuth
-class SessionAuth(AuthBase):
+class IceSessionAuth(AuthBase):
     """
     Implements session-based authentication for ICE. At the time of initial implementation,
     "session-based" is a bit misleading for the processing performed here, since ICE's login
     mechanism doesn't reply with set-cookie headers or read the session ID in the session cookie.
-    Instead, ICE's REST API responds to a successful login with a JSON object containing the session
-    ID, and authenticates subsequent requests by requiring the session ID in each subsequent
-    request header.
+    Instead, ICE's REST API responds to a successful login with a JSON object containing the
+    session ID, and authenticates subsequent requests by requiring the session ID in each
+    subsequent request header.
 
     Clients should first call login() to get a valid ice session id
     """
-    def __init__(self, session_id, session, timeout=REQUEST_TIMEOUT, verify_ssl_cert=True):
+    def __init__(self, session_id, timeout=REQUEST_TIMEOUT, verify_ssl_cert=True):
         self._session_id = session_id
-        self._session = session
-
-        session_request_generator = SessionRequestGenerator(session, auth=self, timeout=timeout,
-                                                            verify_ssl_cert=verify_ssl_cert)
-
-        paging_request_generator = PagedRequestGenerator(
-            request_api=session_request_generator,
-            result_limit_param_name=RESULT_LIMIT_PARAMETER,
-            result_limit=DEFAULT_RESULT_LIMIT)
-
-        self._request_generator = paging_request_generator
-
-    @property
-    def request_generator(self):
-        """
-        Get the request generator responsible for creating all requests to the remote server.
-        """
-        return self._request_generator
 
     def __call__(self, request):
         """
@@ -159,16 +141,6 @@ class SessionAuth(AuthBase):
         """
         request.headers['X-ICE-Authentication-SessionId'] = self._session_id
         return request
-
-    ############################################
-    # 'with' context manager implementation ###
-    ############################################
-    def __enter__(self):
-        return self
-
-    def __exit__(self, type, value, traceback):
-        self._session.__exit__(type, value, traceback)
-    ############################################
 
     @staticmethod
     def login(base_url, username, password, user_auth=None, timeout=REQUEST_TIMEOUT,
@@ -195,22 +167,25 @@ class SessionAuth(AuthBase):
         if not username:
             raise ValueError("At least one source of ICE username is required")
 
-        # chop off the trailing '/', if any, so we can write easier-to-read URL snippets in our code
-        # (starting w '%s/'). also makes our code trailing-slash agnostic.
+        # chop off the trailing '/', if any, so we can write easier-to-read URL snippets in our
+        # code (starting w '%s/'). also makes our code trailing-slash agnostic.
         base_url = remove_trailing_slash(base_url)
 
-        # begin a session to track any persistent state required by the server
-        session = requests.session()
-
         # build request parameters for login
-        login_dict = {'email': username,
-                      'password': password}
+        login_dict = {
+            'email': username,
+            'password': password,
+        }
         login_resource_url = '%(base_url)s/rest/accesstokens/' % {'base_url': base_url}
 
         # issue a POST to request login from the ICE REST API
-        response = session.post(login_resource_url, headers=_JSON_CONTENT_TYPE_HEADER,
-                                data=json.dumps(login_dict), timeout=timeout,
-                                verify=verify_ssl_cert)
+        response = requests.post(
+            login_resource_url,
+            headers=_JSON_CONTENT_TYPE_HEADER,
+            data=json.dumps(login_dict),
+            timeout=timeout,
+            verify=verify_ssl_cert,
+        )
 
         # raise an exception if the server didn't give the expected response
         if response.status_code != requests.codes.ok:
@@ -226,4 +201,4 @@ class SessionAuth(AuthBase):
 
         logger.info('Successfully logged into ICE at %s' % base_url)
 
-        return SessionAuth(session_id, session)
+        return SessionAuth(session_id)
