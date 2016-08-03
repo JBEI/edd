@@ -1233,7 +1233,7 @@ def calculate_pages(count, offset, limit):
     if following * limit > count or current * limit >= count:
         following = None
     previous = current - 1 if current >= 1 else None
-    return (previous, current, following)
+    return previous, current, following
 
 
 def parse_query_url(query_url):
@@ -1248,7 +1248,7 @@ def extract_int_parameter(dictionary, key):
     param = dictionary.get(key, None)
     if param:
         return int(param)
-    return None
+    return 0
 
 
 def construct_page_url(elements, params, index, limit):
@@ -1332,7 +1332,7 @@ class IcePagedResult(PagedResult):
             # for both REST API's, despite the differing implementations
             if result_limit:
                 # compute page indexes for the current page and prev/next pages
-                (prev_page_index, current_page_index, next_page_index) = calculate_pages(
+                prev_page_index, current_page_index, next_page_index = calculate_pages(
                     count, offset, result_limit
                 )
 

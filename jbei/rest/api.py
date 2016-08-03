@@ -29,19 +29,19 @@ class RestApiClient(object):
 
     @property
     def result_limit(self):
-        return self._session.result_limit
+        return self.session.result_limit
 
     @result_limit.setter
     def result_limit(self, limit):
-        self._session.result_limit = limit
+        self.session.result_limit = limit
 
     @property
     def timeout(self):
-        return self._session.timeout
+        return self.session.timeout
 
     @timeout.setter
     def timeout(self, timeout):
-        self._session.timeout = timeout
+        self.session.timeout = timeout
 
     @property
     def base_url(self):
