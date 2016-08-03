@@ -123,7 +123,7 @@
             return x_xValue.rangeBand() / 2;
         })
         .attr('y', function (d) {
-            return graphSet.height + 25;
+            return graphSet.height + 27;
         })
         .attr('text-anchor', 'middle')
         .text(function (d) {

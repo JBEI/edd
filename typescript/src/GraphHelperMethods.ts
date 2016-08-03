@@ -45,7 +45,7 @@ GraphHelperMethods = {
     createLineSvg: function (selector)  {
       var svg = d3.select(selector).append("svg")
         .attr("preserveAspectRatio", "xMinYMin meet")
-        .attr("viewBox", "-45 -30 950 280")
+        .attr("viewBox", "-45 -30 950 300")
         .classed("svg-content", true)
       
       return svg; 
@@ -292,7 +292,7 @@ GraphHelperMethods = {
             .attr("transform", "translate(0," + graphSet.height + ")")
             .call(xAxis)
             .append('text')
-            .attr("y", 30)
+            .attr("y", 40)
             .attr("x", graphSet.width)
             .style("text-anchor", "middle")
             .text("Hours");
