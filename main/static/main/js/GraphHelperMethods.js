@@ -300,13 +300,11 @@ GraphHelperMethods = {
     make_y_axis: function (y) {
         return d3.svg.axis()
             .scale(y)
-            .orient("left")
-            .ticks(5);
+            .orient("left");
     },
     make_x_axis: function (x) {
         return d3.svg.axis()
             .scale(x)
-            .orient("bottom")
-            .ticks(5);
-    }
+            .orient("bottom");
+    },
 };

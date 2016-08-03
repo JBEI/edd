@@ -294,7 +294,7 @@ GraphHelperMethods = {
             .append('text')
             .attr("y", 20)
             .attr("x", graphSet.width)
-            .text(graphSet .x_unit);
+            .text(graphSet.x_unit);
         //Draw the x Grid lines
         svg.append("g")
             .attr("class", "grid")
@@ -341,13 +341,11 @@ GraphHelperMethods = {
         return d3.svg.axis()
             .scale(y)
             .orient("left")
-            .ticks(5)
     },
 
      make_x_axis: function(x) {
         return d3.svg.axis()
             .scale(x)
             .orient("bottom")
-            .ticks(5)
-    }
+    },
 };

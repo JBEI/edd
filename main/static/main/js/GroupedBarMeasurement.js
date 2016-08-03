@@ -1,5 +1,3 @@
-
-
 /**
  * this function takes in input min y value, max y value, and the sorted json object.
  *  outputs a grouped bar graph with values grouped by assay name
@@ -59,10 +57,8 @@
         return (d.key);
     });
 
-    var checking = xValueLabels.sort(function(a, b) { return parseFloat(a) - parseFloat(b)});
-    // checking.sort(function(a, b) { return parseFloat(a) - parseFloat(b)});
-    // checking.sort(function(a, b) { return parseFloat(a) - parseFloat(b)});
-    // checking.sort(function(a, b) { return parseFloat(a) - parseFloat(b)});
+    var sortedXvalues = xValueLabels.sort(function(a, b) { return parseFloat(a) - parseFloat(b)});
+
     ymin = d3.min(assayMeasurements, function (d) {
         return d.y;
     });
@@ -71,9 +67,16 @@
       ymin = 0;
     }
 
+    var wordLength = getSum(proteinNames);
+    console.log(wordLength);
+
+    if (wordLength > 90) {
+       proteinNames = _.range(proteinNames.length);
+    }
+
     x_name.domain(proteinNames);
 
-    x_xValue.domain(checking).rangeRoundBands([0, x_name.rangeBand()]);
+    x_xValue.domain(sortedXvalues).rangeRoundBands([0, x_name.rangeBand()]);
 
     lineID.domain(yvalueIds).rangeRoundBands([0, x_xValue.rangeBand()]);
     y.domain([ymin, d3.max(assayMeasurements, function (d) {
@@ -83,6 +86,8 @@
     //create x and y axis 
     graphSet.create_x_axis(graphSet, x_name, svg);
     graphSet.create_y_axis(graphSet, y, svg);
+
+    var labelLength = data.length;
 
     var names_g = svg.selectAll(".group")
         .data(data)
@@ -129,7 +134,7 @@
         .text(function (d) {
             if (type == 'x') {
                 return
-            } else if (nested.length > 6) {
+            } if (labelLength > 5 && xValueLabels.length > 10) {
                 return
             } else {
                 return d;
@@ -208,4 +213,16 @@ function getXYValues(nested) {
             addYIdentifier(xValue.values);
         });
     });
+}
+
+/**
+ *  function takes in nested keys and returns total length of keys
+ */
+function getSum(labels) {
+    var totalLength = 0;
+
+   _.each(labels, function(label) {
+        totalLength += label.length
+    });
+    return totalLength;
 }
