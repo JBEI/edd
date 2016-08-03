@@ -180,19 +180,30 @@
     </div>
     <div class="pageSection pageSectionTabContent" id="overviewSection">
         <div class="sectionContent">
-            <div class="btn-toolbar" id="chartType">
-                 <button class="btn btn-default btn-sm line" type="button"
-                         value="linechart">Line
-                    Graph</button>
-                <button class="btn btn-default btn-sm groupByTimeBar" value="timeBar">
-                        Bar graph grouped by time</button>
-                <button class="btn btn-default btn-sm singleBar" value="single">
-                        Bar graphs for each line entry</button>
-                <button class="btn btn-default btn-sm groupByProteinBar" value="groupedAssay">
-                        Bar graph grouped by line name</button>
-                <button class="btn btn-default btn-sm groupByMeasurementBar"
-                        value="groupedMeasurement">
-                        Bar graph grouped by measurement type</button>
+            <div class="btn-group" data-toggle="buttons" id="chartType">
+                <label class="btn btn-default btn-sm active line" >
+                    <input value="linechart" type="radio" name="options" id="option1" autocomplete="off" checked>
+                    Line Graph</label>
+                <label class="btn btn-default btn-sm groupByTimeBar" >
+                    <input value="timeBar" type="radio" name="options" id="option2"
+                           autocomplete="off">
+                    Bar graph grouped by time
+                </label>
+                <label class="btn btn-default btn-sm singleBar" >
+                    <input value="single" type="radio" name="options" id="option3"
+                           autocomplete="off">
+                    Bar graph grouped by line entry
+                </label>
+                <label class="btn btn-default btn-sm groupByProteinBar">
+                    <input type="radio" name="options" id="option4" autocomplete="off"
+                           value="groupedAssay">
+                    Bar graph grouped by line name
+                </label>
+                <label class="btn btn-default btn-sm groupByMeasurementBar">
+                    <input type="radio" name="options" id="option5" value="groupedMeasurement" autocomplete="off">
+                    Bar graph grouped by measurement type
+                </label>
+                </div>
             </div>
                 <div class="linechart"></div>
                 <div class="timeBar"></div>

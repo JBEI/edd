@@ -26,7 +26,9 @@ StudyDGraphing = {
         var buttons = StudyDGraphing.convertArrToObject(buttonArr);
         var selector = StudyDGraphing.getSelectorElement(this.graphDiv);
         //bar chart grouped by time
-        $(buttons["timeBar"]).click(function (event) {
+        $(buttonArr[1]).click(function (event) {
+            $('label.btn').removeClass('active');
+            $(this).addClass('active');
             event.stopPropagation();
             d3.select(selector[1]).style('display', 'none');
             d3.select(selector[2]).style('display', 'block');
@@ -36,7 +38,9 @@ StudyDGraphing = {
             return false;
         });
         //line chart
-        $(buttons["linechart"]).click(function (event) {
+        $(buttonArr[0]).click(function (event) {
+            $('label.btn').removeClass('active');
+            $(this).addClass('active');
             event.preventDefault();
             d3.select(selector[1]).style('display', 'block');
             d3.select(selector[2]).style('display', 'none');
@@ -46,7 +50,9 @@ StudyDGraphing = {
             return false;
         });
         //bar charts for each line entry
-        $(buttons["single"]).click(function (event) {
+        $(buttonArr[2]).click(function (event) {
+            $('label.btn').removeClass('active');
+            $(this).addClass('active');
             event.preventDefault();
             d3.select(selector[1]).style('display', 'none');
             d3.select(selector[2]).style('display', 'none');
@@ -56,7 +62,9 @@ StudyDGraphing = {
             return false;
         });
         //bar chart grouped by assay
-        $(buttons["groupedAssay"]).click(function (event) {
+        $(buttonArr[3]).click(function (event) {
+            $('label.btn').removeClass('active');
+            $(this).addClass('active');
             event.preventDefault();
             d3.select(selector[1]).style('display', 'none');
             d3.select(selector[2]).style('display', 'none');
@@ -65,7 +73,9 @@ StudyDGraphing = {
             d3.select(selector[5]).style('display', 'none');
             return false;
         });
-        $(buttons["groupedMeasurement"]).click(function (event) {
+        $(buttonArr[4]).click(function (event) {
+            $('label.btn').removeClass('active');
+            $(this).addClass('active');
             event.preventDefault();
             d3.select(selector[1]).style('display', 'none');
             d3.select(selector[2]).style('display', 'none');
@@ -112,10 +122,10 @@ StudyDGraphing = {
     */
     getButtonElement: function (element) {
         if (($(element).siblings().siblings()).size() < 8) {
-            return $(element.siblings()[0]).find("button");
+            return $(element.siblings()[0]).find("label");
         }
         else {
-            return $(element.siblings()[1]).find("button");
+            return $(element.siblings()[1]).find("label");
         }
     },
     // this function takes in the graphDiv element and returns an array of 4 buttons
