@@ -68,7 +68,6 @@
     }
 
     var wordLength = getSum(proteinNames);
-    console.log(wordLength);
 
     if (wordLength > 90) {
        proteinNames = _.range(proteinNames.length);

@@ -5,6 +5,17 @@
   shape-rendering: crispEdges;
 }
 
+.axis2 path,
+.axis2 line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.axis2 text {
+    display: none;
+}
+
 .bar {
   fill: steelblue;
 }

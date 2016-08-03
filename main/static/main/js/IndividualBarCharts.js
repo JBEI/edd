@@ -19,7 +19,7 @@ function createSideBySide(graphSet, selector) {
 
     var xAxis = d3.svg.axis()
       .scale(x)
-      .orient("bottom"); 
+      .orient("bottom");
 
     var yAxis = d3.svg.axis()
         .scale(y)
@@ -49,7 +49,18 @@ function createSideBySide(graphSet, selector) {
     if (ymin >= 0) {
       ymin = 0;
     }
-    x.domain(linedata[i].map(function(d) { return d.x; }));
+
+    var xTicks = linedata[i].map(function(d) {
+      return d.x;
+    });
+
+    if (xTicks.length > 10) {
+      var show = "x axis2"
+    } else {
+      show = 'x axis'
+    }
+
+    x.domain(xTicks);
     y.domain([ymin, d3.max(linedata[i], function(d) { return d.y; })]);
 
     if (graphSet.labels.length === 0) {
@@ -59,7 +70,7 @@ function createSideBySide(graphSet, selector) {
     }
 
     svg.append("g")
-        .attr("class", "x axis")
+        .attr("class", show)
         .attr("transform", "translate(0," + height + ")")
         .call(xAxis);
         svg.append("text")
@@ -89,6 +100,5 @@ function createSideBySide(graphSet, selector) {
         .attr("height", function(d) {return height - y(d.y);})
         .on('mouseover', tip.show)
         .on('mouseout', tip.hide);
-    
   }
 }
