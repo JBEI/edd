@@ -25,63 +25,63 @@ StudyDGraphing = {
         var buttonArr = StudyDGraphing.getButtonElement(this.graphDiv);
         var buttons = StudyDGraphing.convertArrToObject(buttonArr);
         var selector = StudyDGraphing.getSelectorElement(this.graphDiv);
-        //bar chart grouped by time
-        $(buttonArr[1]).click(function (event) {
-            $('label.btn').removeClass('active');
-            $(this).addClass('active');
-            event.stopPropagation();
-            d3.select(selector[1]).style('display', 'none');
-            d3.select(selector[2]).style('display', 'block');
-            d3.select(selector[3]).style('display', 'none');
-            d3.select(selector[4]).style('display', 'none');
-            d3.select(selector[5]).style('display', 'none');
-            return false;
-        });
         //line chart
         $(buttonArr[0]).click(function (event) {
-            $('label.btn').removeClass('active');
-            $(this).addClass('active');
             event.preventDefault();
             d3.select(selector[1]).style('display', 'block');
             d3.select(selector[2]).style('display', 'none');
             d3.select(selector[3]).style('display', 'none');
             d3.select(selector[4]).style('display', 'none');
             d3.select(selector[5]).style('display', 'none');
+            $('label.btn').removeClass('active');
+            $(this).addClass('active');
+            return false;
+        });
+        //bar chart grouped by time
+        $(buttonArr[1]).click(function (event) {
+            event.preventDefault();
+            d3.select(selector[1]).style('display', 'none');
+            d3.select(selector[2]).style('display', 'block');
+            d3.select(selector[3]).style('display', 'none');
+            d3.select(selector[4]).style('display', 'none');
+            d3.select(selector[5]).style('display', 'none');
+            $('label.btn').removeClass('active');
+            $(this).addClass('active');
             return false;
         });
         //bar charts for each line entry
         $(buttonArr[2]).click(function (event) {
-            $('label.btn').removeClass('active');
-            $(this).addClass('active');
             event.preventDefault();
             d3.select(selector[1]).style('display', 'none');
             d3.select(selector[2]).style('display', 'none');
             d3.select(selector[3]).style('display', 'block');
             d3.select(selector[4]).style('display', 'none');
             d3.select(selector[5]).style('display', 'none');
+            $('label.btn').removeClass('active');
+            $(this).addClass('active');
             return false;
         });
         //bar chart grouped by assay
         $(buttonArr[3]).click(function (event) {
-            $('label.btn').removeClass('active');
-            $(this).addClass('active');
             event.preventDefault();
             d3.select(selector[1]).style('display', 'none');
             d3.select(selector[2]).style('display', 'none');
             d3.select(selector[3]).style('display', 'none');
             d3.select(selector[4]).style('display', 'block');
             d3.select(selector[5]).style('display', 'none');
+            $('label.btn').removeClass('active');
+            $(this).addClass('active');
             return false;
         });
         $(buttonArr[4]).click(function (event) {
-            $('label.btn').removeClass('active');
-            $(this).addClass('active');
             event.preventDefault();
             d3.select(selector[1]).style('display', 'none');
             d3.select(selector[2]).style('display', 'none');
             d3.select(selector[3]).style('display', 'none');
             d3.select(selector[4]).style('display', 'none');
             d3.select(selector[5]).style('display', 'block');
+            $('label.btn').removeClass('active');
+            $(this).addClass('active');
             return false;
         });
         var data = EDDData; // main data
@@ -141,4 +141,27 @@ StudyDGraphing = {
         }
         return rv;
     },
+    findOtherValues: function (element) {
+        var otherElements = [], values = ['.linechart', '.single', '.groupedAssay', '.timeBar', '.groupedMeasurement'];
+        _.each(values, function (value) {
+            if (value != element) {
+                otherElements.push(value);
+            }
+        });
+        return otherElements;
+    }
 };
+//this works only for the upper graph..
+// $(buttonArr).on('change', ':radio', function(event) {
+//             event.preventDefault();
+//             var val = "." + $(event.target).val();
+//             var othervalues = StudyDGraphing.findOtherValues(val);
+//                   d3.select(val).style('display', 'block');
+//                   d3.select(othervalues[0]).style('display', 'none');
+//                   d3.select(othervalues[1]).style('display', 'none');
+//                   d3.select(othervalues[2]).style('display', 'none');
+//                   d3.select(othervalues[3]).style('display', 'none');
+//             $('label.btn').removeClass('active');
+//             $(this).addClass('active');
+//               return false
+//         }); 

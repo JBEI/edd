@@ -3235,22 +3235,38 @@ class DataGridSpecAssays extends DataGridSpecBase {
                 //html element of the entire table
                  var html =
                         '                                                                       \
-                           <div class ="btn-toolbar">                                           \
-                                <button class="btn btn-default btn-sm" value="linechart">       \
-                                        Line Graph </button>                                    \
-                                <button class="btn btn-default btn-sm" value="timeBar">         \
-                                        Bar graph by time</button>                              \
-                                <button class="btn btn-default btn-sm" value="single">          \
-                                        Bar graphs for each line</button>                       \
-                                 <button class="btn btn-default btn-sm" value="groupedAssay">   \
-                                        Bar graph by assay</button>                             \
-                            </div>                                                              \
-                                                                                                \
-                            <div class="linechart"></div>                                       \
-                            <div class="timeBar"></div>                                         \
-                            <div class="single"></div>                                          \
-                            <div class="groupedAssay"></div>                                    \
-                            <div class="graphContainer" id= ' + graphid + '></div>              \
+                        <div class="btn-group" data-toggle="buttons" id="chartType"> \
+                            <label class="btn btn-default btn-sm active line" >\
+                                <input value="linechart" type="radio" name="options" \
+                                id="option1" autocomplete="off" checked>Line Graph</label>\
+                            <label class="btn btn-default btn-sm groupByTimeBar" >\
+                                <input value="timeBar" type="radio" name="options" id="option2"\
+                                       autocomplete="off">\
+                                Bar graph grouped by time\
+                            </label>\
+                            <label class="btn btn-default btn-sm singleBar" >\
+                                <input value="single" type="radio" name="options" id="option3"\
+                                       autocomplete="off">\
+                                Bar graph grouped by line entry\
+                            </label>\
+                            <label class="btn btn-default btn-sm groupByProteinBar">\
+                                <input type="radio" name="options" id="option4" autocomplete="off"\
+                                       value="groupedAssay">\
+                                Bar graph grouped by line name\
+                            </label>\
+                            <label class="btn btn-default btn-sm groupByMeasurementBar">\
+                                <input type="radio" name="options" id="option5" \
+                                    value="groupedMeasurement" autocomplete="off">\
+                                Bar graph grouped by measurement type\
+                            </label>\
+                            </div>\
+                        </div>\
+                        <div class="linechart"></div>\
+                        <div class="timeBar"></div>\
+                        <div class="single"></div>\
+                        <div class="groupedAssay"></div>\
+                        <div class="groupedMeasurement"></div>\
+                        <div class="graphContainer" id= ' + graphid + '></div> \
                         '
                     var dom = $( html );
                     $(this.graphAreaHeaderSpec.element).append(dom);
