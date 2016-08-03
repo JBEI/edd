@@ -849,6 +849,81 @@ class IceApi(RestApiClient):
 
             return None
 
+    def process_query_blast(self, query_dict, blast_program, blast_sequence):
+        if blast_program:
+            if blast_program not in BLAST_PROGRAMS:
+                raise KeyError(
+                    'Blast program %s is not one of the recognized programs: %s' %
+                    (blast_program, str(BLAST_PROGRAMS))
+                )
+            if blast_sequence:
+                query_dict['blastQuery'] = {
+                    'blastProgram': blast_program,
+                    'blastSequence': blast_sequence,
+                }
+            else:
+                logger.warning(
+                    'A blast program was specified, but no blast sequence. Ignoring '
+                    'the program.'
+                )
+        elif blast_sequence:
+            logger.warning(
+                'A blast sequence was specified, but no blast program. Ignoring the '
+                'sequence.'
+            )
+        return query_dict
+
+    def process_query_parameters(self, query_dict, sort_field, sort_ascending, page_number):
+        #######################################################################################
+        # Build a list of query parameters that get bundled together in a slightly non-standard
+        # way
+        #######################################################################################
+        parameters = {}
+        if sort_field:
+            parameters['sortField'] = sort_field
+        if sort_ascending:
+            parameters['asc'] = sort_ascending
+
+        nonstandard_offset_param = 'start'
+        nonstandard_result_limit_param = 'retrieveCount'
+
+        # override processing normally handled my request_generator to
+        # apply non-standard page numbering / result limiting needed by this ICE resource
+        if page_number:
+            if not self.result_limit:
+                if page_number != 1:
+                    logger.warning(
+                        "A non-unity page number was requested, but can't be honored "
+                        "because no result_limit is known!"
+                    )
+            else:
+                offset = self.request_generator.result_limit * (page_number - 1)
+                parameters[nonstandard_offset_param] = offset
+        if self.result_limit:
+            parameters[nonstandard_result_limit_param] = self.result_limit
+        if parameters:
+            query_dict['parameters'] = parameters
+
+    def process_query_dict(self, search_terms, entry_types, blast_program, blast_sequence,
+                           search_web, sort_field, sort_ascending, page_number):
+        query_dict = {}
+        query_url = None  # TODO: re-instate this parameter if we can get ICE to support the same
+        # queries in GET as in POST...should simplify client use
+        if not query_url:
+            if search_terms:
+                query_dict['queryString'] = search_terms
+            if entry_types:
+                if not set(entry_types).issubset(set(ICE_ENTRY_TYPES)):
+                    raise KeyError('')
+                query_dict['entryTypes'] = entry_types
+            self.process_query_blast(query_dict, blast_program, blast_sequence)
+            query_dict['webSearch'] = search_web  # Note: affects results even if false?
+            self.process_query_parameters(query_dict, sort_field, sort_ascending, page_number)
+        else:
+            # un-parse the query URL so we're using consistently following the same code path
+            query_dict = parse_qs(urlparse(query_url).params)
+        return query_dict
+
     # TODO: doesn't support field filters yet, though ICE's API does
     def search_entries(self, search_terms=None, entry_types=None, blast_program=None,
                        blast_sequence=None, search_web=False, sort_field=None,
@@ -889,72 +964,10 @@ class IceApi(RestApiClient):
         offset = None
         # package up provided parameters (if any) for insertion into the request
         # optional_query_data = json.dumps({'queryString': query}) if query else None
-        query_dict = {}
-        query_url = None  # TODO: re-instate this parameter if we can get ICE to support the same
-        # queries in GET as in POST...should simplify client use
-        if not query_url:
-            if search_terms:
-                query_dict['queryString'] = search_terms
-            if entry_types:
-                if not set(entry_types).issubset(set(ICE_ENTRY_TYPES)):
-                    raise KeyError('')
-                query_dict['entryTypes'] = entry_types
-            if blast_program:
-                if blast_program not in BLAST_PROGRAMS:
-                    raise KeyError(
-                        'Blast program %s is not one of the recognized programs: %s' %
-                        (blast_program, str(BLAST_PROGRAMS))
-                    )
-                if blast_sequence:
-                    query_dict['blastQuery'] = {
-                        'blastProgram': blast_program,
-                        'blastSequence': blast_sequence,
-                    }
-                else:
-                    logger.warning(
-                        'A blast program was specified, but no blast sequence. Ignoring '
-                        'the program.'
-                    )
-            elif blast_sequence:
-                logger.warning(
-                    'A blast sequence was specified, but no blast program. Ignoring the '
-                    'sequence.'
-                )
-
-            query_dict['webSearch'] = search_web  # Note: affects results even if false?
-
-            #######################################################################################
-            # Build a list of query parameters that get bundled together in a slightly non-standard
-            # way
-            #######################################################################################
-            parameters = {}
-            if sort_field:
-                parameters['sortField'] = sort_field
-            if sort_ascending:
-                parameters['asc'] = sort_ascending
-
-            nonstandard_offset_param = 'start'
-            nonstandard_result_limit_param = 'retrieveCount'
-
-            # override processing normally handled my request_generator to
-            # apply non-standard page numbering / result limiting needed by this ICE resource
-            if page_number:
-                if not self.result_limit:
-                    if page_number != 1:
-                        logger.warning(
-                            "A non-unity page number was requested, but can't be honored "
-                            "because no result_limit is known!"
-                        )
-                else:
-                    offset = self.request_generator.result_limit * (page_number - 1)
-                    parameters[nonstandard_offset_param] = offset
-            if self.result_limit:
-                parameters[nonstandard_result_limit_param] = self.result_limit
-            if parameters:
-                query_dict['parameters'] = parameters
-        else:
-            # un-parse the query URL so we're using consistently following the same code path
-            query_dict = parse_qs(urlparse(query_url).params)
+        query_dict = self.process_query_dict(
+            search_terms, entry_types, blast_program, blast_sequence, search_web, sort_field,
+            sort_ascending, page_number
+        )
 
         # convert query data to JSON, if there is any. Otherwise, we'll query for all the parts
         # visible to this user
