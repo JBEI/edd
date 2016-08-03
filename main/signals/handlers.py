@@ -19,7 +19,7 @@ from requests.exceptions import ConnectionError
 
 from edd.profile.models import UserProfile
 from jbei.rest.auth import HmacAuth
-from jbei.ice.rest.ice import parse_entry_id
+from jbei.rest.clients.ice import parse_entry_id
 from . import study_modified, user_modified
 from ..models import (
     Line, MetaboliteExchange, MetaboliteSpecies, SBMLTemplate, Strain, Study, Update,
@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 if settings.USE_CELERY:
     from edd.remote_tasks import link_ice_entry_to_study, unlink_ice_entry_from_study
 else:
-    from jbei.ice.rest.ice import IceApi
+    from jbei.rest.clients.ice import IceApi
 
 ####################################################################################################
 # Define custom signals

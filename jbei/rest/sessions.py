@@ -32,21 +32,21 @@ class Session(SessionApi):
     def wait_time(self):
         """
         Gets the decimal time in seconds spent waiting on communication using this Session
+        :return: total time waiting (in milliseconds?)
         """
         return self._wait_time
 
     def _update_wait_time(self, start_time, end_time):
         """
-        Updates the total wait time tracked by this instance of IceApi. Helps clients with
-        identifying bottlenecks.
-        :return:
+        Updates the total wait time tracked by this instance. Helps clients with identifying
+        bottlenecks.
         """
         delta = end_time - start_time
         self._wait_time += delta
 
     def reset_wait_time(self):
         """
-        Zeroes out the total wait time tracked by this instance of IceApi.
+        Zeroes out the total wait time tracked by this instance.
         """
         self._wait_time = 0
 
@@ -61,36 +61,28 @@ class Session(SessionApi):
 
     def _set_defaults(self, **kwargs):
         """
-        For any defaults specified in this Session and explicitly set via kwargs
-        parameters, applies the default value
+        For any defaults specified in this Session and explicitly set via kwargs parameters,
+        applies the default value.
         :param kwargs: dictionary of keyword arguments to the request that's about to be made.
-        kwargs is never modified in case clients construct their own dictionaries for use across
-        multiple HTTP requests.
+            kwargs is never modified in case clients construct their own dictionaries for use
+            across multiple HTTP requests.
         :return: a dictionary with defaults applied as appropriate. If there are any defaults to
-        apply, this will be a different dictionary that kwargs.
+            apply, this will be a different dictionary that kwargs.
         """
-        temp = None
+        temp = kwargs.copy()
 
         # if not explicitly provided, use the default timeout configured in the constructor
         if self._timeout and TIMEOUT_KEY not in kwargs:
-            if not temp:
-                temp = kwargs.copy()
             temp[TIMEOUT_KEY] = self._timeout
 
         # if not explicitly provided, use the default setting configured in the constructor
         if self._verify_ssl_cert and VERIFY_KEY not in kwargs:
-            if not temp:
-                temp = kwargs.copy()
             temp[VERIFY_KEY] = self._verify_ssl_cert
 
         if self.auth and AUTH_KEY not in kwargs:
-            if not temp:
-                temp = kwargs.copy()
             temp[AUTH_KEY] = self.auth
 
-        if temp:
-            return temp
-        return kwargs
+        return temp
 
     @property
     def timeout(self):
@@ -139,8 +131,8 @@ class PagedSession(Session):
         parameter that controls page size.
         :return: a copy of kwargs that contains the request parameter to control page size
         """
-        param_name = self._result_limit_param_name
-        result_limit = self._result_limit
+        param_name = self.result_limit_param_name
+        result_limit = self.result_limit
 
         if not (result_limit and param_name):
             return kwargs
@@ -150,7 +142,7 @@ class PagedSession(Session):
             params = {}
         elif param_name in params.keys():
             existing_value = params.get(param_name)
-            if existing_value != self._result_limit:
+            if existing_value != self.result_limit:
                 logger.warning(
                     'An existing request parameter named "%s" was present. This value (%s) will '
                     'be overridden to (%s)', param_name, existing_value, self.result_limit

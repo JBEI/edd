@@ -663,21 +663,21 @@ class IceApi(RestApiClient):
     # TODO: when returning model objects, prevent database changes via partially-populated model
     # object instances. See draft code in edd.py
 
-    def __init__(self, auth, base_url=ICE_URL, result_limit=DEFAULT_RESULT_LIMIT,
-                 request_generator=ice_paged_requests):
+    def __init__(self, auth, base_url=ICE_URL, result_limit=DEFAULT_RESULT_LIMIT):
         """
         Creates a new instance of IceApi
         :param auth: the authentication strategy for communication with ICE
-        :param request_generator: object implementing the Requests API; defaults to PagedSession
+        :param session: object implementing the Requests API; defaults to PagedSession
         :param base_url: the base URL of the ICE install.
         :param result_limit: the maximum number of results that can be returned from a single
-        query. The default is ICE's default limit at the time of writing. Note that ICE
-        doesn't return paging-related data from its REST API, so to
-        provide consistent tracking of how results are paged, some value has to be provided.
+            query. The default is ICE's default limit at the time of writing. Note that ICE
+            doesn't return paging-related data from its REST API, so to provide consistent
+            tracking of how results are paged, some value has to be provided.
         """
         if not auth:
             raise ValueError("A valid authentication mechanism must be provided")
-        super(IceApi, self).__init__('ICE', base_url, request_generator, result_limit)
+        session = PagedSession(RESULT_LIMIT_PARAMETER, RESULT_OFFSET_PARAMETER, auth=auth)
+        super(IceApi, self).__init__('ICE', base_url, session, result_limit)
 
     def _compute_result_offset(self, page_number):
         result_limit = self.result_limit
@@ -700,7 +700,7 @@ class IceApi(RestApiClient):
                         "because no result_limit is known!"
                     )
             else:
-                offset = self.request_generator.result_limit * (page_number - 1)
+                offset = self.session.result_limit * (page_number - 1)
                 dict[RESULT_OFFSET_PARAMETER] = offset
 
     def _extract_pagination_params(self, query_url):
@@ -729,7 +729,7 @@ class IceApi(RestApiClient):
         # construct a dictionary of query params in the format ICE expects
         response = None
         if query_url:
-            response = self.request_generator.get(query_url)
+            response = self.session.get(query_url)
         else:
             url = '%s/rest/users' % self.base_url
             query_params = {}
@@ -740,7 +740,7 @@ class IceApi(RestApiClient):
             if asc:
                 query_params['asc'] = sort
             self._add_page_number_param(query_params, page_number)
-            response = self.request_generator.get(url, params=query_params)
+            response = self.session.get(url, params=query_params)
         if response.status_code == requests.codes.ok:
             return IcePagedResult.of(response.content, User, results_key='users',
                                      query_url=response.url)
@@ -759,13 +759,13 @@ class IceApi(RestApiClient):
 
         response = None
         if query_url:
-            response = self.request_generator.get(query_url, headers=_JSON_CONTENT_TYPE_HEADER)
+            response = self.session.get(query_url, headers=_JSON_CONTENT_TYPE_HEADER)
         else:
             query_params = {}
             self._add_page_number_param(query_params, page_number)
             # execute the query
             url = '%s/rest/parts/%s/experiments/' % (self.base_url, entry_id)
-            response = self.request_generator.get(
+            response = self.session.get(
                 url,
                 params=query_params,
                 headers=_JSON_CONTENT_TYPE_HEADER
@@ -791,14 +791,15 @@ class IceApi(RestApiClient):
 
         response = None
         if query_url:
-            response = self.request_generator.get(query_url, headers=_JSON_CONTENT_TYPE_HEADER)
+            response = self.session.get(query_url, headers=_JSON_CONTENT_TYPE_HEADER)
         else:
             query_params = {}
             self._add_page_number_param(query_params, page_number)
             # execute the query
             url = '%s/rest/parts/%s/samples/' % (self.base_url, entry_id)
-            response = self.request_generator.get(url, params=query_params,
-                                                  headers=_JSON_CONTENT_TYPE_HEADER)
+            response = self.session.get(
+                url, params=query_params, headers=_JSON_CONTENT_TYPE_HEADER
+            )
             query_url = response.url
         if response.status_code == requests.codes.ok:
             return IcePagedResult.of(response.content, Sample, query_url=query_url)
@@ -821,7 +822,7 @@ class IceApi(RestApiClient):
         """
         rest_url = '%s/rest/parts/%s' % (self.base_url, entry_id)
         try:
-            response = self.request_generator.get(url=rest_url)
+            response = self.session.get(url=rest_url)
         except requests.exceptions.Timeout as e:
             if not suppress_errors:
                 raise e
@@ -886,8 +887,8 @@ class IceApi(RestApiClient):
         nonstandard_offset_param = 'start'
         nonstandard_result_limit_param = 'retrieveCount'
 
-        # override processing normally handled my request_generator to
-        # apply non-standard page numbering / result limiting needed by this ICE resource
+        # override processing normally handled by session to apply non-standard
+        # page numbering / result limiting needed by this ICE resource
         if page_number:
             if not self.result_limit:
                 if page_number != 1:
@@ -896,7 +897,7 @@ class IceApi(RestApiClient):
                         "because no result_limit is known!"
                     )
             else:
-                offset = self.request_generator.result_limit * (page_number - 1)
+                offset = self.session.result_limit * (page_number - 1)
                 parameters[nonstandard_offset_param] = offset
         if self.result_limit:
             parameters[nonstandard_result_limit_param] = self.result_limit
@@ -975,8 +976,9 @@ class IceApi(RestApiClient):
 
         # execute the query
         try:
-            response = self.request_generator.post(url, data=optional_query_data,
-                                                   headers=_JSON_CONTENT_TYPE_HEADER)
+            response = self.session.post(
+                url, data=optional_query_data, headers=_JSON_CONTENT_TYPE_HEADER
+            )
             # if response was good, deconstruct the query url, then build a separate 'get' URL
             # to use in next/prev page links. Note that for now, we're leaving this code /
             # incorrect URL in place as a placeholder for future code. Presence / absence of
@@ -1047,8 +1049,8 @@ class IceApi(RestApiClient):
         if link_id:
             json_dict['id'] = link_id
 
-        request_generator = self.request_generator
-        response = request_generator.post(entry_experiments_url, data=json_str, headers=headers)
+        session = self.session
+        response = session.post(entry_experiments_url, data=json_str, headers=headers)
 
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
@@ -1076,7 +1078,7 @@ class IceApi(RestApiClient):
 
         # Look up the links associated with this ICE part
         entry_experiments_rest_url = self._build_entry_experiments_url(ice_entry_id)
-        response = self.request_generator.get(
+        response = self.session.get(
             entry_experiments_rest_url,
             headers=_JSON_CONTENT_TYPE_HEADER
         )
@@ -1111,7 +1113,7 @@ class IceApi(RestApiClient):
 
         entry_experiments_rest_url = self._build_entry_experiments_url(ice_entry_id)
         link_resource_uri = entry_experiments_rest_url + "%s/" % link_id
-        response = self.request_generator.delete(link_resource_uri)
+        response = self.session.delete(link_resource_uri)
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
 
@@ -1160,8 +1162,9 @@ class IceApi(RestApiClient):
         # query ICE to get the list of existing links for this part
         entry_experiments_rest_url = self._build_entry_experiments_url(ice_entry_id)
         logger.info(entry_experiments_rest_url)
-        response = self.request_generator.get(entry_experiments_rest_url,
-                                              headers=_JSON_CONTENT_TYPE_HEADER)
+        response = self.session.get(
+            entry_experiments_rest_url, headers=_JSON_CONTENT_TYPE_HEADER
+        )
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
 

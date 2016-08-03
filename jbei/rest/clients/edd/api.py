@@ -22,7 +22,7 @@ from jbei.edd.rest.constants import (
     STRAIN_REGISTRY_URL_REGEX,
 )
 from jbei.rest.api import RestApiClient
-from jbei.rest.sessions import Session, PagedResult
+from jbei.rest.sessions import Session, PagedResult, PagedSession
 from jbei.rest.utils import (
     is_success_code, show_response_html, CLIENT_ERROR_NOT_FOUND, UNSAFE_HTTP_METHODS
 )
@@ -206,7 +206,7 @@ _ASSUME_PAGED_RESOURCE = False
 _DEFAULT_SINGLE_REQUEST_RESULT_LIMIT = None
 
 
-class DrfSession(Session):
+class DrfSession(PagedSession):
     """
     A special-case Session to support CSRF token headers required by Django and the Django Rest
     Framework (DRF) to make requests to "unsafe" (mutator) REST resources. Clients of DrfSession
@@ -215,9 +215,13 @@ class DrfSession(Session):
     :param base_url: the base url of the site where Django REST framework is being connected to.
     """
 
-    def __init__(self, base_url, session, timeout=DEFAULT_REQUEST_TIMEOUT,
-                 verify_ssl_cert=VERIFY_SSL_DEFAULT):
-        super(DrfSession, self).__init__(session, timeout=timeout, verify_ssl_cert=verify_ssl_cert)
+    def __init__(self, base_url, result_limit_param_name, result_limit=None,
+                 timeout=DEFAULT_REQUEST_TIMEOUT, verify_ssl_cert=VERIFY_SSL_DEFAULT,
+                 auth=None):
+        super(DrfSession, self).__init__(
+            result_limit_param_name=result_limit_param_name, result_limit=result_limit,
+            timeout=timeout, verify_ssl_cert=verify_ssl_cert, auth=auth
+        )
         self._base_url = base_url
 
     def request(self, method, url, **kwargs):
@@ -234,12 +238,10 @@ class DrfSession(Session):
         :return:
         """
         kwargs = kwargs.copy()  # don't modify the input dictionary
-        headers = kwargs.pop('headers')
+        headers = kwargs.pop('headers', {})
 
         if headers:
             headers = headers.copy()  # don't modify the headers dictionary
-        else:
-            headers = []
 
         # grab cookie value set by Django
         csrf_token = self._session.cookies[DJANGO_CSRF_COOKIE_KEY]
@@ -270,24 +272,25 @@ class EddApi(RestApiClient):
     available on the client machine.
     """
 
-    _json_header = {'Content-Type': 'application/json',
-                    'Media-Type': 'application/json',
-                    'Accept': 'application/json'}
+    _json_header = {
+        'Content-Type': 'application/json',
+        'Media-Type': 'application/json',
+        'Accept': 'application/json',
+    }
 
-    def __init__(self, session_auth, base_url, result_limit=DEFAULT_PAGE_SIZE):
+    def __init__(self, auth, base_url, result_limit=DEFAULT_PAGE_SIZE):
         """
         Creates a new instance of EddApi, which prevents data changes by default.
         :param base_url: the base URL of the EDD deployment to interface with,
-        e.g. https://edd.jbei.org/. Note HTTPS should almost always be used for security.
-        :param session_auth: a valid, authenticated EDD session used to authorize all requests to
-        the API.
+            e.g. https://edd.jbei.org/. Note HTTPS should almost always be used for security.
+        :param auth: a valid, authenticated EDD session used to authorize all requests to
+            the API.
         :param result_limit: the maximum number of results that can be returned from a single
-        query, or None to apply EDD's default limit
+            query, or None to apply EDD's default limit
         :return: a new EddApi instance
         """
-        super(EddApi, self).__init__('EDD', base_url, session_auth.request_generator,
-                                     result_limit=result_limit)
-        self.session_auth = session_auth
+        session = DrfSession(base_url, PAGE_SIZE_QUERY_PARAM, auth=auth)
+        super(EddApi, self).__init__('EDD', base_url, session, result_limit=result_limit)
 
     def get_strain(self, strain_id=None):
         """
@@ -297,14 +300,12 @@ class EddApi(RestApiClient):
         :param strain_id: a unique identifier for the strain (either the numeric primary key or
         registry_id)
         """
-        request_generator = self.session_auth.request_generator
-
         # make the HTTP request
         url = '%(base_url)s/rest/strain/%(strain_id)s/' % {
             'base_url': self.base_url,
             'strain_id': strain_id,
         }
-        response = request_generator.get(url, headers=self._json_header)
+        response = self.session.get(url, headers=self._json_header)
 
         # throw an error for unexpected reply
         if response.status_code == requests.codes.ok:
@@ -328,8 +329,7 @@ class EddApi(RestApiClient):
             'base_url': self.base_url,
             'pk': local_pk,
         }
-        request_generator = self.session_auth.request_generator
-        response = request_generator.get(url, headers=self._json_header)
+        response = self.session.get(url, headers=self._json_header)
 
         # throw an error for unexpected reply
         if response.status_code != requests.codes.ok:
@@ -363,11 +363,9 @@ class EddApi(RestApiClient):
 
         self._verify_page_number(page_number)
 
-        request_generator = self.session_auth.request_generator
-
         # build up a dictionary of search parameters based on provided inputs
         if query_url:
-            response = request_generator.get(query_url, headers=self._json_header)
+            response = self.session.get(query_url, headers=self._json_header)
         else:
             search_params = {}
             _set_if_value_valid(search_params, METADATA_TYPE_CONTEXT, context)
@@ -382,7 +380,7 @@ class EddApi(RestApiClient):
 
             # make the HTTP request
             url = '%s/rest/metadata_type' % self.base_url
-            response = request_generator.get(url, params=search_params, headers=self._json_header)
+            response = self.session.get(url, params=search_params, headers=self._json_header)
 
         # throw an error for unexpected reply
         if response.status_code != requests.codes.ok:
@@ -416,11 +414,9 @@ class EddApi(RestApiClient):
 
         self._verify_page_number(page_number)
 
-        request_generator = self.session_auth.request_generator
-
         # build up a dictionary of search parameters based on provided inputs
         if query_url:
-            response = request_generator.get(query_url, headers=self._json_header)
+            response = self.session.get(query_url, headers=self._json_header)
         else:
             search_params = {}
             _set_if_value_valid(search_params, 'pk', local_pk)
@@ -434,7 +430,7 @@ class EddApi(RestApiClient):
 
             # make the HTTP request
             url = '%s/rest/strain' % self.base_url
-            response = request_generator.get(url, params=search_params, headers=self._json_header)
+            response = self.session.get(url, params=search_params, headers=self._json_header)
 
         # throw an error for unexpected reply
         if response.status_code != requests.codes.ok:
@@ -460,12 +456,11 @@ class EddApi(RestApiClient):
         found for this strain
         """
         self._verify_page_number(page_number)
-        request_generator = self.session_auth.request_generator
         response = None
 
         # if the whole query was provided, just use it
         if query_url:
-            response = request_generator.get(query_url, headers=self._json_header)
+            response = self.session.get(query_url, headers=self._json_header)
 
         # otherwise, build up a dictionary of search parameters based on provided inputs
         else:
@@ -490,7 +485,7 @@ class EddApi(RestApiClient):
 
             url = '%s/rest/strain/%d/studies/' % (self.base_url, local_strain_pk)
 
-            response = request_generator.get(url, params=search_params)
+            response = self.session.get(url, params=search_params)
 
         if response.status_code == requests.codes.ok:
             return DrfPagedResult.of(response.content, model_class=Study)
@@ -509,12 +504,11 @@ class EddApi(RestApiClient):
         criteria
         """
         self._verify_page_number(page_number)
-        request_generator = self.session_auth.request_generator
 
         # if servicing a paged response, just use the provided query URL so clients don't have to
         # keep track of all the parameters
         if query_url:
-            response = request_generator.get(query_url, headers=self._json_header)
+            response = self.session.get(query_url, headers=self._json_header)
         else:
             # make the HTTP request
             url = '%s/rest/study/%d/lines/' % (self.base_url, study_pk)
@@ -527,7 +521,7 @@ class EddApi(RestApiClient):
             if page_number:
                 params[PAGE_NUMBER_QUERY_PARAM] = page_number
 
-            response = request_generator.get(url, headers=self._json_header, params=params)
+            response = self.session.get(url, headers=self._json_header, params=params)
 
         # throw an error for unexpected reply
         if response.status_code != requests.codes.ok:
@@ -555,11 +549,10 @@ class EddApi(RestApiClient):
         """
 
         self._verify_page_number(page_number)
-        request_generator = self.session_auth.request_generator
         response = None
 
         if query_url:
-            request_generator.get(query_url, headers=self._json_header)
+            self.session.get(query_url, headers=self._json_header)
 
         else:
             url = '%s/rest/study/%d/strains/%s' % (self.base_url, study_pk, str(strain_id))
@@ -573,7 +566,7 @@ class EddApi(RestApiClient):
             if page_number:
                 params[PAGE_NUMBER_QUERY_PARAM] = page_number
 
-            response = request_generator.get(url, headers=self._json_header, params=params)
+            response = self.session.get(url, headers=self._json_header, params=params)
 
         if response.status_code == CLIENT_ERROR_NOT_FOUND:
             return None
@@ -614,10 +607,7 @@ class EddApi(RestApiClient):
         if description:
             new_line['description'] = description
 
-        request_generator = self.session_auth.request_generator
-        response = request_generator.post(
-            url, headers=self._json_header, data=json.dumps(new_line),
-        )
+        response = self.session.post(url, headers=self._json_header, data=json.dumps(new_line))
 
         # throw an error for unexpected reply
         if not is_success_code(response.status_code):
@@ -648,9 +638,7 @@ class EddApi(RestApiClient):
 
         # make the HTTP request
         url = '%s/rest/strain/' % self.base_url
-        request_generator = self.session_auth.request_generator
-        response = request_generator.post(url, data=json.dumps(post_data),
-                                          headers=self._json_header)
+        response = self.session.post(url, data=json.dumps(post_data), headers=self._json_header)
 
         # throw an error for unexpected reply
         if not is_success_code(response.status_code):
@@ -679,14 +667,10 @@ class EddApi(RestApiClient):
         self._prevent_write_while_disabled()
 
         strain_values = {}
-        if name:
-            strain_values[STRAIN_NAME_KEY] = name
-        if description:
-            strain_values[STRAIN_DESCRIPTION_KEY] = name
-        if registry_id:
-            strain_values[STRAIN_REG_ID_KEY] = registry_id
-        if registry_url:
-            strain_values[STRAIN_REG_URL_KEY] = registry_url
+        _set_if_value_valid(strain_values, STRAIN_NAME_KEY, name)
+        _set_if_value_valid(strain_values, STRAIN_DESCRIPTION_KEY, description)
+        _set_if_value_valid(strain_values, STRAIN_REG_ID_KEY, registry_id)
+        _set_if_value_valid(strain_values, STRAIN_REG_URL_KEY, registry_url)
 
         # determine which identifier to use for the strain. if the local_pk is provided, use that
         # since we may be trying to update a strain that has no UUID defined
@@ -697,9 +681,8 @@ class EddApi(RestApiClient):
             'base_url': self.base_url, 'strain_id': strain_id,
         }
 
-        request_generator = self.session_auth.request_generator
-        response = request_generator.request(http_method, url, data=json.dumps(strain_values),
-                                             headers=self._json_header)
+        response = self.session.request(http_method, url, data=json.dumps(strain_values),
+                                        headers=self._json_header)
 
         if not is_success_code(response.status_code):
             if DEBUG:
@@ -722,8 +705,7 @@ class EddApi(RestApiClient):
 
     def get_study(self, pk):
         url = '%s/rest/study/%d' % (self.base_url, pk)
-        request_generator = self.session_auth.request_generator
-        response = request_generator.get(url)
+        response = self.session.get(url)
 
         # throw an error for unexpected reply
         if response.status_code == 404:

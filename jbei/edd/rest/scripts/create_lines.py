@@ -53,12 +53,12 @@ import csv
 import locale
 import re
 from collections import namedtuple
-from jbei.rest.auth import SessionAuth as IceSessionAuth
+from jbei.rest.auth import EddSessionAuth, IceSessionAuth
+from jbei.rest.clients.edd import EddApi
+from jbei.rest.clients.ice import IceApi, Strain as IceStrain
 from jbei.rest.utils import is_url_secure, show_response_html, verify_edd_cert, verify_ice_cert
-from jbei.ice.rest.ice import IceApi, Strain as IceStrain
 from .settings import EDD_URL, ICE_URL, PRINT_FOUND_ICE_PARTS, PRINT_FOUND_EDD_STRAINS, \
     SIMULATE_STRAIN_CREATION
-from jbei.edd.rest.edd import EddSessionAuth, EddApi
 
 DEFAULT_LOCALE = b'en_US.UTF-8'
 locale.setlocale(locale.LC_ALL, DEFAULT_LOCALE)

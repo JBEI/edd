@@ -23,7 +23,7 @@ from form_utils.forms import BetterModelForm
 from functools import partial
 
 from jbei.rest.auth import HmacAuth
-from jbei.ice.rest.ice import IceApi
+from jbei.rest.clients.ice import IceApi
 from .export import table
 from .models import (
     Assay, Attachment, CarbonSource, Comment, Line, Measurement, MeasurementType,
