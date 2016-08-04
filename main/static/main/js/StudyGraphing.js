@@ -23,7 +23,6 @@ StudyDGraphing = {
     },
     addNewSet: function (newSet) {
         var buttonArr = StudyDGraphing.getButtonElement(this.graphDiv);
-        var buttons = StudyDGraphing.convertArrToObject(buttonArr);
         var selector = StudyDGraphing.getSelectorElement(this.graphDiv);
         //line chart
         $(buttonArr[0]).click(function (event) {
@@ -131,15 +130,6 @@ StudyDGraphing = {
     // this function takes in the graphDiv element and returns an array of 4 buttons
     getSelectorElement: function (element) {
         return element.siblings().siblings();
-    },
-    // this function takes in and array and returns an object
-    convertArrToObject: function (arr) {
-        var rv = {};
-        for (var i = 0; i < arr.length; ++i) {
-            var key = arr[i].value;
-            rv[key] = arr[i];
-        }
-        return rv;
     },
     findOtherValues: function (element) {
         var otherElements = [], values = ['.linechart', '.single', '.groupedAssay', '.timeBar', '.groupedMeasurement'];

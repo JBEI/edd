@@ -34,7 +34,6 @@ StudyDGraphing = {
 
 	addNewSet:function(newSet) {
         var buttonArr = StudyDGraphing.getButtonElement(this.graphDiv);
-        var buttons = StudyDGraphing.convertArrToObject(buttonArr);
         var selector = StudyDGraphing.getSelectorElement(this.graphDiv);
         //line chart
         $(buttonArr[0]).click(function(event) {
@@ -146,41 +145,5 @@ StudyDGraphing = {
     // this function takes in the graphDiv element and returns an array of 4 buttons
     getSelectorElement:function (element) {
         return element.siblings().siblings()
-    },
-
-    // this function takes in and array and returns an object
-    convertArrToObject:function (arr) {
-        var rv = {};
-        for (var i = 0; i < arr.length; ++i) {
-            var key = arr[i].value;
-            rv[key] = arr[i];
-        }
-        return rv;
-    },
-
-    findOtherValues:function (element) {
-        var otherElements = [],
-            values = ['.linechart', '.single', '.groupedAssay', '.timeBar', '.groupedMeasurement'];
-        _.each(values, function(value) {
-            if (value != element) {
-                otherElements.push(value);
-            }
-        });
-        return otherElements;
     }
 };
-
-//this works only for the upper graph..
-// $(buttonArr).on('change', ':radio', function(event) {
-//             event.preventDefault();
-//             var val = "." + $(event.target).val();
-//             var othervalues = StudyDGraphing.findOtherValues(val);
-//                   d3.select(val).style('display', 'block');
-//                   d3.select(othervalues[0]).style('display', 'none');
-//                   d3.select(othervalues[1]).style('display', 'none');
-//                   d3.select(othervalues[2]).style('display', 'none');
-//                   d3.select(othervalues[3]).style('display', 'none');
-//             $('label.btn').removeClass('active');
-//             $(this).addClass('active');
-//               return false
-//         });
