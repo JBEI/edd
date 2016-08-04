@@ -271,7 +271,7 @@ GraphHelperMethods = {
         } else if (units.length == 1) {
             return units[0]
         } else {
-            return "Mixed measurements"
+            return "Mixed units"
         }
     },
     
@@ -316,8 +316,7 @@ GraphHelperMethods = {
         if (graphSet.y_unit == undefined) {
             graphSet.y_unit = 'n/a'
         }
-        console.log(graphSet.width);
-
+        
         svg.append("g")
             .attr("class", "y axis")
             .call(yAxis)

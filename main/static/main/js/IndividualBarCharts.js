@@ -5,7 +5,7 @@
 function createSideBySide(graphSet, selector) {
   
   var linedata = graphSet.individualData;
-  
+
   //iterate through each assay
   for (var i = 0; i < linedata.length; i++) {
 
@@ -100,5 +100,9 @@ function createSideBySide(graphSet, selector) {
         .attr("height", function(d) {return height - y(d.y);})
         .on('mouseover', tip.show)
         .on('mouseout', tip.hide);
+
+    if (i == 29) {
+      linedata.length = 30;
+    }
   }
 }
