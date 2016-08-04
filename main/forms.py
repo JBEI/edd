@@ -13,6 +13,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.contrib.postgres.forms import HStoreField
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.db.models import Prefetch, Q
 from django.db.models.base import Model
 from django.db.models.manager import BaseManager
@@ -350,18 +351,32 @@ class CreateStudyForm(forms.ModelForm):
         super(CreateStudyForm, self).__init__(*args, **kwargs)
 
     def save(self, commit=True, force_insert=False, force_update=False, *args, **kwargs):
-        # save the study
-        s = super(CreateStudyForm, self).save(commit=commit, *args, **kwargs)
-        # make sure the creator has write permission, and ESE has read
-        s.userpermission_set.update_or_create(
-            user=s.created.mod_by,
-            permission_type=StudyPermission.WRITE,
-        )
-        # XXX hard-coding the ID is gross, do it better
-        s.grouppermission_set.update_or_create(
-            group_id=1,
-            permission_type=StudyPermission.READ,
-        )
+
+        # perform updates atomically to the study and related user permissions
+        with transaction.atomic():
+            # save the study
+            s = super(CreateStudyForm, self).save(commit=commit, *args, **kwargs)
+            # make sure the creator has write permission, and ESE has read
+            s.userpermission_set.update_or_create(
+                user=s.created.mod_by,
+                permission_type=StudyPermission.WRITE,
+            )
+
+            # get the ID of the group that should have study read permissions by default.
+            # TODO: this should be configurable in a later version, but for now we'll hard/code
+            # in a way that tolerates non-existence / removal of the default group used at JBEI
+            default_group_name = 'ESE'
+            try:
+                default_group= Group.objects.get(name=default_group_name)
+                s.grouppermission_set.update_or_create(
+                        group_id=default_group.pk,
+                        permission_type=StudyPermission.READ, )
+            except Group.DoesNotExist as dne:
+                logger.exception('Error retrieving information for the hard-coded default-read '
+                                 'group for studies, "%s". Studies will not default to visible '
+                                 'for any particular group.' %
+                                 default_group_name)
+
         return s
 
 

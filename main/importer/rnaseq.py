@@ -8,8 +8,7 @@ from collections import defaultdict
 from six import string_types
 
 from ..models import (
-    Assay, GeneIdentifier, Line, Measurement, MeasurementCompartment,
-    MeasurementUnit, MeasurementValue, Protocol, Update
+    Assay, GeneIdentifier, Line, Measurement, MeasurementUnit, MeasurementValue, Protocol, Update
 )
 
 
@@ -170,7 +169,7 @@ class import_rna_seq(object):
                             y_units=units,
                             experimenter=user,
                             update_ref=update,
-                            compartment=MeasurementCompartment.INTRACELLULAR
+                            compartment=Measurement.Compartment.INTRACELLULAR
                         )
                         self.n_meas += 1
                         new_measurements.append(meas)
@@ -441,7 +440,7 @@ class import_rnaseq_edgepro (object):
                 if (meas_record is None):
                     meas_record = Measurement(
                         assay=assay,
-                        compartment=MeasurementCompartment.INTRACELLULAR,
+                        compartment=Measurement.Compartment.INTRACELLULAR,
                         experimenter=update.mod_by,
                         measurement_type=gene_meas,
                         update_ref=update,

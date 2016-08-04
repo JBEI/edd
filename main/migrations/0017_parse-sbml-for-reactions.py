@@ -34,6 +34,8 @@ def parse_sbml_for_reactions(apps, schema_editor):
                         reactant_name=reactants[0].getSpecies()
                     )
         except Exception as e:
+            # capture any error loading template and move on to the next
+            # don't care about specific error, no need to do any other recovery
             print('Encountered an error processing SBML template %s: %s' % (_template.name, e),
                   file=sys.stderr)
 
