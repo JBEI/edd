@@ -293,7 +293,7 @@ GraphHelperMethods = {
             .call(xAxis)
             .append('text')
             .attr("y", 40)
-            .attr("x", graphSet.width)
+            .attr("x", graphSet.width/2)
             .style("text-anchor", "middle")
             .text("Hours");
         //Draw the x Grid lines
@@ -316,15 +316,17 @@ GraphHelperMethods = {
         if (graphSet.y_unit == undefined) {
             graphSet.y_unit = 'n/a'
         }
+        console.log(graphSet.width);
 
         svg.append("g")
             .attr("class", "y axis")
             .call(yAxis)
             .append("text")
             .attr("transform", "rotate(-90)")
-            .attr("y", -6)
-            .attr("dy", "-1.7em")
-            .style("text-anchor", "end")
+            .attr("y", -47)
+            .attr("x", 0 - (graphSet.height/2))
+            .attr("dy", "1em")
+            .style("text-anchor", "middle")
             .text(graphSet.y_unit);
 
         // Draw the y Grid lines
