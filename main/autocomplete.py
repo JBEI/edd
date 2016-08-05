@@ -12,8 +12,7 @@ from functools import reduce
 
 from jbei.rest.auth import HmacAuth
 from jbei.ice.rest.ice import IceApi
-from . import models as edd_models
-from .solr import UserSearch
+from . import models as edd_models, solr
 
 
 def search_compartment(request):
@@ -58,14 +57,11 @@ def search_group(request):
 
 def search_metaboliteish(request):
     """ Autocomplete for "metaboliteish" values; metabolites and general measurements. """
+    core = solr.MetaboliteSearch()
     term = request.GET.get('term', '')
-    re_term = re.escape(term)
-    groups = (edd_models.MeasurementType.Group.GENERIC, edd_models.MeasurementType.Group.METABOLITE)
-    found = edd_models.MeasurementType.objects.filter(
-        Q(type_group__in=groups), Q(type_name__iregex=re_term) | Q(short_name__iregex=re_term)
-    )[:20]
+    found = core.query(query=term)
     return JsonResponse({
-        'rows': [item.to_json() for item in found],
+        'rows': found.get('response', {}).get('docs', []),
     })
 
 
@@ -158,9 +154,9 @@ def search_study_writable(request):
 
 def search_user(request):
     """ Autocomplete delegates searches to the Solr index of users. """
-    solr = UserSearch()
+    core = solr.UserSearch()
     term = request.GET.get('term', '')
-    found = solr.query(query=term, options={'edismax': True})
+    found = core.query(query=term, options={'edismax': True})
     return JsonResponse({
         'rows': found.get('response', {}).get('docs', []),
     })
