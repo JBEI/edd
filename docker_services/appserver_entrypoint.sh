@@ -79,8 +79,15 @@ echo "$SEPARATOR"
 echo "Running database migrations..."
 echo "$SEPARATOR"
 
+# Temporarily turn off strict error checking, as the migration check will sometimes
+# have a non-zero exit
+set +e
+
 # List any pending migrations
 MIGRATIONS=$(python /code/manage.py showmigrations --plan 2> /dev/null | grep -v '[X]')
+
+# Re-enable strict error checking
+set -e
 
 # Run migrations; if any detected, flag for re-indexing
 python /code/manage.py migrate
