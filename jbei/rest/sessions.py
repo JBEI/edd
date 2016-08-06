@@ -76,8 +76,8 @@ class Session(SessionApi):
             temp[TIMEOUT_KEY] = self._timeout
 
         # if not explicitly provided, use the default setting configured in the constructor
-        if self._verify_ssl_cert and VERIFY_KEY not in kwargs:
-            temp[VERIFY_KEY] = self._verify_ssl_cert
+        # if self._verify_ssl_cert and VERIFY_KEY not in kwargs:
+        temp[VERIFY_KEY] = self._verify_ssl_cert
 
         if self.auth and AUTH_KEY not in kwargs:
             temp[AUTH_KEY] = self.auth

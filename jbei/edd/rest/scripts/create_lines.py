@@ -1671,9 +1671,9 @@ def main():
         if input_timer:
             performance.waiting_for_user_delta = input_timer.wait_time
         if edd:
-            performance.edd_communication_delta = edd.request_generator.wait_time
+            performance.edd_communication_delta = edd.session.wait_time
         if ice:
-            performance.ice_communication_delta = ice.request_generator.wait_time
+            performance.ice_communication_delta = ice.session.wait_time
         performance.overall_end_time = arrow.utcnow()
         performance.print_summary()
 

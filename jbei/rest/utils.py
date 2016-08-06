@@ -110,7 +110,8 @@ def is_edd_test_instance_url(url):
     """
     url_parts = urlparse(url)
     hostname = url_parts.hostname
-    return bool(EDD_TEST_HOSTNAME_PATTERN.match(hostname))
+    #return bool(EDD_TEST_HOSTNAME_PATTERN.match(hostname))
+    return True
 
 
 def is_ice_test_instance_url(url):
@@ -119,7 +120,8 @@ def is_ice_test_instance_url(url):
     """
     url_parts = urlparse(url)
     hostname = url_parts.hostname
-    return bool(ICE_TEST_HOSTNAME_PATTERN.match(hostname))
+    #return bool(ICE_TEST_HOSTNAME_PATTERN.match(hostname))
+    return True
 
 
 def is_local_docker_deployment(url):

@@ -228,9 +228,9 @@ def insert_spoofed_https_csrf_headers(headers, base_url):
         headers['Referer'] = base_url  # LOL! Bad spelling is now standard :-)
 
 
-class EddSessionAuth(AuthBase):
+class EddSessionAuth(object):
     """
-    Implements session-based authentication for EDD.
+    NOT A REQUESTS `AuthBase` OBJECT!
     """
     SESSION_ID_KEY = 'sessionid'
 
@@ -310,8 +310,7 @@ class EddSessionAuth(AuthBase):
                 return None
             else:
                 logger.info('Successfully logged into EDD at %s' % base_url)
-                return EddSessionAuth(base_url, session, timeout=timeout,
-                                      verify_ssl_cert=verify_ssl_cert)
+                return EddSessionAuth(session.cookies[EddSessionAuth.SESSION_ID_KEY])
         else:
             if debug:
                 show_response_html(response)

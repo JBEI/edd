@@ -278,18 +278,20 @@ class EddApi(RestApiClient):
         'Accept': 'application/json',
     }
 
-    def __init__(self, auth, base_url, result_limit=DEFAULT_PAGE_SIZE):
+    def __init__(self, auth, base_url, result_limit=DEFAULT_PAGE_SIZE, verify=True):
         """
         Creates a new instance of EddApi, which prevents data changes by default.
         :param base_url: the base URL of the EDD deployment to interface with,
             e.g. https://edd.jbei.org/. Note HTTPS should almost always be used for security.
-        :param auth: a valid, authenticated EDD session used to authorize all requests to
-            the API.
+        :param auth: a valid, authenticated EDD session from jbei.rest.auth.EddSessionAuth.login(),
+            used to authorize all requests to the API.
         :param result_limit: the maximum number of results that can be returned from a single
             query, or None to apply EDD's default limit
         :return: a new EddApi instance
         """
-        session = DrfSession(base_url, PAGE_SIZE_QUERY_PARAM, auth=auth)
+        session = DrfSession(base_url, PAGE_SIZE_QUERY_PARAM, verify_ssl_cert=verify)
+        # not passing auth into Session as an AuthBase, calling it to set cookie
+        auth(session)
         super(EddApi, self).__init__('EDD', base_url, session, result_limit=result_limit)
 
     def get_strain(self, strain_id=None):

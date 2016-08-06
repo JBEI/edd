@@ -1246,8 +1246,13 @@ def parse_query_url(query_url):
 
 def extract_int_parameter(dictionary, key):
     param = dictionary.get(key, None)
-    if param:
-        return int(param)
+    try:
+        if isinstance(list, param) and len(param):
+            param = param[0]
+        if param:
+            return int(param)
+    except TypeError as e:
+        logger.warning('Attempted invalid int conversion: %s', e)
     return 0
 
 
@@ -1322,6 +1327,7 @@ class IcePagedResult(PagedResult):
             # extract elements of the query URL so we can reconstruct it using paging parameters
             url_elts, query_params_dict = parse_query_url(query_url)
             # if paging parameters aren't already defined, try extracting them from query_url
+            print('%s' % (query_params_dict, ))
             if not result_limit:
                 result_limit = extract_int_parameter(query_params_dict, RESULT_LIMIT_PARAMETER)
             if offset is None:
