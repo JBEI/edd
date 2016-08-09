@@ -500,7 +500,7 @@ var CarbonBalance;
             });
         };
         return Summation;
-    })();
+    }());
     CarbonBalance.Summation = Summation;
     // Class definition for elements in Summation.lineDataByID
     var LineData = (function () {
@@ -557,7 +557,7 @@ var CarbonBalance;
             return new InOutSum(totalIn, totalOut, measurements);
         };
         return LineData;
-    })();
+    }());
     CarbonBalance.LineData = LineData;
     // This represents a baked-down version of the LineData/AssayData, where we've
     // summed up carbon data for all assays at each time point.
@@ -569,7 +569,7 @@ var CarbonBalance;
             this.metaboliteTimelines = [];
         }
         return MergedLineSamples;
-    })();
+    }());
     CarbonBalance.MergedLineSamples = MergedLineSamples;
     var MergedLineSample = (function () {
         function MergedLineSample(timeStamp) {
@@ -578,7 +578,7 @@ var CarbonBalance;
             this.timeStamp = timeStamp;
         }
         return MergedLineSample;
-    })();
+    }());
     CarbonBalance.MergedLineSample = MergedLineSample;
     var InOutSum = (function () {
         function InOutSum(totalIn, totalOut, measurements) {
@@ -587,7 +587,7 @@ var CarbonBalance;
             this.measurements = measurements;
         }
         return InOutSum;
-    })();
+    }());
     CarbonBalance.InOutSum = InOutSum;
     var InOutSumMeasurement = (function () {
         function InOutSumMeasurement() {
@@ -596,7 +596,7 @@ var CarbonBalance;
             return Math.abs(this.carbonDelta);
         };
         return InOutSumMeasurement;
-    })();
+    }());
     CarbonBalance.InOutSumMeasurement = InOutSumMeasurement;
     var AssayData = (function () {
         function AssayData(assayID) {
@@ -617,7 +617,7 @@ var CarbonBalance;
             });
         };
         return AssayData;
-    })();
+    }());
     CarbonBalance.AssayData = AssayData;
     var MetaboliteTimeline = (function () {
         function MetaboliteTimeline(assay, measurementID) {
@@ -668,7 +668,7 @@ var CarbonBalance;
             return null;
         };
         return MetaboliteTimeline;
-    })();
+    }());
     CarbonBalance.MetaboliteTimeline = MetaboliteTimeline;
     // Data for a single line for a single point in time.
     var TimeSample = (function () {
@@ -698,7 +698,7 @@ var CarbonBalance;
             return Math.abs(this.carbonDelta);
         };
         return TimeSample;
-    })();
+    }());
     CarbonBalance.TimeSample = TimeSample;
     // Step 1 is where CarbonBalance.Summation builds a timeline for each line->assay->metabolite.
     // Step 2 is where this class merges all the assay->metabolite timelines into one timeline
@@ -756,6 +756,6 @@ var CarbonBalance;
             return (protocol.name !== 'O2/CO2');
         };
         return TimelineMerger;
-    })();
+    }());
     CarbonBalance.TimelineMerger = TimelineMerger;
 })(CarbonBalance || (CarbonBalance = {})); // end module CarbonBalance

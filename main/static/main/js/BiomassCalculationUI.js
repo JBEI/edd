@@ -70,7 +70,7 @@ var DialogBox = (function () {
         this.addElement(el);
     };
     return DialogBox;
-})();
+}());
 ;
 // This UI lets the user pick a metabolic map and a biomass reaction inside of it to use for the
 // specified study.
@@ -177,7 +177,7 @@ var StudyMetabolicMapChooser = (function () {
         });
     };
     return StudyMetabolicMapChooser;
-})();
+}());
 ;
 // This UI handles mapping SBML species to EDD metabolites, calculating 
 // the biomass, and remembering the result.
@@ -336,7 +336,7 @@ var BiomassCalculationUI = (function () {
         });
     };
     return BiomassCalculationUI;
-})();
+}());
 ;
 var FullStudyBiomassUI = (function () {
     function FullStudyBiomassUI(callback) {
@@ -362,4 +362,4 @@ var FullStudyBiomassUI = (function () {
         chooser = new StudyMetabolicMapChooser(true, chooserHandler);
     }
     return FullStudyBiomassUI;
-})();
+}());

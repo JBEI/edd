@@ -378,7 +378,7 @@ var DataGridSpecStudies = (function (_super) {
         return transformed;
     };
     return DataGridSpecStudies;
-})(DataGridSpecBase);
+}(DataGridSpecBase));
 // initialized with a query string, can search study fields for matches to query terms
 var ResultMatcher = (function () {
     function ResultMatcher(query) {
@@ -423,7 +423,7 @@ var ResultMatcher = (function () {
         });
     };
     return ResultMatcher;
-})();
+}());
 // This is a DataGridHeaderWidget derived from DGSearchWidget.
 // It's a search field that offers options for additional data types, querying the server for results.
 var DGStudiesSearchWidget = (function (_super) {
@@ -481,7 +481,7 @@ var DGStudiesSearchWidget = (function (_super) {
         }
     };
     return DGStudiesSearchWidget;
-})(DGSearchWidget);
+}(DGSearchWidget));
 // Here's an example of a working DataGridOptionWidget.
 // When checked, this hides all Studies that are not owned by the current user.
 var DGOnlyMyStudiesWidget = (function (_super) {
@@ -513,7 +513,7 @@ var DGOnlyMyStudiesWidget = (function (_super) {
         });
     };
     return DGOnlyMyStudiesWidget;
-})(DataGridOptionWidget);
+}(DataGridOptionWidget));
 // Here's another example of a working DataGridOptionWidget.
 // When unchecked, this hides the set of Studies that are marked as disabled.
 var DGDisabledStudiesWidget = (function (_super) {
@@ -554,6 +554,6 @@ var DGDisabledStudiesWidget = (function (_super) {
         }
     };
     return DGDisabledStudiesWidget;
-})(DataGridOptionWidget);
+}(DataGridOptionWidget));
 // use JQuery ready event shortcut to call prepareIt when page is ready
 $(IndexPage.prepareIt);

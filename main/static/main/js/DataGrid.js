@@ -818,13 +818,13 @@ var DataGrid = (function () {
         }
     };
     return DataGrid;
-})();
+}());
 // Type definition for the records contained in a DataGrid
 var DataGridRecordSet = (function () {
     function DataGridRecordSet() {
     }
     return DataGridRecordSet;
-})();
+}());
 // Type definition for the records contained in a DataGrid
 var DataGridRecord = (function () {
     function DataGridRecord(gridSpec, id) {
@@ -963,7 +963,7 @@ var DataGridRecord = (function () {
         });
     };
     return DataGridRecord;
-})();
+}());
 // Container class for data rows in the body of the DataGrid table.
 // DataGrid instantiates these by passing in an array of the DataGridDataCell objects that will form the content of the row.
 var DataGridDataRow = (function () {
@@ -1009,7 +1009,7 @@ var DataGridDataRow = (function () {
         return this.rowElementJQ;
     };
     return DataGridDataRow;
-})();
+}());
 // Container class for cells in the body of the DataGrid table.
 // DataGrid calls a function defined in DataGridColumnSpec objects to instantiate these,
 // passing in a reference to the DataGridSpecBase and a unique identifier for a data record.
@@ -1119,7 +1119,7 @@ var DataGridDataCell = (function () {
         }
     };
     return DataGridDataCell;
-})();
+}());
 // A placeholder cell when data is still loading
 var DataGridLoadingCell = (function (_super) {
     __extends(DataGridLoadingCell, _super);
@@ -1128,7 +1128,7 @@ var DataGridLoadingCell = (function (_super) {
         this.contentString = '<span class="loading">Loading...</span>';
     }
     return DataGridLoadingCell;
-})(DataGridDataCell);
+}(DataGridDataCell));
 // A general class that acts as a common repository for utility functions for DataGrid widgets.
 // It is immediately subclassed into DataGridOptionWidget and DataGridHeaderWidget.
 var DataGridWidget = (function () {
@@ -1163,7 +1163,7 @@ var DataGridWidget = (function () {
         // nothing by default
     };
     return DataGridWidget;
-})();
+}());
 // This is the base class for additional widgets that appear in the options menu of a DataGrid table.
 // The default behavior is to create a checkbox element with a callback, and pair it with a label element.
 //
@@ -1243,7 +1243,7 @@ var DataGridOptionWidget = (function (_super) {
         }
     };
     return DataGridOptionWidget;
-})(DataGridWidget);
+}(DataGridWidget));
 // This is the base class for additional widgets that appear in the header area of a DataGrid table.
 //
 // The DataGridSpec is responsible for instantiating these DataGridOptionWidget-derived objects for a particular table,
@@ -1296,7 +1296,7 @@ var DataGridHeaderWidget = (function (_super) {
         return rowIDs;
     };
     return DataGridHeaderWidget;
-})(DataGridWidget);
+}(DataGridWidget));
 // A generic "Select All" header widget, appearing as a button.
 // When clicked, it walks through every row and cell looking for DataGrid-created checkboxes,
 // and checks every one it finds.
@@ -1331,7 +1331,7 @@ var DGSelectAllWidget = (function (_super) {
         }, sequence);
     };
     return DGSelectAllWidget;
-})(DataGridHeaderWidget);
+}(DataGridHeaderWidget));
 // A generic "Deselect All" header widget, appearing as a button.
 // When clicked, it walks through every row and cell looking for DataGrid-created checkboxes,
 // and checks every one it finds.
@@ -1366,7 +1366,7 @@ var DGDeselectAllWidget = (function (_super) {
         }, sequence);
     };
     return DGDeselectAllWidget;
-})(DataGridHeaderWidget);
+}(DataGridHeaderWidget));
 // Here's an example of a working DataGridHeaderWidget.
 // It's a search field that narrows the set of rows to ones that contain the given string.
 var DGSearchWidget = (function (_super) {
@@ -1473,12 +1473,12 @@ var DGSearchWidget = (function (_super) {
         return filteredIDs;
     };
     return DGSearchWidget;
-})(DataGridHeaderWidget);
+}(DataGridHeaderWidget));
 var DataGridSort = (function () {
     function DataGridSort() {
     }
     return DataGridSort;
-})();
+}());
 // This is a widget that will place controls for paging
 var DGPagingWidget = (function (_super) {
     __extends(DGPagingWidget, _super);
@@ -1538,7 +1538,7 @@ var DGPagingWidget = (function (_super) {
         $(this.nextElement).prop('disabled', start + viewSize >= totalSize);
     };
     return DGPagingWidget;
-})(DataGridHeaderWidget);
+}(DataGridHeaderWidget));
 // Define the TableSpec object used by DataGridSpecBase
 var DataGridTableSpec = (function () {
     function DataGridTableSpec(id, opt) {
@@ -1550,7 +1550,7 @@ var DataGridTableSpec = (function () {
         this.applyStriping = opt['applyStriping'];
     }
     return DataGridTableSpec;
-})();
+}());
 // Define the HeaderSpec object used by DataGridSpecBase
 var DataGridHeaderSpec = (function () {
     function DataGridHeaderSpec(group, id, opt) {
@@ -1572,7 +1572,7 @@ var DataGridHeaderSpec = (function () {
         this.sortId = opt['sortId'];
     }
     return DataGridHeaderSpec;
-})();
+}());
 // Define the ColumnSpec object used by DataGridSpecBase
 var DataGridColumnSpec = (function () {
     function DataGridColumnSpec(group, generateCells) {
@@ -1606,7 +1606,7 @@ var DataGridColumnSpec = (function () {
         return cells;
     };
     return DataGridColumnSpec;
-})();
+}());
 // Define the ColumnGroupSpec object used by DataGridSpecBase
 var DataGridColumnGroupSpec = (function () {
     function DataGridColumnGroupSpec(label, opt) {
@@ -1617,14 +1617,14 @@ var DataGridColumnGroupSpec = (function () {
         this.revealedCallback = opt['revealedCallback'];
     }
     return DataGridColumnGroupSpec;
-})();
+}());
 // Define the RowGroupSpec object used by DataGridSpecBase
 var DataGridRowGroupSpec = (function () {
     function DataGridRowGroupSpec(label) {
         this.name = label;
     }
     return DataGridRowGroupSpec;
-})();
+}());
 // Users of DataGrid should derive from this class, altering the constructor to
 // provide a specification for the layout, interface, and data sources of their DataGrid table,
 // and override the callbacks to customize functionality.
@@ -1756,4 +1756,4 @@ var DataGridSpecBase = (function () {
     DataGridSpecBase.prototype.onUpdatedGroupingEnabled = function (dataGrid, enabled) {
     };
     return DataGridSpecBase;
-})();
+}());
