@@ -28,3 +28,8 @@ if [ ! -f "$DIR/edd/settings/local.py" ]; then
         echo "Warning! Have not replaced admin email in $DIR/edd/settings/local.py"
     fi
 fi
+
+if [ ! -f "$DIR/docker-compose.override.yml" ]; then
+    echo "Copying example docker-compose.override.yml settings …"
+    cp "$DIR/docker-compose.override.yml-example" "$DIR/docker-compose.override.yml"
+fi
