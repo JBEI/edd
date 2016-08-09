@@ -186,28 +186,28 @@ running in the development environment.
     * Run the command `docker-compose exec appserver /code/manage.py shell`
     * Execute the following code to create a user, and exit
   	
-        from main.models import User
-        User.objects.create_user(
-            'unprivileged_user',  # username
-            'test_user@example.com',  # email
-            'insecure_pwd_ok_for_local_testing',  # password
-        )
+          from main.models import User
+          User.objects.create_user(
+              'unprivileged_user',  # username
+              'test_user@example.com',  # email
+              'insecure_pwd_ok_for_local_testing',  # password
+          )
 
     * Attempt login using the UI -- this is necessary to enable the following step
     * Run the command `docker-compose exec postgres psql -U postgres edd`
     * Execute the following code to enable the user, and exit
 
-        UPDATE account_emailaddress SET verified = true WHERE email = 'test_user@example.com';
+          UPDATE account_emailaddress SET verified = true WHERE email = 'test_user@example.com';
 	
 * Dump the production database to file and load into a local test deployment
     * Create the dump file with this command
 
-        pg_dump -h postgres.jbei.org -d eddprod -f edd-prod-dump.sql -U your_username'
+          pg_dump -h postgres.jbei.org -d eddprod -f edd-prod-dump.sql -U your_username'
     
     * Load the dump file
-    
-        docker-compose down
-        POSTGRES_DUMP_FILE=edd-prod-dump.sql docker-compose up -d
+
+          docker-compose down
+          POSTGRES_DUMP_FILE=edd-prod-dump.sql docker-compose up -d
 
 ### Linux / Debian <a name="Debian"/>
 
