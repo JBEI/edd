@@ -2,7 +2,7 @@
 
 The Experiment Data Depot (EDD) is a web-based repository of processed biological data obtained
 via experimentation.  See the deployed version at [public-edd.jbei.org][1].
-    
+
 ## Contents
 * [Getting Started](#Getting_Started)
 * [For Developers](#For_Developers)
@@ -35,7 +35,7 @@ e.g.:
 
     EDD_HOST_DIR=/usr/local/edd/ POSTGRES_DUMP_URL=postgres://edd:edd@pg.example.org:5432/edd \
         docker-compose up -d
-        
+
 These environment variables are included as the service containers are *built*, so take care to
 rebuild the affected containers; or run `docker-compose down` and re-run `docker-compose up -d`
 without the variables set. Failure to do so with the `POSTGRES_DUMP_*` variables will cause the
@@ -75,7 +75,7 @@ Upon cloning a repo for the first time (or updating a repo from before filtering
 once. Some bundled git versions are outdated and cannot use the configuration contained in the
 script; you may need to install a newer version of git; [Homebrew](#HomeBrew) instructions below
 will install a more recent version on Macs.
-   
+
 ### Mac OS Setup <a name="MacOS_Setup"/>
 This section contains directions for setting up a development environment on EDD in Mac OS.
 
@@ -151,7 +151,7 @@ This section contains directions for setting up a development environment on EDD
         * Compose may complain about a missing variables. If this bothers you, run an export
           command to assign an empty string to each: `export EDD_HOST_DIR=`
     * Other useful sample commands:
-	      * Connect to the Postgres command line: `docker-compose exec postgres psql -U postgres`
+        * Connect to the Postgres command line: `docker-compose exec postgres psql -U postgres`
         * Connect to the Django shell: `docker-compose exec appserver python manage.py shell`
     * Startup in new shell sessions
         * The `docker` command will look for a Docker daemon running on the local machine by
@@ -175,7 +175,7 @@ This section contains directions for setting up a development environment on EDD
                 * access Solr via http://192.168.99.100/solr/
                 * access RabbitMQ Management Plugin via http://192.168.99.100/rabbitmq
             * Restart misbehaving services with:  `docker-compose restart $SERVICE`
-			
+
 ### Common Development Tasks
 
 Some of these sample commands will only work as written at JBEI, but should serve as useful
@@ -185,7 +185,7 @@ running in the development environment.
 * Create an unprivileged test account
     * Run the command `docker-compose exec appserver /code/manage.py shell`
     * Execute the following code to create a user, and exit
-  	
+
           from main.models import User
           User.objects.create_user(
               'unprivileged_user',  # username
@@ -198,12 +198,12 @@ running in the development environment.
     * Execute the following code to enable the user, and exit
 
           UPDATE account_emailaddress SET verified = true WHERE email = 'test_user@example.com';
-	
+
 * Dump the production database to file and load into a local test deployment
     * Create the dump file with this command
 
           pg_dump -h postgres.jbei.org -d eddprod -f edd-prod-dump.sql -U your_username'
-    
+
     * Load the dump file
 
           docker-compose down
