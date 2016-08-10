@@ -1,19 +1,32 @@
 #!/bin/bash
 
-set +e
+COMPLETE="false"
 BOLD="\033[1m"
 RESET="\033[0m"
+SEPARATOR="!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+
+function finish {
+    if [ "${COMPLETE}" = "false" ]; then
+        echo "${SEPARATOR}"
+        echo "The init-config.sh script did not complete before exiting. Please correct any"
+        echo "issues identified by the output, or file a bug report with the script exit code"
+        echo "and any script output."
+        echo "${SEPARATOR}"
+    fi
+}
+trap finish EXIT
+
+set +e
 EDD_USER=$(git config --get user.name)
 EDD_EMAIL=$(git config --get user.email)
 if [ -z "${EDD_USER}" ] || [ -z "${EDD_EMAIL}" ]; then
-    echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+    echo "${SEPARATOR}"
     echo "Could not detect git user. Please re-run this script after configuring your"
     echo "git install with commands like these:"
     echo ""
     echo -e "\t${BOLD}git config --global user.name 'Alice Liddell'${RESET}"
     echo -e "\t${BOLD}git config --global user.email 'aliddell@example.net'${RESET}"
     echo ""
-    echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
     exit 1
 fi
 set -e
@@ -45,3 +58,5 @@ if [ ! -f "$DIR/docker-compose.override.yml" ]; then
     echo "Copying example docker-compose.override.yml settings …"
     cp "$DIR/docker-compose.override.yml-example" "$DIR/docker-compose.override.yml"
 fi
+
+COMPLETE="true"
