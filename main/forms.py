@@ -480,9 +480,10 @@ class LineForm(forms.ModelForm):
         kwargs.setdefault('label_suffix', '')
         # store the parent Study
         self._study = kwargs.pop('study', None)
+        # self.fields['name'].help_text = 'This field is required.'
         super(LineForm, self).__init__(*args, **kwargs)
+        self.fields['name'].error_messages =  {'required': 'Line name is required'}
         self.fields['name'].help_text = 'This field is required.'
-        # self.labels['name'].error_messages= {'required': 'Line name is required'}
         # alter all fields to include a "bulk-edit" checkbox in label
         # initially hidden via "off" class
         for fieldname, field in self.fields.items():
