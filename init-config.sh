@@ -1,5 +1,23 @@
 #!/bin/bash
 
+set +e
+BOLD="\033[1m"
+RESET="\033[0m"
+EDD_USER=$(git config --get user.name)
+EDD_EMAIL=$(git config --get user.email)
+if [ -z "${EDD_USER}" ] || [ -z "${EDD_EMAIL}" ]; then
+    echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+    echo "Could not detect git user. Please re-run this script after configuring your"
+    echo "git install with commands like these:"
+    echo ""
+    echo -e "\t${BOLD}git config --global user.name 'Alice Liddell'${RESET}"
+    echo -e "\t${BOLD}git config --global user.email 'aliddell@example.net'${RESET}"
+    echo ""
+    echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+    exit 1
+fi
+set -e
+
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 if [ ! -f "$DIR/secrets.env" ]; then
     COUNTER=1
@@ -19,14 +37,8 @@ fi
 if [ ! -f "$DIR/edd/settings/local.py" ]; then
     echo "Copying example local.py settings …"
     cp "$DIR/edd/settings/local.py-example" "$DIR/edd/settings/local.py"
-    EDD_USER=$(git config --get user.name)
-    EDD_EMAIL=$(git config --get user.email)
-    if [ ! -z "$EDD_USER" ] && [ ! -z "$EDD_EMAIL" ]; then
-        sed -i -e "s/'Jay Bay'/'${EDD_USER}'/;s/'admin@example.org'/'${EDD_EMAIL}'/" \
-            "$DIR/edd/settings/local.py"
-    else
-        echo "Warning! Have not replaced admin email in $DIR/edd/settings/local.py"
-    fi
+    sed -i -e "s/'Jay Bay'/'${EDD_USER}'/;s/'admin@example.org'/'${EDD_EMAIL}'/" \
+        "$DIR/edd/settings/local.py"
 fi
 
 if [ ! -f "$DIR/docker-compose.override.yml" ]; then
