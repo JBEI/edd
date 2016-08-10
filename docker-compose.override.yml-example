@@ -1,3 +1,4 @@
+---
 # This docker-compose.override.yml file contains local overrides to the Docker Compose
 #   configuration of EDD. A copy based on docker-compose.override.yml-example -- containing some
 #   example overrides in configuration to use in development environments -- will be created from
@@ -7,7 +8,8 @@
 #   docker-compose -f docker-compose.yml {COMMAND}
 # To use the docker-compose.yml file with different overrides, launch Docker Compose like this:
 #   docker-compose -f docker-compose.yml -f different.yml {COMMAND}
-# Order matters when specifying overrides!
+# Order matters when specifying overrides! Any scalar values will use the last specified value,
+# while any lists or dictionaries are merged.
 version: '2'
 services:
   postgres:
@@ -42,3 +44,10 @@ services:
     # Make the http 8000 port available on the Docker host external network
     ports:
       - '8000:8000'
+      # Alternate configuration: make appserver port 8000 accessible to Docker localhost:8400
+      #- '127.0.0.1:8400:8000'
+  nginx:
+    # Make the http/https ports available on the Docker host external network
+    ports:
+      - '80:80'
+      - '443:443'
