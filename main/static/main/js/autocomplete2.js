@@ -64,7 +64,7 @@ var EDD_auto = EDD_auto || {}, EDDData = EDDData || {};
         "Strain": 'Strains',
         "CarbonSource": 'CSources',
         "MetaboliteExchange": 'Exchange'
-    })
+    });
     EDD_auto.value_keys = $.extend(EDD_auto.value_keys || {}, {
         "User": 'id',
         "Strain": 'recordId',
@@ -99,15 +99,14 @@ $(function () {
         var cell = $('<span>').addClass('ac_column').css('width', width).appendTo(parent);
         valOrNbsp(cell, label);
         return cell;
-    }
+    };
     $.widget('custom.mcautocomplete', $.ui.autocomplete, {
         _create: function () {
             this._super();
             this.widget().menu("option", "items", "> :not(.ui-widget-header)");
         },
         _renderMenu: function (ul, items) {
-            var self = this,
-                thead;
+            var self = this;
             if (this.options.showHeader) {
                 table = $('<div class="ui-widget-header" style="width:100%"></div>');
                 $.each(this.options.columns, function (index, item) {
@@ -188,21 +187,37 @@ EDD_auto.initial_search = function initial_search(selector, term) {
     autoInput.mcautocomplete('close');
 };
 
-
-// Sets up the multicolumn autocomplete widget.  Must be called after the
-// $(window).load handler above.
-EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(selector, model_name, cache, options) {
+/**
+ * Sets up the multicolumn autocomplete behavior for an existing text input  Must be called
+ * after the $(window).load handler above.
+ * @param selector the CSS selector that uniquely identifies the autocomplete text input
+ * within the DOM. Note that in order to work, the autocomplete input must have an
+ * immediately-following hidden sibling input which will be used to cache the selected value.
+ * @param model_class_name the EDD class of results to be searched (roughly corresponds to
+ * the Django ORM model classes)
+ * @param cache an optional dictionary to use / maintain as a cache of query results for this
+ * autocomplete. Maps search term -> results.
+ * @param search_options
+ * @param prependResults an optional dictionary of static results to prepend to those returned
+ * by search queries
+ * @param search_uri the URI of the REST resource to use for querying autocomplete results
+ */
+EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(selector, model_class_name,
+                                                                      cache, search_options,
+                                                                      prependResults,
+                                                                      search_uri="/search") {
     var empty = {}, columns, display_key, value_key, cacheId, opt;
-    if (typeof model_name === "undefined") {
-        throw Error("model_name must be defined!");
+    if (typeof model_class_name === "undefined") {
+        throw Error("model_class_name must be defined!");
     }
-    opt = $.extend({}, options);
-    columns = EDD_auto.column_layouts[model_name] || [ new AutoColumn('Name', '300px', 'name') ];
-    display_key = EDD_auto.display_keys[model_name] || 'name';
-    value_key = EDD_auto.value_keys[model_name] || 'id';
-    cacheId = EDD_auto.value_cache[model_name] || ('cache_' + (++EDD_auto.cache_counter));
+    opt = $.extend({}, search_options);
+    prependResults = prependResults || {};
+    columns = EDD_auto.column_layouts[model_class_name] || [ new AutoColumn('Name', '300px', 'name') ];
+    display_key = EDD_auto.display_keys[model_class_name] || 'name';
+    value_key = EDD_auto.value_keys[model_class_name] || 'id';
+    cacheId = EDD_auto.value_cache[model_class_name] || ('cache_' + (++EDD_auto.cache_counter));
     cache = cache || (EDDData[cacheId] = EDDData[cacheId] || {});
-    empty[columns[0].valueField] = empty[0] = '<i>No Results Found</i>';
+    empty[columns[0].valueField] = empty[0] = 'No Results Found';
     columns.slice(1).forEach(function (column, index) {
         empty[column.valueField] = empty[index] = '';
     });
@@ -218,33 +233,43 @@ EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(selector, 
         'columns': columns,
         // Event handler for when a list item is selected.
         'select': function (event, ui) {
-            var cacheKey, record, display, value;
+            var cacheKey, cache_record, display, value;
             if (ui.item) {
                 cacheKey = ui.item[value_key];
-                record = cache[cacheKey] = cache[cacheKey] || {};
-                $.extend(record, ui.item);
-                display = record[display_key] || '';
-                value = record[value_key] || '';
+                cache_record = cache[cacheKey] = cache[cacheKey] || {};
+                $.extend(cache_record, ui.item);
+                display = cache_record[display_key] || '';
+                value = cache_record[value_key] || '';
                 // assign value of selected item ID to sibling hidden input
-                $(this).val(display).trigger('change').next('input[type=hidden]').val(value);
+                $(this).val(display).trigger('change input').next('input[type=hidden]').val(value);
             }
             return false;
         },
-    
+        'close': function(event, ui) {
+            // in case the user cleared the input or modified the search string without making
+            // a selection, reset the input control to show the last valid selection
+            valueCacheRecord = cache[value_key] || {};
+            var displayCacheRecord = cache[display_key] || '';
+            $(this).val(valueCacheRecord);
+        },
         // The rest of the options are for configuring the ajax webservice call.
         'minLength': 0,
         'source': function (request, response) {
-            var result, terms;
-            terms = EDD_auto.request_cache[model_name] = EDD_auto.request_cache[model_name] || {};
-            if (terms[request.term]) {
-                response(terms[request.term]);
+            var result, modelCache;
+            modelCache = EDD_auto.request_cache[model_class_name] = EDD_auto.request_cache[model_class_name] || {};
+            var termCachedResults = modelCache[request.term];
+            if (termCachedResults) {
+                // prepend any optional default results
+                var displayResults = prependResults.concat(termCachedResults);
+
+                response(displayResults);
                 return;
             }
             $.ajax({
-                'url': '/search',
+                'url': search_uri,
                 'dataType': 'json',
                 'data': $.extend({
-                    'model': model_name,
+                    'model': model_class_name,
                     'term': request.term
                 }, opt.search_extra),
                 // The success event handler will display "No match found" if no items are returned.
@@ -256,15 +281,18 @@ EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(selector, 
                         // store returned results in cache
                         result.forEach(function (item) {
                             var cacheKey = item[value_key],
-                                record = cache[cacheKey] = cache[cacheKey] || {};
-                            $.extend(record, item);
+                                cache_record = cache[cacheKey] = cache[cacheKey] || {};
+                            $.extend(cache_record, item);
                         });
                     }
-                    terms[request.term] = result;
-                    response(result);
+                    modelCache[request.term] = result;
+
+                    // prepend any optional default results
+                    var displayResults = prependResults.concat(result);
+                    response(displayResults);
                 },
                 'error': function (jqXHR, status, err) {
-                    response([ '<i>Server Error</i>' ]);
+                    response([ 'Server Error' ]);
                 }
             });
         },

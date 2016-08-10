@@ -727,7 +727,8 @@ class Study(EDDObject):
         return Assay.objects.filter(line__study=self)
 
     def get_assays_by_protocol(self):
-        """ Returns a dict mapping Protocol ID to all Assays in Study using that Protocol. """
+        """ Returns a dict mapping Protocol ID to a dictionary of Assays the in Study using that
+        Protocol. """
         assays_by_protocol = defaultdict(list)
         for assay in self.get_assays():
             assays_by_protocol[assay.protocol_id].append(assay.id)
@@ -1361,6 +1362,14 @@ class ProteinIdentifier(MeasurementType):
 
     @classmethod
     def match_accession_id(cls, text):
+        """
+        Tests whether the input text matches the pattern of a Uniprot accession id, and if so,
+        extracts & returns the required identifier portion of the text, less optional prefix/suffix
+        allowed by the pattern.
+        :param text: the text to match
+        :return: the Uniprot identifier if the input text matched the accession id pattern,
+        or the entire input string if not
+        """
         match = cls.accession_pattern.match(text)
         if match:
             return match.group(1)

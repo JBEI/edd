@@ -19,10 +19,14 @@ img.exampleImage {
 
 div.disabledStepLabel {				
 	height:50px;
-	color:#BBB;
+
 	text-align:center;
+	margin-top: 15px;
 }
 
+.disabledTextLabel, div.disabledStepLabel {
+	color:#BBB;
+}
 
 /* Reset buttons for the various steps */
 
@@ -253,4 +257,62 @@ div.disambiguationSection table tr > td input[type="text"] {
 
 select.disamStd {
 	min-width: 10em;
+}
+
+.step5Subsection {
+	margin-top: 30px;
+}
+
+.step5Subsection p, .step5Subsection table {
+    margin-left: 10px;
+}
+
+#reviewWarningsSection table th{
+    margin-bottom: 10px;
+}
+
+.acknowledgeAllButton {
+	margin-top: 15px;
+}
+
+#submitForImport {
+	font-weight: bold;
+	border-width: 3px;
+	margin-top: 40px;
+	margin-left: 20px;
+	margin-bottom: 20px;
+}
+
+#processingFileLocallyLabel {
+	margin: 0px;
+	padding: 0px;
+	position:relative;
+	text-align:center;
+	top: 120px;
+    width: 100%;
+	z-index: 100;
+	font-size: 300%;
+	float:top;
+}
+
+.sectionContent table {
+	margin-top: 20px;
+	border-spacing: 10px
+}
+
+.sectionContent th {
+	padding-bottom: 10px;
+}
+
+.warningStepLabel {
+	text-decoration: underline;
+}
+
+.errorMessage {
+    background: #FFF0F0;
+    padding: 2px;
+    border: 2px solid red;
+    border-radius: 6px;
+    -webkit-border-radius: 6px;
+    -moz-border-radius: 6px;
 }

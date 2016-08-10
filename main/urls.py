@@ -2,6 +2,8 @@ from django.conf.urls import url
 from django.contrib.auth.decorators import login_required
 from django.contrib.staticfiles.storage import staticfiles_storage
 from django.views.generic.base import RedirectView
+
+from main import autocomplete
 from main import views
 
 
@@ -16,7 +18,6 @@ urlpatterns = [
         login_required(views.StudyDetailView.as_view()),
         name='detail'
         ),
-    url(r'^study/(?P<study>\d+)/lines/$', login_required(views.study_lines)),
     url(r'^study/(?P<study>\d+)/assaydata/$', login_required(views.study_assay_table_data)),
     url(r'^study/(?P<study>\d+)/edddata/$', login_required(views.study_edddata)),
     url(r'^study/(?P<study>\d+)/measurements/(?P<protocol>\d+)/$',
@@ -37,6 +38,8 @@ urlpatterns = [
         login_required(views.study_import_rnaseq_process)),
     url(r'^study/(?P<study>\d+)/import/rnaseq/edgepro$',
         login_required(views.study_import_rnaseq_edgepro)),
+    url(r'^study/(?P<study_pk>\d+)/lines/$',
+        login_required(autocomplete.search_study_lines)),
 
     url(r'^export/$', login_required(views.ExportView.as_view()), name='export'),
     url(r'^worklist/$', login_required(views.WorklistView.as_view()), name='worklist'),

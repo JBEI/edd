@@ -261,9 +261,13 @@ div.helpBadgeDiv div.helpContent {
     -o-transform: translate(-15px,9px);
     -moz-transform: translate(-15px,9px);
 }
-div.helpBadgeDiv div.helpContent p {
+div.helpBadgeDiv div.helpContent {
     padding:3px 0px;
     margin:0px;
+}
+
+div.helpContent li {
+    margin-left: 20px;
 }
 div.helpBadgeDiv:hover div.helpContent {
     display:block;
