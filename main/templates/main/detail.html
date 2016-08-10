@@ -33,7 +33,6 @@
     <script type="text/javascript" src="{% static 'main/js/CreateLineGraph.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/GroupedBarTime.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/GroupedBarAssay.js' %}"></script>
-    <script type="text/javascript" src="{% static 'main/js/IndividualBarCharts.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/GroupedBarMeasurement.js' %}"></script>
 {% endblock js_css %}
 
@@ -189,11 +188,6 @@
                            autocomplete="off">
                     Bar graph grouped by time
                 </label>
-                <label class="btn btn-default btn-sm singleBar" >
-                    <input value="single" type="radio" name="options" id="option3"
-                           autocomplete="off">
-                    Bar graph grouped by line entry
-                </label>
                 <label class="btn btn-default btn-sm groupByProteinBar">
                     <input type="radio" name="options" id="option4" autocomplete="off"
                            value="groupedAssay">
@@ -207,17 +201,17 @@
             </div>
                 <div class="linechart"></div>
                 <div class="timeBar"></div>
-                <div class="single"></div>
                 <div class="groupedAssay"></div>
                 <div class="groupedMeasurement"></div>
 
             <div id="maingraph" class="graphContainer"></div>
-        </div>
+
         <div class="sectionChapter disclose discloseHide">
             <span class="discloseLink"><span>Filtering</span></span>
             <span class="tableControl" id="pointsDisplayedSpan"></span>
             <div id="mainFilterSection" class="filteringSection discloseBody">
                 <div class="filterTable"></div>
+            </div>
             </div>
         </div>
     </div>

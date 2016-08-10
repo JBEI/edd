@@ -42,7 +42,6 @@ StudyDGraphing = {
                   d3.select(selector[2]).style('display', 'none');
                   d3.select(selector[3]).style('display', 'none');
                   d3.select(selector[4]).style('display', 'none');
-                  d3.select(selector[5]).style('display', 'none');
             $('label.btn').removeClass('active');
             $(this).addClass('active');
             return false
@@ -54,42 +53,28 @@ StudyDGraphing = {
                   d3.select(selector[2]).style('display', 'block');
                   d3.select(selector[3]).style('display', 'none');
                   d3.select(selector[4]).style('display', 'none');
-                  d3.select(selector[5]).style('display', 'none');
             $('label.btn').removeClass('active');
             $(this).addClass('active');
             return false
         });
-        //bar charts for each line entry
+        //bar chart grouped by assay
         $(buttonArr[2]).click(function(event) {
             event.preventDefault();
                   d3.select(selector[1]).style('display', 'none');
                   d3.select(selector[2]).style('display', 'none');
                   d3.select(selector[3]).style('display', 'block');
                   d3.select(selector[4]).style('display', 'none');
-                  d3.select(selector[5]).style('display', 'none');
             $('label.btn').removeClass('active');
             $(this).addClass('active');
             return false;
         });
-        //bar chart grouped by assay
+        //bar chart grouped by measurement
         $(buttonArr[3]).click(function(event) {
             event.preventDefault();
                   d3.select(selector[1]).style('display', 'none');
                   d3.select(selector[2]).style('display', 'none');
                   d3.select(selector[3]).style('display', 'none');
                   d3.select(selector[4]).style('display', 'block');
-                  d3.select(selector[5]).style('display', 'none');
-            $('label.btn').removeClass('active');
-            $(this).addClass('active');
-            return false;
-        });
-        $(buttonArr[4]).click(function(event) {
-            event.preventDefault();
-                  d3.select(selector[1]).style('display', 'none');
-                  d3.select(selector[2]).style('display', 'none');
-                  d3.select(selector[3]).style('display', 'none');
-                  d3.select(selector[4]).style('display', 'none');
-                  d3.select(selector[5]).style('display', 'block');
             $('label.btn').removeClass('active');
             $(this).addClass('active');
             return false;
@@ -119,10 +104,9 @@ StudyDGraphing = {
         };
         //create respective graphs
         createLineGraph(graphSet, GraphHelperMethods.createLineSvg(selector[1]));
-        createSideBySide(graphSet, selector[3]);
         createMeasurementGraph(graphSet, GraphHelperMethods.createSvg(selector[2]), 'x');
-        createMeasurementGraph(graphSet, GraphHelperMethods.createSvg(selector[4]), 'name');
-        createMeasurementGraph(graphSet, GraphHelperMethods.createSvg(selector[5]), 'measurement');
+        createMeasurementGraph(graphSet, GraphHelperMethods.createSvg(selector[3]), 'name');
+        createMeasurementGraph(graphSet, GraphHelperMethods.createSvg(selector[4]), 'measurement');
 
 		if (!newSet.label) {
 			$('#debug').text('Failed to fetch series.');
