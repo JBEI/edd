@@ -197,7 +197,7 @@
     <div class="bare-header">
         <a href="/study/{{ study.id }}/import">Import tabular data...</a>
     </div>
-    <div class="pageSection minor disclose{% if not new_line.is_editing %} discloseHide{% endif %}" id="lineMain">
+    <div class="pageSection minor disclose{% if not new_line.is_editing and new_line.errors|length == 0 %} discloseHide{% endif %}" id="lineMain">
         <div class="sectionHead">
             <span class="discloseLink"><a href="#">{% if new_line.is_editing %}Edit Line{% else %}Add A New Line{% endif %}</a></span>
             <div class="clear"></div>
