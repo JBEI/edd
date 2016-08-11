@@ -93,7 +93,7 @@ class StudyCreateView(generic.edit.CreateView):
     View for request to create a study, and the index page.
     """
     form_class = CreateStudyForm
-    template_name = 'main/index.html'
+    template_name = 'main/create_study.html'
 
     def form_valid(self, form):
         update = Update.load_request_update(self.request)
@@ -108,8 +108,17 @@ class StudyCreateView(generic.edit.CreateView):
         context['can_create'] = Study.user_can_create(self.request.user)
         return context
 
+    def get_form_kwargs(self):
+        kwargs = super(StudyCreateView, self).get_form_kwargs()
+        kwargs.update(user=self.request.user)
+        return kwargs
+
     def get_success_url(self):
         return reverse('main:detail', kwargs={'pk': self.object.pk})
+
+
+class StudyIndexView(StudyCreateView):
+    template_name = 'main/index.html'
 
 
 class StudyDetailView(generic.DetailView):
@@ -517,6 +526,7 @@ class StudyDetailView(generic.DetailView):
         return {
             'csv': ExportView.as_view(),
             'sbml': SbmlView.as_view(),
+            'study': StudyCreateView.as_view(),
             'worklist': WorklistView.as_view(),
         }
 
