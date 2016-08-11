@@ -148,7 +148,7 @@ module EDDTableImport {
         EDDTableImport.reviewStep = step5;
 
         // Wire up the function that submits the page
-        $('#submitForImport').on('submit', EDDTableImport.submitForImport);
+        $('#submitForImport').on('click', EDDTableImport.submitForImport);
 
         // We need to manually trigger this, after all our steps are constructed.
         // This will cascade calls through the rest of the steps and configure them too.
