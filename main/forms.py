@@ -474,9 +474,6 @@ class LineForm(forms.ModelForm):
             'strains': MultiRegistryAutocompleteWidget(),
             'meta_store': forms.HiddenInput(),
         }
-        # error_messages = {
-        #     'name': {'required: Line name is required'}
-        # }
         help_texts = {
             'name': 'This field is required'
         }
