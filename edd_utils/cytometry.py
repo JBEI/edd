@@ -7,10 +7,7 @@ import logging
 from builtins import str as unicode
 from collections import defaultdict
 
-from main.models import (
-    Assay, Line, Measurement, MeasurementCompartment, MeasurementFormat, MeasurementUnit,
-    MeasurementValue, Protocol,
-    )
+from main.models import Assay, Line, Measurement, MeasurementUnit, MeasurementValue, Protocol
 
 
 logger = logging.getLogger(__name__)
@@ -134,8 +131,8 @@ class CytometerRow(object):
             except Measurement.DoesNotExist:
                 obj = self._assay.measurement_set.create(
                     measurement_type_id=ptype,
-                    measurement_format=MeasurementFormat.SIGMA,
-                    compartment=MeasurementCompartment.UNKNOWN,
+                    measurement_format=Measurement.Format.SIGMA,
+                    compartment=Measurement.Compartment.UNKNOWN,
                     x_units=self._hours,
                     y_units=self._na,
                     )

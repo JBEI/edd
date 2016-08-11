@@ -7,6 +7,7 @@ import re
 from builtins import str
 from collections import defaultdict, Iterable
 from decimal import Decimal
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.sites.models import Site
 from django.db.models import Aggregate
@@ -41,6 +42,14 @@ class ArrayAgg(Aggregate):
         query.aggregates[alias] = SQLArrayAgg(
             col, source=source, is_summary=is_summary, **self.extra
         )
+
+
+class EDDSettingsMiddleware(object):
+    """ Adds an `edd_deployment` attribute to requests passing through the middleware with a value
+        of the current deployment environment. """
+    def process_request(self, request):
+        request.edd_deployment = settings.EDD_DEPLOYMENT_ENVIRONMENT
+
 
 media_types = {
     '--': '-- (No base media used)',
@@ -91,13 +100,13 @@ def get_edddata_study(study):
     # …
     # assays = assays.annotate(
     #     metabolites=Count(Case(When(
-    #         measurement__measurement_type__type_group=MeasurementGroup.METABOLITE,
+    #         measurement__measurement_type__type_group=MeasurementType.Group.METABOLITE,
     #         then=Value(1)))),
     #     transcripts=Count(Case(When(
-    #         measurement__measurement_type__type_group=MeasurementGroup.GENEID,
+    #         measurement__measurement_type__type_group=MeasurementType.Group.GENEID,
     #         then=Value(1)))),
     #     proteins=Count(Case(When(
-    #         measurement__measurement_type__type_group=MeasurementGroup.PROTEINID,
+    #         measurement__measurement_type__type_group=MeasurementType.Group.PROTEINID,
     #         then=Value(1)))),
     # )
     strains = study.get_strains_used()

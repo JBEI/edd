@@ -21,8 +21,8 @@ from .forms import (
     RegistryValidator, UserAutocompleteWidget
 )
 from .models import (
-    Assay, Attachment, CarbonSource, GeneIdentifier, GroupPermission, Line, MeasurementGroup,
-    Measurement, MeasurementType, Metabolite, MetadataGroup, MetadataType, Phosphor,
+    Assay, Attachment, CarbonSource, GeneIdentifier, GroupPermission, Line, Measurement,
+    MeasurementType, Metabolite, MetadataGroup, MetadataType, Phosphor,
     ProteinIdentifier, Protocol, SBMLTemplate, Strain, Study, Update, UserPermission,
     WorklistColumn, WorklistTemplate,
 )
@@ -162,12 +162,14 @@ class StrainAdmin(EDDObjectAdmin):
         super(StrainAdmin, self).__init__(*args, **kwargs)
         self.ice_validator = RegistryValidator()
 
+    def has_add_permission(self, request):
+        """ Disable adding via admin interface. Strains are automatically added when referenced
+            via the main.forms.RegistryValidator. """
+        return False
+
     def get_fields(self, request, obj=None):
         self.ice_validator = RegistryValidator(existing_strain=obj)
-        if not obj:  # creating a strain
-            return ['registry_id', ]
-        elif not obj.registry_id:  # existing strain without link to ICE
-            return ['name', 'description', 'registry_id', 'study_list', ]
+        assert(obj)
         # existing strain with link to ICE
         return ['name', 'description', 'registry_url', 'study_list', ]
 
@@ -178,9 +180,8 @@ class StrainAdmin(EDDObjectAdmin):
         return super(StrainAdmin, self).formfield_for_dbfield(db_field, **kwargs)
 
     def get_readonly_fields(self, request, obj=None):
-        if not obj:  # creating a strain
-            return []
-        elif not obj.registry_id:  # existing strain without link to ICE
+        assert(obj)
+        if not obj.registry_id:  # existing strain without link to ICE
             return ['study_list', ]
         return ['name', 'description', 'registry_url', 'study_list', ]
 
@@ -313,7 +314,7 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         qs = super(MeasurementTypeAdmin, self).get_queryset(request)
         if self.model == MeasurementType:
-            qs = qs.filter(type_group=MeasurementGroup.GENERIC)
+            qs = qs.filter(type_group=MeasurementType.Group.GENERIC)
         qs = qs.annotate(num_studies=Count('measurement__assay__line__study', distinct=True))
         return qs
 

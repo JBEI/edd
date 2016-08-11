@@ -67,7 +67,6 @@ delete_data = [
 
 
 def fix_manual_metabolites(apps, schema_editor):
-    from main.models import MeasurementGroup
     # using updated version
     MeasurementType = apps.get_model('main', 'MeasurementType')
     Metabolite = apps.get_model('main', 'Metabolite')
@@ -108,7 +107,9 @@ def fix_manual_metabolites(apps, schema_editor):
                     Metabolite._meta.pk.column,
                     m.pk
                 ))
-                MeasurementType.objects.filter(pk=m.pk).update(type_group=MeasurementGroup.GENERIC)
+                MeasurementType.objects.filter(pk=m.pk).update(
+                    type_group=MeasurementType.Group.GENERIC
+                )
             except Metabolite.DoesNotExist:
                 logger.warning('No metabolite to switch to generic measurement: "%s"', name)
 

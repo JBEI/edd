@@ -17,18 +17,19 @@ from django.dispatch import receiver
 from django.core.mail import mail_managers
 from requests.exceptions import ConnectionError
 
+from edd.profile.models import UserProfile
 from jbei.rest.auth import HmacAuth
 from jbei.ice.rest.ice import parse_entry_id
-from . import study_modified, study_removed, user_modified
+from . import study_modified, user_modified
 from ..models import (
     Line, MetaboliteExchange, MetaboliteSpecies, SBMLTemplate, Strain, Study, Update,
-)
+    UserPermission, GroupPermission, User)
 from ..solr import StudySearch, UserSearch
 from ..utilities import get_absolute_url
 
 
-solr = StudySearch()
-users = UserSearch()
+solr_study_index = StudySearch()
+solr_users_index = UserSearch()
 logger = logging.getLogger(__name__)
 
 if settings.USE_CELERY:
@@ -36,28 +37,66 @@ if settings.USE_CELERY:
 else:
     from jbei.ice.rest.ice import IceApi
 
+####################################################################################################
+# Define custom signals
+####################################################################################################
 
-@receiver(post_save, sender=Study)
+
+@receiver(post_save, sender=Study, dispatch_uid="main.signals.handlers.study_saved")
 def study_saved(sender, instance, created, raw, using, **kwargs):
     if not raw and using == 'default':
         study_modified.send(sender=sender, study=instance)
 
 
-@receiver(post_save, sender=get_user_model())
+@receiver(post_save, sender=get_user_model(), dispatch_uid="main.signals.handlers.user_saved")
 def user_saved(sender, instance, created, raw, using, **kwargs):
     if not raw and using == 'default':
         user_modified.send(sender=sender, user=instance)
 
 
-@receiver(pre_delete, sender=Study)
-def study_delete(sender, instance, using, **kwargs):
-    if using == 'default':
-        study_removed.send(sender=sender, study=instance)
+####################################################################################################
+# Maintain study SOLR index based on changes to the study or related user/group permissions
+####################################################################################################
 
 
-####################################################################################################
-# Index study
-####################################################################################################
+@receiver(post_delete, sender=UserPermission,
+          dispatch_uid=("%s.study_user_permission_post_delete" % __name__))
+def study_user_permission_post_delete(sender, instance, using, **kwargs):
+    logger.debug('Post-delete study permissions: %s' % str(instance.study.userpermission_set.all()))
+    _schedule_post_commit_study_permission_index(instance)
+
+
+@receiver(post_save, sender=UserPermission,
+          dispatch_uid=("%s.study_user_permission_post_save" % __name__))
+def study_user_permission_post_save(sender, instance, created, raw, using, **kwargs):
+    logger.debug('Post-save study user permissions: %s' % str(instance.study.userpermission_set.all()))
+    _schedule_post_commit_study_permission_index(instance)
+
+
+@receiver(post_delete, sender=GroupPermission,
+          dispatch_uid=("%s.study_group_permission_post_delete" % __name__))
+def study_group_permission_post_delete(sender, instance, using, **kwargs):
+    _schedule_post_commit_study_permission_index(instance)
+
+
+@receiver(post_save, sender=GroupPermission,
+          dispatch_uid=("%s.study_group_permission_post_save" % __name__))
+def study_group_permission_post_save(sender, instance, created, raw, using, **kwargs):
+    _schedule_post_commit_study_permission_index(instance)
+
+
+def _schedule_post_commit_study_permission_index(study_permission):
+    """
+        Schedules a post-commit update of the SOLR index for the affected study whose permissions
+        are affected
+        """
+    study = study_permission.study
+    # package up work to be performed when the database change commits
+    partial = functools.partial(_post_commit_index_study, study)
+    # schedule the work for after the commit (or immediately if there's no transaction)
+    connection.on_commit(partial)
+
+
 @receiver(study_modified)
 def index_study(sender, study, **kwargs):
     # package up work to be performed when the database change commits
@@ -68,35 +107,40 @@ def index_study(sender, study, **kwargs):
 
 def _post_commit_index_study(study):
     try:
-        solr.update([study, ])
+        solr_study_index.update([study, ])
     except IOError:
         _handle_post_commit_function_error('Error updating Solr index for study %d' % study.pk)
 
-
-
-####################################################################################################
-# Un-index study
-####################################################################################################
 PrimaryKeyCache = namedtuple('PrimaryKeyCache', ['id'])
+"""
+    Defines a cache for objects to-be-deleted so their primary keys can be available in post-commit
+    hooks
+"""
 
-@receiver(study_removed)
-def unindex_study(sender, study, **kwargs):
-    # package up work to be performed when the database change commits
 
-    # cache the study's primary key, which will be removed from the Study object itself during
-    # deletion
-    post_remove_pk_cache = PrimaryKeyCache(study.pk)
+@receiver(pre_delete, sender=Study, dispatch_uid="main.signals.handlers.study_pre_delete")
+def study_pre_delete(sender, instance, **kwargs):
+    # package up work to be performed after the study is deleted / when the database change commits.
+    # Note: we purposefully separate this from study_post_delete, since the study's primary key will
+    # be removed from the Study object itself during deletion. Pre-delete is also too early to
+    # perform the make changes since other issues may cause the deletion to fail.
+    study = instance
+    study.post_remove_pk_cache = PrimaryKeyCache(study.pk)
 
+
+@receiver(post_delete, sender=Study, dispatch_uid="main.signals.handlers.study_post_delete")
+def study_post_delete(sender, instance, **kwargs):
     # schedule the work for after the commit (or immediately if there's no transaction)
-    partial = functools.partial(_post_commit_unindex_study, post_remove_pk_cache)
+    study = instance
+    partial = functools.partial(_post_commit_unindex_study, study.post_remove_pk_cache)
     connection.on_commit(partial)
 
 
-def _post_commit_unindex_study(study):
+def _post_commit_unindex_study(study_pk):
     try:
-        solr.remove([study, ])
+        solr_study_index.remove([study_pk, ])
     except IOError:
-        _handle_post_commit_function_error('Error updating Solr index for study %d' % study.id)
+        _handle_post_commit_function_error('Error updating Solr index for study %d' % study_pk)
 
 
 ####################################################################################################
@@ -112,13 +156,44 @@ def index_user(sender, user, **kwargs):
 
 def _post_commit_index_user(user):
         try:
-            users.update([user, ])
+            solr_users_index.update([user, ])
         # catch Solr/connection errors that occur during the user login process / email admins
         # regarding the error. users may not be able to do much without Solr, but they can still
         # access existing studies (provided the URL), and create new ones. Solr being down
         # shouldn't prevent the login process (EDD-201)
         except IOError as e:
-            _handle_post_commit_function_error("Error updating Solr with user information")
+            _handle_post_commit_function_error("Error updating Solr with user information for "
+                                               "user %s" % user.username)
+
+
+@receiver(pre_delete, sender=get_user_model(),
+          dispatch_uid="main.signals.handlers.user_pre_delete")
+def user_pre_delete(sender, instance, using, **kwargs):
+    # cache the user's primary key for use in post_delete, which will be removed from the User
+    # object itself during deletion
+    user = instance
+    user.post_remove_pk_cache = PrimaryKeyCache(instance.pk)
+
+
+@receiver(post_delete, sender=get_user_model(), dispatch_uid=("%s.user_post_delete" % __name__))
+def user_post_delete(sender, instance, using, **kwargs):
+    user = instance
+    logger.info('Start of user_post_delete(): username=%s' % instance.username)
+
+    # get the user pk we cached in pre_delete (pk data member gets removed during the deletion)
+    post_remove_pk_cache = user.post_remove_pk_cache
+
+    # schedule the Solr update for after the commit (or immediately if there's no transaction)
+    partial = functools.partial(_post_commit_unindex_user, post_remove_pk_cache)
+    connection.on_commit(partial)
+
+
+def _post_commit_unindex_user(user_pk_cache):
+    try:
+        solr_users_index.remove([user_pk_cache, ])
+    except IOError:
+        _handle_post_commit_function_error(
+                'Error updating Solr index for user %d' % user_pk_cache.id)
 
 ####################################################################################################
 
@@ -459,6 +534,7 @@ def _handle_post_commit_function_error(err_msg, re_raise_error=None):
 
     if re_raise_error:
         raise re_raise_error
+
 
 def _is_linkable(strain):
     return _is_strain_linkable(strain.registry_url, strain.registry_id)
