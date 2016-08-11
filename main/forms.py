@@ -401,12 +401,14 @@ class CreateStudyForm(forms.ModelForm):
         return s
 
     def save_lines(self, study):
+        """ Saves copies of Line IDs passed to the form on the study. """
         to_add = []
         for line in self.cleaned_data['lineId']:
             line.pk = line.id = None
             line.study = study
             line.study_id = study.id
             to_add.append(line)
+        # https://docs.djangoproject.com/en/1.9/ref/models/relations/#django.db.models.fields.related.RelatedManager.add
         study.line_set.add(*to_add, bulk=False)
 
 
