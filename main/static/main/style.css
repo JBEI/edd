@@ -167,12 +167,6 @@ div.tooltip2 {
   z-index: 100;
 }
 
-
-.single {
-    display: none;
-    overflow: scroll
-}
-
 .svg-container {
     display: inline-block;
     position: relative;
