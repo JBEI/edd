@@ -283,7 +283,8 @@ running in the development environment.
 
 * EDD uses [TypeScript][6] for its client-side interface
     * Dependencies are listed in `packages.json` and may be installed with `npm install`
-    * Compile changes in `*.ts` to `*.js` by simply running `grunt` from the edd base directory
+    * Compile changes in `*.ts` to `*.js` by simply running `grunt --force` from the edd base
+    directory
 
 ---------------------------------------------------------------------------------------------------
 

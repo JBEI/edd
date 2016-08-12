@@ -3,6 +3,7 @@
 *.swp
 .pydevproject
 .idea
+tscommand-*
 
 # per-machine configuration file; contains secrets, DO NOT CHECK-IN
 server.cfg
