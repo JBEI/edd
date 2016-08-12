@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#set -o pipefail -e
+set -o pipefail -e
 
 SEPARATOR='****************************************************************************************'
 REINDEX_EDD=false
