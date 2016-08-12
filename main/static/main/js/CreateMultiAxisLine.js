@@ -43,6 +43,8 @@ function createMultiLineGraph(graphSet, svg) {
     }))
     }
 
+    graphSet.create_x_axis(graphSet, x, svg);
+    
     for (var index = 0; index<numUnits; index++) {
     y.domain([yMin[index], d3.max(unitMeasurmentData[index], function (d) {
         return d3.max(d.values, function (d) {
@@ -74,8 +76,6 @@ function createMultiLineGraph(graphSet, svg) {
         .entries(assayMeasurements);
         
     var names = proteinNames.map(function (d) {return d.key;});
-
-    graphSet.create_x_axis(graphSet, x, svg);
 
     if (index == 0) {
         var yAxis = d3.svg.axis().scale(y)
