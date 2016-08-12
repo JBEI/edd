@@ -44,7 +44,7 @@ function createMultiLineGraph(graphSet, svg) {
     }
 
     graphSet.create_x_axis(graphSet, x, svg);
-    
+
     for (var index = 0; index<numUnits; index++) {
     y.domain([yMin[index], d3.max(unitMeasurmentData[index], function (d) {
         return d3.max(d.values, function (d) {
@@ -99,13 +99,20 @@ function createMultiLineGraph(graphSet, svg) {
                 .tickFormat(""));
 
     } else {
-     var yAxis = d3.svg.axis().scale(y)
-        .orient("right").ticks(5);
-    svg.append("g")
-    .attr("class", "y axis")
-    .attr("transform", "translate(" + graphSet.width + " ,0)")
-    .style("fill", "red")
-    .call(yAxis);
+         var spacing = {
+             1: graphSet.width,
+             2: graphSet.width + 50,
+             3: graphSet.width + 100,
+             4: graphSet.width + 125
+         };
+
+         var yAxis = d3.svg.axis().scale(y)
+            .orient("right").ticks(5);
+            svg.append("g")
+            .attr("class", "y axis")
+            .attr("transform", "translate(" + spacing[index] + " ,0)")
+            .style("fill", "red")
+            .call(yAxis);
     }
 
 
@@ -170,7 +177,6 @@ function createMultiLineGraph(graphSet, svg) {
     }
     //create legend
     graphSet.legend(data, graphSet.color, svg, graphSet.width, names);
-
 }
 
     function howManyUnits(data) {
