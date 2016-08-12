@@ -60,7 +60,7 @@ from jbei.rest.utils import is_url_secure, show_response_html, verify_edd_cert, 
 from .settings import EDD_URL, ICE_URL, PRINT_FOUND_ICE_PARTS, PRINT_FOUND_EDD_STRAINS, \
     SIMULATE_STRAIN_CREATION
 
-DEFAULT_LOCALE = b'en_US.UTF-8'
+DEFAULT_LOCALE = b'C.UTF-8'
 locale.setlocale(locale.LC_ALL, DEFAULT_LOCALE)
 
 MIN_COL_NUM = 1
