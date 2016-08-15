@@ -39,6 +39,11 @@ body {
     border-color: #fff;
 }
 
+.chart-img {
+    height: 24px;
+    width: 24px
+}
+
 .d3-tip {
   line-height: 1;
   font-weight: bold;
