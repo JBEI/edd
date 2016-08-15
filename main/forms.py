@@ -506,6 +506,9 @@ class LineForm(forms.ModelForm):
             'strains': MultiRegistryAutocompleteWidget(),
             'meta_store': forms.HiddenInput(),
         }
+        help_texts = {
+            'name': 'This field is required'
+        }
 
     def __init__(self, *args, **kwargs):
         # removes default hard-coded suffix of colon character on all labels
