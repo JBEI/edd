@@ -142,19 +142,3 @@ StudyDGraphing = {
         return otherElements;
     }
 };
-
-
-//this works only for the upper graph..
-// $(buttonArr).on('change', ':radio', function(event) {
-//             event.preventDefault();
-//             var val = "." + $(event.target).val();
-//             var othervalues = StudyDGraphing.findOtherValues(val);
-//                   d3.select(val).style('display', 'block');
-//                   d3.select(othervalues[0]).style('display', 'none');
-//                   d3.select(othervalues[1]).style('display', 'none');
-//                   d3.select(othervalues[2]).style('display', 'none');
-//                   d3.select(othervalues[3]).style('display', 'none');
-//             $('label.btn').removeClass('active');
-//             $(this).addClass('active');
-//               return false
-//         });

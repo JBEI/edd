@@ -103,16 +103,24 @@ function createMultiLineGraph(graphSet, svg) {
              1: graphSet.width,
              2: graphSet.width + 50,
              3: graphSet.width + 100,
-             4: graphSet.width + 125
+             4: graphSet.width + 150
          };
 
          var yAxis = d3.svg.axis().scale(y)
             .orient("right").ticks(5);
+
             svg.append("g")
             .attr("class", "y axis")
             .attr("transform", "translate(" + spacing[index] + " ,0)")
-            .style("fill", "red")
-            .call(yAxis);
+            .style("fill", "black")
+            .call(yAxis)
+            .append('text')
+            .attr("transform", "rotate(-90)")
+            .attr('x', -110)
+            .attr("dy", ".32em")
+            .attr('y', 35)
+            .style('text-anchor', 'middle')
+            .text(meas[index].key)
     }
 
 
