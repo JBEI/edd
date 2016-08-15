@@ -9,9 +9,9 @@ from __future__ import unicode_literals
 
 import json
 import logging
-from urlparse import urlparse, urlsplit
-
 import requests
+
+from urlparse import urlparse, urlsplit
 
 from .constants import (
     CASE_SENSITIVE_DEFAULT, CASE_SENSITIVE_PARAM, LINE_ACTIVE_STATUS_PARAM, LINES_ACTIVE_DEFAULT,
@@ -23,9 +23,7 @@ from .constants import (
 )
 from jbei.rest.api import RestApiClient
 from jbei.rest.sessions import Session, PagedResult, PagedSession
-from jbei.rest.utils import (
-    is_success_code, show_response_html, CLIENT_ERROR_NOT_FOUND, UNSAFE_HTTP_METHODS
-)
+from jbei.rest.utils import show_response_html, UNSAFE_HTTP_METHODS
 
 
 # controls whether error response content is written to temp file, then displayed in a browser tab
@@ -310,13 +308,13 @@ class EddApi(RestApiClient):
         response = self.session.get(url, headers=self._json_header)
 
         # throw an error for unexpected reply
-        if response.status_code == requests.codes.ok:
-            json_dict = json.loads(response.content)
-            return Strain(**json_dict)
-        elif response.status_code == CLIENT_ERROR_NOT_FOUND:
-            return None
-
-        response.raise_for_status()
+        try:
+            response.raise_for_status()
+            return Strain(**json.loads(response.content))
+        except requests.exceptions.HTTPError as e:
+            if response.status_code == requests.codes.not_found
+                return None
+            raise e
 
     def get_metadata_type(self, local_pk=None):
         """
@@ -554,30 +552,24 @@ class EddApi(RestApiClient):
         response = None
 
         if query_url:
-            self.session.get(query_url, headers=self._json_header)
-
+            response = self.session.get(query_url, headers=self._json_header)
         else:
-            url = '%s/rest/study/%d/strains/%s' % (self.base_url, study_pk, str(strain_id))
-
+            url = '%s/rest/study/%d/strains/%s' % (self.base_url, study_pk, strain_id)
             # add parameters to the request
             params = {}
-
             if line_active_status:
                 params[LINE_ACTIVE_STATUS_PARAM] = line_active_status
-
             if page_number:
                 params[PAGE_NUMBER_QUERY_PARAM] = page_number
-
             response = self.session.get(url, headers=self._json_header, params=params)
 
-        if response.status_code == CLIENT_ERROR_NOT_FOUND:
-            return None
-
-        # throw an error for unexpected reply
-        if response.status_code != requests.codes.ok:
+        try:
             response.raise_for_status()
-
-        return DrfPagedResult.of(response.content, Strain)
+            return DrfPagedResult.of(response.content, Strain)
+        except requests.exceptions.HTTPError as e:
+            if response.status_code == requests.codes.not_found:
+                return None
+            raise e
 
     def create_line(self, study_id, strain_id, name, description=None, metadata={}):
         """
@@ -612,12 +604,13 @@ class EddApi(RestApiClient):
         response = self.session.post(url, headers=self._json_header, data=json.dumps(new_line))
 
         # throw an error for unexpected reply
-        if not is_success_code(response.status_code):
+        try:
+            response.raise_for_status()
+            return Line(**json.loads(response.content))
+        except requests.exceptions.HTTPError as e:
             if DEBUG:
                 show_response_html(response)
-            response.raise_for_status()
-
-        return Line(**json.loads(response.content))
+            raise e
 
     # TODO: shouldn't be able to do this via the API...? Investigate use in Admin app.
     # Will's comment is that line creation / edit should take a strain UUID as input
@@ -643,13 +636,15 @@ class EddApi(RestApiClient):
         response = self.session.post(url, data=json.dumps(post_data), headers=self._json_header)
 
         # throw an error for unexpected reply
-        if not is_success_code(response.status_code):
+        try:
+            response.raise_for_status()
+            # return the created/updated strain
+            return Strain(**json.loads(response.content))
+        except requests.exceptions.HTTPError as e:
             if DEBUG:
                 show_response_html(response)
-            response.raise_for_status()
+            raise e
 
-        # return the created/updated strain
-        return Strain(**json.loads(response.content))
 
     def _update_strain(self, http_method, name=None, description=None, local_pk=None,
                        registry_id=None, registry_url=None):
@@ -686,12 +681,14 @@ class EddApi(RestApiClient):
         response = self.session.request(http_method, url, data=json.dumps(strain_values),
                                         headers=self._json_header)
 
-        if not is_success_code(response.status_code):
+        try:
+            response.raise_for_status()
+            return Strain(**json.loads(response.content))
+        except requests.exceptions.HTTPError as e:
             if DEBUG:
                 show_response_html(response)
-            response.raise_for_status()
+            raise e
 
-        return Strain(**json.loads(response.content))
 
     def update_strain(self, name=None, description=None, local_pk=None, registry_id=None,
                       registry_url=None):

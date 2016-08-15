@@ -71,14 +71,13 @@ from requests.exceptions import HTTPError
 from urlparse import urlparse
 
 from jbei.rest.auth import EddSessionAuth, IceSessionAuth
-from jbei.rest.clients.edd import EddApi
-from jbei.rest.clients.ice import IceApi, Strain as IceStrain
+from jbei.rest.clients import EddApi, IceApi
+from jbei.rest.clients.ice import Strain as IceStrain
 from jbei.rest.clients.ice.api import ICE_ENTRY_TYPES
-from jbei.rest.utils import is_url_secure, verify_edd_cert, is_edd_test_instance_url, \
-    is_ice_test_instance_url, verify_ice_cert
+from jbei.rest.utils import is_url_secure
 from jbei.utils import to_human_relevant_delta, UserInputTimer, session_login, TYPICAL_UUID_PATTERN
 
-from settings import EDD_URL, ICE_URL
+from .settings import EDD_URL, ICE_URL, VERIFY_EDD_CERT, VERIFY_ICE_CERT
 
 
 ####################################################################################################
@@ -305,26 +304,22 @@ def build_perl_study_url(local_study_pk, edd_hostname, https=False):
     }
 
 
-def is_development_url(url):
+def is_edd_production_url(url):
     """
-    Tests whether the input URL references a known list of hard-coded development host names.
+    Tests whether the input URL references a known list of production host names.
     """
     url_parts = urlparse(url)
     hostname = url_parts.hostname.lower()
+    return hostname in settings.EDD_PRODUCTION_HOSTNAMES
 
-    developer_machine_names = ['gbirkel-mr.dhcp.lbl.gov', 'mforrer-mr.dhcp.lbl.gov',
-                               'jeads-mr.dhcp.lbl.gov', 'wcmorrell-mr.dhcp.lbl.gov', ]
 
-    if hostname in developer_machine_names:
-        return True
-
-    suspicious_suffix = '.dhcp.lbl.gov'
-
-    if hostname.endswith(suspicious_suffix):
-        logger.warning("""Link URL %(url)s ends with suspicious suffix "%(suspicious_suffix)s,"""
-                       """but wasn't detected to link to a developer\'s machine""" % {
-                           'url': url, 'suspicious_suffix': suspicious_suffix,
-                       })
+def is_ice_production_url(url):
+    """
+    Tests whether the input URL references a known list of production host names.
+    """
+    url_parts = urlparse(url)
+    hostname = url_parts.hostname.lower()
+    return hostname in settings.ICE_PRODUCTION_HOSTNAMES
 
 
 def is_ice_admin_user(ice, username):
@@ -1010,13 +1005,13 @@ def main():
     edd = None
     ice = None
 
-    cleaning_edd_test_instance = is_edd_test_instance_url(EDD_URL)
-    cleaning_ice_test_instance = is_ice_test_instance_url(ICE_URL)
+    cleaning_edd_test_instance = not is_edd_production_url(EDD_URL)
+    cleaning_ice_test_instance = not is_ice_production_url(ICE_URL)
 
     ############################################################################################
     # Verify that URL's start with HTTP*S* for non-local use. Don't allow mistaken config to
-    # expose access credentials! Pre-Docker local testing required insecure http, so this mistake is
-    # easy to make!
+    # expose access credentials! Pre-Docker local testing required insecure http, so this mistake
+    # is easy to make!
     ############################################################################################
     if not is_url_secure(EDD_URL, print_err_msg=True, app_name='EDD'):
         return 0
@@ -1031,12 +1026,9 @@ def main():
     # determine whether or not to verify EDD's / ICE's SSL certificate. Ordinarily, YES,
     # though we want to allow for local testing of this script on developers' machines using
     # self-signed certificates.
-    verify_edd_ssl_cert = False #verify_edd_cert(EDD_URL)
-    verify_ice_ssl_cert = verify_ice_cert(ICE_URL)
-
     # silence library warnings if we're skipping SSL certificate verification for local testing.
     # otherwise the warnings will swamp useful output from this script.
-    if not (verify_edd_ssl_cert and verify_ice_ssl_cert):
+    if not (VERIFY_EDD_CERT and VERIFY_ICE_CERT):
         requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
     # force user to confirm dry-run risks, or else print a warning if they've chosen to silence the
@@ -1090,10 +1082,10 @@ def main():
         edd_login_details = session_login(EddSessionAuth, EDD_URL, login_application,
                                           username_arg=args.username, password_arg=args.password,
                                           user_input=user_input, print_result=True,
-                                          verify_ssl_cert=verify_edd_ssl_cert)
+                                          verify_ssl_cert=VERIFY_EDD_CERT)
         edd_session_auth = edd_login_details.session_auth
 
-        edd = (EddApi(edd_session_auth, EDD_URL, verify=verify_edd_ssl_cert) if not args.dry_run else
+        edd = (EddApi(edd_session_auth, EDD_URL, verify=VERIFY_EDD_CERT) if not args.dry_run else
                EddTestStub(edd_session_auth, EDD_URL))
         edd.write_enabled = args.update_edd_strain_text
         edd.result_limit = EDD_RESULT_PAGE_SIZE
@@ -1111,7 +1103,7 @@ def main():
                                           username_arg=edd_login_details.username,
                                           password_arg=edd_login_details.password,
                                           user_input=user_input, print_result=True,
-                                          verify_ssl_cert=verify_ice_ssl_cert)
+                                          verify_ssl_cert=VERIFY_ICE_CERT)
 
         ice_session_auth = ice_login_details.session_auth
 

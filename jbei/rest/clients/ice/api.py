@@ -24,7 +24,6 @@ from urllib import urlencode
 from urlparse import urlunparse, ParseResult, parse_qs
 
 from jbei.rest.api import RestApiClient
-from jbei.rest.utils import CLIENT_ERROR_NOT_FOUND
 from jbei.rest.sessions import PagedResult, PagedSession
 
 
@@ -823,21 +822,19 @@ class IceApi(RestApiClient):
         rest_url = '%s/rest/parts/%s' % (self.base_url, entry_id)
         try:
             response = self.session.get(url=rest_url)
+            response.raise_for_status()
+            json_dict = json.loads(response.content)
+            if json_dict:
+                return Entry.of(json_dict, False)
         except requests.exceptions.Timeout as e:
             if not suppress_errors:
                 raise e
             logger.exception("Timeout requesting part %s: %s", entry_id)
-        else:
-            if response.status_code == requests.codes.ok:
-                # convert reply to a dictionary of native python data types
-                json_dict = json.loads(response.content)
-                if not json_dict:
-                    return None
-                return Entry.of(json_dict, False)
-            elif response.status_code == CLIENT_ERROR_NOT_FOUND:
+        except requests.exceptions.HTTPError as e:
+            if response.status_code == requests.codes.not_found:
                 return None
-            if not suppress_errors:
-                response.raise_for_status()
+            elif not suppress_errors:
+                raise e
             logger.exception(
                 'Error fetching part from ICE with entry_id %(entry_id)s. '
                 'Response = %(status_code)d: "%(msg)s"' % {
@@ -846,10 +843,9 @@ class IceApi(RestApiClient):
                     'msg': response.reason
                 }
             )
+        return None
 
-            return None
-
-    def process_query_blast(self, query_dict, blast_program, blast_sequence):
+    def _process_query_blast(self, query_dict, blast_program, blast_sequence):
         if blast_program:
             if blast_program not in BLAST_PROGRAMS:
                 raise KeyError(
@@ -873,7 +869,7 @@ class IceApi(RestApiClient):
             )
         return query_dict
 
-    def process_query_parameters(self, query_dict, sort_field, sort_ascending, page_number):
+    def _process_query_parameters(self, query_dict, sort_field, sort_ascending, page_number):
         #######################################################################################
         # Build a list of query parameters that get bundled together in a slightly non-standard
         # way
@@ -904,7 +900,7 @@ class IceApi(RestApiClient):
         if parameters:
             query_dict['parameters'] = parameters
 
-    def process_query_dict(self, search_terms, entry_types, blast_program, blast_sequence,
+    def _process_query_dict(self, search_terms, entry_types, blast_program, blast_sequence,
                            search_web, sort_field, sort_ascending, page_number):
         query_dict = {}
         query_url = None  # TODO: re-instate this parameter if we can get ICE to support the same
@@ -916,9 +912,9 @@ class IceApi(RestApiClient):
                 if not set(entry_types).issubset(set(ICE_ENTRY_TYPES)):
                     raise KeyError('')
                 query_dict['entryTypes'] = entry_types
-            self.process_query_blast(query_dict, blast_program, blast_sequence)
+            self._process_query_blast(query_dict, blast_program, blast_sequence)
             query_dict['webSearch'] = search_web  # Note: affects results even if false?
-            self.process_query_parameters(query_dict, sort_field, sort_ascending, page_number)
+            self._process_query_parameters(query_dict, sort_field, sort_ascending, page_number)
         else:
             # un-parse the query URL so we're using consistently following the same code path
             query_dict = parse_qs(urlparse(query_url).params)
@@ -964,7 +960,7 @@ class IceApi(RestApiClient):
         offset = None
         # package up provided parameters (if any) for insertion into the request
         # optional_query_data = json.dumps({'queryString': query}) if query else None
-        query_dict = self.process_query_dict(
+        query_dict = self._process_query_dict(
             search_terms, entry_types, blast_program, blast_sequence, search_web, sort_field,
             sort_ascending, page_number
         )
@@ -1174,14 +1170,14 @@ class IceApi(RestApiClient):
         url_key = 'url'
         existing_links = response.json()  # TODO: doesn't account for results paging see EDD-200
 
-        current_study_links = self.find_current_study_links(
+        current_study_links = self._find_current_study_links(
             existing_links, study_name, study_url, label_key, url_key
         )
         if not old_study_name or old_study_name == study_name:
             old_study_name = None
         if not old_study_url and old_study_url == study_url:
             old_study_url = None
-        outdated_study_links = self.find_outdated_study_links(
+        outdated_study_links = self._find_outdated_study_links(
             existing_links, study_name, study_url, old_study_name, old_study_url,
             label_key, url_key,
         )
@@ -1205,7 +1201,7 @@ class IceApi(RestApiClient):
         else:
             self._create_or_update_link(study_name, study_url, entry_experiments_rest_url)
 
-    def find_current_study_links(self, existing_links, study_name, study_url, label_key, url_key):
+    def _find_current_study_links(self, existing_links, study_name, study_url, label_key, url_key):
         def is_current_link(link):
             return (
                 study_url.lower() == link.get(url_key).lower() and
@@ -1213,7 +1209,7 @@ class IceApi(RestApiClient):
             )
         return [link for link in existing_links if is_current_link(link)]
 
-    def find_outdated_study_links(self, existing_links, study_name, study_url, old_study_name,
+    def _find_outdated_study_links(self, existing_links, study_name, study_url, old_study_name,
                                   old_study_url, label_key, url_key):
         def is_outdated_link(link):
             if old_study_name:

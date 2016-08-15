@@ -54,11 +54,13 @@ import locale
 import re
 from collections import namedtuple
 from jbei.rest.auth import EddSessionAuth, IceSessionAuth
-from jbei.rest.clients.edd import EddApi
-from jbei.rest.clients.ice import IceApi, Strain as IceStrain
-from jbei.rest.utils import is_url_secure, show_response_html, verify_edd_cert, verify_ice_cert
-from .settings import EDD_URL, ICE_URL, PRINT_FOUND_ICE_PARTS, PRINT_FOUND_EDD_STRAINS, \
-    SIMULATE_STRAIN_CREATION
+from jbei.rest.clients import EddApi, IceApi
+from jbei.rest.clients.ice import Strain as IceStrain
+from jbei.rest.utils import is_url_secure, show_response_html
+from .settings import (
+    EDD_URL, ICE_URL, PRINT_FOUND_ICE_PARTS, PRINT_FOUND_EDD_STRAINS, SIMULATE_STRAIN_CREATION,
+    VERIFY_EDD_CERT, VERIFY_ICE_CERT,
+)
 
 DEFAULT_LOCALE = b'C.UTF-8'
 locale.setlocale(locale.LC_ALL, DEFAULT_LOCALE)
@@ -1275,8 +1277,8 @@ def main():
         if not is_url_secure(ICE_URL, print_err_msg=True, app_name='ICE'):
             return 0
 
-        verify_edd_ssl_cert = verify_edd_cert(EDD_URL)
-        verify_ice_ssl_cert = verify_ice_cert(ICE_URL)
+        verify_edd_ssl_cert = VERIFY_EDD_CERT
+        verify_ice_ssl_cert = VERIFY_ICE_CERT
 
         # silence library warnings if we're skipping SSL certificate verification for local
         # testing. otherwise the warnings will swamp useful output from this script
