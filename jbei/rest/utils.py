@@ -5,7 +5,6 @@ import logging
 import os
 import tempfile
 import webbrowser
-import time
 
 from six import string_types
 from threading import Timer
@@ -50,8 +49,12 @@ def is_url_secure(uri, print_err_msg=False, app_name=None,):
 
     # parse the URI and check whether it's secure
     url_parts = urlparse(uri)
-    is_secure_url = (url_parts.scheme == 'https' or url_parts.hostname == 'localhost' or
-            url_parts.hostname == '127.0.0.1' or is_local_docker_deployment(uri))
+    is_secure_url = (
+        url_parts.scheme == 'https' or
+        url_parts.hostname == 'localhost' or
+        url_parts.hostname == '127.0.0.1' or
+        is_local_docker_deployment(uri)
+    )
 
     # return early if secure, or if not printing error messages
     if is_secure_url or not print_err_msg:
@@ -82,7 +85,7 @@ def is_local_docker_deployment(url):
     as specified by the DOCKER_HOST environment variable.
     """
     url_parts = urlparse(url)
-    hostname = url_parts.hostname # guaranteed lower case
+    hostname = url_parts.hostname  # guaranteed lower case
 
     docker_url = os.environ.get('DOCKER_HOST', None)
 

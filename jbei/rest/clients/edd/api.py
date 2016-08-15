@@ -312,7 +312,7 @@ class EddApi(RestApiClient):
             response.raise_for_status()
             return Strain(**json.loads(response.content))
         except requests.exceptions.HTTPError as e:
-            if response.status_code == requests.codes.not_found
+            if response.status_code == requests.codes.not_found:
                 return None
             raise e
 
@@ -645,7 +645,6 @@ class EddApi(RestApiClient):
                 show_response_html(response)
             raise e
 
-
     def _update_strain(self, http_method, name=None, description=None, local_pk=None,
                        registry_id=None, registry_url=None):
         """
@@ -688,7 +687,6 @@ class EddApi(RestApiClient):
             if DEBUG:
                 show_response_html(response)
             raise e
-
 
     def update_strain(self, name=None, description=None, local_pk=None, registry_id=None,
                       registry_url=None):

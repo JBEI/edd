@@ -901,7 +901,7 @@ class IceApi(RestApiClient):
             query_dict['parameters'] = parameters
 
     def _process_query_dict(self, search_terms, entry_types, blast_program, blast_sequence,
-                           search_web, sort_field, sort_ascending, page_number):
+                            search_web, sort_field, sort_ascending, page_number):
         query_dict = {}
         query_url = None  # TODO: re-instate this parameter if we can get ICE to support the same
         # queries in GET as in POST...should simplify client use
@@ -1210,7 +1210,7 @@ class IceApi(RestApiClient):
         return [link for link in existing_links if is_current_link(link)]
 
     def _find_outdated_study_links(self, existing_links, study_name, study_url, old_study_name,
-                                  old_study_url, label_key, url_key):
+                                   old_study_url, label_key, url_key):
         def is_outdated_link(link):
             if old_study_name:
                 return (
