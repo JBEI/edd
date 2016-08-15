@@ -51,7 +51,7 @@ def search_group(request):
     re_term = re.escape(term)
     found = Group.objects.filter(name__iregex=re_term).order_by('name').values('id', 'name')[:20]
     return JsonResponse({
-        'rows': found,
+        'rows': [item.to_json() for item in found],
     })
 
 
@@ -125,7 +125,7 @@ def search_sbml_species(request):
 
 def search_strain(request):
     """ Autocomplete delegates to ICE search API. """
-    auth = HmacAuth.get(key_id=settings.ICE_KEY_ID, username=request.user.email)
+    auth = HmacAuth(key_id=settings.ICE_KEY_ID, username=request.user.email)
     ice = IceApi(auth=auth)
     term = request.GET.get('term', '')
     found = ice.search_entries(term, suppress_errors=True)
@@ -144,8 +144,7 @@ def search_study_writable(request):
     perm = edd_models.StudyPermission.WRITE
     found = edd_models.Study.objects.distinct().filter(
         Q(name__iregex=re_term) | Q(description__iregex=re_term),
-        Q(userpermission__user=request.user, userpermission__permission_type=perm) |
-        Q(grouppermission__group__user=request.user, grouppermission__permission_type=perm)
+        edd_models.Study.user_permission_q(request.user, perm),
     )[:20]
     return JsonResponse({
         'rows': [item.to_json() for item in found],
