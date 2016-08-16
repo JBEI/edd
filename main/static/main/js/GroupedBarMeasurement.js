@@ -114,7 +114,7 @@
         })]);
 
         //nest data associated with one unit by type and time value
-        nested = d3.nest(type)
+        data = d3.nest(type)
             .key(function (d) {
                 return d[type];
             })
@@ -124,7 +124,7 @@
             .entries(meas[index].values);
 
         //insert y identifier to nested data
-        data = getXYValues(nested);
+        //data = getXYValues(nested);
 
         //right axis
         if (index == 0) {
