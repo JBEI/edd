@@ -87,8 +87,17 @@ function createMultiLineGraph(graphSet, svg) {
                  3: graphSet.width + 100,
                  4: graphSet.width + 150
              };
+
+            var labels = {
+                1: meas[index].key,
+                2: meas[index].key,
+                3: meas[index].key,
+                4: meas[index].key
+            };
+
             //create right axis
-            graphSet.create_right_y_axis(meas[index].key, y, svg, spacing[index])
+            graphSet.create_right_y_axis(labels[index], y, svg, spacing[index])
+
         }
 
         for (var k = 0; k < data.length; k++) {
@@ -110,8 +119,8 @@ function createMultiLineGraph(graphSet, svg) {
                     circleHover(x, y, circles, color1, div)
                 } else {
                     var classes = {
-                        1: 'experiment',
-                        2: 'dotted-line',
+                        1: 'dotted-line',
+                        2: 'experiment',
                         3: 'dotted-line-random',
                         4: 'experiment'
                     };
