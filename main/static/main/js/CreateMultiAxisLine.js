@@ -78,8 +78,22 @@ function createMultiLineGraph(graphSet, svg) {
         var names = proteinNames.map(function (d) {return d.key;});
 
         if (index == 0) {
-            //create right axis label
+
+            //create right y-axis label
             graphSet.create_y_axis(graphSet, meas[index].key, y, svg);
+            //add image to x axis label
+            svg.append('svg:circle')
+                .attr('class', 'dot')
+                .attr('cx', -37)
+                .attr('cy', 80)
+                .attr('r', 5);
+            svg.append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("y", -47)
+                .attr("x", -80)
+                .attr("dy", "1em")
+                .style("text-anchor", "middle")
+                .text("----");
         } else {
              var spacing = {
                  1: graphSet.width,
@@ -87,16 +101,22 @@ function createMultiLineGraph(graphSet, svg) {
                  3: graphSet.width + 100,
                  4: graphSet.width + 150
              };
-
-            var labels = {
-                1: meas[index].key,
-                2: meas[index].key,
-                3: meas[index].key,
-                4: meas[index].key
-            };
-
             //create right axis
-            graphSet.create_right_y_axis(labels[index], y, svg, spacing[index])
+            graphSet.create_right_y_axis(meas[index].key, y, svg, spacing[index])
+            var squareSize = 8;
+            //add image to y-axis label
+            svg.append('svg:rect')
+                .attr('x', 782)
+                .attr('y', 75)
+                .attr('width', squareSize)
+                .attr('height', squareSize);
+            svg.append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 776)
+                .attr("x", -79)
+                .attr("dy", "1em")
+                .style("text-anchor", "middle")
+                .text("---");
 
         }
 
@@ -109,7 +129,7 @@ function createMultiLineGraph(graphSet, svg) {
             for (var j = 0; j < data[k].values.length; j++) {
                 if (index === 0) {
                     createLine(svg, data[k].key.split(' ').join('_'), lineGen1(data[k].values[j].values),
-                               color1, "experiment");
+                               color1);
                     //svg object for data points
                     var dataCirclesGroup = svg.append('svg:g');
                     // data point circles
@@ -118,14 +138,8 @@ function createMultiLineGraph(graphSet, svg) {
                     //circle hover svg
                     circleHover(x, y, circles, color1, div)
                 } else {
-                    var classes = {
-                        1: 'dotted-line',
-                        2: 'experiment',
-                        3: 'dotted-line-random',
-                        4: 'experiment'
-                    };
                     createLine(svg, data[k].key.split(' ').join('_'), lineGen1(data[k].values[j].values),
-                               color1, classes[index]);
+                               color1);
                     //svg object for data points
                     var dataRectGroup = svg.append('svg:g');
                     // data point circles
@@ -233,13 +247,13 @@ function createMultiLineGraph(graphSet, svg) {
             });
     }
 
-    function createLine(svg, id, line, color, classType) {
+    function createLine(svg, id, line, color) {
         var line = svg.append('path')
                     .attr("id", id)
                     .attr('d', line)
                     .attr('stroke', color)
                     .attr('stroke-width', 2)
-                    .attr("class", classType)
+                    .attr("class", 'experiment')
                     .attr('fill', 'none');
         return line; 
     }

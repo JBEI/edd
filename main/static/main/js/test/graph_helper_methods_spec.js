@@ -109,8 +109,8 @@ describe('Test GraphHelperMethods with jasmine', function() {
       it('should return the correct unit', function() {
         expect(GraphHelperMethods.displayUnit(['test'])).toEqual("test");
       });
-      it('should return Mixed Measurements if > 1 name', function() {
-        expect(GraphHelperMethods.displayUnit(['unit', 'unit2'])).toEqual("Mixed measurements");
+      it('should return Mixed units if > 1 name', function() {
+        expect(GraphHelperMethods.displayUnit(['unit', 'unit2'])).toEqual("Mixed units");
       });
     });
 });

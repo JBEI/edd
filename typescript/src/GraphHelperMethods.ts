@@ -322,20 +322,6 @@ GraphHelperMethods = {
             .style("text-anchor", "middle")
             .text(label);
 
-        svg.append('svg:circle')
-            .attr('class', 'dot')
-            .attr('cx', -37)
-            .attr('cy', 80)
-            .attr('r', 5)
-
-        svg.append("text")
-            .attr("transform", "rotate(-90)")
-            .attr("y", -47)
-            .attr("x", -80)
-            .attr("dy", "1em")
-            .style("text-anchor", "middle")
-            .text("----");
-
         // Draw the y Grid lines
         svg.append("g")
             .attr("class", "grid")
@@ -362,24 +348,8 @@ GraphHelperMethods = {
                 .attr("dy", ".32em")
                 .attr('y', 35)
                 .style('text-anchor', 'middle')
-                .text(label)
-            var squareSize = 8;
-
-            svg.append('svg:rect')
-                .attr('x', 782)
-                .attr('y', 75)
-                .attr('width', squareSize)
-                .attr('height', squareSize);
-
-            svg.append("text")
-                .attr("transform", "rotate(-90)")
-                .attr("y", 776)
-                .attr("x", -79)
-                .attr("dy", "1em")
-                .style("text-anchor", "middle")
-                .text("---");
+                .text(label);
     },
-
     /**
      *  This function creates the y axis tick marks for grid
     **/
