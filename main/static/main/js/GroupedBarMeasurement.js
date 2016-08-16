@@ -2,7 +2,7 @@
  * this function takes in input min y value, max y value, and the sorted json object.
  *  outputs a grouped bar graph with values grouped by assay name
  **/
- function createMeasurementGraph(graphSet, svg, type) {
+ function createGroupedBarGraph(graphSet, svg, type) {
 
     var assayMeasurements = graphSet.assayMeasurements,
         numUnits = howManyUnits(assayMeasurements),
@@ -48,6 +48,7 @@
     }))
     }
 
+    // nest data by type (ie measurement) and by x value
     var nested = d3.nest(type)
             .key(function (d) {
                 return d[type];
@@ -57,14 +58,16 @@
             })
             .entries(assayMeasurements);
 
+    //insert y value to distinguish between lines
     var data = getXYValues(nested);
 
+    //get type names for x labels
     var typeNames = data.map(function (d) {
             return d.key;
         });
 
-        //sort x values
-        typeNames.sort(function (a, b) {
+    //sort x values
+    typeNames.sort(function (a, b) {
             return a - b
         });
 
@@ -72,18 +75,19 @@
         return (d.values);
     });
 
-
     var yvalueIds = data[0].values[0].values.map(function (d) {
         return d.key;
     });
 
-    // returns x values
+    // returns time values
     var xValueLabels = xValues[0].map(function (d) {
         return (d.key);
     });
 
+    //sort time values
     var sortedXvalues = xValueLabels.sort(function(a, b) { return parseFloat(a) - parseFloat(b)});
 
+    //get word lengh
     var wordLength = getSum(typeNames);
 
     if (wordLength > 90) {
@@ -98,7 +102,8 @@
     
     //create x axis
     graphSet.create_x_axis(graphSet, x_name, svg);
-    
+
+    //loop through different units
     for (var index = 0; index<numUnits; index++) {
 
         //y axis min and max domain 
@@ -108,6 +113,7 @@
             });
         })]);
 
+        //nest data associated with one unit by type and time value
         nested = d3.nest(type)
             .key(function (d) {
                 return d[type];
@@ -117,30 +123,12 @@
             })
             .entries(meas[index].values);
 
+        //insert y identifier to nested data
         data = getXYValues(nested);
 
-
+        //right axis
         if (index == 0) {
-            var yAxis = d3.svg.axis().scale(y)
-                .orient("left").ticks(5);
-
-            svg.append("g")
-                .attr("class", "y axis")
-                .call(yAxis)
-                .append("text")
-                .attr("transform", "rotate(-90)")
-                .attr("y", -47)
-                .attr("x", 0 - (graphSet.height / 2))
-                .attr("dy", "1em")
-                .style("text-anchor", "middle")
-                .text(meas[index].key);
-            // Draw the y Grid lines
-            svg.append("g")
-                .attr("class", "grid")
-                .call(yAxis
-                    .tickSize(-graphSet.width, 0, 0)
-                    .tickFormat(""));
-
+            graphSet.create_y_axis(graphSet, meas[index].key, y, svg);
         } else {
             var spacing = {
                 1: graphSet.width,
@@ -148,25 +136,13 @@
                 3: graphSet.width + 100,
                 4: graphSet.width + 150
             };
-
-            var yAxis = d3.svg.axis().scale(y)
-                .orient("right").ticks(5);
-
-            svg.append("g")
-                .attr("class", "y axis")
-                .attr("transform", "translate(" + spacing[index] + " ,0)")
-                .style("fill", "black")
-                .call(yAxis)
-                .append('text')
-                .attr("transform", "rotate(-90)")
-                .attr('x', -110)
-                .attr("dy", ".32em")
-                .attr('y', 35)
-                .style('text-anchor', 'middle')
-                .text(meas[index].key)
+            //create right axis
+            graphSet.create_right_y_axis(meas[index].key, y, svg, spacing[index])
         }
-
+        
+        //see how long the label is
         var labelLength = data.length;
+        
         var names_g = names_g +  index,
             categories_g = categories_g  + index,
             categories_labels = categories_labels  + index,

@@ -5,7 +5,7 @@ var StudyDGraphing:any;
 
 declare var createLineGraph;
 declare var createMultiLineGraph;
-declare var createMeasurementGraph;
+declare var createGroupedBarGraph;
 
 StudyDGraphing = {
 
@@ -89,24 +89,22 @@ StudyDGraphing = {
         var graphSet = {
             barAssayObj: GraphHelperMethods.sortBarData(newSet),
             labels: GraphHelperMethods.names(data),
-            y_unit: GraphHelperMethods.displayUnit(y_units),
-            x_unit: GraphHelperMethods.displayUnit(x_units),
             create_x_axis: GraphHelperMethods.createXAxis,
-            create_y_axis: GraphHelperMethods.createYAxis,
+            create_right_y_axis: GraphHelperMethods.createRightYAxis,
+            create_y_axis: GraphHelperMethods.createLeftYAxis,
             x_axis: GraphHelperMethods.make_x_axis,
-            y_axis: GraphHelperMethods.make_y_axis,
+            y_axis: GraphHelperMethods.make_right_y_axis,
             individualData: newSet,
             assayMeasurements: barAssayObj,
-            legend: GraphHelperMethods.legend,
             color: d3.scale.category10(),
             width: 750,
             height: 220
         };
         //create respective graphs
         createMultiLineGraph(graphSet, GraphHelperMethods.createLineSvg(selector[1]));
-        createMeasurementGraph(graphSet, GraphHelperMethods.createSvg(selector[2]), 'x');
-        createMeasurementGraph(graphSet, GraphHelperMethods.createSvg(selector[3]), 'name');
-        createMeasurementGraph(graphSet, GraphHelperMethods.createSvg(selector[4]), 'measurement');
+        createGroupedBarGraph(graphSet, GraphHelperMethods.createSvg(selector[2]), 'x');
+        createGroupedBarGraph(graphSet, GraphHelperMethods.createSvg(selector[3]), 'name');
+        createGroupedBarGraph(graphSet, GraphHelperMethods.createSvg(selector[4]), 'measurement');
 
 		if (!newSet.label) {
 			$('#debug').text('Failed to fetch series.');

@@ -78,26 +78,8 @@ function createMultiLineGraph(graphSet, svg) {
         var names = proteinNames.map(function (d) {return d.key;});
 
         if (index == 0) {
-            var yAxis = d3.svg.axis().scale(y)
-                .orient("left").ticks(5);
-
-            svg.append("g")
-                .attr("class", "y axis")
-                .call(yAxis)
-                .append("text")
-                .attr("transform", "rotate(-90)")
-                .attr("y", -47)
-                .attr("x", 0 - (graphSet.height/2))
-                .attr("dy", "1em")
-                .style("text-anchor", "middle")
-                .text(meas[index].key);
-            // Draw the y Grid lines
-            svg.append("g")
-                .attr("class", "grid")
-                .call(yAxis
-                    .tickSize(-graphSet.width, 0, 0)
-                    .tickFormat(""));
-
+            //create right axis label 
+            graphSet.create_y_axis(graphSet, meas[index].key, y, svg);
         } else {
              var spacing = {
                  1: graphSet.width,
@@ -105,28 +87,13 @@ function createMultiLineGraph(graphSet, svg) {
                  3: graphSet.width + 100,
                  4: graphSet.width + 150
              };
-
-             var yAxis = d3.svg.axis().scale(y)
-                .orient("right").ticks(5);
-
-                svg.append("g")
-                .attr("class", "y axis")
-                .attr("transform", "translate(" + spacing[index] + " ,0)")
-                .style("fill", "black")
-                .call(yAxis)
-                .append('text')
-                .attr("transform", "rotate(-90)")
-                .attr('x', -110)
-                .attr("dy", ".32em")
-                .attr('y', 35)
-                .style('text-anchor', 'middle')
-                .text(meas[index].key)
+            //create right axis
+            graphSet.create_right_y_axis(meas[index].key, y, svg, spacing[index])
         }
-
 
         for (var k = 0; k < data.length; k++) {
 
-            //color of line and legend rect
+            //color of line according to name
             var color1 = graphSet.color(data[k].key);
 
             //lines
@@ -152,12 +119,10 @@ function createMultiLineGraph(graphSet, svg) {
                 var rect = dataRectGroup.selectAll('.data-point' + index)
                     .data(data[k].values[j].values);
                 rectHover(x, y, rect, color1, div);
+             }
             }
-            }
+          }
         }
-        }
-    //create legend
-    //graphSet.legend(data, graphSet.color, svg, graphSet.width, names);
 }
 
 /**
