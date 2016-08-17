@@ -137,7 +137,16 @@ function createMultiLineGraph(graphSet, svg) {
                         .data(data[k].values[j].values);
                     //circle hover svg
                     circleHover(x, y, circles, color1, div)
-                } else {
+                } else if (index === 1) {
+                    createLine(svg, data[k].key.split(' ').join('_'), lineGen1(data[k].values[j].values),
+                               color1);
+                    //svg object for data points
+                    var dataRectGroup = svg.append('svg:g');
+                    // data point circles
+                    var triangle = dataRectGroup.selectAll('.data-point' + index)
+                        .data(data[k].values[j].values);
+                    triangleHover(x, y, triangle, color1, div);
+             }  else if (index === 2) {
                     createLine(svg, data[k].key.split(' ').join('_'), lineGen1(data[k].values[j].values),
                                color1);
                     //svg object for data points
@@ -145,8 +154,17 @@ function createMultiLineGraph(graphSet, svg) {
                     // data point circles
                     var rect = dataRectGroup.selectAll('.data-point' + index)
                         .data(data[k].values[j].values);
-                    plusHover(x, y, rect, color1, div);
-             }
+                    rectHover(x, y, rect, color1, div);
+                } else {
+                    createLine(svg, data[k].key.split(' ').join('_'), lineGen1(data[k].values[j].values),
+                               color1);
+                    //svg object for data points
+                    var dataRectGroup = svg.append('svg:g');
+                    // data point circles
+                    var plus = dataRectGroup.selectAll('.data-point' + index)
+                        .data(data[k].values[j].values);
+                    plusHover(x, y, plus, color1, div);
+                }
             }
           }
         }
@@ -299,13 +317,43 @@ function createMultiLineGraph(graphSet, svg) {
             });
     }
 
+/**
+ *  function takes in triangle attributes and creates a triangle hover svg object
+ */
+    function triangleHover(x, y, triangle, color, div) {
+        triangle
+            .enter()
+            .append('svg:polygon')
+            .attr('points', function (d) {
+                return [[x(d.x), y(d.y) - 4], [x(d.x) + 4, y(d.y) + 4], [x(d.x) - 4, y(d.y) + 4]];
+            })
+            .style("fill", color)
+            .on("mouseover", function (d) {
+                div.transition()
+                    .duration(200)
+                    .style("opacity", 0.9);
+                if (d.y_unit === undefined) {
+                    var unit = 'n/a';
+                } else {
+                    unit = d.y_unit;
+                }
+                div.html('<strong>' + d.name + '</strong>' + ": " + d.y + " " + unit
+                        + "</br>" + " measurement: " + d.measurement)
+                    .style("left", (d3.event.pageX) + "px")
+                    .style("top", (d3.event.pageY - 30) + "px");
+            })
+            .on("mouseout", function () {
+                div.transition()
+                    .duration(500)
+                    .style("opacity", 0);
+            });
+    }
     function createLine(svg, id, line, color) {
-        var line = svg.append('path')
+        return svg.append('path')
                     .attr("id", id)
                     .attr('d', line)
                     .attr('stroke', color)
                     .attr('stroke-width', 2)
                     .attr("class", 'experiment')
                     .attr('fill', 'none');
-        return line; 
     }
