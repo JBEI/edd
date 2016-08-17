@@ -1004,9 +1004,26 @@ class IceTests(TestCase):
     def test_entry_uri_pattern(self):
         from jbei.rest.clients.ice.api import ICE_ENTRY_URL_PATTERN
 
+        # test matching against ICE URI's with a numeric ID
+        uri = 'https://registry-test.jbei.org/entry/49194/'
+        match = ICE_ENTRY_URL_PATTERN.match(uri)
+        self.assertEquals('https', match.group(1))
+        self.assertEquals('registry-test.jbei.org', match.group(2))
+        self.assertEquals('49194', match.group(3))
+
         # test matching against ICE URI's with a UUID
         uri = 'https://registry-test.jbei.org/entry/761ec36a-cd17-41b8-a348-45d7552d4f4f'
         match = ICE_ENTRY_URL_PATTERN.match(uri)
         self.assertEquals('https', match.group(1))
         self.assertEquals('registry-test.jbei.org', match.group(2))
         self.assertEquals('761ec36a-cd17-41b8-a348-45d7552d4f4f', match.group(3))
+
+        # verify non-match against invalid URLs
+        uri = 'ftp://registry.jbei.org/entry/12345'
+        self.assertIsNone(ICE_ENTRY_URL_PATTERN.match(uri))
+        uri = 'http://registry.jbei.org/admin/12345'
+        self.assertIsNone(ICE_ENTRY_URL_PATTERN.match(uri))
+        uri = 'http://registry.jbei.org/entry/12345/experiments'
+        self.assertIsNone(ICE_ENTRY_URL_PATTERN.match(uri))
+        uri = 'http://registry.jbei.org/entry/foobar'
+        self.assertIsNone(ICE_ENTRY_URL_PATTERN.match(uri))
