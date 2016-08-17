@@ -259,6 +259,18 @@ div.tooltip2 {
 	line-height: 20px;
 }
 
+.truncate {
+    position: relative;
+    height: 19px;
+  width: 2px;
+    text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+    white-space: nowrap;
+    display:inline-block;
+    border: solid black 1px;
+}
+
 .x.axis {
     line: .1;
 }

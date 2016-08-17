@@ -87,12 +87,12 @@
     //sort time values
     var sortedXvalues = xValueLabels.sort(function(a, b) { return parseFloat(a) - parseFloat(b)});
 
-    //get word lengh
-    var wordLength = getSum(typeNames);
-
-    if (wordLength > 90) {
-       typeNames = _.range(typeNames.length);
-    }
+    //get word length
+    // var wordLength = getSum(typeNames);
+    //
+    // if (wordLength > 90) {
+    //    typeNames = _.range(typeNames.length);
+    // }
 
     x_name.domain(typeNames);
 
@@ -139,7 +139,7 @@
             //create right axis
             graphSet.create_right_y_axis(meas[index].key, y, svg, spacing[index])
         }
-        
+
         //see how long the label is
         var labelLength = data.length;
         
@@ -152,9 +152,7 @@
         names_g = svg.selectAll(".group" + index)
             .data(data)
             .enter().append("g")
-            .attr("class", function (d) {
-                return 'group group-' + d.key;  //returns assay names
-            })
+            .attr("class", 'truncate')
             .attr("transform", function (d) {
                 return "translate(" + x_name(d.key) + ",0)";
             });
@@ -164,9 +162,7 @@
                 return d.values;
             })
             .enter().append("g")
-            .attr("class", function (d) {
-                return 'category category-' + d.key;   // returns objects with key = value
-            })
+            .attr("class", "truncate")
             .attr("transform", function (d) {
                 return "translate(" + x_xValue(d.key) + ",0)";
             });
@@ -177,9 +173,7 @@
             })
             .enter()
             .append("text")
-            .attr("class", function (d) {
-                return 'category-label category-label-' + d;
-            })
+            .attr("class", "truncate")
             .attr("x", function () {
                 return x_xValue.rangeBand() / 2;
             })
@@ -249,6 +243,7 @@
                 div.transition()
                     .style("opacity", 0);
             });
+    d3.selectAll('.x.axis text').attr('class', 'truncate')  
     }
 
 }

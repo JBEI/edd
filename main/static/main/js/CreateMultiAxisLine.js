@@ -52,7 +52,7 @@ function createMultiLineGraph(graphSet, svg) {
             });
         })]);
 
-        var lineGen1 = d3.svg.line()
+        var line = d3.svg.line()
             .x(function (d) {
                 return x(d.x);
             })
@@ -135,7 +135,7 @@ function createMultiLineGraph(graphSet, svg) {
             //lines
             for (var j = 0; j < data[k].values.length; j++) {
                 if (index === 0) {
-                    createLine(svg, data[k].key.split(' ').join('_'), lineGen1(data[k].values[j].values),
+                    createLine(svg, data[k].key.split(' ').join('_'), line(data[k].values[j].values),
                                color1);
                     //svg object for data points
                     var dataCirclesGroup = svg.append('svg:g');
@@ -145,7 +145,7 @@ function createMultiLineGraph(graphSet, svg) {
                     //circle hover svg
                     circleHover(x, y, circles, color1, div)
                 } else if (index === 1) {
-                    createLine(svg, data[k].key.split(' ').join('_'), lineGen1(data[k].values[j].values),
+                    createLine(svg, data[k].key.split(' ').join('_'), line(data[k].values[j].values),
                                color1);
                     //svg object for data points
                     var dataRectGroup = svg.append('svg:g');
@@ -154,7 +154,7 @@ function createMultiLineGraph(graphSet, svg) {
                         .data(data[k].values[j].values);
                     triangleHover(x, y, triangle, color1, div);
              }  else if (index === 2) {
-                    createLine(svg, data[k].key.split(' ').join('_'), lineGen1(data[k].values[j].values),
+                    createLine(svg, data[k].key.split(' ').join('_'), line(data[k].values[j].values),
                                color1);
                     //svg object for data points
                     var dataRectGroup = svg.append('svg:g');
@@ -163,7 +163,7 @@ function createMultiLineGraph(graphSet, svg) {
                         .data(data[k].values[j].values);
                     rectHover(x, y, rect, color1, div);
                 } else {
-                    createLine(svg, data[k].key.split(' ').join('_'), lineGen1(data[k].values[j].values),
+                    createLine(svg, data[k].key.split(' ').join('_'), line(data[k].values[j].values),
                                color1);
                     //svg object for data points
                     var dataRectGroup = svg.append('svg:g');
@@ -274,7 +274,7 @@ function createMultiLineGraph(graphSet, svg) {
 
 
 /**
- *  function takes in triangle attributes and creates a triangle hover svg object
+ *  function takes in square attributes and creates a plus hover svg object
  */
     function plusHover(x, y, plus, color, div) {
         var squareSize = 5;
@@ -355,6 +355,10 @@ function createMultiLineGraph(graphSet, svg) {
                     .style("opacity", 0);
             });
     }
+
+/**
+ *  function takes in path attributes and creates an svg path
+ */
     function createLine(svg, id, line, color) {
         return svg.append('path')
                     .attr("id", id)

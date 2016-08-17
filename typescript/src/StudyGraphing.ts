@@ -106,6 +106,8 @@ StudyDGraphing = {
         createGroupedBarGraph(graphSet, GraphHelperMethods.createSvg(selector[3]), 'name');
         createGroupedBarGraph(graphSet, GraphHelperMethods.createSvg(selector[4]), 'measurement');
 
+        var rects = d3.selectAll('.groupedMeasurement rect')[0];
+        StudyDGraphing.svgWidth(selector[4], rects);
 		if (!newSet.label) {
 			$('#debug').text('Failed to fetch series.');
 			return;
@@ -138,5 +140,17 @@ StudyDGraphing = {
             }
         });
         return otherElements;
+    },
+
+    /* this function takes in an element  selector and an array of svg rects and returns
+     * returns message or nothing.
+     */
+    svgWidth: function(selector, rectArray) {
+        _.each(rectArray, function(rectElem:any) {
+            if (rectElem.getBoundingClientRect() != 0) {
+                return
+            }
+        });
+         d3.select(selector).append("text").text('Too much data. Please filter')
     }
 };
