@@ -24,6 +24,8 @@ ICE_PRODUCTION_HOSTNAMES = [
 
 VERIFY_EDD_CERT = True
 VERIFY_ICE_CERT = True
+
+DEFAULT_LOCALE = b'C.UTF-8'
 ####################################################################################################
 
 SIMULATE_STRAIN_CREATION = False  # test flag that skips the strain creation step

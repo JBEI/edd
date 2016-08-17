@@ -10,3 +10,6 @@ settings.py.
 ####################################################################################################
 # EDD_URL = 'https://edd.jbei.org'
 # ICE_URL = 'https://registry-test.jbei.org'
+
+# Your available locales may be different; run `locale` to see values you should use, e.g.:
+# DEFAULT_LOCALE = 'en_US.UTF-8'

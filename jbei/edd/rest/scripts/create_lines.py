@@ -58,11 +58,10 @@ from jbei.rest.clients import EddApi, IceApi
 from jbei.rest.clients.ice import Strain as IceStrain
 from jbei.rest.utils import is_url_secure, show_response_html
 from .settings import (
-    EDD_URL, ICE_URL, PRINT_FOUND_ICE_PARTS, PRINT_FOUND_EDD_STRAINS, SIMULATE_STRAIN_CREATION,
-    VERIFY_EDD_CERT, VERIFY_ICE_CERT,
+    DEFAULT_LOCALE, EDD_URL, ICE_URL, PRINT_FOUND_ICE_PARTS, PRINT_FOUND_EDD_STRAINS,
+    SIMULATE_STRAIN_CREATION, VERIFY_EDD_CERT, VERIFY_ICE_CERT,
 )
 
-DEFAULT_LOCALE = b'C.UTF-8'
 locale.setlocale(locale.LC_ALL, DEFAULT_LOCALE)
 
 MIN_COL_NUM = 1
