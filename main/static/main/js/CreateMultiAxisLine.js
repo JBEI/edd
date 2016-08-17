@@ -257,12 +257,12 @@ function createMultiLineGraph(graphSet, svg) {
             .enter()
             .append('svg:rect')
             .attr('x', function (d) {
-                return x(d.x) - squareSize;
+                return x(d.x) - squareSize/2;
             })
             .attr('y', function (d) {
                 return y(d.y);
             })
-            .attr('width', squareSize + 6)
+            .attr('width', squareSize + 3)
             .attr('height', squareSize - 3)
             .style("fill", color);
 
@@ -273,10 +273,10 @@ function createMultiLineGraph(graphSet, svg) {
                 return x(d.x);
             })
             .attr('y', function (d) {
-                return y(d.y) - squareSize;
+                return y(d.y) - squareSize/2;
             })
             .attr('width', squareSize - 3)
-            .attr('height', squareSize + 6)
+            .attr('height', squareSize + 3)
             .style("fill", color)
             .on("mouseover", function (d) {
                 div.transition()
