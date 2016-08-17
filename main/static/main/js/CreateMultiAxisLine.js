@@ -76,9 +76,13 @@ function createMultiLineGraph(graphSet, svg) {
             .entries(assayMeasurements);
 
         var names = proteinNames.map(function (d) {return d.key;});
+        var spacing = {
+                 1: graphSet.width,
+                 2: graphSet.width + 50,
+                 3: graphSet.width + 100
+             };
 
-        if (index == 0) {
-
+        if (index === 0) {
             //create right y-axis label
             graphSet.create_y_axis(graphSet, meas[index].key, y, svg);
             //add image to x axis label
@@ -87,37 +91,40 @@ function createMultiLineGraph(graphSet, svg) {
                 .attr('cx', -37)
                 .attr('cy', 80)
                 .attr('r', 5);
-            svg.append("text")
-                .attr("transform", "rotate(-90)")
-                .attr("y", -47)
-                .attr("x", -80)
-                .attr("dy", "1em")
-                .style("text-anchor", "middle")
-                .text("----");
-        } else {
-             var spacing = {
-                 1: graphSet.width,
-                 2: graphSet.width + 50,
-                 3: graphSet.width + 100,
-                 4: graphSet.width + 150
-             };
+        } else if (index === 1) {
             //create right axis
             graphSet.create_right_y_axis(meas[index].key, y, svg, spacing[index])
+            //append hover shape to axis label
+            svg.append('svg:polygon')
+                .attr('points', [[782, 75], [790, 80], [790, 70]])
+        } else if (index === 2) {
+            //create right axis
+            graphSet.create_right_y_axis(meas[index].key, y, svg, spacing[index]);
             var squareSize = 8;
             //add image to y-axis label
             svg.append('svg:rect')
-                .attr('x', 782)
-                .attr('y', 75)
+                .attr('x', 832)
+                .attr('y', 70)
                 .attr('width', squareSize)
                 .attr('height', squareSize);
-            svg.append("text")
-                .attr("transform", "rotate(-90)")
-                .attr("y", 776)
-                .attr("x", -79)
-                .attr("dy", "1em")
-                .style("text-anchor", "middle")
-                .text("---");
+        } else if (index === 3) {
+            //create right axis
+            graphSet.create_right_y_axis(meas[index].key, y, svg, spacing[index]);
+            //add plus image to label
+            svg.append('svg:rect')
+                .attr('x', 882)
+                .attr('y', 73)
+                .attr('width', 8)
+                .attr('height', 2);
 
+            svg.append('svg:rect')
+                .attr('x', 885)
+                .attr('y', 70)
+                .attr('width', 2)
+                .attr('height', 8)
+        }
+        else {
+            graphSet.create_right_y_axis(meas[index].key, y, svg, graphSet.width + 1000);
         }
 
         for (var k = 0; k < data.length; k++) {
