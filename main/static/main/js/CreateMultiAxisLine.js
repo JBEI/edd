@@ -145,7 +145,7 @@ function createMultiLineGraph(graphSet, svg) {
                     // data point circles
                     var rect = dataRectGroup.selectAll('.data-point' + index)
                         .data(data[k].values[j].values);
-                    rectHover(x, y, rect, color1, div);
+                    plusHover(x, y, rect, color1, div);
              }
             }
           }
@@ -225,6 +225,58 @@ function createMultiLineGraph(graphSet, svg) {
             .attr('r', function () {
                 return 3;
             })
+            .style("fill", color)
+            .on("mouseover", function (d) {
+                div.transition()
+                    .duration(200)
+                    .style("opacity", 0.9);
+                if (d.y_unit === undefined) {
+                    var unit = 'n/a';
+                } else {
+                    unit = d.y_unit;
+                }
+                div.html('<strong>' + d.name + '</strong>' + ": " + d.y + " " + unit
+                        + "</br>" + " measurement: " + d.measurement)
+                    .style("left", (d3.event.pageX) + "px")
+                    .style("top", (d3.event.pageY - 30) + "px");
+            })
+            .on("mouseout", function (d) {
+                div.transition()
+                    .duration(500)
+                    .style("opacity", 0);
+            });
+    }
+
+
+/**
+ *  function takes in triangle attributes and creates a triangle hover svg object
+ */
+    function plusHover(x, y, plus, color, div) {
+        var squareSize = 5;
+        plus
+            .enter()
+            .append('svg:rect')
+            .attr('x', function (d) {
+                return x(d.x) - squareSize;
+            })
+            .attr('y', function (d) {
+                return y(d.y);
+            })
+            .attr('width', squareSize + 6)
+            .attr('height', squareSize - 3)
+            .style("fill", color);
+
+        plus
+            .enter()
+            .append('svg:rect')
+            .attr('x', function (d) {
+                return x(d.x);
+            })
+            .attr('y', function (d) {
+                return y(d.y) - squareSize;
+            })
+            .attr('width', squareSize - 3)
+            .attr('height', squareSize + 6)
             .style("fill", color)
             .on("mouseover", function (d) {
                 div.transition()
