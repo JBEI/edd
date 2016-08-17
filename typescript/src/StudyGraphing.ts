@@ -146,11 +146,17 @@ StudyDGraphing = {
      * returns message or nothing.
      */
     svgWidth: function(selector, rectArray) {
+        var sum = 0;
         _.each(rectArray, function(rectElem:any) {
-            if (rectElem.getBoundingClientRect() != 0) {
-                return
+            if (rectElem.getBoundingClientRect().width != 0) {
+                sum++
             }
         });
-         d3.select(selector).append("text").text('Too much data. Please filter')
+        if (sum === 0) {
+            $(selector).append("<p id='test'>Too much data - please filter </p>")
+            setTimeout(function() {
+                $('#test').remove()
+            }, 10000);
+        }
     }
 };
