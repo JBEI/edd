@@ -378,7 +378,9 @@ class MetaboliteSearch(SolrSearch):
     def get_queryopt(self, query, **kwargs):
         queryopt = super(MetaboliteSearch, self).get_queryopt(query, **kwargs)
         queryopt['defType'] = 'edismax'
-        queryopt['qf'] = ' '.join(['name^10', 'name_edge^5', 'name_ng^2', ])
+        queryopt['qf'] = ' '.join([
+            'name^10', 'name_edge^5', 'name_ng^2', 'code^10', 'formula', 'tags',
+        ])
         queryopt['q.alt'] = '*:*'
         return queryopt
 
