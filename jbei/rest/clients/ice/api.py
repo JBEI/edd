@@ -74,7 +74,13 @@ _JSON_CONTENT_TYPE_HEADER = {'Content-Type': 'application/json; charset=utf8'}
 # regular expressions for parsing elements of ICE URLs
 _PROTOCOL = 'http|https'
 _BASE_ICE_URL_REGEX = r'.+'
-_IDENTIFIER = r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}'
+# breaking into smaller pieces
+_IDENTIFIER = (
+    # matching either a number:
+    r'(?:\d+)|'
+    # or matching a GUID:
+    r'(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})'
+)
 _ICE_ENTRY_URL_REGEX = '(%(protocol)s)://(%(base_url)s)/entry/(%(identifier)s)/?' % {
     'protocol': _PROTOCOL, 'base_url': _BASE_ICE_URL_REGEX, 'identifier': _IDENTIFIER, }
 ICE_ENTRY_URL_PATTERN = re.compile('^%s$' % _ICE_ENTRY_URL_REGEX, re.IGNORECASE)
