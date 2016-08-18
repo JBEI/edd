@@ -11,7 +11,7 @@ from django.contrib.auth.models import Group
 from functools import reduce
 
 from jbei.rest.auth import HmacAuth
-from jbei.ice.rest.ice import IceApi
+from jbei.rest.clients.ice import IceApi
 from . import models as edd_models, solr
 
 

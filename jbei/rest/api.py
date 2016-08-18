@@ -1,4 +1,7 @@
-from jbei.rest.utils import remove_trailing_slash
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
+from .utils import remove_trailing_slash
 
 
 class RestApiClient(object):
@@ -10,14 +13,13 @@ class RestApiClient(object):
         to change data will result in an Exception. Data changes are disabled by default to
         prevent accidental data loss or corruption."""
 
-    def __init__(self, application_name, base_url, request_generator, result_limit=None):
-
-        # chop off the trailing '/', if any, so we can write easier-to-read URL snippets in our code
-        # (starting w '%s/'). also makes our code trailing-slash agnostic.
+    def __init__(self, application_name, base_url, session, result_limit=None):
+        # chop off the trailing '/', if any, so we can write easier-to-read URL snippets in our
+        # code (starting w '%s/'). also makes our code trailing-slash agnostic.
         self._base_url = remove_trailing_slash(base_url)
 
         self._application_name = application_name
-        self._request_generator = request_generator
+        self.session = session
         self.result_limit = result_limit
         """
         The requested upper limit for the number of results returned from a single API call. Note
@@ -27,19 +29,19 @@ class RestApiClient(object):
 
     @property
     def result_limit(self):
-        return self._request_generator.result_limit
+        return self.session.result_limit
 
     @result_limit.setter
     def result_limit(self, limit):
-        self._request_generator.result_limit = limit
+        self.session.result_limit = limit
 
     @property
     def timeout(self):
-        return self._request_generator.timeout
+        return self.session.timeout
 
     @timeout.setter
     def timeout(self, timeout):
-        self._request_generator.timeout = timeout
+        self.session.timeout = timeout
 
     @property
     def base_url(self):
@@ -48,14 +50,6 @@ class RestApiClient(object):
         each instance of RestApiClient.
         """
         return self._base_url
-
-    @property
-    def request_generator(self):
-        """
-        The object responsible for low-level generation of HTTP requests to the remote application
-        :return:
-        """
-        return self._request_generator
 
     @property
     def application_name(self):
@@ -72,10 +66,13 @@ class RestApiClient(object):
         prevented at least one accidental data change during EDD script development!
         """
         if not self.write_enabled:
-            raise RuntimeError('To prevent accidental data loss or corruption, data changes to '
-                               '%(application_name)s are disabled. Use write_enabled to allow '
-                               'writes, but please use carefully!' % {
-                                    'application_name': self.application_name,})
+            raise RuntimeError(
+                'To prevent accidental data loss or corruption, data changes to '
+                '%(application_name)s are disabled. Use write_enabled to allow writes, but '
+                'please use carefully!' % {
+                    'application_name': self.application_name,
+                }
+            )
 
     def _verify_page_number(self, page_number):
         """
@@ -97,4 +94,4 @@ class RestApiClient(object):
         if self.result_limit is None:
             return None
 
-        return page_rel_index + ((page_number-1) * self.result_limit)
+        return page_rel_index + ((page_number - 1) * self.result_limit)

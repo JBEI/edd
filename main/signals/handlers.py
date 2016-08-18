@@ -16,7 +16,7 @@ from django.db.models.signals import m2m_changed, post_delete, post_save, pre_sa
 from django.dispatch import receiver
 
 from jbei.rest.auth import HmacAuth
-from jbei.ice.rest.ice import parse_entry_id
+from jbei.rest.clients.ice import parse_entry_id
 from . import study_modified, user_modified
 from .. import models as edd_models
 from ..models import (
@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 if settings.USE_CELERY:
     from edd.remote_tasks import link_ice_entry_to_study, unlink_ice_entry_from_study
 else:
-    from jbei.ice.rest.ice import IceApi
+    from jbei.rest.clients.ice import IceApi
 
 ###################################################################################################
 # Define custom signals

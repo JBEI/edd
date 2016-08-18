@@ -23,8 +23,9 @@ from itertools import chain
 from six import string_types
 from threadlocals.threadlocals import get_current_request
 
-from jbei.edd.rest.constants import (METADATA_CONTEXT_ASSAY, METADATA_CONTEXT_LINE,
-                                     METADATA_CONTEXT_STUDY)
+from jbei.rest.clients.edd.constants import (
+    METADATA_CONTEXT_ASSAY, METADATA_CONTEXT_LINE, METADATA_CONTEXT_STUDY,
+)
 from .export import table
 
 
