@@ -154,7 +154,7 @@ StudyDGraphing = {
         $('.tooMuchData').remove();
         var sum = 0;
         _.each(rectArray, function(rectElem:any) {
-            if (rectElem.getBoundingClientRect().width != 0) {
+            if (rectElem.getAttribute("width") != 0) {
                 sum++
             }
         });

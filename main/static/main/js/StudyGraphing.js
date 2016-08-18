@@ -137,12 +137,12 @@ StudyDGraphing = {
         $('.tooMuchData').remove();
         var sum = 0;
         _.each(rectArray, function (rectElem) {
-            if (rectElem.getBoundingClientRect().width != 0) {
+            if (rectElem.getAttribute("width") != 0) {
                 sum++;
             }
         });
         if (sum === 0) {
-            $(selector).append("<p class='tooMuchData'>Too much data - please filter </p>");
+            $(selector).append("<p class='tooMuchData'>Data overload- please filter </p>");
         }
     }
 };
