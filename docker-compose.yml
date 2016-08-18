@@ -14,16 +14,16 @@ services:
     restart: always
     volumes:
       - pgdata:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+    expose:
+      - '5432'
     env_file: secrets.env
   redis:
     image: redis:3.2
     restart: always
     volumes:
       - redisdata:/data
-    ports:
-      - "6379:6379"
+    expose:
+      - '6379'
     command: redis-server --appendonly yes
   solr:
     image: solr:5.5
@@ -32,8 +32,8 @@ services:
     volumes:
       - solrdata:/opt/solr/server/solr
       - "${EDD_HOST_DIR}.:/code/"
-    ports:
-      - "8983:8983"
+    expose:
+      - '8983'
   rabbitmq:
     image: rabbitmq:3.6-management
     restart: always
@@ -45,9 +45,8 @@ services:
       RABBITMQ_DEFAULT_VHOST: edd
       RABBITMQ_NODENAME: rabbit@rabbitmq
     expose:
-      - "5672"
-    ports:
-      - "15672:15672"
+      - '5672'
+      - '15672'
   flower:
     build: ./docker_services/flower/
     restart: always
@@ -58,15 +57,17 @@ services:
       AMQP_HOST: rabbitmq
       AMQP_USERNAME: edd_user
       FLOWER_URL_PREFIX: flower
+    depends_on:
+      - rabbitmq
     links:
       - rabbitmq
-    ports:
-      - "5555:5555"
+    expose:
+      - '5555'
   smtp:
     image: namshi/smtp
     restart: always
     expose:
-      - "25"
+      - '25'
   edd:
     build: .
     image: edd
@@ -74,6 +75,7 @@ services:
     env_file: secrets.env
     environment:
       SEARCH_URL: "solr://solr:8983/solr/"
+      EDD_DEBUG: "false"
     volumes:
       - "${EDD_HOST_DIR}.:/code/"
   worker:
@@ -101,9 +103,6 @@ services:
       service: edd
     restart: always
     command: /code/docker_services/appserver_entrypoint.sh
-    environment:
-      POSTGRES_DUMP_FILE: ${POSTGRES_DUMP_FILE}
-      POSTGRES_DUMP_URL: ${POSTGRES_DUMP_URL}
     depends_on:
       - postgres
       - rabbitmq
@@ -119,8 +118,8 @@ services:
     volumes:
       - attachdata:/var/www/uploads
       - staticdata:/var/www/static
-    ports:
-      - "8000:8000"
+    expose:
+      - '8000'
   nginx:
     image: nginx:1.11
     restart: always
@@ -134,9 +133,6 @@ services:
       - flower
       - rabbitmq
       - solr
-    ports:
-      - "80:80"
-      - "443:443"
     volumes_from:
       - appserver
     volumes:

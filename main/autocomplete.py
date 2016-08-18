@@ -13,10 +13,9 @@ from functools import reduce
 from rest_framework.exceptions import ValidationError
 
 from jbei.rest.auth import HmacAuth
-from jbei.ice.rest.ice import IceApi
+from jbei.rest.clients.ice import IceApi
 from main.models import Line, Study, StudyPermission
-from . import models as edd_models
-from .solr import UserSearch
+from . import models as edd_models, solr
 
 DEFAULT_RESULT_COUNT = 20
 
@@ -57,20 +56,17 @@ def search_group(request):
     found = Group.objects.filter(name__iregex=re_term).order_by('name').values('id', 'name')
     found = found[:DEFAULT_RESULT_COUNT]
     return JsonResponse({
-        'rows': found,
+        'rows': [item.to_json() for item in found],
     })
 
 
 def search_metaboliteish(request):
     """ Autocomplete for "metaboliteish" values; metabolites and general measurements. """
+    core = solr.MetaboliteSearch()
     term = request.GET.get('term', '')
-    re_term = re.escape(term)
-    groups = (edd_models.MeasurementType.Group.GENERIC, edd_models.MeasurementType.Group.METABOLITE)
-    found = edd_models.MeasurementType.objects.filter(
-        Q(type_group__in=groups), Q(type_name__iregex=re_term) | Q(short_name__iregex=re_term)
-    )[:DEFAULT_RESULT_COUNT]
+    found = core.query(query=term)
     return JsonResponse({
-        'rows': [item.to_json() for item in found],
+        'rows': found.get('response', {}).get('docs', []),
     })
 
 
@@ -162,7 +158,7 @@ def search_sbml_species(request):
 
 def search_strain(request):
     """ Autocomplete delegates to ICE search API. """
-    auth = HmacAuth.get(key_id=settings.ICE_KEY_ID, username=request.user.email)
+    auth = HmacAuth(key_id=settings.ICE_KEY_ID, username=request.user.email)
     ice = IceApi(auth=auth)
     term = request.GET.get('term', '')
     found = ice.search_entries(term, suppress_errors=True)
@@ -181,8 +177,7 @@ def search_study_writable(request):
     perm = edd_models.StudyPermission.WRITE
     found = edd_models.Study.objects.distinct().filter(
         Q(name__iregex=re_term) | Q(description__iregex=re_term),
-        Q(userpermission__user=request.user, userpermission__permission_type=perm) |
-        Q(grouppermission__group__user=request.user, grouppermission__permission_type=perm)
+        edd_models.Study.user_permission_q(request.user, perm),
     )[:DEFAULT_RESULT_COUNT]
     return JsonResponse({
         'rows': [item.to_json() for item in found],
@@ -191,9 +186,9 @@ def search_study_writable(request):
 
 def search_user(request):
     """ Autocomplete delegates searches to the Solr index of users. """
-    solr = UserSearch()
+    core = solr.UserSearch()
     term = request.GET.get('term', '')
-    found = solr.query(query=term, options={'edismax': True})
+    found = core.query(query=term, options={'edismax': True})
     return JsonResponse({
         'rows': found.get('response', {}).get('docs', []),
     })

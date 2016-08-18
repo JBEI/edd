@@ -219,7 +219,7 @@ var EDDTableImport;
             // no-op. no previous steps!
         };
         return SelectMajorKindStep;
-    })();
+    }());
     EDDTableImport.SelectMajorKindStep = SelectMajorKindStep;
     // The class responsible for everything in the "Step 2" box that you see on the data import page.
     // It needs to parse the raw data from typing or pasting in the input box, or a dragged-in file,
@@ -802,7 +802,7 @@ var EDDTableImport;
             return this.selectMajorKindStep.requiredInputsProvided() && this.haveInputData;
         };
         return RawInputStep;
-    })();
+    }());
     EDDTableImport.RawInputStep = RawInputStep;
     // Magic numbers used in pulldowns to assign types to rows/fields.
     var TypeEnum = (function () {
@@ -817,7 +817,7 @@ var EDDTableImport;
         TypeEnum.Metadata_Name = 4;
         TypeEnum.Metabolite_Name = 5;
         return TypeEnum;
-    })();
+    }());
     EDDTableImport.TypeEnum = TypeEnum;
     // The class responsible for everything in the "Step 3" box that you see on the data import page.
     // Get the grid from the previous step, and draw it as a table with puldowns for specifying the content
@@ -1758,7 +1758,7 @@ var EDDTableImport;
             return this.parsedSets.length > 0;
         };
         return IdentifyStructuresStep;
-    })();
+    }());
     EDDTableImport.IdentifyStructuresStep = IdentifyStructuresStep;
     // The class responsible for everything in the "Step 4" box that you see on the data import page.
     var TypeDisambiguationStep = (function () {
@@ -2645,7 +2645,7 @@ var EDDTableImport;
             return requiredInputs.length > 0;
         };
         return TypeDisambiguationStep;
-    })();
+    }());
     EDDTableImport.TypeDisambiguationStep = TypeDisambiguationStep;
     // The class responsible for everything in the "Step 4" box that you see on the data import page.
     // Aggregates & displays a user-relevant/actionable summary of the import process prior to final

@@ -117,6 +117,12 @@
                             <span>Group</span>
                         </label>
                         </span>
+                        <span id="permission_public_box">
+                        <label for="permission_public">
+                            <input type="radio" id="permission_public" name="class" value="Public"/>
+                            <span>Public</span>
+                        </label>
+                        </span>
                         <select name="type">
                             <option value="N">None</option>
                             <option value="R">Read</option>
@@ -197,7 +203,7 @@
     <div class="bare-header">
         <a href="/study/{{ study.id }}/import">Import tabular data...</a>
     </div>
-    <div class="pageSection minor disclose{% if not new_line.is_editing %} discloseHide{% endif %}" id="lineMain">
+    <div class="pageSection minor disclose{% if not new_line.is_editing and new_line.errors|length == 0 %} discloseHide{% endif %}" id="lineMain">
         <div class="sectionHead">
             <span class="discloseLink"><a href="#">{% if new_line.is_editing %}Edit Line{% else %}Add A New Line{% endif %}</a></span>
             <div class="clear"></div>
@@ -247,6 +253,7 @@
                         <option value="csv">as CSV/etc</option>
                         <option value="sbml">as SBML</option>
                         <option value="worklist">as Worklist</option>
+                        <option value="study">to New Study</option>
                     </select>
                 </label>
                 <button type="submit" name="action" value="line_action">Take Action</button>

@@ -8,7 +8,7 @@ from main import views
 
 
 urlpatterns = [
-    url(r'^$', login_required(views.StudyCreateView.as_view()), name='index'),
+    url(r'^$', login_required(views.StudyIndexView.as_view()), name='index'),
     url(r'^study/$',
         login_required(views.StudyCreateView.as_view()),
         name='create_study'

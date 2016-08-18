@@ -6,7 +6,7 @@ from django.core.management import BaseCommand
 from django.core.management.base import CommandError
 
 from jbei.rest.auth import HmacAuth
-from jbei.ice.rest.ice import IceApi
+from jbei.rest.clients.ice import IceApi
 
 
 class Command(BaseCommand):
@@ -29,12 +29,13 @@ class Command(BaseCommand):
             print('Contacting ICE at %s' % ice.base_url)
             entries_results_page = ice.search_entries()
             if entries_results_page:
-                self.stdout.write('Successfully searched ICE for entries.\nICE reports '
-                                  '%(total_entries)d total entries and returned the first page of '
-                                  '%(returned_entries)d' % {
-                                      'total_entries': entries_results_page.total_result_count,
-                                      'returned_entries': entries_results_page.current_result_count,
-                                  })
+                self.stdout.write(
+                    'Successfully searched ICE for entries.\nICE reports %(total_entries)d total '
+                    'entries and returned the first page of  %(returned_entries)d' % {
+                        'total_entries': entries_results_page.total_result_count,
+                        'returned_entries': entries_results_page.current_result_count,
+                    }
+                )
             else:
                 print("No known error occurred, but also didn't find any entries in ICE. If user "
                       "%s has any ICE entries visible to him/her, you might want to look into "

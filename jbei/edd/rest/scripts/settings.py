@@ -9,6 +9,23 @@ Defines settings used by create_lines.py
 ####################################################################################################
 EDD_URL = 'https://edd-test2.jbei.org/'
 ICE_URL = 'https://registry-test.jbei.org'
+
+EDD_PRODUCTION_HOSTNAMES = [
+    'edd.jbei.org',
+    'public-edd.jbei.org',
+]
+ICE_PRODUCTION_HOSTNAMES = [
+    'registry.jbei.org',
+    'public-registry.jbei.org',
+    'registry.synberc.org',
+    'acs-registry.jbei.org',
+    'registry.jgi.doe.gov',
+]
+
+VERIFY_EDD_CERT = True
+VERIFY_ICE_CERT = True
+
+DEFAULT_LOCALE = b'C.UTF-8'
 ####################################################################################################
 
 SIMULATE_STRAIN_CREATION = False  # test flag that skips the strain creation step

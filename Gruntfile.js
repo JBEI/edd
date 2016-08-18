@@ -1,6 +1,6 @@
 module.exports = function(grunt) {
 
-    grunt.loadNpmTasks('grunt-typescript');
+    grunt.loadNpmTasks('grunt-ts');
     grunt.loadNpmTasks('grunt-contrib-watch');
     grunt.loadNpmTasks('grunt-contrib-copy');
     grunt.loadNpmTasks('grunt-contrib-clean');
@@ -46,7 +46,7 @@ module.exports = function(grunt) {
                 }]
             }
         },
-        typescript: {
+        ts: {
             dev: {
                 src: ['./typescript/build/*.ts'],
                 dest: './typescript/build/',
@@ -124,7 +124,7 @@ module.exports = function(grunt) {
         watch: {
             scripts: {
                 files: ['./typescript/src/*.ts'],                 // the watched files
-                tasks: ["clean:build", "copy:prep", "insert_timestamp:js", "typescript:dev", "copy:mergeDev", "exec:collect"],  // the task(s) to run
+                tasks: ["clean:build", "copy:prep", "insert_timestamp:js", "ts:dev", "copy:mergeDev", "exec:collect"],  // the task(s) to run
                 options: {
                     spawn: false // makes the watch task faster
                 }
@@ -139,16 +139,16 @@ module.exports = function(grunt) {
 
     if (production) {
         // One-time production build
-        grunt.registerTask('default', ["clean:build", "copy:prep", "typescript:prod", "uglify:prod", "copy:mergeProd", "exec:collect"]);
+        grunt.registerTask('default', ["clean:build", "copy:prep", "ts:prod", "uglify:prod", "copy:mergeProd", "exec:collect"]);
     } else if (watch) {
         // Dev build and watch for changes
-        grunt.registerTask('default', ["clean:build", "copy:prep", "insert_timestamp:js", "typescript:dev", "copy:mergeDev", "exec:collect", 'watch']);
+        grunt.registerTask('default', ["clean:build", "copy:prep", "insert_timestamp:js", "ts:dev", "copy:mergeDev", "exec:collect", 'watch']);
     } else if (commit) {
         // Dev build and watch for changes
-        grunt.registerTask('default', ["clean:build", "copy:prep", "typescript:commit", "copy:mergeDev", "exec:collect"]);
+        grunt.registerTask('default', ["clean:build", "copy:prep", "ts:commit", "copy:mergeDev", "exec:collect"]);
     } else {
         // Standard one-time dev build
-        grunt.registerTask('default', ["clean:build", "copy:prep", "insert_timestamp:js", "typescript:dev", "copy:mergeDev", "exec:collect"]);
+        grunt.registerTask('default', ["clean:build", "copy:prep", "insert_timestamp:js", "ts:dev", "copy:mergeDev", "exec:collect"]);
     }
 };
 

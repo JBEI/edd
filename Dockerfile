@@ -11,6 +11,7 @@ WORKDIR /code
 RUN apt-get update \
     && apt-get upgrade -y \
     && apt-get install -y \
+        g++ \
         gfortran \
         libatlas-dev \
         libbz2-dev \
