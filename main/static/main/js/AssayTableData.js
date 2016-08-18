@@ -18,7 +18,6 @@ var EDDTableImport;
     'use strict';
     // Captures important information to be reviewed by the user in the final import step
     var ImportMessage = (function () {
-        // update the UI with the result (e.g. by re-querying a REST resource)
         function ImportMessage(message, relatedControlSelector, reevaluateFunction) {
             if (relatedControlSelector === void 0) { relatedControlSelector = null; }
             if (reevaluateFunction === void 0) { reevaluateFunction = null; }
@@ -29,6 +28,12 @@ var EDDTableImport;
         return ImportMessage;
     })();
     EDDTableImport.ImportMessage = ImportMessage;
+    var AutoComplete = (function () {
+        function AutoComplete() {
+        }
+        return AutoComplete;
+    })();
+    EDDTableImport.AutoComplete = AutoComplete;
     // As soon as the window load signal is sent, call back to the server for the set of reference records
     // that will be used to disambiguate labels in imported data.
     function onWindowLoad() {
@@ -1805,13 +1810,6 @@ var EDDTableImport;
             EDD_auto.setup_field_autocomplete('#masterMType', 'GenericOrMetabolite', EDDData.MetaboliteTypes || {});
             EDD_auto.setup_field_autocomplete('#masterMUnits', 'MeasurementUnit');
         }
-        /**
-         * Tests whether the provided element has CSS class with the provided name
-         */
-        TypeDisambiguationStep.prototype.isClassOn = function (element, className) {
-            var classList = element.attr("class").split("\s+");
-            return classList.indexOf(className) > -1;
-        };
         TypeDisambiguationStep.prototype.setAllInputsEnabled = function (enabled) {
             var selectorsList = this.allUserInputSelectors.join(',');
             if (enabled) {
@@ -1895,7 +1893,9 @@ var EDDTableImport;
             var hasRequiredInitialInput = this.identifyStructuresStep.requiredInputsProvided();
             // If parsed data exists, but we haven't seen a single timestamp, show the "master
             // timestamp" input.
-            $('#masterTimestampDiv').toggleClass('off', (!hasRequiredInitialInput) || seenAnyTimestamps || (this.identifyStructuresStep.parsedSets.length === 0));
+            var hideMasterTimestamp = (!hasRequiredInitialInput) || seenAnyTimestamps ||
+                (this.identifyStructuresStep.parsedSets.length === 0);
+            $('#masterTimestampDiv').toggleClass('off', hideMasterTimestamp);
             // Call subroutines for each of the major sections
             if (mode === "biolector") {
                 this.remakeLineSection();
@@ -1914,7 +1914,7 @@ var EDDTableImport;
             $('#processingStep3Label').addClass('off');
             this.setAllInputsEnabled(true);
             var endTime = new Date();
-            var elapsedSeconds = (new Date().getTime() - startTime.getTime()) / 1000;
+            var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
             console.log("End of TypeDisambiguationStep.reconfigure(). Elapsed time: ", elapsedSeconds, " s. Calling next step.");
             this.nextStepCallback();
         };
@@ -1971,10 +1971,13 @@ var EDDTableImport;
                     $('<div>').text(name).appendTo(row.insertCell());
                     // Now build another table cell that will contain the pulldowns
                     cell = $(row.insertCell()).css('text-align', 'left');
-                    var lineNameInput = $('<input type="text" class="autocomp autocomp_user' +
-                        ' ui-autocomplete-input">').appendTo(cell).data('setByUser', false).attr('name', 'disamLineInput' + i);
+                    var lineNameInput = $('<input type="text" class="autocomp' +
+                        ' ui-autocomplete-input">')
+                        .appendTo(cell)
+                        .data('setByUser', false)
+                        .attr('name', 'disamLineInput' + i);
                     var selectedLineIdInput = $('<input type=hidden>').appendTo(cell).attr('id', 'disamLine' + i).attr('name', 'disamLine' + i).val("named_or_new");
-                    disam.selectLineJQElement = {
+                    disam.selectLineElements = {
                         "nameInput": lineNameInput,
                         "selectedId": selectedLineIdInput,
                         "visibleIndex": i
@@ -2110,8 +2113,7 @@ var EDDTableImport;
             // create a text input to gather user input
             var lineInputId = 'disamLineInput' + i;
             var lineInputSelector = '#' + lineInputId;
-            var lineNameInput = $('<input type="text" class="autocomp autocomp_user' +
-                '" ui-autocomplete-input">')
+            var lineNameInput = $('<input type="text" class="autocomp ui-autocomplete-input">')
                 .data('setByUser', false)
                 .attr('name', lineInputId)
                 .prop('id', lineInputId)
@@ -2126,12 +2128,13 @@ var EDDTableImport;
                 .val("new");
             this.requiredInputSelectors.push(lineInputSelector);
             // set up autocomplete for using controls created above
-            var model_class_name = "StudyLine";
-            var search_uri = "/study/" + EDDData.currentStudyID + "/lines";
-            EDD_auto.setup_field_autocomplete(lineNameInput, model_class_name, EDDData.Lines, {}, [{ "name": "(Create New)", "id": "new" }], search_uri);
+            var model_name = "StudyLines";
+            var opt = {
+                'search_extra': { 'study': EDDData.currentStudyID } };
+            EDD_auto.setup_field_autocomplete(lineNameInput, model_name, EDDData.Lines, opt, [{ "name": "(Create New)", "id": "new" }]);
             // save references to both the input and the hidden form field that stores the
             // selected value
-            disam.selectLineJQElement = {
+            disam.selectLineElements = {
                 "nameInput": lineNameInput,
                 "selectedId": selectedLineIdInput,
             };
@@ -2295,7 +2298,7 @@ var EDDTableImport;
             }
             v = changed.data('visibleIndex') || 0;
             this.currentlyVisibleLineObjSets.slice(v).forEach(function (obj) {
-                var textInput = obj.selectLineJQElement.nameInput;
+                var textInput = obj.selectLineElements.nameInput;
                 if (textInput.data('setByUser')) {
                     return;
                 }
@@ -2513,7 +2516,7 @@ var EDDTableImport;
                     if (set.line_name !== null) {
                         var disam = _this.lineObjSets[set.line_name];
                         if (disam) {
-                            var lineIdInput = disam.selectLineJQElement.selectedId;
+                            var lineIdInput = disam.selectLineElements.selectedId;
                             line_id = lineIdInput.val();
                         }
                     }
@@ -2525,7 +2528,7 @@ var EDDTableImport;
                         var disam = _this.assayObjSets[masterProtocol][set.assay_name];
                         if (disam) {
                             assay_id = disam.selectAssayJQElement.val();
-                            var lineIdInput = disam.selectLineJQElement.selectedId;
+                            var lineIdInput = disam.selectLineElements.selectedId;
                             line_id = lineIdInput.val();
                         }
                     }

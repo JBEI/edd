@@ -727,7 +727,7 @@ class Study(EDDObject):
         return Assay.objects.filter(line__study=self)
 
     def get_assays_by_protocol(self):
-        """ Returns a dict mapping Protocol ID to a dictionary of Assays the in Study using that
+        """ Returns a dict mapping Protocol ID to a list of Assays the in Study using that
         Protocol. """
         assays_by_protocol = defaultdict(list)
         for assay in self.get_assays():

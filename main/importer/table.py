@@ -54,7 +54,6 @@ class TableImport(object):
         return self.create_measurements(series)
 
     def check_series_points(self, series):
-        """ Checks that each item in the series has some data or metadata. """
         """
         Checks that each item in the series has some data or metadata, and sets a
         'nothing to import' value for the item if that's the case

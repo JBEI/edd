@@ -10,6 +10,8 @@ from django.http import JsonResponse
 from django.contrib.auth.models import Group
 from functools import reduce
 
+from rest_framework.exceptions import ValidationError
+
 from jbei.rest.auth import HmacAuth
 from jbei.ice.rest.ice import IceApi
 from main.models import Line, Study, StudyPermission
@@ -90,19 +92,20 @@ def search_metadata(request, context):
         Q(group__group_name__iregex=re_term),
         AUTOCOMPLETE_METADATA_LOOKUP.get(context, Q()),
     ]
-    found = edd_models.MetadataType.objects.filter()[:DEFAULT_RESULT_COUNT]
+    found = edd_models.MetadataType.objects.filter(reduce(operator.or_, filters, Q()))[:DEFAULT_RESULT_COUNT]
     return JsonResponse({
         'rows': [item.to_json() for item in found],
     })
 
 
-def search_study_lines(request, study_pk):
-    """ Autocomplete search on lines in a study. Note that this is a simplistic implementation
-    designed to work around immaturity/insecurity of the initial Django REST Framework based REST
-    API. This implementation should eventually be moved there. """
+def search_study_lines(request):
+    """ Autocomplete search on lines in a study."""
+    study_pk = request.GET.get('study', '')
     name_regex = re.escape(request.GET.get('term', ''))
-
     user = request.user
+
+    if (not study_pk) or (not study_pk.isdigit()):
+        raise ValidationError('study parameter is required and must be a valid integer')
 
     # if the user's admin / staff role gives read access to all Studies, don't bother querying
     # the database for specific permissions defined on this study
@@ -116,7 +119,10 @@ def search_study_lines(request, study_pk):
     name_filters = [Q(name__iregex=name_regex), Q(strains__name__iregex=name_regex)]
     query = query.filter(reduce(operator.or_, name_filters, Q()))[:DEFAULT_RESULT_COUNT]
     return JsonResponse({
-        'rows': [line.to_json() for line in query],
+        'rows': [{'name': line.name,
+                  'id': line.id,
+                  }
+                 for line in query],
     })
 
 
@@ -161,7 +167,7 @@ def search_strain(request):
     term = request.GET.get('term', '')
     found = ice.search_entries(term, suppress_errors=True)
     results = []
-    if found is not None:  # None == there were errorMessages searching
+    if found is not None:  # None == there were errors searching
         results = [match.entry.to_json_dict() for match in found.results]
     return JsonResponse({
         'rows': results,
