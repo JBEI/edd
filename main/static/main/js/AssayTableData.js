@@ -138,7 +138,6 @@ var EDDTableImport;
     // These choices affect the behavior of all subsequent steps.
     var SelectMajorKindStep = (function () {
         function SelectMajorKindStep(nextStepCallback) {
-            this.multiProtocolModes = ['biolector', 'mdv', 'hplc', 'tr']; //TODO: theseneed verification
             this.masterProtocol = 0;
             this.interpretationMode = null; // We rely on a separate call to reconfigure() to set this properly.
             this.inputRefreshTimerID = null;
@@ -214,8 +213,7 @@ var EDDTableImport;
         };
         SelectMajorKindStep.prototype.requiredInputsProvided = function () {
             var masterProtocol = $('#masterProtocol').val();
-            return (this.multiProtocolModes.indexOf(this.interpretationMode) >= 0) ||
-                (masterProtocol != DEFAULT_MASTER_PROTOCOL);
+            return masterProtocol != DEFAULT_MASTER_PROTOCOL;
         };
         SelectMajorKindStep.prototype.previousStepChanged = function () {
             // no-op. no previous steps!
@@ -1822,7 +1820,8 @@ var EDDTableImport;
             var assayIn;
             var currentAssays;
             var masterP = this.selectMajorKindStep.masterProtocol; // Shout-outs to a mid-grade rapper
-            if (this.protocolCurrentlyDisplayed != masterP) {
+            if (this.protocolCurrentlyDisplayed != masterP &&
+                (this.protocolCurrentlyDisplayed === this.protocolCurrentlyDisplayed)) {
                 this.protocolCurrentlyDisplayed = masterP;
                 // We deal with recreating this pulldown here, instead of in remakeAssaySection(),
                 // because remakeAssaySection() is called by reconfigure(), which is called
@@ -1873,11 +1872,11 @@ var EDDTableImport;
         // where the user can fill out additional information for the pasted table.
         TypeDisambiguationStep.prototype.reconfigure = function () {
             var _this = this;
-            var startTime = new Date();
+            var startTime, endTime, elapsedSeconds, mode, parsedSets, seenAnyTimestamps, hideMasterTimestamp, hasRequiredInitialInput;
+            startTime = new Date();
             console.log("Start of TypeDisambiguationStep.reconfigure()");
-            var mode = this.selectMajorKindStep.interpretationMode;
-            var parsedSets = this.identifyStructuresStep.parsedSets;
-            var seenAnyTimestamps = this.identifyStructuresStep.seenAnyTimestamps;
+            mode = this.selectMajorKindStep.interpretationMode;
+            seenAnyTimestamps = this.identifyStructuresStep.seenAnyTimestamps;
             // Hide all the subsections by default
             $('#disambiguateLinesSection').addClass('off');
             $('#masterLineDiv').addClass('off');
@@ -1886,10 +1885,10 @@ var EDDTableImport;
             $('#disambiguateMeasurementsSection').addClass('off');
             $('#masterMTypeDiv').addClass('off');
             $('#disambiguateMetadataSection').addClass('off');
-            var hasRequiredInitialInput = this.identifyStructuresStep.requiredInputsProvided();
+            hasRequiredInitialInput = this.identifyStructuresStep.requiredInputsProvided();
             // If parsed data exists, but we haven't seen a single timestamp, show the "master
             // timestamp" input.
-            var hideMasterTimestamp = (!hasRequiredInitialInput) || seenAnyTimestamps ||
+            hideMasterTimestamp = (!hasRequiredInitialInput) || seenAnyTimestamps ||
                 (this.identifyStructuresStep.parsedSets.length === 0);
             $('#masterTimestampDiv').toggleClass('off', hideMasterTimestamp);
             // Call subroutines for each of the major sections
@@ -1909,8 +1908,8 @@ var EDDTableImport;
             $('#emptyDisambiguationLabel').toggleClass('off', hasRequiredInitialInput);
             $('#processingStep3Label').addClass('off');
             this.setAllInputsEnabled(true);
-            var endTime = new Date();
-            var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
+            endTime = new Date();
+            elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
             console.log("End of TypeDisambiguationStep.reconfigure(). Elapsed time: ", elapsedSeconds, " s. Calling next step.");
             this.nextStepCallback();
         };
@@ -1927,9 +1926,9 @@ var EDDTableImport;
         // resolution where unique Assay names must always point to one unique Assay record.
         TypeDisambiguationStep.prototype.remakeLineSection = function () {
             var _this = this;
-            var table, body;
-            var uniqueLineNames = this.identifyStructuresStep.uniqueLineNames;
-            var startTime = new Date();
+            var table, body, uniqueLineNames, startTime, endTime, elapsedSeconds, t, hasRequiredInitialInputs;
+            uniqueLineNames = this.identifyStructuresStep.uniqueLineNames;
+            startTime = new Date();
             console.log("Start of TypeDisambiguationStep.remakeLineSection()");
             this.currentlyVisibleLineObjSets.forEach(function (disam) {
                 disam.rowElementJQ.detach();
@@ -1937,13 +1936,14 @@ var EDDTableImport;
             $('#disambiguateLinesTable').remove();
             this.lineObjSets = [];
             if (uniqueLineNames.length === 0) {
-                $('#masterLineDiv').removeClass('off');
+                hasRequiredInitialInputs = this.identifyStructuresStep.requiredInputsProvided();
+                $('#masterLineDiv').toggleClass('off', !hasRequiredInitialInputs);
                 console.log("End of TypeDisambiguationStep.remakeLineSection() -- no unique line" +
                     " names to process.");
                 return;
             }
             this.currentlyVisibleLineObjSets = [];
-            var t = this;
+            t = this;
             ////////////////////////////////////////////////////////////////////////////////////////
             // Set up the table and column headers
             ////////////////////////////////////////////////////////////////////////////////////////
@@ -1990,8 +1990,8 @@ var EDDTableImport;
                 disam.rowElementJQ.appendTo(body);
                 _this.currentlyVisibleLineObjSets.push(disam);
             });
-            var endTime = new Date();
-            var elapsedSeconds = endTime.getTime() - startTime.getTime();
+            endTime = new Date();
+            elapsedSeconds = endTime.getTime() - startTime.getTime();
             console.log("End of TypeDisambiguationStep.remakeLineSection(). Elapsed time: ", elapsedSeconds, " s");
         };
         // If the previous step found Line or Assay names that need resolving, put together a disambiguation section
@@ -2229,7 +2229,7 @@ var EDDTableImport;
                 _this.currentlyVisibleMeasurementObjSets.push(disam);
             });
             this.checkAllMeasurementCompartmentDisam();
-            $('#disambiguateMeasurementsSection').removeClass('off');
+            $('#disambiguateMeasurementsSection').toggleClass('off', uniqueMeasurementNames.length === 0);
             var endTime = new Date();
             var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
             console.log("End of TypeDisambiguationStep.remakeMeasurementSection(). Elapsed time:" +
