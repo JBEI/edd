@@ -19,7 +19,7 @@ StudyDGraphing = {
 	},
 
 	clearAllSets:function() {
-
+        $('.tooMuchData').remove();
         var divs =  this.graphDiv.siblings();
 
         if ($(divs[1]).find( "svg" ).length == 0 ){
@@ -49,6 +49,9 @@ StudyDGraphing = {
         //bar chart grouped by time
         $(buttonArr[1]).click(function(event) {
             event.preventDefault();
+            $('.tooMuchData').remove();
+            var rects = d3.selectAll('.timeBar rect')[0];
+            StudyDGraphing.svgWidth(selector[2], rects);
                   d3.select(selector[1]).style('display', 'none');
                   d3.select(selector[2]).style('display', 'block');
                   d3.select(selector[3]).style('display', 'none');
@@ -60,6 +63,8 @@ StudyDGraphing = {
         //bar chart grouped by assay
         $(buttonArr[2]).click(function(event) {
             event.preventDefault();
+            var rects = d3.selectAll('.groupedAssay rect')[0];
+            StudyDGraphing.svgWidth(selector[4], rects);
                   d3.select(selector[1]).style('display', 'none');
                   d3.select(selector[2]).style('display', 'none');
                   d3.select(selector[3]).style('display', 'block');
@@ -71,6 +76,8 @@ StudyDGraphing = {
         //bar chart grouped by measurement
         $(buttonArr[3]).click(function(event) {
             event.preventDefault();
+            var rects = d3.selectAll('.groupedMeasurement rect')[0];
+            StudyDGraphing.svgWidth(selector[4], rects);
                   d3.select(selector[1]).style('display', 'none');
                   d3.select(selector[2]).style('display', 'none');
                   d3.select(selector[3]).style('display', 'none');
@@ -106,8 +113,6 @@ StudyDGraphing = {
         createGroupedBarGraph(graphSet, GraphHelperMethods.createSvg(selector[3]), 'name');
         createGroupedBarGraph(graphSet, GraphHelperMethods.createSvg(selector[4]), 'measurement');
 
-        var rects = d3.selectAll('.groupedMeasurement rect')[0];
-        StudyDGraphing.svgWidth(selector[4], rects);
 		if (!newSet.label) {
 			$('#debug').text('Failed to fetch series.');
 			return;
@@ -146,6 +151,7 @@ StudyDGraphing = {
      * returns message or nothing.
      */
     svgWidth: function(selector, rectArray) {
+        $('.tooMuchData').remove();
         var sum = 0;
         _.each(rectArray, function(rectElem:any) {
             if (rectElem.getBoundingClientRect().width != 0) {
@@ -153,10 +159,7 @@ StudyDGraphing = {
             }
         });
         if (sum === 0) {
-            $(selector).append("<p id='test'>Too much data - please filter </p>")
-            setTimeout(function() {
-                $('#test').remove()
-            }, 10000);
+            $(selector).append("<p class='tooMuchData'>Data overload- please filter </p>")
         }
     }
 };
