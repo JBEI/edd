@@ -4,6 +4,12 @@
  **/
  function createGroupedBarGraph(graphSet, svg, type) {
 
+    var typeClass = {
+        'measurement': ".groupedMeasurement",
+        'x': ".timeBar",
+        'name': '.groupedAssay'
+    };
+
     var assayMeasurements = graphSet.assayMeasurements,
         numUnits = howManyUnits(assayMeasurements),
         yRange = [],
@@ -87,13 +93,6 @@
     //sort time values
     var sortedXvalues = xValueLabels.sort(function(a, b) { return parseFloat(a) - parseFloat(b)});
 
-    //get word length
-    // var wordLength = getSum(typeNames);
-    //
-    // if (wordLength > 90) {
-    //    typeNames = _.range(typeNames.length);
-    // }
-
     x_name.domain(typeNames);
 
     x_xValue.domain(sortedXvalues).rangeRoundBands([0, x_name.rangeBand()]);
@@ -122,9 +121,6 @@
                 return parseFloat(d.x);
             })
             .entries(meas[index].values);
-
-        //insert y identifier to nested data
-        //data = getXYValues(nested);
 
         //right axis
         if (index == 0) {
@@ -243,7 +239,12 @@
                 div.transition()
                     .style("opacity", 0);
             });
-    d3.selectAll('.x.axis text').attr('class', 'truncate')  
+    //get word length
+    var wordLength = getSum(typeNames);
+
+    if (wordLength > 90) {
+       d3.selectAll(typeClass[type] + ' .x.axis text').remove()
+    }
     }
 
 }
