@@ -2176,19 +2176,18 @@ module EDDTableImport {
 
         thisStepInputTimerID:number;
 
-        requiredInputSelectors:string[] = []; //selectors for all inputs that must have a value
-        // for this step to be complete (some are hidden / not directly adjusted by the user)
-
-        allUserInputSelectors:string[] = [];
-
         masterInputSelectors:string[] = [];
 
         errorMessages:ImportMessage[];
         warningMessages:ImportMessage[];
 
+        STEP_4_USER_INPUT_CLASS: string = "step4_user_input";
+
+        STEP_4_REQUIRED_INPUT_CLASS: string = "step4_required_input";
+
 
         constructor(selectMajorKindStep: SelectMajorKindStep, identifyStructuresStep: IdentifyStructuresStep, nextStepCallback: any) {
-
+            var reDoStepOnChange: string[], masterInputs:JQuery;
             this.lineObjSets = {};
             this.assayObjSets = {};
             this.currentlyVisibleLineObjSets = [];
@@ -2217,7 +2216,7 @@ module EDDTableImport {
             // Note that here and below we use 'input' since it makes the GUI more responsive
             // to user changes. A separate timer we've added prevents reprocessing the form too
             // many times.
-            var reDoStepOnChange = ['#masterAssay', '#masterLine', '#masterMComp', '#masterMType', '#masterMUnits'];
+            reDoStepOnChange = ['#masterAssay', '#masterLine', '#masterMComp', '#masterMType', '#masterMUnits'];
             $(reDoStepOnChange.join(',')).on('input', this.changedAnyMasterPulldown.bind(this));
 
 
@@ -2226,6 +2225,8 @@ module EDDTableImport {
 
             $('#resetstep4').on('click', this.resetDisambiguationFields.bind(this));
 
+            $(this.masterInputSelectors).addClass(this.STEP_4_USER_INPUT_CLASS);
+
             // enable autocomplete on statically defined fields
             EDD_auto.setup_field_autocomplete('#masterMComp', 'MeasurementCompartment');
             EDD_auto.setup_field_autocomplete('#masterMType', 'GenericOrMetabolite', EDDData.MetaboliteTypes || {});
@@ -2233,14 +2234,16 @@ module EDDTableImport {
         }
 
         setAllInputsEnabled(enabled: boolean) {
-            var selectorsList = this.allUserInputSelectors.join(',');
+            var allUserInputs: JQuery = $("." + this.STEP_4_USER_INPUT_CLASS);
 
-            if(enabled) {
-                $(selectorsList).removeAttr('disabled');
-            } else {
-                $(selectorsList).attr('disabled', 'disabled')
-
-            }
+            allUserInputs.each(function (index: number, domElement: Element) {
+                var input = $(domElement);
+                if (enabled) {
+                    input.removeAttr('disabled');
+                } else {
+                    input.attr('disabled', 'disabled');
+                }
+            });
         }
 
         previousStepChanged(): void {
@@ -2311,12 +2314,9 @@ module EDDTableImport {
             var startTime = new Date();
             console.log("Start of TypeDisambiguationStep.reconfigure()");
 
-            this.requiredInputSelectors = [];
             var mode = this.selectMajorKindStep.interpretationMode;
             var parsedSets = this.identifyStructuresStep.parsedSets;
             var seenAnyTimestamps = this.identifyStructuresStep.seenAnyTimestamps;
-
-            this.allUserInputSelectors = [].concat(this.masterInputSelectors);
 
             // Hide all the subsections by default
             $('#disambiguateLinesSection').addClass('off');
@@ -2347,7 +2347,7 @@ module EDDTableImport {
 
             // add a listener to all the required input fields so we can detect when they're changed
             // and know whether or not to allow continuation to the subsequent step
-            $(this.requiredInputSelectors.join(',')).on('input', ()=> {
+            $('.' + this.STEP_4_REQUIRED_INPUT_CLASS).on('input', ()=> {
                this.queueReparseThisStep();
             });
 
@@ -2510,9 +2510,9 @@ module EDDTableImport {
             var maxRowCreationSeconds:number = 0;
             var totalRowCreationSeconds:number = 0;
             uniqueAssayNames.forEach((assayName: string, i: number): void => {
-                var rowCreationStartTime = new Date();
-                var disam: any, row: HTMLTableRowElement, defaultSelection: any, cell: JQuery, aSelect: JQuery, lineNameInput: JQuery;
-                var selectedLineIdInput: JQuery;
+                var disam: any, row: HTMLTableRowElement, defaultSelection: any, cell: JQuery,
+                    aSelect: JQuery, lineNameInput: JQuery, rowCreationStartTime: Date, selectedLineIdInput: JQuery;
+                rowCreationStartTime = new Date();
                 disam = this.assayObjSets[masterProtocol][assayName];
                 if (!disam) {
                     disam = {};
@@ -2530,13 +2530,12 @@ module EDDTableImport {
                     /////////////////////////////////////////////////////////////////////////////
                     cell = $(row.insertCell()).css('text-align', 'left');
                     var assayId = 'disamAssay' + i;
-                    var assaySelector = '#' + assayId;
-                    this.requiredInputSelectors.push(assaySelector);
-                    this.allUserInputSelectors.push(assaySelector);
-
                     aSelect = $('<select>').appendTo(cell)
                         .data({ 'setByUser': false })
-                        .attr('name', 'disamAssay' + i).attr('id', assayId);
+                        .attr('name', 'disamAssay' + i)
+                        .attr('id', assayId)
+                        .addClass(this.STEP_4_USER_INPUT_CLASS)
+                        .addClass(this.STEP_4_REQUIRED_INPUT_CLASS);
                     disam.selectAssayJQElement = aSelect;
                     $('<option>').text('(Create New Assay)').appendTo(aSelect).val('named_or_new')
                         .prop('selected', !defaultSelection.assayID);
@@ -2584,22 +2583,21 @@ module EDDTableImport {
         appendLineAutoselect(parentElement:JQuery, disam, defaultSelection, i:number): void {
             // create a text input to gather user input
             var lineInputId = 'disamLineInput' + i;
-            var lineInputSelector = '#' + lineInputId;
             var lineNameInput = $('<input type="text" class="autocomp ui-autocomplete-input">')
                 .data('setByUser', false)
                 .attr('name', lineInputId)
                 .prop('id', lineInputId)
                 .val("(Create New)")
+                .addClass(this.STEP_4_USER_INPUT_CLASS)
                 .appendTo(parentElement);
-           this.allUserInputSelectors.push(lineInputSelector);
 
             // create a hidden form field to store the selected value
             var selectedLineIdInput = $('<input type=hidden>')
                 .appendTo(parentElement)
                 .attr('id', 'disamLine' + i)
                 .attr('name', 'disamLine' + i)
-                .val("new");
-            this.requiredInputSelectors.push(lineInputSelector);
+                .val("new")
+                .addClass(this.STEP_4_REQUIRED_INPUT_CLASS);
 
             // set up autocomplete for using controls created above
             var model_name: string = "StudyLines";
@@ -2689,15 +2687,22 @@ module EDDTableImport {
                     // create autocompletes
                     ['compObj', 'typeObj', 'unitsObj'].forEach((auto: string): void => {
                         var cell: JQuery = $(row.insertCell()).addClass('disamDataCell');
-                        disam[auto] = EDD_auto.create_autocomplete(cell).data('type', auto);
-                        this.allUserInputSelectors.push(disam[auto]);
+                        disam[auto] = EDD_auto.create_autocomplete(cell)
+                            .data('type', auto)
+                            .addClass(this.STEP_4_USER_INPUT_CLASS);
                     });
-                    disam.typeHiddenObj = disam.typeObj.attr('size', 45).next();
-                    disam.compHiddenObj = disam.compObj.attr('size', 4).next();
-                    disam.unitsHiddenObj = disam.unitsObj.attr('size', 10).next();
-                    this.requiredInputSelectors.push(disam.typeHiddenObj);
-                    this.requiredInputSelectors.push(disam.compHiddenObj);
-                    this.requiredInputSelectors.push(disam.unitsHiddenObj);
+                    disam.typeHiddenObj = disam.typeObj
+                        .attr('size', 45)
+                        .next()
+                        .addClass(this.STEP_4_REQUIRED_INPUT_CLASS);
+                    disam.compHiddenObj = disam.compObj
+                        .attr('size', 4)
+                        .next()
+                        .addClass(this.STEP_4_REQUIRED_INPUT_CLASS);
+                    disam.unitsHiddenObj = disam.unitsObj
+                        .attr('size', 10)
+                        .next()
+                        .addClass(this.STEP_4_REQUIRED_INPUT_CLASS);
 
                     $(row).on('change', 'input[type=hidden]', (ev: JQueryInputEventObject): void => {
                         // only watch for changes on the hidden portion, let autocomplete work
@@ -2757,10 +2762,12 @@ module EDDTableImport {
                     row = <HTMLTableRowElement>body.insertRow();
                     disam.rowElementJQ = $(row);
                     $('<div>').text(name).appendTo(row.insertCell());
-                    disam.metaObj = EDD_auto.create_autocomplete(row.insertCell()).val(name);
-                    disam.metaHiddenObj = disam.metaObj.next();
-                    this.allUserInputSelectors.push(disam.metaObj);
-                    this.requiredInputSelectors.push(disam.metaHiddenObj);
+                    disam.metaObj = EDD_auto.create_autocomplete(row.insertCell())
+                        .val(name)
+                        .addClass(this.STEP_4_USER_INPUT_CLASS);
+                    disam.metaHiddenObj = disam.metaObj
+                        .next()
+                        .addClass(this.STEP_4_REQUIRED_INPUT_CLASS);
                     this.metadataObjSets[name] = disam;
                 }
                 disam.metaObj.attr('name', 'disamMeta' + i).addClass('autocomp_altype')
@@ -3146,13 +3153,14 @@ module EDDTableImport {
         }
 
         requiredInputsProvided():boolean {
-            for(let selector of this.requiredInputSelectors) {
-                var input = $(selector);
+            var requiredInputs = $('.' + this.STEP_4_REQUIRED_INPUT_CLASS);
+            for(let input_id of requiredInputs.toArray()) {
+                var input = $(input_id);
                 if(input.prop('disabled') || !input.val()) {
                     return false;
                 }
             }
-            return this.requiredInputSelectors.length > 0;
+            return requiredInputs.length > 0;
         }
     }
 

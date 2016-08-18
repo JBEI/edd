@@ -251,9 +251,9 @@ EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(
         // The rest of the options are for configuring the ajax webservice call.
         'minLength': 0,
         'source': function (request, response) {
-            var result, modelCache;
+            var result, modelCache, termCachedResults;
             modelCache = EDD_auto.request_cache[model_name] = EDD_auto.request_cache[model_name] || {};
-            var termCachedResults = modelCache[request.term];
+            termCachedResults = modelCache[request.term];
             if (termCachedResults) {
                 // prepend any optional default results
                 var displayResults = prependResults.concat(termCachedResults);

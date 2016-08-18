@@ -28,12 +28,6 @@ var EDDTableImport;
         return ImportMessage;
     })();
     EDDTableImport.ImportMessage = ImportMessage;
-    var AutoComplete = (function () {
-        function AutoComplete() {
-        }
-        return AutoComplete;
-    })();
-    EDDTableImport.AutoComplete = AutoComplete;
     // As soon as the window load signal is sent, call back to the server for the set of reference records
     // that will be used to disambiguate labels in imported data.
     function onWindowLoad() {
@@ -1771,10 +1765,10 @@ var EDDTableImport;
     // The class responsible for everything in the "Step 4" box that you see on the data import page.
     var TypeDisambiguationStep = (function () {
         function TypeDisambiguationStep(selectMajorKindStep, identifyStructuresStep, nextStepCallback) {
-            this.requiredInputSelectors = []; //selectors for all inputs that must have a value
-            // for this step to be complete (some are hidden / not directly adjusted by the user)
-            this.allUserInputSelectors = [];
             this.masterInputSelectors = [];
+            this.STEP_4_USER_INPUT_CLASS = "step4_user_input";
+            this.STEP_4_REQUIRED_INPUT_CLASS = "step4_required_input";
+            var reDoStepOnChange, masterInputs;
             this.lineObjSets = {};
             this.assayObjSets = {};
             this.currentlyVisibleLineObjSets = [];
@@ -1800,24 +1794,28 @@ var EDDTableImport;
             // Note that here and below we use 'input' since it makes the GUI more responsive
             // to user changes. A separate timer we've added prevents reprocessing the form too
             // many times.
-            var reDoStepOnChange = ['#masterAssay', '#masterLine', '#masterMComp', '#masterMType', '#masterMUnits'];
+            reDoStepOnChange = ['#masterAssay', '#masterLine', '#masterMComp', '#masterMType', '#masterMUnits'];
             $(reDoStepOnChange.join(',')).on('input', this.changedAnyMasterPulldown.bind(this));
             this.masterInputSelectors = ['#masterTimestamp'].concat(reDoStepOnChange);
             $('#masterTimestamp').on('input', this.queueReparseThisStep.bind(this));
             $('#resetstep4').on('click', this.resetDisambiguationFields.bind(this));
+            $(this.masterInputSelectors).addClass(this.STEP_4_USER_INPUT_CLASS);
             // enable autocomplete on statically defined fields
             EDD_auto.setup_field_autocomplete('#masterMComp', 'MeasurementCompartment');
             EDD_auto.setup_field_autocomplete('#masterMType', 'GenericOrMetabolite', EDDData.MetaboliteTypes || {});
             EDD_auto.setup_field_autocomplete('#masterMUnits', 'MeasurementUnit');
         }
         TypeDisambiguationStep.prototype.setAllInputsEnabled = function (enabled) {
-            var selectorsList = this.allUserInputSelectors.join(',');
-            if (enabled) {
-                $(selectorsList).removeAttr('disabled');
-            }
-            else {
-                $(selectorsList).attr('disabled', 'disabled');
-            }
+            var allUserInputs = $("." + this.STEP_4_USER_INPUT_CLASS);
+            allUserInputs.each(function (index, domElement) {
+                var input = $(domElement);
+                if (enabled) {
+                    input.removeAttr('disabled');
+                }
+                else {
+                    input.attr('disabled', 'disabled');
+                }
+            });
         };
         TypeDisambiguationStep.prototype.previousStepChanged = function () {
             this.disableInputDuringProcessing();
@@ -1877,11 +1875,9 @@ var EDDTableImport;
             var _this = this;
             var startTime = new Date();
             console.log("Start of TypeDisambiguationStep.reconfigure()");
-            this.requiredInputSelectors = [];
             var mode = this.selectMajorKindStep.interpretationMode;
             var parsedSets = this.identifyStructuresStep.parsedSets;
             var seenAnyTimestamps = this.identifyStructuresStep.seenAnyTimestamps;
-            this.allUserInputSelectors = [].concat(this.masterInputSelectors);
             // Hide all the subsections by default
             $('#disambiguateLinesSection').addClass('off');
             $('#masterLineDiv').addClass('off');
@@ -1907,7 +1903,7 @@ var EDDTableImport;
             this.remakeMetadataSection();
             // add a listener to all the required input fields so we can detect when they're changed
             // and know whether or not to allow continuation to the subsequent step
-            $(this.requiredInputSelectors.join(',')).on('input', function () {
+            $('.' + this.STEP_4_REQUIRED_INPUT_CLASS).on('input', function () {
                 _this.queueReparseThisStep();
             });
             $('#emptyDisambiguationLabel').toggleClass('off', hasRequiredInitialInput);
@@ -2049,9 +2045,8 @@ var EDDTableImport;
             var maxRowCreationSeconds = 0;
             var totalRowCreationSeconds = 0;
             uniqueAssayNames.forEach(function (assayName, i) {
-                var rowCreationStartTime = new Date();
-                var disam, row, defaultSelection, cell, aSelect, lineNameInput;
-                var selectedLineIdInput;
+                var disam, row, defaultSelection, cell, aSelect, lineNameInput, rowCreationStartTime, selectedLineIdInput;
+                rowCreationStartTime = new Date();
                 disam = _this.assayObjSets[masterProtocol][assayName];
                 if (!disam) {
                     disam = {};
@@ -2067,12 +2062,12 @@ var EDDTableImport;
                     /////////////////////////////////////////////////////////////////////////////
                     cell = $(row.insertCell()).css('text-align', 'left');
                     var assayId = 'disamAssay' + i;
-                    var assaySelector = '#' + assayId;
-                    _this.requiredInputSelectors.push(assaySelector);
-                    _this.allUserInputSelectors.push(assaySelector);
                     aSelect = $('<select>').appendTo(cell)
                         .data({ 'setByUser': false })
-                        .attr('name', 'disamAssay' + i).attr('id', assayId);
+                        .attr('name', 'disamAssay' + i)
+                        .attr('id', assayId)
+                        .addClass(_this.STEP_4_USER_INPUT_CLASS)
+                        .addClass(_this.STEP_4_REQUIRED_INPUT_CLASS);
                     disam.selectAssayJQElement = aSelect;
                     $('<option>').text('(Create New Assay)').appendTo(aSelect).val('named_or_new')
                         .prop('selected', !defaultSelection.assayID);
@@ -2112,21 +2107,20 @@ var EDDTableImport;
         TypeDisambiguationStep.prototype.appendLineAutoselect = function (parentElement, disam, defaultSelection, i) {
             // create a text input to gather user input
             var lineInputId = 'disamLineInput' + i;
-            var lineInputSelector = '#' + lineInputId;
             var lineNameInput = $('<input type="text" class="autocomp ui-autocomplete-input">')
                 .data('setByUser', false)
                 .attr('name', lineInputId)
                 .prop('id', lineInputId)
                 .val("(Create New)")
+                .addClass(this.STEP_4_USER_INPUT_CLASS)
                 .appendTo(parentElement);
-            this.allUserInputSelectors.push(lineInputSelector);
             // create a hidden form field to store the selected value
             var selectedLineIdInput = $('<input type=hidden>')
                 .appendTo(parentElement)
                 .attr('id', 'disamLine' + i)
                 .attr('name', 'disamLine' + i)
-                .val("new");
-            this.requiredInputSelectors.push(lineInputSelector);
+                .val("new")
+                .addClass(this.STEP_4_REQUIRED_INPUT_CLASS);
             // set up autocomplete for using controls created above
             var model_name = "StudyLines";
             var opt = {
@@ -2200,15 +2194,22 @@ var EDDTableImport;
                     // create autocompletes
                     ['compObj', 'typeObj', 'unitsObj'].forEach(function (auto) {
                         var cell = $(row.insertCell()).addClass('disamDataCell');
-                        disam[auto] = EDD_auto.create_autocomplete(cell).data('type', auto);
-                        _this.allUserInputSelectors.push(disam[auto]);
+                        disam[auto] = EDD_auto.create_autocomplete(cell)
+                            .data('type', auto)
+                            .addClass(_this.STEP_4_USER_INPUT_CLASS);
                     });
-                    disam.typeHiddenObj = disam.typeObj.attr('size', 45).next();
-                    disam.compHiddenObj = disam.compObj.attr('size', 4).next();
-                    disam.unitsHiddenObj = disam.unitsObj.attr('size', 10).next();
-                    _this.requiredInputSelectors.push(disam.typeHiddenObj);
-                    _this.requiredInputSelectors.push(disam.compHiddenObj);
-                    _this.requiredInputSelectors.push(disam.unitsHiddenObj);
+                    disam.typeHiddenObj = disam.typeObj
+                        .attr('size', 45)
+                        .next()
+                        .addClass(_this.STEP_4_REQUIRED_INPUT_CLASS);
+                    disam.compHiddenObj = disam.compObj
+                        .attr('size', 4)
+                        .next()
+                        .addClass(_this.STEP_4_REQUIRED_INPUT_CLASS);
+                    disam.unitsHiddenObj = disam.unitsObj
+                        .attr('size', 10)
+                        .next()
+                        .addClass(_this.STEP_4_REQUIRED_INPUT_CLASS);
                     $(row).on('change', 'input[type=hidden]', function (ev) {
                         // only watch for changes on the hidden portion, let autocomplete work
                         t.userChangedMeasurementDisam(ev.target);
@@ -2265,10 +2266,12 @@ var EDDTableImport;
                     row = body.insertRow();
                     disam.rowElementJQ = $(row);
                     $('<div>').text(name).appendTo(row.insertCell());
-                    disam.metaObj = EDD_auto.create_autocomplete(row.insertCell()).val(name);
-                    disam.metaHiddenObj = disam.metaObj.next();
-                    _this.allUserInputSelectors.push(disam.metaObj);
-                    _this.requiredInputSelectors.push(disam.metaHiddenObj);
+                    disam.metaObj = EDD_auto.create_autocomplete(row.insertCell())
+                        .val(name)
+                        .addClass(_this.STEP_4_USER_INPUT_CLASS);
+                    disam.metaHiddenObj = disam.metaObj
+                        .next()
+                        .addClass(_this.STEP_4_REQUIRED_INPUT_CLASS);
                     _this.metadataObjSets[name] = disam;
                 }
                 disam.metaObj.attr('name', 'disamMeta' + i).addClass('autocomp_altype')
@@ -2631,14 +2634,15 @@ var EDDTableImport;
             // ];
         };
         TypeDisambiguationStep.prototype.requiredInputsProvided = function () {
-            for (var _i = 0, _a = this.requiredInputSelectors; _i < _a.length; _i++) {
-                var selector = _a[_i];
-                var input = $(selector);
+            var requiredInputs = $('.' + this.STEP_4_REQUIRED_INPUT_CLASS);
+            for (var _i = 0, _a = requiredInputs.toArray(); _i < _a.length; _i++) {
+                var input_id = _a[_i];
+                var input = $(input_id);
                 if (input.prop('disabled') || !input.val()) {
                     return false;
                 }
             }
-            return this.requiredInputSelectors.length > 0;
+            return requiredInputs.length > 0;
         };
         return TypeDisambiguationStep;
     })();
