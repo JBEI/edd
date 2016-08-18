@@ -275,6 +275,9 @@ GraphHelperMethods = {
     **/
     createLeftYAxis: function (graphSet, label, y, svg) {
         var yAxis = graphSet.y_axis(y);
+        if (label === 'undefined') {
+            label = 'n/a';
+        }
         svg.append("g")
             .attr("class", "y axis")
             .call(yAxis)

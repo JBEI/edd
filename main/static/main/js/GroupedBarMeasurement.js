@@ -177,21 +177,6 @@
                 return graphSet.height + 27;
             })
             .attr('text-anchor', 'middle')
-            .text(function (d) {
-                if (type == 'x') {
-                    return
-                }
-                if (labelLength > 4 && xValueLabels.length > 15) {
-                    return
-                }
-                if (labelLength > 12 && xValueLabels.length > 6) {
-                    return
-                } else {
-                    return d;
-                }
-            })
-            .style("font-size", 8);
-
 
         values_g = categories_g.selectAll(".value" + index)
             .data(function (d) {
@@ -231,7 +216,7 @@
                 div.transition()
                     .style("opacity", 0.9);
                 div.html("<strong>" + d.name + "</strong></br>" + d.y + ": " + d.y_unit + "</br>" + d.x
-                    + ":  " + d.x_unit + "</br>" + "measurement: " + d.measurement)
+                    + ":  hours" + "</br>" + "measurement: " + d.measurement)
                     .style("left", (d3.event.pageX) + "px")
                     .style("top", (d3.event.pageY - 28) + "px");
             })
@@ -242,7 +227,10 @@
     //get word length
     var wordLength = getSum(typeNames);
 
-    if (wordLength > 90) {
+    if (wordLength > 90 && type != 'x') {
+       d3.selectAll(typeClass[type] + ' .x.axis text').remove()
+    }
+    if (wordLength > 150 && type === 'x') {
        d3.selectAll(typeClass[type] + ' .x.axis text').remove()
     }
     }

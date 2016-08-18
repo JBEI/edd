@@ -3,10 +3,7 @@
 
 var EDDATDGraphing:any;
 
-declare var createAssayGraph;
-declare var createLineGraph;
-declare var createTimeGraph;
-declare var createSideBySide;
+declare var createMultiLineGraph;
 
 EDDATDGraphing = {
 
@@ -27,28 +24,25 @@ EDDATDGraphing = {
 
         var data = EDDData; // main data
         var barAssayObj  = GraphHelperMethods.sortBarData(newSet);
-        var x_units = GraphHelperMethods.findX_Units(barAssayObj);
-        var y_units = GraphHelperMethods.findY_Units(barAssayObj);
 
+        //data for graphs
         //data for graphs
         var graphSet = {
             barAssayObj: GraphHelperMethods.sortBarData(newSet),
             labels: GraphHelperMethods.names(data),
-            y_unit: GraphHelperMethods.displayUnit(y_units),
-            x_unit: GraphHelperMethods.displayUnit(x_units),
             create_x_axis: GraphHelperMethods.createXAxis,
-            create_y_axis: GraphHelperMethods.createYAxis,
+            create_right_y_axis: GraphHelperMethods.createRightYAxis,
+            create_y_axis: GraphHelperMethods.createLeftYAxis,
             x_axis: GraphHelperMethods.make_x_axis,
-            y_axis: GraphHelperMethods.make_y_axis,
+            y_axis: GraphHelperMethods.make_right_y_axis,
             individualData: newSet,
             assayMeasurements: barAssayObj,
-            legend: GraphHelperMethods.legend,
             color: d3.scale.category10(),
             width: 750,
             height: 220
         };
         //create respective graphs
-        createLineGraph(graphSet, GraphHelperMethods.createSvg('.linechart'));
+        createMultiLineGraph(graphSet, GraphHelperMethods.createSvg('.linechart'));
 
 		if (!newSet.label) {
 			$('#debug').text('Failed to fetch series.');
