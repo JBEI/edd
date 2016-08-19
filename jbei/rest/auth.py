@@ -233,18 +233,21 @@ class EddSessionAuth(AuthBase):
     """
     SESSION_ID_KEY = 'sessionid'
 
-    def __init__(self, session_id, csrftoken):
-        self._session_id = session_id
-        self._csrftoken = csrftoken
+    def __init__(self, cookie_jar, csrftoken):
+        self.cookie_jar = cookie_jar
+        self.csrftoken = csrftoken
 
     def __call__(self, request):
         """
-        Sets the Django session cookie with the session ID.
+        Sets the Django CSRF token in headers.
         """
         self.prev_request = request  # TODO: for debugging, remove
         if request.body:
-            request.headers['X-CSRFToken'] = self._csrftoken
+            request.headers['X-CSRFToken'] = self.csrftoken
         return request
+
+    def apply_session_token(self, session_obj):
+        session_obj.cookies.update(self.cookie_jar)
 
     @staticmethod
     def login(username, password, base_url='https://edd.jbei.org', timeout=REQUEST_TIMEOUT,
@@ -313,7 +316,7 @@ class EddSessionAuth(AuthBase):
                 return None
             else:
                 logger.info('Successfully logged into EDD at %s' % base_url)
-                return EddSessionAuth(session.cookies[EddSessionAuth.SESSION_ID_KEY], csrf_token)
+                return EddSessionAuth(session.cookies, csrf_token)
         else:
             if debug:
                 show_response_html(response)

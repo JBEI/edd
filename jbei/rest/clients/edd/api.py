@@ -22,8 +22,9 @@ from .constants import (
     STRAIN_REGISTRY_URL_REGEX,
 )
 from jbei.rest.api import RestApiClient
+from jbei.rest.auth import EddSessionAuth
 from jbei.rest.sessions import Session, PagedResult, PagedSession
-from jbei.rest.utils import show_response_html, UNSAFE_HTTP_METHODS
+from jbei.rest.utils import show_response_html
 
 
 # controls whether error response content is written to temp file, then displayed in a browser tab
@@ -260,6 +261,8 @@ class EddApi(RestApiClient):
         :return: a new EddApi instance
         """
         session = DrfSession(base_url, PAGE_SIZE_QUERY_PARAM, auth=auth, verify_ssl_cert=verify)
+        if isinstance(auth, EddSessionAuth):
+            auth.apply_session_token(session)
         super(EddApi, self).__init__('EDD', base_url, session, result_limit=result_limit)
 
     def get_strain(self, strain_id=None):
@@ -671,7 +674,7 @@ class EddApi(RestApiClient):
         return self._update_strain('PUT', name, description, local_pk, registry_id, registry_url)
 
     def get_study(self, pk):
-        url = '%s/rest/study/%d' % (self.base_url, pk)
+        url = '%s/rest/study/%d/' % (self.base_url, pk)
         response = self.session.get(url)
 
         # throw an error for unexpected reply
