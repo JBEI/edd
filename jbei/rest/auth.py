@@ -243,7 +243,14 @@ class EddSessionAuth(AuthBase):
         """
         self.prev_request = request  # TODO: for debugging, remove
         if request.body:
-            request.headers['X-CSRFToken'] = self.csrftoken
+            # the CSRF token can change; pull the correct value out of cookie
+            try:
+                jar = request.headers['Cookie']
+                label = 'csrftoken='
+                offset = jar.find(label) + len(label)
+                request.headers['X-CSRFToken'] = jar[offset:jar.find(';', offset)]
+            except Exception as e:
+                pass
         return request
 
     def apply_session_token(self, session_obj):
