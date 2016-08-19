@@ -113,29 +113,78 @@ StudyDGraphing = {
         };
 
         $('.linechart .checkbox').click(function() {
-            if ($('.linechart [type="checkbox"]').attr('checked') != 'checked') {
-                $('.linechart [type="checkbox"]').attr('checked', 'checked');
-                d3.select('.linechart svg').remove();
-                createMultiLineGraph(graphSet, GraphHelperMethods.createNoAxisSvg(selector[1]));
-                d3.selectAll('.linechart .y.axis').remove();
-                d3.selectAll('.icon').remove();
-            } else {
-                $('.linechart [type="checkbox"]').removeAttr('checked');
-                d3.select('.linechart svg').remove();
-                createMultiLineGraph(graphSet, GraphHelperMethods.createSvg(selector[1]));
-            }
+            StudyDGraphing.toggleLine('.linechart', graphSet, selector);
         });
 
-        createMultiLineGraph(graphSet, GraphHelperMethods.createSvg(selector[1]));
-        createGroupedBarGraph(graphSet, GraphHelperMethods.createSvg(selector[2]), 'x');
-        createGroupedBarGraph(graphSet, GraphHelperMethods.createSvg(selector[3]), 'name');
-        createGroupedBarGraph(graphSet, GraphHelperMethods.createSvg(selector[4]), 'measurement');
+        $('.timeBar .checkbox').click(function() {
+            StudyDGraphing.toggle('.timeBar', graphSet, selector[2], 'x');
+        });
+        $('.groupedAssay .checkbox').click(function() {
+            StudyDGraphing.toggle('.groupedAssay', graphSet, selector[3], 'name');
+        });
+        $('.groupedMeasurement .checkbox').click(function() {
+            StudyDGraphing.toggle('.groupedMeasurement', graphSet, selector[4], 'measurement');
+        });
+        StudyDGraphing.isCheckedLine('.timeBar', graphSet, selector);
+        StudyDGraphing.isChecked('.timeBar', graphSet, selector[2], 'x');
+        StudyDGraphing.isChecked('.groupedAssay', graphSet, selector[3], 'name');
+        StudyDGraphing.isChecked('.groupedMeasurement', graphSet, selector[4], 'measurement');
 
 		if (!newSet.label) {
 			$('#debug').text('Failed to fetch series.');
 			return;
 		}
 	},
+
+    toggleLine:function(element, graphSet, selector) {
+        if ($(element + ' [type="checkbox"]').attr('checked') != 'checked') {
+                $(element + ' [type="checkbox"]').attr('checked', 'checked');
+                d3.select(element+ ' svg').remove();
+                createMultiLineGraph(graphSet, GraphHelperMethods.createNoAxisSvg(selector[1]));
+                d3.selectAll(element + ' .y.axis').remove();
+                d3.selectAll('.icon').remove();
+            } else {
+                $(element + ' [type="checkbox"]').removeAttr('checked');
+                d3.select(element + ' svg').remove();
+                createMultiLineGraph(graphSet, GraphHelperMethods.createSvg(selector[1]));
+            }
+    },
+
+    isCheckedLine: function(element, graphSet, selector) {
+        if ($(element + ' [type="checkbox"]').attr('checked') === 'checked') {
+            createMultiLineGraph(graphSet, GraphHelperMethods.createNoAxisSvg(selector[1]));
+            d3.selectAll(element + ' .y.axis').remove();
+            d3.selectAll('.icon').remove();
+
+        } else if ($(element + ' [type="checkbox"]').attr('checked') != 'checked') {
+            createMultiLineGraph(graphSet, GraphHelperMethods.createSvg(selector[1]));
+        }
+    },
+
+    toggle:function(element, graphSet, selector, type) {
+        if ($(element + ' [type="checkbox"]').attr('checked') != 'checked') {
+                $(element + ' [type="checkbox"]').attr('checked', 'checked');
+                d3.select(element+ ' svg').remove();
+                createGroupedBarGraph(graphSet, GraphHelperMethods.createNoAxisSvg(selector), type);
+                d3.selectAll(element + ' .y.axis').remove();
+                d3.selectAll('.icon').remove();
+            } else {
+                $(element + ' [type="checkbox"]').removeAttr('checked');
+                d3.select(element + ' svg').remove();
+                createGroupedBarGraph(graphSet, GraphHelperMethods.createSvg(selector), type);
+            }
+    },
+
+    isChecked: function(element, graphSet, selector, type) {
+        if ($(element + ' [type="checkbox"]').attr('checked') === 'checked') {
+            createGroupedBarGraph(graphSet, GraphHelperMethods.createNoAxisSvg(selector), type);
+            d3.selectAll(element + ' .y.axis').remove();
+            d3.selectAll('.icon').remove();
+        } else if ($(element + ' [type="checkbox"]').attr('checked') != 'checked') {
+            createGroupedBarGraph(graphSet, GraphHelperMethods.createSvg(selector), type);
+        }
+    },
+
 
     /* this function takes in element and returns an array of selectors
     * [<div id=​"linechart">​</div>​, <div id=​"timeBar">​</div>​, <div id=​"single">​</div>​,
@@ -177,7 +226,7 @@ StudyDGraphing = {
             }
         });
         if (sum === 0) {
-            $(selector).append("<p class='tooMuchData'>Data overload- please filter </p>")
+            $(selector).append("<p class=' tooMuchData'>Data overload- please filter </p>")
         }
     }
 };
