@@ -91,7 +91,7 @@ StudyDGraphing = {
             y_axis: GraphHelperMethods.make_right_y_axis,
             individualData: newSet,
             assayMeasurements: barAssayObj,
-            color: d3.scale.category10(),
+            color: d3.scale.category20b(),
             width: 750,
             height: 220
         };
