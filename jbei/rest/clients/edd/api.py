@@ -222,34 +222,6 @@ class DrfSession(PagedSession):
         )
         self._base_url = base_url
 
-    def request(self, method, url, **kwargs):
-        print('executing %s.request()' % self.__class__.__name__)
-        # if using an "unsafe" HTTP method, include the CSRF header required by DRF
-        if method.upper() in UNSAFE_HTTP_METHODS:
-            kwargs = self._get_csrf_headers(**kwargs)
-        return super(DrfSession, self).request(method, url, **kwargs)
-
-    def _get_csrf_headers(self, **kwargs):
-        """
-        Gets an updated dictionary of HTTP request headers, including headers required to satisfy
-        Django's CSRF protection. The original input headers dictionary (if any) isn't modified.
-        :return:
-        """
-        kwargs = kwargs.copy()  # don't modify the input dictionary
-        headers = kwargs.pop('headers', {})
-
-        if headers:
-            headers = headers.copy()  # don't modify the headers dictionary
-
-        # grab cookie value set by Django
-        csrf_token = self._session.cookies[DJANGO_CSRF_COOKIE_KEY]
-        # set the header value needed by DRF (inexplicably different than the one Django uses)
-        headers['X-CSRFToken'] = csrf_token
-
-        insert_spoofed_https_csrf_headers(headers, self._base_url)
-        kwargs['headers'] = headers
-        return kwargs
-
 
 def _set_if_value_valid(dictionary, key, value):
     # utility method to get rid of long blocks of setting dictionary keys only if values valid
@@ -287,9 +259,7 @@ class EddApi(RestApiClient):
             query, or None to apply EDD's default limit
         :return: a new EddApi instance
         """
-        session = DrfSession(base_url, PAGE_SIZE_QUERY_PARAM, verify_ssl_cert=verify)
-        # not passing auth into Session as an AuthBase, calling it to set cookie
-        auth(session)
+        session = DrfSession(base_url, PAGE_SIZE_QUERY_PARAM, auth=auth, verify_ssl_cert=verify)
         super(EddApi, self).__init__('EDD', base_url, session, result_limit=result_limit)
 
     def get_strain(self, strain_id=None):
