@@ -34,10 +34,10 @@ GraphHelperMethods = {
     /**
      *  This function takes a selector element and returns an svg element
     **/
-    createLineSvg: function (selector) {
+    createNoAxisSvg: function (selector) {
         var svg = d3.select(selector).append("svg")
             .attr("preserveAspectRatio", "xMinYMin meet")
-            .attr("viewBox", "-45 -30 950 300")
+            .attr("viewBox", "-20 -30 820 300")
             .classed("svg-content", true);
         return svg;
     },

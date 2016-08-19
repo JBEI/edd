@@ -103,12 +103,23 @@ StudyDGraphing = {
             y_axis: GraphHelperMethods.make_right_y_axis,
             individualData: newSet,
             assayMeasurements: barAssayObj,
-            color: d3.scale.category20b(),
+            color: d3.scale.category20(),
             width: 750,
             height: 220
         };
         //create respective graphs
-        createMultiLineGraph(graphSet, GraphHelperMethods.createLineSvg(selector[1]));
+        var toggleSvg = {
+
+        };
+
+        $('.linechart .checkbox').click(function() {
+            d3.select('.linechart svg').remove()
+            createMultiLineGraph(graphSet, GraphHelperMethods.createNoAxisSvg(selector[1]));
+            d3.selectAll('.linechart .y.axis').remove()
+            d3.selectAll('.icon').remove()
+        });
+
+        createMultiLineGraph(graphSet, GraphHelperMethods.createSvg(selector[1]));
         createGroupedBarGraph(graphSet, GraphHelperMethods.createSvg(selector[2]), 'x');
         createGroupedBarGraph(graphSet, GraphHelperMethods.createSvg(selector[3]), 'name');
         createGroupedBarGraph(graphSet, GraphHelperMethods.createSvg(selector[4]), 'measurement');

@@ -30,6 +30,7 @@
     <script type="text/javascript" src="{% static 'main/js/StudyCarbonBalance.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/StudySBMLExport.js' %}"></script>
     <link rel="stylesheet" type="text/css" href="{% static "main/style.css" %}">
+
     <script type="text/javascript" src="{% static 'main/js/CreateMultiAxisLine.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/GroupedBarMeasurement.js' %}"></script>
 {% endblock js_css %}
@@ -197,7 +198,11 @@
                 </label>
                 </div>
             </div>
-                <div class="linechart"></div>
+                <div class="linechart">
+                    <div class="checkbox">
+                    <label><input type="checkbox" value="">remove axis</label>
+                    </div>
+                </div>
                 <div class="timeBar"></div>
                 <div class="groupedAssay"></div>
                 <div class="groupedMeasurement"></div>

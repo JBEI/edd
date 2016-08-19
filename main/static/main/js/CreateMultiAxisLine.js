@@ -87,7 +87,7 @@ function createMultiLineGraph(graphSet, svg) {
             graphSet.create_y_axis(graphSet, meas[index].key, y, svg);
             //add image to x axis label
             svg.append('svg:circle')
-                .attr('class', 'dot')
+                .attr('class', 'icon')
                 .attr('cx', -37)
                 .attr('cy', 80)
                 .attr('r', 5);
@@ -96,6 +96,7 @@ function createMultiLineGraph(graphSet, svg) {
             graphSet.create_right_y_axis(meas[index].key, y, svg, spacing[index])
             //append hover shape to axis label
             svg.append('svg:polygon')
+                .attr('class', 'icon')
                 .attr('points', [[782, 75], [790, 80], [790, 70]])
         } else if (index === 2) {
             //create right axis
@@ -103,6 +104,7 @@ function createMultiLineGraph(graphSet, svg) {
             var squareSize = 8;
             //add image to y-axis label
             svg.append('svg:rect')
+                .attr('class', 'icon')
                 .attr('x', 832)
                 .attr('y', 70)
                 .attr('width', squareSize)
@@ -112,12 +114,14 @@ function createMultiLineGraph(graphSet, svg) {
             graphSet.create_right_y_axis(meas[index].key, y, svg, spacing[index]);
             //add plus image to label
             svg.append('svg:rect')
+                .attr('class', 'icon')
                 .attr('x', 882)
                 .attr('y', 73)
                 .attr('width', 8)
                 .attr('height', 2);
 
             svg.append('svg:rect')
+                .attr('class', 'icon')
                 .attr('x', 885)
                 .attr('y', 70)
                 .attr('width', 2)
