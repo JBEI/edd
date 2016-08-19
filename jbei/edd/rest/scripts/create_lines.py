@@ -1334,7 +1334,7 @@ def main():
         performance.edd_login_delta = (arrow.utcnow() - login_start_time) + \
                                       (input_timer.wait_time - prior_user_input_delta)
 
-        edd = EddApi(base_url=EDD_URL, session_auth=edd_session_auth)
+        edd = EddApi(base_url=EDD_URL, auth=edd_session_auth)
         edd.write_enabled = True
 
         ############################
