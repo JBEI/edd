@@ -259,6 +259,10 @@ div.tooltip2 {
 	line-height: 20px;
 }
 
+.tooMuchData {
+    color: red;
+}
+
 .truncate {
     position: relative;
     height: 19px;
@@ -282,5 +286,8 @@ div.tooltip2 {
   opacity: .2;
 }
 
+.y-checkbox {
+    margin-left: 10px;
+}
 
 

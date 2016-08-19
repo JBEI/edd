@@ -113,10 +113,17 @@ StudyDGraphing = {
         };
 
         $('.linechart .checkbox').click(function() {
-            d3.select('.linechart svg').remove()
-            createMultiLineGraph(graphSet, GraphHelperMethods.createNoAxisSvg(selector[1]));
-            d3.selectAll('.linechart .y.axis').remove()
-            d3.selectAll('.icon').remove()
+            if ($('.linechart [type="checkbox"]').attr('checked') != 'checked') {
+                $('.linechart [type="checkbox"]').attr('checked', 'checked');
+                d3.select('.linechart svg').remove();
+                createMultiLineGraph(graphSet, GraphHelperMethods.createNoAxisSvg(selector[1]));
+                d3.selectAll('.linechart .y.axis').remove();
+                d3.selectAll('.icon').remove();
+            } else {
+                $('.linechart [type="checkbox"]').removeAttr('checked');
+                d3.select('.linechart svg').remove();
+                createMultiLineGraph(graphSet, GraphHelperMethods.createSvg(selector[1]));
+            }
         });
 
         createMultiLineGraph(graphSet, GraphHelperMethods.createSvg(selector[1]));

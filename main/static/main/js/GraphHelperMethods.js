@@ -37,7 +37,7 @@ GraphHelperMethods = {
     createNoAxisSvg: function (selector) {
         var svg = d3.select(selector).append("svg")
             .attr("preserveAspectRatio", "xMinYMin meet")
-            .attr("viewBox", "-20 -30 820 300")
+            .attr("viewBox", "-5 -30 770 300")
             .classed("svg-content", true);
         return svg;
     },
