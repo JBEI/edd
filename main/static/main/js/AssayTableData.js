@@ -26,7 +26,7 @@ var EDDTableImport;
             this.reevaluateFunction = reevaluateFunction;
         }
         return ImportMessage;
-    })();
+    }());
     EDDTableImport.ImportMessage = ImportMessage;
     // As soon as the window load signal is sent, call back to the server for the set of reference records
     // that will be used to disambiguate labels in imported data.
@@ -98,10 +98,6 @@ var EDDTableImport;
     // This is called by our instance of TypeDisambiguationStep to announce changes.
     // All we do currently is repopulate the debug area.
     function typeDisambiguationCallback() {
-        //        var parsedSets = EDDTableImport.identifyStructuresStep.parsedSets;
-        var resolvedSets = EDDTableImport.typeDisambiguationStep.createSetsForSubmission();
-        // if the debug area is there, set its value to JSON of parsed sets
-        //        $('#jsondebugarea').val(JSON.stringify(resolvedSets));
         EDDTableImport.reviewStep.previousStepChanged();
     }
     EDDTableImport.typeDisambiguationCallback = typeDisambiguationCallback;
@@ -1763,10 +1759,9 @@ var EDDTableImport;
     // The class responsible for everything in the "Step 4" box that you see on the data import page.
     var TypeDisambiguationStep = (function () {
         function TypeDisambiguationStep(selectMajorKindStep, identifyStructuresStep, nextStepCallback) {
-            this.masterInputSelectors = [];
             this.STEP_4_USER_INPUT_CLASS = "step4_user_input";
             this.STEP_4_REQUIRED_INPUT_CLASS = "step4_required_input";
-            var reDoStepOnChange, masterInputs;
+            var reDoStepOnChange, masterInputSelectors;
             this.lineObjSets = {};
             this.assayObjSets = {};
             this.currentlyVisibleLineObjSets = [];
@@ -1911,7 +1906,7 @@ var EDDTableImport;
             endTime = new Date();
             elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
             console.log("End of TypeDisambiguationStep.reconfigure(). Elapsed time: ", elapsedSeconds, " s. Calling next step.");
-            this.nextStepCallback();
+            this.reparseThisStep();
         };
         // TODO: This function should reset all the disambiguation fields to the values
         // that were auto-detected in the last refresh of the object.
@@ -2497,21 +2492,21 @@ var EDDTableImport;
             var resolvedSets = [];
             var droppedDatasetsForMissingTime = 0;
             parsedSets.forEach(function (set, c) {
-                var resolvedSet;
-                var line_id = 'new'; // A convenient default
-                var assay_id = 'named_or_new';
-                var measurement_id = null;
-                var compartment_id = null;
-                var units_id = null;
+                var resolvedSet, line_id, assay_id, measurement_id, compartment_id, units_id, data, metaData, metaDataPresent, disam, protocolObjSets;
+                line_id = 'new'; // A convenient default
+                assay_id = 'named_or_new';
+                measurement_id = null;
+                compartment_id = null;
+                units_id = null;
                 // In modes where we resolve measurement types in the client UI, go with the master values by default.
                 if (mode === "biolector" || mode === "std" || mode === "mdv" || mode === "hplc") {
                     measurement_id = masterMType;
                     compartment_id = masterMComp;
                     units_id = masterMUnits;
                 }
-                var data = set.data;
-                var metaData = {};
-                var metaDataPresent = false;
+                data = set.data;
+                metaData = {};
+                metaDataPresent = false;
                 if (mode === "biolector") {
                     line_id = masterLine;
                     assay_id = "named_or_new"; // Tells the server to attempt to resolve directly against the name, or make a new Assay
@@ -2528,7 +2523,11 @@ var EDDTableImport;
                     line_id = masterAssayLine;
                     assay_id = masterAssay;
                     if (set.assay_name !== null && masterProtocol) {
-                        var disam = _this.assayObjSets[masterProtocol][set.assay_name];
+                        protocolObjSets = _this.assayObjSets[masterProtocol];
+                        //if (!protocolObjSets) {
+                        //    return false;  TODO: continue here on Monday!
+                        //}
+                        disam = protocolObjSets[set.assay_name];
                         if (disam) {
                             assay_id = disam.selectAssayJQElement.val();
                             var lineIdInput = disam.selectLineElements.selectedId;
@@ -2735,8 +2734,8 @@ var EDDTableImport;
             var index = 0;
             for (var _i = 0, _a = this.warningInputs; _i < _a.length; _i++) {
                 var stepWarningInputs = _a[_i];
-                for (var _b = 0; _b < stepWarningInputs.length; _b++) {
-                    var warningChkbx = stepWarningInputs[_b];
+                for (var _b = 0, stepWarningInputs_1 = stepWarningInputs; _b < stepWarningInputs_1.length; _b++) {
+                    var warningChkbx = stepWarningInputs_1[_b];
                     index++;
                     if (!warningChkbx.is(':checked')) {
                         console.log('Not all warnings acknowledged. Warning ', index, 'isnt' +
@@ -2750,8 +2749,8 @@ var EDDTableImport;
         };
         ReviewStep.prototype.getMessageCount = function (messagesByStep) {
             var messageCount = 0;
-            for (var _i = 0; _i < messagesByStep.length; _i++) {
-                var stepMessages = messagesByStep[_i];
+            for (var _i = 0, messagesByStep_1 = messagesByStep; _i < messagesByStep_1.length; _i++) {
+                var stepMessages = messagesByStep_1[_i];
                 messageCount += stepMessages.length;
             }
             return messageCount;
@@ -2765,8 +2764,8 @@ var EDDTableImport;
             // clear all the subarrays containing input controls for prior steps
             // TODO: as a future enhancement, we could keep track of which are already acknowledged
             // and keep them checked
-            for (var _i = 0; _i < inputs.length; _i++) {
-                var stepMsgInputs = inputs[_i];
+            for (var _i = 0, inputs_1 = inputs; _i < inputs_1.length; _i++) {
+                var stepMsgInputs = inputs_1[_i];
                 stepMsgInputs = [];
             }
             // remove all the inputs from the DOM
@@ -2836,8 +2835,8 @@ var EDDTableImport;
             var allSelected = true;
             for (var _i = 0, _a = this.warningInputs; _i < _a.length; _i++) {
                 var stepCheckboxes = _a[_i];
-                for (var _b = 0; _b < stepCheckboxes.length; _b++) {
-                    var checkbox = stepCheckboxes[_b];
+                for (var _b = 0, stepCheckboxes_1 = stepCheckboxes; _b < stepCheckboxes_1.length; _b++) {
+                    var checkbox = stepCheckboxes_1[_b];
                     if (!checkbox.is(':checked')) {
                         allSelected = false;
                         break;
@@ -2854,15 +2853,15 @@ var EDDTableImport;
             // check or uncheck all of the boxes (some checked will result in all being checked)
             for (var _c = 0, _d = this.warningInputs; _c < _d.length; _c++) {
                 var stepCheckboxes = _d[_c];
-                for (var _e = 0; _e < stepCheckboxes.length; _e++) {
-                    var checkbox = stepCheckboxes[_e];
+                for (var _e = 0, stepCheckboxes_2 = stepCheckboxes; _e < stepCheckboxes_2.length; _e++) {
+                    var checkbox = stepCheckboxes_2[_e];
                     checkbox.prop('checked', !allSelected);
                 }
             }
             this.updateSubmitEnabled();
         };
         return ReviewStep;
-    })();
+    }());
     EDDTableImport.ReviewStep = ReviewStep;
 })(EDDTableImport || (EDDTableImport = {}));
 $(window).load(function () {

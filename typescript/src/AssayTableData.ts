@@ -189,10 +189,6 @@ module EDDTableImport {
     // This is called by our instance of TypeDisambiguationStep to announce changes.
     // All we do currently is repopulate the debug area.
     export function typeDisambiguationCallback(): void {
-//        var parsedSets = EDDTableImport.identifyStructuresStep.parsedSets;
-        var resolvedSets = EDDTableImport.typeDisambiguationStep.createSetsForSubmission();
-        // if the debug area is there, set its value to JSON of parsed sets
-//        $('#jsondebugarea').val(JSON.stringify(resolvedSets));
         EDDTableImport.reviewStep.previousStepChanged();
     }
 
@@ -2172,8 +2168,6 @@ module EDDTableImport {
 
         thisStepInputTimerID:number;
 
-        masterInputSelectors:string[] = [];
-
         errorMessages:ImportMessage[];
         warningMessages:ImportMessage[];
 
@@ -2183,7 +2177,7 @@ module EDDTableImport {
 
 
         constructor(selectMajorKindStep: SelectMajorKindStep, identifyStructuresStep: IdentifyStructuresStep, nextStepCallback: any) {
-            var reDoStepOnChange: string[], masterInputs:JQuery;
+            var reDoStepOnChange: string[], masterInputSelectors:String;
             this.lineObjSets = {};
             this.assayObjSets = {};
             this.currentlyVisibleLineObjSets = [];
@@ -2357,7 +2351,8 @@ module EDDTableImport {
             elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
             console.log("End of TypeDisambiguationStep.reconfigure(). Elapsed time: ",
                 elapsedSeconds, " s. Calling next step.");
-            this.nextStepCallback();
+
+            this.reparseThisStep();
         }
 
 
@@ -2561,8 +2556,6 @@ module EDDTableImport {
                     // efficiency for studies with many lines).
                     /////////////////////////////////////////////////////////////////////////////
                     this.appendLineAutoselect(cell, disam, defaultSelection, i);
-
-
                     this.assayObjSets[masterProtocol][assayName] = disam;
                 }
                 disam.selectAssayJQElement.data({ 'visibleIndex': i });
@@ -3006,14 +2999,16 @@ module EDDTableImport {
             var droppedDatasetsForMissingTime = 0;
 
             parsedSets.forEach((set, c: number): void => {
-                var resolvedSet: ResolvedImportSet;
+                var resolvedSet: ResolvedImportSet, line_id: string, assay_id: string,
+                    measurement_id: string, compartment_id: string, units_id: string, data,
+                    metaData: {[id:string]: string}, metaDataPresent: boolean, disam, protocolObjSets;
 
-                var line_id = 'new';    // A convenient default
-                var assay_id = 'named_or_new';
+                line_id = 'new';    // A convenient default
+                assay_id = 'named_or_new';
 
-                var measurement_id = null;
-                var compartment_id = null;
-                var units_id = null;
+                measurement_id = null;
+                compartment_id = null;
+                units_id = null;
                 // In modes where we resolve measurement types in the client UI, go with the master values by default.
                 if (mode === "biolector" || mode === "std" || mode === "mdv" || mode === "hplc") {
                     measurement_id = masterMType;
@@ -3021,10 +3016,9 @@ module EDDTableImport {
                     units_id = masterMUnits;
                 }
 
-                var data = set.data;
-
-                var metaData:{[id:string]: string} = {};
-                var metaDataPresent:boolean = false;
+                data = set.data;
+                metaData = {};
+                metaDataPresent = false;
 
                 if (mode === "biolector") {
                     line_id = masterLine;
@@ -3041,7 +3035,8 @@ module EDDTableImport {
                     line_id = masterAssayLine;
                     assay_id = masterAssay;
                     if (set.assay_name !== null && masterProtocol) {
-                        var disam = this.assayObjSets[masterProtocol][set.assay_name];
+                        protocolObjSets = this.assayObjSets[masterProtocol];
+                        disam = protocolObjSets[set.assay_name];
                         if (disam) {
                             assay_id = disam.selectAssayJQElement.val();
                             var lineIdInput = disam.selectLineElements.selectedId;
