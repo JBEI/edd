@@ -204,7 +204,7 @@
                 return graphSet.height - y(d.y);
             })
             .style("fill", function (d) {
-                return graphSet.color(d.key);
+                return graphSet.color(d.label);
             })
             .style("opacity", 0.3);
 

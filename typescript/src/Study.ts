@@ -1301,7 +1301,6 @@ module StudyD {
 
         $('#mainFilterSection').on('mouseover mousedown mouseup', this.queueMainGraphRemake.bind(this, false))
                 .on('keydown', filterTableKeyDown.bind(this));
-        $('#separateAxesCheckbox').on('change', this.queueMainGraphRemake.bind(this, true));
 
         // Enable edit lines button
         $('#editLineButton').on('click', (ev:JQueryMouseEventObject):boolean => {
@@ -1514,7 +1513,6 @@ module StudyD {
         this.mainGraphObject.clearAllSets();
         //Gives ids of lines to show.
         var dataSets = [];
-        var protocols = [];
         postFilteringMeasurements = this.progressiveFilteringWidget.buildFilteredMeasurements();
         $.each(postFilteringMeasurements, (i, measurementId) => {
             var measure:AssayMeasurementRecord = EDDData.AssayMeasurements[measurementId],
@@ -1531,10 +1529,9 @@ module StudyD {
             var name = [line.name, protocol.name, assay.name].join('-');
             this.graphHelper = Object.create(GraphHelperMethods);
             var singleAssayObj = this.graphHelper.transformSingleLineItem(EDDData, measure, name);
-            protocols.push(protocol.name)
             dataSets.push(singleAssayObj);
         });
-        this.mainGraphObject.addNewSet(dataSets);
+        this.mainGraphObject.addNewSet(dataSets, EDDData.MeasurementTypes);
     }
 
 

@@ -1131,7 +1131,6 @@ var StudyD;
         }
         $('#mainFilterSection').on('mouseover mousedown mouseup', this.queueMainGraphRemake.bind(this, false))
             .on('keydown', filterTableKeyDown.bind(this));
-        $('#separateAxesCheckbox').on('change', this.queueMainGraphRemake.bind(this, true));
         // Enable edit lines button
         $('#editLineButton').on('click', function (ev) {
             var button = $(ev.target), data = button.data(), form = clearLineForm(), allMeta = {}, metaRow;
@@ -1324,7 +1323,6 @@ var StudyD;
         this.mainGraphObject.clearAllSets();
         //Gives ids of lines to show.
         var dataSets = [];
-        var protocols = [];
         postFilteringMeasurements = this.progressiveFilteringWidget.buildFilteredMeasurements();
         $.each(postFilteringMeasurements, function (i, measurementId) {
             var measure = EDDData.AssayMeasurements[measurementId], points = (measure.values ? measure.values.length : 0), assay, line, protocol;
@@ -1339,10 +1337,9 @@ var StudyD;
             var name = [line.name, protocol.name, assay.name].join('-');
             _this.graphHelper = Object.create(GraphHelperMethods);
             var singleAssayObj = _this.graphHelper.transformSingleLineItem(EDDData, measure, name);
-            protocols.push(protocol.name);
             dataSets.push(singleAssayObj);
         });
-        this.mainGraphObject.addNewSet(dataSets);
+        this.mainGraphObject.addNewSet(dataSets, EDDData.MeasurementTypes);
     }
     function clearAssayForm() {
         var form = $('#id_assay-assay_id').closest('.disclose');

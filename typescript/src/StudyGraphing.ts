@@ -3,7 +3,6 @@
 
 var StudyDGraphing:any;
 
-declare var createLineGraph;
 declare var createMultiLineGraph;
 declare var createGroupedBarGraph;
 
@@ -32,9 +31,18 @@ StudyDGraphing = {
         }
 	},
 
-	addNewSet:function(newSet) {
+	addNewSet:function(newSet, type) {
         var buttonArr = StudyDGraphing.getButtonElement(this.graphDiv);
         var selector = StudyDGraphing.getSelectorElement(this.graphDiv);
+        var type = StudyDGraphing.measurementType(type);
+        if (type ==='p') {
+            d3.select(selector[1]).style('display', 'none');
+            d3.select(selector[4]).style('display', 'block');
+            $('label.btn').removeClass('active');
+            var button =  $('.groupByMeasurementBar')[0]
+            $(button).addClass('active');
+        }
+
         //line chart
         $(buttonArr[0]).click(function(event) {
             event.preventDefault();
@@ -89,8 +97,6 @@ StudyDGraphing = {
 
         var data = EDDData; // main data
         var barAssayObj  = GraphHelperMethods.sortBarData(newSet);
-        var x_units = GraphHelperMethods.findX_Units(barAssayObj);
-        var y_units = GraphHelperMethods.findY_Units(barAssayObj);
 
         //data for graphs
         var graphSet = {
@@ -107,11 +113,8 @@ StudyDGraphing = {
             width: 750,
             height: 220
         };
-        //create respective graphs
-        var toggleSvg = {
 
-        };
-
+        //hide y-axis check box event handler
         $('.linechart .checkbox').click(function() {
             StudyDGraphing.toggleLine('.linechart', graphSet, selector);
         });
@@ -125,6 +128,8 @@ StudyDGraphing = {
         $('.groupedMeasurement .checkbox').click(function() {
             StudyDGraphing.toggle('.groupedMeasurement', graphSet, selector[4], 'measurement');
         });
+
+        //render different graphs first checking if the hide y-axis checkbox is checked.
         StudyDGraphing.isCheckedLine('.timeBar', graphSet, selector);
         StudyDGraphing.isChecked('.timeBar', graphSet, selector[2], 'x');
         StudyDGraphing.isChecked('.groupedAssay', graphSet, selector[3], 'name');
@@ -136,6 +141,9 @@ StudyDGraphing = {
 		}
 	},
 
+     /* this function takes in an element, graph options, and selector element and
+     *  is the event handler for the hide y-axis checkbox on the line graph.
+     */
     toggleLine:function(element, graphSet, selector) {
         if ($(element + ' [type="checkbox"]').attr('checked') != 'checked') {
                 $(element + ' [type="checkbox"]').attr('checked', 'checked');
@@ -150,6 +158,9 @@ StudyDGraphing = {
             }
     },
 
+     /* this function takes in an element, graph options, and selector element and
+     *  renders the graph with our without the y-axis
+     */
     isCheckedLine: function(element, graphSet, selector) {
         if ($(element + ' [type="checkbox"]').attr('checked') === 'checked') {
             createMultiLineGraph(graphSet, GraphHelperMethods.createNoAxisSvg(selector[1]));
@@ -161,6 +172,9 @@ StudyDGraphing = {
         }
     },
 
+     /* this function takes in an element, graph options, and selector element and
+     *  is the event handler for the hide y-axis checkbox on the bar graphs
+     */
     toggle:function(element, graphSet, selector, type) {
         if ($(element + ' [type="checkbox"]').attr('checked') != 'checked') {
                 $(element + ' [type="checkbox"]').attr('checked', 'checked');
@@ -175,6 +189,9 @@ StudyDGraphing = {
             }
     },
 
+     /* this function takes in an element, graph options, and selector element and
+     *  renders the graph with our without the y-axis
+     */
     isChecked: function(element, graphSet, selector, type) {
         if ($(element + ' [type="checkbox"]').attr('checked') === 'checked') {
             createGroupedBarGraph(graphSet, GraphHelperMethods.createNoAxisSvg(selector), type);
@@ -228,5 +245,26 @@ StudyDGraphing = {
         if (sum === 0) {
             $(selector).append("<p class=' tooMuchData'>Data overload- please filter </p>")
         }
+    },
+
+    measurementType: function(types) {
+        var proteomics = {};
+        for (var type in types) {
+            if (proteomics.hasOwnProperty(types[type].family)) {
+                proteomics[types[type].family] ++;
+            } else {
+                proteomics[types[type].family] = 0
+            }
+        };
+        for (var key in proteomics) {
+           var max:any = 0;
+           var maxType:any;
+           if (proteomics[key] > max) {
+               max = proteomics[key];
+               maxType = key;
+           }
+        }
+        return maxType;
     }
+
 };
