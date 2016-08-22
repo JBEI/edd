@@ -567,7 +567,7 @@ class EddApi(RestApiClient):
             # "protocols": [
             #     1933
             # ],
-            "strains": [strain_id],
+            "strains": [] if strain_id is None else [strain_id],
             "meta_store": metadata,
         }
 
