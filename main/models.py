@@ -655,8 +655,9 @@ class Study(EDDObject):
         Constructs a django Q object for testing whether the specified user has the required
         permission for a study as part of a Study-related Django model query. It's important to
         note that the provided Q object will return one row for each user/group permission that
-        gives the user access to the study, so clients will often want to use distinct() to limit
-        the returned results. Note that this only tests whether the user or group has specific
+        gives the user access to the study, so clients that aren't already filtering by primary
+        key will probably want to use distinct() to limit the returned results. Note that this
+        only tests whether the user or group has specific
         permissions granted on the Study, not whether the user's role (e.g. 'staff', 'admin')
         gives him/her access to it.  See user_role_has_read_access(user), user_can_read(self, user).
         :param user: the user

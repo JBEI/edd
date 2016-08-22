@@ -103,14 +103,16 @@ def search_study_lines(request):
     if (not study_pk) or (not study_pk.isdigit()):
         raise ValidationError('study parameter is required and must be a valid integer')
 
+    permission_check = Study.user_permission_q(user, StudyPermission.READ)
     # if the user's admin / staff role gives read access to all Studies, don't bother querying
     # the database for specific permissions defined on this study
     if Study.user_role_can_read(user):
-        query = Line.objects.filter(study__pk=study_pk)
-    else:
-        study_user_permission_q = Study.user_permission_q(user, StudyPermission.READ,
-                                                          keyword_prefix='study__')
-        query = Line.objects.filter(study_user_permission_q, study__pk=study_pk)
+        permission_check = Q()
+    try:
+        study = Study.objects.get(permission_check, pk=study_pk)
+        query = study.line_set.all()
+    except Study.DoesNotExist as e:
+        query = Line.objects.none()
 
     name_filters = [Q(name__iregex=name_regex), Q(strains__name__iregex=name_regex)]
     query = query.filter(reduce(operator.or_, name_filters, Q()))[:DEFAULT_RESULT_COUNT]

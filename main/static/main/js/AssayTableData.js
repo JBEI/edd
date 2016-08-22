@@ -1789,10 +1789,10 @@ var EDDTableImport;
             // many times.
             reDoStepOnChange = ['#masterAssay', '#masterLine', '#masterMComp', '#masterMType', '#masterMUnits'];
             $(reDoStepOnChange.join(',')).on('input', this.changedAnyMasterPulldown.bind(this));
-            this.masterInputSelectors = ['#masterTimestamp'].concat(reDoStepOnChange);
+            masterInputSelectors = ['#masterTimestamp'].concat(reDoStepOnChange);
             $('#masterTimestamp').on('input', this.queueReparseThisStep.bind(this));
             $('#resetstep4').on('click', this.resetDisambiguationFields.bind(this));
-            $(this.masterInputSelectors).addClass(this.STEP_4_USER_INPUT_CLASS);
+            $(masterInputSelectors).addClass(this.STEP_4_USER_INPUT_CLASS);
             // enable autocomplete on statically defined fields
             EDD_auto.setup_field_autocomplete('#masterMComp', 'MeasurementCompartment');
             EDD_auto.setup_field_autocomplete('#masterMType', 'GenericOrMetabolite', EDDData.MetaboliteTypes || {});
@@ -1950,7 +1950,7 @@ var EDDTableImport;
             })[0];
             body = $('<tbody>').appendTo(table)[0];
             uniqueLineNames.forEach(function (name, i) {
-                var disam, row, defaultSel, cell, select;
+                var disam, row, defaultSel, cell, select, lineNameInput, selectedLineIdInput;
                 disam = _this.lineObjSets[name];
                 if (!disam) {
                     disam = {};
@@ -1962,24 +1962,9 @@ var EDDTableImport;
                     $('<div>').text(name).appendTo(row.insertCell());
                     // Now build another table cell that will contain the pulldowns
                     cell = $(row.insertCell()).css('text-align', 'left');
-                    var lineNameInput = $('<input type="text" class="autocomp' +
-                        ' ui-autocomplete-input">')
-                        .appendTo(cell)
-                        .data('setByUser', false)
-                        .attr('name', 'disamLineInput' + i);
-                    var selectedLineIdInput = $('<input type=hidden>').appendTo(cell).attr('id', 'disamLine' + i).attr('name', 'disamLine' + i).val("named_or_new");
-                    disam.selectLineElements = {
-                        "nameInput": lineNameInput,
-                        "selectedId": selectedLineIdInput,
-                        "visibleIndex": i
-                    };
-                    $('<option>').text('(Create New)').appendTo(select).val('new')
-                        .prop('selected', !defaultSel.lineID);
-                    (ATData.existingLines || []).forEach(function (line) {
-                        $('<option>').text(line.n)
-                            .appendTo(select).val(line.id.toString())
-                            .prop('selected', defaultSel.lineID === line.id);
-                    });
+                    _this.appendLineAutoselect(cell, disam, defaultSel, i);
+                    disam.selectLineElements.nameInput.data('visibleIndex', i);
+                    disam.selectLineElements.selectedId.val("named_or_new");
                     _this.lineObjSets[name] = disam;
                 }
                 disam.rowElementJQ.appendTo(body);
@@ -1997,18 +1982,18 @@ var EDDTableImport;
         // reveal the pulldowns for selecting a master Line/Assay, leaving the table empty, and return.
         TypeDisambiguationStep.prototype.remakeAssaySection = function () {
             var _this = this;
-            var table, tableBody;
-            var uniqueAssayNames = this.identifyStructuresStep.uniqueAssayNames;
-            var masterProtocol = this.protocolCurrentlyDisplayed;
-            var startTime = new Date();
+            var table, tableBody, uniqueAssayNames, masterProtocol, startTime, avgRowCreationSeconds, endTime, elapsedSeconds, nRows, nColumns, nControls, maxRowCreationSeconds, totalRowCreationSeconds;
+            uniqueAssayNames = this.identifyStructuresStep.uniqueAssayNames;
+            masterProtocol = this.protocolCurrentlyDisplayed;
+            startTime = new Date();
             console.log("Start of TypeDisambiguationStep.remakeAssaySection()");
             this.currentlyVisibleAssayObjSets.forEach(function (disam) {
                 disam.rowElementJQ.detach();
             });
+            this.currentlyVisibleAssayObjSets = [];
             $('#disambiguateAssaysTable').remove();
             // remove stale data from previous run of this step
             this.assayObjSets = {};
-            this.assayObjSets[masterProtocol] = {};
             if ((!this.identifyStructuresStep.requiredInputsProvided()) || this.identifyStructuresStep.parsedSets.length === 0) {
                 console.log("End of TypeDisambiguationStep.remakeAssaySection() -- no input data" +
                     " to process");
@@ -2022,7 +2007,6 @@ var EDDTableImport;
             ////////////////////////////////////////////////////////////////////////////////////////
             // Create the table
             ////////////////////////////////////////////////////////////////////////////////////////
-            this.currentlyVisibleAssayObjSets = [];
             var t = this;
             table = $('<table>')
                 .attr({ 'id': 'disambiguateAssaysTable', 'cellspacing': 0 })
@@ -2034,15 +2018,15 @@ var EDDTableImport;
             ////////////////////////////////////////////////////////////////////////////////////////
             // Create a table row for each unique assay name
             ////////////////////////////////////////////////////////////////////////////////////////
-            var nRows = 0;
-            var nControls = 4;
-            var nColumns = 5;
-            var maxRowCreationSeconds = 0;
-            var totalRowCreationSeconds = 0;
+            nRows = 0;
+            nControls = 4;
+            nColumns = 5;
+            maxRowCreationSeconds = 0;
+            totalRowCreationSeconds = 0;
             uniqueAssayNames.forEach(function (assayName, i) {
-                var disam, row, defaultSelection, cell, aSelect, lineNameInput, rowCreationStartTime, selectedLineIdInput;
+                var assayId, disam, row, defaultSelection, cell, aSelect, lineNameInput, rowCreationStartTime, selectedLineIdInput, rowCreationEndTime, rowCreationElapsedSeconds;
                 rowCreationStartTime = new Date();
-                disam = _this.assayObjSets[masterProtocol][assayName];
+                disam = _this.assayObjSets[assayName];
                 if (!disam) {
                     disam = {};
                     defaultSelection = _this.disambiguateAnAssayOrLine(assayName, i);
@@ -2056,7 +2040,7 @@ var EDDTableImport;
                     // Set up a combo box for selecting the assay
                     /////////////////////////////////////////////////////////////////////////////
                     cell = $(row.insertCell()).css('text-align', 'left');
-                    var assayId = 'disamAssay' + i;
+                    assayId = 'disamAssay' + i;
                     aSelect = $('<select>').appendTo(cell)
                         .data({ 'setByUser': false })
                         .attr('name', 'disamAssay' + i)
@@ -2084,18 +2068,18 @@ var EDDTableImport;
                     // efficiency for studies with many lines).
                     /////////////////////////////////////////////////////////////////////////////
                     _this.appendLineAutoselect(cell, disam, defaultSelection, i);
-                    _this.assayObjSets[masterProtocol][assayName] = disam;
+                    _this.assayObjSets[assayName] = disam;
                 }
                 disam.selectAssayJQElement.data({ 'visibleIndex': i });
                 disam.rowElementJQ.appendTo(tableBody);
                 _this.currentlyVisibleAssayObjSets.push(disam);
-                var rowCreationEndTime = new Date();
-                var rowCreationElapsedSeconds = (rowCreationEndTime.getTime() - rowCreationStartTime.getTime()) / 1000;
+                rowCreationEndTime = new Date();
+                rowCreationElapsedSeconds = (rowCreationEndTime.getTime() - rowCreationStartTime.getTime()) / 1000;
                 totalRowCreationSeconds += rowCreationElapsedSeconds;
             });
-            var avgRowCreationSeconds = totalRowCreationSeconds / nRows;
-            var endTime = new Date();
-            var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
+            avgRowCreationSeconds = totalRowCreationSeconds / nRows;
+            endTime = new Date();
+            elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
             console.log("End of TypeDisambiguationStep.remakeAssaySection(). Table is ", nRows, " rows X ", nColumns, " cols, with ", ATData.existingLines.length, " line options. Elapsed time: " +
                 " time: ", elapsedSeconds, " s. Avg row creation time: ", avgRowCreationSeconds, " s");
         };
@@ -2523,11 +2507,7 @@ var EDDTableImport;
                     line_id = masterAssayLine;
                     assay_id = masterAssay;
                     if (set.assay_name !== null && masterProtocol) {
-                        protocolObjSets = _this.assayObjSets[masterProtocol];
-                        //if (!protocolObjSets) {
-                        //    return false;  TODO: continue here on Monday!
-                        //}
-                        disam = protocolObjSets[set.assay_name];
+                        disam = _this.assayObjSets[set.assay_name];
                         if (disam) {
                             assay_id = disam.selectAssayJQElement.val();
                             var lineIdInput = disam.selectLineElements.selectedId;
