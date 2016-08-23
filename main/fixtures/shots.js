@@ -1,6 +1,6 @@
 
-var CLASSIDS = ['.linechart', '.single', '.groupedAssay', '.timeBar', '.groupedMeasurement'],
-    BUTTONIDS = ['.line', '.singleBar', '.groupByProteinBar', '.groupByTimeBar', '.groupByMeasurementBar'],
+var CLASSIDS = ['.linechart', '.groupedAssay', '.timeBar', '.groupedMeasurement'],
+    BUTTONIDS = ['.line', '.groupByProteinBar', '.groupByTimeBar', '.groupByMeasurementBar'],
     SCREENSHOT_WIDTH = 1280,
     SCREENSHOT_HEIGHT = 900,
     LOAD_WAIT_TIME = 5000,

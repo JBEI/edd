@@ -20,16 +20,14 @@ exports.takeShot = function(cb){
             //where the new captured screenshots are saved
             var arr = ['main/fixtures/newshots/groupedAssay.png',
                        'main/fixtures/newshots/linechart.png',
-                       'main/fixtures/newshots/single.png',
                        'main/fixtures/newshots/timeBar.png',
                        'main/fixtures/newshots/groupedMeasurement.png'];
 
             // original hash values from main/fixtures/originalshots
-            var originalHash = ['e7e30a6399026842efba2a9fc47455fb',
-                                '8d352252ea759d86063396bad715b799',
-                                'f52d467fbcd49b0fdd4ff1a817ad05f7',
-                                'bb8442da463044321604e86a40eae7fa',
-                                '198ad0f5cd34435eca033ef01275e7da'];
+            var originalHash = ['9edf3944c54ee83a142e09d6cf757994',
+                                '23426bc1cd40afd793b6466c88e09386',
+                                '62e8746b4399016dae9938a39f089b4f',
+                                '79772182eeb799c2a888e071e6e781f6'];
             //new hash values created from newshots
             var newHash = [];
 
@@ -42,7 +40,7 @@ exports.takeShot = function(cb){
                     console.log('Match: ' + arr[index].slice(23) + 'newHash' + newHash[index])
                 }
                 else {
-                    console.log('Image changed!m   d: '  + arr[index].slice(23) + 'newHash' + newHash[index])
+                    console.log('Image changed!m   d: '  + arr[index].slice(23) + ', newHash: ' + newHash[index])
                 }
             }
             process.exit(1);

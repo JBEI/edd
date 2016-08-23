@@ -39,7 +39,7 @@ StudyDGraphing = {
             d3.select(selector[1]).style('display', 'none');
             d3.select(selector[4]).style('display', 'block');
             $('label.btn').removeClass('active');
-            var button =  $('.groupByMeasurementBar')[0]
+            var button =  $('.groupByMeasurementBar')[0];
             $(button).addClass('active');
         }
 

@@ -105,6 +105,9 @@
     //loop through different units
     for (var index = 0; index<numUnits; index++) {
 
+        if (yMin[index] > 0 ) {
+            yMin[index] = 0;
+        }
         //y axis min and max domain 
         y.domain([yMin[index], d3.max(unitMeasurementData[index], function (d) {
             return d3.max(d.values, function (d) {

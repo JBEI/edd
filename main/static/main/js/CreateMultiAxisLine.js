@@ -43,9 +43,15 @@ function createMultiLineGraph(graphSet, svg) {
     }))
     }
 
+
     graphSet.create_x_axis(graphSet, x, svg);
 
     for (var index = 0; index<numUnits; index++) {
+
+        if (yMin[index] > 0) {
+            yMin[index] = 0
+        }
+        
         y.domain([yMin[index], d3.max(unitMeasurementData[index], function (d) {
             return d3.max(d.values, function (d) {
                 return d.y;
