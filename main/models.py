@@ -91,6 +91,14 @@ class Update(models.Model, EDDSerialize):
 
     @classmethod
     def load_update(cls, user=None, path=None):
+        """ Sometimes there will be actions happening outside the context of a request; use this
+            factory to create an Update object in those cases.
+            :param user: the user responsible for the update; None will be replaced with the
+                system user.
+            :param path: the path added to the update; it would be a good idea to put e.g. the
+                script name and arguments here.
+            :return: an Update instance persisted to the database
+        """
         request = get_current_request()
         if request is None:
             mod_by = user
@@ -108,6 +116,7 @@ class Update(models.Model, EDDSerialize):
 
     @classmethod
     def load_request_update(cls, request):
+        """ Load an existing Update object associated with a request, or create a new one. """
         rhost = '%s; %s' % (
             request.META.get('REMOTE_ADDR', None),
             request.META.get('REMOTE_HOST', ''))
