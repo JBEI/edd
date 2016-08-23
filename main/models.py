@@ -91,10 +91,21 @@ class Update(models.Model, EDDSerialize):
 
     @classmethod
     def load_update(cls, user=None, path=None):
+        """ Sometimes there will be actions happening outside the context of a request; use this
+            factory to create an Update object in those cases.
+            :param user: the user responsible for the update; None will be replaced with the
+                system user.
+            :param path: the path added to the update; it would be a good idea to put e.g. the
+                script name and arguments here.
+            :return: an Update instance persisted to the database
+        """
         request = get_current_request()
         if request is None:
+            mod_by = user
+            if mod_by is None:
+                mod_by = User.system_user()
             update = cls(mod_time=arrow.utcnow(),
-                         mod_by=user,
+                         mod_by=mod_by,
                          path=path,
                          origin='localhost')
             # TODO this save may be too early?
@@ -105,6 +116,7 @@ class Update(models.Model, EDDSerialize):
 
     @classmethod
     def load_request_update(cls, request):
+        """ Load an existing Update object associated with a request, or create a new one. """
         rhost = '%s; %s' % (
             request.META.get('REMOTE_ADDR', None),
             request.META.get('REMOTE_HOST', ''))
@@ -658,14 +670,16 @@ class Study(EDDObject):
         gives the user access to the study, so clients will often want to use distinct() to limit
         the returned results. Note that this only tests whether the user or group has specific
         permissions granted on the Study, not whether the user's role (e.g. 'staff', 'admin')
-        gives him/her access to it.  See user_role_has_read_access(user), user_can_read(self, user).
+        gives him/her access to it. See:
+            @ user_role_has_read_access(user)
+            @ user_can_read(self, user)
         :param user: the user
         :param permission: the study permission type to test (e.g. StudyPermission.READ); can be
             any iterable of permissions or a single permission
-        :param keyword_prefix: an optional keyword prefix to prepend to the query keyword arguments.
-        For example when querying Study, the default value of '' should be used, or when querying
-        for Lines, whose permissions depend on the related Study, use 'study__' similar to other
-        queryset keyword arguments.
+        :param keyword_prefix: an optional keyword prefix to prepend to the query keyword
+            arguments. For example when querying Study, the default value of '' should be used,
+            or when querying for Lines, whose permissions depend on the related Study, use
+            'study__' similar to other queryset keyword arguments.
         :return: true if the user has the specified permission to the study
         """
         prefix = keyword_prefix
@@ -1858,6 +1872,10 @@ def User_to_json(self, depth=0):
     }
 
 
+def User_system_user(cls):
+    return cls.objects.get(username='system')
+
+
 def User_to_solr_json(self):
     format_string = '%Y-%m-%dT%H:%M:%SZ'
     return {
@@ -1890,3 +1908,4 @@ def patch_user_model():
     User.add_to_class("initials", property(User_initials))
     User.add_to_class("institution", property(User_institution))
     User.add_to_class("institutions", property(User_institutions))
+    User.system_user = classmethod(User_system_user)
