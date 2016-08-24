@@ -2600,6 +2600,14 @@ var EDDTableImport;
         };
         TypeDisambiguationStep.prototype.getUserWarnings = function () {
             return this.warningMessages;
+            //  return [
+            //     new ImportMessage('Test Warning 1'),
+            //     new ImportMessage('Test Warning 2'),
+            //     new ImportMessage('Test Warning 3'),
+            //     new ImportMessage('Test Warning 4'),
+            //     new ImportMessage('Test Warning 5'),
+            //     new ImportMessage('Test Warning 6')
+            // ];
         };
         TypeDisambiguationStep.prototype.getUserErrors = function () {
             return this.errorMessages;
@@ -2705,10 +2713,11 @@ var EDDTableImport;
                 console.log('Enabling submit'); //TODO: remove debug stmt
                 submitButton.removeAttr('disabled');
             }
+            // TODO: re-enable me after upgrading to JQuery-UI 1.12+
             // briefly highlight the button if it was enabled/disabled
-            if ((wasDisabled != disableSubmit) && allPrevStepInputsProvided) {
-                submitButton.effect("bounce");
-            }
+            // if((wasDisabled != disableSubmit) && allPrevStepInputsProvided) {
+            //     submitButton.effect("bounce");
+            // }
         };
         ReviewStep.prototype.areAllWarningsAcknowledged = function () {
             var index = 0;
