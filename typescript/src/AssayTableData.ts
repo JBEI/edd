@@ -2276,14 +2276,16 @@ module EDDTableImport {
             this.inputRefreshTimerID = setTimeout(this.reconfigure.bind(this), 500);
         }
 
-        queueReparseThisStep(): void {
 
+        queueReparseThisStep(): void {
+            console.log('queueReparseThisStep()');
             if (this.thisStepInputTimerID) {
                 clearTimeout(this.thisStepInputTimerID);
             }
             this.thisStepInputTimerID = setTimeout(this.reparseThisStep.bind(this), 500);
         }
 
+        // re-parses user inputs from this step to determine whether they've all been provided
         reparseThisStep(): void {
             this.createSetsForSubmission();
             this.nextStepCallback();

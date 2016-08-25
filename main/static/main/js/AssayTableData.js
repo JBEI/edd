@@ -1846,11 +1846,13 @@ var EDDTableImport;
             this.inputRefreshTimerID = setTimeout(this.reconfigure.bind(this), 500);
         };
         TypeDisambiguationStep.prototype.queueReparseThisStep = function () {
+            console.log('queueReparseThisStep()');
             if (this.thisStepInputTimerID) {
                 clearTimeout(this.thisStepInputTimerID);
             }
             this.thisStepInputTimerID = setTimeout(this.reparseThisStep.bind(this), 500);
         };
+        // re-parses user inputs from this step to determine whether they've all been provided
         TypeDisambiguationStep.prototype.reparseThisStep = function () {
             this.createSetsForSubmission();
             this.nextStepCallback();

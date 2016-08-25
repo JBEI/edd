@@ -236,15 +236,23 @@ EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(
         'columns': columns,
         // Event handler for when a list item is selected.
         'select': function (event, ui) {
-            var cacheKey, record, display, value;
+            var cacheKey, record, displayValue, hiddenValue, userInput, hiddenInput;
             if (ui.item) {
                 cacheKey = ui.item[value_key];
                 record = cache[cacheKey] = cache[cacheKey] || {};
                 $.extend(record, ui.item);
-                display = record[display_key] || '';
-                value = record[value_key] || '';
+                displayValue = record[display_key] || '';
+                hiddenValue = record[value_key] || '';
                 // assign value of selected item ID to sibling hidden input
-                $(this).val(display).trigger('change input').next('input[type=hidden]').val(value);
+
+                userInput = $(this)
+                    .val(displayValue);
+
+                hiddenInput = userInput
+                    .next('input[type=hidden]')
+                    .val(hiddenValue)
+                    .trigger('change')
+                    .trigger('input');
             }
             return false;
         },
@@ -299,11 +307,13 @@ EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(
             $(ev.target).removeClass('wait');
         }
     }).on('blur', function (ev) {
-        var auto = $(this), hidden = auto.next('input[type=hidden]'), hiddenId = hidden.val(),
+        var auto = $(this), hiddenInput = auto.next('input[type=hidden]'), hiddenId = hiddenInput.val(),
             old = cache[hiddenId] || {}, current = auto.val();
         if (current.trim() === '') {
             // User cleared value in autocomplete, remove value from hidden ID
-            hidden.val('');
+            hiddenInput.val('')
+                .trigger('change')
+                .trigger('input');
         } else {
             // User modified value in autocomplete without selecting new one, restore previous
             auto.val(old[display_key] || '');
