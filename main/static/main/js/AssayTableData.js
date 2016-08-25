@@ -2162,7 +2162,7 @@ var EDDTableImport;
             body = ($('#disambiguateMeasurementsTable').children().first()[0]);
             this.currentlyVisibleMeasurementObjSets = []; // For use in cascading user settings
             uniqueMeasurementNames.forEach(function (name, i) {
-                var disam;
+                var disam, isMdv;
                 disam = _this.measurementObjSets[name];
                 if (disam && disam.rowElementJQ) {
                     disam.rowElementJQ.appendTo(body);
@@ -2205,8 +2205,11 @@ var EDDTableImport;
                 disam.compObj.data('visibleIndex', i);
                 disam.typeObj.data('visibleIndex', i);
                 disam.unitsObj.data('visibleIndex', i);
-                // If we're in MDV mode, the units pulldowns are irrelevant.
-                disam.unitsObj.toggleClass('off', mode === 'mdv');
+                // If we're in MDV mode, the units pulldowns are irrelevant. Toggling
+                // the hidden unit input controls whether it's treated as required.
+                isMdv = mode === 'mdv';
+                disam.unitsObj.toggleClass('off', isMdv);
+                disam.unitsHiddenObj.toggleClass('off', isMdv);
                 _this.currentlyVisibleMeasurementObjSets.push(disam);
             });
             this.checkAllMeasurementCompartmentDisam();
@@ -2627,7 +2630,7 @@ var EDDTableImport;
             for (var _i = 0, _a = requiredInputs.toArray(); _i < _a.length; _i++) {
                 var input_id = _a[_i];
                 var input = $(input_id);
-                if (input.prop('disabled') || !input.val()) {
+                if ((!input.val()) && !(input.prop('disabled') || input.hasClass('off'))) {
                     return false;
                 }
             }
