@@ -1334,7 +1334,7 @@ var StudyD;
             assay = EDDData.Assays[measure.assay] || {};
             line = EDDData.Lines[assay.lid] || {};
             protocol = EDDData.Protocols[assay.pid] || {};
-            var name = [line.name, protocol.name, assay.name].join('-');
+            var name = line.name;
             _this.graphHelper = Object.create(GraphHelperMethods);
             var singleAssayObj = _this.graphHelper.transformSingleLineItem(EDDData, measure, name);
             dataSets.push(singleAssayObj);
@@ -2762,7 +2762,7 @@ var DataGridSpecAssays = (function (_super) {
         var graphid = "pro" + p + "graph";
         if (this.graphAreaHeaderSpec) {
             if (this.measuringTimesHeaderSpec.element) {
-                //html element of the entire table
+                //html for the different graphs 
                 var html = '                                                                       \
                         <div class="btn-group" data-toggle="buttons" id="chartType"> \
                             <label class="btn btn-default btn-sm active line" >\
@@ -2772,11 +2772,6 @@ var DataGridSpecAssays = (function (_super) {
                                 <input value="timeBar" type="radio" name="options" id="option2"\
                                        autocomplete="off">\
                                 Bar graph grouped by time\
-                            </label>\
-                            <label class="btn btn-default btn-sm singleBar" >\
-                                <input value="single" type="radio" name="options" id="option3"\
-                                       autocomplete="off">\
-                                Bar graph grouped by line entry\
                             </label>\
                             <label class="btn btn-default btn-sm groupByProteinBar">\
                                 <input type="radio" name="options" id="option4" autocomplete="off"\
@@ -2792,7 +2787,6 @@ var DataGridSpecAssays = (function (_super) {
                         </div>\
                         <div class="linechart"></div>\
                         <div class="timeBar"></div>\
-                        <div class="single"></div>\
                         <div class="groupedAssay"></div>\
                         <div class="groupedMeasurement"></div>\
                         <div class="graphContainer" id= ' + graphid + '></div> \

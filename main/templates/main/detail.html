@@ -33,6 +33,8 @@
 
     <script type="text/javascript" src="{% static 'main/js/CreateMultiAxisLine.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/GroupedBarMeasurement.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/LineGraphHelperMethods.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/BarGraphHelperMethods.js' %}"></script>
 {% endblock js_css %}
 
 
@@ -190,7 +192,7 @@
                 <label class="btn btn-default btn-sm groupByProteinBar">
                     <input type="radio" name="options" id="option4" autocomplete="off"
                            value="groupedAssay">
-                    <img src="{% static 'main/images/chart_bar.png' %}" /> Name
+                    <img src="{% static 'main/images/chart_bar.png' %}" /> Line
                 </label>
                 <label class="btn btn-default btn-sm groupByMeasurementBar">
                     <input type="radio" name="options" id="option5" value="groupedMeasurement" autocomplete="off">
@@ -199,22 +201,22 @@
                 </div>
             </div>
                 <div class="linechart">
-                    <div class="checkbox y-checkbox">
+                    <div style="display:none" class="checkbox y-checkbox">
                     <label><input type="checkbox" value="">hide y-axis</label>
                     </div>
                 </div>
                 <div class="timeBar">
-                    <div class="checkbox y-checkbox">
+                    <div style="display:none" class="checkbox y-checkbox">
                     <label><input type="checkbox" value="">hide y-axis</label>
                     </div>
                 </div>
                 <div class="groupedAssay">
-                    <div class="checkbox y-checkbox">
+                    <div style="display:none" class="checkbox y-checkbox">
                     <label><input type="checkbox" value="">hide y-axis</label>
                     </div>
                 </div>
                 <div class="groupedMeasurement">
-                    <div class="checkbox y-checkbox">
+                    <div style="display:none" class="checkbox y-checkbox">
                     <label><input type="checkbox" value="">hide y-axis</label>
                     </div>
                 </div>

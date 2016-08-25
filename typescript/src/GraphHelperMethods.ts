@@ -278,7 +278,17 @@ GraphHelperMethods = {
      *  This function takes in the unit type for each array and returns the text to display on
      *  the axis
     **/
-    createXAxis: function(graphSet, x, svg) {
+    createXAxis: function(graphSet, x, svg, type) {
+
+        if (type === 'x') {
+            type = "Time"
+        } else if (type === 'measurement') {
+            type = "Measurement" 
+        } else if (type === "name") {
+            type = "Line"
+        } else {
+            type = 'Hours'
+        }
         
         var xAxis = graphSet.x_axis(x);
 
@@ -294,7 +304,7 @@ GraphHelperMethods = {
             .attr("y", 40)
             .attr("x", graphSet.width/2)
             .style("text-anchor", "middle")
-            .text("Hours");
+            .text(type);
         //Draw the x Grid lines
         svg.append("g")
             .attr("class", "grid")

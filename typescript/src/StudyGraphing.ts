@@ -243,10 +243,14 @@ StudyDGraphing = {
             }
         });
         if (sum === 0) {
-            $(selector).append("<p class=' tooMuchData'>Data overload- please filter </p>")
+            $(selector).prepend("<p class=' tooMuchData'>Too much data to display- please filter" +
+                " </p>")
         }
     },
 
+     /* this function takes in an element  selector and an array of svg rects and returns
+     * returns message or nothing.
+     */
     measurementType: function(types) {
         var proteomics = {};
         for (var type in types) {
