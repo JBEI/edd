@@ -187,6 +187,20 @@
                     .attr('d', line)
                     .attr('stroke', color)
                     .attr('stroke-width', 2)
+                    .style('opacity', .5)
                     .attr("class", 'experiment')
-                    .attr('fill', 'none');
+                    .attr('fill', 'none')
+                    .on('mouseover', function(d) {
+                        //highlights grouped lines. d3.select(this).style("opacity", "1");
+                        var selectedLine = this;
+                        d3.selectAll('path').style('opacity',function () {
+                            return (this === selectedLine) ? 1.0 : 0;
+                        });
+                        d3.selectAll('path').style('stroke-width',function () {
+                            return (this === selectedLine) ? 3 : 0;
+                        });
+                    })
+            .on('mouseout', function() {
+                d3.selectAll('path').style('opacity', .5).style('stroke-width', 2)
+            })
     }
