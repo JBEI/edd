@@ -187,12 +187,12 @@
                     .attr('d', line)
                     .attr('stroke', color)
                     .attr('stroke-width', 2)
-                    .attr("class", 'experiment')
+                    .attr("class", 'lineClass')
                     .attr('fill', 'none')
                     .on('mouseover', function(d) {
                         //highlights grouped lines. d3.select(this).style("opacity", "1");
                         var selectedLine = this;
-                        d3.selectAll('path').style('opacity',function () {
+                        d3.selectAll('.lineClass').style('opacity',function () {
                             return (this === selectedLine) ? 1.0 : 0;
                         });
                         d3.selectAll('circle').style('opacity', 0);
@@ -200,7 +200,7 @@
                         d3.selectAll('polygon').style('opacity', 0);
                     })
             .on('mouseout', function() {
-                d3.selectAll('path').style('opacity', 1);
+                d3.selectAll('.lineClass').style('opacity', 1);
                 d3.selectAll('circle').style('opacity', 1);
                 d3.selectAll('rect').style('opacity', 1);
                 d3.selectAll('polygon').style('opacity', 1)
