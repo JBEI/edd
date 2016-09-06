@@ -1530,7 +1530,6 @@ module StudyD {
             colorObj = this.graphHelper.renderColor(name, EDDData.Lines);
             color = colorObj[assay.lid]
             singleAssayObj = this.graphHelper.transformSingleLineItem(EDDData, measure, name, color);
-
             dataSets.push(singleAssayObj);
         });
         this.mainGraphObject.addNewSet(dataSets, EDDData.MeasurementTypes);

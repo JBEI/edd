@@ -111,8 +111,8 @@ GraphHelperMethods = {
         return xAndYValues;
     },
     /**
-     * this function takes in a single line name and study's lines and returns a color based on
-     * line name
+     * this function takes in a single line name and study's lines and returns an object of
+     * color values with lid keys
     **/
     renderColor: function (line, lines) {
         var colors = {
