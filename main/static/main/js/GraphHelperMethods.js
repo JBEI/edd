@@ -51,7 +51,7 @@ GraphHelperMethods = {
      *    ...
      *    ]
     **/
-    transformSingleLineItem: function (data, singleData, names) {
+    transformSingleLineItem: function (data, singleData, names, color) {
         // unit types
         var unitTypes = data.UnitTypes;
         // measurement types
@@ -75,6 +75,7 @@ GraphHelperMethods = {
             dataset['x_unit'] = GraphHelperMethods.unitName(singleData.x_units, unitTypes);
             dataset['y_unit'] = GraphHelperMethods.unitName(singleData.y_units, unitTypes);
             dataset['name'] = names;
+            dataset['color'] = color;
             dataset['nameid'] = names + index;
             dataset['measurement'] = GraphHelperMethods.measurementName(singleData.type, measurementTypes);
             xAndYValues.push(dataset);
@@ -108,6 +109,47 @@ GraphHelperMethods = {
             return a.x - b.x;
         });
         return xAndYValues;
+    },
+    /**
+     * this function takes in a single line name and study's lines and returns a color based on
+     * line name
+    **/
+    renderColor: function (line, lines) {
+        var colors = {
+            0: '#0E6FA4',
+            1: '#51BFD8',
+            2: '#DA7138',
+            3: '#FCA456',
+            4: '#2b7b3d',
+            5: '#97d37d',
+            6: '#CF5030',
+            7: '#FFB6C1',
+            8: '#6f2f8c',
+            9: '#b97dd3',
+            10: '#7e0404',
+            11: '#BAA0AE',
+            12: '#F279BA',
+            13: '#F2C4DD',
+            14: '#919191',
+            15: '#BFBFBD',
+            16: '#ecda3a',
+            17: '#f7f0b0',
+            18: '#00d5f2',
+            19: '#b2f2fb',
+            20: '#0715CD',
+            21: '#e8c2f3'
+        };
+        var lineColors = {};
+        var lineCount = _.range(Object.keys(lines).length);
+        var lineValues = _.values(lines);
+        var indexLines = {};
+        for (var i = 0; i < lineCount.length; i++) {
+            indexLines[i] = lineValues[i].id;
+        }
+        _.each(indexLines, function (value, key) {
+            lineColors[indexLines[key]] = colors[key];
+        });
+        return lineColors;
     },
     /**
      * this function returns an object of y units with counts
@@ -336,4 +378,31 @@ GraphHelperMethods = {
             .scale(x)
             .orient("bottom");
     },
+    color_scheme: function (index) {
+        var colors = {
+            0: '#0E6FA4',
+            1: '#51BFD8',
+            2: '#DA7138',
+            3: '#FCA456',
+            4: '#2b7b3d',
+            5: '#97d37d',
+            6: '#CF5030',
+            7: '#FFB6C1',
+            8: '#6f2f8c',
+            9: '#b97dd3',
+            10: '#7e0404',
+            11: '#BAA0AE',
+            12: '#F279BA',
+            13: '#F2C4DD',
+            14: '#919191',
+            15: '#BFBFBD',
+            16: '#ecda3a',
+            17: '#f7f0b0',
+            18: '#00d5f2',
+            19: '#b2f2fb',
+            20: '#0715CD',
+            21: '#e8c2f3'
+        };
+        return colors[index];
+    }
 };

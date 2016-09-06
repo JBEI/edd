@@ -1325,7 +1325,7 @@ var StudyD;
         var dataSets = [];
         postFilteringMeasurements = this.progressiveFilteringWidget.buildFilteredMeasurements();
         $.each(postFilteringMeasurements, function (i, measurementId) {
-            var measure = EDDData.AssayMeasurements[measurementId], points = (measure.values ? measure.values.length : 0), assay, line, protocol;
+            var measure = EDDData.AssayMeasurements[measurementId], points = (measure.values ? measure.values.length : 0), assay, line, name, singleAssayObj, colorObj, color;
             dataPointsTotal += points;
             if (dataPointsDisplayed > 15000) {
                 return; // Skip the rest if we've hit our limit
@@ -1333,10 +1333,11 @@ var StudyD;
             dataPointsDisplayed += points;
             assay = EDDData.Assays[measure.assay] || {};
             line = EDDData.Lines[assay.lid] || {};
-            protocol = EDDData.Protocols[assay.pid] || {};
-            var name = line.name;
+            name = line.name;
             _this.graphHelper = Object.create(GraphHelperMethods);
-            var singleAssayObj = _this.graphHelper.transformSingleLineItem(EDDData, measure, name);
+            colorObj = _this.graphHelper.renderColor(name, EDDData.Lines);
+            color = colorObj[assay.lid];
+            singleAssayObj = _this.graphHelper.transformSingleLineItem(EDDData, measure, name, color);
             dataSets.push(singleAssayObj);
         });
         this.mainGraphObject.addNewSet(dataSets, EDDData.MeasurementTypes);

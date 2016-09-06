@@ -208,7 +208,13 @@
                 return graphSet.height - y(d.y);
             })
             .style("fill", function (d) {
-                return graphSet.color(d.label);
+                // if (type === "measurement") {
+                //     return graphSet.color(d.name)
+                // }
+                // else {
+                //    return graphSet.color(d.label);
+                // }
+                return d.color
             })
             .style("opacity", 0.3);
 
