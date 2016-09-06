@@ -183,7 +183,7 @@ function createMultiLineGraph(graphSet, svg) {
                     var rect = dataRectGroup.selectAll('.data-point' + index)
                         .data(unitData.values[j].values);
                     rectHover(x, y, rect, color, div);
-                } else {
+                } else if (index === 3) {
                     createLine(svg, unitData.key.split(' ').join('_'), line(unitData.values[j].values),
                                color);
                     //svg object for data points
@@ -192,6 +192,16 @@ function createMultiLineGraph(graphSet, svg) {
                     var plus = dataRectGroup.selectAll('.data-point' + index)
                         .data(unitData.values[j].values);
                     plusHover(x, y, plus, color, div);
+                } else {
+                    createLine(svg, unitData.key.split(' ').join('_'), line(unitData.values[j].values),
+                               color);
+                    //svg object for data points
+                    var dataCirclesGroup = svg.append('svg:g');
+                    // data point circles
+                    var circles = dataCirclesGroup.selectAll('.data-point' + index)
+                        .data(unitData.values[j].values);
+                    //circle hover svg
+                    circleHover(x, y, circles, color, div)
                 }
             }
           })

@@ -58,4 +58,4 @@ fs.readFile('./main/fixtures/node-server/index.html', function (err, html) {
 
 
 
-console.log('Server running at http://127.0.0.1:8081/');
+console.log('Setting up node server to begin taking and comparing screenshots');

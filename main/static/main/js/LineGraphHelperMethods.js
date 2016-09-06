@@ -43,7 +43,7 @@
                     unit = d.y_unit;
                 }
                 div.html('<strong>' + d.name + '</strong>' + ": " + d.y + " " + unit
-                        + "</br>" + " measurement: " + d.measurement)
+                        + "</br>" + '<strong>' + " Measurement: " + '</strong>' + d.measurement)
                     .style("left", (d3.event.pageX) + "px")
                     .style("top", (d3.event.pageY - 30) + "px");
             })
@@ -83,7 +83,7 @@
                     unit = d.y_unit;
                 }
                 div.html('<strong>' + d.name + '</strong>' + ": " + d.y + " " + unit
-                        + "</br>" + " measurement: " + d.measurement)
+                        + "</br>" + '<strong>' + " Measurement: " + '</strong>' + d.measurement)
                     .style("left", (d3.event.pageX) + "px")
                     .style("top", (d3.event.pageY - 30) + "px");
             })
@@ -135,7 +135,7 @@
                     unit = d.y_unit;
                 }
                 div.html('<strong>' + d.name + '</strong>' + ": " + d.y + " " + unit
-                        + "</br>" + " measurement: " + d.measurement)
+                        + "</br>" + '<strong>' + " Measurement: " + '</strong>' + d.measurement)
                     .style("left", (d3.event.pageX) + "px")
                     .style("top", (d3.event.pageY - 30) + "px");
             })
@@ -167,7 +167,7 @@
                     unit = d.y_unit;
                 }
                 div.html('<strong>' + d.name + '</strong>' + ": " + d.y + " " + unit
-                        + "</br>" + " measurement: " + d.measurement)
+                        + "</br>" + '<strong>' + " Measurement: " + '</strong>' + d.measurement)
                     .style("left", (d3.event.pageX) + "px")
                     .style("top", (d3.event.pageY - 30) + "px");
             })

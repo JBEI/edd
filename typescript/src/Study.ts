@@ -1528,7 +1528,7 @@ module StudyD {
             name = line.name;
             this.graphHelper = Object.create(GraphHelperMethods);
             colorObj = this.graphHelper.renderColor(name, EDDData.Lines);
-            color = colorObj[assay.lid]
+            color = colorObj[assay.lid];
             singleAssayObj = this.graphHelper.transformSingleLineItem(EDDData, measure, name, color);
             dataSets.push(singleAssayObj);
         });
