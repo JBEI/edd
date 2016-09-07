@@ -416,9 +416,12 @@ var StudyD;
             this.checkboxes = {};
             var graphHelper = Object.create(GraphHelperMethods);
             var colorObj = graphHelper.renderColor(name, EDDData.Lines);
+            //add color obj to EDDData 
             EDDData['color'] = colorObj;
+            //line label color based on graph color of line 
             if (this.sectionTitle === "Line") {
                 var colors = {};
+                //create new colors object with line names a keys and color hex as values 
                 for (var key in EDDData.Lines) {
                     colors[EDDData.Lines[key].name] = colorObj[key];
                 }
@@ -430,8 +433,7 @@ var StudyD;
                     _this.checkboxes[uniqueId] = $("<input type='checkbox'>")
                         .attr({ 'name': cboxName, 'id': cboxName })
                         .appendTo(cell);
-                    $('<label>').attr('for', cboxName).text(_this.uniqueValues[uniqueId]).css('color', colors[_this.uniqueValues[uniqueId]])
-                        .appendTo(cell);
+                    $('<label>').attr('for', cboxName).text(_this.uniqueValues[uniqueId]).css('color', colors[_this.uniqueValues[uniqueId]]).appendTo(cell);
                 });
             }
             else {

@@ -565,12 +565,17 @@ module StudyD {
 
             var graphHelper = Object.create(GraphHelperMethods);
             var colorObj = graphHelper.renderColor(name, EDDData.Lines);
-
+            
+            //add color obj to EDDData 
             EDDData['color'] = colorObj;
-
+            
+            //line label color based on graph color of line 
             if (this.sectionTitle === "Line") {
                 var colors:any = {};
-               for (var key in EDDData.Lines) {colors[EDDData.Lines[key].name] = colorObj[key]}
+                
+                //create new colors object with line names a keys and color hex as values 
+                for (var key in EDDData.Lines) {colors[EDDData.Lines[key].name] = colorObj[key]}
+                
                 this.uniqueValuesOrder.forEach((uniqueId: number): void => {
                 var cboxName, cell, p, q, r;
                 cboxName = ['filter', this.sectionShortLabel, 'n', uniqueId, 'cbox'].join('');
@@ -580,22 +585,22 @@ module StudyD {
                     .attr({ 'name': cboxName, 'id': cboxName })
                     .appendTo(cell);
 
-                $('<label>').attr('for', cboxName).text(this.uniqueValues[uniqueId]).css('color', colors[this.uniqueValues[uniqueId]])
-                    .appendTo(cell);
-            });
+                $('<label>').attr('for', cboxName).text(this.uniqueValues[uniqueId]).css('color', 
+                    colors[this.uniqueValues[uniqueId]]).appendTo(cell);
+                });
             } else {
-            this.uniqueValuesOrder.forEach((uniqueId: number): void => {
-                var cboxName, cell, p, q, r;
-                cboxName = ['filter', this.sectionShortLabel, 'n', uniqueId, 'cbox'].join('');
-                this.tableRows[uniqueId] = <HTMLTableRowElement>this.tableBodyElement.insertRow();
-                cell = this.tableRows[uniqueId].insertCell();
-                this.checkboxes[uniqueId] = $("<input type='checkbox'>")
-                    .attr({ 'name': cboxName, 'id': cboxName })
-                    .appendTo(cell);
-
-                $('<label>').attr('for', cboxName).text(this.uniqueValues[uniqueId])
-                    .appendTo(cell);
-            });
+                this.uniqueValuesOrder.forEach((uniqueId: number): void => {
+                    var cboxName, cell, p, q, r;
+                    cboxName = ['filter', this.sectionShortLabel, 'n', uniqueId, 'cbox'].join('');
+                    this.tableRows[uniqueId] = <HTMLTableRowElement>this.tableBodyElement.insertRow();
+                    cell = this.tableRows[uniqueId].insertCell();
+                    this.checkboxes[uniqueId] = $("<input type='checkbox'>")
+                        .attr({ 'name': cboxName, 'id': cboxName })
+                        .appendTo(cell);
+    
+                    $('<label>').attr('for', cboxName).text(this.uniqueValues[uniqueId])
+                        .appendTo(cell);
+                });
             }
             // TODO: Drag select is twitchy - clicking a table cell background should check the box,
             // even if the user isn't hitting the label or the checkbox itself.
@@ -1542,6 +1547,7 @@ module StudyD {
         colorObj = EDDData['color'];
         //Gives ids of lines to show.
         var dataSets = [];
+        
         postFilteringMeasurements = this.progressiveFilteringWidget.buildFilteredMeasurements();
         $.each(postFilteringMeasurements, (i, measurementId) => {
             var measure:AssayMeasurementRecord = EDDData.AssayMeasurements[measurementId],

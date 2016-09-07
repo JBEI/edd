@@ -1902,8 +1902,8 @@ module EDDTableImport {
             // If we're not in either of these modes, drawing a graph is nonsensical.
             if (mode === "std" || mode === 'biolector' || mode === 'hplc') {
                 sets.forEach(function(set) {
-
-                    var singleAssayObj = graphHelper.transformNewLineItem(EDDData, set);
+                    var color = "#0E6FA4";
+                    var singleAssayObj = graphHelper.transformNewLineItem(EDDData, set, color);
                     dataSets.push(singleAssayObj);
             })
             }

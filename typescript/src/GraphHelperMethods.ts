@@ -95,7 +95,7 @@ GraphHelperMethods = {
         return xAndYValues;
     },
 
-    transformNewLineItem: function (data, singleData) {
+    transformNewLineItem: function (data, singleData, color) {
 
         // array of x and y values for sortin
         var xAndYValues = [];
@@ -114,6 +114,7 @@ GraphHelperMethods = {
             dataset['x'] = dataValue[0];
             dataset['y'] = parseFloat(dataValue[1]);
             dataset['name'] = singleData.name;
+            dataset['color'] = color;
             xAndYValues.push(dataset);
         });
         xAndYValues.sort(function(a, b) {

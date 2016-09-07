@@ -32,9 +32,12 @@ StudyDGraphing = {
 	},
 
 	addNewSet:function(newSet, type) {
+
         var buttonArr = StudyDGraphing.getButtonElement(this.graphDiv);
         var selector = StudyDGraphing.getSelectorElement(this.graphDiv);
         var type = StudyDGraphing.measurementType(type);
+
+        //display grouped bar chart by measurement if most of the measurement types are protocol
         if (type ==='p') {
             d3.select(selector[1]).style('display', 'none');
             d3.select(selector[4]).style('display', 'block');
@@ -101,7 +104,6 @@ StudyDGraphing = {
         //data for graphs
         var graphSet = {
             barAssayObj: GraphHelperMethods.sortBarData(newSet),
-            labels: GraphHelperMethods.names(data),
             create_x_axis: GraphHelperMethods.createXAxis,
             create_right_y_axis: GraphHelperMethods.createRightYAxis,
             create_y_axis: GraphHelperMethods.createLeftYAxis,
@@ -109,7 +111,6 @@ StudyDGraphing = {
             y_axis: GraphHelperMethods.make_right_y_axis,
             individualData: newSet,
             assayMeasurements: barAssayObj,
-            color: d3.scale.category20(),
             width: 750,
             height: 220
         };
