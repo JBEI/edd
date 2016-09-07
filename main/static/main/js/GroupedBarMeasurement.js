@@ -208,12 +208,6 @@
                 return graphSet.height - y(d.y);
             })
             .style("fill", function (d) {
-                // if (type === "measurement") {
-                //     return graphSet.color(d.name)
-                // }
-                // else {
-                //    return graphSet.color(d.label);
-                // }
                 return d.color
             })
             .style("opacity", 0.3);
@@ -234,14 +228,15 @@
                 div.transition()
                     .style("opacity", 0);
             });
-    //get word length
-    var wordLength = getSum(typeNames);
 
-    if (wordLength > 90 && type != 'x') {
-       d3.selectAll(typeClass[type] + ' .x.axis text').remove()
-    }
-    if (wordLength > 150 && type === 'x') {
-       d3.selectAll(typeClass[type] + ' .x.axis text').remove()
-    }
+        //get word length
+        var wordLength = getSum(typeNames);
+
+        if (wordLength > 90 && type != 'x') {
+           d3.selectAll(typeClass[type] + ' .x.axis text').remove()
+        }
+        if (wordLength > 150 && type === 'x') {
+           d3.selectAll(typeClass[type] + ' .x.axis text').remove()
+        }
     }
 }

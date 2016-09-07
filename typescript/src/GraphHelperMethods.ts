@@ -155,13 +155,35 @@ GraphHelperMethods = {
         var lineCount = _.range(Object.keys(lines).length);
         var lineValues = _.values(lines);
         var indexLines:any = {};
+        var colorKeys = _.values(colors);
         for (var i = 0; i < lineCount.length; i++ ) {
             indexLines[i] = lineValues[i].id;
+        }
+        if (lineValues.length > colorKeys.length) {
+            var multiplier = Math.ceil(lineValues.length/ colorKeys.length) * 22;
+            GraphHelperMethods.colorMaker(colors, colorKeys, multiplier)
         }
         _.each(indexLines, function(value, key) {
             lineColors[indexLines[key]] = colors[key];
         });
         return lineColors
+    },
+
+    /**
+     * this function takes in the color object and colorKeys array and returns and new Color object
+    **/
+    colorMaker: function(colors, colorKeys, multiplier) {
+        var i = 23;
+        var j = 0;
+        while (i < multiplier) {
+            colors[i] = colorKeys[j];
+            if (j === 21) {
+                j = -1;
+            }
+            j++;
+            i++;
+        }
+        return colors
     },
 
     /**
