@@ -562,9 +562,12 @@ module StudyD {
 
             this.tableRows = {};
             this.checkboxes = {};
+
             var graphHelper = Object.create(GraphHelperMethods);
             var colorObj = graphHelper.renderColor(name, EDDData.Lines);
+
             EDDData['color'] = colorObj;
+
             if (this.sectionTitle === "Line") {
                 var colors:any = {};
                for (var key in EDDData.Lines) {colors[EDDData.Lines[key].name] = colorObj[key]}
@@ -1535,8 +1538,8 @@ module StudyD {
         //remove SVG.
         this.mainGraphObject.clearAllSets();
         this.graphHelper = Object.create(GraphHelperMethods);
-        colorObj = this.graphHelper.renderColor(name, EDDData.Lines);
-        EDDData['color'] = colorObj;
+
+        colorObj = EDDData['color'];
         //Gives ids of lines to show.
         var dataSets = [];
         postFilteringMeasurements = this.progressiveFilteringWidget.buildFilteredMeasurements();

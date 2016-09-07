@@ -1344,8 +1344,7 @@ var StudyD;
         //remove SVG.
         this.mainGraphObject.clearAllSets();
         this.graphHelper = Object.create(GraphHelperMethods);
-        colorObj = this.graphHelper.renderColor(name, EDDData.Lines);
-        EDDData['color'] = colorObj;
+        colorObj = EDDData['color'];
         //Gives ids of lines to show.
         var dataSets = [];
         postFilteringMeasurements = this.progressiveFilteringWidget.buildFilteredMeasurements();
