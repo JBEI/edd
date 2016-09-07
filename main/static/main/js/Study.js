@@ -73,24 +73,18 @@ var StudyD;
             // Create filters on assay tables
             // TODO media is now a metadata type, strain and carbon source should be too
             var assayFilters = [];
+            assayFilters.push(new ProtocolFilterSection()); // Protocol
             assayFilters.push(new StrainFilterSection()); // first column in filtering section
+            assayFilters.push(new LineNameFilterSection()); // LINE
             assayFilters.push(new CarbonSourceFilterSection());
             assayFilters.push(new CarbonLabelingFilterSection());
-            for (var id in seenInLinesHash) {
-                assayFilters.push(new LineMetaDataFilterSection(id));
-            }
-            assayFilters.push(new LineNameFilterSection()); // LINE
-            assayFilters.push(new ProtocolFilterSection()); // Protocol
             assayFilters.push(new AssaySuffixFilterSection()); //Assasy suffix
             for (var id in seenInAssaysHash) {
                 assayFilters.push(new AssayMetaDataFilterSection(id));
             }
-            // We can initialize all the Assay- and Line-level filters immediately
-            this.assayFilters = assayFilters;
-            assayFilters.forEach(function (filter) {
-                filter.populateFilterFromRecordIDs(aIDsToUse);
-                filter.populateTable();
-            });
+            for (var id in seenInLinesHash) {
+                assayFilters.push(new LineMetaDataFilterSection(id));
+            }
             this.metaboliteFilters = [];
             this.metaboliteFilters.push(new MetaboliteCompartmentFilterSection());
             this.metaboliteFilters.push(new MetaboliteFilterSection());
@@ -100,6 +94,12 @@ var StudyD;
             this.geneFilters.push(new GeneFilterSection());
             this.measurementFilters = [];
             this.measurementFilters.push(new MeasurementFilterSection());
+            // We can initialize all the Assay- and Line-level filters immediately
+            this.assayFilters = assayFilters;
+            assayFilters.forEach(function (filter) {
+                filter.populateFilterFromRecordIDs(aIDsToUse);
+                filter.populateTable();
+            });
             this.allFilters = [].concat(assayFilters, this.metaboliteFilters, this.proteinFilters, this.geneFilters, this.measurementFilters);
             this.repopulateFilteringSection();
         };
@@ -414,17 +414,39 @@ var StudyD;
             $(this.tableBodyElement).empty();
             this.tableRows = {};
             this.checkboxes = {};
-            this.uniqueValuesOrder.forEach(function (uniqueId) {
-                var cboxName, cell, p, q, r;
-                cboxName = ['filter', _this.sectionShortLabel, 'n', uniqueId, 'cbox'].join('');
-                _this.tableRows[uniqueId] = _this.tableBodyElement.insertRow();
-                cell = _this.tableRows[uniqueId].insertCell();
-                _this.checkboxes[uniqueId] = $("<input type='checkbox'>")
-                    .attr({ 'name': cboxName, 'id': cboxName })
-                    .appendTo(cell);
-                $('<label>').attr('for', cboxName).text(_this.uniqueValues[uniqueId])
-                    .appendTo(cell);
-            });
+            var graphHelper = Object.create(GraphHelperMethods);
+            var colorObj = graphHelper.renderColor(name, EDDData.Lines);
+            EDDData['color'] = colorObj;
+            if (this.sectionTitle === "Line") {
+                var colors = {};
+                for (var key in EDDData.Lines) {
+                    colors[EDDData.Lines[key].name] = colorObj[key];
+                }
+                this.uniqueValuesOrder.forEach(function (uniqueId) {
+                    var cboxName, cell, p, q, r;
+                    cboxName = ['filter', _this.sectionShortLabel, 'n', uniqueId, 'cbox'].join('');
+                    _this.tableRows[uniqueId] = _this.tableBodyElement.insertRow();
+                    cell = _this.tableRows[uniqueId].insertCell();
+                    _this.checkboxes[uniqueId] = $("<input type='checkbox'>")
+                        .attr({ 'name': cboxName, 'id': cboxName })
+                        .appendTo(cell);
+                    $('<label>').attr('for', cboxName).text(_this.uniqueValues[uniqueId]).css('color', colors[_this.uniqueValues[uniqueId]])
+                        .appendTo(cell);
+                });
+            }
+            else {
+                this.uniqueValuesOrder.forEach(function (uniqueId) {
+                    var cboxName, cell, p, q, r;
+                    cboxName = ['filter', _this.sectionShortLabel, 'n', uniqueId, 'cbox'].join('');
+                    _this.tableRows[uniqueId] = _this.tableBodyElement.insertRow();
+                    cell = _this.tableRows[uniqueId].insertCell();
+                    _this.checkboxes[uniqueId] = $("<input type='checkbox'>")
+                        .attr({ 'name': cboxName, 'id': cboxName })
+                        .appendTo(cell);
+                    $('<label>').attr('for', cboxName).text(_this.uniqueValues[uniqueId])
+                        .appendTo(cell);
+                });
+            }
             // TODO: Drag select is twitchy - clicking a table cell background should check the box,
             // even if the user isn't hitting the label or the checkbox itself.
             Dragboxes.initTable(this.filteringTable);
@@ -1314,18 +1336,21 @@ var StudyD;
     StudyD.queueMainGraphRemake = queueMainGraphRemake;
     function remakeMainGraphArea(force) {
         var _this = this;
-        var postFilteringMeasurements, dataPointsDisplayed = 0, dataPointsTotal = 0;
+        var postFilteringMeasurements, dataPointsDisplayed = 0, dataPointsTotal = 0, colorObj;
         this.mainGraphRefreshTimerID = 0;
         if (!this.progressiveFilteringWidget.checkRedrawRequired(force)) {
             return;
         }
         //remove SVG.
         this.mainGraphObject.clearAllSets();
+        this.graphHelper = Object.create(GraphHelperMethods);
+        colorObj = this.graphHelper.renderColor(name, EDDData.Lines);
+        EDDData['color'] = colorObj;
         //Gives ids of lines to show.
         var dataSets = [];
         postFilteringMeasurements = this.progressiveFilteringWidget.buildFilteredMeasurements();
         $.each(postFilteringMeasurements, function (i, measurementId) {
-            var measure = EDDData.AssayMeasurements[measurementId], points = (measure.values ? measure.values.length : 0), assay, line, name, singleAssayObj, colorObj, color;
+            var measure = EDDData.AssayMeasurements[measurementId], points = (measure.values ? measure.values.length : 0), assay, line, name, singleAssayObj, color;
             dataPointsTotal += points;
             if (dataPointsDisplayed > 15000) {
                 return; // Skip the rest if we've hit our limit
@@ -1334,8 +1359,6 @@ var StudyD;
             assay = EDDData.Assays[measure.assay] || {};
             line = EDDData.Lines[assay.lid] || {};
             name = line.name;
-            _this.graphHelper = Object.create(GraphHelperMethods);
-            colorObj = _this.graphHelper.renderColor(name, EDDData.Lines);
             color = colorObj[assay.lid];
             singleAssayObj = _this.graphHelper.transformSingleLineItem(EDDData, measure, name, color);
             dataSets.push(singleAssayObj);

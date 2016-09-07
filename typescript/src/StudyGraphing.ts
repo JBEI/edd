@@ -222,7 +222,7 @@ StudyDGraphing = {
 
     findOtherValues:function (element) {
         var otherElements = [],
-            values = ['.linechart', '.single', '.groupedAssay', '.timeBar', '.groupedMeasurement'];
+            values = ['.linechart', '.groupedAssay', '.timeBar', '.groupedMeasurement'];
         _.each(values, function(value) {
             if (value != element) {
                 otherElements.push(value);
@@ -259,7 +259,7 @@ StudyDGraphing = {
             } else {
                 proteomics[types[type].family] = 0
             }
-        };
+        }
         for (var key in proteomics) {
            var max:any = 0;
            var maxType:any;
