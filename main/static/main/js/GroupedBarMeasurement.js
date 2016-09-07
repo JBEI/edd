@@ -229,6 +229,7 @@
                     .style("opacity", 0);
             });
 
+        
         //get word length
         var wordLength = getSum(typeNames);
 

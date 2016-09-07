@@ -585,7 +585,7 @@ module StudyD {
                     .attr({ 'name': cboxName, 'id': cboxName })
                     .appendTo(cell);
 
-                $('<label>').attr('for', cboxName).text(this.uniqueValues[uniqueId]).css('color', 
+                $('<strong><label>').attr('for', cboxName).text(this.uniqueValues[uniqueId]).css('color',
                     colors[this.uniqueValues[uniqueId]]).appendTo(cell);
                 });
             } else {

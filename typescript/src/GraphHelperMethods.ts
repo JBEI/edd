@@ -129,6 +129,8 @@ GraphHelperMethods = {
     /**
      * this function takes in a single line name and study's lines and returns an object of
      * color values with lid keys
+     * loosely based on d3 category20 in following link:
+     * http://bl.ocks.org/aaizemberg/78bd3dade9593896a59d
     **/
     renderColor: function(line, lines) {
         var colors:any = {
@@ -145,11 +147,11 @@ GraphHelperMethods = {
             10: '#7e0404',
             11: '#BAA0AE',
             12: '#F279BA',
-            13: '#F2C4DD',
+            13: '#993f6c', 
             14: '#919191',
             15: '#BFBFBD',
             16: '#ecda3a',
-            17: '#f7f0b0',
+            17: '#b2b200', 
             18: '#00d5f2',
             19: '#b2f2fb',
             20: '#0715CD',
@@ -439,12 +441,14 @@ GraphHelperMethods = {
                 .call(yAxis)
                 .append('text')
                 .attr("transform", "rotate(-90)")
+                .attr('class', 'text')
                 .attr('x', -110)
                 .attr("dy", ".32em")
                 .attr('y', 35)
                 .style('text-anchor', 'middle')
-                .text(label);
+                .text(label)
     },
+
     /**
      *  This function creates the y axis tick marks for grid
     **/

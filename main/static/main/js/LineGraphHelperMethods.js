@@ -167,7 +167,7 @@
                     unit = d.y_unit;
                 }
                 div.html('<strong>' + d.name + '</strong>' + ": " + d.y + " " + unit
-                        + "</br>" + '<strong>' + " Measurement: " + '</strong>' + d.measurement)
+                        + "</br>" + d.measurement)
                     .style("left", (d3.event.pageX) + "px")
                     .style("top", (d3.event.pageY - 30) + "px");
             })
@@ -193,11 +193,12 @@
                         //highlights grouped lines. d3.select(this).style("opacity", "1");
                         var selectedLine = this;
                         d3.selectAll('.lineClass').style('opacity',function () {
-                            return (this === selectedLine) ? 1.0 : 0;
+                            return (this === selectedLine) ? 1.0 : 0.1;
                         });
-                        d3.selectAll('circle').style('opacity', 0);
-                        d3.selectAll('rect').style('opacity', 0);
-                        d3.selectAll('polygon').style('opacity', 0);
+                        d3.selectAll('.lineClass').style('stroke', 3);
+                        d3.selectAll('circle').style('opacity', 0.1);
+                        d3.selectAll('rect').style('opacity', 0.1);
+                        d3.selectAll('polygon').style('opacity', 0.1);
                     })
             .on('mouseout', function() {
                 d3.selectAll('.lineClass').style('opacity', 1);

@@ -433,7 +433,7 @@ var StudyD;
                     _this.checkboxes[uniqueId] = $("<input type='checkbox'>")
                         .attr({ 'name': cboxName, 'id': cboxName })
                         .appendTo(cell);
-                    $('<label>').attr('for', cboxName).text(_this.uniqueValues[uniqueId]).css('color', colors[_this.uniqueValues[uniqueId]]).appendTo(cell);
+                    $('<strong><label>').attr('for', cboxName).text(_this.uniqueValues[uniqueId]).css('color', colors[_this.uniqueValues[uniqueId]]).appendTo(cell);
                 });
             }
             else {
