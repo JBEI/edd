@@ -129,17 +129,17 @@ module StudyD {
             // Create filters on assay tables
             // TODO media is now a metadata type, strain and carbon source should be too
             var assayFilters = [];
+            assayFilters.push(new ProtocolFilterSection()); // Protocol
             assayFilters.push(new StrainFilterSection()); // first column in filtering section
+            assayFilters.push(new LineNameFilterSection()); // LINE
             assayFilters.push(new CarbonSourceFilterSection());
             assayFilters.push(new CarbonLabelingFilterSection());
-            for (var id in seenInLinesHash) {
-                assayFilters.push(new LineMetaDataFilterSection(id));
-            }
-            assayFilters.push(new LineNameFilterSection()); // LINE
-            assayFilters.push(new ProtocolFilterSection()); // Protocol
             assayFilters.push(new AssaySuffixFilterSection()); //Assasy suffix
             for (var id in seenInAssaysHash) {
                 assayFilters.push(new AssayMetaDataFilterSection(id));
+            }
+            for (var id in seenInLinesHash) {
+                assayFilters.push(new LineMetaDataFilterSection(id));
             }
 
             // We can initialize all the Assay- and Line-level filters immediately
