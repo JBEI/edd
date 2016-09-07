@@ -38,6 +38,9 @@ ICE_URL = 'https://registry-test.jbei.org/'
 ICE_REQUEST_TIMEOUT = (10, 10)  # HTTP request connection and read timeouts, respectively (seconds)
 HmacAuth.register_key(ICE_KEY_ID, ICE_SECRET_HMAC_KEY)
 
+# Override only to avoid heachaches in *LOCAL* testing against a non-TLS ICE deployment
+VERIFY_ICE_CERT = True
+
 
 ###################################################################################################
 # Configure Django email variables
@@ -57,6 +60,8 @@ EMAIL_HOST = 'smtp'
 EMAIL_HOST_USER = ''
 EMAIL_HOST_PASSWORD = ''
 EMAIL_PORT = 25
+
+
 
 
 ###################################################################################################

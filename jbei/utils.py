@@ -231,10 +231,10 @@ def session_login(session_auth_class, base_url, application_name, username_arg=N
     user_input = user_input if user_input else UserInputTimer()
     session_auth = None
     attempted_login = False
+    username = None
+    password = None
 
     while not session_auth:
-        username = None
-        password = None
 
         # gather user credentials from command line arguments and/or user prompt
         if (username_arg is not None) and (not attempted_login):
