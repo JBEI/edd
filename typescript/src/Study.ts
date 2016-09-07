@@ -2554,7 +2554,7 @@ class DataGridAssays extends DataGrid {
         }
 
         g = spec.graphObject;
-
+        var colorObj = EDDData['color'];
         var dataSets = [];
         spec.getRecordIDs().forEach((id) => {
             var assay:any = EDDData.Assays[id] || {},
@@ -2565,7 +2565,8 @@ class DataGridAssays extends DataGrid {
             measures.forEach((m) => {
                 var measure = EDDData.AssayMeasurements[m], set;
                 var name = assay.name;
-                var singleAssayObj = GraphHelperMethods.transformSingleLineItem(EDDData, measure, name);
+                var color = colorObj[assay.lid];
+                var singleAssayObj = GraphHelperMethods.transformSingleLineItem(EDDData, measure, name, color);
 
                 if (line.control) set.iscontrol = true;
                 dataSets.push(singleAssayObj);

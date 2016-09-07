@@ -229,8 +229,6 @@
                     .style("opacity", 0);
             });
 
-        var axisHover = d3.selectAll()
-
         //get word length
         var wordLength = getSum(typeNames);
 

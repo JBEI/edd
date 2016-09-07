@@ -2199,6 +2199,7 @@ var DataGridAssays = (function (_super) {
             return;
         }
         g = spec.graphObject;
+        var colorObj = EDDData['color'];
         var dataSets = [];
         spec.getRecordIDs().forEach(function (id) {
             var assay = EDDData.Assays[id] || {}, line = EDDData.Lines[assay.lid] || {}, measures;
@@ -2209,7 +2210,8 @@ var DataGridAssays = (function (_super) {
             measures.forEach(function (m) {
                 var measure = EDDData.AssayMeasurements[m], set;
                 var name = assay.name;
-                var singleAssayObj = GraphHelperMethods.transformSingleLineItem(EDDData, measure, name);
+                var color = colorObj[assay.lid];
+                var singleAssayObj = GraphHelperMethods.transformSingleLineItem(EDDData, measure, name, color);
                 if (line.control)
                     set.iscontrol = true;
                 dataSets.push(singleAssayObj);
