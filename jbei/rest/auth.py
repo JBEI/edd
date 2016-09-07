@@ -118,7 +118,6 @@ RESULT_LIMIT_PARAMETER = 'limit'
 _JSON_CONTENT_TYPE_HEADER = {'Content-Type': 'application/json; charset=utf8'}
 
 
-# TODO: mis-named; should be IceSessionAuth
 class IceSessionAuth(AuthBase):
     """
     Implements session-based authentication for ICE. At the time of initial implementation,
@@ -228,20 +227,34 @@ def insert_spoofed_https_csrf_headers(headers, base_url):
         headers['Referer'] = base_url  # LOL! Bad spelling is now standard :-)
 
 
-class EddSessionAuth(object):
+class EddSessionAuth(AuthBase):
     """
-    NOT A REQUESTS `AuthBase` OBJECT!
+    Implements session-based authentication for EDD.
     """
     SESSION_ID_KEY = 'sessionid'
 
-    def __init__(self, session_id):
-        self._session_id = session_id
+    def __init__(self, cookie_jar, csrftoken):
+        self.cookie_jar = cookie_jar
+        self.csrftoken = csrftoken
 
     def __call__(self, request):
         """
-        Sets the Django session cookie with the session ID.
+        Sets the Django CSRF token in headers.
         """
-        request.cookies[self.SESSION_ID_KEY] = self._session_id
+        self.prev_request = request  # TODO: for debugging, remove
+        if request.body:
+            # the CSRF token can change; pull the correct value out of cookie
+            try:
+                jar = request.headers['Cookie']
+                label = 'csrftoken='
+                offset = jar.find(label) + len(label)
+                request.headers['X-CSRFToken'] = jar[offset:jar.find(';', offset)]
+            except Exception as e:
+                pass
+        return request
+
+    def apply_session_token(self, session_obj):
+        session_obj.cookies.update(self.cookie_jar)
 
     @staticmethod
     def login(username, password, base_url='https://edd.jbei.org', timeout=REQUEST_TIMEOUT,
@@ -310,7 +323,7 @@ class EddSessionAuth(object):
                 return None
             else:
                 logger.info('Successfully logged into EDD at %s' % base_url)
-                return EddSessionAuth(session.cookies[EddSessionAuth.SESSION_ID_KEY])
+                return EddSessionAuth(session.cookies, csrf_token)
         else:
             if debug:
                 show_response_html(response)

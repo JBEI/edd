@@ -205,6 +205,9 @@ def link_ice_entry_to_study(self, edd_user_email, strain_pk, study_pk, study_url
         # TODO: after removing the workaround, use, ice_strain_id = str(strain.registry_id.), or if
         # using Python 3, maybe strain.registry_id.to_python()
         workaround_strain_entry_id = parse_entry_id(strain.registry_url)
+        if workaround_strain_entry_id is None:
+            logger.warning("Failed to extract strain ID from URL '%s'", strain.registry_url)
+            return ugettext('EDD strain contains invalid URL')
 
         # finish early if we don't have enough information to find the ICE entry for this strain
         # TODO: raise an exception here once strain data are more dependable (SYNBIO-1350)
