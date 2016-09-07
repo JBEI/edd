@@ -429,8 +429,8 @@ def find_existing_strains(edd, ice_parts, existing_edd_strains, strains_by_part_
     for ice_part in ice_parts.values():
 
             # search for the strain by registry ID. Note we use search instead of .get() until the
-            # database consistentcy contains ICE UUID's and enforces uniqueness constrains for
-            # UUID (EDD-158)
+            # database consistently contains/requires ICE UUID's and enforces uniqueness constrains for
+            # them (EDD-158)
             edd_strains = edd.search_strains(registry_id=ice_part.uuid)
 
             # if one or more strains are found with this UUID
