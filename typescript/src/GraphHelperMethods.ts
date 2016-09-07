@@ -151,18 +151,26 @@ GraphHelperMethods = {
             20: '#0715CD',
             21: '#e8c2f3'
         };
+        //new color object with assay ids and color hex
         var lineColors = {};
+        //how many lines
         var lineCount = _.range(Object.keys(lines).length);
+        //values of line obj
         var lineValues = _.values(lines);
+        //new object with numbers for ids
         var indexLines:any = {};
+        // color obj values
         var colorKeys = _.values(colors);
+        //create index obj with numbers for ids and assay ids as values
         for (var i = 0; i < lineCount.length; i++ ) {
             indexLines[i] = lineValues[i].id;
         }
+        //if there are more than 22 lines, create a bigger color obj
         if (lineValues.length > colorKeys.length) {
             var multiplier = Math.ceil(lineValues.length/ colorKeys.length) * 22;
             GraphHelperMethods.colorMaker(colors, colorKeys, multiplier)
         }
+        //combine assay ids as keys with hex colors as values
         _.each(indexLines, function(value, key) {
             lineColors[indexLines[key]] = colors[key];
         });
@@ -170,7 +178,8 @@ GraphHelperMethods = {
     },
 
     /**
-     * this function takes in the color object and colorKeys array and returns and new Color object
+     * this function takes in the color object, colorKeys array, and multiplier to determine how
+     * many new colors we need and return and bigger Color object
     **/
     colorMaker: function(colors, colorKeys, multiplier) {
         var i = 23;
@@ -380,7 +389,7 @@ GraphHelperMethods = {
     },
     
     /**
-     *  This function creates the right y axis svg object 
+     *  This function creates the left y axis svg object
     **/
     createLeftYAxis: function(graphSet, label, y, svg) {
          
@@ -411,6 +420,9 @@ GraphHelperMethods = {
 
     },
 
+    /**
+     *  This function creates the right y axis svg object
+    **/
     createRightYAxis: function(label, y, svg, spacing) {
         
             var yAxis = d3.svg.axis().scale(y)
@@ -438,37 +450,12 @@ GraphHelperMethods = {
             .orient("left")
     },
 
+    /**
+     *  This function creates the x axis tick marks for grid
+    **/
      make_x_axis: function(x) {
         return d3.svg.axis()
             .scale(x)
             .orient("bottom")
-    },
-
-    color_scheme: function(index) {
-        var colors = {
-            0: '#0E6FA4',
-            1: '#51BFD8',
-            2: '#DA7138',
-            3: '#FCA456',
-            4: '#2b7b3d',
-            5: '#97d37d',
-            6: '#CF5030',
-            7: '#FFB6C1',
-            8: '#6f2f8c',
-            9: '#b97dd3',
-            10: '#7e0404',
-            11: '#BAA0AE',
-            12: '#F279BA',
-            13: '#F2C4DD',
-            14: '#919191',
-            15: '#BFBFBD',
-            16: '#ecda3a',
-            17: '#f7f0b0',
-            18: '#00d5f2',
-            19: '#b2f2fb',
-            20: '#0715CD',
-            21: '#e8c2f3'
-        };
-        return colors[index];
     }
 };
