@@ -63,7 +63,7 @@ StudyDGraphing = {
         $(buttonArr[2]).click(function (event) {
             event.preventDefault();
             var rects = d3.selectAll('.groupedAssay rect')[0];
-            StudyDGraphing.svgWidth(selector[4], rects);
+            StudyDGraphing.svgWidth(selector[3], rects);
             d3.select(selector[1]).style('display', 'none');
             d3.select(selector[2]).style('display', 'none');
             d3.select(selector[3]).style('display', 'block');

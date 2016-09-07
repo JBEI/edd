@@ -95,6 +95,9 @@ GraphHelperMethods = {
         return xAndYValues;
     },
 
+     /**
+     * this function is the same as above but more simple as it is for the import section.
+    **/
     transformNewLineItem: function (data, singleData, color) {
 
         // array of x and y values for sortin
