@@ -219,10 +219,12 @@
             .on("mouseover", function (d) {
                 div.transition()
                     .style("opacity", 0.9);
-                div.html("<strong>" + d.name + "</strong></br>" + d.y + ": " + d.y_unit + "</br>" + d.x
-                    + ":  hours" + "</br>" + "measurement: " + d.measurement)
+
+                div.html('<strong>' + d.name + '</strong>' + ": "
+                        + "</br>" + d.measurement + '</br>' + d.y + " " + d.y_unit + "</br> " + " @" +
+                    " " + d.x + " hours")
                     .style("left", (d3.event.pageX) + "px")
-                    .style("top", (d3.event.pageY - 28) + "px");
+                    .style("top", (d3.event.pageY - 30) + "px");
             })
             .on("mouseout", function () {
                 div.transition()
