@@ -215,7 +215,7 @@
             })
             .on("mouseover", function (d) {
                 div.transition()
-                    .style("opacity", 0.5);
+                    .style("opacity", 0.9);
 
                 div.html('<strong>' + d.name + '</strong>' + ": "
                         + "</br>" + d.measurement + '</br>' + d.y + " " + d.y_unit + "</br>" + " @" +
