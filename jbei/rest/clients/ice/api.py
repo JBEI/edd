@@ -24,8 +24,7 @@ from urllib import urlencode
 from urlparse import urlunparse, ParseResult, parse_qs
 
 from jbei.rest.api import RestApiClient
-from jbei.rest.sessions import PagedResult, PagedSession
-
+from jbei.rest.sessions import PagedResult, PagedSession, Session
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +64,7 @@ elif settings_django_name:
 ICE_REQUEST_TIMEOUT = getattr(settings, 'ICE_REQUEST_TIMEOUT', ICE_REQUEST_TIMEOUT)
 ICE_URL = getattr(settings, 'ICE_URL', ICE_URL)
 ICE_SECRET_KEY = getattr(settings, 'ICE_SECRET_KEY', ICE_SECRET_KEY)
+VERIFY_SSL_DEFAULT = Session.VERIFY_SSL_DEFAULT
 
 
 ###################################################################################################
@@ -652,7 +652,6 @@ def parse_entry_id(ice_entry_url):
 
 
 DEFAULT_HMAC_KEY_ID = 'edd'
-ice_paged_requests = PagedSession(RESULT_LIMIT_PARAMETER, RESULT_OFFSET_PARAMETER)
 
 
 class IceApi(RestApiClient):
@@ -668,7 +667,8 @@ class IceApi(RestApiClient):
     # TODO: when returning model objects, prevent database changes via partially-populated model
     # object instances. See draft code in edd.py
 
-    def __init__(self, auth, base_url=ICE_URL, result_limit=DEFAULT_RESULT_LIMIT):
+    def __init__(self, auth, base_url=ICE_URL, result_limit=DEFAULT_RESULT_LIMIT,
+                 verify_ssl_cert=VERIFY_SSL_DEFAULT):
         """
         Creates a new instance of IceApi
         :param auth: the authentication strategy for communication with ICE
@@ -681,7 +681,8 @@ class IceApi(RestApiClient):
         """
         if not auth:
             raise ValueError("A valid authentication mechanism must be provided")
-        session = PagedSession(RESULT_LIMIT_PARAMETER, RESULT_OFFSET_PARAMETER, auth=auth)
+        session = PagedSession(RESULT_LIMIT_PARAMETER, result_limit, auth=auth,
+                               verify_ssl_cert=verify_ssl_cert)
         super(IceApi, self).__init__('ICE', base_url, session, result_limit)
 
     def _compute_result_offset(self, page_number):

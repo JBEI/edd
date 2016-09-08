@@ -220,7 +220,8 @@ def link_ice_entry_to_study(self, edd_user_email, strain_pk, study_pk, study_url
         # make a request via ICE's REST API to link the ICE strain to the EDD study that references
         # it
         study = line.study
-        ice = IceApi(auth=HmacAuth(key_id=settings.ICE_KEY_ID, username=edd_user_email))
+        ice = IceApi(auth=HmacAuth(key_id=settings.ICE_KEY_ID, username=edd_user_email),
+                     verify_ssl_cert=settings.VERIFY_ICE_CERT)
         ice.write_enabled = True
         ice.link_entry_to_study(str(workaround_strain_entry_id), study.pk, study_url, study.name,
                                 logger=logger, old_study_name=old_study_name)
@@ -338,7 +339,8 @@ def unlink_ice_entry_from_study(self, edd_user_email, study_pk, study_url, strai
                 return _STALE_OR_ERR_INPUT  # succeed after sending the warning
 
         # remove the study link from ICE
-        ice = IceApi(auth=HmacAuth(key_id=settings.ICE_KEY_ID, username=edd_user_email))
+        ice = IceApi(auth=HmacAuth(key_id=settings.ICE_KEY_ID, username=edd_user_email),
+                     verify_ssl_cert=settings.VERIFY_ICE_CERT)
         ice.write_enabled = True
         removed = ice.unlink_entry_from_study(strain_registry_id, study_pk, study_url,
                                               logger)

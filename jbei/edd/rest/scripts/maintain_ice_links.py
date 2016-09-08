@@ -77,7 +77,9 @@ from jbei.rest.clients.ice.api import ICE_ENTRY_TYPES
 from jbei.rest.utils import is_url_secure
 from jbei.utils import to_human_relevant_delta, UserInputTimer, session_login, TYPICAL_UUID_PATTERN
 
-from .settings import EDD_URL, ICE_URL, VERIFY_EDD_CERT, VERIFY_ICE_CERT
+from .settings import (EDD_URL, EDD_PRODUCTION_HOSTNAMES, ICE_PRODUCTION_HOSTNAMES, ICE_URL,
+    VERIFY_EDD_CERT,
+    VERIFY_ICE_CERT, EDD_REQUEST_TIMEOUT, ICE_REQUEST_TIMEOUT)
 
 
 ####################################################################################################
@@ -86,7 +88,6 @@ from .settings import EDD_URL, ICE_URL, VERIFY_EDD_CERT, VERIFY_ICE_CERT
 # process large-ish result batches in the hope that we've stumbled on an good size to make
 # processing efficient in aggregate
 EDD_RESULT_PAGE_SIZE = ICE_RESULT_PAGE_SIZE = 100
-EDD_REQUEST_TIMEOUT = ICE_REQUEST_TIMEOUT = (10, 10)  # timeouts in seconds = (connection, response)
 
 ####################################################################################################
 
@@ -120,14 +121,17 @@ class Performance(object):
         #######################################
         # time tracking
         #######################################
-        self._overall_start_time = arrow.utcnow()
+        now = arrow.utcnow()
+        zero_timedelta = now - now
+
+        self._overall_start_time = now
         self._overall_end_time = None
         self._total_time = None
-        self.ice_communication_time = None
-        self.edd_communication_time = None
+        self.ice_communication_time = zero_timedelta
+        self.edd_communication_time = zero_timedelta
         self.ice_entry_scan_start_time = None
-        self.ice_entry_scan_time = None
-        self.edd_strain_scan_time = None
+        self.ice_entry_scan_time = zero_timedelta
+        self.edd_strain_scan_time = zero_timedelta
 
     def completed_edd_strain_scan(self):
         self.edd_strain_scan_time = arrow.utcnow() - self._overall_start_time
@@ -310,7 +314,7 @@ def is_edd_production_url(url):
     """
     url_parts = urlparse(url)
     hostname = url_parts.hostname.lower()
-    return hostname in settings.EDD_PRODUCTION_HOSTNAMES
+    return hostname in EDD_PRODUCTION_HOSTNAMES
 
 
 def is_ice_production_url(url):
@@ -319,7 +323,7 @@ def is_ice_production_url(url):
     """
     url_parts = urlparse(url)
     hostname = url_parts.hostname.lower()
-    return hostname in settings.ICE_PRODUCTION_HOSTNAMES
+    return hostname in ICE_PRODUCTION_HOSTNAMES
 
 
 def is_ice_admin_user(ice, username):
@@ -1082,6 +1086,7 @@ def main():
         edd_login_details = session_login(EddSessionAuth, EDD_URL, login_application,
                                           username_arg=args.username, password_arg=args.password,
                                           user_input=user_input, print_result=True,
+                                          timeout=EDD_REQUEST_TIMEOUT,
                                           verify_ssl_cert=VERIFY_EDD_CERT)
         edd_session_auth = edd_login_details.session_auth
 
@@ -1089,6 +1094,7 @@ def main():
                EddTestStub(edd_session_auth, EDD_URL))
         edd.write_enabled = args.update_edd_strain_text
         edd.result_limit = EDD_RESULT_PAGE_SIZE
+        edd.timeout = EDD_REQUEST_TIMEOUT
         processing_inputs.edd = edd
 
         # TODO: consider adding a REST API resource & use it to test whether this user
@@ -1103,6 +1109,7 @@ def main():
                                           username_arg=edd_login_details.username,
                                           password_arg=edd_login_details.password,
                                           user_input=user_input, print_result=True,
+                                          timeout=ICE_REQUEST_TIMEOUT,
                                           verify_ssl_cert=VERIFY_ICE_CERT)
 
         ice_session_auth = ice_login_details.session_auth
@@ -1111,12 +1118,14 @@ def main():
         edd_login_details.password = None
         ice_login_details.password = None
 
-        ice = (IceApi(ice_session_auth, ICE_URL,
-                      result_limit=ICE_RESULT_PAGE_SIZE) if not args.dry_run else
-               IceTestStub(ice_session_auth, ICE_URL, result_limit=ICE_RESULT_PAGE_SIZE))
+        ice = (IceApi(ice_session_auth, ICE_URL, result_limit=ICE_RESULT_PAGE_SIZE,
+                      verify_ssl_cert=VERIFY_ICE_CERT) if not args.dry_run
+               else
+               IceTestStub(ice_session_auth, ICE_URL, result_limit=ICE_RESULT_PAGE_SIZE,
+                           verify_ssl_cert=VERIFY_ICE_CERT))
         ice.write_enabled = True
         processing_inputs.ice = ice
-        # ice.session.timeout = 20
+        ice.timeout = ICE_REQUEST_TIMEOUT
 
         # test whether this user is an ICE administrator. If not, we won't be able
         # to proceed until EDD-177 is resolved (if then, depending on the solution)

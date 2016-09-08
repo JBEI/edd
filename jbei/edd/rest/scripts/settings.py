@@ -14,6 +14,7 @@ EDD_PRODUCTION_HOSTNAMES = [
     'edd.jbei.org',
     'public-edd.jbei.org',
 ]
+
 ICE_PRODUCTION_HOSTNAMES = [
     'registry.jbei.org',
     'public-registry.jbei.org',
@@ -22,10 +23,15 @@ ICE_PRODUCTION_HOSTNAMES = [
     'registry.jgi.doe.gov',
 ]
 
+# SSL certificate verification. Override only to avoid configuration headaches in *LOCAL* testing.
 VERIFY_EDD_CERT = True
 VERIFY_ICE_CERT = True
 
-DEFAULT_LOCALE = b'C.UTF-8'
+# communication timeouts in seconds = (connection, response)
+ICE_REQUEST_TIMEOUT = (10, 10)
+EDD_REQUEST_TIMEOUT = (10, 10)
+
+DEFAULT_LOCALE = b'C.UTF-8'  # works in Docker Debian container. Use b'en_US.UTF-8' for OSX.
 ####################################################################################################
 
 SIMULATE_STRAIN_CREATION = False  # test flag that skips the strain creation step
@@ -36,6 +42,6 @@ PRINT_FOUND_EDD_STRAINS = True
 #  local_settings.py: enables any configuration here to be overridden without changing this file.
 ####################################################################################################
 try:
-    from local_settings import *  # noqa
+    from .local_settings import *  # noqa
 except ImportError:
     pass
