@@ -210,7 +210,7 @@
             .style("fill", function (d) {
                 return d.color
             })
-            .style("opacity", 0.3);
+            .style("opacity", 0.5);
 
         var hover = categories_g.selectAll('.rect')
             .data(function (d) {
