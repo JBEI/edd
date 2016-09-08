@@ -1867,19 +1867,10 @@ module EDDTableImport {
                         '                                                                       \
                            <div class ="btn-toolbar">                                           \
                                 <button class="btn btn-default btn-sm" value="linechart">       \
-                                        Line Graph </button>                                    \
-                                <button class="btn btn-default btn-sm" value="timeBar">         \
-                                        Bar graph by time</button>                              \
-                                <button class="btn btn-default btn-sm" value="single">          \
-                                        Bar graphs for each line</button>                       \
-                                 <button class="btn btn-default btn-sm" value="groupedAssay">   \
-                                        Bar graph by assay</button>                             \
+                                        Line Graph </button>                                    \                        \
                             </div>                                                              \
                                                                                                 \
-                            <div class="linechart"></div>                                       \
-                            <div class="timeBar"></div>                                         \
-                            <div class="single"></div>                                          \
-                            <div class="groupedAssay"></div>                                    \
+                            <div class="linechart"></div>                                       \                             \
                             <div class="graphContainer"></div>              \
                         '
                     var dom = $( html );

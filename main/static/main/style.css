@@ -124,11 +124,11 @@ div.tooltip2 {
           stroke-width: 0;
 }
 
-.groupedAssay {
+.barAssay {
   display: none;
 }
 
-.groupedMeasurement {
+.barMeasurement {
     display: none;
 }
 
@@ -207,7 +207,7 @@ div.tooltip2 {
   opacity: 0.2;
 }
 
-.timeBar {
+.barTime {
   display: none;
 }
 

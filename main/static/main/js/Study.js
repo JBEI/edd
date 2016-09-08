@@ -2803,7 +2803,7 @@ var DataGridSpecAssays = (function (_super) {
                             </label>\
                             <label class="btn btn-default btn-sm groupByProteinBar">\
                                 <input type="radio" name="options" id="option4" autocomplete="off"\
-                                       value="groupedAssay">\
+                                       value="barAssay">\
                                 Bar graph grouped by line name\
                             </label>\
                             <label class="btn btn-default btn-sm groupByMeasurementBar">\
@@ -2814,9 +2814,9 @@ var DataGridSpecAssays = (function (_super) {
                             </div>\
                         </div>\
                         <div class="linechart"></div>\
-                        <div class="timeBar"></div>\
-                        <div class="groupedAssay"></div>\
-                        <div class="groupedMeasurement"></div>\
+                        <div class="barTime"></div>\
+                        <div class="barAssay"></div>\
+                        <div class="barMeasurement"></div>\
                         <div class="graphContainer" id= ' + graphid + '></div> \
                         ';
                 var dom = $(html);

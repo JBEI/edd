@@ -18,7 +18,7 @@ exports.takeShot = function(cb){
         }
         if( stdout ) {
             //where the new captured screenshots are saved
-            var arr = ['main/fixtures/newshots/groupedAssay.png',
+            var arr = ['main/fixtures/newshots/barAssay.png',
                        'main/fixtures/newshots/linechart.png',
                        'main/fixtures/newshots/timeBar.png',
                        'main/fixtures/newshots/groupedMeasurement.png'];

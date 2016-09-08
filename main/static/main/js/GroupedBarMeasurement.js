@@ -6,9 +6,9 @@
 
     //different svg 
     var typeClass = {
-        'measurement': ".groupedMeasurement",
-        'x': ".timeBar",
-        'name': '.groupedAssay'
+        'measurement': ".barMeasurement",
+        'x': ".barTime",
+        'name': '.barAssay'
     };
 
     var assayMeasurements = graphSet.assayMeasurements,

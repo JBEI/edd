@@ -1,7 +1,7 @@
 import hashlib
 
 # File to check
-assay_file_name = ['../fixtures/newshots/groupedAssay.png',
+assay_file_name = ['../fixtures/newshots/barAssay.png',
                    '../fixtures/newshots/linechart.png',
                    '../fixtures/newshots/single.png',
                    '../fixtures/newshots/timeBar.png']

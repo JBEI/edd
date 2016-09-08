@@ -26,6 +26,7 @@
     <script type="text/javascript" src="{% static 'main/js/BiomassCalculationUI.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/Study.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/StudyGraphing.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/StudyGraphingHelperMethods.js'%}"></script>
     <script type="text/javascript" src="{% static 'main/js/CarbonSummation.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/StudyCarbonBalance.js' %}"></script>
     <script type="text/javascript" src="{% static 'main/js/StudySBMLExport.js' %}"></script>
@@ -140,7 +141,7 @@
                 {% with attachments=study.attachments %}
                     {% include "main/include_attachments.html" %}
                 {% endwith %}
-                <div class="sectionActions">
+                <div class="sectionActionsw">
                     {% if writable %}
                     <form method="POST" enctype="multipart/form-data" class="attachments edd-form" action="">
                         {% csrf_token %}
@@ -181,22 +182,22 @@
     <div class="pageSection pageSectionTabContent" id="overviewSection">
         <div class="sectionContent">
             <div class="btn-group" data-toggle="buttons" id="chartType">
-                <label class="btn btn-default btn-sm active line" style="margin-right:50px" >
-                    <input value="linechart" type="radio" name="options" id="option1" autocomplete="off" checked>
+                <label class="btn btn-default btn-sm active line" >
+                    <input value="linechart" type="radio" autocomplete="off" checked>
                     <img src="{% static 'main/images/chart_curve.png' %}" /> </label>
-                <label class="btn btn-default btn-sm groupByTimeBar" >
-                    <input value="timeBar" type="radio" name="options" id="option2"
-                           autocomplete="off">
-                    <img src="{% static 'main/images/chart_bar.png' %}" /> Time
+                <label class="btn btn-default btn-sm" style="margin-right: 20px;">
+                    <input type="radio" autocomplete="off">
+                    <img src="{% static 'main/images/chart_bar.png' %}" />
                 </label>
-                <label class="btn btn-default btn-sm groupByProteinBar">
-                    <input type="radio" name="options" id="option4" autocomplete="off"
-                           value="groupedAssay">
-                    <img src="{% static 'main/images/chart_bar.png' %}" /> Line
+                <label class="btn btn-default btn-sm groupByTimeBar hidden">
+                    <input value="timeBar" type="radio" autocomplete="off">Time
                 </label>
-                <label class="btn btn-default btn-sm groupByMeasurementBar">
-                    <input type="radio" name="options" id="option5" value="groupedMeasurement" autocomplete="off">
-                    <img src="{% static 'main/images/chart_bar.png' %}" /> Measurement
+                <label class="btn btn-default btn-sm groupByProteinBar hidden">
+                    <input type="radio" autocomplete="off"
+                           value="barAssay">Line
+                </label>
+                <label class="btn btn-default btn-sm groupByMeasurementBar hidden">
+                    <input type="radio" value="groupedMeasurement" autocomplete="off">Measurement
                 </label>
                 </div>
             </div>
@@ -205,18 +206,18 @@
                     <label><input type="checkbox" value="">hide y-axis</label>
                     </div>
                 </div>
-                <div class="timeBar">
+                <div class="barTime">
                     <div style="display:none" class="checkbox y-checkbox">
                     <label><input type="checkbox" value="">hide y-axis</label>
                     </div>
                 </div>
-                <div class="groupedAssay">
+                <div class="barAssay">
                     <div style="display:none" class="checkbox y-checkbox">
                     <label><input type="checkbox" value="">hide y-axis</label>
                     </div>
                 </div>
-                <div class="groupedMeasurement">
-                    <div style="display:none" class="checkbox y-checkbox">
+                <div class="barMeasurement">
+                    <div class="checkbox y-checkbox" style="display:none">
                     <label><input type="checkbox" value="">hide y-axis</label>
                     </div>
                 </div>
