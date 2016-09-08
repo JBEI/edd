@@ -306,7 +306,8 @@ class ExportOptionForm(forms.Form):
     options = property(get_options)
 
     def get_separator(self):
-        return self.cleaned_data.get('separator', table.ExportOption.COMMA_SEPARATED)
+        token = self.cleaned_data.get('separator', table.ExportOption.COMMA_SEPARATED)
+        return token if token else table.ExportOption.COMMA_SEPARATED
     cell_separator = property(get_separator)
 
     def _init_options(self):
