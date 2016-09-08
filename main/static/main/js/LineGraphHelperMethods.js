@@ -190,17 +190,17 @@
                     .attr("class", 'lineClass')
                     .attr('fill', 'none')
                     .on('mouseover', function(d) {
-                        //highlights grouped lines. d3.select(this).style("opacity", "1");
                         var selectedLine = this;
                         d3.selectAll('.lineClass').style('opacity',function () {
                             return (this === selectedLine) ? 1.0 : 0.1;
                         });
                         d3.selectAll('.lineClass').style('stroke-width',function () {
-                            return (this === selectedLine) ? 4.0 : 1;
+                            return (this === selectedLine) ? 3.0 : 1;
                         });
                         d3.selectAll('circle').style('opacity', 0.1);
                         d3.selectAll('rect').style('opacity', 0.1);
                         d3.selectAll('polygon').style('opacity', 0.1);
+                        $(this).next().children().css('opacity', 1)
                     })
             .on('mouseout', function() {
                 d3.selectAll('.lineClass').style('opacity', 1).style('stroke-width', 2);
