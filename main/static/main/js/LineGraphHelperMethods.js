@@ -42,8 +42,8 @@
                 } else {
                     unit = d.y_unit;
                 }
-                div.html('<strong>' + d.name + '</strong>' + ": " + d.y + " " + unit
-                        + "</br>" + '<strong>' + " Measurement: " + '</strong>' + d.measurement)
+                div.html('<strong>' + d.name + '</strong>' + ": "
+                        + "</br>" + d.measurement + '</br>' + d.y + " " + unit + "</br> " + " @ " + d.x + " hours")
                     .style("left", (d3.event.pageX) + "px")
                     .style("top", (d3.event.pageY - 30) + "px");
             })
@@ -82,8 +82,8 @@
                 } else {
                     unit = d.y_unit;
                 }
-                div.html('<strong>' + d.name + '</strong>' + ": " + d.y + " " + unit
-                        + "</br>" + '<strong>' + " Measurement: " + '</strong>' + d.measurement)
+                div.html('<strong>' + d.name + '</strong>' + ": "
+                        + "</br>" + d.measurement + '</br>' + d.y + " " + unit + "</br> " + " @ " + d.x + " hours")
                     .style("left", (d3.event.pageX) + "px")
                     .style("top", (d3.event.pageY - 30) + "px");
             })
@@ -134,8 +134,8 @@
                 } else {
                     unit = d.y_unit;
                 }
-                div.html('<strong>' + d.name + '</strong>' + ": " + d.y + " " + unit
-                        + "</br>" + '<strong>' + " Measurement: " + '</strong>' + d.measurement)
+                div.html('<strong>' + d.name + '</strong>' + ": "
+                        + "</br>" + d.measurement + '</br>' + d.y + " " + unit + "</br> " + " @ " + d.x + " hours")
                     .style("left", (d3.event.pageX) + "px")
                     .style("top", (d3.event.pageY - 30) + "px");
             })
@@ -166,8 +166,8 @@
                 } else {
                     unit = d.y_unit;
                 }
-                div.html('<strong>' + d.name + '</strong>' + ": " + d.y + " " + unit
-                        + "</br>" + d.measurement)
+                div.html('<strong>' + d.name + '</strong>' + ": "
+                        + "</br>" + d.measurement + '</br>' + d.y + " " + unit + "</br> " + " @ " + d.x + " hours")
                     .style("left", (d3.event.pageX) + "px")
                     .style("top", (d3.event.pageY - 30) + "px");
             })
@@ -195,13 +195,15 @@
                         d3.selectAll('.lineClass').style('opacity',function () {
                             return (this === selectedLine) ? 1.0 : 0.1;
                         });
-                        d3.selectAll('.lineClass').style('stroke', 3);
+                        d3.selectAll('.lineClass').style('stroke-width',function () {
+                            return (this === selectedLine) ? 4.0 : 1;
+                        });
                         d3.selectAll('circle').style('opacity', 0.1);
                         d3.selectAll('rect').style('opacity', 0.1);
                         d3.selectAll('polygon').style('opacity', 0.1);
                     })
             .on('mouseout', function() {
-                d3.selectAll('.lineClass').style('opacity', 1);
+                d3.selectAll('.lineClass').style('opacity', 1).style('stroke-width', 2);
                 d3.selectAll('circle').style('opacity', 1);
                 d3.selectAll('rect').style('opacity', 1);
                 d3.selectAll('polygon').style('opacity', 1)

@@ -16,6 +16,10 @@
     display: none;
 }
 
+.axis-text {
+    z-index: -1; position:relative;
+}
+
 .bar {
   fill: steelblue;
 }

@@ -409,6 +409,7 @@ GraphHelperMethods = {
             .attr("class", "y axis")
             .call(yAxis)
             .append("text")
+            .attr('class', 'axis-text')
             .attr("transform", "rotate(-90)")
             .attr("y", -47)
             .attr("x", 0 - (graphSet.height/2))
@@ -422,7 +423,6 @@ GraphHelperMethods = {
             .call(yAxis
                 .tickSize(-graphSet.width, 0, 0)
                 .tickFormat(""));
-
 
     },
 
