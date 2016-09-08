@@ -1039,12 +1039,11 @@ class IceApi(RestApiClient):
 
         json_dict = {'label': study_name, 'url': study_url}
         json_str = json.dumps(json_dict)
-        if logger:
-            logger.info(
-                "Requesting part-> study link from ICE (id=%s): %s" %
-                (str(link_id), entry_experiments_url)
-            )
-            logger.info("Response: %s " % json_str)
+        logger.info(
+            "Requesting part-> study link from ICE (id=%s): %s" %
+            (link_id, entry_experiments_url)
+        )
+        logger.info("Response: %s " % json_str)
 
         headers = {'Content-Type': 'application/json'}
         # if we're updating an existing link, use its full url

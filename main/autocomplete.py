@@ -51,7 +51,7 @@ def search_group(request):
     re_term = re.escape(term)
     found = Group.objects.filter(name__iregex=re_term).order_by('name').values('id', 'name')[:20]
     return JsonResponse({
-        'rows': [item.to_json() for item in found],
+        'rows': list(found),  # force QuerySet to list
     })
 
 

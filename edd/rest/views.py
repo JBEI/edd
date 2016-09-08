@@ -5,8 +5,11 @@ Assuming Django REST Framework (DRF) will be adopted in EDD, new and existing vi
 ported to this class over time. Many REST resources are currently defined in main/views.py,
 but are not making use of DRF.
 """
+
+import logging
 import re
 
+from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 
@@ -26,7 +29,6 @@ from rest_framework.exceptions import APIException
 from rest_framework.relations import StringRelatedField
 from rest_framework.response import Response
 
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -504,9 +506,6 @@ class StudyLineView(viewsets.ModelViewSet):  # LineView(APIView):
     STUDY_URL_KWARG = 'study_pk'
 
     def get_queryset(self):
-        print('kwargs: ' + str(self.kwargs))  # TODO: remove debug aid
-        print('query_params: ' + str(self.request.query_params))  # TODO: remove debug aid
-
         # extract study pk URL argument. line pk, if present, will be handled automatically by
         # get_object() inherited from the parent class
         study_pk = self.kwargs[self.STUDY_URL_KWARG]
@@ -533,35 +532,14 @@ class StudyLineView(viewsets.ModelViewSet):  # LineView(APIView):
 
         return line_query
 
-    # TODO: if doable with some degree of clarity, use reflection to enforce DRY in mutator methods
-    # below. For now, we'll go with fast rather than elegant. MF 2/24/16
-    # def enforce_write_access_privileges(self, call_on_success_function):
-    #     study_pk = self.kwargs[self.STUDY_URL_KWARG]
-    #     user = self.request.user
-    #
-    #     if self.queryset:
-    #         logger.log('has queryset')
-    #
-    #     # enforce study write privileges
-    #     error_response = StudyLineView._test_user_write_access(user, study_pk)
-    #     if error_response:
-    #         return error_response
-    #
-    #     super(StudyLineView).call_on_success_function(self, ) # TODO: investigate this
-
     def create(self, request, *args, **kwargs):
         ##############################################################
         # enforce study write privileges
         ##############################################################
         study_pk = self.kwargs[self.STUDY_URL_KWARG]
         user = self.request.user
-        error_response = StudyLineView._test_user_write_access(user, study_pk)
-        if error_response:
-            return error_response
-
-        ##############################################################
+        StudyLineView._test_user_write_access(user, study_pk)
         # if user has write privileges for the study, use parent implementation
-        ##############################################################
         return super(StudyLineView, self).create(request, *args, **kwargs)
 
     def update(self, request, *args, **kwargs):
@@ -570,13 +548,8 @@ class StudyLineView(viewsets.ModelViewSet):  # LineView(APIView):
         ##############################################################
         study_pk = self.kwargs[self.STUDY_URL_KWARG]
         user = self.request.user
-        error_response = StudyLineView._test_user_write_access(user, study_pk)
-        if error_response:
-            return error_response
-
-        ##############################################################
+        StudyLineView._test_user_write_access(user, study_pk)
         # if user has write privileges for the study, use parent implementation
-        ##############################################################
         return super(StudyLineView, self).update(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
@@ -585,29 +558,20 @@ class StudyLineView(viewsets.ModelViewSet):  # LineView(APIView):
         ##############################################################
         study_pk = self.kwargs[self.STUDY_URL_KWARG]
         user = self.request.user
-        error_response = StudyLineView._test_user_write_access(user, study_pk)
-        if error_response:
-            return error_response
-
-        ##############################################################
+        StudyLineView._test_user_write_access(user, study_pk)
         # if user has write privileges for the study, use parent implementation
-        ##############################################################
         return super(StudyLineView, self).destroy(request, *args, **kwargs)
 
     @staticmethod
     def _test_user_write_access(user, study_pk):
         # return a 403 error if user doesn't have write access
-        requested_permission = StudyPermission.WRITE
-        study_user_permission_q = Study.user_permission_q(user, requested_permission)
-        user_has_permission_query = Study.objects.filter(study_user_permission_q,
-                                                         pk=study_pk).distinct()
-
-        # TODO: per William's comment, test raising PermissionDenied() similar to Django
-
-        if not user_has_permission_query:
-            return Response(status=status.HTTP_403_FORBIDDEN)
-
-        return None
+        try:
+            study = Study.objects.get(pk=study_pk)
+            if study.user_can_write(user):
+                return None
+        except Study.DoesNotExist as e:
+            logger.warning('Got request to modify non-existent study %s', study_pk)
+        raise PermissionDenied()
 
 
 class NotImplementedException(APIException):
