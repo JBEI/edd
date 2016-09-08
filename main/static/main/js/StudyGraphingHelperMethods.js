@@ -165,6 +165,10 @@ StudyHelper = {
         StudyHelper.barGraphActiveButton(this, buttonArr);
         return false;
     },
+    /*
+     * this function takes in the type of measurement, selectors obj, selector type and
+     * button obj and shows the measurement graph is the main type is proteomic
+     */
     showProteomicGraph: function (type, selectors, selector, buttons) {
         if (type === 'p') {
             d3.select(selectors['line']).style('display', 'none');

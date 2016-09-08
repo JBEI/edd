@@ -3269,26 +3269,27 @@ class DataGridSpecAssays extends DataGridSpecBase {
                 //html for the different graphs 
                  var html =
                         '                                                                       \
-                        <div class="btn-group" data-toggle="buttons" id="chartType"> \
-                            <label class="btn btn-default btn-sm active line" >\
-                                <input value="linechart" type="radio" name="options" \
-                                id="option1" autocomplete="off" checked>Line Graph</label>\
-                            <label class="btn btn-default btn-sm groupByTimeBar" >\
-                                <input value="timeBar" type="radio" name="options" id="option2"\
-                                       autocomplete="off">\
-                                Bar graph grouped by time\
-                            </label>\
-                            <label class="btn btn-default btn-sm groupByProteinBar">\
-                                <input type="radio" name="options" id="option4" autocomplete="off"\
-                                       value="barAssay">\
-                                Bar graph grouped by line name\
-                            </label>\
-                            <label class="btn btn-default btn-sm groupByMeasurementBar">\
-                                <input type="radio" name="options" id="option5" \
-                                    value="groupedMeasurement" autocomplete="off">\
-                                Bar graph grouped by measurement type\
-                            </label>\
-                            </div>\
+                     <div class="btn-group" data-toggle="buttons" id="chartType">\
+                    <label class="btn btn-default btn-sm active line" >\
+                        <input value="linechart" type="radio" autocomplete="off" checked>\
+                        <img src="../../static/main/images/chart_curve.png" />\
+                         </label>\
+                    <label class="btn btn-default btn-sm" style="margin-right: 20px;">\
+                        <input type="radio" autocomplete="off">\
+                        <img src="../../static/main/images/chart_bar.png"/>\
+                    </label>\
+                    <label class="btn btn-default btn-sm groupByTimeBar hidden">\
+                        <input value="barTime" type="radio" autocomplete="off">Time\
+                    </label>\
+                    <label class="btn btn-default btn-sm groupByProteinBar hidden">\
+                        <input type="radio" autocomplete="off"\
+                               value="barAssay">Line\
+                    </label>\
+                    <label class="btn btn-default btn-sm groupByMeasurementBar hidden">\
+                        <input type="radio" value="barMeasurement"\
+                         autocomplete="off">Measurement\
+                    </label>\
+                    </div>\
                         </div>\
                         <div class="linechart"></div>\
                         <div class="barTime"></div>\
