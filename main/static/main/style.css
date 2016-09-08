@@ -20,18 +20,6 @@
     z-index: -1; position:relative;
 }
 
-.bar {
-  fill: steelblue;
-}
-
-.bar:hover {
-  fill: orangered ;
-}
-
-body {
-  overflow: scroll
-}
-
 .btn-default {
     outline: none;
     border-color: #fff;
@@ -52,7 +40,7 @@ div.tooltip2 {
   position: absolute;
   text-align: center;
   width: 100px;
-  opacity: 1;
+  opacity: 0.5;
   padding: 2px;
   font: 12px sans-serif;
   background: white;
@@ -107,6 +95,9 @@ div.tooltip2 {
   display: none;
 }
 
+.rect {
+    opacity: 0.5;
+}
 .toolTip {
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     position: absolute;

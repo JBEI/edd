@@ -152,7 +152,6 @@
         names_g = svg.selectAll(".group" + index)
             .data(data)
             .enter().append("g")
-            .attr("class", 'truncate')
             .attr("transform", function (d) {
                 return "translate(" + x_name(d.key) + ",0)";
             });
@@ -162,7 +161,6 @@
                 return d.values;
             })
             .enter().append("g")
-            .attr("class", "truncate")
             .attr("transform", function (d) {
                 return "translate(" + x_xValue(d.key) + ",0)";
             });
@@ -173,14 +171,13 @@
             })
             .enter()
             .append("text")
-            .attr("class", "truncate")
             .attr("x", function () {
                 return x_xValue.rangeBand() / 2;
             })
             .attr('y', function () {
                 return graphSet.height + 27;
             })
-            .attr('text-anchor', 'middle')
+            .attr('text-anchor', 'middle');
 
         values_g = categories_g.selectAll(".value" + index)
             .data(function (d) {
@@ -218,10 +215,10 @@
             })
             .on("mouseover", function (d) {
                 div.transition()
-                    .style("opacity", 0.9);
+                    .style("opacity", 0.5);
 
                 div.html('<strong>' + d.name + '</strong>' + ": "
-                        + "</br>" + d.measurement + '</br>' + d.y + " " + d.y_unit + "</br> " + " @" +
+                        + "</br>" + d.measurement + '</br>' + d.y + " " + d.y_unit + "</br>" + " @" +
                     " " + d.x + " hours")
                     .style("left", (d3.event.pageX) + "px")
                     .style("top", (d3.event.pageY - 30) + "px");
