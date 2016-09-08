@@ -1508,18 +1508,6 @@ class Assay(EDDObject):
     def __str__(self):
         return self.name
 
-    def get_metabolite_measurements(self):
-        return self.measurement_set.filter(
-            measurement_type__type_group=MeasurementType.Group.METABOLITE)
-
-    def get_protein_measurements(self):
-        return self.measurement_set.filter(
-            measurement_type__type_group=MeasurementType.Group.PROTEINID)
-
-    def get_gene_measurements(self):
-        return self.measurement_set.filter(
-            measurement_type__type_group=MeasurementType.Group.GENEID)
-
     @property
     def long_name(self):
         return "%s-%s-%s" % (self.line.name, self.protocol.name, self.name)
