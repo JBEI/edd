@@ -179,16 +179,20 @@
             })
             .attr('text-anchor', 'middle');
 
-        values_g = categories_g.selectAll(".value" + index)
+         values_g = categories_g.selectAll(".value" + index)
             .data(function (d) {
                 return d.values;
             })
             .enter().append("g")
             .attr("class", function (d) {
-                return 'value value-' + d.i;
+                return 'value value-' + d.name;
             })
             .attr("transform", function (d) {
                 return "translate(" + lineID(d.key) + ",0)";
+            })
+            .on('click', function(d) {
+                d3.selectAll('.value').style('opacity', 0);
+                d3.selectAll('.value-' + d.name).style('opacity', 1)
             });
 
         rects = values_g.selectAll('.rect' + index)
