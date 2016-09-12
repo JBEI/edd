@@ -1552,7 +1552,7 @@ module StudyD {
         $.each(postFilteringMeasurements, (i, measurementId) => {
             var measure:AssayMeasurementRecord = EDDData.AssayMeasurements[measurementId],
                 points = (measure.values ? measure.values.length : 0),
-                assay, line, name, singleAssayObj, color, protocol;
+                assay, line, name, singleAssayObj, color, protocol, lineName;
             dataPointsTotal += points;
             if (dataPointsDisplayed > 15000) {
                 return; // Skip the rest if we've hit our limit
@@ -1562,8 +1562,9 @@ module StudyD {
             line = EDDData.Lines[assay.lid] || {};
             protocol = EDDData.Protocols[assay.pid] || {};
             name = [line.name, protocol.name, assay.name].join('-');
+            lineName = line.name;
             color = colorObj[assay.lid];
-            singleAssayObj = this.graphHelper.transformSingleLineItem(EDDData, measure, name, color);
+            singleAssayObj = this.graphHelper.transformSingleLineItem(EDDData, measure, name, color, lineName);
             dataSets.push(singleAssayObj);
         });
         this.mainGraphObject.addNewSet(dataSets, EDDData.MeasurementTypes);

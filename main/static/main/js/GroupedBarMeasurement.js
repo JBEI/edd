@@ -185,14 +185,14 @@
             })
             .enter().append("g")
             .attr("class", function (d) {
-                return 'value value-' + d.name;
+                return 'value value-' + d.lineName;
             })
             .attr("transform", function (d) {
                 return "translate(" + lineID(d.key) + ",0)";
             })
             .on('mouseover', function(d) {
                 d3.selectAll('.value').style('opacity', 0.3);
-                d3.selectAll('.value-' + d.name).style('opacity', 1)
+                d3.selectAll('.value-' + d.lineName).style('opacity', 1)
             })
             .on('mouseout', function(d) {
                 d3.selectAll('.value').style('opacity', 1);

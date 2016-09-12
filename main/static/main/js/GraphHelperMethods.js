@@ -51,7 +51,7 @@ GraphHelperMethods = {
      *    ...
      *    ]
     **/
-    transformSingleLineItem: function (data, singleData, names, color) {
+    transformSingleLineItem: function (data, singleData, names, color, lineName) {
         // unit types
         var unitTypes = data.UnitTypes;
         // measurement types
@@ -77,6 +77,7 @@ GraphHelperMethods = {
             dataset['name'] = names;
             dataset['color'] = color;
             dataset['nameid'] = names + index;
+            dataset['lineName'] = lineName;
             dataset['measurement'] = GraphHelperMethods.measurementName(singleData.type, measurementTypes);
             xAndYValues.push(dataset);
         });
