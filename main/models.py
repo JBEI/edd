@@ -1359,9 +1359,6 @@ class Metabolite(MeasurementType):
             count = count + (int(c) if c else 1)
         return count
 
-# override the default type_group for metabolites
-Metabolite._meta.get_field('type_group').default = MeasurementType.Group.METABOLITE
-
 
 @python_2_unicode_compatible
 class GeneIdentifier(MeasurementType):
@@ -1386,8 +1383,6 @@ class GeneIdentifier(MeasurementType):
         # force GENEID group
         self.type_group = MeasurementType.Group.GENEID
         super(GeneIdentifier, self).save(*args, **kwargs)
-
-GeneIdentifier._meta.get_field('type_group').default = MeasurementType.Group.GENEID
 
 
 @python_2_unicode_compatible
@@ -1427,8 +1422,6 @@ class ProteinIdentifier(MeasurementType):
         self.type_group = MeasurementType.Group.PROTEINID
         super(ProteinIdentifier, self).save(*args, **kwargs)
 
-ProteinIdentifier._meta.get_field('type_group').default = MeasurementType.Group.PROTEINID
-
 
 @python_2_unicode_compatible
 class Phosphor(MeasurementType):
@@ -1449,8 +1442,6 @@ class Phosphor(MeasurementType):
         # force PHOSPHOR group
         self.type_group = MeasurementType.Group.PHOSPHOR
         super(Phosphor, self).save(*args, **kwargs)
-
-Phosphor._meta.get_field('type_group').default = MeasurementType.Group.PHOSPHOR
 
 
 @python_2_unicode_compatible
@@ -1507,18 +1498,6 @@ class Assay(EDDObject):
 
     def __str__(self):
         return self.name
-
-    def get_metabolite_measurements(self):
-        return self.measurement_set.filter(
-            measurement_type__type_group=MeasurementType.Group.METABOLITE)
-
-    def get_protein_measurements(self):
-        return self.measurement_set.filter(
-            measurement_type__type_group=MeasurementType.Group.PROTEINID)
-
-    def get_gene_measurements(self):
-        return self.measurement_set.filter(
-            measurement_type__type_group=MeasurementType.Group.GENEID)
 
     @property
     def long_name(self):
@@ -1622,7 +1601,7 @@ class Measurement(EDDMetadata, EDDSerialize):
     # may not be the best method name, if we ever want to support other
     # types of data as vectors in the future
     def is_carbon_ratio(self):
-        return (int(self.measurement_format) == Measurement.Format.VECTOR)
+        return (self.measurement_format == Measurement.Format.VECTOR)
 
     def valid_data(self):
         """ Data for which the y-value is defined (non-NULL, non-blank). """
@@ -1630,7 +1609,7 @@ class Measurement(EDDMetadata, EDDSerialize):
         return [md for md in mdata if md.is_defined()]
 
     def is_extracellular(self):
-        return self.compartment == '%s' % Measurement.Compartment.EXTRACELLULAR
+        return self.compartment == Measurement.Compartment.EXTRACELLULAR
 
     def data(self):
         """ Return the data associated with this measurement. """
@@ -1660,13 +1639,13 @@ class Measurement(EDDMetadata, EDDSerialize):
     def extract_data_xvalues(self, defined_only=False):
         qs = self.measurementvalue_set.all()
         if defined_only:
-            qs = qs.exclude(y=None, y__len=0)
+            qs = qs.exclude(Q(y=None) | Q(y__len=0))
         # first index unpacks single value from tuple; second index unpacks first value from X
         return map(lambda x: x[0][0], qs.values_list('x'))
 
     # this shouldn't need to handle vectors
     def interpolate_at(self, x):
-        assert (int(self.measurement_format) == Measurement.Format.SCALAR)
+        assert (self.measurement_format == Measurement.Format.SCALAR)
         from main.utilities import interpolate_at
         return interpolate_at(self.valid_data(), x)
 

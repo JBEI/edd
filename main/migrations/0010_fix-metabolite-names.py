@@ -115,7 +115,7 @@ def fix_manual_metabolites(apps, schema_editor):
 
 
 def insert_bigg_metabolites(apps, schema_editor):
-    from main.models import Update
+    from main.models import MeasurementType, Update
     # using updated version
     Datasource = apps.get_model('main', 'Datasource')
     Metabolite = apps.get_model('main', 'Metabolite')
@@ -144,16 +144,16 @@ def insert_bigg_metabolites(apps, schema_editor):
                 for x in existing[1:]:
                     merge_metabolites(apps, x, m)
             else:
-                m = Metabolite(
+                Metabolite.objects.create(
                     short_name=entry[0],
                     type_name=entry[1],
+                    type_group=MeasurementType.Group.METABOLITE,
                     molar_mass=0,
                     molecular_formula=entry[2],
                     carbon_count=extract_carbon_count(entry[2]),
                     charge=entry[3],
                     source=ds,
                 )
-                m.save()
     except Exception:
         logger.exception('Failed importing BIGG metabolite selections')
 
