@@ -185,17 +185,14 @@
             })
             .enter().append("g")
             .attr("class", function (d) {
-                if (d.color === undefined) {
-                    d.color = '#e8c2f3'
-                }
-                return 'value value-' + (d.color).slice(1);
+                return 'value value-' + d.name;
             })
             .attr("transform", function (d) {
                 return "translate(" + lineID(d.key) + ",0)";
             })
             .on('mouseover', function(d) {
                 d3.selectAll('.value').style('opacity', 0.3);
-                d3.selectAll('.value-' + (d.color).slice(1)).style('opacity', 1)
+                d3.selectAll('.value-' + d.name).style('opacity', 1)
             })
             .on('mouseout', function(d) {
                 d3.selectAll('.value').style('opacity', 1);
