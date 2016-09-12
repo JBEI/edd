@@ -9,7 +9,12 @@ var CLASSIDS = ['.linechart', '.barAssay', '.barTime', '.barMeasurement'],
 var renderPage = function(page, elementId, buttonId){
 
   var clipRect = page.evaluate(function(buttonId, elementId) {
-        document.querySelector(buttonId).click();
+        if (buttonId != '.line') {
+            document.querySelector('.active').click();
+            document.querySelector(buttonId).click();
+        } else {
+            document.querySelector(buttonId).click();
+        }
         return document.querySelector(elementId).getBoundingClientRect();
     }, buttonId, elementId);
     

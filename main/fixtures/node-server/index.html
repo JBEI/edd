@@ -42,6 +42,7 @@
     <script type="text/javascript" src="/static/main/js/BiomassCalculationUI.js"></script>
     <script type="text/javascript" src="/static/main/js/Study.js"></script>
     <script type="text/javascript" src="/static/main/js/StudyGraphing.js"></script>
+    <script type="text/javascript" src="/static/main/js/StudyGraphingHelperMethods.js"></script>
     <script type="text/javascript" src="/static/main/js/CarbonSummation.js"></script>
     <script type="text/javascript" src="/static/main/js/StudyCarbonBalance.js"></script>
     <script type="text/javascript" src="/static/main/js/StudySBMLExport.js"></script>
@@ -49,9 +50,13 @@
 
     <script type="text/javascript" src="/static/main/js/CreateMultiAxisLine.js"></script>
     <script type="text/javascript" src="/static/main/js/GroupedBarMeasurement.js"></script>
+    <script type="text/javascript" src="/static/main/js/LineGraphHelperMethods.js"></script>
+    <script type="text/javascript" src="/static/main/js/BarGraphHelperMethods.js"></script>
 
 </head>
-<body>
+<body style="background-color:
+                 #f4fef4
+                ">
     <div class="topBanner">
         <div class="siteLogo">
             <a href="/">
@@ -84,6 +89,9 @@
     </div>
     <div class="statusMessage">
 
+            <span class="dev">DEVELOPMENT</span>
+
+
 
 
     </div>
@@ -98,7 +106,7 @@
             </div>
             <div class="sectionActions discloseBody">
                 <form action="" class="edd-form" enctype="multipart/form-data" method="POST">
-                    <input type='hidden' name='csrfmiddlewaretoken' value='tPEoQI4ML5WrGHPQovXnqQVjYNZYVhDG' />
+                    <input type='hidden' name='csrfmiddlewaretoken' value='d9nkcEgQZ0byI2AveVDFTGNWSkiFm2lg' />
                     <p><label for="id_study-name">Study Name</label> <input id="id_study-name" maxlength="255" name="study-name" size="50" type="text" value="CJJ-Test" /></p>
 <p><label for="id_study-description">Description</label> <textarea cols="100" id="id_study-description" name="study-description" rows="10">
 CJJ Test</textarea></p>
@@ -135,7 +143,7 @@ CJJ Test</textarea></p>
 
                 <div class="sectionActions">
                     <form method="POST" enctype="multipart/form-data" class="permissions edd-form off" action="">
-                        <input type='hidden' name='csrfmiddlewaretoken' value='tPEoQI4ML5WrGHPQovXnqQVjYNZYVhDG' />
+                        <input type='hidden' name='csrfmiddlewaretoken' value='d9nkcEgQZ0byI2AveVDFTGNWSkiFm2lg' />
                         <span id="permission_user_box">
                         <label for="permission_user">
                             <input type="radio" id="permission_user" name="class" value="User" checked="checked"/>
@@ -146,6 +154,12 @@ CJJ Test</textarea></p>
                         <label for="permission_group">
                             <input type="radio" id="permission_group" name="class" value="Group"/>
                             <span>Group</span>
+                        </label>
+                        </span>
+                        <span id="permission_public_box">
+                        <label for="permission_public">
+                            <input type="radio" id="permission_public" name="class" value="Public"/>
+                            <span>Public</span>
                         </label>
                         </span>
                         <select name="type">
@@ -173,10 +187,10 @@ CJJ Test</textarea></p>
 </table>
 
 
-                <div class="sectionActions">
+                <div class="sectionActionsw">
 
                     <form method="POST" enctype="multipart/form-data" class="attachments edd-form" action="">
-                        <input type='hidden' name='csrfmiddlewaretoken' value='tPEoQI4ML5WrGHPQovXnqQVjYNZYVhDG' />
+                        <input type='hidden' name='csrfmiddlewaretoken' value='d9nkcEgQZ0byI2AveVDFTGNWSkiFm2lg' />
                         <p><label for="id_file">Attachment</label> <input id="id_file" name="file" type="file" /></p>
 <p><label for="id_description">Description</label> <input id="id_description" name="description" type="text" /></p>
                         <p><button type="submit" name="action" value="attach">Attach File</button></p>
@@ -195,7 +209,7 @@ CJJ Test</textarea></p>
                 </ol>
                 <div class="sectionActions">
                     <form method="POST" class="comments edd-form" action="">
-                        <input type='hidden' name='csrfmiddlewaretoken' value='tPEoQI4ML5WrGHPQovXnqQVjYNZYVhDG' />
+                        <input type='hidden' name='csrfmiddlewaretoken' value='d9nkcEgQZ0byI2AveVDFTGNWSkiFm2lg' />
                         <p> <textarea cols="40" id="id_body" name="body" rows="10">
 </textarea></p>
                         <p><button type="submit" name="action" value="comment">Comment</button></p>
@@ -211,42 +225,42 @@ CJJ Test</textarea></p>
     <div class="pageSection pageSectionTabContent" id="overviewSection">
         <div class="sectionContent">
             <div class="btn-group" data-toggle="buttons" id="chartType">
-                <label class="btn btn-default btn-sm active line" style="margin-right:50px" >
-                    <input value="linechart" type="radio" name="options" id="option1" autocomplete="off" checked>
+                <label class="btn btn-default btn-sm active line" >
+                    <input value="linechart" type="radio" autocomplete="off" checked>
                     <img src="/static/main/images/chart_curve.png" /> </label>
-                <label class="btn btn-default btn-sm groupByTimeBar" >
-                    <input value="timeBar" type="radio" name="options" id="option2"
-                           autocomplete="off">
-                    <img src="/static/main/images/chart_bar.png" /> Time
+                <label class="btn btn-default btn-sm" style="margin-right: 20px;">
+                    <input type="radio" autocomplete="off">
+                    <img src="/static/main/images/chart_bar.png" />
                 </label>
-                <label class="btn btn-default btn-sm groupByProteinBar">
-                    <input type="radio" name="options" id="option4" autocomplete="off"
-                           value="groupedAssay">
-                    <img src="/static/main/images/chart_bar.png" /> Name
+                <label class="btn btn-default btn-sm groupByTimeBar hidden">
+                    <input value="timeBar" type="radio" autocomplete="off">Time
                 </label>
-                <label class="btn btn-default btn-sm groupByMeasurementBar">
-                    <input type="radio" name="options" id="option5" value="groupedMeasurement" autocomplete="off">
-                    <img src="/static/main/images/chart_bar.png" /> Measurement
+                <label class="btn btn-default btn-sm groupByProteinBar hidden">
+                    <input type="radio" autocomplete="off"
+                           value="barAssay">Line
+                </label>
+                <label class="btn btn-default btn-sm groupByMeasurementBar hidden">
+                    <input type="radio" value="groupedMeasurement" autocomplete="off">Measurement
                 </label>
                 </div>
             </div>
                 <div class="linechart">
-                    <div class="checkbox y-checkbox">
+                    <div style="display:none" class="checkbox y-checkbox">
                     <label><input type="checkbox" value="">hide y-axis</label>
                     </div>
                 </div>
-                <div class="timeBar">
-                    <div class="checkbox y-checkbox">
+                <div class="barTime">
+                    <div style="display:none" class="checkbox y-checkbox">
                     <label><input type="checkbox" value="">hide y-axis</label>
                     </div>
                 </div>
-                <div class="groupedAssay">
-                    <div class="checkbox y-checkbox">
+                <div class="barAssay">
+                    <div style="display:none" class="checkbox y-checkbox">
                     <label><input type="checkbox" value="">hide y-axis</label>
                     </div>
                 </div>
-                <div class="groupedMeasurement">
-                    <div class="checkbox y-checkbox">
+                <div class="barMeasurement">
+                    <div class="checkbox y-checkbox" style="display:none">
                     <label><input type="checkbox" value="">hide y-axis</label>
                     </div>
                 </div>
@@ -275,8 +289,8 @@ CJJ Test</textarea></p>
         </div>
         <div class="sectionContent discloseBody">
             <form action="" class="line-edit edd-form" method="POST">
-                <input type='hidden' name='csrfmiddlewaretoken' value='olFQEuX5yf8CarOAj83iprkCFYdKY3wn' />
-                <p><label for="id_line-name"><input type="checkbox" class="off bulk" name="line-_bulk_name" checked="checked" value/>Line</label> <input id="id_line-name" maxlength="255" name="line-name" type="text" /></p>
+                <input type='hidden' name='csrfmiddlewaretoken' value='d9nkcEgQZ0byI2AveVDFTGNWSkiFm2lg' />
+                <p><label for="id_line-name"><input type="checkbox" class="off bulk" name="line-_bulk_name" checked="checked" value/>Line</label> <input id="id_line-name" maxlength="255" name="line-name" type="text" /> <span class="helptext">This field is required</span></p>
 <p><label for="id_line-description"><input type="checkbox" class="off bulk" name="line-_bulk_description" checked="checked" value/>Description</label> <textarea cols="40" id="id_line-description" name="line-description" rows="2">
 </textarea></p>
 <p><label for="id_line-control"><input type="checkbox" class="off bulk" name="line-_bulk_control" checked="checked" value/>Is Control?</label> <input id="id_line-control" name="line-control" type="checkbox" /></p>
@@ -299,7 +313,7 @@ CJJ Test</textarea></p>
 
 
     <form action="" class="line-action" method="POST">
-        <input type='hidden' name='csrfmiddlewaretoken' value='olFQEuX5yf8CarOAj83iprkCFYdKY3wn' />
+        <input type='hidden' name='csrfmiddlewaretoken' value='d9nkcEgQZ0byI2AveVDFTGNWSkiFm2lg' />
         <div class="pageSection">
 
             <table id="studyLinesTable"></table>
@@ -325,6 +339,7 @@ CJJ Test</textarea></p>
                         <option value="csv">as CSV/etc</option>
                         <option value="sbml">as SBML</option>
                         <option value="worklist">as Worklist</option>
+                        <option value="study">to New Study</option>
                     </select>
                 </label>
                 <button type="submit" name="action" value="line_action">Take Action</button>
@@ -372,7 +387,7 @@ CJJ Test</textarea></p>
     </form>
 
     <form action="" class="assay-action" method="POST">
-        <input type='hidden' name='csrfmiddlewaretoken' value='olFQEuX5yf8CarOAj83iprkCFYdKY3wn' />
+        <input type='hidden' name='csrfmiddlewaretoken' value='d9nkcEgQZ0byI2AveVDFTGNWSkiFm2lg' />
         <div class="pageSection" id="assaysSection">
             <!-- individual protocol assay sections inserted here -->
             <div id="assaysActionPanel" class="sectionActions off">
@@ -441,9 +456,16 @@ CJJ Test</textarea></p>
     </div>
     <div class="footer">
         <div class="footer-text">
-            <span class="footer-text-app">JBEI Experiment Data Depot</span>
+            <span class="footer-text-app">JBEI Experiment Data Depot DEVELOPMENT</span>
             <span class="footer-text-contact"><a href="mailto:jbei-help@lbl.gov?subject=EDD">Contact</a></span>
         </div>
+    </div>
+
+<!-- Prevent our copy of jQuery from registering as an AMD module on sites that use RequireJS. -->
+
+</body>
+</html>
+
     </div>
 
 

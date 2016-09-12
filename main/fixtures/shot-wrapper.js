@@ -19,9 +19,9 @@ exports.takeShot = function(cb){
         if( stdout ) {
             //where the new captured screenshots are saved
             var arr = ['main/fixtures/newshots/barAssay.png',
+                       'main/fixtures/newshots/barMeasurement.png',
                        'main/fixtures/newshots/linechart.png',
-                       'main/fixtures/newshots/timeBar.png',
-                       'main/fixtures/newshots/groupedMeasurement.png'];
+                       'main/fixtures/newshots/barTime.png'];
 
             // original hash values from main/fixtures/originalshots
             var originalHash = ['9edf3944c54ee83a142e09d6cf757994',
