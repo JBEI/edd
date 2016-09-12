@@ -534,7 +534,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='measurementtype',
             name='type_group',
-            field=models.CharField(default=b'h', max_length=8, choices=[(b'_', b'Generic'), (b'm', b'Metabolite'), (b'g', b'Gene Identifier'), (b'p', b'Protein Identifer'), (b'h', b'Phosphor')]),
+            field=models.CharField(default=b'_', max_length=8, choices=[(b'_', b'Generic'), (b'm', b'Metabolite'), (b'g', b'Gene Identifier'), (b'p', b'Protein Identifer'), (b'h', b'Phosphor')]),
         ),
         migrations.AlterField(
             model_name='measurementunit',

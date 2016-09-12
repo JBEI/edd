@@ -456,7 +456,7 @@ class AssayDataTests(TestCase):
         self.assertTrue(meas1.y_axis_units_name == "mM")
         self.assertTrue(meas1.name == "Acetate")
         self.assertTrue(meas1.short_name == "ac")
-        self.assertTrue(meas1.full_name == "IC Acetate")
+        self.assertTrue(meas1.full_name == "Intracellular/Cytosol (Cy) Acetate")
         self.assertTrue(meas1.is_concentration_measurement())
         self.assertTrue(not meas1.is_carbon_ratio())
         mdata = list(meas1.measurementvalue_set.all())
@@ -472,7 +472,7 @@ class AssayDataTests(TestCase):
         )[0]
         meas2 = assay.measurement_set.filter(
             measurement_type__type_group=MeasurementType.Group.GENEID
-        )
+        )[0]
         xval = meas1.extract_data_xvalues()
         self.assertTrue(xval == [0.0, 4.0, 8.0, 12.0, 18.0, 24.0, 32.0])
         xval2 = meas1.extract_data_xvalues(defined_only=True)

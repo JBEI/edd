@@ -1359,9 +1359,6 @@ class Metabolite(MeasurementType):
             count = count + (int(c) if c else 1)
         return count
 
-# override the default type_group for metabolites
-Metabolite._meta.get_field('type_group').default = MeasurementType.Group.METABOLITE
-
 
 @python_2_unicode_compatible
 class GeneIdentifier(MeasurementType):
@@ -1386,8 +1383,6 @@ class GeneIdentifier(MeasurementType):
         # force GENEID group
         self.type_group = MeasurementType.Group.GENEID
         super(GeneIdentifier, self).save(*args, **kwargs)
-
-GeneIdentifier._meta.get_field('type_group').default = MeasurementType.Group.GENEID
 
 
 @python_2_unicode_compatible
@@ -1427,8 +1422,6 @@ class ProteinIdentifier(MeasurementType):
         self.type_group = MeasurementType.Group.PROTEINID
         super(ProteinIdentifier, self).save(*args, **kwargs)
 
-ProteinIdentifier._meta.get_field('type_group').default = MeasurementType.Group.PROTEINID
-
 
 @python_2_unicode_compatible
 class Phosphor(MeasurementType):
@@ -1449,8 +1442,6 @@ class Phosphor(MeasurementType):
         # force PHOSPHOR group
         self.type_group = MeasurementType.Group.PHOSPHOR
         super(Phosphor, self).save(*args, **kwargs)
-
-Phosphor._meta.get_field('type_group').default = MeasurementType.Group.PHOSPHOR
 
 
 @python_2_unicode_compatible
@@ -1648,7 +1639,7 @@ class Measurement(EDDMetadata, EDDSerialize):
     def extract_data_xvalues(self, defined_only=False):
         qs = self.measurementvalue_set.all()
         if defined_only:
-            qs = qs.exclude(y=None, y__len=0)
+            qs = qs.exclude(Q(y=None) | Q(y__len=0))
         # first index unpacks single value from tuple; second index unpacks first value from X
         return map(lambda x: x[0][0], qs.values_list('x'))
 
