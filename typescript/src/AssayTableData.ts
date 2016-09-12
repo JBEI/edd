@@ -260,8 +260,7 @@ module EDDTableImport {
             // For some of these, changing them shouldn't actually affect processing until we implement
             // an overwrite-checking feature or something similar
             reProcessOnChange = ['#stdlayout', '#trlayout', '#hplclayout', '#prlayout', '#mdvlayout', '#biolectorlayout'];
-            $(reProcessOnChange.join(',')).on('click', this.reconfigure.bind(this));  // TODO:
-            // change back to queueReconfigure() for optimization!
+            $(reProcessOnChange.join(',')).on('click', this.queueReconfigure.bind(this));
         }
 
 
@@ -1598,16 +1597,7 @@ module EDDTableImport {
                 }
             }
 
-            this.queueInterpretRowTypePullDowns()
-        }
-
-        // Start a timer to wait before calling interpretRowDataTypePulldowns().
-        // This way we condense multiple events from pulldown auto-selection into a single event
-        queueInterpretRowTypePullDowns(): void {
-            if (this.interpretRowTypePullDownTImerID) {
-                clearTimeout(this.interpretRowTypePullDownTImerID);
-            }
-            this.interpretRowTypePullDownTImerID = setTimeout(this.interpretRowDataTypePulldowns.bind(this), 30);
+            this.interpretRowDataTypePulldowns();
         }
 
         // update state as a result of row datatype pulldown selection
@@ -2073,6 +2063,11 @@ module EDDTableImport {
             // Start a timer to wait before calling the routine that remakes the graph.
             // This way we're not bothering the user with the long redraw process when
             // they are making fast edits.
+            // TODO: as a future improvement, it would be better UI to mark the graph as being
+            // rebuilt in case there's a lot of data and it takes a while to update it. In that
+            // case, also maybe best to defer all updates to subsequent steps until after the graph
+            // update is complete.
+            //
             if (this.graphRefreshTimerID) {
                 clearTimeout(this.graphRefreshTimerID);
             }
@@ -2876,7 +2871,7 @@ module EDDTableImport {
         }
 
         disambiguateAnAssayOrLine(assayOrLine: string, currentIndex: number):any {
-            console.log("Start of TypeDisambiguationStep.disambiguateAnAssayOrLine()");
+            // console.log("Start of TypeDisambiguationStep.disambiguateAnAssayOrLine()");
             var startTime = new Date();
             var selections: any, highest: number, assays: number[];
             selections = {

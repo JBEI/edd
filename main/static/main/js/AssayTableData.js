@@ -150,8 +150,7 @@ var EDDTableImport;
             // For some of these, changing them shouldn't actually affect processing until we implement
             // an overwrite-checking feature or something similar
             reProcessOnChange = ['#stdlayout', '#trlayout', '#hplclayout', '#prlayout', '#mdvlayout', '#biolectorlayout'];
-            $(reProcessOnChange.join(',')).on('click', this.reconfigure.bind(this)); // TODO:
-            // change back to queueReconfigure() for optimization!
+            $(reProcessOnChange.join(',')).on('click', this.queueReconfigure.bind(this));
         }
         // Start a timer to wait before calling the reconfigure routine.
         // This way we condense multiple possible events from the radio buttons and/or pulldown into one.
@@ -1267,15 +1266,7 @@ var EDDTableImport;
                     });
                 }
             }
-            this.queueInterpretRowTypePullDowns();
-        };
-        // Start a timer to wait before calling interpretRowDataTypePulldowns().
-        // This way we condense multiple events from pulldown auto-selection into a single event
-        IdentifyStructuresStep.prototype.queueInterpretRowTypePullDowns = function () {
-            if (this.interpretRowTypePullDownTImerID) {
-                clearTimeout(this.interpretRowTypePullDownTImerID);
-            }
-            this.interpretRowTypePullDownTImerID = setTimeout(this.interpretRowDataTypePulldowns.bind(this), 30);
+            this.interpretRowDataTypePulldowns();
         };
         // update state as a result of row datatype pulldown selection
         IdentifyStructuresStep.prototype.interpretRowDataTypePulldowns = function () {
@@ -1710,6 +1701,11 @@ var EDDTableImport;
             // Start a timer to wait before calling the routine that remakes the graph.
             // This way we're not bothering the user with the long redraw process when
             // they are making fast edits.
+            // TODO: as a future improvement, it would be better UI to mark the graph as being
+            // rebuilt in case there's a lot of data and it takes a while to update it. In that
+            // case, also maybe best to defer all updates to subsequent steps until after the graph
+            // update is complete.
+            //
             if (this.graphRefreshTimerID) {
                 clearTimeout(this.graphRefreshTimerID);
             }
@@ -1926,7 +1922,7 @@ var EDDTableImport;
             var table, body, uniqueLineNames, startTime, endTime, elapsedSeconds, t, hasRequiredInitialInputs;
             uniqueLineNames = this.identifyStructuresStep.uniqueLineNames;
             startTime = new Date();
-            console.log("Start of TypeDisambiguationStep.remakeLineSection()");
+            // console.log("Start of TypeDisambiguationStep.remakeLineSection()");
             this.currentlyVisibleLineObjSets.forEach(function (disam) {
                 disam.rowElementJQ.detach();
             });
