@@ -1,6 +1,8 @@
 from rest_framework.pagination import PageNumberPagination
 
-from jbei.edd.rest.edd import PAGE_SIZE_QUERY_PARAM, PAGE_NUMBER_QUERY_PARAM, DEFAULT_PAGE_SIZE
+from jbei.rest.clients.edd.api import (
+    DEFAULT_PAGE_SIZE, PAGE_NUMBER_QUERY_PARAM, PAGE_SIZE_QUERY_PARAM,
+)
 
 
 class ClientConfigurablePagination(PageNumberPagination):

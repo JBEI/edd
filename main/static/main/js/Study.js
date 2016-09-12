@@ -284,7 +284,7 @@ var StudyD;
             return redraw;
         };
         return ProgressiveFilteringWidget;
-    })();
+    }());
     StudyD.ProgressiveFilteringWidget = ProgressiveFilteringWidget;
     // A generic version of a filtering column in the filtering section beneath the graph area on the page,
     // meant to be subclassed for specific criteria.
@@ -584,7 +584,7 @@ var StudyD;
             return function () { return []; };
         };
         return GenericFilterSection;
-    })();
+    }());
     StudyD.GenericFilterSection = GenericFilterSection;
     var StrainFilterSection = (function (_super) {
         __extends(StrainFilterSection, _super);
@@ -613,7 +613,7 @@ var StudyD;
             });
         };
         return StrainFilterSection;
-    })(GenericFilterSection);
+    }(GenericFilterSection));
     StudyD.StrainFilterSection = StrainFilterSection;
     var CarbonSourceFilterSection = (function (_super) {
         __extends(CarbonSourceFilterSection, _super);
@@ -642,7 +642,7 @@ var StudyD;
             });
         };
         return CarbonSourceFilterSection;
-    })(GenericFilterSection);
+    }(GenericFilterSection));
     StudyD.CarbonSourceFilterSection = CarbonSourceFilterSection;
     var CarbonLabelingFilterSection = (function (_super) {
         __extends(CarbonLabelingFilterSection, _super);
@@ -671,7 +671,7 @@ var StudyD;
             });
         };
         return CarbonLabelingFilterSection;
-    })(GenericFilterSection);
+    }(GenericFilterSection));
     StudyD.CarbonLabelingFilterSection = CarbonLabelingFilterSection;
     var LineNameFilterSection = (function (_super) {
         __extends(LineNameFilterSection, _super);
@@ -696,7 +696,7 @@ var StudyD;
             });
         };
         return LineNameFilterSection;
-    })(GenericFilterSection);
+    }(GenericFilterSection));
     StudyD.LineNameFilterSection = LineNameFilterSection;
     var ProtocolFilterSection = (function (_super) {
         __extends(ProtocolFilterSection, _super);
@@ -721,7 +721,7 @@ var StudyD;
             });
         };
         return ProtocolFilterSection;
-    })(GenericFilterSection);
+    }(GenericFilterSection));
     StudyD.ProtocolFilterSection = ProtocolFilterSection;
     var AssaySuffixFilterSection = (function (_super) {
         __extends(AssaySuffixFilterSection, _super);
@@ -746,7 +746,7 @@ var StudyD;
             });
         };
         return AssaySuffixFilterSection;
-    })(GenericFilterSection);
+    }(GenericFilterSection));
     StudyD.AssaySuffixFilterSection = AssaySuffixFilterSection;
     var MetaDataFilterSection = (function (_super) {
         __extends(MetaDataFilterSection, _super);
@@ -762,7 +762,7 @@ var StudyD;
             this.sectionShortLabel = 'md' + this.metaDataID;
         };
         return MetaDataFilterSection;
-    })(GenericFilterSection);
+    }(GenericFilterSection));
     StudyD.MetaDataFilterSection = MetaDataFilterSection;
     var LineMetaDataFilterSection = (function (_super) {
         __extends(LineMetaDataFilterSection, _super);
@@ -784,7 +784,7 @@ var StudyD;
             });
         };
         return LineMetaDataFilterSection;
-    })(MetaDataFilterSection);
+    }(MetaDataFilterSection));
     StudyD.LineMetaDataFilterSection = LineMetaDataFilterSection;
     var AssayMetaDataFilterSection = (function (_super) {
         __extends(AssayMetaDataFilterSection, _super);
@@ -806,7 +806,7 @@ var StudyD;
             });
         };
         return AssayMetaDataFilterSection;
-    })(MetaDataFilterSection);
+    }(MetaDataFilterSection));
     StudyD.AssayMetaDataFilterSection = AssayMetaDataFilterSection;
     var MetaboliteCompartmentFilterSection = (function (_super) {
         __extends(MetaboliteCompartmentFilterSection, _super);
@@ -833,7 +833,7 @@ var StudyD;
             });
         };
         return MetaboliteCompartmentFilterSection;
-    })(GenericFilterSection);
+    }(GenericFilterSection));
     StudyD.MetaboliteCompartmentFilterSection = MetaboliteCompartmentFilterSection;
     var MeasurementFilterSection = (function (_super) {
         __extends(MeasurementFilterSection, _super);
@@ -867,7 +867,7 @@ var StudyD;
             this.loadPending = false;
         };
         return MeasurementFilterSection;
-    })(GenericFilterSection);
+    }(GenericFilterSection));
     StudyD.MeasurementFilterSection = MeasurementFilterSection;
     var MetaboliteFilterSection = (function (_super) {
         __extends(MetaboliteFilterSection, _super);
@@ -902,7 +902,7 @@ var StudyD;
             this.loadPending = false;
         };
         return MetaboliteFilterSection;
-    })(GenericFilterSection);
+    }(GenericFilterSection));
     StudyD.MetaboliteFilterSection = MetaboliteFilterSection;
     var ProteinFilterSection = (function (_super) {
         __extends(ProteinFilterSection, _super);
@@ -937,7 +937,7 @@ var StudyD;
             this.loadPending = false;
         };
         return ProteinFilterSection;
-    })(GenericFilterSection);
+    }(GenericFilterSection));
     StudyD.ProteinFilterSection = ProteinFilterSection;
     var GeneFilterSection = (function (_super) {
         __extends(GeneFilterSection, _super);
@@ -972,7 +972,7 @@ var StudyD;
             this.loadPending = false;
         };
         return GeneFilterSection;
-    })(GenericFilterSection);
+    }(GenericFilterSection));
     StudyD.GeneFilterSection = GeneFilterSection;
     // Called when the page loads.
     function prepareIt() {
@@ -1956,7 +1956,7 @@ var DataGridSpecLines = (function (_super) {
         StudyD.prepareAfterLinesTable();
     };
     return DataGridSpecLines;
-})(DataGridSpecBase);
+}(DataGridSpecBase));
 // When unchecked, this hides the set of Lines that are marked as disabled.
 var DGDisabledLinesWidget = (function (_super) {
     __extends(DGDisabledLinesWidget, _super);
@@ -2002,7 +2002,7 @@ var DGDisabledLinesWidget = (function (_super) {
         }
     };
     return DGDisabledLinesWidget;
-})(DataGridOptionWidget);
+}(DataGridOptionWidget));
 // A widget to toggle replicate grouping on and off
 var DGGroupStudyReplicatesWidget = (function (_super) {
     __extends(DGGroupStudyReplicatesWidget, _super);
@@ -2029,7 +2029,7 @@ var DGGroupStudyReplicatesWidget = (function (_super) {
         this._createdElements = true;
     };
     return DGGroupStudyReplicatesWidget;
-})(DataGridOptionWidget);
+}(DataGridOptionWidget));
 // This is a DataGridHeaderWidget derived from DGSearchWidget. It's a search field that offers
 // options for additional data types, querying the server for results.
 var DGLinesSearchWidget = (function (_super) {
@@ -2052,7 +2052,7 @@ var DGLinesSearchWidget = (function (_super) {
         container.appendChild(this.element);
     };
     return DGLinesSearchWidget;
-})(DGSearchWidget);
+}(DGSearchWidget));
 // A header widget to prepare the Carbon Balance table cells, and show or hide them.
 var DGShowCarbonBalanceWidget = (function (_super) {
     __extends(DGShowCarbonBalanceWidget, _super);
@@ -2132,7 +2132,7 @@ var DGShowCarbonBalanceWidget = (function (_super) {
         }
     };
     return DGShowCarbonBalanceWidget;
-})(DataGridHeaderWidget);
+}(DataGridHeaderWidget));
 var DataGridAssays = (function (_super) {
     __extends(DataGridAssays, _super);
     function DataGridAssays(dataGridSpec) {
@@ -2234,7 +2234,7 @@ var DataGridAssays = (function (_super) {
         graphObj.plotObject.draw();
     };
     return DataGridAssays;
-})(DataGrid);
+}(DataGrid));
 // The spec object that will be passed to DataGrid to create the Assays table(s)
 var DataGridSpecAssays = (function (_super) {
     __extends(DataGridSpecAssays, _super);
@@ -2831,7 +2831,7 @@ var DataGridSpecAssays = (function (_super) {
         StudyD.queueAssaysActionPanelShow();
     };
     return DataGridSpecAssays;
-})(DataGridSpecBase);
+}(DataGridSpecBase));
 // When unchecked, this hides the set of Assays that are marked as disabled.
 var DGDisabledAssaysWidget = (function (_super) {
     __extends(DGDisabledAssaysWidget, _super);
@@ -2873,7 +2873,7 @@ var DGDisabledAssaysWidget = (function (_super) {
         }
     };
     return DGDisabledAssaysWidget;
-})(DataGridOptionWidget);
+}(DataGridOptionWidget));
 // This is a DataGridHeaderWidget derived from DGSearchWidget. It's a search field that offers
 // options for additional data types, querying the server for results.
 var DGAssaysSearchWidget = (function (_super) {
@@ -2896,6 +2896,6 @@ var DGAssaysSearchWidget = (function (_super) {
         container.appendChild(this.element);
     };
     return DGAssaysSearchWidget;
-})(DGSearchWidget);
+}(DGSearchWidget));
 // use JQuery ready event shortcut to call prepareIt when page is ready
 $(function () { return StudyD.prepareIt(); });

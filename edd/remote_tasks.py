@@ -27,7 +27,7 @@ from edd_utils.celery_utils import send_stale_input_warning
 from edd_utils.celery_utils import send_resolution_message
 from edd_utils.celery_utils import make_standard_email_subject, email_admins
 from jbei.rest.auth import HmacAuth
-from jbei.ice.rest.ice import IceApi, parse_entry_id
+from jbei.rest.clients.ice import IceApi, parse_entry_id
 from main.models import Line, Strain
 
 
@@ -205,6 +205,9 @@ def link_ice_entry_to_study(self, edd_user_email, strain_pk, study_pk, study_url
         # TODO: after removing the workaround, use, ice_strain_id = str(strain.registry_id.), or if
         # using Python 3, maybe strain.registry_id.to_python()
         workaround_strain_entry_id = parse_entry_id(strain.registry_url)
+        if workaround_strain_entry_id is None:
+            logger.warning("Failed to extract strain ID from URL '%s'", strain.registry_url)
+            return ugettext('EDD strain contains invalid URL')
 
         # finish early if we don't have enough information to find the ICE entry for this strain
         # TODO: raise an exception here once strain data are more dependable (SYNBIO-1350)
@@ -217,7 +220,8 @@ def link_ice_entry_to_study(self, edd_user_email, strain_pk, study_pk, study_url
         # make a request via ICE's REST API to link the ICE strain to the EDD study that references
         # it
         study = line.study
-        ice = IceApi(auth=HmacAuth(key_id=settings.ICE_KEY_ID, username=edd_user_email))
+        ice = IceApi(auth=HmacAuth(key_id=settings.ICE_KEY_ID, username=edd_user_email),
+                     verify_ssl_cert=settings.VERIFY_ICE_CERT)
         ice.write_enabled = True
         ice.link_entry_to_study(str(workaround_strain_entry_id), study.pk, study_url, study.name,
                                 logger=logger, old_study_name=old_study_name)
@@ -335,7 +339,8 @@ def unlink_ice_entry_from_study(self, edd_user_email, study_pk, study_url, strai
                 return _STALE_OR_ERR_INPUT  # succeed after sending the warning
 
         # remove the study link from ICE
-        ice = IceApi(auth=HmacAuth(key_id=settings.ICE_KEY_ID, username=edd_user_email))
+        ice = IceApi(auth=HmacAuth(key_id=settings.ICE_KEY_ID, username=edd_user_email),
+                     verify_ssl_cert=settings.VERIFY_ICE_CERT)
         ice.write_enabled = True
         removed = ice.unlink_entry_from_study(strain_registry_id, study_pk, study_url,
                                               logger)

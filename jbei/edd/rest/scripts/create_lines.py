@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 from __future__ import division
 
 ####################################################################################################
-# set default source for ICE settings BEFORE importing any code from jbei.ice.rest.ice. Otherwise,
+# set default source for ICE settings BEFORE importing any code from jbei.rest.clients.ice. Otherwise,
 # code in that module will attempt to look for a django settings module and fail if django isn't
 # installed in the current virtualenv
 import os
@@ -11,7 +11,7 @@ import requests
 from django.utils.translation import ugettext
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
-from jbei.edd.rest.constants import METADATA_CONTEXT_LINE
+from jbei.rest.clients.edd.constants import METADATA_CONTEXT_LINE
 from jbei.utils import to_human_relevant_delta, UserInputTimer, session_login, TerminalFormats
 
 os.environ.setdefault('ICE_SETTINGS_MODULE', 'jbei.edd.rest.scripts.settings')
@@ -40,8 +40,8 @@ root_logger.setLevel(logging.DEBUG)
 root_logger.addHandler(console_handler)
 
 # TODO: why isn't this inherited from root? without these lines, get "No handlers could be found for
-#  logger "jbei.edd.rest.edd""
-edd_logger = logging.getLogger('jbei.edd.rest.edd')
+#  logger "jbei.rest.clients.edd""
+edd_logger = logging.getLogger('jbei.rest.clients.edd')
 edd_logger.setLevel(logging.ERROR)
 edd_logger.addHandler(console_handler)
 ####################################################################################################
@@ -53,14 +53,16 @@ import csv
 import locale
 import re
 from collections import namedtuple
-from jbei.rest.auth import SessionAuth as IceSessionAuth
-from jbei.rest.utils import is_url_secure, show_response_html, verify_edd_cert, verify_ice_cert
-from jbei.ice.rest.ice import IceApi, Strain as IceStrain
-from .settings import EDD_URL, ICE_URL, PRINT_FOUND_ICE_PARTS, PRINT_FOUND_EDD_STRAINS, \
-    SIMULATE_STRAIN_CREATION
-from jbei.edd.rest.edd import EddSessionAuth, EddApi
+from jbei.rest.auth import EddSessionAuth, IceSessionAuth
+from jbei.rest.clients import EddApi, IceApi
+from jbei.rest.clients.ice import Strain as IceStrain
+from jbei.rest.utils import is_url_secure, show_response_html
+from .settings import (
+    DEFAULT_LOCALE, EDD_REQUEST_TIMEOUT, EDD_URL, ICE_REQUEST_TIMEOUT, ICE_URL,
+    PRINT_FOUND_ICE_PARTS, PRINT_FOUND_EDD_STRAINS, SIMULATE_STRAIN_CREATION, VERIFY_EDD_CERT,
+    VERIFY_ICE_CERT,
+)
 
-DEFAULT_LOCALE = b'en_US.UTF-8'
 locale.setlocale(locale.LC_ALL, DEFAULT_LOCALE)
 
 MIN_COL_NUM = 1
@@ -427,7 +429,8 @@ def find_existing_strains(edd, ice_parts, existing_edd_strains, strains_by_part_
     for ice_part in ice_parts.values():
 
             # search for the strain by registry ID. Note we use search instead of .get() until the
-            # database enforces uniqueness constrains for UUID (EDD-158)
+            # database consistently contains/requires ICE UUID's and enforces uniqueness constrains for
+            # them (EDD-158)
             edd_strains = edd.search_strains(registry_id=ice_part.uuid)
 
             # if one or more strains are found with this UUID
@@ -457,7 +460,8 @@ def find_existing_strains(edd, ice_parts, existing_edd_strains, strains_by_part_
                 existing_edd_strains[ice_part.part_id] = existing_strain
                 strains_by_part_number[ice_part.part_id] = existing_strain
 
-            # if no EDD strains were found with this UUID, look for candidate strains by URL
+            # if no EDD strains were found with this UUID, look for candidate strains by URL.
+            # Code from here forward is workarounds to for EDD-158
             else:
                 print("ICE entry %s couldn't be located in EDD's database by UUID. Searching by "
                       "name and URL to help avoid strain curation problems." % ice_part.part_id)
@@ -944,13 +948,13 @@ class Performance(object):
 
         zero_time_delta = overall_start_time - overall_start_time
 
-        self.csv_parse_delta = None
-        self.ice_communication_delta = None
-        self.edd_communication_delta = None
-        self.edd_login_delta = None
-        self.waiting_for_user_delta = None
+        self.csv_parse_delta = zero_time_delta
+        self.ice_communication_delta = zero_time_delta
+        self.edd_communication_delta = zero_time_delta
+        self.edd_login_delta = zero_time_delta
+        self.waiting_for_user_delta = zero_time_delta
         self._overall_end_time = None
-        self._total_time = None
+        self._total_time = zero_time_delta
 
     @property
     def overall_end_time(self):
@@ -1275,12 +1279,9 @@ def main():
         if not is_url_secure(ICE_URL, print_err_msg=True, app_name='ICE'):
             return 0
 
-        verify_edd_ssl_cert = verify_edd_cert(EDD_URL)
-        verify_ice_ssl_cert = verify_ice_cert(ICE_URL)
-
         # silence library warnings if we're skipping SSL certificate verification for local
         # testing. otherwise the warnings will swamp useful output from this script
-        if not (verify_edd_ssl_cert and verify_ice_ssl_cert):
+        if not (VERIFY_EDD_CERT and VERIFY_ICE_CERT):
             requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
         # compile the input pattern to catch problems early
@@ -1315,351 +1316,349 @@ def main():
         ##############################
         # log into EDD
         ##############################
-        login_application = 'EDD'
         # workaround for lack of paging support in the initial client-side REST API library.
-        # requests to studies with an  existing large num of lines seem to take too long to
+        # requests to studies with an existing large num of lines seem to take too long to
         # service since they're all being included. TODO: support should be in place now to
         # optimize this out
-        workaround_request_timeout = 20
         performance.edd_login_delta = zero_time_delta
         login_start_time = arrow.utcnow()
         prior_user_input_delta = input_timer.wait_time
-        edd_login_details = session_login(EddSessionAuth, EDD_URL, login_application,
+        edd_login_details = session_login(EddSessionAuth, EDD_URL, 'EDD',
                                           username_arg=args.username, password_arg=args.password,
                                           user_input=input_timer, print_result=True,
-                                          timeout=workaround_request_timeout,
-                                          verify_ssl_cert=verify_edd_ssl_cert)
+                                          verify_ssl_cert=VERIFY_EDD_CERT,
+                                          timeout=EDD_REQUEST_TIMEOUT)
         edd_session_auth = edd_login_details.session_auth
         performance.edd_login_delta = (arrow.utcnow() - login_start_time) + \
                                       (input_timer.wait_time - prior_user_input_delta)
 
-        with edd_session_auth:
+        edd = EddApi(base_url=EDD_URL, auth=edd_session_auth, verify=VERIFY_EDD_CERT)
+        edd.write_enabled = True
+        edd.timeout = EDD_REQUEST_TIMEOUT
 
-            edd = EddApi(base_url=EDD_URL, session_auth=edd_session_auth)
-            edd.write_enabled = True
+        ############################
+        # log into ICE
+        ############################
+        # ( as early as possible to prevent asking for other user input prior to login failure)
+        ice_login_details = session_login(IceSessionAuth, ICE_URL, 'ICE',
+                                      username_arg=edd_login_details.username,
+                                      password_arg=edd_login_details.password,
+                                      user_input=input_timer, print_result=True,
+                                      verify_ssl_cert=VERIFY_ICE_CERT,
+                                      timeout=ICE_REQUEST_TIMEOUT)
 
-            ############################
-            # log into ICE
-            ############################
-            # ( as early as possible to prevent asking for other user input prior to login failure)
-            ice_login_details = session_login(IceSessionAuth, ICE_URL, 'ICE',
-                                          username_arg=edd_login_details.username,
-                                          password_arg=edd_login_details.password,
-                                          user_input=input_timer, print_result=True,
-                                          verify_ssl_cert=verify_ice_ssl_cert)
+        ice_session_auth = ice_login_details.session_auth
 
-            ice_session_auth = ice_login_details.session_auth
+        ice = IceApi(ice_session_auth, ICE_URL, verify_ssl_cert=VERIFY_ICE_CERT)
+        ice.timeout = ICE_REQUEST_TIMEOUT
 
-            with ice_session_auth:
-                ice = IceApi(ice_session_auth, ICE_URL)
+        print('')
+        print(OUTPUT_SEPARATOR)
+        print('Checking prerequisites...')
+        print(OUTPUT_SEPARATOR)
 
-                print('')
-                print(OUTPUT_SEPARATOR)
-                print('Checking prerequisites...')
-                print(OUTPUT_SEPARATOR)
+        # Get EDD deployment-specific metadata types requested for line creation. At
+        # present, we've hard-coded known JBEI values for the -copy-sample-locations
+        # parameter, but in the future we'll probably allow for arbitrary metadata
+        # additions based on CSV input. Note: we should do this early to detect input errors
+        # Python 2/3 cross-compatible print *without* a line break
 
-                # Get EDD deployment-specific metadata types requested for line creation. At
-                # present, we've hard-coded known JBEI values for the -copy-sample-locations
-                # parameter, but in the future we'll probably allow for arbitrary metadata
-                # additions based on CSV input. Note: we should do this early to detect input errors
-                # Python 2/3 cross-compatible print *without* a line break
+        sys.stdout.write('Querying EDD for line metatadata types...')
+        line_metadata_types = get_line_metadata_types(edd)
+        print('done')
+        has_required_metadata_types = False
+        if not line_metadata_types:
+            print('No line metadata types were found in EDD. As a result, no metadata can '
+                  'be copied to the lines created by this script, including archival '
+                  'plate/well locations.')
+            result = input_timer.user_input('Do you want to continue and create lines '
+                                            'without any metadata? (Y/n): ')
+            if 'Y' != result and 'YES' != result:
+                return 0
+        else:
+            print('Found %(count)d line metadata types: \n\t%(type_names)s' % {
+                'count': len(line_metadata_types),
+                'type_names': '\n\t'.join(line_metadata_types.keys())
+            })
 
-                sys.stdout.write('Querying EDD for line metatadata types...')
-                line_metadata_types = get_line_metadata_types(edd)
-                print('done')
-                has_required_metadata_types = False
-                if not line_metadata_types:
-                    print('No line metadata types were found in EDD. As a result, no metadata can '
-                          'be copied to the lines created by this script, including archival '
-                          'plate/well locations.')
-                    result = input_timer.user_input('Do you want to continue and create lines '
-                                                    'without any metadata? (Y/n): ')
+            if args.copy_archival_well_locations:
+
+                has_required_metadata_types = (line_metadata_types[
+                                                   PLATE_LOCATION_METADATA_NAME]) and (
+                                        line_metadata_types[WELL_LOCATION_METADATA_NAME])
+
+                if not has_required_metadata_types:
+                    result = input_timer.user_input(
+                            "EDD line metadata types couldn't be found matching the search "
+                            'names "%s" and "%s". \nAs a result, archival plate/well locations '
+                            "can't be copied to experimental lines in EDD as they're "
+                            "created. \nDo you want to continue without copying archival "
+                            "sample locations to the experimental lines? (Y/n): " % (
+                                PLATE_LOCATION_METADATA_NAME,
+                                WELL_LOCATION_METADATA_NAME)).upper()
                     if 'Y' != result and 'YES' != result:
                         return 0
+
+        ####################################################################################
+        # Read in line creation inputs from the CSV, comparing with metadata from EDD
+        ####################################################################################
+        print('')
+        print('Reading CSV file...')
+        print(OUTPUT_SEPARATOR)
+        csv_parse_start_time = arrow.utcnow()
+        csv_summary = parse_csv(args.file_name, line_metadata_types)
+        performance.csv_parse_delta = arrow.utcnow() - csv_parse_start_time
+        csv_line_creation_count = len(csv_summary.line_creation_inputs)
+        csv_unique_part_numbers = csv_summary.unique_part_numbers
+        csv_part_number_count = len(csv_unique_part_numbers)
+        metadata_columns = csv_summary.metadata_columns.values()
+
+        print('')
+        print('Done reading file "%s":' % os.path.basename(args.file_name))
+        print('\tLine creation inputs read: %d ' % csv_line_creation_count)
+        print('\tUnique ICE part numbers read: %d ' % len(csv_unique_part_numbers))
+        print('\tMetadata columns found: %(count)d %(list)s' % {
+            'count': len(csv_summary.metadata_columns),
+            'list': str(metadata_columns) if metadata_columns else ''})
+        print('\tIgnored line creation rows (missing line name or unparseable part '
+              'number): %d' % csv_summary.unmatched_data_row_count)
+        full_plate_count = ((csv_line_creation_count + csv_summary.unmatched_data_row_count)
+                            / 96)
+        unmatched = ' (incl. unmatched)' if csv_summary.unmatched_data_row_count else ''
+        print('\t# 96-well plates these lines would fit into%(unmatched)s: '
+              '%(plate_count).2f' % {
+                    'unmatched': unmatched,
+                    'plate_count': full_plate_count,
+                })
+        print('\tTotal rows in file: %d' % csv_summary.total_rows)
+
+        if not csv_line_creation_count:
+            print('Aborting line creation. No lines to create!')
+            return 0
+
+        if not args.silent:
+            # force user to verify the expected # of lines in the study
+            print('')
+            result = input_timer.user_input(
+                'Does this file summary match your expectations [Y/n]: ').upper()
+            if ('Y' != result) and ('YES' != result):
+                print(
+                'Aborting line creation. Please verify that your CSV file has '
+                'the correct content before proceeding with this tool.')
+                return 0
+        else:
+            print(
+            'User confirmation of study write permissions and line creation totals was '
+            'silenced via %s' % silent_param)
+
+
+        ####################################################################################
+        # Query user for the study to create lines in, verifying that the study exists /
+        # the user has access to it
+        ####################################################################################
+        study = None
+
+        study_number = str(args.study) if args.study else None
+        print("You'll need to provide the number of the EDD study to create lines in.")
+        print('You can find the study number by loading the study in a browser and looking '
+              'at the URL (e.g. https://edd.jbei.org/study/{study number}/')
+        STUDY_PROMPT = 'Which EDD study number should lines be created in? '
+        if not study_number:
+            study_number = input_timer.user_input(STUDY_PROMPT)
+
+        # query user regarding which study to use, then verify it exists in EDD
+        digit = re.compile(r'^\s*(\d+)\s*$')
+        while not study:
+            match = digit.match(study_number)
+            if not match:
+                print('"%s" is not an integer' % study_number)
+                continue
+
+            sys.stdout.write('Searching EDD for study %s...' % study_number)
+            study_number = int(match.group(1))
+            study = edd.get_study(study_number)
+
+            if not study:
+                print(' failed! :-<')
+                print("Study %(study_num)d couldn't be found in EDD at %(edd_url)s. "
+                      "Maybe this study number is from a different EDD deployment, or has "
+                      "the wrong access privileges for user %(username)s?"
+                      % {'study_num': study_number,
+                         'edd_url': EDD_URL,
+                         'username': edd_login_details.username})
+
+                study_number = input_timer.user_input(STUDY_PROMPT)
+            else:
+                print('Success!')
+
+        if study:
+            print('Found study %d in EDD, named "%s "' % (study_number, study.name))
+
+        # force user to manually verify study permissions, which we don't have REST API
+        # support for yet. prevents a line creation error much later in the process after
+        # all the initial communication / checks have finished
+        if not args.silent:
+            print("Write permissions on the EDD study are required to create lines in it, "
+                  "but this stopgap script doesn't have support for checking for study "
+                  "permissions. \nYou should manually verify study write permissions to "
+                  "prevent an error later in the process (typically in ~20-30 mins from "
+                  "now). ")
+            result = input_timer.user_input("Have you set/verified write permissions on "
+                                           "study %d? (Y/n): " % study_number).upper()
+            if ('Y' != result) and ('YES' != result):
+                print('Aborting line creation. Please set study permissions and re-run '
+                      'this script.')
+                return 0
+
+        continue_creation = prevent_duplicate_line_names(edd, study_number, csv_summary,
+                                                         input_timer)
+        if not continue_creation:
+            print('Aborting line creation.')
+            return 0
+
+        ####################################################################################
+        # Loop over part numbers in the spreadsheet, looking each one up in ICE to get its
+        # UUID (the only identifier currently stored in EDD)
+        ####################################################################################
+
+        # extract only the unique part numbers referenced from the CSV. it's likely that
+        # many lines will reference the same strains
+        ice_entries_dict = get_ice_entries(ice, csv_unique_part_numbers,
+                                           print_search_comparison=PRINT_FOUND_ICE_PARTS)
+
+        found_ice_entry_count = len(ice_entries_dict)
+
+        if not found_ice_entry_count:
+            print('')
+            print('No ICE entries were found for the part numbers listed in the CSV file. '
+                  'Aborting line creation since there\'s insufficient input to create any '
+                  'lines in EDD.')
+            return 0
+
+        if found_ice_entry_count < csv_part_number_count:
+            print('')
+            print("WARNING: Not all parts listed in the CSV file were found in ICE (see "
+                  "part numbers above)")
+            print("Do you want to create EDD lines for the entries that were found? You'll "
+                  "have to create the rest manually, using output above as a reference.")
+            result = input_timer.user_input("Create EDD lines for %(found)d of %(total)d "
+                                           "ICE entries? Recall that each ICE entry may "
+                                           "have many associated lines (Y/n): " % {
+                                                'found': len(ice_entries_dict),
+                                                'total': len(csv_unique_part_numbers)
+                                           }).upper()
+            if ('Y' != result) and ('YES' != result):
+                print('Aborting line creation.')
+                return 0
+
+        ####################################################################################
+        # Search ICE for archival well locations if requested.
+        ####################################################################################
+        # note: we should do this first to catch input / ICE data consistency errors first
+        # before we consider making any data changes below
+        if args.copy_archival_well_locations:
+            print('')
+            print(OUTPUT_SEPARATOR)
+            print('Searching for archival well locations...')
+            print(OUTPUT_SEPARATOR)
+
+            if has_required_metadata_types:
+
+                well_locations_by_part = cache_archival_well_locations(ice,
+                                                                 sample_label_pattern,
+                                                                 ice_entries_dict)
+
+                # prompt user if any archival sample locations were'nt found
+                found_sample_location_count = len(well_locations_by_part)
+                if not well_locations_by_part or (found_sample_location_count !=
+                                                  found_ice_entry_count):
+                    print('')
+                    print("Unique archival well locations couldn't be found for all of "
+                          "the ICE entries. Do you want to proceed with line creation, "
+                          "only copying sample locations for %(found)d of %(total)d "
+                          "ICE strains? Recall that each strain may be used as the basis "
+                          "for many experimental lines in EDD." % {
+                             'found': found_sample_location_count,
+                             'total': found_ice_entry_count, })
+                    reply = input_timer.user_input('Create lines with partial or missing '
+                                                  'location data? (Y/n): ')
+                    reply = reply.lower()
+                    if ('y' != reply) and ('yes' != reply):
+                        return 0
+
                 else:
-                    print('Found %(count)d line metadata types: \n\t%(type_names)s' % {
-                        'count': len(line_metadata_types),
-                        'type_names': '\n\t'.join(line_metadata_types.keys())
-                    })
-
-                    if args.copy_archival_well_locations:
-
-                        has_required_metadata_types = (line_metadata_types[
-                                                           PLATE_LOCATION_METADATA_NAME]) and (
-                                                line_metadata_types[WELL_LOCATION_METADATA_NAME])
-
-                        if not has_required_metadata_types:
-                            result = input_timer.user_input(
-                                    "EDD line metadata types couldn't be found matching the search "
-                                    'names "%s" and "%s". \nAs a result, archival plate/well locations '
-                                    "can't be copied to experimental lines in EDD as they're "
-                                    "created. \nDo you want to continue without copying archival "
-                                    "sample locations to the experimental lines? (Y/n): " % (
-                                        PLATE_LOCATION_METADATA_NAME,
-                                        WELL_LOCATION_METADATA_NAME)).upper()
-                            if 'Y' != result and 'YES' != result:
-                                return 0
-
-                ####################################################################################
-                # Read in line creation inputs from the CSV, comparing with metadata from EDD
-                ####################################################################################
-                print('')
-                print('Reading CSV file...')
-                print(OUTPUT_SEPARATOR)
-                csv_parse_start_time = arrow.utcnow()
-                csv_summary = parse_csv(args.file_name, line_metadata_types)
-                performance.csv_parse_delta = arrow.utcnow() - csv_parse_start_time
-                csv_line_creation_count = len(csv_summary.line_creation_inputs)
-                csv_unique_part_numbers = csv_summary.unique_part_numbers
-                csv_part_number_count = len(csv_unique_part_numbers)
-                metadata_columns = csv_summary.metadata_columns.values()
-
-                print('')
-                print('Done reading file "%s":' % os.path.basename(args.file_name))
-                print('\tLine creation inputs read: %d ' % csv_line_creation_count)
-                print('\tUnique ICE part numbers read: %d ' % len(csv_unique_part_numbers))
-                print('\tMetadata columns found: %(count)d %(list)s' % {
-                    'count': len(csv_summary.metadata_columns),
-                    'list': str(metadata_columns) if metadata_columns else ''})
-                print('\tIgnored line creation rows (missing line name or unparseable part '
-                      'number): %d' % csv_summary.unmatched_data_row_count)
-                full_plate_count = ((csv_line_creation_count + csv_summary.unmatched_data_row_count)
-                                    / 96)
-                unmatched = ' (incl. unmatched)' if csv_summary.unmatched_data_row_count else ''
-                print('\t# 96-well plates these lines would fit into%(unmatched)s: '
-                      '%(plate_count).2f' % {
-                            'unmatched': unmatched,
-                            'plate_count': full_plate_count,
-                        })
-                print('\tTotal rows in file: %d' % csv_summary.total_rows)
-
-                if not csv_line_creation_count:
-                    print('Aborting line creation. No lines to create!')
-                    return 0
-
-                if not args.silent:
-                    # force user to verify the expected # of lines in the study
                     print('')
-                    result = input_timer.user_input(
-                        'Does this file summary match your expectations [Y/n]: ').upper()
-                    if ('Y' != result) and ('YES' != result):
-                        print(
-                        'Aborting line creation. Please verify that your CSV file has '
-                        'the correct content before proceeding with this tool.')
-                        return 0
-                else:
-                    print(
-                    'User confirmation of study write permissions and line creation totals was '
-                    'silenced via %s' % silent_param)
+                    print("Found unique archival well locations for all %(total)d ICE "
+                          "entries. " % {
+                              'total': found_ice_entry_count, })
+
+                # copy archival sample location to experimental lines about to be created
+                plate_location_pk = line_metadata_types[PLATE_LOCATION_METADATA_NAME].pk
+                well_location_pk = line_metadata_types[WELL_LOCATION_METADATA_NAME].pk
+                for line_creation_input in csv_summary.line_creation_inputs:
+                    part_number = line_creation_input.local_ice_part_number
+                    sample_location = well_locations_by_part.get(part_number)
+                    if sample_location:
+                        line_creation_input.metadata[plate_location_pk] = \
+                            sample_location.plate
+                        line_creation_input.metadata[well_location_pk] = \
+                            sample_location.well
 
 
-                ####################################################################################
-                # Query user for the study to create lines in, verifying that the study exists /
-                # the user has access to it
-                ####################################################################################
-                study = None
+            else:
+                print("Skipping search for archival well locations since "
+                      "required metadata types weren't found earlier in the process.")
 
-                study_number = str(args.study) if args.study else None
-                print("You'll need to provide the number of the EDD study to create lines in.")
-                print('You can find the study number by loading the study in a browser and looking '
-                      'at the URL (e.g. https://edd.jbei.org/study/{study number}/')
-                STUDY_PROMPT = 'Which EDD study number should lines be created in? '
-                if not study_number:
-                    study_number = input_timer.user_input(STUDY_PROMPT)
+        print('')
+        print(OUTPUT_SEPARATOR)
+        print('Searching for pre-existing strains in EDD...')
+        print(OUTPUT_SEPARATOR)
 
-                # query user regarding which study to use, then verify it exists in EDD
-                digit = re.compile(r'^\s*(\d+)\s*$')
-                while not study:
-                    match = digit.match(study_number)
-                    if not match:
-                        print('"%s" is not an integer' % study_number)
-                        continue
+        ####################################################################################
+        # Search EDD for existing strains using UUID's queried from ICE
+        ####################################################################################
+        # keep parts in same order as spreadsheet to allow resume following an unanticipated
+        # error
+        existing_edd_strains = collections.OrderedDict()
+        non_existent_edd_strains = []
+        strains_by_part_number = collections.OrderedDict()  # maps ICE part # -> EDD Strain
 
-                    sys.stdout.write('Searching EDD for study %s...' % study_number)
-                    study_number = int(match.group(1))
-                    study = edd.get_study(study_number)
+        # for consistency, print out part numbers from the CSV that we won't be looking for
+        # in EDD because they couldn't be found in ICE
+        if found_ice_entry_count != csv_part_number_count:
+            for part_number in csv_unique_part_numbers:
+                if part_number not in ice_entries_dict:
+                    logger.warning('Skipping EDD strain creation for part number "%s" that '
+                                   'wasn\'t found in ICE' % part_number)
+            print('')  # add space between the warnings and summary output
 
-                    if not study:
-                        print(' failed! :-<')
-                        print("Study %(study_num)d couldn't be found in EDD at %(edd_url)s. "
-                              "Maybe this study number is from a different EDD deployment, or has "
-                              "the wrong access privileges for user %(username)s?"
-                              % {'study_num': study_number,
-                                 'edd_url': EDD_URL,
-                                 'username': edd_login_details.username})
+        success = find_existing_strains(edd, ice_entries_dict, existing_edd_strains,
+                                        strains_by_part_number, non_existent_edd_strains)
+        if not success:
+            return 0
 
-                        study_number = input_timer.user_input(STUDY_PROMPT)
-                    else:
-                        print('Success!')
+        if PRINT_FOUND_EDD_STRAINS:
+            print_edd_strains(existing_edd_strains, non_existent_edd_strains)
 
-                if study:
-                    print('Found study %d in EDD, named "%s "' % (study_number, study.name))
+        # If some strains were missing in EDD, confirm with user, and then create them
+        strains_created = create_missing_strains(edd, non_existent_edd_strains,
+                                                 strains_by_part_number,
+                                                 found_ice_entry_count, input_timer)
+        if not strains_created:
+            return 1
 
-                # force user to manually verify study permissions, which we don't have REST API
-                # support for yet. prevents a line creation error much later in the process after
-                # all the initial communication / checks have finished
-                if not args.silent:
-                    print("Write permissions on the EDD study are required to create lines in it, "
-                          "but this stopgap script doesn't have support for checking for study "
-                          "permissions. \nYou should manually verify study write permissions to "
-                          "prevent an error later in the process (typically in ~20-30 mins from "
-                          "now). ")
-                    result = input_timer.user_input("Have you set/verified write permissions on "
-                                                   "study %d? (Y/n): " % study_number).upper()
-                    if ('Y' != result) and ('YES' != result):
-                        print('Aborting line creation. Please set study permissions and re-run '
-                              'this script.')
-                        return 0
+        ####################################################################################
+        # Create new lines!
+        ####################################################################################
 
-                continue_creation = prevent_duplicate_line_names(edd, study_number, csv_summary,
-                                                                 input_timer)
-                if not continue_creation:
-                    print('Aborting line creation.')
-                    return 0
+        print('')
+        print(OUTPUT_SEPARATOR)
+        print('Creating %d new lines in EDD study %d...' % (csv_line_creation_count,
+                                                            study_number))
+        print(OUTPUT_SEPARATOR)
 
-                ####################################################################################
-                # Loop over part numbers in the spreadsheet, looking each one up in ICE to get its
-                # UUID (the only identifier currently stored in EDD)
-                ####################################################################################
-
-                # extract only the unique part numbers referenced from the CSV. it's likely that
-                # many lines will reference the same strains
-                ice_entries_dict = get_ice_entries(ice, csv_unique_part_numbers,
-                                                   print_search_comparison=PRINT_FOUND_ICE_PARTS)
-
-                found_ice_entry_count = len(ice_entries_dict)
-
-                if not found_ice_entry_count:
-                    print('')
-                    print('No ICE entries were found for the part numbers listed in the CSV file. '
-                          'Aborting line creation since there\'s insufficient input to create any '
-                          'lines in EDD.')
-                    return 0
-
-                if found_ice_entry_count < csv_part_number_count:
-                    print('')
-                    print("WARNING: Not all parts listed in the CSV file were found in ICE (see "
-                          "part numbers above)")
-                    print("Do you want to create EDD lines for the entries that were found? You'll "
-                          "have to create the rest manually, using output above as a reference.")
-                    result = input_timer.user_input("Create EDD lines for %(found)d of %(total)d "
-                                                   "ICE entries? Recall that each ICE entry may "
-                                                   "have many associated lines (Y/n): " % {
-                                                        'found': len(ice_entries_dict),
-                                                        'total': len(csv_unique_part_numbers)
-                                                   }).upper()
-                    if ('Y' != result) and ('YES' != result):
-                        print('Aborting line creation.')
-                        return 0
-
-                ####################################################################################
-                # Search ICE for archival well locations if requested.
-                ####################################################################################
-                # note: we should do this first to catch input / ICE data consistency errors first
-                # before we consider making any data changes below
-                if args.copy_archival_well_locations:
-                    print('')
-                    print(OUTPUT_SEPARATOR)
-                    print('Searching for archival well locations...')
-                    print(OUTPUT_SEPARATOR)
-
-                    if has_required_metadata_types:
-
-                        well_locations_by_part = cache_archival_well_locations(ice,
-                                                                         sample_label_pattern,
-                                                                         ice_entries_dict)
-
-                        # prompt user if any archival sample locations were'nt found
-                        found_sample_location_count = len(well_locations_by_part)
-                        if not well_locations_by_part or (found_sample_location_count !=
-                                                          found_ice_entry_count):
-                            print('')
-                            print("Unique archival well locations couldn't be found for all of "
-                                  "the ICE entries. Do you want to proceed with line creation, "
-                                  "only copying sample locations for %(found)d of %(total)d "
-                                  "ICE strains? Recall that each strain may be used as the basis "
-                                  "for many experimental lines in EDD." % {
-                                     'found': found_sample_location_count,
-                                     'total': found_ice_entry_count, })
-                            reply = input_timer.user_input('Create lines with partial or missing '
-                                                          'location data? (Y/n): ')
-                            reply = reply.lower()
-                            if ('y' != reply) and ('yes' != reply):
-                                return 0
-
-                        else:
-                            print('')
-                            print("Found unique archival well locations for all %(total)d ICE "
-                                  "entries. " % {
-                                      'total': found_ice_entry_count, })
-
-                        # copy archival sample location to experimental lines about to be created
-                        plate_location_pk = line_metadata_types[PLATE_LOCATION_METADATA_NAME].pk
-                        well_location_pk = line_metadata_types[WELL_LOCATION_METADATA_NAME].pk
-                        for line_creation_input in csv_summary.line_creation_inputs:
-                            part_number = line_creation_input.local_ice_part_number
-                            sample_location = well_locations_by_part.get(part_number)
-                            if sample_location:
-                                line_creation_input.metadata[plate_location_pk] = \
-                                    sample_location.plate
-                                line_creation_input.metadata[well_location_pk] = \
-                                    sample_location.well
-
-
-                    else:
-                        print("Skipping search for archival well locations since "
-                              "required metadata types weren't found earlier in the process.")
-
-                print('')
-                print(OUTPUT_SEPARATOR)
-                print('Searching for pre-existing strains in EDD...')
-                print(OUTPUT_SEPARATOR)
-
-                ####################################################################################
-                # Search EDD for existing strains using UUID's queried from ICE
-                ####################################################################################
-                # keep parts in same order as spreadsheet to allow resume following an unanticipated
-                # error
-                existing_edd_strains = collections.OrderedDict()
-                non_existent_edd_strains = []
-                strains_by_part_number = collections.OrderedDict()  # maps ICE part # -> EDD Strain
-
-                # for consistency, print out part numbers from the CSV that we won't be looking for
-                # in EDD because they couldn't be found in ICE
-                if found_ice_entry_count != csv_part_number_count:
-                    for part_number in csv_unique_part_numbers:
-                        if part_number not in ice_entries_dict:
-                            logger.warning('Skipping EDD strain creation for part number "%s" that '
-                                           'wasn\'t found in ICE' % part_number)
-                    print('')  # add space between the warnings and summary output
-
-                success = find_existing_strains(edd, ice_entries_dict, existing_edd_strains,
-                                                strains_by_part_number, non_existent_edd_strains)
-                if not success:
-                    return 0
-
-                if PRINT_FOUND_EDD_STRAINS:
-                    print_edd_strains(existing_edd_strains, non_existent_edd_strains)
-
-                # If some strains were missing in EDD, confirm with user, and then create them
-                strains_created = create_missing_strains(edd, non_existent_edd_strains,
-                                                         strains_by_part_number,
-                                                         found_ice_entry_count, input_timer)
-                if not strains_created:
-                    return 1
-
-                ####################################################################################
-                # Create new lines!
-                ####################################################################################
-
-                print('')
-                print(OUTPUT_SEPARATOR)
-                print('Creating %d new lines in EDD study %d...' % (csv_line_creation_count,
-                                                                    study_number))
-                print(OUTPUT_SEPARATOR)
-
-                create_lines(edd, ice, study_number, csv_summary, strains_by_part_number,
-                             line_metadata_types)
+        create_lines(edd, ice, study_number, csv_summary, strains_by_part_number,
+                     line_metadata_types)
     except NonStrainPartsError as nsp:
         # user output already handled above
         return 1
@@ -1671,9 +1670,9 @@ def main():
         if input_timer:
             performance.waiting_for_user_delta = input_timer.wait_time
         if edd:
-            performance.edd_communication_delta = edd.request_generator.wait_time
+            performance.edd_communication_delta = edd.session.wait_time
         if ice:
-            performance.ice_communication_delta = ice.request_generator.wait_time
+            performance.ice_communication_delta = ice.session.wait_time
         performance.overall_end_time = arrow.utcnow()
         performance.print_summary()
 

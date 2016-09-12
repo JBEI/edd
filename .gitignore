@@ -3,6 +3,7 @@
 *.swp
 .pydevproject
 .idea
+tscommand-*
 
 # per-machine configuration file; contains secrets, DO NOT CHECK-IN
 server.cfg
@@ -10,6 +11,7 @@ secrets.env
 
 # per-machine local settings file; this will override default settigns with local changes
 edd/settings/local.py
+docker-compose.override.yml
 # also ignore any local media/upload folders
 /media
 /upload

@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import unicode_literals
 
 ####################################################################################################
-# set default source for ICE settings BEFORE importing any code from jbei.ice.rest.ice. Otherwise,
+# set default source for ICE settings BEFORE importing any code from jbei.rest.clients.ice. Otherwise,
 # code in that module will attempt to look for a django settings module and fail if django isn't
 # installed in the current virtualenv
 import json
@@ -70,14 +70,16 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 from requests.exceptions import HTTPError
 from urlparse import urlparse
 
-from jbei.rest.auth import SessionAuth as IceSessionAuth
-from jbei.edd.rest.edd import (EddApi, EddSessionAuth)
-from jbei.ice.rest.ice import IceApi, Strain as IceStrain, ICE_ENTRY_TYPES
-from jbei.rest.utils import is_url_secure, verify_edd_cert, is_edd_test_instance_url, \
-    is_ice_test_instance_url, verify_ice_cert
+from jbei.rest.auth import EddSessionAuth, IceSessionAuth
+from jbei.rest.clients import EddApi, IceApi
+from jbei.rest.clients.ice import Strain as IceStrain
+from jbei.rest.clients.ice.api import ICE_ENTRY_TYPES
+from jbei.rest.utils import is_url_secure
 from jbei.utils import to_human_relevant_delta, UserInputTimer, session_login, TYPICAL_UUID_PATTERN
 
-from settings import EDD_URL, ICE_URL
+from .settings import (EDD_URL, EDD_PRODUCTION_HOSTNAMES, ICE_PRODUCTION_HOSTNAMES, ICE_URL,
+    VERIFY_EDD_CERT,
+    VERIFY_ICE_CERT, EDD_REQUEST_TIMEOUT, ICE_REQUEST_TIMEOUT)
 
 
 ####################################################################################################
@@ -86,7 +88,6 @@ from settings import EDD_URL, ICE_URL
 # process large-ish result batches in the hope that we've stumbled on an good size to make
 # processing efficient in aggregate
 EDD_RESULT_PAGE_SIZE = ICE_RESULT_PAGE_SIZE = 100
-EDD_REQUEST_TIMEOUT = ICE_REQUEST_TIMEOUT = (10, 10)  # timeouts in seconds = (connection, response)
 
 ####################################################################################################
 
@@ -120,14 +121,17 @@ class Performance(object):
         #######################################
         # time tracking
         #######################################
-        self._overall_start_time = arrow.utcnow()
+        now = arrow.utcnow()
+        zero_timedelta = now - now
+
+        self._overall_start_time = now
         self._overall_end_time = None
         self._total_time = None
-        self.ice_communication_time = None
-        self.edd_communication_time = None
+        self.ice_communication_time = zero_timedelta
+        self.edd_communication_time = zero_timedelta
         self.ice_entry_scan_start_time = None
-        self.ice_entry_scan_time = None
-        self.edd_strain_scan_time = None
+        self.ice_entry_scan_time = zero_timedelta
+        self.edd_strain_scan_time = zero_timedelta
 
     def completed_edd_strain_scan(self):
         self.edd_strain_scan_time = arrow.utcnow() - self._overall_start_time
@@ -304,26 +308,22 @@ def build_perl_study_url(local_study_pk, edd_hostname, https=False):
     }
 
 
-def is_development_url(url):
+def is_edd_production_url(url):
     """
-    Tests whether the input URL references a known list of hard-coded development host names.
+    Tests whether the input URL references a known list of production host names.
     """
     url_parts = urlparse(url)
     hostname = url_parts.hostname.lower()
+    return hostname in EDD_PRODUCTION_HOSTNAMES
 
-    developer_machine_names = ['gbirkel-mr.dhcp.lbl.gov', 'mforrer-mr.dhcp.lbl.gov',
-                               'jeads-mr.dhcp.lbl.gov', 'wcmorrell-mr.dhcp.lbl.gov', ]
 
-    if hostname in developer_machine_names:
-        return True
-
-    suspicious_suffix = '.dhcp.lbl.gov'
-
-    if hostname.endswith(suspicious_suffix):
-        logger.warning("""Link URL %(url)s ends with suspicious suffix "%(suspicious_suffix)s,"""
-                       """but wasn't detected to link to a developer\'s machine""" % {
-                           'url': url, 'suspicious_suffix': suspicious_suffix,
-                       })
+def is_ice_production_url(url):
+    """
+    Tests whether the input URL references a known list of production host names.
+    """
+    url_parts = urlparse(url)
+    hostname = url_parts.hostname.lower()
+    return hostname in ICE_PRODUCTION_HOSTNAMES
 
 
 def is_ice_admin_user(ice, username):
@@ -1009,13 +1009,13 @@ def main():
     edd = None
     ice = None
 
-    cleaning_edd_test_instance = is_edd_test_instance_url(EDD_URL)
-    cleaning_ice_test_instance = is_ice_test_instance_url(ICE_URL)
+    cleaning_edd_test_instance = not is_edd_production_url(EDD_URL)
+    cleaning_ice_test_instance = not is_ice_production_url(ICE_URL)
 
     ############################################################################################
     # Verify that URL's start with HTTP*S* for non-local use. Don't allow mistaken config to
-    # expose access credentials! Pre-Docker local testing required insecure http, so this mistake is
-    # easy to make!
+    # expose access credentials! Pre-Docker local testing required insecure http, so this mistake
+    # is easy to make!
     ############################################################################################
     if not is_url_secure(EDD_URL, print_err_msg=True, app_name='EDD'):
         return 0
@@ -1030,12 +1030,9 @@ def main():
     # determine whether or not to verify EDD's / ICE's SSL certificate. Ordinarily, YES,
     # though we want to allow for local testing of this script on developers' machines using
     # self-signed certificates.
-    verify_edd_ssl_cert = verify_edd_cert(EDD_URL)
-    verify_ice_ssl_cert = verify_ice_cert(ICE_URL)
-
     # silence library warnings if we're skipping SSL certificate verification for local testing.
     # otherwise the warnings will swamp useful output from this script.
-    if not (verify_edd_ssl_cert and verify_ice_ssl_cert):
+    if not (VERIFY_EDD_CERT and VERIFY_ICE_CERT):
         requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
     # force user to confirm dry-run risks, or else print a warning if they've chosen to silence the
@@ -1089,92 +1086,95 @@ def main():
         edd_login_details = session_login(EddSessionAuth, EDD_URL, login_application,
                                           username_arg=args.username, password_arg=args.password,
                                           user_input=user_input, print_result=True,
-                                          verify_ssl_cert=verify_edd_ssl_cert)
+                                          timeout=EDD_REQUEST_TIMEOUT,
+                                          verify_ssl_cert=VERIFY_EDD_CERT)
         edd_session_auth = edd_login_details.session_auth
 
-        with edd_session_auth:
-            edd = (EddApi(edd_session_auth, EDD_URL) if not args.dry_run else
-                   EddTestStub(edd_session_auth, EDD_URL))
-            edd.write_enabled = args.update_edd_strain_text
-            edd.result_limit = EDD_RESULT_PAGE_SIZE
-            processing_inputs.edd = edd
+        edd = (EddApi(edd_session_auth, EDD_URL, verify=VERIFY_EDD_CERT) if not args.dry_run else
+               EddTestStub(edd_session_auth, EDD_URL))
+        edd.write_enabled = args.update_edd_strain_text
+        edd.result_limit = EDD_RESULT_PAGE_SIZE
+        edd.timeout = EDD_REQUEST_TIMEOUT
+        processing_inputs.edd = edd
 
-            # TODO: consider adding a REST API resource & use it to test whether this user
-            # has admin access to EDD. provide an
-            # early / graceful / transparent failure
+        # TODO: consider adding a REST API resource & use it to test whether this user
+        # has admin access to EDD. provide an
+        # early / graceful / transparent failure
 
-            ##############################
-            # log into ICE
-            ##############################
-            login_application = 'ICE'
-            ice_login_details = session_login(IceSessionAuth, ICE_URL, login_application,
-                                              username_arg=edd_login_details.username,
-                                              password_arg=edd_login_details.password,
-                                              user_input=user_input, print_result=True,
-                                              verify_ssl_cert=verify_ice_ssl_cert)
+        ##############################
+        # log into ICE
+        ##############################
+        login_application = 'ICE'
+        ice_login_details = session_login(IceSessionAuth, ICE_URL, login_application,
+                                          username_arg=edd_login_details.username,
+                                          password_arg=edd_login_details.password,
+                                          user_input=user_input, print_result=True,
+                                          timeout=ICE_REQUEST_TIMEOUT,
+                                          verify_ssl_cert=VERIFY_ICE_CERT)
 
-            ice_session_auth = ice_login_details.session_auth
+        ice_session_auth = ice_login_details.session_auth
 
-            # remove password(s) from memory as soon as used
-            edd_login_details.password = None
-            ice_login_details.password = None
+        # remove password(s) from memory as soon as used
+        edd_login_details.password = None
+        ice_login_details.password = None
 
-            with ice_session_auth:
-                ice = (IceApi(ice_session_auth, ICE_URL,
-                              result_limit=ICE_RESULT_PAGE_SIZE) if not args.dry_run else
-                       IceTestStub(ice_session_auth, ICE_URL, result_limit=ICE_RESULT_PAGE_SIZE))
-                ice.write_enabled = True
-                processing_inputs.ice = ice
-                # ice.request_generator.timeout = 20
+        ice = (IceApi(ice_session_auth, ICE_URL, result_limit=ICE_RESULT_PAGE_SIZE,
+                      verify_ssl_cert=VERIFY_ICE_CERT) if not args.dry_run
+               else
+               IceTestStub(ice_session_auth, ICE_URL, result_limit=ICE_RESULT_PAGE_SIZE,
+                           verify_ssl_cert=VERIFY_ICE_CERT))
+        ice.write_enabled = True
+        processing_inputs.ice = ice
+        ice.timeout = ICE_REQUEST_TIMEOUT
 
-                # test whether this user is an ICE administrator. If not, we won't be able
-                # to proceed until EDD-177 is resolved (if then, depending on the solution)
-                user_is_ice_admin = is_ice_admin_user(ice=ice, username=ice_login_details.username)
-                if not user_is_ice_admin:
-                    return 0
+        # test whether this user is an ICE administrator. If not, we won't be able
+        # to proceed until EDD-177 is resolved (if then, depending on the solution)
+        user_is_ice_admin = is_ice_admin_user(ice=ice, username=ice_login_details.username)
+        if not user_is_ice_admin:
+            return 0
 
-                # if no specific EDD strain or ICE entry identifier was provided as a parameter,
-                # scan all EDD strains, and possibly ICE entries, as configured
-                if perform_scans:
-                    scan_edd_strains(processing_inputs, processing_summary, overall_performance)
-                    overall_performance.ice_entry_scan_start_time = arrow.utcnow()
+        # if no specific EDD strain or ICE entry identifier was provided as a parameter,
+        # scan all EDD strains, and possibly ICE entries, as configured
+        if perform_scans:
+            scan_edd_strains(processing_inputs, processing_summary, overall_performance)
+            overall_performance.ice_entry_scan_start_time = arrow.utcnow()
 
-                    # if configured, process entries in ICE that weren't just examined above.
-                    # This is probably only necessary during the initial few runs to correct for
-                    # link maintenance gaps in earlier versions of EDD/ICE
-                    if args.scan_ice_entries:
-                        scan_ice_entries(processing_inputs, args.include_entry_types,
-                                         processing_summary)
-                        overall_performance.ice_entry_scan_time = (
-                            arrow.utcnow() - overall_performance.ice_entry_scan_start_time)
+            # if configured, process entries in ICE that weren't just examined above.
+            # This is probably only necessary during the initial few runs to correct for
+            # link maintenance gaps in earlier versions of EDD/ICE
+            if args.scan_ice_entries:
+                scan_ice_entries(processing_inputs, args.include_entry_types,
+                                 processing_summary)
+                overall_performance.ice_entry_scan_time = (
+                    arrow.utcnow() - overall_performance.ice_entry_scan_start_time)
 
-                # if specific EDD strain and/or ICE entry ID's were provided, only examine the
-                # requested Things in lieu of an expensive scan
+        # if specific EDD strain and/or ICE entry ID's were provided, only examine the
+        # requested Things in lieu of an expensive scan
+        else:
+            edd_strain_id = args.edd_strain
+            if edd_strain_id:
+                edd_strain = edd.get_strain(edd_strain_id)
+                processing_summary.total_edd_strains_found = 1 if edd_strain else 0
+
+                if edd_strain:
+                    process_all_ice_entry_links = False
+                    process_edd_strain(edd_strain, processing_inputs,
+                                       process_all_ice_entry_links, processing_summary)
                 else:
-                    edd_strain_id = args.edd_strain
-                    if edd_strain_id:
-                        edd_strain = edd.get_strain(edd_strain_id)
-                        processing_summary.total_edd_strains_found = 1 if edd_strain else 0
+                    print('INVALID INPUT: No EDD strain was found with id %(id)s at %(url)s'
+                          % {'id': edd_strain_id, 'url': EDD_URL, })
 
-                        if edd_strain:
-                            process_all_ice_entry_links = False
-                            process_edd_strain(edd_strain, processing_inputs,
-                                               process_all_ice_entry_links, processing_summary)
-                        else:
-                            print('INVALID INPUT: No EDD strain was found with id %(id)s at %(url)s'
-                                  % {'id': edd_strain_id, 'url': EDD_URL, })
-
-                    ice_entry_id = args.ice_entry
-                    if ice_entry_id:
-                        entry = ice.get_entry(ice_entry_id)
-                        processing_summary.total_ice_entries_found = 1 if entry else 0
-                        if entry:
-                            process_ice_entry(entry, processing_inputs, processing_summary)
-                        else:
-                            print('INVALID INPUT: No ICE entry was found with identifier '
-                                  '%(entry_id)s at %(ice_url)s' % {
-                                      'entry_id': ice_entry_id, 'ice_url': ICE_URL,
-                                  })
+            ice_entry_id = args.ice_entry
+            if ice_entry_id:
+                entry = ice.get_entry(ice_entry_id)
+                processing_summary.total_ice_entries_found = 1 if entry else 0
+                if entry:
+                    process_ice_entry(entry, processing_inputs, processing_summary)
+                else:
+                    print('INVALID INPUT: No ICE entry was found with identifier '
+                          '%(entry_id)s at %(ice_url)s' % {
+                              'entry_id': ice_entry_id, 'ice_url': ICE_URL,
+                          })
 
     except Exception as e:
         logger.exception('An error occurred')
@@ -1184,9 +1184,9 @@ def main():
 
         overall_performance.overall_end_time = arrow.utcnow()
         if edd:
-            overall_performance.edd_communication_time = edd.request_generator.wait_time
+            overall_performance.edd_communication_time = edd.session.wait_time
         if ice:
-            overall_performance.ice_communication_time = ice.request_generator.wait_time
+            overall_performance.ice_communication_time = ice.session.wait_time
 
         print('')
         overall_performance.print_summary()
@@ -1394,8 +1394,8 @@ def process_ice_entry(entry, processing_inputs, processing_summary,
     # if this entry matches an EDD strain, maintain its links against EDD
     if edd_strain:
         strain_performance = StrainProcessingPerformance(edd_strain, arrow.utcnow(),
-                                                         edd.request_generator.wait_time,
-                                                         ice.request_generator.wait_time)
+                                                         edd.session.wait_time,
+                                                         ice.session.wait_time)
 
         if not isinstance(entry, IceStrain):
             processing_summary.found_non_strain_entry(edd_strain, entry)
@@ -1702,8 +1702,8 @@ def process_matching_strain(edd_strain, ice_entry, process_all_ice_entry_links,
 
     # track performance for completed processing
     strain_performance.ice_link_cache_lifetime = arrow.utcnow() - strain_performance.start_time
-    strain_performance.set_end_time(arrow.utcnow(), edd.request_generator.wait_time,
-                                    ice.request_generator.wait_time)
+    strain_performance.set_end_time(arrow.utcnow(), edd.session.wait_time,
+                                    ice.session.wait_time)
     print_shared_entry_processing_summary(ice_entry, len(all_strain_experiment_links) - len(
         unprocessed_strain_experiment_links), (
                                            strain_performance.end_time -
@@ -1741,13 +1741,13 @@ def process_edd_strain(edd_strain, processing_inputs, process_all_ice_entry_link
     print(separator)
 
     strain_performance = (
-        StrainProcessingPerformance(edd_strain, arrow.utcnow(), edd.request_generator.wait_time,
-                                    ice.request_generator.wait_time,
+        StrainProcessingPerformance(edd_strain, arrow.utcnow(), edd.session.wait_time,
+                                    ice.session.wait_time,
                                     scan_percent_when_complete=scan_percent_when_complete))
     if not edd_strain.registry_id:
         processing_summary.found_orphaned_edd_strain(edd_strain)
-        strain_performance.set_end_time(arrow.utcnow(), edd.request_generator.wait_time,
-                                        ice.request_generator.wait_time)
+        strain_performance.set_end_time(arrow.utcnow(), edd.session.wait_time,
+                                        ice.session.wait_time)
         strain_performance.print_summary()
         return False
 
@@ -1760,8 +1760,8 @@ def process_edd_strain(edd_strain, processing_inputs, process_all_ice_entry_link
     ice_entry = ice.get_entry(edd_strain.registry_id)
     if not ice_entry:
         processing_summary.found_stepchild_edd_strain(edd_strain)
-        strain_performance.set_end_time(arrow.utcnow(), edd.request_generator.wait_time,
-                                        ice.request_generator.wait_time)
+        strain_performance.set_end_time(arrow.utcnow(), edd.session.wait_time,
+                                        ice.session.wait_time)
         strain_performance.print_summary()
         return False
 

@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
-from __future__ import division
-from __future__ import unicode_literals
-
-from jbei.rest.api import RestApiClient
+from __future__ import division, unicode_literals
 
 """
 Defines classes and utility methods used to communicate with the Index of Composable Elements
@@ -21,31 +18,32 @@ import os
 import re
 import requests
 
+from builtins import object
 from requests.compat import urlparse
 from urllib import urlencode
 from urlparse import urlunparse, ParseResult, parse_qs
 
-from jbei.rest.utils import CLIENT_ERROR_NOT_FOUND
-from jbei.rest.request_generators import PagedResult, PagedRequestGenerator
-
+from jbei.rest.api import RestApiClient
+from jbei.rest.sessions import PagedResult, PagedSession, Session
 
 logger = logging.getLogger(__name__)
 
 
-####################################################################################################
+###################################################################################################
 # Set reasonable defaults where possible
-####################################################################################################
+###################################################################################################
 ICE_REQUEST_TIMEOUT = (10, 10)  # request and read timeout, respectively, in seconds
 ICE_URL = 'https://registry.jbei.org'
 ICE_SECRET_KEY = None
 
-####################################################################################################
+###################################################################################################
 # Perform flexible configuration based on whether or not client code or an environment
 # variable has defined an alternate source of the required settings. If not, define some defaults
 # here that will be used instead (though notably, no HMAC key will be available).
-####################################################################################################
+###################################################################################################
 
-# if an ICE-specific settings module has been defined, override defaults with values provided there.
+# if an ICE-specific settings module has been defined, override defaults with values provided
+# there.
 settings_module_name = os.environ.get('ICE_SETTINGS_MODULE')
 settings_django_name = os.environ.get('DJANGO_SETTINGS_MODULE')
 settings = None
@@ -55,8 +53,7 @@ if settings_module_name:
 elif settings_django_name:
     try:
         # Django may not be present, don't try to import unless settings environment exists
-        import django.conf
-        settings = django.conf.settings
+        from django.conf import settings
     except ImportError as i:
         logger.error('DJANGO_SETTINGS_MODULE environment variable was provided as a source of '
                      'settings, but an import error occurred while trying to load Django '
@@ -67,27 +64,34 @@ elif settings_django_name:
 ICE_REQUEST_TIMEOUT = getattr(settings, 'ICE_REQUEST_TIMEOUT', ICE_REQUEST_TIMEOUT)
 ICE_URL = getattr(settings, 'ICE_URL', ICE_URL)
 ICE_SECRET_KEY = getattr(settings, 'ICE_SECRET_KEY', ICE_SECRET_KEY)
+VERIFY_SSL_DEFAULT = Session.VERIFY_SSL_DEFAULT
 
 
-####################################################################################################
+###################################################################################################
 
 _JSON_CONTENT_TYPE_HEADER = {'Content-Type': 'application/json; charset=utf8'}
 
 # regular expressions for parsing elements of ICE URLs
 _PROTOCOL = 'http|https'
 _BASE_ICE_URL_REGEX = r'.+'
-# TODO: better to check for format of UUID. it's: 8 chars -4 chars -4 chars -4 chars -12 chars
-_IDENTIFIER = r'[\w-]+'
+# breaking into smaller pieces
+_IDENTIFIER = (
+    # matching either a number:
+    r'(?:\d+)|'
+    # or matching a GUID:
+    r'(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})'
+)
 _ICE_ENTRY_URL_REGEX = '(%(protocol)s)://(%(base_url)s)/entry/(%(identifier)s)/?' % {
     'protocol': _PROTOCOL, 'base_url': _BASE_ICE_URL_REGEX, 'identifier': _IDENTIFIER, }
 ICE_ENTRY_URL_PATTERN = re.compile('^%s$' % _ICE_ENTRY_URL_REGEX, re.IGNORECASE)
 
 
-####################################################################################################
+###################################################################################################
 # String constants used to communicate with ICE.
 # TODO: most/all of these should be enums after upgrading to Python 3
-####################################################################################################
-# ICE's current automatic limit on results returned in the absence of a specific requested page size
+###################################################################################################
+# ICE's current automatic limit on results returned in the absence of a specific requested page
+# size
 DEFAULT_RESULT_LIMIT = 15
 DEFAULT_PAGE_NUMBER = 1
 
@@ -112,7 +116,7 @@ HOST_JSON_PARAM = 'host'
 GENOTYPE_PHENOTYPE_PYTHON_PARAM = 'genotype_phenotype'
 STRAIN_DATA_JSON_KEYWORD = 'strainData'
 PLASMID_DATA_JSON_KEYWORD = 'plasmidData'
-####################################################################################################
+###################################################################################################
 
 PART_ID_JSON_FIELD = 'partId'
 PART_KEYWORD_CHANGES = {
@@ -169,16 +173,17 @@ class Entry(object):
     that's deprecated.
     """
 
-    def __init__(self, id=None, visible=None, parents=[], index=None, uuid=None,
-                 name=None, owner=None, owner_email=None, owner_id=None, creator=None,
-                 creator_email=None, creator_id=None, status=None, short_description=None,
-                 long_description=None,
-                 creation_time=None, mod_time=None, biosafety_level=None, part_id=None, links=[],
-                 pi_name=None, pi_email=None, pi_id=None, selection_markers=None, bp_count=None,
-                 feature_count=None, view_count=None, has_attachment=None, has_sample=None,
-                 has_sequence=None, has_original_sequence=None, can_edit=None,
-                 access_permissions=[], public_read=False, linked_parts=[], alias=None, keywords=[],
-                 intellectual_property=None, references=None, funding_source=None):
+    def __init__(
+            self, id=None, visible=None, parents=[], index=None, uuid=None,
+            name=None, owner=None, owner_email=None, owner_id=None, creator=None,
+            creator_email=None, creator_id=None, status=None, short_description=None,
+            long_description=None,
+            creation_time=None, mod_time=None, biosafety_level=None, part_id=None, links=[],
+            pi_name=None, pi_email=None, pi_id=None, selection_markers=None, bp_count=None,
+            feature_count=None, view_count=None, has_attachment=None, has_sample=None,
+            has_sequence=None, has_original_sequence=None, can_edit=None,
+            access_permissions=[], public_read=False, linked_parts=[], alias=None, keywords=[],
+            intellectual_property=None, references=None, funding_source=None):
         self.id = id
         self.visible = visible
         self.parents = []
@@ -258,10 +263,10 @@ class Entry(object):
             LINKED_PARTS_JSON_KEYWORD: LINKED_PARTS_PYTHON_KEYWORD,
             PARENTS_JSON_KEYWORD: PARENTS_PYTHON_KEYWORD,
         }
-        ############################################################################################
+        ###########################################################################################
         # set objects that have a trivial conversion from JSON to Python,
         # changing the style to match Python's snake_case from the ICE's Java-based camelCase
-        ############################################################################################
+        ###########################################################################################
 
         # TODO: can do this with less code by automatically converting camel case for most of
         # these. At least one known solution exists at
@@ -288,8 +293,10 @@ class Entry(object):
         part_type = python_object_params.pop('type')  # Note: don't shadow Python builtin 'type'!
 
         if PLASMID == part_type:
-            return _construct_part(python_object_params, part_type, PLASMID_DATA_JSON_KEYWORD,
-                                   PLASMID_KEYWORD_CHANGES, Plasmid, silence_type_specific_warnings)
+            return _construct_part(
+                python_object_params, part_type, PLASMID_DATA_JSON_KEYWORD,
+                PLASMID_KEYWORD_CHANGES, Plasmid, silence_type_specific_warnings
+            )
 
         if STRAIN == part_type:
             return _construct_part(python_object_params, part_type, STRAIN_DATA_JSON_KEYWORD,
@@ -336,15 +343,16 @@ class ExperimentLink(object):
     @staticmethod
     def of(json_dict):
         return ExperimentLink(
-                json_dict['id'],
-                json_dict['url'],
-                json_dict.get('ownerEmail'),
-                json_dict['created'],
-                label=json_dict.get('label'),)
+            json_dict['id'],
+            json_dict['url'],
+            json_dict.get('ownerEmail'),
+            json_dict['created'],
+            label=json_dict.get('label'),
+        )
 
-####################################################################################################
+###################################################################################################
 # ICE Sample Location Types. See org.jbei.ice.lib.dto.sample.SampleType
-####################################################################################################
+###################################################################################################
 PLATE96 = 'PLATE96'
 PLATE81 = 'PLATE81'
 WELL = 'WELL'
@@ -357,8 +365,10 @@ SHELF = 'SHELF'
 BOX_INDEXED = 'BOX_INDEXED'
 BOX_UNINDEXED = 'BOX_UNINDEXED'
 
-LOCATION_TYPES = (PLATE96, PLATE81, GENERIC, FREEZER, SHELF, BOX_INDEXED, BOX_UNINDEXED, PLATE81,
-                  WELL, TUBE, SCHEME, )
+LOCATION_TYPES = (
+    PLATE96, PLATE81, GENERIC, FREEZER, SHELF, BOX_INDEXED, BOX_UNINDEXED, PLATE81,
+    WELL, TUBE, SCHEME,
+)
 
 
 class Location(object):
@@ -454,12 +464,15 @@ def _construct_part(python_object_params, part_type, class_data_keyword, convers
                 python_keyword = conversion_dict[keyword]
             python_object_params[python_keyword] = value
     elif not silence_type_specific_warnings:
-        logger.warning('JSON for %(class_name)s "%(part_id)s" has type=%(type)s, but no '
-                       '%(field_name)s field.' % {
-                            'class_name': part_derived_class.__name__,
-                            'part_id': python_object_params['part_id'],
-                            'type': part_type,
-                            'field_name': class_data_keyword, })
+        logger.warning(
+            'JSON for %(class_name)s "%(part_id)s" has type=%(type)s, but no '
+            '%(field_name)s field.' % {
+                'class_name': part_derived_class.__name__,
+                'part_id': python_object_params['part_id'],
+                'type': part_type,
+                'field_name': class_data_keyword,
+            }
+        )
     return part_derived_class(**python_object_params)
 
 
@@ -595,7 +608,8 @@ class Strain(Entry):
 
 # Design note: all part-specific params are currently optional so that we can still at least
 # capture the part type when the part gets returned from a search without any of its type-specific
-# data. TODO: confirm with Hector P. that this is intentional, then make them non-optional if needed
+# data. TODO: confirm with Hector P. that this is intentional, then make them non-optional if
+# needed
 class Plasmid(Entry):
     def __init__(self, backbone=None, origin_of_replication=None, promoters=None, circular=None,
                  replicates_in=None, **kwargs):
@@ -632,15 +646,13 @@ def parse_entry_id(ice_entry_url):
     ICE deployment, or None if the input didn't match the expected pattern.
     """
     match = ICE_ENTRY_URL_PATTERN.match(ice_entry_url)
-
     if not match:
         return None
-
     return match.group(3)
+
 
 DEFAULT_HMAC_KEY_ID = 'edd'
 
-ice_paged_requests = PagedRequestGenerator(RESULT_LIMIT_PARAMETER, RESULT_OFFSET_PARAMETER)
 
 class IceApi(RestApiClient):
     """
@@ -656,55 +668,56 @@ class IceApi(RestApiClient):
     # object instances. See draft code in edd.py
 
     def __init__(self, auth, base_url=ICE_URL, result_limit=DEFAULT_RESULT_LIMIT,
-                 request_generator=ice_paged_requests):
+                 verify_ssl_cert=VERIFY_SSL_DEFAULT):
         """
         Creates a new instance of IceApi
         :param auth: the authentication strategy for communication with ICE
-        :param request_generator: object implementing the Requests API; defaults to
-            PagedRequestGenerator
+        :param session: object implementing the Requests API; defaults to PagedSession
         :param base_url: the base URL of the ICE install.
         :param result_limit: the maximum number of results that can be returned from a single
-        query. The default is ICE's default limit at the time of writing. Note that ICE
-        doesn't return paging-related data from its REST API, so to
-        provide consistent tracking of how results are paged, some value has to be provided.
+            query. The default is ICE's default limit at the time of writing. Note that ICE
+            doesn't return paging-related data from its REST API, so to provide consistent
+            tracking of how results are paged, some value has to be provided.
         """
         if not auth:
             raise ValueError("A valid authentication mechanism must be provided")
-
-        super(IceApi, self).__init__('ICE', base_url, request_generator, result_limit)
+        session = PagedSession(RESULT_LIMIT_PARAMETER, result_limit, auth=auth,
+                               verify_ssl_cert=verify_ssl_cert)
+        super(IceApi, self).__init__('ICE', base_url, session, result_limit)
 
     def _compute_result_offset(self, page_number):
         result_limit = self.result_limit
-
         if page_number:
             if not result_limit:
-                raise ValueError("Non-unity page number specified, but result offset can't be "
-                                 "computed because the result_limit isn't known")
+                raise ValueError(
+                    "Non-unity page number specified, but result offset can't be "
+                    "computed because the result_limit isn't known"
+                )
             else:
                 return result_limit * (page_number - 1)
-
         return None
 
     def _add_page_number_param(self, dict, page_number):
         if page_number:
             if not self.result_limit:
                 if page_number != 1:
-                    logger.warning("A non-unity page number was requested, but can't be honored "
-                                   "because no result_limit is known!")
+                    logger.warning(
+                        "A non-unity page number was requested, but can't be honored "
+                        "because no result_limit is known!"
+                    )
             else:
-                offset = self.request_generator.result_limit * (page_number - 1)
+                offset = self.session.result_limit * (page_number - 1)
                 dict[RESULT_OFFSET_PARAMETER] = offset
 
     def _extract_pagination_params(self, query_url):
         query_params_string = urlparse(query_url).query
         query_dict = parse_qs(query_params_string) if query_params_string else None
-
         offset = query_dict.get[RESULT_OFFSET_PARAMETER]
         if offset:
             offset = offset[0]
 
-    def search_users(self, search_string=None, sort=None, asc=None, page_number=DEFAULT_PAGE_NUMBER,
-                     query_url=None, ):
+    def search_users(self, search_string=None, sort=None, asc=None,
+                     page_number=DEFAULT_PAGE_NUMBER, query_url=None, ):
         """
         Searches for users known to this instance of ICE, if the authenticated user has the
         appropriate access privileges in ICE.
@@ -720,32 +733,23 @@ class IceApi(RestApiClient):
         # TODO: investigate / hard-code / check for supported values of 'sort' param
 
         # construct a dictionary of query params in the format ICE expects
-
         response = None
         if query_url:
-            response = self.request_generator.get(query_url)
+            response = self.session.get(query_url)
         else:
             url = '%s/rest/users' % self.base_url
-
             query_params = {}
-
             if search_string:
                 query_params['filter'] = search_string
-
             if sort:
                 query_params['sort'] = sort
-
             if asc:
                 query_params['asc'] = sort
-
             self._add_page_number_param(query_params, page_number)
-
-            response = self.request_generator.get(url, params=query_params)
-
+            response = self.session.get(url, params=query_params)
         if response.status_code == requests.codes.ok:
             return IcePagedResult.of(response.content, User, results_key='users',
                                      query_url=response.url)
-
         response.raise_for_status()
 
     def get_entry_experiments(self, entry_id, query_url=None, page_number=DEFAULT_PAGE_NUMBER):
@@ -757,28 +761,22 @@ class IceApi(RestApiClient):
         :return: A PagedResult containing at least one EntryLink object, or None if the ICE
         returned an empty (but successful) response.
         """
-
         self._verify_page_number(page_number)
 
         response = None
         if query_url:
-            response = self.request_generator.get(query_url, headers=_JSON_CONTENT_TYPE_HEADER)
-
+            response = self.session.get(query_url, headers=_JSON_CONTENT_TYPE_HEADER)
         else:
             query_params = {}
             self._add_page_number_param(query_params, page_number)
-
             # execute the query
             url = '%s/rest/parts/%s/experiments/' % (self.base_url, entry_id)
-
-            response = self.request_generator.get(
+            response = self.session.get(
                 url,
                 params=query_params,
                 headers=_JSON_CONTENT_TYPE_HEADER
             )
-
             query_url = response.url
-
         if response.status_code == requests.codes.ok:
             return IcePagedResult.of(response.content, ExperimentLink, query_url=query_url)
         else:
@@ -799,18 +797,16 @@ class IceApi(RestApiClient):
 
         response = None
         if query_url:
-            response = self.request_generator.get(query_url, headers=_JSON_CONTENT_TYPE_HEADER)
-
+            response = self.session.get(query_url, headers=_JSON_CONTENT_TYPE_HEADER)
         else:
             query_params = {}
             self._add_page_number_param(query_params, page_number)
-
             # execute the query
             url = '%s/rest/parts/%s/samples/' % (self.base_url, entry_id)
-            response = self.request_generator.get(url, params=query_params,
-                                                  headers=_JSON_CONTENT_TYPE_HEADER)
+            response = self.session.get(
+                url, params=query_params, headers=_JSON_CONTENT_TYPE_HEADER
+            )
             query_url = response.url
-
         if response.status_code == requests.codes.ok:
             return IcePagedResult.of(response.content, Sample, query_url=query_url)
         else:
@@ -823,45 +819,113 @@ class IceApi(RestApiClient):
         Retrieves a part using any of the unique identifiers: part number, synthetic id, or
         UUID. Returns a Part object; or None if no part was found or if there were suppressed
         errors in making the request.
-        :param entry_id: the ICE ID for this entry (either the local numeric primary key, or a UUID)
+        :param entry_id: the ICE ID for this entry (either the local numeric primary key, or a
+            UUID)
         :param suppress_errors: true to catch and log exception messages and return None instead of
-        raising Exceptions.
+            raising Exceptions.
         :return: A Part object representing the response from ICE, or None if an an Exception
-        occurred but suppress_errors was true.
+            occurred but suppress_errors was true.
         """
-
         rest_url = '%s/rest/parts/%s' % (self.base_url, entry_id)
         try:
-            response = self.request_generator.get(url=rest_url)
+            response = self.session.get(url=rest_url)
+            response.raise_for_status()
+            json_dict = json.loads(response.content)
+            if json_dict:
+                return Entry.of(json_dict, False)
         except requests.exceptions.Timeout as e:
-
             if not suppress_errors:
                 raise e
             logger.exception("Timeout requesting part %s: %s", entry_id)
-        else:
-            if response.status_code == requests.codes.ok:
-                # convert reply to a dictionary of native python data types
-                json_dict = json.loads(response.content)
-
-                if not json_dict:
-                    return None
-
-                return Entry.of(json_dict, False)
-
-            elif response.status_code == CLIENT_ERROR_NOT_FOUND:
+        except requests.exceptions.HTTPError as e:
+            if response.status_code == requests.codes.not_found:
                 return None
+            elif not suppress_errors:
+                raise e
+            logger.exception(
+                'Error fetching part from ICE with entry_id %(entry_id)s. '
+                'Response = %(status_code)d: "%(msg)s"' % {
+                    'entry_id': entry_id,
+                    'status_code': response.status_code,
+                    'msg': response.reason
+                }
+            )
+        return None
 
-            if not suppress_errors:
-                response.raise_for_status()
+    def _process_query_blast(self, query_dict, blast_program, blast_sequence):
+        if blast_program:
+            if blast_program not in BLAST_PROGRAMS:
+                raise KeyError(
+                    'Blast program %s is not one of the recognized programs: %s' %
+                    (blast_program, str(BLAST_PROGRAMS))
+                )
+            if blast_sequence:
+                query_dict['blastQuery'] = {
+                    'blastProgram': blast_program,
+                    'blastSequence': blast_sequence,
+                }
+            else:
+                logger.warning(
+                    'A blast program was specified, but no blast sequence. Ignoring '
+                    'the program.'
+                )
+        elif blast_sequence:
+            logger.warning(
+                'A blast sequence was specified, but no blast program. Ignoring the '
+                'sequence.'
+            )
+        return query_dict
 
-            logger.exception('Error fetching part from ICE with entry_id %(entry_id)s. '
-                             'Response = %(status_code)d: "%(msg)s"'
-                             % {'entry_id': entry_id,
-                                'status_code': response.status_code,
-                                'msg': response.reason
-                                })
+    def _process_query_parameters(self, query_dict, sort_field, sort_ascending, page_number):
+        #######################################################################################
+        # Build a list of query parameters that get bundled together in a slightly non-standard
+        # way
+        #######################################################################################
+        parameters = {}
+        if sort_field:
+            parameters['sortField'] = sort_field
+        if sort_ascending:
+            parameters['asc'] = sort_ascending
 
-            return None
+        nonstandard_offset_param = 'start'
+        nonstandard_result_limit_param = 'retrieveCount'
+
+        # override processing normally handled by session to apply non-standard
+        # page numbering / result limiting needed by this ICE resource
+        if page_number:
+            if not self.result_limit:
+                if page_number != 1:
+                    logger.warning(
+                        "A non-unity page number was requested, but can't be honored "
+                        "because no result_limit is known!"
+                    )
+            else:
+                offset = self.session.result_limit * (page_number - 1)
+                parameters[nonstandard_offset_param] = offset
+        if self.result_limit:
+            parameters[nonstandard_result_limit_param] = self.result_limit
+        if parameters:
+            query_dict['parameters'] = parameters
+
+    def _process_query_dict(self, search_terms, entry_types, blast_program, blast_sequence,
+                            search_web, sort_field, sort_ascending, page_number):
+        query_dict = {}
+        query_url = None  # TODO: re-instate this parameter if we can get ICE to support the same
+        # queries in GET as in POST...should simplify client use
+        if not query_url:
+            if search_terms:
+                query_dict['queryString'] = search_terms
+            if entry_types:
+                if not set(entry_types).issubset(set(ICE_ENTRY_TYPES)):
+                    raise KeyError('')
+                query_dict['entryTypes'] = entry_types
+            self._process_query_blast(query_dict, blast_program, blast_sequence)
+            query_dict['webSearch'] = search_web  # Note: affects results even if false?
+            self._process_query_parameters(query_dict, sort_field, sort_ascending, page_number)
+        else:
+            # un-parse the query URL so we're using consistently following the same code path
+            query_dict = parse_qs(urlparse(query_url).params)
+        return query_dict
 
     # TODO: doesn't support field filters yet, though ICE's API does
     def search_entries(self, search_terms=None, entry_types=None, blast_program=None,
@@ -873,101 +937,40 @@ class IceApi(RestApiClient):
         """
         Calls ICE's REST API to search for a biological part using the provided query string
         :param search_terms: a string with keyword search terms. If the string is
-        None, all ICE parts visible to the user will be returned.
+            None, all ICE parts visible to the user will be returned.
         :param entry_types: a list of entry types to be included in the results. Must be one of
-        ICE_ENTRY_TYPES.
+            ICE_ENTRY_TYPES.
         :param blast_program: the program to use in comparing blast_sequence to the sequence of
-        the parts in ICE
+            the parts in ICE
         :param blast_sequence: the sequence to compare against parts. Either base pairs or amino
-        acids, depending on the value of blast_program.
+            acids, depending on the value of blast_program.
         :param search_web: True to search the web of registries, false to search just this one
         :param offset: the offset into the full query results from which the returned data should
-        start
+            start
         :param sort_ascending: true to sort in ascending order, False otherwise. Ignored if
-        sort_field is None
+            sort_field is None
         :param sort_ascending: True to sort in ascending order, False for descending order
         :param page_number: the page number of results to be returned (1-indexed)
         :param suppress_errors: True to suppress errors
         :return: a single page of results. Note that this method is a special case since the full
-        functionality of ICE's search only seems to be supported by POST, so unlike many other
-        results, the PagedResult.next_page link won't work to load a subsequent page of results,
-        though it can be used to detect whether more results exist
+            functionality of ICE's search only seems to be supported by POST, so unlike many other
+            results, the PagedResult.next_page link won't work to load a subsequent page of
+            results, though it can be used to detect whether more results exist
         :raises KeyError: if entry_types is included, but contains something other than one of
-        the valid Ice entry types, or if blast_program is included, but isn't one of the
-        recognized programs.
+            the valid Ice entry types, or if blast_program is included, but isn't one of the
+            recognized programs.
         """
-
         self._verify_page_number(page_number)
 
         logger.info('Searching for ICE entries using search terms "%s"' % search_terms)
-
         url = '%s/rest/search' % self.base_url
-
         offset = None
-
         # package up provided parameters (if any) for insertion into the request
         # optional_query_data = json.dumps({'queryString': query}) if query else None
-        query_dict = {}
-        query_url = None  # TODO: re-instate this parameter if we can get ICE to support the same
-        # queries in GET as in POST...should simplify client use
-        if not query_url:
-            if search_terms:
-                query_dict['queryString'] = search_terms
-            if entry_types:
-                if not set(entry_types).issubset(set(ICE_ENTRY_TYPES)):
-                    raise KeyError('')
-                query_dict['entryTypes'] = entry_types
-            if blast_program:
-                if blast_program not in BLAST_PROGRAMS:
-                    raise KeyError('Blast program %s is not one of the recognized programs: %s' %
-                                   (blast_program, str(BLAST_PROGRAMS)))
-                if blast_sequence:
-                    query_dict['blastQuery'] = {
-                        'blastProgram': blast_program,
-                        'blastSequence': blast_sequence,
-                    }
-                else:
-                    logger.warning('A blast program was specified, but no blast sequence. Ignoring '
-                                   'the program.')
-            elif blast_sequence:
-                logger.warning('A blast sequence was specified, but no blast program. Ignoring the '
-                               'sequence.')
-
-            query_dict['webSearch'] = search_web  # Note: affects results even if false?
-
-            ########################################################################################
-            # Build a list of query parameters that get bundled together in a slightly non-standard
-            # way
-            ########################################################################################
-            parameters = {}
-            if sort_field:
-                parameters['sortField'] = sort_field
-            if sort_ascending:
-                parameters['asc'] = sort_ascending
-
-            nonstandard_offset_param = 'start'
-            nonstandard_result_limit_param = 'retrieveCount'
-
-            # override processing normally handled my request_generator to
-            # apply non-standard page numbering / result limiting needed by this ICE resource
-            if page_number:
-                if not self.result_limit:
-                    if page_number != 1:
-                        logger.warning("A non-unity page number was requested, but can't be honored"
-                                       " because no result_limit is known!")
-                else:
-                    offset = self.request_generator.result_limit * (page_number - 1)
-                    parameters[nonstandard_offset_param] = offset
-
-            if self.result_limit:
-                parameters[nonstandard_result_limit_param] = self.result_limit
-
-            if parameters:
-                query_dict['parameters'] = parameters
-
-        else:
-            # un-parse the query URL so we're using consistently following the same code path
-            query_dict = parse_qs(urlparse(query_url).params)
+        query_dict = self._process_query_dict(
+            search_terms, entry_types, blast_program, blast_sequence, search_web, sort_field,
+            sort_ascending, page_number
+        )
 
         # convert query data to JSON, if there is any. Otherwise, we'll query for all the parts
         # visible to this user
@@ -976,17 +979,16 @@ class IceApi(RestApiClient):
 
         # execute the query
         try:
-            response = self.request_generator.post(url, data=optional_query_data,
-                                                   headers=_JSON_CONTENT_TYPE_HEADER)
-
+            response = self.session.post(
+                url, data=optional_query_data, headers=_JSON_CONTENT_TYPE_HEADER
+            )
             # if response was good, deconstruct the query url, then build a separate 'get' URL
-            # to use in next/prev page links. Note that for now, we're leaving this code / incorrect
-            # URL in place as a placeholder for future code. Presence / absence of next/prev page
-            # links should be available to allow clients to test for existence of those pages, but
-            # we don't allow query_url param to this method since the query can't be represented as
-            # a single URL
+            # to use in next/prev page links. Note that for now, we're leaving this code /
+            # incorrect URL in place as a placeholder for future code. Presence / absence of
+            # next/prev page links should be available to allow clients to test for existence of
+            # those pages, but we don't allow query_url param to this method since the query
+            # can't be represented as a single URL
             if response.status_code == requests.codes.ok:
-
                 # TODO: consider reinstating / fixing this flawed method of computing a query_url
                 # for use by client programs. See other TODO above.
                 # if not query_url:
@@ -997,19 +999,19 @@ class IceApi(RestApiClient):
                 #                                    query_string, url_elts.fragment)
                 #     query_url = urlunparse(query_temp)
                 query_url = response.url
-
-                return IcePagedResult.of(response.content, EntrySearchResult,
-                                         query_url=query_url,
-                                         result_limit=self.result_limit,
-                                         offset=offset)
+                return IcePagedResult.of(
+                    response.content, EntrySearchResult,
+                    query_url=query_url, result_limit=self.result_limit, offset=offset
+                )
             elif suppress_errors:
-                logger.exception('Error searching ICE entries using query "%(query_str)s". '
-                                 'Response was %(status_code)s: "%(msg)s"' %
-                                 {
-                                     'query_str': search_terms,
-                                     'status_code': response.status_code,
-                                     'msg': response.reason
-                                 })
+                logger.exception(
+                    'Error searching ICE entries using query "%(query_str)s". '
+                    'Response was %(status_code)s: "%(msg)s"' % {
+                        'query_str': search_terms,
+                        'status_code': response.status_code,
+                        'msg': response.reason
+                    }
+                )
                 return None
             else:
                 response.raise_for_status()
@@ -1021,15 +1023,15 @@ class IceApi(RestApiClient):
     def _create_or_update_link(self, study_name, study_url, entry_experiments_url,
                                link_id=None, created=None):
         """
-            A helper method that creates or updates a single study link in ICE. Note that ICE seems
-            to do some URL-based matching / link replacement even if no link ID is provided.
-            :param entry_experiments_url: the absolute REST API URL to the list of experiments for
+        A helper method that creates or updates a single study link in ICE. Note that ICE seems
+        to do some URL-based matching / link replacement even if no link ID is provided.
+        :param entry_experiments_url: the absolute REST API URL to the list of experiments for
             this ICE entry (tolerates ending with a slash or not). For example,
             https://registry.jbei.org/rest/parts/123/experiments/.
-            :param link_id: the link id if it's to be created
-            :param created: the creation timestamp when the link was created. Required if link_id
+        :param link_id: the link id if it's to be created
+        :param created: the creation timestamp when the link was created. Required if link_id
             is not None
-            :raises requests.exceptions.Timeout if the initial connection or response times out
+        :raises requests.exceptions.Timeout if the initial connection or response times out
         """
         # NOTE: this implementation works, but can probably be simplified based on how ICE actually
         # behaves vs. what the original plan was. Probably best to wait for comments and see
@@ -1038,21 +1040,19 @@ class IceApi(RestApiClient):
 
         json_dict = {'label': study_name, 'url': study_url}
         json_str = json.dumps(json_dict)
-
-        if logger:
-            logger.info(
-                "Requesting part-> study link from ICE (id=%s): %s" %
-                (str(link_id), entry_experiments_url)
-            )
-            logger.info("Response: %s " % json_str)
+        logger.info(
+            "Requesting part-> study link from ICE (id=%s): %s" %
+            (link_id, entry_experiments_url)
+        )
+        logger.info("Response: %s " % json_str)
 
         headers = {'Content-Type': 'application/json'}
         # if we're updating an existing link, use its full url
         if link_id:
             json_dict['id'] = link_id
 
-        request_generator = self.request_generator
-        response = request_generator.post(entry_experiments_url, data=json_str, headers=headers)
+        session = self.session
+        response = session.post(entry_experiments_url, data=json_str, headers=headers)
 
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
@@ -1063,25 +1063,24 @@ class IceApi(RestApiClient):
         specified EDD study. In practical use, there will probably only ever be one per
         part/study combination.
         :param ice_entry_id: the id of the ICE entry whose link to the study should be removed (
-        either a UUID or the numeric id)
+            either a UUID or the numeric id)
         :param study_id: the study ID to display in log messages (though the study may have been
-        deleted).
+            deleted).
         :param study_url: the study URL. Link removal is based on case-insensitive matching against
-        this value
+            this value
         :param logger: the logger to log messages to
         :return true if a link to the specified study was removed from ICE, false if no such link
-        existed (but no error occurred)
+            existed (but no error occurred)
         :raises HTTPError if a communication error occurred or if the server responded with a
-        status code other than 200
+            status code other than 200
         :raises requests.exceptions.Timeout if a communication timeout occurs.
         """
-        logger.info('Start ' + self.unlink_entry_from_study.__name__ + "()")
+        logger.info('Start unlink_entry_from_study()')
         self._prevent_write_while_disabled()
 
         # Look up the links associated with this ICE part
         entry_experiments_rest_url = self._build_entry_experiments_url(ice_entry_id)
-
-        response = self.request_generator.get(
+        response = self.session.get(
             entry_experiments_rest_url,
             headers=_JSON_CONTENT_TYPE_HEADER
         )
@@ -1092,18 +1091,17 @@ class IceApi(RestApiClient):
         json_dict = response.json()  # TODO: doesn't account for results paging see EDD-200
         study_links = [link for link in json_dict if study_url.lower() == link.get('url').lower()]
         logger.debug("Existing links response: " + json_dict.__str__())
-
         if not study_links:
-            logger.warning('No existing links found for (entry %s, study %d). Nothing to remove!'
-                           % (ice_entry_id, study_id))
+            logger.warning(
+                'No existing links found for (entry %s, study %d). Nothing to remove!' %
+                (ice_entry_id, study_id)
+            )
             return False
-
         # Delete all links that reference this study URL
         for link in study_links:
             link_id = link.get('id')
             logger.info('Deleting link %d from entry %s' % (link_id, ice_entry_id))
             self.remove_experiment_link(ice_entry_id, link_id)
-
         return True
 
     def _build_entry_experiments_url(self, ice_entry_id):
@@ -1117,8 +1115,7 @@ class IceApi(RestApiClient):
 
         entry_experiments_rest_url = self._build_entry_experiments_url(ice_entry_id)
         link_resource_uri = entry_experiments_rest_url + "%s/" % link_id
-        response = self.request_generator.delete(link_resource_uri)
-
+        response = self.session.delete(link_resource_uri)
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
 
@@ -1135,21 +1132,23 @@ class IceApi(RestApiClient):
         a more efficient low-level alternative to support clients that have already performed
         their own checking.
         :param ice_entry_id: the string used to identify the strain ( either the string
-        representation of the number displayed in the URL, or the UUID stored in EDD's database)
+            representation of the number displayed in the URL, or the UUID stored in EDD's
+            database)
         :param study_id: the unique ID of this study
         :param study_url: the URL for the EDD study to link to the ICE strain. Case-insensitive
-        matching of this URL against any existing links in ICE determines whether an existing
-        link is updated or whether a new link is created.
+            matching of this URL against any existing links in ICE determines whether an existing
+            link is updated or whether a new link is created.
         :param study_name: the name of the EDD study, which will be used to label the link
-        created in ICE
+            created in ICE
         :param old_study_name: the previous name of the EDD study (assumption is that it was just
-        renamed). If provided, all ICE links with this name and the study_url will be updated to
-        use the new name, unless it exactly matches study_name, in which case it's ignored.
+            renamed). If provided, all ICE links with this name and the study_url will be updated
+            to use the new name, unless it exactly matches study_name, in which case it's ignored.
         :param old_study_url: the previous URL of the EDD study (assumption is that the EDD study
-        URL has changed). If provided, all ICE links referencing this URL (case insensitive) will be
-        updated to use the new URL, unless it exactly matches study_url, in which case it's ignored.
-        :raises HTTPError if a communication error occurred or if the server responded with a status
-        code other than 200
+            URL has changed). If provided, all ICE links referencing this URL (case insensitive)
+            will be updated to use the new URL, unless it exactly matches study_url, in which case
+            it's ignored.
+        :raises HTTPError if a communication error occurred or if the server responded with a
+            status code other than 200
         :raises requests.exceptions.Timeout if a communication timeout occurs.
         """
         logger.info('Start ' + self.link_entry_to_study.__name__ + '()')
@@ -1165,29 +1164,29 @@ class IceApi(RestApiClient):
         # query ICE to get the list of existing links for this part
         entry_experiments_rest_url = self._build_entry_experiments_url(ice_entry_id)
         logger.info(entry_experiments_rest_url)
-        response = self.request_generator.get(entry_experiments_rest_url,
-                                              headers=_JSON_CONTENT_TYPE_HEADER)
+        response = self.session.get(
+            entry_experiments_rest_url, headers=_JSON_CONTENT_TYPE_HEADER
+        )
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
 
-        # inspect results to find the unique ID's for any pre-existing links referencing the study's
-        # URL
+        # inspect results to find the unique ID's for any pre-existing links referencing the
+        # study's URL
         label_key = 'label'
         url_key = 'url'
         existing_links = response.json()  # TODO: doesn't account for results paging see EDD-200
-        current_study_links = [link for link in existing_links if
-                               ((study_url.lower() == link.get(url_key).lower()) and
-                                (study_name == link.get(label_key)))]
-        outdated_study_links = []
-        old_study_name = old_study_name if old_study_name and old_study_name != study_name else None
-        old_study_url = old_study_url if old_study_url and old_study_url != study_url else None
-        if old_study_name or old_study_url:
-            outdated_study_links = [link for link in existing_links if
-                                    (old_study_name and ((study_url.lower() == link.get(
-                                            url_key).lower()) and
-                                            (old_study_name == link.get(label_key)))) or
-                                    (old_study_url and old_study_url.lower() == link.get(
-                                            url_key).lower())]
+
+        current_study_links = self._find_current_study_links(
+            existing_links, study_name, study_url, label_key, url_key
+        )
+        if not old_study_name or old_study_name == study_name:
+            old_study_name = None
+        if not old_study_url and old_study_url == study_url:
+            old_study_url = None
+        outdated_study_links = self._find_outdated_study_links(
+            existing_links, study_name, study_url, old_study_name, old_study_url,
+            label_key, url_key,
+        )
 
         logger.debug('Existing links: ' + str(existing_links))
         logger.debug('Current study links:' + str(current_study_links))
@@ -1201,40 +1200,108 @@ class IceApi(RestApiClient):
         # create or update study links
         if outdated_study_links:
             for outdated_link in outdated_study_links:
-                self._create_or_update_link(study_name, study_url, entry_experiments_rest_url,
-                                            link_id=outdated_link.get('id'),
-                                            created=outdated_link.get('created'))
+                self._create_or_update_link(
+                    study_name, study_url, entry_experiments_rest_url,
+                    link_id=outdated_link.get('id'), created=outdated_link.get('created')
+                )
         else:
             self._create_or_update_link(study_name, study_url, entry_experiments_rest_url)
+
+    def _find_current_study_links(self, existing_links, study_name, study_url, label_key, url_key):
+        def is_current_link(link):
+            return (
+                study_url.lower() == link.get(url_key).lower() and
+                study_name == link.get(label_key)
+            )
+        return [link for link in existing_links if is_current_link(link)]
+
+    def _find_outdated_study_links(self, existing_links, study_name, study_url, old_study_name,
+                                   old_study_url, label_key, url_key):
+        def is_outdated_link(link):
+            if old_study_name:
+                return (
+                    study_url.lower() == link.get(url_key).lower() and
+                    old_study_name == link.get(label_key)
+                )
+            if old_study_url:
+                return old_study_url.lower() == link.get(url_key).lower()
+            return False
+        return [link for link in existing_links if is_outdated_link(link)]
+
+
+def calculate_pages(count, offset, limit):
+    current = (offset // limit)
+    following = current + 1
+    if following * limit > count or current * limit >= count:
+        following = None
+    previous = current - 1 if current >= 1 else None
+    return previous, current, following
+
+
+def parse_query_url(query_url):
+    if query_url:
+        url_elements = urlparse(query_url)
+        url_parameters = parse_qs(url_elements.query)
+        return url_elements, url_parameters
+    return None, {}
+
+
+def extract_int_parameter(dictionary, key):
+    param = dictionary.get(key, None)
+    try:
+        if isinstance(list, param) and len(param):
+            param = param[0]
+        if param:
+            return int(param)
+    except TypeError as e:
+        logger.warning('Attempted invalid int conversion: %s', e)
+    return 0
+
+
+def construct_page_url(elements, params, index, limit):
+    if params and index is not None:
+        params[RESULT_LIMIT_PARAMETER] = limit
+        params[RESULT_OFFSET_PARAMETER] = index * limit
+        query = urlencode(params, True)
+        inputs = ParseResult(
+            elements.scheme,
+            elements.netloc,
+            elements.path,
+            elements.params,
+            query,
+            elements.fragment,
+        )
+        return urlunparse(inputs)
+    return None
 
 
 class IcePagedResult(PagedResult):
     # TODO: think more about whether / how to propagate JSON query parameters as part of POST
     # requests
     @staticmethod
-    def of(json_string, factory_class, query_url=None, results_key=u'results', result_limit=None,
+    def of(json_string, factory_class, query_url=None, results_key='results', result_limit=None,
            offset=0):
         """
         Reads a JSON string into a PagedResult containing Python objects.
         :param json_string: the result string to read / deserialize
         :param query_url: the complete URL for this query, or if query can't be accessed as a
-        URL only, the URL that most closely matches that used to perform the query. Used to
-        construct the prev_page/next_page links that should help simplify client code and make
-        IceApi respond similarly to EddApi despite having different JSON paging support
+            URL only, the URL that most closely matches that used to perform the query. Used to
+            construct the prev_page/next_page links that should help simplify client code and make
+            IceApi respond similarly to EddApi despite having different JSON paging support
         :param results_key: the JSON keyword used to differentiate results from the rest of the
-        content (e.g. a total result count)
+            content (e.g. a total result count)
         :param result_limit: the maximum number of results returned in a each page of results.
-        Note that  this may be different from the requested result limit if the server enforces
-        a maximum page size. If not provided via this parameter, an attempt will be made to
-        extract it from query_url. For consistency with DrfPagedResult, this value is required to
-        compute the current page offset and next/previous links, which aren't included in the
-        JSON data returned by ICE.
+            Note that  this may be different from the requested result limit if the server enforces
+            a maximum page size. If not provided via this parameter, an attempt will be made to
+            extract it from query_url. For consistency with DrfPagedResult, this value is required
+            to compute the current page offset and next/previous links, which aren't included in
+            the JSON data returned by ICE.
         :param offset
         :return:
         """
         # TODO: merge with EddPagedResult.of() if serialization problems there can be resolved,
-        # then move implementation to parent. Otherwise, more Pythonic to make this a factory method
-        # since IcePagedResult can't be an abstract class. Also update DrfPagedResult for
+        # then move implementation to parent. Otherwise, more Pythonic to make this a factory
+        # method since IcePagedResult can't be an abstract class. Also update DrfPagedResult for
         # consistency.
 
         # convert reply to a dictionary of native python data types
@@ -1256,60 +1323,36 @@ class IcePagedResult(PagedResult):
         # results.
         if results_key in json_dict:
             response_content = json_dict.get(results_key)
-            count = json_dict.get(u'resultCount', None)
-            query_params_dict = None
-            # for consistency, construct next/prev page URLs for ICE results that are automatically
-            if query_url:
-
-                # extract elements of the query URL so we can reconstruct it using paging parameters
-                url_elts = urlparse(query_url)
-                query_params_dict = parse_qs(url_elts.query)
-
-                # if paging parameters aren't already defined, try extracting them from query_url
-                if not result_limit:
-                    result_limit = query_params_dict.get(RESULT_LIMIT_PARAMETER)
-                    result_limit = int(result_limit[0]) if result_limit else None
-                if offset is None:
-                    offset_temp = query_params_dict.get(RESULT_OFFSET_PARAMETER)
-                    offset_temp = int(offset_temp[0]) if offset_temp else None
-                    offset = offset if offset is not None else offset_temp
+            count = json_dict.get('resultCount', None)
+            if not count:
+                return None
+            # extract elements of the query URL so we can reconstruct it using paging parameters
+            url_elts, query_params_dict = parse_query_url(query_url)
+            # if paging parameters aren't already defined, try extracting them from query_url
+            print('%s' % (query_params_dict, ))
+            if not result_limit:
+                result_limit = extract_int_parameter(query_params_dict, RESULT_LIMIT_PARAMETER)
+            if offset is None:
+                offset = extract_int_parameter(query_params_dict, RESULT_OFFSET_PARAMETER)
 
             # if required inputs are available, attempt to compute next/prev URLs similar
             # to those included in EDD's JSON so we can provide a standard client-side interface
             # for both REST API's, despite the differing implementations
             if result_limit:
                 # compute page indexes for the current page and prev/next pages
-                current_page_index = (offset // result_limit)
-                next_page_index = current_page_index + 1
-                if ((next_page_index + 1) * result_limit > count or
-                        current_page_index * result_limit >= count):
-                    next_page_index = None
-                prev_page_index = current_page_index - 1 if current_page_index >= 1 else None
+                prev_page_index, current_page_index, next_page_index = calculate_pages(
+                    count, offset, result_limit
+                )
 
             # if a query URL was provided, construct next/prev URL's by deconstructing the URL for
             # the current query, then reconstructing it using the next/prev page indices computed
             # above
-            if query_params_dict:
-                query_string = urlencode(query_params_dict, True) if query_params_dict else None
-
-                if next_page_index:
-                    query_params_dict[RESULT_LIMIT_PARAMETER] = result_limit
-                    query_params_dict[RESULT_OFFSET_PARAMETER] = next_page_index * result_limit
-                    query_string = urlencode(query_params_dict, True)
-                    next_page_inputs = ParseResult(url_elts.scheme, url_elts.netloc,
-                                                   url_elts.path, url_elts.params,
-                                                   query_string, url_elts.fragment)
-                    next_page_url = urlunparse(next_page_inputs)
-
-                if prev_page_index:
-                    query_params_dict[RESULT_LIMIT_PARAMETER] = result_limit
-                    query_params_dict[RESULT_OFFSET_PARAMETER] = prev_page_index * result_limit
-                    prev_page_inputs = ParseResult(url_elts.scheme, url_elts.netloc, url_elts.path,
-                                                   url_elts.params, query_string, url_elts.fragment)
-                    prev_page_url = urlunparse(prev_page_inputs)
-
-            if count == 0:
-                return None
+            next_page_url = construct_page_url(
+                url_elts, query_params_dict, next_page_index, result_limit
+            )
+            prev_page_url = construct_page_url(
+                url_elts, query_params_dict, prev_page_index, result_limit
+            )
 
         # otherwise just deserialize the (un-paged) data
         else:

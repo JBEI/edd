@@ -5,7 +5,6 @@ import json
 import logging
 
 from builtins import str
-from collections import OrderedDict
 from copy import deepcopy
 from django import forms
 from django.conf import settings
@@ -14,7 +13,7 @@ from django.contrib.auth.models import Group
 from django.contrib.postgres.forms import HStoreField
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.db.models import Prefetch, Q
+from django.db.models import Q
 from django.db.models.base import Model
 from django.db.models.manager import BaseManager
 from django.utils.safestring import mark_safe
@@ -23,8 +22,7 @@ from form_utils.forms import BetterModelForm
 from functools import partial
 
 from jbei.rest.auth import HmacAuth
-from jbei.ice.rest.ice import IceApi
-from .export import table
+from jbei.rest.clients.ice import IceApi
 from .models import (
     Assay, Attachment, CarbonSource, Comment, Line, Measurement, MeasurementType,
     MeasurementValue, MetaboliteExchange, MetaboliteSpecies, MetadataType, Protocol, Strain,
@@ -331,6 +329,13 @@ class SbmlSpeciesAutocompleteWidget(SbmlInfoAutocompleteWidget):
 
 class CreateStudyForm(forms.ModelForm):
     """ Form to create a new study. """
+    # include hidden field for copying multiple Line instances by ID
+    lineId = forms.ModelMultipleChoiceField(
+        queryset=Line.objects.none(),
+        required=False,
+        widget=forms.MultipleHiddenInput
+    )
+
     class Meta:
         model = Study
         fields = ['name', 'description', 'contact', ]
@@ -348,10 +353,23 @@ class CreateStudyForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         # removes default hard-coded suffix of colon character on all labels
         kwargs.setdefault('label_suffix', '')
+        self._user = kwargs.pop('user', None)
         super(CreateStudyForm, self).__init__(*args, **kwargs)
+        # self.fields exists after super.__init__()
+        if self._user:
+            # make sure lines are in a readable study
+            q = Study.user_permission_q(
+                self._user,
+                StudyPermission.READ,
+                keyword_prefix='study__',
+            )
+            if self._user.is_superuser:
+                queryset = Line.objects.filter()
+            else:
+                queryset = Line.objects.filter(q)
+            self.fields['lineId'].queryset = queryset
 
     def save(self, commit=True, force_insert=False, force_update=False, *args, **kwargs):
-
         # perform updates atomically to the study and related user permissions
         with transaction.atomic():
             # save the study
@@ -361,23 +379,37 @@ class CreateStudyForm(forms.ModelForm):
                 user=s.created.mod_by,
                 permission_type=StudyPermission.WRITE,
             )
-
             # get the ID of the group that should have study read permissions by default.
             # TODO: this should be configurable in a later version, but for now we'll hard/code
             # in a way that tolerates non-existence / removal of the default group used at JBEI
             default_group_name = 'ESE'
             try:
-                default_group= Group.objects.get(name=default_group_name)
+                default_group = Group.objects.get(name=default_group_name)
                 s.grouppermission_set.update_or_create(
-                        group_id=default_group.pk,
-                        permission_type=StudyPermission.READ, )
+                    group_id=default_group.pk,
+                    permission_type=StudyPermission.READ,
+                )
             except Group.DoesNotExist as dne:
-                logger.exception('Error retrieving information for the hard-coded default-read '
-                                 'group for studies, "%s". Studies will not default to visible '
-                                 'for any particular group.' %
-                                 default_group_name)
-
+                logger.exception(
+                    'Error retrieving information for the hard-coded default-read group for '
+                    'studies, "%s". Studies will not default to visible for any particular '
+                    'group.',
+                    default_group_name
+                )
+            # create copies of passed in Line IDs
+            self.save_lines(s)
         return s
+
+    def save_lines(self, study):
+        """ Saves copies of Line IDs passed to the form on the study. """
+        to_add = []
+        for line in self.cleaned_data['lineId']:
+            line.pk = line.id = None
+            line.study = study
+            line.study_id = study.id
+            to_add.append(line)
+        # https://docs.djangoproject.com/en/1.9/ref/models/relations/#django.db.models.fields.related.RelatedManager.add
+        study.line_set.add(*to_add, bulk=False)
 
 
 class CreateAttachmentForm(forms.ModelForm):
@@ -473,6 +505,9 @@ class LineForm(forms.ModelForm):
             'carbon_source': MultiCarbonSourceAutocompleteWidget(),
             'strains': MultiRegistryAutocompleteWidget(),
             'meta_store': forms.HiddenInput(),
+        }
+        help_texts = {
+            'name': 'This field is required'
         }
 
     def __init__(self, *args, **kwargs):

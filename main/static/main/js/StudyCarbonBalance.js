@@ -9,7 +9,7 @@ var CarbonBalance;
             this.normalizedError = normalizedError;
         }
         return ImbalancedTimeSample;
-    })();
+    }());
     CarbonBalance.ImbalancedTimeSample = ImbalancedTimeSample;
     var Display = (function () {
         function Display() {
@@ -434,7 +434,7 @@ var CarbonBalance;
         };
         Display.graphDiv = null;
         return Display;
-    })();
+    }());
     CarbonBalance.Display = Display;
     ;
     var LineSampleBalance = (function () {
@@ -445,5 +445,5 @@ var CarbonBalance;
             this.measurements = measurements;
         }
         return LineSampleBalance;
-    })();
+    }());
 })(CarbonBalance || (CarbonBalance = {})); // end CarbonBalance module

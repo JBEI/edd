@@ -49,7 +49,7 @@ var Utl;
             return mUnits;
         };
         return EDD;
-    })();
+    }());
     Utl.EDD = EDD;
     var QtipHelper = (function () {
         function QtipHelper() {
@@ -77,7 +77,7 @@ var Utl;
             return document.getElementById(this.qtip.attr('aria-describedby'));
         };
         return QtipHelper;
-    })();
+    }());
     Utl.QtipHelper = QtipHelper;
     // RGBA helper class.
     // Values are 0-255 (although toString() makes alpha 0-1 since that's how CSS likes it).
@@ -120,7 +120,7 @@ var Utl;
         Color.black = Color.rgb(0, 0, 0);
         Color.white = Color.rgb(255, 255, 255);
         return Color;
-    })();
+    }());
     Utl.Color = Color;
     ;
     var Table = (function () {
@@ -149,7 +149,7 @@ var Utl;
             element.appendChild(this.table);
         };
         return Table;
-    })();
+    }());
     Utl.Table = Table;
     // Javascript utilities
     var JS = (function () {
@@ -372,7 +372,7 @@ var Utl;
             $(selector).css("class", "waitbadge");
         };
         return JS;
-    })();
+    }());
     Utl.JS = JS;
     // A progress bar with a range from 0 to 100 percent.
     // When given only an id, the class seeks an element in the document and uses that as the progress bar.
@@ -410,7 +410,7 @@ var Utl;
             }
         };
         return ProgressBar;
-    })();
+    }());
     Utl.ProgressBar = ProgressBar;
     // A class wrapping filedrop-min.js (http://filedropjs.org) and providing some additional structure.
     // It's initialized with a single 'options' object:
@@ -573,7 +573,7 @@ var Utl;
         };
         FileDropZone.fileContainerIndexCounter = 0;
         return FileDropZone;
-    })();
+    }());
     Utl.FileDropZone = FileDropZone;
     // SVG-related utilities.
     var SVG = (function () {
@@ -672,6 +672,6 @@ var Utl;
         };
         SVG._namespace = "http://www.w3.org/2000/svg";
         return SVG;
-    })();
+    }());
     Utl.SVG = SVG;
 })(Utl || (Utl = {})); // end module Utl
