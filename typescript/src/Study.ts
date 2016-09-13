@@ -2196,7 +2196,6 @@ class DataGridSpecLines extends DataGridSpecBase {
         return rowGroupSpec;
     }
 
-
     // The table element on the page that will be turned into the DataGrid.  Any preexisting table
     // content will be removed.
     getTableElement() {
