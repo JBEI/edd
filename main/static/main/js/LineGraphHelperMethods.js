@@ -34,23 +34,10 @@
             .attr('height', squareSize)
             .style("fill", color)
             .on("mouseover", function (d) {
-                div.transition()
-                    .duration(200)
-                    .style("opacity", 0.9);
-                if (d.y_unit === undefined) {
-                    var unit = 'n/a';
-                } else {
-                    unit = d.y_unit;
-                }
-                div.html('<strong>' + d.name + '</strong>' + ": "
-                        + "</br>" + d.measurement + '</br>' + d.y + " " + unit + "</br> " + " @ " + d.x + " hours")
-                    .style("left", (d3.event.pageX) + "px")
-                    .style("top", (d3.event.pageY - 30) + "px");
+                lineOnHover(div, this, d)
             })
-            .on("mouseout", function (d) {
-                div.transition()
-                    .duration(500)
-                    .style("opacity", 0);
+            .on("mouseout", function () {
+                lineOnMouseOut()
             });
     }
 
@@ -74,27 +61,54 @@
             })
             .style("fill", color)
             .on("mouseover", function (d) {
-                div.transition()
-                    .duration(200)
-                    .style("opacity", 0.9);
-                if (d.y_unit === undefined) {
-                    var unit = 'n/a';
-                } else {
-                    unit = d.y_unit;
-                }
-                div.html('<strong>' + d.name + '</strong>' + ": "
-                        + "</br>" + d.measurement + '</br>' + d.y + " " + unit + "</br> " + " @ " + d.x + " hours")
-                    .style("left", (d3.event.pageX) + "px")
-                    .style("top", (d3.event.pageY - 30) + "px");
+                lineOnHover(div, this, d)
             })
-            .on("mouseout", function (d) {
-                div.transition()
-                    .duration(500)
-                    .style("opacity", 0);
+            .on("mouseout", function () {
+                lineOnMouseOut()
             });
     }
 
+/**
+ *  function takes in the svg shape type, div and returns the tooltip and hover elements for each
+ *  shape
+ */
 
+    function lineOnHover(div, hoverSvg, d) {
+        div.transition()
+            .duration(200)
+            .style("opacity", 0.9);
+        if (d.y_unit === undefined) {
+            var unit = 'n/a';
+        } else {
+            unit = d.y_unit;
+        }
+
+        d3.selectAll('.lineClass').style('opacity', 0.1);
+        $(hoverSvg).parent().prev().css('opacity', 1).css('stroke-width', 3) ;
+
+        d3.selectAll('rect').style('opacity', 0.1);
+        d3.selectAll('circle').style('opacity', 0.1);
+        d3.selectAll('polygon').style('opacity', 0.1);
+
+        $(hoverSvg).siblings().css('opacity', 1);
+        $(hoverSvg).css('opacity', 1);
+        //tool tip
+        div.html('<strong>' + d.name + '</strong>' + ": "
+                + "</br>" + d.measurement + '</br>' + d.y + " " + unit + "</br> " + " @ " + d.x + " hours")
+            .style("left", (d3.event.pageX) + "px")
+            .style("top", (d3.event.pageY - 30) + "px");
+}
+
+/**
+ *  function returns the mouseout tooltip options
+ */
+
+    function lineOnMouseOut() {
+                d3.selectAll('.lineClass').style('opacity', 1).style('stroke-width', 2);
+                d3.selectAll('circle').style('opacity', 1);
+                d3.selectAll('rect').style('opacity', 1);
+                d3.selectAll('polygon').style('opacity', 1)
+}
 /**
  *  function takes in square attributes and creates a plus hover svg object
  */
@@ -126,23 +140,10 @@
             .attr('height', squareSize + 3)
             .style("fill", color)
             .on("mouseover", function (d) {
-                div.transition()
-                    .duration(200)
-                    .style("opacity", 0.9);
-                if (d.y_unit === undefined) {
-                    var unit = 'n/a';
-                } else {
-                    unit = d.y_unit;
-                }
-                div.html('<strong>' + d.name + '</strong>' + ": "
-                        + "</br>" + d.measurement + '</br>' + d.y + " " + unit + "</br> " + " @ " + d.x + " hours")
-                    .style("left", (d3.event.pageX) + "px")
-                    .style("top", (d3.event.pageY - 30) + "px");
+                lineOnHover(div, this, d)
             })
-            .on("mouseout", function (d) {
-                div.transition()
-                    .duration(500)
-                    .style("opacity", 0);
+            .on("mouseout", function () {
+                lineOnMouseOut()
             });
     }
 
@@ -158,23 +159,10 @@
             })
             .style("fill", color)
             .on("mouseover", function (d) {
-                div.transition()
-                    .duration(200)
-                    .style("opacity", 0.9);
-                if (d.y_unit === undefined) {
-                    var unit = 'n/a';
-                } else {
-                    unit = d.y_unit;
-                }
-                div.html('<strong>' + d.name + '</strong>' + ": "
-                        + "</br>" + d.measurement + '</br>' + d.y + " " + unit + "</br> " + " @ " + d.x + " hours")
-                    .style("left", (d3.event.pageX) + "px")
-                    .style("top", (d3.event.pageY - 30) + "px");
+                lineOnHover(div, this, d)
             })
             .on("mouseout", function () {
-                div.transition()
-                    .duration(500)
-                    .style("opacity", 0);
+                lineOnMouseOut()
             });
     }
 
