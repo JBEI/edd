@@ -36,8 +36,10 @@ StudyDGraphing = {
             'bar-line': selector[3],
             'bar-measurement': selector[4]
         };
-        //display grouped bar chart by measurement if most of the measurement types are protocol
-        StudyHelper.showProteomicGraph(type, selectors, 'bar-measurement', buttons);
+        /* display grouped bar chart by measurement if most of the measurement types are protocol
+        *  currently commented out because this is buggy
+        */
+        //StudyHelper.showProteomicGraph(type, selectors, 'bar-measurement', buttons);
         //line chart
         $(buttons['line']).click(function (event) {
             event.preventDefault();
@@ -63,17 +65,17 @@ StudyDGraphing = {
         //bar chart grouped by time
         $(buttons['bar-time']).click(function (event) {
             var rects = d3.selectAll('.barTime rect')[0];
-            StudyHelper.buttonEventHandler(event, rects, 'bar-time', selectors, buttonArr);
+            StudyHelper.buttonEventHandler(newSet, event, rects, 'bar-time', selectors, buttonArr);
         });
         //bar chart grouped by line name
         $(buttons['bar-line']).click(function (event) {
             var rects = d3.selectAll('.barAssay rect')[0];
-            StudyHelper.buttonEventHandler(event, rects, 'bar-line', selectors, buttonArr);
+            StudyHelper.buttonEventHandler(newSet, event, rects, 'bar-line', selectors, buttonArr);
         });
         //bar chart grouped by measurement
         $(buttons['bar-measurement']).click(function (event) {
             var rects = d3.selectAll('.barMeasurement rect')[0];
-            StudyHelper.buttonEventHandler(event, rects, 'bar-measurement', selectors, buttonArr);
+            StudyHelper.buttonEventHandler(newSet, event, rects, 'bar-measurement', selectors, buttonArr);
         });
         var barAssayObj = GraphHelperMethods.sortBarData(newSet);
         //data for graphs

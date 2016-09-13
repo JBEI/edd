@@ -109,11 +109,11 @@ function createMultiLineGraph(graphSet, svg) {
                 .attr('r', 5);
         } else if (index === 1) {
             //create first right axis
-            graphSet.create_right_y_axis(meas[index].key, y, svg, spacing[index])
+            graphSet.create_right_y_axis(meas[index].key, y, svg, spacing[index]);
             //add triangle shape to y-axis label
             svg.append('svg:polygon')
                 .attr('class', 'icon')
-                .attr('points', [[782, 75], [790, 80], [790, 70]])
+                .attr('points', [[785, 75], [794, 80], [794, 70]])
         } else if (index === 2) {
             //create second right axis
             graphSet.create_right_y_axis(meas[index].key, y, svg, spacing[index]);

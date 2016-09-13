@@ -98,6 +98,7 @@ StudyHelper = {
      */
     svgWidth: function(selector, rectArray) {
         $('.tooMuchData').remove();
+        $('.noData').remove();
         var sum = 0;
         _.each(rectArray, function(rectElem:any) {
             if (rectElem.getAttribute("width") != 0) {
@@ -105,13 +106,13 @@ StudyHelper = {
             }
         });
         if (sum === 0) {
-            $(selector).prepend("<p class=' tooMuchData'>Too much data to display- please filter" +
-                " </p>")
+            $(selector).prepend("<p class=' tooMuchData'>Too many data points to display- please " +
+                "filter</p>")
         }
     },
 
-     /* this function takes in an element  selector and an array of svg rects and returns
-     * returns message or nothing.
+     /* this function takes in the EDDData.MeasurementTypes object and returns the measurement type
+     *  that has the most data points - options are based on family p, m, -, etc. 
      */
     measurementType: function(types) {
         var proteomics = {};
@@ -168,9 +169,17 @@ StudyHelper = {
      * this function takes in the event, selector type, rect obj, selector object and
      * handles the button event.
      */
-    buttonEventHandler: function(event, rect, selector, selectors, buttonArr) {
+    buttonEventHandler: function(newSet, event, rect, selector, selectors, buttonArr) {
         event.preventDefault();
-            StudyHelper.svgWidth(selectors[selector], rect);
+            if (newSet.length === 0) {
+                $(selectors[selector]).prepend("<p class='noData'>No data selected - please " +
+                "filter</p>")
+                $('.tooMuchData').remove();
+            }
+            else {
+                $('.noData').remove();
+             StudyHelper.svgWidth(selectors[selector], rect);
+            }
             StudyHelper.displayGraph(selectors, selector);
             StudyHelper.barGraphActiveButton(this, buttonArr);
             return false;

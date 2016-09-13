@@ -403,7 +403,7 @@ GraphHelperMethods = {
             .attr('class', 'text')
             .attr('x', -110)
             .attr("dy", ".32em")
-            .attr('y', 35)
+            .attr('y', 39)
             .style('text-anchor', 'middle')
             .text(label);
     },

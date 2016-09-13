@@ -68,6 +68,10 @@
     //insert y value to distinguish between lines
     var data = getXYValues(nested);
 
+    if (data.length === 0) {
+        return svg
+    }
+
     //get type names for x labels
     var typeNames = data.map(function (d) {
             return d.key;
