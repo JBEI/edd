@@ -11,6 +11,16 @@
         'name': '.barAssay'
     };
 
+    // if there is no data - show no data error message
+    if (graphSet.assayMeasurements.length === 0) {
+        $(typeClass[type]).prepend("<p class='noData'>No data selected - please " +
+        "filter</p>");
+
+        $('.tooMuchData').remove();
+    } else {
+           $('.noData').remove();
+    }
+
     var assayMeasurements = graphSet.assayMeasurements,
         numUnits = howManyUnits(assayMeasurements),
         yRange = [],
@@ -40,6 +50,7 @@
             return d.y_unit;
         })
         .entries(assayMeasurements);
+
 
     for (var i = 0; i < numUnits; i++) {
         yRange.push(d3.scale.linear().rangeRound([graphSet.height, 0]));
@@ -238,7 +249,6 @@
                 div.transition()
                     .style("opacity", 0);
             });
-
         
         //get word length
         var wordLength = getSum(typeNames);

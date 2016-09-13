@@ -121,7 +121,7 @@ function createMultiLineGraph(graphSet, svg) {
             //add square image to y-axis label
             svg.append('svg:rect')
                 .attr('class', 'icon')
-                .attr('x', 832)
+                .attr('x', 836)
                 .attr('y', 70)
                 .attr('width', squareSize)
                 .attr('height', squareSize);
@@ -131,14 +131,14 @@ function createMultiLineGraph(graphSet, svg) {
             //add plus image to y-axis label
             svg.append('svg:rect')
                 .attr('class', 'icon')
-                .attr('x', 882)
+                .attr('x', 886)
                 .attr('y', 73)
                 .attr('width', 8)
                 .attr('height', 2);
 
             svg.append('svg:rect')
                 .attr('class', 'icon')
-                .attr('x', 885)
+                .attr('x', 889)
                 .attr('y', 70)
                 .attr('width', 2)
                 .attr('height', 8)
