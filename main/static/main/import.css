@@ -189,37 +189,42 @@ div.dataTableDiv table tr > td.disabledInput {
 	background-color:#B2B4C4;
 }
 
-#step3Legend {
+.step3Legend {
 	float: right;
 	display: table;
+	margin-top: 20px;
 	margin-right: 30px;
-	margin-bottom: 10px;
+	margin-bottom: 20px;
 }
 
-#disabledRowLegendBox {
+.disabledRowLegendBox {
 	background-color: #B2B4C4;
 }
 
-#ignoredRowLegendBox {
+.ignoredRowLegendBox {
 	background-color:#FFE0CC;
+}
+
+.disabledRowLegendBox, .ignoredRowLegendBox {
+	display: inline-block;
+	vertical-align: middle;
+	width: 10px;
+	height: 10px;
+	border-style: solid;
+	border-width:  1px;
 }
 
 .legendCell {
 	display: table-cell;
-	margin: 3px;
+	padding-left: 3px;
 }
 
 .legendRow {
 	display: table-row;
 }
 
-#disabledRowLegendBox, #ignoredRowLegendBox {
-	display: inline-block;
-	text-align: center;
-	width: 10px;
-	height: 10px;
-	border-style: solid;
-	border-width:  1px;
+.legendColumn3 {
+	padding-left: 10px;
 }
 
 #missingStep3InputDiv {

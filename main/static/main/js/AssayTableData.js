@@ -1138,7 +1138,7 @@ var EDDTableImport;
                     _this.dataCells[i].push(cell[0]);
                 });
             });
-            $('#step3Legend').toggleClass('off', grid.length === 0);
+            $('.step3Legend').toggleClass('off', grid.length === 0);
             this.applyTableDataTypeStyling(grid);
             var endTime = new Date();
             var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
@@ -1191,7 +1191,8 @@ var EDDTableImport;
         };
         IdentifyStructuresStep.prototype.redrawEnabledFlagMarkers = function () {
             var _this = this;
-            // loop over cells in the table, styling them as needed to show ignored/disabled status
+            // loop over cells in the table, styling them as needed to show
+            // ignored/interpretation-needed status
             this.dataCells.forEach(function (row, rowIndex) {
                 var rowLabelCell, pulldown, disableRow, ignoreRow;
                 pulldown = _this.pulldownSettings[rowIndex];

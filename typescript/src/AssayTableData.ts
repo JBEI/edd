@@ -1458,7 +1458,7 @@ module EDDTableImport {
                     this.dataCells[i].push(cell[0]);
                 });
             });
-            $('#step3Legend').toggleClass('off', grid.length === 0);
+            $('.step3Legend').toggleClass('off', grid.length === 0);
             this.applyTableDataTypeStyling(grid);
             var endTime = new Date();
             var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
