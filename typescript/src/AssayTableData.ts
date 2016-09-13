@@ -155,7 +155,7 @@ module EDDTableImport {
 
         // We need to manually trigger this, after all our steps are constructed.
         // This will cascade calls through the rest of the steps and configure them too.
-        step1.reconfigure();
+        step1.queueReconfigure();
     }
 
 
@@ -253,7 +253,7 @@ module EDDTableImport {
             // function called has such strong effects on the rest of the page.
             // For example, a user should be free to change "merge" to "replace" without having
             // their edits in Step 2 erased.
-            $("#masterProtocol").change(this.reconfigure.bind(this));
+            $("#masterProtocol").change(this.queueReconfigure.bind(this));
 
             // Using "change" for these because it's more efficient AND because it works around an
             // irritating Chrome inconsistency
@@ -765,7 +765,7 @@ module EDDTableImport {
             // "short and fat" output from the skyline import tool as input. TODO: reconsider
             // this when integrating the Skyline tool into the import page (EDD-240).
             if(mode === 'pr') {
-                this.setTranspose(true)
+                this.setTranspose(true);
                 return;
             }
 
@@ -1098,6 +1098,9 @@ module EDDTableImport {
         warningMessages:ImportMessage[];
         errorMessages:ImportMessage[];
 
+        MODES_WITH_DATA_TABLE:String[]; // Step 1 modes in which the data table gets displayed
+
+        DISABLED_PULLDOWN_LABEL:string = '--';
         DEFAULT_STEP3_PULLDOWN_VALUE:number;
 
 
@@ -1150,6 +1153,7 @@ module EDDTableImport {
 
             $('#resetstep3').on('click', this.resetEnabledFlagMarkers.bind(this));
 
+            this.MODES_WITH_DATA_TABLE = ['std', 'tr', 'pr', 'mdv'];
             this.DEFAULT_STEP3_PULLDOWN_VALUE = 0;
         }
 
@@ -1163,19 +1167,20 @@ module EDDTableImport {
         }
 
         previousStepChanged(): void {
+            var prevStepComplete: boolean, mode: string, graph: JQuery, hideGraph:boolean, gridRowMarkers, grid, ignoreDataGaps, showDataTable:boolean;
             var prevStepComplete = this.rawInputStep.requiredInputsProvided();
             $('#processingStep2ResultsLabel').toggleClass('off', !prevStepComplete);
             $('#enterDataInStep2').toggleClass('off', prevStepComplete);
             $('#dataTableDiv').toggleClass('off', !prevStepComplete);
 
-            var mode = this.selectMajorKindStep.interpretationMode;
-            var graph = $('#graphDiv');
+            mode = this.selectMajorKindStep.interpretationMode;
+            graph = $('#graphDiv');
             if (mode === 'std' || mode === 'biolector' || mode === 'hplc') {
                 this.graphEnabled = true;
             } else {
                 this.graphEnabled = false;
             }
-            var hideGraph = (!this.graphEnabled) || (!prevStepComplete);
+            hideGraph = (!this.graphEnabled) || (!prevStepComplete);
             graph.toggleClass('off', hideGraph);
 
             var gridRowMarkers = this.rawInputStep.gridRowMarkers;
@@ -1195,7 +1200,8 @@ module EDDTableImport {
             // Empty the data table whether we remake it or not...
             $('#dataTableDiv').empty();
 
-            if (mode === 'std' || mode === 'tr' || mode === 'pr' || mode === 'mdv') {
+            showDataTable = this.MODES_WITH_DATA_TABLE.indexOf(mode) >= 0;
+            if(showDataTable) {
                 // Create a map of enabled/disabled flags for our data,
                 // but only fill the areas that do not already exist.
                 this.inferActiveFlags(grid);
@@ -1204,13 +1210,14 @@ module EDDTableImport {
                 // and leaving out any values that have been individually flagged.
                 // Update the styles of the new table to reflect the
                 // (possibly previously set) flag markers and the "ignore gaps" setting.
-                this.redrawIgnoredValueMarkers(ignoreDataGaps);
+                this.redrawIgnoredGapMarkers(ignoreDataGaps);
                 this.redrawEnabledFlagMarkers();
             }
             // Either we're interpreting some pre-processed data sets from a server response,
             // or we're interpreting the data table we just laid out above,
             // which involves skipping disabled rows or columns, optionally ignoring blank values, etc.
             this.interpretDataTable();
+
             // Start a delay timer that redraws the graph from the interpreted data.
             // This is rather resource intensive, so we're delaying a bit, and restarting the delay
             // if the user makes additional edits to the data within the delay period.
@@ -1305,7 +1312,7 @@ module EDDTableImport {
             controlCols = ['checkbox', 'pulldown', 'label'];
             if (mode === 'tr') {
                 pulldownOptions = [
-                    ['--', this.DEFAULT_STEP3_PULLDOWN_VALUE],
+                    [ this.DISABLED_PULLDOWN_LABEL, this.DEFAULT_STEP3_PULLDOWN_VALUE],
                     ['Entire Row Is...', [
                         ['Gene Names', TypeEnum.Gene_Names],
                         ['RPKM Values', TypeEnum.RPKM_Values]
@@ -1314,7 +1321,7 @@ module EDDTableImport {
                 ];
             } else if (mode === 'pr') {
                 pulldownOptions = [
-                    ['--', this.DEFAULT_STEP3_PULLDOWN_VALUE],
+                    [ this.DISABLED_PULLDOWN_LABEL, this.DEFAULT_STEP3_PULLDOWN_VALUE],
                     ['Entire Row Is...', [
                         ['Assay/Line Names', TypeEnum.Assay_Line_Names],
                     ]
@@ -1326,7 +1333,7 @@ module EDDTableImport {
                 ];
             } else {
                 pulldownOptions = [
-                    ['--', this.DEFAULT_STEP3_PULLDOWN_VALUE],
+                    [ this.DISABLED_PULLDOWN_LABEL, this.DEFAULT_STEP3_PULLDOWN_VALUE],
                     ['Entire Row Is...', [
                         ['Assay/Line Names', TypeEnum.Assay_Line_Names],
                         ['Metabolite Names', TypeEnum.Metabolite_Names]
@@ -1451,6 +1458,7 @@ module EDDTableImport {
                     this.dataCells[i].push(cell[0]);
                 });
             });
+            $('#step3Legend').toggleClass('off', grid.length === 0);
             this.applyTableDataTypeStyling(grid);
             var endTime = new Date();
             var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
@@ -1499,33 +1507,50 @@ module EDDTableImport {
         }
 
 
-        redrawIgnoredValueMarkers(ignoreDataGaps: boolean): void {
+        redrawIgnoredGapMarkers(ignoreDataGaps: boolean): void {
             this.dataCells.forEach((row: HTMLElement[]): void => {
+
                 row.forEach((cell: HTMLElement): void => {
-                    var toggle: boolean = !ignoreDataGaps && !!cell.getAttribute('isblank');
-                    $(cell).toggleClass('ignoredLine', toggle);
+                    var disabled: boolean =  !ignoreDataGaps && !!cell.getAttribute('isblank');
+                    $(cell).toggleClass('disabledInput', disabled);
                 });
             });
         }
 
 
         redrawEnabledFlagMarkers(): void {
-            this.dataCells.forEach((row: HTMLElement[], y: number): void => {
-                var toggle: boolean = !this.activeRowFlags[y];
-                $(this.rowLabelCells[y]).toggleClass('disabledLine', toggle);
-                row.forEach((cell: HTMLElement, x: number): void => {
-                    toggle = !this.activeFlags[y][x]
-                        || !this.activeColFlags[x]
-                        || !this.activeRowFlags[y];
-                    $(cell).toggleClass('disabledLine', toggle);
+            // loop over cells in the table, styling them as needed to show
+            // ignored/interpretation-needed status
+            this.dataCells.forEach((row: HTMLElement[], rowIndex: number): void => {
+                var rowLabelCell: JQuery, pulldown: number, disableRow:boolean, ignoreRow:boolean;
+                pulldown = this.pulldownSettings[rowIndex];
+                disableRow = !this.activeRowFlags[rowIndex];
+                rowLabelCell = $(this.rowLabelCells[rowIndex]);
+                rowLabelCell.toggleClass('disabledInput', disableRow);
+
+                row.forEach((cell: HTMLElement, colIndex: number): void => {
+                    var cellJQ:JQuery, disableCell: boolean, ignoreCell: boolean;
+                    disableCell = !this.activeFlags[rowIndex][colIndex]
+                        || !this.activeColFlags[colIndex]
+                        || !this.activeRowFlags[rowIndex];
+                    cellJQ = $(cell);
+                    cellJQ.toggleClass('disabledInput', disableCell);
+
+                    // if the cell will be ignored because no selection has been made for its row,
+                    // change the background so it's obvious that it won't be used
+                    ignoreRow = (pulldown === this.DEFAULT_STEP3_PULLDOWN_VALUE) && !disableCell;
+                    cellJQ.toggleClass('missingInterpretationRow', ignoreRow);
+                    rowLabelCell.toggleClass('missingInterpretationRow', ignoreRow);
                 });
             });
+
+            // style table cells containing column checkboxes in the same way their content was
+            // styled above
             this.colCheckboxCells.forEach((box: HTMLElement, x: number): void => {
                 var toggle: boolean = !this.activeColFlags[x];
-                $(box).toggleClass('disabledLine', toggle);
+                $(box).toggleClass('disabledInput', toggle);
             });
         }
-
 
         changedRowDataTypePulldown(index: number, value: number): void {
             var selected: number;
@@ -1548,13 +1573,16 @@ module EDDTableImport {
                         var select: JQuery, i: number;
                         select = $(pulldown);
                         i = parseInt(select.attr('i'), 10);
+
+                        // if user changed value for this pulldown, stop auto-selecting values for
+                        // this and subsequent pulldowns
                         if (this.pulldownUserChangedFlags[i]
                             && this.pulldownSettings[i] !== 0) {
-                            return false; // false for break
+                            return false; // break out of loop
                         }
                         select.val(value.toString());
                         this.pulldownSettings[i] = value;
-                        return true;
+                        return true; // continue looping
                     });
                 // In addition to the above action, we also need to do some checking on the entire set of
                 // pulldowns, to enforce a division between the "Metabolite Name" single data type and the
@@ -1607,6 +1635,7 @@ module EDDTableImport {
             var grid = this.rawInputStep.getGrid();
             this.applyTableDataTypeStyling(grid);
             this.interpretDataTable();
+            this.redrawEnabledFlagMarkers();
             this.queueGraphRemake();
             var ellapsedSeconds = (new Date().getTime() - start.getTime()) / 1000;
             console.log("End interpretRowDataTypePullDowns(). Elapsed time", ellapsedSeconds, " s. Calling next step.");
@@ -1614,12 +1643,12 @@ module EDDTableImport {
         }
 
         toggleTableRow(box: Element): void {
-            var value: number, input: JQuery, pulldown:JQuery;
-            input = $(box);
-            pulldown = input.next();
-            value = parseInt(input.val(), 10);
-            var active = input.prop('checked');
-            this.activeRowFlags[value] = active;
+            var input: number, checkbox: JQuery, pulldown:JQuery;
+            checkbox = $(box);
+            pulldown = checkbox.next();
+            input = parseInt(checkbox.val(), 10);
+            var active = checkbox.prop('checked');
+            this.activeRowFlags[input] = active;
             if(active) {
                 pulldown.removeAttr('disabled');
             } else {
@@ -1807,7 +1836,7 @@ module EDDTableImport {
                         'name': mn,
                         'units': 'units',
                         'data': reassembledData
-                    }
+                    };
                     this.graphSets.push(graphSet);
                 });
                 return;
@@ -1903,10 +1932,10 @@ module EDDTableImport {
 
             // The standard method: Make a "set" for each column of the table
 
-            this.colObjects.forEach((_, c: number): void => {
+            this.colObjects.forEach((_, col: number): void => {
                 var set: RawImportSet, graphSet: GraphingSet, uniqueTimes: number[], times: any, foundMeta: boolean;
                 // Skip it if the whole column is deactivated
-                if (!this.activeColFlags[c]) {
+                if (!this.activeColFlags[col]) {
                     return;
                 }
 
@@ -1926,14 +1955,14 @@ module EDDTableImport {
                 foundMeta = false;
                 grid.forEach((row: string[], r: number): void => {
                     var pulldown: number, label: string, value: string, timestamp: number;
-                    if (!this.activeRowFlags[r] || !this.activeFlags[r][c]) {
+                    if (!this.activeRowFlags[r] || !this.activeFlags[r][col]) {
                         return;
                     }
                     pulldown = this.pulldownSettings[r];
                     label = gridRowMarkers[r] || '';
-                    value = row[c] || '';
+                    value = row[col] || '';
                     if (!pulldown) {
-                        return;
+                        return; // skip row if there's nothing selected in the pulldown
                     } else if (pulldown === TypeEnum.RPKM_Values) {  // Transcriptomics: RPKM values
                         value = value.replace(/,/g, '');
                         if (value) {
@@ -2004,8 +2033,8 @@ module EDDTableImport {
                 this.parsedSets.push(set);
 
                 graphSet = {
-                    'label': 'Column ' + c,
-                    'name': 'Column ' + c,
+                    'label': 'Column ' + col,
+                    'name': 'Column ' + col,
                     'units': 'units',
                     'data': reassembledData
                 };
@@ -2104,6 +2133,16 @@ module EDDTableImport {
         }
 
         requiredInputsProvided(): boolean {
+            var mode: string, hadInput: boolean;
+            var mode = this.selectMajorKindStep.interpretationMode;
+
+            // if the current mode doesn't require input from this step, just return true
+            // if the previous step had input
+            if(this.MODES_WITH_DATA_TABLE.indexOf(mode) < 0) {
+                return this.rawInputStep.haveInputData;
+            }
+
+            // otherwise, require user input for every non-ignored row
             for(let row in this.pulldownObjects) {
                 var rowInactivated = !this.activeRowFlags[row];
 
@@ -2113,9 +2152,12 @@ module EDDTableImport {
                 var inputSelector = this.pulldownObjects[row];
                 var comboBox = $(inputSelector);
                 if(comboBox.val() == this.DEFAULT_STEP3_PULLDOWN_VALUE) { //NOTE: typecomparison breaks it!
+                    $('#missingStep3InputDiv').removeClass('off');
                     return false;
                 }
             }
+
+            $('#missingStep3InputDiv').addClass('off');
 
             return this.parsedSets.length > 0;
         }
@@ -3296,9 +3338,11 @@ module EDDTableImport {
                                     userMessages:ImportMessage[][], messageCount:number,
                                     messageCssClass:string, inputs:JQuery[][],
                                     createCheckboxes:boolean):void {
+            var hasRequiredInitialInputs, toggleOff, showAcknowledgeAllBtn: boolean, table, tableBody,
+                header, headerCell;
             contentDivSelector.empty();
-            var hasRequiredInitialInputs = this.arePrevStepRequiredInputsProvided();
-            var toggleOff = (messageCount === 0) || !hasRequiredInitialInputs;
+            hasRequiredInitialInputs = this.arePrevStepRequiredInputsProvided();
+            toggleOff = (messageCount === 0) || !hasRequiredInitialInputs;
             wrapperDivSelector.toggleClass('off', toggleOff);
 
             // clear all the subarrays containing input controls for prior steps
@@ -3317,42 +3361,44 @@ module EDDTableImport {
 
             // if showing checkboxes to acknowledge messages, add a button to ak all of them after
             // a reasonable number
-            var showAcknowledgeAllBtn = createCheckboxes && (messageCount >= 5);
+            showAcknowledgeAllBtn = createCheckboxes && (messageCount >= 5);
              if(showAcknowledgeAllBtn) {
                 this.addAcknowledgeAllButton(contentDivSelector);
             }
 
-            var table = $('<table>').appendTo(contentDivSelector);
+            table = $('<table>').appendTo(contentDivSelector);
 
             // if we'll be adding checkboxes to the table, set headers to describe what they're for
             if (createCheckboxes) {
-                var header = $('<thead>').appendTo(table);
-                var headerCell = $('<th>').text('Warning').appendTo(header);
+                header = $('<thead>').appendTo(table);
+                headerCell = $('<th>').text('Warning').appendTo(header);
                 headerCell = $('<th>').text('Acknowledge').appendTo(header);
             }
-            var tableBody = $('<tbody>').appendTo(table)[0];
+            tableBody = $('<tbody>').appendTo(table)[0];
 
             userMessages.forEach((stepMessages:ImportMessage[], stepIndex:number):void => {
                 stepMessages.forEach((message:ImportMessage):void => {
-                    var row = $('<tr>').appendTo(tableBody);
-                    var cell = $('<td>').css('text-align', 'left').appendTo(row);
-                    var div =  $('<div>').attr('class', messageCssClass).appendTo(cell);
-                    var span = $('<span class="warningStepLabel">').text("Step " + (stepIndex + 1)).appendTo(div);
-                    var msgSpan = $('<span>').text(": " + message.message).appendTo(div);
+                    var row, cell, div, span, msgSpan, checkbox;
+                    row = $('<tr>').appendTo(tableBody);
+                    cell = $('<td>').css('text-align', 'left').appendTo(row);
+                    div =  $('<div>').attr('class', messageCssClass).appendTo(cell);
+                    span = $('<span class="warningStepLabel">').text("Step " + (stepIndex + 1)).appendTo(div);
+                    msgSpan = $('<span>').text(": " + message.message).appendTo(div);
 
                     if (!createCheckboxes) {
                         return;
                     }
-                    var cell = $('<td>').css('text-align', 'center').toggleClass('errorMessage', !createCheckboxes).appendTo(row);
+                    cell = $('<td>').css('text-align', 'center').toggleClass('errorMessage', !createCheckboxes).appendTo(row);
 
-                    var checkbox = $('<input type="checkbox">').appendTo(cell);
+                    checkbox = $('<input type="checkbox">').appendTo(cell);
                     this.warningInputs[stepIndex].push(checkbox);
                     checkbox.on('click', null, {
                         'div': div,
                         'checkbox': checkbox
                     }, (ev: JQueryMouseEventObject) => {
-                        var div = ev.data.div;
-                        var checkbox = ev.data.checkbox;
+                        var div, checkbox;
+                        div = ev.data.div;
+                        checkbox = ev.data.checkbox;
                         this.userSelectedWarningButton(div, checkbox);
                     });
                 }, this)

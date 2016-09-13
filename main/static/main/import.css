@@ -179,14 +179,52 @@ div.dataTableDiv table col.hoverLines {
 	background-color:#E4E4FF;
 }
 
-div.dataTableDiv table tr > td.ignoredLine {
-	color:#FFFFFF;
+div.dataTableDiv table tr > td.missingInterpretationRow {
+	color:#000000;
 	background-color:#FFE0CC;
 }
 
-div.dataTableDiv table tr > td.disabledLine {
-	color:#FFFFFF;
-	background-color:#CC0000;
+div.dataTableDiv table tr > td.disabledInput {
+	color:#000000;
+	background-color:#B2B4C4;
+}
+
+#step3Legend {
+	float: right;
+	display: table;
+	margin-right: 30px;
+	margin-bottom: 10px;
+}
+
+#disabledRowLegendBox {
+	background-color: #B2B4C4;
+}
+
+#ignoredRowLegendBox {
+	background-color:#FFE0CC;
+}
+
+.legendCell {
+	display: table-cell;
+	margin: 3px;
+}
+
+.legendRow {
+	display: table-row;
+}
+
+#disabledRowLegendBox, #ignoredRowLegendBox {
+	display: inline-block;
+	text-align: center;
+	width: 10px;
+	height: 10px;
+	border-style: solid;
+	border-width:  1px;
+}
+
+#missingStep3InputDiv {
+	display: inline-block;
+	margin: 10px;
 }
 
 

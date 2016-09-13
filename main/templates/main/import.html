@@ -332,8 +332,20 @@
     <div id="enterDataInStep2" class="disabledStepLabel">
       Complete the preceding steps first!
     </div>
-  <div id="dataTableDiv" class="dataTableDiv"></div>
 
+  <div id="dataTableDiv" class="dataTableDiv"></div>
+    <div id="step3Legend" class="off sectionContent">
+        <div class="legendRow">
+            <span class="legendCell">Row needs interpretation:</span>
+            <span id="ignoredRowLegendBox" class="legendCell"></span>
+        </div>
+        <div class="legendRow">
+            <span class="legendCell">Ignored during import:</span>
+            <span id="disabledRowLegendBox" class="legendCell"></span>
+        </div>
+    </div>
+    <div id="missingStep3InputDiv" class="off sectionContent errorMessage">Missing required input
+        (s) above</div>
   <center>
     <div id="graphDiv" class="off" style="width:98%;height:240px;padding:0px;margin:5px 0px 5px 0px;
 "></div>
