@@ -2763,6 +2763,9 @@ var DataGridSpecAssays = (function (_super) {
         // Create a single widget for substring searching
         var searchAssaysWidget = new DGAssaysSearchWidget(dataGrid, this, 'Search Assays', 30, false);
         widgetSet.push(searchAssaysWidget);
+        var deselectAllWidget = new DGDeselectAllWidget(dataGrid, this);
+        deselectAllWidget.displayBeforeViewMenu(true);
+        widgetSet.push(deselectAllWidget);
         // A "select all" button
         var selectAllWidget = new DGSelectAllWidget(dataGrid, this);
         selectAllWidget.displayBeforeViewMenu(true);
