@@ -51,15 +51,15 @@ GraphHelperMethods = {
      *    ...
      *    ]
     **/
-    transformSingleLineItem: function (data, singleData, names, color, lineName) {
+    transformSingleLineItem: function (dataObj) {
         // unit types
-        var unitTypes = data.UnitTypes;
+        var unitTypes = dataObj['data'].UnitTypes;
         // measurement types
-        var measurementTypes = data.MeasurementTypes;
-        // array of x and y values for sortin
+        var measurementTypes = dataObj['data'].MeasurementTypes;
+        // array of x and y values for sorting
         var xAndYValues = [];
         //data for one line entry
-        var singleDataValues = singleData.values;
+        var singleDataValues = dataObj['measure'].values;
         _.each(singleDataValues, function (dataValue, index) {
             var dataset = {};
             //can also change to omit data point with null which was done before..
@@ -69,16 +69,17 @@ GraphHelperMethods = {
             else if (dataValue[1].length == 0) {
                 dataValue[1] = ["0"];
             }
-            dataset['label'] = 'dt' + singleData.assay;
+            dataset['label'] = 'dt' + dataObj['measure'].assay;
             dataset['x'] = parseFloat(dataValue[0].join());
             dataset['y'] = parseFloat(dataValue[1].join());
-            dataset['x_unit'] = GraphHelperMethods.unitName(singleData.x_units, unitTypes);
-            dataset['y_unit'] = GraphHelperMethods.unitName(singleData.y_units, unitTypes);
-            dataset['name'] = names;
-            dataset['color'] = color;
-            dataset['nameid'] = names + index;
-            dataset['lineName'] = lineName;
-            dataset['measurement'] = GraphHelperMethods.measurementName(singleData.type, measurementTypes);
+            dataset['x_unit'] = GraphHelperMethods.unitName(dataObj['measure'].x_units, unitTypes);
+            dataset['y_unit'] = GraphHelperMethods.unitName(dataObj['measure'].y_units, unitTypes);
+            dataset['name'] = dataObj['names'];
+            dataset['color'] = dataObj['color'];
+            dataset['nameid'] = dataObj['names'] + index;
+            dataset['lineName'] = dataObj['lineName'];
+            dataset['measurement'] = GraphHelperMethods.measurementName(dataObj['measure'].type, measurementTypes);
+            dataset['fullName'] = dataObj['lineName'] + ' ' + dataset['measurement'];
             xAndYValues.push(dataset);
         });
         xAndYValues.sort(function (a, b) {

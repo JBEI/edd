@@ -181,10 +181,9 @@
 /**
  *  function takes in path attributes and creates an svg path
  */
-    function createLine(svg, id, line, color) {
+    function createLine(svg, data, line, color) {
         return svg.append('path')
-                    .attr("id", id)
-                    .attr('d', line)
+                    .attr('d', line(data))
                     .attr('stroke', color)
                     .attr('stroke-width', 2)
                     .attr("class", 'lineClass')
