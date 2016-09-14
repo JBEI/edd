@@ -7,6 +7,7 @@ individual peptides or proteins.
 """
 
 from collections import defaultdict, namedtuple
+from decimal import Decimal
 from itertools import product
 
 
@@ -19,7 +20,7 @@ class SkylineParser(object):
     def export(self, input_data):
         samples = set()
         proteins = set()
-        summed_areas = defaultdict(int)
+        summed_areas = defaultdict(Decimal)
         n_records = 0
         errors = []
         for item in filter(bool, map(self._parse_line, input_data)):
@@ -27,7 +28,7 @@ class SkylineParser(object):
             samples.add(item.sample)
             proteins.add(item.protein)
             try:
-                summed_areas[(item.sample, item.protein)] += int(item.area)
+                summed_areas[(item.sample, item.protein)] += Decimal(item.area)
             except ValueError:
                 errors.append('Could not parse area "%s"' % (item.area, ))
         samples = sorted(samples)
