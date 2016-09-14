@@ -29,7 +29,7 @@ from io import BytesIO
 from . import autocomplete
 from .importer import (
     TableImport, import_rna_seq, import_rnaseq_edgepro, interpret_edgepro_data,
-    interpret_raw_rna_seq_data,
+    interpret_raw_rna_seq_data, parser
 )
 from .export.forms import (ExportOptionForm, ExportSelectionForm,  WorklistForm,)
 from .export.sbml import SbmlExport
@@ -949,61 +949,24 @@ def utilities_parse_import_file(request):
     edd_file_type = request.META.get('HTTP_X_EDD_FILE_TYPE')
     edd_import_mode = request.META.get('HTTP_X_EDD_IMPORT_MODE')
 
-    if edd_import_mode == "biolector":
+    parse_fn = parser.find_parser(edd_import_mode, edd_file_type)
+    if parse_fn:
         try:
-            from edd_utils.parsers import biolector
-            # We pass the request directly along, so it can be read as a stream by the parser
-            result = biolector.getRawImportRecordsAsJSON(request, 0)
+            result = parse_fn(request)
             return JsonResponse({
-                "file_type": "xml",
-                "file_data": result,
+                'file_type': result.file_type,
+                'file_data': result.parsed_data,
             })
-        except ImportError as e:
-            return JsonResponse({
-                "python_error": "jbei_tools module required to handle XML table input."
-            })
-    if edd_file_type == "excel":
-        try:
-            from edd_utils.parsers import excel
-            data = request.read()
-            result = excel.import_xlsx_tables(file=BytesIO(data))
-            return JsonResponse({
-                "file_type": "xlsx",
-                "file_data": result,
-            })
-        except ImportError as e:
-            return JsonResponse({
-                "python_error": "jbei_tools module required to handle Excel table input."
-            })
-        except ValueError as e:
-            return JsonResponse({"python_error": str(e)})
         except Exception as e:
-            return JsonResponse({
-                "file_type": "csv",
-                "file_data": data,
-            })
-    if edd_import_mode == "hplc":
-        try:
-            from edd_utils.parsers.hplc import getRawImportRecordsAsJSON, HplcError
-            result = getRawImportRecordsAsJSON(request)
-            return JsonResponse({
-                "file_type": "hplc",
-                "file_data": result,
-            })
-        except HplcError as e:
-            return JsonResponse({
-                "python_error": str(e)
-            })
-        except ImportError as e:
-            logger.exception('Failed to load module %s', e)
-            return JsonResponse({
-                "python_error": "jbei_tools module required to handle HPLC file input."
-            })
-
-    return JsonResponse({
-        "python_error": "The uploaded file could not be interpreted as either an Excel "
-                        "spreadsheet or an XML file.  Please check that the contents are "
-                        "formatted correctly. (Word documents are not allowed!)"})
+            return JsonResponse({'python_error': e}, status=500)
+    return JsonResponse(
+        {
+            "python_error": "The uploaded file could not be interpreted as either an Excel "
+                            "spreadsheet or an XML file.  Please check that the contents are "
+                            "formatted correctly. (Word documents are not allowed!)"
+        },
+        code=500
+    )
 
 
 # /study/<study_id>/import/rnaseq

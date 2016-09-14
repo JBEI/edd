@@ -491,7 +491,7 @@ module EDDTableImport {
             fileContainer.extraHeaders['Import-Mode'] = mode;
             var ft = fileContainer.fileType;
             // We'll process csv files locally.
-            if ((ft === 'csv' || ft === 'plaintext') &&
+            if ((ft === 'csv' || ft === 'txt') &&
                     (mode === 'std' || mode === 'tr' || mode === 'pr')) {
                 fileContainer.skipProcessRaw = false;
                 fileContainer.skipUpload = true;
@@ -499,14 +499,14 @@ module EDDTableImport {
             }
             // With Excel documents, we need some server-side tools.
             // We'll signal the dropzone to upload this, and receive processed results.
-            if ((ft === 'excel') &&
+            if ((ft === 'xlsx') &&
                     (mode === 'std' || mode === 'tr' || mode === 'pr' || mode === 'mdv')) {
                 this.showDropZone(fileContainer);
                 fileContainer.skipProcessRaw = true;
                 fileContainer.skipUpload = false;
                 return;
             }
-            if ((ft === 'csv' || ft === 'plaintext') &&
+            if ((ft === 'csv' || ft === 'txt') &&
                     (mode === 'hplc')) {
                 this.showDropZone(fileContainer);
                 fileContainer.skipProcessRaw = true;
@@ -563,7 +563,7 @@ module EDDTableImport {
                 return;
             }
 
-            if (fileContainer.fileType == "excel") {
+            if (fileContainer.fileType == "xlsx") {
                 this.clearDropZone();
                 var ws = result.file_data["worksheets"][0];
                 var table = ws[0];
@@ -640,7 +640,7 @@ module EDDTableImport {
             $('#fileDropInfoIcon').removeClass('excel');
             if (fileContainer.fileType === 'xml') {
                 $('#fileDropInfoIcon').addClass('xml');
-            } else if (fileContainer.fileType === 'excel') {
+            } else if (fileContainer.fileType === 'xlsx') {
                 $('#fileDropInfoIcon').addClass('excel');
             }
             $('#step2textarea').addClass('off');

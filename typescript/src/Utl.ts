@@ -293,13 +293,13 @@ module Utl {
 		// Given a file name (n) and a file type string (t), try and guess what kind of file we've got.
 		static guessFileType(n: string, t: string): string {
 			// Going in order from most confident to least confident guesses:
-			if (t.indexOf('officedocument.spreadsheet') >= 0) { return 'excel'; }
+			if (t.indexOf('officedocument.spreadsheet') >= 0) { return 'xlsx'; }
 			if (t === 'text/csv') { return 'csv'; }
 			if (t === 'text/xml') { return 'xml'; }
-			if ((n.indexOf('.xlsx', n.length - 5) !== -1) || (n.indexOf('.xls', n.length - 4) !== -1)) { return 'excel'; }
+			if ((n.indexOf('.xlsx', n.length - 5) !== -1) || (n.indexOf('.xls', n.length - 4) !== -1)) { return 'xlsx'; }
 			if (n.indexOf('.xml', n.length - 4) !== -1) { return 'xml'; }
-			if (t === 'text/plain') { return 'plaintext'; }
-			if (n.indexOf('.txt', n.length - 4) !== -1) { return 'plaintext'; }
+			if (t === 'text/plain') { return 'txt'; }
+			if (n.indexOf('.txt', n.length - 4) !== -1) { return 'txt'; }
 			// If all else fails, assume it's a csv file.  (So, any extension that's not tried above, or no extension.)
 			return 'csv';
 		}
