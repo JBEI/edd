@@ -1167,7 +1167,7 @@ module EDDTableImport {
         }
 
         previousStepChanged(): void {
-            var prevStepComplete: boolean, mode: string, graph: JQuery, hideGraph:boolean, gridRowMarkers, grid, ignoreDataGaps, showDataTable:boolean;
+            var prevStepComplete: boolean, mode: string, graph: JQuery, hideGraph:boolean, gridRowMarkers:any[], grid:any[], ignoreDataGaps:boolean, showDataTable:boolean;
             var prevStepComplete = this.rawInputStep.requiredInputsProvided();
             $('#processingStep2ResultsLabel').toggleClass('off', !prevStepComplete);
             $('#enterDataInStep2').toggleClass('off', prevStepComplete);
