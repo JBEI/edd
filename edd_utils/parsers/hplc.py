@@ -43,15 +43,15 @@ def iterate_as_lines(stream):
         yield line
 
 
-class HPLC_Parse_Missing_Argument_Exception(Exception):
+class HplcError(Exception):
     pass
 
 
-class HPLC_Parse_No_Header_Exception(Exception):
+class HplcInputError(HplcError):
     pass
 
 
-class HPLC_Parse_Misaligned_Blocks_Exception(Exception):
+class HplcAlignmentError(HplcError):
     pass
 
 
@@ -66,7 +66,7 @@ class HPLC_Parser(object):
     def __init__(self, input_stream):
 
         if not input_stream:
-            raise HPLC_Parse_Missing_Argument_Exception("No data stream provided")
+            raise HplcInputError("No data stream provided")
 
         self.input_stream = input_stream   # The stream that is being parsed
         self.decoded_stream = None
@@ -130,14 +130,14 @@ class HPLC_Parser(object):
         raw_string = self.input_stream.read()
         chardet_result = chardet.detect(raw_string)
         if chardet_result is None:
-            raise HPLC_Parse_No_Header_Exception("unable to determine encoding of document")
+            raise HplcInputError("unable to determine encoding of document")
 
         encoding = chardet_result['encoding']
         logger.info("detected encoding %s", encoding)
         try:
             decoded_string = raw_string.decode(encoding)
         except Exception:
-            raise HPLC_Parse_No_Header_Exception(
+            raise HplcInputError(
                 "unable to decode document using guessed unocide type %s", encoding
             )
 
@@ -292,11 +292,11 @@ class HPLC_Parser(object):
             if "*** End of Report ***" in line:
                 break
             if line == '':
-                raise HPLC_Parse_No_Header_Exception(
+                raise HplcInputError(
                     "unable to find header: EOF encountered at line %d",
                     self.current_line)
             if i >= HPLC_Parser.max_header_line_count:
-                raise HPLC_Parse_No_Header_Exception(
+                raise HplcInputError(
                     "unable to find header: header not closed after %d lines",
                     HPLC_Parser.max_header_line_count)
         return header_block
@@ -416,12 +416,14 @@ class HPLC_Parser(object):
             self.current_line += 1
 
             if self.expected_row_count and line_number > self.expected_row_count:
-                raise HPLC_Parse_Misaligned_Blocks_Exception("More rows found then expected!")
+                raise HplcAlignmentError
+            ("More rows found then expected!")
 
             if line.startswith('#'):
                 end_of_block = True
                 if self.expected_row_count and line_number < self.expected_row_count:
-                    raise HPLC_Parse_Misaligned_Blocks_Exception("Less rows found then expected!")
+                    raise HplcAlignmentError
+                ("Less rows found then expected!")
 
             for index in range(len(column_headers)):
                 if "Sample" in column_headers[index]:

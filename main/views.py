@@ -984,29 +984,16 @@ def utilities_parse_import_file(request):
             })
     if edd_import_mode == "hplc":
         try:
-            from edd_utils.parsers.hplc import (
-                getRawImportRecordsAsJSON, HPLC_Parse_Missing_Argument_Exception,
-                HPLC_Parse_No_Header_Exception, HPLC_Parse_Misaligned_Blocks_Exception
-                )
-            try:
-                result = getRawImportRecordsAsJSON(request)
-                return JsonResponse({
-                    "file_type": "hplc",
-                    "file_data": result,
-                })
-                # TODO: better exception messages.
-            except HPLC_Parse_Missing_Argument_Exception as e:
-                return JsonResponse({
-                    "python_exception": "HPLC parsing failed: input stream None"
-                })
-            except HPLC_Parse_No_Header_Exception as e:
-                return JsonResponse({
-                    "python_exception": "HPLC parsing failed: unable to find header!"
-                })
-            except HPLC_Parse_Misaligned_Blocks_Exception as e:
-                return JsonResponse({
-                    "python_exception": "HPLC parsing failed: mismatched row count amoung blocks!"
-                })
+            from edd_utils.parsers.hplc import getRawImportRecordsAsJSON, HplcError
+            result = getRawImportRecordsAsJSON(request)
+            return JsonResponse({
+                "file_type": "hplc",
+                "file_data": result,
+            })
+        except HplcError as e:
+            return JsonResponse({
+                "python_error": str(e)
+            })
         except ImportError as e:
             logger.exception('Failed to load module %s', e)
             return JsonResponse({
