@@ -2111,22 +2111,28 @@ module EDDTableImport {
 
 
         remakeGraphArea(): void {
-            $('#processingStep2ResultsLabel').removeClass('off');
             var mode = this.selectMajorKindStep.interpretationMode;
+            var sets = this.graphSets;
+            var graph = $('#graphDiv');
 
             this.graphRefreshTimerID = 0;
-            if (!EDDATDGraphing || !this.graphEnabled) {
-                return;
-            }
+            if (!EDDATDGraphing || !this.graphEnabled) { return; }
+
+            $('#processingStep2ResultsLabel').removeClass('off');
+
             EDDATDGraphing.clearAllSets();
-            var sets = this.graphSets;
             // If we're not in either of these modes, drawing a graph is nonsensical.
-            if (mode === "std" || mode === 'biolector' || mode === 'hplc') {
+            if ((mode === "std" || mode === 'biolector' || mode === 'hplc') && (sets.length > 0)) {
+                graph.removeClass('off');
                 sets.forEach((set) => EDDATDGraphing.addNewSet(set));
+                EDDATDGraphing.drawSets();
+            } else {
+                graph.addClass('off');
             }
-            EDDATDGraphing.drawSets();
+
             $('#processingStep2ResultsLabel').addClass('off');
         }
+
 
         getUserWarnings(): ImportMessage[] {
             return this.warningMessages;
@@ -2506,11 +2512,12 @@ module EDDTableImport {
                     " to process");
                 return;
             }
-            
-            if(uniqueAssayNames.length === 0) {
+
+            if (uniqueAssayNames.length === 0) {
                 console.log("End of TypeDisambiguationStep.remakeAssaySection() -- no unique" +
                     " assay names to process");
                 $('#masterAssayLineDiv').removeClass('off');
+                return;
             }
 
             ////////////////////////////////////////////////////////////////////////////////////////
