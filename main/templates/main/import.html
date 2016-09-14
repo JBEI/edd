@@ -334,9 +334,9 @@
     </div>
     <div class="step3Legend off sectionContent">
         <div class="legendRow">
-            <span class="legendCell">Row needs interpretation:</span>
+            <span class="legendCell">Row needs interpretation: </span>
             <span class="ignoredRowLegendBox legendCell"></span>
-            <span class="legendCell legendColumn3"> Ignored during import:</span>
+            <span class="legendCell legendColumn3"> Ignored during import: </span>
             <span class="disabledRowLegendBox legendCell"></span>
         </div>
     </div>
@@ -344,9 +344,9 @@
   <div id="dataTableDiv" class="dataTableDiv"></div>
     <div class="step3Legend off sectionContent">
         <div class="legendRow">
-            <span class="legendCell">Row needs interpretation:</span>
+            <span class="legendCell">Row needs interpretation: </span>
             <span class="ignoredRowLegendBox legendCell"></span>
-            <span class="legendCell legendColumn3"> Ignored during import:</span>
+            <span class="legendCell legendColumn3"> Ignored during import: </span>
             <span class="disabledRowLegendBox legendCell"></span>
         </div>
     </div>
@@ -418,6 +418,8 @@
         </td>
       </tr>
     </table>
+      <span id="masterTimestampRequiredPrompt" class="off missingSingleFormInput">Required. No
+          measurement has a time.</span>
 
   </div>
 
@@ -475,15 +477,15 @@
       </td><td>
         <input class="autocomp" type="text" size="4" name="masterMComp" id="masterMComp"
             value="" style="margin-right: 2px;">
-        <input type="hidden" id="masterMCompValue" name="masterMCompValue" value="0">
+        <input type="hidden" id="masterMCompValue" name="masterMCompValue">
       </td><td>
         <input class="autocomp" type="text" size="45" name="masterMType" id="masterMType"
             value="" style="margin-right: 2px;">
-        <input type="hidden" id="masterMTypeValue" name="masterMTypeValue" value="0">
+        <input type="hidden" id="masterMTypeValue" name="masterMTypeValue">
       </td><td>
         <input class="autocomp" type="text" size="15" name="masterMUnits" id="masterMUnits"
             value="">
-        <input type="hidden" id="masterMUnitsValue" name="masterMUnitsValue" value="0">
+        <input type="hidden" id="masterMUnitsValue" name="masterMUnitsValue">
       </td>
     </tr>
     </table>

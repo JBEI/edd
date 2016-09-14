@@ -894,7 +894,11 @@ var EDDTableImport;
                     var type;
                     if (!_this.pulldownUserChangedFlags[i]) {
                         type = _this.figureOutThisRowsDataType(mode, value, grid[i] || []);
-                        _this.pulldownSettings[i] = type;
+                        // If we can no longer guess the type, but this pulldown was previously set
+                        // to a non-zero value automatically or by an auto-fill operation,
+                        // we preserve the old setting.  This prevents in-place edits from
+                        // blanking out previous selections in Step 3.
+                        _this.pulldownSettings[i] = type || _this.pulldownSettings[i] || 0;
                     }
                 });
             }
@@ -1736,19 +1740,24 @@ var EDDTableImport;
             }
         };
         IdentifyStructuresStep.prototype.remakeGraphArea = function () {
-            $('#processingStep2ResultsLabel').removeClass('off');
             var mode = this.selectMajorKindStep.interpretationMode;
+            var sets = this.graphSets;
+            var graph = $('#graphDiv');
             this.graphRefreshTimerID = 0;
             if (!EDDATDGraphing || !this.graphEnabled) {
                 return;
             }
+            $('#processingStep2ResultsLabel').removeClass('off');
             EDDATDGraphing.clearAllSets();
-            var sets = this.graphSets;
             // If we're not in either of these modes, drawing a graph is nonsensical.
-            if (mode === "std" || mode === 'biolector' || mode === 'hplc') {
+            if ((mode === "std" || mode === 'biolector' || mode === 'hplc') && (sets.length > 0)) {
+                graph.removeClass('off');
                 sets.forEach(function (set) { return EDDATDGraphing.addNewSet(set); });
+                EDDATDGraphing.drawSets();
             }
-            EDDATDGraphing.drawSets();
+            else {
+                graph.addClass('off');
+            }
             $('#processingStep2ResultsLabel').addClass('off');
         };
         IdentifyStructuresStep.prototype.getUserWarnings = function () {
@@ -1821,6 +1830,18 @@ var EDDTableImport;
             $('#masterTimestamp').on('input', this.queueReparseThisStep.bind(this));
             $('#resetstep4').on('click', this.resetDisambiguationFields.bind(this));
             $(masterInputSelectors).addClass(this.STEP_4_USER_INPUT_CLASS);
+            // mark all the "master" inputs (or for autocompletes, their paired hidden input) as
+            // required input for this step. Note that some of the controls referenced here are
+            // hidden inputs that are different from "masterInputSelectors" specified above.
+            // Also note that the 'required input' marking will be ignored when each is
+            // marked as invisible (even the type="hidden" ones)
+            $('#masterTimestamp').addClass(this.STEP_4_REQUIRED_INPUT_CLASS);
+            $("#masterLine").addClass(this.STEP_4_REQUIRED_INPUT_CLASS);
+            $('#masterAssay').addClass(this.STEP_4_REQUIRED_INPUT_CLASS);
+            $('#masterAssayLine').addClass(this.STEP_4_REQUIRED_INPUT_CLASS);
+            $('#masterMCompValue').addClass(this.STEP_4_REQUIRED_INPUT_CLASS);
+            $('#masterMTypeValue').addClass(this.STEP_4_REQUIRED_INPUT_CLASS);
+            $('#masterMUnitsValue').addClass(this.STEP_4_REQUIRED_INPUT_CLASS);
             // enable autocomplete on statically defined fields
             EDD_auto.setup_field_autocomplete('#masterMComp', 'MeasurementCompartment');
             EDD_auto.setup_field_autocomplete('#masterMType', 'GenericOrMetabolite', EDDData.MetaboliteTypes || {});
@@ -2033,6 +2054,7 @@ var EDDTableImport;
                 console.log("End of TypeDisambiguationStep.remakeAssaySection() -- no unique" +
                     " assay names to process");
                 $('#masterAssayLineDiv').removeClass('off');
+                return;
             }
             ////////////////////////////////////////////////////////////////////////////////////////
             // Create the table
@@ -2091,7 +2113,7 @@ var EDDTableImport;
                             .prop('selected', defaultSelection.assayID === id);
                     });
                     // a span to contain the text label for the Line pulldown, and the pulldown itself
-                    cell = $('<span>').text('for Line:').toggleClass('off', !!defaultSelection.assayID)
+                    cell = $('<span>').text('for Line: ').toggleClass('off', !!defaultSelection.assayID)
                         .appendTo(cell);
                     /////////////////////////////////////////////////////////////////////////////
                     // Set up an autocomplete for the line (autocomplete is important for
@@ -2165,7 +2187,7 @@ var EDDTableImport;
             $('#disambiguateMeasurementsSection').addClass('off');
             $('#masterMTypeDiv').addClass('off');
             var bodyJq = $('#disambiguateMeasurementsTable tbody');
-            bodyJq.empty();
+            bodyJq.children().detach();
             this.currentlyVisibleMeasurementObjSets.forEach(function (disam) {
                 disam.rowElementJQ.detach();
             });
@@ -2181,13 +2203,14 @@ var EDDTableImport;
             // a single measurement type for a single timestamp...  But that would be a 1-dimensional import, since there is only
             // one other object with multiple types to work with (lines/assays).  We're not going to bother supporting that.
             if (uniqueMeasurementNames.length === 0 && seenAnyTimestamps) {
+                $('#masterMTypeDiv').removeClass('off');
                 console.log("End of TypeDisambiguationStep.remakeMeasurementSection() - no" +
                     " measurements for disambiguation.");
                 return;
             }
             // put together a disambiguation section for measurement types
             var t = this;
-            body = ($('#disambiguateMeasurementsTable').children().first()[0]);
+            body = (bodyJq[0]);
             this.currentlyVisibleMeasurementObjSets = []; // For use in cascading user settings
             uniqueMeasurementNames.forEach(function (name, i) {
                 var disam, isMdv;
@@ -2613,10 +2636,7 @@ var EDDTableImport;
             // log some debugging output if any data get dropped because of a missing timestamp
             if (droppedDatasetsForMissingTime) {
                 if (parsedSets.length === droppedDatasetsForMissingTime) {
-                    var msg = "A timestamp is required to complete the import. No included" +
-                        " measurement has a time.";
-                    console.warn(msg);
-                    this.errorMessages.push(new ImportMessage(msg, null, null));
+                    $("#masterTimestampRequiredPrompt").removeClass('off');
                 }
                 else {
                     var percentDropped = (droppedDatasetsForMissingTime / parsedSets.length) * 100;
@@ -2625,6 +2645,9 @@ var EDDTableImport;
                     console.warn(warningMessage);
                     this.warningMessages.push(new ImportMessage(msg, null, null));
                 }
+            }
+            else {
+                $("#masterTimestampRequiredPrompt").addClass('off');
             }
             var endTime = new Date();
             var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
@@ -2658,7 +2681,12 @@ var EDDTableImport;
             for (var _i = 0, _a = requiredInputs.toArray(); _i < _a.length; _i++) {
                 var input_id = _a[_i];
                 var input = $(input_id);
-                if ((!input.val()) && !(input.prop('disabled') || input.hasClass('off'))) {
+                // if the input has no value, but wasn't hidden from the display by the 'off'
+                // class, it's missing required data. Note that the "hidden" check below
+                // will still allow <input type="hidden">, but will ignore inputs that have been
+                // "hidden" by the "off" class directly to the input or one of its parents.
+                if ((!input.val()) && !(input.prop('disabled') || input.hasClass('off')
+                    || input.parents('.off').length > 0)) {
                     return false;
                 }
             }
