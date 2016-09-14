@@ -27,7 +27,7 @@ GraphHelperMethods = {
     createSvg: function (selector) {
         var svg = d3.select(selector).append("svg")
             .attr("preserveAspectRatio", "xMinYMin meet")
-            .attr("viewBox", "-45 -30 950 300")
+            .attr("viewBox", "-55 -30 960 300")
             .classed("svg-content", true);
         return svg;
     },
@@ -347,6 +347,7 @@ GraphHelperMethods = {
         }
         svg.append("g")
             .attr("class", "x axis")
+            .style("font-size", "12px")
             .attr("transform", "translate(0," + graphSet.height + ")")
             .call(xAxis)
             .append('text')
@@ -366,17 +367,19 @@ GraphHelperMethods = {
      *  This function creates the left y axis svg object
     **/
     createLeftYAxis: function (graphSet, label, y, svg) {
-        var yAxis = graphSet.y_axis(y);
+        var yAxis = d3.svg.axis().scale(y)
+            .orient("left").ticks(5).tickFormat(d3.format(".2s"));
         if (label === 'undefined') {
             label = 'n/a';
         }
         svg.append("g")
             .attr("class", "y axis")
+            .style("font-size", "12px")
             .call(yAxis)
             .append("text")
             .attr('class', 'axis-text')
             .attr("transform", "rotate(-90)")
-            .attr("y", -47)
+            .attr("y", -55)
             .attr("x", 0 - (graphSet.height / 2))
             .attr("dy", "1em")
             .style("text-anchor", "middle")
@@ -393,10 +396,11 @@ GraphHelperMethods = {
     **/
     createRightYAxis: function (label, y, svg, spacing) {
         var yAxis = d3.svg.axis().scale(y)
-            .orient("right").ticks(5);
+            .orient("right").ticks(5).tickFormat(d3.format(".2s"));
         svg.append("g")
             .attr("class", "y axis")
             .attr("transform", "translate(" + spacing + " ,0)")
+            .style("font-size", "12px")
             .style("fill", "black")
             .call(yAxis)
             .append('text')
@@ -404,7 +408,7 @@ GraphHelperMethods = {
             .attr('class', 'text')
             .attr('x', -110)
             .attr("dy", ".32em")
-            .attr('y', 39)
+            .attr('y', 43)
             .style('text-anchor', 'middle')
             .text(label);
     },
@@ -415,6 +419,7 @@ GraphHelperMethods = {
         return d3.svg.axis()
             .scale(y)
             .orient("left");
+        //add ticks here!
     },
     /**
      *  This function creates the x axis tick marks for grid

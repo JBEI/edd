@@ -66,7 +66,7 @@
             .on("mouseout", function () {
                 lineOnMouseOut(div)
             });
-    }
+    }   
 
 /**
  *  function takes in square attributes and creates a plus hover svg object

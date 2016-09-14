@@ -86,7 +86,7 @@ function createMultiLineGraph(graphSet, svg) {
         var spacing = {
                  1: graphSet.width,
                  2: graphSet.width + 50,
-                 3: graphSet.width + 100
+                 3: graphSet.width + 105
              };
 
         if (index === 0) {
@@ -95,7 +95,7 @@ function createMultiLineGraph(graphSet, svg) {
             //add circle image to y axis label
             svg.append('svg:circle')
                 .attr('class', 'icon')
-                .attr('cx', -37)
+                .attr('cx', -46)
                 .attr('cy', 80)
                 .attr('r', 5);
         } else if (index === 1) {
@@ -104,7 +104,7 @@ function createMultiLineGraph(graphSet, svg) {
             //add triangle shape to y-axis label
             svg.append('svg:polygon')
                 .attr('class', 'icon')
-                .attr('points', [[785, 75], [794, 80], [794, 70]])
+                .attr('points', [[789, 75], [796, 80], [796, 70]])
         } else if (index === 2) {
             //create second right axis
             graphSet.create_right_y_axis(meas[index].key, y, svg, spacing[index]);
@@ -112,7 +112,7 @@ function createMultiLineGraph(graphSet, svg) {
             //add square image to y-axis label
             svg.append('svg:rect')
                 .attr('class', 'icon')
-                .attr('x', 836)
+                .attr('x', 839)
                 .attr('y', 70)
                 .attr('width', squareSize)
                 .attr('height', squareSize);
@@ -122,14 +122,14 @@ function createMultiLineGraph(graphSet, svg) {
             //add plus image to y-axis label
             svg.append('svg:rect')
                 .attr('class', 'icon')
-                .attr('x', 886)
+                .attr('x', 894)
                 .attr('y', 73)
                 .attr('width', 8)
                 .attr('height', 2);
 
             svg.append('svg:rect')
                 .attr('class', 'icon')
-                .attr('x', 889)
+                .attr('x', 897)
                 .attr('y', 70)
                 .attr('width', 2)
                 .attr('height', 8)
