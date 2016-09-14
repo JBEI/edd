@@ -2574,7 +2574,7 @@ module EDDTableImport {
                     });
 
                     // a span to contain the text label for the Line pulldown, and the pulldown itself
-                    cell = $('<span>').text('for Line:').toggleClass('off', !!defaultSelection.assayID)
+                    cell = $('<span>').text('for Line: ').toggleClass('off', !!defaultSelection.assayID)
                         .appendTo(cell);
 
                     /////////////////////////////////////////////////////////////////////////////
@@ -2665,7 +2665,7 @@ module EDDTableImport {
             $('#masterMTypeDiv').addClass('off');
 
             var bodyJq = $('#disambiguateMeasurementsTable tbody');
-            bodyJq.empty();
+            bodyJq.children().detach();
 
             this.currentlyVisibleMeasurementObjSets.forEach((disam:any): void => {
                 disam.rowElementJQ.detach();
@@ -2691,7 +2691,7 @@ module EDDTableImport {
 
             // put together a disambiguation section for measurement types
             var t = this;
-            body = <HTMLTableElement>($('#disambiguateMeasurementsTable').children().first()[0]);
+            body = <HTMLTableElement>(bodyJq[0]);
             this.currentlyVisibleMeasurementObjSets = [];   // For use in cascading user settings
             uniqueMeasurementNames.forEach((name: string, i: number): void => {
                 var disam: any, isMdv: boolean;
