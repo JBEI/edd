@@ -1192,7 +1192,11 @@ module EDDTableImport {
                     var type: any;
                     if (!this.pulldownUserChangedFlags[i]) {
                         type = this.figureOutThisRowsDataType(mode, value, grid[i] || []);
-                        this.pulldownSettings[i] = type;
+                        // If we can no longer guess the type, but this pulldown was previously set
+                        // to a non-zero value automatically or by an auto-fill operation,
+                        // we preserve the old setting.  This prevents in-place edits from
+                        // blanking out previous selections in Step 3.
+                        this.pulldownSettings[i] = type || this.pulldownSettings[i] || 0;
                     }
                 });
             }
