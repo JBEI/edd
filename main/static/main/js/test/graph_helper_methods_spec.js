@@ -7,13 +7,25 @@ describe('Test GraphHelperMethods with jasmine', function() {
         dataTest = {UnitTypes: {1:{"id":1,"name":"n/a"},2:{"id":2,"name":"hours"}},
                     MeasurementTypes: {3:{name: "Optical Density"}}},
         transformedData = { label: 'dt4934', x: 11, y: 0.0455, x_unit: 'n/a', y_unit: 'n/a',
-                            name: 'test', color: 'red', nameid: 'test5', lineName: 'test',
-                            measurement: 'Optical Density' };
+                            name: 'test', color: 'red', nameid: NaN, lineName: 'test',
+                            measurement: 'Optical Density', fullName: 'test Optical Density' },
+
+        single = {"x_units":1,"assay":4934,"y_units":1, "type":3,"id":259317,
+          "values":[[[16],[0.2805]],[[13],[0.1305]],[[19],[1.359]],[[12],[0.08]],[[15],[0.271]],
+            [[11],[0.0455]],[[18],[0.8965]],[[14],[0.157]],[[17],[0.584]],[[20],[3.186]]]},
+
+        dataObj = {
+            'color': "red",
+            'data': dataTest,
+            'lineName': 'test',
+            'measure': single,
+            'name': 'test'
+        };
 
 
     describe('method: objectSize' ,function() {
       it('should return length', function() {
-        var object = {"traci": 2, "jbei": 1}
+        var object = {"traci": 2, "jbei": 1};
         expect(GraphHelperMethods.objectSize(object)).toEqual(2);
       });
     });
@@ -43,22 +55,20 @@ describe('Test GraphHelperMethods with jasmine', function() {
     });
 
     describe('method: transformSingleLineItem', function() {
-      var single = {"x_units":1,"assay":4934,"y_units":1, "type":3,"id":259317,
-          "values":[[[16],[0.2805]],[[13],[0.1305]],[[19],[1.359]],[[12],[0.08]],[[15],[0.271]],
-            [[11],[0.0455]],[[18],[0.8965]],[[14],[0.157]],[[17],[0.584]],[[20],[3.186]]]};    
+
       it('should return the correct formatted schema', function() {
 
-        expect(GraphHelperMethods.transformSingleLineItem(dataTest, single, "test", 'red', 'test')[0]).toEqual(transformedData);
+        expect(GraphHelperMethods.transformSingleLineItem(dataObj)[0]).toEqual(transformedData);
         });
       it('should sort the x values', function() {
          var transformedData2 ={ label: 'dt4934', x: 20, y: 3.186, x_unit: 'n/a', y_unit: 'n/a',
-                                name: 'test', nameid: 'test9', lineName: 'test', color: "red",
-                                measurement: 'Optical Density' };
-         var objectLength = GraphHelperMethods.transformSingleLineItem(dataTest, single, "test").length;
-        expect(GraphHelperMethods.transformSingleLineItem(dataTest, single, "test", 'red', 'test')[objectLength - 1]).toEqual(transformedData2);
+                                name: 'test', color: 'red', nameid: NaN, lineName: 'test',
+                                measurement: 'Optical Density', fullName: 'test Optical Density' };
+         var objectLength = GraphHelperMethods.transformSingleLineItem(dataObj).length;
+        expect(GraphHelperMethods.transformSingleLineItem(dataObj)[objectLength - 1]).toEqual(transformedData2);
       });
       it('should return the correct number of objects', function() {
-         var objectLength = GraphHelperMethods.transformSingleLineItem(dataTest, single, "test").length;
+         var objectLength = GraphHelperMethods.transformSingleLineItem(dataObj).length;
         expect(objectLength).toEqual(10);
       })
     });
