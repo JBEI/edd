@@ -72,7 +72,6 @@
  *  function takes in the svg shape type, div and returns the tooltip and hover elements for each
  *  shape
  */
-
     function lineOnHover(div, hoverSvg, d) {
         div.transition()
             .duration(200)
@@ -86,10 +85,11 @@
         d3.selectAll('.lineClass').style('opacity', 0.1);
         $(hoverSvg).parent().prev().css('opacity', 1).css('stroke-width', 3) ;
 
+        //reduce opacity for all shapes besides shapes on the same line as hovered svg shape
         d3.selectAll('rect').style('opacity', 0.1);
         d3.selectAll('circle').style('opacity', 0.1);
         d3.selectAll('polygon').style('opacity', 0.1);
-
+        $('.icon').css('opacity', 1);
         $(hoverSvg).siblings().css('opacity', 1);
         $(hoverSvg).css('opacity', 1);
         //tool tip
@@ -102,7 +102,6 @@
 /**
  *  function returns the mouseout tooltip options
  */
-
     function lineOnMouseOut() {
                 d3.selectAll('.lineClass').style('opacity', 1).style('stroke-width', 2);
                 d3.selectAll('circle').style('opacity', 1);
@@ -187,7 +186,8 @@
                         d3.selectAll('circle').style('opacity', 0.1);
                         d3.selectAll('rect').style('opacity', 0.1);
                         d3.selectAll('polygon').style('opacity', 0.1);
-                        $(this).next().children().css('opacity', 1)
+                        $(this).next().children().css('opacity', 1);
+                        $('.icon').css('opacity', 1);
                     })
             .on('mouseout', function() {
                 d3.selectAll('.lineClass').style('opacity', 1).style('stroke-width', 2);
