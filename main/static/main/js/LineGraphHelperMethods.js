@@ -37,7 +37,7 @@
                 lineOnHover(div, this, d)
             })
             .on("mouseout", function () {
-                lineOnMouseOut()
+                lineOnMouseOut(div)
             });
     }
 
@@ -64,9 +64,99 @@
                 lineOnHover(div, this, d)
             })
             .on("mouseout", function () {
-                lineOnMouseOut()
+                lineOnMouseOut(div)
             });
     }
+
+/**
+ *  function takes in square attributes and creates a plus hover svg object
+ */
+    function plusHover(x, y, plus, color, div) {
+        var squareSize = 5;
+        plus
+            .enter()
+            .append('svg:rect')
+            .attr('x', function (d) {
+                return x(d.x) - squareSize/2;
+            })
+            .attr('y', function (d) {
+                return y(d.y);
+            })
+            .attr('width', squareSize + 3)
+            .attr('height', squareSize - 3)
+            .style("fill", color);
+
+        plus
+            .enter()
+            .append('svg:rect')
+            .attr('x', function (d) {
+                return x(d.x);
+            })
+            .attr('y', function (d) {
+                return y(d.y) - squareSize/2;
+            })
+            .attr('width', squareSize - 3)
+            .attr('height', squareSize + 3)
+            .style("fill", color)
+            .on("mouseover", function (d) {
+                lineOnHover(div, this, d)
+            })
+            .on("mouseout", function () {
+                lineOnMouseOut(div)
+            });
+    }
+
+/**
+ *  function takes in triangle attributes and creates a triangle hover svg object
+ */
+    function triangleHover(x, y, triangle, color, div) {
+        triangle
+            .enter()
+            .append('svg:polygon')
+            .attr('points', function (d) {
+                return [[x(d.x), y(d.y) - 4], [x(d.x) + 4, y(d.y) + 4], [x(d.x) - 4, y(d.y) + 4]];
+            })
+            .style("fill", color)
+            .on("mouseover", function (d) {
+                lineOnHover(div, this, d)
+            })
+            .on("mouseout", function () {
+                lineOnMouseOut(div)
+            });
+    }
+
+/**
+ *  function takes in path attributes and creates an svg path
+ */
+    function createLine(svg, data, line, color) {
+        return svg.append('path')
+                    .attr('d', line(data))
+                    .attr('stroke', color)
+                    .attr('stroke-width', 2)
+                    .attr("class", 'lineClass')
+                    .attr('fill', 'none')
+                    .on('mouseover', function(d) {
+                        var selectedLine = this;
+                        d3.selectAll('.lineClass').style('opacity',function () {
+                            return (this === selectedLine) ? 1.0 : 0.1;
+                        });
+                        d3.selectAll('.lineClass').style('stroke-width',function () {
+                            return (this === selectedLine) ? 3.0 : 1;
+                        });
+                        d3.selectAll('circle').style('opacity', 0.1);
+                        d3.selectAll('rect').style('opacity', 0.1);
+                        d3.selectAll('polygon').style('opacity', 0.1);
+                        $(this).next().children().css('opacity', 1);
+                        $('.icon').css('opacity', 1);
+                    })
+            .on('mouseout', function() {
+                d3.selectAll('.lineClass').style('opacity', 1).style('stroke-width', 2);
+                d3.selectAll('circle').style('opacity', 1);
+                d3.selectAll('rect').style('opacity', 1);
+                d3.selectAll('polygon').style('opacity', 1)
+            })
+    }
+
 
 /**
  *  function takes in the svg shape type, div and returns the tooltip and hover elements for each
@@ -102,97 +192,12 @@
 /**
  *  function returns the mouseout tooltip options
  */
-    function lineOnMouseOut() {
+    function lineOnMouseOut(div) {
+                div.transition()
+                    .duration(300)
+                    .style("opacity", 0);
                 d3.selectAll('.lineClass').style('opacity', 1).style('stroke-width', 2);
                 d3.selectAll('circle').style('opacity', 1);
                 d3.selectAll('rect').style('opacity', 1);
                 d3.selectAll('polygon').style('opacity', 1)
 }
-/**
- *  function takes in square attributes and creates a plus hover svg object
- */
-    function plusHover(x, y, plus, color, div) {
-        var squareSize = 5;
-        plus
-            .enter()
-            .append('svg:rect')
-            .attr('x', function (d) {
-                return x(d.x) - squareSize/2;
-            })
-            .attr('y', function (d) {
-                return y(d.y);
-            })
-            .attr('width', squareSize + 3)
-            .attr('height', squareSize - 3)
-            .style("fill", color);
-
-        plus
-            .enter()
-            .append('svg:rect')
-            .attr('x', function (d) {
-                return x(d.x);
-            })
-            .attr('y', function (d) {
-                return y(d.y) - squareSize/2;
-            })
-            .attr('width', squareSize - 3)
-            .attr('height', squareSize + 3)
-            .style("fill", color)
-            .on("mouseover", function (d) {
-                lineOnHover(div, this, d)
-            })
-            .on("mouseout", function () {
-                lineOnMouseOut()
-            });
-    }
-
-/**
- *  function takes in triangle attributes and creates a triangle hover svg object
- */
-    function triangleHover(x, y, triangle, color, div) {
-        triangle
-            .enter()
-            .append('svg:polygon')
-            .attr('points', function (d) {
-                return [[x(d.x), y(d.y) - 4], [x(d.x) + 4, y(d.y) + 4], [x(d.x) - 4, y(d.y) + 4]];
-            })
-            .style("fill", color)
-            .on("mouseover", function (d) {
-                lineOnHover(div, this, d)
-            })
-            .on("mouseout", function () {
-                lineOnMouseOut()
-            });
-    }
-
-/**
- *  function takes in path attributes and creates an svg path
- */
-    function createLine(svg, data, line, color) {
-        return svg.append('path')
-                    .attr('d', line(data))
-                    .attr('stroke', color)
-                    .attr('stroke-width', 2)
-                    .attr("class", 'lineClass')
-                    .attr('fill', 'none')
-                    .on('mouseover', function(d) {
-                        var selectedLine = this;
-                        d3.selectAll('.lineClass').style('opacity',function () {
-                            return (this === selectedLine) ? 1.0 : 0.1;
-                        });
-                        d3.selectAll('.lineClass').style('stroke-width',function () {
-                            return (this === selectedLine) ? 3.0 : 1;
-                        });
-                        d3.selectAll('circle').style('opacity', 0.1);
-                        d3.selectAll('rect').style('opacity', 0.1);
-                        d3.selectAll('polygon').style('opacity', 0.1);
-                        $(this).next().children().css('opacity', 1);
-                        $('.icon').css('opacity', 1);
-                    })
-            .on('mouseout', function() {
-                d3.selectAll('.lineClass').style('opacity', 1).style('stroke-width', 2);
-                d3.selectAll('circle').style('opacity', 1);
-                d3.selectAll('rect').style('opacity', 1);
-                d3.selectAll('polygon').style('opacity', 1)
-            })
-    }
