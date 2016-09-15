@@ -1382,6 +1382,8 @@ var StudyD;
                     color = _this.graphHelper.nextColor;
                     line['doNotChange'] = true;
                     line['color'] = color;
+                    var label = $('#' + line['identifier']).next();
+                    $(label).css('color', color);
                     _this.graphHelper.colorQueue(color);
                 }
             }

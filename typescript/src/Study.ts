@@ -1586,7 +1586,9 @@ module StudyD {
                 } else {
                     color = this.graphHelper.nextColor;
                     line['doNotChange'] = true;
-                    line['color'] = color
+                    line['color'] = color;
+                    var label = $('#' + line['identifier']).next()
+                    $(label).css('color', color)
                     this.graphHelper.colorQueue(color);
                 }
             }
