@@ -1575,8 +1575,30 @@ module StudyD {
             name = [line.name, protocol.name, assay.name].join('-');
             lineName = line.name;
 
+            if (_.keys(EDDData.Lines).length > 22) {
+                color = changeLineColor(line, colorObj, assay.lid)
+            } else {
+              color = colorObj[assay];
+            }
 
-            if($('#' + line['identifier']).prop('checked') && functionCalls === 1) {
+            dataObj = {
+                'measure': measure,
+                'data': EDDData,
+                'name': name,
+                'color': color,
+                'lineName': lineName,
+            };
+            singleAssayObj = this.graphHelper.transformSingleLineItem(dataObj);
+            dataSets.push(singleAssayObj);
+            prev = lineName;
+        });
+        functionCalls++;
+        this.mainGraphObject.addNewSet(dataSets, EDDData.MeasurementTypes);
+    }
+
+    function changeLineColor(line, colorObj, assay) {
+        var color;
+        if($('#' + line['identifier']).prop('checked') && functionCalls === 1) {
                 color = line['color'];
                 line['doNotChange'] = true;
                 this.graphHelper.colorQueue(color);
@@ -1595,28 +1617,15 @@ module StudyD {
                     this.graphHelper.colorQueue(color);
                 }
             } else if ($('#' + line['identifier']).prop('checked') === false && functionCalls >1 ){
-                color = colorObj[assay.lid];
+                color = colorObj[assay];
                  var label = $('#' + line['identifier']).next();
                     //update label color to line color
                 $(label).css('color', color);
             }
             if (functionCalls == 0) {
-                color = colorObj[assay.lid];
+                color = colorObj[assay];
             }
-
-            dataObj = {
-                'measure': measure,
-                'data': EDDData,
-                'name': name,
-                'color': color,
-                'lineName': lineName,
-            };
-            singleAssayObj = this.graphHelper.transformSingleLineItem(dataObj);
-            dataSets.push(singleAssayObj);
-            prev = lineName;
-        });
-        functionCalls++;
-        this.mainGraphObject.addNewSet(dataSets, EDDData.MeasurementTypes);
+        return color;
     }
 
 
