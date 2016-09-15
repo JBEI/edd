@@ -11,7 +11,9 @@ ParsedInput = namedtuple('ParsedInput', ['file_type', 'parsed_data', ])
 class ImportModeFlags(object):
     BIOLECTOR = 'biolector'
     HPLC = 'hplc'
+    MASS_DISTRIBUTION = 'mdv'
     PROTEOMICS_OLD = 'pr'
+    SKYLINE = 'skyline'
     STANDARD = 'std'
     TRANSCRIPTOMICS = 'tr'
 
@@ -47,8 +49,10 @@ def excel_parser(request):
         excel.import_xlsx_tables(file=request)
     )
 parser_registry[(ImportModeFlags.STANDARD, ImportFileTypeFlags.EXCEL)] = excel_parser
+parser_registry[(ImportModeFlags.SKYLINE, ImportFileTypeFlags.EXCEL)] = excel_parser
 parser_registry[(ImportModeFlags.PROTEOMICS_OLD, ImportFileTypeFlags.EXCEL)] = excel_parser
 parser_registry[(ImportModeFlags.TRANSCRIPTOMICS, ImportFileTypeFlags.EXCEL)] = excel_parser
+parser_registry[(ImportModeFlags.MASS_DISTRIBUTION, ImportFileTypeFlags.EXCEL)] = excel_parser
 
 
 def hplc_parser(request):

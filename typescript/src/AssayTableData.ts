@@ -492,15 +492,18 @@ module EDDTableImport {
             var ft = fileContainer.fileType;
             // We'll process csv files locally.
             if ((ft === 'csv' || ft === 'txt') &&
-                    (mode === 'std' || mode === 'tr' || mode === 'pr')) {
+                    (mode === 'std' || mode === 'tr' || mode === 'pr' || mode === 'skyline')) {
                 fileContainer.skipProcessRaw = false;
                 fileContainer.skipUpload = true;
                 return;
             }
             // With Excel documents, we need some server-side tools.
             // We'll signal the dropzone to upload this, and receive processed results.
-            if ((ft === 'xlsx') &&
-                    (mode === 'std' || mode === 'tr' || mode === 'pr' || mode === 'mdv')) {
+            if ((ft === 'xlsx') && (mode === 'std' ||
+                    mode === 'tr' ||
+                    mode === 'pr' ||
+                    mode === 'mdv' ||
+                    mode === 'skyline')) {
                 this.showDropZone(fileContainer);
                 fileContainer.skipProcessRaw = true;
                 fileContainer.skipUpload = false;
