@@ -3,6 +3,9 @@
 var GraphHelperMethods:any;
 
 GraphHelperMethods = {
+    
+    nextColor: null,
+    
     /**
      *  This function takes in data and transforms it into the following
      *  {x, y, i}, {x, y, i}, {x, y, i} ....
@@ -183,9 +186,61 @@ GraphHelperMethods = {
         _.each(indexLines, function(value, key) {
             lineColors[indexLines[key]] = colors[key];
         });
+        for (var key in lines) { lines[key]['color'] = lineColors[key]}
         return lineColors
     },
+    
+     colorQueue: function(selectedColor) {
+        var colors:any = {
+            0: '#0E6FA4',
+            1: '#51BFD8',
+            2: '#DA7138',
+            3: '#FCA456',
+            4: '#2b7b3d',
+            5: '#97d37d',
+            6: '#CF5030',
+            7: '#FFB6C1',
+            8: '#6f2f8c',
+            9: '#b97dd3',
+            10: '#7e0404',
+            11: '#BAA0AE',
+            12: '#F279BA',
+            13: '#993f6c',
+            14: '#919191',
+            15: '#BFBFBD',
+            16: '#ecda3a',
+            17: '#b2b200',
+            18: '#00d5f2',
+            19: '#b2f2fb',
+            20: '#0715CD',
+            21: '#e8c2f3'
+        };
 
+        var selectedKey = GraphHelperMethods.findKey(colors, selectedColor);
+        if (parseInt(selectedKey) === 21) {
+             selectedKey = -1;
+         }
+        var nextColor = colors[parseInt(selectedKey) + 1];
+
+        GraphHelperMethods['nextColor'] = nextColor;
+    },
+
+    findKey: function(obj, value) {
+      var key;
+
+      _.each(obj, function (v, k) {
+        if (v === value) {
+          key = k;
+        }
+      });
+
+      return key;
+    },
+
+
+    // findCheckedBoxes: function() {
+    //
+    // },
     /**
      * this function takes in the color object, colorKeys array, and multiplier to determine how
      * many new colors we need and return and bigger Color object

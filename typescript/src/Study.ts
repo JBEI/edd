@@ -574,7 +574,9 @@ module StudyD {
                 var colors:any = {};
                 
                 //create new colors object with line names a keys and color hex as values 
-                for (var key in EDDData.Lines) {colors[EDDData.Lines[key].name] = colorObj[key]}
+                for (var key in EDDData.Lines) {
+                    colors[EDDData.Lines[key].name] = colorObj[key]
+                }
                 
                 this.uniqueValuesOrder.forEach((uniqueId: number): void => {
                 var cboxName, cell, p, q, r;
@@ -585,9 +587,16 @@ module StudyD {
                     .attr({ 'name': cboxName, 'id': cboxName })
                     .appendTo(cell);
 
+                for (var key in EDDData.Lines) {
+                    if (EDDData.Lines[key].name == this.uniqueValues[uniqueId]) {
+                       (EDDData.Lines[key]['identifier'] = cboxName)
+                    }
+                }
+
                 $('<label>').attr('for', cboxName).text(this.uniqueValues[uniqueId]).css('color',
                     colors[this.uniqueValues[uniqueId]]).css('font-weight', 'Bold').appendTo(cell);
                 });
+
             } else {
                 this.uniqueValuesOrder.forEach((uniqueId: number): void => {
                     var cboxName, cell, p, q, r;
@@ -1493,7 +1502,7 @@ module StudyD {
 
 
     function assaysActionPanelShow() {
-        var checkedBoxes = [], checkedAssays, checkedMeasure, panel, infobox;
+            var checkedBoxes = [], checkedAssays, checkedMeasure, panel, infobox;
         panel = $('#assaysActionPanel');
         if (!panel.size()) {
             return;
@@ -1528,8 +1537,10 @@ module StudyD {
         this.mainGraphRefreshTimerID = setTimeout(remakeMainGraphArea.bind(this, force), 200);
     }
 
+    var functionCalls = 0;
 
     function remakeMainGraphArea(force?:boolean) {
+
         var postFilteringMeasurements:any[],
             dataPointsDisplayed = 0,
             dataPointsTotal = 0,
@@ -1547,12 +1558,12 @@ module StudyD {
         colorObj = EDDData['color'];
         //Gives ids of lines to show.
         var dataSets = [];
-        
+        var prev;
         postFilteringMeasurements = this.progressiveFilteringWidget.buildFilteredMeasurements();
         $.each(postFilteringMeasurements, (i, measurementId) => {
             var measure:AssayMeasurementRecord = EDDData.AssayMeasurements[measurementId],
                 points = (measure.values ? measure.values.length : 0),
-                assay, line, name, singleAssayObj, color, protocol, lineName, fullName, dataObj;
+                assay, line, name, singleAssayObj, color, protocol, lineName, dataObj;
             dataPointsTotal += points;
             if (dataPointsDisplayed > 15000) {
                 return; // Skip the rest if we've hit our limit
@@ -1563,7 +1574,31 @@ module StudyD {
             protocol = EDDData.Protocols[assay.pid] || {};
             name = [line.name, protocol.name, assay.name].join('-');
             lineName = line.name;
-            color = colorObj[assay.lid];
+
+            if($('#' + line['identifier']).prop('checked') && functionCalls === 1) {
+                color = line['color'];
+                line['doNotChange'] = true;
+                this.graphHelper.colorQueue(color);
+            }
+            if ($('#' + line['identifier']).prop('checked') && functionCalls > 1) {
+                if (line['doNotChange']) {
+                   color = line['color'];
+                } else {
+                    color = this.graphHelper.nextColor;
+                    line['doNotChange'] = true;
+                    line['color'] = color
+                    this.graphHelper.colorQueue(color);
+                }
+            }
+            //
+            // if (this.graphHelper.nextColor != null) {
+            //     EDDData.Lines[assay.lid]['color'] = this.graphHelper.nextColor;
+            // }
+
+            if (functionCalls == 0) {
+                color = colorObj[assay.lid];
+            }
+
             dataObj = {
                 'measure': measure,
                 'data': EDDData,
@@ -1573,7 +1608,9 @@ module StudyD {
             };
             singleAssayObj = this.graphHelper.transformSingleLineItem(dataObj);
             dataSets.push(singleAssayObj);
+            prev = lineName;
         });
+        functionCalls++;
         this.mainGraphObject.addNewSet(dataSets, EDDData.MeasurementTypes);
     }
 

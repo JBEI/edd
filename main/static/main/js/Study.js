@@ -433,6 +433,11 @@ var StudyD;
                     _this.checkboxes[uniqueId] = $("<input type='checkbox'>")
                         .attr({ 'name': cboxName, 'id': cboxName })
                         .appendTo(cell);
+                    for (var key in EDDData.Lines) {
+                        if (EDDData.Lines[key].name == _this.uniqueValues[uniqueId]) {
+                            (EDDData.Lines[key]['identifier'] = cboxName);
+                        }
+                    }
                     $('<label>').attr('for', cboxName).text(_this.uniqueValues[uniqueId]).css('color', colors[_this.uniqueValues[uniqueId]]).css('font-weight', 'Bold').appendTo(cell);
                 });
             }
@@ -1336,6 +1341,7 @@ var StudyD;
         this.mainGraphRefreshTimerID = setTimeout(remakeMainGraphArea.bind(this, force), 200);
     }
     StudyD.queueMainGraphRemake = queueMainGraphRemake;
+    var functionCalls = 0;
     function remakeMainGraphArea(force) {
         var _this = this;
         var postFilteringMeasurements, dataPointsDisplayed = 0, dataPointsTotal = 0, colorObj;
@@ -1349,9 +1355,10 @@ var StudyD;
         colorObj = EDDData['color'];
         //Gives ids of lines to show.
         var dataSets = [];
+        var prev;
         postFilteringMeasurements = this.progressiveFilteringWidget.buildFilteredMeasurements();
         $.each(postFilteringMeasurements, function (i, measurementId) {
-            var measure = EDDData.AssayMeasurements[measurementId], points = (measure.values ? measure.values.length : 0), assay, line, name, singleAssayObj, color, protocol, lineName, fullName, dataObj;
+            var measure = EDDData.AssayMeasurements[measurementId], points = (measure.values ? measure.values.length : 0), assay, line, name, singleAssayObj, color, protocol, lineName, dataObj;
             dataPointsTotal += points;
             if (dataPointsDisplayed > 15000) {
                 return; // Skip the rest if we've hit our limit
@@ -1362,7 +1369,29 @@ var StudyD;
             protocol = EDDData.Protocols[assay.pid] || {};
             name = [line.name, protocol.name, assay.name].join('-');
             lineName = line.name;
-            color = colorObj[assay.lid];
+            if ($('#' + line['identifier']).prop('checked') && functionCalls === 1) {
+                color = line['color'];
+                line['doNotChange'] = true;
+                _this.graphHelper.colorQueue(color);
+            }
+            if ($('#' + line['identifier']).prop('checked') && functionCalls > 1) {
+                if (line['doNotChange']) {
+                    color = line['color'];
+                }
+                else {
+                    color = _this.graphHelper.nextColor;
+                    line['doNotChange'] = true;
+                    line['color'] = color;
+                    _this.graphHelper.colorQueue(color);
+                }
+            }
+            //
+            // if (this.graphHelper.nextColor != null) {
+            //     EDDData.Lines[assay.lid]['color'] = this.graphHelper.nextColor;
+            // }
+            if (functionCalls == 0) {
+                color = colorObj[assay.lid];
+            }
             dataObj = {
                 'measure': measure,
                 'data': EDDData,
@@ -1372,7 +1401,9 @@ var StudyD;
             };
             singleAssayObj = _this.graphHelper.transformSingleLineItem(dataObj);
             dataSets.push(singleAssayObj);
+            prev = lineName;
         });
+        functionCalls++;
         this.mainGraphObject.addNewSet(dataSets, EDDData.MeasurementTypes);
     }
     function clearAssayForm() {
