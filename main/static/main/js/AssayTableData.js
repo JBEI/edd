@@ -31,11 +31,18 @@ var EDDTableImport;
     // As soon as the window load signal is sent, call back to the server for the set of reference records
     // that will be used to disambiguate labels in imported data.
     function onWindowLoad() {
-        var atdata_url = "/study/" + EDDData.currentStudyID + "/assaydata";
+        var atdata_url, queryTime;
+        atdata_url = "/study/" + EDDData.currentStudyID + "/assaydata";
         $('.disclose').find('a.discloseLink').on('click', EDDTableImport.disclose);
         // Populate ATData and EDDData objects via AJAX calls
+        queryTime = new Date();
         jQuery.ajax(atdata_url, {
             "success": function (data) {
+                // compute & log elapsed time since the query was initiated
+                var elapsedSeconds, receiptTime;
+                receiptTime = new Date();
+                elapsedSeconds = (receiptTime.getTime() - queryTime.getTime()) / 1000;
+                console.log('onReferenceRecordsLoad(): Received study data from the server after', elapsedSeconds, ' s');
                 ATData = data.ATData;
                 $.extend(EDDData, data.EDDData);
                 EDDTableImport.onReferenceRecordsLoad();
@@ -48,17 +55,18 @@ var EDDTableImport;
     // As soon as we've got and parsed the reference data, we can set up all the callbacks for the UI,
     // effectively turning the page "on".
     function onReferenceRecordsLoad() {
+        var step1, step2, step3, step4, step5;
         //TODO: clarify reflected GUI state when waiting for large dataset from the server.
         // in several test cases with large #'s of lines, there's time for the user to reach a
         // later / confusing step in the process while waiting on this data to be returned.
         // Probably should fix this in EDD-182.
         $('#waitingForServerLabel').addClass('off');
         // Allocate one instance of each step, providing references to the previous steps as needed.
-        var step1 = new SelectMajorKindStep(EDDTableImport.selectMajorKindCallback);
-        var step2 = new RawInputStep(step1, EDDTableImport.rawInputCallback, EDDTableImport.processingFileCallback);
-        var step3 = new IdentifyStructuresStep(step1, step2, EDDTableImport.identifyStructuresCallback);
-        var step4 = new TypeDisambiguationStep(step1, step3, EDDTableImport.typeDisambiguationCallback);
-        var step5 = new ReviewStep(step1, step2, step3, step4, EDDTableImport.reviewStepCallback);
+        step1 = new SelectMajorKindStep(EDDTableImport.selectMajorKindCallback);
+        step2 = new RawInputStep(step1, EDDTableImport.rawInputCallback, EDDTableImport.processingFileCallback);
+        step3 = new IdentifyStructuresStep(step1, step2, EDDTableImport.identifyStructuresCallback);
+        step4 = new TypeDisambiguationStep(step1, step3, EDDTableImport.typeDisambiguationCallback);
+        step5 = new ReviewStep(step1, step2, step3, step4, EDDTableImport.reviewStepCallback);
         EDDTableImport.selectMajorKindStep = step1;
         EDDTableImport.rawInputStep = step2;
         EDDTableImport.identifyStructuresStep = step3;
@@ -1807,7 +1815,7 @@ var EDDTableImport;
             this.currentlyVisibleMeasurementObjSets = [];
             this.metadataObjSets = {};
             this.autoCompUID = 0;
-            this.protocolCurrentlyDisplayed = 0;
+            this.masterAssaysOptionsDisplayedForProtocol = 0;
             this.autoCache = {
                 comp: {},
                 meta: {},
@@ -1864,13 +1872,13 @@ var EDDTableImport;
             var assayIn;
             var currentAssays;
             var masterP = this.selectMajorKindStep.masterProtocol; // Shout-outs to a mid-grade rapper
-            if (this.protocolCurrentlyDisplayed != masterP &&
-                (this.protocolCurrentlyDisplayed === this.protocolCurrentlyDisplayed)) {
-                this.protocolCurrentlyDisplayed = masterP;
-                // We deal with recreating this pulldown here, instead of in remakeAssaySection(),
-                // because remakeAssaySection() is called by reconfigure(), which is called
-                // when other UI in this step changes.  This pulldown is NOT affected by changes to
-                // the other UI, so it would be pointless to remake it in response to them.
+            // Recreate the master assay pulldown here instead of in remakeAssaySection()
+            // because its options are NOT affected by changes to steps after #1, so it would be
+            // pointless to remake it in response to them. We may show/hide
+            // it based on other state, but its content won't change. RemakeAssaySection() is
+            // called by reconfigure(), which is called when other UI in this step changes.
+            if (this.masterAssaysOptionsDisplayedForProtocol != masterP && !isNaN(masterP)) {
+                this.masterAssaysOptionsDisplayedForProtocol = masterP;
                 assayIn = $('#masterAssay').empty();
                 $('<option>').text('(Create New)').appendTo(assayIn).val('named_or_new').prop('selected', true);
                 currentAssays = ATData.existingAssays[masterP] || [];
@@ -2034,17 +2042,19 @@ var EDDTableImport;
         TypeDisambiguationStep.prototype.remakeAssaySection = function () {
             var _this = this;
             var table, tableBody, uniqueAssayNames, masterProtocol, startTime, avgRowCreationSeconds, endTime, elapsedSeconds, nRows, nColumns, nControls, maxRowCreationSeconds, totalRowCreationSeconds;
+            // gather up inputs from this and previous steps
             uniqueAssayNames = this.identifyStructuresStep.uniqueAssayNames;
-            masterProtocol = this.protocolCurrentlyDisplayed;
+            masterProtocol = this.selectMajorKindStep.masterProtocol;
             startTime = new Date();
             console.log("Start of TypeDisambiguationStep.remakeAssaySection()");
+            // remove stale data from previous run of this step
             this.currentlyVisibleAssayObjSets.forEach(function (disam) {
                 disam.rowElementJQ.detach();
             });
             this.currentlyVisibleAssayObjSets = [];
             $('#disambiguateAssaysTable').remove();
-            // remove stale data from previous run of this step
             this.assayObjSets = {};
+            //end early if there's nothing to display in this section
             if ((!this.identifyStructuresStep.requiredInputsProvided()) || this.identifyStructuresStep.parsedSets.length === 0) {
                 console.log("End of TypeDisambiguationStep.remakeAssaySection() -- no input data" +
                     " to process");
@@ -2178,15 +2188,16 @@ var EDDTableImport;
         };
         TypeDisambiguationStep.prototype.remakeMeasurementSection = function () {
             var _this = this;
-            var body, row;
-            var mode = this.selectMajorKindStep.interpretationMode;
-            var uniqueMeasurementNames = this.identifyStructuresStep.uniqueMeasurementNames;
-            var seenAnyTimestamps = this.identifyStructuresStep.seenAnyTimestamps;
-            var startTime = new Date();
+            var body, bodyJq, hasRequiredInitialInput, mode, uniqueMeasurementNames, seenAnyTimestamps, startTime, row;
+            mode = this.selectMajorKindStep.interpretationMode;
+            uniqueMeasurementNames = this.identifyStructuresStep.uniqueMeasurementNames;
+            seenAnyTimestamps = this.identifyStructuresStep.seenAnyTimestamps;
+            startTime = new Date();
+            hasRequiredInitialInput = this.identifyStructuresStep.requiredInputsProvided();
             console.log("Start of TypeDisambiguationStep.remakeMeasurementSection()");
             $('#disambiguateMeasurementsSection').addClass('off');
             $('#masterMTypeDiv').addClass('off');
-            var bodyJq = $('#disambiguateMeasurementsTable tbody');
+            bodyJq = $('#disambiguateMeasurementsTable tbody');
             bodyJq.children().detach();
             this.currentlyVisibleMeasurementObjSets.forEach(function (disam) {
                 disam.rowElementJQ.detach();
@@ -2202,7 +2213,7 @@ var EDDTableImport;
             // You might think that we should display this even without timestamp data, to handle the case where we're importing
             // a single measurement type for a single timestamp...  But that would be a 1-dimensional import, since there is only
             // one other object with multiple types to work with (lines/assays).  We're not going to bother supporting that.
-            if (uniqueMeasurementNames.length === 0 && seenAnyTimestamps) {
+            if (hasRequiredInitialInput && uniqueMeasurementNames.length === 0 && seenAnyTimestamps) {
                 $('#masterMTypeDiv').removeClass('off');
                 console.log("End of TypeDisambiguationStep.remakeMeasurementSection() - no" +
                     " measurements for disambiguation.");
@@ -2264,7 +2275,7 @@ var EDDTableImport;
                 _this.currentlyVisibleMeasurementObjSets.push(disam);
             });
             this.checkAllMeasurementCompartmentDisam();
-            $('#disambiguateMeasurementsSection').toggleClass('off', uniqueMeasurementNames.length === 0);
+            $('#disambiguateMeasurementsSection').toggleClass('off', uniqueMeasurementNames.length === 0 || !hasRequiredInitialInput);
             var endTime = new Date();
             var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
             console.log("End of TypeDisambiguationStep.remakeMeasurementSection(). Elapsed time:" +
@@ -2404,8 +2415,8 @@ var EDDTableImport;
         // If any are, and we're in MDV document mode, display a warning that the user should
         // specify compartments for all their measurements.
         TypeDisambiguationStep.prototype.checkAllMeasurementCompartmentDisam = function () {
-            var allSet;
-            var mode = this.selectMajorKindStep.interpretationMode;
+            var allSet, mode;
+            mode = this.selectMajorKindStep.interpretationMode;
             allSet = this.currentlyVisibleMeasurementObjSets.every(function (obj) {
                 var hidden = obj.compHiddenObj;
                 if (obj.compObj.data('setByUser') || (hidden.val() && hidden.val() !== '0')) {
