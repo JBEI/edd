@@ -1382,15 +1382,19 @@ var StudyD;
                     color = _this.graphHelper.nextColor;
                     line['doNotChange'] = true;
                     line['color'] = color;
+                    //text label next to checkbox
                     var label = $('#' + line['identifier']).next();
+                    //update label color to line color
                     $(label).css('color', color);
                     _this.graphHelper.colorQueue(color);
                 }
             }
-            //
-            // if (this.graphHelper.nextColor != null) {
-            //     EDDData.Lines[assay.lid]['color'] = this.graphHelper.nextColor;
-            // }
+            else if ($('#' + line['identifier']).prop('checked') === false && functionCalls > 1) {
+                color = colorObj[assay.lid];
+                var label = $('#' + line['identifier']).next();
+                //update label color to line color
+                $(label).css('color', color);
+            }
             if (functionCalls == 0) {
                 color = colorObj[assay.lid];
             }

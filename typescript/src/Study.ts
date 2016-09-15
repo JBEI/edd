@@ -1575,6 +1575,7 @@ module StudyD {
             name = [line.name, protocol.name, assay.name].join('-');
             lineName = line.name;
 
+
             if($('#' + line['identifier']).prop('checked') && functionCalls === 1) {
                 color = line['color'];
                 line['doNotChange'] = true;
@@ -1587,16 +1588,18 @@ module StudyD {
                     color = this.graphHelper.nextColor;
                     line['doNotChange'] = true;
                     line['color'] = color;
-                    var label = $('#' + line['identifier']).next()
-                    $(label).css('color', color)
+                    //text label next to checkbox
+                    var label = $('#' + line['identifier']).next();
+                    //update label color to line color
+                    $(label).css('color', color);
                     this.graphHelper.colorQueue(color);
                 }
+            } else if ($('#' + line['identifier']).prop('checked') === false && functionCalls >1 ){
+                color = colorObj[assay.lid];
+                 var label = $('#' + line['identifier']).next();
+                    //update label color to line color
+                $(label).css('color', color);
             }
-            //
-            // if (this.graphHelper.nextColor != null) {
-            //     EDDData.Lines[assay.lid]['color'] = this.graphHelper.nextColor;
-            // }
-
             if (functionCalls == 0) {
                 color = colorObj[assay.lid];
             }
