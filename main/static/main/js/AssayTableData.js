@@ -979,24 +979,25 @@ var EDDTableImport;
             return 0;
         };
         IdentifyStructuresStep.prototype.inferActiveFlags = function (grid) {
+            // An important thing to note here is that this data is in row major format
+            // format - that is, it goes by row, then by column, when referencing (i.e.
+            // [row][column]). This matches Grid.data and Table.dataCells.
             var _this = this;
-            // An important thing to note here is that this data is in [y][x] format -
-            // that is, it goes by row, then by column, when referencing.
-            // This matches Grid.data and Table.dataCells.
-            var x, y;
-            (grid[0] || []).forEach(function (_, x) {
-                if (_this.activeColFlags[x] === undefined) {
-                    _this.activeColFlags[x] = true;
+            // infer column active status
+            (grid[0] || []).forEach(function (_, colIndex) {
+                if (_this.activeColFlags[colIndex] === undefined) {
+                    _this.activeColFlags[colIndex] = true;
                 }
             });
-            grid.forEach(function (row, y) {
-                if (_this.activeRowFlags[y] === undefined) {
-                    _this.activeRowFlags[y] = true;
+            // infer row active status
+            grid.forEach(function (row, rowIndex) {
+                if (_this.activeRowFlags[rowIndex] === undefined) {
+                    _this.activeRowFlags[rowIndex] = true;
                 }
-                _this.activeFlags[y] = _this.activeFlags[y] || [];
-                row.forEach(function (_, x) {
-                    if (_this.activeFlags[y][x] === undefined) {
-                        _this.activeFlags[y][x] = true;
+                _this.activeFlags[rowIndex] = _this.activeFlags[rowIndex] || [];
+                row.forEach(function (_, colIndex) {
+                    if (_this.activeFlags[rowIndex][colIndex] === undefined) {
+                        _this.activeFlags[rowIndex][colIndex] = true;
                     }
                 });
             });

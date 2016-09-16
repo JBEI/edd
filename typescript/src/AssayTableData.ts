@@ -1288,24 +1288,26 @@ module EDDTableImport {
 
 
         inferActiveFlags(grid: any): void {
-            // An important thing to note here is that this data is in [y][x] format -
-            // that is, it goes by row, then by column, when referencing.
-            // This matches Grid.data and Table.dataCells.
-            var x: number, y: number;
+            // An important thing to note here is that this data is in row major format
+            // format - that is, it goes by row, then by column, when referencing (i.e.
+            // [row][column]). This matches Grid.data and Table.dataCells.
 
-            (grid[0] || []).forEach((_, x: number): void => {
-                if (this.activeColFlags[x] === undefined) {
-                    this.activeColFlags[x] = true;
+            // infer column active status
+            (grid[0] || []).forEach((_, colIndex: number): void => {
+                if (this.activeColFlags[colIndex] === undefined) {
+                    this.activeColFlags[colIndex] = true;
                 }
             });
-            grid.forEach((row: string[], y: number): void => {
-                if (this.activeRowFlags[y] === undefined) {
-                    this.activeRowFlags[y] = true;
+
+            // infer row active status
+            grid.forEach((row: string[], rowIndex: number): void => {
+                if (this.activeRowFlags[rowIndex] === undefined) {
+                    this.activeRowFlags[rowIndex] = true;
                 }
-                this.activeFlags[y] = this.activeFlags[y] || [];
-                row.forEach((_, x: number) => {
-                    if (this.activeFlags[y][x] === undefined) {
-                        this.activeFlags[y][x] = true;
+                this.activeFlags[rowIndex] = this.activeFlags[rowIndex] || [];
+                row.forEach((_, colIndex: number) => {
+                    if (this.activeFlags[rowIndex][colIndex] === undefined) {
+                        this.activeFlags[rowIndex][colIndex] = true;
                     }
                 });
             });
