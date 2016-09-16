@@ -1537,9 +1537,7 @@ module StudyD {
         this.mainGraphRefreshTimerID = setTimeout(remakeMainGraphArea.bind(this, force), 200);
     }
 
-    var functionCalls = 0,
-        checkboxSelector = [],
-        updatedCheckboxSelector = [];
+    var remakeMainGraphAreaCalls = 0;
 
     function remakeMainGraphArea(force?:boolean) {
 
@@ -1583,29 +1581,26 @@ module StudyD {
               color = colorObj[assay.lid];
             }
 
-            if (functionCalls === 0 ) {
-                checkboxSelector.push(label);
+            if (remakeMainGraphAreaCalls === 0 ) {
                 this.graphHelper.labels.push(label);
-                updatedCheckboxSelector = checkboxSelector;
                 color = colorObj[assay.lid];
                 //update label color to line color
                 $(label).css('color', color);
-            } else if (functionCalls >= 1 && $('#' + line['identifier']).prop('checked')) {
-                //update label color to line color
-                //removeClickedLabels(updatedCheckboxSelector, label);
-                makeLabelsBlack(updatedCheckboxSelector);
+            } else if (remakeMainGraphAreaCalls >= 1 && $('#' + line['identifier']).prop('checked')) {
+                //unchecked labels black
+                makeLabelsBlack(this.graphHelper.labels);
+                 //update label color to line color
                 $(label).css('color', color);
             } else {
-                var count = noCheckedBoxes(updatedCheckboxSelector);
+                var count = noCheckedBoxes(this.graphHelper.labels);
                 if (count === 0) {
-                    updatedCheckboxSelector = this.graphHelper.labels;
-                    addColor(updatedCheckboxSelector, colorObj, assay.lid)
+                    addColor(this.graphHelper.labels, colorObj, assay.lid)
                 } else {
                     //update label color to black
                     $(label).css('color', 'black');
                 }
             }
-            console.log(this.graphHelper.labels.length);
+
             dataObj = {
                 'measure': measure,
                 'data': EDDData,
@@ -1617,11 +1612,15 @@ module StudyD {
             dataSets.push(singleAssayObj);
             prev = lineName;
         });
-        functionCalls++;
-        uncheckEventHandler(checkboxSelector);
+        remakeMainGraphAreaCalls++;
+        uncheckEventHandler(this.graphHelper.labels);
         this.mainGraphObject.addNewSet(dataSets, EDDData.MeasurementTypes);
     }
 
+    /**
+     * this function makes unchecked labels black
+     * @param selectors
+     */
     function makeLabelsBlack(selectors) {
         _.each(selectors, function(selector) {
             if (selector.prev().prop('checked') === false) {
@@ -1630,6 +1629,10 @@ module StudyD {
         })
     }
 
+    /**
+     * this function creates an event handler for unchecking a checked checkbox
+     * @param labels
+     */
     function uncheckEventHandler(labels) {
         _.each(labels, function(label){
             var id = $(label).prev().prop('id');
@@ -1639,26 +1642,13 @@ module StudyD {
                       $(label).css('color', 'black');
                 });
         })
-
     }
 
-    function findUncheckedBoxes(labels) {
-        _.each(labels, function(label) {
-            if ($(label).prev().prop('checked') === false) {
-                $(label).css('color', 'black')
-            }
-        })
-    }
-
-    function removeClickedLabels(allCheckboxes, label) {
-       for (var i = 0; i < allCheckboxes.length; i++) {
-           if ($(allCheckboxes[i]).text() === $(label).text()) {
-               allCheckboxes.splice(i, 1);
-           }
-       }
-        return allCheckboxes
-    }
-
+    /**
+     * this function returns how many checkboxes are checked.
+     * @param labels
+     * @returns count of checked boxes.
+     */
     function noCheckedBoxes(labels) {
         var count = 0;
         _.each(labels, function(label) {
@@ -1670,6 +1660,14 @@ module StudyD {
         return count;
     }
 
+    /**
+     * This function adds colors after user has clicked a line and then unclicked all the lines.
+     * @param labels
+     * @param colorObj
+     * @param assay
+     * @returns labels
+     */
+
     function addColor(labels, colorObj, assay) {
         _.each(labels, function(label) {
             var color = colorObj[assay];
@@ -1680,16 +1678,25 @@ module StudyD {
         return labels;
     }
 
+    /**
+     * @param line
+     * @param colorObj
+     * @param assay
+     * @param graphHelper
+     * @returns color for line.
+     * this function returns the color in the color queue for studies >22 lines. Instantiated
+     * when user clicks on a line.
+     */
     function changeLineColor(line, colorObj, assay, graphHelper) {
 
         var color;
 
-        if($('#' + line['identifier']).prop('checked') && functionCalls === 1) {
+        if($('#' + line['identifier']).prop('checked') && remakeMainGraphAreaCalls === 1) {
                 color = line['color'];
                 line['doNotChange'] = true;
                 graphHelper.colorQueue(color);
             }
-            if ($('#' + line['identifier']).prop('checked') && functionCalls >= 1) {
+            if ($('#' + line['identifier']).prop('checked') && remakeMainGraphAreaCalls >= 1) {
                 if (line['doNotChange']) {
                    color = line['color'];
                 } else {
@@ -1702,13 +1709,14 @@ module StudyD {
                     $(label).css('color', color);
                     graphHelper.colorQueue(color);
                 }
-            } else if ($('#' + line['identifier']).prop('checked') === false && functionCalls >1 ){
+            } else if ($('#' + line['identifier']).prop('checked') === false && remakeMainGraphAreaCalls >1 ){
                 color = colorObj[assay];
                  var label = $('#' + line['identifier']).next();
                     //update label color to line color
                 $(label).css('color', color);
             }
-            if (functionCalls == 0) {
+
+            if (remakeMainGraphAreaCalls == 0) {
                 color = colorObj[assay];
             }
         return color;

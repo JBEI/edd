@@ -3,6 +3,7 @@ var GraphHelperMethods;
 GraphHelperMethods = {
     nextColor: null,
     labels: [],
+    remakeGraphCalls: 0,
     /**
      *  This function takes in data and transforms it into the following
      *  {x, y, i}, {x, y, i}, {x, y, i} ....
