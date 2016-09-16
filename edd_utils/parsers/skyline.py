@@ -18,12 +18,14 @@ class SkylineParser(object):
     __slots__ = []
 
     def export(self, input_data):
+        """ This "export" takes a two-dimensional array of input data and creates a data structure
+            used by the old proteomics skyline conversion tool. """
         samples = set()
         proteins = set()
         summed_areas = defaultdict(Decimal)
         n_records = 0
         errors = []
-        for item in filter(bool, map(self._parse_line, input_data)):
+        for item in self._input_to_generator(input_data):
             n_records += 1
             samples.add(item.sample)
             proteins.add(item.protein)
@@ -51,8 +53,10 @@ class SkylineParser(object):
             'errors': errors,
         }
 
-    def _parse_line(self, line):
-        line = line.strip()
-        if line:
-            return Record(*line.split(','))
-        return None
+    def _input_to_generator(self, input_data):
+        # the input_data could be a 2D array parsed from excel or CSV
+        if isinstance(input_data, list):
+            print(input_data)
+            return (Record(*item) for item in input_data)
+        # or input_data could be a file with lines of CSV text
+        return (Record(*line.split(',')) for line in input_data if line.strip())

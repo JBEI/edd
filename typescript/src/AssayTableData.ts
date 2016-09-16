@@ -202,7 +202,7 @@ module EDDTableImport {
             // strong effects on the rest of the page.
             // For example, a user should be free to change "merge" to "replace" without having
             // their edits in Step 2 erased.
-            $("#masterProtocol").on('change', this.reconfigure.bind(this));
+            $("#masterProtocol").on('change', this.queueReconfigure.bind(this));
 
             // Using "change" for these because it's more efficient AND because it works around an
             // irritating Chrome inconsistency
@@ -493,16 +493,15 @@ module EDDTableImport {
                     (mode === 'std' || mode === 'tr' || mode === 'pr')) {
                 fileContainer.skipProcessRaw = false;
                 fileContainer.skipUpload = true;
-                return;
             }
             // Except for skyline files, which should be summed server-side
-            if ((ft === 'csv' || ft === 'txt') && (mode === 'skyline')) {
+            else if ((ft === 'csv' || ft === 'txt') && (mode === 'skyline')) {
                 fileContainer.skipProcessRaw = true;
                 fileContainer.skipUpload = false;
             }
             // With Excel documents, we need some server-side tools.
             // We'll signal the dropzone to upload this, and receive processed results.
-            if ((ft === 'xlsx') && (mode === 'std' ||
+            else if ((ft === 'xlsx') && (mode === 'std' ||
                     mode === 'tr' ||
                     mode === 'pr' ||
                     mode === 'mdv' ||
@@ -512,22 +511,26 @@ module EDDTableImport {
                 fileContainer.skipUpload = false;
                 return;
             }
-            if ((ft === 'csv' || ft === 'txt') &&
+            // HPLC reports need to be sent for server-side processing
+            else if ((ft === 'csv' || ft === 'txt') &&
                     (mode === 'hplc')) {
                 this.showDropZone(fileContainer);
                 fileContainer.skipProcessRaw = true;
                 fileContainer.skipUpload = false;
                 return;
             }
-            if (ft === 'xml' && mode === 'biolector') {
+            // Biolector XML also needs to be sent for server-side processing
+            else if (ft === 'xml' && mode === 'biolector') {
                 this.showDropZone(fileContainer);
                 fileContainer.skipProcessRaw = true;
                 fileContainer.skipUpload = false;
                 return;
             }
             // By default, skip any further processing
-            fileContainer.skipProcessRaw = true;
-            fileContainer.skipUpload = true;
+            else {
+                fileContainer.skipProcessRaw = true;
+                fileContainer.skipUpload = true;
+            }
         }
 
 

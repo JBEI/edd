@@ -958,7 +958,8 @@ def utilities_parse_import_file(request):
                 'file_data': result.parsed_data,
             })
         except Exception as e:
-            return JsonResponse({'python_error': e}, status=500)
+            logger.exception('Import file parse failed: %s', e)
+            return JsonResponse({'python_error': str(e)}, status=500)
     return JsonResponse(
         {
             "python_error": "The uploaded file could not be interpreted as either an Excel "

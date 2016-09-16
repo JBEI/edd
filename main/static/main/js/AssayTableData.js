@@ -118,7 +118,7 @@ var EDDTableImport;
             // strong effects on the rest of the page.
             // For example, a user should be free to change "merge" to "replace" without having
             // their edits in Step 2 erased.
-            $("#masterProtocol").on('change', this.reconfigure.bind(this));
+            $("#masterProtocol").on('change', this.queueReconfigure.bind(this));
             // Using "change" for these because it's more efficient AND because it works around an
             // irritating Chrome inconsistency
             // For some of these, changing them shouldn't actually affect processing until we
@@ -344,16 +344,12 @@ var EDDTableImport;
                 (mode === 'std' || mode === 'tr' || mode === 'pr')) {
                 fileContainer.skipProcessRaw = false;
                 fileContainer.skipUpload = true;
-                return;
             }
-            // Except for skyline files, which should be summed server-side
-            if ((ft === 'csv' || ft === 'txt') && (mode === 'skyline')) {
+            else if ((ft === 'csv' || ft === 'txt') && (mode === 'skyline')) {
                 fileContainer.skipProcessRaw = true;
                 fileContainer.skipUpload = false;
             }
-            // With Excel documents, we need some server-side tools.
-            // We'll signal the dropzone to upload this, and receive processed results.
-            if ((ft === 'xlsx') && (mode === 'std' ||
+            else if ((ft === 'xlsx') && (mode === 'std' ||
                 mode === 'tr' ||
                 mode === 'pr' ||
                 mode === 'mdv' ||
@@ -363,22 +359,23 @@ var EDDTableImport;
                 fileContainer.skipUpload = false;
                 return;
             }
-            if ((ft === 'csv' || ft === 'txt') &&
+            else if ((ft === 'csv' || ft === 'txt') &&
                 (mode === 'hplc')) {
                 this.showDropZone(fileContainer);
                 fileContainer.skipProcessRaw = true;
                 fileContainer.skipUpload = false;
                 return;
             }
-            if (ft === 'xml' && mode === 'biolector') {
+            else if (ft === 'xml' && mode === 'biolector') {
                 this.showDropZone(fileContainer);
                 fileContainer.skipProcessRaw = true;
                 fileContainer.skipUpload = false;
                 return;
             }
-            // By default, skip any further processing
-            fileContainer.skipProcessRaw = true;
-            fileContainer.skipUpload = true;
+            else {
+                fileContainer.skipProcessRaw = true;
+                fileContainer.skipUpload = true;
+            }
         };
         // This function is passed the usual fileContainer object, but also a reference to the
         // full content of the dropped file.  So, for example, in the case of parsing a csv file,

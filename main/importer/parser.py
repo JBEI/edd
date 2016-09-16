@@ -2,7 +2,9 @@
 from __future__ import division, unicode_literals
 
 
+from builtins import str
 from collections import namedtuple
+from io import StringIO
 
 from edd_utils.parsers import biolector, excel, hplc, skyline
 
@@ -71,9 +73,10 @@ def skyline_parser(in_data):
 
 
 def skyline_csv_parser(request):
+    # we could get Mac-style \r line endings, need to use StringIO to handle
     return ParsedInput(
         ImportFileTypeFlags.CSV,
-        skyline_parser([row.split(',') for row in request])
+        skyline_parser([row.split(',') for row in StringIO(str(request.read()))])
     )
 parser_registry[(ImportModeFlags.SKYLINE, ImportFileTypeFlags.CSV)] = skyline_csv_parser
 
