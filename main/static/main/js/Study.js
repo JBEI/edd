@@ -1342,7 +1342,7 @@ var StudyD;
         this.mainGraphRefreshTimerID = setTimeout(remakeMainGraphArea.bind(this, force), 200);
     }
     StudyD.queueMainGraphRemake = queueMainGraphRemake;
-    var functionCalls = 0;
+    var functionCalls = 0, checkboxSelector = [];
     function remakeMainGraphArea(force) {
         var _this = this;
         var postFilteringMeasurements, dataPointsDisplayed = 0, dataPointsTotal = 0, colorObj;
@@ -1355,8 +1355,7 @@ var StudyD;
         this.graphHelper = Object.create(GraphHelperMethods);
         colorObj = EDDData['color'];
         //Gives ids of lines to show.
-        var dataSets = [];
-        var prev;
+        var dataSets = [], prev;
         postFilteringMeasurements = this.progressiveFilteringWidget.buildFilteredMeasurements();
         $.each(postFilteringMeasurements, function (i, measurementId) {
             var measure = EDDData.AssayMeasurements[measurementId], points = (measure.values ? measure.values.length : 0), assay, line, name, singleAssayObj, color, protocol, lineName, dataObj;
@@ -1370,6 +1369,7 @@ var StudyD;
             protocol = EDDData.Protocols[assay.pid] || {};
             name = [line.name, protocol.name, assay.name].join('-');
             lineName = line.name;
+            var label = $('#' + line['identifier']).next();
             if (_.keys(EDDData.Lines).length > 22) {
                 color = changeLineColor(line, colorObj, assay.lid, _this.graphHelper);
             }
@@ -1377,19 +1377,26 @@ var StudyD;
                 color = colorObj[assay.lid];
             }
             if (functionCalls === 0) {
-                var label = $('#' + line['identifier']).next();
+                checkboxSelector.push(label);
+                color = colorObj[assay.lid];
                 //update label color to line color
                 $(label).css('color', color);
             }
-            if (functionCalls > 1 && $('#' + line['identifier']).prop('checked')) {
-                var label = $('#' + line['identifier']).next();
+            else if (functionCalls >= 1 && $('#' + line['identifier']).prop('checked')) {
                 //update label color to line color
+                removeClickedLabels(checkboxSelector, label);
+                makeLabelsBlack(checkboxSelector);
                 $(label).css('color', color);
             }
             else {
-                var label = $('#' + line['identifier']).next();
-                //update label color to line color
-                $(label).css('color', 'black');
+                var count = noCheckedBoxes(checkboxSelector);
+                if (count === 0) {
+                    addColor(checkboxSelector, colorObj, assay.lid);
+                }
+                else {
+                    //update label color to line color
+                    $(label).css('color', 'black');
+                }
             }
             dataObj = {
                 'measure': measure,
@@ -1405,6 +1412,38 @@ var StudyD;
         functionCalls++;
         this.mainGraphObject.addNewSet(dataSets, EDDData.MeasurementTypes);
     }
+    function makeLabelsBlack(selectors) {
+        _.each(selectors, function (selector) {
+            $(selector).css('color', 'black');
+        });
+    }
+    function removeClickedLabels(allCheckboxes, label) {
+        for (var i = 0; i < allCheckboxes.length; i++) {
+            if ($(allCheckboxes[i]).text() === $(label).text()) {
+                allCheckboxes.splice(i, 1);
+            }
+        }
+        return allCheckboxes;
+    }
+    function noCheckedBoxes(labels) {
+        var count = 0;
+        _.each(labels, function (label) {
+            var checkbox = $(label).prev();
+            if ($(checkbox).prop('checked')) {
+                count++;
+            }
+        });
+        return count;
+    }
+    function addColor(labels, colorObj, assay) {
+        _.each(labels, function (label) {
+            var color = colorObj[assay];
+            if (EDDData.Lines[assay].name === label.text()) {
+                $(label).css('color', color);
+            }
+        });
+        return labels;
+    }
     function changeLineColor(line, colorObj, assay, graphHelper) {
         var color;
         if ($('#' + line['identifier']).prop('checked') && functionCalls === 1) {
@@ -1412,7 +1451,7 @@ var StudyD;
             line['doNotChange'] = true;
             graphHelper.colorQueue(color);
         }
-        if ($('#' + line['identifier']).prop('checked') && functionCalls > 1) {
+        if ($('#' + line['identifier']).prop('checked') && functionCalls >= 1) {
             if (line['doNotChange']) {
                 color = line['color'];
             }
