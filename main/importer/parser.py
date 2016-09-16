@@ -76,7 +76,7 @@ def skyline_csv_parser(request):
     # we could get Mac-style \r line endings, need to use StringIO to handle
     return ParsedInput(
         ImportFileTypeFlags.CSV,
-        skyline_parser([row.split(',') for row in StringIO(str(request.read()))])
+        skyline_parser([row.split(',') for row in StringIO(str(request.read()), newline=None)])
     )
 parser_registry[(ImportModeFlags.SKYLINE, ImportFileTypeFlags.CSV)] = skyline_csv_parser
 
