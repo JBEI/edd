@@ -1537,7 +1537,9 @@ module StudyD {
         this.mainGraphRefreshTimerID = setTimeout(remakeMainGraphArea.bind(this, force), 200);
     }
 
-    var functionCalls = 0, checkboxSelector = [], updatedCheckboxSelector = [];
+    var functionCalls = 0,
+        checkboxSelector = [],
+        updatedCheckboxSelector = [];
 
     function remakeMainGraphArea(force?:boolean) {
 
@@ -1583,26 +1585,27 @@ module StudyD {
 
             if (functionCalls === 0 ) {
                 checkboxSelector.push(label);
-                updatedCheckboxSelector.push(label);
+                this.graphHelper.labels.push(label);
+                updatedCheckboxSelector = checkboxSelector;
                 color = colorObj[assay.lid];
                 //update label color to line color
                 $(label).css('color', color);
             } else if (functionCalls >= 1 && $('#' + line['identifier']).prop('checked')) {
                 //update label color to line color
-                removeClickedLabels(updatedCheckboxSelector, label);
+                //removeClickedLabels(updatedCheckboxSelector, label);
                 makeLabelsBlack(updatedCheckboxSelector);
                 $(label).css('color', color);
             } else {
                 var count = noCheckedBoxes(updatedCheckboxSelector);
                 if (count === 0) {
-                    updatedCheckboxSelector = checkboxSelector;
-                    addColor(checkboxSelector, colorObj, assay.lid)
+                    updatedCheckboxSelector = this.graphHelper.labels;
+                    addColor(updatedCheckboxSelector, colorObj, assay.lid)
                 } else {
-                    //update label color to line color
+                    //update label color to black
                     $(label).css('color', 'black');
                 }
             }
-
+            console.log(this.graphHelper.labels.length);
             dataObj = {
                 'measure': measure,
                 'data': EDDData,
@@ -1621,7 +1624,9 @@ module StudyD {
 
     function makeLabelsBlack(selectors) {
         _.each(selectors, function(selector) {
+            if (selector.prev().prop('checked') === false) {
             $(selector).css('color', 'black');
+            }
         })
     }
 
@@ -1635,6 +1640,14 @@ module StudyD {
                 });
         })
 
+    }
+
+    function findUncheckedBoxes(labels) {
+        _.each(labels, function(label) {
+            if ($(label).prev().prop('checked') === false) {
+                $(label).css('color', 'black')
+            }
+        })
     }
 
     function removeClickedLabels(allCheckboxes, label) {

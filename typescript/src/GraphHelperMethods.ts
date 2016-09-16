@@ -5,6 +5,7 @@ var GraphHelperMethods:any;
 GraphHelperMethods = {
     
     nextColor: null,
+    labels: [],
     
     /**
      *  This function takes in data and transforms it into the following
