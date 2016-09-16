@@ -1590,10 +1590,14 @@ module StudyD {
                 //unchecked labels black
                 makeLabelsBlack(this.graphHelper.labels);
                  //update label color to line color
+                if (color === null || color === undefined) {
+                color = colorObj[assay.lid]
+                }
                 $(label).css('color', color);
             } else {
                 var count = noCheckedBoxes(this.graphHelper.labels);
                 if (count === 0) {
+                    this.graphHelper.nextColor = null,
                     addColor(this.graphHelper.labels, colorObj, assay.lid)
                 } else {
                     //update label color to black
@@ -1601,6 +1605,9 @@ module StudyD {
                 }
             }
 
+            if (color === null || color === undefined) {
+                color = colorObj[assay.lid]
+            }
             dataObj = {
                 'measure': measure,
                 'data': EDDData,

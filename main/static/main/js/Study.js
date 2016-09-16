@@ -1386,17 +1386,24 @@ var StudyD;
                 //unchecked labels black
                 makeLabelsBlack(_this.graphHelper.labels);
                 //update label color to line color
+                if (color === null || color === undefined) {
+                    color = colorObj[assay.lid];
+                }
                 $(label).css('color', color);
             }
             else {
                 var count = noCheckedBoxes(_this.graphHelper.labels);
                 if (count === 0) {
-                    addColor(_this.graphHelper.labels, colorObj, assay.lid);
+                    _this.graphHelper.nextColor = null,
+                        addColor(_this.graphHelper.labels, colorObj, assay.lid);
                 }
                 else {
                     //update label color to black
                     $(label).css('color', 'black');
                 }
+            }
+            if (color === null || color === undefined) {
+                color = colorObj[assay.lid];
             }
             dataObj = {
                 'measure': measure,

@@ -141,28 +141,29 @@ GraphHelperMethods = {
     **/
     renderColor: function(line, lines) {
         var colors:any = {
-            0: '#0E6FA4',
-            1: '#51BFD8',
-            2: '#DA7138',
-            3: '#FCA456',
-            4: '#2b7b3d',
-            5: '#97d37d',
-            6: '#CF5030',
-            7: '#FFB6C1',
-            8: '#6f2f8c',
-            9: '#b97dd3',
-            10: '#7e0404',
-            11: '#BAA0AE',
-            12: '#F279BA',
-            13: '#993f6c', 
-            14: '#919191',
-            15: '#BFBFBD',
-            16: '#ecda3a',
-            17: '#b2b200', 
-            18: '#00d5f2',
-            19: '#b2f2fb',
-            20: '#0715CD',
-            21: '#e8c2f3'
+            0: '#0E6FA4',   //dark teal
+            1: '#51BFD8',   //teal
+            2: '#2a2056',   //navy
+            3: '#FCA456',   //light orange
+            4: '#2b7b3d',   //green
+            5: '#97d37d',   //light pastel green
+            6: '#CF5030',   //orange red
+            7: '#FFB6C1',   //light pink
+            8: '#6f2f8c',   //royal purple
+            9: '#b97dd3',   //light purple
+            10: '#7e0404',  //burgandy red
+            11: '#765667',  //grey pink
+            12: '#F279BA',  //pink
+            13: '#993f6c',  //maroon
+            14: '#919191',  //dark grey
+            15: '#BFBFBD',  //grey
+            16: '#ecda3a',  //yellow
+            17: '#b2b200',  //mustard yellow
+            18: '#006E7E',  //grey blue
+            19: '#b2f2fb',  //light blue
+            20: '#0715CD',  //royal blue
+            21: '#e8c2f3',  //light lavender
+            22: '#7a5230'   //brown
         };
         //new color object with assay ids and color hex
         var lineColors = {};

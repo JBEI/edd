@@ -129,7 +129,7 @@ GraphHelperMethods = {
         var colors = {
             0: '#0E6FA4',
             1: '#51BFD8',
-            2: '#DA7138',
+            2: '#2a2056',
             3: '#FCA456',
             4: '#2b7b3d',
             5: '#97d37d',
@@ -138,17 +138,18 @@ GraphHelperMethods = {
             8: '#6f2f8c',
             9: '#b97dd3',
             10: '#7e0404',
-            11: '#BAA0AE',
+            11: '#765667',
             12: '#F279BA',
             13: '#993f6c',
             14: '#919191',
             15: '#BFBFBD',
             16: '#ecda3a',
             17: '#b2b200',
-            18: '#00d5f2',
+            18: '#006E7E',
             19: '#b2f2fb',
             20: '#0715CD',
-            21: '#e8c2f3'
+            21: '#e8c2f3',
+            22: '#7a5230' //brown
         };
         //new color object with assay ids and color hex
         var lineColors = {};
