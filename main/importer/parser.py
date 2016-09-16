@@ -4,6 +4,8 @@ from __future__ import division, unicode_literals
 
 from collections import namedtuple
 
+from edd_utils.parsers import biolector, excel, hplc, skyline
+
 
 ParsedInput = namedtuple('ParsedInput', ['file_type', 'parsed_data', ])
 
@@ -33,7 +35,6 @@ def find_parser(import_mode, file_type):
 
 
 def biolector_parser(request):
-    from edd_utils.parsers import biolector
     # We pass the request directly along, so it can be read as a stream by the parser
     return ParsedInput(
         ImportFileTypeFlags.XML,
@@ -43,20 +44,49 @@ parser_registry[(ImportModeFlags.BIOLECTOR, ImportFileTypeFlags.XML)] = biolecto
 
 
 def excel_parser(request):
-    from edd_utils.parsers import excel
     return ParsedInput(
         ImportFileTypeFlags.EXCEL,
         excel.import_xlsx_tables(file=request)
     )
 parser_registry[(ImportModeFlags.STANDARD, ImportFileTypeFlags.EXCEL)] = excel_parser
-parser_registry[(ImportModeFlags.SKYLINE, ImportFileTypeFlags.EXCEL)] = excel_parser
 parser_registry[(ImportModeFlags.PROTEOMICS_OLD, ImportFileTypeFlags.EXCEL)] = excel_parser
 parser_registry[(ImportModeFlags.TRANSCRIPTOMICS, ImportFileTypeFlags.EXCEL)] = excel_parser
 parser_registry[(ImportModeFlags.MASS_DISTRIBUTION, ImportFileTypeFlags.EXCEL)] = excel_parser
 
 
+def skyline_parser(in_data):
+    parser = skyline.SkylineParser()
+    results = parser.export(in_data)
+    return [
+        {
+            # TODO: try to parse item[0] based on worklist format
+            'assay_name': item[0],
+            'data': item[3],
+            'kind': 'skyline',
+            'line_name': item[0],
+            'measurement_name': item[1],
+        }
+        for item in results['rows']
+    ]
+
+
+def skyline_csv_parser(request):
+    return ParsedInput(
+        ImportFileTypeFlags.CSV,
+        skyline_parser([row.split(',') for row in request])
+    )
+parser_registry[(ImportModeFlags.SKYLINE, ImportFileTypeFlags.CSV)] = skyline_csv_parser
+
+
+def skyline_excel_parser(request):
+    return ParsedInput(
+        ImportFileTypeFlags.EXCEL,
+        skyline_parser(excel.import_xlsx_tables(file=request))
+    )
+parser_registry[(ImportModeFlags.SKYLINE, ImportFileTypeFlags.EXCEL)] = skyline_excel_parser
+
+
 def hplc_parser(request):
-    from edd_utils.parsers import hplc
     return ParsedInput(
         ImportFileTypeFlags.PLAINTEXT,
         hplc.getRawImportRecordsAsJSON(request)

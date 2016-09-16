@@ -192,27 +192,25 @@ module EDDTableImport {
 
         constructor(nextStepCallback: any) {
             this.masterProtocol = 0;
-            this.interpretationMode = null;    // We rely on a separate call to reconfigure() to set this properly.
+            // We rely on a separate call to reconfigure() to set this properly.
+            this.interpretationMode = null;
             this.inputRefreshTimerID = null;
-
             this.nextStepCallback = nextStepCallback;
 
-            var reProcessOnChange: string[];
-
-            reProcessOnChange = ['#stdlayout', '#trlayout', '#hplclayout', '#prlayout', '#mdvlayout', '#biolectorlayout'];
-
-            // This is rather a lot of callbacks, but we need to make sure we're
-            // tracking the minimum number of elements with this call, since the
-            // function called has such strong effects on the rest of the page.
+            // This is rather a lot of callbacks, but we need to make sure we're tracking the
+            // minimum number of elements with this call, since the function called has such
+            // strong effects on the rest of the page.
             // For example, a user should be free to change "merge" to "replace" without having
             // their edits in Step 2 erased.
-            $("#masterProtocol").change(this.reconfigure.bind(this));
+            $("#masterProtocol").on('change', this.reconfigure.bind(this));
 
             // Using "change" for these because it's more efficient AND because it works around an
             // irritating Chrome inconsistency
-            // For some of these, changing them shouldn't actually affect processing until we implement
-            // an overwrite-checking feature or something similar
-            $(reProcessOnChange.join(',')).on('click', this.queueReconfigure.bind(this));
+            // For some of these, changing them shouldn't actually affect processing until we
+            // implement an overwrite-checking feature or something similar
+            $(':radio[name=datalayout]', '#selectMajorKindStep').on(
+                'change', this.queueReconfigure.bind(this)
+            );
         }
 
 
@@ -243,7 +241,7 @@ module EDDTableImport {
         checkInterpretationMode(): boolean {
             // Find every input element of type 'radio' with the name attribute of 'datalayout' that's checked.
             // Should return 0 or 1 elements.
-            var modeRadio = $("input[type='radio'][name='datalayout']:checked");
+            var modeRadio = $("[name='datalayout']:checked");
             // If none of them are checked, we don't have enough information to handle any next steps.
             if (modeRadio.length < 1) { return false; }
             var radioValue = modeRadio.val();
@@ -492,10 +490,15 @@ module EDDTableImport {
             var ft = fileContainer.fileType;
             // We'll process csv files locally.
             if ((ft === 'csv' || ft === 'txt') &&
-                    (mode === 'std' || mode === 'tr' || mode === 'pr' || mode === 'skyline')) {
+                    (mode === 'std' || mode === 'tr' || mode === 'pr')) {
                 fileContainer.skipProcessRaw = false;
                 fileContainer.skipUpload = true;
                 return;
+            }
+            // Except for skyline files, which should be summed server-side
+            if ((ft === 'csv' || ft === 'txt') && (mode === 'skyline')) {
+                fileContainer.skipProcessRaw = true;
+                fileContainer.skipUpload = false;
             }
             // With Excel documents, we need some server-side tools.
             // We'll signal the dropzone to upload this, and receive processed results.
@@ -554,7 +557,7 @@ module EDDTableImport {
             // we know we no longer need the 'sending' status.
             $('#fileDropInfoSending').addClass('off');
 
-            if (mode === 'biolector' || mode === 'hplc') {
+            if (mode === 'biolector' || mode === 'hplc' || mode === 'skyline') {
                 var d = result.file_data;
                 var t = 0;
                 d.forEach((set:any): void => { t += set.data.length; });
