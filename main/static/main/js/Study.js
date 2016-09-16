@@ -1342,7 +1342,7 @@ var StudyD;
         this.mainGraphRefreshTimerID = setTimeout(remakeMainGraphArea.bind(this, force), 200);
     }
     StudyD.queueMainGraphRemake = queueMainGraphRemake;
-    var functionCalls = 0, checkboxSelector = [];
+    var functionCalls = 0, checkboxSelector = [], updatedCheckboxSelector = [];
     function remakeMainGraphArea(force) {
         var _this = this;
         var postFilteringMeasurements, dataPointsDisplayed = 0, dataPointsTotal = 0, colorObj;
@@ -1378,19 +1378,21 @@ var StudyD;
             }
             if (functionCalls === 0) {
                 checkboxSelector.push(label);
+                updatedCheckboxSelector.push(label);
                 color = colorObj[assay.lid];
                 //update label color to line color
                 $(label).css('color', color);
             }
             else if (functionCalls >= 1 && $('#' + line['identifier']).prop('checked')) {
                 //update label color to line color
-                removeClickedLabels(checkboxSelector, label);
-                makeLabelsBlack(checkboxSelector);
+                removeClickedLabels(updatedCheckboxSelector, label);
+                makeLabelsBlack(updatedCheckboxSelector);
                 $(label).css('color', color);
             }
             else {
-                var count = noCheckedBoxes(checkboxSelector);
+                var count = noCheckedBoxes(updatedCheckboxSelector);
                 if (count === 0) {
+                    updatedCheckboxSelector = checkboxSelector;
                     addColor(checkboxSelector, colorObj, assay.lid);
                 }
                 else {
@@ -1410,11 +1412,22 @@ var StudyD;
             prev = lineName;
         });
         functionCalls++;
+        uncheckEventHandler(checkboxSelector);
         this.mainGraphObject.addNewSet(dataSets, EDDData.MeasurementTypes);
     }
     function makeLabelsBlack(selectors) {
         _.each(selectors, function (selector) {
             $(selector).css('color', 'black');
+        });
+    }
+    function uncheckEventHandler(labels) {
+        _.each(labels, function (label) {
+            var id = $(label).prev().prop('id');
+            $('#' + id).change(function () {
+                var ischecked = $(this).is(':checked');
+                if (!ischecked)
+                    $(label).css('color', 'black');
+            });
         });
     }
     function removeClickedLabels(allCheckboxes, label) {
