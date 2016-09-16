@@ -438,7 +438,8 @@ var StudyD;
                             (EDDData.Lines[key]['identifier'] = cboxName);
                         }
                     }
-                    $('<label>').attr('for', cboxName).text(_this.uniqueValues[uniqueId]).css('color', colors[_this.uniqueValues[uniqueId]]).css('font-weight', 'Bold').appendTo(cell);
+                    $('<label>').attr('for', cboxName).text(_this.uniqueValues[uniqueId])
+                        .css('font-weight', 'Bold').appendTo(cell);
                 });
             }
             else {
@@ -1370,10 +1371,25 @@ var StudyD;
             name = [line.name, protocol.name, assay.name].join('-');
             lineName = line.name;
             if (_.keys(EDDData.Lines).length > 22) {
-                color = changeLineColor(line, colorObj, assay.lid);
+                color = changeLineColor(line, colorObj, assay.lid, _this.graphHelper);
             }
             else {
-                color = colorObj[assay];
+                color = colorObj[assay.lid];
+            }
+            if (functionCalls === 0) {
+                var label = $('#' + line['identifier']).next();
+                //update label color to line color
+                $(label).css('color', color);
+            }
+            if (functionCalls > 1 && $('#' + line['identifier']).prop('checked')) {
+                var label = $('#' + line['identifier']).next();
+                //update label color to line color
+                $(label).css('color', color);
+            }
+            else {
+                var label = $('#' + line['identifier']).next();
+                //update label color to line color
+                $(label).css('color', 'black');
             }
             dataObj = {
                 'measure': measure,
@@ -1389,26 +1405,26 @@ var StudyD;
         functionCalls++;
         this.mainGraphObject.addNewSet(dataSets, EDDData.MeasurementTypes);
     }
-    function changeLineColor(line, colorObj, assay) {
+    function changeLineColor(line, colorObj, assay, graphHelper) {
         var color;
         if ($('#' + line['identifier']).prop('checked') && functionCalls === 1) {
             color = line['color'];
             line['doNotChange'] = true;
-            this.graphHelper.colorQueue(color);
+            graphHelper.colorQueue(color);
         }
         if ($('#' + line['identifier']).prop('checked') && functionCalls > 1) {
             if (line['doNotChange']) {
                 color = line['color'];
             }
             else {
-                color = this.graphHelper.nextColor;
+                color = graphHelper.nextColor;
                 line['doNotChange'] = true;
                 line['color'] = color;
                 //text label next to checkbox
                 var label = $('#' + line['identifier']).next();
                 //update label color to line color
                 $(label).css('color', color);
-                this.graphHelper.colorQueue(color);
+                graphHelper.colorQueue(color);
             }
         }
         else if ($('#' + line['identifier']).prop('checked') === false && functionCalls > 1) {
