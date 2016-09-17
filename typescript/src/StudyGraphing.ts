@@ -51,9 +51,10 @@ StudyDGraphing = {
                 'bar-measurement': selector[4]
             };
 
-        /* display grouped bar chart by measurement if most of the measurement types are protocol
-        *  currently commented out because this is buggy
-        */
+        /**
+         * display grouped bar chart by measurement if most of the measurement types are protocol
+         *  currently commented out because this is buggy
+        **/
         //StudyHelper.showProteomicGraph(type, selectors, 'bar-measurement', buttons);
 
         //line chart

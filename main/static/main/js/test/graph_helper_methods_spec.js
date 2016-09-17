@@ -1,6 +1,6 @@
 //unit tests for GraphHelperMethods.js
 
-describe('Test GraphHelperMethods with jasmine', function() {
+describe('Test GraphHelperMethods', function() {
  
 
     var unitTypes = {1:{"id":1,"name":"n/a"},2:{"id":2,"name":"hours"}},
@@ -22,6 +22,21 @@ describe('Test GraphHelperMethods with jasmine', function() {
             'name': 'test'
         };
 
+    describe('method: renderColor', function() {
+        it('should return an object with lineIds as keys and color hex as values', function() {
+            var lines = {326: {id:326}, 345:{id:345}};
+            expect(GraphHelperMethods.renderColor(lines)).toEqual({ 326: '#0E6FA4', 345: '#51BFD8' })
+         })
+    });
+
+    describe('method: colorMaker', function() {
+        it('should return new color object', function() {
+            var colors = {0: '#0E6FA4', 1: '#51BFD8'};
+            var colorKeys = ['#51BFD8', '#0E6FA4'];
+            expect(GraphHelperMethods.colorMaker(colors, colorKeys, 25)).toEqual(
+                { 0: '#0E6FA4', 1: '#51BFD8', 23: '#51BFD8', 24: '#0E6FA4' })
+         })
+    });
 
     describe('method: objectSize' ,function() {
       it('should return length', function() {

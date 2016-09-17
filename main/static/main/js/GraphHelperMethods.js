@@ -1,4 +1,5 @@
 /// <reference path="../typings/underscore/underscore.d.ts"/>;
+/// <reference path="../typings/d3/d3.d.ts"/>;
 var GraphHelperMethods;
 GraphHelperMethods = {
     nextColor: null,
@@ -125,7 +126,7 @@ GraphHelperMethods = {
      * loosely based on d3 category20 in following link:
      * http://bl.ocks.org/aaizemberg/78bd3dade9593896a59d
     **/
-    renderColor: function (line, lines) {
+    renderColor: function (lines) {
         var colors = {
             0: '#0E6FA4',
             1: '#51BFD8',
@@ -179,6 +180,9 @@ GraphHelperMethods = {
         }
         return lineColors;
     },
+    /**
+     * this function takes in the selected color and returns the color that comes after.
+    **/
     colorQueue: function (selectedColor) {
         var colors = {
             0: '#0E6FA4',
@@ -211,6 +215,9 @@ GraphHelperMethods = {
         var nextColor = colors[parseInt(selectedKey) + 1];
         GraphHelperMethods['nextColor'] = nextColor;
     },
+    /**
+     * this function takes in an object and value and returns the key.
+    **/
     findKey: function (obj, value) {
         var key;
         _.each(obj, function (v, k) {
@@ -220,9 +227,6 @@ GraphHelperMethods = {
         });
         return key;
     },
-    // findCheckedBoxes: function() {
-    //
-    // },
     /**
      * this function takes in the color object, colorKeys array, and multiplier to determine how
      * many new colors we need and return and bigger Color object

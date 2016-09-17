@@ -564,7 +564,7 @@ module StudyD {
             this.checkboxes = {};
 
             var graphHelper = Object.create(GraphHelperMethods);
-            var colorObj = graphHelper.renderColor(name, EDDData.Lines);
+            var colorObj = graphHelper.renderColor(EDDData.Lines);
             
             //add color obj to EDDData 
             EDDData['color'] = colorObj;

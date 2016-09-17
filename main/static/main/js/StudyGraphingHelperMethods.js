@@ -1,9 +1,9 @@
 /// <reference path="../typings/d3/d3.d.ts"/>;
 var StudyHelper;
 StudyHelper = {
-    /* this function takes in an element, graph options, and selector element and
-         *  is the event handler for the hide y-axis checkbox on the line graph.
-         */
+    /** this function takes in an element, graph options, and selector element and
+     *  is the event handler for the hide y-axis checkbox on the line graph.
+     */
     toggleLine: function (element, graphSet, selector) {
         if ($(element + ' [type="checkbox"]').attr('checked') != 'checked') {
             $(element + ' [type="checkbox"]').attr('checked', 'checked');
@@ -18,9 +18,9 @@ StudyHelper = {
             createMultiLineGraph(graphSet, GraphHelperMethods.createSvg(selector[1]));
         }
     },
-    /* this function takes in an element, graph options, and selector element and
-    *  renders the graph with our without the y-axis
-    */
+    /** this function takes in an element, graph options, and selector element and
+     *  renders the graph with our without the y-axis
+     */
     isCheckedLine: function (element, graphSet, selector) {
         if ($(element + ' [type="checkbox"]').attr('checked') === 'checked') {
             createMultiLineGraph(graphSet, GraphHelperMethods.createNoAxisSvg(selector[1]));
@@ -31,9 +31,9 @@ StudyHelper = {
             createMultiLineGraph(graphSet, GraphHelperMethods.createSvg(selector[1]));
         }
     },
-    /* this function takes in an element, graph options, and selector element and
-    *  is the event handler for the hide y-axis checkbox on the bar graphs
-    */
+    /** this function takes in an element, graph options, and selector element and
+     *  is the event handler for the hide y-axis checkbox on the bar graphs
+     */
     toggle: function (element, graphSet, selector, type) {
         if ($(element + ' [type="checkbox"]').attr('checked') != 'checked') {
             $(element + ' [type="checkbox"]').attr('checked', 'checked');
@@ -48,9 +48,9 @@ StudyHelper = {
             createGroupedBarGraph(graphSet, GraphHelperMethods.createSvg(selector), type);
         }
     },
-    /* this function takes in an element, graph options, and selector element and
-    *  renders the graph with our without the y-axis
-    */
+    /** this function takes in an element, graph options, and selector element and
+     *  renders the graph with our without the y-axis
+     */
     isChecked: function (element, graphSet, selector, type) {
         if ($(element + ' [type="checkbox"]').attr('checked') === 'checked') {
             createGroupedBarGraph(graphSet, GraphHelperMethods.createNoAxisSvg(selector), type);
@@ -61,10 +61,10 @@ StudyHelper = {
             createGroupedBarGraph(graphSet, GraphHelperMethods.createSvg(selector), type);
         }
     },
-    /* this function takes in element and returns an array of selectors
-    * [<div id=​"linechart">​</div>​, <div id=​"timeBar">​</div>​, <div id=​"single">​</div>​,
-    * <div id=​"barAssay">​</div>​]
-    */
+    /** this function takes in element and returns an array of selectors
+     * [<div id=​"linechart">​</div>​, <div id=​"timeBar">​</div>​, <div id=​"single">​</div>​,
+     * <div id=​"barAssay">​</div>​]
+     */
     getButtonElement: function (element) {
         if (($(element).siblings().siblings()).size() < 8) {
             return $(element.siblings()[0]).find("label");
@@ -73,10 +73,15 @@ StudyHelper = {
             return $(element.siblings()[1]).find("label");
         }
     },
-    // this function takes in the graphDiv element and returns an array of 4 buttons
+    /**
+     * this function takes in the graphDiv element and returns an array of 4 buttons
+     */
     getSelectorElement: function (element) {
         return element.siblings().siblings();
     },
+    /**
+     * this function takes in a selector class and returns the other classes
+     */
     findOtherValues: function (element) {
         var otherElements = [], values = ['.linechart', '.barAssay', '.barTime', '.barMeasurement'];
         _.each(values, function (value) {
@@ -86,7 +91,7 @@ StudyHelper = {
         });
         return otherElements;
     },
-    /* this function takes in an element  selector and an array of svg rects and returns
+    /** this function takes in an element  selector and an array of svg rects and returns
      * returns message or nothing.
      */
     svgWidth: function (selector, rectArray) {
@@ -103,9 +108,9 @@ StudyHelper = {
                 "filter</p>");
         }
     },
-    /* this function takes in the EDDData.MeasurementTypes object and returns the measurement type
-    *  that has the most data points - options are based on family p, m, -, etc.
-    */
+    /** this function takes in the EDDData.MeasurementTypes object and returns the measurement type
+     *  that has the most data points - options are based on family p, m, -, etc.
+     */
     measurementType: function (types) {
         var proteomics = {};
         for (var type in types) {
@@ -126,9 +131,9 @@ StudyHelper = {
         }
         return maxType;
     },
-    /* this function takes in the selected button and an array of button selectors and activates
-    *  or deactivates buttons.
-    */
+    /** this function takes in the selected button and an array of button selectors and activates
+     *  or deactivates buttons.
+     */
     barGraphActiveButton: function (selectedButton, buttons) {
         var barButton = buttons[1];
         if ($(barButton).hasClass('active')) {
@@ -142,7 +147,7 @@ StudyHelper = {
         $(barButton).addClass('active');
         $(selectedButton).addClass('active');
     },
-    /*
+    /**
      * this function takes in the selector object and selector type and displays or hides the graph
      */
     displayGraph: function (selectors, selector) {
@@ -155,7 +160,7 @@ StudyHelper = {
             }
         }
     },
-    /*
+    /**
      * this function takes in the event, selector type, rect obj, selector object and
      * handles the button event.
      */
@@ -174,7 +179,7 @@ StudyHelper = {
         StudyHelper.barGraphActiveButton(this, buttonArr);
         return false;
     },
-    /*
+    /**
      * this function takes in the type of measurement, selectors obj, selector type and
      * button obj and shows the measurement graph is the main type is proteomic
      */

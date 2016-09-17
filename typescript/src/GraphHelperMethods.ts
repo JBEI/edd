@@ -1,4 +1,5 @@
 /// <reference path="../typings/underscore/underscore.d.ts"/>;
+/// <reference path="../typings/d3/d3.d.ts"/>;
 
 var GraphHelperMethods:any;
 
@@ -139,7 +140,7 @@ GraphHelperMethods = {
      * loosely based on d3 category20 in following link:
      * http://bl.ocks.org/aaizemberg/78bd3dade9593896a59d
     **/
-    renderColor: function(line, lines) {
+    renderColor: function(lines) {
         var colors:any = {
             0: '#0E6FA4',   //dark teal
             1: '#51BFD8',   //teal
@@ -192,6 +193,9 @@ GraphHelperMethods = {
         return lineColors
     },
     
+    /**
+     * this function takes in the selected color and returns the color that comes after. 
+    **/
      colorQueue: function(selectedColor) {
         var colors:any = {
             0: '#0E6FA4',
@@ -226,23 +230,21 @@ GraphHelperMethods = {
 
         GraphHelperMethods['nextColor'] = nextColor;
     },
-
+    
+    /**
+     * this function takes in an object and value and returns the key. 
+    **/
     findKey: function(obj, value) {
-      var key;
+        var key;
 
-      _.each(obj, function (v, k) {
-        if (v === value) {
-          key = k;
-        }
-      });
-
-      return key;
+        _.each(obj, function (v, k) {
+            if (v === value) {
+            key = k;
+            }
+        });
+        return key;
     },
-
-
-    // findCheckedBoxes: function() {
-    //
-    // },
+    
     /**
      * this function takes in the color object, colorKeys array, and multiplier to determine how
      * many new colors we need and return and bigger Color object
@@ -396,22 +398,6 @@ GraphHelperMethods = {
             d3.selectAll(".legend").style("display", "none");
         }
         return legend;
-    },
-
-    /**
-     *  This function takes in the unit type for each array and returns the text to display on
-     *  the axis
-    **/
-    displayUnit: function(units) {
-        if (units.length == 0) {
-            return 'n/a'
-        } if (units.length == 1 && units[0] == "undefined") {
-            return 'n/a'
-        } else if (units.length == 1) {
-            return units[0]
-        } else {
-            return "Mixed units"
-        }
     },
     
     /**
