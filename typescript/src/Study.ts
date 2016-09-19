@@ -3424,39 +3424,15 @@ class DataGridSpecAssays extends DataGridSpecBase {
           if (this.graphAreaHeaderSpec) {
             if (this.measuringTimesHeaderSpec.element) {
                 //html for the different graphs
-                 var html =
-                        '                                                                       \
-                     <div class="btn-group" data-toggle="buttons" id="chartType">\
-                    <label class="btn btn-default btn-sm active line" >\
-                        <input value="linechart" type="radio" autocomplete="off" checked>\
-                        <img src="../../static/main/images/chart_curve.png" />\
-                         </label>\
-                    <label class="btn btn-default btn-sm" style="margin-right: 20px;">\
-                        <input type="radio" autocomplete="off">\
-                        <img src="../../static/main/images/chart_bar.png"/>\
-                    </label>\
-                    <label class="btn btn-default btn-sm groupByTimeBar hidden">\
-                        <input value="barTime" type="radio" autocomplete="off">Time\
-                    </label>\
-                    <label class="btn btn-default btn-sm groupByProteinBar hidden">\
-                        <input type="radio" autocomplete="off"\
-                               value="barAssay">Line\
-                    </label>\
-                    <label class="btn btn-default btn-sm groupByMeasurementBar hidden">\
-                        <input type="radio" value="barMeasurement"\
-                         autocomplete="off">Measurement\
-                    </label>\
-                    </div>\
-                        </div>\
-                        <div class="linechart"></div>\
-                        <div class="barTime"></div>\
-                        <div class="barAssay"></div>\
-                        <div class="barMeasurement"></div>\
-                        <div class="graphContainer" id= ' + graphid + '></div> \
-                        '
+                    var html =
+                        '<div class="graphContainer" id= ' + graphid + '></div>'
                     var dom = $( html );
+                    var clonedButtons = $('.assay-section:first').clone();
+                    var clonedClasses = $('.chartIds:first').clone();
+                    $(clonedButtons).appendTo(this.graphAreaHeaderSpec.element);
+                    $(clonedClasses).appendTo(this.graphAreaHeaderSpec.element);
                     $(this.graphAreaHeaderSpec.element).append(dom);
-
+                    
                 // Initialize the graph object
                 this.graphObject = Object.create(StudyDGraphing);
                 this.graphObject.Setup(graphid);

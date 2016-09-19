@@ -320,6 +320,36 @@
         <div class="pageSection" id="assaysSection">
             <!-- individual protocol assay sections inserted here -->
             <div id="assaysActionPanel" class="sectionActions off">
+                <div class="assay-section">
+                <div class="btn-group" data-toggle="buttons" id="chartType">
+                    <label class="btn btn-default btn-sm active line" >
+                        <input value="linechart" type="radio" autocomplete="off" checked>
+                        <img src="../../static/main/images/chart_curve.png" />
+                         </label>
+                    <label class="btn btn-default btn-sm" style="margin-right: 20px;">
+                        <input type="radio" autocomplete="off">
+                        <img src="../../static/main/images/chart_bar.png"/>
+                    </label>
+                    <label class="btn btn-default btn-sm groupByTimeBar hidden">
+                        <input value="barTime" type="radio" autocomplete="off">Time
+                    </label>
+                    <label class="btn btn-default btn-sm groupByProteinBar hidden">
+                        <input type="radio" autocomplete="off"
+                               value="barAssay">Line
+                    </label>
+                    <label class="btn btn-default btn-sm groupByMeasurementBar hidden">
+                        <input type="radio" value="barMeasurement"
+                         autocomplete="off">Measurement
+                    </label>
+                    </div>
+                    <div class="chartIds">
+                        <div></div>
+                        <div class="linechart"></div>
+                        <div class="barTime"></div>
+                        <div class="barAssay"></div>
+                        <div class="barMeasurement"></div>
+                    </div>
+            </div>
                 <span id="assaysSelectedCell">0 selected</span>
                 {% if writable %}
                 <input id="assay_action_mark" type="radio" name="assay_action" value="mark" />
