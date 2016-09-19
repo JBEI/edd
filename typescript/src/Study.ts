@@ -2727,7 +2727,15 @@ class DataGridAssays extends DataGrid {
                 var measure = EDDData.AssayMeasurements[m], set;
                 var name = assay.name;
                 var color = colorObj[assay.lid];
-                var singleAssayObj = GraphHelperMethods.transformSingleLineItem(EDDData, measure, name, color);
+                var lineName = line.name;
+                var dataObj = {
+                    'measure': measure,
+                    'data': EDDData,
+                    'name': name,
+                    'color': color,
+                    'lineName': lineName
+                };
+                var singleAssayObj = GraphHelperMethods.transformSingleLineItem(dataObj);
 
                 if (line.control) set.iscontrol = true;
                 dataSets.push(singleAssayObj);
@@ -2735,23 +2743,6 @@ class DataGridAssays extends DataGrid {
         });
 
         g.addNewSet(dataSets);
-    }
-
-
-    // Note: Currently not being called.
-    resizeGraph(g) {
-        var spec:DataGridSpecAssays = this.getSpec();
-        var graphObj = spec.graphObject;
-        if (!graphObj) {
-            return;
-        }
-        if (!graphObj.plotObject) {
-            return;
-        }
-
-        graphObj.plotObject.resize();
-        graphObj.plotObject.setupGrid();
-        graphObj.plotObject.draw();
     }
 }
 

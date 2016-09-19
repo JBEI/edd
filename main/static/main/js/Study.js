@@ -2361,27 +2361,21 @@ var DataGridAssays = (function (_super) {
                 var measure = EDDData.AssayMeasurements[m], set;
                 var name = assay.name;
                 var color = colorObj[assay.lid];
-                var singleAssayObj = GraphHelperMethods.transformSingleLineItem(EDDData, measure, name, color);
+                var lineName = line.name;
+                var dataObj = {
+                    'measure': measure,
+                    'data': EDDData,
+                    'name': name,
+                    'color': color,
+                    'lineName': lineName
+                };
+                var singleAssayObj = GraphHelperMethods.transformSingleLineItem(dataObj);
                 if (line.control)
                     set.iscontrol = true;
                 dataSets.push(singleAssayObj);
             });
         });
         g.addNewSet(dataSets);
-    };
-    // Note: Currently not being called.
-    DataGridAssays.prototype.resizeGraph = function (g) {
-        var spec = this.getSpec();
-        var graphObj = spec.graphObject;
-        if (!graphObj) {
-            return;
-        }
-        if (!graphObj.plotObject) {
-            return;
-        }
-        graphObj.plotObject.resize();
-        graphObj.plotObject.setupGrid();
-        graphObj.plotObject.draw();
     };
     return DataGridAssays;
 }(DataGrid));
