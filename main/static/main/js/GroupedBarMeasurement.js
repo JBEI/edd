@@ -4,53 +4,53 @@
  **/
  function createGroupedBarGraph(graphSet, svg, type) {
 
-    //different svg 
-    var typeClass = {
-        'measurement': ".barMeasurement",
-        'x': ".barTime",
-        'name': '.barAssay'
-    };
-
-    // if there is no data - show no data error message
-    if (graphSet.assayMeasurements.length === 0) {
-        $(typeClass[type]).prepend("<p class='noData'>No data selected - please " +
-        "filter</p>");
-
-        $('.tooMuchData').remove();
-    } else {
-           $('.noData').remove();
-    }
-
     var assayMeasurements = graphSet.assayMeasurements,
+        typeClass = {
+            'measurement': ".barMeasurement",
+            'x': ".barTime",
+            'name': '.barAssay'
+        },
         numUnits = howManyUnits(assayMeasurements),
         yRange = [],
         unitMeasurementData = [],
-        yMin = [];
+        yMin = [],
+        data, nested, typeNames, xValues, yvalueIds, x_name, xValueLabels,
+        sortedXvalues, div, x_xValue, lineID, meas, y, wordLength;
+
 
     //x axis scale for type
-    var x_name = d3.scale.ordinal()
+    x_name = d3.scale.ordinal()
         .rangeRoundBands([0, graphSet.width], 0.1);
     
     //x axis scale for x values
-    var x_xValue = d3.scale.ordinal();
+    x_xValue = d3.scale.ordinal();
     
     //x axis scale for line id to differentiate multiple lines associated with the same name/type
-    var lineID = d3.scale.ordinal();
+    lineID = d3.scale.ordinal();
 
     // y axis range scale
-    var y = d3.scale.linear()
+    y = d3.scale.linear()
         .range([graphSet.height, 0]);
     
-    var div = d3.select("body").append("div")
+    div = d3.select("body").append("div")
         .attr("class", "tooltip2")
         .style("opacity", 0);
     
-    var meas = d3.nest()
+    meas = d3.nest()
         .key(function (d) {
             return d.y_unit;
         })
         .entries(assayMeasurements);
 
+    // if there is no data - show no data error message
+    if (assayMeasurements.length === 0) {
+        $(typeClass[type]).prepend("<p class='noData'>No data selected - please " +
+        "filter</p>");
+
+        $('.tooMuchData').remove();
+    } else {
+        $('.noData').remove();
+    }
 
     for (var i = 0; i < numUnits; i++) {
         yRange.push(d3.scale.linear().rangeRound([graphSet.height, 0]));
@@ -67,7 +67,7 @@
     }
 
     // nest data by type (ie measurement) and by x value
-    var nested = d3.nest(type)
+    nested = d3.nest(type)
             .key(function (d) {
                 return d[type];
             })
@@ -77,14 +77,14 @@
             .entries(assayMeasurements);
 
     //insert y value to distinguish between lines
-    var data = getXYValues(nested);
+    data = getXYValues(nested);
 
     if (data.length === 0) {
         return svg
     }
 
     //get type names for x labels
-    var typeNames = data.map(function (d) {
+    typeNames = data.map(function (d) {
             return d.key;
         });
 
@@ -93,21 +93,21 @@
             return a - b
         });
 
-    var xValues = data.map(function (d) {
+    xValues = data.map(function (d) {
         return (d.values);
     });
 
-    var yvalueIds = data[0].values[0].values.map(function (d) {
+    yvalueIds = data[0].values[0].values.map(function (d) {
         return d.key;
     });
 
     // returns time values
-    var xValueLabels = xValues[0].map(function (d) {
+    xValueLabels = xValues[0].map(function (d) {
         return (d.key);
     });
 
     //sort time values
-    var sortedXvalues = xValueLabels.sort(function(a, b) { return parseFloat(a) - parseFloat(b)});
+    sortedXvalues = xValueLabels.sort(function(a, b) { return parseFloat(a) - parseFloat(b)});
 
     x_name.domain(typeNames);
 
@@ -154,9 +154,6 @@
             //create right axis
             graphSet.create_right_y_axis(meas[index].key, y, svg, spacing[index])
         }
-
-        //see how long the label is
-        var labelLength = data.length;
         
         var names_g = names_g +  index,
             categories_g = categories_g  + index,
@@ -231,7 +228,7 @@
             })
             .style("opacity", 1);
 
-        var hover = categories_g.selectAll('.rect')
+        categories_g.selectAll('.rect')
             .data(function (d) {
                 return d.values;
             })
@@ -251,7 +248,7 @@
             });
         
         //get word length
-        var wordLength = getSum(typeNames);
+        wordLength = getSum(typeNames);
 
         if (wordLength > 90 && type != 'x') {
            d3.selectAll(typeClass[type] + ' .x.axis text').remove()

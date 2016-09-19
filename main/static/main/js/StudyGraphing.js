@@ -78,10 +78,10 @@ StudyDGraphing = {
             var rects = d3.selectAll('.barMeasurement rect')[0];
             StudyHelper.buttonEventHandler(newSet, event, rects, 'bar-measurement', selectors, buttonArr);
         });
-        var barAssayObj = GraphHelperMethods.sortBarData(newSet);
+        var barAssayObj = GraphHelperMethods.concatAssays(newSet);
         //data for graphs
         var graphSet = {
-            barAssayObj: GraphHelperMethods.sortBarData(newSet),
+            barAssayObj: GraphHelperMethods.concatAssays(newSet),
             create_x_axis: GraphHelperMethods.createXAxis,
             create_right_y_axis: GraphHelperMethods.createRightYAxis,
             create_y_axis: GraphHelperMethods.createLeftYAxis,

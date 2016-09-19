@@ -53,7 +53,7 @@ describe('Test GraphHelperMethods', function() {
         var assayObject = [{"x": 1, "y": 2, "x_unit": "n/a"}, {"x": 1, "y": 2, "x_unit": "n/a"},
         {"x": 1, "y": 2, "x_unit": "n/a"}, {"x": 1, "y": 2, "x_unit": "n/a"}];
   
-      expect(GraphHelperMethods.sortBarData(assays)).toEqual(assayObject);
+      expect(GraphHelperMethods.concatAssays(assays)).toEqual(assayObject);
       });
 
     });

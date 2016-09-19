@@ -1425,7 +1425,6 @@ module EDDTableImport {
             this.interpretDataTable();
             this.queueGraphRemake();
             this.nextStepCallback();
-            this.setElements();
         }
 
 
@@ -1861,23 +1860,6 @@ module EDDTableImport {
                 this.graphRefreshTimerID = setTimeout(this.remakeGraphArea.bind(this), 700);
             }
         }
-
-        setElements():void {
-             var html =
-                        '                                                                       \
-                           <div class ="btn-toolbar">                                           \
-                                <button class="btn btn-default btn-sm" value="linechart">       \
-                                        Line Graph </button>                                    \                        \
-                            </div>                                                              \
-                                                                                                \
-                            <div class="linechart"></div>                                       \                             \
-                            <div class="graphContainer"></div>              \
-                        '
-                    var dom = $( html );
-                    dom.appendTo($('#disambiguateMetadataSection'))
-                    EDDATDGraphing.Setup;
-        }
-
 
         remakeGraphArea():void {
             var graphHelper = Object.create(GraphHelperMethods);

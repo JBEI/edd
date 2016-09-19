@@ -1151,7 +1151,6 @@ var EDDTableImport;
             this.interpretDataTable();
             this.queueGraphRemake();
             this.nextStepCallback();
-            this.setElements();
         };
         IdentifyStructuresStep.prototype.toggleTableRow = function (box) {
             var value, input;
@@ -1572,20 +1571,6 @@ var EDDTableImport;
             if (this.graphEnabled) {
                 this.graphRefreshTimerID = setTimeout(this.remakeGraphArea.bind(this), 700);
             }
-        };
-        IdentifyStructuresStep.prototype.setElements = function () {
-            var html = '                                                                       \
-                           <div class ="btn-toolbar">                                           \
-                                <button class="btn btn-default btn-sm" value="linechart">       \
-                                        Line Graph </button>                                    \                        \
-                            </div>                                                              \
-                                                                                                \
-                            <div class="linechart"></div>                                       \                             \
-                            <div class="graphContainer"></div>              \
-                        ';
-            var dom = $(html);
-            dom.appendTo($('#disambiguateMetadataSection'));
-            EDDATDGraphing.Setup;
         };
         IdentifyStructuresStep.prototype.remakeGraphArea = function () {
             var graphHelper = Object.create(GraphHelperMethods);

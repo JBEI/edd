@@ -2937,7 +2937,7 @@ var DataGridSpecAssays = (function (_super) {
         var graphid = "pro" + p + "graph";
         if (this.graphAreaHeaderSpec) {
             if (this.measuringTimesHeaderSpec.element) {
-                //html for the different graphs 
+                //html for the different graphs
                 var html = '                                                                       \
                      <div class="btn-group" data-toggle="buttons" id="chartType">\
                     <label class="btn btn-default btn-sm active line" >\

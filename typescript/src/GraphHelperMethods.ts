@@ -8,11 +8,36 @@ GraphHelperMethods = {
     nextColor: null,
     labels: [],
     remakeGraphCalls: 0,
+    colors: {
+            0: '#0E6FA4',   //dark teal
+            1: '#51BFD8',   //teal
+            2: '#2a2056',   //navy
+            3: '#FCA456',   //light orange
+            4: '#2b7b3d',   //green
+            5: '#97d37d',   //light pastel green
+            6: '#CF5030',   //orange red
+            7: '#FFB6C1',   //light pink
+            8: '#6f2f8c',   //royal purple
+            9: '#b97dd3',   //light purple
+            10: '#7e0404',  //burgandy red
+            11: '#765667',  //grey pink
+            12: '#F279BA',  //pink
+            13: '#993f6c',  //maroon
+            14: '#919191',  //dark grey
+            15: '#BFBFBD',  //grey
+            16: '#ecda3a',  //yellow
+            17: '#b2b200',  //mustard yellow
+            18: '#006E7E',  //grey blue
+            19: '#b2f2fb',  //light blue
+            20: '#0715CD',  //royal blue
+            21: '#e8c2f3',  //light lavender
+            22: '#7a5230'   //brown
+        },
+
     /**
-     *  This function takes in data and transforms it into the following
-     *  {x, y, i}, {x, y, i}, {x, y, i} ....
+     *  This function takes an array of arrays of arrays and flattens it into one array of arrays. 
     **/
-    sortBarData: function (assays) {
+    concatAssays: function (assays) {
         return [].concat.apply([], assays);
     },
 
@@ -113,7 +138,7 @@ GraphHelperMethods = {
         //data for one line entry
         var singleDataValues = singleData.data;
 
-        _.forEach(singleDataValues, function(dataValue) {
+        _.each(singleDataValues, function(dataValue) {
              var dataset = {};
             //can also change to omit data point with null which was done before..
             if (dataValue[0] == null) {
@@ -141,31 +166,7 @@ GraphHelperMethods = {
      * http://bl.ocks.org/aaizemberg/78bd3dade9593896a59d
     **/
     renderColor: function(lines) {
-        var colors:any = {
-            0: '#0E6FA4',   //dark teal
-            1: '#51BFD8',   //teal
-            2: '#2a2056',   //navy
-            3: '#FCA456',   //light orange
-            4: '#2b7b3d',   //green
-            5: '#97d37d',   //light pastel green
-            6: '#CF5030',   //orange red
-            7: '#FFB6C1',   //light pink
-            8: '#6f2f8c',   //royal purple
-            9: '#b97dd3',   //light purple
-            10: '#7e0404',  //burgandy red
-            11: '#765667',  //grey pink
-            12: '#F279BA',  //pink
-            13: '#993f6c',  //maroon
-            14: '#919191',  //dark grey
-            15: '#BFBFBD',  //grey
-            16: '#ecda3a',  //yellow
-            17: '#b2b200',  //mustard yellow
-            18: '#006E7E',  //grey blue
-            19: '#b2f2fb',  //light blue
-            20: '#0715CD',  //royal blue
-            21: '#e8c2f3',  //light lavender
-            22: '#7a5230'   //brown
-        };
+
         //new color object with assay ids and color hex
         var lineColors = {};
         //how many lines
@@ -175,7 +176,7 @@ GraphHelperMethods = {
         //new object with numbers for ids
         var indexLines:any = {};
         // color obj values
-        var colorKeys = _.values(colors);
+        var colorKeys = _.values(GraphHelperMethods.colors);
         //create index obj with numbers for ids and assay ids as values
         for (var i = 0; i < lineCount.length; i++ ) {
             indexLines[i] = lineValues[i].id;
@@ -183,11 +184,11 @@ GraphHelperMethods = {
         //if there are more than 22 lines, create a bigger color obj
         if (lineValues.length > colorKeys.length) {
             var multiplier = Math.ceil(lineValues.length/ colorKeys.length) * 22;
-            GraphHelperMethods.colorMaker(colors, colorKeys, multiplier)
+            GraphHelperMethods.colorMaker(GraphHelperMethods.colors, colorKeys, multiplier)
         }
         //combine assay ids as keys with hex colors as values
         _.each(indexLines, function(value, key) {
-            lineColors[indexLines[key]] = colors[key];
+            lineColors[indexLines[key]] = GraphHelperMethods.colors[key];
         });
         for (var key in lines) { lines[key]['color'] = lineColors[key]}
         return lineColors
@@ -197,36 +198,12 @@ GraphHelperMethods = {
      * this function takes in the selected color and returns the color that comes after. 
     **/
      colorQueue: function(selectedColor) {
-        var colors:any = {
-            0: '#0E6FA4',
-            1: '#51BFD8',
-            2: '#DA7138',
-            3: '#FCA456',
-            4: '#2b7b3d',
-            5: '#97d37d',
-            6: '#CF5030',
-            7: '#FFB6C1',
-            8: '#6f2f8c',
-            9: '#b97dd3',
-            10: '#7e0404',
-            11: '#BAA0AE',
-            12: '#F279BA',
-            13: '#993f6c',
-            14: '#919191',
-            15: '#BFBFBD',
-            16: '#ecda3a',
-            17: '#b2b200',
-            18: '#00d5f2',
-            19: '#b2f2fb',
-            20: '#0715CD',
-            21: '#e8c2f3'
-        };
-
-        var selectedKey = GraphHelperMethods.findKey(colors, selectedColor);
+        var reverseColors = GraphHelperMethods.reverseMap(GraphHelperMethods.colors);
+        var selectedKey = reverseColors[selectedColor];
         if (parseInt(selectedKey) === 21) {
              selectedKey = -1;
          }
-        var nextColor = colors[parseInt(selectedKey) + 1];
+        var nextColor = GraphHelperMethods.colors[parseInt(selectedKey) + 1];
 
         GraphHelperMethods['nextColor'] = nextColor;
     },
@@ -234,15 +211,14 @@ GraphHelperMethods = {
     /**
      * this function takes in an object and value and returns the key. 
     **/
-    findKey: function(obj, value) {
-        var key;
-
-        _.each(obj, function (v, k) {
-            if (v === value) {
-            key = k;
+    reverseMap: function(obj) {
+        var reverseMap = {};
+        for (var key in obj) {
+            if (obj.hasOwnProperty(key)) {
+                reverseMap[obj[key]] = key;
             }
-        });
-        return key;
+        }
+        return reverseMap;
     },
     
     /**
@@ -264,72 +240,23 @@ GraphHelperMethods = {
     },
 
     /**
-     * this function returns an object of y units with counts
-    **/
-    findY_Units: function (data) {
-
-        var yUnits = {};
-
-        _.each(data, function(lineEntry:any){
-
-          var y_unit = lineEntry.y_unit;
-
-          if (yUnits.hasOwnProperty(lineEntry.y_unit)){
-              yUnits[y_unit]++;
-          }
-          else {
-              yUnits[y_unit] = 0;
-          }
-        });
-
-      return Object.keys(yUnits);
-    },
-
-    /**
-     * this function returns an object of x_values
-    **/
-    findX_Units: function (data) {
-
-        var xUnits = {};
-
-        _.each(data, function(lineEntry:any){
-
-          var x_unit = lineEntry.x_unit;
-
-          if (xUnits.hasOwnProperty(lineEntry.x_unit)){
-              xUnits[x_unit]++;
-          }
-          else {
-              xUnits[x_unit] = 0;
-          }
-        });
-      return Object.keys(xUnits)
-    },
-
-
-    /**
      *  This function takes in the EDDData.AssayMeasurements object and returns
      *  an array of Assay ids.
     **/
     findAssayIds: function (assayMeasurements) {
-     var assayIds = [];
-     for (var key in assayMeasurements) {
-          assayIds.push(assayMeasurements[key].assay)
-        }
-        return assayIds
+        _.map(assayMeasurements, function (assay, id) {
+            return id;
+        })
     },
-
 
     /**
      *  This function takes in the EDDData.Assays object and array of Assay ids
      *  and returns an array of LID ids.
     **/
     findLidIds: function(assays, assayIds) {
-        var lidIds = [];
-        _.forEach(assayIds, function(assayId:any) {
-            lidIds.push(assays[assayId].lid)
+        _.map(assayIds, function(lidIds, id) {
+            return id;
         });
-        return lidIds
     },
 
     /**
@@ -337,11 +264,9 @@ GraphHelperMethods = {
      *  an array of measurements names.
     **/
     lineName: function(lines, lidIds) {
-       var lineNames = [];
-       _.forEach(lidIds, function(lidId:any) {
-            lineNames.push(lines[lidId].name)
+       _.map(lidIds, function(lineName, lidId) {
+            return lidId
         });
-        return lineNames;
     },
 
     /**
