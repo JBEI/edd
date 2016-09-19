@@ -365,24 +365,6 @@ GraphHelperMethods = {
      *  This function takes in the unit type for each array and returns the text to display on
      *  the axis
     **/
-    displayUnit: function (units) {
-        if (units.length == 0) {
-            return 'n/a';
-        }
-        if (units.length == 1 && units[0] == "undefined") {
-            return 'n/a';
-        }
-        else if (units.length == 1) {
-            return units[0];
-        }
-        else {
-            return "Mixed units";
-        }
-    },
-    /**
-     *  This function takes in the unit type for each array and returns the text to display on
-     *  the axis
-    **/
     createXAxis: function (graphSet, x, svg, type) {
         if (type === 'x') {
             type = "Time";

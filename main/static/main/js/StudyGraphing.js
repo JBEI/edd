@@ -92,24 +92,11 @@ StudyDGraphing = {
             width: 750,
             height: 220
         };
-        //hide y-axis check box event handler
-        $('.linechart .checkbox').click(function () {
-            StudyHelper.toggleLine('.linechart', graphSet, selector);
-        });
-        $('.timeBar .checkbox').click(function () {
-            StudyHelper.toggle('.timeBar', graphSet, selector[2], 'x');
-        });
-        $('.barAssay .checkbox').click(function () {
-            StudyHelper.toggle('.barAssay', graphSet, selector[3], 'name');
-        });
-        $('.groupedMeasurement .checkbox').click(function () {
-            StudyHelper.toggle('.groupedMeasurement', graphSet, selector[4], 'measurement');
-        });
-        //render different graphs first checking if the hide y-axis checkbox is checked.
-        StudyHelper.isCheckedLine('.timeBar', graphSet, selector);
-        StudyHelper.isChecked('.timeBar', graphSet, selector[2], 'x');
-        StudyHelper.isChecked('.barAssay', graphSet, selector[3], 'name');
-        StudyHelper.isChecked('.groupedMeasurement', graphSet, selector[4], 'measurement');
+        //render different graphs
+        createMultiLineGraph(graphSet, GraphHelperMethods.createSvg(selector[1]));
+        createGroupedBarGraph(graphSet, GraphHelperMethods.createSvg(selector[2]), 'x');
+        createGroupedBarGraph(graphSet, GraphHelperMethods.createSvg(selector[3]), 'name');
+        createGroupedBarGraph(graphSet, GraphHelperMethods.createSvg(selector[4]), 'measurement');
         if (!newSet.label) {
             $('#debug').text('Failed to fetch series.');
             return;

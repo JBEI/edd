@@ -1346,7 +1346,6 @@ var StudyD;
     function remakeMainGraphArea(force) {
         var _this = this;
         var postFilteringMeasurements, dataPointsDisplayed = 0, dataPointsTotal = 0, colorObj;
-        this.mainGraphRefreshTimerID = 0;
         if (!this.progressiveFilteringWidget.checkRedrawRequired(force)) {
             return;
         }
@@ -1394,8 +1393,8 @@ var StudyD;
             else {
                 var count = noCheckedBoxes(_this.graphHelper.labels);
                 if (count === 0) {
-                    _this.graphHelper.nextColor = null,
-                        addColor(_this.graphHelper.labels, colorObj, assay.lid);
+                    _this.graphHelper.nextColor = null;
+                    addColor(_this.graphHelper.labels, colorObj, assay.lid);
                 }
                 else {
                     //update label color to black

@@ -1546,11 +1546,10 @@ module StudyD {
             dataPointsTotal = 0,
             colorObj;
 
-        this.mainGraphRefreshTimerID = 0;
-
         if (!this.progressiveFilteringWidget.checkRedrawRequired(force)) {
             return;
         }
+
         //remove SVG.
         this.mainGraphObject.clearAllSets();
         this.graphHelper = Object.create(GraphHelperMethods);
@@ -1559,13 +1558,16 @@ module StudyD {
         var dataSets = [], prev;
         postFilteringMeasurements = this.progressiveFilteringWidget.buildFilteredMeasurements();
         $.each(postFilteringMeasurements, (i, measurementId) => {
+
             var measure:AssayMeasurementRecord = EDDData.AssayMeasurements[measurementId],
                 points = (measure.values ? measure.values.length : 0),
                 assay, line, name, singleAssayObj, color, protocol, lineName, dataObj;
             dataPointsTotal += points;
+
             if (dataPointsDisplayed > 15000) {
                 return; // Skip the rest if we've hit our limit
             }
+
             dataPointsDisplayed += points;
             assay = EDDData.Assays[measure.assay] || {};
             line = EDDData.Lines[assay.lid] || {};
@@ -1597,7 +1599,7 @@ module StudyD {
             } else {
                 var count = noCheckedBoxes(this.graphHelper.labels);
                 if (count === 0) {
-                    this.graphHelper.nextColor = null,
+                    this.graphHelper.nextColor = null;
                     addColor(this.graphHelper.labels, colorObj, assay.lid)
                 } else {
                     //update label color to black
