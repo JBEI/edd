@@ -6,12 +6,15 @@ Reformat CSV output from the program Skyline to consolidate MS peak areas for
 individual peptides or proteins.
 """
 
+import re
+
 from collections import defaultdict, namedtuple
 from decimal import Decimal
-from itertools import product
+from itertools import ifilter, imap, product
 
 
 Record = namedtuple('Record', ['sample', 'protein', 'peptide', 'area', ])
+decimal_pattern = re.compile(r'^[-+]?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?')
 
 
 class SkylineParser(object):
@@ -56,7 +59,15 @@ class SkylineParser(object):
     def _input_to_generator(self, input_data):
         # the input_data could be a 2D array parsed from excel or CSV
         if isinstance(input_data, list):
-            print(input_data)
-            return (Record(*item) for item in input_data)
+            return (Record(*item) for item in ifilter(self._header_or_blank, input_data))
         # or input_data could be a file with lines of CSV text
-        return (Record(*line.split(',')) for line in input_data if line.strip())
+        return (
+            Record(*cols)
+            for cols in ifilter(self._header_or_blank, imap(self._split_to_columns, input_data))
+        )
+
+    def _header_or_blank(self, row):
+        return (len(row) == 4) and decimal_pattern.match(row[3])
+
+    def _split_to_columns(self, line):
+        return line.split(',')

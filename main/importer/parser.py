@@ -63,10 +63,12 @@ def skyline_parser(in_data):
         {
             # TODO: try to parse item[0] based on worklist format
             'assay_name': item[0],
-            'data': item[3],
+            # TODO: extract timestamp value from item[0]
+            'data': [0, item[2]],
             'kind': 'skyline',
             'line_name': item[0],
             'measurement_name': item[1],
+            'metadata_by_name': {},
         }
         for item in results['rows']
     ]
