@@ -85,7 +85,7 @@ function createMultiLineGraph(graphSet, svg) {
         //spacing for y-axis labels
         var spacing = {
                  1: graphSet.width,
-                 2: graphSet.width + 50,
+                 2: graphSet.width + 54,
                  3: graphSet.width + 105
              };
 
@@ -112,7 +112,7 @@ function createMultiLineGraph(graphSet, svg) {
             //add square image to y-axis label
             svg.append('svg:rect')
                 .attr('class', 'icon')
-                .attr('x', 839)
+                .attr('x', 843)
                 .attr('y', 70)
                 .attr('width', squareSize)
                 .attr('height', squareSize);
