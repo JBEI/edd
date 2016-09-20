@@ -20,6 +20,8 @@ module.exports = function(config) {
       'bower_components/jasmine-jquery/lib/jasmine-jquery.js',
       'main/static/main/js/GraphHelperMethods.js',
       'main/static/main/js/StudyGraphingHelperMethods.js',
+      'main/static/main/js/barGraphHelperMethods.js',
+      'main/static/main/js/lineGraphHelperMethods.js',
       'main/static/main/js/StudyGraphing.js',
       'main/static/main/js/test/*.js',
       'main/static/main/js/lib/underscore/underscore.js',

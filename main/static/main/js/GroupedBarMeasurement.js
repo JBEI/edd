@@ -6,9 +6,9 @@
 
     var assayMeasurements = graphSet.assayMeasurements,
         typeClass = {
-            'measurement': ".barMeasurement",
-            'x': ".barTime",
-            'name': '.barAssay'
+        'measurement': ".barMeasurement",
+        'x': ".barTime",
+        'name': '.barAssay'
         },
         numUnits = howManyUnits(assayMeasurements),
         yRange = [],

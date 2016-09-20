@@ -32,18 +32,3 @@ function getSum(labels) {
     });
     return totalLength;
 }
-
-/**
- *  function takes in nested data by unit type and returns how many units are in data 
- */
-function howManyUnits(data) {
-    if (data === {}) {
-        return 1
-    }
-     var y_units =  d3.nest()
-        .key(function (d) {
-            return d.y_unit;
-        })
-        .entries(data);
-    return y_units.length;
-}

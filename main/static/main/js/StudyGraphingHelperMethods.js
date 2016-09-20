@@ -20,18 +20,6 @@ StudyHelper = {
             return element.siblings().addBack();
         }
     },
-    /**
-     * this function takes in a selector class and returns the other classes
-     */
-    findOtherValues: function (element) {
-        var otherElements = [], values = ['.linechart', '.barAssay', '.barTime', '.barMeasurement'];
-        _.each(values, function (value) {
-            if (value != element) {
-                otherElements.push(value);
-            }
-        });
-        return otherElements;
-    },
     /** this function takes in an element  selector and an array of svg rects and returns
      * returns message or nothing.
      */
