@@ -9,11 +9,7 @@ StudyHelper = {
      * <div id=​"barAssay">​</div>​]
      */
     getButtonElement:function (element) {
-        if (($(element).siblings().addBack()).size() < 8) {
-            return $(element.siblings(':first')).find("label")
-        } else {
-            return $(element.siblings().eq(1)).find("label")
-        }
+        return $(element.siblings(':first')).find("label")
     },
 
     /**
@@ -26,20 +22,6 @@ StudyHelper = {
         } else {
           return element.siblings().addBack()
         }
-    },
-
-    /**
-     * this function takes in a selector class and returns the other classes
-     */
-    findOtherValues:function (element) {
-        var otherElements = [],
-            values = ['.linechart', '.barAssay', '.barTime', '.barMeasurement'];
-        _.each(values, function(value) {
-            if (value != element) {
-                otherElements.push(value);
-            }
-        });
-        return otherElements;
     },
 
     /** this function takes in an element  selector and an array of svg rects and returns

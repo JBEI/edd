@@ -6,12 +6,7 @@ StudyHelper = {
      * <div id=​"barAssay">​</div>​]
      */
     getButtonElement: function (element) {
-        if (($(element).siblings().addBack()).size() < 8) {
-            return $(element.siblings(':first')).find("label");
-        }
-        else {
-            return $(element.siblings().eq(1)).find("label");
-        }
+        return $(element.siblings(':first')).find("label");
     },
     /**
      * this function takes in the graphDiv element and returns an array of 4 buttons

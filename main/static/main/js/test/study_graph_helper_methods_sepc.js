@@ -23,5 +23,4 @@ describe('Test StudyGraphingHelperMethods', function() {
            expect(StudyHelper.getSelectorElement( $('#maingraph')).length).toEqual(7)
         });
     });
-
 });
