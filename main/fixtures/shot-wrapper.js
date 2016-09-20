@@ -24,10 +24,10 @@ exports.takeShot = function(cb){
                        'main/fixtures/newshots/barTime.png'];
 
             // original hash values from main/fixtures/originalshots
-            var originalHash = ['9edf3944c54ee83a142e09d6cf757994',
-                                '23426bc1cd40afd793b6466c88e09386',
-                                '62e8746b4399016dae9938a39f089b4f',
-                                '79772182eeb799c2a888e071e6e781f6'];
+            var originalHash = ['24a15d9a5d739c6dde7d2dbcb5695e02',
+                                '47adb70698d5c41c5abcf6319cdb6281',
+                                '7b0cbf2a6079c0135e62ade28f88e1b2',
+                                '0881c5ee6f544e122846230c48752a37'];
             //new hash values created from newshots
             var newHash = [];
 
@@ -40,7 +40,7 @@ exports.takeShot = function(cb){
                     console.log('Match: ' + arr[index].slice(23) + 'newHash' + newHash[index])
                 }
                 else {
-                    console.log('Image changed!m   d: '  + arr[index].slice(23) + ', newHash: ' + newHash[index])
+                    console.log('Image changed!   '  + arr[index].slice(23) + ' , newHash: ' + newHash[index])
                 }
             }
             process.exit(1);
