@@ -67,19 +67,7 @@ GraphHelperMethods = {
       
       return svg; 
     },
-    
-    /**
-     *  This function takes a selector element and returns an svg element 
-    **/
-    createNoAxisSvg: function (selector)  {
-      var svg = d3.select(selector).append("svg")
-        .attr("preserveAspectRatio", "xMinYMin meet")
-        .attr("viewBox", "-5 -30 810 300")
-        .classed("svg-content", true);
-      
-      return svg; 
-    },
-    
+
     /**
      *  This function takes in EDDdata, a singleAssay line entry, and measurement names and
      *  transforms it into the following schema:
@@ -209,7 +197,8 @@ GraphHelperMethods = {
     },
     
     /**
-     * this function takes in an object and value and returns the key. 
+     * this function takes in an object and value and returns a new object with keys as values
+     * and values as keys. 
     **/
     reverseMap: function(obj) {
         var reverseMap = {};
@@ -240,36 +229,6 @@ GraphHelperMethods = {
     },
 
     /**
-     *  This function takes in the EDDData.AssayMeasurements object and returns
-     *  an array of Assay ids.
-    **/
-    findAssayIds: function (assayMeasurements) {
-        _.map(assayMeasurements, function (assay, id) {
-            return id;
-        })
-    },
-
-    /**
-     *  This function takes in the EDDData.Assays object and array of Assay ids
-     *  and returns an array of LID ids.
-    **/
-    findLidIds: function(assays, assayIds) {
-        _.map(assayIds, function(lidIds, id) {
-            return id;
-        });
-    },
-
-    /**
-     *  This function takes in the EDDData.Lines object and lidIds and returns
-     *  an array of measurements names.
-    **/
-    lineName: function(lines, lidIds) {
-       _.map(lidIds, function(lineName, lidId) {
-            return lidId
-        });
-    },
-
-    /**
      * This function returns object size
     **/
     objectSize: function(object) {
@@ -278,51 +237,6 @@ GraphHelperMethods = {
             if (object.hasOwnProperty(key)) size++;
         }
         return size;
-    },
-
-    /**
-     *   This function takes in the EDDData object and returns
-     *  an array of measurements names.
-    **/
-    names: function (EDDData) {
-      var assayIds = GraphHelperMethods.findAssayIds(EDDData.AssayMeasurements);
-      var lidIds = GraphHelperMethods.findLidIds(EDDData.Assays, assayIds);
-      return GraphHelperMethods.lineName(EDDData.Lines, lidIds);
-    },
-
-    /**
-     *  This function returns the legend svg object.
-    **/
-    legend: function(data, color, svg, width, names) {
-        var legend = svg.selectAll(".legend")
-            .data(data)
-            .enter().append("g")
-            .attr("class", "legend")
-            .attr("transform", function (d, i) {
-                return "translate(0," + i * 20 + ")";
-            });
-
-        legend.append("rect")
-            .attr("x", width + 5)
-            .attr("width", 18)
-            .attr("height", 18)
-            .style("fill", function (d) { // Add the colours dynamically
-                return data.color = color(d.key);
-            });
-
-        legend.append("text")
-            .attr("x", width + 25)
-            .attr("y", 9)
-            .attr("dy", ".35em")
-            .style("text-anchor", "start")
-            .text(function (d) {
-                return d.key;
-            });
-        //hide legend for too many entries.
-        if (names.length > 10) {
-            d3.selectAll(".legend").style("display", "none");
-        }
-        return legend;
     },
     
     /**

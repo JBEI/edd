@@ -21,7 +21,7 @@ StudyHelper = {
      */
     getSelectorElement:function (element) {
         if ($(element).prop('id') != 'maingraph') {
-            var selector = element.siblings()[1];
+            var selector = element.siblings().eq(1);
             return $(selector).children();
         } else {
           return element.siblings().addBack()

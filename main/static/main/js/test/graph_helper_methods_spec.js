@@ -1,4 +1,6 @@
-//unit tests for GraphHelperMethods.js
+/**
+ * unit tests for GraphHelperMethods.js 
+ */
 
 describe('Test GraphHelperMethods', function() {
  
@@ -40,10 +42,23 @@ describe('Test GraphHelperMethods', function() {
 
     describe('method: objectSize' ,function() {
       it('should return length', function() {
-        var object = {"traci": 2, "jbei": 1};
+        var object = {"test": 2, "jbei": 1};
         expect(GraphHelperMethods.objectSize(object)).toEqual(2);
       });
     });
+
+    describe('method: reverseMap' ,function() {
+      it('should return a reveresed object', function() {
+          var obj = {
+            'color': "red",
+            'name': 'test'
+        };
+          var reversedObj = { red: 'color', test: 'name' };
+        expect(GraphHelperMethods.reverseMap(obj)).toEqual(reversedObj);
+      });
+    });
+
+    
 
     describe('method: sortBarData' ,function() {
       it('should transform arrays into objects', function() {
@@ -88,58 +103,4 @@ describe('Test GraphHelperMethods', function() {
       })
     });
 
-    describe('method: findYUnits' ,function() {
-      it('should return the correct y unit name', function() {
-        var transformedDataArr = [{ label: 'dt4934', x: 20, y: 3.186, x_unit: 'n/a', y_unit: 'n/a', name: 'test' }];
-        expect(GraphHelperMethods.findY_Units(transformedDataArr)).toEqual(["n/a"]);
-      });
-
-       it('should return the correct y unit names for data with different measurements', function() {
-        var transformedDataArr = [{ label: 'dt4934', x: 20, y: 3.186, x_unit: 'n/a', y_unit: 'n/a', name: 'test' },
-        { label: 'dt4934', x: 20, y: 3.186, x_unit: 'n/a', y_unit: 'test', name: 'test' }];
-        expect(GraphHelperMethods.findY_Units(transformedDataArr)).toEqual(["n/a", "test"]);
-      });
-    });
-
-    describe('method: findXUnits' ,function() {
-      it('should return the correct y unit name', function() {
-        var transformedDataArr = [{ label: 'dt4934', x: 20, y: 3.186, x_unit: 'n/a', y_unit: 'n/a', name: 'test' }];
-        expect(GraphHelperMethods.findX_Units(transformedDataArr)).toEqual(["n/a"]);
-      });
-      it('should return the correct x unit names for data different measurements', function() {
-        var transformedDataArr = [{ label: 'dt4934', x: 20, y: 3.186, x_unit: 'n/a', y_unit: 'n/a', name: 'test' },
-        { label: 'dt4934', x: 20, y: 3.186, x_unit: 'test', y_unit: 'test', name: 'test' }];
-        expect(GraphHelperMethods.findY_Units(transformedDataArr)).toEqual(["n/a", "test"]);
-      });
-    });
-
-    describe('method: findAssayIds' ,function() {
-      it('should return the correct assay ids', function() {
-        var assayMeasurements = {"259316":{"assay":4933}, "2849": {"assay": 490}};
-        expect(GraphHelperMethods.findAssayIds(assayMeasurements)).toEqual([490, 4933]);
-      });
-    });
-
-    describe('method: findLidIds' ,function() {
-      it('should return the correct assay ids', function() {
-        var assays = {"490":{"lid":4}, "4933": {"lid": 90}};
-        expect(GraphHelperMethods.findLidIds(assays, [490, 4933])).toEqual([4, 90]);
-      });
-    });
-
-    describe('method: lineName' ,function() {
-      it('should return the correct assay ids', function() {
-        var assays = {"490":{"name":"test"}, "4933": {"name": "test2"}};
-        expect(GraphHelperMethods.lineName(assays, [490, 4933])).toEqual(["test", "test2"]);
-      });
-    });
-
-    describe('method: displayUnit' ,function() {
-      it('should return the correct unit', function() {
-        expect(GraphHelperMethods.displayUnit(['test'])).toEqual("test");
-      });
-      it('should return Mixed units if > 1 name', function() {
-        expect(GraphHelperMethods.displayUnit(['unit', 'unit2'])).toEqual("Mixed units");
-      });
-    });
 });
