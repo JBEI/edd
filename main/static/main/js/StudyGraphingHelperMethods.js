@@ -1,76 +1,16 @@
 /// <reference path="../typings/d3/d3.d.ts"/>;
 var StudyHelper;
 StudyHelper = {
-    /** this function takes in an element, graph options, and selector element and
-     *  is the event handler for the hide y-axis checkbox on the line graph.
-     */
-    toggleLine: function (element, graphSet, selector) {
-        if ($(element + ' [type="checkbox"]').attr('checked') != 'checked') {
-            $(element + ' [type="checkbox"]').attr('checked', 'checked');
-            d3.select(element + ' svg').remove();
-            createMultiLineGraph(graphSet, GraphHelperMethods.createNoAxisSvg(selector[1]));
-            d3.selectAll(element + ' .y.axis').remove();
-            d3.selectAll('.icon').remove();
-        }
-        else {
-            $(element + ' [type="checkbox"]').removeAttr('checked');
-            d3.select(element + ' svg').remove();
-            createMultiLineGraph(graphSet, GraphHelperMethods.createSvg(selector[1]));
-        }
-    },
-    /** this function takes in an element, graph options, and selector element and
-     *  renders the graph with our without the y-axis
-     */
-    isCheckedLine: function (element, graphSet, selector) {
-        if ($(element + ' [type="checkbox"]').attr('checked') === 'checked') {
-            createMultiLineGraph(graphSet, GraphHelperMethods.createNoAxisSvg(selector[1]));
-            d3.selectAll(element + ' .y.axis').remove();
-            d3.selectAll('.icon').remove();
-        }
-        else if ($(element + ' [type="checkbox"]').attr('checked') != 'checked') {
-            createMultiLineGraph(graphSet, GraphHelperMethods.createSvg(selector[1]));
-        }
-    },
-    /** this function takes in an element, graph options, and selector element and
-     *  is the event handler for the hide y-axis checkbox on the bar graphs
-     */
-    toggle: function (element, graphSet, selector, type) {
-        if ($(element + ' [type="checkbox"]').attr('checked') != 'checked') {
-            $(element + ' [type="checkbox"]').attr('checked', 'checked');
-            d3.select(element + ' svg').remove();
-            createGroupedBarGraph(graphSet, GraphHelperMethods.createNoAxisSvg(selector), type);
-            d3.selectAll(element + ' .y.axis').remove();
-            d3.selectAll('.icon').remove();
-        }
-        else {
-            $(element + ' [type="checkbox"]').removeAttr('checked');
-            d3.select(element + ' svg').remove();
-            createGroupedBarGraph(graphSet, GraphHelperMethods.createSvg(selector), type);
-        }
-    },
-    /** this function takes in an element, graph options, and selector element and
-     *  renders the graph with our without the y-axis
-     */
-    isChecked: function (element, graphSet, selector, type) {
-        if ($(element + ' [type="checkbox"]').attr('checked') === 'checked') {
-            createGroupedBarGraph(graphSet, GraphHelperMethods.createNoAxisSvg(selector), type);
-            d3.selectAll(element + ' .y.axis').remove();
-            d3.selectAll('.icon').remove();
-        }
-        else if ($(element + ' [type="checkbox"]').attr('checked') != 'checked') {
-            createGroupedBarGraph(graphSet, GraphHelperMethods.createSvg(selector), type);
-        }
-    },
     /** this function takes in element and returns an array of selectors
      * [<div id=​"linechart">​</div>​, <div id=​"timeBar">​</div>​, <div id=​"single">​</div>​,
      * <div id=​"barAssay">​</div>​]
      */
     getButtonElement: function (element) {
-        if (($(element).siblings().siblings()).size() < 8) {
-            return $(element.siblings()[0]).find("label");
+        if (($(element).siblings().addBack()).size() < 8) {
+            return $(element.siblings(':first')).find("label");
         }
         else {
-            return $(element.siblings()[1]).find("label");
+            return $(element.siblings().eq(1)).find("label");
         }
     },
     /**
@@ -82,7 +22,7 @@ StudyHelper = {
             return $(selector).children();
         }
         else {
-            return element.siblings().siblings();
+            return element.siblings().addBack();
         }
     },
     /**
@@ -142,14 +82,7 @@ StudyHelper = {
      */
     barGraphActiveButton: function (selectedButton, buttons) {
         var barButton = buttons[1];
-        if ($(barButton).hasClass('active')) {
-            $(buttons[0]).removeClass('active');
-        }
-        _.each(buttons, function (button) {
-            if (selectedButton != button) {
-                $(button).removeClass('active');
-            }
-        });
+        $(buttons).removeClass('active');
         $(barButton).addClass('active');
         $(selectedButton).addClass('active');
     },
