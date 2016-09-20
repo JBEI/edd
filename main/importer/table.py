@@ -11,6 +11,7 @@ from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.utils.translation import ugettext as _
+from six import string_types
 
 from ..models import (
     Assay, Datasource, GeneIdentifier, Line, Measurement, MeasurementType, MeasurementUnit,
@@ -356,12 +357,15 @@ class TableImport(object):
             return Measurement.Format.VECTOR    # carbon ratios are vectors
         elif layout in ('tr', 'pr'):
             return Measurement.Format.SCALAR    # always single values
-        else:
-            # if any value looks like carbon ratio (vector), treat all as vector
-            for (x, y) in points:
-                if y is not None and ('/' in y or ':' in y):
-                    return Measurement.Format.VECTOR
-            return Measurement.Format.SCALAR
+        elif len(points):
+            # if first value looks like carbon ratio (vector), treat all as vector
+            (x, y) = points[0]
+            # several potential inputs to handle: list, string, numeric
+            if isinstance(y, list):
+                return Measurement.Format.VECTOR
+            elif y is not None and isinstance(y, string_types) and ('/' in y or ':' in y):
+                return Measurement.Format.VECTOR
+        return Measurement.Format.SCALAR
 
     def _replace(self):
         return self._data.get('writemode', None) == 'r'
