@@ -6,19 +6,19 @@
   <link rel="stylesheet" type="text/css" href="{% static 'main/import.css' %}" />
   <script type="text/javascript" src="{% static 'main/js/Dragboxes.js' %}"></script>
   <script type="text/javascript" src="{% static 'main/js/DataGrid.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/GraphHelperMethods.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/StudyGraphing.js' %}"></script>
   <script type="text/javascript" src="{% static 'main/js/Utl.js' %}"></script>
   <script type="text/javascript" src="{% static 'main/js/lib/jquery-ui/jquery-ui.min.js' %}"></script>
   <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/jquery-ui/jquery-ui.min.css' %}" />
-  <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.js' %}"></script>
-  <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.crosshair.js' %}"></script>
-  <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.resize.js' %}"></script>
-  <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.navigate.js' %}"></script>
-  <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.dashes.js' %}"></script>
-  <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.threshold.js' %}"></script>
-  <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.orderbars.js' %}"></script>
-  <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.flot.stack.js' %}"></script>
-  <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.cookie.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/lib/underscore/underscore.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/lib/qtip/jquery.qtip.min.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/lib/d3/d3.v2.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/lib/d3/d3.tip.js' %}"></script>
   <script type="text/javascript" src="{% static 'main/js/lib/filedrop-min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'main/js/lib/jquery/jquery.cookie.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/lib/bootstrap/bootstrap.js' %}"></script>
+  <link rel="stylesheet" type="text/css" href="{% static 'main/js/lib/bootstrap/bootstrap.min.css' %}" />
 
   <!-- some page-specific code -->
   <script type="text/javascript">
@@ -31,8 +31,11 @@
 
   </script>
   <script type="text/javascript" src="{% static 'main/js/autocomplete2.js' %}"></script>
+  <link rel="stylesheet" type="text/css" href="{% static "main/style.css" %}">
   <script type="text/javascript" src="{% static 'main/js/AssayTableData.js' %}"></script>
   <script type="text/javascript" src="{% static 'main/js/AssayTableDataGraphing.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/createMultiAxisLine.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/lineGraphHelperMethods.js' %}"></script>
 
 {% endblock js_css %}
 
@@ -291,11 +294,17 @@ at how the pulldowns should be set, but you may need to tweak it.</p>
       Enter some data in Step 2 first!
     </div>
   </div>
-
-  <center>
-    <div id="graphDiv" style="width:98%;height:240px;padding:0px;margin:5px 0px 5px 0px;"></div>
-  </center>
-
+    <div class="sectionContent">
+    <div class="btn-toolbar" id="chartType">
+            </div>
+                <div class="linechart"></div>
+                <div class ="btn-toolbar">
+                <button class="btn btn-default btn-sm" value="linechart">
+                                        Line Graph </button>
+                </div>
+                <div class="graphContainer"></div>
+    <div id="graphDiv"></div>
+        </div>
 </div>
 
 

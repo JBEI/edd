@@ -1,5 +1,6 @@
 /// <reference path="typescript-declarations.d.ts" />
-/// <reference path="Utl.ts" />
+/// <reference path="../typings/d3/d3.d.ts"/>;
+/// <reference path="AssayTableDataGraphing.ts" />
 JSNumber = Number;
 JSNumber.isFinite = JSNumber.isFinite || function (value) {
     return typeof value === 'number' && isFinite(value);
@@ -1572,6 +1573,7 @@ var EDDTableImport;
             }
         };
         IdentifyStructuresStep.prototype.remakeGraphArea = function () {
+            var graphHelper = Object.create(GraphHelperMethods);
             var mode = this.selectMajorKindStep.interpretationMode;
             this.graphRefreshTimerID = 0;
             if (!EDDATDGraphing || !this.graphEnabled) {
@@ -1579,11 +1581,16 @@ var EDDTableImport;
             }
             EDDATDGraphing.clearAllSets();
             var sets = this.graphSets;
+            var dataSets = [];
             // If we're not in either of these modes, drawing a graph is nonsensical.
             if (mode === "std" || mode === 'biolector' || mode === 'hplc') {
-                sets.forEach(function (set) { return EDDATDGraphing.addNewSet(set); });
+                sets.forEach(function (set) {
+                    var color = "#0E6FA4";
+                    var singleAssayObj = graphHelper.transformNewLineItem(EDDData, set, color);
+                    dataSets.push(singleAssayObj);
+                });
             }
-            EDDATDGraphing.drawSets();
+            EDDATDGraphing.addNewSet(dataSets);
         };
         return IdentifyStructuresStep;
     }());
@@ -2042,7 +2049,7 @@ var EDDTableImport;
                 else if (highest < 0.6 && line.name.indexOf(assayOrLine) >= 0) {
                     // Finding the whole string inside the originating Line name is good too.
                     // It means that the user may intend to pair with this Assay even though the
-                    // Assay name is different.  
+                    // Assay name is different.
                     highest = 0.6;
                     selections.assayID = id;
                 }
