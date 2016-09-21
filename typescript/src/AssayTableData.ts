@@ -65,7 +65,7 @@ module EDDTableImport {
     }
     // This information is added post-disambiguation, in addition to the fields from RawImportSet, and sent to the server
     interface ResolvedImportSet extends RawImportSet {
-        protocol_id:string;
+        protocol_id:number;
         line_id:string;    // Value of 'null' or string 'new' indicates new Line should be created with name line_name. 
         assay_id:string;
         measurement_id:string;
@@ -121,7 +121,7 @@ module EDDTableImport {
         jQuery.ajax(atdata_url, {
             "success": function(data) {
                 // compute & log elapsed time since the query was initiated
-                var elapsedSeconds: Date, receiptTime: Date;
+                var elapsedSeconds: number, receiptTime: Date;
                 receiptTime = new Date();
                 elapsedSeconds = (receiptTime.getTime() - queryTime.getTime()) / 1000;
 
@@ -315,8 +315,8 @@ module EDDTableImport {
         // If the master Protocol pulldown value has changed, note the change and return 'true'.
         // Otherwise return 'false'.
         checkMasterProtocol():boolean {
-            var protocolInput = $('#masterProtocol');
-            var p = parseInt(protocolInput.val(), 10);
+            var protocolRaw = $('#masterProtocol').val();
+            var p = (protocolRaw == DEFAULT_MASTER_PROTOCOL) ? 0 : parseInt(protocolRaw, 10);
             if (this.masterProtocol === p) { return false; }
             this.masterProtocol = p;
             return true;
@@ -331,8 +331,7 @@ module EDDTableImport {
         }
 
         requiredInputsProvided():boolean {
-            var masterProtocol = $('#masterProtocol').val();
-            return masterProtocol != DEFAULT_MASTER_PROTOCOL;
+            return this.masterProtocol != 0;
         }
 
         previousStepChanged(): void {
@@ -2340,7 +2339,7 @@ module EDDTableImport {
             // pointless to remake it in response to them. We may show/hide
             // it based on other state, but its content won't change. RemakeAssaySection() is
             // called by reconfigure(), which is called when other UI in this step changes.
-            if (this.masterAssaysOptionsDisplayedForProtocol != masterP && !isNaN(masterP)) {
+            if (this.masterAssaysOptionsDisplayedForProtocol != masterP) {
                 this.masterAssaysOptionsDisplayedForProtocol = masterP;
 
                 assayIn = $('#masterAssay').empty();
@@ -2613,7 +2612,7 @@ module EDDTableImport {
             $('#disambiguateAssaysTable').remove();
             this.assayObjSets = {};
 
-            // end early if there's nothing to display in this section
+            //end early if there's nothing to display in this section
             if ((!this.identifyStructuresStep.requiredInputsProvided()) || this.identifyStructuresStep.parsedSets.length === 0) {
                 console.log("End of TypeDisambiguationStep.remakeAssaySection() -- no input data" +
                     " to process");
@@ -2642,7 +2641,7 @@ module EDDTableImport {
             var t = this;
             table = <HTMLTableElement>$('<table>')
                 .attr({ 'id': 'disambiguateAssaysTable', 'cellspacing': 0 })
-                .appendTo((parentDiv.removeClass('off'))
+                .appendTo(parentDiv.removeClass('off'))
                 .on('change', 'select', (ev: JQueryInputEventObject): void => {
                     t.userChangedAssayDisam(ev.target);
                 })[0];
@@ -3247,10 +3246,7 @@ module EDDTableImport {
 
             // From Step 1
             var mode = this.selectMajorKindStep.interpretationMode;
-            var masterProtocol= $("#masterProtocol").val();
-            if (masterProtocol === DEFAULT_MASTER_PROTOCOL) {
-                masterProtocol = null;
-            }
+            var masterProtocol = this.selectMajorKindStep.masterProtocol || null;    // Cast 0 to null
 
             // From Step 3
             var seenAnyTimestamps = this.identifyStructuresStep.seenAnyTimestamps;
@@ -3421,7 +3417,7 @@ module EDDTableImport {
                     var warningMessage = droppedDatasetsForMissingTime + " parsed datasets (" +
                         percentDropped + "%) were dropped because they were missing a timestamp.";
                     console.warn(warningMessage);
-                    this.warningMessages.push(new ImportMessage(msg, null, null))
+                    this.warningMessages.push(new ImportMessage(warningMessage, null, null))
                 }
             } else {
                 $("#masterTimestampRequiredPrompt").addClass('off');
