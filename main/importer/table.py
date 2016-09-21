@@ -14,7 +14,7 @@ from django.utils.translation import ugettext as _
 from six import string_types
 
 from ..models import (
-    Assay, Datasource, GeneIdentifier, Line, Measurement, MeasurementType, MeasurementUnit,
+    Assay, Datasource, GeneIdentifier, Line, Measurement, MeasurementUnit,
     MeasurementValue, MetadataType, ProteinIdentifier, Protocol
 )
 
@@ -36,8 +36,9 @@ class TableImport(object):
         self._line_assay_lookup = {}
         self._line_lookup = {}
         self._meta_lookup = {}
-        self._unit_lookup = {}
         self._request = request
+        # end up looking for hours repeatedly, just load once at init
+        self._hours = MeasurementUnit.objects.get(unit_name='hours')
 
     def import_data(self, data):
         self._data = data
@@ -160,7 +161,6 @@ class TableImport(object):
 
     def create_measurements(self, series):
         added = 0
-        hours = MeasurementUnit.objects.get(unit_name='hours')
         # TODO: During a standard-size biolector import (~50000 measurement values) this loop runs
         # very slowly on my test machine, consistently taking an entire second per set (approx 300
         # values each). To an end user, this makes the submission appear to hang for over a
@@ -176,7 +176,7 @@ class TableImport(object):
                 logger.warning('Skipped set %s because no assay could be loaded' % index)
             else:
                 assay = item['assay_obj']
-                record = self._load_measurement_record(item, hours)
+                record = self._load_measurement_record(item)
                 added += self._process_measurement_points(record, points)
                 self._process_metadata(assay, meta)
                 # force refresh of Assay's Update (also saves any changed metadata)
@@ -187,15 +187,13 @@ class TableImport(object):
         self._study.save()
         return added
 
-    def _load_measurement_record(self, item, hours):
-        # TODO: stuffing hours in parameter list is a little gross, but otherwise would need
-        #   multiple unnecessary queries
+    def _load_measurement_record(self, item):
         assay = item['assay_obj']
         points = item.get('data', [])
         mtype = self._mtype(item)
         logger.info('Loading measurements for %s:%s' % (mtype.compartment, mtype.type))
         records = assay.measurement_set.filter(
-            measurement_type=mtype.type,
+            measurement_type_id=mtype.type,
             compartment=mtype.compartment,
         )
         record = None
@@ -207,12 +205,12 @@ class TableImport(object):
                 record.save()  # force refresh of Update
         if record is None:
             record = assay.measurement_set.create(
-                measurement_type=mtype.type,
+                measurement_type_id=mtype.type,
                 measurement_format=self._mtype_guess_format(points),
                 compartment=mtype.compartment,
                 experimenter=self._user,
-                x_units=hours,
-                y_units=mtype.unit,
+                x_units=self._hours,
+                y_units_id=mtype.unit,
             )
         return record
 
@@ -268,46 +266,17 @@ class TableImport(object):
         return self._meta_lookup.get(meta_id, None)
 
     def _mtype(self, item):
-        hours = MeasurementUnit.objects.get(unit_name='hours')
-        NO_TYPE = MType(Measurement.Compartment.UNKNOWN, None, hours)
-        # In Transcriptomics and Proteomics mode, we attempt to resolve measurements client-side,
+        NO_TYPE = MType(Measurement.Compartment.UNKNOWN, None, self._hours)
+        # In Transcriptomics and Proteomics mode, we attempt to resolve measurements server-side,
         # so we go by the measurement_name, ignoring the measurement_id and related fields (which
         # will be blank)
-        found_type = self._mtype_from_layout(item, hours, default=NO_TYPE)
+        found_type = self._mtype_from_layout(item, self._hours, default=NO_TYPE)
         if found_type is NO_TYPE:
-            try:
-                type_id = item.get('measurement_id', 0)
-                units_id = item.get('units_id', 0)
-                found_type = MType(
-                    item.get('compartment_id', Measurement.Compartment.UNKNOWN),
-                    MeasurementType.objects.get(pk=type_id),
-                    MeasurementUnit.objects.get(pk=units_id)
-                )
-            except MeasurementType.DoesNotExist as e:
-                # failed to match type
-                self._messages_error(
-                    _('Could not match selected Measurement Type; got type ID = %(type_id)s.') % {
-                        'type_id': type_id,
-                    }
-                )
-                pass
-            except MeasurementUnit.DoesNotExist as e:
-                # failed to match unit
-                self._messages_error(
-                    _('Could not match selected Measurement Unit; got unit ID = %(unit_id)s.') % {
-                        'unit_id': units_id,
-                    }
-                )
-                pass
-            except ValueError as e:
-                # failed to parse type or unit
-                self._messages_error(
-                    _('Failed to parse data for Type or Units of measurement. Did you specify a '
-                      'type and unit for the measurements? Error details: %(err_msg)s') % {
-                        'err_msg': e,
-                    }
-                )
-                pass
+            found_type = MType(
+                item.get('compartment_id', Measurement.Compartment.UNKNOWN),
+                item.get('measurement_id', None),
+                item.get('units_id', None),
+            )
         return found_type
 
     def _mtype_from_layout(self, item, hours, default=None):
@@ -315,7 +284,6 @@ class TableImport(object):
         layout = self._layout()
         label = item.get('measurement_name', None)
         source = Datasource(name=self._user.username)  # defining, but not saving unless needed
-        label = item.get('measurement_name', None)
         if layout == 'tr':
             genes = GeneIdentifier.objects.filter(type_name=label)
             if len(genes) == 1:
@@ -369,14 +337,6 @@ class TableImport(object):
 
     def _replace(self):
         return self._data.get('writemode', None) == 'r'
-
-    def _unit(self, unit_id):
-        if unit_id not in self._unit_lookup:
-            try:
-                self._unit_lookup[unit_id] = MeasurementUnit.objects.get(id=unit_id)
-            except MeasurementUnit.DoesNotExist:
-                logger.warning('No MeasurementUnit found for %s' % unit_id)
-        return self._unit_lookup.get(unit_id, None)
 
     def _messages_error(self, message, **kwargs):
         """ Simple wrapper for django messages framework if request passed to TableImport. """
