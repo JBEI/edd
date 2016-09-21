@@ -22,14 +22,12 @@ EDDATDGraphing = {
 
 	addNewSet:function(newSet) {
 
-        var data = EDDData; // main data
         var barAssayObj  = GraphHelperMethods.concatAssays(newSet);
 
         //data for graphs
         //data for graphs
         var graphSet = {
             barAssayObj: GraphHelperMethods.concatAssays(newSet),
-            labels: GraphHelperMethods.names(data),
             create_x_axis: GraphHelperMethods.createXAxis,
             create_right_y_axis: GraphHelperMethods.createRightYAxis,
             create_y_axis: GraphHelperMethods.createLeftYAxis,
