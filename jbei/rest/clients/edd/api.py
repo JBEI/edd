@@ -22,8 +22,9 @@ from .constants import (
     STRAIN_REGISTRY_URL_REGEX,
 )
 from jbei.rest.api import RestApiClient
+from jbei.rest.auth import EddSessionAuth
 from jbei.rest.sessions import Session, PagedResult, PagedSession
-from jbei.rest.utils import show_response_html, UNSAFE_HTTP_METHODS
+from jbei.rest.utils import show_response_html
 
 
 # controls whether error response content is written to temp file, then displayed in a browser tab
@@ -222,34 +223,6 @@ class DrfSession(PagedSession):
         )
         self._base_url = base_url
 
-    def request(self, method, url, **kwargs):
-        print('executing %s.request()' % self.__class__.__name__)
-        # if using an "unsafe" HTTP method, include the CSRF header required by DRF
-        if method.upper() in UNSAFE_HTTP_METHODS:
-            kwargs = self._get_csrf_headers(**kwargs)
-        return super(DrfSession, self).request(method, url, **kwargs)
-
-    def _get_csrf_headers(self, **kwargs):
-        """
-        Gets an updated dictionary of HTTP request headers, including headers required to satisfy
-        Django's CSRF protection. The original input headers dictionary (if any) isn't modified.
-        :return:
-        """
-        kwargs = kwargs.copy()  # don't modify the input dictionary
-        headers = kwargs.pop('headers', {})
-
-        if headers:
-            headers = headers.copy()  # don't modify the headers dictionary
-
-        # grab cookie value set by Django
-        csrf_token = self._session.cookies[DJANGO_CSRF_COOKIE_KEY]
-        # set the header value needed by DRF (inexplicably different than the one Django uses)
-        headers['X-CSRFToken'] = csrf_token
-
-        insert_spoofed_https_csrf_headers(headers, self._base_url)
-        kwargs['headers'] = headers
-        return kwargs
-
 
 def _set_if_value_valid(dictionary, key, value):
     # utility method to get rid of long blocks of setting dictionary keys only if values valid
@@ -287,9 +260,9 @@ class EddApi(RestApiClient):
             query, or None to apply EDD's default limit
         :return: a new EddApi instance
         """
-        session = DrfSession(base_url, PAGE_SIZE_QUERY_PARAM, verify_ssl_cert=verify)
-        # not passing auth into Session as an AuthBase, calling it to set cookie
-        auth(session)
+        session = DrfSession(base_url, PAGE_SIZE_QUERY_PARAM, auth=auth, verify_ssl_cert=verify)
+        if isinstance(auth, EddSessionAuth):
+            auth.apply_session_token(session)
         super(EddApi, self).__init__('EDD', base_url, session, result_limit=result_limit)
 
     def get_strain(self, strain_id=None):
@@ -594,7 +567,7 @@ class EddApi(RestApiClient):
             # "protocols": [
             #     1933
             # ],
-            "strains": [strain_id],
+            "strains": [] if strain_id is None else [strain_id],
             "meta_store": metadata,
         }
 
@@ -701,7 +674,7 @@ class EddApi(RestApiClient):
         return self._update_strain('PUT', name, description, local_pk, registry_id, registry_url)
 
     def get_study(self, pk):
-        url = '%s/rest/study/%d' % (self.base_url, pk)
+        url = '%s/rest/study/%d/' % (self.base_url, pk)
         response = self.session.get(url)
 
         # throw an error for unexpected reply

@@ -5,6 +5,8 @@
 /// <reference path="CarbonSummation.ts" />
 /// <reference path="DataGrid.ts" />
 /// <reference path="StudyGraphing.ts" />
+/// <reference path="GraphHelperMethods.ts" />
+/// <reference path="../typings/d3/d3.d.ts"/>;
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -71,24 +73,18 @@ var StudyD;
             // Create filters on assay tables
             // TODO media is now a metadata type, strain and carbon source should be too
             var assayFilters = [];
-            assayFilters.push(new StrainFilterSection());
+            assayFilters.push(new ProtocolFilterSection()); // Protocol
+            assayFilters.push(new StrainFilterSection()); // first column in filtering section
+            assayFilters.push(new LineNameFilterSection()); // LINE
             assayFilters.push(new CarbonSourceFilterSection());
             assayFilters.push(new CarbonLabelingFilterSection());
-            for (var id in seenInLinesHash) {
-                assayFilters.push(new LineMetaDataFilterSection(id));
-            }
-            assayFilters.push(new LineNameFilterSection());
-            assayFilters.push(new ProtocolFilterSection());
-            assayFilters.push(new AssaySuffixFilterSection());
+            assayFilters.push(new AssaySuffixFilterSection()); //Assasy suffix
             for (var id in seenInAssaysHash) {
                 assayFilters.push(new AssayMetaDataFilterSection(id));
             }
-            // We can initialize all the Assay- and Line-level filters immediately
-            this.assayFilters = assayFilters;
-            assayFilters.forEach(function (filter) {
-                filter.populateFilterFromRecordIDs(aIDsToUse);
-                filter.populateTable();
-            });
+            for (var id in seenInLinesHash) {
+                assayFilters.push(new LineMetaDataFilterSection(id));
+            }
             this.metaboliteFilters = [];
             this.metaboliteFilters.push(new MetaboliteCompartmentFilterSection());
             this.metaboliteFilters.push(new MetaboliteFilterSection());
@@ -98,6 +94,12 @@ var StudyD;
             this.geneFilters.push(new GeneFilterSection());
             this.measurementFilters = [];
             this.measurementFilters.push(new MeasurementFilterSection());
+            // We can initialize all the Assay- and Line-level filters immediately
+            this.assayFilters = assayFilters;
+            assayFilters.forEach(function (filter) {
+                filter.populateFilterFromRecordIDs(aIDsToUse);
+                filter.populateTable();
+            });
             this.allFilters = [].concat(assayFilters, this.metaboliteFilters, this.proteinFilters, this.geneFilters, this.measurementFilters);
             this.repopulateFilteringSection();
         };
@@ -123,7 +125,7 @@ var StudyD;
         ProgressiveFilteringWidget.prototype.processIncomingMeasurementRecords = function (measures, types) {
             var process;
             var filterIds = { 'm': [], 'p': [], 'g': [], '_': [] };
-            // loop over all downloaded measurements
+            // loop over all downloaded measurements. measures corresponds to AssayMeasurements
             $.each(measures || {}, function (index, measurement) {
                 var assay = EDDData.Assays[measurement.assay], line, mtype;
                 if (!assay || !assay.active)
@@ -236,7 +238,7 @@ var StudyD;
             // If the user checks 'Acetate', they expect only Acetate to be displayed, even though no change has been made to
             // the Measurement section where Optical Density is listed.
             // In the code below, by testing for any checked boxes in the metaboliteFilters filters,
-            // we realize that the selection has been narrowed doown, so we append the Acetate measurements onto dSM.
+            // we realize that the selection has been narrowed down, so we append the Acetate measurements onto dSM.
             // Then when we check the measurementFilters filters, we see that the Measurement section has
             // not narrowed down its set of measurements, so we skip appending those to dSM.
             // The end result is only the Acetate measurements.
@@ -262,6 +264,7 @@ var StudyD;
             }
             return measurementIds;
         };
+        // redraw graph with new measurement types.
         ProgressiveFilteringWidget.prototype.checkRedrawRequired = function (force) {
             var redraw = false;
             // do not redraw if graph is not initialized yet
@@ -411,17 +414,47 @@ var StudyD;
             $(this.tableBodyElement).empty();
             this.tableRows = {};
             this.checkboxes = {};
-            this.uniqueValuesOrder.forEach(function (uniqueId) {
-                var cboxName, cell, p, q, r;
-                cboxName = ['filter', _this.sectionShortLabel, 'n', uniqueId, 'cbox'].join('');
-                _this.tableRows[uniqueId] = _this.tableBodyElement.insertRow();
-                cell = _this.tableRows[uniqueId].insertCell();
-                _this.checkboxes[uniqueId] = $("<input type='checkbox'>")
-                    .attr({ 'name': cboxName, 'id': cboxName })
-                    .appendTo(cell);
-                $('<label>').attr('for', cboxName).text(_this.uniqueValues[uniqueId])
-                    .appendTo(cell);
-            });
+            var graphHelper = Object.create(GraphHelperMethods);
+            var colorObj = graphHelper.renderColor(EDDData.Lines);
+            //add color obj to EDDData 
+            EDDData['color'] = colorObj;
+            //line label color based on graph color of line 
+            if (this.sectionTitle === "Line") {
+                var colors = {};
+                //create new colors object with line names a keys and color hex as values 
+                for (var key in EDDData.Lines) {
+                    colors[EDDData.Lines[key].name] = colorObj[key];
+                }
+                this.uniqueValuesOrder.forEach(function (uniqueId) {
+                    var cboxName, cell, p, q, r;
+                    cboxName = ['filter', _this.sectionShortLabel, 'n', uniqueId, 'cbox'].join('');
+                    _this.tableRows[uniqueId] = _this.tableBodyElement.insertRow();
+                    cell = _this.tableRows[uniqueId].insertCell();
+                    _this.checkboxes[uniqueId] = $("<input type='checkbox'>")
+                        .attr({ 'name': cboxName, 'id': cboxName })
+                        .appendTo(cell);
+                    for (var key in EDDData.Lines) {
+                        if (EDDData.Lines[key].name == _this.uniqueValues[uniqueId]) {
+                            (EDDData.Lines[key]['identifier'] = cboxName);
+                        }
+                    }
+                    $('<label>').attr('for', cboxName).text(_this.uniqueValues[uniqueId])
+                        .css('font-weight', 'Bold').appendTo(cell);
+                });
+            }
+            else {
+                this.uniqueValuesOrder.forEach(function (uniqueId) {
+                    var cboxName, cell, p, q, r;
+                    cboxName = ['filter', _this.sectionShortLabel, 'n', uniqueId, 'cbox'].join('');
+                    _this.tableRows[uniqueId] = _this.tableBodyElement.insertRow();
+                    cell = _this.tableRows[uniqueId].insertCell();
+                    _this.checkboxes[uniqueId] = $("<input type='checkbox'>")
+                        .attr({ 'name': cboxName, 'id': cboxName })
+                        .appendTo(cell);
+                    $('<label>').attr('for', cboxName).text(_this.uniqueValues[uniqueId])
+                        .appendTo(cell);
+                });
+            }
             // TODO: Drag select is twitchy - clicking a table cell background should check the box,
             // even if the user isn't hitting the label or the checkbox itself.
             Dragboxes.initTable(this.filteringTable);
@@ -434,6 +467,7 @@ var StudyD;
             this.anyCheckboxesChecked = false;
             $.each(this.checkboxes || {}, function (uniqueId, checkbox) {
                 var current, previous;
+                // "C" - checked, "U" - unchecked, "N" - doesn't exist
                 current = (checkbox.prop('checked') && !checkbox.prop('disabled')) ? 'C' : 'U';
                 previous = _this.previousCheckboxState[uniqueId] || 'N';
                 if (current !== previous)
@@ -1127,7 +1161,6 @@ var StudyD;
         }
         $('#mainFilterSection').on('mouseover mousedown mouseup', this.queueMainGraphRemake.bind(this, false))
             .on('keydown', filterTableKeyDown.bind(this));
-        $('#separateAxesCheckbox').on('change', this.queueMainGraphRemake.bind(this, true));
         // Enable edit lines button
         $('#editLineButton').on('click', function (ev) {
             var button = $(ev.target), data = button.data(), form = clearLineForm(), allMeta = {}, metaRow;
@@ -1150,6 +1183,7 @@ var StudyD;
         });
         // Hacky button for changing the metabolic map
         $("#metabolicMapName").click(function () { return _this.onClickedMetabolicMapName(); });
+        //pulling in protocol measurements AssayMeasurements
         $.each(EDDData.Protocols, function (id, protocol) {
             $.ajax({
                 url: 'measurements/' + id + '/',
@@ -1308,20 +1342,22 @@ var StudyD;
         this.mainGraphRefreshTimerID = setTimeout(remakeMainGraphArea.bind(this, force), 200);
     }
     StudyD.queueMainGraphRemake = queueMainGraphRemake;
+    var remakeMainGraphAreaCalls = 0;
     function remakeMainGraphArea(force) {
         var _this = this;
-        var previousIDSet, postFilteringMeasurements, dataPointsDisplayed = 0, dataPointsTotal = 0, separateAxes = $('#separateAxesCheckbox').prop('checked'), 
-        // FIXME assumes (x0, y0) points
-        convert = function (d) { return [[d[0][0], d[1][0]]]; }, compare = function (a, b) { return a[0] - b[0]; };
-        this.mainGraphRefreshTimerID = 0;
+        var postFilteringMeasurements, dataPointsDisplayed = 0, dataPointsTotal = 0, colorObj;
         if (!this.progressiveFilteringWidget.checkRedrawRequired(force)) {
             return;
         }
-        // Start out with a blank graph.  We will re-add all the relevant sets.
+        //remove SVG.
         this.mainGraphObject.clearAllSets();
+        this.graphHelper = Object.create(GraphHelperMethods);
+        colorObj = EDDData['color'];
+        //Gives ids of lines to show.
+        var dataSets = [], prev;
         postFilteringMeasurements = this.progressiveFilteringWidget.buildFilteredMeasurements();
         $.each(postFilteringMeasurements, function (i, measurementId) {
-            var measure = EDDData.AssayMeasurements[measurementId], mtype = EDDData.MeasurementTypes[measure.type], points = (measure.values ? measure.values.length : 0), assay, line, protocol, newSet;
+            var measure = EDDData.AssayMeasurements[measurementId], points = (measure.values ? measure.values.length : 0), assay, line, name, singleAssayObj, color, protocol, lineName, dataObj;
             dataPointsTotal += points;
             if (dataPointsDisplayed > 15000) {
                 return; // Skip the rest if we've hit our limit
@@ -1330,34 +1366,156 @@ var StudyD;
             assay = EDDData.Assays[measure.assay] || {};
             line = EDDData.Lines[assay.lid] || {};
             protocol = EDDData.Protocols[assay.pid] || {};
-            newSet = {
-                'label': 'dt' + measurementId,
-                'measurementname': Utl.EDD.resolveMeasurementRecordToName(measure),
-                'name': [line.name, protocol.name, assay.name].join('-'),
-                'units': Utl.EDD.resolveMeasurementRecordToUnits(measure),
-                'data': $.map(measure.values, convert).sort(compare)
-            };
-            if (line.control)
-                newSet.iscontrol = 1;
-            if (separateAxes) {
-                // If the measurement is a metabolite, choose the axis by type. If it's any
-                // other subtype, choose the axis based on that subtype, with an offset to avoid
-                // colliding with the metabolite axes.
-                if (mtype.family === 'm') {
-                    newSet.yaxisByMeasurementTypeID = mtype.id;
+            name = [line.name, protocol.name, assay.name].join('-');
+            lineName = line.name;
+            var label = $('#' + line['identifier']).next();
+            if (_.keys(EDDData.Lines).length > 22) {
+                color = changeLineColor(line, colorObj, assay.lid, _this.graphHelper);
+            }
+            else {
+                color = colorObj[assay.lid];
+            }
+            if (remakeMainGraphAreaCalls === 0) {
+                _this.graphHelper.labels.push(label);
+                color = colorObj[assay.lid];
+                //update label color to line color
+                $(label).css('color', color);
+            }
+            else if (remakeMainGraphAreaCalls >= 1 && $('#' + line['identifier']).prop('checked')) {
+                //unchecked labels black
+                makeLabelsBlack(_this.graphHelper.labels);
+                //update label color to line color
+                if (color === null || color === undefined) {
+                    color = colorObj[assay.lid];
+                }
+                $(label).css('color', color);
+            }
+            else {
+                var count = noCheckedBoxes(_this.graphHelper.labels);
+                if (count === 0) {
+                    _this.graphHelper.nextColor = null;
+                    addColor(_this.graphHelper.labels, colorObj, assay.lid);
                 }
                 else {
-                    newSet.yaxisByMeasurementTypeID = mtype.family;
+                    //update label color to black
+                    $(label).css('color', 'black');
                 }
             }
-            _this.mainGraphObject.addNewSet(newSet);
+            if (color === null || color === undefined) {
+                color = colorObj[assay.lid];
+            }
+            dataObj = {
+                'measure': measure,
+                'data': EDDData,
+                'name': name,
+                'color': color,
+                'lineName': lineName,
+            };
+            singleAssayObj = _this.graphHelper.transformSingleLineItem(dataObj);
+            dataSets.push(singleAssayObj);
+            prev = lineName;
         });
-        var displayText = dataPointsDisplayed + " points displayed";
-        if (dataPointsDisplayed != dataPointsTotal) {
-            displayText += " (out of " + dataPointsTotal + ")";
+        remakeMainGraphAreaCalls++;
+        uncheckEventHandler(this.graphHelper.labels);
+        this.mainGraphObject.addNewSet(dataSets, EDDData.MeasurementTypes);
+    }
+    /**
+     * this function makes unchecked labels black
+     * @param selectors
+     */
+    function makeLabelsBlack(selectors) {
+        _.each(selectors, function (selector) {
+            if (selector.prev().prop('checked') === false) {
+                $(selector).css('color', 'black');
+            }
+        });
+    }
+    /**
+     * this function creates an event handler for unchecking a checked checkbox
+     * @param labels
+     */
+    function uncheckEventHandler(labels) {
+        _.each(labels, function (label) {
+            var id = $(label).prev().prop('id');
+            $('#' + id).change(function () {
+                var ischecked = $(this).is(':checked');
+                if (!ischecked)
+                    $(label).css('color', 'black');
+            });
+        });
+    }
+    /**
+     * this function returns how many checkboxes are checked.
+     * @param labels
+     * @returns count of checked boxes.
+     */
+    function noCheckedBoxes(labels) {
+        var count = 0;
+        _.each(labels, function (label) {
+            var checkbox = $(label).prev();
+            if ($(checkbox).prop('checked')) {
+                count++;
+            }
+        });
+        return count;
+    }
+    /**
+     * This function adds colors after user has clicked a line and then unclicked all the lines.
+     * @param labels
+     * @param colorObj
+     * @param assay
+     * @returns labels
+     */
+    function addColor(labels, colorObj, assay) {
+        _.each(labels, function (label) {
+            var color = colorObj[assay];
+            if (EDDData.Lines[assay].name === label.text()) {
+                $(label).css('color', color);
+            }
+        });
+        return labels;
+    }
+    /**
+     * @param line
+     * @param colorObj
+     * @param assay
+     * @param graphHelper
+     * @returns color for line.
+     * this function returns the color in the color queue for studies >22 lines. Instantiated
+     * when user clicks on a line.
+     */
+    function changeLineColor(line, colorObj, assay, graphHelper) {
+        var color;
+        if ($('#' + line['identifier']).prop('checked') && remakeMainGraphAreaCalls === 1) {
+            color = line['color'];
+            line['doNotChange'] = true;
+            graphHelper.colorQueue(color);
         }
-        $('#pointsDisplayedSpan').empty().text(displayText);
-        this.mainGraphObject.drawSets();
+        if ($('#' + line['identifier']).prop('checked') && remakeMainGraphAreaCalls >= 1) {
+            if (line['doNotChange']) {
+                color = line['color'];
+            }
+            else {
+                color = graphHelper.nextColor;
+                line['doNotChange'] = true;
+                line['color'] = color;
+                //text label next to checkbox
+                var label = $('#' + line['identifier']).next();
+                //update label color to line color
+                $(label).css('color', color);
+                graphHelper.colorQueue(color);
+            }
+        }
+        else if ($('#' + line['identifier']).prop('checked') === false && remakeMainGraphAreaCalls > 1) {
+            color = colorObj[assay];
+            var label = $('#' + line['identifier']).next();
+            //update label color to line color
+            $(label).css('color', color);
+        }
+        if (remakeMainGraphAreaCalls == 0) {
+            color = colorObj[assay];
+        }
+        return color;
     }
     function clearAssayForm() {
         var form = $('#id_assay-assay_id').closest('.disclose');
@@ -2191,12 +2349,8 @@ var DataGridAssays = (function (_super) {
             return;
         }
         g = spec.graphObject;
-        g.clearAllSets();
-        // function converts downloaded data point to form usable by flot
-        // FIXME assumes (x0, y0) points only
-        convert = function (d) { return [[d[0][0], d[1][0]]]; };
-        // function comparing two points, to sort data sent to flot
-        compare = function (a, b) { return a[0] - b[0]; };
+        var colorObj = EDDData['color'];
+        var dataSets = [];
         spec.getRecordIDs().forEach(function (id) {
             var assay = EDDData.Assays[id] || {}, line = EDDData.Lines[assay.lid] || {}, measures;
             if (!assay.active || !line.active) {
@@ -2205,35 +2359,23 @@ var DataGridAssays = (function (_super) {
             measures = assay.measures || [];
             measures.forEach(function (m) {
                 var measure = EDDData.AssayMeasurements[m], set;
-                set = {
-                    'label': 'dt' + m,
-                    'measurementname': Utl.EDD.resolveMeasurementRecordToName(m),
-                    'name': assay.name,
-                    'aid': id,
-                    'mtid': measure.type,
-                    'units': Utl.EDD.resolveMeasurementRecordToUnits(m),
-                    'data': $.map(measure.values, convert).sort(compare)
+                var name = assay.name;
+                var color = colorObj[assay.lid];
+                var lineName = line.name;
+                var dataObj = {
+                    'measure': measure,
+                    'data': EDDData,
+                    'name': name,
+                    'color': color,
+                    'lineName': lineName
                 };
+                var singleAssayObj = GraphHelperMethods.transformSingleLineItem(dataObj);
                 if (line.control)
                     set.iscontrol = true;
-                g.addNewSet(set);
+                dataSets.push(singleAssayObj);
             });
         });
-        g.drawSets();
-    };
-    // Note: Currently not being called.
-    DataGridAssays.prototype.resizeGraph = function (g) {
-        var spec = this.getSpec();
-        var graphObj = spec.graphObject;
-        if (!graphObj) {
-            return;
-        }
-        if (!graphObj.plotObject) {
-            return;
-        }
-        graphObj.plotObject.resize();
-        graphObj.plotObject.setupGrid();
-        graphObj.plotObject.draw();
+        g.addNewSet(dataSets);
     };
     return DataGridAssays;
 }(DataGrid));
@@ -2764,6 +2906,9 @@ var DataGridSpecAssays = (function (_super) {
         // Create a single widget for substring searching
         var searchAssaysWidget = new DGAssaysSearchWidget(dataGrid, this, 'Search Assays', 30, false);
         widgetSet.push(searchAssaysWidget);
+        var deselectAllWidget = new DGDeselectAllWidget(dataGrid, this);
+        deselectAllWidget.displayBeforeViewMenu(true);
+        widgetSet.push(deselectAllWidget);
         // A "select all" button
         var selectAllWidget = new DGSelectAllWidget(dataGrid, this);
         selectAllWidget.displayBeforeViewMenu(true);
@@ -2792,8 +2937,14 @@ var DataGridSpecAssays = (function (_super) {
         var graphid = "pro" + p + "graph";
         if (this.graphAreaHeaderSpec) {
             if (this.measuringTimesHeaderSpec.element) {
-                $(this.graphAreaHeaderSpec.element).html('<div id="' + graphid +
-                    '" class="graphContainer"></div>');
+                //html for the different graphs
+                var html = '<div class="graphContainer" id= ' + graphid + '></div>';
+                var dom = $(html);
+                var clonedButtons = $('.assay-section:first').clone();
+                var clonedClasses = $('.chartIds:first').clone();
+                $(clonedButtons).appendTo(this.graphAreaHeaderSpec.element);
+                $(clonedClasses).appendTo(this.graphAreaHeaderSpec.element);
+                $(this.graphAreaHeaderSpec.element).append(dom);
                 // Initialize the graph object
                 this.graphObject = Object.create(StudyDGraphing);
                 this.graphObject.Setup(graphid);

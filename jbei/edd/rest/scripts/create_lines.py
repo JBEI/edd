@@ -58,8 +58,9 @@ from jbei.rest.clients import EddApi, IceApi
 from jbei.rest.clients.ice import Strain as IceStrain
 from jbei.rest.utils import is_url_secure, show_response_html
 from .settings import (
-    DEFAULT_LOCALE, EDD_URL, ICE_URL, PRINT_FOUND_ICE_PARTS, PRINT_FOUND_EDD_STRAINS,
-    SIMULATE_STRAIN_CREATION, VERIFY_EDD_CERT, VERIFY_ICE_CERT,
+    DEFAULT_LOCALE, EDD_REQUEST_TIMEOUT, EDD_URL, ICE_REQUEST_TIMEOUT, ICE_URL,
+    PRINT_FOUND_ICE_PARTS, PRINT_FOUND_EDD_STRAINS, SIMULATE_STRAIN_CREATION, VERIFY_EDD_CERT,
+    VERIFY_ICE_CERT,
 )
 
 locale.setlocale(locale.LC_ALL, DEFAULT_LOCALE)
@@ -428,7 +429,8 @@ def find_existing_strains(edd, ice_parts, existing_edd_strains, strains_by_part_
     for ice_part in ice_parts.values():
 
             # search for the strain by registry ID. Note we use search instead of .get() until the
-            # database enforces uniqueness constrains for UUID (EDD-158)
+            # database consistently contains/requires ICE UUID's and enforces uniqueness constrains for
+            # them (EDD-158)
             edd_strains = edd.search_strains(registry_id=ice_part.uuid)
 
             # if one or more strains are found with this UUID
@@ -458,7 +460,8 @@ def find_existing_strains(edd, ice_parts, existing_edd_strains, strains_by_part_
                 existing_edd_strains[ice_part.part_id] = existing_strain
                 strains_by_part_number[ice_part.part_id] = existing_strain
 
-            # if no EDD strains were found with this UUID, look for candidate strains by URL
+            # if no EDD strains were found with this UUID, look for candidate strains by URL.
+            # Code from here forward is workarounds to for EDD-158
             else:
                 print("ICE entry %s couldn't be located in EDD's database by UUID. Searching by "
                       "name and URL to help avoid strain curation problems." % ice_part.part_id)
@@ -945,13 +948,13 @@ class Performance(object):
 
         zero_time_delta = overall_start_time - overall_start_time
 
-        self.csv_parse_delta = None
-        self.ice_communication_delta = None
-        self.edd_communication_delta = None
-        self.edd_login_delta = None
-        self.waiting_for_user_delta = None
+        self.csv_parse_delta = zero_time_delta
+        self.ice_communication_delta = zero_time_delta
+        self.edd_communication_delta = zero_time_delta
+        self.edd_login_delta = zero_time_delta
+        self.waiting_for_user_delta = zero_time_delta
         self._overall_end_time = None
-        self._total_time = None
+        self._total_time = zero_time_delta
 
     @property
     def overall_end_time(self):
@@ -1276,12 +1279,9 @@ def main():
         if not is_url_secure(ICE_URL, print_err_msg=True, app_name='ICE'):
             return 0
 
-        verify_edd_ssl_cert = VERIFY_EDD_CERT
-        verify_ice_ssl_cert = VERIFY_ICE_CERT
-
         # silence library warnings if we're skipping SSL certificate verification for local
         # testing. otherwise the warnings will swamp useful output from this script
-        if not (verify_edd_ssl_cert and verify_ice_ssl_cert):
+        if not (VERIFY_EDD_CERT and VERIFY_ICE_CERT):
             requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
         # compile the input pattern to catch problems early
@@ -1316,26 +1316,25 @@ def main():
         ##############################
         # log into EDD
         ##############################
-        login_application = 'EDD'
         # workaround for lack of paging support in the initial client-side REST API library.
-        # requests to studies with an  existing large num of lines seem to take too long to
+        # requests to studies with an existing large num of lines seem to take too long to
         # service since they're all being included. TODO: support should be in place now to
         # optimize this out
-        workaround_request_timeout = 20
         performance.edd_login_delta = zero_time_delta
         login_start_time = arrow.utcnow()
         prior_user_input_delta = input_timer.wait_time
-        edd_login_details = session_login(EddSessionAuth, EDD_URL, login_application,
+        edd_login_details = session_login(EddSessionAuth, EDD_URL, 'EDD',
                                           username_arg=args.username, password_arg=args.password,
                                           user_input=input_timer, print_result=True,
-                                          timeout=workaround_request_timeout,
-                                          verify_ssl_cert=verify_edd_ssl_cert)
+                                          verify_ssl_cert=VERIFY_EDD_CERT,
+                                          timeout=EDD_REQUEST_TIMEOUT)
         edd_session_auth = edd_login_details.session_auth
         performance.edd_login_delta = (arrow.utcnow() - login_start_time) + \
                                       (input_timer.wait_time - prior_user_input_delta)
 
-        edd = EddApi(base_url=EDD_URL, session_auth=edd_session_auth)
+        edd = EddApi(base_url=EDD_URL, auth=edd_session_auth, verify=VERIFY_EDD_CERT)
         edd.write_enabled = True
+        edd.timeout = EDD_REQUEST_TIMEOUT
 
         ############################
         # log into ICE
@@ -1345,11 +1344,13 @@ def main():
                                       username_arg=edd_login_details.username,
                                       password_arg=edd_login_details.password,
                                       user_input=input_timer, print_result=True,
-                                      verify_ssl_cert=verify_ice_ssl_cert)
+                                      verify_ssl_cert=VERIFY_ICE_CERT,
+                                      timeout=ICE_REQUEST_TIMEOUT)
 
         ice_session_auth = ice_login_details.session_auth
 
-        ice = IceApi(ice_session_auth, ICE_URL)
+        ice = IceApi(ice_session_auth, ICE_URL, verify_ssl_cert=VERIFY_ICE_CERT)
+        ice.timeout = ICE_REQUEST_TIMEOUT
 
         print('')
         print(OUTPUT_SEPARATOR)

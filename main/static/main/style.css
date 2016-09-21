@@ -1,0 +1,135 @@
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.axis2 path,
+.axis2 line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.axis2 text {
+    display: none;
+}
+
+.axis-text {
+    z-index: -1; position:relative;
+}
+
+.btn-default {
+    outline: none;
+    border-color: #fff;
+}
+
+.btn:focus, .btn:active:focus, .btn.active:focus{
+    outline:none;
+    box-shadow:none;
+    border-color: #fff;
+}
+
+.chart-img {
+    height: 24px;
+    width: 24px
+}
+
+div.tooltip2 {
+  position: absolute;
+  text-align: center;
+  width: 100px;
+  opacity: 0.5;
+  padding: 2px;
+  font: 12px sans-serif;
+  background: white;
+  border: 1px solid grey;
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+.grid .tick {
+    stroke: lightgrey;
+    stroke-opacity: 0.7;
+    shape-rendering: crispEdges;
+}
+
+.grid path {
+          stroke-width: 0;
+}
+
+.barAssay {
+  display: none;
+}
+
+.barMeasurement {
+    display: none;
+}
+
+.line {
+    fill: none;
+    stroke-width: 1.5px;
+}
+
+.dotted-line {
+    fill: none;
+    stroke-dasharray: 10,10;
+}
+
+.dotted-line-random {
+    fill: none;
+    stroke-dasharray: 20,10,5,5,5,10;
+}
+
+
+.tick text{
+  font-size: 12px;
+}
+
+.tick line{
+  opacity: 0.2;
+}
+
+.barTime {
+  display: none;
+}
+
+.rect {
+    opacity: 0.5;
+}
+.toolTip {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    position: absolute;
+    display: none;
+    width: auto;
+    height: auto;
+    background: none repeat scroll 0 0 white;
+    border: 0 none;
+    border-radius: 8px 8px 8px 8px;
+    box-shadow: -3px 3px 15px #888888;
+    color: black;
+    padding: 5px;
+    text-align: center;
+}
+
+.tooMuchData {
+    color: black
+}
+
+.x.axis {
+    line: .1;
+}
+.x.axis path {
+  opacity: .2;
+}
+
+.y.axis path {
+  opacity: .2;
+}
+
+.y-checkbox {
+    margin-left: 10px;
+}
+
+

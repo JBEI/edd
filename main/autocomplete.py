@@ -56,7 +56,7 @@ def search_group(request):
     found = Group.objects.filter(name__iregex=re_term).order_by('name').values('id', 'name')
     found = found[:DEFAULT_RESULT_COUNT]
     return JsonResponse({
-        'rows': [item.to_json() for item in found],
+        'rows': list(found),  # force QuerySet to list
     })
 
 

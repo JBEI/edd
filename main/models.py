@@ -91,10 +91,21 @@ class Update(models.Model, EDDSerialize):
 
     @classmethod
     def load_update(cls, user=None, path=None):
+        """ Sometimes there will be actions happening outside the context of a request; use this
+            factory to create an Update object in those cases.
+            :param user: the user responsible for the update; None will be replaced with the
+                system user.
+            :param path: the path added to the update; it would be a good idea to put e.g. the
+                script name and arguments here.
+            :return: an Update instance persisted to the database
+        """
         request = get_current_request()
         if request is None:
+            mod_by = user
+            if mod_by is None:
+                mod_by = User.system_user()
             update = cls(mod_time=arrow.utcnow(),
-                         mod_by=user,
+                         mod_by=mod_by,
                          path=path,
                          origin='localhost')
             # TODO this save may be too early?
@@ -105,6 +116,7 @@ class Update(models.Model, EDDSerialize):
 
     @classmethod
     def load_request_update(cls, request):
+        """ Load an existing Update object associated with a request, or create a new one. """
         rhost = '%s; %s' % (
             request.META.get('REMOTE_ADDR', None),
             request.META.get('REMOTE_HOST', ''))
@@ -659,14 +671,16 @@ class Study(EDDObject):
         key will probably want to use distinct() to limit the returned results. Note that this
         only tests whether the user or group has specific
         permissions granted on the Study, not whether the user's role (e.g. 'staff', 'admin')
-        gives him/her access to it.  See user_role_has_read_access(user), user_can_read(self, user).
+        gives him/her access to it. See:
+            @ user_role_has_read_access(user)
+            @ user_can_read(self, user)
         :param user: the user
         :param permission: the study permission type to test (e.g. StudyPermission.READ); can be
             any iterable of permissions or a single permission
-        :param keyword_prefix: an optional keyword prefix to prepend to the query keyword arguments.
-        For example when querying Study, the default value of '' should be used, or when querying
-        for Lines, whose permissions depend on the related Study, use 'study__' similar to other
-        queryset keyword arguments.
+        :param keyword_prefix: an optional keyword prefix to prepend to the query keyword
+            arguments. For example when querying Study, the default value of '' should be used,
+            or when querying for Lines, whose permissions depend on the related Study, use
+            'study__' similar to other queryset keyword arguments.
         :return: true if the user has the specified permission to the study
         """
         prefix = keyword_prefix
@@ -1347,9 +1361,6 @@ class Metabolite(MeasurementType):
             count = count + (int(c) if c else 1)
         return count
 
-# override the default type_group for metabolites
-Metabolite._meta.get_field('type_group').default = MeasurementType.Group.METABOLITE
-
 
 @python_2_unicode_compatible
 class GeneIdentifier(MeasurementType):
@@ -1374,8 +1385,6 @@ class GeneIdentifier(MeasurementType):
         # force GENEID group
         self.type_group = MeasurementType.Group.GENEID
         super(GeneIdentifier, self).save(*args, **kwargs)
-
-GeneIdentifier._meta.get_field('type_group').default = MeasurementType.Group.GENEID
 
 
 @python_2_unicode_compatible
@@ -1423,8 +1432,6 @@ class ProteinIdentifier(MeasurementType):
         self.type_group = MeasurementType.Group.PROTEINID
         super(ProteinIdentifier, self).save(*args, **kwargs)
 
-ProteinIdentifier._meta.get_field('type_group').default = MeasurementType.Group.PROTEINID
-
 
 @python_2_unicode_compatible
 class Phosphor(MeasurementType):
@@ -1445,8 +1452,6 @@ class Phosphor(MeasurementType):
         # force PHOSPHOR group
         self.type_group = MeasurementType.Group.PHOSPHOR
         super(Phosphor, self).save(*args, **kwargs)
-
-Phosphor._meta.get_field('type_group').default = MeasurementType.Group.PHOSPHOR
 
 
 @python_2_unicode_compatible
@@ -1503,18 +1508,6 @@ class Assay(EDDObject):
 
     def __str__(self):
         return self.name
-
-    def get_metabolite_measurements(self):
-        return self.measurement_set.filter(
-            measurement_type__type_group=MeasurementType.Group.METABOLITE)
-
-    def get_protein_measurements(self):
-        return self.measurement_set.filter(
-            measurement_type__type_group=MeasurementType.Group.PROTEINID)
-
-    def get_gene_measurements(self):
-        return self.measurement_set.filter(
-            measurement_type__type_group=MeasurementType.Group.GENEID)
 
     @property
     def long_name(self):
@@ -1618,7 +1611,7 @@ class Measurement(EDDMetadata, EDDSerialize):
     # may not be the best method name, if we ever want to support other
     # types of data as vectors in the future
     def is_carbon_ratio(self):
-        return (int(self.measurement_format) == Measurement.Format.VECTOR)
+        return (self.measurement_format == Measurement.Format.VECTOR)
 
     def valid_data(self):
         """ Data for which the y-value is defined (non-NULL, non-blank). """
@@ -1626,7 +1619,7 @@ class Measurement(EDDMetadata, EDDSerialize):
         return [md for md in mdata if md.is_defined()]
 
     def is_extracellular(self):
-        return self.compartment == '%s' % Measurement.Compartment.EXTRACELLULAR
+        return self.compartment == Measurement.Compartment.EXTRACELLULAR
 
     def data(self):
         """ Return the data associated with this measurement. """
@@ -1656,13 +1649,13 @@ class Measurement(EDDMetadata, EDDSerialize):
     def extract_data_xvalues(self, defined_only=False):
         qs = self.measurementvalue_set.all()
         if defined_only:
-            qs = qs.exclude(y=None, y__len=0)
+            qs = qs.exclude(Q(y=None) | Q(y__len=0))
         # first index unpacks single value from tuple; second index unpacks first value from X
         return map(lambda x: x[0][0], qs.values_list('x'))
 
     # this shouldn't need to handle vectors
     def interpolate_at(self, x):
-        assert (int(self.measurement_format) == Measurement.Format.SCALAR)
+        assert (self.measurement_format == Measurement.Format.SCALAR)
         from main.utilities import interpolate_at
         return interpolate_at(self.valid_data(), x)
 
@@ -1868,6 +1861,10 @@ def User_to_json(self, depth=0):
     }
 
 
+def User_system_user(cls):
+    return cls.objects.get(username='system')
+
+
 def User_to_solr_json(self):
     format_string = '%Y-%m-%dT%H:%M:%SZ'
     return {
@@ -1900,3 +1897,4 @@ def patch_user_model():
     User.add_to_class("initials", property(User_initials))
     User.add_to_class("institution", property(User_institution))
     User.add_to_class("institutions", property(User_institutions))
+    User.system_user = classmethod(User_system_user)
