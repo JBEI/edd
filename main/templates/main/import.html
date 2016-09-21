@@ -34,7 +34,7 @@
   <link rel="stylesheet" type="text/css" href="{% static "main/style.css" %}">
   <script type="text/javascript" src="{% static 'main/js/AssayTableData.js' %}"></script>
   <script type="text/javascript" src="{% static 'main/js/AssayTableDataGraphing.js' %}"></script>
-  <script type="text/javascript" src="{% static 'main/js/createMultiAxisLine.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/CreateMultiAxisLine.js' %}"></script>
   <script type="text/javascript" src="{% static 'main/js/lineGraphHelperMethods.js' %}"></script>
 
 {% endblock js_css %}
@@ -298,10 +298,6 @@ at how the pulldowns should be set, but you may need to tweak it.</p>
     <div class="btn-toolbar" id="chartType">
             </div>
                 <div class="linechart"></div>
-                <div class ="btn-toolbar">
-                <button class="btn btn-default btn-sm" value="linechart">
-                                        Line Graph </button>
-                </div>
                 <div class="graphContainer"></div>
     <div id="graphDiv"></div>
         </div>
