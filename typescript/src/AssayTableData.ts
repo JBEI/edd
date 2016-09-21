@@ -270,8 +270,8 @@ module EDDTableImport {
             // irritating Chrome inconsistency
             // For some of these, changing them shouldn't actually affect processing until we implement
             // an overwrite-checking feature or something similar
-            reProcessOnChange = ['#stdlayout', '#trlayout', '#hplclayout', '#prlayout', '#mdvlayout', '#biolectorlayout'];
-            $(reProcessOnChange.join(',')).on('click', this.queueReconfigure.bind(this));
+            $(':radio[name=datalayout]', '#selectMajorKindStep').on('change',
+                this.queueReconfigure.bind(this));
         }
 
 
@@ -1333,36 +1333,36 @@ module EDDTableImport {
                 pulldownOptions = [
                     [ this.DISABLED_PULLDOWN_LABEL, this.DEFAULT_STEP3_PULLDOWN_VALUE],
                     ['Entire Row Is...', [
-                        ['Gene Names', TypeEnum.Gene_Names],
-                        ['RPKM Values', TypeEnum.RPKM_Values]
-                    ]
+                            ['Gene Names', TypeEnum.Gene_Names],
+                            ['RPKM Values', TypeEnum.RPKM_Values]
+                        ]
                     ]
                 ];
             } else if (mode === 'pr') {
                 pulldownOptions = [
                     [ this.DISABLED_PULLDOWN_LABEL, this.DEFAULT_STEP3_PULLDOWN_VALUE],
                     ['Entire Row Is...', [
-                        ['Assay/Line Names', TypeEnum.Assay_Line_Names],
-                    ]
+                            ['Assay/Line Names', TypeEnum.Assay_Line_Names],
+                        ]
                     ],
                     ['First Column Is...', [
-                        ['Protein Name', TypeEnum.Protein_Name]
-                    ]
+                            ['Protein Name', TypeEnum.Protein_Name]
+                        ]
                     ]
                 ];
             } else {
                 pulldownOptions = [
                     [ this.DISABLED_PULLDOWN_LABEL, this.DEFAULT_STEP3_PULLDOWN_VALUE],
                     ['Entire Row Is...', [
-                        ['Assay/Line Names', TypeEnum.Assay_Line_Names],
-                        ['Measurement Types', TypeEnum.Measurement_Types]
-                    ]
+                            ['Assay/Line Names', TypeEnum.Assay_Line_Names],
+                            ['Measurement Types', TypeEnum.Measurement_Types]
+                        ]
                     ],
                     ['First Column Is...', [
                         ['Timestamp', TypeEnum.Timestamp],
-                        ['Metadata Name', TypeEnum.Metadata_Name],
-                        ['Measurement Type', TypeEnum.Measurement_Type]
-                    ]
+                            ['Metadata Name', TypeEnum.Metadata_Name],
+                            ['Measurement Type', TypeEnum.Measurement_Type]
+                        ]
                     ]
                 ];
             }
@@ -1398,7 +1398,7 @@ module EDDTableImport {
 
             ///////////////////////////////////////////////////////////////////////////////////////
             // First row: spacer cells, followed by checkbox cells for each data column
-            ///////////////////////////////////////////////////////////////////////////////////
+            ///////////////////////////////////////////////////////////////////////////////////////
             row = <HTMLTableRowElement>body.insertRow();
             // spacer cells have x and y set to 0 to remove from highlight grid
             controlCols.forEach((): void => {
@@ -1418,7 +1418,7 @@ module EDDTableImport {
 
             ///////////////////////////////////////////////////////////////////////////////////////
             // The rest of the rows: A pulldown, a checkbox, a row label, and a row of data.
-            //////////////////////////////////////////////////////////////////////////////////////
+            ///////////////////////////////////////////////////////////////////////////////////////
             grid.forEach((values: string[], i: number): void => {
                 var cell: JQuery;
                 row = <HTMLTableRowElement>body.insertRow();
@@ -1434,7 +1434,7 @@ module EDDTableImport {
 
                 ////////////////////
                 // pulldown cell
-                ///////////////////
+                ////////////////////
                 cell = $(row.insertCell()).addClass('pulldownCell')
                     .attr({'id': 'rowPCell' + i, 'x': 0, 'y': i + 1});
                 // use existing setting, or use the last if rows.length > settings.length, or blank

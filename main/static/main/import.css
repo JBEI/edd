@@ -227,6 +227,13 @@ div.dataTableDiv table tr > td.disabledInput {
 	padding-left: 10px;
 }
 
+#graphDiv {
+	width: 98%;
+	height: 240px;
+	padding: 0px;
+	margin: 5px 0px 5px 0px;
+}
+
 #missingStep3InputDiv {
 	display: inline-block;
 	margin: 10px;

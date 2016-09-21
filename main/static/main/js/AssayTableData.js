@@ -157,8 +157,7 @@ var EDDTableImport;
             // irritating Chrome inconsistency
             // For some of these, changing them shouldn't actually affect processing until we implement
             // an overwrite-checking feature or something similar
-            reProcessOnChange = ['#stdlayout', '#trlayout', '#hplclayout', '#prlayout', '#mdvlayout', '#biolectorlayout'];
-            $(reProcessOnChange.join(',')).on('click', this.queueReconfigure.bind(this));
+            $(':radio[name=datalayout]', '#selectMajorKindStep').on('change', this.queueReconfigure.bind(this));
         }
         // Start a timer to wait before calling the reconfigure routine.
         // This way we condense multiple possible events from the radio buttons and/or pulldown into one.
@@ -1080,7 +1079,7 @@ var EDDTableImport;
             });
             ///////////////////////////////////////////////////////////////////////////////////////
             // First row: spacer cells, followed by checkbox cells for each data column
-            ///////////////////////////////////////////////////////////////////////////////////
+            ///////////////////////////////////////////////////////////////////////////////////////
             row = body.insertRow();
             // spacer cells have x and y set to 0 to remove from highlight grid
             controlCols.forEach(function () {
@@ -1099,7 +1098,7 @@ var EDDTableImport;
             this.pulldownObjects = []; // We don't want any lingering old objects in this
             ///////////////////////////////////////////////////////////////////////////////////////
             // The rest of the rows: A pulldown, a checkbox, a row label, and a row of data.
-            //////////////////////////////////////////////////////////////////////////////////////
+            ///////////////////////////////////////////////////////////////////////////////////////
             grid.forEach(function (values, i) {
                 var cell;
                 row = body.insertRow();
@@ -1114,7 +1113,7 @@ var EDDTableImport;
                 _this.rowCheckboxCells.push(cell[0]);
                 ////////////////////
                 // pulldown cell
-                ///////////////////
+                ////////////////////
                 cell = $(row.insertCell()).addClass('pulldownCell')
                     .attr({ 'id': 'rowPCell' + i, 'x': 0, 'y': i + 1 });
                 // use existing setting, or use the last if rows.length > settings.length, or blank

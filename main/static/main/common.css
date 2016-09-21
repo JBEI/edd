@@ -266,6 +266,7 @@ div.helpBadgeDiv div.helpContent {
     position:absolute;
     border:1px solid #606060;
     padding:3px 6px;
+    margin:0px;
     background-color:white;
     color:black;
     font-weight:normal;
@@ -276,10 +277,6 @@ div.helpBadgeDiv div.helpContent {
     -webkit-transform: translate(-15px,9px);
     -o-transform: translate(-15px,9px);
     -moz-transform: translate(-15px,9px);
-}
-div.helpBadgeDiv div.helpContent {
-    padding:3px 0px;
-    margin:0px;
 }
 
 div.helpContent li {
