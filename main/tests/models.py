@@ -580,7 +580,7 @@ class ImportTests(TestCase):
         }
         # XXX not proud of this, but we need actual IDs in here
         return {
-            'action': "Submit Data",
+            'action': "Submit Import",
             'datalayout': "std",
             'jsonoutput': json,
             'rawdataformat': "csv",

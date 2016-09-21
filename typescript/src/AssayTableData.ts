@@ -177,7 +177,7 @@ module EDDTableImport {
         // TODO: Make Step 3 track this with an internal variable.
         if (EDDTableImport.selectMajorKindStep.interpretationMode == 'mdv') {
             // A default set of pulldown settings for this mode
-            EDDTableImport.identifyStructuresStep.pulldownSettings = [TypeEnum.Assay_Line_Names, TypeEnum.Metabolite_Name];
+            EDDTableImport.identifyStructuresStep.pulldownSettings = [TypeEnum.Assay_Line_Names, TypeEnum.Measurement_Type];
         }
         EDDTableImport.rawInputStep.previousStepChanged();
     }
@@ -218,8 +218,8 @@ module EDDTableImport {
     // Note that this is not all that the server needs, in order to successfully process an import.
     // It also reads other form elements from the page, created by SelectMajorKindStep and TypeDisambiguationStep.
     export function submitForImport(): void {
-        var json: string;
-        var resolvedSets = EDDTableImport.typeDisambiguationStep.createSetsForSubmission();
+        var json: string, resolvedSets;
+        resolvedSets = EDDTableImport.typeDisambiguationStep.createSetsForSubmission();
         json = JSON.stringify(resolvedSets);
         $('#jsonoutput').val(json);
         $('#jsondebugarea').val(json);
@@ -1050,10 +1050,10 @@ module EDDTableImport {
         static RPKM_Values = 11;
         static Assay_Line_Names = 1;
         static Protein_Name = 12;
-        static Metabolite_Names = 2;
+        static Measurement_Types = 2; // plural!!
         static Timestamp = 3;
         static Metadata_Name = 4;
-        static Metabolite_Name = 5;
+        static Measurement_Type = 5; // singular!!
     }
 
 
@@ -1113,6 +1113,8 @@ module EDDTableImport {
 
         DISABLED_PULLDOWN_LABEL:string = '--';
         DEFAULT_STEP3_PULLDOWN_VALUE:number;
+
+        DUPLICATE_LEGEND_THRESHOLD:number = 10;
 
 
         constructor(selectMajorKindStep: SelectMajorKindStep, rawInputStep: RawInputStep, nextStepCallback: any) {
@@ -1314,11 +1316,11 @@ module EDDTableImport {
         }
 
         constructDataTable(mode: string, grid: any, gridRowMarkers: any): void {
-            var controlCols: string[], pulldownOptions: RowPulldownOption[],
-                table: HTMLTableElement, colgroup: JQuery, body: HTMLTableElement,
-                row: HTMLTableRowElement;
+            var body: HTMLTableElement, colgroup: JQuery, controlCols: string[], legendCopy: JQuery,
+                parentDiv: JQuery, pulldownOptions: RowPulldownOption[],
+                row: HTMLTableRowElement, startTime: Date, t, table: HTMLTableElement;
 
-            var startTime = new Date();
+            startTime = new Date();
             console.log("Start of IdentifyStructuresStep.constructDataTable()");
 
             this.dataCells = [];
@@ -1353,20 +1355,20 @@ module EDDTableImport {
                     [ this.DISABLED_PULLDOWN_LABEL, this.DEFAULT_STEP3_PULLDOWN_VALUE],
                     ['Entire Row Is...', [
                         ['Assay/Line Names', TypeEnum.Assay_Line_Names],
-                        ['Metabolite Names', TypeEnum.Metabolite_Names]
+                        ['Measurement Types', TypeEnum.Measurement_Types]
                     ]
                     ],
                     ['First Column Is...', [
                         ['Timestamp', TypeEnum.Timestamp],
                         ['Metadata Name', TypeEnum.Metadata_Name],
-                        ['Metabolite Name', TypeEnum.Metabolite_Name]
+                        ['Measurement Type', TypeEnum.Measurement_Type]
                     ]
                     ]
                 ];
             }
 
             // attach all event handlers to the table itself
-            var t = this;
+            t = this;
             table = <HTMLTableElement>$('<table>').attr('cellspacing', '0').appendTo($('#dataTableDiv'))
                 .on('click', '[name=enableColumn]', (ev: JQueryMouseEventObject) => {
                     t.toggleTableColumn(ev.target);
@@ -1475,6 +1477,11 @@ module EDDTableImport {
                     this.dataCells[i].push(cell[0]);
                 });
             });
+
+            if(grid.length > this.DUPLICATE_LEGEND_THRESHOLD) {
+                legendCopy = $('.step3Legend').clone();
+                legendCopy.insertAfter('#dataTableDiv');
+            }
             $('.step3Legend').toggleClass('off', grid.length === 0);
             this.applyTableDataTypeStyling(grid);
             var endTime = new Date();
@@ -1509,11 +1516,11 @@ module EDDTableImport {
                 var pulldown: number, hlLabel: boolean, hlRow: boolean;
                 pulldown = this.pulldownSettings[index] || 0;
                 hlLabel = hlRow = false;
-                if (pulldown === TypeEnum.Assay_Line_Names || pulldown === TypeEnum.Metabolite_Names) {
+                if (pulldown === TypeEnum.Assay_Line_Names || pulldown === TypeEnum.Measurement_Types) {
                     hlRow = true;
                 } else if (pulldown === TypeEnum.Timestamp ||
                     pulldown === TypeEnum.Metadata_Name ||
-                    pulldown === TypeEnum.Metabolite_Name) {
+                    pulldown === TypeEnum.Measurement_Type) {
                     hlLabel = true;
                 }
                 $(this.rowLabelCells[index]).toggleClass('dataTypeCell', hlLabel);
@@ -1580,7 +1587,7 @@ module EDDTableImport {
             this.pulldownUserChangedFlags[index] = true;
             if (value === TypeEnum.Timestamp ||
                 value === TypeEnum.Metadata_Name ||
-                value === TypeEnum.Metabolite_Name ||
+                value === TypeEnum.Measurement_Type ||
                 value === TypeEnum.Protein_Name) {
                 // "Timestamp", "Metadata", or other single-table-cell types
                 // Set all the rest of the pulldowns to this,
@@ -1602,10 +1609,13 @@ module EDDTableImport {
                         return true; // continue looping
                     });
                 // In addition to the above action, we also need to do some checking on the entire set of
-                // pulldowns, to enforce a division between the "Metabolite Name" single data type and the
-                // other single data types. If the user uses even one "Metabolite Name" pulldown, we can't
+                // pulldowns, to enforce a division between the "Measurement Type" single data type
+                // and the
+                // other single data types. If the user uses even one "Measurement Type"
+                // pulldown, we can't
                 // allow any of the other types, and vice-versa.
-                //   Why?  Because "Metabolite Name" is used to label the specific case of a table that
+                //   Why?  Because "Measurement Type" is used to label the specific case of a table
+                // that
                 // does not contain a timestamp on either axis.  In that case, the table is meant to
                 // provide data for multiple Measurements and Assays for a single unspecified time point.
                 // (That time point is requested later in the UI.)
@@ -1617,21 +1627,22 @@ module EDDTableImport {
                 // this page does not end up in Assays ... and that case doesn't make much sense given
                 // that this is the Assay Data Import page!
                 //   Anyway, here we run through the pulldowns, making sure that if the user selected
-                // "Metabolite Name", we blank out all references to "Timestamp" and "Metadata", and
+                // "Measurement Type", we blank out all references to "Timestamp" and
+                // "Metadata", and
                 // vice-versa.
-                if (value === TypeEnum.Metabolite_Name || value === TypeEnum.Timestamp || value === TypeEnum.Metadata_Name) {
+                if (value === TypeEnum.Measurement_Type || value === TypeEnum.Timestamp || value === TypeEnum.Metadata_Name) {
 
                     grid.forEach((_, i: number): void => {
                         var c: number = this.pulldownSettings[i];
-                        if (value === TypeEnum.Metabolite_Name) {
+                        if (value === TypeEnum.Measurement_Type) {
                             if (c === TypeEnum.Timestamp || c === TypeEnum.Metadata_Name) {
                                 this.pulldownObjects[i].selectedIndex = 0;
                                 this.pulldownSettings[i] = 0;
-                            } else if (c === TypeEnum.Metabolite_Names) { // Can't allow "Measurement Types" setting either
+                            } else if (c === TypeEnum.Measurement_Types) { // Can't allow "Measurement Types" setting either
                                 this.pulldownObjects[i].selectedIndex = TypeEnum.Assay_Line_Names;
                                 this.pulldownSettings[i] = TypeEnum.Assay_Line_Names;
                             }
-                        } else if ((value === TypeEnum.Timestamp || value === TypeEnum.Metadata_Name) && c === TypeEnum.Metabolite_Name) {
+                        } else if ((value === TypeEnum.Timestamp || value === TypeEnum.Metadata_Name) && c === TypeEnum.Measurement_Type) {
                             this.pulldownObjects[i].selectedIndex = 0;
                             this.pulldownSettings[i] = 0;
                         }
@@ -1870,7 +1881,7 @@ module EDDTableImport {
                 var pulldown: number;
                 if (this.activeRowFlags[y]) {
                     pulldown = this.pulldownSettings[y];
-                    if (pulldown === TypeEnum.Metabolite_Name || pulldown === TypeEnum.Protein_Name) {
+                    if (pulldown === TypeEnum.Measurement_Type || pulldown === TypeEnum.Protein_Name) {
                         single++; // Single Measurement Name or Single Protein Name
                     } else if (pulldown === TypeEnum.Metadata_Name || pulldown === TypeEnum.Timestamp) {
                         nonSingle++;
@@ -1919,7 +1930,7 @@ module EDDTableImport {
                         }
 
                         var m_name: string = null;
-                        if (pulldown === TypeEnum.Metabolite_Name) {
+                        if (pulldown === TypeEnum.Measurement_Type) {
                             if (!seenMeasurementNames[label]) {
                                 seenMeasurementNames[label] = true;
                                 this.uniqueMeasurementNames.push(label);
@@ -2022,7 +2033,7 @@ module EDDTableImport {
                         }
                         set.assay_name = value;
                         return;
-                    } else if (pulldown === TypeEnum.Metabolite_Names) {   // Metabolite Names
+                    } else if (pulldown === TypeEnum.Measurement_Types) {   // Metabolite Names
                         // If haven't seen value before, increment and store uniqueness index
                         if (!seenMeasurementNames[value]) {
                             seenMeasurementNames[value] = true;
@@ -2235,6 +2246,15 @@ module EDDTableImport {
 
         STEP_4_REQUIRED_INPUT_CLASS: string = "step4_required_input";
 
+        STEP_4_TOGGLE_ROW_CHECKBOX: string = 'toggleAllButton';
+
+        STEP_4_TOGGLE_SUBSECTION_CLASS: string = 'step4SubsectionToggle';
+
+        STEP4_SUBSECTION_REQUIRED_CLASS = 'step4RequiredSubsectionLabel';
+        
+        TOGGLE_ALL_THREASHOLD:number = 4;
+        DUPLICATE_CONTROLS_THRESHOLD:number = 10;
+
 
         constructor(selectMajorKindStep: SelectMajorKindStep, identifyStructuresStep: IdentifyStructuresStep, nextStepCallback: any) {
             var reDoStepOnChange: string[], masterInputSelectors:string[];
@@ -2395,6 +2415,11 @@ module EDDTableImport {
             $('#masterMTypeDiv').addClass('off');
             $('#disambiguateMetadataSection').addClass('off');
 
+            // remove toggle buttons and labels dynamically added for some subsections
+            // (easier than leaving them in place)
+            $('.' + this.STEP_4_TOGGLE_SUBSECTION_CLASS).remove();
+            $('.' + this.STEP4_SUBSECTION_REQUIRED_CLASS).remove();
+
             hasRequiredInitialInput = this.identifyStructuresStep.requiredInputsProvided();
 
             // If parsed data exists, but we haven't seen a single timestamp, show the "master
@@ -2438,6 +2463,40 @@ module EDDTableImport {
             // Get to work!!
         }
 
+        addToggleAllButton(parent: JQuery, objectsLabel: string): JQuery {
+            return $('<button type="button">')
+                .text('Select All ' + objectsLabel)
+                .addClass(this.STEP_4_TOGGLE_SUBSECTION_CLASS)
+                .appendTo(parent)
+                // use click so we don't reparse for each after 'select all'
+                .on('click', this.toggleAllSubsectionItems.bind(this));
+        }
+
+        toggleAllSubsectionItems(ev: JQueryEventObject): void {
+            var allSelected: boolean, checkboxes: JQuery, parentDiv: JQuery;
+
+            parentDiv = $(ev.target).parent();
+            allSelected = true;
+            checkboxes = $(parentDiv).find('.' + this.STEP_4_TOGGLE_ROW_CHECKBOX);
+
+            // inspect all the checkboxes in this subsection to see their selection state
+            checkboxes.each((index: number, elt: Element) => {
+                var checkbox = $(elt);
+                if(!checkbox.is(':checked')) {
+                    allSelected = false;
+                }
+            });
+
+            // un/check all checkboxes based on their previous state
+            checkboxes.each((index: number, elt: Element) => {
+                var checkbox = $(elt);
+                checkbox.prop('checked', !allSelected);
+                this.toggleTableRowEnabled(checkbox);
+            });
+
+            this.queueReparseThisStep();
+        }
+
 
         // If the previous step found Line names that need resolving, and the interpretation mode in Step 1
         // warrants resolving Lines independent of Assays, we create this section.
@@ -2446,8 +2505,9 @@ module EDDTableImport {
         // This means users can create a matrix of Line/Assay combinations, rather than a one-dimensional
         // resolution where unique Assay names must always point to one unique Assay record.
         remakeLineSection(): void {
-            var table: HTMLTableElement, body: HTMLTableElement, uniqueLineNames, startTime: Date,
-                endTime: Date, elapsedSeconds: number, t, hasRequiredInitialInputs: boolean;
+            var body: HTMLTableElement, elapsedSeconds: number, endTime: Date,
+                hasRequiredInitialInputs: boolean, requiredInputText: string, startTime: Date, table: HTMLTableElement,
+                uniqueLineNames, t, parentDiv;
             uniqueLineNames = this.identifyStructuresStep.uniqueLineNames;
 
             startTime = new Date();
@@ -2457,6 +2517,7 @@ module EDDTableImport {
                 disam.rowElementJQ.detach();
             });
             $('#disambiguateLinesTable').remove();
+
             this.lineObjSets = [];
 
             if (uniqueLineNames.length === 0) {
@@ -2470,12 +2531,20 @@ module EDDTableImport {
             this.currentlyVisibleLineObjSets = [];
             t = this;
 
+            parentDiv = $('#disambiguateLinesSection');
+            requiredInputText = 'At least one line is required.';
+            this.addRequiredInputLabel(parentDiv, requiredInputText);
+
+            if(uniqueLineNames.length > this.TOGGLE_ALL_THREASHOLD) {
+                this.addToggleAllButton(parentDiv, 'Lines');
+            }
+
             ////////////////////////////////////////////////////////////////////////////////////////
             // Set up the table and column headers
             ////////////////////////////////////////////////////////////////////////////////////////
             table = <HTMLTableElement>$('<table>')
                 .attr({ 'id': 'disambiguateLinesTable', 'cellspacing': 0 })
-                .appendTo($('#disambiguateLinesSection').removeClass('off'))
+                .appendTo(parentDiv.removeClass('off'))
                 .on('change', 'select', (ev: JQueryInputEventObject): void => {
                     t.userChangedLineDisam(ev.target);
                 })[0];
@@ -2488,6 +2557,9 @@ module EDDTableImport {
                     defaultSel = this.disambiguateAnAssayOrLine(name, i);
                     // First make a table row, and save a reference to it
                     row = <HTMLTableRowElement>body.insertRow();
+
+                    this.addIgnoreCheckbox(row);
+
                     disam.rowElementJQ = $(row);
                     // Next, add a table cell with the string we are disambiguating
                     $('<div>').text(name).appendTo(row.insertCell());
@@ -2495,12 +2567,17 @@ module EDDTableImport {
                     cell = $(row.insertCell()).css('text-align', 'left');
                     this.appendLineAutoselect(cell, disam, defaultSel, i);
                     disam.selectLineElements.nameInput.data('visibleIndex', i);
-                    disam.selectLineElements.selectedId.val("named_or_new");
+                    disam.selectLineElements.selectedId.val("new");
                     this.lineObjSets[name] = disam;
                 }
                 disam.rowElementJQ.appendTo(body);
                 this.currentlyVisibleLineObjSets.push(disam);
             });
+
+            if(uniqueLineNames.length > this.DUPLICATE_CONTROLS_THRESHOLD) {
+                this.addToggleAllButton(parentDiv, 'Lines');
+                this.addRequiredInputLabel(parentDiv, requiredInputText);
+            }
 
             endTime = new Date();
             elapsedSeconds = endTime.getTime() - startTime.getTime();
@@ -2516,10 +2593,11 @@ module EDDTableImport {
         // reveal the pulldowns for selecting a master Line/Assay, leaving the table empty, and return.
         remakeAssaySection(): void {
 
-            var table: HTMLTableElement, tableBody: HTMLTableElement, uniqueAssayNames,
-                masterProtocol: number, startTime: Date, avgRowCreationSeconds: number, endTime: Date,
-                elapsedSeconds: number, nRows:number, nColumns:number, nControls:number,
-                maxRowCreationSeconds:number, totalRowCreationSeconds: number;
+            var  avgRowCreationSeconds: number, endTime: Date, elapsedSeconds: number,
+                maxRowCreationSeconds:number, masterProtocol: number, nColumns:number,
+                nControls:number, nRows:number, parentDiv: JQuery, requiredInputText: string, startTime: Date, table: HTMLTableElement,
+                tableBody: HTMLTableElement, uniqueAssayNames,
+                totalRowCreationSeconds: number;
 
             // gather up inputs from this and previous steps
             uniqueAssayNames = this.identifyStructuresStep.uniqueAssayNames;
@@ -2535,12 +2613,14 @@ module EDDTableImport {
             $('#disambiguateAssaysTable').remove();
             this.assayObjSets = {};
 
-            //end early if there's nothing to display in this section
+            // end early if there's nothing to display in this section
             if ((!this.identifyStructuresStep.requiredInputsProvided()) || this.identifyStructuresStep.parsedSets.length === 0) {
                 console.log("End of TypeDisambiguationStep.remakeAssaySection() -- no input data" +
                     " to process");
                 return;
             }
+
+            parentDiv = $('#disambiguateAssaysSection');
 
             if (uniqueAssayNames.length === 0) {
                 console.log("End of TypeDisambiguationStep.remakeAssaySection() -- no unique" +
@@ -2549,13 +2629,20 @@ module EDDTableImport {
                 return;
             }
 
+            requiredInputText = 'At least one valid assay / line combination is required.';
+            this.addRequiredInputLabel(parentDiv, requiredInputText);
+
+            if(uniqueAssayNames.length > this.TOGGLE_ALL_THREASHOLD) {
+                this.addToggleAllButton(parentDiv, 'Assays');
+            }
+
             ////////////////////////////////////////////////////////////////////////////////////////
             // Create the table
             ////////////////////////////////////////////////////////////////////////////////////////
             var t = this;
             table = <HTMLTableElement>$('<table>')
                 .attr({ 'id': 'disambiguateAssaysTable', 'cellspacing': 0 })
-                .appendTo($('#disambiguateAssaysSection').removeClass('off'))
+                .appendTo((parentDiv.removeClass('off'))
                 .on('change', 'select', (ev: JQueryInputEventObject): void => {
                     t.userChangedAssayDisam(ev.target);
                 })[0];
@@ -2582,6 +2669,8 @@ module EDDTableImport {
                     // First make a table row, and save a reference to it
                     row = <HTMLTableRowElement>tableBody.insertRow();
                     nRows++;
+
+                    this.addIgnoreCheckbox(row);
 
                     disam.rowElementJQ = $(row);
                     // Next, add a table cell with the string we are disambiguating
@@ -2632,6 +2721,12 @@ module EDDTableImport {
                 totalRowCreationSeconds += rowCreationElapsedSeconds;
             });
 
+            if(uniqueAssayNames.length > this.DUPLICATE_CONTROLS_THRESHOLD) {
+                var warningText: string;
+                this.addToggleAllButton(parentDiv, 'Assays');
+                this.addRequiredInputLabel(parentDiv, requiredInputText);
+            }
+
             avgRowCreationSeconds = totalRowCreationSeconds / nRows;
 
             endTime = new Date();
@@ -2640,12 +2735,19 @@ module EDDTableImport {
                 " time: ", elapsedSeconds, " s. Avg row creation time: ", avgRowCreationSeconds, " s");
         }
 
+        addRequiredInputLabel(parentDiv: JQuery, text: string): JQuery {
+            return $('<div>')
+                    .text(text)
+                    .addClass(this.STEP4_SUBSECTION_REQUIRED_CLASS)
+                    .addClass('off')
+                    .addClass('missingSingleFormInput').appendTo(parentDiv);
+        }
+
         appendLineAutoselect(parentElement:JQuery, disam, defaultSelection, i:number): void {
             // create a text input to gather user input
             var lineInputId = 'disamLineInput' + i;
             var lineNameInput = $('<input type="text" class="autocomp ui-autocomplete-input">')
                 .data('setByUser', false)
-                .attr('name', lineInputId)
                 .prop('id', lineInputId)
                 .val("(Create New)")
                 .addClass(this.STEP_4_USER_INPUT_CLASS)
@@ -2692,7 +2794,7 @@ module EDDTableImport {
 
 
         remakeMeasurementSection(): void {
-            var body:HTMLTableElement, bodyJq: JQuery,  hasRequiredInitialInput: boolean, mode:string, uniqueMeasurementNames, seenAnyTimestamps:boolean, startTime:Date, row: HTMLTableRowElement;
+            var body:HTMLTableElement, bodyJq: JQuery,  hasRequiredInitialInput: boolean, mode:string, parentDiv: JQuery, uniqueMeasurementNames, seenAnyTimestamps:boolean, startTime:Date, row: HTMLTableRowElement;
 
             mode = this.selectMajorKindStep.interpretationMode;
             uniqueMeasurementNames = this.identifyStructuresStep.uniqueMeasurementNames;
@@ -2703,7 +2805,9 @@ module EDDTableImport {
 
             console.log("Start of TypeDisambiguationStep.remakeMeasurementSection()");
 
-            $('#disambiguateMeasurementsSection').addClass('off');
+            parentDiv = $('#disambiguateMeasurementsSection')
+
+            parentDiv.addClass('off');
             $('#masterMTypeDiv').addClass('off');
 
             bodyJq = $('#disambiguateMeasurementsTable tbody');
@@ -2732,6 +2836,10 @@ module EDDTableImport {
                 return;
             }
 
+            if(uniqueMeasurementNames.length > this.TOGGLE_ALL_THREASHOLD) {
+                this.addToggleAllButton(parentDiv, 'Measurement Types');
+            }
+
             // put together a disambiguation section for measurement types
             var t = this;
             body = <HTMLTableElement>(bodyJq[0]);
@@ -2744,6 +2852,10 @@ module EDDTableImport {
                 } else {
                     disam = {};
                     row = <HTMLTableRowElement>body.insertRow();
+
+                    // ignore checkbox.
+                    this.addIgnoreCheckbox(row);
+
                     disam.rowElementJQ = $(row);
                     $('<div>').text(name).appendTo(row.insertCell());
 
@@ -2790,6 +2902,11 @@ module EDDTableImport {
 
                 this.currentlyVisibleMeasurementObjSets.push(disam);
             });
+
+            if(uniqueMeasurementNames.length > this.DUPLICATE_CONTROLS_THRESHOLD) {
+                this.addToggleAllButton(parentDiv, 'Measurement Types');
+            }
+
             this.checkAllMeasurementCompartmentDisam();
             $('#disambiguateMeasurementsSection').toggleClass('off', uniqueMeasurementNames.length === 0 || !hasRequiredInitialInput);
             var endTime = new Date();
@@ -2798,8 +2915,21 @@ module EDDTableImport {
                 " ", elapsedSeconds, " s.");
         }
 
+        addIgnoreCheckbox(row: HTMLTableRowElement): JQuery {
+            var checkbox: JQuery;
+            // ignore checkbox. allows import for buttoned up file formats (e.g. biolector,
+            // HPLC) to selectively ignore parts of the input file that aren't necessary
+            checkbox = $('<input type="checkbox">')
+                .prop('checked', true)
+                .addClass(this.STEP_4_USER_INPUT_CLASS)
+                .addClass(this.STEP_4_TOGGLE_ROW_CHECKBOX)
+                .appendTo(row.insertCell())
+                .on('change', this.userChangedRowEnabled.bind(this));
+            return checkbox;
+        }
+
         remakeMetadataSection(): void {
-            var table: HTMLTableElement, body: HTMLTableElement, row: HTMLTableRowElement;
+            var body: HTMLTableElement, parentDiv: JQuery, row: HTMLTableRowElement, table: HTMLTableElement;
 
             var startTime = new Date();
             console.log("Start of TypeDisambiguationStep.remakeMetadataSection()");
@@ -2812,6 +2942,13 @@ module EDDTableImport {
             }
 
             $('#disambiguateMetadataTable').remove();
+
+            parentDiv = $('#disambiguateMetadataSection');
+
+            if(uniqueMetadataNames.length > this.TOGGLE_ALL_THREASHOLD) {
+                this.addToggleAllButton(parentDiv, 'Metadata Types');
+            }
+
             // put together a disambiguation section for metadata
             table = <HTMLTableElement>$('<table>')
                 .attr({ 'id': 'disambiguateMetadataTable', 'cellspacing': 0 })
@@ -2821,7 +2958,8 @@ module EDDTableImport {
                 })[0];
             body = <HTMLTableElement>$('<tbody>').appendTo(table)[0];
             uniqueMetadataNames.forEach((name: string, i: number): void => {
-                var disam: any;
+                var cell: HTMLTableCellElement, disam: any, ignoreLabel: JQuery,
+                    ignoreChkbx: JQuery, typeDisambiguationStep: TypeDisambiguationStep;
                 disam = this.metadataObjSets[name];
                 if (disam && disam.rowElementJQ) {
                     disam.rowElementJQ.appendTo(body);
@@ -2829,7 +2967,14 @@ module EDDTableImport {
                     disam = {};
                     row = <HTMLTableRowElement>body.insertRow();
                     disam.rowElementJQ = $(row);
+
+                    // ignore checkbox
+                    this.addIgnoreCheckbox(row);
+
+                    // metadata input text
                     $('<div>').text(name).appendTo(row.insertCell());
+
+                    // resolution autocomplete
                     disam.metaObj = EDD_auto.create_autocomplete(row.insertCell())
                         .val(name)
                         .addClass(this.STEP_4_USER_INPUT_CLASS);
@@ -2837,14 +2982,59 @@ module EDDTableImport {
                         .next()
                         .addClass(this.STEP_4_REQUIRED_INPUT_CLASS);
                     this.metadataObjSets[name] = disam;
+
                 }
                 disam.metaObj.attr('name', 'disamMeta' + i).addClass('autocomp_altype')
                     .next().attr('name', 'disamMetaHidden' + i);
                 EDD_auto.setup_field_autocomplete(disam.metaObj, 'AssayLineMetadataType', this.autoCache.meta);
             });
+
+            if(uniqueMetadataNames.length > this.DUPLICATE_CONTROLS_THRESHOLD) {
+                this.addToggleAllButton(parentDiv, 'Metadata Types');
+            }
+
             var endTime = new Date();
             var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
             console.log("End of TypeDisambiguationStep.remakeMetadataSection(). Elapsed time: ", elapsedSeconds, " s.");
+        }
+
+        userChangedRowEnabled(ev: JQueryInputEventObject): void {
+            var checkbox: JQuery, enabled: boolean;
+
+            // get paired hidden / visible autocomplete inputs in the same table row as the checkbox
+            // and enable/disable/require them as appropriate
+            checkbox = $(ev.target);
+            this.toggleTableRowEnabled(checkbox);
+            this.queueReparseThisStep();
+        }
+
+        toggleTableRowEnabled(checkbox: JQuery) {
+            var enabled = checkbox.is(':checked');
+
+            // iterate over cells in the row
+            checkbox.parent().nextAll().each((index: number, elt: Element): void => {
+                var tableCell: JQuery = $(elt);
+                tableCell.toggleClass('disabledTextLabel', !enabled);
+
+                // manage text input(s)
+                tableCell.find(':input').each((index:number, elt: Element): void => {
+                    var textInput = $(elt);
+                    // clear / disable the visible input so it doesn't get submitted with the form
+                    textInput.prop('disabled', !enabled);
+                });
+
+                // manage hidden input(s)
+                tableCell.find(':hidden').each((index: number, elt: Element): void => {
+                    var hiddenInput = $(elt);
+                    hiddenInput.toggleClass(this.STEP_4_REQUIRED_INPUT_CLASS, enabled);
+                });
+
+                // manage dropdowns
+                tableCell.find('select').each((index: number, elt: Element): void => {
+                    var hiddenInput = $(elt);
+                    hiddenInput.toggleClass(this.STEP_4_REQUIRED_INPUT_CLASS, enabled);
+                });
+            });
         }
 
         // We call this when any of the 'master' pulldowns are changed in Step 4.
@@ -3040,6 +3230,13 @@ module EDDTableImport {
         }
 
 
+        /**
+         * Reviews parsed data from Step 3 and applies decisions made in Step 4 to create the final
+         * dataset for submission to the server. Note that some data may be omitted from submission
+         * if the user has chosen to omit them (e.g. because of an undefined metadata type that
+         * isn't required).
+         * @returns {ResolvedImportSet[]}
+         */
         createSetsForSubmission():ResolvedImportSet[] {
             this.errorMessages = [];
             this.warningMessages = [];
@@ -3073,47 +3270,62 @@ module EDDTableImport {
             var droppedDatasetsForMissingTime = 0;
 
             parsedSets.forEach((set, c: number): void => {
-                var resolvedSet: ResolvedImportSet, line_id: string, assay_id: string,
-                    measurement_id: string, compartment_id: string, units_id: string, data,
-                    metaData: {[id:string]: string}, metaDataPresent: boolean, disam, protocolObjSets;
+                var  assayDisam, assay_id: string, assaySelect: JQuery, compartmentId: string, data,
+                    lineDisam, lineId: string, lineIdInput: JQuery, measDisam, metaDisam,
+                    measurementTypeId: string, unitsId: string, metaDataById: {[id:string]: string},
+                    metaDataByName: {[name:string]: string}, metaDataPresent: boolean,
+                    metaId: number, metaId: number, protocolObjSets,
+                    resolvedSet: ResolvedImportSet;
 
-                line_id = 'new';    // A convenient default
+                lineId = 'new';    // A convenient default
                 assay_id = 'named_or_new';
 
-                measurement_id = null;
-                compartment_id = null;
-                units_id = null;
+                measurementTypeId = null;
+                compartmentId = null;
+                unitsId = null;
                 // In modes where we resolve measurement types in the client UI, go with the master values by default.
                 if (mode === "biolector" || mode === "std" || mode === "mdv" || mode === "hplc") {
-                    measurement_id = masterMType;
-                    compartment_id = masterMComp;
-                    units_id = masterMUnits;
+                    measurementTypeId = masterMType;
+                    compartmentId = masterMComp;
+                    unitsId = masterMUnits;
                 }
 
                 data = set.data;
-                metaData = {};
                 metaDataPresent = false;
 
                 if (mode === "biolector") {
-                    line_id = masterLine;
+                    lineId = masterLine;
                     assay_id = "named_or_new"; // Tells the server to attempt to resolve directly against the name, or make a new Assay
                     // If we have a valid, specific Line name, look for a disambiguation field that matches it.
                     if (set.line_name !== null) {
-                        var disam = this.lineObjSets[set.line_name];
-                        if (disam) {
-                            var lineIdInput = disam.selectLineElements.selectedId;
-                            line_id = lineIdInput.val();
+                        lineDisam = this.lineObjSets[set.line_name];
+                        if (lineDisam) {
+                            lineIdInput = lineDisam.selectLineElements.selectedId;
+
+                            // if we've disabled import for the associated line, skip adding this
+                            // measurement to the list
+                            if(lineIdInput.is(':disabled')) {
+                                return; // continue to the next loop iteration
+                            }
+                            lineId = lineIdInput.val();
                         }
                     }
                 } else {
-                    line_id = masterAssayLine;
+                    lineId = masterAssayLine;
                     assay_id = masterAssay;
                     if (set.assay_name !== null && masterProtocol) {
-                        disam = this.assayObjSets[set.assay_name];
-                        if (disam) {
-                            assay_id = disam.selectAssayJQElement.val();
-                            var lineIdInput = disam.selectLineElements.selectedId;
-                            line_id = lineIdInput.val();
+                        assayDisam = this.assayObjSets[set.assay_name];
+                        if (assayDisam) {
+                            assaySelect = assayDisam.selectAssayJQElement;
+
+                            // if we've disabled import for this assay, skip adding this measurement
+                            // to the list
+                            if(assaySelect.is(':disabled')) {
+                                return; // continue to the next loop iteration
+                            }
+                            assay_id = assaySelect.val();
+                            lineIdInput = assayDisam.selectLineElements.selectedId;
+                            lineId = lineIdInput.val();
                         }
                     }
                 }
@@ -3122,11 +3334,17 @@ module EDDTableImport {
                 // and only if we are resolving measurement types client-side.
                 if (mode === "biolector" || mode === "std" || mode === "mdv" || mode === 'hplc') {
                     if (set.measurement_name !== null) {
-                        var disam = this.measurementObjSets[set.measurement_name];
-                        if (disam) {
-                            measurement_id = disam.typeHiddenObj.val();
-                            compartment_id = disam.compHiddenObj.val() || "0";
-                            units_id = disam.unitsHiddenObj.val() || "1";
+                        measDisam= this.measurementObjSets[set.measurement_name];
+                        if (measDisam) {
+                            measurementTypeId = measDisam.typeHiddenObj.val();
+                            compartmentId = measDisam.compHiddenObj.val() || "0";
+                            unitsId = measDisam.unitsHiddenObj.val() || "1";
+
+                            // If we've disabled import for measurements of this type, skip adding this
+                            // measurement to the list
+                            if(measDisam.typeHiddenObj.is(':disabled')) {
+                                return; // continue to the next loop iteration
+                            }
                         }
                     }
                 }
@@ -3134,12 +3352,15 @@ module EDDTableImport {
                 // Any metadata disambiguation fields that are left unresolved, will have their metadata
                 // dropped from the import in this step, because this loop is building key-value pairs where
                 // the key is the chosen database id of the metadata type.  No id == not added.
+                metaDataById = {};
+                metaDataByName = {};
                 Object.keys(set.metadata_by_name).forEach((name):void => {
-                    var disam = this.metadataObjSets[name];
-                    if (disam) {
-                        var id = disam.metaHiddenObj.val();
-                        if (id) {
-                            metaData[id] = set.metadata_by_name[name];
+                    metaDisam = this.metadataObjSets[name];
+                    if (metaDisam) {
+                        metaId = metaDisam.metaHiddenObj.val();
+                        if (metaId && (!metaDisam.metaHiddenObj.is(':disabled'))) {
+                            metaDataById[metaId] = set.metadata_by_name[name];
+                            metaDataByName[name] = set.metadata_by_name[name];
                             metaDataPresent = true;
                         }
                     }
@@ -3160,6 +3381,7 @@ module EDDTableImport {
                 }
 
                 // If we have no data, and no metadata that survived resolving, don't make the set.
+                // (return continues to the next loop iteration)
                 if (data.length < 1 && !metaDataPresent) { return; }
 
                 resolvedSet = {
@@ -3168,19 +3390,25 @@ module EDDTableImport {
                     line_name:         set.line_name,
                     assay_name:        set.assay_name,
                     measurement_name:  set.measurement_name,
-                    metadata_by_name:  set.metadata_by_name,
+                    metadata_by_name:  metaDataByName,
                     data:              data,
                     // Add new disambiguation-specific fields
                     protocol_id:       masterProtocol,
-                    line_id:           line_id,
+                    line_id:           lineId,
                     assay_id:          assay_id,
-                    measurement_id:    measurement_id,
-                    compartment_id:    compartment_id,
-                    units_id:          units_id,
-                    metadata_by_id:    metaData
+                    measurement_id:    measurementTypeId,
+                    compartment_id:    compartmentId,
+                    units_id:          unitsId,
+                    metadata_by_id:    metaDataById
                 };
                 resolvedSets.push(resolvedSet);
             });
+
+            if(resolvedSets.length === 0) {
+                this.errorMessages.push(new ImportMessage('All of the measurements and ' +
+                    ' metadata have been excluded from import. Please select some data to' +
+                    ' import.'));
+            }
 
             // log some debugging output if any data get dropped because of a missing timestamp
             if(droppedDatasetsForMissingTime) {
@@ -3229,8 +3457,41 @@ module EDDTableImport {
         }
 
         requiredInputsProvided():boolean {
-            var requiredInputs = $('.' + this.STEP_4_REQUIRED_INPUT_CLASS);
-            for(let input_id of requiredInputs.toArray()) {
+            var subsection: JQuery, requiredInputSubsectionSelectors: string[],
+                allRequiredInputs: JQuery, sectionRequiredInputs: JQuery[];
+
+            // loop over subsections that must have at least one input, making sure that all the
+            // visible ones have at least one required input that isn't ignored.
+            requiredInputSubsectionSelectors = ['#disambiguateAssaysSection', '#disambiguateLinesSection'];
+            for(let selector of requiredInputSubsectionSelectors) {
+                var hasEnabledInputs;
+                subsection = $(selector);
+
+                if(subsection.hasClass('off')) {
+                    continue;
+                }
+
+                sectionRequiredInputs = subsection.find('.' + this.STEP_4_REQUIRED_INPUT_CLASS).toArray();
+
+                for(let input_id of sectionRequiredInputs) {
+                    var input = $(input_id);
+                    if((!input.val()) && !(input.prop('disabled') || input.hasClass('off'))) {
+                        return false;
+                    }
+                }
+
+                hasEnabledInputs = sectionRequiredInputs.length !== 0;
+                subsection.find('.' + this.STEP4_SUBSECTION_REQUIRED_CLASS).toggleClass('off', hasEnabledInputs);
+
+                if(!hasEnabledInputs) {
+                    return false;
+                }
+            }
+
+            // test that all required inputs currently visible / enabled on the form have a valid
+            // value. Note: this check is very similar to, but distinct from, the one above.
+            var allRequiredInputs = $('.' + this.STEP_4_REQUIRED_INPUT_CLASS);
+            for(let input_id of allRequiredInputs.toArray()) {
                 var input = $(input_id);
 
                 // if the input has no value, but wasn't hidden from the display by the 'off'
@@ -3242,7 +3503,7 @@ module EDDTableImport {
                     return false;
                 }
             }
-            return requiredInputs.length > 0;
+            return allRequiredInputs.length > 0;
         }
     }
 

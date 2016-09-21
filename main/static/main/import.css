@@ -298,6 +298,11 @@ div.disambiguationSection table tr > td input[type="text"] {
 	margin:0px 2px 0px 0px;
 }
 
+.step4SubsectionToggle {
+    margin-top: 7px;
+    margin-bottom: 7px;
+}
+
 select.disamStd {
 	min-width: 10em;
 }
