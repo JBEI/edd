@@ -7,6 +7,8 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-exec');
     grunt.loadNpmTasks('grunt-insert-timestamp');
     grunt.loadNpmTasks('grunt-contrib-uglify');
+    grunt.loadNpmTasks('grunt-karma');
+    grunt.loadNpmTasks('grunt-contrib-jshint');
 
     grunt.initConfig({
     	clean: {
@@ -25,7 +27,7 @@ module.exports = function(grunt) {
                       fileList.forEach(function(filepath) {
                         statsObj = fs.statSync(filepath);
                         mTime = statsObj.mtime.getTime();
-                        if (mTime > mostRecentMTime) { mostRecentMTime = mTime }
+                        if (mTime > mostRecentMTime) { mostRecentMTime = mTime; }
                       });
                       return new Date(mostRecentMTime);
                     },
@@ -82,6 +84,34 @@ module.exports = function(grunt) {
                 }
             }
         },
+        karma: {
+          unit: {
+            configFile: 'karma.conf.js',
+            singleRun: true
+          }
+        },
+        concat: {
+          options: {},
+          dist: {
+            files: [
+                 'static/main/js/**/*.js',
+                 'fixtures/*.js',
+                 '!main/static/main/js/test/*.js'
+               ]
+          }
+        },
+        jshint: {
+            //include 'main/static/main/js/*.js' to lint all js files  
+          files: ['Gruntfile.js',
+                  './main/static/main/js/GroupedBarAssay.js',
+                  './main/static/main/js/GroupedBarTime.js',
+                  './main/static/main/js/GroupedBarTime.js'],
+          options: {
+            globals: {
+              jQuery: true
+            }
+          }
+        },
         uglify: {
             options: {
                 mangle: false
@@ -94,6 +124,13 @@ module.exports = function(grunt) {
                     dest: './typescript/build/'
                 }]
             }
+        },
+        screenshots: {
+          default_options: {
+            options: {
+                spawn: false
+            }
+          }
         },
         copy: {
             prep: {
@@ -137,6 +174,24 @@ module.exports = function(grunt) {
     var commit = grunt.option('commit');
     var watch = grunt.option('watch');
 
+    grunt.registerTask('test', [
+          'jshint',
+          'karma'
+    ]);
+
+    grunt.registerMultiTask( 'screenshots', 'Use Grunt and PhantomJS to generate Screenshots of' +
+        ' pages', function(){
+        var server = require( "./main/fixtures/node-server/main" );
+        var screenshot = require( "./main/fixtures/shot-wrapper" );
+
+        var done = this.async();
+
+        screenshot.takeShot( function(){
+            done();
+        });
+
+    });
+
     if (production) {
         // One-time production build
         grunt.registerTask('default', ["clean:build", "copy:prep", "ts:prod", "uglify:prod", "copy:mergeProd", "exec:collect"]);
@@ -150,6 +205,7 @@ module.exports = function(grunt) {
         // Standard one-time dev build
         grunt.registerTask('default', ["clean:build", "copy:prep", "insert_timestamp:js", "ts:dev", "copy:mergeDev", "exec:collect"]);
     }
+
 };
 
 

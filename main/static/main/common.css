@@ -177,7 +177,6 @@ div.topBanner > div.siteLogo {
 div.topBanner > div.pageName {
     color: #6c6c6c;
     font-size: 20pt;
-    padding-top: 20px;
 }
 div.topBanner > div.userMenu {
     float: right;
@@ -1019,6 +1018,7 @@ div.graphContainer {
     padding: 0;
     position: relative;
     width: 100%;
+    display: none;
 }
 
 div.graphToolTip {

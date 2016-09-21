@@ -1,5 +1,7 @@
 /// <reference path="typescript-declarations.d.ts" />
-/// <reference path="Utl.ts" />
+/// <reference path="../typings/d3/d3.d.ts"/>;
+/// <reference path="AssayTableDataGraphing.ts" />
+
 
 
 declare var ATData: any; // Setup by the server.
@@ -33,7 +35,6 @@ interface RawInputStat {
 // The callback function triggers the instance of the next step.
 module EDDTableImport {
     'use strict';
-
     // During initialization we will allocate one instance of each of the classes
     // that handle the major steps of the import process.
     // These are specified in the order they are called, and the order they appear on the page:
@@ -65,7 +66,7 @@ module EDDTableImport {
     // This information is added post-disambiguation, in addition to the fields from RawImportSet, and sent to the server
     interface ResolvedImportSet extends RawImportSet {
         protocol_id:string;
-        line_id:string;    // Value of 'null' or string 'new' indicates new Line should be created with name line_name. 
+        line_id:string;    // Value of 'null' or string 'new' indicates new Line should be created with name line_name.
         assay_id:string;
         measurement_id:string;
         compartment_id:string;
@@ -675,7 +676,7 @@ module EDDTableImport {
             // We'll also do the same for the second row and the second column, in case the
             // timestamps are underneath some other header.
             var arraysToAnalyze: string[][], arraysScores: number[], setTranspose: boolean;
-        
+
             // Note that with empty or too-small source data, these arrays will either remain
             // empty, or become 'null'
             arraysToAnalyze = [
@@ -1030,7 +1031,7 @@ module EDDTableImport {
 
 
         previousStepChanged(): void {
-            
+
             var mode = this.selectMajorKindStep.interpretationMode;
 
             var graph = $('#graphDiv');
@@ -1869,9 +1870,8 @@ module EDDTableImport {
             }
         }
 
-
         remakeGraphArea():void {
-
+            var graphHelper = Object.create(GraphHelperMethods);
             var mode = this.selectMajorKindStep.interpretationMode;
 
             this.graphRefreshTimerID = 0;
@@ -1880,11 +1880,16 @@ module EDDTableImport {
             }
             EDDATDGraphing.clearAllSets();
             var sets = this.graphSets;
+            var dataSets = [];
             // If we're not in either of these modes, drawing a graph is nonsensical.
             if (mode === "std" || mode === 'biolector' || mode === 'hplc') {
-                sets.forEach((set) => EDDATDGraphing.addNewSet(set));
+                sets.forEach(function(set) {
+                    var color = "#0E6FA4";
+                    var singleAssayObj = graphHelper.transformNewLineItem(EDDData, set, color);
+                    dataSets.push(singleAssayObj);
+            })
             }
-            EDDATDGraphing.drawSets();
+            EDDATDGraphing.addNewSet(dataSets);
         }
     }
 
@@ -2421,7 +2426,7 @@ module EDDTableImport {
                 } else if (highest < 0.6 && line.name.indexOf(assayOrLine) >= 0) {
                     // Finding the whole string inside the originating Line name is good too.
                     // It means that the user may intend to pair with this Assay even though the
-                    // Assay name is different.  
+                    // Assay name is different.
                     highest = 0.6;
                     selections.assayID = id;
                 } else if (highest < 0.4 &&

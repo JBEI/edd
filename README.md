@@ -301,6 +301,9 @@ running in the development environment.
         * Each provider may require additional details about the application, allowed domains
           and/or URLs, etc.
 
+## Javascript Tests <a name="Javascript Tests"/>
+* run `$ grunt test` to test javascript files.
+* run `$ grunt screenshots` to test graphs
 
 [1]:    https://public-edd.jbei.org
 [2]:    https://docker.io
