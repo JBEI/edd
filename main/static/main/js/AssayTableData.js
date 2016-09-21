@@ -200,8 +200,8 @@ var EDDTableImport;
         // If the master Protocol pulldown value has changed, note the change and return 'true'.
         // Otherwise return 'false'.
         SelectMajorKindStep.prototype.checkMasterProtocol = function () {
-            var protocolInput = $('#masterProtocol');
-            var p = parseInt(protocolInput.val(), 10);
+            var protocolRaw = $('#masterProtocol').val();
+            var p = (protocolRaw == DEFAULT_MASTER_PROTOCOL) ? 0 : parseInt(protocolRaw, 10);
             if (this.masterProtocol === p) {
                 return false;
             }
@@ -215,8 +215,7 @@ var EDDTableImport;
             return [];
         };
         SelectMajorKindStep.prototype.requiredInputsProvided = function () {
-            var masterProtocol = $('#masterProtocol').val();
-            return masterProtocol != DEFAULT_MASTER_PROTOCOL;
+            return this.masterProtocol != 0;
         };
         SelectMajorKindStep.prototype.previousStepChanged = function () {
             // no-op. no previous steps!
@@ -1005,7 +1004,7 @@ var EDDTableImport;
         };
         IdentifyStructuresStep.prototype.constructDataTable = function (mode, grid, gridRowMarkers) {
             var _this = this;
-            var body, colgroup, controlCols, legendCopy, parentDiv, pulldownOptions, row, startTime, t, table;
+            var body, colgroup, controlCols, legendCopy, lowerLegendId, pulldownOptions, row, startTime, t, table;
             startTime = new Date();
             console.log("Start of IdentifyStructuresStep.constructDataTable()");
             this.dataCells = [];
@@ -1152,9 +1151,15 @@ var EDDTableImport;
                     _this.dataCells[i].push(cell[0]);
                 });
             });
+            lowerLegendId = 'step3LowerLegend';
             if (grid.length > this.DUPLICATE_LEGEND_THRESHOLD) {
-                legendCopy = $('.step3Legend').clone();
-                legendCopy.insertAfter('#dataTableDiv');
+                $('#step3UpperLegend')
+                    .clone()
+                    .attr('id', lowerLegendId)
+                    .insertAfter('#dataTableDiv');
+            }
+            else {
+                $('#' + lowerLegendId).remove();
             }
             $('.step3Legend').toggleClass('off', grid.length === 0);
             this.applyTableDataTypeStyling(grid);
@@ -1892,7 +1897,7 @@ var EDDTableImport;
             // pointless to remake it in response to them. We may show/hide
             // it based on other state, but its content won't change. RemakeAssaySection() is
             // called by reconfigure(), which is called when other UI in this step changes.
-            if (this.masterAssaysOptionsDisplayedForProtocol != masterP && !isNaN(masterP)) {
+            if (this.masterAssaysOptionsDisplayedForProtocol != masterP) {
                 this.masterAssaysOptionsDisplayedForProtocol = masterP;
                 assayIn = $('#masterAssay').empty();
                 $('<option>').text('(Create New)').appendTo(assayIn).val('named_or_new').prop('selected', true);
@@ -1993,7 +1998,7 @@ var EDDTableImport;
         };
         TypeDisambiguationStep.prototype.addToggleAllButton = function (parent, objectsLabel) {
             return $('<button type="button">')
-                .text('Toggle All ' + objectsLabel)
+                .text('Select All ' + objectsLabel)
                 .addClass(this.STEP_4_TOGGLE_SUBSECTION_CLASS)
                 .appendTo(parent)
                 .on('click', this.toggleAllSubsectionItems.bind(this));
@@ -2112,7 +2117,7 @@ var EDDTableImport;
             this.currentlyVisibleAssayObjSets = [];
             $('#disambiguateAssaysTable').remove();
             this.assayObjSets = {};
-            // end early if there's nothing to display in this section
+            //end early if there's nothing to display in this section
             if ((!this.identifyStructuresStep.requiredInputsProvided()) || this.identifyStructuresStep.parsedSets.length === 0) {
                 console.log("End of TypeDisambiguationStep.remakeAssaySection() -- no input data" +
                     " to process");
@@ -2136,10 +2141,10 @@ var EDDTableImport;
             var t = this;
             table = $('<table>')
                 .attr({ 'id': 'disambiguateAssaysTable', 'cellspacing': 0 })
-                .appendTo((parentDiv.removeClass('off'))
+                .appendTo(parentDiv.removeClass('off'))
                 .on('change', 'select', function (ev) {
                 t.userChangedAssayDisam(ev.target);
-            })[0]);
+            })[0];
             tableBody = $('<tbody>').appendTo(table)[0];
             ////////////////////////////////////////////////////////////////////////////////////////
             // Create a table row for each unique assay name
@@ -2673,10 +2678,7 @@ var EDDTableImport;
             console.log("Start of TypeDisambiguationStep.createSetsForSubmission().");
             // From Step 1
             var mode = this.selectMajorKindStep.interpretationMode;
-            var masterProtocol = $("#masterProtocol").val();
-            if (masterProtocol === DEFAULT_MASTER_PROTOCOL) {
-                masterProtocol = null;
-            }
+            var masterProtocol = this.selectMajorKindStep.masterProtocol || null; // Cast 0 to null
             // From Step 3
             var seenAnyTimestamps = this.identifyStructuresStep.seenAnyTimestamps;
             var parsedSets = this.identifyStructuresStep.parsedSets;
@@ -2826,7 +2828,7 @@ var EDDTableImport;
                     var warningMessage = droppedDatasetsForMissingTime + " parsed datasets (" +
                         percentDropped + "%) were dropped because they were missing a timestamp.";
                     console.warn(warningMessage);
-                    this.warningMessages.push(new ImportMessage(msg, null, null));
+                    this.warningMessages.push(new ImportMessage(warningMessage, null, null));
                 }
             }
             else {

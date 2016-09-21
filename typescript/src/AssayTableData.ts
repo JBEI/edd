@@ -1316,11 +1316,12 @@ module EDDTableImport {
 
         constructDataTable(mode: string, grid: any, gridRowMarkers: any): void {
             var body: HTMLTableElement, colgroup: JQuery, controlCols: string[], legendCopy: JQuery,
-                parentDiv: JQuery, pulldownOptions: RowPulldownOption[],
+                lowerLegendId: string, pulldownOptions: RowPulldownOption[],
                 row: HTMLTableRowElement, startTime: Date, t, table: HTMLTableElement;
 
             startTime = new Date();
             console.log("Start of IdentifyStructuresStep.constructDataTable()");
+
 
             this.dataCells = [];
             this.colCheckboxCells = [];
@@ -1477,9 +1478,14 @@ module EDDTableImport {
                 });
             });
 
+            lowerLegendId = 'step3LowerLegend';
             if(grid.length > this.DUPLICATE_LEGEND_THRESHOLD) {
-                legendCopy = $('.step3Legend').clone();
-                legendCopy.insertAfter('#dataTableDiv');
+                $('#step3UpperLegend')
+                    .clone()
+                    .attr('id', lowerLegendId)
+                    .insertAfter('#dataTableDiv');
+            } else {
+                $('#' + lowerLegendId).remove();
             }
             $('.step3Legend').toggleClass('off', grid.length === 0);
             this.applyTableDataTypeStyling(grid);
