@@ -19,6 +19,7 @@ from . import models as edd_models, solr
 
 DEFAULT_RESULT_COUNT = 20
 
+
 def search_compartment(request):
     """ Autocomplete for measurement compartments; e.g. intracellular """
     # this list is short, always just return the entire thing instead of searching
@@ -88,7 +89,8 @@ def search_metadata(request, context):
         Q(group__group_name__iregex=re_term),
         AUTOCOMPLETE_METADATA_LOOKUP.get(context, Q()),
     ]
-    found = edd_models.MetadataType.objects.filter(reduce(operator.or_, filters, Q()))[:DEFAULT_RESULT_COUNT]
+    q_filter = reduce(operator.or_, filters, Q())
+    found = edd_models.MetadataType.objects.filter(q_filter)[:DEFAULT_RESULT_COUNT]
     return JsonResponse({
         'rows': [item.to_json() for item in found],
     })
