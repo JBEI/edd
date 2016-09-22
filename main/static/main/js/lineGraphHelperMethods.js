@@ -183,10 +183,17 @@
         $(hoverSvg).siblings().css('opacity', 1);
         $(hoverSvg).css('opacity', 1);
         //tool tip
-        div.html('<strong>' + d.name + '</strong>' + ": "
-                + "</br>" + d.measurement + '</br>' + d.y + " " + unit + "</br> " + " @ " + d.x + " hours")
+        if (d.newLine) {
+           div.html('<strong>' + d.name + '</strong>' + ": "
+                + '</br>' + d.y + " units" + "</br> " + " @ " + d.x + " hours")
             .style("left", (d3.event.pageX) + "px")
             .style("top", (d3.event.pageY - 30) + "px");
+        } else {
+            div.html('<strong>' + d.name + '</strong>' + ": "
+                    + "</br>" + d.measurement + '</br>' + d.y + " " + unit + "</br> " + " @ " + d.x + " hours")
+                .style("left", (d3.event.pageX) + "px")
+                .style("top", (d3.event.pageY - 30) + "px");
+            }
 }
 
 /**

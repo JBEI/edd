@@ -1779,8 +1779,7 @@ var EDDTableImport;
             if ((mode === "std" || mode === 'biolector' || mode === 'hplc') && (sets.length > 0)) {
                 graph.removeClass('off');
                 sets.forEach(function (set) {
-                    var color = "#0E6FA4";
-                    var singleAssayObj = graphHelper.transformNewLineItem(EDDData, set, color);
+                    var singleAssayObj = graphHelper.transformNewLineItem(EDDData, set);
                     dataSets.push(singleAssayObj);
                 });
                 EDDATDGraphing.addNewSet(dataSets);
