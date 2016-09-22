@@ -139,6 +139,7 @@ GraphHelperMethods = {
             dataset['y'] = parseFloat(dataValue[1]);
             dataset['name'] = singleData.name;
             dataset['color'] = color;
+            dataset['fullName'] = dataset['name'];
             xAndYValues.push(dataset);
         });
         xAndYValues.sort(function(a, b) {
