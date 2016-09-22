@@ -153,8 +153,15 @@ function createMultiLineGraph(graphSet, svg) {
                     return y(d.y);
                 });
 
-                //color of line according to name
-                var color = unitData.values[j].values[0].color;
+                var individualDataSet = unitData.values[j].values[0];
+
+                if (individualDataSet.newLine) {
+                    var color = graphSet.color(individualDataSet.fullName);
+                } else {
+                    //color of line according to name
+                   var color = unitData.values[j].values[0].color;
+                }
+
 
                 if (index === 0) {
                     createLine(svg, unitData.values[j].values, lineGen, color);
