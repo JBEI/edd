@@ -143,7 +143,8 @@ function createMultiLineGraph(graphSet, svg) {
             //lines for each name
             for (var j = 0; j < unitData.values.length; j++) {
 
-
+            var individualDataSet = unitData.values[j].values[0],
+                color;
             //create line svg
             var lineGen = d3.svg.line()
                 .x(function (d) {
@@ -153,61 +154,59 @@ function createMultiLineGraph(graphSet, svg) {
                     return y(d.y);
                 });
 
-                var individualDataSet = unitData.values[j].values[0];
-
                 if (individualDataSet.newLine) {
-                    var color = graphSet.color(individualDataSet.fullName);
+                   color = graphSet.color(individualDataSet.fullName);
                 } else {
                     //color of line according to name
-                   var color = unitData.values[j].values[0].color;
+                   color = unitData.values[j].values[0].color;
                 }
 
 
-                if (index === 0) {
-                    createLine(svg, unitData.values[j].values, lineGen, color);
-                    //svg object for data points
-                    var dataCirclesGroup = svg.append('svg:g');
-                    // data point circles
-                    var circles = dataCirclesGroup.selectAll('.data-point' + index)
-                        .data(unitData.values[j].values);
-                    //circle hover svg
-                    circleHover(x, y, circles, color, div)
-                } else if (index === 1) {
-                    createLine(svg, unitData.values[j].values, lineGen, color);
-                    //svg object for data points
-                    var dataRectGroup = svg.append('svg:g');
-                    // data point circles
-                    var triangle = dataRectGroup.selectAll('.data-point' + index)
-                        .data(unitData.values[j].values);
-                    triangleHover(x, y, triangle, color, div);
-             }  else if (index === 2) {
-                   createLine(svg, unitData.values[j].values, lineGen, color);
-                    //svg object for data points
-                    var dataRectGroup = svg.append('svg:g');
-                    // data point circles
-                    var rect = dataRectGroup.selectAll('.data-point' + index)
-                        .data(unitData.values[j].values);
-                    rectHover(x, y, rect, color, div);
-                } else if (index === 3) {
-                   createLine(svg, unitData.values[j].values, lineGen, color);
-                    //svg object for data points
-                    var dataRectGroup = svg.append('svg:g');
-                    // data point circles
-                    var plus = dataRectGroup.selectAll('.data-point' + index)
-                        .data(unitData.values[j].values);
-                    plusHover(x, y, plus, color, div);
-                } else {
-                    createLine(svg, unitData.key.split(' ').join('_'), line(unitData.values[j].values),
-                               color);
-                    //svg object for data points
-                    var dataCirclesGroup = svg.append('svg:g');
-                    // data point circles
-                    var circles = dataCirclesGroup.selectAll('.data-point' + index)
-                        .data(unitData.values[j].values);
-                    //circle hover svg
-                    circleHover(x, y, circles, color, div)
-                }
+            if (index === 0) {
+                createLine(svg, unitData.values[j].values, lineGen, color);
+                //svg object for data points
+                var dataCirclesGroup = svg.append('svg:g');
+                // data point circles
+                var circles = dataCirclesGroup.selectAll('.data-point' + index)
+                    .data(unitData.values[j].values);
+                //circle hover svg
+                circleHover(x, y, circles, color, div)
+            } else if (index === 1) {
+                createLine(svg, unitData.values[j].values, lineGen, color);
+                //svg object for data points
+                var dataRectGroup = svg.append('svg:g');
+                // data point circles
+                var triangle = dataRectGroup.selectAll('.data-point' + index)
+                    .data(unitData.values[j].values);
+                triangleHover(x, y, triangle, color, div);
+         }  else if (index === 2) {
+               createLine(svg, unitData.values[j].values, lineGen, color);
+                //svg object for data points
+                var dataRectGroup = svg.append('svg:g');
+                // data point circles
+                var rect = dataRectGroup.selectAll('.data-point' + index)
+                    .data(unitData.values[j].values);
+                rectHover(x, y, rect, color, div);
+            } else if (index === 3) {
+               createLine(svg, unitData.values[j].values, lineGen, color);
+                //svg object for data points
+                var dataRectGroup = svg.append('svg:g');
+                // data point circles
+                var plus = dataRectGroup.selectAll('.data-point' + index)
+                    .data(unitData.values[j].values);
+                plusHover(x, y, plus, color, div);
+            } else {
+                createLine(svg, unitData.key.split(' ').join('_'), line(unitData.values[j].values),
+                           color);
+                //svg object for data points
+                var dataCirclesGroup = svg.append('svg:g');
+                // data point circles
+                var circles = dataCirclesGroup.selectAll('.data-point' + index)
+                    .data(unitData.values[j].values);
+                //circle hover svg
+                circleHover(x, y, circles, color, div)
             }
+        }
           })
         }
 }
