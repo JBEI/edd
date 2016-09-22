@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
 This is for parsing the output of HPLC machines.
@@ -106,42 +105,7 @@ class HPLC_Parser(object):
         if self.has_parsed:
             return self.formatted_results
         self.has_parsed = True
-
-        # Apparently the HPLC machine generates documents in UTF-16?
-        # Iterating over unknown UTF lines in an io stream gives rather unpredictable results.
-        # There is no perfect way to determine the encoding while still parsing the stream,
-        # unless we use an iterator and buffer everything accumulated while guessing,
-        # then decode our buffer all at once using the guess, and pass the rest of the stream to
-        # another iterator with the guess explicit:
-
-        #   binary_chunks = iter(partial(input.read, 1), "")
-        #   for unicode_chunk in iterdecode(binary_chunks, encoding):
-        #       yield unicode_chunk
-
-        # ...And since HPLC files are really never very big, we're going to forget about
-        # stream parsing, and just slurp it all in here, detect the encoding, then decode
-        # it all at once.
-
-        # Future reference:
-        # http://blog.etianen.com/blog/2013/10/05/python-unicode-streams/
-        # https://github.com/facelessuser/Rummage/blob/master/rummage/rummage/rumcore/text_decode.py
-        # http://chardet.readthedocs.org/en/latest/usage.html
-
-        raw_string = self.input_stream.read()
-        chardet_result = chardet.detect(raw_string)
-        if chardet_result is None:
-            raise HplcInputError("unable to determine encoding of document")
-
-        encoding = chardet_result['encoding']
-        logger.info("detected encoding %s", encoding)
-        try:
-            decoded_string = raw_string.decode(encoding)
-        except Exception:
-            raise HplcInputError(
-                "unable to decode document using guessed unocide type %s", encoding
-            )
-
-        self.decoded_stream = iterate_as_lines(decoded_string)
+        self.decoded_stream = self._decode_input_stream()
 
         # TODO: Verify that long sample names don't clip!
         #        ...This can't be test without interacting with the HPLC machine.
@@ -207,6 +171,39 @@ class HPLC_Parser(object):
 
         self.formatted_results = self._format_samples_for_raw_input_record()
         return self.formatted_results
+
+    def _decode_input_stream(self):
+        # Apparently the HPLC machine generates documents in UTF-16?
+        # Iterating over unknown UTF lines in an io stream gives rather unpredictable results.
+        # There is no perfect way to determine the encoding while still parsing the stream,
+        # unless we use an iterator and buffer everything accumulated while guessing,
+        # then decode our buffer all at once using the guess, and pass the rest of the stream to
+        # another iterator with the guess explicit:
+
+        #   binary_chunks = iter(partial(input.read, 1), "")
+        #   for unicode_chunk in iterdecode(binary_chunks, encoding):
+        #       yield unicode_chunk
+
+        # ...And since HPLC files are really never very big, we're going to forget about
+        # stream parsing, and just slurp it all in here, detect the encoding, then decode
+        # it all at once.
+
+        # Future reference:
+        # http://blog.etianen.com/blog/2013/10/05/python-unicode-streams/
+        # https://github.com/facelessuser/Rummage/blob/master/rummage/rummage/rumcore/text_decode.py
+        # http://chardet.readthedocs.org/en/latest/usage.html
+
+        raw_string = self.input_stream.read()
+        chardet_result = chardet.detect(raw_string)
+        if chardet_result is None:
+            raise HplcInputError("unable to determine encoding of document")
+
+        encoding = chardet_result['encoding']
+        logger.info("detected encoding %s", encoding)
+        try:
+            return iterate_as_lines(raw_string.decode(encoding))
+        except Exception:
+            raise HplcInputError("unable to decode document using guessed encoding %s", encoding)
 
     def _format_samples_for_raw_input_record(self):
 
@@ -419,56 +416,3 @@ class HPLC_Parser(object):
                 self.samples[sample_name].append(compound)
             else:
                 self.samples[sample_name] = [compound]
-
-# testing hook
-if __name__ == "__main__":
-    import io
-    import os
-    import sys
-
-    logger = logging.getLogger(__name__)
-
-    if len(sys.argv) is not 2:
-        print("usage: python hplc_parser.py input_file_path")
-        sys.exit(1)
-
-    log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-
-    logging.basicConfig(
-        filename='hplc_parser.log',
-        level=logging.DEBUG,
-        format=log_format)
-
-    # echo all debug statements to stdout
-    formatter = logging.Formatter(log_format)
-    sh = logging.StreamHandler(sys.stdout)
-    sh.setLevel(logging.DEBUG)
-    sh.setFormatter(formatter)
-    logger.addHandler(sh)
-
-    # parse the provided filepath
-    input_file_path = sys.argv[1]
-
-    if not os.path.exists(input_file_path):
-        raise IOError("Error: unable to locate file %s" % input_file_path)
-
-    with io.open(input_file_path, "r", encoding='utf-16') as input_file:
-        p = HPLC_Parser(input_file)
-        compound_records = p.parse_hplc()
-        hplc_protocol_string = "hplc"
-
-        result = []
-        for record in compound_records:
-            metadata = {}
-            raw_record = RawImportRecord(
-                hplc_protocol_string,
-                record.compound,
-                record.line,
-                record.assay,
-                record.timepoints,  # warning: shallow copy(s)
-                metadata)
-            result.append(raw_record)
-
-    # activate interactive debugger with our information inside
-    import IPython
-    IPython.embed(banner1="\n\nparse function returned, values stored in dict 'samples'")
