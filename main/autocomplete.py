@@ -10,10 +10,14 @@ from django.http import JsonResponse
 from django.contrib.auth.models import Group
 from functools import reduce
 
+from rest_framework.exceptions import ValidationError
+
 from jbei.rest.auth import HmacAuth
 from jbei.rest.clients.ice import IceApi
+from main.models import Line, Study, StudyPermission
 from . import models as edd_models, solr
 
+DEFAULT_RESULT_COUNT = 20
 
 def search_compartment(request):
     """ Autocomplete for measurement compartments; e.g. intracellular """
@@ -39,7 +43,7 @@ def search_generic(request, model_name, module=edd_models):
     term = request.GET.get('term', '')
     re_term = re.escape(term)
     term_filters = [Q(**{'%s__iregex' % f: re_term}) for f in ifields]
-    found = Model.objects.filter(reduce(operator.or_, term_filters, Q()))[:20]
+    found = Model.objects.filter(reduce(operator.or_, term_filters, Q()))[:DEFAULT_RESULT_COUNT]
     return JsonResponse({
         'rows': [item.to_json() for item in found],
     })
@@ -49,7 +53,8 @@ def search_group(request):
     """ Autocomplete for Groups of users. """
     term = request.GET.get('term', '')
     re_term = re.escape(term)
-    found = Group.objects.filter(name__iregex=re_term).order_by('name').values('id', 'name')[:20]
+    found = Group.objects.filter(name__iregex=re_term).order_by('name').values('id', 'name')
+    found = found[:DEFAULT_RESULT_COUNT]
     return JsonResponse({
         'rows': list(found),  # force QuerySet to list
     })
@@ -83,9 +88,39 @@ def search_metadata(request, context):
         Q(group__group_name__iregex=re_term),
         AUTOCOMPLETE_METADATA_LOOKUP.get(context, Q()),
     ]
-    found = edd_models.MetadataType.objects.filter(reduce(operator.or_, filters, Q()))[:20]
+    found = edd_models.MetadataType.objects.filter(reduce(operator.or_, filters, Q()))[:DEFAULT_RESULT_COUNT]
     return JsonResponse({
         'rows': [item.to_json() for item in found],
+    })
+
+
+def search_study_lines(request):
+    """ Autocomplete search on lines in a study."""
+    study_pk = request.GET.get('study', '')
+    name_regex = re.escape(request.GET.get('term', ''))
+    user = request.user
+
+    if (not study_pk) or (not study_pk.isdigit()):
+        raise ValidationError('study parameter is required and must be a valid integer')
+
+    permission_check = Study.user_permission_q(user, StudyPermission.READ)
+    # if the user's admin / staff role gives read access to all Studies, don't bother querying
+    # the database for specific permissions defined on this study
+    if Study.user_role_can_read(user):
+        permission_check = Q()
+    try:
+        study = Study.objects.get(permission_check, pk=study_pk)
+        query = study.line_set.all()
+    except Study.DoesNotExist as e:
+        query = Line.objects.none()
+
+    name_filters = [Q(name__iregex=name_regex), Q(strains__name__iregex=name_regex)]
+    query = query.filter(reduce(operator.or_, name_filters, Q()))[:DEFAULT_RESULT_COUNT]
+    return JsonResponse({
+        'rows': [{'name': line.name,
+                  'id': line.id,
+                  }
+                 for line in query],
     })
 
 
@@ -97,7 +132,7 @@ def search_sbml_exchange(request):
     found = edd_models.MetaboliteExchange.objects.filter(
         Q(sbml_template_id=template),
         Q(reactant_name__iregex=re_term) | Q(exchange_name__iregex=re_term)
-    ).order_by('exchange_name', 'reactant_name')[:20]
+    ).order_by('exchange_name', 'reactant_name')[:DEFAULT_RESULT_COUNT]
     return JsonResponse({
         'rows': [{
             'id': item.pk,
@@ -114,7 +149,7 @@ def search_sbml_species(request):
     template = request.GET.get('template', None)
     found = edd_models.MetaboliteSpecies.objects.filter(
         sbml_template_id=template, species__iregex=re_term,
-    ).order_by('species')[:20]
+    ).order_by('species')[:DEFAULT_RESULT_COUNT]
     return JsonResponse({
         'rows': [{
             'id': item.pk,
@@ -145,7 +180,7 @@ def search_study_writable(request):
     found = edd_models.Study.objects.distinct().filter(
         Q(name__iregex=re_term) | Q(description__iregex=re_term),
         edd_models.Study.user_permission_q(request.user, perm),
-    )[:20]
+    )[:DEFAULT_RESULT_COUNT]
     return JsonResponse({
         'rows': [item.to_json() for item in found],
     })

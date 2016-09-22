@@ -30,9 +30,6 @@ class TableImport(object):
     def __init__(self, study, user, request=None):
         self._study = study
         self._user = user
-        if not study.user_can_write(user):
-            raise PermissionDenied("%s does not have write access to %s" % (
-                user.username, study.name))
         self._line_assay_lookup = {}
         self._line_lookup = {}
         self._meta_lookup = {}
@@ -41,6 +38,17 @@ class TableImport(object):
         self._hours = MeasurementUnit.objects.get(unit_name='hours')
 
     def import_data(self, data):
+        """
+        Performs the import
+        :param data:
+        :return:
+        :raises: ValidationError if no data are provided to import
+        """
+        user = self._user
+        if not self._study.user_can_write(user):
+            raise PermissionDenied(
+                '%s does not have write access to study "%s"' % (user.username, self.study.name))
+
         self._data = data
         series = json.loads(data.get('jsonoutput', '[]'))
         self.check_series_points(series)
@@ -48,7 +56,10 @@ class TableImport(object):
         return self.create_measurements(series)
 
     def check_series_points(self, series):
-        """ Checks that each item in the series has some data or metadata. """
+        """
+        Checks that each item in the series has some data or metadata, and sets a
+        'nothing to import' value for the item if that's the case
+         """
         for item in series:
             points = item.get('data', [])
             meta = item.get('metadata_by_id', {})

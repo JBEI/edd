@@ -34,7 +34,7 @@
   <link rel="stylesheet" type="text/css" href="{% static "main/style.css" %}">
   <script type="text/javascript" src="{% static 'main/js/AssayTableData.js' %}"></script>
   <script type="text/javascript" src="{% static 'main/js/AssayTableDataGraphing.js' %}"></script>
-  <script type="text/javascript" src="{% static 'main/js/createMultiAxisLine.js' %}"></script>
+  <script type="text/javascript" src="{% static 'main/js/CreateMultiAxisLine.js' %}"></script>
   <script type="text/javascript" src="{% static 'main/js/lineGraphHelperMethods.js' %}"></script>
 
 {% endblock js_css %}
@@ -54,9 +54,27 @@
 <form method="post" id="assayTableForm" action="/study/{{ study.id }}/import">
 {% csrf_token %}
 
-<!-- section 1 -->
+<!-- Step 1 -->
 <div class="pageSection" id="selectMajorKindStep">
-<div class="sectionHead">Step 1 : Specify the kind of data you wish to import.</div>
+<div class="sectionHead">Step 1 : Specify the type/format of data to import.
+    <div class="helpBadgeDiv">Help
+      <div class="helpContent">
+        <p>In this step, EDD needs to know three things that dictate how it treats your file:</p>
+            <ol>
+              <li>What format it's captured in: i.e. how the file is laid out.</li>
+              <li>What information it contains: e.g. protein measurements, metabolite
+                  measurements, etc. This is often implied by the file format.</li>
+              <li>What measurement protocol resulted in this data</li>
+            </ol>
+          <p>In many cases, the file's format implies its content (e.g. Proteomics), but some
+              more generic file formats will need additional clarification on the content. Also
+              note that EDD may not support all input file  formats for all measurement types.</p>
+          <p>EDD uses the "protocol" provided here to organize data captured using the same
+              experimental protocol. Though this entry may not affect what you see on the import
+              page, it may dictate how information is grouped within your study.</p>
+      </div>
+    </div>
+</div>
 
 <div class="sectionContent" style="padding:8px;">
   <ul style="font-size:13px;list-style-type:none;">
@@ -196,8 +214,9 @@
   <table class="formTable" style="margin-left:1em;">
     <tr>
       <td rowspan="2" style="vertical-align:middle;">
-        <span>Data Are For Protocol:
+        <span>Data are for protocol:
           <select name="masterProtocol" id="masterProtocol">
+             <option value="unspecified_protocol">---</option>
           {% for protocol in protocols %}
             <option value="{{ protocol.id }}">{{ protocol.name }}</option>
           {% endfor %}
@@ -228,15 +247,22 @@
 </div>
 
 
-<!-- section 2 -->
+<!-- Step 2 -->
 <div class="pageSection" id="rawInputStep">
   <div class="sectionHead" style="padding-right:7px;">
 
-    <div class="helpBadgeDiv" style="float:left;">Help
+    <div class="helpBadgeDiv">Help
       <div class="helpContent">
-        <P>Drag a selection box around your data and copy it to the clipboard.</P>
-        <P>Paste the clipboard into this text area.</P>
-        <P>You can edit it after it's pasted here, and the changes will propagate to later steps.</P>
+          <p>
+              Enter your data by dragging a file from the file system, by typing it in, or by
+              cutting-and-pasting from a text editor. EDD will do its best to make an educated
+              guess about the file content based on your
+              entries in Step 1, but you may need to help the system interpret your data.</p>
+          <p>
+              Especially useful options are the "transpose" and "ignore gaps" checkboxes at top
+              right. EDD will also try to guess whether or not to transpose by looking  at your
+              data. You can edit it after it's pasted here, and the changes will propagate to later
+              steps.</p>
       </div>
     </div>
 
@@ -259,17 +285,20 @@
     </span>
 
     <span class="tableControl">
-      Data Format:
+      Column Separator:
       <select name="rawdataformat" id="rawdataformatp">
-        <option value="tab" selected="selected">Tab-separated</option>
-        <option value="csv">Comma-separated (CSV)</option>  
+        <option value="tab" selected="selected">Tab</option>
+        <option value="csv">Comma</option>
       </select>
     </span>
 
   </div>
 
   <div class="sectionContent" style="padding:2px;text-align:center;">
-    <textarea class="dataTextArea" rows="16" id="step2textarea" name="step2textarea"></textarea>
+      <div id="completeStep1Label" class="disabledStepLabel">Complete Step
+          1 first!</div>
+      <div id="processingFileLocallyLabel" class="disabledTextLabel off">Processing file...</div>
+    <textarea class="dataTextArea off" rows="16" id="step2textarea" name="step2textarea"></textarea>
     <div class="fileDropInfoArea off" id="fileDropInfoArea">
       <div class="fileDropInfoIcon" id="fileDropInfoIcon"></div>
       <div class="fileDropInfoName" id="fileDropInfoName">Blank filename.xml</div>
@@ -281,18 +310,27 @@
   </div>
 </div>
 
-<!-- section 3 -->
+<!-- Step 3 -->
 <div class="pageSection" id="identifyStructuresStep">
 
   <div class="sectionHead">
 
-    <div class="helpBadgeDiv" style="float:left;">Help
+    <div class="helpBadgeDiv">Help
       <div class="helpContent">
-<p>Set the pulldown menus on the left to tell the EDD how to interpret each row.  The system will make an educated guess
-at how the pulldowns should be set, but you may need to tweak it.</p>
-<P>Click the boxes on the top, or the left side, to enable and disable entire rows or columns.</P>
-<P>Double-click inside the table area to enable or disable individual values.</P>
-<P>You can edit your data in Step 2 without losing your settings here.</P>
+          <p>
+              Configure the pulldown menus on the left of the table to tell EDD how to
+              interpret each row and column of your data.</p>
+          <p>EDD will make an educated guess at how the pulldowns should be set, but you may need
+              to tweak them. In most cases, you can verify correctness by inspecting a plot of
+              the data that will appear below. You can also go back and edit your data in Step 2
+              without losing your settings here.</p>
+          <h1>Importing subsets of the file content:</h1>
+          <ul>
+              <li>Check/uncheck boxes above and to the left of the table to enable
+              or disable an the entire row or column. Disabled rows/columns will be omitted when
+              your data is imported.</li>
+              <li>Double-click inside the table area to enable or disable individual values.</li>
+          </ul>
       </div>
     </div>
 
@@ -301,58 +339,76 @@ at how the pulldowns should be set, but you may need to tweak it.</p>
     Step 3 : Verify the data has been interpreted correctly, and disable any values you don't want.
 
   </div>
-
-  <div id="dataTableDiv" class="dataTableDiv">
-    <div class="disabledStepLabel">
-      Enter some data in Step 2 first!
+    <div id="waitingForServerLabel" class="disabledStepLabel off">Waiting for server to
+          respond with existing data for this study...</div>
+      <div id="processingStep2ResultsLabel" class="disabledStepLabel wait off">Processing file
+          input from
+          step 2...</div>
+    <div id="enterDataInStep2" class="disabledStepLabel">
+      Complete the preceding steps first!
     </div>
-  </div>
-    <div class="sectionContent">
-    <div class="btn-toolbar" id="chartType">
-            </div>
-                <div class="linechart"></div>
-                <div class ="btn-toolbar">
-                <button class="btn btn-default btn-sm" value="linechart">
-                                        Line Graph </button>
-                </div>
-                <div class="graphContainer"></div>
-    <div id="graphDiv"></div>
+    <div id="step3UpperLegend" class="step3Legend off sectionContent">
+        <div class="legendRow">
+            <span class="legendCell">Row needs interpretation: </span>
+            <span class="ignoredRowLegendBox legendCell"></span>
+            <span class="legendCell legendColumn3"> Ignored during import: </span>
+            <span class="disabledRowLegendBox legendCell"></span>
         </div>
+    </div>
+
+
+  <div id="dataTableDiv" class="dataTableDiv off"></div>
+    <div id="missingStep3InputDiv" class="off sectionContent errorMessage">Missing required input
+        (s) above</div>
+
+    <div id="graphDiv">
+            <div class="btn-toolbar" id="chartType"></div>
+            <div class="linechart"></div>
+            <div class="graphContainer"></div>
+    </div>
 </div>
 
-
-<!-- section 4 -->
+<!-- Step 4 -->
 <div class="pageSection" id="typeDisambiguationStep">
   <div class="sectionHead">
 
-    <div class="helpBadgeDiv" style="float:left;">Help
+    <div class="helpBadgeDiv">Help
       <div class="helpContent">
-        <p>The EDD will do its best to pre-set these values for you,
-          based on data already present in the system, but you should always verify its work.</p>
-        <p>Usually you'll be matching measurement types with known types, and only rarely creating new ones.
-          Most of the time you'll be using pre-existing metadata types as well.
-          In the case of Lines or Assays, however, you may need to create dozens of new ones all at once.
-          To aid in this, any time you select 'Create New' in the pulldown menu for an Assay,
-          all the rest of the pulldowns in the sequence will change to 'Create New' as well.</p>
-        <p>Keep in mind that all the Assays in the pulldown and all the Assays created by this import process
-          are for the Protocol you've selected at the top of the page.
-          You cannot import data for more than one Protocol at the same time.</p>
-        <p>If you're importing for pre-existing Assays, remember that you can get different behavior depending
-          on whether you select merge or replace at the top of the page.</p>
-        <p>For example, if your Assay already has CO2 data in it for timestamps 0-7, and you're importing CO2
-          data for timestamps 8-12, selecting "merge" will give you a complete set from 0-12, whereas
-          selecting "replace" will delete measurements 0-7.</p>
+          <p>In this step, EDD needs to know how to relate the imported data to existing
+              information in your study and in EDD's database.</p>
+          <p>EDD will do its best to  pre-set these values for you based on data already
+              present in the system, but you should always verify its work.</p>
+          <h1>Impact on Existing data in the Study</h1>
+            <p>Recall that if you tell EDD to use pre-existing Assays in this step, the impact on
+                existing data in your study will depend on whether you chose "merge" or "replace"
+                is Step 1.</p>
+          <h1>Import Scope</h1>
+          <p>Keep in mind that all the Assays in the pulldown and all the Assays created by this
+              step of the import process are for the Protocol you've selected in Step 1. Unless the
+              input file format you've selected supports it (e.g. Biolector),
+              you cannot import data for more than one Protocol at the same time.</p>
+          <h1>Reducing the amount of work</h1>
+          <p>This step is normally <em>much simpler and more automated</em> if you've used
+              information already known to EDD to label your input.</p>
+          <p>Recall that the ideal, and often most efficient workflow, is to establish or use naming
+              conventions in EDD <em>prior to making your measurements</em>,
+              then to use those names to label your data (often by entering them into instrument
+              controllers). If your input already contains Line, Assay, Metabolite, Protein, etc.
+              names known to EDD, it can automatically interpret what you've measured with
+              minimal input from you.
+          </p>
       </div>
     </div>
 
     <div class="resetButtonDiv" id="resetstep4" style="float:right;">Reset</div>
-
     Step 4 : Help to disambiguate some of the detected values.
   </div>
 
   <div class="disabledStepLabel" id="emptyDisambiguationLabel">
-    Enter some data in Step 2 first!
+    Complete the preceding steps first!
   </div>
+    <div class="disabledStepLabel wait off" id="processingStep3Label">Processing input from Step
+        3</div>
 
   <div class="sectionContent off" id="masterTimestampDiv">
 
@@ -360,16 +416,18 @@ at how the pulldowns should be set, but you may need to tweak it.</p>
       <tr>
         <td style="vertical-align:middle;">
           <span>
-            Timestamp for all the data:
+            Time for all measurements:
             <input  type="text"
                 size="6"
                 name="masterTimestamp"
                 id="masterTimestamp"
-                value="">
+                value=""> hours
           </span>
         </td>
       </tr>
     </table>
+      <span id="masterTimestampRequiredPrompt" class="off missingSingleFormInput">Required. No
+          measurement has a time.</span>
 
   </div>
 
@@ -423,59 +481,93 @@ at how the pulldowns should be set, but you may need to tweak it.</p>
     <table class="formTable" style="margin-left:1em;">
     <tr>
       <td>
-        <p>Metabolite Type for all data:</p>
+        <p>Measurement Type for all data:</p>
       </td><td>
         <input class="autocomp" type="text" size="4" name="masterMComp" id="masterMComp"
             value="" style="margin-right: 2px;">
-        <input type="hidden" id="masterMCompValue" name="masterMCompValue" value="0">
+        <input type="hidden" id="masterMCompValue" name="masterMCompValue">
       </td><td>
         <input class="autocomp" type="text" size="45" name="masterMType" id="masterMType"
             value="" style="margin-right: 2px;">
-        <input type="hidden" id="masterMTypeValue" name="masterMTypeValue" value="0">
+        <input type="hidden" id="masterMTypeValue" name="masterMTypeValue">
       </td><td>
         <input class="autocomp" type="text" size="15" name="masterMUnits" id="masterMUnits"
             value="">
-        <input type="hidden" id="masterMUnitsValue" name="masterMUnitsValue" value="0">
+        <input type="hidden" id="masterMUnitsValue" name="masterMUnitsValue">
       </td>
     </tr>
     </table>
 
   </div>
-
-  <div class="sectionContent disambiguationSection" id="disambiguateLinesSection">
+  <div class="sectionContent disambiguationSection off" id="disambiguateLinesSection">
     <h3>Lines</h3>
+
   </div>
 
-  <div class="sectionContent disambiguationSection" id="disambiguateAssaysSection">
+  <div class="sectionContent disambiguationSection off" id="disambiguateAssaysSection">
     <h3>Assays</h3>
   </div>
 
-  <div class="sectionContent disambiguationSection" id="disambiguateMeasurementsSection">
-    <h3>Metabolite Types</h3>
+  <div class="sectionContent disambiguationSection off" id="disambiguateMeasurementsSection">
+    <h3>Measurement Types</h3>
     <div id="noCompartmentWarning" class="statusMessage neutral">
-      Make sure you specify a compartment (Intracellular/Extracellular) for your mass distribution measurements.
+      Make sure you specify a cellular compartment (Intracellular/Extracellular) for your mass
+        distribution measurements.
     </div>
     <table id="disambiguateMeasurementsTable" cellspacing="0">
+        <thead>
+            <th colspan="3" style="text-align: right;">Compartment</th>
+            <th>Type</th>
+            <th>Units</th>
+        </thead>
       <tbody>
-        <tr>
-          <th colspan="2" style="text-align: right;">Compartment</th>
-          <th>Type</th>
-          <th>Units</th>
-        </tr>
       </tbody>
     </table>
   </div>
 
-  <div class="sectionContent disambiguationSection"
-     id="disambiguateMetadataSection">
+  <div id="disambiguateMetadataSection" class="sectionContent disambiguationSection off">
     <h3>Metadata Types</h3>
   </div>
-
 </div>
 
-<div style="width:99%;text-align:right;margin:10px 0px 10px 0px;">
-  <input type="submit" id="submitForImport" name="action" value="Submit Data" />
+<!-- Step 5 -->
+<div class="pageSection" id="reviewImportStep">
+  <div class="sectionHead">
+
+    <div class="helpBadgeDiv">Help
+      <div class="helpContent">
+        <p>In this section you should review summary information to make sure EDD has understood
+            your data, and to double-check the results of your entries to help catch mistakes.</p>
+        <p>You'll need to knowledge warnings regarding the content of your import, or else
+            resolve them by changing entries in previous steps.</p>
+         <p>EDD isn't familiar with your experiment, so please double-check the system and
+             yourself!</p>
+      </div>
+    </div>
+    Step 5 : Review your changes and submit.
+  </div>
+    <div class="sectionContent" id="reviewSummarySection">
+        <div class="disabledStepLabel" id="completeAllStepsFirstLabel">
+            Complete the preceding steps first!
+        </div>
+            <div id="summaryContentDiv">
+            </div>
+    </div>
+    <div class="sectionContent step5Subsection off" id="reviewErrorsSection">
+        <h1>Errors</h1>
+        <p>Import is disabled until all errors have been resolved.</p>
+        <div id="reviewErrorsContentDiv"></div>
+    </div>
+    <div class="sectionContent step5Subsection off" id="reviewWarningsSection">
+        <h1>Warnings</h1>
+        <p>You must resolve or acknowledge all warnings before import is allowed.</p>
+        <div id="reviewWarningsContentDiv"></div>
+    </div>
+    <input type="submit" id="submitForImport" name="action" value="Submit Import"
+           disabled="disabled" class="off"/>
 </div>
+
+
 
 <input type="hidden" id="jsonoutput" name="jsonoutput" />
 <input type="hidden" name="studyID" value="{{ study.id }}"/>
