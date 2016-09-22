@@ -2475,12 +2475,15 @@ module EDDTableImport {
         }
 
         addToggleAllButton(parent: JQuery, objectsLabel: string): JQuery {
+            return this.makeToggleAllButton(objectsLabel)
+                .appendTo($(parent));
+        }
+
+        makeToggleAllButton(objectsLabel: string): JQuery {
             return $('<button type="button">')
                 .text('Select All ' + objectsLabel)
                 .addClass(this.STEP_4_TOGGLE_SUBSECTION_CLASS)
-                .appendTo(parent)
-                // use click so we don't reparse for each after 'select all'
-                .on('click', this.toggleAllSubsectionItems.bind(this));
+                .on('click', this.toggleAllSubsectionItems.bind(this))
         }
 
         toggleAllSubsectionItems(ev: JQueryEventObject): void {
@@ -2848,7 +2851,8 @@ module EDDTableImport {
             }
 
             if(uniqueMeasurementNames.length > this.TOGGLE_ALL_THREASHOLD) {
-                this.addToggleAllButton(parentDiv, 'Measurement Types');
+                this.makeToggleAllButton('Measurement Types')
+                    .insertBefore($('#disambiguateMeasurementsTable'));
             }
 
             // put together a disambiguation section for measurement types
