@@ -1004,7 +1004,7 @@ var EDDTableImport;
         };
         IdentifyStructuresStep.prototype.constructDataTable = function (mode, grid, gridRowMarkers) {
             var _this = this;
-            var body, colgroup, controlCols, legendCopy, lowerLegendId, pulldownOptions, row, startTime, t, table;
+            var body, colgroup, controlCols, legendCopy, lowerLegend, lowerLegendId, pulldownOptions, row, startTime, t, table;
             startTime = new Date();
             console.log("Start of IdentifyStructuresStep.constructDataTable()");
             this.dataCells = [];
@@ -1152,14 +1152,17 @@ var EDDTableImport;
                 });
             });
             lowerLegendId = 'step3LowerLegend';
+            lowerLegend = $('#' + lowerLegendId);
             if (grid.length > this.DUPLICATE_LEGEND_THRESHOLD) {
-                $('#step3UpperLegend')
-                    .clone()
-                    .attr('id', lowerLegendId)
-                    .insertAfter('#dataTableDiv');
+                if (!lowerLegend.length) {
+                    $('#step3UpperLegend')
+                        .clone()
+                        .attr('id', lowerLegendId)
+                        .insertAfter('#dataTableDiv');
+                }
             }
             else {
-                $('#' + lowerLegendId).remove();
+                lowerLegend.remove();
             }
             $('.step3Legend').toggleClass('off', grid.length === 0);
             this.applyTableDataTypeStyling(grid);

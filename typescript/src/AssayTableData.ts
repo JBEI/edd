@@ -1317,7 +1317,7 @@ module EDDTableImport {
 
         constructDataTable(mode: string, grid: any, gridRowMarkers: any): void {
             var body: HTMLTableElement, colgroup: JQuery, controlCols: string[], legendCopy: JQuery,
-                lowerLegendId: string, pulldownOptions: RowPulldownOption[],
+                lowerLegend: JQuery, lowerLegendId: string, pulldownOptions: RowPulldownOption[],
                 row: HTMLTableRowElement, startTime: Date, t, table: HTMLTableElement;
 
             startTime = new Date();
@@ -1480,13 +1480,16 @@ module EDDTableImport {
             });
 
             lowerLegendId = 'step3LowerLegend';
+            lowerLegend = $('#' + lowerLegendId);
             if(grid.length > this.DUPLICATE_LEGEND_THRESHOLD) {
-                $('#step3UpperLegend')
-                    .clone()
-                    .attr('id', lowerLegendId)
-                    .insertAfter('#dataTableDiv');
+                if(!lowerLegend.length) {
+                    $('#step3UpperLegend')
+                        .clone()
+                        .attr('id', lowerLegendId)
+                        .insertAfter('#dataTableDiv');
+                }
             } else {
-                $('#' + lowerLegendId).remove();
+                lowerLegend.remove();
             }
             $('.step3Legend').toggleClass('off', grid.length === 0);
             this.applyTableDataTypeStyling(grid);
