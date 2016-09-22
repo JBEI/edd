@@ -500,7 +500,7 @@ class StudyStrainsView(viewsets.ReadOnlyModelViewSet):
 
 class StudyLineView(viewsets.ModelViewSet):  # LineView(APIView):
     """
-        API endpoint that allows lines to be viewed or edited.
+        API endpoint that allows lines within a study to be searched, viewed, and edited.
     """
     serializer_class = LineSerializer
     STUDY_URL_KWARG = 'study_pk'
@@ -522,6 +522,9 @@ class StudyLineView(viewsets.ModelViewSet):  # LineView(APIView):
             study_user_permission_q = Study.user_permission_q(user, requested_permission,
                                                               keyword_prefix='study__')
             line_query = Line.objects.filter(study_user_permission_q, study__pk=study_pk)
+
+        line_query = _do_optional_regex_filter(self.request.query_params, line_query, 'name',
+                                               STUDY_LINE_NAME_REGEX, None,)
 
         # filter by line active status, applying the default (only active lines)
         line_active_status = self.request.query_params.get(LINE_ACTIVE_STATUS_PARAM,

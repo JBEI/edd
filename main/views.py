@@ -901,22 +901,23 @@ def permissions(request, study):
 # FIXME should have trailing slash?
 @ensure_csrf_cookie
 def study_import_table(request, study):
-    """ View for importing tabular assay data (replaces AssayTableData.cgi). """
-    model = load_study(request, study, permission_type=['W', ])
+    """ View for importing tabular data (replaces AssayTableData.cgi). """
+    model = load_study(request, study, permission_type=[StudyPermission.WRITE, ])
     # FIXME filter protocols?
     protocols = Protocol.objects.order_by('name')
-    if (request.method == "POST"):
+    if request.method == "POST":
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug('\n'.join([
                 '%(key)s : %(value)s' % {'key': key, 'value': request.POST[key]}
                 for key in sorted(request.POST)
             ]))
+
+        table = TableImport(model, request.user, request=request)
         try:
-            table = TableImport(model, request.user, request=request)
             added = table.import_data(request.POST)
             messages.success(request, 'Imported %s measurement values.' % added)
-        except ValueError as e:
-            logger.exception('Import failed: %s', e)
+        except RuntimeError as e:
+            logger.exception('Data import failed: %s', e)
             messages.error(request, e)
     return render(
         request,
@@ -1355,6 +1356,7 @@ AUTOCOMPLETE_VIEW_LOOKUP = {
     'MetaboliteSpecies': autocomplete.search_sbml_species,
     'Strain': autocomplete.search_strain,
     'StudyWrite': autocomplete.search_study_writable,
+    'StudyLines': autocomplete.search_study_lines,
     'User': autocomplete.search_user,
 }
 

@@ -19,10 +19,14 @@ img.exampleImage {
 
 div.disabledStepLabel {				
 	height:50px;
-	color:#BBB;
+
 	text-align:center;
+	margin-top: 15px;
 }
 
+.disabledTextLabel, div.disabledStepLabel {
+	color:#BBB;
+}
 
 /* Reset buttons for the various steps */
 
@@ -175,14 +179,57 @@ div.dataTableDiv table col.hoverLines {
 	background-color:#E4E4FF;
 }
 
-div.dataTableDiv table tr > td.ignoredLine {
-	color:#FFFFFF;
+div.dataTableDiv table tr > td.missingInterpretationRow {
+	color:#000000;
 	background-color:#FFE0CC;
 }
 
-div.dataTableDiv table tr > td.disabledLine {
-	color:#FFFFFF;
-	background-color:#CC0000;
+div.dataTableDiv table tr > td.disabledInput {
+	color:#000000;
+	background-color:#B2B4C4;
+}
+
+.step3Legend {
+	float: right;
+	display: table;
+	margin-top: 20px;
+	margin-right: 30px;
+	margin-bottom: 20px;
+}
+
+.disabledRowLegendBox {
+	background-color: #B2B4C4;
+}
+
+.ignoredRowLegendBox {
+	background-color:#FFE0CC;
+}
+
+.disabledRowLegendBox, .ignoredRowLegendBox {
+	display: inline-block;
+	vertical-align: middle;
+	width: 10px;
+	height: 10px;
+	border-style: solid;
+	border-width:  1px;
+}
+
+.legendCell {
+	display: table-cell;
+	padding-left: 3px;
+}
+
+.legendRow {
+	display: table-row;
+}
+
+.legendColumn3 {
+	padding-left: 10px;
+}
+
+#missingStep3InputDiv {
+	display: inline-block;
+	margin: 10px;
 }
 
 
@@ -251,6 +298,77 @@ div.disambiguationSection table tr > td input[type="text"] {
 	margin:0px 2px 0px 0px;
 }
 
+.step4SubsectionToggle {
+    margin-top: 7px;
+    margin-bottom: 7px;
+}
+
 select.disamStd {
 	min-width: 10em;
+}
+
+#masterTimestampRequiredPrompt {
+	margin-left: 25px;
+}
+
+
+/* The Step 5 review section */
+.step5Subsection {
+	margin-top: 30px;
+}
+
+.step5Subsection p, .step5Subsection table {
+    margin-left: 10px;
+}
+
+#reviewWarningsSection table th{
+    margin-bottom: 10px;
+}
+
+.acknowledgeAllButton {
+	margin-top: 15px;
+}
+
+#submitForImport {
+	font-weight: bold;
+	border-width: 3px;
+	margin-top: 40px;
+	margin-left: 20px;
+	margin-bottom: 20px;
+}
+
+/************************************************************************************************/
+
+#processingFileLocallyLabel {
+	margin: 0px;
+	padding: 0px;
+	position:relative;
+	text-align:center;
+	top: 120px;
+    width: 100%;
+	z-index: 100;
+	font-size: 300%;
+	float:top;
+}
+
+.sectionContent table {
+	margin-top: 20px;
+	border-spacing: 10px
+}
+
+.sectionContent th {
+	padding-bottom: 10px;
+}
+
+.warningStepLabel {
+	text-decoration: underline;
+}
+
+.errorMessage {
+    background: #FFF0F0;
+    padding: 2px;
+    border: 2px solid red;
+    border-radius: 6px;
+    -webkit-border-radius: 6px;
+    -moz-border-radius: 6px;
 }
