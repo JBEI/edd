@@ -2340,7 +2340,7 @@ var EDDTableImport;
                         .next()
                         .addClass(_this.STEP_4_REQUIRED_INPUT_CLASS);
                     disam.compHiddenObj = disam.compObj
-                        .attr('size', 4)
+                        .attr('size', 25)
                         .next()
                         .addClass(_this.STEP_4_REQUIRED_INPUT_CLASS);
                     disam.unitsHiddenObj = disam.unitsObj
