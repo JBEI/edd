@@ -1065,7 +1065,7 @@ var StudyD;
             metaIn.val(JSON.stringify(meta));
             metaRow.remove();
         });
-        $(window).load(preparePermissions);
+        $(window).on('load', preparePermissions);
     }
     StudyD.prepareIt = prepareIt;
     function preparePermissions() {
@@ -1154,7 +1154,7 @@ var StudyD;
         var _this = this;
         var csIDs;
         // Prepare the main data overview graph at the top of the page
-        if (this.mainGraphObject === null && $('#maingraph').size() === 1) {
+        if (this.mainGraphObject === null && $('#maingraph').length === 1) {
             this.mainGraphObject = Object.create(StudyDGraphing);
             this.mainGraphObject.Setup('maingraph');
             this.progressiveFilteringWidget.mainGraphObject = this.mainGraphObject;
@@ -1311,15 +1311,15 @@ var StudyD;
     function assaysActionPanelShow() {
         var checkedBoxes = [], checkedAssays, checkedMeasure, panel, infobox;
         panel = $('#assaysActionPanel');
-        if (!panel.size()) {
+        if (!panel.length) {
             return;
         }
         // Figure out how many assays/checkboxes are selected.
         $.each(this.assaysDataGrids, function (pID, dataGrid) {
             checkedBoxes = checkedBoxes.concat(dataGrid.getSelectedCheckboxElements());
         });
-        checkedAssays = $(checkedBoxes).filter('[id^=assay]').size();
-        checkedMeasure = $(checkedBoxes).filter(':not([id^=assay])').size();
+        checkedAssays = $(checkedBoxes).filter('[id^=assay]').length;
+        checkedMeasure = $(checkedBoxes).filter(':not([id^=assay])').length;
         panel.toggleClass('off', !checkedAssays && !checkedMeasure);
         if (checkedAssays || checkedMeasure) {
             infobox = $('#assaysSelectedCell').empty();
@@ -2426,7 +2426,7 @@ var DataGridSpecAssays = (function (_super) {
         var section, protocolDiv, titleDiv, titleLink, table, p = this.protocolID, tableID = 'pro' + p + 'assaystable';
         // If we can't find a table, we insert a click-to-disclose div, and then a table directly
         // after it.
-        if ($('#' + tableID).size() === 0) {
+        if ($('#' + tableID).length === 0) {
             section = $('#assaysSection');
             protocolDiv = $('<div>').addClass('disclose discloseHide').appendTo(section);
             this.undisclosedSectionDiv = protocolDiv[0];

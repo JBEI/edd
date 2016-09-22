@@ -2223,6 +2223,6 @@ var EDDTableImport;
     }());
     EDDTableImport.TypeDisambiguationStep = TypeDisambiguationStep;
 })(EDDTableImport || (EDDTableImport = {}));
-$(window).load(function () {
+$(window).on('load', function () {
     EDDTableImport.onWindowLoad();
 });

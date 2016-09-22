@@ -287,7 +287,7 @@ class DataGrid {
         // event handlers to hide menu if clicking outside menu block or pressing ESC
         $(document).click((ev) => {
             var t = $(ev.target);
-            if (t.closest(this._optionsMenuElement).size() === 0) {
+            if (t.closest(this._optionsMenuElement).length === 0) {
                 this._hideOptMenu();
             }
         }).keydown((ev) => {

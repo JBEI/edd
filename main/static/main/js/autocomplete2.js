@@ -289,7 +289,7 @@ EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(selector, 
 
 /***********************************************************************/
 
-$(window).load(function () {
+$(window).on('load', function () {
     var AutoOpts, setup_info;
     AutoOpts = function AutoOpts(selector, klass, dataField) {
         this.selector = selector;
