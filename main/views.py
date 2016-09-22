@@ -24,7 +24,6 @@ from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 from django.views import generic
 from django.views.decorators.csrf import ensure_csrf_cookie
-from io import BytesIO
 
 from . import autocomplete
 from .importer import (
@@ -912,8 +911,8 @@ def study_import_table(request, study):
                 for key in sorted(request.POST)
             ]))
 
-        table = TableImport(model, request.user, request=request)
         try:
+            table = TableImport(model, request.user, request=request)
             added = table.import_data(request.POST)
             messages.success(request, 'Imported %s measurement values.' % added)
         except RuntimeError as e:

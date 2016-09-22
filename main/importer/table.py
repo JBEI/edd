@@ -28,6 +28,13 @@ class TableImport(object):
         measurements to the database. """
 
     def __init__(self, study, user, request=None):
+        """
+        Creates an import handler.
+        :param study: the target study for import
+        :param user: the user performing the import
+        :param request: (optional) if provided, can add messages using Django messages framework
+        :raises: PermissionDenied if the user does not have write access to the study
+        """
         self._study = study
         self._user = user
         self._line_assay_lookup = {}
@@ -36,6 +43,10 @@ class TableImport(object):
         self._request = request
         # end up looking for hours repeatedly, just load once at init
         self._hours = MeasurementUnit.objects.get(unit_name='hours')
+        if not self._study.user_can_write(user):
+            raise PermissionDenied(
+                '%s does not have write access to study "%s"' % (user.username, self.study.name)
+            )
 
     def import_data(self, data):
         """
@@ -44,11 +55,6 @@ class TableImport(object):
         :return:
         :raises: ValidationError if no data are provided to import
         """
-        user = self._user
-        if not self._study.user_can_write(user):
-            raise PermissionDenied(
-                '%s does not have write access to study "%s"' % (user.username, self.study.name))
-
         self._data = data
         series = json.loads(data.get('jsonoutput', '[]'))
         self.check_series_points(series)
