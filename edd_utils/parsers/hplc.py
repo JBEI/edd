@@ -9,7 +9,10 @@ import chardet
 import logging
 import re
 
-from collections import OrderedDict, namedtuple
+from collections import defaultdict, OrderedDict, namedtuple
+from decimal import Decimal
+from itertools import imap
+
 from .util import RawImportRecord
 
 
@@ -56,6 +59,7 @@ class HplcAlignmentError(HplcError):
 
 
 CompoundRecord = namedtuple('CompoundRecord', ['compound', 'line', 'assay', 'timepoints', ])
+CompoundEntry = namedtuple('CompoundEntry', ['compound', 'amount'])
 
 
 class HPLC_Parser(object):
@@ -71,12 +75,8 @@ class HPLC_Parser(object):
         self.input_stream = input_stream   # The stream that is being parsed
         self.decoded_stream = None
 
-        # samples format: { 'Sample Name': [Compound_Entry('compound', 'amount'), ...], ... }
+        # samples format: { 'Sample Name': [CompoundEntry('compound', 'amount'), ...], ... }
         self.samples = OrderedDict()       # The final data resulting from batch parsing
-        self.compound_entry = namedtuple('Compound_Entry', ['compound', 'amount'])
-
-        self.compound_record = namedtuple(
-            'Compound_Record', ['compound', 'line', 'assay', 'timepoints'])
 
         self.has_parsed = False
         self.formatted_results = None
@@ -86,10 +86,10 @@ class HPLC_Parser(object):
         self.sample_name_regex = re.compile(r'(.*)_HPLC@([0-9]+(?:\.[0-9]*)?)(?:_([^@]+))?')
 
         # Integer indices for standard format parsing
-        self.amount_begin_position = None
-        self.amount_end_position = None
-        self.compound_begin_position = None
-        self.compound_end_position = None
+        self.amount_begin = None
+        self.amount_end = None
+        self.compound_begin = None
+        self.compound_end = None
 
         self.expected_row_count = None
         self.current_line = 0
@@ -185,38 +185,23 @@ class HPLC_Parser(object):
                 # get the name of the sample related to the row
                 new_sample_name = line[:section_widths[0]].strip()
 
+                if new_sample_name:
+                    sample_name = new_sample_name
+                    self.samples.setdefault(sample_name, list())
                 if not new_sample_name and not sample_name:
                     logger.error(
-                        "Continuation entry specified before sample name entry. Can't interpret."
+                        "Continuation entry specified before sample name entry.\n\t%d: %s",
+                        line_number, line.strip()
                     )
                     break
 
-                if new_sample_name:
-                    # ensure no collision with previous sample names by adding a #
-                    if new_sample_name in self.samples:
-                        new_sample_name += u'-2'  # first sample has no #, begin next with 'name-2'
-                        i = 3  # if name-2 is taken, begin counting up from 'name-3'
-                        while new_sample_name in self.samples:
-                            last_dash_index = new_sample_name.rindex('-')
-                            new_sample_name = "%s%s" % (new_sample_name[:last_dash_index+1], i)
-                            i += 1
-                    sample_name = new_sample_name
-                    self.samples[sample_name] = []
-                    logger.debug("sample_name: %s", sample_name)
-
                 # collect the other data items - grab amounts & compounds
-                amount_string = line[
-                    self.amount_begin_position:
-                    self.amount_end_position].strip()
-
-                compound_string = line[
-                    self.compound_begin_position:
-                    self.compound_end_position].strip()
+                amount = line[self.amount_begin:self.amount_end].strip()
+                compound = line[self.compound_begin:self.compound_end].strip()
 
                 # Put the value into our data structure
-                if amount_string != u'-' and compound_string != u'-':
-                    self.samples[sample_name].append(
-                        self.compound_entry(compound_string, amount_string))
+                if amount != '-' and compound != '-':
+                    self.samples[sample_name].append(CompoundEntry(compound, amount))
 
         logger.info("HPLC parsing finished.")
 
@@ -225,7 +210,8 @@ class HPLC_Parser(object):
 
     def _format_samples_for_raw_input_record(self):
 
-        compound_record_dict = {}  # { compound: [ compound_record_for_assay1, ... ], ... }
+        # { compound: [ compound_record_for_assay1, ... ], ... }
+        compound_record_dict = defaultdict(list)
 
         for (name, sample) in self.samples.iteritems():
             # Collects the DB names from the name.
@@ -245,31 +231,13 @@ class HPLC_Parser(object):
 
             # create formatted record for each compund entry
             for entry in sample:
-                selected_record = None
                 try:
-                    value = float(entry.amount)
+                    value = Decimal(entry.amount)
+                    record = CompoundRecord(entry.compound, line, assay, [[time or 0, value]])
+                    compound_record_dict[entry.compound].append(record)
                 except ValueError:
                     logger.warning('Could not interpret value %s', entry.amount)
                     continue
-                if entry.compound not in compound_record_dict:
-                    compound_record_dict[entry.compound] = []
-                for record in compound_record_dict[entry.compound]:
-                    # check assay and line, may be different if on a different sample
-                    if record.assay == assay:
-                        if record.line == line:
-                            selected_record = record
-                if not selected_record:
-                    record = CompoundRecord(
-                        entry.compound,
-                        line,
-                        assay,
-                        [[time or 0, value]])
-                    compound_record_dict[entry.compound].append(record)
-                else:
-                    selected_record.timepoints.append([time or 0, value])
-
-        # TODO: in importer: None(timepoint) -> WARNING
-        # TODO: in importer: None(assay) -> `None`
 
         compound_records = []
         for key in compound_record_dict:
@@ -337,9 +305,7 @@ class HPLC_Parser(object):
     def _extract_column_headers_from_multiline_text(self, section_widths, table_header):
 
         # collect the multiline text
-        column_headers = []
-        for section_width in section_widths:
-            column_headers.append('')
+        column_headers = [''] * len(section_widths)
         for line in table_header:
             section_width_carryover = 0
             for (section_index, section_width) in enumerate(section_widths):
@@ -364,89 +330,51 @@ class HPLC_Parser(object):
                     section_width_carryover = 1
                 column_headers[section_index] += segment
 
-        # clean up the column headers
-        for i in range(len(column_headers)):
-            column_headers[i] = column_headers[i].split()
-
-        # each sample is indexed by sample name
-
-        # each value is indexed by column header
-        for column_header_index in range(len(column_headers)):
-            header = u""
-            for header_part in column_headers[column_header_index]:
-                header += u" " + header_part
-            if len(header) > 0:
-                header = header[1:]
-            column_headers[column_header_index] = header
+        # each value is indexed by column header, clean up headers
+        for i, header_tokens in enumerate(imap(lambda h: h.split(), column_headers)):
+            header = ' '.join(header_tokens)
+            column_headers[i] = header
 
             logger.debug("header: %s", header)
 
             if header.startswith('Amount'):
-                self.amount_begin_position = (sum(
-                    section_widths[:column_header_index]) +
-                    len(section_widths[:column_header_index]))
-                self.amount_end_position = (section_widths[column_header_index] +
-                                            self.amount_begin_position)
-                logger.debug("Amount Begin: %s    End %s",
-                             self.amount_begin_position, self.amount_end_position)
+                self.amount_begin = sum(section_widths[:i]) + len(section_widths[:i])
+                self.amount_end = section_widths[i] + self.amount_begin
             elif header.startswith('Compound'):
-                self.compound_begin_position = (sum(
-                    section_widths[:column_header_index]) +
-                    len(section_widths[:column_header_index]))
-                self.compound_end_position = (
-                    section_widths[column_header_index] +
-                    self.compound_begin_position)
-                logger.debug("Compound Begin: %s    End %s",
-                             self.compound_begin_position,
-                             self.compound_end_position)
+                self.compound_begin = sum(section_widths[:i]) + len(section_widths[:i])
+                self.compound_end = section_widths[i] + self.compound_begin
 
         return column_headers
 
-    def _parse_96_well_format_block(self,
-                                    sample_names,
-                                    compounds,
-                                    column_headers,
-                                    section_widths):
+    def _parse_96_well_format_block(self, sample_names, compounds, column_headers, section_widths):
         """Reads in a single block of data from file"""
 
-        end_of_block = False
-        line_number = 0
-        while not end_of_block:
-            line = next(self.decoded_stream)
-            self.current_line += 1
+        for line_number, line in enumerate(self.decoded_stream):
+            self.current_line = line_number
 
             if self.expected_row_count and line_number > self.expected_row_count:
-                raise HplcAlignmentError
-            ("More rows found then expected!")
+                raise HplcAlignmentError("More rows found then expected!")
 
             if line.startswith('#'):
-                end_of_block = True
                 if self.expected_row_count and line_number < self.expected_row_count:
-                    raise HplcAlignmentError
-                ("Less rows found then expected!")
+                    raise HplcAlignmentError("Less rows found then expected!")
+                break
 
-            for index in range(len(column_headers)):
-                if "Sample" in column_headers[index]:
-                    begin_position = (sum(section_widths[:index]) +
-                                      len(section_widths[:index]))
+            for index, header in enumerate(column_headers):
+                if "Sample" in header:
+                    begin_position = sum(section_widths[:index]) + len(section_widths[:index])
                     end_position = section_widths[index] + begin_position
                     name = line[begin_position:end_position].strip()
                     # sample names is implicitly indexed by line_number
                     sample_names.append(name)
-                elif "Amount" in column_headers[index]:
-                    begin_position = (sum(section_widths[:index]) +
-                                      len(section_widths[:index]))
+                elif "Amount" in header:
+                    begin_position = sum(section_widths[:index]) + len(section_widths[:index])
                     end_position = section_widths[index] + begin_position
                     amount = line[begin_position:end_position].strip()
-
-                    if float(amount) == 0.0:
+                    if Decimal(amount) == 0.0:
                         continue
-
                     compound = column_headers[index].replace("Amount", "").strip()
-
-                    compounds.append((line_number, self.compound_entry(compound, amount)))
-
-            line_number += 1
+                    compounds.append((line_number, CompoundEntry(compound, amount)))
 
         return sample_names, compounds
 
