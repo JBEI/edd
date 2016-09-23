@@ -2542,22 +2542,24 @@ var EDDTableImport;
         };
         TypeDisambiguationStep.prototype.userChangedMeasurementDisam = function (element) {
             console.log('changed');
-            var hidden, auto, type, i;
-            hidden = $(element);
-            auto = hidden.prev();
-            type = auto.data('type');
+            var hiddenInput, textInput, type, rowIndex;
+            hiddenInput = $(element);
+            textInput = hiddenInput.prev();
+            type = textInput.data('type');
             if (type === 'compObj' || type === 'unitsObj') {
-                i = auto.data('setByUser', true).data('visibleIndex') || 0;
-                this.currentlyVisibleMeasurementObjSets.slice(i).some(function (obj) {
-                    var following = $(obj[type]);
-                    if (following.length === 0 || following.data('setByUser')) {
-                        return true; // break; for the Array.some() loop
-                    }
-                    // using placeholder instead of val to avoid triggering autocomplete change
-                    following.attr('placeholder', auto.val());
-                    following.next().val(hidden.val());
-                    return false;
-                });
+                rowIndex = textInput.data('setByUser', true).data('visibleIndex') || 0;
+                if (rowIndex < this.currentlyVisibleMeasurementObjSets.length - 1) {
+                    this.currentlyVisibleMeasurementObjSets.slice(rowIndex + 1).some(function (obj) {
+                        var following = $(obj[type]);
+                        if (following.length === 0 || following.data('setByUser')) {
+                            return true; // break; for the Array.some() loop
+                        }
+                        // using placeholder instead of val to avoid triggering autocomplete change
+                        following.attr('placeholder', textInput.val());
+                        following.next().val(hiddenInput.val());
+                        return false;
+                    });
+                }
             }
             // not checking typeObj; form submit sends selected types
             this.checkAllMeasurementCompartmentDisam();
