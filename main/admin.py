@@ -536,8 +536,15 @@ class StudyAdmin(EDDObjectAdmin):
 
 class SBMLTemplateAdmin(EDDObjectAdmin):
     """ Definition fro admin-edit of SBML Templates """
-    fields = ('name', 'description', 'sbml_file', 'biomass_calculation', )
-    list_display = ('name', 'description', 'biomass_calculation', 'created', )
+    fields = (
+        'name', 'description', 'sbml_file',
+        'biomass_calculation', 'biomass_exchange_name',
+    )
+    list_display = (
+        'name', 'description',
+        'biomass_calculation', 'biomass_exchange_name',
+        'created',
+    )
     inlines = (AttachmentInline, )
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
@@ -547,7 +554,7 @@ class SBMLTemplateAdmin(EDDObjectAdmin):
 
     def get_fields(self, request, obj=None):
         if obj:
-            return ('name', 'description', 'sbml_file', 'biomass_calculation',)
+            return self.fields
         # Only show attachment inline for NEW templates
         return ((), )
 
@@ -572,7 +579,10 @@ class SBMLTemplateAdmin(EDDObjectAdmin):
         if change:
             sbml = obj.sbml_file.file
             sbml_data = validate_sbml_attachment(sbml.read())
-            obj.biomass_exchange_name = self._extract_biomass_exchange_name(sbml_data.getModel())
+            if not obj.biomass_exchange_name:
+                obj.biomass_exchange_name = self._extract_biomass_exchange_name(
+                    sbml_data.getModel()
+                )
         elif len(form.files) == 1:
             sbml = list(form.files.values())[0]
             sbml_data = validate_sbml_attachment(sbml.read())
