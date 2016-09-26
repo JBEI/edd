@@ -204,7 +204,7 @@ def interpolate_at(measurement_data, x):
     Given an X-value without a measurement, use linear interpolation to
     compute an approximate Y-value based on adjacent measurements (if any).
     """
-    import numpy  # Nat mentioned delayed loading of numpy due to wierd startup interactions
+    import numpy  # Nat mentioned delayed loading of numpy due to weird startup interactions
     data = [md for md in measurement_data if len(md.x) and md.x[0] is not None]
     data.sort(key=lambda a: a.x[0])
     if len(data) == 0:

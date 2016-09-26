@@ -6,6 +6,7 @@ import logging
 import re
 import warnings
 
+from celery import shared_task
 from collections import namedtuple
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
@@ -21,6 +22,11 @@ from ..models import (
 
 logger = logging.getLogger(__name__)
 MType = namedtuple('MType', ['compartment', 'type', 'unit', ])
+
+
+def submit_import_task(self, importer, data):
+    count = importer.import_data(data)
+    return _('Finished import: %d measurements', count)
 
 
 class TableImport(object):
