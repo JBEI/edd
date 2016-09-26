@@ -688,7 +688,13 @@ class SbmlExportMeasurementsForm(SbmlForm):
         ).order_by(
             'assay__protocol__name', 'assay__name',
         ).select_related(
+            # including these to cut down on additional queries later
+            'assay',
+            'assay__protocol',
+            'y_units',
             'measurement_type',
+        ).prefetch_related(
+            'measurementvalue_set',
         )
         if qfilter is not None:
             f.queryset = f.queryset.filter(qfilter)
@@ -698,6 +704,17 @@ class SbmlExportMeasurementsForm(SbmlForm):
             del self.fields['interpolate']
         else:
             f.initial = f.queryset
+            # Add in warnings for any Metabolite measurements that have no defined molar_mass
+            missing_mass = models.Metabolite.objects.filter(
+                Q(measurement__in=f.queryset),
+                Q(molar_mass__isnull=True) | Q(molar_mass=0),
+            ).order_by('type_name')
+            for metabolite in missing_mass:
+                self._sbml_warnings.append(
+                    _('Measurement type %(type_name)s has no defined molar mass.') % {
+                        'type_name': metabolite.type_name,
+                    }
+                )
             self.fields['interpolate'].queryset = models.Protocol.objects.filter(
                 assay__measurement__in=f.queryset
             ).distinct()
