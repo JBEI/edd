@@ -524,18 +524,18 @@ class SbmlExport(object):
                 values = self._values_by_type[type_key]
                 times = [v.x[0] for v in values]
                 next_index = bisect(times, time)
-                if next_index == len(times) and time == times[-1]:
+                if time > times[-1]:
+                    logger.warning('tried to calculate reaction flux beyond upper range of data')
+                    continue
+                elif time < times[0]:
+                    logger.warning('tried to calculate reaction flux beyond lower range of data')
+                    continue
+                elif next_index == len(times):
                     # calculate flux based on second-to-last for last element
                     y_0 = float(values[-1].y[0])
                     y_prev = float(values[-2].y[0])
                     y_delta = y_0 - y_prev
                     time_delta = float(time - times[-2])
-                elif next_index == len(times):
-                    logger.warning('tried to calculate reaction flux beyond upper range of data')
-                    continue
-                elif next_index == 0 and times[0] != time:
-                    logger.warning('tried to calculate reaction flux beyond lower range of data')
-                    continue
                 else:
                     # calculate flux to next value for all but last value
                     y_0 = interpolate_at(values, time)
