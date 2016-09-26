@@ -79,9 +79,8 @@ class SbmlExport(object):
         default_factor = density_measurements.cleaned_data.get('gcdw_default', 0.65)
         factor_meta = density_measurements.cleaned_data.get('gcdw_conversion', None)
         measurement_qs = self.load_measurement_queryset(density_measurements)
-        measurement_set = set(measurements)
         # try to load factor metadata for each assay
-        for m in [m for m in measurement_qs if m.pk in measurement_set]:
+        for m in measurement_qs:
             if factor_meta is None:
                 factor = default_factor
             else:
@@ -410,10 +409,22 @@ class SbmlExport(object):
             times = [p.x[0] for p in self._density]
             next_index = bisect(times, time)
             # already converted with gCDW in SbmlExport#addDensity()
-            y_0 = interpolate_at(self._density, time)
-            y_next = float(self._density[next_index].y[0])
-            time_next = times[next_index]
-            time_delta = float(time_next - time)
+            if next_index == len(times) and time == times[-1]:
+                # calculate flux based on second-to-last for last element
+                y_0 = self._density[-2].y[0]
+                y_next = self._density[-1].y[0]
+                time_delta = float(time - times[-2])
+            elif next_index == len(times):
+                logger.warning('tried to calculate biomass flux beyond upper range of data')
+                return
+            elif next_index == 0 and times[0] != time:
+                logger.warning('tried to calculate biomass flux beyond lower range of data')
+                return
+            else:
+                # calculate flux to next value for all but last value
+                y_0 = interpolate_at(self._density, time)
+                y_next = float(self._density[next_index].y[0])
+                time_delta = float(times[next_index] - time)
             flux = math.log(y_next / y_0) / time_delta
             kinetic_law = reaction.getKineticLaw()
             # NOTE: libsbml calls require use of 'bytes' CStrings
@@ -506,27 +517,36 @@ class SbmlExport(object):
                     }
                 )
                 continue
+            else:
+                logger.info("working on reaction %s", reaction_sid)
             self._update_omics(builder, reaction, time)
             try:
                 values = self._values_by_type[type_key]
                 times = [v.x[0] for v in values]
                 next_index = bisect(times, time)
-                if next_index == len(times):
-                    logger.warning('tried to calculate beyond upper range of data')
+                if time > times[-1]:
+                    logger.warning('tried to calculate reaction flux beyond upper range of data')
                     continue
-                elif next_index == 0 and times[0] != time:
-                    logger.warning('tried to calculate beyond lower range of data')
+                elif time < times[0]:
+                    logger.warning('tried to calculate reaction flux beyond lower range of data')
                     continue
+                elif next_index == len(times):
+                    # calculate flux based on second-to-last for last element
+                    y_0 = float(values[-1].y[0])
+                    y_prev = float(values[-2].y[0])
+                    y_delta = y_0 - y_prev
+                    time_delta = float(time - times[-2])
+                else:
+                    # calculate flux to next value for all but last value
+                    y_0 = interpolate_at(values, time)
+                    y_next = float(values[next_index].y[0])
+                    y_delta = y_next - y_0
+                    time_delta = float(times[next_index] - time)
                 # interpolate_at returns a float
                 # NOTE: arithmetic operators do not work between float and Decimal
                 density = interpolate_at(self._density, time)
-                y_0 = interpolate_at(values, time)
-                y_next = float(values[next_index].y[0])
-                time_next = times[next_index]
-                y_delta = y_next - y_0
-                time_delta = float(time_next - time)
                 # TODO: find better way to detect ratio units
-                if values[next_index].measurement.y_units.unit_name.endswith('/hr'):
+                if values[0].measurement.y_units.unit_name.endswith('/hr'):
                     flux = y_0 / density
                 else:
                     flux = (y_delta / time_delta) / density
@@ -668,7 +688,13 @@ class SbmlExportMeasurementsForm(SbmlForm):
         ).order_by(
             'assay__protocol__name', 'assay__name',
         ).select_related(
+            # including these to cut down on additional queries later
+            'assay',
+            'assay__protocol',
+            'y_units',
             'measurement_type',
+        ).prefetch_related(
+            'measurementvalue_set',
         )
         if qfilter is not None:
             f.queryset = f.queryset.filter(qfilter)
@@ -678,6 +704,17 @@ class SbmlExportMeasurementsForm(SbmlForm):
             del self.fields['interpolate']
         else:
             f.initial = f.queryset
+            # Add in warnings for any Metabolite measurements that have no defined molar_mass
+            missing_mass = models.Metabolite.objects.filter(
+                Q(measurement__in=f.queryset),
+                Q(molar_mass__isnull=True) | Q(molar_mass=0),
+            ).order_by('type_name')
+            for metabolite in missing_mass:
+                self._sbml_warnings.append(
+                    _('Measurement type %(type_name)s has no defined molar mass.') % {
+                        'type_name': metabolite.type_name,
+                    }
+                )
             self.fields['interpolate'].queryset = models.Protocol.objects.filter(
                 assay__measurement__in=f.queryset
             ).distinct()
