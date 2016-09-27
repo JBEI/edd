@@ -8,14 +8,16 @@ from builtins import str
 from collections import defaultdict, Iterable
 from decimal import Decimal
 from django.conf import settings
-from django.contrib.auth import get_user_model
+from django.contrib import auth, messages
 from django.contrib.sites.models import Site
 from django.db.models import Aggregate
 from django.db.models.aggregates import Aggregate as SQLAggregate
+from functools import partial
 from six import string_types
 from threadlocals.threadlocals import get_current_request
 from uuid import UUID
 
+from .importer.table import import_task
 from .models import (
     CarbonSource, GeneIdentifier, MeasurementUnit, Metabolite, MetadataType, ProteinIdentifier,
     Strain,
@@ -49,6 +51,45 @@ class EDDSettingsMiddleware(object):
         of the current deployment environment. """
     def process_request(self, request):
         request.edd_deployment = settings.EDD_DEPLOYMENT_ENVIRONMENT
+
+
+class EDDImportCheckMiddleware(object):
+    """ Checks for any pending import tasks in the request session, and displays a message
+        of the current status of the import. """
+    def process_request(self, request):
+        tasks = EDDImportTasks(request.session)
+        task_ids = filter(partial(self._process_task, request), tasks.load_task_ids())
+        tasks.save_task_ids(task_ids)
+
+    def _process_task(self, request, task_id):
+        task = import_task.AsyncResult(task_id)
+        if task.successful():
+            messages.success(request, '%s' % task.info)
+        elif task.failed():
+            messages.error(request, 'An import task failed with error: %s' % task.info)
+        else:
+            return True  # keeping if not success/fail yet
+        return False
+
+
+class EDDImportTasks(object):
+    """ Loads and saves import task IDs from a session. """
+    SESSION_KEY = '_edd_import_tasks'
+
+    def __init__(self, session):
+        self._session = session
+
+    def add_task_id(self, task_id):
+        task_ids = self.load_task_ids()
+        task_ids.append(task_id)
+        self.save_task_ids(task_ids)
+
+    def load_task_ids(self):
+        return self._session.get(self.SESSION_KEY, [])
+
+    def save_task_ids(self, task_ids):
+        self._session[self.SESSION_KEY] = task_ids
+        self._session.save()
 
 
 media_types = {
@@ -188,7 +229,7 @@ def get_edddata_strains():
 
 
 def get_edddata_users(active_only=False):
-    User = get_user_model()
+    User = auth.get_user_model()
     users = User.objects.select_related(
         'userprofile'
     ).prefetch_related(

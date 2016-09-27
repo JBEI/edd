@@ -27,12 +27,23 @@ MType = namedtuple('MType', ['compartment', 'type', 'unit', ])
 
 
 @shared_task
-def submit_import_task(study_id, user_id, data):
+def import_task(study_id, user_id, data):
     study = models.Study.objects.get(pk=study_id)
     user = models.User.objects.get(pk=user_id)
-    importer = TableImport(study, user)
-    count = importer.import_data(data)
-    return _('Finished import: %d measurements' % count)
+    try:
+        importer = TableImport(study, user)
+        count = importer.import_data(data)
+    except Exception as e:
+        raise RuntimeError(
+            'Failed import to %(study)s, EDD encountered this problem: %(problem)s' % {
+                'problem': e,
+                'study': study.name,
+            }
+        )
+    return _('Finished import to %(study)s: %(count)d measurements added.' % {
+        'count': count,
+        'study': study.name,
+    })
 
 
 class TableImport(object):

@@ -27,11 +27,11 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 
 from . import autocomplete
 from .importer import (
-    TableImport, import_rna_seq, import_rnaseq_edgepro, interpret_edgepro_data,
+    import_rna_seq, import_rnaseq_edgepro, interpret_edgepro_data,
     interpret_raw_rna_seq_data,
 )
 from .importer.parser import find_parser
-from .importer.table import submit_import_task
+from .importer.table import import_task
 from .export.forms import (ExportOptionForm, ExportSelectionForm,  WorklistForm,)
 from .export.sbml import SbmlExport
 from .export.table import ExportSelection, TableExport, WorklistExport
@@ -46,8 +46,8 @@ from .models import (
 from .signals import study_modified
 from .solr import StudySearch
 from .utilities import (
-    JSONDecimalEncoder, get_edddata_carbon_sources, get_edddata_measurement, get_edddata_misc,
-    get_edddata_strains, get_edddata_study, get_edddata_users,
+    EDDImportTasks, JSONDecimalEncoder, get_edddata_carbon_sources, get_edddata_measurement,
+    get_edddata_misc, get_edddata_strains, get_edddata_study, get_edddata_users,
 )
 
 logger = logging.getLogger(__name__)
@@ -912,11 +912,15 @@ def study_import_table(request, study):
                 '%(key)s : %(value)s' % {'key': key, 'value': request.POST[key]}
                 for key in sorted(request.POST)
             ]))
-
         try:
-            result = submit_import_task.delay(study, request.user.pk, request.POST)
-            # TODO find way to track progress
-            messages.success(request, 'Data is submitted for import. Job ID %s' % (result.id, ))
+            result = import_task.delay(study, request.user.pk, request.POST)
+            tasks = EDDImportTasks(request.session)
+            tasks.add_task_id(result.id)
+            messages.success(
+                request,
+                'Data is submitted for import. You may continue to use EDD, another message will '
+                'appear once the import is complete.'
+            )
         except RuntimeError as e:
             logger.exception('Data import failed: %s', e)
             messages.error(request, e)
