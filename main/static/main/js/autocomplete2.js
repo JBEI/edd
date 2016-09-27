@@ -8,9 +8,10 @@ var EDD_auto = EDD_auto || {}, EDDData = EDDData || {};
 (function ($) { // immediately invoked function to bind jQuery to $
 
     var AutoColumn, meta_columns;
-    AutoColumn = function AutoColumn(name, width, valueField) {
+    AutoColumn = function AutoColumn(name, minWidth, valueField, maxWidth) {
         this.name = name;
-        this.width = width;
+        this.width = minWidth;
+        this.maxWidth = maxWidth || null;
         this.valueField = valueField;
         return this;
     };
@@ -42,7 +43,7 @@ var EDD_auto = EDD_auto || {}, EDDData = EDDData || {};
             new AutoColumn('Name', '150px', 'name'),
             new AutoColumn('Volume', '60px', 'volume'),
             new AutoColumn('Labeling', '100px', 'labeling'),
-            new AutoColumn('Description', '250px', 'description'),
+            new AutoColumn('Description', '250px', 'description', '600px'),
             new AutoColumn('Initials', '60px', 'initials')
             ],
         // when it's ambiguous what metadata is targetting, include the 'for' column
@@ -73,6 +74,7 @@ var EDD_auto = EDD_auto || {}, EDDData = EDDData || {};
     });
     EDD_auto.request_cache = {};
 
+
 /*
  * jQuery UI Multicolumn Autocomplete Widget Plugin 2.2
  *
@@ -82,6 +84,8 @@ var EDD_auto = EDD_auto || {}, EDDData = EDDData || {};
  * Dual licensed under the MIT and GPL licenses:
  *   http://www.opensource.org/licenses/mit-license.php
  *   http://www.gnu.org/licenses/gpl.html
+ *
+ * Heavily modified by JBEI to not use "float:left", as it has been Deemed Harmful.
 */
 $.widget('custom.mcautocomplete', $.ui.autocomplete, {
     _create: function() {
@@ -92,31 +96,34 @@ $.widget('custom.mcautocomplete', $.ui.autocomplete, {
         var self = this, thead;
     
         if (this.options.showHeader) {
-            table=$('<div class="ui-widget-header" style="width:100%"></div>');
+            table=$('<li class="ui-widget-header"></div>');
             // Column headers
             $.each(this.options.columns, function(index, item) {
-                table.append('<span style="float:left;min-width:' + item.minWidth + ';">' + item.name + '</span>');
+                var cell = $('<div style="min-width:' + item.minWidth + ';">' + item.name + '</div>');
+                if (item.maxWidth) { cell.css('maxWidth', item.maxWidth); }
+                table.append(cell);
             });
-            table.append('<div style="clear: both;"></div>');
             ul.append(table);
         }
         // List items
         $.each(items, function(index, item) {
             self._renderItem(ul, item);
         });
+        $( ul ).addClass( "edd-autocomplete-list" ).find( "li:odd" ).addClass( "odd" );
     },
     _renderItem: function(ul, item) {
         var t = '',
-            result = '';
-        
-        $.each(this.options.columns, function(index, column) {
-            t += '<span style="float:left;min-width:' + column.minWidth + ';">' + item[column.valueField ? column.valueField : index] + '</span>'
-        });
-    
-        result = $('<li></li>')
+        result = $('<li>')
             .data('ui-autocomplete-item', item)
-            .append('<a class="mcacAnchor">' + t + '<div style="clear: both;"></div></a>')
-            .appendTo(ul);
+
+        $.each(this.options.columns, function(index, column) {
+            var cell = $('<div>' + item[column.valueField ? column.valueField : index] + '</div>');
+            if (column.width) { cell.css('minWidth', column.maxWidth); }
+            if (column.maxWidth) { cell.css('maxWidth', column.maxWidth); }
+            result.append(cell);
+        });
+
+        result.appendTo(ul);
         return result;
     }
 });
