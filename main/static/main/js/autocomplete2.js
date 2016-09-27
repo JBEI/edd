@@ -64,7 +64,7 @@ var EDD_auto = EDD_auto || {}, EDDData = EDDData || {};
         "Strain": 'Strains',
         "CarbonSource": 'CSources',
         "MetaboliteExchange": 'Exchange'
-    })
+    });
     EDD_auto.value_keys = $.extend(EDD_auto.value_keys || {}, {
         "User": 'id',
         "Strain": 'recordId',
@@ -74,76 +74,51 @@ var EDD_auto = EDD_auto || {}, EDDData = EDDData || {};
     EDD_auto.request_cache = {};
 
 /*
- * jQuery UI Multicolumn Autocomplete Widget Plugin 2.1
- * Copyright (c) 2012-2014 Mark Harmon
+ * jQuery UI Multicolumn Autocomplete Widget Plugin 2.2
  *
  * Depends:
- * - jQuery UI Autocomplete widget
+ *   - jQuery UI Autocomplete widget
  *
  * Dual licensed under the MIT and GPL licenses:
- * http://www.opensource.org/licenses/mit-license.php
- * http://www.gnu.org/licenses/gpl.html
- */
-$(function () {
-    var valOrNbsp, createCell;
-    valOrNbsp = function valOrNbsp(jQ, value) {
-        if (typeof value === 'object') {
-            jQ.append(value);
-        } else if (value && value.trim()) {
-            jQ.text(value);
-        } else {
-            jQ.html('&nbsp;');
+ *   http://www.opensource.org/licenses/mit-license.php
+ *   http://www.gnu.org/licenses/gpl.html
+*/
+$.widget('custom.mcautocomplete', $.ui.autocomplete, {
+    _create: function() {
+      this._super();
+      this.widget().menu( "option", "items", "> :not(.ui-widget-header)" );
+    },
+    _renderMenu: function(ul, items) {
+        var self = this, thead;
+    
+        if (this.options.showHeader) {
+            table=$('<div class="ui-widget-header" style="width:100%"></div>');
+            // Column headers
+            $.each(this.options.columns, function(index, item) {
+                table.append('<span style="float:left;min-width:' + item.minWidth + ';">' + item.name + '</span>');
+            });
+            table.append('<div style="clear: both;"></div>');
+            ul.append(table);
         }
-    };
-    createCell = function createCell(parent, width, label) {
-        var cell = $('<span>').addClass('ac_column').css('width', width).appendTo(parent);
-        valOrNbsp(cell, label);
-        return cell;
+        // List items
+        $.each(items, function(index, item) {
+            self._renderItem(ul, item);
+        });
+    },
+    _renderItem: function(ul, item) {
+        var t = '',
+            result = '';
+        
+        $.each(this.options.columns, function(index, column) {
+            t += '<span style="float:left;min-width:' + column.minWidth + ';">' + item[column.valueField ? column.valueField : index] + '</span>'
+        });
+    
+        result = $('<li></li>')
+            .data('ui-autocomplete-item', item)
+            .append('<a class="mcacAnchor">' + t + '<div style="clear: both;"></div></a>')
+            .appendTo(ul);
+        return result;
     }
-    $.widget('custom.mcautocomplete', $.ui.autocomplete, {
-        _create: function () {
-            this._super();
-            this.widget().menu("option", "items", "> :not(.ui-widget-header)");
-        },
-        _renderMenu: function (ul, items) {
-            var self = this,
-                thead;
-            if (this.options.showHeader) {
-                table = $('<div class="ui-widget-header" style="width:100%"></div>');
-                $.each(this.options.columns, function (index, item) {
-                    createCell(table, item.width, item.name);
-                });
-                $('<div>').addClass('clear').appendTo(table);
-                ul.append(table);
-            }
-            $.each(items, function (index, item) {
-                self._renderItem(ul, item);
-            });
-        },
-        _renderItem: function (ul, item) {
-            var result, anchor;
-            result = $('<li>').data('ui-autocomplete-item', item).appendTo(ul);
-            anchor = $('<a>').addClass('mcacAnchor').appendTo(result);
-            $.each(this.options.columns, function (index, column) {
-                var value;
-                if (column.valueField) {
-                    if (typeof column.valueField === 'function') {
-                        value = column.valueField.call({}, item, column, index);
-                    } else {
-                        value = item[column.valueField];
-                    }
-                } else {
-                    value = item[index];
-                }
-                if (value instanceof Array) {
-                    value = value[0] || '';
-                }
-                createCell(anchor, column.width, value);
-            });
-            $('<div>').addClass('clear').appendTo(result);
-            return result;
-        }
-    });
 });
 
 
@@ -188,21 +163,40 @@ EDD_auto.initial_search = function initial_search(selector, term) {
     autoInput.mcautocomplete('close');
 };
 
-
-// Sets up the multicolumn autocomplete widget.  Must be called after the
-// $(window).load handler above.
-EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(selector, model_name, cache, options) {
+/**
+ * Sets up the multicolumn autocomplete behavior for an existing text input.  Must be called
+ * after the $(window).load handler above.
+ * @param selector the CSS selector that uniquely identifies the autocomplete text input
+ * within the DOM. Note that in order to work, the autocomplete input must have an
+ * immediately-following hidden sibling input which will be used to cache the selected value.
+ * The element identified by this selector will have the "autocomp" class added if not already
+ * present for consistency with the rest of the UI.
+ * @param model_name the EDD class of results to be searched (roughly corresponds to
+ * the Django ORM model classes)
+ * @param cache an optional dictionary to use / maintain as a cache of query results for this
+ * autocomplete. Maps search term -> results.
+ * @param search_options an optional dictionary of data to be sent to the search backend as part
+ * of the autocomplete search request.  To be received on the back-end, additional search
+ * parameters should be captured under an included "search_extra" element.
+ * @param prependResults an optional dictionary of static results to prepend to those returned
+ * by search queries
+ * @param search_uri the URI of the REST resource to use for querying autocomplete results
+ */
+EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(
+    selector, model_name, cache, search_options, prependResults, search_uri) {
     var empty = {}, columns, display_key, value_key, cacheId, opt;
     if (typeof model_name === "undefined") {
-        throw Error("model_name must be defined!");
+        throw Error("model_class_name must be defined!");
     }
-    opt = $.extend({}, options);
+    opt = $.extend({}, search_options);
+    prependResults = prependResults || [];
     columns = EDD_auto.column_layouts[model_name] || [ new AutoColumn('Name', '300px', 'name') ];
     display_key = EDD_auto.display_keys[model_name] || 'name';
     value_key = EDD_auto.value_keys[model_name] || 'id';
     cacheId = EDD_auto.value_cache[model_name] || ('cache_' + (++EDD_auto.cache_counter));
     cache = cache || (EDDData[cacheId] = EDDData[cacheId] || {});
-    empty[columns[0].valueField] = empty[0] = '<i>No Results Found</i>';
+    search_uri = search_uri || "/search";
+    empty[columns[0].valueField] = empty[0] = 'No Results Found';
     columns.slice(1).forEach(function (column, index) {
         empty[column.valueField] = empty[index] = '';
     });
@@ -218,30 +212,41 @@ EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(selector, 
         'columns': columns,
         // Event handler for when a list item is selected.
         'select': function (event, ui) {
-            var cacheKey, record, display, value;
+            var cacheKey, record, displayValue, hiddenValue, userInput, hiddenInput;
             if (ui.item) {
                 cacheKey = ui.item[value_key];
                 record = cache[cacheKey] = cache[cacheKey] || {};
                 $.extend(record, ui.item);
-                display = record[display_key] || '';
-                value = record[value_key] || '';
+                displayValue = record[display_key] || '';
+                hiddenValue = record[value_key] || '';
                 // assign value of selected item ID to sibling hidden input
-                $(this).val(display).trigger('change').next('input[type=hidden]').val(value);
+
+                userInput = $(this)
+                    .val(displayValue);
+
+                hiddenInput = userInput
+                    .next('input[type=hidden]')
+                    .val(hiddenValue)
+                    .trigger('change')
+                    .trigger('input');
             }
             return false;
         },
-    
         // The rest of the options are for configuring the ajax webservice call.
         'minLength': 0,
         'source': function (request, response) {
-            var result, terms;
-            terms = EDD_auto.request_cache[model_name] = EDD_auto.request_cache[model_name] || {};
-            if (terms[request.term]) {
-                response(terms[request.term]);
+            var result, modelCache, termCachedResults;
+            modelCache = EDD_auto.request_cache[model_name] = EDD_auto.request_cache[model_name] || {};
+            termCachedResults = modelCache[request.term];
+            if (termCachedResults) {
+                // prepend any optional default results
+                var displayResults = prependResults.concat(termCachedResults);
+
+                response(displayResults);
                 return;
             }
             $.ajax({
-                'url': '/search',
+                'url': search_uri,
                 'dataType': 'json',
                 'data': $.extend({
                     'model': model_name,
@@ -256,15 +261,18 @@ EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(selector, 
                         // store returned results in cache
                         result.forEach(function (item) {
                             var cacheKey = item[value_key],
-                                record = cache[cacheKey] = cache[cacheKey] || {};
-                            $.extend(record, item);
+                                cache_record = cache[cacheKey] = cache[cacheKey] || {};
+                            $.extend(cache_record, item);
                         });
                     }
-                    terms[request.term] = result;
-                    response(result);
+                    modelCache[request.term] = result;
+
+                    // prepend any optional default results
+                    var displayResults = prependResults.concat(result);
+                    response(displayResults);
                 },
                 'error': function (jqXHR, status, err) {
-                    response([ '<i>Server Error</i>' ]);
+                    response([ 'Server Error' ]);
                 }
             });
         },
@@ -275,11 +283,13 @@ EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(selector, 
             $(ev.target).removeClass('wait');
         }
     }).on('blur', function (ev) {
-        var auto = $(this), hidden = auto.next('input[type=hidden]'), hiddenId = hidden.val(),
+        var auto = $(this), hiddenInput = auto.next('input[type=hidden]'), hiddenId = hiddenInput.val(),
             old = cache[hiddenId] || {}, current = auto.val();
         if (current.trim() === '') {
             // User cleared value in autocomplete, remove value from hidden ID
-            hidden.val('');
+            hiddenInput.val('')
+                .trigger('change')
+                .trigger('input');
         } else {
             // User modified value in autocomplete without selecting new one, restore previous
             auto.val(old[display_key] || '');
@@ -289,7 +299,7 @@ EDD_auto.setup_field_autocomplete = function setup_field_autocomplete(selector, 
 
 /***********************************************************************/
 
-$(window).on('load', function () {
+$( window ).on("load", function() { // Shortcutting this to .load confuses jQuery
     var AutoOpts, setup_info;
     AutoOpts = function AutoOpts(selector, klass, dataField) {
         this.selector = selector;
