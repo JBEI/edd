@@ -916,11 +916,11 @@ module StudyD {
         post:string;
 
         constructor(metaDataID:string) {
+            super();
             var MDT = EDDData.MetaDataTypes[metaDataID];
             this.metaDataID = metaDataID;
             this.pre = MDT.pre || '';
             this.post = MDT.post || '';
-            super();
         }
 
 
@@ -1630,8 +1630,8 @@ module StudyD {
      * this function makes unchecked labels black
      * @param selectors
      */
-    function makeLabelsBlack(selectors) {
-        _.each(selectors, function(selector) {
+    function makeLabelsBlack(selectors:JQuery[]) {
+        _.each(selectors, function(selector:JQuery) {
             if (selector.prev().prop('checked') === false) {
             $(selector).css('color', 'black');
             }
@@ -1677,8 +1677,8 @@ module StudyD {
      * @returns labels
      */
 
-    function addColor(labels, colorObj, assay) {
-        _.each(labels, function(label) {
+    function addColor(labels:JQuery[], colorObj, assay) {
+        _.each(labels, function(label:JQuery) {
             var color = colorObj[assay];
             if (EDDData.Lines[assay].name === label.text()) {
                 $(label).css('color', color);
@@ -1959,9 +1959,9 @@ class DataGridSpecLines extends DataGridSpecBase {
 
 
     constructor() {
+        super();
         this.findMetaDataIDsUsedInLines();
         this.findGroupIDsAndNames();
-        super();
     }
 
 
@@ -2644,9 +2644,9 @@ class DataGridAssays extends DataGrid {
 
 
     constructor(dataGridSpec:DataGridSpecBase) {
+        super(dataGridSpec);
         this.recordsCurrentlyInvalidated = [];
         this.sectionCurrentlyDisclosed = false;
-        super(dataGridSpec);
     }
 
 
@@ -2766,6 +2766,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
 
 
     constructor(protocolID) {
+        super();
         this.protocolID = protocolID;
         this.protocolName = EDDData.Protocols[protocolID].name;
         this.graphObject = null;
@@ -2774,7 +2775,6 @@ class DataGridSpecAssays extends DataGridSpecBase {
         this.refreshIDList();
         this.findMaximumXValueInData();
         this.findMetaDataIDsUsedInAssays();
-        super();
     }
 
 

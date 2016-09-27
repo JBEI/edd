@@ -757,11 +757,11 @@ var StudyD;
     var MetaDataFilterSection = (function (_super) {
         __extends(MetaDataFilterSection, _super);
         function MetaDataFilterSection(metaDataID) {
+            _super.call(this);
             var MDT = EDDData.MetaDataTypes[metaDataID];
             this.metaDataID = metaDataID;
             this.pre = MDT.pre || '';
             this.post = MDT.post || '';
-            _super.call(this);
         }
         MetaDataFilterSection.prototype.configure = function () {
             this.sectionTitle = EDDData.MetaDataTypes[this.metaDataID].name;
@@ -1715,9 +1715,9 @@ var StudyD;
 var DataGridSpecLines = (function (_super) {
     __extends(DataGridSpecLines, _super);
     function DataGridSpecLines() {
+        _super.call(this);
         this.findMetaDataIDsUsedInLines();
         this.findGroupIDsAndNames();
-        _super.call(this);
     }
     DataGridSpecLines.prototype.highlightCarbonBalanceWidget = function (v) {
         this.carbonBalanceWidget.highlight(v);
@@ -2286,9 +2286,9 @@ var DGShowCarbonBalanceWidget = (function (_super) {
 var DataGridAssays = (function (_super) {
     __extends(DataGridAssays, _super);
     function DataGridAssays(dataGridSpec) {
+        _super.call(this, dataGridSpec);
         this.recordsCurrentlyInvalidated = [];
         this.sectionCurrentlyDisclosed = false;
-        _super.call(this, dataGridSpec);
     }
     DataGridAssays.prototype.invalidateAssayRecords = function (records) {
         this.recordsCurrentlyInvalidated = this.recordsCurrentlyInvalidated.concat(records);
@@ -2383,6 +2383,7 @@ var DataGridAssays = (function (_super) {
 var DataGridSpecAssays = (function (_super) {
     __extends(DataGridSpecAssays, _super);
     function DataGridSpecAssays(protocolID) {
+        _super.call(this);
         this.protocolID = protocolID;
         this.protocolName = EDDData.Protocols[protocolID].name;
         this.graphObject = null;
@@ -2391,7 +2392,6 @@ var DataGridSpecAssays = (function (_super) {
         this.refreshIDList();
         this.findMaximumXValueInData();
         this.findMetaDataIDsUsedInAssays();
-        _super.call(this);
     }
     DataGridSpecAssays.prototype.refreshIDList = function () {
         var _this = this;

@@ -276,7 +276,7 @@ GraphHelperMethods = {
             .attr("class", "grid")
             .attr("transform", "translate(0," + graphSet.height + ")")
             .call(xAxis
-                .tickSize(-graphSet.height, 0, 0)
+                .tickSize(-graphSet.height, 0)
                 .tickFormat(""));
     },
     
@@ -309,7 +309,7 @@ GraphHelperMethods = {
         svg.append("g")
             .attr("class", "grid")
             .call(yAxis
-                .tickSize(-graphSet.width, 0, 0)
+                .tickSize(-graphSet.width, 0)
                 .tickFormat(""))
 
     },
