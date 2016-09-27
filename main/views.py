@@ -28,8 +28,10 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from . import autocomplete
 from .importer import (
     TableImport, import_rna_seq, import_rnaseq_edgepro, interpret_edgepro_data,
-    interpret_raw_rna_seq_data, parser
+    interpret_raw_rna_seq_data,
 )
+from .importer.parser import find_parser
+from .importer.table import submit_import_task
 from .export.forms import (ExportOptionForm, ExportSelectionForm,  WorklistForm,)
 from .export.sbml import SbmlExport
 from .export.table import ExportSelection, TableExport, WorklistExport
@@ -912,9 +914,9 @@ def study_import_table(request, study):
             ]))
 
         try:
-            table = TableImport(model, request.user, request=request)
-            added = table.import_data(request.POST)
-            messages.success(request, 'Imported %s measurement values.' % added)
+            result = submit_import_task.delay(study, request.user.pk, request.POST)
+            # TODO find way to track progress
+            messages.success(request, 'Data is submitted for import. Job ID %s' % (result.id, ))
         except RuntimeError as e:
             logger.exception('Data import failed: %s', e)
             messages.error(request, e)
@@ -949,7 +951,7 @@ def utilities_parse_import_file(request):
     edd_file_type = request.META.get('HTTP_X_EDD_FILE_TYPE')
     edd_import_mode = request.META.get('HTTP_X_EDD_IMPORT_MODE')
 
-    parse_fn = parser.find_parser(edd_import_mode, edd_file_type)
+    parse_fn = find_parser(edd_import_mode, edd_file_type)
     if parse_fn:
         try:
             result = parse_fn(request)

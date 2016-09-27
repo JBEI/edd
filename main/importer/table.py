@@ -10,10 +10,12 @@ from celery import shared_task
 from collections import namedtuple
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
+from django.db import transaction
 from django.db.models import Q
 from django.utils.translation import ugettext as _
 from six import string_types
 
+from .. import models
 from ..models import (
     Assay, Datasource, GeneIdentifier, Line, Measurement, MeasurementUnit,
     MeasurementValue, MetadataType, ProteinIdentifier, Protocol
@@ -24,9 +26,13 @@ logger = logging.getLogger(__name__)
 MType = namedtuple('MType', ['compartment', 'type', 'unit', ])
 
 
-def submit_import_task(self, importer, data):
+@shared_task
+def submit_import_task(study_id, user_id, data):
+    study = models.Study.objects.get(pk=study_id)
+    user = models.User.objects.get(pk=user_id)
+    importer = TableImport(study, user)
     count = importer.import_data(data)
-    return _('Finished import: %d measurements', count)
+    return _('Finished import: %d measurements' % count)
 
 
 class TableImport(object):
@@ -64,8 +70,11 @@ class TableImport(object):
         self._data = data
         series = json.loads(data.get('jsonoutput', '[]'))
         self.check_series_points(series)
-        self.init_lines_and_assays(series)
-        return self.create_measurements(series)
+        count = 0
+        with transaction.atomic(savepoint=False):
+            self.init_lines_and_assays(series)
+            count = self.create_measurements(series)
+        return count
 
     def check_series_points(self, series):
         """
