@@ -99,7 +99,8 @@ $.widget('custom.mcautocomplete', $.ui.autocomplete, {
             table=$('<li class="ui-widget-header"></div>');
             // Column headers
             $.each(this.options.columns, function(index, item) {
-                var cell = $('<div style="min-width:' + item.minWidth + ';">' + item.name + '</div>');
+                var cell = $('<div>' + item.name + '</div>');
+                if (item.width) { cell.css('minWidth', item.width); }
                 if (item.maxWidth) { cell.css('maxWidth', item.maxWidth); }
                 table.append(cell);
             });
@@ -118,7 +119,7 @@ $.widget('custom.mcautocomplete', $.ui.autocomplete, {
 
         $.each(this.options.columns, function(index, column) {
             var cell = $('<div>' + item[column.valueField ? column.valueField : index] + '</div>');
-            if (column.width) { cell.css('minWidth', column.maxWidth); }
+            if (column.width) { cell.css('minWidth', column.width); }
             if (column.maxWidth) { cell.css('maxWidth', column.maxWidth); }
             result.append(cell);
         });
