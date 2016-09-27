@@ -13,6 +13,7 @@ from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django.db import transaction
 from django.db.models import Count, Prefetch, Q
+from django.db.transaction import atomic
 from django.http import (
     Http404, HttpResponse, HttpResponseNotAllowed, HttpResponseRedirect, JsonResponse,
 )
@@ -902,7 +903,9 @@ def permissions(request, study):
 # FIXME should have trailing slash?
 @ensure_csrf_cookie
 def study_import_table(request, study):
-    """ View for importing tabular data (replaces AssayTableData.cgi). """
+    """ View for importing tabular data (replaces AssayTableData.cgi).
+    :raises: Exception if an error occurrs during the import attempt
+    """
     model = load_study(request, study, permission_type=[StudyPermission.WRITE, ])
     # FIXME filter protocols?
     protocols = Protocol.objects.order_by('name')
@@ -922,7 +925,10 @@ def study_import_table(request, study):
                 'appear once the import is complete.'
             )
         except RuntimeError as e:
-            logger.exception('Data import failed: %s', e)
+            logger.exception('Data import failed: %s', e.message)
+
+            # show the first error message to the user. continuing the import attempt to collect
+            # more potentially-useful errors makes the code too complex / hard to maintain.
             messages.error(request, e)
     return render(
         request,

@@ -5,6 +5,8 @@ import json
 import logging
 
 from collections import defaultdict
+
+from django.db.transaction import atomic
 from six import string_types
 
 from ..models import (
@@ -208,6 +210,7 @@ class import_rna_seq(object):
             MeasurementValue.objects.bulk_create(new_meas_data)
 
     @classmethod
+    @atomic
     def from_form(cls, request, study):
         form = request.POST
         n_cols = int(form["n_cols"])

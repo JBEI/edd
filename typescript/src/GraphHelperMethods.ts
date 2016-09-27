@@ -119,12 +119,13 @@ GraphHelperMethods = {
      /**
      * this function is the same as above but more simple as it is for the import section.
     **/
-    transformNewLineItem: function (data, singleData, color) {
+    transformNewLineItem: function (data, singleData) {
 
         // array of x and y values for sortin
         var xAndYValues = [];
         //data for one line entry
         var singleDataValues = singleData.data;
+        var fullName = singleData.label;
 
         _.each(singleDataValues, function(dataValue) {
              var dataset = {};
@@ -134,11 +135,11 @@ GraphHelperMethods = {
             } else if (dataValue[1] == null) {
                 dataValue[1] = ["0"];
             }
-            dataset['label'] = 'dt' + singleData.assay;
+            dataset['newLine'] = true;
             dataset['x'] = dataValue[0];
             dataset['y'] = parseFloat(dataValue[1]);
             dataset['name'] = singleData.name;
-            dataset['color'] = color;
+            dataset['fullName'] = fullName;
             xAndYValues.push(dataset);
         });
         xAndYValues.sort(function(a, b) {

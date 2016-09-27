@@ -8,10 +8,12 @@ import warnings
 
 from celery import shared_task
 from collections import namedtuple
+from django.conf import settings
 from django.contrib import messages
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.db.models import Q
+from django.db.transaction import atomic
 from django.utils.translation import ugettext as _
 from six import string_types
 
@@ -50,6 +52,9 @@ class TableImport(object):
     """ Object to handle processing of data POSTed to /study/{id}/import view and add
         measurements to the database. """
 
+    MODE_TRANSCRIPTOMICS = 'tr'
+    MODE_PROTEOMICS = 'pr'
+
     def __init__(self, study, user, request=None):
         """
         Creates an import handler.
@@ -71,6 +76,7 @@ class TableImport(object):
                 '%s does not have write access to study "%s"' % (user.username, self.study.name)
             )
 
+    @atomic(savepoint=False)
     def import_data(self, data):
         """
         Performs the import
@@ -81,11 +87,8 @@ class TableImport(object):
         self._data = data
         series = json.loads(data.get('jsonoutput', '[]'))
         self.check_series_points(series)
-        count = 0
-        with transaction.atomic(savepoint=False):
-            self.init_lines_and_assays(series)
-            count = self.create_measurements(series)
-        return count
+        self.init_lines_and_assays(series)
+        return self.create_measurements(series)
 
     def check_series_points(self, series):
         """
@@ -231,15 +234,17 @@ class TableImport(object):
         return added
 
     def _load_measurement_record(self, item):
+        record = None
         assay = item['assay_obj']
         points = item.get('data', [])
         mtype = self._mtype(item)
+
         logger.info('Loading measurements for %s:%s' % (mtype.compartment, mtype.type))
         records = assay.measurement_set.filter(
             measurement_type_id=mtype.type,
             compartment=mtype.compartment,
         )
-        record = None
+
         if records.count() > 0:
             if self._replace():
                 records.delete()
@@ -247,6 +252,7 @@ class TableImport(object):
                 record = records[0]
                 record.save()  # force refresh of Update
         if record is None:
+
             record = assay.measurement_set.create(
                 measurement_type_id=mtype.type,
                 measurement_format=self._mtype_guess_format(points),
@@ -297,7 +303,7 @@ class TableImport(object):
             warnings.warn('Value %s could not be interpreted as a number' % value)
         return []
 
-    def _layout(self):
+    def _mode(self):
         return self._data.get('datalayout', None)
 
     def _metatype(self, meta_id):
@@ -313,7 +319,7 @@ class TableImport(object):
         # In Transcriptomics and Proteomics mode, we attempt to resolve measurements server-side,
         # so we go by the measurement_name, ignoring the measurement_id and related fields (which
         # will be blank)
-        found_type = self._mtype_from_layout(item, self._hours, default=NO_TYPE)
+        found_type = self._mtype_from_mode(item, self._hours, default=NO_TYPE)
         if found_type is NO_TYPE:
             found_type = MType(
                 item.get('compartment_id', Measurement.Compartment.UNKNOWN),
@@ -322,51 +328,82 @@ class TableImport(object):
             )
         return found_type
 
-    def _mtype_from_layout(self, item, hours, default=None):
+    def _mtype_from_mode(self, item, hours, default=None):
+        """
+        Attempts to infer the measurement type of the input item from the general import mode
+        specified in the input / in Step 1 of the import GUI.
+        :param item: a dictionary containing the JSON data for a single measurement item sent
+        from the front end
+        :param hours: the MeasurementType for hours. Prevents us from having to repeatedly query
+        for it.
+        :param default: the default value to return if no better one can be inferred
+        :return: the measurement type, or the specified default if no better one is found
+        """
         found_type = default
-        layout = self._layout()
-        label = item.get('measurement_name', None)
-        source = Datasource(name=self._user.username)  # defining, but not saving unless needed
-        if layout == 'tr':
-            genes = GeneIdentifier.objects.filter(type_name=label)
+        mode = self._mode()
+        measurement_name = item.get('measurement_name', None)
+        if mode == self.MODE_TRANSCRIPTOMICS:
+            genes = GeneIdentifier.objects.filter(type_name=measurement_name)
             if len(genes) == 1:
                 found_type = MType(Measurement.Compartment.UNKNOWN, genes[0], hours)
             else:
-                logger.warning('Found %(length)s GeneIdentifier instances for %(label)s' % {
+                logger.warning('Found %(length)s GeneIdentifier instances for %(name)s' % {
                     'length': len(genes),
-                    'label': label,
+                    'name': measurement_name,
                 })
-        elif layout == 'pr':
-            proteins = ProteinIdentifier.objects.filter(
-                Q(short_name=ProteinIdentifier.match_accession_id(label)) |
-                Q(short_name=label) |
-                Q(type_name=label)
-            )
+        elif mode == self.MODE_PROTEOMICS:
+            # extract Uniprot accession data from the measurement name, if present
+            accession_match = ProteinIdentifier.accession_pattern.match(measurement_name)
+            uniprot_id = accession_match.group(1) if accession_match else None
+
+            # search for proteins matching the name. we're fairly permissive during lookup to
+            # account for some small percentage of protein names that don't follow the Uniprot,
+            # as well as legacy proteins in EDD's database
+            name_match_criteria = Q(type_name=measurement_name)
+
+            ALLOW_PERMISSIVE_PROTEIN_MATCHING = False
+
+            if ALLOW_PERMISSIVE_PROTEIN_MATCHING:
+                name_match_criteria = name_match_criteria | Q(short_name=measurement_name)
+                if uniprot_id:
+                    name_match_criteria = name_match_criteria | Q(short_name=uniprot_id)
+            proteins = ProteinIdentifier.objects.filter(name_match_criteria)
+
             if len(proteins) == 1:
                 found_type = MType(Measurement.Compartment.UNKNOWN, proteins[0], hours)
             else:
-                logger.warning('Found %(length)s ProteinIdentifier instances for %(label)s' % {
-                    'length': len(proteins),
-                    'label': label,
-                })
+                # fail if protein couldn't be uniquely matched, but detect all non-matches before
+                # failing
                 if len(proteins) > 1:
-                    # FIXME: choosing the first one for now, should be error?
-                    found_type = MType(Measurement.Compartment.UNKNOWN, proteins[0], hours)
+                    raise ValidationError('More than one match was found for protein name %s. '
+                                          'Used' % measurement_name)
+
+                # try to create a new protein
                 else:
+                    # enforce ProteinIdentifier naming conventions for new ProteinIdentifiers,
+                    # if configured. this isn't as good as looking them up in Uniprot, but should
+                    # help as a stopgap to curate our protein entries
+                    if settings.REQUIRE_UNIPROT_ACCESSION_IDS and not accession_match:
+                        raise ValidationError('Protein name "%s" isn\'t a valid UniProt '
+                                              'accession id.')
+
+                    logger.info('Creating a new ProteinIdentifier for %(name)s' % {
+                        'name': measurement_name,
+                    })
+
+                    # create the new protein id
                     # FIXME: this blindly creates a new type; should try external lookups first?
-                    try:
-                        p = ProteinIdentifier.objects.create(type_name=label, source=source)
-                    except:
-                        logger.error('Failed to create ProteinIdentifier %s' % label)
-                    else:
-                        found_type = MType(Measurement.Compartment.UNKNOWN, p.pk, hours)
+                    source = Datasource.objects.create(name=self._user.username)
+                    p = ProteinIdentifier.objects.create(type_name=measurement_name,
+                                                         short_name=uniprot_id, source=source)
+                    found_type = MType(Measurement.Compartment.UNKNOWN, p, hours)
         return found_type
 
     def _mtype_guess_format(self, points):
-        layout = self._layout()
-        if layout == 'mdv':
+        mode = self._mode()
+        if mode == 'mdv':
             return Measurement.Format.VECTOR    # carbon ratios are vectors
-        elif layout in ('tr', 'pr'):
+        elif mode in (self.MODE_TRANSCRIPTOMICS, self.MODE_PROTEOMICS):
             return Measurement.Format.SCALAR    # always single values
         elif len(points):
             # if first value looks like carbon ratio (vector), treat all as vector
@@ -380,18 +417,3 @@ class TableImport(object):
 
     def _replace(self):
         return self._data.get('writemode', None) == 'r'
-
-    def _messages_error(self, message, **kwargs):
-        """ Simple wrapper for django messages framework if request passed to TableImport. """
-        if self._request is not None:
-            messages.error(self._request, message, **kwargs)
-
-    def _messages_success(self, message, **kwargs):
-        """ Simple wrapper for django messages framework if request passed to TableImport. """
-        if self._request is not None:
-            messages.success(self._request, message, **kwargs)
-
-    def _messages_warning(self, message, **kwargs):
-        """ Simple wrapper for django messages framework if request passed to TableImport. """
-        if self._request is not None:
-            messages.warning(self._request, message, **kwargs)

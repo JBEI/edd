@@ -1009,7 +1009,7 @@ var EDDTableImport;
         };
         IdentifyStructuresStep.prototype.constructDataTable = function (mode, grid, gridRowMarkers) {
             var _this = this;
-            var body, colgroup, controlCols, legendCopy, lowerLegendId, pulldownOptions, row, startTime, t, table;
+            var body, colgroup, controlCols, legendCopy, lowerLegend, lowerLegendId, pulldownOptions, row, startTime, t, table;
             startTime = new Date();
             console.log("Start of IdentifyStructuresStep.constructDataTable()");
             this.dataCells = [];
@@ -1157,14 +1157,17 @@ var EDDTableImport;
                 });
             });
             lowerLegendId = 'step3LowerLegend';
+            lowerLegend = $('#' + lowerLegendId);
             if (grid.length > this.DUPLICATE_LEGEND_THRESHOLD) {
-                $('#step3UpperLegend')
-                    .clone()
-                    .attr('id', lowerLegendId)
-                    .insertAfter('#dataTableDiv');
+                if (!lowerLegend.length) {
+                    $('#step3UpperLegend')
+                        .clone()
+                        .attr('id', lowerLegendId)
+                        .insertAfter('#dataTableDiv');
+                }
             }
             else {
-                $('#' + lowerLegendId).remove();
+                lowerLegend.remove();
             }
             $('.step3Legend').toggleClass('off', grid.length === 0);
             this.applyTableDataTypeStyling(grid);
@@ -1784,8 +1787,7 @@ var EDDTableImport;
             if ((mode === "std" || mode === 'biolector' || mode === 'hplc') && (sets.length > 0)) {
                 graph.removeClass('off');
                 sets.forEach(function (set) {
-                    var color = "#0E6FA4";
-                    var singleAssayObj = graphHelper.transformNewLineItem(EDDData, set, color);
+                    var singleAssayObj = graphHelper.transformNewLineItem(EDDData, set);
                     dataSets.push(singleAssayObj);
                 });
                 EDDATDGraphing.addNewSet(dataSets);
@@ -2009,10 +2011,13 @@ var EDDTableImport;
             // Get to work!!
         };
         TypeDisambiguationStep.prototype.addToggleAllButton = function (parent, objectsLabel) {
+            return this.makeToggleAllButton(objectsLabel)
+                .appendTo($(parent));
+        };
+        TypeDisambiguationStep.prototype.makeToggleAllButton = function (objectsLabel) {
             return $('<button type="button">')
                 .text('Select All ' + objectsLabel)
                 .addClass(this.STEP_4_TOGGLE_SUBSECTION_CLASS)
-                .appendTo(parent)
                 .on('click', this.toggleAllSubsectionItems.bind(this));
         };
         TypeDisambiguationStep.prototype.toggleAllSubsectionItems = function (ev) {
@@ -2314,7 +2319,8 @@ var EDDTableImport;
                 return;
             }
             if (uniqueMeasurementNames.length > this.TOGGLE_ALL_THREASHOLD) {
-                this.addToggleAllButton(parentDiv, 'Measurement Types');
+                this.makeToggleAllButton('Measurement Types')
+                    .insertBefore($('#disambiguateMeasurementsTable'));
             }
             // put together a disambiguation section for measurement types
             var t = this;
@@ -2548,22 +2554,24 @@ var EDDTableImport;
         };
         TypeDisambiguationStep.prototype.userChangedMeasurementDisam = function (element) {
             console.log('changed');
-            var hidden, auto, type, i;
-            hidden = $(element);
-            auto = hidden.prev();
-            type = auto.data('type');
+            var hiddenInput, textInput, type, rowIndex;
+            hiddenInput = $(element);
+            textInput = hiddenInput.prev();
+            type = textInput.data('type');
             if (type === 'compObj' || type === 'unitsObj') {
-                i = auto.data('setByUser', true).data('visibleIndex') || 0;
-                this.currentlyVisibleMeasurementObjSets.slice(i).some(function (obj) {
-                    var following = $(obj[type]);
-                    if (following.length === 0 || following.data('setByUser')) {
-                        return true; // break; for the Array.some() loop
-                    }
-                    // using placeholder instead of val to avoid triggering autocomplete change
-                    following.attr('placeholder', auto.val());
-                    following.next().val(hidden.val());
-                    return false;
-                });
+                rowIndex = textInput.data('setByUser', true).data('visibleIndex') || 0;
+                if (rowIndex < this.currentlyVisibleMeasurementObjSets.length - 1) {
+                    this.currentlyVisibleMeasurementObjSets.slice(rowIndex + 1).some(function (obj) {
+                        var following = $(obj[type]);
+                        if (following.length === 0 || following.data('setByUser')) {
+                            return true; // break; for the Array.some() loop
+                        }
+                        // using placeholder instead of val to avoid triggering autocomplete change
+                        following.attr('placeholder', textInput.val());
+                        following.next().val(hiddenInput.val());
+                        return false;
+                    });
+                }
             }
             // not checking typeObj; form submit sends selected types
             this.checkAllMeasurementCompartmentDisam();

@@ -1327,7 +1327,7 @@ module EDDTableImport {
 
         constructDataTable(mode: string, grid: any, gridRowMarkers: any): void {
             var body: HTMLTableElement, colgroup: JQuery, controlCols: string[], legendCopy: JQuery,
-                lowerLegendId: string, pulldownOptions: RowPulldownOption[],
+                lowerLegend: JQuery, lowerLegendId: string, pulldownOptions: RowPulldownOption[],
                 row: HTMLTableRowElement, startTime: Date, t, table: HTMLTableElement;
 
             startTime = new Date();
@@ -1490,13 +1490,16 @@ module EDDTableImport {
             });
 
             lowerLegendId = 'step3LowerLegend';
+            lowerLegend = $('#' + lowerLegendId);
             if(grid.length > this.DUPLICATE_LEGEND_THRESHOLD) {
-                $('#step3UpperLegend')
-                    .clone()
-                    .attr('id', lowerLegendId)
-                    .insertAfter('#dataTableDiv');
+                if(!lowerLegend.length) {
+                    $('#step3UpperLegend')
+                        .clone()
+                        .attr('id', lowerLegendId)
+                        .insertAfter('#dataTableDiv');
+                }
             } else {
-                $('#' + lowerLegendId).remove();
+                lowerLegend.remove();
             }
             $('.step3Legend').toggleClass('off', grid.length === 0);
             this.applyTableDataTypeStyling(grid);
@@ -2167,8 +2170,7 @@ module EDDTableImport {
             if ((mode === "std" || mode === 'biolector' || mode === 'hplc') && (sets.length > 0)) {
                 graph.removeClass('off');
                 sets.forEach(function(set) {
-                    var color = "#0E6FA4";
-                    var singleAssayObj = graphHelper.transformNewLineItem(EDDData, set, color);
+                    var singleAssayObj = graphHelper.transformNewLineItem(EDDData, set);
                     dataSets.push(singleAssayObj);
                 });
                 EDDATDGraphing.addNewSet(dataSets);
@@ -2485,12 +2487,15 @@ module EDDTableImport {
         }
 
         addToggleAllButton(parent: JQuery, objectsLabel: string): JQuery {
+            return this.makeToggleAllButton(objectsLabel)
+                .appendTo($(parent));
+        }
+
+        makeToggleAllButton(objectsLabel: string): JQuery {
             return $('<button type="button">')
                 .text('Select All ' + objectsLabel)
                 .addClass(this.STEP_4_TOGGLE_SUBSECTION_CLASS)
-                .appendTo(parent)
-                // use click so we don't reparse for each after 'select all'
-                .on('click', this.toggleAllSubsectionItems.bind(this));
+                .on('click', this.toggleAllSubsectionItems.bind(this))
         }
 
         toggleAllSubsectionItems(ev: JQueryEventObject): void {
@@ -2858,7 +2863,8 @@ module EDDTableImport {
             }
 
             if(uniqueMeasurementNames.length > this.TOGGLE_ALL_THREASHOLD) {
-                this.addToggleAllButton(parentDiv, 'Measurement Types');
+                this.makeToggleAllButton('Measurement Types')
+                    .insertBefore($('#disambiguateMeasurementsTable'));
             }
 
             // put together a disambiguation section for measurement types
@@ -3126,22 +3132,25 @@ module EDDTableImport {
 
         userChangedMeasurementDisam(element: Element):void {
             console.log('changed');
-            var hidden: JQuery, auto: JQuery, type: string, i: number;
-            hidden = $(element);
-            auto = hidden.prev();
-            type = auto.data('type');
+            var hiddenInput: JQuery, textInput: JQuery, type: string, rowIndex: number;
+            hiddenInput = $(element);
+            textInput = hiddenInput.prev();
+            type = textInput.data('type');
             if (type === 'compObj' || type === 'unitsObj') {
-                i = auto.data('setByUser', true).data('visibleIndex') || 0;
-                this.currentlyVisibleMeasurementObjSets.slice(i).some((obj: any): boolean => {
+                rowIndex = textInput.data('setByUser', true).data('visibleIndex') || 0;
+
+                if(rowIndex < this.currentlyVisibleMeasurementObjSets.length - 1) {
+                    this.currentlyVisibleMeasurementObjSets.slice(rowIndex+1).some((obj: any): boolean => {
                     var following: JQuery = $(obj[type]);
                     if (following.length === 0 || following.data('setByUser')) {
                         return true;  // break; for the Array.some() loop
                     }
                     // using placeholder instead of val to avoid triggering autocomplete change
-                    following.attr('placeholder', auto.val());
-                    following.next().val(hidden.val());
+                    following.attr('placeholder', textInput.val());
+                    following.next().val(hiddenInput.val());
                     return false;
                 });
+                }
             }
             // not checking typeObj; form submit sends selected types
             this.checkAllMeasurementCompartmentDisam();
