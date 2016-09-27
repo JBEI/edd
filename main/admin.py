@@ -10,7 +10,6 @@ from django.core.validators import RegexValidator
 from django.db import connection
 from django.core.urlresolvers import reverse
 from django.db.models import Count, Q
-from django.forms import Form
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.utils.html import escape, format_html
