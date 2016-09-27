@@ -2,9 +2,11 @@
 from __future__ import unicode_literals
 
 from django import forms
+from django.conf import settings
 from django.contrib import admin, messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin
+from django.core.validators import RegexValidator
 from django.db import connection
 from django.core.urlresolvers import reverse
 from django.db.models import Count, Q
@@ -14,6 +16,8 @@ from django.utils.html import escape, format_html
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 from django_auth_ldap.backend import LDAPBackend
+
+import logging
 
 from .export.sbml import validate_sbml_attachment
 from .forms import (
@@ -27,6 +31,8 @@ from .models import (
     WorklistColumn, WorklistTemplate,
 )
 from .solr import StudySearch, UserSearch
+
+logger = logging.getLogger(__name__)
 
 
 class AttachmentInline(admin.TabularInline):
@@ -421,6 +427,33 @@ class MetaboliteAdmin(MeasurementTypeAdmin):
 
 
 class ProteinAdmin(MeasurementTypeAdmin):
+
+    def get_form(self, request, obj=None, **kwargs):
+        """
+        Override default generated admin form to add specialized help text and verification for
+        Uniprot accession ID's. This is a bit indirect since type_name is inherited from
+        MeasurementTypeAdmin.
+        """
+
+        # override the type_name label to indicate it should be a UniProt accession ID
+        if settings.REQUIRE_UNIPROT_ACCESSION_IDS:
+            labels = kwargs.get('labels')
+            if not labels:
+                labels = {}
+                kwargs['labels'] = labels
+            labels['type_name'] = 'UniProt Accession ID'
+
+        generated_form = super(ProteinAdmin, self).get_form(self, request, **kwargs)
+
+        # require that newly-created ProteinIdentifiers have an accession ID matching the
+        # expected pattern. existing ID's that don't conform should still be editable
+        new_identifier = not obj
+        if new_identifier and settings.REQUIRE_UNIPROT_ACCESSION_IDS:
+            generated_form.base_fields['type_name'].validators.append(RegexValidator(
+                    regex=ProteinIdentifier.accession_pattern,
+                    message='New entries must be valid UniProt accession IDs'))
+        return generated_form
+
     def get_fields(self, request, obj=None):
         return super(ProteinAdmin, self).get_fields(request, obj) + [
             ('length', 'mass',),
