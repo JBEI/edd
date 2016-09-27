@@ -1317,7 +1317,7 @@ module EDDTableImport {
 
         constructDataTable(mode: string, grid: any, gridRowMarkers: any): void {
             var body: HTMLTableElement, colgroup: JQuery, controlCols: string[], legendCopy: JQuery,
-                lowerLegendId: string, pulldownOptions: RowPulldownOption[],
+                lowerLegend: JQuery, lowerLegendId: string, pulldownOptions: RowPulldownOption[],
                 row: HTMLTableRowElement, startTime: Date, t, table: HTMLTableElement;
 
             startTime = new Date();
@@ -1480,13 +1480,16 @@ module EDDTableImport {
             });
 
             lowerLegendId = 'step3LowerLegend';
+            lowerLegend = $('#' + lowerLegendId);
             if(grid.length > this.DUPLICATE_LEGEND_THRESHOLD) {
-                $('#step3UpperLegend')
-                    .clone()
-                    .attr('id', lowerLegendId)
-                    .insertAfter('#dataTableDiv');
+                if(!lowerLegend.length) {
+                    $('#step3UpperLegend')
+                        .clone()
+                        .attr('id', lowerLegendId)
+                        .insertAfter('#dataTableDiv');
+                }
             } else {
-                $('#' + lowerLegendId).remove();
+                lowerLegend.remove();
             }
             $('.step3Legend').toggleClass('off', grid.length === 0);
             this.applyTableDataTypeStyling(grid);
@@ -2474,12 +2477,15 @@ module EDDTableImport {
         }
 
         addToggleAllButton(parent: JQuery, objectsLabel: string): JQuery {
+            return this.makeToggleAllButton(objectsLabel)
+                .appendTo($(parent));
+        }
+
+        makeToggleAllButton(objectsLabel: string): JQuery {
             return $('<button type="button">')
                 .text('Select All ' + objectsLabel)
                 .addClass(this.STEP_4_TOGGLE_SUBSECTION_CLASS)
-                .appendTo(parent)
-                // use click so we don't reparse for each after 'select all'
-                .on('click', this.toggleAllSubsectionItems.bind(this));
+                .on('click', this.toggleAllSubsectionItems.bind(this))
         }
 
         toggleAllSubsectionItems(ev: JQueryEventObject): void {
@@ -2847,7 +2853,8 @@ module EDDTableImport {
             }
 
             if(uniqueMeasurementNames.length > this.TOGGLE_ALL_THREASHOLD) {
-                this.addToggleAllButton(parentDiv, 'Measurement Types');
+                this.makeToggleAllButton('Measurement Types')
+                    .insertBefore($('#disambiguateMeasurementsTable'));
             }
 
             // put together a disambiguation section for measurement types

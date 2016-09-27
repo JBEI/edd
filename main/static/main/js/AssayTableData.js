@@ -1004,7 +1004,7 @@ var EDDTableImport;
         };
         IdentifyStructuresStep.prototype.constructDataTable = function (mode, grid, gridRowMarkers) {
             var _this = this;
-            var body, colgroup, controlCols, legendCopy, lowerLegendId, pulldownOptions, row, startTime, t, table;
+            var body, colgroup, controlCols, legendCopy, lowerLegend, lowerLegendId, pulldownOptions, row, startTime, t, table;
             startTime = new Date();
             console.log("Start of IdentifyStructuresStep.constructDataTable()");
             this.dataCells = [];
@@ -1152,14 +1152,17 @@ var EDDTableImport;
                 });
             });
             lowerLegendId = 'step3LowerLegend';
+            lowerLegend = $('#' + lowerLegendId);
             if (grid.length > this.DUPLICATE_LEGEND_THRESHOLD) {
-                $('#step3UpperLegend')
-                    .clone()
-                    .attr('id', lowerLegendId)
-                    .insertAfter('#dataTableDiv');
+                if (!lowerLegend.length) {
+                    $('#step3UpperLegend')
+                        .clone()
+                        .attr('id', lowerLegendId)
+                        .insertAfter('#dataTableDiv');
+                }
             }
             else {
-                $('#' + lowerLegendId).remove();
+                lowerLegend.remove();
             }
             $('.step3Legend').toggleClass('off', grid.length === 0);
             this.applyTableDataTypeStyling(grid);
@@ -2003,10 +2006,13 @@ var EDDTableImport;
             // Get to work!!
         };
         TypeDisambiguationStep.prototype.addToggleAllButton = function (parent, objectsLabel) {
+            return this.makeToggleAllButton(objectsLabel)
+                .appendTo($(parent));
+        };
+        TypeDisambiguationStep.prototype.makeToggleAllButton = function (objectsLabel) {
             return $('<button type="button">')
                 .text('Select All ' + objectsLabel)
                 .addClass(this.STEP_4_TOGGLE_SUBSECTION_CLASS)
-                .appendTo(parent)
                 .on('click', this.toggleAllSubsectionItems.bind(this));
         };
         TypeDisambiguationStep.prototype.toggleAllSubsectionItems = function (ev) {
@@ -2308,7 +2314,8 @@ var EDDTableImport;
                 return;
             }
             if (uniqueMeasurementNames.length > this.TOGGLE_ALL_THREASHOLD) {
-                this.addToggleAllButton(parentDiv, 'Measurement Types');
+                this.makeToggleAllButton('Measurement Types')
+                    .insertBefore($('#disambiguateMeasurementsTable'));
             }
             // put together a disambiguation section for measurement types
             var t = this;
