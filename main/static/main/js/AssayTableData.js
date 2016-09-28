@@ -1,6 +1,12 @@
 /// <reference path="typescript-declarations.d.ts" />
-/// <reference path="../typings/d3/d3.d.ts"/>;
+/// <reference path="../typings/d3/d3.d.ts"/>
 /// <reference path="AssayTableDataGraphing.ts" />
+/// <reference path="Utl.ts" />
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
 JSNumber = Number;
 JSNumber.isFinite = JSNumber.isFinite || function (value) {
     return typeof value === 'number' && isFinite(value);
@@ -121,10 +127,12 @@ var EDDTableImport;
         // nothing to do! no subsequent steps
     }
     EDDTableImport.reviewStepCallback = reviewStepCallback;
-    // When the submit button is pushed, fetch the most recent record sets from our IdentifyStructuresStep instance,
-    // and embed them in the hidden form field that will be submitted to the server.
-    // Note that this is not all that the server needs, in order to successfully process an import.
-    // It also reads other form elements from the page, created by SelectMajorKindStep and TypeDisambiguationStep.
+    // When the submit button is pushed, fetch the most recent record sets from our
+    // IdentifyStructuresStep instance, and embed them in the hidden form field that will be
+    // submitted to the server.
+    // Note that this is not all that the server needs, in order to successfully process an
+    // import. It also reads other form elements from the page, created by SelectMajorKindStep
+    // and TypeDisambiguationStep.
     function submitForImport() {
         var json, resolvedSets;
         resolvedSets = EDDTableImport.typeDisambiguationStep.createSetsForSubmission();
@@ -140,9 +148,9 @@ var EDDTableImport;
     }
     EDDTableImport.disclose = disclose;
     var DEFAULT_MASTER_PROTOCOL = 'unspecified_protocol';
-    // The class responsible for everything in the "Step 1" box that you see on the data import page.
-    // Here we provide UI for selecting the major kind of import, and the Protocol that the data should be stored under.
-    // These choices affect the behavior of all subsequent steps.
+    // The class responsible for everything in the "Step 1" box that you see on the data import
+    // page. Here we provide UI for selecting the major kind of import, and the Protocol that the
+    // data should be stored under. These choices affect the behavior of all subsequent steps.
     var SelectMajorKindStep = (function () {
         function SelectMajorKindStep(nextStepCallback) {
             this.masterProtocol = 0;
@@ -185,7 +193,7 @@ var EDDTableImport;
         // If the interpretation mode value has changed, note the change and return 'true'.
         // Otherwise return 'false'.
         SelectMajorKindStep.prototype.checkInterpretationMode = function () {
-            // Find every input element of type 'radio' with the name attribute of 'datalayout' that's checked.
+            // Find every input element with the name attribute of 'datalayout' that's checked.
             // Should return 0 or 1 elements.
             var modeRadio = $("[name='datalayout']:checked");
             // If none of them are checked, we don't have enough information to handle any next steps.
@@ -225,15 +233,185 @@ var EDDTableImport;
         return SelectMajorKindStep;
     }());
     EDDTableImport.SelectMajorKindStep = SelectMajorKindStep;
-    // The class responsible for everything in the "Step 2" box that you see on the data import page.
-    // It needs to parse the raw data from typing or pasting in the input box, or a dragged-in file,
-    // into a null-padded rectangular grid that can be easily used by the next step.
-    // Depending on the kind of import chosen in Step 1, this step will accept different kinds of files,
-    // and handle the file drag in different ways.
-    // For example, when the import kind is "Standard" and the user drags in a CSV file, the file is parsed
-    // in-browser and the contents are placed in the text box.  When the import kind is "biolector" and the user
-    // drags in an XML file, the file is sent to the server and parsed there, and the resulting data is passed
-    // back to the browser and placed in the text box.
+    var NullProcessor = (function () {
+        function NullProcessor() {
+        }
+        /// RawInputStep processor that does nothing.
+        NullProcessor.prototype.parse = function (rawInputStep, rawData) {
+            return {
+                'input': [],
+                'columns': 0
+            };
+        };
+        NullProcessor.prototype.process = function (rawInputStep, input) {
+        };
+        return NullProcessor;
+    }());
+    var BaseRawTableProcessor = (function () {
+        function BaseRawTableProcessor() {
+        }
+        /// Base processor for RawInputStep handles parsing a string into a 2D array
+        BaseRawTableProcessor.prototype.parse = function (rawInputStep, rawData) {
+            var rawText, delimiter, longestRow, rows, multiColumn;
+            rawText = rawInputStep.stepRawText();
+            delimiter = rawInputStep.stepSeparatorType() == 'csv' ? ',' : '\t';
+            rows = [];
+            // find the highest number of columns in a row
+            longestRow = rawText.split(/[ \r]*\n/).reduce(function (prev, rawRow) {
+                var row;
+                if (rawRow !== '') {
+                    row = rawRow.split(delimiter);
+                    rows.push(row);
+                    return Math.max(prev, row.length);
+                }
+                return prev;
+            }, 0);
+            // pad out rows so it is rectangular
+            rows.forEach(function (row) {
+                while (row.length < longestRow) {
+                    row.push('');
+                }
+            });
+            return {
+                'input': rows,
+                'columns': longestRow
+            };
+        };
+        BaseRawTableProcessor.prototype.process = function (rawInputStep, input) {
+        };
+        return BaseRawTableProcessor;
+    }());
+    var MdvProcessor = (function (_super) {
+        __extends(MdvProcessor, _super);
+        function MdvProcessor() {
+            _super.apply(this, arguments);
+        }
+        /// RawInputStep processor for MDV-formatted spreadsheets
+        MdvProcessor.prototype.process = function (rawInputStep, parsed) {
+            var rows, colLabels, compounds, orderedComp;
+            colLabels = [];
+            rows = parsed.input.slice(0); // copy
+            // If this word fragment is in the first row, drop the whole row.
+            // (Ignoring a Q of unknown capitalization)
+            if (rows[0].join('').match(/uantitation/g)) {
+                rows.shift();
+            }
+            compounds = {};
+            orderedComp = [];
+            rows.forEach(function (row) {
+                var first, marked, name, index;
+                first = row.shift();
+                // If we happen to encounter an occurrence of a row with 'Compound' in
+                // the first column, we treat it as a row of column identifiers.
+                if (first === 'Compound') {
+                    colLabels = row;
+                    return;
+                }
+                marked = first.split(' M = ');
+                if (marked.length === 2) {
+                    name = marked[0];
+                    index = parseInt(marked[1], 10);
+                    if (!compounds[name]) {
+                        compounds[name] = { 'originalRows': {}, 'processedAssayCols': {} };
+                        orderedComp.push(name);
+                    }
+                    compounds[name].originalRows[index] = row.slice(0);
+                }
+            });
+            $.each(compounds, function (name, value) {
+                var indices;
+                // First gather up all the marker indexes given for this compound
+                indices = $.map(value.originalRows, function (_, index) { return parseInt(index, 10); });
+                indices.sort(function (a, b) { return a - b; }); // sort ascending
+                // Run through the set of columnLabels above, assembling a marking number for each,
+                // by drawing - in order - from this collected row data.
+                colLabels.forEach(function (label, index) {
+                    var parts, anyFloat;
+                    parts = [];
+                    anyFloat = false;
+                    indices.forEach(function (ri) {
+                        var original, cell;
+                        original = value.originalRows[ri];
+                        cell = original[index];
+                        if (cell) {
+                            cell = cell.replace(/,/g, '');
+                            if (isNaN(parseFloat(cell))) {
+                                if (anyFloat) {
+                                    parts.push('');
+                                }
+                            }
+                            else {
+                                parts.push(cell);
+                            }
+                        }
+                    });
+                    // Assembled a full carbon marker number, grab the column label, and place
+                    // the marker in the appropriate section.
+                    value.processedAssayCols[index] = parts.join('/');
+                });
+            });
+            // Start the set of row markers with a generic label
+            rawInputStep.gridRowMarkers = ['Assay'];
+            // The first row is our label collection
+            rawInputStep.gridFromTextField[0] = colLabels.slice(0);
+            // push the rest of the rows generated from ordered list of compounds
+            Array.prototype.push.apply(rawInputStep.gridFromTextField, orderedComp.map(function (name) {
+                var compound, row, colLookup;
+                rawInputStep.gridRowMarkers.push(name);
+                compound = compounds[name];
+                row = [];
+                colLookup = compound.processedAssayCols;
+                // generate row cells by mapping column labels to processed columns
+                Array.prototype.push.apply(row, colLabels.map(function (_, index) { return colLookup[index] || ''; }));
+                return row;
+            }));
+        };
+        return MdvProcessor;
+    }(BaseRawTableProcessor));
+    var StandardProcessor = (function (_super) {
+        __extends(StandardProcessor, _super);
+        function StandardProcessor() {
+            _super.apply(this, arguments);
+        }
+        /// RawInputStep processor for standard tables with one header row and column
+        StandardProcessor.prototype.process = function (rawInputStep, parsed) {
+            // If the user hasn't deliberately chosen a setting for 'transpose', we will do
+            // some analysis to attempt to guess which orientation the data needs to have.
+            if (!rawInputStep.userClickedOnTranspose) {
+                rawInputStep.inferTransposeSetting(parsed.input);
+            }
+            // If the user hasn't deliberately chosen to ignore, or accept, gaps in the data,
+            // do a basic analysis to guess which setting makes more sense.
+            if (!rawInputStep.userClickedOnIgnoreDataGaps) {
+                rawInputStep.inferGapsSetting();
+            }
+            // Collect the data based on the settings
+            if (rawInputStep.transpose) {
+                // first row becomes Y-markers as-is
+                rawInputStep.gridRowMarkers = parsed.input.shift() || [];
+                rawInputStep.gridFromTextField = (parsed.input[0] || []).map(function (_, i) {
+                    return parsed.input.map(function (row) { return row[i] || ''; });
+                });
+            }
+            else {
+                rawInputStep.gridRowMarkers = [];
+                rawInputStep.gridFromTextField = (parsed.input || []).map(function (row) {
+                    rawInputStep.gridRowMarkers.push(row.shift());
+                    return row;
+                });
+            }
+        };
+        return StandardProcessor;
+    }(BaseRawTableProcessor));
+    // The class responsible for everything in the "Step 2" box that you see on the data import
+    // page. It needs to parse the raw data from typing or pasting in the input box, or a
+    // dragged-in file, into a null-padded rectangular grid that can be easily used by the next
+    // step. Depending on the kind of import chosen in Step 1, this step will accept different
+    // kinds of files, and handle the file drag in different ways.
+    // For example, when the import kind is "Standard" and the user drags in a CSV file, the file
+    // is parsed in-browser and the contents are placed in the text box.  When the import kind is
+    // "biolector" and the user drags in an XML file, the file is sent to the server and parsed
+    // there, and the resulting data is passed back to the browser and placed in the text box.
     var RawInputStep = (function () {
         function RawInputStep(selectMajorKindStep, nextStepCallback, processingFileCallBack) {
             this.haveInputData = false;
@@ -298,12 +476,12 @@ var EDDTableImport;
             }
             if (mode === 'mdv') {
                 // When JBEI MDV format documents are pasted in, it's always from Excel, so they're always tab-separated.
-                this.setSeparatorType('tab');
+                this.stepSeparatorType('tab');
                 // We also never ignore gaps, or transpose, for MDV documents.
-                this.setIgnoreGaps(false);
-                this.setTranspose(false);
+                this.stepIgnoreGaps(false);
+                this.stepTranspose(false);
             }
-            if (mode === 'std' || mode === 'tr' || mode === 'pr' || mode === 'mdv') {
+            if (mode === 'std' || mode === 'tr' || mode === 'pr' || mode === 'mdv' || mode == 'skyline') {
                 // If an excel file was dropped in, its content was pulled out and dropped into the text box.
                 // The only reason we would want to still show the file info area is if we are currently in the middle
                 // of processing a file and haven't yet received its worksheets from the server.
@@ -329,62 +507,31 @@ var EDDTableImport;
             }
             this.inputRefreshTimerID = setTimeout(this.reprocessRawData.bind(this), 3000);
         };
-        // processes raw user input entered directly into the text area
-        RawInputStep.prototype.reprocessRawData = function () {
-            var _this = this;
-            var mode, delimiter, input;
-            mode = this.selectMajorKindStep.interpretationMode;
-            this.setIgnoreGaps();
-            this.setTranspose();
-            this.setSeparatorType();
-            this.gridFromTextField = [];
-            this.gridRowMarkers = [];
-            delimiter = '\t';
-            if (this.separatorType === 'csv') {
-                delimiter = ',';
+        RawInputStep.prototype.getProcessorForMode = function (mode) {
+            var processor;
+            if (['std', 'tr', 'pr'].indexOf(mode) != -1) {
+                processor = new StandardProcessor();
             }
-            input = this.parseRawInput(delimiter, mode);
-            // We meed at least 2 rows and columns for MDV format to make any sense
-            if (mode === "mdv") {
-                // MDV format is quite different, so we parse it in its own subroutine.
-                if ((input.input.length > 1) && (input.columns > 1)) {
-                    this.processMdv(input.input);
-                }
+            else if ('mdv' === mode) {
+                processor = new MdvProcessor();
             }
             else {
-                // All other formats (so far) are interpreted from a grid.
-                // Even biolector XML - which is converted to standard records on the server, then passed back.
-                // Note that biolector and hplc are left out here - we don't want to do any "inferring" with them.
-                if (mode === 'std' || mode === 'tr' || mode === 'pr') {
-                    // If the user hasn't deliberately chosen a setting for 'transpose', we will do
-                    // some analysis to attempt to guess which orientation the data needs to have.
-                    if (!this.userClickedOnTranspose) {
-                        this.inferTransposeSetting(mode, input.input);
-                    }
-                    // If the user hasn't deliberately chosen to ignore, or accept, gaps in the data,
-                    // do a basic analysis to guess which setting makes more sense.
-                    if (!this.userClickedOnIgnoreDataGaps) {
-                        this.inferGapsSetting();
-                    }
-                }
-                // Collect the data based on the settings
-                if (this.transpose) {
-                    // first row becomes Y-markers as-is
-                    this.gridRowMarkers = input.input.shift() || [];
-                    this.gridFromTextField = (input.input[0] || []).map(function (_, i) {
-                        return input.input.map(function (row) { return row[i] || ''; });
-                    });
-                }
-                else {
-                    this.gridRowMarkers = [];
-                    this.gridFromTextField = (input.input || []).map(function (row) {
-                        _this.gridRowMarkers.push(row.shift());
-                        return row;
-                    });
-                }
-                // Give labels to any header positions that got 'null' for a value.
-                this.gridRowMarkers = this.gridRowMarkers.map(function (value) { return value || '?'; });
+                processor = new NullProcessor();
             }
+            return processor;
+        };
+        // processes raw user input entered directly into the text area
+        RawInputStep.prototype.reprocessRawData = function () {
+            var mode, delimiter, processor, input;
+            mode = this.selectMajorKindStep.interpretationMode;
+            this.stepIgnoreGaps();
+            this.stepTranspose();
+            this.stepSeparatorType();
+            this.gridFromTextField = [];
+            this.gridRowMarkers = [];
+            processor = this.getProcessorForMode(mode);
+            input = processor.parse(this, this.stepRawText());
+            processor.process(this, input);
             this.processingFile = false;
             this.nextStepCallback();
         };
@@ -449,14 +596,14 @@ var EDDTableImport;
                 // drop zone immediately.
                 fileContainer.skipUpload = true;
                 this.clearDropZone();
-                $("#step2textarea").val(result);
+                this.stepRawText(result);
                 this.inferSeparatorType();
                 this.reprocessRawData();
                 return;
             }
         };
-        // This is called upon receiving a response from a file upload operation,
-        // and unlike fileRead() above, is passed a processed result from the server as a second argument,
+        // This is called upon receiving a response from a file upload operation, and unlike
+        // fileRead() above, is passed a processed result from the server as a second argument,
         // rather than the raw contents of the file.
         RawInputStep.prototype.fileReturnedFromServer = function (fileContainer, result) {
             var mode = this.selectMajorKindStep.interpretationMode;
@@ -467,7 +614,9 @@ var EDDTableImport;
                 var d = result.file_data;
                 var t = 0;
                 d.forEach(function (set) { t += set.data.length; });
-                $('<p>').text('Found ' + d.length + ' measurements with ' + t + ' total data points.').appendTo($("#fileDropInfoLog"));
+                $('<p>')
+                    .text('Found ' + d.length + ' measurements with ' + t + ' total data points.')
+                    .appendTo($("#fileDropInfoLog"));
                 this.processedSetsFromFile = d;
                 this.processedSetsAvailable = true;
                 this.processingFile = false;
@@ -483,46 +632,12 @@ var EDDTableImport;
                 if (table.headers) {
                     csv.push(table.headers.join());
                 }
-                for (var i = 0; i < table.values.length; i++) {
-                    csv.push(table.values[i].join());
-                }
-                this.setSeparatorType('csv');
-                $("#step2textarea").val(csv.join("\n"));
+                csv = csv.concat(table.values.map(function (row) { return row.join(); }));
+                this.stepSeparatorType('csv');
+                this.stepRawText(csv.join('\n'));
                 this.reprocessRawData();
                 return;
             }
-        };
-        RawInputStep.prototype.parseRawInput = function (delimiter, mode) {
-            var rawText, longestRow, rows, multiColumn;
-            rawText = $('#step2textarea').val();
-            rows = [];
-            // find the highest number of columns in a row
-            longestRow = rawText.split(/[ \r]*\n/).reduce(function (prev, rawRow) {
-                var row;
-                if (rawRow !== '') {
-                    row = rawRow.split(delimiter);
-                    rows.push(row);
-                    return Math.max(prev, row.length);
-                }
-                return prev;
-            }, 0);
-            this.haveInputData = rows.length > 0;
-            // pad out rows so it is rectangular
-            if (mode === 'std' || mode === 'tr' || mode === 'pr') {
-                rows.forEach(function (row) {
-                    while (row.length < longestRow) {
-                        row.push('');
-                    }
-                });
-            }
-            // restore normal editing state in case disabled by file drop / local file processing
-            // (dropzone follows a different path and has different wait indicators)
-            $('#processingFileLocallyLabel').addClass('off');
-            $('#step2textarea').removeAttr("disabled");
-            return {
-                'input': rows,
-                'columns': longestRow
-            };
         };
         RawInputStep.prototype.updateInputVisible = function () {
             var missingStep1Inputs = !this.selectMajorKindStep.requiredInputsProvided();
@@ -570,15 +685,15 @@ var EDDTableImport;
         RawInputStep.prototype.reset = function () {
             this.haveInputData = false;
             this.clearDropZone();
-            $('#step2textarea').val('');
+            this.stepRawText('');
             this.reprocessRawData();
         };
-        RawInputStep.prototype.inferTransposeSetting = function (mode, rows) {
+        RawInputStep.prototype.inferTransposeSetting = function (rows) {
             // as a user convenience, support the only known use-case for proteomics -- taking
             // "short and fat" output from the skyline import tool as input. TODO: reconsider
             // this when integrating the Skyline tool into the import page (EDD-240).
-            if (mode === 'pr') {
-                this.setTranspose(true);
+            if (this.selectMajorKindStep.interpretationMode === 'pr') {
+                this.stepTranspose(true);
                 return;
             }
             // The most straightforward method is to take the top row, and the first column,
@@ -626,7 +741,7 @@ var EDDTableImport;
             else {
                 setTranspose = arraysScores[1] > arraysScores[3];
             }
-            this.setTranspose(setTranspose);
+            this.stepTranspose(setTranspose);
         };
         RawInputStep.prototype.inferGapsSetting = function () {
             // Count the number of blank values at the end of each column
@@ -646,87 +761,7 @@ var EDDTableImport;
                 });
             });
             var result = extra > (intra * 3);
-            this.setIgnoreGaps(result);
-        };
-        RawInputStep.prototype.processMdv = function (input) {
-            var _this = this;
-            var rows, colLabels, compounds, orderedComp;
-            colLabels = [];
-            rows = input.slice(0); // copy
-            // If this word fragment is in the first row, drop the whole row.
-            // (Ignoring a Q of unknown capitalization)
-            if (rows[0].join('').match(/uantitation/g)) {
-                rows.shift();
-            }
-            compounds = {};
-            orderedComp = [];
-            rows.forEach(function (row) {
-                var first, marked, name, index;
-                first = row.shift();
-                // If we happen to encounter an occurrence of a row with 'Compound' in
-                // the first column, we treat it as a row of column identifiers.
-                if (first === 'Compound') {
-                    colLabels = row;
-                    return;
-                }
-                marked = first.split(' M = ');
-                if (marked.length === 2) {
-                    name = marked[0];
-                    index = parseInt(marked[1], 10);
-                    if (!compounds[name]) {
-                        compounds[name] = { 'originalRows': {}, 'processedAssayCols': {} };
-                        orderedComp.push(name);
-                    }
-                    compounds[name].originalRows[index] = row.slice(0);
-                }
-            });
-            $.each(compounds, function (name, value) {
-                var indices;
-                // First gather up all the marker indexes given for this compound
-                indices = $.map(value.originalRows, function (_, index) { return parseInt(index, 10); });
-                indices.sort(function (a, b) { return a - b; }); // sort ascending
-                // Run through the set of columnLabels above, assembling a marking number for each,
-                // by drawing - in order - from this collected row data.
-                colLabels.forEach(function (label, index) {
-                    var parts, anyFloat;
-                    parts = [];
-                    anyFloat = false;
-                    indices.forEach(function (ri) {
-                        var original, cell;
-                        original = value.originalRows[ri];
-                        cell = original[index];
-                        if (cell) {
-                            cell = cell.replace(/,/g, '');
-                            if (isNaN(parseFloat(cell))) {
-                                if (anyFloat) {
-                                    parts.push('');
-                                }
-                            }
-                            else {
-                                parts.push(cell);
-                            }
-                        }
-                    });
-                    // Assembled a full carbon marker number, grab the column label, and place
-                    // the marker in the appropriate section.
-                    value.processedAssayCols[index] = parts.join('/');
-                });
-            });
-            // Start the set of row markers with a generic label
-            this.gridRowMarkers = ['Assay'];
-            // The first row is our label collection
-            this.gridFromTextField[0] = colLabels.slice(0);
-            // push the rest of the rows generated from ordered list of compounds
-            Array.prototype.push.apply(this.gridFromTextField, orderedComp.map(function (name) {
-                var compound, row, colLookup;
-                _this.gridRowMarkers.push(name);
-                compound = compounds[name];
-                row = [];
-                colLookup = compound.processedAssayCols;
-                // generate row cells by mapping column labels to processed columns
-                Array.prototype.push.apply(row, colLabels.map(function (_, index) { return colLookup[index] || ''; }));
-                return row;
-            }));
+            this.stepIgnoreGaps(result);
         };
         // This gets called when there is a paste event.
         RawInputStep.prototype.pastedRawData = function () {
@@ -736,12 +771,13 @@ var EDDTableImport;
         };
         RawInputStep.prototype.inferSeparatorType = function () {
             if (this.selectMajorKindStep.interpretationMode !== "mdv") {
-                var text = $('#step2textarea').val() || '', test;
+                var text, test;
+                text = this.stepRawText() || '';
                 test = text.split('\t').length >= text.split(',').length;
-                this.setSeparatorType(test ? 'tab' : 'csv');
+                this.stepSeparatorType(test ? 'tab' : 'csv');
             }
         };
-        RawInputStep.prototype.setIgnoreGaps = function (value) {
+        RawInputStep.prototype.stepIgnoreGaps = function (value) {
             var ignoreGaps = $('#ignoreGaps');
             if (value === undefined) {
                 value = ignoreGaps.prop('checked');
@@ -749,9 +785,9 @@ var EDDTableImport;
             else {
                 ignoreGaps.prop('checked', value);
             }
-            this.ignoreDataGaps = value;
+            return (this.ignoreDataGaps = value);
         };
-        RawInputStep.prototype.setTranspose = function (value) {
+        RawInputStep.prototype.stepTranspose = function (value) {
             var transpose = $('#transpose');
             if (value === undefined) {
                 value = transpose.prop('checked');
@@ -759,9 +795,9 @@ var EDDTableImport;
             else {
                 transpose.prop('checked', value);
             }
-            this.transpose = value;
+            return (this.transpose = value);
         };
-        RawInputStep.prototype.setSeparatorType = function (value) {
+        RawInputStep.prototype.stepSeparatorType = function (value) {
             var separatorPulldown = $('#rawdataformatp');
             if (value === undefined) {
                 value = separatorPulldown.val();
@@ -769,7 +805,17 @@ var EDDTableImport;
             else {
                 separatorPulldown.val(value);
             }
-            this.separatorType = value;
+            return (this.separatorType = value);
+        };
+        RawInputStep.prototype.stepRawText = function (value) {
+            var rawArea = $('#step2textarea');
+            if (value === undefined) {
+                value = rawArea.val();
+            }
+            else {
+                rawArea.val(value);
+            }
+            return value;
         };
         RawInputStep.prototype.clickedOnIgnoreDataGaps = function () {
             this.userClickedOnIgnoreDataGaps = true;
