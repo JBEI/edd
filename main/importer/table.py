@@ -359,9 +359,7 @@ class TableImport(object):
             # as well as legacy proteins in EDD's database
             name_match_criteria = Q(type_name=measurement_name)
 
-            ALLOW_PERMISSIVE_PROTEIN_MATCHING = False
-
-            if ALLOW_PERMISSIVE_PROTEIN_MATCHING:
+            if getattr(settings, 'ALLOW_PERMISSIVE_PROTEIN_MATCHING', False):
                 name_match_criteria = name_match_criteria | Q(short_name=measurement_name)
                 if uniprot_id:
                     name_match_criteria = name_match_criteria | Q(short_name=uniprot_id)
