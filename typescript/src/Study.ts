@@ -1185,6 +1185,7 @@ module StudyD {
                 this.progressiveFilteringWidget.prepareFilteringSection();
                 // Instantiate a table specification for the Lines table
                 this.linesDataGridSpec = new DataGridSpecLines();
+                this.linesDataGridSpec.init();
                 // Instantiate the table itself with the spec
                 this.linesDataGrid = new DataGrid(this.linesDataGridSpec);
                 // Find out which protocols have assays with measurements - disabled or no
@@ -1199,6 +1200,7 @@ module StudyD {
                     var spec;
                     if (protocolsWithMeasurements[id]) {
                         this.assaysDataGridSpecs[id] = spec = new DataGridSpecAssays(protocol.id);
+                        spec.init();
                         this.assaysDataGrids[id] = new DataGridAssays(spec);
                     }
                 });
@@ -1958,10 +1960,10 @@ class DataGridSpecLines extends DataGridSpecBase {
     carbonBalanceWidget:DGShowCarbonBalanceWidget;
 
 
-    constructor() {
-        super();
+    init() {
         this.findMetaDataIDsUsedInLines();
         this.findGroupIDsAndNames();
+        super.init();
     }
 
 
@@ -2772,9 +2774,14 @@ class DataGridSpecAssays extends DataGridSpecBase {
         this.graphObject = null;
         this.measuringTimesHeaderSpec = null;
         this.graphAreaHeaderSpec = null;
+    }
+
+
+    init() {
         this.refreshIDList();
         this.findMaximumXValueInData();
         this.findMetaDataIDsUsedInAssays();
+        super.init();
     }
 
 

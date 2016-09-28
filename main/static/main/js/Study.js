@@ -1018,6 +1018,7 @@ var StudyD;
                 _this.progressiveFilteringWidget.prepareFilteringSection();
                 // Instantiate a table specification for the Lines table
                 _this.linesDataGridSpec = new DataGridSpecLines();
+                _this.linesDataGridSpec.init();
                 // Instantiate the table itself with the spec
                 _this.linesDataGrid = new DataGrid(_this.linesDataGridSpec);
                 // Find out which protocols have assays with measurements - disabled or no
@@ -1033,6 +1034,7 @@ var StudyD;
                     var spec;
                     if (protocolsWithMeasurements[id]) {
                         _this.assaysDataGridSpecs[id] = spec = new DataGridSpecAssays(protocol.id);
+                        spec.init();
                         _this.assaysDataGrids[id] = new DataGridAssays(spec);
                     }
                 });
@@ -1715,10 +1717,13 @@ var StudyD;
 var DataGridSpecLines = (function (_super) {
     __extends(DataGridSpecLines, _super);
     function DataGridSpecLines() {
-        _super.call(this);
+        _super.apply(this, arguments);
+    }
+    DataGridSpecLines.prototype.init = function () {
         this.findMetaDataIDsUsedInLines();
         this.findGroupIDsAndNames();
-    }
+        _super.prototype.init.call(this);
+    };
     DataGridSpecLines.prototype.highlightCarbonBalanceWidget = function (v) {
         this.carbonBalanceWidget.highlight(v);
     };
@@ -2389,10 +2394,13 @@ var DataGridSpecAssays = (function (_super) {
         this.graphObject = null;
         this.measuringTimesHeaderSpec = null;
         this.graphAreaHeaderSpec = null;
+    }
+    DataGridSpecAssays.prototype.init = function () {
         this.refreshIDList();
         this.findMaximumXValueInData();
         this.findMetaDataIDsUsedInAssays();
-    }
+        _super.prototype.init.call(this);
+    };
     DataGridSpecAssays.prototype.refreshIDList = function () {
         var _this = this;
         // Find out which protocols have assays with measurements - disabled or no

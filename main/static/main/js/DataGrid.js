@@ -1632,13 +1632,21 @@ var DataGridRowGroupSpec = (function () {
 // As an example, this base class is set up to render the Studies table on the main page of the EDD.
 var DataGridSpecBase = (function () {
     function DataGridSpecBase() {
+        this.tableElement = null;
+        this.tableSpec = null;
+        this.tableHeaderSpec = null;
+        this.tableColumnSpec = null;
+        this.tableColumnGroupSpec = null;
+        this.tableRowGroupSpec = null;
+    }
+    DataGridSpecBase.prototype.init = function () {
         this.tableElement = this.getTableElement();
         this.tableSpec = this.defineTableSpec();
         this.tableHeaderSpec = this.defineHeaderSpec();
         this.tableColumnSpec = this.defineColumnSpec();
         this.tableColumnGroupSpec = this.defineColumnGroupSpec();
         this.tableRowGroupSpec = this.defineRowGroupSpec();
-    }
+    };
     // All of these "define" functions should be overridden
     // Specification for the table as a whole
     DataGridSpecBase.prototype.defineTableSpec = function () {
