@@ -112,23 +112,20 @@ module EDDTableImport {
     // As soon as the window load signal is sent, call back to the server for the set of reference records
     // that will be used to disambiguate labels in imported data.
     export function onWindowLoad(): void {
-        var atdata_url, queryTime;
+        var atdata_url: string, queryTime: number;
 
         atdata_url = "/study/" + EDDData.currentStudyID + "/assaydata";
 
         $('.disclose').find('a.discloseLink').on('click', EDDTableImport.disclose);
         // Populate ATData and EDDData objects via AJAX calls
-        queryTime = new Date();
+        queryTime = Date.now();
         jQuery.ajax(atdata_url, {
             "success": function(data) {
                 // compute & log elapsed time since the query was initiated
-                var elapsedSeconds: number, receiptTime: Date;
-                receiptTime = new Date();
-                elapsedSeconds = (receiptTime.getTime() - queryTime.getTime()) / 1000;
-
+                var elapsedSeconds: number = (Date.now() - queryTime) / 1000;
                 console.log('onReferenceRecordsLoad(): Received study data from the server after',
                     elapsedSeconds, ' s');
-                ATData = data.ATData;
+                $.extend(ATData, data.ATData);
                 $.extend(EDDData, data.EDDData);
                 EDDTableImport.onReferenceRecordsLoad();
             }
@@ -173,12 +170,16 @@ module EDDTableImport {
 
     // This is called by our instance of selectMajorKindStep to announce changes.
     export function selectMajorKindCallback(): void {
-        // This is a bit of a hack.  We want to change the pulldown settings in Step 3 if the mode in Step 1 is changed,
-        // but leave the pulldown alone otherwise (including when Step 2 announces its own changes.)
+        // This is a bit of a hack.  We want to change the pulldown settings in Step 3 if the mode
+        // in Step 1 is changed, but leave the pulldown alone otherwise (including when Step 2
+        // announces its own changes.)
         // TODO: Make Step 3 track this with an internal variable.
         if (EDDTableImport.selectMajorKindStep.interpretationMode == 'mdv') {
             // A default set of pulldown settings for this mode
-            EDDTableImport.identifyStructuresStep.pulldownSettings = [TypeEnum.Assay_Line_Names, TypeEnum.Measurement_Type];
+            EDDTableImport.identifyStructuresStep.pulldownSettings = [
+                TypeEnum.Assay_Line_Names,
+                TypeEnum.Measurement_Type
+            ];
         }
         EDDTableImport.rawInputStep.previousStepChanged();
     }
@@ -1119,7 +1120,8 @@ module EDDTableImport {
         warningMessages:ImportMessage[];
         errorMessages:ImportMessage[];
 
-        MODES_WITH_DATA_TABLE:String[]; // Step 1 modes in which the data table gets displayed
+        MODES_WITH_DATA_TABLE: string[]; // Step 1 modes in which the data table gets displayed
+        MODES_WITH_GRAPH: string[];
 
         DISABLED_PULLDOWN_LABEL:string = '--';
         DEFAULT_STEP3_PULLDOWN_VALUE:number;
@@ -1176,7 +1178,8 @@ module EDDTableImport {
 
             $('#resetstep3').on('click', this.resetEnabledFlagMarkers.bind(this));
 
-            this.MODES_WITH_DATA_TABLE = ['std', 'tr', 'pr', 'mdv'];
+            this.MODES_WITH_DATA_TABLE = ['std', 'tr', 'pr', 'mdv', 'skyline'];
+            this.MODES_WITH_GRAPH = ['std', 'biolector', 'hplc'];
             this.DEFAULT_STEP3_PULLDOWN_VALUE = 0;
         }
 
@@ -1190,27 +1193,30 @@ module EDDTableImport {
         }
 
         previousStepChanged(): void {
-            var prevStepComplete: boolean, mode: string, graph: JQuery, hideGraph:boolean, gridRowMarkers:any[], grid:any[], ignoreDataGaps:boolean, showDataTable:boolean;
-            var prevStepComplete = this.rawInputStep.requiredInputsProvided();
+            var prevStepComplete: boolean,
+                ignoreDataGaps:boolean,
+                showDataTable:boolean,
+                showGraph: boolean,
+                mode: string,
+                graph: JQuery,
+                gridRowMarkers:any[],
+                grid:any[];
+            prevStepComplete = this.rawInputStep.requiredInputsProvided();
             $('#processingStep2ResultsLabel').toggleClass('off', !prevStepComplete);
             $('#enterDataInStep2').toggleClass('off', prevStepComplete);
             $('#dataTableDiv').toggleClass('off', !prevStepComplete);
 
             mode = this.selectMajorKindStep.interpretationMode;
             graph = $('#graphDiv');
-            if (mode === 'std' || mode === 'biolector' || mode === 'hplc') {
-                this.graphEnabled = true;
-            } else {
-                this.graphEnabled = false;
-            }
-            hideGraph = (!this.graphEnabled) || (!prevStepComplete);
-            graph.toggleClass('off', hideGraph);
+            this.graphEnabled = this.MODES_WITH_GRAPH.indexOf(mode) >= 0;
+            showGraph = this.graphEnabled && prevStepComplete;
+            graph.toggleClass('off', !showGraph);
 
-            var gridRowMarkers = this.rawInputStep.gridRowMarkers;
-            var grid = this.rawInputStep.getGrid();
-            var ignoreDataGaps = this.rawInputStep.ignoreDataGaps;
+            gridRowMarkers = this.rawInputStep.gridRowMarkers;
+            grid = this.rawInputStep.getGrid();
+            ignoreDataGaps = this.rawInputStep.ignoreDataGaps;
 
-            if (mode === 'std' || mode === 'tr' || mode === 'pr') {
+            if (this.MODES_WITH_DATA_TABLE.indexOf(mode) != -1) {
                 gridRowMarkers.forEach((value: string, i: number): void => {
                     var type: any;
                     if (!this.pulldownUserChangedFlags[i]) {
