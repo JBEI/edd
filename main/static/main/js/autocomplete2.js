@@ -93,17 +93,31 @@ $.widget('custom.mcautocomplete', $.ui.autocomplete, {
       this._super();
       this.widget().menu( "option", "items", "> :not(.ui-widget-header)" );
     },
+    _valOrNbsp: function(jQ, value) {
+        if (typeof value === 'object') {
+            jQ.append(value);
+        } else if (value && value.trim()) {
+            jQ.text(value);
+        } else {
+            jQ.html('&nbsp;');
+        }
+    },
+    _appendCell: function(row, column, label) {
+        var cell = $('<div></div>');
+        if (column.width) { cell.css('minWidth', column.width); }
+        if (column.maxWidth) { cell.css('maxWidth', column.maxWidth); }
+        this._valOrNbsp(cell, label);
+        row.append(cell);
+        return cell;
+    },
     _renderMenu: function(ul, items) {
         var self = this, thead;
     
         if (this.options.showHeader) {
             table=$('<li class="ui-widget-header"></div>');
             // Column headers
-            $.each(this.options.columns, function(index, item) {
-                var cell = $('<div>' + item.name + '</div>');
-                if (item.width) { cell.css('minWidth', item.width); }
-                if (item.maxWidth) { cell.css('maxWidth', item.maxWidth); }
-                table.append(cell);
+            $.each(this.options.columns, function(index, column) {
+                self._appendCell(table, column, column.name);
             });
             ul.append(table);
         }
@@ -114,15 +128,24 @@ $.widget('custom.mcautocomplete', $.ui.autocomplete, {
         $( ul ).addClass( "edd-autocomplete-list" ).find( "li:odd" ).addClass( "odd" );
     },
     _renderItem: function(ul, item) {
-        var t = '',
-        result = $('<li>')
-            .data('ui-autocomplete-item', item)
+        var t = '', self = this;
+        result = $('<li>').data('ui-autocomplete-item', item)
 
         $.each(this.options.columns, function(index, column) {
-            var cell = $('<div>' + item[column.valueField ? column.valueField : index] + '</div>');
-            if (column.width) { cell.css('minWidth', column.width); }
-            if (column.maxWidth) { cell.css('maxWidth', column.maxWidth); }
-            result.append(cell);
+            var value;
+            if (column.valueField) {
+                if (typeof column.valueField === 'function') {
+                    value = column.valueField.call({}, item, column, index);
+                } else {
+                    value = item[column.valueField];
+                }
+            } else {
+                value = item[index];
+            }
+            if (value instanceof Array) {
+                value = value[0] || '';
+            }
+            self._appendCell(result, column, value);
         });
 
         result.appendTo(ul);
