@@ -37,10 +37,12 @@ services:
     environment:
       EDD_DEBUG: "true"
   appserver:
-    # Only include the POSTGRES_DUMP variables in the development override file
     environment:
+      # Only include the POSTGRES_DUMP variables in the development override file
       POSTGRES_DUMP_FILE: ${POSTGRES_DUMP_FILE}
       POSTGRES_DUMP_URL: ${POSTGRES_DUMP_URL}
+      # skip automatic application of migrations @ appserver startup
+      SKIP_AUTO_MIGRATION: ${SKIP_AUTO_MIGRATION}
     # Make the http 8000 port available on the Docker host external network
     ports:
       - '8000:8000'
