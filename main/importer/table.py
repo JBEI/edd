@@ -9,11 +9,9 @@ import warnings
 from celery import shared_task
 from collections import namedtuple
 from django.conf import settings
-from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.db.models import Q
-from django.db.transaction import atomic
 from django.utils.translation import ugettext as _
 from six import string_types
 
@@ -76,7 +74,7 @@ class TableImport(object):
                 '%s does not have write access to study "%s"' % (user.username, self.study.name)
             )
 
-    @atomic(savepoint=False)
+    @transaction.atomic(savepoint=False)
     def import_data(self, data):
         """
         Performs the import
