@@ -379,7 +379,7 @@ class TableImport(object):
         if mode == MODE_TRANSCRIPTOMICS:
             genes = GeneIdentifier.objects.filter(type_name=measurement_name)
             if len(genes) == 1:
-                found_type = MType(compartment, genes[0], units_id)
+                found_type = MType(compartment, genes[0].pk, units_id)
             else:
                 logger.warning('Found %(length)s GeneIdentifier instances for %(name)s' % {
                     'length': len(genes),
@@ -402,7 +402,7 @@ class TableImport(object):
             proteins = ProteinIdentifier.objects.filter(name_match_criteria)
 
             if len(proteins) == 1:
-                found_type = MType(compartment, proteins[0], units_id)
+                found_type = MType(compartment, proteins[0].pk, units_id)
             else:
                 # fail if protein couldn't be uniquely matched, but detect all non-matches before
                 # failing
@@ -430,7 +430,7 @@ class TableImport(object):
                         short_name=uniprot_id,
                         source=self._load_datasource(),
                     )
-                    found_type = MType(compartment, p, units_id)
+                    found_type = MType(compartment, p.pk, units_id)
         return found_type
 
     def _mtype_guess_format(self, points):
