@@ -7,13 +7,14 @@ maintainability of the API across data member renames in Django's model classes
 
 
 ####################################################################################################
-# General paremeter names / values that apply to multiple REST resources. Consistency!! :-)
+# General parameter names / values that apply to multiple REST resources. Consistency!! :-)
 ####################################################################################################
 
 LINE_ACTIVE_STATUS_PARAM = 'lines_active'
 QUERY_ALL_OBJECTS = 'all'
 QUERY_ACTIVE_OBJECTS_ONLY = 'active'
 QUERY_INACTIVE_OBJECTS_ONLY = 'inactive'
+NAME_REGEX = 'name_regex'
 LINES_ACTIVE_DEFAULT = QUERY_ACTIVE_OBJECTS_ONLY
 ACTIVE_STATUS_OPTIONS = (QUERY_ALL_OBJECTS, QUERY_ACTIVE_OBJECTS_ONLY, QUERY_INACTIVE_OBJECTS_ONLY)
 
@@ -48,8 +49,13 @@ METADATA_CONTEXT_VALUES = (METADATA_CONTEXT_LINE, METADATA_CONTEXT_STUDY, METADA
 STRAIN_REGISTRY_ID = 'registry_id'
 STRAIN_REGISTRY_URL_REGEX = 'registry_url_regex'
 STRAIN_NAME = 'name'
-STRAIN_NAME_REGEX = 'name_regex'
+STRAIN_NAME_REGEX = NAME_REGEX
 STRAIN_CASE_SENSITIVE = CASE_SENSITIVE_PARAM
+
+################
+# /rest/study/lines
+################
+STUDY_LINE_NAME_REGEX = NAME_REGEX
 
 
 ####################################################################################################

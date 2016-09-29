@@ -27,6 +27,10 @@ if env('SECRET_KEY', default=DOCKER_SENTINEL) is DOCKER_SENTINEL:
     env.read_env(root('secrets.env'))
 
 
+# override to allow arbitrary text instead of requiring protein ID's to fit the pattern of Uniprot
+# accession id's (though at present validity isn't confirmed)
+REQUIRE_UNIPROT_ACCESSION_IDS = True
+
 ###################################################################################################
 # Set ICE configuration used in multiple places, or that we want to be able to override in local.py
 ###################################################################################################

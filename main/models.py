@@ -667,8 +667,9 @@ class Study(EDDObject):
         Constructs a django Q object for testing whether the specified user has the required
         permission for a study as part of a Study-related Django model query. It's important to
         note that the provided Q object will return one row for each user/group permission that
-        gives the user access to the study, so clients will often want to use distinct() to limit
-        the returned results. Note that this only tests whether the user or group has specific
+        gives the user access to the study, so clients that aren't already filtering by primary
+        key will probably want to use distinct() to limit the returned results. Note that this
+        only tests whether the user or group has specific
         permissions granted on the Study, not whether the user's role (e.g. 'staff', 'admin')
         gives him/her access to it. See:
             @ user_role_has_read_access(user)
@@ -763,7 +764,8 @@ class Study(EDDObject):
         return Assay.objects.filter(line__study=self)
 
     def get_assays_by_protocol(self):
-        """ Returns a dict mapping Protocol ID to all Assays in Study using that Protocol. """
+        """ Returns a dict mapping Protocol ID to a list of Assays the in Study using that
+        Protocol. """
         assays_by_protocol = defaultdict(list)
         for assay in self.get_assays():
             assays_by_protocol[assay.protocol_id].append(assay.id)
@@ -1409,6 +1411,14 @@ class ProteinIdentifier(MeasurementType):
 
     @classmethod
     def match_accession_id(cls, text):
+        """
+        Tests whether the input text matches the pattern of a Uniprot accession id, and if so,
+        extracts & returns the required identifier portion of the text, less optional prefix/suffix
+        allowed by the pattern.
+        :param text: the text to match
+        :return: the Uniprot identifier if the input text matched the accession id pattern,
+        or the entire input string if not
+        """
         match = cls.accession_pattern.match(text)
         if match:
             return match.group(1)

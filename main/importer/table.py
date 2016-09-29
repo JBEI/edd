@@ -7,9 +7,11 @@ import re
 import warnings
 
 from collections import namedtuple
+from django.conf import settings as django_settings, settings
 from django.contrib import messages
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Q
+from django.db.transaction import atomic
 from django.utils.translation import ugettext as _
 
 from ..models import (
@@ -26,27 +28,52 @@ class TableImport(object):
     """ Object to handle processing of data POSTed to /study/{id}/import view and add
         measurements to the database. """
 
+    MODE_TRANSCRIPTOMICS = 'tr'
+    MODE_PROTEOMICS = 'pr'
+
     def __init__(self, study, user, request=None):
         self._study = study
         self._user = user
-        if not study.user_can_write(user):
-            raise PermissionDenied("%s does not have write access to %s" % (
-                user.username, study.name))
         self._line_assay_lookup = {}
         self._line_lookup = {}
         self._meta_lookup = {}
         self._unit_lookup = {}
         self._request = request
+        self.error_count = 0
 
+    @atomic
     def import_data(self, data):
+        """
+        Performs the import
+        :param data:
+        :return:
+        :raises: ValidationError if no data are provided to import
+        """
+        user = self._user
+        if not self._study.user_can_write(user):
+            raise PermissionDenied(
+                '%s does not have write access to study "%s"' % (user.username, self.study.name))
+
         self._data = data
         series = json.loads(data.get('jsonoutput', '[]'))
         self.check_series_points(series)
         self.init_lines_and_assays(series)
-        return self.create_measurements(series)
+        created_count = self.create_measurements(series)
+
+        # if any deferred errors occurred, raise an Exception to abort the transaction.
+        # we should generally avoid this since workarounds make the code more
+        # complex/hard-to-maintain, but just in case...better to fail than to partially apply
+        # changes
+        if self.error_count:
+            raise RuntimeError('%d errors occurred during the import attempt' % self.error_count)
+
+        return created_count
 
     def check_series_points(self, series):
-        """ Checks that each item in the series has some data or metadata. """
+        """
+        Checks that each item in the series has some data or metadata, and sets a
+        'nothing to import' value for the item if that's the case
+         """
         for item in series:
             points = item.get('data', [])
             meta = item.get('metadata_by_id', {})
@@ -189,15 +216,17 @@ class TableImport(object):
     def _load_measurement_record(self, item, hours):
         # TODO: stuffing hours in parameter list is a little gross, but otherwise would need
         #   multiple unnecessary queries
+        record = None
         assay = item['assay_obj']
         points = item.get('data', [])
         mtype = self._mtype(item)
+
         logger.info('Loading measurements for %s:%s' % (mtype.compartment, mtype.type))
         records = assay.measurement_set.filter(
             measurement_type=mtype.type,
             compartment=mtype.compartment,
         )
-        record = None
+
         if records.count() > 0:
             if self._replace():
                 records.delete()
@@ -205,6 +234,7 @@ class TableImport(object):
                 record = records[0]
                 record.save()  # force refresh of Update
         if record is None:
+
             record = assay.measurement_set.create(
                 measurement_type=mtype.type,
                 measurement_format=self._mtype_guess_format(points),
@@ -255,7 +285,7 @@ class TableImport(object):
             warnings.warn('Value %s could not be interpreted as a number' % value)
         return []
 
-    def _layout(self):
+    def _mode(self):
         return self._data.get('datalayout', None)
 
     def _metatype(self, meta_id):
@@ -269,92 +299,119 @@ class TableImport(object):
     def _mtype(self, item):
         hours = MeasurementUnit.objects.get(unit_name='hours')
         NO_TYPE = MType(Measurement.Compartment.UNKNOWN, None, hours)
+
         # In Transcriptomics and Proteomics mode, we attempt to resolve measurements client-side,
         # so we go by the measurement_name, ignoring the measurement_id and related fields (which
         # will be blank)
-        found_type = self._mtype_from_layout(item, hours, default=NO_TYPE)
-        if found_type is NO_TYPE:
-            try:
-                type_id = item.get('measurement_id', 0)
-                units_id = item.get('units_id', 0)
-                found_type = MType(
-                    item.get('compartment_id', Measurement.Compartment.UNKNOWN),
-                    MeasurementType.objects.get(pk=type_id),
-                    MeasurementUnit.objects.get(pk=units_id)
-                )
-            except MeasurementType.DoesNotExist as e:
-                # failed to match type
-                self._messages_error(
-                    _('Could not match selected Measurement Type; got type ID = %(type_id)s.') % {
-                        'type_id': type_id,
-                    }
-                )
-                pass
-            except MeasurementUnit.DoesNotExist as e:
-                # failed to match unit
-                self._messages_error(
-                    _('Could not match selected Measurement Unit; got unit ID = %(unit_id)s.') % {
-                        'unit_id': units_id,
-                    }
-                )
-                pass
-            except ValueError as e:
-                # failed to parse type or unit
-                self._messages_error(
-                    _('Failed to parse data for Type or Units of measurement. Did you specify a '
-                      'type and unit for the measurements? Error details: %(err_msg)s') % {
-                        'err_msg': e,
-                    }
-                )
-                pass
+        found_type = self._mtype_from_mode(item, hours, default=NO_TYPE)
+
+        if found_type is not NO_TYPE:
+            return found_type
+
+        type_id = item.get('measurement_id', 0)
+        units_id = item.get('units_id', 0)
+        try:
+            found_type = MType(
+                item.get('compartment_id', Measurement.Compartment.UNKNOWN),
+                MeasurementType.objects.get(pk=type_id),
+                MeasurementUnit.objects.get(pk=units_id)
+            )
+        except MeasurementType.DoesNotExist as e:
+            # failed to match type
+            message = (_('Could not match selected Measurement Type; got type ID = '
+                       '%(type_id)s.') % { 'type_id': type_id, })
+            raise ValidationError(message)
+        except MeasurementUnit.DoesNotExist as e:
+            # failed to match unit
+            raise ValidationError(_('Could not match selected Measurement Unit; got unit ID = '
+                                   '%(unit_id)s.') % {'unit_id': units_id, })
+        except ValueError as e:
+            # failed to parse type or unit
+            raise ValidationError(
+                _('Failed to parse data for Type or Units of measurement. Did you specify a '
+                  'type and unit for the measurements? Error details: %(err_msg)s') % {
+                    'err_msg': e,
+                }
+            )
+            pass
         return found_type
 
-    def _mtype_from_layout(self, item, hours, default=None):
+    def _mtype_from_mode(self, item, hours, default=None):
+        """
+        Attempts to infer the measurement type of the input item from the general import mode
+        specified in the input / in Step 1 of the import GUI.
+        :param item: a dictionary containing the JSON data for a single measurement item sent
+        from the front end
+        :param hours: the MeasurementType for hours. Prevents us from having to repeatedly query
+        for it.
+        :param default: the default value to return if no better one can be inferred
+        :return: the measurement type, or the specified default if no better one is found
+        """
         found_type = default
-        layout = self._layout()
-        label = item.get('measurement_name', None)
-        source = Datasource(name=self._user.username)  # defining, but not saving unless needed
-        label = item.get('measurement_name', None)
-        if layout == 'tr':
-            genes = GeneIdentifier.objects.filter(type_name=label)
+        mode = self._mode()
+        measurement_name = item.get('measurement_name', None)
+        if mode == self.MODE_TRANSCRIPTOMICS:
+            genes = GeneIdentifier.objects.filter(type_name=measurement_name)
             if len(genes) == 1:
                 found_type = MType(Measurement.Compartment.UNKNOWN, genes[0], hours)
             else:
-                logger.warning('Found %(length)s GeneIdentifier instances for %(label)s' % {
+                logger.warning('Found %(length)s GeneˇIdentifier instances for %(name)s' % {
                     'length': len(genes),
-                    'label': label,
+                    'name': measurement_name,
                 })
-        elif layout == 'pr':
-            proteins = ProteinIdentifier.objects.filter(
-                Q(short_name=ProteinIdentifier.match_accession_id(label)) |
-                Q(short_name=label) |
-                Q(type_name=label)
-            )
+        elif mode == self.MODE_PROTEOMICS:
+            # extract Uniprot accession data from the measurement name, if present
+            accession_match = ProteinIdentifier.accession_pattern.match(measurement_name)
+            uniprot_id = accession_match.group(1) if accession_match else None
+
+            # search for proteins matching the name. we're fairly permissive during lookup to
+            # account for some small percentage of protein names that don't follow the Uniprot,
+            # as well as legacy proteins in EDD's database
+            name_match_criteria = Q(type_name=measurement_name)
+
+            ALLOW_PERMISSIVE_PROTEIN_MATCHING = False
+
+            if ALLOW_PERMISSIVE_PROTEIN_MATCHING:
+                name_match_criteria = name_match_criteria| Q(short_name=measurement_name)
+                if uniprot_id:
+                    name_match_criteria = name_match_criteria | Q(short_name=uniprot_id)
+            proteins = ProteinIdentifier.objects.filter(name_match_criteria)
+
             if len(proteins) == 1:
                 found_type = MType(Measurement.Compartment.UNKNOWN, proteins[0], hours)
             else:
-                logger.warning('Found %(length)s ProteinIdentifier instances for %(label)s' % {
-                    'length': len(proteins),
-                    'label': label,
-                })
+                # fail if protein couldn't be uniquely matched, but detect all non-matches before
+                # failing
                 if len(proteins) > 1:
-                    # FIXME: choosing the first one for now, should be error?
-                    found_type = MType(Measurement.Compartment.UNKNOWN, proteins[0], hours)
+                    raise ValidationError('More than one match was found for protein name %s. '
+                                          'Used' % measurement_name)
+
+                # try to create a new protein
                 else:
+                    # enforce ProteinIdentifier naming conventions for new ProteinIdentifiers,
+                    # if configured. this isn't as good as looking them up in Uniprot, but should
+                    # help as a stopgap to curate our protein entries
+                    if settings.REQUIRE_UNIPROT_ACCESSION_IDS and not accession_match:
+                        raise ValidationError('''Protein name "%s" isn't a valid UniProt'''
+                                             ''' accession id.''')
+
+                    logger.info('Creating a new ProteinIdentifier for %(name)s' % {
+                        'name': measurement_name,
+                    })
+
+                    # create the new protein id
                     # FIXME: this blindly creates a new type; should try external lookups first?
-                    try:
-                        p = ProteinIdentifier.objects.create(type_name=label, source=source)
-                    except:
-                        logger.error('Failed to create ProteinIdentifier %s' % label)
-                    else:
-                        found_type = MType(Measurement.Compartment.UNKNOWN, p.pk, hours)
+                    source = Datasource.objects.create(name=self._user.username)
+                    p = ProteinIdentifier.objects.create(type_name=measurement_name,
+                                                         short_name=uniprot_id, source=source)
+                    found_type = MType(Measurement.Compartment.UNKNOWN, p, hours)
         return found_type
 
     def _mtype_guess_format(self, points):
-        layout = self._layout()
-        if layout == 'mdv':
+        mode = self._mode()
+        if mode == 'mdv':
             return Measurement.Format.VECTOR    # carbon ratios are vectors
-        elif layout in ('tr', 'pr'):
+        elif mode in (self.MODE_TRANSCRIPTOMICS, self.MODE_PROTEOMICS):
             return Measurement.Format.SCALAR    # always single values
         else:
             # if any value looks like carbon ratio (vector), treat all as vector
@@ -376,6 +433,7 @@ class TableImport(object):
 
     def _messages_error(self, message, **kwargs):
         """ Simple wrapper for django messages framework if request passed to TableImport. """
+        self.error_count+=1
         if self._request is not None:
             messages.error(self._request, message, **kwargs)
 

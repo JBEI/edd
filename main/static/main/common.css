@@ -243,6 +243,7 @@ div.content {
 
 /* Mouseover help boxes for the various steps */
 div.helpBadgeDiv {
+    float:left;
     display:inline-block;
     padding:1px 5px;
     margin:0px 10px 0px 6px;
@@ -264,6 +265,7 @@ div.helpBadgeDiv div.helpContent {
     position:absolute;
     border:1px solid #606060;
     padding:3px 6px;
+    margin:0px;
     background-color:white;
     color:black;
     font-weight:normal;
@@ -275,9 +277,9 @@ div.helpBadgeDiv div.helpContent {
     -o-transform: translate(-15px,9px);
     -moz-transform: translate(-15px,9px);
 }
-div.helpBadgeDiv div.helpContent p {
-    padding:3px 0px;
-    margin:0px;
+
+div.helpContent li {
+    margin-left: 20px;
 }
 div.helpBadgeDiv:hover div.helpContent {
     display:block;
@@ -1343,6 +1345,13 @@ ol.comment-list > li {
     display: block;
     font-size: 11px;
 }
+
+.missingSingleFormInput {
+    color: red;
+    display: block;
+    font-size: 11px;
+}
+
 .meta-remove {
     background-color: transparent;
     background-image: url("./images/edit-cancel.png");
