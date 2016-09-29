@@ -114,7 +114,9 @@ div.tooltip2 {
 }
 
 .tooMuchData {
-    color: black
+    color: red;
+    text-align: center;
+    font-size: 18px;
 }
 
 .x.axis {
