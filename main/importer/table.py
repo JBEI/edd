@@ -34,8 +34,9 @@ def import_task(study_id, user_id, data):
         importer = TableImport(study, user)
         count = importer.import_data(data)
     except Exception as e:
+        logger.exception('Failure in import_task: %s', e)
         raise RuntimeError(
-            'Failed import to %(study)s, EDD encountered this problem: %(problem)s' % {
+            _('Failed import to %(study)s, EDD encountered this problem: %(problem)s') % {
                 'problem': e,
                 'study': study.name,
             }
