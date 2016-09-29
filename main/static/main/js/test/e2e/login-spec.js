@@ -8,14 +8,14 @@ describe('login', function() {
   browser.driver.ignoreSynchronization = true;
 
   beforeEach(function() {
-    browser.driver.get('https://192.168.99.100/');
+    browser.driver.get(browser.params.url);
     jasmine.DEFAULT_TIMEOUT_INTERVAL = 300000;
     });
 
   it('should log in', function() {
 
-    browser.driver.findElement(by.id('id_login')).sendKeys('unprivileged_user');
-    browser.driver.findElement(by.id('id_password')).sendKeys('insecure_pwd_ok_for_local_testing');
+    browser.driver.findElement(by.id('id_login')).sendKeys(browser.params.username);
+    browser.driver.findElement(by.id('id_password')).sendKeys(browser.params.password);
     browser.driver.findElement(by.id('id_click')).click();
 
     var loginElement = browser.driver.findElement(by.className('user_welcome'));
