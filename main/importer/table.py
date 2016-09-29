@@ -24,6 +24,12 @@ from ..models import (
 
 logger = logging.getLogger(__name__)
 MType = namedtuple('MType', ['compartment', 'type', 'unit', ])
+NO_TYPE = MType(models.Measurement.Compartment.UNKNOWN, None, None)
+
+
+MODE_PROTEOMICS = 'pr'
+MODE_SKYLINE = 'skyline'
+MODE_TRANSCRIPTOMICS = 'tr'
 
 
 @shared_task
@@ -51,9 +57,6 @@ class TableImport(object):
     """ Object to handle processing of data POSTed to /study/{id}/import view and add
         measurements to the database. """
 
-    MODE_TRANSCRIPTOMICS = 'tr'
-    MODE_PROTEOMICS = 'pr'
-
     def __init__(self, study, user, request=None):
         """
         Creates an import handler.
@@ -70,6 +73,7 @@ class TableImport(object):
         self._request = request
         # end up looking for hours repeatedly, just load once at init
         self._hours = MeasurementUnit.objects.get(unit_name='hours')
+        self._datasource = Datasource(name=self._user.username)
         if not self._study.user_can_write(user):
             raise PermissionDenied(
                 '%s does not have write access to study "%s"' % (user.username, self.study.name)
@@ -251,7 +255,6 @@ class TableImport(object):
                 record = records[0]
                 record.save()  # force refresh of Update
         if record is None:
-
             record = assay.measurement_set.create(
                 measurement_type_id=mtype.type,
                 measurement_format=self._mtype_guess_format(points),
@@ -302,6 +305,33 @@ class TableImport(object):
             warnings.warn('Value %s could not be interpreted as a number' % value)
         return []
 
+    def _load_compartment(self, item):
+        compartment = item.get('compartment_id', None)
+        if compartment is None:
+            # master value could be set to null, want to still default to UNKNOWN
+            compartment = (
+                self._data.get('masterMCompValue', None) or Measurement.Compartment.UNKNOWN
+            )
+        return compartment
+
+    def _load_datasource(self):
+        if self._datasource.pk is None:
+            self._datasource.save()
+        return self._datasource
+
+    def _load_type_id(self, item):
+        type_id = item.get('measurement_id', None)
+        if type_id is None:
+            type_id = self._data.get('masterMTypeValue', None)
+        return type_id
+
+    def _load_unit(self, item):
+        unit = item.get('units_id', None)
+        if unit is None:
+            # TODO: get rid of magic number fallback; every EDD will have n/a as Unit #1?
+            return self._data.get('masterMUnitsValue', None) or 1
+        return unit
+
     def _mode(self):
         return self._data.get('datalayout', None)
 
@@ -314,43 +344,42 @@ class TableImport(object):
         return self._meta_lookup.get(meta_id, None)
 
     def _mtype(self, item):
-        NO_TYPE = MType(Measurement.Compartment.UNKNOWN, None, self._hours)
         # In Transcriptomics and Proteomics mode, we attempt to resolve measurements server-side,
         # so we go by the measurement_name, ignoring the measurement_id and related fields (which
         # will be blank)
-        found_type = self._mtype_from_mode(item, self._hours, default=NO_TYPE)
+        found_type = self._mtype_from_mode(item, default=NO_TYPE)
         if found_type is NO_TYPE:
             found_type = MType(
-                item.get('compartment_id', Measurement.Compartment.UNKNOWN),
-                item.get('measurement_id', None),
-                item.get('units_id', None),
+                self._load_compartment(item),
+                self._load_type_id(item),
+                self._load_unit(item),
             )
         return found_type
 
-    def _mtype_from_mode(self, item, hours, default=None):
+    def _mtype_from_mode(self, item, default=None):
         """
         Attempts to infer the measurement type of the input item from the general import mode
         specified in the input / in Step 1 of the import GUI.
         :param item: a dictionary containing the JSON data for a single measurement item sent
         from the front end
-        :param hours: the MeasurementType for hours. Prevents us from having to repeatedly query
-        for it.
         :param default: the default value to return if no better one can be inferred
         :return: the measurement type, or the specified default if no better one is found
         """
         found_type = default
         mode = self._mode()
+        compartment = self._load_compartment(item)
         measurement_name = item.get('measurement_name', None)
-        if mode == self.MODE_TRANSCRIPTOMICS:
+        units_id = self._load_unit(item)
+        if mode == MODE_TRANSCRIPTOMICS:
             genes = GeneIdentifier.objects.filter(type_name=measurement_name)
             if len(genes) == 1:
-                found_type = MType(Measurement.Compartment.UNKNOWN, genes[0], hours)
+                found_type = MType(compartment, genes[0], units_id)
             else:
                 logger.warning('Found %(length)s GeneIdentifier instances for %(name)s' % {
                     'length': len(genes),
                     'name': measurement_name,
                 })
-        elif mode == self.MODE_PROTEOMICS:
+        elif mode in (MODE_PROTEOMICS, MODE_SKYLINE):
             # extract Uniprot accession data from the measurement name, if present
             accession_match = ProteinIdentifier.accession_pattern.match(measurement_name)
             uniprot_id = accession_match.group(1) if accession_match else None
@@ -367,7 +396,7 @@ class TableImport(object):
             proteins = ProteinIdentifier.objects.filter(name_match_criteria)
 
             if len(proteins) == 1:
-                found_type = MType(Measurement.Compartment.UNKNOWN, proteins[0], hours)
+                found_type = MType(compartment, proteins[0], units_id)
             else:
                 # fail if protein couldn't be uniquely matched, but detect all non-matches before
                 # failing
@@ -390,17 +419,19 @@ class TableImport(object):
 
                     # create the new protein id
                     # FIXME: this blindly creates a new type; should try external lookups first?
-                    source = Datasource.objects.create(name=self._user.username)
-                    p = ProteinIdentifier.objects.create(type_name=measurement_name,
-                                                         short_name=uniprot_id, source=source)
-                    found_type = MType(Measurement.Compartment.UNKNOWN, p, hours)
+                    p = ProteinIdentifier.objects.create(
+                        type_name=measurement_name,
+                        short_name=uniprot_id,
+                        source=self._load_datasource(),
+                    )
+                    found_type = MType(compartment, p, units_id)
         return found_type
 
     def _mtype_guess_format(self, points):
         mode = self._mode()
         if mode == 'mdv':
             return Measurement.Format.VECTOR    # carbon ratios are vectors
-        elif mode in (self.MODE_TRANSCRIPTOMICS, self.MODE_PROTEOMICS):
+        elif mode in (MODE_TRANSCRIPTOMICS, MODE_PROTEOMICS):
             return Measurement.Format.SCALAR    # always single values
         elif len(points):
             # if first value looks like carbon ratio (vector), treat all as vector
