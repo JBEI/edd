@@ -70,6 +70,7 @@ class TableImport(object):
         self._line_assay_lookup = {}
         self._line_lookup = {}
         self._meta_lookup = {}
+        self._valid_protocol = {}
         self._request = request
         # end up looking for hours repeatedly, just load once at init
         self._hours = MeasurementUnit.objects.get(unit_name='hours')
@@ -195,18 +196,23 @@ class TableImport(object):
         return line
 
     def _init_item_protocol(self, item):
-        protocol = None
         protocol_id = item.get('protocol_id', None)
         if protocol_id is None:
             logger.warning('Import set needs new Assay, but has undefined protocol_id field.')
             item['invalid_fields'] = True
-        else:
+        elif protocol_id not in self._valid_protocol:
+            # when protocol ID valid, map to itself, otherwise map to None
+            protocol = None
             try:
-                protocol = Protocol.objects.get(pk=protocol_id)
-            except Protocol.DoesNotExist:
-                logger.warning('Import set cannot load protocol %s' % (protocol_id))
-                item['invalid_fields'] = True
-        return protocol
+                protocol = models.Protocol.objects.get(pk=protocol_id)
+            except models.Protocol.DoesNotExist:
+                pass
+            self._valid_protocol[protocol_id] = protocol
+        result = self._valid_protocol.get(protocol_id, None)
+        if result is None:
+            logger.warning('Import set cannot load protocol %s' % (protocol_id))
+            item['invalid_fields'] = True
+        return result
 
     def create_measurements(self, series):
         added = 0
