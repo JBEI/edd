@@ -2335,11 +2335,11 @@ var EDDTableImport;
         };
         TypeDisambiguationStep.prototype.remakeMeasurementSection = function () {
             var _this = this;
-            var body, bodyJq, hasRequiredInitialInput, mode, parentDiv, uniqueMeasurementNames, seenAnyTimestamps, startTime, row;
+            var body, row, bodyJq, hasRequiredInitialInput, seenAnyTimestamps, mode, parentDiv, uniqueMeasurementNames, startTime, that = this;
             mode = this.selectMajorKindStep.interpretationMode;
             uniqueMeasurementNames = this.identifyStructuresStep.uniqueMeasurementNames;
             seenAnyTimestamps = this.identifyStructuresStep.seenAnyTimestamps;
-            startTime = new Date();
+            startTime = Date.now();
             hasRequiredInitialInput = this.identifyStructuresStep.requiredInputsProvided();
             console.log("Start of TypeDisambiguationStep.remakeMeasurementSection()");
             parentDiv = $('#disambiguateMeasurementsSection');
@@ -2350,17 +2350,22 @@ var EDDTableImport;
             this.currentlyVisibleMeasurementObjSets.forEach(function (disam) {
                 disam.rowElementJQ.detach();
             });
-            // If in 'Transcription' or 'Proteomics' mode, there are no measurement types involved.
-            // skip the measurement section, and provide statistics about the gathered records.
-            if (mode === "tr" || mode === "pr") {
+            // If in 'Transcription' or 'Proteomics' mode, there are no measurement types needing
+            // explicit disambiguation. Skip the measurement section, and provide statistics about
+            // the gathered records.
+            // TODO: sometimes skyline will target metabolites instead of proteins; in those cases
+            //  do not abort section
+            if (mode === "tr" || mode === "pr" || mode === "skyline") {
                 console.log("End of TypeDisambiguationStep.remakeMeasurementSection() - not" +
                     " required for mode ", mode);
                 return;
             }
-            // No measurements for disambiguation, have timestamp data:  That means we need to choose one measurement.
-            // You might think that we should display this even without timestamp data, to handle the case where we're importing
-            // a single measurement type for a single timestamp...  But that would be a 1-dimensional import, since there is only
-            // one other object with multiple types to work with (lines/assays).  We're not going to bother supporting that.
+            // No measurements for disambiguation, have timestamp data:  That means we need to
+            // choose one measurement. You might think that we should display this even without
+            // timestamp data, to handle the case where we're importing a single measurement type
+            // for a single timestamp...  But that would be a 1-dimensional import, since there
+            // is only one other object with multiple types to work with (lines/assays).  We're
+            // not going to bother supporting that.
             if (hasRequiredInitialInput && uniqueMeasurementNames.length === 0 && seenAnyTimestamps) {
                 $('#masterMTypeDiv').removeClass('off');
                 console.log("End of TypeDisambiguationStep.remakeMeasurementSection() - no" +
@@ -2372,7 +2377,6 @@ var EDDTableImport;
                     .insertBefore($('#disambiguateMeasurementsTable'));
             }
             // put together a disambiguation section for measurement types
-            var t = this;
             body = (bodyJq[0]);
             this.currentlyVisibleMeasurementObjSets = []; // For use in cascading user settings
             uniqueMeasurementNames.forEach(function (name, i) {
@@ -2409,7 +2413,7 @@ var EDDTableImport;
                         .addClass(_this.STEP_4_REQUIRED_INPUT_CLASS);
                     $(row).on('change', 'input[type=hidden]', function (ev) {
                         // only watch for changes on the hidden portion, let autocomplete work
-                        t.userChangedMeasurementDisam(ev.target);
+                        that.userChangedMeasurementDisam(ev.target);
                     });
                     EDD_auto.setup_field_autocomplete(disam.compObj, 'MeasurementCompartment', _this.autoCache.comp);
                     EDD_auto.setup_field_autocomplete(disam.typeObj, 'GenericOrMetabolite', _this.autoCache.metabolite);
@@ -2433,10 +2437,7 @@ var EDDTableImport;
             }
             this.checkAllMeasurementCompartmentDisam();
             $('#disambiguateMeasurementsSection').toggleClass('off', uniqueMeasurementNames.length === 0 || !hasRequiredInitialInput);
-            var endTime = new Date();
-            var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
-            console.log("End of TypeDisambiguationStep.remakeMeasurementSection(). Elapsed time:" +
-                " ", elapsedSeconds, " s.");
+            console.log("End of TypeDisambiguationStep.remakeMeasurementSection(). Elapsed time: ", (Date.now() - startTime) / 1000, " s.");
         };
         TypeDisambiguationStep.prototype.addIgnoreCheckbox = function (row) {
             var checkbox;

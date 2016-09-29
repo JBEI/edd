@@ -2894,12 +2894,21 @@ module EDDTableImport {
 
 
         remakeMeasurementSection(): void {
-            var body:HTMLTableElement, bodyJq: JQuery,  hasRequiredInitialInput: boolean, mode:string, parentDiv: JQuery, uniqueMeasurementNames, seenAnyTimestamps:boolean, startTime:Date, row: HTMLTableRowElement;
+            var body: HTMLTableElement,
+                row: HTMLTableRowElement,
+                bodyJq: JQuery,
+                hasRequiredInitialInput: boolean,
+                seenAnyTimestamps: boolean,
+                mode: string,
+                parentDiv: JQuery,
+                uniqueMeasurementNames: any[],
+                startTime: number,
+                that: TypeDisambiguationStep = this;
 
             mode = this.selectMajorKindStep.interpretationMode;
             uniqueMeasurementNames = this.identifyStructuresStep.uniqueMeasurementNames;
             seenAnyTimestamps = this.identifyStructuresStep.seenAnyTimestamps;
-            startTime = new Date();
+            startTime = Date.now();
 
             hasRequiredInitialInput = this.identifyStructuresStep.requiredInputsProvided();
 
@@ -2917,18 +2926,23 @@ module EDDTableImport {
                 disam.rowElementJQ.detach();
             });
 
-            // If in 'Transcription' or 'Proteomics' mode, there are no measurement types involved.
-            // skip the measurement section, and provide statistics about the gathered records.
-            if (mode === "tr" || mode === "pr") {
+            // If in 'Transcription' or 'Proteomics' mode, there are no measurement types needing
+            // explicit disambiguation. Skip the measurement section, and provide statistics about
+            // the gathered records.
+            // TODO: sometimes skyline will target metabolites instead of proteins; in those cases
+            //  do not abort section
+            if (mode === "tr" || mode === "pr" || mode === "skyline") {
                 console.log("End of TypeDisambiguationStep.remakeMeasurementSection() - not" +
                     " required for mode ", mode);
                 return;
             }
 
-            // No measurements for disambiguation, have timestamp data:  That means we need to choose one measurement.
-            // You might think that we should display this even without timestamp data, to handle the case where we're importing
-            // a single measurement type for a single timestamp...  But that would be a 1-dimensional import, since there is only
-            // one other object with multiple types to work with (lines/assays).  We're not going to bother supporting that.
+            // No measurements for disambiguation, have timestamp data:  That means we need to
+            // choose one measurement. You might think that we should display this even without
+            // timestamp data, to handle the case where we're importing a single measurement type
+            // for a single timestamp...  But that would be a 1-dimensional import, since there
+            // is only one other object with multiple types to work with (lines/assays).  We're
+            // not going to bother supporting that.
             if (hasRequiredInitialInput && uniqueMeasurementNames.length === 0 && seenAnyTimestamps) {
                 $('#masterMTypeDiv').removeClass('off');
                 console.log("End of TypeDisambiguationStep.remakeMeasurementSection() - no" +
@@ -2942,7 +2956,6 @@ module EDDTableImport {
             }
 
             // put together a disambiguation section for measurement types
-            var t = this;
             body = <HTMLTableElement>(bodyJq[0]);
             this.currentlyVisibleMeasurementObjSets = [];   // For use in cascading user settings
             uniqueMeasurementNames.forEach((name: string, i: number): void => {
@@ -2982,12 +2995,18 @@ module EDDTableImport {
 
                     $(row).on('change', 'input[type=hidden]', (ev: JQueryInputEventObject): void => {
                         // only watch for changes on the hidden portion, let autocomplete work
-                        t.userChangedMeasurementDisam(ev.target);
+                        that.userChangedMeasurementDisam(ev.target);
                     });
-                    EDD_auto.setup_field_autocomplete(disam.compObj, 'MeasurementCompartment', this.autoCache.comp);
-                    EDD_auto.setup_field_autocomplete(disam.typeObj, 'GenericOrMetabolite', this.autoCache.metabolite);
+                    EDD_auto.setup_field_autocomplete(
+                        disam.compObj, 'MeasurementCompartment', this.autoCache.comp
+                    );
+                    EDD_auto.setup_field_autocomplete(
+                        disam.typeObj, 'GenericOrMetabolite', this.autoCache.metabolite
+                    );
                     EDD_auto.initial_search(disam.typeObj, name);
-                    EDD_auto.setup_field_autocomplete(disam.unitsObj, 'MeasurementUnit', this.autoCache.unit);
+                    EDD_auto.setup_field_autocomplete(
+                        disam.unitsObj, 'MeasurementUnit', this.autoCache.unit
+                    );
                     this.measurementObjSets[name] = disam;
                 }
                 // TODO sizing should be handled in CSS
@@ -3009,11 +3028,11 @@ module EDDTableImport {
             }
 
             this.checkAllMeasurementCompartmentDisam();
-            $('#disambiguateMeasurementsSection').toggleClass('off', uniqueMeasurementNames.length === 0 || !hasRequiredInitialInput);
-            var endTime = new Date();
-            var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
-            console.log("End of TypeDisambiguationStep.remakeMeasurementSection(). Elapsed time:" +
-                " ", elapsedSeconds, " s.");
+            $('#disambiguateMeasurementsSection').toggleClass(
+                'off', uniqueMeasurementNames.length === 0 || !hasRequiredInitialInput
+            );
+            console.log("End of TypeDisambiguationStep.remakeMeasurementSection(). Elapsed time: ",
+                (Date.now() - startTime) / 1000, " s.");
         }
 
         addIgnoreCheckbox(row: HTMLTableRowElement): JQuery {
