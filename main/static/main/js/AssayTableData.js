@@ -474,6 +474,10 @@ var EDDTableImport;
                 this.nextStepCallback();
                 return;
             }
+            if (mode === 'skyline') {
+                this.nextStepCallback();
+                return;
+            }
             if (mode === 'mdv') {
                 // When JBEI MDV format documents are pasted in, it's always from Excel, so they're always tab-separated.
                 this.stepSeparatorType('tab');
@@ -481,7 +485,7 @@ var EDDTableImport;
                 this.stepIgnoreGaps(false);
                 this.stepTranspose(false);
             }
-            if (mode === 'std' || mode === 'tr' || mode === 'pr' || mode === 'mdv' || mode == 'skyline') {
+            if (mode === 'std' || mode === 'tr' || mode === 'pr' || mode === 'mdv') {
                 // If an excel file was dropped in, its content was pulled out and dropped into the text box.
                 // The only reason we would want to still show the file info area is if we are currently in the middle
                 // of processing a file and haven't yet received its worksheets from the server.
@@ -554,6 +558,7 @@ var EDDTableImport;
                 fileContainer.skipUpload = true;
             }
             else if ((ft === 'csv' || ft === 'txt') && (mode === 'skyline')) {
+                this.showFileDropped(fileContainer);
                 fileContainer.skipProcessRaw = true;
                 fileContainer.skipUpload = false;
             }
@@ -611,13 +616,12 @@ var EDDTableImport;
             // we know we no longer need the 'sending' status.
             $('#fileDropInfoSending').addClass('off');
             if (mode === 'biolector' || mode === 'hplc' || mode === 'skyline') {
-                var d = result.file_data;
-                var t = 0;
-                d.forEach(function (set) { t += set.data.length; });
-                $('<p>')
-                    .text('Found ' + d.length + ' measurements with ' + t + ' total data points.')
-                    .appendTo($("#fileDropInfoLog"));
-                this.processedSetsFromFile = d;
+                var data, count, points;
+                data = result.file_data;
+                count = data.length;
+                points = data.map(function (set) { return set.data.length; }).reduce(function (acc, n) { return acc + n; }, 0);
+                $('<p>').text('Found ' + count + ' measurements with ' + points + ' total data points.').appendTo($("#fileDropInfoLog"));
+                this.processedSetsFromFile = data;
                 this.processedSetsAvailable = true;
                 this.processingFile = false;
                 // Call this directly, skipping over reprocessRawData() since we don't need it.
@@ -679,7 +683,7 @@ var EDDTableImport;
             $('#fileDropInfoSending').removeClass('off');
             $('#fileDropInfoName').text(fileContainer.file.name);
             $('#fileUploadMessage').text('Sending ' + Utl.JS.sizeToString(fileContainer.file.size) + ' To Server...');
-            //            $('#fileDropInfoLog').empty();
+            // $('#fileDropInfoLog').empty();
             this.activeDraggedFile = fileContainer;
         };
         RawInputStep.prototype.reset = function () {
@@ -919,7 +923,7 @@ var EDDTableImport;
                 .on('mouseover mouseout', 'td', this.highlighterF.bind(this))
                 .on('dblclick', 'td', this.singleValueDisablerF.bind(this));
             $('#resetstep3').on('click', this.resetEnabledFlagMarkers.bind(this));
-            this.MODES_WITH_DATA_TABLE = ['std', 'tr', 'pr', 'mdv', 'skyline'];
+            this.MODES_WITH_DATA_TABLE = ['std', 'tr', 'pr', 'mdv'];
             this.MODES_WITH_GRAPH = ['std', 'biolector', 'hplc'];
             this.DEFAULT_STEP3_PULLDOWN_VALUE = 0;
         }
@@ -946,7 +950,10 @@ var EDDTableImport;
             gridRowMarkers = this.rawInputStep.gridRowMarkers;
             grid = this.rawInputStep.getGrid();
             ignoreDataGaps = this.rawInputStep.ignoreDataGaps;
-            if (this.MODES_WITH_DATA_TABLE.indexOf(mode) != -1) {
+            // Empty the data table whether we remake it or not...
+            $('#dataTableDiv').empty();
+            showDataTable = this.MODES_WITH_DATA_TABLE.indexOf(mode) >= 0;
+            if (showDataTable) {
                 gridRowMarkers.forEach(function (value, i) {
                     var type;
                     if (!_this.pulldownUserChangedFlags[i]) {
@@ -958,11 +965,6 @@ var EDDTableImport;
                         _this.pulldownSettings[i] = type || _this.pulldownSettings[i] || 0;
                     }
                 });
-            }
-            // Empty the data table whether we remake it or not...
-            $('#dataTableDiv').empty();
-            showDataTable = this.MODES_WITH_DATA_TABLE.indexOf(mode) >= 0;
-            if (showDataTable) {
                 // Create a map of enabled/disabled flags for our data,
                 // but only fill the areas that do not already exist.
                 this.inferActiveFlags(grid);
@@ -973,6 +975,9 @@ var EDDTableImport;
                 // (possibly previously set) flag markers and the "ignore gaps" setting.
                 this.redrawIgnoredGapMarkers(ignoreDataGaps);
                 this.redrawEnabledFlagMarkers();
+            }
+            else if (!showGraph) {
+                $('#dataTableDiv').text('Nothing to see here, proceed to Step 4.');
             }
             // Either we're interpreting some pre-processed data sets from a server response,
             // or we're interpreting the data table we just laid out above,
