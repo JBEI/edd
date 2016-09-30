@@ -307,7 +307,7 @@ class DataGrid {
             });
         }
 
-        if (hasColumnsInVisibilityList) {
+            if (hasColumnsInVisibilityList) {
             var menuColList = $(document.createElement("ul")).appendTo(menuBlock);
             // Add each hide-able group to the menu.
             // Note: We have to walk through this anew, because we're going to make use of the index 'i'.
@@ -752,26 +752,24 @@ class DataGrid {
         this._spec.tableRowGroupSpec.forEach((oneGroup, index) => {
             oneGroup.disclosed = true;
             oneGroup.memberRecords = [];
+                var row = oneGroup.disclosedTitleRowJQ = $(oneGroup.disclosedTitleRow = document.createElement("tr"))
+                    .addClass('groupHeader').click(() => this._collapseRowGroup(index));
+                var cell = $(document.createElement("td")).appendTo(row);
+                $(document.createElement("div")).appendTo(cell).text("\u25BA " + oneGroup.name);
+                if (this._totalColumnCount > 1) {
+                    cell.attr('colspan', this._totalColumnCount);
+                }
 
-            var row = oneGroup.disclosedTitleRowJQ = $(oneGroup.disclosedTitleRow = document.createElement("tr"))
-                .addClass('groupHeader').click(() => this._collapseRowGroup(index));
-            var cell = $(document.createElement("td")).appendTo(row);
-            $(document.createElement("div")).appendTo(cell).text("\u25BA " + oneGroup.name);
-            if (this._totalColumnCount > 1) {
-                cell.attr('colspan', this._totalColumnCount);
-            }
-
-            row = oneGroup.undisclosedTitleRowJQ = $(oneGroup.undisclosedTitleRow = document.createElement("tr"))
-                .addClass('groupHeader').click(() => this._expandRowGroup(index));
-            cell = $(document.createElement("td")).appendTo(row);
-            $(document.createElement("div")).appendTo(cell).text("\u25BC " + oneGroup.name);
-            if (this._totalColumnCount > 1) {
-                cell.attr('colspan', this._totalColumnCount);
-            }
+                row = oneGroup.undisclosedTitleRowJQ = $(oneGroup.undisclosedTitleRow = document.createElement("tr"))
+                    .addClass('groupHeader').click(() => this._expandRowGroup(index));
+                cell = $(document.createElement("td")).appendTo(row);
+                $(document.createElement("div")).appendTo(cell).text("\u25BC "  +oneGroup.name); //u25bc black triangle
+                if (this._totalColumnCount > 1) {
+                    cell.attr('colspan', this._totalColumnCount);
+                }
         });
         return this;
     }
-
 
     // Handle the "sortable" CSS class in a table.
     private _prepareSortable():void {
@@ -794,6 +792,11 @@ class DataGrid {
     private _collapseRowGroup(groupIndex):void {
         var rowGroup = this._spec.tableRowGroupSpec[groupIndex];
         rowGroup.disclosed = false;
+        var rows = this._findRowIds();
+        var lines = this.addReplicateRows(rows);
+        _.each(lines, function(line) {
+            $(rowGroup.undisclosedTitleRow).append(line);
+        });
         this.scheduleTimer('arrangeTableDataRows', () => this.arrangeTableDataRows());
     }
 
@@ -802,6 +805,26 @@ class DataGrid {
         var rowGroup = this._spec.tableRowGroupSpec[groupIndex];
         rowGroup.disclosed = true;
         this.scheduleTimer('arrangeTableDataRows', () => this.arrangeTableDataRows());
+    }
+
+    private _findRowIds():string[] {
+        var lines = EDDData.Lines;
+        var rows = [];
+        for (var key in lines) {
+            if (lines[key].replicate) {
+                rows.push(lines[key].id)
+            }
+        }
+        return rows;
+    }
+
+    private addReplicateRows(idArray):string[] {
+        var rows = [];
+        _.each(idArray, function(id) {
+            var value = '[value=' + id + ']'
+            rows.push($(value).parent().parent())
+        });
+        return rows;
     }
 
 
