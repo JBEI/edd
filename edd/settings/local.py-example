@@ -17,7 +17,7 @@ MANAGERS = ADMINS = (
     ('Jay Bay', 'admin@example.org'),  # <-- CHANGE ME
 )
 
-# Set the IPs where the debug toolbar will be available; use localhost IPv4 and IPv6
+# Set the IPs where the Django debug toolbar will be available; use localhost IPv4 and IPv6
 ALLOWED_HOSTS = ['*', ]
 INTERNAL_IPS = ['127.0.0.1', '::1', ]
 # Also add the 'external' IP for the nginx service proxying the appserver
@@ -38,8 +38,12 @@ DEBUG_TOOLBAR_CONFIG = {
     'JQUERY_URL': '/static/main/js/lib/jquery/jquery-2.1.4.min.js',
 }
 
+#
 USE_CELERY = True
 PUBLISH_REST_API = True
+
+# True disables all study creation by non-superusers. Used to disable writes to the public EDD
+# until the "web of EDD's" can be implemented.
 EDD_ONLY_SUPERUSER_CREATE = False
 
 

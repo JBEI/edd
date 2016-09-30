@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 """ Settings for the Experiment Data Depot. """
 
+# import baseline settings included in EDD's git repo
 from .base import *  # noqa
 from .auth import *  # noqa
 from .celery import *  # noqa
+
+# try to load overridden settings from local.py, if present
 try:
     from .local import *  # noqa
 except ImportError as e:
