@@ -12,7 +12,7 @@ This page gives an overview of the most useful configuration options built into 
 4. _Other service-specific scripts and configurations files_ are available by directories matching each service name under `docker_services`. Drill down into these directories to find service-specific configurations.
 
 
-## Docker-Compose Environment Varibles
+## Docker-Compose Environment Variables
 
  There's some minimal configuration available for the EDD service startup process that's exposed via environment
  variables. Each item in the following list can be triggered by prepending a value to the command,
@@ -57,7 +57,7 @@ This page gives an overview of the most useful configuration options built into 
 	in your `docker-compose-override.yml`
 
 
-##EDD Appserver Configuration Files
+## EDD Appserver Configuration Files
 The vast majority of EDD's code runs in Django, and many of its configuration options are also provided out-of-the-box by Django or Django-related libraries. In the style of Django, EDD includes a number of default Python configuration files, as well as examples that are set up to make configuration more-or-less hassle free. Most of the contained configuration parameters are defined by Django in its [documentation](https://docs.djangoproject.com/en/1.9/topics/settings/), but several are custom configuration options defined by EDD.
 
 EDD's Django configuration files live under `edd/settings`:
