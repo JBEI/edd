@@ -68,6 +68,7 @@ class EDDImportCheckMiddleware(object):
         elif task.failed():
             messages.error(request, 'An import task failed with error: %s' % task.info)
         else:
+            messages.info(request, 'Import is still running.')
             return True  # keeping if not success/fail yet
         return False
 
