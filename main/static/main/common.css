@@ -1,4 +1,5 @@
 /* CSS reset */
+
 html, body, div, span, h1, h2, h3, h4, h5, h6, p, a, em, img, strike, strong, sup, b,
 u, i, center, dl, dt, dd, ol, ul, li, fieldset, form, label, legend, table, tbody, thead,
 tfoot, tr, th, td {
@@ -23,6 +24,7 @@ fieldset {
 
 
 /* EDD basic style */
+
 HTML {
     color: #000000;
     font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
@@ -33,11 +35,12 @@ H1, H2, H3, H4 {
 }
 p {
     margin:0.4em;
-    padding:0.4em;
+    padding:0.2em;
 }
 
 
 /* Links */
+
 a {
     color:#4C81C0;
     text-decoration:none;
@@ -51,6 +54,7 @@ a:hover {
 
 
 /* Functional classes */
+
 .clear {
     clear:both;
 }
@@ -144,11 +148,11 @@ a:hover {
     visibility:hidden;
 }
 .disclose.discloseHide .discloseLink:before {
-    content: '►';
+    content: '▶';   /* Unicode 'black right-pointing triangle' 0x25B6 */
 }
 .disclose .discloseLink:before {
     color:#707070;
-    content: '▼';
+    content: '▼';   /* Unicode 'black down-pointing triangle' 0x25BC */
 }
 .discloseLink {
     cursor:pointer;
