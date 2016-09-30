@@ -668,7 +668,7 @@ div.filteringSection {
     overflow-y: hidden;
     white-space: nowrap;
     margin:0px 2px 0px 2px;
-    max-height: 285px;
+    max-height: 287px;
 }
 div.filterTable {
     border:none;
@@ -710,6 +710,10 @@ table.filterCriteriaTable tr.nodata {
 }
 table.filterCriteriaTable tr.nodata:hover {
     background-color:#E0E0E0;
+}
+table.filterCriteriaTable input[type="checkbox"] {
+    margin-left: 4px;
+    margin-right: 4px;
 }
 div.filterHead {
     padding:4px 8px 2px 2px;
