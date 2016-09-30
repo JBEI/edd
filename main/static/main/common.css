@@ -986,6 +986,24 @@ div.multientrybutton {
 
 
 /* Autocomplete input element styling */
+
+ul.edd-autocomplete-list {
+    display:table;
+}
+ul.edd-autocomplete-list > li {
+    display:table-row;
+}
+ul.edd-autocomplete-list > li.not(.odd) {
+    background-color:#FCFCFC;
+}
+ul.edd-autocomplete-list > li > div {
+    display:table-cell;
+}
+ul.edd-autocomplete-list > li > div.ui-state-active {
+    border-width:0px;
+    border:none;
+}
+
 input.autocomplete, input.autocomp {
     background-repeat: no-repeat;
     background-position: center right;
@@ -1000,6 +1018,10 @@ input.autocomplete.wait, input.autocomp.wait {
 .ui-autocomplete.ui-menu span.ac_column {
     float: left;
     padding: 0 4px;
+}
+
+ul.ui-autocomplete {
+    list-style: none;
 }
 
 .ice_strain {

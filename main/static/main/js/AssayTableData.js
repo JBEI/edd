@@ -3144,6 +3144,6 @@ var EDDTableImport;
     }());
     EDDTableImport.ReviewStep = ReviewStep;
 })(EDDTableImport || (EDDTableImport = {}));
-$(window).load(function () {
+$(window).on('load', function () {
     EDDTableImport.onWindowLoad();
 });

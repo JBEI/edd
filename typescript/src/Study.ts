@@ -916,11 +916,11 @@ module StudyD {
         post:string;
 
         constructor(metaDataID:string) {
+            super();
             var MDT = EDDData.MetaDataTypes[metaDataID];
             this.metaDataID = metaDataID;
             this.pre = MDT.pre || '';
             this.post = MDT.post || '';
-            super();
         }
 
 
@@ -1185,6 +1185,7 @@ module StudyD {
                 this.progressiveFilteringWidget.prepareFilteringSection();
                 // Instantiate a table specification for the Lines table
                 this.linesDataGridSpec = new DataGridSpecLines();
+                this.linesDataGridSpec.init();
                 // Instantiate the table itself with the spec
                 this.linesDataGrid = new DataGrid(this.linesDataGridSpec);
                 // Find out which protocols have assays with measurements - disabled or no
@@ -1199,6 +1200,7 @@ module StudyD {
                     var spec;
                     if (protocolsWithMeasurements[id]) {
                         this.assaysDataGridSpecs[id] = spec = new DataGridSpecAssays(protocol.id);
+                        spec.init();
                         this.assaysDataGrids[id] = new DataGridAssays(spec);
                     }
                 });
@@ -1238,7 +1240,7 @@ module StudyD {
             metaIn.val(JSON.stringify(meta));
             metaRow.remove();
         });
-        $(window).load(preparePermissions);
+        $(window).on('load', preparePermissions);
     }
 
     function preparePermissions() {
@@ -1331,7 +1333,7 @@ module StudyD {
     export function prepareAfterLinesTable() {
         var csIDs;
         // Prepare the main data overview graph at the top of the page
-        if (this.mainGraphObject === null && $('#maingraph').size() === 1) {
+        if (this.mainGraphObject === null && $('#maingraph').length === 1) {
             this.mainGraphObject = Object.create(StudyDGraphing);
             this.mainGraphObject.Setup('maingraph');
 
@@ -1504,15 +1506,15 @@ module StudyD {
     function assaysActionPanelShow() {
             var checkedBoxes = [], checkedAssays, checkedMeasure, panel, infobox;
         panel = $('#assaysActionPanel');
-        if (!panel.size()) {
+        if (!panel.length) {
             return;
         }
         // Figure out how many assays/checkboxes are selected.
         $.each(this.assaysDataGrids, (pID, dataGrid) => {
             checkedBoxes = checkedBoxes.concat(dataGrid.getSelectedCheckboxElements());
         });
-        checkedAssays = $(checkedBoxes).filter('[id^=assay]').size();
-        checkedMeasure = $(checkedBoxes).filter(':not([id^=assay])').size();
+        checkedAssays = $(checkedBoxes).filter('[id^=assay]').length;
+        checkedMeasure = $(checkedBoxes).filter(':not([id^=assay])').length;
         panel.toggleClass('off', !checkedAssays && !checkedMeasure);
         if (checkedAssays || checkedMeasure) {
             infobox = $('#assaysSelectedCell').empty();
@@ -1630,8 +1632,8 @@ module StudyD {
      * this function makes unchecked labels black
      * @param selectors
      */
-    function makeLabelsBlack(selectors) {
-        _.each(selectors, function(selector) {
+    function makeLabelsBlack(selectors:JQuery[]) {
+        _.each(selectors, function(selector:JQuery) {
             if (selector.prev().prop('checked') === false) {
             $(selector).css('color', 'black');
             }
@@ -1677,8 +1679,8 @@ module StudyD {
      * @returns labels
      */
 
-    function addColor(labels, colorObj, assay) {
-        _.each(labels, function(label) {
+    function addColor(labels:JQuery[], colorObj, assay) {
+        _.each(labels, function(label:JQuery) {
             var color = colorObj[assay];
             if (EDDData.Lines[assay].name === label.text()) {
                 $(label).css('color', color);
@@ -1958,10 +1960,10 @@ class DataGridSpecLines extends DataGridSpecBase {
     carbonBalanceWidget:DGShowCarbonBalanceWidget;
 
 
-    constructor() {
+    init() {
         this.findMetaDataIDsUsedInLines();
         this.findGroupIDsAndNames();
-        super();
+        super.init();
     }
 
 
@@ -2644,9 +2646,9 @@ class DataGridAssays extends DataGrid {
 
 
     constructor(dataGridSpec:DataGridSpecBase) {
+        super(dataGridSpec);
         this.recordsCurrentlyInvalidated = [];
         this.sectionCurrentlyDisclosed = false;
-        super(dataGridSpec);
     }
 
 
@@ -2766,15 +2768,20 @@ class DataGridSpecAssays extends DataGridSpecBase {
 
 
     constructor(protocolID) {
+        super();
         this.protocolID = protocolID;
         this.protocolName = EDDData.Protocols[protocolID].name;
         this.graphObject = null;
         this.measuringTimesHeaderSpec = null;
         this.graphAreaHeaderSpec = null;
+    }
+
+
+    init() {
         this.refreshIDList();
         this.findMaximumXValueInData();
         this.findMetaDataIDsUsedInAssays();
-        super();
+        super.init();
     }
 
 
@@ -2819,7 +2826,7 @@ class DataGridSpecAssays extends DataGridSpecBase {
             tableID:string = 'pro' + p + 'assaystable';
         // If we can't find a table, we insert a click-to-disclose div, and then a table directly
         // after it.
-        if ($('#' + tableID).size() === 0) {
+        if ($('#' + tableID).length === 0) {
             section = $('#assaysSection');
             protocolDiv = $('<div>').addClass('disclose discloseHide').appendTo(section);
             this.undisclosedSectionDiv = protocolDiv[0];
