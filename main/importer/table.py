@@ -18,7 +18,7 @@ from six import string_types
 from .. import models
 from ..models import (
     Assay, Datasource, GeneIdentifier, Line, Measurement, MeasurementUnit,
-    MeasurementValue, MetadataType, ProteinIdentifier, Protocol
+    MeasurementValue, MetadataType, ProteinIdentifier,
 )
 
 

@@ -56,6 +56,8 @@ class EDDSettingsMiddleware(object):
 class EDDImportCheckMiddleware(object):
     """ Checks for any pending import tasks in the request session, and displays a message
         of the current status of the import. """
+    TAG = 'import_processing'
+
     def process_request(self, request):
         tasks = EDDImportTasks(request.session)
         task_ids = filter(partial(self._process_task, request), tasks.load_task_ids())
@@ -63,14 +65,22 @@ class EDDImportCheckMiddleware(object):
 
     def _process_task(self, request, task_id):
         task = import_task.AsyncResult(task_id)
+        still_running = False
+        # Every request can generate a 'still running' message, but not all will display/clear
+        msgs = messages.get_messages(request)
+        # Check if any existing message is the 'still running' message
+        has_running_msg = any(filter(lambda m: self.TAG in m.extra_tags, msgs))
+        # Make sure messages framework does not discard the messages because we peeked
+        msgs.used = False
         if task.successful():
             messages.success(request, '%s' % task.info)
         elif task.failed():
             messages.error(request, 'An import task failed with error: %s' % task.info)
         else:
-            messages.info(request, 'Import is still running.')
-            return True  # keeping if not success/fail yet
-        return False
+            still_running = True
+        if still_running and not has_running_msg:
+            messages.info(request, 'Import is still running.', extra_tags=self.TAG)
+        return still_running
 
 
 class EDDImportTasks(object):
