@@ -166,26 +166,32 @@ a:hover {
 }
 
 /* Top banner styling */
+
 div.topBanner {
-    height: 76px;
-    margin: 0 0 1px 0;
-    width: 100%;
-}
-div.topBanner > div {
-    float: left;
-    height: 100%;
+    display: flex;
+    flex-wrap: nowrap;
+    flex-direction: row;
+    align-items: top;
+    justify-content: space-between;
 }
 div.topBanner > div.siteLogo {
-    width: 175px;
+    flex-shrink: 0;
 }
 div.topBanner > div.pageName {
     color: #6c6c6c;
     font-size: 20pt;
+    margin-top: auto;
+    margin-bottom: auto;
+    margin-right: auto;
+    margin-left: 20px;
 }
 div.topBanner > div.userMenu {
-    float: right;
-    height: auto;
-    margin: 10px;
+    flex-shrink: 0;
+    padding: 10px;
+    white-space: nowrap;
+}
+div.topBanner > div.userMenu > div {
+    padding: 0 0 3px 0;
 }
 
 
