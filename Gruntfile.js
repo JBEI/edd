@@ -9,6 +9,7 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-contrib-uglify');
     grunt.loadNpmTasks('grunt-karma');
     grunt.loadNpmTasks('grunt-contrib-jshint');
+    grunt.loadNpmTasks('grunt-protractor-runner');
 
     grunt.initConfig({
     	clean: {
@@ -48,6 +49,30 @@ module.exports = function(grunt) {
                 }]
             }
         },
+        protractor: {
+              options: {
+                // Location of your protractor config file
+                configFile: "main/static/main/js/test/e2e/conf.js",
+                noColor: false,
+
+                // Set to true if you would like to use the Protractor command line debugging tool
+                // debug: true,
+
+                // Additional arguments that are passed to the webdriver command
+                args: { }
+              },
+              e2e: {
+                options: {
+                  // Stops Grunt process if a test fails
+                  keepAlive: false
+                }
+              },
+              continuous: {
+                options: {
+                  keepAlive: true
+                }
+              }
+            },
         ts: {
             dev: {
                 src: ['./typescript/build/*.ts'],
@@ -178,6 +203,8 @@ module.exports = function(grunt) {
           'jshint',
           'karma'
     ]);
+
+    grunt.registerTask('e2e-test', ['protractor:e2e']);
 
     grunt.registerMultiTask( 'screenshots', 'Use Grunt and PhantomJS to generate Screenshots of' +
         ' pages', function(){

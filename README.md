@@ -304,6 +304,8 @@ running in the development environment.
 ## Javascript Tests <a name="Javascript Tests"/>
 * run `$ grunt test` to test javascript files.
 * run `$ grunt screenshots` to test graphs
+* run `$ webdriver-manager start` in one command window and `grunt e2e-test` in another for E2E
+tests
 
 [1]:    https://public-edd.jbei.org
 [2]:    https://docker.io
