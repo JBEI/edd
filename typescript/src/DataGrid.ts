@@ -795,6 +795,7 @@ class DataGrid {
         var rows = this._findRowIds();
         var lines = this.addReplicateRows(rows);
         _.each(lines, function(line) {
+            $(line).show()
             $(rowGroup.undisclosedTitleRow).append(line);
         });
         this.scheduleTimer('arrangeTableDataRows', () => this.arrangeTableDataRows());
@@ -804,6 +805,11 @@ class DataGrid {
     private _expandRowGroup(groupIndex):void {
         var rowGroup = this._spec.tableRowGroupSpec[groupIndex];
         rowGroup.disclosed = true;
+        var rows = this._findRowIds();
+        var lines = this.addReplicateRows(rows);
+        _.each(lines, function(line) {
+            $(line).hide();
+        });
         this.scheduleTimer('arrangeTableDataRows', () => this.arrangeTableDataRows());
     }
 
