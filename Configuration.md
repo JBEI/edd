@@ -2,14 +2,14 @@
 
 This page gives an overview of the most useful configuration options built into EDD.  There are several sources of configuration available and some are described in further detail in sections below.  Broadly speaking, each of the Docker containers used by EDD has its own configuration(s), as well as several configuration files for Docker itself.
 
-1. Docker-compose environment variables: provide basic controls for loading EDD's database from an existing dump, or for controlling TLS and Docker configuration for controlling remote EDD deployments.
-2. Docker configuration files
+1. _Docker-compose environment variables_: provide basic controls for loading EDD's database from an existing dump, or for controlling TLS and Docker configuration for controlling remote EDD deployments.
+2. _Docker configuration files_
    These files configure EDD's docker containers and enable you to launch EDD and most of its dependencies with a single command.
    * `secrets.env`: Stores passwords and URL's for the various services EDD has to connect to, and makes them accessible to EDD's Docker containers. Make sure to control access to this file!
    * `docker-compose.yml`: Configures EDD's docker containers as run by Docker-compose.  This is set up by default in a working configuration, but you may want to change container definitions, etc based on your computing needs / resources and deployment strategy. See the [Docker-compose documentation](https://docs.docker.com/compose/compose-file/) for reference.
    * `docker-compose.override.yml`. This file is NOT included by default with EDD, but you may create one from a copy of `docker-compose.yml-example` to override any desired settings from `docker-compose.yml`. See comments in the example file, and the related [Docker-compose documentation](https://docs.docker.com/compose/extends/#/understanding-multiple-compose-files) for reference.
-3. EDD appserver configuration files: The vast majority of EDD's code runs in Django, and can be configured by overriding the default settings provided with EDD.  See "EDD Appserver Configuration Files" below for more details.
-4. Other service-specific scripts and configurations files are available by directories matching each service name under `docker_services`. Drill down into these directories to find service-specific configurations.
+3. _EDD appserver configuration files_: The vast majority of EDD's code runs in Django, and can be configured by overriding the default settings provided with EDD.  See "EDD Appserver Configuration Files" below for more details.
+4. _Other service-specific scripts and configurations files_ are available by directories matching each service name under `docker_services`. Drill down into these directories to find service-specific configurations.
 
 
 ## Docker-Compose Environment Varibles
@@ -56,6 +56,7 @@ This page gives an overview of the most useful configuration options built into 
 	preferably to set this value in a durable fashion, e.g. in `.bashrc` or by hard-coding its value
 	in your `docker-compose-override.yml`
 
+
 ##EDD Appserver Configuration Files
 The vast majority of EDD's code runs in Django, and many of its configuration options are also provided out-of-the-box by Django or Django-related libraries. In the style of Django, EDD includes a number of default Python configuration files, as well as examples that are set up to make configuration more-or-less hassle free. Most of the contained configuration parameters are defined by Django in its [documentation](https://docs.djangoproject.com/en/1.9/topics/settings/), but several are custom configuration options defined by EDD.
 
@@ -66,14 +67,14 @@ EDD's Django configuration files live under `edd/settings`:
 * `auth.py`: Defines authentication-specific settings that can be overridden in your `local.py`
 
 ## Configuring Social Logins <a name="Social"/>
-* For broad overview, refer to the [django-allauth documentation][7].
+* For broad overview, refer to the [django-allauth documentation](http://django-allauth.readthedocs.org/en/latest/index.html).
 * To use a new provider:
     * Add the provider application to `INSTALLED_APPS`
     * Put logos in `./main/static/main/images/` and update styles in `./main/static/main/login.css`
     * From the admin site, add a new Social application, using Client ID and Secret Key from
       provider
-        * [Github registration][8]
-        * [Google registration][9]
-        * [LinkedIn registration][10]
+        * [Github registration](https://github.com/settings/applications/new)
+        * [Google registration](https://console.developers.google.com/)
+        * [LinkedIn registration](https://www.linkedin.com/secure/developer?newapp=)
         * Each provider may require additional details about the application, allowed domains
           and/or URLs, etc.
