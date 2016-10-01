@@ -1,4 +1,5 @@
 /* CSS reset */
+
 html, body, div, span, h1, h2, h3, h4, h5, h6, p, a, em, img, strike, strong, sup, b,
 u, i, center, dl, dt, dd, ol, ul, li, fieldset, form, label, legend, table, tbody, thead,
 tfoot, tr, th, td {
@@ -23,6 +24,7 @@ fieldset {
 
 
 /* EDD basic style */
+
 HTML {
     color: #000000;
     font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
@@ -33,11 +35,12 @@ H1, H2, H3, H4 {
 }
 p {
     margin:0.4em;
-    padding:0.4em;
+    padding:0.2em;
 }
 
 
 /* Links */
+
 a {
     color:#4C81C0;
     text-decoration:none;
@@ -51,6 +54,7 @@ a:hover {
 
 
 /* Functional classes */
+
 .clear {
     clear:both;
 }
@@ -144,11 +148,11 @@ a:hover {
     visibility:hidden;
 }
 .disclose.discloseHide .discloseLink:before {
-    content: '►';
+    content: '▶';   /* Unicode 'black right-pointing triangle' 0x25B6 */
 }
 .disclose .discloseLink:before {
     color:#707070;
-    content: '▼';
+    content: '▼';   /* Unicode 'black down-pointing triangle' 0x25BC */
 }
 .discloseLink {
     cursor:pointer;
@@ -162,26 +166,32 @@ a:hover {
 }
 
 /* Top banner styling */
+
 div.topBanner {
-    height: 76px;
-    margin: 0 0 1px 0;
-    width: 100%;
-}
-div.topBanner > div {
-    float: left;
-    height: 100%;
+    display: flex;
+    flex-wrap: nowrap;
+    flex-direction: row;
+    align-items: top;
+    justify-content: space-between;
 }
 div.topBanner > div.siteLogo {
-    width: 175px;
+    flex-shrink: 0;
 }
 div.topBanner > div.pageName {
     color: #6c6c6c;
     font-size: 20pt;
+    margin-top: auto;
+    margin-bottom: auto;
+    margin-right: auto;
+    margin-left: 20px;
 }
 div.topBanner > div.userMenu {
-    float: right;
-    height: auto;
-    margin: 10px;
+    flex-shrink: 0;
+    padding: 10px;
+    white-space: nowrap;
+}
+div.topBanner > div.userMenu > div {
+    padding: 0 0 3px 0;
 }
 
 
@@ -668,12 +678,12 @@ div.filteringSection {
     overflow-y: hidden;
     white-space: nowrap;
     margin:0px 2px 0px 2px;
-    max-height: 285px;
+    max-height: 289px;
 }
 div.filterTable {
     border:none;
     display:table;
-    margin:0px 0px 0px 0px;
+    margin:3px 0px 0px 0px;
 }
 div.filterTable > div.filterColumn {
     display:table-cell;
@@ -685,7 +695,7 @@ div.filterTable > div.filterColumn {
     vertical-align:top;
 }
 div.filterTable > div.filterColumn div.filterCriteriaScrollZone {
-    max-height: 260px;
+    max-height: 264px;
     overflow-x: visible;
     overflow-y: auto;
     padding:0px 20px 0px 0px;
@@ -710,6 +720,10 @@ table.filterCriteriaTable tr.nodata {
 }
 table.filterCriteriaTable tr.nodata:hover {
     background-color:#E0E0E0;
+}
+table.filterCriteriaTable input[type="checkbox"] {
+    margin-left: 4px;
+    margin-right: 4px;
 }
 div.filterHead {
     padding:4px 8px 2px 2px;
