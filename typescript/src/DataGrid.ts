@@ -287,7 +287,7 @@ class DataGrid {
         // event handlers to hide menu if clicking outside menu block or pressing ESC
         $(document).click((ev) => {
             var t = $(ev.target);
-            if (t.closest(this._optionsMenuElement).size() === 0) {
+            if (t.closest(this._optionsMenuElement).length === 0) {
                 this._hideOptMenu();
             }
         }).keydown((ev) => {
@@ -2098,6 +2098,16 @@ class DataGridSpecBase {
 
 
     constructor() {
+        this.tableElement = null;
+        this.tableSpec = null;
+        this.tableHeaderSpec = null;
+        this.tableColumnSpec = null;
+        this.tableColumnGroupSpec = null;
+        this.tableRowGroupSpec = null;
+    }
+
+
+    init() {
         this.tableElement = this.getTableElement();
         this.tableSpec = this.defineTableSpec();
         this.tableHeaderSpec = this.defineHeaderSpec();
@@ -2105,6 +2115,7 @@ class DataGridSpecBase {
         this.tableColumnGroupSpec = this.defineColumnGroupSpec();
         this.tableRowGroupSpec = this.defineRowGroupSpec();
     }
+
 
     // All of these "define" functions should be overridden
 

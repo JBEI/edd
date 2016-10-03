@@ -757,11 +757,11 @@ var StudyD;
     var MetaDataFilterSection = (function (_super) {
         __extends(MetaDataFilterSection, _super);
         function MetaDataFilterSection(metaDataID) {
+            _super.call(this);
             var MDT = EDDData.MetaDataTypes[metaDataID];
             this.metaDataID = metaDataID;
             this.pre = MDT.pre || '';
             this.post = MDT.post || '';
-            _super.call(this);
         }
         MetaDataFilterSection.prototype.configure = function () {
             this.sectionTitle = EDDData.MetaDataTypes[this.metaDataID].name;
@@ -1018,6 +1018,7 @@ var StudyD;
                 _this.progressiveFilteringWidget.prepareFilteringSection();
                 // Instantiate a table specification for the Lines table
                 _this.linesDataGridSpec = new DataGridSpecLines();
+                _this.linesDataGridSpec.init();
                 // Instantiate the table itself with the spec
                 _this.linesDataGrid = new DataGrid(_this.linesDataGridSpec);
                 // Find out which protocols have assays with measurements - disabled or no
@@ -1033,6 +1034,7 @@ var StudyD;
                     var spec;
                     if (protocolsWithMeasurements[id]) {
                         _this.assaysDataGridSpecs[id] = spec = new DataGridSpecAssays(protocol.id);
+                        spec.init();
                         _this.assaysDataGrids[id] = new DataGridAssays(spec);
                     }
                 });
@@ -1065,7 +1067,7 @@ var StudyD;
             metaIn.val(JSON.stringify(meta));
             metaRow.remove();
         });
-        $(window).load(preparePermissions);
+        $(window).on('load', preparePermissions);
     }
     StudyD.prepareIt = prepareIt;
     function preparePermissions() {
@@ -1154,7 +1156,7 @@ var StudyD;
         var _this = this;
         var csIDs;
         // Prepare the main data overview graph at the top of the page
-        if (this.mainGraphObject === null && $('#maingraph').size() === 1) {
+        if (this.mainGraphObject === null && $('#maingraph').length === 1) {
             this.mainGraphObject = Object.create(StudyDGraphing);
             this.mainGraphObject.Setup('maingraph');
             this.progressiveFilteringWidget.mainGraphObject = this.mainGraphObject;
@@ -1311,15 +1313,15 @@ var StudyD;
     function assaysActionPanelShow() {
         var checkedBoxes = [], checkedAssays, checkedMeasure, panel, infobox;
         panel = $('#assaysActionPanel');
-        if (!panel.size()) {
+        if (!panel.length) {
             return;
         }
         // Figure out how many assays/checkboxes are selected.
         $.each(this.assaysDataGrids, function (pID, dataGrid) {
             checkedBoxes = checkedBoxes.concat(dataGrid.getSelectedCheckboxElements());
         });
-        checkedAssays = $(checkedBoxes).filter('[id^=assay]').size();
-        checkedMeasure = $(checkedBoxes).filter(':not([id^=assay])').size();
+        checkedAssays = $(checkedBoxes).filter('[id^=assay]').length;
+        checkedMeasure = $(checkedBoxes).filter(':not([id^=assay])').length;
         panel.toggleClass('off', !checkedAssays && !checkedMeasure);
         if (checkedAssays || checkedMeasure) {
             infobox = $('#assaysSelectedCell').empty();
@@ -1715,10 +1717,13 @@ var StudyD;
 var DataGridSpecLines = (function (_super) {
     __extends(DataGridSpecLines, _super);
     function DataGridSpecLines() {
+        _super.apply(this, arguments);
+    }
+    DataGridSpecLines.prototype.init = function () {
         this.findMetaDataIDsUsedInLines();
         this.findGroupIDsAndNames();
-        _super.call(this);
-    }
+        _super.prototype.init.call(this);
+    };
     DataGridSpecLines.prototype.highlightCarbonBalanceWidget = function (v) {
         this.carbonBalanceWidget.highlight(v);
     };
@@ -2286,9 +2291,9 @@ var DGShowCarbonBalanceWidget = (function (_super) {
 var DataGridAssays = (function (_super) {
     __extends(DataGridAssays, _super);
     function DataGridAssays(dataGridSpec) {
+        _super.call(this, dataGridSpec);
         this.recordsCurrentlyInvalidated = [];
         this.sectionCurrentlyDisclosed = false;
-        _super.call(this, dataGridSpec);
     }
     DataGridAssays.prototype.invalidateAssayRecords = function (records) {
         this.recordsCurrentlyInvalidated = this.recordsCurrentlyInvalidated.concat(records);
@@ -2383,16 +2388,19 @@ var DataGridAssays = (function (_super) {
 var DataGridSpecAssays = (function (_super) {
     __extends(DataGridSpecAssays, _super);
     function DataGridSpecAssays(protocolID) {
+        _super.call(this);
         this.protocolID = protocolID;
         this.protocolName = EDDData.Protocols[protocolID].name;
         this.graphObject = null;
         this.measuringTimesHeaderSpec = null;
         this.graphAreaHeaderSpec = null;
+    }
+    DataGridSpecAssays.prototype.init = function () {
         this.refreshIDList();
         this.findMaximumXValueInData();
         this.findMetaDataIDsUsedInAssays();
-        _super.call(this);
-    }
+        _super.prototype.init.call(this);
+    };
     DataGridSpecAssays.prototype.refreshIDList = function () {
         var _this = this;
         // Find out which protocols have assays with measurements - disabled or no
@@ -2426,7 +2434,7 @@ var DataGridSpecAssays = (function (_super) {
         var section, protocolDiv, titleDiv, titleLink, table, p = this.protocolID, tableID = 'pro' + p + 'assaystable';
         // If we can't find a table, we insert a click-to-disclose div, and then a table directly
         // after it.
-        if ($('#' + tableID).size() === 0) {
+        if ($('#' + tableID).length === 0) {
             section = $('#assaysSection');
             protocolDiv = $('<div>').addClass('disclose discloseHide').appendTo(section);
             this.undisclosedSectionDiv = protocolDiv[0];

@@ -20,19 +20,23 @@ class Command(BaseCommand):
         User = get_user_model()
         print("Clearing user index")
         self.user_core.clear()
-        print("Indexing users")
-        self.user_core.update(map(self._copy_groups, User.objects.select_related('userprofile')))
+        users_qs = User.objects.select_related('userprofile')
+        user_updates = map(self._copy_groups, users_qs)
+        print("Indexing %s users" % users_qs.count())
+        self.user_core.update(user_updates)
         print("Clearing studies index")
         self.study_core.clear()
-        print("Indexing studies")
-        self.study_core.update(models.Study.objects.select_related(
+        study_updates = models.Study.objects.select_related(
             'updated__mod_by__userprofile',
             'created__mod_by__userprofile',
-        ))
+        )
+        print("Indexing %s studies" % study_updates.count())
+        self.study_core.update(study_updates)
         print("Clearing metabolite index")
         self.metabolite_core.clear()
-        print("Indexing metabolites")
-        self.metabolite_core.update(solr.MetaboliteSearch.get_queryset())
+        metabolite_updates = solr.MetaboliteSearch.get_queryset()
+        print("Indexing %s metabolites" % metabolite_updates.count())
+        self.metabolite_core.update(metabolite_updates)
 
     def _copy_groups(self, user):
         ldap_user = self.backend.get_user(user.pk)
