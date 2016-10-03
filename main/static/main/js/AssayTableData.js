@@ -1465,16 +1465,14 @@ var EDDTableImport;
             // table contents.
             if (this.rawInputStep.processedSetsAvailable) {
                 this.rawInputStep.processedSetsFromFile.forEach(function (rawSet, c) {
-                    var set, graphSet, uniqueTimes, times, foundMeta;
-                    var ln = rawSet.line_name;
-                    var an = rawSet.assay_name;
-                    var mn = rawSet.measurement_name;
+                    var set, graphSet, uniqueTimes, times, foundMeta, ln = rawSet.line_name, an = rawSet.assay_name, mn = rawSet.measurement_name;
                     uniqueTimes = [];
                     times = {};
                     foundMeta = false;
                     // The procedure for Assays, Measurements, etc is the same:
                     // If the value is blank, we can't build a valid set, so skip to the next set.
-                    // If the value is valid but we haven't seen it before, increment and store a uniqueness index.
+                    // If the value is valid but we haven't seen it before, increment and store a
+                    // uniqueness index.
                     if (!ln && ln !== 0) {
                         return;
                     }

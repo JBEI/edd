@@ -38,11 +38,12 @@ class SkylineParser(object):
                 errors.append('Could not parse area "%s"' % (item.area, ))
         samples = sorted(samples)
         proteins = sorted(proteins)
+        # 'short and wide'
         export_table = [
             [sample] + [summed_areas[(sample, protein)] for protein in proteins]
             for sample in samples
         ]
-        # old code uses this in a view, but it does not go to final import
+        # 'tall and skinny'
         rows = [
             [sample, protein, summed_areas[(sample, protein)], ]
             for (sample, protein) in product(samples, proteins)

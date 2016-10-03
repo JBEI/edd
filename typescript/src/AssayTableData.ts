@@ -1855,11 +1855,14 @@ module EDDTableImport {
             if (this.rawInputStep.processedSetsAvailable) {
 
                 this.rawInputStep.processedSetsFromFile.forEach((rawSet, c: number): void => {
-                    var set: RawImportSet, graphSet: GraphingSet, uniqueTimes: number[], times: any, foundMeta: boolean;
-
-                    var ln = rawSet.line_name;
-                    var an = rawSet.assay_name;
-                    var mn = rawSet.measurement_name;
+                    var set: RawImportSet,
+                        graphSet: GraphingSet,
+                        uniqueTimes: number[],
+                        times: any,
+                        foundMeta: boolean,
+                        ln = rawSet.line_name,
+                        an = rawSet.assay_name,
+                        mn = rawSet.measurement_name;
 
                     uniqueTimes = [];
                     times = {};
@@ -1867,7 +1870,8 @@ module EDDTableImport {
 
                     // The procedure for Assays, Measurements, etc is the same:
                     // If the value is blank, we can't build a valid set, so skip to the next set.
-                    // If the value is valid but we haven't seen it before, increment and store a uniqueness index.
+                    // If the value is valid but we haven't seen it before, increment and store a
+                    // uniqueness index.
                     if (!ln && ln !== 0) {
                         return;
                     }
@@ -3893,5 +3897,3 @@ module EDDTableImport {
 $(window).load(function() {
     EDDTableImport.onWindowLoad();
 });
-
-
