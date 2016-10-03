@@ -12,6 +12,8 @@ from collections import defaultdict, namedtuple
 from decimal import Decimal
 from itertools import ifilter, imap, product
 
+from .util import RawImportRecord
+
 
 Record = namedtuple('Record', ['sample', 'protein', 'peptide', 'area', ])
 decimal_pattern = re.compile(r'^[-+]?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?')
@@ -56,6 +58,24 @@ class SkylineParser(object):
             'rows': rows,
             'errors': errors,
         }
+
+    def getRawImportRecordsAsJSON(self, spreadsheet):
+        """ Create RawImportRecord objects from a spreadsheet input.
+
+            :param spreadsheet: 2D spreadsheet data
+        """
+        rows = self.export(spreadsheet)['rows']
+        return [
+            RawImportRecord(
+                kind='skyline',
+                assay_name=item[0],
+                # TODO: extract timestamp value from item[0]
+                data=[[0, item[2]]],
+                line_name=item[0],
+                name=item[1],
+            ).to_json()
+            for item in rows
+        ]
 
     def _input_to_generator(self, input_data):
         # the input_data could be a 2D array parsed from excel or CSV

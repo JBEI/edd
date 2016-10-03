@@ -31,7 +31,7 @@ class RawImportRecord(object):
 
     def __repr__(self):
         return "<%s RawImportRecord '%s', A:'%s', %s data points>" % (
-            self.kind, self.name, self.assay_name, len(self.data))
+            self.kind, self.measurement_name, self.assay_name, len(self.data))
 
     def to_json(self, depth=0):
         return {

@@ -56,37 +56,23 @@ parser_registry[(ImportModeFlags.TRANSCRIPTOMICS, ImportFileTypeFlags.EXCEL)] = 
 parser_registry[(ImportModeFlags.MASS_DISTRIBUTION, ImportFileTypeFlags.EXCEL)] = excel_parser
 
 
-def skyline_parser(in_data):
-    parser = skyline.SkylineParser()
-    results = parser.export(in_data)
-    return [
-        {
-            # TODO: try to parse item[0] based on worklist format
-            'assay_name': item[0],
-            # TODO: extract timestamp value from item[0]
-            'data': [[0, item[2]]],
-            'kind': 'skyline',
-            'line_name': item[0],
-            'measurement_name': item[1],
-            'metadata_by_name': {},
-        }
-        for item in results['rows']
-    ]
-
-
 def skyline_csv_parser(request):
     # we could get Mac-style \r line endings, need to use StringIO to handle
+    parser = skyline.SkylineParser()
+    spreadsheet = [row.split(',') for row in StringIO(str(request.read()), newline=None)]
     return ParsedInput(
         ImportFileTypeFlags.CSV,
-        skyline_parser([row.split(',') for row in StringIO(str(request.read()), newline=None)])
+        parser.getRawImportRecordsAsJSON(spreadsheet)
     )
 parser_registry[(ImportModeFlags.SKYLINE, ImportFileTypeFlags.CSV)] = skyline_csv_parser
 
 
 def skyline_excel_parser(request):
+    parser = skyline.SkylineParser()
+    spreadsheet = excel.import_xlsx_tables(file=request)
     return ParsedInput(
         ImportFileTypeFlags.EXCEL,
-        skyline_parser(excel.import_xlsx_tables(file=request))
+        parser.getRawImportRecordsAsJSON(spreadsheet)
     )
 parser_registry[(ImportModeFlags.SKYLINE, ImportFileTypeFlags.EXCEL)] = skyline_excel_parser
 
