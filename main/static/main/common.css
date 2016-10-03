@@ -1342,7 +1342,7 @@ ol.comment-list > li {
 }
 
 .edd-form > p > label,
-.edd-form > p > .label {
+.edd-form > p > .edd-label {
     display: inline-block;
     vertical-align: top;
     width: 8em;
