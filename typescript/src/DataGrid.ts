@@ -307,7 +307,7 @@ class DataGrid {
             });
         }
 
-            if (hasColumnsInVisibilityList) {
+        if (hasColumnsInVisibilityList) {
             var menuColList = $(document.createElement("ul")).appendTo(menuBlock);
             // Add each hide-able group to the menu.
             // Note: We have to walk through this anew, because we're going to make use of the index 'i'.
@@ -528,6 +528,7 @@ class DataGrid {
                 var rowGroup = rowGroupSpec[this._spec.getRowGroupMembership(s)];
                 rowGroup.memberRecords.push(this._recordElements[s]);
             });
+            //cannot call this from within _.each function. solution - set to variable.
             replicates = this._groupReplicates();
             replicateIdFunction = this._findReplicateLines;
             rowsToGroup = this.addReplicateRows;
@@ -546,8 +547,8 @@ class DataGrid {
                 striping = 1 - striping;
                 frag.appendChild(rowGroup.replicateGroupTitleRow);
             });
-            lineColumnLabels = $(this._tableBody).children("tr:first").next();
-            $(frag).insertAfter(lineColumnLabels)
+            var lineColumnLabels = $(this._tableBody).children("tr:first").next()
+            $(frag).insertAfter(lineColumnLabels);
         }
 
         //hacky way to show lines that were hidden from grouping replicates
