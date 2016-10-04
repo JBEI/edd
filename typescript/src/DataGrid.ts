@@ -816,6 +816,7 @@ class DataGrid {
         $(rowGroup.replicateGroupTitleRow).removeClass('foo');
         _.each(lines, function(line) {
             $(line).hide();
+             $(line).css('color', 'black');
         });
     }
 
@@ -834,7 +835,9 @@ class DataGrid {
         _.each(lines, function(line) {
             $(line).show();
             $(rowGroup.replicateGroupTitleRow).after(line);
+            $(line).css('color', 'grey');
         });
+
     }
 
     /**
