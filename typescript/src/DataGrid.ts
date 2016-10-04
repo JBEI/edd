@@ -519,25 +519,19 @@ class DataGrid {
             });
 
         } else {    // The more complicated, grouped method:
-            var replicates,
-                replicateIdFunction,
-                rowsToGroup,
-                lineColumnLabels
+
 
             filteredSequence.forEach((s) => {
                 var rowGroup = rowGroupSpec[this._spec.getRowGroupMembership(s)];
                 rowGroup.memberRecords.push(this._recordElements[s]);
             });
-            //cannot call this from within _.each function. solution - set to variable.
-            replicates = this._groupReplicates();
-            replicateIdFunction = this._findReplicateLines;
-            rowsToGroup = this.addReplicateRows;
+
             //iterate over the different replicate groups
-            _.each(rowGroupSpec, function(grouping) {
+            _.each(rowGroupSpec, (grouping)  => {
                 //find the assay ids associated with the replicate group
-                var replicateIds = replicateIdFunction(replicates, grouping);
+                var replicateIds = this._findReplicateLines(this._groupReplicates(), grouping);
                 //find the lines associated with the replicate group
-                var lines = rowsToGroup(replicateIds);
+                var lines = this.addReplicateRows(replicateIds);
                 _.each(lines, function(line) {
                     //hide the lines associated with the replicate group
                     $(line).hide();
@@ -547,13 +541,13 @@ class DataGrid {
                 striping = 1 - striping;
                 frag.appendChild(rowGroup.replicateGroupTitleRow);
             });
-            var lineColumnLabels = $(this._tableBody).children("tr:first").next()
+            var lineColumnLabels = $(this._tableBody).children("tr:first").next();
             $(frag).insertAfter(lineColumnLabels);
         }
 
         //hacky way to show lines that were hidden from grouping replicates
-        if ($('#linesGroupStudyReplicatesCB0').is(':checked') === false) {
-               var lines = $(frag).children()
+        if ($('#linesGroupStudyReplicatesCB0').prop('checked')) {
+            var lines = $(frag).children();
             _.each(lines, function(line) {
                 $(line).show()
             })
@@ -752,7 +746,7 @@ class DataGrid {
             oneGroup.memberRecords = [];
                 var row = oneGroup.replicateGroupTitleRowJQ = $(oneGroup.replicateGroupTitleRow = document.createElement("tr"))
                     .addClass('groupHeader').click(() => {
-                        //toggle between classes
+                        //collapse and expand replicate groups
                         var clicks = $(this).data('clicks');
                         if (clicks) {
                             this._collapseRowGroup(index, replicateIds);
@@ -761,7 +755,7 @@ class DataGrid {
                         }
                         $(this).data("clicks", !clicks);
                     });
-                var cell = $(document.createElement("td")).appendTo(row).text(" " + oneGroup.name).css("font-weight","Bold");
+                var cell = $(document.createElement("td")).appendTo(row).text(" " + oneGroup.name).addClass('groupReplicateRow');
                 if (this._totalColumnCount > 1) {
                     cell.attr('colspan', this._totalColumnCount);
                 }
@@ -778,11 +772,11 @@ class DataGrid {
      */
     private _findReplicateLines(replicates, oneGroup): string[] {
         var groupedIds = []; //returns ids associated with replicate id.
-            for (var key in replicates) {
+            $.each(replicates, function(key) {
                 if (EDDData.Lines[replicates[key]].name === oneGroup.name) {
                     groupedIds.push(key);
                 }
-            }
+            });
         return groupedIds;
     }
 
@@ -813,11 +807,11 @@ class DataGrid {
         var rowGroup = this._spec.tableRowGroupSpec[groupIndex];
         rowGroup.disclosed = false;
         var lines = this.addReplicateRows(replicateIds);
-        $(rowGroup.replicateGroupTitleRow).removeClass('foo');
+        $(rowGroup.replicateGroupTitleRow).removeClass('replicate');
         _.each(lines, function(line) {
             $(line).hide();
-             $(line).css('color', 'black');
         });
+        this.scheduleTimer('arrangeTableDataRows', () => this.arrangeTableDataRows());
     }
 
     /**
@@ -831,11 +825,10 @@ class DataGrid {
         var rowGroup = this._spec.tableRowGroupSpec[groupIndex];
         rowGroup.disclosed = true;
         var lines = this.addReplicateRows(replicateIds);
-        $(rowGroup.replicateGroupTitleRow).addClass('foo');
+        $(rowGroup.replicateGroupTitleRow).addClass('replicate');
         _.each(lines, function(line) {
-            $(line).show();
+            $(line).show().addClass('replicateLineShow');
             $(rowGroup.replicateGroupTitleRow).after(line);
-            $(line).css('color', 'grey');
         });
 
     }
@@ -848,11 +841,11 @@ class DataGrid {
     private _groupReplicates():{} {
         var lines = EDDData.Lines;
         var rows = {};
-        for (var key in lines) {
+        $.each(lines, function(key) {
             if (lines[key].replicate) {
                 rows[lines[key].id] = lines[key].replicate
             }
-        }
+        });
         return rows;
     }
 
@@ -862,12 +855,8 @@ class DataGrid {
      * @returns {Array}
      */
     private addReplicateRows(idArray):string[] {
-        var rows = [];
-        _.each(idArray, function(id) {
-            var value = '[value=' + id + ']';
-            rows.push($(value).parent().parent())
-        });
-        return rows;
+        return $.map(idArray, (id) => $('[value=' + id + ']', this._table).parents('tr').filter(':first'))
+
     }
 
 
