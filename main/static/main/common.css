@@ -495,13 +495,11 @@ table.dataTable tr > td p {
 }
 table.dataTable tr.groupHeader.foo > td:before {
     padding:0;
-    color: #707070;
     content: '▼';
 }
 
 table.dataTable tr.groupHeader > td:before {
     padding: 0;
-    color: #707070;
     content: '►';
 }
 table.dataTable tr.groupHeader > td > div {
