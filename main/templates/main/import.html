@@ -55,8 +55,8 @@
     <h1>Data import for <a href="/study/{{ study.id }}">{{ study.name }}</a></h1>
 {% endblock body_title %}
 
-{% block content %}
 
+{% block content %}
 <form method="post" id="assayTableForm" action="/study/{{ study.id }}/import">
 {% csrf_token %}
 
@@ -434,100 +434,98 @@
         </td>
       </tr>
     </table>
-      <span id="masterTimestampRequiredPrompt" class="off missingSingleFormInput">Required. No
-          measurement has a time.</span>
-
+    <span id="masterTimestampRequiredPrompt" class="off missingSingleFormInput">Required. No
+      measurement has a time.</span>
   </div>
 
   <div class="sectionContent off" id="masterLineDiv">
-
     <table class="formTable" style="margin-left:1em;">
       <tr>
         <td style="vertical-align:middle;">
-          <span>
-            Line for the all data:
+          <label for="masterLine">
+            <span>Line for the all data:</span>
             <select name="masterLine" id="masterLine">
               <option value="new">(Create New)</option>
               {% for line in study.line_set.all %}
               <option value="{{ line.pk }}">{{ line.name }}</option>
               {% endfor %}
             </select>
-          </span>
+          </label>
         </td>
       </tr>
     </table>
-
   </div>
 
   <div class="sectionContent off" id="masterAssayLineDiv">
-
     <table class="formTable" style="margin-left:1em;">
       <tr>
         <td style="vertical-align:middle;">
-          <span>
-            Assay for the all data:
+          <label for="masterAssay">
+            <span>Assay for the all data:</span>
             <select name="masterAssay" id="masterAssay">
               <option value="new">(Create New)</option>
             </select>
-          </span>
-          <span id="masterLineSpan">
-            for Line: <select name="masterAssayLine" id="masterAssayLine">
+          </label>
+          <label for="masterAssayLine" id="masterLineSpan">
+            <span>for Line:</span>
+            <select name="masterAssayLine" id="masterAssayLine">
               <option value="new">(Create New)</option>
               {% for line in study.line_set.all %}
               <option value="{{ line.pk }}">{{ line.name }}</option>
               {% endfor %}
             </select>
-          </span>
+          </label>
         </td>
       </tr>
     </table>
-
   </div>
 
   <div class="sectionContent off" id="masterMTypeDiv">
-
     <table class="formTable" style="margin-left:1em;">
-    <tr>
-      <td>
-        <p>Measurement Type for all data:</p>
-      </td><td>
-        <input class="autocomp" type="text" size="4" name="masterMComp" id="masterMComp"
-            value="" style="margin-right: 2px;">
-        <input type="hidden" id="masterMCompValue" name="masterMCompValue">
-      </td><td>
-        <input class="autocomp" type="text" size="45" name="masterMType" id="masterMType"
-            value="" style="margin-right: 2px;">
-        <input type="hidden" id="masterMTypeValue" name="masterMTypeValue">
-      </td><td>
-        <input class="autocomp" type="text" size="15" name="masterMUnits" id="masterMUnits"
-            value="">
-        <input type="hidden" id="masterMUnitsValue" name="masterMUnitsValue">
-      </td>
-    </tr>
+      <tr>
+        <td>
+          <p>Measurement Type for all data:</p>
+        </td>
+        <td>
+          <input class="autocomp" type="text" size="4" name="masterMComp" id="masterMComp"
+              value="" style="margin-right: 2px;" />
+          <input type="hidden" id="masterMCompValue" name="masterMCompValue" />
+        </td>
+        <td>
+          <input class="autocomp" type="text" size="45" name="masterMType" id="masterMType"
+              value="" style="margin-right: 2px;" />
+          <input type="hidden" id="masterMTypeValue" name="masterMTypeValue" />
+        </td>
+        <td>
+          <input class="autocomp" type="text" size="15" name="masterMUnits" id="masterMUnits"
+              value="" />
+          <input type="hidden" id="masterMUnitsValue" name="masterMUnitsValue" />
+        </td>
+      </tr>
     </table>
-
   </div>
+
   <div class="sectionContent disambiguationSection off" id="disambiguateLinesSection">
     <h3>Lines</h3>
-
+    {# This section filled in via TypeScript if needed #}
   </div>
 
   <div class="sectionContent disambiguationSection off" id="disambiguateAssaysSection">
     <h3>Assays</h3>
+    {# This section filled in via TypeScript if needed #}
   </div>
 
   <div class="sectionContent disambiguationSection off" id="disambiguateMeasurementsSection">
     <h3>Measurement Types</h3>
-    <div id="noCompartmentWarning" class="statusMessage neutral">
-      Make sure you specify a cellular compartment (Intracellular/Extracellular) for your mass
-        distribution measurements.
-    </div>
+    <p id="noCompartmentWarning" class="statusMessage neutral">Make sure you specify a cellular
+      compartment (Intracellular/Extracellular) for your mass distribution measurements.</p>
     <table id="disambiguateMeasurementsTable" cellspacing="0">
-        <thead>
-            <th colspan="3" style="text-align: right;">Compartment</th>
-            <th>Type</th>
-            <th>Units</th>
-        </thead>
+      <thead>
+        <th colspan="2">{# Empty placeholder for checkbox and label columns #}</th>
+        <th>Compartment</th>
+        <th>Type</th>
+        <th>Units</th>
+      </thead>
       <tbody>
       </tbody>
     </table>
@@ -541,47 +539,39 @@
 <!-- Step 5 -->
 <div class="pageSection" id="reviewImportStep">
   <div class="sectionHead">
-
+    <span>Step 5 : Review your changes and submit.</span>
     <div class="helpBadgeDiv">Help
       <div class="helpContent">
         <p>In this section you should review summary information to make sure EDD has understood
-            your data, and to double-check the results of your entries to help catch mistakes.</p>
+          your data, and to double-check the results of your entries to help catch mistakes.</p>
         <p>You'll need to knowledge warnings regarding the content of your import, or else
-            resolve them by changing entries in previous steps.</p>
-         <p>EDD isn't familiar with your experiment, so please double-check the system and
-             yourself!</p>
+          resolve them by changing entries in previous steps.</p>
+        <p>EDD isn't familiar with your experiment, so please double-check the system and
+          yourself!</p>
       </div>
-    </div>
-    Step 5 : Review your changes and submit.
+    </div>    
   </div>
-    <div class="sectionContent" id="reviewSummarySection">
-        <div class="disabledStepLabel" id="completeAllStepsFirstLabel">
-            Complete the preceding steps first!
-        </div>
-            <div id="summaryContentDiv">
-            </div>
-    </div>
-    <div class="sectionContent step5Subsection off" id="reviewErrorsSection">
-        <h1>Errors</h1>
-        <p>Import is disabled until all errors have been resolved.</p>
-        <div id="reviewErrorsContentDiv"></div>
-    </div>
-    <div class="sectionContent step5Subsection off" id="reviewWarningsSection">
-        <h1>Warnings</h1>
-        <p>You must resolve or acknowledge all warnings before import is allowed.</p>
-        <div id="reviewWarningsContentDiv"></div>
-    </div>
-    <input type="submit" id="submitForImport" name="action" value="Submit Import"
-           disabled="disabled" class="off"/>
+  <div class="sectionContent" id="reviewSummarySection">
+    <p class="disabledStepLabel" id="completeAllStepsFirstLabel">Complete the preceding steps
+      first!</p>
+    <div id="summaryContentDiv"></div>
+  </div>
+  <div class="sectionContent step5Subsection off" id="reviewErrorsSection">
+    <h1>Errors</h1>
+    <p>Import is disabled until all errors have been resolved.</p>
+    <div id="reviewErrorsContentDiv"></div>
+  </div>
+  <div class="sectionContent step5Subsection off" id="reviewWarningsSection">
+    <h1>Warnings</h1>
+    <p>You must resolve or acknowledge all warnings before import is allowed.</p>
+    <div id="reviewWarningsContentDiv"></div>
+  </div>
+  <input type="submit" id="submitForImport" name="action" value="Submit Import" disabled="disabled"
+    class="off"/>
 </div>
-
-
 
 <input type="hidden" id="jsonoutput" name="jsonoutput" />
 <input type="hidden" name="studyID" value="{{ study.id }}"/>
-</form>
 
-<!--
-  <textarea class="dataTextArea" rows="5" style="margin:10px;" id="jsondebugarea" name="jsondebugarea"></textarea>
--->
+</form>
 {% endblock content %}
