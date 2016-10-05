@@ -21,30 +21,30 @@ some changes as we polish them in upcoming versions.
 Don't panic! :-)
 
 These directions assume you're basically comfortable using the OSX Terminal. If not, or if you use
- other Python tools such as iPython, Jupyter, Pandas, etc and aren't comfortable working with
- virtual environments, it's probably best to ask for help.
+other Python tools such as iPython, Jupyter, Pandas, etc and aren't comfortable working with
+virtual environments, it's probably best to ask for help.
 
- File names and terminal commands below are specially-formatted to clarify that they're
- associated with the `Terminal`. In a multi-line terminal block below, each line should be
- executed on its own, followed by Enter.  We've made an attempt to point out how to verify that
- commands work correctly on your computer, but you should generally pay attention to the command
- output to notice any obvious signs that something went wrong (though unfortunately, the signs may
- not always be obvious).
+File names and terminal commands below are specially-formatted to clarify that they're
+associated with the `Terminal`. In a multi-line terminal block below, each line should be
+executed on its own, followed by Enter.  We've made an attempt to point out how to verify that
+commands work correctly on your computer, but you should generally pay attention to the command
+output to notice any obvious signs that something went wrong (though unfortunately, the signs may
+not always be obvious).
 
- This stuff can be intimidating! Ask for help!
+This stuff can be intimidating! Ask for help!
 
 ## Set up a Python 2 environment to run this code
 ### Mac OSX
 
-El Capitan: these directions haven't been updated for El Capitan. Unfortunately, they won't
-presently work on El Capitan, but will hopefully be updated soon. El Capitan related issues also
-affect the install process for the EDD Python development environment, and should also be
+These directions are based on an older version of the EDD installation process, and haven't been updated for El Capitan or Sierra. Unfortunately, they won't presently work on El Capitan, and haven't been tested on Sierra but will hopefully be updated soon. 
+El Capitan related issues also affect the install process for the EDD Python development environment, and should also be
 documented there.
 
 
 #### Install basic development tools needed to support the scripts.
  Depending on what's already installed / in use on your computer, you'll want to consider
- following directions the sections below.
+ following directions the sections below. If you're a software developer and have already configured Docker for EDD development, you can skip this section and just run scripts from inside EDD's `appserver` container.  Directions below are for configuring a new Python 2 environment with only
+ the minimal dependencies for scripts that interact with, but aren't an integral part of, EDD.
 
 1. Install XCode: <a name="XCode"/>
     Install XCode and associated Developer Tools via the App Store. If you type `git` at the
@@ -161,13 +161,27 @@ may eventually be hosted elsewhere, but for now the initial versions are being d
 
 	   Alternately, update the `PYTHNONPATH` in your `.bash_profile`
 	
-* Edit the `jbei/edd/rest/scripts/settings.py` file if needed. Its purpose is to set defaults used
- by the scripts to contact EDD and ICE.  Unless you're using it for code development or testing,
- the defaults should be fine.
+#### Configure the target URL's for the script
 
-## Run a script!
+If you're running a command line tool that targets a specific EDD and/or ICE deployment, you should edit configuration files to adjust which URL's are used to access those deployments.
 
-Running an example script: `python -m jbei.edd.rest.scripts.create_lines my_csv_file.csv`
+* `jbei/edd/rest/scripts/settings.py` contains the default settings used by all the scripts in this directory. Its purpose is to set defaults used
+ by the scripts to contact EDD and ICE.  If you need to change the defaults in this file, create a `local_settings.py` in the same directory, and any values defined in `local_settings.py` will override the defaults, but not show up as edits when you use `git` to check out the latest code. 
+ 
+## Provided scripts
+
+
+### Command Line Tools
+
+The following command-line tools re provided. Run each with the `--help` parameter for more detailed information on the available options.
+
+* `create_lines.py`: This is a stopgap script to support bulk creation of large numbers of lines for studies where that's necessary.  It will eventually be replaced by user interface(s) that support simplified / optimized line creation.
+
+* `maintain_ice_links.py` This work-in-progress script supports scanning linked EDD/ICE deployments and maintaining the association between EDD experiments and ICE parts, which can become out-of-date under some circumstances (e.g. downtime or communication failure).
+
+### Running Command Line Tools
+
+Running an example script from the base EDD directory: `python -m jbei.edd.rest.scripts.create_lines my_csv_file.csv`
 
 Get help for a script: append `--help` to the command
 
@@ -187,6 +201,14 @@ Get help for a script: append `--help` to the command
                          testing)
       -s, -silent        skip user prompts to verify CSV content
       -study STUDY       the number of the EDD study to create the new lines in
+
+### Python API's
+
+Client-side Python libraries under for accessing ICE's and EDD's REST API's are currently under development, but are already in limited production use by EDD and by its command line tools.  These libraries aren't yet mature, but may be helpful for other uses (e.g. in researchers' iPython notebooks). The present versions of these libraries are still in active development, and are likely to change (including breaking API changes) over time.
+
+See `api.py` modules for EDD and ICE under `jbei/rest/clients/`, as well as other supporting modules.
+
+
 
 
 ## Get the latest code

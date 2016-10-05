@@ -311,7 +311,7 @@ running in the development environment.
           
 * Rebuild SOLR indexes: `docker-compose exec appserver manage.py edd_index`
 
-* Run development / maintenance level scripts: see 
+* Run development / maintenance level scripts: see [separate directions][9] for configuring a standalone Python environment to run these scripts, and for the list of available scripts.
 
 
 		  
@@ -343,3 +343,4 @@ but this is the safest upgrade process (though also the most time-consuming):
 [6]:    http://typescriptlang.org/
 [7]:    https://docs.docker.com/engine/installation/linux/
 [8]:    Configuration.md
+[9]:    jbei/README.md
