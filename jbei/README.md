@@ -160,6 +160,16 @@ may eventually be hosted elsewhere, but for now the initial versions are being d
         PYTHONPATH=$PYTHONPATH:`pwd`/jbei:`pwd`/jbei/edd/rest/scripts/
 
 	   Alternately, update the `PYTHNONPATH` in your `.bash_profile`
+	   
+#### Get the latest code
+
+From the repository directory you configured, just run
+
+    git pull
+
+Keep in mind that new code may have been added in a different branch or in a different directory
+than where your sparse checkout is looking for it! You can always browse the rest of the code in
+[BitBucket](https://repo.jbei.org/projects/EDD/repos/edd-django/browse/jbei/) if that's needed.
 	
 #### Configure the target URL's for the script
 
@@ -179,7 +189,7 @@ The following command-line tools re provided. Run each with the `--help` paramet
 
 * `maintain_ice_links.py` This work-in-progress script supports scanning linked EDD/ICE deployments and maintaining the association between EDD experiments and ICE parts, which can become out-of-date under some circumstances (e.g. downtime or communication failure).
 
-### Running Command Line Tools
+#### Running Command Line Tools
 
 Running an example script from the base EDD directory: `python -m jbei.edd.rest.scripts.create_lines my_csv_file.csv`
 
@@ -204,22 +214,14 @@ Get help for a script: append `--help` to the command
 
 ### Python API's
 
-Client-side Python libraries under for accessing ICE's and EDD's REST API's are currently under development, but are already in limited production use by EDD and by its command line tools.  These libraries aren't yet mature, but may be helpful for other uses (e.g. in researchers' iPython notebooks). The present versions of these libraries are still in active development, and are likely to change (including breaking API changes) over time.
+Client-side Python libraries for accessing ICE's and EDD's REST API's are currently under development, but are already in limited production use by EDD and by its command line tools.  These libraries aren't yet mature, but may be helpful for other uses (e.g. in researchers' iPython notebooks). The present versions of these libraries are still in active development, and are likely to change (including breaking API changes) over time. Feel free to use them, but use at your own risk!
 
 See `api.py` modules for EDD and ICE under `jbei/rest/clients/`, as well as other supporting modules.
 
 
 
 
-## Get the latest code
 
-From the repository directory you configured, just run
-
-    git pull
-
-Keep in mind that new code may have been added in a different branch or in a different directory
-than where your sparse checkout is looking for it! You can always browse the rest of the code in
-[BitBucket](https://repo.jbei.org/projects/EDD/repos/edd-django/browse/jbei/) if that's needed.
 
 
 
