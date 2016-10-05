@@ -423,14 +423,11 @@
     <table class="formTable" style="margin-left:1em;">
       <tr>
         <td style="vertical-align:middle;">
-          <span>
-            Time for all measurements:
-            <input  type="text"
-                size="6"
-                name="masterTimestamp"
-                id="masterTimestamp"
-                value=""> hours
-          </span>
+          <label for="masterTimestamp">
+            <span>Time for all measurements:</span>
+            <input type="text" size="6" name="masterTimestamp" id="masterTimestamp" value="" />
+            <span>hours</span>
+          </label>
         </td>
       </tr>
     </table>
@@ -503,6 +500,14 @@
         </td>
       </tr>
     </table>
+  </div>
+
+  <div class="sectionContent off" id="masterUnitDiv">
+    <label for="masterUnits">
+      <span>Units for all data:</span>
+      <input type="text" size="15" name="masterUnits" id="masterUnits" value="" />
+      <input type="hidden" name="masterUnitsValue" />
+    </label>
   </div>
 
   <div class="sectionContent disambiguationSection off" id="disambiguateLinesSection">

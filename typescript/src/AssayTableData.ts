@@ -53,7 +53,7 @@ module EDDTableImport {
 
 
     interface MeasurementValueSequence {
-        data:string[][];
+        data: (string | number)[][];  // may be received as string, should insert as number
     }
 
     interface GraphingSet extends MeasurementValueSequence {
@@ -69,7 +69,7 @@ module EDDTableImport {
         line_name: string;
         assay_name: string;
         measurement_name: string;
-        metadata_by_name?: {[id:string]: string},
+        metadata_by_name?: {[id:string]: string};
     }
     // This information is added post-disambiguation, in addition to the fields from RawImportSet,
     // and sent to the server
@@ -122,19 +122,14 @@ module EDDTableImport {
     // As soon as the window load signal is sent, call back to the server for the set of reference records
     // that will be used to disambiguate labels in imported data.
     export function onWindowLoad(): void {
-        var atdata_url: string, queryTime: number;
+        var atdata_url: string;
 
         atdata_url = "/study/" + EDDData.currentStudyID + "/assaydata";
 
         $('.disclose').find('a.discloseLink').on('click', EDDTableImport.disclose);
         // Populate ATData and EDDData objects via AJAX calls
-        queryTime = Date.now();
         jQuery.ajax(atdata_url, {
             "success": function(data) {
-                // compute & log elapsed time since the query was initiated
-                var elapsedSeconds: number = (Date.now() - queryTime) / 1000;
-                console.log('onReferenceRecordsLoad(): Received study data from the server after',
-                    elapsedSeconds, ' s');
                 $.extend(ATData, data.ATData);
                 $.extend(EDDData, data.EDDData);
                 EDDTableImport.onReferenceRecordsLoad();
@@ -1400,13 +1395,16 @@ module EDDTableImport {
         }
 
         constructDataTable(mode: string, grid: any, gridRowMarkers: any): void {
-            var body: HTMLTableElement, colgroup: JQuery, controlCols: string[], legendCopy: JQuery,
-                lowerLegend: JQuery, lowerLegendId: string, pulldownOptions: RowPulldownOption[],
-                row: HTMLTableRowElement, startTime: Date, t, table: HTMLTableElement;
-
-            startTime = new Date();
-            console.log("Start of IdentifyStructuresStep.constructDataTable()");
-
+            var body: HTMLTableElement,
+                colgroup: JQuery,
+                controlCols: string[],
+                legendCopy: JQuery,
+                lowerLegend: JQuery,
+                lowerLegendId: string,
+                pulldownOptions: RowPulldownOption[],
+                row: HTMLTableRowElement,
+                that: IdentifyStructuresStep,
+                table: HTMLTableElement;
 
             this.dataCells = [];
             this.colCheckboxCells = [];
@@ -1453,16 +1451,17 @@ module EDDTableImport {
             }
 
             // attach all event handlers to the table itself
-            t = this;
+            that = this;
             table = <HTMLTableElement>$('<table>').attr('cellspacing', '0').appendTo($('#dataTableDiv'))
                 .on('click', '[name=enableColumn]', (ev: JQueryMouseEventObject) => {
-                    t.toggleTableColumn(ev.target);
+                    that.toggleTableColumn(ev.target);
                 }).on('click', '[name=enableRow]', (ev: JQueryMouseEventObject) => {
-                    t.toggleTableRow(ev.target);
+                    that.toggleTableRow(ev.target);
                 }).on('change', '.pulldownCell > select', (ev: JQueryInputEventObject) => {
-                    var targ: JQuery = $(ev.target);
-                    t.changedRowDataTypePulldown(
-                        parseInt(targ.attr('i'), 10), parseInt(targ.val(), 10));
+                    var targ: JQuery = $(ev.target),
+                        i: number = parseInt(targ.attr('i'), 10),
+                        val: number = parseInt(targ.val(), 10);
+                    that.changedRowDataTypePulldown(i, val);
                 })[0];
             // One of the objects here will be a column group, with col objects in it.
             // This is an interesting twist on DOM behavior that you should probably google.
@@ -1577,10 +1576,6 @@ module EDDTableImport {
             }
             $('.step3Legend').toggleClass('off', grid.length === 0);
             this.applyTableDataTypeStyling(grid);
-            var endTime = new Date();
-            var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
-            console.log("End of IdentifyStructuresStep.constructDataTable(). Table: ", grid.length,
-                " rows X ", nColumns, " columns. Elapsed time: ", elapsedSeconds, " s")
         }
 
 
@@ -1751,15 +1746,11 @@ module EDDTableImport {
 
         // update state as a result of row datatype pulldown selection
         interpretRowDataTypePulldowns(): void {
-            console.log('Starting interpretRowDataTypePullDowns()');
-            var start = new Date();
             var grid = this.rawInputStep.getGrid();
             this.applyTableDataTypeStyling(grid);
             this.interpretDataTable();
             this.redrawEnabledFlagMarkers();
             this.queueGraphRemake();
-            var ellapsedSeconds = (new Date().getTime() - start.getTime()) / 1000;
-            console.log("End interpretRowDataTypePullDowns(). Elapsed time", ellapsedSeconds, " s. Calling next step.");
             this.nextStepCallback();
         }
 
@@ -2344,14 +2335,10 @@ module EDDTableImport {
         warningMessages:ImportMessage[];
 
         STEP_4_USER_INPUT_CLASS: string = "step4_user_input";
-
         STEP_4_REQUIRED_INPUT_CLASS: string = "step4_required_input";
-
         STEP_4_TOGGLE_ROW_CHECKBOX: string = 'toggleAllButton';
-
         STEP_4_TOGGLE_SUBSECTION_CLASS: string = 'step4SubsectionToggle';
-
-        STEP4_SUBSECTION_REQUIRED_CLASS = 'step4RequiredSubsectionLabel';
+        STEP_4_SUBSECTION_REQUIRED_CLASS: string = 'step4RequiredSubsectionLabel';
 
         TOGGLE_ALL_THREASHOLD:number = 4;
         DUPLICATE_CONTROLS_THRESHOLD:number = 10;
@@ -2414,6 +2401,7 @@ module EDDTableImport {
             EDD_auto.setup_field_autocomplete('#masterMComp', 'MeasurementCompartment');
             EDD_auto.setup_field_autocomplete('#masterMType', 'GenericOrMetabolite', EDDData.MetaboliteTypes || {});
             EDD_auto.setup_field_autocomplete('#masterMUnits', 'MeasurementUnit');
+            EDD_auto.setup_field_autocomplete('#masterUnits', 'MeasurementUnit');
         }
 
         setAllInputsEnabled(enabled: boolean) {
@@ -2474,7 +2462,6 @@ module EDDTableImport {
 
 
         queueReparseThisStep(): void {
-            console.log('queueReparseThisStep()');
             if (this.thisStepInputTimerID) {
                 clearTimeout(this.thisStepInputTimerID);
             }
@@ -2499,27 +2486,30 @@ module EDDTableImport {
         // Create the Step 4 tables:  Sets of rows, one for each y-axis column of values,
         // where the user can fill out additional information for the pasted table.
         reconfigure(): void {
-            var startTime: Date, endTime: Date, elapsedSeconds: number, mode, parsedSets,
-                seenAnyTimestamps, hideMasterTimestamp: boolean, hasRequiredInitialInput: boolean;
-            startTime = new Date();
-            console.log("Start of TypeDisambiguationStep.reconfigure()");
+            var mode: string,
+                parsedSets: RawImportSet[],
+                seenAnyTimestamps: boolean,
+                hideMasterTimestamp: boolean,
+                hasRequiredInitialInput: boolean;
 
             mode = this.selectMajorKindStep.interpretationMode;
             seenAnyTimestamps = this.identifyStructuresStep.seenAnyTimestamps;
 
             // Hide all the subsections by default
-            $('#disambiguateLinesSection').addClass('off');
+            $('#masterTimestampDiv').addClass('off');
             $('#masterLineDiv').addClass('off');
-            $('#disambiguateAssaysSection').addClass('off');
             $('#masterAssayLineDiv').addClass('off');
-            $('#disambiguateMeasurementsSection').addClass('off');
             $('#masterMTypeDiv').addClass('off');
+            $('#masterUnitDiv').addClass('off');
+            $('#disambiguateLinesSection').addClass('off');
+            $('#disambiguateAssaysSection').addClass('off');
+            $('#disambiguateMeasurementsSection').addClass('off');
             $('#disambiguateMetadataSection').addClass('off');
 
             // remove toggle buttons and labels dynamically added for some subsections
             // (easier than leaving them in place)
             $('.' + this.STEP_4_TOGGLE_SUBSECTION_CLASS).remove();
-            $('.' + this.STEP4_SUBSECTION_REQUIRED_CLASS).remove();
+            $('.' + this.STEP_4_SUBSECTION_REQUIRED_CLASS).remove();
 
             hasRequiredInitialInput = this.identifyStructuresStep.requiredInputsProvided();
 
@@ -2548,11 +2538,6 @@ module EDDTableImport {
             $('#emptyDisambiguationLabel').toggleClass('off', hasRequiredInitialInput);
             $('#processingStep3Label').addClass('off');
             this.setAllInputsEnabled(true);
-
-            endTime = new Date();
-            elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
-            console.log("End of TypeDisambiguationStep.reconfigure(). Elapsed time: ",
-                elapsedSeconds, " s. Calling next step.");
 
             this.reparseThisStep();
         }
@@ -2609,13 +2594,13 @@ module EDDTableImport {
         // This means users can create a matrix of Line/Assay combinations, rather than a one-dimensional
         // resolution where unique Assay names must always point to one unique Assay record.
         remakeLineSection(): void {
-            var body: HTMLTableElement, elapsedSeconds: number, endTime: Date,
-                hasRequiredInitialInputs: boolean, requiredInputText: string, startTime: Date, table: HTMLTableElement,
-                uniqueLineNames, t, parentDiv;
+            var body: HTMLTableElement,
+                table: HTMLTableElement,
+                hasRequiredInitialInputs: boolean,
+                requiredInputText: string,
+                uniqueLineNames,
+                parentDiv;
             uniqueLineNames = this.identifyStructuresStep.uniqueLineNames;
-
-            startTime = new Date();
-            console.log("Start of TypeDisambiguationStep.remakeLineSection()");
 
             this.currentlyVisibleLineObjSets.forEach((disam:any): void => {
                 disam.rowElementJQ.detach();
@@ -2627,13 +2612,10 @@ module EDDTableImport {
             if (uniqueLineNames.length === 0) {
                 hasRequiredInitialInputs = this.identifyStructuresStep.requiredInputsProvided();
                 $('#masterLineDiv').toggleClass('off', !hasRequiredInitialInputs);
-                console.log("End of TypeDisambiguationStep.remakeLineSection() -- no unique line" +
-                    " names to process.");
                 return;
             }
 
             this.currentlyVisibleLineObjSets = [];
-            t = this;
 
             parentDiv = $('#disambiguateLinesSection');
             requiredInputText = 'At least one line is required.';
@@ -2650,11 +2632,17 @@ module EDDTableImport {
                 .attr({ 'id': 'disambiguateLinesTable', 'cellspacing': 0 })
                 .appendTo(parentDiv.removeClass('off'))
                 .on('change', 'select', (ev: JQueryInputEventObject): void => {
-                    t.userChangedLineDisam(ev.target);
+                    this.userChangedLineDisam(ev.target);
                 })[0];
             body = <HTMLTableElement>$('<tbody>').appendTo(table)[0];
             uniqueLineNames.forEach((name: string, i: number): void => {
-                var disam: any, row: HTMLTableRowElement, defaultSel: any, cell: JQuery, select: JQuery, lineNameInput:JQuery, selectedLineIdInput:JQuery;
+                var disam: any,
+                    row: HTMLTableRowElement,
+                    defaultSel: any,
+                    cell: JQuery,
+                    select: JQuery,
+                    lineNameInput:JQuery,
+                    selectedLineIdInput:JQuery;
                 disam = this.lineObjSets[name];
                 if (!disam) {
                     disam = {};
@@ -2682,10 +2670,6 @@ module EDDTableImport {
                 this.addToggleAllButton(parentDiv, 'Lines');
                 this.addRequiredInputLabel(parentDiv, requiredInputText);
             }
-
-            endTime = new Date();
-            elapsedSeconds = endTime.getTime() - startTime.getTime();
-            console.log("End of TypeDisambiguationStep.remakeLineSection(). Elapsed time: ", elapsedSeconds, " s");
         }
 
 
@@ -2696,18 +2680,22 @@ module EDDTableImport {
         // If the previous step didn't find any Line or Assay names that need resolving,
         // reveal the pulldowns for selecting a master Line/Assay, leaving the table empty, and return.
         remakeAssaySection(): void {
-
-            var  avgRowCreationSeconds: number, endTime: Date, elapsedSeconds: number,
-                maxRowCreationSeconds:number, masterProtocol: number, nColumns:number,
-                nControls:number, nRows:number, parentDiv: JQuery, requiredInputText: string, startTime: Date, table: HTMLTableElement,
-                tableBody: HTMLTableElement, uniqueAssayNames,
+            var avgRowCreationSeconds: number,
+                maxRowCreationSeconds:number,
+                masterProtocol: number,
+                nColumns:number,
+                nControls:number,
+                nRows:number,
+                parentDiv: JQuery,
+                requiredInputText: string,
+                table: HTMLTableElement,
+                tableBody: HTMLTableElement,
+                uniqueAssayNames,
                 totalRowCreationSeconds: number;
 
             // gather up inputs from this and previous steps
             uniqueAssayNames = this.identifyStructuresStep.uniqueAssayNames;
             masterProtocol = this.selectMajorKindStep.masterProtocol;
-            startTime = new Date();
-            console.log("Start of TypeDisambiguationStep.remakeAssaySection()");
 
             // remove stale data from previous run of this step
             this.currentlyVisibleAssayObjSets.forEach((disam:any): void => {
@@ -2718,17 +2706,14 @@ module EDDTableImport {
             this.assayObjSets = {};
 
             //end early if there's nothing to display in this section
-            if ((!this.identifyStructuresStep.requiredInputsProvided()) || this.identifyStructuresStep.parsedSets.length === 0) {
-                console.log("End of TypeDisambiguationStep.remakeAssaySection() -- no input data" +
-                    " to process");
+            if ((!this.identifyStructuresStep.requiredInputsProvided()) ||
+                    this.identifyStructuresStep.parsedSets.length === 0) {
                 return;
             }
 
             parentDiv = $('#disambiguateAssaysSection');
 
             if (uniqueAssayNames.length === 0) {
-                console.log("End of TypeDisambiguationStep.remakeAssaySection() -- no unique" +
-                    " assay names to process");
                 $('#masterAssayLineDiv').removeClass('off');
                 return;
             }
@@ -2743,12 +2728,11 @@ module EDDTableImport {
             ////////////////////////////////////////////////////////////////////////////////////////
             // Create the table
             ////////////////////////////////////////////////////////////////////////////////////////
-            var t = this;
             table = <HTMLTableElement>$('<table>')
                 .attr({ 'id': 'disambiguateAssaysTable', 'cellspacing': 0 })
                 .appendTo(parentDiv.removeClass('off'))
                 .on('change', 'select', (ev: JQueryInputEventObject): void => {
-                    t.userChangedAssayDisam(ev.target);
+                    this.userChangedAssayDisam(ev.target);
                 })[0];
             tableBody = <HTMLTableElement>$('<tbody>').appendTo(table)[0];
 
@@ -2762,10 +2746,14 @@ module EDDTableImport {
             maxRowCreationSeconds = 0;
             totalRowCreationSeconds = 0;
             uniqueAssayNames.forEach((assayName: string, i: number): void => {
-                var assayId:string, disam: any, row: HTMLTableRowElement, defaultSelection: any,
-                    cell: JQuery, aSelect: JQuery, lineNameInput: JQuery, rowCreationStartTime: Date,
-                    selectedLineIdInput: JQuery, rowCreationEndTime: Date, rowCreationElapsedSeconds: number;
-                rowCreationStartTime = new Date();
+                var assayId:string,
+                    disam: any,
+                    row: HTMLTableRowElement,
+                    defaultSelection: any,
+                    cell: JQuery,
+                    aSelect: JQuery,
+                    lineNameInput: JQuery,
+                    selectedLineIdInput: JQuery;
                 disam = this.assayObjSets[assayName];
                 if (!disam) {
                     disam = {};
@@ -2820,9 +2808,6 @@ module EDDTableImport {
                 disam.selectAssayJQElement.data({ 'visibleIndex': i });
                 disam.rowElementJQ.appendTo(tableBody);
                 this.currentlyVisibleAssayObjSets.push(disam);
-                rowCreationEndTime = new Date();
-                rowCreationElapsedSeconds = (rowCreationEndTime.getTime() - rowCreationStartTime.getTime()) / 1000;
-                totalRowCreationSeconds += rowCreationElapsedSeconds;
             });
 
             if(uniqueAssayNames.length > this.DUPLICATE_CONTROLS_THRESHOLD) {
@@ -2830,21 +2815,11 @@ module EDDTableImport {
                 this.addToggleAllButton(parentDiv, 'Assays');
                 this.addRequiredInputLabel(parentDiv, requiredInputText);
             }
-
-            avgRowCreationSeconds = totalRowCreationSeconds / nRows;
-
-            endTime = new Date();
-            elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
-            console.log("End of TypeDisambiguationStep.remakeAssaySection(). Table is ", nRows, " rows X ", nColumns, " cols, with ", ATData.existingLines.length, " line options. Elapsed time: " +
-                " time: ", elapsedSeconds, " s. Avg row creation time: ", avgRowCreationSeconds, " s");
         }
 
         addRequiredInputLabel(parentDiv: JQuery, text: string): JQuery {
-            return $('<div>')
-                    .text(text)
-                    .addClass(this.STEP4_SUBSECTION_REQUIRED_CLASS)
-                    .addClass('off')
-                    .addClass('missingSingleFormInput').appendTo(parentDiv);
+            return $('<div>').text(text).addClass(this.STEP_4_SUBSECTION_REQUIRED_CLASS)
+                .addClass('off missingSingleFormInput').appendTo(parentDiv);
         }
 
         appendLineAutoselect(parentElement:JQuery, disam, defaultSelection, i:number): void {
@@ -2906,17 +2881,13 @@ module EDDTableImport {
                 mode: string,
                 parentDiv: JQuery,
                 uniqueMeasurementNames: any[],
-                startTime: number,
                 that: TypeDisambiguationStep = this;
 
             mode = this.selectMajorKindStep.interpretationMode;
             uniqueMeasurementNames = this.identifyStructuresStep.uniqueMeasurementNames;
             seenAnyTimestamps = this.identifyStructuresStep.seenAnyTimestamps;
-            startTime = Date.now();
 
             hasRequiredInitialInput = this.identifyStructuresStep.requiredInputsProvided();
-
-            console.log("Start of TypeDisambiguationStep.remakeMeasurementSection()");
 
             parentDiv = $('#disambiguateMeasurementsSection')
 
@@ -2935,9 +2906,7 @@ module EDDTableImport {
             // the gathered records.
             // TODO: sometimes skyline will target metabolites instead of proteins; in those cases
             //  do not abort section
-            if (mode === "tr" || mode === "pr" || mode === "skyline") {
-                console.log("End of TypeDisambiguationStep.remakeMeasurementSection() - not" +
-                    " required for mode ", mode);
+            if (mode === "tr" || mode === "pr") {
                 return;
             }
 
@@ -2949,8 +2918,18 @@ module EDDTableImport {
             // not going to bother supporting that.
             if (hasRequiredInitialInput && uniqueMeasurementNames.length === 0 && seenAnyTimestamps) {
                 $('#masterMTypeDiv').removeClass('off');
-                console.log("End of TypeDisambiguationStep.remakeMeasurementSection() - no" +
-                    " measurements for disambiguation.");
+                return;
+            }
+
+            // If in Skyline mode, need to specify the units to import
+            if (mode === 'skyline') {
+                $('#masterUnitDiv').removeClass('off')
+                    .find('[name=masterUnits]')
+                        .addClass(this.STEP_4_USER_INPUT_CLASS)
+                    .end()
+                    .find('[name=masterUnitsValue]')
+                        .addClass(this.STEP_4_REQUIRED_INPUT_CLASS)
+                    .end()
                 return;
             }
 
@@ -2984,36 +2963,26 @@ module EDDTableImport {
                             .data('type', auto)
                             .addClass(this.STEP_4_USER_INPUT_CLASS);
                     });
-                    disam.typeHiddenObj = disam.typeObj
-                        .attr('size', 45)
-                        .next()
-                        .addClass(this.STEP_4_REQUIRED_INPUT_CLASS);
-                    disam.compHiddenObj = disam.compObj
-                        .attr('size', 25)
-                        .next()
-                        .addClass(this.STEP_4_REQUIRED_INPUT_CLASS);
-                    disam.unitsHiddenObj = disam.unitsObj
-                        .attr('size', 10)
-                        .next()
-                        .addClass(this.STEP_4_REQUIRED_INPUT_CLASS);
+                    disam.typeHiddenObj = disam.typeObj.next();
+                    disam.compHiddenObj = disam.compObj.next();
+                    disam.unitsHiddenObj = disam.unitsObj.next();
 
                     $(row).on('change', 'input[type=hidden]', (ev: JQueryInputEventObject): void => {
                         // only watch for changes on the hidden portion, let autocomplete work
                         that.userChangedMeasurementDisam(ev.target);
                     });
                     EDD_auto.setup_field_autocomplete(
-                        disam.compObj, 'MeasurementCompartment', this.autoCache.comp
+                        disam.compObj.attr('size', 25), 'MeasurementCompartment', this.autoCache.comp
                     );
                     EDD_auto.setup_field_autocomplete(
-                        disam.typeObj, 'GenericOrMetabolite', this.autoCache.metabolite
+                        disam.typeObj.attr('size', 45), 'GenericOrMetabolite', this.autoCache.metabolite
                     );
                     EDD_auto.initial_search(disam.typeObj, name);
                     EDD_auto.setup_field_autocomplete(
-                        disam.unitsObj, 'MeasurementUnit', this.autoCache.unit
+                        disam.unitsObj.attr('size', 10), 'MeasurementUnit', this.autoCache.unit
                     );
                     this.measurementObjSets[name] = disam;
                 }
-                // TODO sizing should be handled in CSS
                 disam.compObj.data('visibleIndex', i);
                 disam.typeObj.data('visibleIndex', i);
                 disam.unitsObj.data('visibleIndex', i);
@@ -3023,6 +2992,11 @@ module EDDTableImport {
                 isMdv = mode === 'mdv';
                 disam.unitsObj.toggleClass('off', isMdv);
                 disam.unitsHiddenObj.toggleClass('off', isMdv);
+
+                // Set required inputs as required
+                disam.compHiddenObj.addClass(this.STEP_4_REQUIRED_INPUT_CLASS);
+                disam.typeHiddenObj.addClass(this.STEP_4_REQUIRED_INPUT_CLASS);
+                disam.unitsHiddenObj.toggleClass(this.STEP_4_REQUIRED_INPUT_CLASS, !isMdv);
 
                 this.currentlyVisibleMeasurementObjSets.push(disam);
             });
@@ -3035,8 +3009,6 @@ module EDDTableImport {
             $('#disambiguateMeasurementsSection').toggleClass(
                 'off', uniqueMeasurementNames.length === 0 || !hasRequiredInitialInput
             );
-            console.log("End of TypeDisambiguationStep.remakeMeasurementSection(). Elapsed time: ",
-                (Date.now() - startTime) / 1000, " s.");
         }
 
         addIgnoreCheckbox(row: HTMLTableRowElement): JQuery {
@@ -3053,15 +3025,13 @@ module EDDTableImport {
         }
 
         remakeMetadataSection(): void {
-            var body: HTMLTableElement, parentDiv: JQuery, row: HTMLTableRowElement, table: HTMLTableElement;
-
-            var startTime = new Date();
-            console.log("Start of TypeDisambiguationStep.remakeMetadataSection()");
+            var body: HTMLTableElement,
+                parentDiv: JQuery,
+                row: HTMLTableRowElement,
+                table: HTMLTableElement;
 
             var uniqueMetadataNames = this.identifyStructuresStep.uniqueMetadataNames;
             if (uniqueMetadataNames.length < 1) {
-                console.log("End of TypeDisambiguationStep.remakeMetadataSection(). Returning" +
-                    " early");
                 return;
             }
 
@@ -3116,10 +3086,6 @@ module EDDTableImport {
             if(uniqueMetadataNames.length > this.DUPLICATE_CONTROLS_THRESHOLD) {
                 this.addToggleAllButton(parentDiv, 'Metadata Types');
             }
-
-            var endTime = new Date();
-            var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
-            console.log("End of TypeDisambiguationStep.remakeMetadataSection(). Elapsed time: ", elapsedSeconds, " s.");
         }
 
         userChangedRowEnabled(ev: JQueryInputEventObject): void {
@@ -3200,15 +3166,13 @@ module EDDTableImport {
         //    in order, setting them to 'new' as well, stopping just before any pulldown marked as
         //    being 'set by the user'.
         userChangedAssayDisam(assayEl: Element):boolean {
-            var startTime = new Date();
-            console.log("Start of TypeDisambiguationStep.userChangedAssayDisam()");
-            var changed: JQuery, v: number;
+            var changed: JQuery,
+                v: number;
             changed = $(assayEl).data('setByUser', true);
             // The span with the corresponding Line pulldown is always right next to the Assay pulldown
             changed.next().toggleClass('off', changed.val() !== 'named_or_new');
             if (changed.val() !== 'named_or_new') {
                 // stop here for anything other than 'new'; only 'new' cascades to following pulldowns
-                console.log("End of TypeDisambiguationStep.userChangedAssayDisam()");
                 return false;
             }
             v = changed.data('visibleIndex') || 0;
@@ -3220,33 +3184,34 @@ module EDDTableImport {
                 // set assay dropdown to 'new' and reveal the line autocomplete
                 assaySelect.val('named_or_new').next().removeClass('off');
             });
-            var endTime = new Date();
-            var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
-            console.log("End of TypeDisambiguationStep.userChangedAssayDisam(). Elapsed time: ", elapsedSeconds, " s");
             return false;
         }
 
 
         userChangedMeasurementDisam(element: Element):void {
-            console.log('changed');
-            var hiddenInput: JQuery, textInput: JQuery, type: string, rowIndex: number;
+            var hiddenInput: JQuery,
+                textInput: JQuery,
+                type: string,
+                rowIndex: number,
+                nextSets: any[];
             hiddenInput = $(element);
             textInput = hiddenInput.prev();
             type = textInput.data('type');
             if (type === 'compObj' || type === 'unitsObj') {
                 rowIndex = textInput.data('setByUser', true).data('visibleIndex') || 0;
 
-                if(rowIndex < this.currentlyVisibleMeasurementObjSets.length - 1) {
-                    this.currentlyVisibleMeasurementObjSets.slice(rowIndex+1).some((obj: any): boolean => {
-                    var following: JQuery = $(obj[type]);
-                    if (following.length === 0 || following.data('setByUser')) {
-                        return true;  // break; for the Array.some() loop
-                    }
-                    // using placeholder instead of val to avoid triggering autocomplete change
-                    following.attr('placeholder', textInput.val());
-                    following.next().val(hiddenInput.val());
-                    return false;
-                });
+                if (rowIndex < this.currentlyVisibleMeasurementObjSets.length - 1) {
+                    nextSets = this.currentlyVisibleMeasurementObjSets.slice(rowIndex + 1);
+                    nextSets.some((obj: any): boolean => {
+                        var following: JQuery = $(obj[type]);
+                        if (following.length === 0 || following.data('setByUser')) {
+                            return true;  // break; for the Array.some() loop
+                        }
+                        // using placeholder instead of val to avoid triggering autocomplete change
+                        following.attr('placeholder', textInput.val());
+                        following.next().val(hiddenInput.val());
+                        return false;
+                    });
                 }
             }
             // not checking typeObj; form submit sends selected types
@@ -3273,9 +3238,9 @@ module EDDTableImport {
         }
 
         disambiguateAnAssayOrLine(assayOrLine: string, currentIndex: number):any {
-            // console.log("Start of TypeDisambiguationStep.disambiguateAnAssayOrLine()");
-            var startTime = new Date();
-            var selections: any, highest: number, assays: number[];
+            var selections: any,
+                highest: number,
+                assays: number[];
             selections = {
                 lineID: 0,
                 assayID: 0
@@ -3309,8 +3274,8 @@ module EDDTableImport {
                     selections.assayID = id;
                 } else if (highest < 0.4 &&
                     (new RegExp('(^|\\W)' + assay.name + '(\\W|$)', 'g')).test(assayOrLine)) {
-                    // Finding the Assay name fragment within the whole string, as a whole word, is our
-                    // last option.
+                    // Finding the Assay name fragment within the whole string, as a whole word, is
+                    // our last option.
                     highest = 0.4;
                     selections.assayID = id;
                 } else if (highest < 0.3 && currentIndex === i) {
@@ -3348,11 +3313,6 @@ module EDDTableImport {
                 }
                 return true;
             });
-
-            var endTime = new Date();
-            var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
-            console.log("End of TypeDisambiguationStep.disambiguateAnAssayOrLine(). Elapsed" +
-                " time: ", elapsedSeconds, " s");
             return selections;
         }
 
@@ -3365,40 +3325,59 @@ module EDDTableImport {
          * @returns {ResolvedImportSet[]}
          */
         createSetsForSubmission():ResolvedImportSet[] {
+            var mode: string,
+                masterProtocol: number,
+                seenAnyTimestamps: boolean,
+                droppedDatasetsForMissingTime: number,
+                parsedSets: RawImportSet[],
+                resolvedSets: ResolvedImportSet[],
+                masterTime: number,
+                masterLine: string,
+                masterAssayLine: string,
+                masterAssay: string,
+                masterMType: string,
+                masterMComp: string,
+                masterMUnits: string,
+                masterUnits: string;
             this.errorMessages = [];
             this.warningMessages = [];
 
-            var startTime = new Date();
-            console.log("Start of TypeDisambiguationStep.createSetsForSubmission().");
-
-
             // From Step 1
-            var mode = this.selectMajorKindStep.interpretationMode;
-            var masterProtocol = this.selectMajorKindStep.masterProtocol || null;    // Cast 0 to null
+            mode = this.selectMajorKindStep.interpretationMode;
+            masterProtocol = this.selectMajorKindStep.masterProtocol || null;    // Cast 0 to null
 
             // From Step 3
-            var seenAnyTimestamps = this.identifyStructuresStep.seenAnyTimestamps;
-            var parsedSets = this.identifyStructuresStep.parsedSets;
+            seenAnyTimestamps = this.identifyStructuresStep.seenAnyTimestamps;
+            parsedSets = this.identifyStructuresStep.parsedSets;
 
             // From this Step
-            var masterTime = parseFloat($('#masterTimestamp').val());
-            var masterLine = $('#masterLine').val();
-            var masterAssayLine = $('#masterAssayLine').val();
-            var masterAssay = $('#masterAssay').val();
-            var masterMType = $('#masterMTypeValue').val();
-            var masterMComp = $('#masterMCompValue').val();
-            var masterMUnits = $('#masterMUnitsValue').val();
+            masterTime = parseFloat($('#masterTimestamp').val());
+            masterLine = $('#masterLine').val();
+            masterAssayLine = $('#masterAssayLine').val();
+            masterAssay = $('#masterAssay').val();
+            masterMType = $('#masterMTypeValue').val();
+            masterMComp = $('#masterMCompValue').val();
+            masterMUnits = $('#masterMUnitsValue').val();
 
-            var resolvedSets:ResolvedImportSet[] = [];
+            resolvedSets = [];
+            droppedDatasetsForMissingTime = 0;
 
-            var droppedDatasetsForMissingTime = 0;
-
-            parsedSets.forEach((set, c: number): void => {
-                var  assayDisam, assay_id: string, assaySelect: JQuery, compartmentId: string, data,
-                    lineDisam, lineId: string, lineIdInput: JQuery, measDisam, metaDisam,
-                    measurementTypeId: string, unitsId: string, metaDataById: {[id:string]: string},
-                    metaDataByName: {[name:string]: string}, metaDataPresent: boolean,
-                    metaId: number, metaId: number, protocolObjSets,
+            parsedSets.forEach((set: RawImportSet, setIndex: number): void => {
+                var assayDisam: any,  // TODO: need types for the disam objects
+                    assay_id: string,
+                    assaySelect: JQuery,
+                    compartmentId: string,
+                    lineDisam: any,
+                    lineId: string,
+                    lineIdInput: JQuery,
+                    measDisam: any,
+                    metaDisam: any,
+                    measurementTypeId: string,
+                    unitsId: string,
+                    metaDataById: {[id:string]: string},
+                    metaDataByName: {[name:string]: string},
+                    metaDataPresent: boolean,
+                    metaId: number,
                     resolvedSet: ResolvedImportSet;
 
                 lineId = 'new';    // A convenient default
@@ -3407,29 +3386,33 @@ module EDDTableImport {
                 measurementTypeId = null;
                 compartmentId = null;
                 unitsId = null;
-                // In modes where we resolve measurement types in the client UI, go with the master values by default.
+                // In modes where we resolve measurement types in the client UI, go with the
+                // master values by default.
                 if (mode === "biolector" || mode === "std" || mode === "mdv" || mode === "hplc") {
                     measurementTypeId = masterMType;
                     compartmentId = masterMComp;
                     unitsId = masterMUnits;
+                } else if (mode === 'skyline') {
+                    unitsId = masterUnits;
                 }
 
-                data = set.data;
                 metaDataPresent = false;
 
                 if (mode === "biolector") {
                     lineId = masterLine;
-                    assay_id = "named_or_new"; // Tells the server to attempt to resolve directly against the name, or make a new Assay
-                    // If we have a valid, specific Line name, look for a disambiguation field that matches it.
+                    // Tells the server to attempt to resolve directly against the name, or make
+                    // a new Assay
+                    assay_id = "named_or_new";
+                    // If we have a valid, specific Line name, look for a disambiguation field
+                    // that matches it.
                     if (set.line_name !== null) {
                         lineDisam = this.lineObjSets[set.line_name];
                         if (lineDisam) {
                             lineIdInput = lineDisam.selectLineElements.selectedId;
-
                             // if we've disabled import for the associated line, skip adding this
                             // measurement to the list
-                            if(lineIdInput.is(':disabled')) {
-                                return; // continue to the next loop iteration
+                            if (lineIdInput.prop('disabled')) {
+                                return;  // continue to the next loop iteration parsedSets.forEach
                             }
                             lineId = lineIdInput.val();
                         }
@@ -3441,11 +3424,10 @@ module EDDTableImport {
                         assayDisam = this.assayObjSets[set.assay_name];
                         if (assayDisam) {
                             assaySelect = assayDisam.selectAssayJQElement;
-
-                            // if we've disabled import for this assay, skip adding this measurement
-                            // to the list
+                            // if we've disabled import for this assay, skip adding this
+                            // measurement to the list
                             if(assaySelect.is(':disabled')) {
-                                return; // continue to the next loop iteration
+                                return;  // continue to the next loop iteration parsedSets.forEach
                             }
                             assay_id = assaySelect.val();
                             lineIdInput = assayDisam.selectLineElements.selectedId;
@@ -3454,28 +3436,28 @@ module EDDTableImport {
                     }
                 }
 
-                // Same for measurement name, but resolve all three measurement fields if we find a match,
-                // and only if we are resolving measurement types client-side.
+                // Same for measurement name, but resolve all three measurement fields if we find
+                // a match, and only if we are resolving measurement types client-side.
                 if (mode === "biolector" || mode === "std" || mode === "mdv" || mode === 'hplc') {
                     if (set.measurement_name !== null) {
-                        measDisam= this.measurementObjSets[set.measurement_name];
+                        measDisam = this.measurementObjSets[set.measurement_name];
                         if (measDisam) {
                             measurementTypeId = measDisam.typeHiddenObj.val();
                             compartmentId = measDisam.compHiddenObj.val() || "0";
                             unitsId = measDisam.unitsHiddenObj.val() || "1";
-
-                            // If we've disabled import for measurements of this type, skip adding this
-                            // measurement to the list
+                            // If we've disabled import for measurements of this type, skip adding
+                            // this measurement to the list
                             if(measDisam.typeHiddenObj.is(':disabled')) {
-                                return; // continue to the next loop iteration
+                                return;  // continue to the next loop iteration parsedSets.forEach
                             }
                         }
                     }
                 }
 
-                // Any metadata disambiguation fields that are left unresolved, will have their metadata
-                // dropped from the import in this step, because this loop is building key-value pairs where
-                // the key is the chosen database id of the metadata type.  No id == not added.
+                // Any metadata disambiguation fields that are left unresolved, will have their
+                // metadata dropped from the import in this step, because this loop is building
+                // key-value pairs where the key is the chosen database id of the metadata type.
+                // No id == not added.
                 metaDataById = {};
                 metaDataByName = {};
                 Object.keys(set.metadata_by_name).forEach((name):void => {
@@ -3490,23 +3472,24 @@ module EDDTableImport {
                     }
                 });
 
-                // If we haven't seen any timestamps during data accumulation, it means we need the user to pick
-                // a master timestamp.  In that situation, any given set will have at most one data point in it,
-                // with the timestamp in the data point set to 'null'.  Here we resolve it to a valid timestamp.
-                // If there is no master timestamp selected, we drop the data point, but make the set anyway since
-                // it might carry metadata.
+                // If we haven't seen any timestamps during data accumulation, it means we need
+                // the user to pick a master timestamp.  In that situation, any given set will
+                // have at most one data point in it, with the timestamp in the data point set to
+                // 'null'.  Here we resolve it to a valid timestamp. If there is no master
+                // timestamp selected, we drop the data point, but make the set anyway since it
+                // might carry metadata.
                 if (!seenAnyTimestamps && set.data[0]) {
                     if (!isNaN(masterTime)) {
-                        data[0][0] = masterTime;
+                        set.data[0][0] = masterTime;
                     } else {
-                        data = [];
+                        set.data = [];
                         droppedDatasetsForMissingTime++;
                     }
                 }
 
                 // If we have no data, and no metadata that survived resolving, don't make the set.
                 // (return continues to the next loop iteration)
-                if (data.length < 1 && !metaDataPresent) { return; }
+                if (set.data.length < 1 && !metaDataPresent) { return; }
 
                 resolvedSet = {
                     // Copy across the fields from the RawImportSet record
@@ -3515,7 +3498,7 @@ module EDDTableImport {
                     assay_name:        set.assay_name,
                     measurement_name:  set.measurement_name,
                     metadata_by_name:  metaDataByName,
-                    data:              data,
+                    data:              set.data,
                     // Add new disambiguation-specific fields
                     protocol_id:       masterProtocol,
                     line_id:           lineId,
@@ -3535,49 +3518,28 @@ module EDDTableImport {
             }
 
             // log some debugging output if any data get dropped because of a missing timestamp
-            if(droppedDatasetsForMissingTime) {
+            if (droppedDatasetsForMissingTime) {
                 if (parsedSets.length === droppedDatasetsForMissingTime) {
                     $("#masterTimestampRequiredPrompt").removeClass('off');
-                }
-                else {
-                    var percentDropped: number = (droppedDatasetsForMissingTime / parsedSets.length) * 100;
-
+                } else {
+                    var percentDropped = (droppedDatasetsForMissingTime / parsedSets.length) * 100;
                     var warningMessage = droppedDatasetsForMissingTime + " parsed datasets (" +
                         percentDropped + "%) were dropped because they were missing a timestamp.";
                     console.warn(warningMessage);
-                    this.warningMessages.push(new ImportMessage(warningMessage, null, null))
+                    this.warningMessages.push(new ImportMessage(warningMessage))
                 }
             } else {
                 $("#masterTimestampRequiredPrompt").addClass('off');
             }
-            var endTime = new Date();
-            var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
-            console.log("End of TypeDisambiguationStep.createSetsForSubmission(). Elapsed time: ", elapsedSeconds, " s");
             return resolvedSets;
         }
 
         getUserWarnings():ImportMessage[] {
             return this.warningMessages;
-            //  return [
-            //     new ImportMessage('Test Warning 1'),
-            //     new ImportMessage('Test Warning 2'),
-            //     new ImportMessage('Test Warning 3'),
-            //     new ImportMessage('Test Warning 4'),
-            //     new ImportMessage('Test Warning 5'),
-            //     new ImportMessage('Test Warning 6')
-            // ];
         }
 
         getUserErrors():ImportMessage[] {
             return this.errorMessages;
-            // return [
-            //     new ImportMessage('Test Error 1'),
-            //     new ImportMessage('Test Error 2'),
-            //     new ImportMessage('Test Error 3'),
-            //     new ImportMessage('Test Error 4'),
-            //     new ImportMessage('Test Error 5'),
-            //     new ImportMessage('Test Error 6')
-            // ];
         }
 
         requiredInputsProvided():boolean {
@@ -3605,7 +3567,7 @@ module EDDTableImport {
                 }
 
                 hasEnabledInputs = sectionRequiredInputs.length !== 0;
-                subsection.find('.' + this.STEP4_SUBSECTION_REQUIRED_CLASS).toggleClass('off', hasEnabledInputs);
+                subsection.find('.' + this.STEP_4_SUBSECTION_REQUIRED_CLASS).toggleClass('off', hasEnabledInputs);
 
                 if(!hasEnabledInputs) {
                     return false;
@@ -3728,13 +3690,7 @@ module EDDTableImport {
             var wasDisabled = submitButton.prop('disabled');
 
             var disableSubmit = !(allPrevStepInputsProvided && (totalErrorsCount === 0) && allWarningsAcknowledged);
-            if (disableSubmit) {
-                console.log('Disabling submit'); //TODO: remove debug stmt
-                submitButton.attr('disabled', 'disabled');
-            } else {
-                console.log('Enabling submit'); //TODO: remove debug stmt
-                submitButton.removeAttr('disabled');
-            }
+            submitButton.prop('disabled', disableSubmit);
 
             // TODO: re-enable me after upgrading to JQuery-UI 1.12+
             // briefly highlight the button if it was enabled/disabled
@@ -3744,18 +3700,13 @@ module EDDTableImport {
         }
 
         areAllWarningsAcknowledged(): boolean {
-            var index = 0;
             for(let stepWarningInputs of this.warningInputs) {
                 for(let warningChkbx of stepWarningInputs) {
-                    index++;
                     if(!warningChkbx.is(':checked')) {
-                        console.log('Not all warnings acknowledged. Warning ', index, 'isnt' +
-                            ' checked.'); //TODO: remove debug stmt and counter
                         return false;
                     }
                 }
             }
-            console.log('All warnings acknowledged.');  //TODO: remove debug stmt
             return true;
         }
 
@@ -3862,7 +3813,6 @@ module EDDTableImport {
         }
 
         userSelectedAcknowledgeAllButton():void {
-            console.log('User selected ack all button'); // TODO: remove debug stmt
             // check whether all of the boxes are already checked
             var allSelected:boolean = true;
             for(let stepCheckboxes of this.warningInputs) {
@@ -3873,14 +3823,6 @@ module EDDTableImport {
                     }
                 }
             }
-
-            // TODO: remove debug stmts
-            if(allSelected) {
-                console.log('All checkboxes already selected -- de-selecting.');
-            } else {
-                console.log('Not all checkboxes already selected -- selecting all');
-            }
-
             // check or uncheck all of the boxes (some checked will result in all being checked)
             for(let stepCheckboxes of this.warningInputs) {
                 for(let checkbox of stepCheckboxes) {

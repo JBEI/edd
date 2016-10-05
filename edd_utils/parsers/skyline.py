@@ -70,7 +70,7 @@ class SkylineParser(object):
                 kind='skyline',
                 assay_name=item[0],
                 # TODO: extract timestamp value from item[0]
-                data=[[0, item[2]]],
+                data=[[None, item[2]]],
                 line_name=item[0],
                 name=item[1],
             ).to_json()
