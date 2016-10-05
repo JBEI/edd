@@ -1,7 +1,7 @@
 # Experiment Data Depot
 
 The Experiment Data Depot (EDD) is a web-based repository of processed biological data obtained
-via experimentation.  See the deployed version at [public-edd.jbei.org](https://public-edd.jbei.org).
+via experimentation.  See the deployed version at [public-edd.jbei.org][1].
 
 ## Contents
 * [Getting Started](#Getting_Started)
@@ -17,14 +17,14 @@ via experimentation.  See the deployed version at [public-edd.jbei.org](https://
 * Upgrading EDD
 
 For a more detailed reference for EDD's low-level configuration options,
-see [Configuration](Configuration.md). If you're just starting out with
+see [Configuration][8]. If you're just starting out with
 EDD, follow directions here first.
 
 ---------------------------------------------------------------------------------------------------
 
 ## Getting Started <a name="#Getting_Started"/>
 
-With [Docker](https://docker.io) and [docker-compose](https://docs.docker.com/compose/overview/) installed, launching the entire EDD software stack is as simple as cloning the git repository and running:
+With [Docker][2] and [docker-compose][3] installed, launching the entire EDD software stack is as simple as cloning the git repository and running:
 
     ./init-config.sh
     docker-compose up -d
@@ -44,7 +44,7 @@ This section contains directions for setting up a development environment for ED
     * Install XCode (and associated Developer Tools) via the App Store
     * As of OS X 10.9 "Mavericks": `xcode-select --install` to just get command-line tools
 * Homebrew <a name="HomeBrew"/>
-    * [Homebrew](http://brew.sh) is a package manager for OS X. The Homebrew packages handle installation and
+    * [Homebrew][4] is a package manager for OS X. The Homebrew packages handle installation and
       dependency management for Terminal software. The Caskroom extension to Homebrew does the
       same for GUI applications.
     * To install:
@@ -56,7 +56,7 @@ This section contains directions for setting up a development environment for ED
       packages and versions; and run `brew upgrade` to install updated versions of your installed
       Homebrew packages.
 * Docker <a name="Docker"/>
-    * [Docker](https://docker.io) is a container virtualization platform: all software, configuration, and
+    * [Docker][2] is a container virtualization platform: all software, configuration, and
       dependencies required to run a service are packaged into standalone images. These images are
       ready to run immediately upon being copied to a new host running a Docker daemon.
     * Docker will be installed already via Homebrew in the previous step.
@@ -69,7 +69,7 @@ This section contains directions for setting up a development environment for ED
           `docker-machine stop default` and `docker-machine start default`
         * Configure the `docker` command to use the virtualbox VM as the container host:
           `eval "$(docker-machine env default)"`
-        * See more in the [Docker Machine documentation](https://docs.docker.com/machine/overview/)
+        * See more in the [Docker Machine documentation][5]
     * Running Docker images
         * Verify Docker is configured by running: `docker run --rm hello-world`
             * Get `docker: command not found`? You didn't successfully install from Homebrew.
@@ -93,8 +93,8 @@ This section contains directions for setting up a development environment for ED
 
 This section contains directions for setting up a production deployment for EDD on Debian.
 
-* Follow the Docker-recommended instructions for [installing the daemon for your distro](https://docs.docker.com/engine/installation/linux/).
-    * There is a `docker` package in the Debian apt repos. It isn't [Docker](https://docker.io)!
+* Follow the Docker-recommended instructions for [installing the daemon for your distro][7].
+    * There is a `docker` package in the Debian apt repos. It isn't [Docker][2]!
     * There is a `docker.io` package too; this can work, but it will generally be outdated.
 * Create a user for running EDD; assuming user `jbeideploy` exists for further instructions.
 * As `jbeideploy`, check out code to `/usr/local/edd/` (this will be `$EDD_HOME` below)
@@ -157,8 +157,8 @@ TODO: update me for init_config.sh
    * Make sure you're targeting the correct Docker machine. In the local development example above, run `eval "$(docker-machine env default)"`. If you're using docker-compose to launch EDD on a remote host, your command will be different, and you should make sure you're executing docker on the correct host.
    * Run `docker-compose build` to build the Docker containers for EDD. This will take a while. In the future, we may publish pre-built Docker images that will prevent you from having to take this step.
 * Launch EDD's services by running `docker-compose up -d`. At this point, you can use Docker commands to view the logs for each service or to locate the IP for viewing EDD's web interface. See "Running EDD" below for a list of helpful commands.
-* Perform other [configuration](Configuration.md) as desired for your EDD instance. 
-  By default, EDD will launch with an empty database, so you may want to use environment variables to load an existing one.
+* Perform other [configuration][8] as desired for your EDD instance. 
+  For example, by default, EDD will launch with an empty database, so you may want to use environment variables to load an existing one.
 * If you're starting from a blank database, use the web interface to configure EDD for your institution.
 	If you haven't loaded EDD from an existing database, you'll need to create an administrator account from the command line that you can then use to create measurement types, units, and other user accounts to get the system going. 
 	
@@ -199,7 +199,7 @@ This section is a quick reference for commonly helpful commands for running / de
     * Startup all services in detached mode: `docker-compose up -d` (recommended to keep muliple service logs from cluttering the screen)
     * View logs: `docker-compose logs [service]`
     * Bringing down all services: `docker-compose down`
-    * See more in the [Docker Compose documentation](https://docs.docker.com/compose/overview/)
+    * See more in the [Docker Compose documentation][3]
     * Compose may complain about a missing variables. If this bothers you, run an export
       command to assign an empty string to each: `export EDD_HOST_DIR=`
 * Determining the local URL for EDD's web interfaces:
@@ -248,7 +248,7 @@ This section is a quick reference for commonly helpful commands for running / de
         * `sudo apt-get install npm`
         * `sudo npm install -g grunt-cli`
         * `sudo npm install grunt`
-* EDD uses [TypeScript](http://typescriptlang.org/) for its client-side interface
+* EDD uses [TypeScript][6] for its client-side interface
     * Dependencies are listed in `packages.json` and may be installed with `npm install`
     * Compile changes in `*.ts` to `*.js` by simply running `grunt --force` from the edd base
     directory. It will rebuild the TypeScript and automatically run Django's collectstatic to 
@@ -261,7 +261,7 @@ some configuration to strip them out.
 
 After cloning the repo for the first time run `.gitconfig.sh`. If updating an existing repo, you may need to add changed files to the index
 once. Some bundled git versions are outdated and cannot use the configuration contained in the
-script; you may need to install a newer version of git; [Homebrew](#HomeBrew) instructions below
+script; you may need to install a newer version of git; [Homebrew](#HomeBrew) instructions above
 will install a more recent version on Macs.
 
 #### Helpful Python Packages <a name="Helpful_Python"/>
@@ -334,3 +334,12 @@ but this is the safest upgrade process (though also the most time-consuming):
 
 
 ---------------------------------------------------------------------------------------------------
+
+[1]:    https://public-edd.jbei.org
+[2]:    https://docker.io
+[3]:    https://docs.docker.com/compose/overview/
+[4]:    http://brew.sh
+[5]:    https://docs.docker.com/machine/overview/
+[6]:    http://typescriptlang.org/
+[7]:    https://docs.docker.com/engine/installation/linux/
+[8]:    Configuration.md
