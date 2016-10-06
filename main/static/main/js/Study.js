@@ -79,12 +79,9 @@ var StudyD;
             assayFilters.push(new CarbonSourceFilterSection());
             assayFilters.push(new CarbonLabelingFilterSection());
             assayFilters.push(new AssaySuffixFilterSection()); //Assasy suffix
-            for (var id in seenInAssaysHash) {
-                assayFilters.push(new AssayMetaDataFilterSection(id));
-            }
-            for (var id in seenInLinesHash) {
-                assayFilters.push(new LineMetaDataFilterSection(id));
-            }
+            // convert seen metadata IDs to FilterSection objects, and push to end of assayFilters
+            assayFilters.push.apply(assayFilters, $.map(seenInAssaysHash, function (_, id) { return new AssayMetaDataFilterSection(id); }));
+            assayFilters.push.apply(assayFilters, $.map(seenInLinesHash, function (_, id) { return new LineMetaDataFilterSection(id); }));
             this.metaboliteFilters = [];
             this.metaboliteFilters.push(new MetaboliteCompartmentFilterSection());
             this.metaboliteFilters.push(new MetaboliteFilterSection());
@@ -94,13 +91,15 @@ var StudyD;
             this.geneFilters.push(new GeneFilterSection());
             this.measurementFilters = [];
             this.measurementFilters.push(new MeasurementFilterSection());
+            // All filter sections are constructed; now need to call configure() on all
+            this.allFilters = [].concat(assayFilters, this.metaboliteFilters, this.proteinFilters, this.geneFilters, this.measurementFilters);
+            this.allFilters.forEach(function (section) { return section.configure(); });
             // We can initialize all the Assay- and Line-level filters immediately
             this.assayFilters = assayFilters;
             assayFilters.forEach(function (filter) {
                 filter.populateFilterFromRecordIDs(aIDsToUse);
                 filter.populateTable();
             });
-            this.allFilters = [].concat(assayFilters, this.metaboliteFilters, this.proteinFilters, this.geneFilters, this.measurementFilters);
             this.repopulateFilteringSection();
         };
         // Clear out any old filters in the filtering section, and add in the ones that
@@ -298,6 +297,9 @@ var StudyD;
     // progressively narrowing down the enabled checkboxes.
     // MeasurementGroupCode: Need to subclass this for each group type.
     var GenericFilterSection = (function () {
+        // TODO: Convert to a protected constructor! Then use a factory method to create objects
+        //    with configure() already called. Typescript 1.8 does not support visibility
+        //    modifiers on constructors, support is added in Typescript 2.0
         function GenericFilterSection() {
             this.uniqueValues = {};
             this.uniqueIndexes = {};
@@ -310,13 +312,14 @@ var StudyD;
             this.currentSearchSelection = '';
             this.previousSearchSelection = '';
             this.minCharsToTriggerSearch = 1;
-            this.configure();
             this.anyCheckboxesChecked = false;
-            this.createContainerObjects();
         }
-        GenericFilterSection.prototype.configure = function () {
-            this.sectionTitle = 'Generic Filter';
-            this.sectionShortLabel = 'gf';
+        GenericFilterSection.prototype.configure = function (title, shortLabel) {
+            if (title === void 0) { title = 'Generic Filter'; }
+            if (shortLabel === void 0) { shortLabel = 'gf'; }
+            this.sectionTitle = title;
+            this.sectionShortLabel = shortLabel;
+            this.createContainerObjects();
         };
         // Create all the container HTML objects
         GenericFilterSection.prototype.createContainerObjects = function () {
@@ -598,8 +601,7 @@ var StudyD;
             _super.apply(this, arguments);
         }
         StrainFilterSection.prototype.configure = function () {
-            this.sectionTitle = 'Strain';
-            this.sectionShortLabel = 'st';
+            _super.prototype.configure.call(this, 'Strain', 'st');
         };
         StrainFilterSection.prototype.updateUniqueIndexesHash = function (ids) {
             var _this = this;
@@ -627,8 +629,7 @@ var StudyD;
             _super.apply(this, arguments);
         }
         CarbonSourceFilterSection.prototype.configure = function () {
-            this.sectionTitle = 'Carbon Source';
-            this.sectionShortLabel = 'cs';
+            _super.prototype.configure.call(this, 'Carbon Source', 'cs');
         };
         CarbonSourceFilterSection.prototype.updateUniqueIndexesHash = function (ids) {
             var _this = this;
@@ -656,8 +657,7 @@ var StudyD;
             _super.apply(this, arguments);
         }
         CarbonLabelingFilterSection.prototype.configure = function () {
-            this.sectionTitle = 'Labeling';
-            this.sectionShortLabel = 'l';
+            _super.prototype.configure.call(this, 'Labeling', 'l');
         };
         CarbonLabelingFilterSection.prototype.updateUniqueIndexesHash = function (ids) {
             var _this = this;
@@ -685,8 +685,7 @@ var StudyD;
             _super.apply(this, arguments);
         }
         LineNameFilterSection.prototype.configure = function () {
-            this.sectionTitle = 'Line';
-            this.sectionShortLabel = 'ln';
+            _super.prototype.configure.call(this, 'Line', 'ln');
         };
         LineNameFilterSection.prototype.updateUniqueIndexesHash = function (ids) {
             var _this = this;
@@ -710,8 +709,7 @@ var StudyD;
             _super.apply(this, arguments);
         }
         ProtocolFilterSection.prototype.configure = function () {
-            this.sectionTitle = 'Protocol';
-            this.sectionShortLabel = 'p';
+            _super.prototype.configure.call(this, 'Protocol', 'p');
         };
         ProtocolFilterSection.prototype.updateUniqueIndexesHash = function (ids) {
             var _this = this;
@@ -735,8 +733,7 @@ var StudyD;
             _super.apply(this, arguments);
         }
         AssaySuffixFilterSection.prototype.configure = function () {
-            this.sectionTitle = 'Assay Suffix';
-            this.sectionShortLabel = 'a';
+            _super.prototype.configure.call(this, 'Assay Suffix', 'a');
         };
         AssaySuffixFilterSection.prototype.updateUniqueIndexesHash = function (ids) {
             var _this = this;
@@ -764,8 +761,7 @@ var StudyD;
             this.post = MDT.post || '';
         }
         MetaDataFilterSection.prototype.configure = function () {
-            this.sectionTitle = EDDData.MetaDataTypes[this.metaDataID].name;
-            this.sectionShortLabel = 'md' + this.metaDataID;
+            _super.prototype.configure.call(this, EDDData.MetaDataTypes[this.metaDataID].name, 'md' + this.metaDataID);
         };
         return MetaDataFilterSection;
     }(GenericFilterSection));
@@ -821,8 +817,7 @@ var StudyD;
         }
         // NOTE: this filter class works with Measurement IDs rather than Assay IDs
         MetaboliteCompartmentFilterSection.prototype.configure = function () {
-            this.sectionTitle = 'Compartment';
-            this.sectionShortLabel = 'com';
+            _super.prototype.configure.call(this, 'Compartment', 'com');
         };
         MetaboliteCompartmentFilterSection.prototype.updateUniqueIndexesHash = function (amIDs) {
             var _this = this;
@@ -847,9 +842,8 @@ var StudyD;
             _super.apply(this, arguments);
         }
         MeasurementFilterSection.prototype.configure = function () {
-            this.sectionTitle = 'Measurement';
-            this.sectionShortLabel = 'mm';
             this.loadPending = true;
+            _super.prototype.configure.call(this, 'Measurement', 'mm');
         };
         MeasurementFilterSection.prototype.isFilterUseful = function () {
             return this.loadPending || this.uniqueValuesOrder.length > 0;
@@ -881,9 +875,8 @@ var StudyD;
             _super.apply(this, arguments);
         }
         MetaboliteFilterSection.prototype.configure = function () {
-            this.sectionTitle = 'Metabolite';
-            this.sectionShortLabel = 'me';
             this.loadPending = true;
+            _super.prototype.configure.call(this, 'Metabolite', 'me');
         };
         // Override: If the filter has a load pending, it's "useful", i.e. display it.
         MetaboliteFilterSection.prototype.isFilterUseful = function () {
@@ -916,9 +909,8 @@ var StudyD;
             _super.apply(this, arguments);
         }
         ProteinFilterSection.prototype.configure = function () {
-            this.sectionTitle = 'Protein';
-            this.sectionShortLabel = 'pr';
             this.loadPending = true;
+            _super.prototype.configure.call(this, 'Protein', 'pr');
         };
         // Override: If the filter has a load pending, it's "useful", i.e. display it.
         ProteinFilterSection.prototype.isFilterUseful = function () {
@@ -951,9 +943,8 @@ var StudyD;
             _super.apply(this, arguments);
         }
         GeneFilterSection.prototype.configure = function () {
-            this.sectionTitle = 'Gene';
-            this.sectionShortLabel = 'gn';
             this.loadPending = true;
+            _super.prototype.configure.call(this, 'Gene', 'gn');
         };
         // Override: If the filter has a load pending, it's "useful", i.e. display it.
         GeneFilterSection.prototype.isFilterUseful = function () {
