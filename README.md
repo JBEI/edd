@@ -162,18 +162,7 @@ TODO: update me for init_config.sh
 * If you're starting from a blank database, use the web interface to configure EDD for your institution.
 	If you haven't loaded EDD from an existing database, you'll need to create an administrator account from the command line that you can then use to create measurement types, units, and other user accounts to get the system going. 
 	
-	1. Create an administrator account:
-      * Run the command `docker-compose exec appserver /code/manage.py shell`
-      * Execute the following code to create a user, then CRTL^D to exit
-
-            from main.models import User
-            user = User.objects.create_user(
-                'admin_user',  # username
-                'admin_user@example.com',  # email
-                'insert_a_secure_password_here',  # password
-                is_superuser=True, 
-                is_staff=True
-            )
+	    docker-compose exec appserver python manage.py create_user
 			
     2. Configure EDD using the web interface.
 	Log into EDD's web interface using an administrator account.  Go to "Administration" at top left, then use the interface to create a minimal set of Users, Units, Measurement Types, Metadata, etc that allow users to import their data. TODO: We plan to add more to this section of the documentation over time to describe how these entries are used and when / how to edit them.
@@ -283,22 +272,8 @@ running in the development environment.
    * Test EDD/ICE communication: `docker-compose exec appserver manage.py test_ice_communication`
 		  
 * Create an unprivileged test account
-    * Run the command `docker-compose exec appserver /code/manage.py shell`
-    * Execute the following code to create a user, and exit
-
-          from main.models import User
-          User.objects.create_user(
-              'unprivileged_user',  # username
-              'test_user@example.com',  # email
-              'insecure_pwd_ok_for_local_testing',  # password
-          )
-
-    * Attempt login using the UI -- this is necessary to enable the following step
-    * Run the command `docker-compose exec postgres psql -U postgres edd`
-    * Execute the following code to enable the user, and exit
-
-          UPDATE account_emailaddress SET verified = true WHERE email = 'test_user@example.com';
-
+    * `docker-compose exec appserver python manage.py create_user`
+    
 * Dump the production database to file and load into a local test deployment
     * Create the dump file with this command
 
