@@ -79,6 +79,7 @@ var StudyD;
             assayFilters.push(new CarbonSourceFilterSection());
             assayFilters.push(new CarbonLabelingFilterSection());
             assayFilters.push(new AssaySuffixFilterSection()); //Assasy suffix
+            // convert seen metadata IDs to FilterSection objects, and push to end of assayFilters
             assayFilters.push.apply(assayFilters, $.map(seenInAssaysHash, function (_, id) { return new AssayMetaDataFilterSection(id); }));
             assayFilters.push.apply(assayFilters, $.map(seenInLinesHash, function (_, id) { return new LineMetaDataFilterSection(id); }));
             this.metaboliteFilters = [];

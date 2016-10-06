@@ -135,6 +135,7 @@ module StudyD {
             assayFilters.push(new CarbonSourceFilterSection());
             assayFilters.push(new CarbonLabelingFilterSection());
             assayFilters.push(new AssaySuffixFilterSection()); //Assasy suffix
+            // convert seen metadata IDs to FilterSection objects, and push to end of assayFilters
             assayFilters.push.apply(assayFilters, 
                 $.map(seenInAssaysHash, (_, id: string) => new AssayMetaDataFilterSection(id)));
             assayFilters.push.apply(assayFilters,
