@@ -2780,12 +2780,13 @@ class DataGridSpecAssays extends DataGridSpecBase {
         this.assayIDsInProtocol = [];
         $.each(EDDData.Assays, (assayId:string, assay:AssayRecord):void => {
             var line:LineRecord;
-            if (this.protocolID !== assay.pid) {
-                // skip assays for other protocols
-            } else if (!(line = EDDData.Lines[assay.lid]) || !line.active) {
+            // skip assays for other protocols
+            if (this.protocolID === assay.pid) {
+                line = EDDData.Lines[assay.lid];
                 // skip assays without a valid line or with a disabled line
-            } else {
-                this.assayIDsInProtocol.push(assay.id);
+                if (line && line.active) {
+                    this.assayIDsInProtocol.push(assay.id);
+                }
             }
         });
     }
@@ -2982,13 +2983,14 @@ class DataGridSpecAssays extends DataGridSpecBase {
 
     // The colspan value for all the cells that are assay-level (not measurement-level) is based on
     // the number of measurements for the respective record. Specifically, it's the number of
-    // metabolite measurements, plus 1 if there are transcriptomics measurements, plus 1 if there
+    // metabolite and general measurements, plus 1 if there are transcriptomics measurements, plus 1 if there
     // are proteomics measurements, all added together.  (Or 1, whichever is higher.)
     private rowSpanForRecord(index):number {
         var rec = EDDData.Assays[index];
-        var v:number = ((rec.metabolites || []).length +
+        var v:number = ((rec.general         || []).length +
+                        (rec.metabolites     || []).length +
                         ((rec.transcriptions || []).length ? 1 : 0) +
-                        ((rec.proteins || []).length ? 1 : 0)) || 1;
+                        ((rec.proteins       || []).length ? 1 : 0)   ) || 1;
         return v;
     }
 
@@ -3092,7 +3094,6 @@ class DataGridSpecAssays extends DataGridSpecBase {
 
 
     generateMeasurementNameCells(gridSpec:DataGridSpecAssays, index:string):DataGridDataCell[] {
-        var record = EDDData.Assays[index];
         return gridSpec.generateMeasurementCells(gridSpec, index, {
             'metaboliteToValue': (measureId) => {
                 var measure:any = EDDData.AssayMeasurements[measureId] || {},
