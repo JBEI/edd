@@ -207,25 +207,24 @@ of them use docker-compose and other related Docker tools that aren't fully docu
   While edd is running, you can also get a list of its services by runnning `docker-compose ps` 
   from the main directory. Each service will be listed in the "Name" column of the output, with a 
   prefix/postfix automatically added by Docker-compose: e.g. "edd_appserver_1" is the first instance
-   of the "appserver" service running launched from a directory called "edd". You can alternatively 
-   use `docker ps` from any directory to get a similar listing, though it will include all 
-   containers running on your host, not just those defined by EDD.
+  of the "appserver" service running launched from a directory called "edd". You can alternatively 
+  use `docker ps` from any directory to get a similar listing, though it will include all 
+  containers running on your host, not just those defined by EDD.
 * `docker-compose` commands
-    * Build all services:  `docker-compose build`
-    * Startup all services in detached mode: `docker-compose up -d` (recommended to keep muliple 
-	  service logs from cluttering the screen, and so `^C` doesn't stop EDD)
-    * View logs: `docker-compose logs [service]`
-    * Bringing down all services: `docker-compose down`
-    * See more in the [Docker Compose documentation][3]
-    * Compose may complain about a missing variables. If this bothers you, run an export
-      command to assign an empty string to each: `export EDD_HOST_DIR=`
+   * Build all services:  `docker-compose build`
+   * Startup all services in detached mode: `docker-compose up -d` (recommended to keep muliple   service logs from cluttering the screen, and so `^C` doesn't stop EDD)
+   * View logs: `docker-compose logs [service]`
+   * Bringing down all services: `docker-compose down`
+   * See more in the [Docker Compose documentation][3]
+   * Compose may complain about a missing variables. If this bothers you, run an export
+     command to assign an empty string to each: `export EDD_HOST_DIR=`
 * Determining the local URL for EDD's web interfaces: To access services, use the IP listed in the 
   output from `docker-machine ip default`. By default on most systems, use:
-        * EDD: https://192.168.99.100/
-		* EDD's REST API: https://192.168.99.100/rest/ (if enabled)
-        * Solr: https://192.168.99.100/solr/
-		* Flower: https://192.168.99.100/flower/
-        * RabbitMQ Management Plugin: https://192.168.99.100/rabbitmq
+     * EDD: https://192.168.99.100/
+	 * EDD's REST API: https://192.168.99.100/rest/ (if enabled)
+     * Solr: https://192.168.99.100/solr/
+	 * Flower: https://192.168.99.100/flower/
+     * RabbitMQ Management Plugin: https://192.168.99.100/rabbitmq
 * Interfacing with EDD's services from the command line:
    * To run commands in __new__ containers, use `docker-compose run $SERVICE $COMMAND`,
      e.g.: `docker-compose run edd python manage.py shell`. Many Docker tutorals use "run" to 
