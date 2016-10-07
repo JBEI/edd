@@ -1453,24 +1453,24 @@ var DGSearchWidget = (function (_super) {
         // If there are multiple words, we match each separately.
         // We will not attempt to match against empty strings, so we filter those out if any slipped through
         var queryStrs = v.split(' ').filter(function (one) { return one.length > 0; });
-        var filteredIDs = [];
+        var filteredIDs = {};
         this.dataGridOwnerObject.applyToRecordSet(function (rows, id) {
             rows.forEach(function (row) {
                 row.dataGridDataCells.forEach(function (cell) {
                     if (cell.createdElement) {
                         var text = cell.contentContainerElement.textContent.toLowerCase();
                         var match = queryStrs.some(function (v) {
-                            // TODO: Sholdn't this be text.length >= v.length ?
+                            // TODO: Shouldn't this be text.length >= v.length ?
                             return text.length > v.length && text.indexOf(v) >= 0;
                         });
                         if (match) {
-                            filteredIDs.push(id);
+                            filteredIDs[id] = true;
                         }
                     }
                 });
             });
         }, rowIDs);
-        return filteredIDs;
+        return Object.keys(filteredIDs);
     };
     return DGSearchWidget;
 }(DataGridHeaderWidget));

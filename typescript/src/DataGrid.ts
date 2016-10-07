@@ -1785,24 +1785,24 @@ class DGSearchWidget extends DataGridHeaderWidget {
         // We will not attempt to match against empty strings, so we filter those out if any slipped through
         var queryStrs = v.split(' ').filter((one) => { return one.length > 0; });
 
-        var filteredIDs = [];
+        var filteredIDs = {};
         this.dataGridOwnerObject.applyToRecordSet((rows, id) => {
             rows.forEach((row) => {
                 row.dataGridDataCells.forEach((cell) => {
                     if (cell.createdElement) {
                         var text = cell.contentContainerElement.textContent.toLowerCase();
                         var match = queryStrs.some((v) => {
-                            // TODO: Sholdn't this be text.length >= v.length ?
+                            // TODO: Shouldn't this be text.length >= v.length ?
                             return text.length > v.length && text.indexOf(v) >= 0;
                         });
                         if (match) {
-                            filteredIDs.push(id);
+                            filteredIDs[id] = true;
                            }
                        }
                 });
             });
         }, rowIDs);
-        return filteredIDs;
+        return Object.keys(filteredIDs);
     }
 }
 
