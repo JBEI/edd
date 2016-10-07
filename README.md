@@ -193,17 +193,17 @@ of them use docker-compose and other related Docker tools that aren't fully docu
   `docker-compose` is the recommended tool for controlling EDD services. `docker-compose.yml` 
   defines the list of services as top-level entries under the 'services' line.  
   For quick reference, at the time of writing the provided services are:
-	   * appserver: runs EDD itself
-	   * postgres: provides EDD's database
-	   * redis: provides the cache back-end for EDD. At the time of writing, EDD uses redis to map 
-	     static resource names to URLs and to store session data.
-	   * solr: provides a search index for EDD studies, users, and measurement types
-	   * rabbitmq: messaging bus that supports Celery
-	   * flower: management / monitoring application for Celery
-	   * smtp: main server that supports emails from EDD
-	   * worker: runs the EDD Celery worker for asynchronous processing. At the time of writing, 
-	     EDD uses Celery to communicate with ICE and to keep the UI respensive during file imports.
-	   * nginx: webserver that proxies clients' HTTP requests to other Docker services
+   * appserver: runs EDD itself
+   * postgres: provides EDD's database
+   * redis: provides the cache back-end for EDD. At the time of writing, EDD uses redis to map 
+     static resource names to URLs and to store session data.
+   * solr: provides a search index for EDD studies, users, and measurement types
+   * rabbitmq: messaging bus that supports Celery
+   * flower: management / monitoring application for Celery
+   * smtp: main server that supports emails from EDD
+   * worker: runs the EDD Celery worker for asynchronous processing. At the time of writing, 
+     EDD uses Celery to communicate with ICE and to keep the UI respensive during file imports.
+   * nginx: webserver that proxies clients' HTTP requests to other Docker services
   While edd is running, you can also get a list of its services by runnning `docker-compose ps` 
   from the main directory. Each service will be listed in the "Name" column of the output, with a 
   prefix/postfix automatically added by Docker-compose: e.g. "edd_appserver_1" is the first instance
@@ -220,11 +220,11 @@ of them use docker-compose and other related Docker tools that aren't fully docu
      command to assign an empty string to each: `export EDD_HOST_DIR=`
 * Determining the local URL for EDD's web interfaces: To access services, use the IP listed in the 
   output from `docker-machine ip default`. By default on most systems, use:
-     * EDD: https://192.168.99.100/
-	 * EDD's REST API: https://192.168.99.100/rest/ (if enabled)
-     * Solr: https://192.168.99.100/solr/
-	 * Flower: https://192.168.99.100/flower/
-     * RabbitMQ Management Plugin: https://192.168.99.100/rabbitmq
+   * EDD: https://192.168.99.100/
+   * EDD's REST API: https://192.168.99.100/rest/ (if enabled)
+   * Solr: https://192.168.99.100/solr/
+   * Flower: https://192.168.99.100/flower/
+   * RabbitMQ Management Plugin: https://192.168.99.100/rabbitmq
 * Interfacing with EDD's services from the command line:
    * To run commands in __new__ containers, use `docker-compose run $SERVICE $COMMAND`,
      e.g.: `docker-compose run edd python manage.py shell`. Many Docker tutorals use "run" to 
