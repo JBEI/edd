@@ -1,11 +1,12 @@
 # Configuring EDD
 
-This page gives an overview of the most useful configuration options built into EDD.  There are several sources of configuration available and some are described in further detail in sections below.  Broadly speaking, each of the Docker containers used by EDD has its own configuration(s), as well as several configuration files for Docker itself.
+This page gives an overview of the most useful configuration options built into EDD.  There are several sources of configuration available and some are described in further detail in sections below.  Broadly speaking, each of the Docker containers used by EDD has its own configuration(s), as well as several configuration files for Docker itself. See comments within each file for a detailed description of some of the options.
 
 1. _Docker-compose environment variables_: provide basic controls for loading EDD's database from an existing dump, or for controlling TLS and Docker configuration for controlling remote EDD deployments.
 2. _Docker configuration files_
    These files configure EDD's docker containers and enable you to launch EDD and most of its dependencies with a single command.
-   * `secrets.env`: Stores passwords and URL's for the various services EDD has to connect to, and makes them accessible to EDD's Docker containers. Make sure to control access to this file!
+   * `secrets.env`: Stores passwords and URL's for the various services EDD has to connect to, and makes them accessible to EDD's Docker containers. Make sure to control access to this file! Note that passwords for EDD's Docker services are established when the Docker images/volumes are built prior to the first run, so it's less work to configure passwords here prior to the first run.  You can always directly interface with the services later to change the password, but
+     you'll need to update this file afterward to make sure EDD works on the next relaunch.
    * `docker-compose.yml`: Configures EDD's docker containers as run by Docker-compose.  This is set up by default in a working configuration, but you may want to change container definitions, etc based on your computing needs / resources and deployment strategy. See the [Docker-compose documentation][1] for reference.
    * `docker-compose.override.yml`. This file is NOT included by default with EDD, but you may create one from a copy of `docker-compose.yml-example` to override any desired settings from `docker-compose.yml`. See comments in the example file, and the related [Docker-compose documentation][2] for reference.
 3. _EDD appserver configuration files_: The vast majority of EDD's code runs in Django, and can be configured by overriding the default settings provided with EDD.  See "EDD Appserver Configuration Files" below for more details.
@@ -62,7 +63,7 @@ The vast majority of EDD's code runs in Django, and many of its configuration op
 
 EDD's Django configuration files live under `edd/settings`:
 * `base.py`: defines baseline default settings that make EDD work out-of-the box.  You can edit this file directly, but it's cleaner / easier in the long run to override its values by creating a `local.py`.  See below for more details.
-* `local.py`: this file *isn't* provided out-of-the-box with EDD, but EDD checks for its existence, and any configuration options you define in `local.py` will override the defaults defined in `base.py`. You can copy and edit 'local.py-example' to override any options you want from `base.py`.  Note that `local.py` is purposefully *not* added to EDD's Git repo, since its purpose is to define options specific to a single EDD deployment. As a result, you can update your EDD deployment with a simple `git pull`, followed by a relaunch.
+* `local.py`: ta sample file is provided out-of-the-box with EDD.  EDD checks for its existence, and any configuration options you define in `local.py` will override the defaults defined in `base.py`. You can copy and edit 'local.py-example' to override any options you want from `base.py`.  Note that `local.py` is purposefully *not* added to EDD's Git repo, since its purpose is to define options specific to a single EDD deployment. As a result, you can update your EDD deployment with a simple `git pull`, followed by a relaunch.
 * `celery.py`: Defines EDD's Celery configuration. EDD ships with some reasonable default settings, but you may have to tune Celery to work with your computing environment/demands. See Celery's [configuration documentation][4], as well as EDD's custom Celery configuration options defined in the file. Values defined here can also be overridden in your `local.py`
 * `auth.py`: Defines authentication-specific settings that can be overridden in your `local.py`
 
