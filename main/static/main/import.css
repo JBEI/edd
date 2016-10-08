@@ -67,6 +67,9 @@ div.fileDropInfoIcon {
     background-position: center; 
     background-image: url(images/dropzone-csv-over.png);
 }
+div.fileDropInfoIcon.text {
+    background-image: url(images/dropzone-text-over.png);
+}
 div.fileDropInfoIcon.excel {
     background-image: url(images/dropzone-excel-over.png);
 }
