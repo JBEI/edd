@@ -973,6 +973,10 @@ def main():
     print('\tSettings module:\t%s' % os.environ['ICE_SETTINGS_MODULE'])
     print('\t\tEDD URL:\t%s' % EDD_URL)
     print('\t\tICE URL:\t%s' % ICE_URL)
+    if not VERIFY_EDD_CERT:
+        print('\t\tVerify EDD SSL cert:\t%s' % ('Yes' if VERIFY_EDD_CERT else 'No'))
+    if not VERIFY_ICE_CERT:
+        print('\t\tVerify ICE SSL cert:\t%s' % ('Yes' if VERIFY_ICE_CERT else 'No'))
     print('\tCommand-line arguments:')
     if args.username:
         print('\t\tEDD/ICE Username:\t%s' % args.username)
@@ -1090,8 +1094,9 @@ def main():
                                           verify_ssl_cert=VERIFY_EDD_CERT)
         edd_session_auth = edd_login_details.session_auth
 
-        edd = (EddApi(edd_session_auth, EDD_URL, verify=VERIFY_EDD_CERT) if not args.dry_run else
-               EddTestStub(edd_session_auth, EDD_URL))
+        edd = (EddApi(edd_session_auth, EDD_URL, verify=VERIFY_EDD_CERT) if not
+        args.dry_run else
+               EddTestStub(edd_session_auth, EDD_URL, verify=VERIFY_EDD_CERT))
         edd.write_enabled = args.update_edd_strain_text
         edd.result_limit = EDD_RESULT_PAGE_SIZE
         edd.timeout = EDD_REQUEST_TIMEOUT
@@ -1257,7 +1262,7 @@ def scan_edd_strains(processing_inputs, processing_summary, overall_performance)
     overall_performance.completed_edd_strain_scan()
     if not hit_test_limit:
         print('')
-    print('Done processing %(strain_count)d DD strains in %(elapsed_time)s' % {
+    print('Done processing %(strain_count)d EDD strains in %(elapsed_time)s' % {
         'strain_count': processing_summary.total_edd_strains_processed,
         'elapsed_time': to_human_relevant_delta(
                 overall_performance.edd_strain_scan_time.total_seconds())

@@ -370,7 +370,7 @@ class EddApi(RestApiClient):
         result sets. Query_url is the entire URL for the search, including query parameters (for
         example, the value returned for next_page as a result of a prior search). If present,
         all other parameters will be ignored.
-        :param local_pk: the integer primary key that idetifies the strain within this EDD
+        :param local_pk: the integer primary key that identifies the strain within this EDD
         deployment
         :param registry_id: the registry id (UUID) to search for
         :param registry_url_regex: the registry URL to search for
