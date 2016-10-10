@@ -298,9 +298,11 @@ running in the development environment.
 
 * Run automated tests:
    * Python tests: `docker-compose exec appserver python manage.py test`
-   * Javascript tests
-      * run `$ grunt test` to test javascript files.
-      * run `$ grunt screenshots` to test graphs
+   * Javascript Tests <a name="Javascript Tests"/>
+      * run `grunt test` to test javascript files.
+      * run `grunt screenshots` to test graphs
+      * run `webdriver-manager start` in one command window and `grunt e2e-test` in another for E2E
+tests
    * Test EDD/ICE communication: `docker-compose exec appserver manage.py test_ice_communication`
 		  
 * Create an unprivileged test account

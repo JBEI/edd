@@ -14,6 +14,14 @@ module CarbonBalance {
 
 	export class Display {
 
+		private _metabolicMapID:number;
+		private _biomassCalculation:number;
+		static graphDiv = null;
+		allCBGraphs = [];
+		mergedTimelinesByLineID:{[lineID:number]:MergedLineSamples} = {};
+		carbonSum:CarbonBalance.Summation = null;
+
+
 		// Called as the page is loading to initialize and precalculate CB data.
 		calculateCarbonBalances(metabolicMapID:number, biomassCalculation:number) {
 			this._metabolicMapID = metabolicMapID; 
@@ -73,7 +81,7 @@ module CarbonBalance {
 
 
 		// Returns a list of ImbalancedTimeSample objects for this line.
-		private _getTimeSamplesForLine(lineID:number, imbalancedOnly:boolean):ImbalancedTimeSample[] {
+		private _getTimeSamplesForLine(lineID:any, imbalancedOnly:boolean):ImbalancedTimeSample[] {
 			var ret:ImbalancedTimeSample[] = [];
 
 	    	// For each time sample that we have for this line, figure out which ones are imbalanced.
@@ -606,14 +614,6 @@ module CarbonBalance {
 				sum.measurements
 			);
 		}
-
-
-		private _metabolicMapID:number;
-		private _biomassCalculation:number;
-		static graphDiv = null;
-		allCBGraphs = [];
-		mergedTimelinesByLineID:{[lineID:number]:MergedLineSamples} = {};
-		carbonSum:CarbonBalance.Summation = null;
 	};
 
 
