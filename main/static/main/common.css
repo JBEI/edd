@@ -1433,5 +1433,11 @@ div.footer > div.footer-text > span {
 .fd-zone.xml.over {
     background-image: url(images/dropzone-xml-over.png);
 }
+.fd-zone.text {
+    background-image: url(images/dropzone-text.png);
+}
+.fd-zone.text.over {
+    background-image: url(images/dropzone-text-over.png);
+}
 
 /* End of common styles */
