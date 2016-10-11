@@ -126,10 +126,10 @@ following steps in the EDD checkout directory to configure EDD and launch it for
 
 * __Run `init-config.sh`__
 
- This script will:
-    * Test your git configuration
-    * Copy sample configuration files
-	* Generate random passwords for use in autoconfiguring EDD's Docker services
+  This script will:
+   * Test your git configuration
+   * Copy sample configuration files
+   * Generate random passwords for use in autoconfiguring EDD's Docker services
 * __Configure `secrets.env`__
 
   To save work later, you may want to manually edit `secrets.env` to set memorable passwords 
@@ -170,7 +170,7 @@ following steps in the EDD checkout directory to configure EDD and launch it for
   environment variables to load an existing one.
    * If you're starting from a blank database, use the web interface to configure EDD for your 
      institution.
-      * If you haven't loaded EDD from an existing database, you'll need to create an administrator 
+   * If you haven't loaded EDD from an existing database, you'll need to create an administrator 
      account from the command line that you can then use to create measurement types, units, and 
      other user accounts to get the system going. 
          1. Create an administrator account: `docker-compose exec appserver python manage.py createsuperuser`
@@ -185,7 +185,7 @@ following steps in the EDD checkout directory to configure EDD and launch it for
    in your EDD studies until EDD can successfully communicate/authenticate with ICE.
       * Follow ICE's directions for installation/setup
 	  * Configure an HMAC key for EDD's use. EDD's default configuration assumes a key ID of 'edd', but
-	    you can change it by overriding the value of `ICE_KEY_ID` in your `local_settings.py`
+	    you can change it by overriding the value of `ICE_KEY_ID` in your `local.py`
 	  * TODO: insert key generation directions here, or reference ICE directions. 
 	  * See directions under Common 'Maintenance/Development Tasks' to test EDD/ICE communication
   
@@ -194,7 +194,8 @@ following steps in the EDD checkout directory to configure EDD and launch it for
 This section is a quick reference for commonly helpful commands for running / developing EDD. Many 
 of them use Docker Compose and other related Docker tools that aren't fully documented here.
 
-* Docker services
+* __Docker services__
+
   `docker-compose` is the recommended tool for controlling EDD services. `docker-compose.yml` 
   defines the list of services as top-level entries under the 'services' line.  
   For quick reference, at the time of writing the provided services are:
@@ -215,7 +216,7 @@ of them use Docker Compose and other related Docker tools that aren't fully docu
   of the "appserver" service running launched from a directory called "edd". You can alternatively 
   use `docker ps` from any directory to get a similar listing, though it will include all 
   containers running on your host, not just those defined by EDD.
-* `docker-compose` commands
+* __`docker-compose` commands__
    * Build all services:  `docker-compose build`
    * Startup all services in detached mode: `docker-compose up -d` (recommended to keep muliple   service logs from cluttering the screen, and so `^C` doesn't stop EDD)
    * View logs: `docker-compose logs [service]`
@@ -223,14 +224,16 @@ of them use Docker Compose and other related Docker tools that aren't fully docu
    * See more in the [Docker Compose documentation][3]
    * Compose may complain about a missing variables. If this bothers you, run an export
      command to assign an empty string to each: `export EDD_HOST_DIR=`
-* Determining the local URL for EDD's web interfaces: To access services, use the IP listed in the 
+* __Determining the local URL for EDD's web interfaces:__
+
+  To access services, use the IP listed in the 
   output from `docker-machine ip default`. By default on most systems, use:
-   * EDD: https://192.168.99.100/
-   * EDD's REST API: https://192.168.99.100/rest/ (if enabled)
-   * Solr: https://192.168.99.100/solr/
-   * Flower: https://192.168.99.100/flower/
-   * RabbitMQ Management Plugin: https://192.168.99.100/rabbitmq
-* Interfacing with EDD's services from the command line:
+   * __EDD:__ https://192.168.99.100/
+   * __EDD's REST API:__ https://192.168.99.100/rest/ (if enabled)
+   * __Solr:__ https://192.168.99.100/solr/
+   * __Flower:__ https://192.168.99.100/flower/
+   * __RabbitMQ Management Plugin:__ https://192.168.99.100/rabbitmq
+* __Interfacing with EDD's services from the command line:__
    * To run commands in __new__ containers, use `docker-compose run $SERVICE $COMMAND`,
      e.g.: `docker-compose run edd python manage.py shell`. Many Docker tutorals use "run" to 
 	 simplify the directions, but it should generally be avoided since it creates new containers
@@ -241,7 +244,7 @@ of them use Docker Compose and other related Docker tools that aren't fully docu
    * Other useful sample commands:
        * Connect to the Postgres command line: `docker-compose exec postgres psql -U postgres`
        * Connect to the Django shell: `docker-compose exec appserver python manage.py shell`
-* Running Docker commands in new shell sessions
+* __Running Docker commands in new shell sessions__
     * The `docker` command will look for a Docker daemon running on the local machine by
       default. Mac hosts currently must use a daemon running in a VirtualBox guest VM. Load
       the Docker environment on the guest with:
@@ -301,16 +304,16 @@ Some of these sample commands will only work as written at JBEI, but should serv
 examples for common development tasks. Directions assume that Docker containers are already
 running in the development environment.
 
-* Run automated tests:
+* __Run automated tests__
    * Python tests: `docker-compose exec appserver python manage.py test`
    * Javascript Tests <a name="Javascript Tests"/>
       * run `grunt test` to test javascript files.
       * run `grunt screenshots` to test graphs
       * run `webdriver-manager start` in one command window and `grunt e2e-test` in another for E2E
-tests
+        tests
    * Test EDD/ICE communication: `docker-compose exec appserver manage.py test_ice_communication`
 		  
-* Create an unprivileged test account
+* __Create an unprivileged test account__
     * Run the command `docker-compose exec appserver /code/manage.py shell`
     * Execute the following code to create a user, and exit
 
@@ -327,7 +330,7 @@ tests
 
           UPDATE account_emailaddress SET verified = true WHERE email = 'test_user@example.com';
 
-* Dump the production database to file and load into a local test deployment
+* __Dump the production database to file and load into a local test deployment__
     * Create the dump file with this command
 
           pg_dump -h postgres.jbei.org -d eddprod -f edd-prod-dump.sql -U your_username'
@@ -337,12 +340,14 @@ tests
           docker-compose down
           POSTGRES_DUMP_FILE=edd-prod-dump.sql docker-compose up -d
           
-* Rebuild Solr indexes: `docker-compose exec appserver manage.py edd_index`. 
+* __Rebuild Solr indexes:___ `docker-compose exec appserver manage.py edd_index`. 
 
   This shouldn't normally be required, but can be helpful following unanticipated software errors.
 
-* Run development / maintenance level scripts: see [separate directions][9] for configuring a 
-  standalone Python environment to run these scripts, and for the list of available scripts.
+* __Run development / maintenance level scripts__
+
+  See [separate directions][9] for configuring a standalone Python environment to run these scripts,
+  and for the list of available scripts.
 
 
 		  
