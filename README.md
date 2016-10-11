@@ -174,6 +174,7 @@ following steps in the EDD checkout directory to configure EDD and launch it for
       other user accounts to get the system going. 
         1. Create an administrator account: `docker-compose exec appserver python manage.py createsuperuser`
         2. Configure EDD using the web interface
+		
           Log into EDD's web interface using an administrator account.  Go to "Administration" at top left,
           then use the interface to create a minimal set of Users, Units, Measurement Types, Metadata, etc
           that allow users to import their data. TODO: We plan to add more to this section of the documentation 
