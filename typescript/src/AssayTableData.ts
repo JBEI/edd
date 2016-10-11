@@ -444,8 +444,7 @@ module EDDTableImport {
             this.updateInputVisible();
 
             // By default, our drop zone wants excel or csv files, so we clear the additional classes:
-            $('#step2textarea').removeClass('xml');
-            $('#step2textarea').removeClass('text');
+            $('#step2textarea').removeClass('xml text');
 
             if (mode === 'biolector') {
                 // Biolector data is expected in XML format.
