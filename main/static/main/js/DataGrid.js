@@ -1450,25 +1450,40 @@ var DGSearchWidget = (function (_super) {
         v = v.trim(); // Remove leading and trailing whitespace
         v = v.toLowerCase();
         v = v.replace(/\s\s*/, ' '); // Replace internal whitespace with single spaces
-        // If there are multiple words, we match each separately.
-        // We will not attempt to match against empty strings, so we filter those out if any slipped through
+        // If there are multiple words, we look for each separately, but expect to find all of them.
+        // We will not attempt to match against empty strings, so we filter those out if any slipped through.
         var queryStrs = v.split(' ').filter(function (one) { return one.length > 0; });
+        if (queryStrs.length == 0) {
+            return rowIDs;
+        }
         var filteredIDs = [];
         this.dataGridOwnerObject.applyToRecordSet(function (rows, id) {
-            rows.forEach(function (row) {
-                row.dataGridDataCells.forEach(function (cell) {
-                    if (cell.createdElement) {
-                        var text = cell.contentContainerElement.textContent.toLowerCase();
-                        var match = queryStrs.some(function (v) {
-                            // TODO: Sholdn't this be text.length >= v.length ?
-                            return text.length > v.length && text.indexOf(v) >= 0;
-                        });
-                        if (match) {
-                            filteredIDs.push(id);
-                        }
+            var thisRecordQueryStrs = queryStrs;
+            // Go row by row, cell by cell, testing each query until it matches,
+            // until we run out of unmatched queries (and return true) or run out
+            // of rows and cells (and return false).
+            var rowsMatch = rows.some(function (row) {
+                return row.dataGridDataCells.some(function (cell) {
+                    if (!cell.createdElement) {
+                        return false;
                     }
+                    var text = cell.contentContainerElement.textContent.toLowerCase();
+                    var unmatchedQueryStrs = [];
+                    thisRecordQueryStrs.forEach(function (queryStr) {
+                        if (text.length < queryStr.length || text.indexOf(queryStr) < 0) {
+                            unmatchedQueryStrs.push(queryStr);
+                        }
+                    });
+                    if (unmatchedQueryStrs.length == 0) {
+                        return true;
+                    }
+                    thisRecordQueryStrs = unmatchedQueryStrs;
+                    return false;
                 });
             });
+            if (rowsMatch) {
+                filteredIDs.push(id);
+            }
         }, rowIDs);
         return filteredIDs;
     };
