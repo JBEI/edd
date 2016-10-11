@@ -124,12 +124,11 @@ This section contains directions for setting up a production deployment for EDD 
 After you have all of the Docker tools minimally configured for your environment, perform the 
 following steps in the EDD checkout directory to configure EDD and launch it for the first time.
 
-* __Run `init-config.sh`__
-
+* __Run `./init-config.sh`__  
   This script will:
-   * Test your git configuration
-   * Copy sample configuration files
-   * Generate random passwords for use in autoconfiguring EDD's Docker services
+      * Test your git configuration
+      * Copy sample configuration files
+      * Generate random passwords for use in autoconfiguring EDD's Docker services
 * __Configure `secrets.env`__
 
   To save work later, you may want to manually edit `secrets.env` to set memorable passwords 
@@ -168,17 +167,17 @@ following steps in the EDD checkout directory to configure EDD and launch it for
 
   For example, by default, EDD will launch with an empty database, so you may want to use 
   environment variables to load an existing one.
-   * If you're starting from a blank database, use the web interface to configure EDD for your 
-     institution.
-   * If you haven't loaded EDD from an existing database, you'll need to create an administrator 
-     account from the command line that you can then use to create measurement types, units, and 
-     other user accounts to get the system going. 
-         1. Create an administrator account: `docker-compose exec appserver python manage.py createsuperuser`
-         2. Configure EDD using the web interface.
-   	        Log into EDD's web interface using an administrator account.  Go to "Administration" at top left,
-   	        then use the interface to create a minimal set of Users, Units, Measurement Types, Metadata, etc
-   	        that allow users to import their data. TODO: We plan to add more to this section of the documentation 
-   	        over time to describe how these entries are used and when / how to edit them.
+    * If you're starting from a blank database, use the web interface to configure EDD for your 
+      institution.
+    * If you haven't loaded EDD from an existing database, you'll need to create an administrator 
+      account from the command line that you can then use to create measurement types, units, and 
+      other user accounts to get the system going. 
+          1. Create an administrator account: `docker-compose exec appserver python manage.py createsuperuser`
+          2. Configure EDD using the web interface.
+    	        Log into EDD's web interface using an administrator account.  Go to "Administration" at top left,
+    	        then use the interface to create a minimal set of Users, Units, Measurement Types, Metadata, etc
+    	        that allow users to import their data. TODO: We plan to add more to this section of the documentation 
+    	        over time to describe how these entries are used and when / how to edit them.
  * __Install and configure a supporting [ICE][10] deployment__
  
    EDD requires ICE as a reference for strains used in EDD's experiments.  You won't be able to create lines
