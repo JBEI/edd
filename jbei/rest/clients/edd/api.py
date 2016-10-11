@@ -646,7 +646,7 @@ class EddApi(RestApiClient):
         strain_id = str(local_pk) if local_pk else str(registry_id)
 
         # build the URL for this strain resource
-        url = '%(base_url)s/rest/strain/%(strain_id)s' % {
+        url = '%(base_url)s/rest/strain/%(strain_id)s/' % {
             'base_url': self.base_url, 'strain_id': strain_id,
         }
 

@@ -160,12 +160,19 @@ class Performance(object):
         print('Total run time: %s' % to_human_relevant_delta(total_runtime.total_seconds()))
         values_dict = OrderedDict()
 
-        values_dict['EDD strain scan duration'] = (to_human_relevant_delta(
-                self.edd_strain_scan_time.total_seconds()) if self.edd_strain_scan_time else
-                'Not performed')
-        values_dict['ICE entry scan duration:'] = (to_human_relevant_delta(
-                self.ice_entry_scan_time.total_seconds()) if self.ice_entry_scan_time else
-                                                   'Not performed')
+        edd_duration_key = 'EDD strain scan duration'
+        ice_duration_key = 'ICE entry scan duration:'
+        values_dict[edd_duration_key] = 'Not performed'
+        values_dict[ice_duration_key] = 'Not performed'
+
+        if self.edd_strain_scan_time:
+            values_dict[edd_duration_key] = (to_human_relevant_delta(
+                self.edd_strain_scan_time.total_seconds()))
+
+        if self.ice_entry_scan_time:
+            values_dict[ice_duration_key] = (to_human_relevant_delta(
+                self.ice_entry_scan_time.total_seconds()))
+
         values_dict['Total EDD communication time'] = to_human_relevant_delta(
                 self.edd_communication_time.total_seconds())
         values_dict['Total ICE communication time'] = to_human_relevant_delta(
@@ -753,11 +760,10 @@ class ProcessingSummary:
 
         # account for configurability of whether ICE entries are scanned independent of their
         # relation to what's directly referenced from EDD
-        entries_found = self.total_ice_entries_found if self.total_ice_entries_found else \
-            self.total_ice_entries_processed
-        percent_processed = (
-                            self.total_ice_entries_processed / entries_found) * 100 if \
-            entries_found else 0
+        entries_found = (self.total_ice_entries_found if self.total_ice_entries_found else
+                         self.total_ice_entries_processed)
+        percent_processed = ((self.total_ice_entries_processed / entries_found) * 100
+                             if entries_found else 0)
         scanned_ice_entries = bool(self.total_ice_entries_found)
         scanned = 'were NOT' if not scanned_ice_entries else 'WERE'
 
@@ -839,7 +845,6 @@ def print_shared_entry_processing_summary(entry, initial_entry_experiment_links_
               'link_count': initial_entry_experiment_links_count,
               'runtime': to_human_relevant_delta(runtime_seconds),
           })
-
 
 INTEGER_PATTERN = re.compile(r'^\d+$')
 

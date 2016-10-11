@@ -401,20 +401,21 @@ class StrainStudiesView(viewsets.ReadOnlyModelViewSet):
         user = self.request.user
 
         # only allow superusers through, since this is strain-related data that should only be
-        # accessible to sysadmins
+        # accessible to sysadmins. Also allows us to potentially avoid expensive joins to check for
+        # per-study user/group permissions (though we've included below for the moment for safety)
         if not user.is_superuser:
             #  TODO: user group / merge in recent changes / throw PermissionsError or whatever
             return Response(status=status.HTTP_403_FORBIDDEN)
 
-        studies_query = None
+        study_pks_query = None
         if strain_pk:
-            studies_query = Study.objects.filter(line__strains__pk=strain_pk)
+            study_pks_query = Line.objects.filter(strains__pk=strain_pk)
         else:
-            studies_query = Study.objects.filter(line__strains__registry_id=strain_uuid)
-
-        # filter by line active status, applying the default (only active lines)
-        studies_query = filter_by_active_status(studies_query, active_status=line_active_status,
-                                                query_prefix='line__')
+            study_pks_query = Line.objects.filter(strains__registry_id=strain_uuid)
+        study_pks_query = filter_by_active_status(
+                study_pks_query, active_status=line_active_status).values_list(
+                'study__pk').distinct()  # distict() needed bc of line active status filtering
+        studies_query = Study.objects.filter(pk__in=study_pks_query)
 
         study_pk = self.kwargs.get(self.lookup_url_kwarg)
         if study_pk:
@@ -424,12 +425,10 @@ class StrainStudiesView(viewsets.ReadOnlyModelViewSet):
         # at present this isn't strictly necessary because of the sysadmin check above but best
         # to enforce programatically in case the implementation of Study's access controls
         # changes later on
-
         if not Study.user_role_can_read(user):
             study_user_permission_q = Study.user_permission_q(user, StudyPermission.READ,
                                                               keyword_prefix='line__study__')
             studies_query = studies_query.filter(study_user_permission_q)
-
         # required by both line activity and studies permissions queries
         studies_query = studies_query.distinct()
 
