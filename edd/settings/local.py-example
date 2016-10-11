@@ -44,7 +44,7 @@ USE_CELERY = True
 
 # disable the initial new REST API by default since it's insecure. Only needed to support 
 # create_lines.py and maintain_ice_links.py
-PUBLISH_REST_API = False  
+PUBLISH_REST_API = False
 
 # True disables all study creation by non-superusers. Used to disable writes to the public EDD
 # until the "web of EDD's" can be implemented.

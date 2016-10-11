@@ -24,7 +24,7 @@ EDD, follow directions here first.
 
 ## Getting Started <a name="#Getting_Started"/>
 
-With [Docker][2] and [docker-compose][3] installed, launching the entire EDD software stack is as
+With [Docker][2] and [Docker Compose][3] installed, launching the entire EDD software stack is as
 simple as cloning the git repository and running:
 
     ./init-config.sh
@@ -101,7 +101,7 @@ This section contains directions for setting up a production deployment for EDD 
 * Create a user for running EDD; assuming user `jbeideploy` exists for further instructions.
 * As `jbeideploy`, check out code to `/usr/local/edd/` (this will be `$EDD_HOME` below)
 * Set up your local docker-machine to manage a remote EDD deployment
-    * _If using docker client on a different host, i.e. with docker-machine_
+    * _If using Docker client on a different host, i.e. with `docker-machine`_
         * Ensure you have a public key in `jbeideploy`'s `~/.ssh/authorized_keys2` file
         * Create an environment for the remote host (replace `{REMOTE_HOST}` with hostname or IP)
 
@@ -112,7 +112,7 @@ This section contains directions for setting up a production deployment for EDD 
                   {NAME_OF_ENVIRONMENT}
 
         * Activate the machine with `eval $(docker-machine env {NAME_OF_ENVIRONMENT})`
-        * Set environment variable on docker client host `EDD_HOST_DIR` to `$EDD_HOME`
+        * Set environment variable on Docker client host `EDD_HOST_DIR` to `$EDD_HOME`
             * Prepend `EDD_HOST_DIR=/usr/local/edd/` to any `docker-compose` commands
             * Alternatively, `export EDD_HOST_DIR=/usr/local/edd/` before running commands
             * The trailing `/` is important!
@@ -124,11 +124,14 @@ This section contains directions for setting up a production deployment for EDD 
 After you have all of the Docker tools minimally configured for your environment, perform the 
 following steps in the EDD checkout directory to configure EDD and launch it for the first time.
 
-* Run `init-config.sh`. This script will:
+* __Run `init-config.sh`__
+
+ This script will:
     * Test your git configuration
     * Copy sample configuration files
 	* Generate random passwords for use in autoconfiguring EDD's Docker services
-* Configure `secrets.env`
+* __Configure `secrets.env`__
+
   To save work later, you may want to manually edit `secrets.env` to set memorable passwords 
   of your choosing for EDD services whose web interfaces are exposed via EDD's nginx proxy, 
   or that you intend to expose on your host. For example, services such as 
@@ -143,39 +146,41 @@ following steps in the EDD checkout directory to configure EDD and launch it for
   After setting passwords in `secrets.env`, you can come back and perform more detailed
   configuration of EDD and Docker later without adding too much work.
 
-* Build EDD's docker images
+* __Build EDD's Docker Images__
     * Make sure you're targeting the correct Docker machine. In the local development example
-      above, run `eval "$(docker-machine env default)"`. If you're using docker-compose to launch EDD
-    	 on a remote host, your command will be different, and you should make sure you're executing 
-    	 docker on the correct host.
+      above, run `eval "$(docker-machine env default)"`. If you're using Docker Compose to launch EDD
+      on a remote host, your command will be different, and you should make sure you're executing 
+	  Docker on the correct host.
     * Run `docker-compose build` to build the Docker containers for EDD. This will take a while. In 
       the future, we may publish pre-built Docker images that will prevent you from having to take 
 	  this step.
 	* You can actually skip this step and just run the command to start EDD, but it's included here
 	  to familiarize developers / maintainers with the Docker build process in case they have to run
 	  it later.
-* Launch EDD's services by running `docker-compose up -d`. At this point, you can use Docker 
+* __Launch EDD's services__
+
+  Run `docker-compose up -d`. At this point, you can use Docker 
   commands to view the logs for each service or to locate the IP for viewing EDD's web interface. 
   See "Running EDD" below for a list of helpful commands. If you skipped the previous step, this
   command will take significantly longer the first time you run it, since Docker has to initially
   build / configure the EDD services before they can run.
-* Perform other [configuration][8] as desired for your EDD instance. 
+* __Perform other [configuration][8] as desired__
+
   For example, by default, EDD will launch with an empty database, so you may want to use 
   environment variables to load an existing one.
-* If you're starting from a blank database, use the web interface to configure EDD for your 
-  institution.
-   * If you haven't loaded EDD from an existing database, you'll need to create an administrator 
-	 account from the command line that you can then use to create measurement types, units, and 
-	 other user accounts to get the system going. 
-	
-	1. Create an administrator account: `docker-compose exec appserver python manage.py createsuperuser`
-			
-    2. Configure EDD using the web interface.
-	Log into EDD's web interface using an administrator account.  Go to "Administration" at top left,
-	then use the interface to create a minimal set of Users, Units, Measurement Types, Metadata, etc
-	that allow users to import their data. TODO: We plan to add more to this section of the documentation 
-	over time to describe how these entries are used and when / how to edit them.
- * If not already done above, install and configure a supporting [ICE][10] deployment.
+   * If you're starting from a blank database, use the web interface to configure EDD for your 
+     institution.
+      * If you haven't loaded EDD from an existing database, you'll need to create an administrator 
+     account from the command line that you can then use to create measurement types, units, and 
+     other user accounts to get the system going. 
+         1. Create an administrator account: `docker-compose exec appserver python manage.py createsuperuser`
+         2. Configure EDD using the web interface.
+   	        Log into EDD's web interface using an administrator account.  Go to "Administration" at top left,
+   	        then use the interface to create a minimal set of Users, Units, Measurement Types, Metadata, etc
+   	        that allow users to import their data. TODO: We plan to add more to this section of the documentation 
+   	        over time to describe how these entries are used and when / how to edit them.
+ * __Install and configure a supporting [ICE][10] deployment__
+ 
    EDD requires ICE as a reference for strains used in EDD's experiments.  You won't be able to create lines
    in your EDD studies until EDD can successfully communicate/authenticate with ICE.
       * Follow ICE's directions for installation/setup
@@ -187,7 +192,7 @@ following steps in the EDD checkout directory to configure EDD and launch it for
 
 ### Running EDD
 This section is a quick reference for commonly helpful commands for running / developing EDD. Many 
-of them use docker-compose and other related Docker tools that aren't fully documented here.
+of them use Docker Compose and other related Docker tools that aren't fully documented here.
 
 * Docker services
   `docker-compose` is the recommended tool for controlling EDD services. `docker-compose.yml` 
@@ -270,12 +275,12 @@ of them use docker-compose and other related Docker tools that aren't fully docu
         * `sudo npm install grunt`
 * EDD uses [TypeScript][6] for its client-side interface
     * Dependencies are listed in `packages.json` and may be installed with `npm install`
-    * Compile changes in `*.ts` to `*.js` by simply running `grunt --force` from the edd base
+    * Compile changes in `*.ts` to `*.js` by simply running `grunt` from the edd base
     directory. It will rebuild the TypeScript and automatically run Django's collectstatic to 
 	update the Javascript files in use by your instance
 
 #### Additional Build Process Setup
-The typescript build process includes some comments that will change with every rebuild. These
+The TypeScript build process includes some comments that will change with every rebuild. These
 comments will cause unnecessary merge conflicts if allowed into the repo, so the project includes
 some configuration to strip them out.
 
@@ -332,7 +337,9 @@ tests
           docker-compose down
           POSTGRES_DUMP_FILE=edd-prod-dump.sql docker-compose up -d
           
-* Rebuild SOLR indexes: `docker-compose exec appserver manage.py edd_index`. This shouldn't normally be required, but can be helpful following unanticipated software errors.
+* Rebuild Solr indexes: `docker-compose exec appserver manage.py edd_index`. 
+
+  This shouldn't normally be required, but can be helpful following unanticipated software errors.
 
 * Run development / maintenance level scripts: see [separate directions][9] for configuring a 
   standalone Python environment to run these scripts, and for the list of available scripts.
@@ -347,18 +354,21 @@ but this is the safest upgrade process (though also the most time-consuming):
    At the time of writing, a successful build and migration/indexing processes may take
    upwards of 30-40 minutes, so leave some overhead and plan for EDD to 
    be down for about an hour.
-2. Make sure you're targeting the correct docker machine. In the development example above, you'd run:
+2. Make sure you're targeting the correct Docker machine. In the development example above, you'd run:
     eval `$(docker-machine env default)`
-3. Stop the current instance and all supporting services: `docker-compose down`
-4. Consider backing up the database in case of unanticipated migration failures.
-5. Get the latest code: `git checkout [branch]`
-6. Rebuild the Docker images. This step can often be skipped, but it's safest to execute it anyway
-   in case EDD's dependencies have changed: `docker-compose build`
-7. Restart EDD and supporting services. `docker-compose up -d`. This will take longer than normal 
+3. Run `git status` and make a note of the result in case you need to abort the upgrade for any reason.
+4. Get the latest code: `git checkout [branch]`. 
+5. Rebuild the Docker images. This step can often be skipped, but it's safest to execute it anyway
+   in case EDD's dependencies have changed: `docker-compose build`. Rebuilding will go quickly in cases where
+   there's little work to do, at other times this step may take upwards of 30 minutes, but is safe to perform
+   while EDD's Docker containers are still runnning.
+6. Stop the current instance and all supporting services: `docker-compose down`
+7. Back up EDD's database in case of any unanticipated migration failures.
+8. Restart EDD and supporting services. `docker-compose up -d`. This will take longer than normal 
    following an upgrade, since Docker will automatically run any pending database migrations, relaunch
    the containers, and rebuild the SOLR indexes. You can watch the `appserver` container's log for 
    a good overview of progress, e.g. `docker-compose logs -f appserver`
-8. Log into the web interface and exercise a few features to confirm the upgrade was successful.
+9. Log into the web interface and exercise a few features to confirm the upgrade was successful.
 
 
 ---------------------------------------------------------------------------------------------------
