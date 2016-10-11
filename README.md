@@ -311,7 +311,11 @@ running in the development environment.
       * run `webdriver-manager start` in one command window and `grunt e2e-test` in another for E2E
         tests
    * Test EDD/ICE communication: `docker-compose exec appserver manage.py test_ice_communication`
-		  
+   * Test email configuration
+      * `python manage.py send_test_email your.email@somewhere.com`
+      * `python manage.py sendtestemail --admins`
+      * `python manage.py sendtestemail --managers`
+
 * __Create an unprivileged test account__
     * Run the command `docker-compose exec appserver /code/manage.py shell`
     * Execute the following code to create a user, and exit
