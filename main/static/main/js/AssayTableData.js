@@ -317,17 +317,23 @@ var EDDTableImport;
                 this.queueReprocessRawData();
             }
         };
+        // Start a timer to wait before calling the routine that remakes the graph.
+        // This way we're not bothering the user with the long redraw process when
+        // they are making fast edits.
         RawInputStep.prototype.queueReprocessRawData = function () {
-            // Start a timer to wait before calling the routine that remakes the graph.
-            // This way we're not bothering the user with the long redraw process when
-            // they are making fast edits.
+            var delay;
             if (this.haveInputData) {
                 processingFileCallback();
             }
             if (this.inputRefreshTimerID) {
                 clearTimeout(this.inputRefreshTimerID);
             }
-            this.inputRefreshTimerID = setTimeout(this.reprocessRawData.bind(this), 3000);
+            // Wait at least 1/2 second, at most 3 seconds,
+            // with a range in between based on the length of the input data.
+            // This way a person making a minor correction to a small data set can see
+            // their results more quickly, but we don't overload when working on large sets.
+            delay = Math.max(500, Math.min(3000, $('#step2textarea').val().length * 10));
+            this.inputRefreshTimerID = setTimeout(this.reprocessRawData.bind(this), delay);
         };
         // processes raw user input entered directly into the text area
         RawInputStep.prototype.reprocessRawData = function () {
@@ -781,18 +787,23 @@ var EDDTableImport;
         // This handles insertion of a tab into the textarea.
         // May be glitchy.
         RawInputStep.prototype.suppressNormalTab = function (e) {
-            var input, text;
+            var input, text, selStart, selEnd;
             this.haveInputData = true;
             if (e.which === 9) {
                 input = e.target;
+                // These need to be read out before they are destroyed by altering the value of the element.
+                var selStart = input.selectionStart;
+                var selEnd = input.selectionEnd;
                 text = $(input).val();
                 // set value to itself with selection replaced by a tab character
                 $(input).val([
-                    text.substring(0, input.selectionStart),
-                    text.substring(input.selectionEnd)
+                    text.substring(0, selStart),
+                    text.substring(selEnd)
                 ].join('\t'));
                 // put caret at right position again
-                input.selectionStart = input.selectionEnd = input.selectionStart + 1;
+                selEnd = selStart + 1;
+                input.selectionStart = selEnd;
+                input.selectionEnd = selEnd;
                 return false;
             }
             return true;
