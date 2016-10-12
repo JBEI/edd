@@ -126,8 +126,8 @@ module EDDTableImport {
                 receiptTime = new Date();
                 elapsedSeconds = (receiptTime.getTime() - queryTime.getTime()) / 1000;
 
-                console.log('onReferenceRecordsLoad(): Received study data from the server after',
-                    elapsedSeconds, ' s');
+                //console.log('onReferenceRecordsLoad(): Received study data from the server after',
+                //    elapsedSeconds, ' s');
                 ATData = data.ATData;
                 $.extend(EDDData, data.EDDData);
                 EDDTableImport.onReferenceRecordsLoad();
@@ -461,7 +461,7 @@ module EDDTableImport {
                 $('#step2textarea').addClass('text');
                 this.nextStepCallback();
                 return;
-            }
+            } 
             if (mode === 'mdv') {
                 // When JBEI MDV format documents are pasted in, it's always from Excel, so they're always tab-separated.
                 this.setSeparatorType('tab');
@@ -1325,7 +1325,7 @@ module EDDTableImport {
                 row: HTMLTableRowElement, startTime: Date, t, table: HTMLTableElement;
 
             startTime = new Date();
-            console.log("Start of IdentifyStructuresStep.constructDataTable()");
+            //console.log("Start of IdentifyStructuresStep.constructDataTable()");
 
 
             this.dataCells = [];
@@ -1499,8 +1499,8 @@ module EDDTableImport {
             this.applyTableDataTypeStyling(grid);
             var endTime = new Date();
             var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
-            console.log("End of IdentifyStructuresStep.constructDataTable(). Table: ", grid.length,
-                " rows X ", nColumns, " columns. Elapsed time: ", elapsedSeconds, " s")
+            //console.log("End of IdentifyStructuresStep.constructDataTable(). Table: ", grid.length,
+            //    " rows X ", nColumns, " columns. Elapsed time: ", elapsedSeconds, " s")
         }
 
 
@@ -1671,7 +1671,7 @@ module EDDTableImport {
 
         // update state as a result of row datatype pulldown selection
         interpretRowDataTypePulldowns(): void {
-            console.log('Starting interpretRowDataTypePullDowns()');
+            //console.log('Starting interpretRowDataTypePullDowns()');
             var start = new Date();
             var grid = this.rawInputStep.getGrid();
             this.applyTableDataTypeStyling(grid);
@@ -1679,7 +1679,7 @@ module EDDTableImport {
             this.redrawEnabledFlagMarkers();
             this.queueGraphRemake();
             var ellapsedSeconds = (new Date().getTime() - start.getTime()) / 1000;
-            console.log("End interpretRowDataTypePullDowns(). Elapsed time", ellapsedSeconds, " s. Calling next step.");
+            //console.log("End interpretRowDataTypePullDowns(). Elapsed time", ellapsedSeconds, " s. Calling next step.");
             this.nextStepCallback();
         }
 
@@ -2390,7 +2390,7 @@ module EDDTableImport {
 
 
         queueReparseThisStep(): void {
-            console.log('queueReparseThisStep()');
+            //console.log('queueReparseThisStep()');
             if (this.thisStepInputTimerID) {
                 clearTimeout(this.thisStepInputTimerID);
             }
@@ -2418,7 +2418,7 @@ module EDDTableImport {
             var startTime: Date, endTime: Date, elapsedSeconds: number, mode, parsedSets,
                 seenAnyTimestamps, hideMasterTimestamp: boolean, hasRequiredInitialInput: boolean;
             startTime = new Date();
-            console.log("Start of TypeDisambiguationStep.reconfigure()");
+            //console.log("Start of TypeDisambiguationStep.reconfigure()");
 
             mode = this.selectMajorKindStep.interpretationMode;
             seenAnyTimestamps = this.identifyStructuresStep.seenAnyTimestamps;
@@ -2454,7 +2454,6 @@ module EDDTableImport {
             this.remakeMeasurementSection();
             this.remakeMetadataSection();
 
-
             // add a listener to all the required input fields so we can detect when they're changed
             // and know whether or not to allow continuation to the subsequent step
             $('.' + this.STEP_4_REQUIRED_INPUT_CLASS).on('input', ()=> {
@@ -2467,8 +2466,8 @@ module EDDTableImport {
 
             endTime = new Date();
             elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
-            console.log("End of TypeDisambiguationStep.reconfigure(). Elapsed time: ",
-                elapsedSeconds, " s. Calling next step.");
+            //console.log("End of TypeDisambiguationStep.reconfigure(). Elapsed time: ",
+            //    elapsedSeconds, " s. Calling next step.");
 
             this.reparseThisStep();
         }
@@ -2531,7 +2530,7 @@ module EDDTableImport {
             uniqueLineNames = this.identifyStructuresStep.uniqueLineNames;
 
             startTime = new Date();
-            console.log("Start of TypeDisambiguationStep.remakeLineSection()");
+            //console.log("Start of TypeDisambiguationStep.remakeLineSection()");
 
             this.currentlyVisibleLineObjSets.forEach((disam:any): void => {
                 disam.rowElementJQ.detach();
@@ -2543,8 +2542,8 @@ module EDDTableImport {
             if (uniqueLineNames.length === 0) {
                 hasRequiredInitialInputs = this.identifyStructuresStep.requiredInputsProvided();
                 $('#masterLineDiv').toggleClass('off', !hasRequiredInitialInputs);
-                console.log("End of TypeDisambiguationStep.remakeLineSection() -- no unique line" +
-                    " names to process.");
+                //console.log("End of TypeDisambiguationStep.remakeLineSection() -- no unique line" +
+                //    " names to process.");
                 return;
             }
 
@@ -2601,7 +2600,7 @@ module EDDTableImport {
 
             endTime = new Date();
             elapsedSeconds = endTime.getTime() - startTime.getTime();
-            console.log("End of TypeDisambiguationStep.remakeLineSection(). Elapsed time: ", elapsedSeconds, " s");
+            //console.log("End of TypeDisambiguationStep.remakeLineSection(). Elapsed time: ", elapsedSeconds, " s");
         }
 
 
@@ -2623,7 +2622,7 @@ module EDDTableImport {
             uniqueAssayNames = this.identifyStructuresStep.uniqueAssayNames;
             masterProtocol = this.selectMajorKindStep.masterProtocol;
             startTime = new Date();
-            console.log("Start of TypeDisambiguationStep.remakeAssaySection()");
+            //console.log("Start of TypeDisambiguationStep.remakeAssaySection()");
 
             // remove stale data from previous run of this step
             this.currentlyVisibleAssayObjSets.forEach((disam:any): void => {
@@ -2635,16 +2634,16 @@ module EDDTableImport {
 
             //end early if there's nothing to display in this section
             if ((!this.identifyStructuresStep.requiredInputsProvided()) || this.identifyStructuresStep.parsedSets.length === 0) {
-                console.log("End of TypeDisambiguationStep.remakeAssaySection() -- no input data" +
-                    " to process");
+                //console.log("End of TypeDisambiguationStep.remakeAssaySection() -- no input data" +
+                //    " to process");
                 return;
             }
 
             parentDiv = $('#disambiguateAssaysSection');
 
             if (uniqueAssayNames.length === 0) {
-                console.log("End of TypeDisambiguationStep.remakeAssaySection() -- no unique" +
-                    " assay names to process");
+                //console.log("End of TypeDisambiguationStep.remakeAssaySection() -- no unique" +
+                //    " assay names to process");
                 $('#masterAssayLineDiv').removeClass('off');
                 return;
             }
@@ -2751,8 +2750,8 @@ module EDDTableImport {
 
             endTime = new Date();
             elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
-            console.log("End of TypeDisambiguationStep.remakeAssaySection(). Table is ", nRows, " rows X ", nColumns, " cols, with ", ATData.existingLines.length, " line options. Elapsed time: " +
-                " time: ", elapsedSeconds, " s. Avg row creation time: ", avgRowCreationSeconds, " s");
+            //console.log("End of TypeDisambiguationStep.remakeAssaySection(). Table is ", nRows, " rows X ", nColumns, " cols, with ", ATData.existingLines.length, " line options. Elapsed time: " +
+            //    " time: ", elapsedSeconds, " s. Avg row creation time: ", avgRowCreationSeconds, " s");
         }
 
         addRequiredInputLabel(parentDiv: JQuery, text: string): JQuery {
@@ -2823,7 +2822,7 @@ module EDDTableImport {
 
             hasRequiredInitialInput = this.identifyStructuresStep.requiredInputsProvided();
 
-            console.log("Start of TypeDisambiguationStep.remakeMeasurementSection()");
+            //console.log("Start of TypeDisambiguationStep.remakeMeasurementSection()");
 
             parentDiv = $('#disambiguateMeasurementsSection')
 
@@ -2840,8 +2839,8 @@ module EDDTableImport {
             // If in 'Transcription' or 'Proteomics' mode, there are no measurement types involved.
             // skip the measurement section, and provide statistics about the gathered records.
             if (mode === "tr" || mode === "pr") {
-                console.log("End of TypeDisambiguationStep.remakeMeasurementSection() - not" +
-                    " required for mode ", mode);
+                //console.log("End of TypeDisambiguationStep.remakeMeasurementSection() - not" +
+                //    " required for mode ", mode);
                 return;
             }
 
@@ -2851,8 +2850,8 @@ module EDDTableImport {
             // one other object with multiple types to work with (lines/assays).  We're not going to bother supporting that.
             if (hasRequiredInitialInput && uniqueMeasurementNames.length === 0 && seenAnyTimestamps) {
                 $('#masterMTypeDiv').removeClass('off');
-                console.log("End of TypeDisambiguationStep.remakeMeasurementSection() - no" +
-                    " measurements for disambiguation.");
+                //console.log("End of TypeDisambiguationStep.remakeMeasurementSection() - no" +
+                //    " measurements for disambiguation.");
                 return;
             }
 
@@ -2932,8 +2931,8 @@ module EDDTableImport {
             $('#disambiguateMeasurementsSection').toggleClass('off', uniqueMeasurementNames.length === 0 || !hasRequiredInitialInput);
             var endTime = new Date();
             var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
-            console.log("End of TypeDisambiguationStep.remakeMeasurementSection(). Elapsed time:" +
-                " ", elapsedSeconds, " s.");
+            //console.log("End of TypeDisambiguationStep.remakeMeasurementSection(). Elapsed time:" +
+            //    " ", elapsedSeconds, " s.");
         }
 
         addIgnoreCheckbox(row: HTMLTableRowElement): JQuery {
@@ -2953,12 +2952,12 @@ module EDDTableImport {
             var body: HTMLTableElement, parentDiv: JQuery, row: HTMLTableRowElement, table: HTMLTableElement;
 
             var startTime = new Date();
-            console.log("Start of TypeDisambiguationStep.remakeMetadataSection()");
+            //console.log("Start of TypeDisambiguationStep.remakeMetadataSection()");
 
             var uniqueMetadataNames = this.identifyStructuresStep.uniqueMetadataNames;
             if (uniqueMetadataNames.length < 1) {
-                console.log("End of TypeDisambiguationStep.remakeMetadataSection(). Returning" +
-                    " early");
+                //console.log("End of TypeDisambiguationStep.remakeMetadataSection(). Returning" +
+                //    " early");
                 return;
             }
 
@@ -3016,7 +3015,7 @@ module EDDTableImport {
 
             var endTime = new Date();
             var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
-            console.log("End of TypeDisambiguationStep.remakeMetadataSection(). Elapsed time: ", elapsedSeconds, " s.");
+            //console.log("End of TypeDisambiguationStep.remakeMetadataSection(). Elapsed time: ", elapsedSeconds, " s.");
         }
 
         userChangedRowEnabled(ev: JQueryInputEventObject): void {
@@ -3098,14 +3097,14 @@ module EDDTableImport {
         //    being 'set by the user'.
         userChangedAssayDisam(assayEl: Element):boolean {
             var startTime = new Date();
-            console.log("Start of TypeDisambiguationStep.userChangedAssayDisam()");
+            //console.log("Start of TypeDisambiguationStep.userChangedAssayDisam()");
             var changed: JQuery, v: number;
             changed = $(assayEl).data('setByUser', true);
             // The span with the corresponding Line pulldown is always right next to the Assay pulldown
             changed.next().toggleClass('off', changed.val() !== 'named_or_new');
             if (changed.val() !== 'named_or_new') {
                 // stop here for anything other than 'new'; only 'new' cascades to following pulldowns
-                console.log("End of TypeDisambiguationStep.userChangedAssayDisam()");
+                //console.log("End of TypeDisambiguationStep.userChangedAssayDisam()");
                 return false;
             }
             v = changed.data('visibleIndex') || 0;
@@ -3119,13 +3118,13 @@ module EDDTableImport {
             });
             var endTime = new Date();
             var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
-            console.log("End of TypeDisambiguationStep.userChangedAssayDisam(). Elapsed time: ", elapsedSeconds, " s");
+            //console.log("End of TypeDisambiguationStep.userChangedAssayDisam(). Elapsed time: ", elapsedSeconds, " s");
             return false;
         }
 
 
         userChangedMeasurementDisam(element: Element):void {
-            console.log('changed');
+            //console.log('changed');
             var hiddenInput: JQuery, textInput: JQuery, type: string, rowIndex: number;
             hiddenInput = $(element);
             textInput = hiddenInput.prev();
@@ -3248,8 +3247,8 @@ module EDDTableImport {
 
             var endTime = new Date();
             var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
-            console.log("End of TypeDisambiguationStep.disambiguateAnAssayOrLine(). Elapsed" +
-                " time: ", elapsedSeconds, " s");
+            //console.log("End of TypeDisambiguationStep.disambiguateAnAssayOrLine(). Elapsed" +
+            //    " time: ", elapsedSeconds, " s");
             return selections;
         }
 
@@ -3266,7 +3265,7 @@ module EDDTableImport {
             this.warningMessages = [];
 
             var startTime = new Date();
-            console.log("Start of TypeDisambiguationStep.createSetsForSubmission().");
+            //console.log("Start of TypeDisambiguationStep.createSetsForSubmission().");
 
 
             // From Step 1
@@ -3449,7 +3448,7 @@ module EDDTableImport {
             }
             var endTime = new Date();
             var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
-            console.log("End of TypeDisambiguationStep.createSetsForSubmission(). Elapsed time: ", elapsedSeconds, " s");
+            //console.log("End of TypeDisambiguationStep.createSetsForSubmission(). Elapsed time: ", elapsedSeconds, " s");
             return resolvedSets;
         }
 
@@ -3626,10 +3625,10 @@ module EDDTableImport {
 
             var disableSubmit = !(allPrevStepInputsProvided && (totalErrorsCount === 0) && allWarningsAcknowledged);
             if (disableSubmit) {
-                console.log('Disabling submit'); //TODO: remove debug stmt
+                //console.log('Disabling submit'); //TODO: remove debug stmt
                 submitButton.attr('disabled', 'disabled');
             } else {
-                console.log('Enabling submit'); //TODO: remove debug stmt
+                //console.log('Enabling submit'); //TODO: remove debug stmt
                 submitButton.removeAttr('disabled');
             }
 
@@ -3646,13 +3645,13 @@ module EDDTableImport {
                 for(let warningChkbx of stepWarningInputs) {
                     index++;
                     if(!warningChkbx.is(':checked')) {
-                        console.log('Not all warnings acknowledged. Warning ', index, 'isnt' +
-                            ' checked.'); //TODO: remove debug stmt and counter
+                        //console.log('Not all warnings acknowledged. Warning ', index, 'isnt' +
+                        //    ' checked.'); //TODO: remove debug stmt and counter
                         return false;
                     }
                 }
             }
-            console.log('All warnings acknowledged.');  //TODO: remove debug stmt
+            //console.log('All warnings acknowledged.');  //TODO: remove debug stmt
             return true;
         }
 
@@ -3759,7 +3758,7 @@ module EDDTableImport {
         }
 
         userSelectedAcknowledgeAllButton():void {
-            console.log('User selected ack all button'); // TODO: remove debug stmt
+            //console.log('User selected ack all button'); // TODO: remove debug stmt
             // check whether all of the boxes are already checked
             var allSelected:boolean = true;
             for(let stepCheckboxes of this.warningInputs) {
@@ -3772,11 +3771,11 @@ module EDDTableImport {
             }
 
             // TODO: remove debug stmts
-            if(allSelected) {
-                console.log('All checkboxes already selected -- de-selecting.');
-            } else {
-                console.log('Not all checkboxes already selected -- selecting all');
-            }
+            //if (allSelected) {
+            //    console.log('All checkboxes already selected -- de-selecting.');
+            //} else {
+            //    console.log('Not all checkboxes already selected -- selecting all');
+            //}
 
             // check or uncheck all of the boxes (some checked will result in all being checked)
             for(let stepCheckboxes of this.warningInputs) {

@@ -43,7 +43,8 @@ var EDDTableImport;
                 var elapsedSeconds, receiptTime;
                 receiptTime = new Date();
                 elapsedSeconds = (receiptTime.getTime() - queryTime.getTime()) / 1000;
-                console.log('onReferenceRecordsLoad(): Received study data from the server after', elapsedSeconds, ' s');
+                //console.log('onReferenceRecordsLoad(): Received study data from the server after',
+                //    elapsedSeconds, ' s');
                 ATData = data.ATData;
                 $.extend(EDDData, data.EDDData);
                 EDDTableImport.onReferenceRecordsLoad();
@@ -1011,7 +1012,7 @@ var EDDTableImport;
             var _this = this;
             var body, colgroup, controlCols, legendCopy, lowerLegend, lowerLegendId, pulldownOptions, row, startTime, t, table;
             startTime = new Date();
-            console.log("Start of IdentifyStructuresStep.constructDataTable()");
+            //console.log("Start of IdentifyStructuresStep.constructDataTable()");
             this.dataCells = [];
             this.colCheckboxCells = [];
             this.colObjects = [];
@@ -1173,7 +1174,8 @@ var EDDTableImport;
             this.applyTableDataTypeStyling(grid);
             var endTime = new Date();
             var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
-            console.log("End of IdentifyStructuresStep.constructDataTable(). Table: ", grid.length, " rows X ", nColumns, " columns. Elapsed time: ", elapsedSeconds, " s");
+            //console.log("End of IdentifyStructuresStep.constructDataTable(). Table: ", grid.length,
+            //    " rows X ", nColumns, " columns. Elapsed time: ", elapsedSeconds, " s")
         };
         // A recursive function to populate a pulldown with optional optiongroups,
         // and a default selection
@@ -1326,7 +1328,7 @@ var EDDTableImport;
         };
         // update state as a result of row datatype pulldown selection
         IdentifyStructuresStep.prototype.interpretRowDataTypePulldowns = function () {
-            console.log('Starting interpretRowDataTypePullDowns()');
+            //console.log('Starting interpretRowDataTypePullDowns()');
             var start = new Date();
             var grid = this.rawInputStep.getGrid();
             this.applyTableDataTypeStyling(grid);
@@ -1334,7 +1336,7 @@ var EDDTableImport;
             this.redrawEnabledFlagMarkers();
             this.queueGraphRemake();
             var ellapsedSeconds = (new Date().getTime() - start.getTime()) / 1000;
-            console.log("End interpretRowDataTypePullDowns(). Elapsed time", ellapsedSeconds, " s. Calling next step.");
+            //console.log("End interpretRowDataTypePullDowns(). Elapsed time", ellapsedSeconds, " s. Calling next step.");
             this.nextStepCallback();
         };
         IdentifyStructuresStep.prototype.toggleTableRow = function (box) {
@@ -1937,7 +1939,7 @@ var EDDTableImport;
             this.inputRefreshTimerID = setTimeout(this.reconfigure.bind(this), 500);
         };
         TypeDisambiguationStep.prototype.queueReparseThisStep = function () {
-            console.log('queueReparseThisStep()');
+            //console.log('queueReparseThisStep()');
             if (this.thisStepInputTimerID) {
                 clearTimeout(this.thisStepInputTimerID);
             }
@@ -1962,7 +1964,7 @@ var EDDTableImport;
             var _this = this;
             var startTime, endTime, elapsedSeconds, mode, parsedSets, seenAnyTimestamps, hideMasterTimestamp, hasRequiredInitialInput;
             startTime = new Date();
-            console.log("Start of TypeDisambiguationStep.reconfigure()");
+            //console.log("Start of TypeDisambiguationStep.reconfigure()");
             mode = this.selectMajorKindStep.interpretationMode;
             seenAnyTimestamps = this.identifyStructuresStep.seenAnyTimestamps;
             // Hide all the subsections by default
@@ -2002,7 +2004,8 @@ var EDDTableImport;
             this.setAllInputsEnabled(true);
             endTime = new Date();
             elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
-            console.log("End of TypeDisambiguationStep.reconfigure(). Elapsed time: ", elapsedSeconds, " s. Calling next step.");
+            //console.log("End of TypeDisambiguationStep.reconfigure(). Elapsed time: ",
+            //    elapsedSeconds, " s. Calling next step.");
             this.reparseThisStep();
         };
         // TODO: This function should reset all the disambiguation fields to the values
@@ -2052,7 +2055,7 @@ var EDDTableImport;
             var body, elapsedSeconds, endTime, hasRequiredInitialInputs, requiredInputText, startTime, table, uniqueLineNames, t, parentDiv;
             uniqueLineNames = this.identifyStructuresStep.uniqueLineNames;
             startTime = new Date();
-            console.log("Start of TypeDisambiguationStep.remakeLineSection()");
+            //console.log("Start of TypeDisambiguationStep.remakeLineSection()");
             this.currentlyVisibleLineObjSets.forEach(function (disam) {
                 disam.rowElementJQ.detach();
             });
@@ -2061,8 +2064,8 @@ var EDDTableImport;
             if (uniqueLineNames.length === 0) {
                 hasRequiredInitialInputs = this.identifyStructuresStep.requiredInputsProvided();
                 $('#masterLineDiv').toggleClass('off', !hasRequiredInitialInputs);
-                console.log("End of TypeDisambiguationStep.remakeLineSection() -- no unique line" +
-                    " names to process.");
+                //console.log("End of TypeDisambiguationStep.remakeLineSection() -- no unique line" +
+                //    " names to process.");
                 return;
             }
             this.currentlyVisibleLineObjSets = [];
@@ -2111,7 +2114,7 @@ var EDDTableImport;
             }
             endTime = new Date();
             elapsedSeconds = endTime.getTime() - startTime.getTime();
-            console.log("End of TypeDisambiguationStep.remakeLineSection(). Elapsed time: ", elapsedSeconds, " s");
+            //console.log("End of TypeDisambiguationStep.remakeLineSection(). Elapsed time: ", elapsedSeconds, " s");
         };
         // If the previous step found Line or Assay names that need resolving, put together a disambiguation section
         // for Assays/Lines.
@@ -2126,7 +2129,7 @@ var EDDTableImport;
             uniqueAssayNames = this.identifyStructuresStep.uniqueAssayNames;
             masterProtocol = this.selectMajorKindStep.masterProtocol;
             startTime = new Date();
-            console.log("Start of TypeDisambiguationStep.remakeAssaySection()");
+            //console.log("Start of TypeDisambiguationStep.remakeAssaySection()");
             // remove stale data from previous run of this step
             this.currentlyVisibleAssayObjSets.forEach(function (disam) {
                 disam.rowElementJQ.detach();
@@ -2136,14 +2139,14 @@ var EDDTableImport;
             this.assayObjSets = {};
             //end early if there's nothing to display in this section
             if ((!this.identifyStructuresStep.requiredInputsProvided()) || this.identifyStructuresStep.parsedSets.length === 0) {
-                console.log("End of TypeDisambiguationStep.remakeAssaySection() -- no input data" +
-                    " to process");
+                //console.log("End of TypeDisambiguationStep.remakeAssaySection() -- no input data" +
+                //    " to process");
                 return;
             }
             parentDiv = $('#disambiguateAssaysSection');
             if (uniqueAssayNames.length === 0) {
-                console.log("End of TypeDisambiguationStep.remakeAssaySection() -- no unique" +
-                    " assay names to process");
+                //console.log("End of TypeDisambiguationStep.remakeAssaySection() -- no unique" +
+                //    " assay names to process");
                 $('#masterAssayLineDiv').removeClass('off');
                 return;
             }
@@ -2234,8 +2237,8 @@ var EDDTableImport;
             avgRowCreationSeconds = totalRowCreationSeconds / nRows;
             endTime = new Date();
             elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
-            console.log("End of TypeDisambiguationStep.remakeAssaySection(). Table is ", nRows, " rows X ", nColumns, " cols, with ", ATData.existingLines.length, " line options. Elapsed time: " +
-                " time: ", elapsedSeconds, " s. Avg row creation time: ", avgRowCreationSeconds, " s");
+            //console.log("End of TypeDisambiguationStep.remakeAssaySection(). Table is ", nRows, " rows X ", nColumns, " cols, with ", ATData.existingLines.length, " line options. Elapsed time: " +
+            //    " time: ", elapsedSeconds, " s. Avg row creation time: ", avgRowCreationSeconds, " s");
         };
         TypeDisambiguationStep.prototype.addRequiredInputLabel = function (parentDiv, text) {
             return $('<div>')
@@ -2292,7 +2295,7 @@ var EDDTableImport;
             seenAnyTimestamps = this.identifyStructuresStep.seenAnyTimestamps;
             startTime = new Date();
             hasRequiredInitialInput = this.identifyStructuresStep.requiredInputsProvided();
-            console.log("Start of TypeDisambiguationStep.remakeMeasurementSection()");
+            //console.log("Start of TypeDisambiguationStep.remakeMeasurementSection()");
             parentDiv = $('#disambiguateMeasurementsSection');
             parentDiv.addClass('off');
             $('#masterMTypeDiv').addClass('off');
@@ -2304,8 +2307,8 @@ var EDDTableImport;
             // If in 'Transcription' or 'Proteomics' mode, there are no measurement types involved.
             // skip the measurement section, and provide statistics about the gathered records.
             if (mode === "tr" || mode === "pr") {
-                console.log("End of TypeDisambiguationStep.remakeMeasurementSection() - not" +
-                    " required for mode ", mode);
+                //console.log("End of TypeDisambiguationStep.remakeMeasurementSection() - not" +
+                //    " required for mode ", mode);
                 return;
             }
             // No measurements for disambiguation, have timestamp data:  That means we need to choose one measurement.
@@ -2314,8 +2317,8 @@ var EDDTableImport;
             // one other object with multiple types to work with (lines/assays).  We're not going to bother supporting that.
             if (hasRequiredInitialInput && uniqueMeasurementNames.length === 0 && seenAnyTimestamps) {
                 $('#masterMTypeDiv').removeClass('off');
-                console.log("End of TypeDisambiguationStep.remakeMeasurementSection() - no" +
-                    " measurements for disambiguation.");
+                //console.log("End of TypeDisambiguationStep.remakeMeasurementSection() - no" +
+                //    " measurements for disambiguation.");
                 return;
             }
             if (uniqueMeasurementNames.length > this.TOGGLE_ALL_THREASHOLD) {
@@ -2386,8 +2389,8 @@ var EDDTableImport;
             $('#disambiguateMeasurementsSection').toggleClass('off', uniqueMeasurementNames.length === 0 || !hasRequiredInitialInput);
             var endTime = new Date();
             var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
-            console.log("End of TypeDisambiguationStep.remakeMeasurementSection(). Elapsed time:" +
-                " ", elapsedSeconds, " s.");
+            //console.log("End of TypeDisambiguationStep.remakeMeasurementSection(). Elapsed time:" +
+            //    " ", elapsedSeconds, " s.");
         };
         TypeDisambiguationStep.prototype.addIgnoreCheckbox = function (row) {
             var checkbox;
@@ -2405,11 +2408,11 @@ var EDDTableImport;
             var _this = this;
             var body, parentDiv, row, table;
             var startTime = new Date();
-            console.log("Start of TypeDisambiguationStep.remakeMetadataSection()");
+            //console.log("Start of TypeDisambiguationStep.remakeMetadataSection()");
             var uniqueMetadataNames = this.identifyStructuresStep.uniqueMetadataNames;
             if (uniqueMetadataNames.length < 1) {
-                console.log("End of TypeDisambiguationStep.remakeMetadataSection(). Returning" +
-                    " early");
+                //console.log("End of TypeDisambiguationStep.remakeMetadataSection(). Returning" +
+                //    " early");
                 return;
             }
             $('#disambiguateMetadataTable').remove();
@@ -2457,7 +2460,7 @@ var EDDTableImport;
             }
             var endTime = new Date();
             var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
-            console.log("End of TypeDisambiguationStep.remakeMetadataSection(). Elapsed time: ", elapsedSeconds, " s.");
+            //console.log("End of TypeDisambiguationStep.remakeMetadataSection(). Elapsed time: ", elapsedSeconds, " s.");
         };
         TypeDisambiguationStep.prototype.userChangedRowEnabled = function (ev) {
             var checkbox, enabled;
@@ -2528,14 +2531,14 @@ var EDDTableImport;
         //    being 'set by the user'.
         TypeDisambiguationStep.prototype.userChangedAssayDisam = function (assayEl) {
             var startTime = new Date();
-            console.log("Start of TypeDisambiguationStep.userChangedAssayDisam()");
+            //console.log("Start of TypeDisambiguationStep.userChangedAssayDisam()");
             var changed, v;
             changed = $(assayEl).data('setByUser', true);
             // The span with the corresponding Line pulldown is always right next to the Assay pulldown
             changed.next().toggleClass('off', changed.val() !== 'named_or_new');
             if (changed.val() !== 'named_or_new') {
                 // stop here for anything other than 'new'; only 'new' cascades to following pulldowns
-                console.log("End of TypeDisambiguationStep.userChangedAssayDisam()");
+                //console.log("End of TypeDisambiguationStep.userChangedAssayDisam()");
                 return false;
             }
             v = changed.data('visibleIndex') || 0;
@@ -2549,11 +2552,11 @@ var EDDTableImport;
             });
             var endTime = new Date();
             var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
-            console.log("End of TypeDisambiguationStep.userChangedAssayDisam(). Elapsed time: ", elapsedSeconds, " s");
+            //console.log("End of TypeDisambiguationStep.userChangedAssayDisam(). Elapsed time: ", elapsedSeconds, " s");
             return false;
         };
         TypeDisambiguationStep.prototype.userChangedMeasurementDisam = function (element) {
-            console.log('changed');
+            //console.log('changed');
             var hiddenInput, textInput, type, rowIndex;
             hiddenInput = $(element);
             textInput = hiddenInput.prev();
@@ -2679,8 +2682,8 @@ var EDDTableImport;
             });
             var endTime = new Date();
             var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
-            console.log("End of TypeDisambiguationStep.disambiguateAnAssayOrLine(). Elapsed" +
-                " time: ", elapsedSeconds, " s");
+            //console.log("End of TypeDisambiguationStep.disambiguateAnAssayOrLine(). Elapsed" +
+            //    " time: ", elapsedSeconds, " s");
             return selections;
         };
         /**
@@ -2695,7 +2698,7 @@ var EDDTableImport;
             this.errorMessages = [];
             this.warningMessages = [];
             var startTime = new Date();
-            console.log("Start of TypeDisambiguationStep.createSetsForSubmission().");
+            //console.log("Start of TypeDisambiguationStep.createSetsForSubmission().");
             // From Step 1
             var mode = this.selectMajorKindStep.interpretationMode;
             var masterProtocol = this.selectMajorKindStep.masterProtocol || null; // Cast 0 to null
@@ -2856,7 +2859,7 @@ var EDDTableImport;
             }
             var endTime = new Date();
             var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
-            console.log("End of TypeDisambiguationStep.createSetsForSubmission(). Elapsed time: ", elapsedSeconds, " s");
+            //console.log("End of TypeDisambiguationStep.createSetsForSubmission(). Elapsed time: ", elapsedSeconds, " s");
             return resolvedSets;
         };
         TypeDisambiguationStep.prototype.getUserWarnings = function () {
@@ -2999,11 +3002,11 @@ var EDDTableImport;
             var wasDisabled = submitButton.prop('disabled');
             var disableSubmit = !(allPrevStepInputsProvided && (totalErrorsCount === 0) && allWarningsAcknowledged);
             if (disableSubmit) {
-                console.log('Disabling submit'); //TODO: remove debug stmt
+                //console.log('Disabling submit'); //TODO: remove debug stmt
                 submitButton.attr('disabled', 'disabled');
             }
             else {
-                console.log('Enabling submit'); //TODO: remove debug stmt
+                //console.log('Enabling submit'); //TODO: remove debug stmt
                 submitButton.removeAttr('disabled');
             }
             // TODO: re-enable me after upgrading to JQuery-UI 1.12+
@@ -3020,13 +3023,13 @@ var EDDTableImport;
                     var warningChkbx = stepWarningInputs_1[_b];
                     index++;
                     if (!warningChkbx.is(':checked')) {
-                        console.log('Not all warnings acknowledged. Warning ', index, 'isnt' +
-                            ' checked.'); //TODO: remove debug stmt and counter
+                        //console.log('Not all warnings acknowledged. Warning ', index, 'isnt' +
+                        //    ' checked.'); //TODO: remove debug stmt and counter
                         return false;
                     }
                 }
             }
-            console.log('All warnings acknowledged.'); //TODO: remove debug stmt
+            //console.log('All warnings acknowledged.');  //TODO: remove debug stmt
             return true;
         };
         ReviewStep.prototype.getMessageCount = function (messagesByStep) {
@@ -3115,7 +3118,7 @@ var EDDTableImport;
             this.updateSubmitEnabled();
         };
         ReviewStep.prototype.userSelectedAcknowledgeAllButton = function () {
-            console.log('User selected ack all button'); // TODO: remove debug stmt
+            //console.log('User selected ack all button'); // TODO: remove debug stmt
             // check whether all of the boxes are already checked
             var allSelected = true;
             for (var _i = 0, _a = this.warningInputs; _i < _a.length; _i++) {
@@ -3129,12 +3132,11 @@ var EDDTableImport;
                 }
             }
             // TODO: remove debug stmts
-            if (allSelected) {
-                console.log('All checkboxes already selected -- de-selecting.');
-            }
-            else {
-                console.log('Not all checkboxes already selected -- selecting all');
-            }
+            //if (allSelected) {
+            //    console.log('All checkboxes already selected -- de-selecting.');
+            //} else {
+            //    console.log('Not all checkboxes already selected -- selecting all');
+            //}
             // check or uncheck all of the boxes (some checked will result in all being checked)
             for (var _c = 0, _d = this.warningInputs; _c < _d.length; _c++) {
                 var stepCheckboxes = _d[_c];
