@@ -109,8 +109,13 @@ def search_study_lines(request):
     if Study.user_role_can_read(user):
         permission_check = Q()
     try:
-        study = Study.objects.get(permission_check, pk=study_pk)
+        # Note: distinct() necessary in case the user has multiple permission paths to access
+        # the study (e.g. individual and group permissions)
+        study = Study.objects.filter(permission_check, pk=study_pk).distinct().get()
         query = study.line_set.all()
+
+    # if study doesn't exist or requesting user doesn't have read acccess, return an empty
+    # set of lines
     except Study.DoesNotExist as e:
         query = Line.objects.none()
 

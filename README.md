@@ -24,14 +24,16 @@ EDD, follow directions here first.
 
 ## Getting Started <a name="#Getting_Started"/>
 
-With [Docker][2] and [docker-compose][3] installed, launching the entire EDD software stack is as simple as cloning the git repository and running:
+With [Docker][2] and [Docker Compose][3] installed, launching the entire EDD software stack is as
+simple as cloning the git repository and running:
 
     ./init-config.sh
     docker-compose up -d
 
-Without additional configuration, the launched copy of EDD will be using default options, so some functions 
-(e.g. TLS support, external authentication, referencing an ICE deployment) won't work.  See below for more detailed instructions for installing Docker
-and configuring EDD for your deployment environment.
+Without additional configuration, the launched copy of EDD will be using default options, so some 
+functions (e.g. TLS support, external authentication, referencing an ICE deployment) won't work.  
+See below for more detailed instructions for installing Docker and configuring EDD for your 
+deployment environment.
 
 
 ---------------------------------------------------------------------------------------------------
@@ -98,24 +100,8 @@ This section contains directions for setting up a production deployment for EDD 
     * There is a `docker.io` package too; this can work, but it will generally be outdated.
 * Create a user for running EDD; assuming user `jbeideploy` exists for further instructions.
 * As `jbeideploy`, check out code to `/usr/local/edd/` (this will be `$EDD_HOME` below)
-    * Create a `$EDD_HOME/edd/settings/local.py` file, based on the example in
-      `$EDD_HOME/edd/settings/local.py-example`
-        * Any local-specific settings changes will go here. The local settings are loaded last,
-          and will override any settings contained in other files in the `$EDD_HOME/edd/settings`
-          folder.
-    * Create `secrets.env` based on the example in `$EDD_HOME/secrets.env-example`
-        * `SECRET_KEY` is the Django server key; pick some random text
-        * `secret1` is a password you choose for the `postgres` PostgreSQL user
-        * `secret2` is a password you choose for the `edduser` PostgreSQL user
-        * `secret3` is a password you choose for the `edd_user` RabbitMQ user
-        * `secret4` is a password you choose for the `flower` Flower user
-        * `ICE_HMAC_KEY` is the key used to authenticate to ICE; set this to the secret used
-          in the ICE instance you connect to for test
-        * `LDAP_PASS` is the password for the `jbei_auth` user by default; you may use your own
-          password by including in your `$EDD_HOME/edd/settings/local.py`:
-          `AUTH_LDAP_BIND_DN = 'lblEmpNum=[your-six-digit-id],ou=People,dc=lbl,dc=gov'`
 * Set up your local docker-machine to manage a remote EDD deployment
-    * _If using docker client on a different host, i.e. with docker-machine_
+    * _If using Docker client on a different host, i.e. with `docker-machine`_
         * Ensure you have a public key in `jbeideploy`'s `~/.ssh/authorized_keys2` file
         * Create an environment for the remote host (replace `{REMOTE_HOST}` with hostname or IP)
 
@@ -126,7 +112,7 @@ This section contains directions for setting up a production deployment for EDD 
                   {NAME_OF_ENVIRONMENT}
 
         * Activate the machine with `eval $(docker-machine env {NAME_OF_ENVIRONMENT})`
-        * Set environment variable on docker client host `EDD_HOST_DIR` to `$EDD_HOME`
+        * Set environment variable on Docker client host `EDD_HOST_DIR` to `$EDD_HOME`
             * Prepend `EDD_HOST_DIR=/usr/local/edd/` to any `docker-compose` commands
             * Alternatively, `export EDD_HOST_DIR=/usr/local/edd/` before running commands
             * The trailing `/` is important!
@@ -135,79 +121,130 @@ This section contains directions for setting up a production deployment for EDD 
 			
 
 ### Common Setup Tasks
-After you have all of the Docker tools minimally configured for your environment, perform the following steps in the EDD checkout directory to configure EDD and launch it for the first time.
+After you have all of the Docker tools minimally configured for your environment, perform the 
+following steps in the EDD checkout directory to configure EDD and launch it for the first time.
 
-TODO: update me for init_config.sh
+* __Run `./init-config.sh`__  
+  This script will:
+    * Test your git configuration
+    * Copy sample configuration files
+    * Generate random passwords for use in autoconfiguring EDD's Docker services
+* __Configure `secrets.env`__
 
-* Copy `./edd/settings/local.py-example` to `./edd/settings/local.py`, then edit to meet your deployment needs
-    * Any local-specific settings changes will go here. The local settings are loaded last, and will override any settings contained in other files in the `./edd/settings` folder.
-	* At a minimum, you should override ADMINS=MANAGERS=(your_data_here) so you get automated emails from EDD when errors occur.
-* Create a `secrets.env` based on the example in `secrets.env-example`
-    * the value of `SECRET_KEY` is the Django server key; pick some random text
-    * `secret1` is a password you choose for the `postgres` PostgreSQL user
-    * `secret2` is a password you choose for the `edduser` PostgreSQL user
-    * `secret3` is a password you choose for the `edd_user` RabbitMQ user
-    * `secret4` is a password you choose for the `flower` Flower user
-    * the value of `ICE_HMAC_KEY` is the key used to authenticate to ICE; set this to the
-      secret used in the ICE instance you connect to for test
-    * the value of `LDAP_PASS` is the password for the `jbei_auth` user by default; you
-      may use your own password by including in your `./edd/settings/local.py`:
-      `AUTH_LDAP_BIND_DN = 'lblEmpNum=[your-six-digit-id],ou=People,dc=lbl,dc=gov
-* Build EDD's docker images
-   * Make sure you're targeting the correct Docker machine. In the local development example above, run `eval "$(docker-machine env default)"`. If you're using docker-compose to launch EDD on a remote host, your command will be different, and you should make sure you're executing docker on the correct host.
-   * Run `docker-compose build` to build the Docker containers for EDD. This will take a while. In the future, we may publish pre-built Docker images that will prevent you from having to take this step.
-* Launch EDD's services by running `docker-compose up -d`. At this point, you can use Docker commands to view the logs for each service or to locate the IP for viewing EDD's web interface. See "Running EDD" below for a list of helpful commands.
-* Perform other [configuration][8] as desired for your EDD instance. 
-  For example, by default, EDD will launch with an empty database, so you may want to use environment variables to load an existing one.
-* If you're starting from a blank database, use the web interface to configure EDD for your institution.
-	If you haven't loaded EDD from an existing database, you'll need to create an administrator account from the command line that you can then use to create measurement types, units, and other user accounts to get the system going. 
-	
-	    docker-compose exec appserver python manage.py create_user
-			
-    2. Configure EDD using the web interface.
-	Log into EDD's web interface using an administrator account.  Go to "Administration" at top left, then use the interface to create a minimal set of Users, Units, Measurement Types, Metadata, etc that allow users to import their data. TODO: We plan to add more to this section of the documentation over time to describe how these entries are used and when / how to edit them.
+  To save work later, you may want to manually edit `secrets.env` to set memorable passwords 
+  of your choosing for EDD services whose web interfaces are exposed via EDD's nginx proxy, 
+  or that you intend to expose on your host. For example, services such as 
+  RabbitMQ and Flower Passwords are established during the Docker image builds prior to the 
+  first run, so make certain you've edited these files before the first build/run, or that 
+  you completely remove and rebuild the related Docker containers/volumes if you change 
+  these passwords without taking note of the old ones. You can also directly iterface with
+  the services later to change their passwords, but that's significantly more work if you 
+  aren't already familiar with them. You'll also need to update this file when configuring
+  some passwords to enable EDD services to communicate with each other.
+  
+  After setting passwords in `secrets.env`, you can come back and perform more detailed
+  configuration of EDD and Docker later without adding too much work.
+
+* __Build EDD's Docker Images__
+    * Make sure you're targeting the correct Docker machine. In the local development example
+      above, run `eval "$(docker-machine env default)"`. If you're using Docker Compose to launch EDD
+      on a remote host, your command will be different, and you should make sure you're executing 
+	  Docker on the correct host.
+    * Run `docker-compose build` to build the Docker containers for EDD. This will take a while. In 
+      the future, we may publish pre-built Docker images that will prevent you from having to take 
+	  this step.
+	* You can actually skip this step and just run the command to start EDD, but it's included here
+	  to familiarize developers / maintainers with the Docker build process in case they have to run
+	  it later.
+* __Launch EDD's services__
+
+  Run `docker-compose up -d`. At this point, you can use Docker 
+  commands to view the logs for each service or to locate the IP for viewing EDD's web interface. 
+  See "Running EDD" below for a list of helpful commands. If you skipped the previous step, this
+  command will take significantly longer the first time you run it, since Docker has to initially
+  build / configure the EDD services before they can run.
+* __Perform other [configuration][8] as desired__
+
+  For example, by default, EDD will launch with an empty database, so you may want to use 
+  environment variables to load an existing one.
+    * If you're starting from a blank database, use the web interface to configure EDD for your 
+      institution.
+    * If you haven't loaded EDD from an existing database, you'll need to create an administrator 
+      account from the command line that you can then use to create measurement types, units, and 
+      other user accounts to get the system going. 
+        1. Create an administrator account: `docker-compose exec appserver python manage.py createsuperuser`
+        2. Configure EDD using the web interface
+
+           Log into EDD's web interface using an administrator account.  Go to "Administration" at top left,
+           then use the interface to create a minimal set of Users, Units, Measurement Types, Metadata, etc
+           that allow users to import their data. TODO: We plan to add more to this section of the documentation 
+           over time to describe how these entries are used and when / how to edit them.
+ * __Install and configure a supporting [ICE][10] deployment__
+ 
+   EDD requires ICE as a reference for strains used in EDD's experiments.  You won't be able to create lines
+   in your EDD studies until EDD can successfully communicate/authenticate with ICE.
+      * Follow ICE's directions for installation/setup
+	  * Configure an HMAC key for EDD's use. EDD's default configuration assumes a key ID of 'edd', but
+	    you can change it by overriding the value of `ICE_KEY_ID` in your `local.py`
+	  * TODO: insert key generation directions here, or reference ICE directions. 
+	  * See directions under Common 'Maintenance/Development Tasks' to test EDD/ICE communication
   
 
 ### Running EDD
-This section is a quick reference for commonly helpful commands for running / developing EDD. Many of them use docker-compose and other related Docker tools that aren't fully documented here.
+This section is a quick reference for commonly helpful commands for running / developing EDD. Many 
+of them use Docker Compose and other related Docker tools that aren't fully documented here.
 
-* Docker services
-  `docker-compose` is the recommended tool for controlling EDD services. `docker-compose.yml` defines the list of services as top-level entries under the 'services' line.  
+* __Docker services__
+
+  `docker-compose` is the recommended tool for controlling EDD services. `docker-compose.yml` 
+  defines the list of services as top-level entries under the 'services' line.  
   For quick reference, at the time of writing the provided services are:
-	   * appserver: runs EDD itself
-	   * postgres: provides EDD's database
-	   * redis: provides a static file cache for EDD
-	   * solr: provides a search cache for EDD studies, users, and measurement types
-	   * rabbitmq: messaging bus that supports Celery
-	   * flower: management / monitoring application for Celery
-	   * smtp: provides administrative email notifications for EDD errors
-	   * worker: runs the EDD Celery worker for asynchronous processing. At the time of writing, EDD uses Celery to communicate with ICE and to keep the UI respensive during file imports.
-  While edd is running, you can also get a list of its services by runnning `docker ps`. Each service will be listed in the "NAMES" column of the output, with a prefix/postfix automatically added by Docker-compose: e.g. "edd_appserver_1" is the first instance of the "appserver" service running launched from a directory called "edd".
-* `docker-compose` commands
-    * Build all services:  `docker-compose build`
-    * Startup all services in detached mode: `docker-compose up -d` (recommended to keep muliple service logs from cluttering the screen)
-    * View logs: `docker-compose logs [service]`
-    * Bringing down all services: `docker-compose down`
-    * See more in the [Docker Compose documentation][3]
-    * Compose may complain about a missing variables. If this bothers you, run an export
-      command to assign an empty string to each: `export EDD_HOST_DIR=`
-* Determining the local URL for EDD's web interfaces:
-    To access services, use the IP listed in `docker-machine ip default`, e.g.
-        * EDD: https://192.168.99.100/
-		* EDD's REST API: https://192.168.99.100/rest/ (if enabled)
-        * Solr: http://192.168.99.100/solr/
-		* Flower: https://192.168.99.100/flower/
-        * RabbitMQ Management Plugin: http://192.168.99.100/rabbitmq
-* Interfacing with EDD's services from the command line:
-        * To run commands in __new__ containers, use `docker-compose run $SERVICE $COMMAND`,
-          e.g.: `docker-compose run edd python manage.py shell`
-        * Run commands in __existing__ containers with `docker-compose exec $SERVICE $COMMAND`,
-          e.g.: `docker-compose exec appserver python manage.py shell`
-        * Restart misbehaving services with:  `docker-compose restart $SERVICE`		
-        * Other useful sample commands:
-            * Connect to the Postgres command line: `docker-compose exec postgres psql -U postgres`
-            * Connect to the Django shell: `docker-compose exec appserver python manage.py shell`
-* Running Docker commands in new shell sessions
+   * appserver: runs EDD itself
+   * postgres: provides EDD's database
+   * redis: provides the cache back-end for EDD. At the time of writing, EDD uses redis to map 
+     static resource names to URLs and to store session data.
+   * solr: provides a search index for EDD studies, users, and measurement types
+   * rabbitmq: messaging bus that supports Celery
+   * flower: management / monitoring application for Celery
+   * smtp: main server that supports emails from EDD
+   * worker: runs the EDD Celery worker for asynchronous processing. At the time of writing, 
+     EDD uses Celery to communicate with ICE and to keep the UI respensive during file imports.
+   * nginx: webserver that proxies clients' HTTP requests to other Docker services
+  While edd is running, you can also get a list of its services by runnning `docker-compose ps` 
+  from the main directory. Each service will be listed in the "Name" column of the output, with a 
+  prefix/postfix automatically added by Docker-compose: e.g. "edd_appserver_1" is the first instance
+  of the "appserver" service running launched from a directory called "edd". You can alternatively 
+  use `docker ps` from any directory to get a similar listing, though it will include all 
+  containers running on your host, not just those defined by EDD.
+* __`docker-compose` commands__
+   * Build all services:  `docker-compose build`
+   * Startup all services in detached mode: `docker-compose up -d` (recommended to keep muliple   service logs from cluttering the screen, and so `^C` doesn't stop EDD)
+   * View logs: `docker-compose logs [service]`
+   * Bringing down all services: `docker-compose down`
+   * See more in the [Docker Compose documentation][3]
+   * Compose may complain about a missing variables. If this bothers you, run an export
+     command to assign an empty string to each: `export EDD_HOST_DIR=`
+* __Determining the local URL for EDD's web interfaces:__
+
+  To access services, use the IP listed in the 
+  output from `docker-machine ip default`. By default on most systems, use:
+   * __EDD:__ https://192.168.99.100/
+   * __EDD's REST API:__ https://192.168.99.100/rest/ (if enabled)
+   * __Solr:__ https://192.168.99.100/solr/
+   * __Flower:__ https://192.168.99.100/flower/
+   * __RabbitMQ Management Plugin:__ https://192.168.99.100/rabbitmq
+* __Interfacing with EDD's services from the command line:__
+   * To run commands in __new__ containers, use `docker-compose run $SERVICE $COMMAND`,
+     e.g.: `docker-compose run edd python manage.py shell`. Many Docker tutorals use "run" to 
+	 simplify the directions, but it should generally be avoided since it creates new containers
+	 unnecessarily.
+   * Run commands in __existing__ containers with `docker-compose exec $SERVICE $COMMAND`,
+     e.g.: `docker-compose exec appserver python manage.py shell`
+   * Restart misbehaving services with:  `docker-compose restart $SERVICE`		
+   * Other useful sample commands:
+       * Connect to the Postgres command line: `docker-compose exec postgres psql -U postgres`
+       * Connect to the Django shell: `docker-compose exec appserver python manage.py shell`
+* __Running Docker commands in new shell sessions__
     * The `docker` command will look for a Docker daemon running on the local machine by
       default. Mac hosts currently must use a daemon running in a VirtualBox guest VM. Load
       the Docker environment on the guest with:
@@ -220,6 +257,8 @@ This section is a quick reference for commonly helpful commands for running / de
           docker-compose build
 
 ### For Developers:
+* There's configuration already in place to help you work on EDD. Uncomment support for the Django
+  debug toolbar in the sample `local.py` file
 * The EDD makes use of Node.js and grunt for builds; it would be a good idea to:
     * OS X:
         * Install node; this is already included in the Brewfile
@@ -239,17 +278,18 @@ This section is a quick reference for commonly helpful commands for running / de
         * `sudo npm install grunt`
 * EDD uses [TypeScript][6] for its client-side interface
     * Dependencies are listed in `packages.json` and may be installed with `npm install`
-    * Compile changes in `*.ts` to `*.js` by simply running `grunt --force` from the edd base
+    * Compile changes in `*.ts` to `*.js` by simply running `grunt` from the edd base
     directory. It will rebuild the TypeScript and automatically run Django's collectstatic to 
 	update the Javascript files in use by your instance
 
 #### Additional Build Process Setup
-The typescript build process includes some comments that will change with every rebuild. These
+The TypeScript build process includes some comments that will change with every rebuild. These
 comments will cause unnecessary merge conflicts if allowed into the repo, so the project includes
 some configuration to strip them out.
 
-After cloning the repo for the first time run `.gitconfig.sh`. If updating an existing repo, you may need to add changed files to the index
-once. Some bundled git versions are outdated and cannot use the configuration contained in the
+After cloning the repo for the first time run `.gitconfig.sh`. If updating an existing repo, you 
+may need to add changed files to the index once. Some bundled git versions are outdated and cannot
+use the configuration contained in the
 script; you may need to install a newer version of git; [Homebrew](#HomeBrew) instructions above
 will install a more recent version on Macs.
 
@@ -264,18 +304,24 @@ Some of these sample commands will only work as written at JBEI, but should serv
 examples for common development tasks. Directions assume that Docker containers are already
 running in the development environment.
 
-* Run automated tests:
+* __Run automated tests__
    * Python tests: `docker-compose exec appserver python manage.py test`
-   * Javascript tests
-      * run `$ grunt test` to test javascript files.
-      * run `$ grunt screenshots` to test graphs
+   * Javascript Tests <a name="Javascript Tests"/>
+      * run `grunt test` to test javascript files.
+      * run `grunt screenshots` to test graphs
+      * run `webdriver-manager start` in one command window and `grunt e2e-test` in another for E2E
+        tests
    * Test EDD/ICE communication: `docker-compose exec appserver manage.py test_ice_communication`
-		  
-* Create an unprivileged test account
+   * Test email configuration
+      * `python manage.py send_test_email your.email@somewhere.com`
+      * `python manage.py sendtestemail --admins`
+      * `python manage.py sendtestemail --managers`
+
+* __Create an unprivileged test account__
     * `docker-compose exec appserver python manage.py create_user`
-    
-* Dump the production database to file and load into a local test deployment
-    * Create the dump file with this command
+
+* __Dump the production database to file and load into a local test deployment__
+    * Create the dump file
 
           pg_dump -h postgres.jbei.org -d eddprod -f edd-prod-dump.sql -U your_username'
 
@@ -284,9 +330,14 @@ running in the development environment.
           docker-compose down
           POSTGRES_DUMP_FILE=edd-prod-dump.sql docker-compose up -d
           
-* Rebuild SOLR indexes: `docker-compose exec appserver manage.py edd_index`
+* __Rebuild Solr indexes:___ `docker-compose exec appserver manage.py edd_index`. 
 
-* Run development / maintenance level scripts: see [separate directions][9] for configuring a standalone Python environment to run these scripts, and for the list of available scripts.
+  This shouldn't normally be required, but can be helpful following unanticipated software errors.
+
+* __Run development / maintenance level scripts__
+
+  See [separate directions][9] for configuring a standalone Python environment to run these scripts,
+  and for the list of available scripts.
 
 
 		  
@@ -298,14 +349,21 @@ but this is the safest upgrade process (though also the most time-consuming):
    At the time of writing, a successful build and migration/indexing processes may take
    upwards of 30-40 minutes, so leave some overhead and plan for EDD to 
    be down for about an hour.
-1. Make sure you're targeting the correct docker machine. In the development example above, you'd run:
+2. Make sure you're targeting the correct Docker machine. In the development example above, you'd run:
     eval `$(docker-machine env default)`
-2. Stop the current instance and all supporting services: `docker-compose down`
-3. Consider backing up the database in case of unanticipated migration failures.
-3. Get the latest code: `git checkout [branch]`
-4. Rebuild the Docker images. This step can often be skipped, but it's safest to execute it anyway in case EDD's dependencies have changed: `docker-compose build`
-5. Restart EDD and supporting services. `docker-compose up -d`. This will take longer than normal following an upgrade, since Docker will automatically run any pending database migrations, relaunch the containers, and rebuild the SOLR indexes. You can watch the `appserver` container's log for a good overview of progress, e.g. `docker-compose logs -f appserver`
-6. Log into the web interface and exercise a few features to confirm the upgrade was successful.
+3. Run `git status` and make a note of the result in case you need to abort the upgrade for any reason.
+4. Get the latest code: `git checkout [branch]`. 
+5. Rebuild the Docker images. This step can often be skipped, but it's safest to execute it anyway
+   in case EDD's dependencies have changed: `docker-compose build`. Rebuilding will go quickly in cases where
+   there's little work to do, at other times this step may take upwards of 30 minutes, but is safe to perform
+   while EDD's Docker containers are still runnning.
+6. Stop the current instance and all supporting services: `docker-compose down`
+7. Back up EDD's database in case of any unanticipated migration failures.
+8. Restart EDD and supporting services. `docker-compose up -d`. This will take longer than normal 
+   following an upgrade, since Docker will automatically run any pending database migrations, relaunch
+   the containers, and rebuild the SOLR indexes. You can watch the `appserver` container's log for 
+   a good overview of progress, e.g. `docker-compose logs -f appserver`
+9. Log into the web interface and exercise a few features to confirm the upgrade was successful.
 
 
 ---------------------------------------------------------------------------------------------------
@@ -319,3 +377,4 @@ but this is the safest upgrade process (though also the most time-consuming):
 [7]:    https://docs.docker.com/engine/installation/linux/
 [8]:    Configuration.md
 [9]:    jbei/README.md
+[10]:   https://github.com/JBEI/ice

@@ -4,6 +4,7 @@
 .pydevproject
 .idea
 tscommand-*
+.tscache
 
 # per-machine configuration file; contains secrets, DO NOT CHECK-IN
 server.cfg
