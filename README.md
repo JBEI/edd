@@ -175,10 +175,10 @@ following steps in the EDD checkout directory to configure EDD and launch it for
         1. Create an administrator account: `docker-compose exec appserver python manage.py createsuperuser`
         2. Configure EDD using the web interface
 
-          Log into EDD's web interface using an administrator account.  Go to "Administration" at top left,
-          then use the interface to create a minimal set of Users, Units, Measurement Types, Metadata, etc
-          that allow users to import their data. TODO: We plan to add more to this section of the documentation 
-          over time to describe how these entries are used and when / how to edit them.
+           Log into EDD's web interface using an administrator account.  Go to "Administration" at top left,
+           then use the interface to create a minimal set of Users, Units, Measurement Types, Metadata, etc
+           that allow users to import their data. TODO: We plan to add more to this section of the documentation 
+           over time to describe how these entries are used and when / how to edit them.
  * __Install and configure a supporting [ICE][10] deployment__
  
    EDD requires ICE as a reference for strains used in EDD's experiments.  You won't be able to create lines
