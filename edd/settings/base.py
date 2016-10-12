@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Django settings for edd project.
+Django settings for the EDD project, as well as some custom EDD-defined configuration.
 
 For more information on this file, see
 https://docs.djangoproject.com/en/dev/topics/settings/
@@ -24,23 +24,46 @@ env = environ.Env(
 )
 # Use the SECRET_KEY to detect if env is setup via Docker; if not, load from file secrets.env
 if env('SECRET_KEY', default=DOCKER_SENTINEL) is DOCKER_SENTINEL:
-    env.read_env(root('secrets.env'))
+    env.read_env(root('secrets.env'))  # read passwords into the environment from secrets.env
 
+###################################################################################################
+# Custom EDD-defined configuration options
+###################################################################################################
+
+# Optionally alter the UI to make a clear distinction between deployment environments (e.g. to
+# help prevent developers from accidentally altering data in production). Any value that starts with
+# the prefix "DEVELOPMENT" or "TEST" will change EDD's background color and print a the value of
+# this variable at the top of each page.
+EDD_DEPLOYMENT_ENVIRONMENT = env('EDD_DEPLOYMENT_ENVIRONMENT',  default='PRODUCTION')
 
 # override to allow arbitrary text instead of requiring protein ID's to fit the pattern of Uniprot
-# accession id's (though at present validity isn't confirmed)
+# accession id's (though at present validity isn't confirmed, only format).
+# See http://www.uniprot.org/
 REQUIRE_UNIPROT_ACCESSION_IDS = True
 
-###################################################################################################
-# Set ICE configuration used in multiple places, or that we want to be able to override in local.py
-###################################################################################################
+# by default, don't expose EDD's nascent DRF-based REST API until we can do more testing
+# This option is needed to support the bulk line creation script, but should only be exposed on
+# a secure network because of known security problems in the first version.
+PUBLISH_REST_API = False
+
+##############################
+# ICE configuration used in multiple places, or that we want to be able to override in local.py
+##############################
 ICE_KEY_ID = 'edd'
 ICE_SECRET_HMAC_KEY = env('ICE_HMAC_KEY')
 ICE_URL = 'https://registry-test.jbei.org/'
 ICE_REQUEST_TIMEOUT = (10, 10)  # HTTP request connection and read timeouts, respectively (seconds)
 
-# Override only to avoid heachaches in *LOCAL* testing against a non-TLS ICE deployment
+# Override only to avoid heachaches in *LOCAL* testing against a non-TLS ICE deployment.
+# WARNING: Use in any context other than local testing exposes ICE data in the clear!
 VERIFY_ICE_CERT = True
+
+##############################
+# Solr/Haystack Configuration
+##############################
+EDD_MAIN_SOLR = {
+    'default': env.search_url(default='solr://solr:8983/solr/'),
+}
 
 
 ###################################################################################################
@@ -62,9 +85,6 @@ EMAIL_HOST_USER = ''
 EMAIL_HOST_PASSWORD = ''
 EMAIL_PORT = 25
 
-
-
-
 ###################################################################################################
 # Basic Django configuration
 ###################################################################################################
@@ -81,7 +101,6 @@ SECRET_KEY = env('SECRET_KEY', default='I was awake and dreaming at the same tim
 ALLOWED_HOSTS = []
 SITE_ID = 1
 USE_X_FORWARDED_HOST = True
-EDD_DEPLOYMENT_ENVIRONMENT = env('EDD_DEPLOYMENT_ENVIRONMENT',  default='PRODUCTION')
 
 LOGIN_REDIRECT_URL = '/'
 
@@ -155,14 +174,6 @@ TEMPLATES = [
 
 
 ###################################################################################################
-# Solr/Haystack Configuration
-###################################################################################################
-EDD_MAIN_SOLR = {
-    'default': env.search_url(default='solr://solr:8983/solr/'),
-}
-
-
-###################################################################################################
 # Databases
 ###################################################################################################
 # https://docs.djangoproject.com/en/dev/ref/settings/#databases
@@ -195,8 +206,8 @@ SESSION_CACHE_ALIAS = 'default'
 ###################################################################################################
 # REST API Framework
 ###################################################################################################
+# http://www.django-rest-framework.org/api-guide/settings/
 
-PUBLISH_REST_API = False  # by default, don't publish the API until we can do more testing
 REST_FRAMEWORK = {
     # Use Django's standard `django.contrib.auth` authentication.
     'DEFAULT_AUTHENTICATION_CLASSES': (

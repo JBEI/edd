@@ -1,13 +1,37 @@
 # -*- coding: utf-8 -*-
-""" Celery-specific settings saved here. """
+"""
+Defines configuration for EDD's Celery worker(s), and for Celery-specific custom EDD configuration
+options. Note that some of EDD's Celery tasks override defaults configured here to accomodate
+their specific needs.
+For Celery configuration reference, see http://docs.celeryproject.org/en/latest/configuration.html
+"""
 
 from datetime import timedelta
 from edd_utils.parsers.json_encoders import EXTENDED_JSON_CONTENT_TYPE
 
 from .base import env
 
+###################################################################################################
+# EDD-specific configuration for Celery (NOT Celery-defined constants as in the rest of the file)
+###################################################################################################
 # Defines whether or not EDD uses Celery.
 USE_CELERY = False
+
+# buffer around the final task retry during which no warning emails will be sent
+CELERY_MIN_WARNING_GRACE_PERIOD_MIN = 30
+
+# Shared defaults for Celery communication with ICE. May be overridden on a task-by-task basis,
+# depending on the processing being performed. These defaults are appropriate for simple ICE
+# queries or data pushes that don't do a significant amount of processing, and execute quickly
+# with each retry attempt. For help in configuring new defaults, run time_until_retry() or
+# compute_exp_retry_delay() in celery_utils.py from the command line.
+
+# seconds before first retry attempt. assumption is exponential backoff.
+CELERY_INITIAL_ICE_RETRY_DELAY = 2
+# ~= 14 seconds total wait after initial failure (execution+timeout are extra)
+CELERY_WARN_AFTER_RETRY_NUM_FOR_ICE = 3
+# ~= 2 weeks total wait...plenty of overhead for outages without intervention/data loss
+CELERY_MAX_ICE_RETRIES = 19
 
 ###################################################################################################
 # Configure email notifications for task errors
@@ -75,7 +99,6 @@ CELERYD_TASK_TIME_LIMIT = 300
 # the less descriptive naming convention 'tasks.py'
 CELERY_IMPORTS = ('edd.remote_tasks',)
 
-
 ####################################################################################################
 # Configure database backend to store task state and results
 ####################################################################################################
@@ -87,23 +110,3 @@ CELERY_RESULT_DB_SHORT_LIVED_SESSIONS = True
 
 # initially keep task results for 30 days to enable some history inspection while load is low
 CELERY_TASK_RESULT_EXPIRES = timedelta(days=30)
-
-
-###################################################################################################
-# EDD-specific configuration for Celery (NOT Celery-defined constants as in the rest of the file
-###################################################################################################
-# buffer around the final retry during which no warning emails will be sent
-CELERY_MIN_WARNING_GRACE_PERIOD_MIN = 30
-
-# Shared defaults for Celery communication with ICE. May be overridden on a task-by-task basis,
-# depending on the processing being performed. These defaults are appropriate for simple ICE
-# queries or data pushes that don't do a significant amount of processing, and execute quickly
-# with each retry attempt. For help in configuring new defaults, run time_until_retry() or
-# compute_exp_retry_delay() in celery_utils.py from the command line.
-
-# seconds before first retry attempt. assumption is exponential backoff.
-CELERY_INITIAL_ICE_RETRY_DELAY = 2
-# ~= 14 seconds total wait after initial failure (execution+timeout are extra)
-CELERY_WARN_AFTER_RETRY_NUM_FOR_ICE = 3
-# ~= 2 weeks total wait...plenty of overhead for outages without intervention/data loss
-CELERY_MAX_ICE_RETRIES = 19
