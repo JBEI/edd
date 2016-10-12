@@ -304,20 +304,19 @@
 
     <div class="helpBadgeDiv">Help
       <div class="helpContent">
-          <p>
-              Configure the pulldown menus on the left of the table to tell EDD how to
-              interpret each row and column of your data.</p>
-          <p>EDD will make an educated guess at how the pulldowns should be set, but you may need
-              to tweak them. In most cases, you can verify correctness by inspecting a plot of
-              the data that will appear below. You can also go back and edit your data in Step 2
-              without losing your settings here.</p>
-          <h1>Importing subsets of the file content:</h1>
-          <ul>
-              <li>Check/uncheck boxes above and to the left of the table to enable
+        <p>Configure the pulldown menus on the left of the table to tell EDD how to
+            interpret each row and column of your data.</p>
+        <p>EDD will make an educated guess at how the pulldowns should be set, but you may need
+            to tweak them. In most cases, you can verify correctness by inspecting a plot of
+            the data that will appear below. You can also go back and edit your data in Step 2
+            without losing your settings here.</p>
+        <h1>Importing subsets of the file content:</h1>
+        <ul>
+          <li>Check/uncheck boxes above and to the left of the table to enable
               or disable an the entire row or column. Disabled rows/columns will be omitted when
               your data is imported.</li>
-              <li>Double-click inside the table area to enable or disable individual values.</li>
-          </ul>
+          <li>Double-click inside the table area to enable or disable individual values.</li>
+        </ul>
       </div>
     </div>
 
@@ -326,33 +325,35 @@
     Step 3 : Verify the data has been interpreted correctly, and disable any values you don't want.
 
   </div>
-    <div id="waitingForServerLabel" class="disabledStepLabel off">Waiting for server to
-          respond with existing data for this study...</div>
-      <div id="processingStep2ResultsLabel" class="disabledStepLabel wait off">Processing file
-          input from
-          step 2...</div>
-    <div id="enterDataInStep2" class="disabledStepLabel">
-      Complete the preceding steps first!
+  <div id="waitingForServerLabel" class="disabledStepLabel off">
+    Waiting for server to respond with existing data for this study...
+  </div>
+  <div id="processingStep2ResultsLabel" class="disabledStepLabel wait off">
+    Processing file input from step 2...
+  </div>
+  <div id="enterDataInStep2" class="disabledStepLabel">
+    Complete the preceding steps first!
+  </div>
+  <div id="step3UpperLegend" class="step3Legend off sectionContent">
+    <div class="legendRow">
+        <span class="legendCell">Row needs interpretation: </span>
+        <span class="ignoredRowLegendBox legendCell"></span>
+        <span class="legendCell legendColumn3"> Ignored during import: </span>
+        <span class="disabledRowLegendBox legendCell"></span>
     </div>
-    <div id="step3UpperLegend" class="step3Legend off sectionContent">
-        <div class="legendRow">
-            <span class="legendCell">Row needs interpretation: </span>
-            <span class="ignoredRowLegendBox legendCell"></span>
-            <span class="legendCell legendColumn3"> Ignored during import: </span>
-            <span class="disabledRowLegendBox legendCell"></span>
-        </div>
-    </div>
-
+  </div>
 
   <div id="dataTableDiv" class="dataTableDiv off"></div>
-    <div id="missingStep3InputDiv" class="off sectionContent errorMessage">Missing required input
-        (s) above</div>
 
-    <div id="graphDiv">
-            <div class="btn-toolbar" id="chartType"></div>
-            <div class="linechart"></div>
-            <div class="graphContainer"></div>
-    </div>
+  <div id="missingStep3InputDiv" class="off sectionContent errorMessage">
+    Missing required input (s) above
+  </div>
+
+  <div id="graphDiv">
+    <div class="btn-toolbar" id="chartType"></div>
+    <div class="linechart"></div>
+    <div class="graphContainer"></div>
+  </div>
 </div>
 
 <!-- Step 4 -->
@@ -366,9 +367,9 @@
           <p>EDD will do its best to  pre-set these values for you based on data already
               present in the system, but you should always verify its work.</p>
           <h1>Impact on Existing data in the Study</h1>
-            <p>Recall that if you tell EDD to use pre-existing Assays in this step, the impact on
-                existing data in your study will depend on whether you chose "merge" or "replace"
-                is Step 1.</p>
+          <p>Recall that if you tell EDD to use pre-existing Assays in this step, the impact on
+              existing data in your study will depend on whether you chose "merge" or "replace"
+              in Step 1.</p>
           <h1>Import Scope</h1>
           <p>Keep in mind that all the Assays in the pulldown and all the Assays created by this
               step of the import process are for the Protocol you've selected in Step 1. Unless the
@@ -394,127 +395,144 @@
   <div class="disabledStepLabel" id="emptyDisambiguationLabel">
     Complete the preceding steps first!
   </div>
-    <div class="disabledStepLabel wait off" id="processingStep3Label">Processing input from Step
-        3</div>
 
-  <div class="sectionContent off" id="masterTimestampDiv">
-
-    <table class="formTable" style="margin-left:1em;">
-      <tr>
-        <td style="vertical-align:middle;">
-          <span>
-            Time for all measurements:
-            <input  type="text"
-                size="6"
-                name="masterTimestamp"
-                id="masterTimestamp"
-                value=""> hours
-          </span>
-        </td>
-      </tr>
-    </table>
-      <span id="masterTimestampRequiredPrompt" class="off missingSingleFormInput">Required. No
-          measurement has a time.</span>
-
+  <div class="disabledStepLabel wait off" id="processingStep3Label">
+    Processing input from Step 3
   </div>
 
-  <div class="sectionContent off" id="masterLineDiv">
+  <div class="disambiguationSections">
 
-    <table class="formTable" style="margin-left:1em;">
-      <tr>
-        <td style="vertical-align:middle;">
-          <span>
-            Line for the all data:
-            <select name="masterLine" id="masterLine">
-              <option value="new">(Create New)</option>
-              {% for line in study.line_set.all %}
-              <option value="{{ line.pk }}">{{ line.name }}</option>
-              {% endfor %}
-            </select>
-          </span>
-        </td>
-      </tr>
-    </table>
+    <div class="sectionContent off" id="masterTimestampDiv">
 
-  </div>
+      <h3>Time for all measurements</h3>
+      <table>
+        <tr>
+          <td style="vertical-align:middle;">
+            <span>
+              <input  type="text"
+                  size="6"
+                  name="masterTimestamp"
+                  id="masterTimestamp"
+                  value=""> hours
+            </span>
+          </td>
+          <td>
+            <span id="masterTimestampRequiredPrompt" class="off missingSingleFormInput">
+              Required. No measurement has a time.
+            </span>
+          </td>
+        </tr>
+      </table>
 
-  <div class="sectionContent off" id="masterAssayLineDiv">
-
-    <table class="formTable" style="margin-left:1em;">
-      <tr>
-        <td style="vertical-align:middle;">
-          <span>
-            Assay for the all data:
-            <select name="masterAssay" id="masterAssay">
-              <option value="new">(Create New)</option>
-            </select>
-          </span>
-          <span id="masterLineSpan">
-            for Line: <select name="masterAssayLine" id="masterAssayLine">
-              <option value="new">(Create New)</option>
-              {% for line in study.line_set.all %}
-              <option value="{{ line.pk }}">{{ line.name }}</option>
-              {% endfor %}
-            </select>
-          </span>
-        </td>
-      </tr>
-    </table>
-
-  </div>
-
-  <div class="sectionContent off" id="masterMTypeDiv">
-
-    <table class="formTable" style="margin-left:1em;">
-    <tr>
-      <td>
-        <p>Measurement Type for all data:</p>
-      </td><td>
-        <input class="autocomp" type="text" size="4" name="masterMComp" id="masterMComp"
-            value="" style="margin-right: 2px;">
-        <input type="hidden" id="masterMCompValue" name="masterMCompValue">
-      </td><td>
-        <input class="autocomp" type="text" size="45" name="masterMType" id="masterMType"
-            value="" style="margin-right: 2px;">
-        <input type="hidden" id="masterMTypeValue" name="masterMTypeValue">
-      </td><td>
-        <input class="autocomp" type="text" size="15" name="masterMUnits" id="masterMUnits"
-            value="">
-        <input type="hidden" id="masterMUnitsValue" name="masterMUnitsValue">
-      </td>
-    </tr>
-    </table>
-
-  </div>
-  <div class="sectionContent disambiguationSection off" id="disambiguateLinesSection">
-    <h3>Lines</h3>
-
-  </div>
-
-  <div class="sectionContent disambiguationSection off" id="disambiguateAssaysSection">
-    <h3>Assays</h3>
-  </div>
-
-  <div class="sectionContent disambiguationSection off" id="disambiguateMeasurementsSection">
-    <h3>Measurement Types</h3>
-    <div id="noCompartmentWarning" class="statusMessage neutral">
-      Make sure you specify a cellular compartment (Intracellular/Extracellular) for your mass
-        distribution measurements.
     </div>
-    <table id="disambiguateMeasurementsTable" cellspacing="0">
+
+    <div class="sectionContent off" id="masterLineDiv">
+
+      <h3>Line for all data</h3>
+      <table>
+        <tr>
+          <td>
+            <span>
+              <select name="masterLine" id="masterLine">
+                <option value="new">(Create New)</option>
+                {% for line in study.line_set.all %}
+                <option value="{{ line.pk }}">{{ line.name }}</option>
+                {% endfor %}
+              </select>
+            </span>
+          </td>
+        </tr>
+      </table>
+
+    </div>
+
+    <div class="sectionContent off" id="masterAssayLineDiv">
+
+      <h3>Assay for all data</h3>
+      <table>
+        <tr>
+          <td>
+            <span>
+              <select name="masterAssay" id="masterAssay">
+                <option value="new">(Create New)</option>
+              </select>
+            </span>
+            <span id="masterLineSpan">
+              for Line: <select name="masterAssayLine" id="masterAssayLine">
+                <option value="new">(Create New)</option>
+                {% for line in study.line_set.all %}
+                <option value="{{ line.pk }}">{{ line.name }}</option>
+                {% endfor %}
+              </select>
+            </span>
+          </td>
+        </tr>
+      </table>
+
+    </div>
+
+    <div class="sectionContent off" id="masterMTypeDiv">
+
+      <h3>Measurement Type for all data</h3>
+      <table>
         <thead>
-            <th colspan="3" style="text-align: right;">Compartment</th>
-            <th>Type</th>
-            <th>Units</th>
+          <th>Compartment</th>
+          <th>Type</th>
+          <th>Units</th>
         </thead>
-      <tbody>
-      </tbody>
-    </table>
+        <tbody>
+          <tr>
+            <td>
+              <input class="autocomp" type="text" size="20" name="masterMComp" id="masterMComp"
+                  value="" style="margin-right: 2px;">
+              <input type="hidden" id="masterMCompValue" name="masterMCompValue">
+            </td><td>
+              <input class="autocomp" type="text" size="45" name="masterMType" id="masterMType"
+                  value="" style="margin-right: 2px;">
+              <input type="hidden" id="masterMTypeValue" name="masterMTypeValue">
+            </td><td>
+              <input class="autocomp" type="text" size="15" name="masterMUnits" id="masterMUnits"
+                  value="">
+              <input type="hidden" id="masterMUnitsValue" name="masterMUnitsValue">
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+    </div>
+
+    <div class="sectionContent off" id="disambiguateLinesSection">
+      <h3>Lines</h3>
+    </div>
+
+    <div class="sectionContent off" id="disambiguateAssaysSection">
+      <h3>Assays</h3>
+    </div>
+
+    <div class="sectionContent off" id="disambiguateMeasurementsSection">
+      <h3>Measurement Types</h3>
+      <div id="noCompartmentWarning" class="statusMessage neutral">
+        Make sure you specify a cellular compartment (Intracellular/Extracellular) for your mass
+          distribution measurements.
+      </div>
+      <table id="disambiguateMeasurementsTable" cellspacing="0">
+          <thead>
+              <th colspan="2"></th>
+              <th>Compartment</th>
+              <th>Type</th>
+              <th>Units</th>
+          </thead>
+        <tbody>
+        </tbody>
+      </table>
+    </div>
+
+    <div id="disambiguateMetadataSection" class="off">
+      <h3>Metadata Types</h3>
+    </div>
+
   </div>
 
-  <div id="disambiguateMetadataSection" class="sectionContent disambiguationSection off">
-    <h3>Metadata Types</h3>
-  </div>
 </div>
 
 <!-- Step 5 -->
