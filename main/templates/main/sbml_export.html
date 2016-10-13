@@ -275,9 +275,16 @@
     </div><!-- #allstatusmain -->
 
     {% if time_form %}
+    {% with warnings_list=time_form.sbml_warnings %}
     <div class="pageSection" style="margin:10px;" id="timeselectmain">
-      <div class="sectionHead">{% trans "Export SBML at timepoint" %}</div>
+      <div class="sectionHead">
+        <span>{% trans "Export SBML at timepoint" %}</span>
+        {% include 'main/include/export/warningnotice.html' %}
+      </div>
       <div class="sectionContent">
+        {% for message in warnings_list %}
+        <div class="warn2">{{ message }}</div>
+        {% endfor %}
         <!-- Form to select time for export -->
         {{ time_form.as_p }}
       </div>
@@ -285,6 +292,7 @@
         <button type="submit" name="action" value="download">{% trans "Download SBML" %}</button>
       </div>
     </div>
+    {% endwith %}
     {% endif %}
 
   </form><!-- #exportForm -->
