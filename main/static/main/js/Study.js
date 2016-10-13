@@ -2660,7 +2660,6 @@ var DataGridSpecAssays = (function (_super) {
         return cells;
     };
     DataGridSpecAssays.prototype.generateMeasurementNameCells = function (gridSpec, index) {
-        //var record = EDDData.Assays[index];
         return gridSpec.generateMeasurementCells(gridSpec, index, {
             'metaboliteToValue': function (measureId) {
                 var measure = EDDData.AssayMeasurements[measureId] || {}, mtype = EDDData.MeasurementTypes[measure.type] || {};

@@ -249,8 +249,8 @@ var EDDTableImport;
         /// Base processor for RawInputStep handles parsing a string into a 2D array
         BaseRawTableProcessor.prototype.parse = function (rawInputStep, rawData) {
             var rawText, delimiter, longestRow, rows, multiColumn;
-            rawText = rawInputStep.stepRawText();
-            delimiter = rawInputStep.stepSeparatorType() == 'csv' ? ',' : '\t';
+            rawText = rawInputStep.rawText();
+            delimiter = rawInputStep.separatorType() == 'csv' ? ',' : '\t';
             rows = [];
             // find the highest number of columns in a row
             longestRow = rawText.split(/[ \r]*\n/).reduce(function (prev, rawRow) {
@@ -417,11 +417,11 @@ var EDDTableImport;
             this.processedSetsFromFile = [];
             this.processedSetsAvailable = false;
             this.gridRowMarkers = [];
-            this.transpose = false;
+            this.transposed = false;
             this.userClickedOnTranspose = false;
             this.ignoreDataGaps = false;
             this.userClickedOnIgnoreDataGaps = false;
-            this.separatorType = 'csv';
+            this.separator = 'csv';
             this.inputRefreshTimerID = null;
             $('#step2textarea')
                 .on('paste', this.pastedRawData.bind(this))
@@ -477,10 +477,10 @@ var EDDTableImport;
             }
             if (mode === 'mdv') {
                 // When JBEI MDV format documents are pasted in, it's always from Excel, so they're always tab-separated.
-                this.stepSeparatorType('tab');
+                this.separatorType('tab');
                 // We also never ignore gaps, or transpose, for MDV documents.
-                this.stepIgnoreGaps(false);
-                this.stepTranspose(false);
+                this.ignoreGaps(false);
+                this.transpose(false);
             }
             if (mode === 'std' || mode === 'tr' || mode === 'pr' || mode === 'mdv') {
                 // If an excel file was dropped in, its content was pulled out and dropped into the text box.
@@ -525,13 +525,13 @@ var EDDTableImport;
         RawInputStep.prototype.reprocessRawData = function () {
             var mode, delimiter, processor, input;
             mode = this.selectMajorKindStep.interpretationMode;
-            this.stepIgnoreGaps();
-            this.stepTranspose();
-            this.stepSeparatorType();
+            this.ignoreGaps();
+            this.transpose();
+            this.separatorType();
             this.gridFromTextField = [];
             this.gridRowMarkers = [];
             processor = this.getProcessorForMode(mode);
-            input = processor.parse(this, this.stepRawText());
+            input = processor.parse(this, this.rawText());
             processor.process(this, input);
             this.processingFile = false;
             this.nextStepCallback();
@@ -598,7 +598,7 @@ var EDDTableImport;
                 // drop zone immediately.
                 fileContainer.skipUpload = true;
                 this.clearDropZone();
-                this.stepRawText(result);
+                this.rawText(result);
                 this.inferSeparatorType();
                 this.reprocessRawData();
                 return;
@@ -634,8 +634,8 @@ var EDDTableImport;
                     csv.push(table.headers.join());
                 }
                 csv = csv.concat(table.values.map(function (row) { return row.join(); }));
-                this.stepSeparatorType('csv');
-                this.stepRawText(csv.join('\n'));
+                this.separatorType('csv');
+                this.rawText(csv.join('\n'));
                 this.reprocessRawData();
                 return;
             }
@@ -690,7 +690,7 @@ var EDDTableImport;
         RawInputStep.prototype.reset = function () {
             this.haveInputData = false;
             this.clearDropZone();
-            this.stepRawText('');
+            this.rawText('');
             this.reprocessRawData();
         };
         RawInputStep.prototype.inferTransposeSetting = function (rows) {
@@ -698,7 +698,7 @@ var EDDTableImport;
             // "short and fat" output from the skyline import tool as input. TODO: reconsider
             // this when integrating the Skyline tool into the import page (EDD-240).
             if (this.selectMajorKindStep.interpretationMode === 'pr') {
-                this.stepTranspose(true);
+                this.transpose(true);
                 return;
             }
             // The most straightforward method is to take the top row, and the first column,
@@ -746,7 +746,7 @@ var EDDTableImport;
             else {
                 setTranspose = arraysScores[1] > arraysScores[3];
             }
-            this.stepTranspose(setTranspose);
+            this.transpose(setTranspose);
         };
         RawInputStep.prototype.inferGapsSetting = function () {
             // Count the number of blank values at the end of each column
@@ -766,7 +766,7 @@ var EDDTableImport;
                 });
             });
             var result = extra > (intra * 3);
-            this.stepIgnoreGaps(result);
+            this.ignoreGaps(result);
         };
         // This gets called when there is a paste event.
         RawInputStep.prototype.pastedRawData = function () {
@@ -777,12 +777,12 @@ var EDDTableImport;
         RawInputStep.prototype.inferSeparatorType = function () {
             if (this.selectMajorKindStep.interpretationMode !== "mdv") {
                 var text, test;
-                text = this.stepRawText() || '';
+                text = this.rawText() || '';
                 test = text.split('\t').length >= text.split(',').length;
-                this.stepSeparatorType(test ? 'tab' : 'csv');
+                this.separatorType(test ? 'tab' : 'csv');
             }
         };
-        RawInputStep.prototype.stepIgnoreGaps = function (value) {
+        RawInputStep.prototype.ignoreGaps = function (value) {
             var ignoreGaps = $('#ignoreGaps');
             if (value === undefined) {
                 value = ignoreGaps.prop('checked');
@@ -792,7 +792,7 @@ var EDDTableImport;
             }
             return (this.ignoreDataGaps = value);
         };
-        RawInputStep.prototype.stepTranspose = function (value) {
+        RawInputStep.prototype.transpose = function (value) {
             var transpose = $('#transpose');
             if (value === undefined) {
                 value = transpose.prop('checked');
@@ -800,9 +800,9 @@ var EDDTableImport;
             else {
                 transpose.prop('checked', value);
             }
-            return (this.transpose = value);
+            return (this.transposed = value);
         };
-        RawInputStep.prototype.stepSeparatorType = function (value) {
+        RawInputStep.prototype.separatorType = function (value) {
             var separatorPulldown = $('#rawdataformatp');
             if (value === undefined) {
                 value = separatorPulldown.val();
@@ -810,9 +810,9 @@ var EDDTableImport;
             else {
                 separatorPulldown.val(value);
             }
-            return (this.separatorType = value);
+            return (this.separator = value);
         };
-        RawInputStep.prototype.stepRawText = function (value) {
+        RawInputStep.prototype.rawText = function (value) {
             var rawArea = $('#step2textarea');
             if (value === undefined) {
                 value = rawArea.val();

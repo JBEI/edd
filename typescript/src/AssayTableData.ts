@@ -374,8 +374,8 @@ module EDDTableImport {
                 rows: RawInput,
                 multiColumn: boolean;
 
-            rawText = rawInputStep.stepRawText();
-            delimiter = rawInputStep.stepSeparatorType() == 'csv' ? ',' : '\t';
+            rawText = rawInputStep.rawText();
+            delimiter = rawInputStep.separatorType() == 'csv' ? ',' : '\t';
             rows = [];
             // find the highest number of columns in a row
             longestRow = rawText.split(/[ \r]*\n/).reduce((prev: number, rawRow: string): number => {
@@ -568,7 +568,7 @@ module EDDTableImport {
         // Additional options for interpreting text box data, exposed in the UI for the user to tweak.
         // Sometimes set automatically by certain import modes, like the "mdv" mode.
 
-        transpose: boolean;
+        transposed: boolean;
         // If the user deliberately chose to transpose or not transpose, disable the attempt
         // to auto-determine transposition.
         userClickedOnTranspose: boolean;
@@ -576,7 +576,7 @@ module EDDTableImport {
         // either measurements or metadata.
         ignoreDataGaps: boolean;
         userClickedOnIgnoreDataGaps: boolean;
-        separatorType: string;
+        separator: string;
 
         inputRefreshTimerID: any;
 
@@ -596,11 +596,11 @@ module EDDTableImport {
             this.processedSetsFromFile = [];
             this.processedSetsAvailable = false;
             this.gridRowMarkers = [];
-            this.transpose = false;
+            this.transposed = false;
             this.userClickedOnTranspose = false;
             this.ignoreDataGaps = false;
             this.userClickedOnIgnoreDataGaps = false;
-            this.separatorType = 'csv';
+            this.separator = 'csv';
             this.inputRefreshTimerID = null;
 
             $('#step2textarea')
@@ -667,10 +667,10 @@ module EDDTableImport {
             }
             if (mode === 'mdv') {
                 // When JBEI MDV format documents are pasted in, it's always from Excel, so they're always tab-separated.
-                this.stepSeparatorType('tab');
+                this.separatorType('tab');
                 // We also never ignore gaps, or transpose, for MDV documents.
-                this.stepIgnoreGaps(false);
-                this.stepTranspose(false);
+                this.ignoreGaps(false);
+                this.transpose(false);
                 // Proceed through to the dropzone check.
             }
             if (mode === 'std' || mode === 'tr' || mode === 'pr' || mode === 'mdv') {
@@ -723,15 +723,15 @@ module EDDTableImport {
 
             mode = this.selectMajorKindStep.interpretationMode;
 
-            this.stepIgnoreGaps();
-            this.stepTranspose();
-            this.stepSeparatorType();
+            this.ignoreGaps();
+            this.transpose();
+            this.separatorType();
 
             this.gridFromTextField = [];
             this.gridRowMarkers = [];
 
             processor = this.getProcessorForMode(mode);
-            input = processor.parse(this, this.stepRawText());
+            input = processor.parse(this, this.rawText());
             processor.process(this, input);
 
             this.processingFile = false;
@@ -809,7 +809,7 @@ module EDDTableImport {
                 // drop zone immediately.
                 fileContainer.skipUpload = true;
                 this.clearDropZone();
-                this.stepRawText(result);
+                this.rawText(result);
                 this.inferSeparatorType();
                 this.reprocessRawData();
                 return;
@@ -851,8 +851,8 @@ module EDDTableImport {
                     csv.push(table.headers.join());
                 }
                 csv = csv.concat(table.values.map((row: string[]) => row.join()));
-                this.stepSeparatorType('csv');
-                this.stepRawText(csv.join('\n'));
+                this.separatorType('csv');
+                this.rawText(csv.join('\n'));
                 this.reprocessRawData();
                 return;
             }
@@ -918,7 +918,7 @@ module EDDTableImport {
         reset(): void {
             this.haveInputData=false;
             this.clearDropZone();
-            this.stepRawText('');
+            this.rawText('');
             this.reprocessRawData();
         }
 
@@ -928,7 +928,7 @@ module EDDTableImport {
             // "short and fat" output from the skyline import tool as input. TODO: reconsider
             // this when integrating the Skyline tool into the import page (EDD-240).
             if (this.selectMajorKindStep.interpretationMode === 'pr') {
-                this.stepTranspose(true);
+                this.transpose(true);
                 return;
             }
 
@@ -976,7 +976,7 @@ module EDDTableImport {
             } else {
                 setTranspose = arraysScores[1] > arraysScores[3];
             }
-            this.stepTranspose(setTranspose);
+            this.transpose(setTranspose);
         }
 
 
@@ -997,7 +997,7 @@ module EDDTableImport {
                 });
             });
             var result:boolean = extra > (intra * 3);
-            this.stepIgnoreGaps(result);
+            this.ignoreGaps(result);
         }
 
 
@@ -1012,14 +1012,14 @@ module EDDTableImport {
         inferSeparatorType(): void {
             if (this.selectMajorKindStep.interpretationMode !== "mdv") {
                 var text: string, test: boolean;
-                text = this.stepRawText() || '';
+                text = this.rawText() || '';
                 test = text.split('\t').length >= text.split(',').length;
-                this.stepSeparatorType(test ? 'tab' : 'csv');
+                this.separatorType(test ? 'tab' : 'csv');
             }
         }
 
 
-        stepIgnoreGaps(value?: boolean): boolean {
+        ignoreGaps(value?: boolean): boolean {
             var ignoreGaps = $('#ignoreGaps');
             if (value === undefined) {
                 value = ignoreGaps.prop('checked');
@@ -1030,29 +1030,29 @@ module EDDTableImport {
         }
 
 
-        stepTranspose(value?: boolean): boolean {
+        transpose(value?: boolean): boolean {
             var transpose = $('#transpose');
             if (value === undefined) {
                 value = transpose.prop('checked');
             } else {
                 transpose.prop('checked', value);
             }
-            return (this.transpose = value);
+            return (this.transposed = value);
         }
 
 
-        stepSeparatorType(value?: string): string {
+        separatorType(value?: string): string {
             var separatorPulldown = $('#rawdataformatp');
             if (value === undefined) {
                 value = separatorPulldown.val();
             } else {
                 separatorPulldown.val(value);
             }
-            return (this.separatorType = value);
+            return (this.separator = value);
         }
 
 
-        stepRawText(value?: string): string {
+        rawText(value?: string): string {
             var rawArea: JQuery = $('#step2textarea');
             if (value === undefined) {
                 value = rawArea.val();
