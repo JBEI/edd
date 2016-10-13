@@ -11,7 +11,8 @@ from django.core.management.base import CommandError
 from allauth.account.models import EmailAddress
 from main.models import User
 
-
+# TODO: revisit and try to extend django.contrib.auth.management.commands.createsuperuser. Potential
+# to make this more flexible / maintainable based on that approach.
 class Command(BaseCommand):
     help = 'Creates a user account from the command line in support of initial EDD installation.'
     _USERNAME_ARG = 'username'
@@ -43,8 +44,8 @@ class Command(BaseCommand):
                 admin = False
 
         try:
-            admin_text = 'admin ' if admin else ''
-            print('Creating %(admin)suser "%(username)s"...' % {'admin': admin_text,
+            user_type = 'admin user' if admin else 'user'
+            print('Creating %(user_type)s "%(username)s"...' % {'user_type': user_type,
                                                                 'username': username})
             user = User.objects.create_user(username, email, password, is_superuser=admin,
                                             is_staff=admin)
