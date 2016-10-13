@@ -1592,7 +1592,7 @@ def process_matching_strain(edd_strain, ice_entry, process_all_ice_entry_links,
             unprocessed_strain_experiment_links.pop(study_url, None)
 
             # if no up-to-date link was found to this EDD study, find all links to the study
-            # that are using dated URL schemes, then pdate or remove them as appropriate.
+            # that are using dated URL schemes, then update or remove them as appropriate.
             if not strain_to_study_link:
                 dated_url_variations = build_dated_url_variations(study.pk, processing_inputs)
 
@@ -1605,7 +1605,7 @@ def process_matching_strain(edd_strain, ice_entry, process_all_ice_entry_links,
                         found_dated_urls[dated_url_variant] = dated_link
 
                         # updated only the first dated URL that refers to this study. If updated,
-                        # others would be duplicates, so remove them.
+                        # others would be duplicates, so we'll remove them.
                         if len(found_dated_urls) == 1:
                             old_study_name = (dated_link.label if dated_link else None)
 
@@ -1618,8 +1618,8 @@ def process_matching_strain(edd_strain, ice_entry, process_all_ice_entry_links,
                             # TODO: SYNBIO-1350: use entry.uuid to remove workaround after
                             # prerequisite SYNBIO-1207 is complete.
                             workaround_ice_id = ice_entry.id
-                            ice.link_entry_to_study(workaround_ice_id, study.pk, study_url, study.name,
-                                                    old_study_name=old_study_name,
+                            ice.link_entry_to_study(workaround_ice_id, study.pk, study_url,
+                                                    study.name, old_study_name=old_study_name,
                                                     old_study_url=dated_link.url, logger=logger)
                             if processing_inputs.perl_study_url_pattern.match(dated_url_variant):
                                 processing_summary.updated_perl_link(ice_entry, dated_link)
@@ -1648,8 +1648,9 @@ def process_matching_strain(edd_strain, ice_entry, process_all_ice_entry_links,
                         existing_valid_study_links[
                             strain_to_study_link.url.lower()] = strain_to_study_link
                         processing_summary.skipped_valid_link(ice_entry, strain_to_study_link)
+
             # if no link to the study has been found, or if one exists with an unmaintained
-            # name, create / rename the link
+            # name, create / update the link
             else:
                 old_study_name = strain_to_study_link.label if strain_to_study_link else None
                 ice.link_entry_to_study(ice_entry_uuid, study.pk, study_url, study.name, logger,
