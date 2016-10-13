@@ -978,7 +978,8 @@ var EDDTableImport;
                 this.redrawEnabledFlagMarkers();
             }
             else if (!showGraph) {
-                $('#dataTableDiv').text('Nothing to see here, proceed to Step 4.');
+                $('#dataTableDiv').text('This step is not needed for the current import. ' +
+                    'Nothing to see here, proceed to Step 4.');
             }
             // Either we're interpreting some pre-processed data sets from a server response,
             // or we're interpreting the data table we just laid out above,
@@ -2251,8 +2252,10 @@ var EDDTableImport;
             }
         };
         TypeDisambiguationStep.prototype.addRequiredInputLabel = function (parentDiv, text) {
-            return $('<div>').text(text).addClass(this.STEP_4_SUBSECTION_REQUIRED_CLASS)
-                .addClass('off missingSingleFormInput').appendTo(parentDiv);
+            var adding = [this.STEP_4_SUBSECTION_REQUIRED_CLASS, 'off', 'missingSingleFormInput'];
+            return $('<div>').text(text)
+                .addClass(adding.join(' '))
+                .appendTo(parentDiv);
         };
         TypeDisambiguationStep.prototype.appendLineAutoselect = function (parentElement, disam, defaultSelection, i) {
             // create a text input to gather user input
