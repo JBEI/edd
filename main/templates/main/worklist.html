@@ -44,7 +44,7 @@
 {% endblock head_title %}
 
 {% block body_title %}
-  Worklist Export For {% for study in selection.studies.values %}
+  Worklist Export For {% for study in selection.studies %}
    <a href="{% url 'main:detail' study.id %}">{{ study.name }}</a>{% if not forloop.last %},{% endif %}
   {% endfor %}
 {% endblock body_title %}

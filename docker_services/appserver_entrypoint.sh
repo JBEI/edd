@@ -79,7 +79,7 @@ done
 
 echo
 echo "$SEPARATOR"
-echo "Running database migrations …"
+echo "Managing database migrations …"
 echo "$SEPARATOR"
 
 # Temporarily turn off strict error checking, as the migration check will sometimes
@@ -93,10 +93,14 @@ MIGRATIONS=$(python /code/manage.py showmigrations --plan 2> /dev/null | grep -v
 set -e
 
 # Run migrations; if any detected, flag for re-indexing
-python /code/manage.py migrate
 if [ ! -z "$MIGRATIONS" ]; then
     echo "Detected pending migrations …"
-    REINDEX_EDD=true
+    if [ ! -z $SKIP_AUTO_MIGRATION ]; then
+        echo "Skipped pending migrations due to the SKIP_AUTO_MIGRATION variable"
+    else
+        python /code/manage.py migrate
+        REINDEX_EDD=true
+    fi
 fi
 
 echo
@@ -110,7 +114,7 @@ if [ "$REINDEX_EDD" = "true" ]; then
     echo "End of Solr index rebuild"
 else
     echo "Skipping Solr index rebuild since there were " \
-        "no database migrations or restores from dump"
+        "no applied database migrations or restores from dump"
 fi
 
 # Start up the application server

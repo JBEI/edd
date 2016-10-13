@@ -23,6 +23,8 @@ module IndexPage {
 	export function prepareTable() {
 		// Instantiate a table specification for the Studies table
 		this.studiesDataGridSpec = new DataGridSpecStudies();
+        this.studiesDataGridSpec.init();
+
 		// Instantiate the table itself with the spec
 		this.studiesDataGrid = new DataGrid(this.studiesDataGridSpec);
         this.studiesDataGridSpec.requestPageOfData((success) => {
