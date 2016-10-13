@@ -17,8 +17,8 @@ MANAGERS = ADMINS = (
     ('Jay Bay', 'admin@example.org'),  # <-- CHANGE ME
 )
 
-# Set the IPs where the debug toolbar will be available; use localhost IPv4 and IPv6
 ALLOWED_HOSTS = ['*', ]
+# Set the IPs where the Django debug toolbar will be available; use localhost IPv4 and IPv6
 INTERNAL_IPS = ['127.0.0.1', '::1', ]
 # Also add the 'external' IP for the nginx service proxying the appserver
 try:
@@ -28,18 +28,26 @@ except:
     pass
 # Add the Django Debug Toolbar to local instance
 # Add login providers
-INSTALLED_APPS = INSTALLED_APPS + (
-    'allauth.socialaccount.providers.github',
-    'allauth.socialaccount.providers.google',
-    'allauth.socialaccount.providers.linkedin_oauth2',
-    'debug_toolbar',
-)
-DEBUG_TOOLBAR_CONFIG = {
-    'JQUERY_URL': '/static/main/js/lib/jquery/jquery-2.1.4.min.js',
-}
+# INSTALLED_APPS = INSTALLED_APPS + (
+#     'allauth.socialaccount.providers.github',
+#     'allauth.socialaccount.providers.google',
+#     'allauth.socialaccount.providers.linkedin_oauth2',
+#     'debug_toolbar',
+# )
+
+# Add the Django Debug Toolbar to local instance
+# DEBUG_TOOLBAR_CONFIG = {
+#     'JQUERY_URL': '/static/main/js/lib/jquery/jquery-2.1.4.min.js',
+# }
 
 USE_CELERY = True
-PUBLISH_REST_API = True
+
+# disable the initial new REST API by default since it's insecure. Only needed to support 
+# create_lines.py and maintain_ice_links.py
+PUBLISH_REST_API = False
+
+# True disables all study creation by non-superusers. Used to disable writes to the public EDD
+# until the "web of EDD's" can be implemented.
 EDD_ONLY_SUPERUSER_CREATE = False
 
 

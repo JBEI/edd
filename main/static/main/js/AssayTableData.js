@@ -453,8 +453,8 @@ var EDDTableImport;
             var mode = this.selectMajorKindStep.interpretationMode;
             // update input visibility based on user selection in step 1
             this.updateInputVisible();
-            // By default, our drop zone wants excel or csv files, so we clear additional class:
-            $('#step2textarea').removeClass('xml');
+            // By default, our drop zone wants excel or csv files, so we clear the additional classes:
+            $('#step2textarea').removeClass('xml text');
             if (mode === 'biolector') {
                 // Biolector data is expected in XML format.
                 $('#step2textarea').addClass('xml');
@@ -467,6 +467,7 @@ var EDDTableImport;
             }
             if (mode === 'hplc') {
                 // HPLC data is expected as a text file.
+                $('#step2textarea').addClass('text');
                 this.nextStepCallback();
                 return;
             }
@@ -667,12 +668,16 @@ var EDDTableImport;
         RawInputStep.prototype.showFileDropped = function (fileContainer) {
             // Set the icon image properly
             $('#fileDropInfoIcon').removeClass('xml');
+            $('#fileDropInfoIcon').removeClass('text');
             $('#fileDropInfoIcon').removeClass('excel');
             if (fileContainer.fileType === 'xml') {
                 $('#fileDropInfoIcon').addClass('xml');
             }
             else if (fileContainer.fileType === 'xlsx') {
                 $('#fileDropInfoIcon').addClass('excel');
+            }
+            else if (fileContainer.fileType === 'plaintext') {
+                $('#fileDropInfoIcon').addClass('text');
             }
             $('#step2textarea').addClass('off');
             $('#fileDropInfoArea').removeClass('off');

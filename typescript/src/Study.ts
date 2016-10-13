@@ -135,13 +135,11 @@ module StudyD {
             assayFilters.push(new CarbonSourceFilterSection());
             assayFilters.push(new CarbonLabelingFilterSection());
             assayFilters.push(new AssaySuffixFilterSection()); //Assasy suffix
-
-            for (var id in seenInAssaysHash) {
-                assayFilters.push(new AssayMetaDataFilterSection(id));
-            }
-            for (var id in seenInLinesHash) {
-                assayFilters.push(new LineMetaDataFilterSection(id));
-            }
+            // convert seen metadata IDs to FilterSection objects, and push to end of assayFilters
+            assayFilters.push.apply(assayFilters, 
+                $.map(seenInAssaysHash, (_, id: string) => new AssayMetaDataFilterSection(id)));
+            assayFilters.push.apply(assayFilters,
+                $.map(seenInLinesHash, (_, id: string) => new LineMetaDataFilterSection(id)));
 
             this.metaboliteFilters = [];
             this.metaboliteFilters.push(new MetaboliteCompartmentFilterSection());
@@ -156,6 +154,15 @@ module StudyD {
             this.measurementFilters = [];
             this.measurementFilters.push(new MeasurementFilterSection());
 
+            // All filter sections are constructed; now need to call configure() on all
+            this.allFilters = [].concat(
+                assayFilters,
+                this.metaboliteFilters,
+                this.proteinFilters,
+                this.geneFilters,
+                this.measurementFilters);
+            this.allFilters.forEach((section) => section.configure());
+
             // We can initialize all the Assay- and Line-level filters immediately
             this.assayFilters = assayFilters;
             assayFilters.forEach((filter) => {
@@ -163,12 +170,6 @@ module StudyD {
                 filter.populateTable();
             });
 
-            this.allFilters = [].concat(
-                assayFilters,
-                this.metaboliteFilters,
-                this.proteinFilters,
-                this.geneFilters,
-                this.measurementFilters);
             this.repopulateFilteringSection();
         }
 
@@ -425,6 +426,9 @@ module StudyD {
         sectionTitle: string;
         sectionShortLabel: string;
 
+        // TODO: Convert to a protected constructor! Then use a factory method to create objects
+        //    with configure() already called. Typescript 1.8 does not support visibility
+        //    modifiers on constructors, support is added in Typescript 2.0
         constructor() {
             this.uniqueValues = {};
             this.uniqueIndexes = {};
@@ -438,16 +442,14 @@ module StudyD {
             this.currentSearchSelection = '';
             this.previousSearchSelection = '';
             this.minCharsToTriggerSearch = 1;
-
-            this.configure();
             this.anyCheckboxesChecked = false;
-            this.createContainerObjects();
         }
 
 
-        configure(): void {
-            this.sectionTitle = 'Generic Filter';
-            this.sectionShortLabel = 'gf';
+        configure(title: string='Generic Filter', shortLabel: string='gf'): void {
+            this.sectionTitle = title;
+            this.sectionShortLabel = shortLabel;
+            this.createContainerObjects();
         }
 
 
@@ -767,8 +769,7 @@ module StudyD {
 
     export class StrainFilterSection extends GenericFilterSection {
         configure():void {
-            this.sectionTitle = 'Strain';
-            this.sectionShortLabel = 'st';
+            super.configure('Strain', 'st');
         }
 
 
@@ -793,8 +794,7 @@ module StudyD {
 
     export class CarbonSourceFilterSection extends GenericFilterSection {
         configure():void {
-            this.sectionTitle = 'Carbon Source';
-            this.sectionShortLabel = 'cs';
+            super.configure('Carbon Source', 'cs');
         }
 
 
@@ -819,8 +819,7 @@ module StudyD {
 
     export class CarbonLabelingFilterSection extends GenericFilterSection {
         configure():void {
-            this.sectionTitle = 'Labeling';
-            this.sectionShortLabel = 'l';
+            super.configure('Labeling', 'l');
         }
 
 
@@ -845,8 +844,7 @@ module StudyD {
 
     export class LineNameFilterSection extends GenericFilterSection {
         configure():void {
-            this.sectionTitle = 'Line';
-            this.sectionShortLabel = 'ln';
+            super.configure('Line', 'ln');
         }
 
 
@@ -867,8 +865,7 @@ module StudyD {
 
     export class ProtocolFilterSection extends GenericFilterSection {
         configure():void {
-            this.sectionTitle = 'Protocol';
-            this.sectionShortLabel = 'p';
+            super.configure('Protocol', 'p');
         }
 
 
@@ -889,8 +886,7 @@ module StudyD {
 
     export class AssaySuffixFilterSection extends GenericFilterSection {
         configure():void {
-            this.sectionTitle = 'Assay Suffix';
-            this.sectionShortLabel = 'a';
+            super.configure('Assay Suffix', 'a');
         }
 
 
@@ -925,8 +921,7 @@ module StudyD {
 
 
         configure():void {
-            this.sectionTitle = EDDData.MetaDataTypes[this.metaDataID].name;
-            this.sectionShortLabel = 'md'+this.metaDataID;
+            super.configure(EDDData.MetaDataTypes[this.metaDataID].name, 'md'+this.metaDataID);
         }
     }
 
@@ -970,8 +965,7 @@ module StudyD {
     export class MetaboliteCompartmentFilterSection extends GenericFilterSection {
         // NOTE: this filter class works with Measurement IDs rather than Assay IDs
         configure():void {
-            this.sectionTitle = 'Compartment';
-            this.sectionShortLabel = 'com';
+            super.configure('Compartment', 'com');
         }
 
 
@@ -996,9 +990,8 @@ module StudyD {
         loadPending: boolean;
 
         configure(): void {
-            this.sectionTitle = 'Measurement';
-            this.sectionShortLabel = 'mm';
             this.loadPending = true;
+            super.configure('Measurement', 'mm');
         }
 
         isFilterUseful(): boolean {
@@ -1030,9 +1023,8 @@ module StudyD {
         loadPending:boolean;
 
         configure():void {
-            this.sectionTitle = 'Metabolite';
-            this.sectionShortLabel = 'me';
             this.loadPending = true;
+            super.configure('Metabolite', 'me');
         }
 
 
@@ -1067,9 +1059,8 @@ module StudyD {
         loadPending:boolean;
 
         configure():void {
-            this.sectionTitle = 'Protein';
-            this.sectionShortLabel = 'pr';
             this.loadPending = true;
+            super.configure('Protein', 'pr');
         }
 
 
@@ -1104,9 +1095,8 @@ module StudyD {
         loadPending:boolean;
 
         configure():void {
-            this.sectionTitle = 'Gene';
-            this.sectionShortLabel = 'gn';
             this.loadPending = true;
+            super.configure('Gene', 'gn');
         }
 
 
@@ -2790,12 +2780,13 @@ class DataGridSpecAssays extends DataGridSpecBase {
         this.assayIDsInProtocol = [];
         $.each(EDDData.Assays, (assayId:string, assay:AssayRecord):void => {
             var line:LineRecord;
-            if (this.protocolID !== assay.pid) {
-                // skip assays for other protocols
-            } else if (!(line = EDDData.Lines[assay.lid]) || !line.active) {
+            // skip assays for other protocols
+            if (this.protocolID === assay.pid) {
+                line = EDDData.Lines[assay.lid];
                 // skip assays without a valid line or with a disabled line
-            } else {
-                this.assayIDsInProtocol.push(assay.id);
+                if (line && line.active) {
+                    this.assayIDsInProtocol.push(assay.id);
+                }
             }
         });
     }
@@ -2992,13 +2983,14 @@ class DataGridSpecAssays extends DataGridSpecBase {
 
     // The colspan value for all the cells that are assay-level (not measurement-level) is based on
     // the number of measurements for the respective record. Specifically, it's the number of
-    // metabolite measurements, plus 1 if there are transcriptomics measurements, plus 1 if there
+    // metabolite and general measurements, plus 1 if there are transcriptomics measurements, plus 1 if there
     // are proteomics measurements, all added together.  (Or 1, whichever is higher.)
     private rowSpanForRecord(index):number {
         var rec = EDDData.Assays[index];
-        var v:number = ((rec.metabolites || []).length +
+        var v:number = ((rec.general         || []).length +
+                        (rec.metabolites     || []).length +
                         ((rec.transcriptions || []).length ? 1 : 0) +
-                        ((rec.proteins || []).length ? 1 : 0)) || 1;
+                        ((rec.proteins       || []).length ? 1 : 0)   ) || 1;
         return v;
     }
 
@@ -3102,7 +3094,6 @@ class DataGridSpecAssays extends DataGridSpecBase {
 
 
     generateMeasurementNameCells(gridSpec:DataGridSpecAssays, index:string):DataGridDataCell[] {
-        var record = EDDData.Assays[index];
         return gridSpec.generateMeasurementCells(gridSpec, index, {
             'metaboliteToValue': (measureId) => {
                 var measure:any = EDDData.AssayMeasurements[measureId] || {},
