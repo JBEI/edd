@@ -411,7 +411,7 @@ class ProcessingSummary:
         self._existing_links_processed += 1
         self._skipped_external_links += 1
 
-        logger.warning('Leaving external link to %(link_url)s in place from ICE part '
+        logger.warning('Leaving external or malformed link to %(link_url)s in place from ICE part '
                        '%(part_id)s (uuid %(entry_uuid)s)' % {
                            'link_url': link.url, 'part_id': ice_entry.part_id,
                            'entry_uuid': ice_entry.uuid,
@@ -823,7 +823,7 @@ class ProcessingSummary:
                 '%d', self._test_links_pruned, grouping=True)
         links_processed['Valid links skipped'] = locale.format(
                 '%d', self._valid_links_skipped, grouping=True)
-        links_processed['External links skipped'] = locale.format(
+        links_processed['External or malformed links skipped'] = locale.format(
                 '%d', self._skipped_external_links, grouping=True)
         links_processed['Duplicate links removed'] = locale.format(
                 '%d', self._duplicate_links_removed, grouping=True)

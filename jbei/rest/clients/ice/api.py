@@ -1028,7 +1028,7 @@ class IceApi(RestApiClient):
         :param entry_experiments_url: the absolute REST API URL to the list of experiments for
             this ICE entry (tolerates ending with a slash or not). For example,
             https://registry.jbei.org/rest/parts/123/experiments/.
-        :param link_id: the link id if it's to be created
+        :param link_id: the link id if it's to be updated
         :param created: the creation timestamp when the link was created. Required if link_id
             is not None
         :raises requests.exceptions.Timeout if the initial connection or response times out
@@ -1038,18 +1038,19 @@ class IceApi(RestApiClient):
         # whether SYNBIO-1196 changes (see associated
         # comments). Currently, there's no need to provide the link ID at all when adding/updating.
 
-        json_dict = {'label': study_name, 'url': study_url}
-        json_str = json.dumps(json_dict)
+
         logger.info(
             "Requesting part-> study link from ICE (id=%s): %s" %
             (link_id, entry_experiments_url)
         )
-        logger.info("Response: %s " % json_str)
 
         headers = {'Content-Type': 'application/json'}
+        json_dict = {'label': study_name, 'url': study_url}
         # if we're updating an existing link, use its full url
         if link_id:
             json_dict['id'] = link_id
+
+        json_str = json.dumps(json_dict)
 
         session = self.session
         response = session.post(entry_experiments_url, data=json_str, headers=headers)
@@ -1170,7 +1171,7 @@ class IceApi(RestApiClient):
         if response.status_code != requests.codes.ok:
             response.raise_for_status()
 
-        # inspect results to find the unique ID's for any pre-existing links referencing the
+        # inspect results to find the unique ID's for any pre-existing links referencing this
         # study's URL
         label_key = 'label'
         url_key = 'url'
