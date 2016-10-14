@@ -12,7 +12,7 @@ from allauth.account.models import EmailAddress
 from main.models import User
 
 # TODO: revisit and try to extend django.contrib.auth.management.commands.createsuperuser. Potential
-# to make this more flexible / maintainable based on that approach.
+# to make this more flexible / maintainable based on that approach, and this version also doesn't some use cases (see comments on PR#113).
 class Command(BaseCommand):
     help = 'Creates a user account from the command line in support of initial EDD installation.'
     _USERNAME_ARG = 'username'
@@ -32,6 +32,9 @@ class Command(BaseCommand):
         username = self.get_required_string('Username', options, self._USERNAME_ARG)
         email = self.get_required_string('Email address', options, self._EMAIL_ARG)
         password = self.get_required_string('Password', options, self._PASSWORD_ARG, password=True)
+        
+        print("WARNING: This is a development-level tool! No guarantee it will be maintained in its "
+              "current form, so use it at your own risk!")
 
         # if not provided on the command line, prompt for whether or not this should be an admin
         # account

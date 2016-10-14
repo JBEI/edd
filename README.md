@@ -318,7 +318,7 @@ running in the development environment.
       * `python manage.py sendtestemail --managers`
 
 * __Create an unprivileged test account__
-    * `docker-compose exec appserver python manage.py create_user`
+    * `docker-compose exec appserver python manage.py create_user`.  Note that this tool is a brittle development-level convenience. No guarantee it will remain in this form!
 
 * __Dump the production database to file and load into a local test deployment__
     * Create the dump file
