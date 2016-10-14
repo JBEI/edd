@@ -318,24 +318,10 @@ running in the development environment.
       * `python manage.py sendtestemail --managers`
 
 * __Create an unprivileged test account__
-    * Run the command `docker-compose exec appserver /code/manage.py shell`
-    * Execute the following code to create a user, and exit
-
-          from main.models import User
-          User.objects.create_user(
-              'unprivileged_user',  # username
-              'test_user@example.com',  # email
-              'insecure_pwd_ok_for_local_testing',  # password
-          )
-
-    * Attempt login using the UI -- this is necessary to enable the following step
-    * Run the command `docker-compose exec postgres psql -U postgres edd`
-    * Execute the following code to enable the user, and exit
-
-          UPDATE account_emailaddress SET verified = true WHERE email = 'test_user@example.com';
+    * `docker-compose exec appserver python manage.py edd_create_user`.
 
 * __Dump the production database to file and load into a local test deployment__
-    * Create the dump file with this command
+    * Create the dump file
 
           pg_dump -h postgres.jbei.org -d eddprod -f edd-prod-dump.sql -U your_username'
 
