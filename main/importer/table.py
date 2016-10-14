@@ -6,42 +6,81 @@ import logging
 import re
 import warnings
 
+from celery import shared_task
 from collections import namedtuple
-from django.conf import settings as django_settings, settings
-from django.contrib import messages
+from django.conf import settings
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.db import transaction
 from django.db.models import Q
-from django.db.transaction import atomic
 from django.utils.translation import ugettext as _
+from six import string_types
 
+from .. import models
 from ..models import (
-    Assay, Datasource, GeneIdentifier, Line, Measurement, MeasurementType, MeasurementUnit,
-    MeasurementValue, MetadataType, ProteinIdentifier, Protocol
+    Assay, Datasource, GeneIdentifier, Line, Measurement, MeasurementUnit,
+    MeasurementValue, MetadataType, ProteinIdentifier,
 )
 
 
 logger = logging.getLogger(__name__)
 MType = namedtuple('MType', ['compartment', 'type', 'unit', ])
+NO_TYPE = MType(models.Measurement.Compartment.UNKNOWN, None, None)
+
+
+MODE_PROTEOMICS = 'pr'
+MODE_SKYLINE = 'skyline'
+MODE_TRANSCRIPTOMICS = 'tr'
+
+
+@shared_task
+def import_task(study_id, user_id, data):
+    study = models.Study.objects.get(pk=study_id)
+    user = models.User.objects.get(pk=user_id)
+    try:
+        importer = TableImport(study, user)
+        count = importer.import_data(data)
+    except Exception as e:
+        logger.exception('Failure in import_task: %s', e)
+        raise RuntimeError(
+            _('Failed import to %(study)s, EDD encountered this problem: %(problem)s') % {
+                'problem': e,
+                'study': study.name,
+            }
+        )
+    return _('Finished import to %(study)s: %(count)d measurements added.' % {
+        'count': count,
+        'study': study.name,
+    })
 
 
 class TableImport(object):
     """ Object to handle processing of data POSTed to /study/{id}/import view and add
         measurements to the database. """
 
-    MODE_TRANSCRIPTOMICS = 'tr'
-    MODE_PROTEOMICS = 'pr'
-
     def __init__(self, study, user, request=None):
+        """
+        Creates an import handler.
+        :param study: the target study for import
+        :param user: the user performing the import
+        :param request: (optional) if provided, can add messages using Django messages framework
+        :raises: PermissionDenied if the user does not have write access to the study
+        """
         self._study = study
         self._user = user
         self._line_assay_lookup = {}
         self._line_lookup = {}
         self._meta_lookup = {}
-        self._unit_lookup = {}
+        self._valid_protocol = {}
         self._request = request
-        self.error_count = 0
+        # end up looking for hours repeatedly, just load once at init
+        self._hours = MeasurementUnit.objects.get(unit_name='hours')
+        self._datasource = Datasource(name=self._user.username)
+        if not self._study.user_can_write(user):
+            raise PermissionDenied(
+                '%s does not have write access to study "%s"' % (user.username, self.study.name)
+            )
 
-    @atomic
+    @transaction.atomic(savepoint=False)
     def import_data(self, data):
         """
         Performs the import
@@ -49,25 +88,11 @@ class TableImport(object):
         :return:
         :raises: ValidationError if no data are provided to import
         """
-        user = self._user
-        if not self._study.user_can_write(user):
-            raise PermissionDenied(
-                '%s does not have write access to study "%s"' % (user.username, self.study.name))
-
         self._data = data
         series = json.loads(data.get('jsonoutput', '[]'))
         self.check_series_points(series)
         self.init_lines_and_assays(series)
-        created_count = self.create_measurements(series)
-
-        # if any deferred errors occurred, raise an Exception to abort the transaction.
-        # we should generally avoid this since workarounds make the code more
-        # complex/hard-to-maintain, but just in case...better to fail than to partially apply
-        # changes
-        if self.error_count:
-            raise RuntimeError('%d errors occurred during the import attempt' % self.error_count)
-
-        return created_count
+        return self.create_measurements(series)
 
     def check_series_points(self, series):
         """
@@ -171,22 +196,26 @@ class TableImport(object):
         return line
 
     def _init_item_protocol(self, item):
-        protocol = None
         protocol_id = item.get('protocol_id', None)
         if protocol_id is None:
             logger.warning('Import set needs new Assay, but has undefined protocol_id field.')
             item['invalid_fields'] = True
-        else:
+        elif protocol_id not in self._valid_protocol:
+            # when protocol ID valid, map to itself, otherwise map to None
+            protocol = None
             try:
-                protocol = Protocol.objects.get(pk=protocol_id)
-            except Protocol.DoesNotExist:
-                logger.warning('Import set cannot load protocol %s' % (protocol_id))
-                item['invalid_fields'] = True
-        return protocol
+                protocol = models.Protocol.objects.get(pk=protocol_id)
+            except models.Protocol.DoesNotExist:
+                pass
+            self._valid_protocol[protocol_id] = protocol
+        result = self._valid_protocol.get(protocol_id, None)
+        if result is None:
+            logger.warning('Import set cannot load protocol %s' % (protocol_id))
+            item['invalid_fields'] = True
+        return result
 
     def create_measurements(self, series):
         added = 0
-        hours = MeasurementUnit.objects.get(unit_name='hours')
         # TODO: During a standard-size biolector import (~50000 measurement values) this loop runs
         # very slowly on my test machine, consistently taking an entire second per set (approx 300
         # values each). To an end user, this makes the submission appear to hang for over a
@@ -202,7 +231,7 @@ class TableImport(object):
                 logger.warning('Skipped set %s because no assay could be loaded' % index)
             else:
                 assay = item['assay_obj']
-                record = self._load_measurement_record(item, hours)
+                record = self._load_measurement_record(item)
                 added += self._process_measurement_points(record, points)
                 self._process_metadata(assay, meta)
                 # force refresh of Assay's Update (also saves any changed metadata)
@@ -213,9 +242,7 @@ class TableImport(object):
         self._study.save()
         return added
 
-    def _load_measurement_record(self, item, hours):
-        # TODO: stuffing hours in parameter list is a little gross, but otherwise would need
-        #   multiple unnecessary queries
+    def _load_measurement_record(self, item):
         record = None
         assay = item['assay_obj']
         points = item.get('data', [])
@@ -223,7 +250,7 @@ class TableImport(object):
 
         logger.info('Loading measurements for %s:%s' % (mtype.compartment, mtype.type))
         records = assay.measurement_set.filter(
-            measurement_type=mtype.type,
+            measurement_type_id=mtype.type,
             compartment=mtype.compartment,
         )
 
@@ -234,14 +261,13 @@ class TableImport(object):
                 record = records[0]
                 record.save()  # force refresh of Update
         if record is None:
-
             record = assay.measurement_set.create(
-                measurement_type=mtype.type,
+                measurement_type_id=mtype.type,
                 measurement_format=self._mtype_guess_format(points),
                 compartment=mtype.compartment,
                 experimenter=self._user,
-                x_units=hours,
-                y_units=mtype.unit,
+                x_units=self._hours,
+                y_units_id=mtype.unit,
             )
         return record
 
@@ -285,6 +311,33 @@ class TableImport(object):
             warnings.warn('Value %s could not be interpreted as a number' % value)
         return []
 
+    def _load_compartment(self, item):
+        compartment = item.get('compartment_id', None)
+        if compartment is None:
+            # master value could be set to null, want to still default to UNKNOWN
+            compartment = (
+                self._data.get('masterMCompValue', None) or Measurement.Compartment.UNKNOWN
+            )
+        return compartment
+
+    def _load_datasource(self):
+        if self._datasource.pk is None:
+            self._datasource.save()
+        return self._datasource
+
+    def _load_type_id(self, item):
+        type_id = item.get('measurement_id', None)
+        if type_id is None:
+            type_id = self._data.get('masterMTypeValue', None)
+        return type_id
+
+    def _load_unit(self, item):
+        unit = item.get('units_id', None)
+        if unit is None:
+            # TODO: get rid of magic number fallback; every EDD will have n/a as Unit #1?
+            return self._data.get('masterMUnitsValue', None) or 1
+        return unit
+
     def _mode(self):
         return self._data.get('datalayout', None)
 
@@ -297,69 +350,42 @@ class TableImport(object):
         return self._meta_lookup.get(meta_id, None)
 
     def _mtype(self, item):
-        hours = MeasurementUnit.objects.get(unit_name='hours')
-        NO_TYPE = MType(Measurement.Compartment.UNKNOWN, None, hours)
-
-        # In Transcriptomics and Proteomics mode, we attempt to resolve measurements client-side,
+        # In Transcriptomics and Proteomics mode, we attempt to resolve measurements server-side,
         # so we go by the measurement_name, ignoring the measurement_id and related fields (which
         # will be blank)
-        found_type = self._mtype_from_mode(item, hours, default=NO_TYPE)
-
-        if found_type is not NO_TYPE:
-            return found_type
-
-        type_id = item.get('measurement_id', 0)
-        units_id = item.get('units_id', 0)
-        try:
+        found_type = self._mtype_from_mode(item, default=NO_TYPE)
+        if found_type is NO_TYPE:
             found_type = MType(
-                item.get('compartment_id', Measurement.Compartment.UNKNOWN),
-                MeasurementType.objects.get(pk=type_id),
-                MeasurementUnit.objects.get(pk=units_id)
+                self._load_compartment(item),
+                self._load_type_id(item),
+                self._load_unit(item),
             )
-        except MeasurementType.DoesNotExist as e:
-            # failed to match type
-            message = (_('Could not match selected Measurement Type; got type ID = '
-                       '%(type_id)s.') % { 'type_id': type_id, })
-            raise ValidationError(message)
-        except MeasurementUnit.DoesNotExist as e:
-            # failed to match unit
-            raise ValidationError(_('Could not match selected Measurement Unit; got unit ID = '
-                                   '%(unit_id)s.') % {'unit_id': units_id, })
-        except ValueError as e:
-            # failed to parse type or unit
-            raise ValidationError(
-                _('Failed to parse data for Type or Units of measurement. Did you specify a '
-                  'type and unit for the measurements? Error details: %(err_msg)s') % {
-                    'err_msg': e,
-                }
-            )
-            pass
         return found_type
 
-    def _mtype_from_mode(self, item, hours, default=None):
+    def _mtype_from_mode(self, item, default=None):
         """
         Attempts to infer the measurement type of the input item from the general import mode
         specified in the input / in Step 1 of the import GUI.
         :param item: a dictionary containing the JSON data for a single measurement item sent
         from the front end
-        :param hours: the MeasurementType for hours. Prevents us from having to repeatedly query
-        for it.
         :param default: the default value to return if no better one can be inferred
         :return: the measurement type, or the specified default if no better one is found
         """
         found_type = default
         mode = self._mode()
+        compartment = self._load_compartment(item)
         measurement_name = item.get('measurement_name', None)
-        if mode == self.MODE_TRANSCRIPTOMICS:
+        units_id = self._load_unit(item)
+        if mode == MODE_TRANSCRIPTOMICS:
             genes = GeneIdentifier.objects.filter(type_name=measurement_name)
             if len(genes) == 1:
-                found_type = MType(Measurement.Compartment.UNKNOWN, genes[0], hours)
+                found_type = MType(compartment, genes[0].pk, units_id)
             else:
-                logger.warning('Found %(length)s GeneˇIdentifier instances for %(name)s' % {
+                logger.warning('Found %(length)s GeneIdentifier instances for %(name)s' % {
                     'length': len(genes),
                     'name': measurement_name,
                 })
-        elif mode == self.MODE_PROTEOMICS:
+        elif mode in (MODE_PROTEOMICS, MODE_SKYLINE):
             # extract Uniprot accession data from the measurement name, if present
             accession_match = ProteinIdentifier.accession_pattern.match(measurement_name)
             uniprot_id = accession_match.group(1) if accession_match else None
@@ -369,16 +395,14 @@ class TableImport(object):
             # as well as legacy proteins in EDD's database
             name_match_criteria = Q(type_name=measurement_name)
 
-            ALLOW_PERMISSIVE_PROTEIN_MATCHING = False
-
-            if ALLOW_PERMISSIVE_PROTEIN_MATCHING:
-                name_match_criteria = name_match_criteria| Q(short_name=measurement_name)
+            if getattr(settings, 'ALLOW_PERMISSIVE_PROTEIN_MATCHING', False):
+                name_match_criteria = name_match_criteria | Q(short_name=measurement_name)
                 if uniprot_id:
                     name_match_criteria = name_match_criteria | Q(short_name=uniprot_id)
             proteins = ProteinIdentifier.objects.filter(name_match_criteria)
 
             if len(proteins) == 1:
-                found_type = MType(Measurement.Compartment.UNKNOWN, proteins[0], hours)
+                found_type = MType(compartment, proteins[0].pk, units_id)
             else:
                 # fail if protein couldn't be uniquely matched, but detect all non-matches before
                 # failing
@@ -392,8 +416,8 @@ class TableImport(object):
                     # if configured. this isn't as good as looking them up in Uniprot, but should
                     # help as a stopgap to curate our protein entries
                     if settings.REQUIRE_UNIPROT_ACCESSION_IDS and not accession_match:
-                        raise ValidationError('''Protein name "%s" isn't a valid UniProt'''
-                                             ''' accession id.''')
+                        raise ValidationError('Protein name "%s" isn\'t a valid UniProt '
+                                              'accession id.')
 
                     logger.info('Creating a new ProteinIdentifier for %(name)s' % {
                         'name': measurement_name,
@@ -401,48 +425,29 @@ class TableImport(object):
 
                     # create the new protein id
                     # FIXME: this blindly creates a new type; should try external lookups first?
-                    source = Datasource.objects.create(name=self._user.username)
-                    p = ProteinIdentifier.objects.create(type_name=measurement_name,
-                                                         short_name=uniprot_id, source=source)
-                    found_type = MType(Measurement.Compartment.UNKNOWN, p, hours)
+                    p = ProteinIdentifier.objects.create(
+                        type_name=measurement_name,
+                        short_name=uniprot_id,
+                        source=self._load_datasource(),
+                    )
+                    found_type = MType(compartment, p.pk, units_id)
         return found_type
 
     def _mtype_guess_format(self, points):
         mode = self._mode()
         if mode == 'mdv':
             return Measurement.Format.VECTOR    # carbon ratios are vectors
-        elif mode in (self.MODE_TRANSCRIPTOMICS, self.MODE_PROTEOMICS):
+        elif mode in (MODE_TRANSCRIPTOMICS, MODE_PROTEOMICS):
             return Measurement.Format.SCALAR    # always single values
-        else:
-            # if any value looks like carbon ratio (vector), treat all as vector
-            for (x, y) in points:
-                if y is not None and ('/' in y or ':' in y):
-                    return Measurement.Format.VECTOR
-            return Measurement.Format.SCALAR
+        elif len(points):
+            # if first value looks like carbon ratio (vector), treat all as vector
+            (x, y) = points[0]
+            # several potential inputs to handle: list, string, numeric
+            if isinstance(y, list):
+                return Measurement.Format.VECTOR
+            elif y is not None and isinstance(y, string_types) and ('/' in y or ':' in y):
+                return Measurement.Format.VECTOR
+        return Measurement.Format.SCALAR
 
     def _replace(self):
         return self._data.get('writemode', None) == 'r'
-
-    def _unit(self, unit_id):
-        if unit_id not in self._unit_lookup:
-            try:
-                self._unit_lookup[unit_id] = MeasurementUnit.objects.get(id=unit_id)
-            except MeasurementUnit.DoesNotExist:
-                logger.warning('No MeasurementUnit found for %s' % unit_id)
-        return self._unit_lookup.get(unit_id, None)
-
-    def _messages_error(self, message, **kwargs):
-        """ Simple wrapper for django messages framework if request passed to TableImport. """
-        self.error_count+=1
-        if self._request is not None:
-            messages.error(self._request, message, **kwargs)
-
-    def _messages_success(self, message, **kwargs):
-        """ Simple wrapper for django messages framework if request passed to TableImport. """
-        if self._request is not None:
-            messages.success(self._request, message, **kwargs)
-
-    def _messages_warning(self, message, **kwargs):
-        """ Simple wrapper for django messages framework if request passed to TableImport. """
-        if self._request is not None:
-            messages.warning(self._request, message, **kwargs)

@@ -85,9 +85,9 @@ def skyline_home(request):
 
 
 def skyline_parse(request):
+    parser = skyline.SkylineParser()
     try:
-        data = request.FILES['file'].read()
-        result = skyline.ParseCSV(data.splitlines())
+        result = parser.export(request.FILES['file'])
         assert (result is not None)
         return JsonResponse(result.export())
     except Exception as e:

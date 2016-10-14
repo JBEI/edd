@@ -244,7 +244,7 @@ var Utl;
         JS.guessFileType = function (n, t) {
             // Going in order from most confident to least confident guesses:
             if (t.indexOf('officedocument.spreadsheet') >= 0) {
-                return 'excel';
+                return 'xlsx';
             }
             if (t === 'text/csv') {
                 return 'csv';
@@ -253,16 +253,16 @@ var Utl;
                 return 'xml';
             }
             if ((n.indexOf('.xlsx', n.length - 5) !== -1) || (n.indexOf('.xls', n.length - 4) !== -1)) {
-                return 'excel';
+                return 'xlsx';
             }
             if (n.indexOf('.xml', n.length - 4) !== -1) {
                 return 'xml';
             }
             if (t === 'text/plain') {
-                return 'plaintext';
+                return 'txt';
             }
             if (n.indexOf('.txt', n.length - 4) !== -1) {
-                return 'plaintext';
+                return 'txt';
             }
             // If all else fails, assume it's a csv file.  (So, any extension that's not tried above, or no extension.)
             return 'csv';

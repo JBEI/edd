@@ -41,9 +41,9 @@ CELERY_MAX_ICE_RETRIES = 19
 CELERY_SEND_TASK_ERROR_EMAILS = True
 
 
-####################################################################################################
+###################################################################################################
 # General settings for celery.
-####################################################################################################
+###################################################################################################
 # Broker Settings
 BROKER_URL = env('BROKER_URL')
 
@@ -59,9 +59,9 @@ CELERY_RESULT_SERIALIZER = EXTENDED_JSON_CONTENT_TYPE
 CELERY_ACCEPT_CONTENT = [EXTENDED_JSON_CONTENT_TYPE, 'json', 'msgpack', 'yaml']
 
 
-####################################################################################################
+###################################################################################################
 # Routers and queues for EDD.
-####################################################################################################
+###################################################################################################
 
 # A simplistic router that routes all Celery messages into the "edd" exchange, and from there onto
 # the "edd" queue. This is essentially just allowing us flexibility to use the same RabbitMQ server
@@ -85,13 +85,15 @@ CELERY_DEFAULT_QUEUE = 'edd'
 CELERY_DEFAULT_ROUTING_KEY = 'edd'
 
 
-####################################################################################################
+###################################################################################################
 # Task configuration
-####################################################################################################
-# seconds after which a task is notified that it'll be killed soon (5 min)
-CELERYD_TASK_SOFT_TIME_LIMIT = 270
-# upper limit in seconds a run can take before host process is terminated (5 min 30 sec)
-CELERYD_TASK_TIME_LIMIT = 300
+###################################################################################################
+# seconds after which a task is notified that it'll be killed soon
+# CELERYD_TASK_SOFT_TIME_LIMIT = 270  # (4 min 30 sec)
+CELERYD_TASK_SOFT_TIME_LIMIT = 1140  # bumping up to 19 min since Keio takes so long
+# upper limit in seconds a run can take before host process is terminated
+# CELERYD_TASK_TIME_LIMIT = 300  # (5 min)
+CELERYD_TASK_TIME_LIMIT = 1200  # bumping up to 20 min since Keio takes so long
 
 # List of modules to import when celery worker starts.
 # Note: alternatively, we could have Celery auto-discover all
@@ -99,9 +101,9 @@ CELERYD_TASK_TIME_LIMIT = 300
 # the less descriptive naming convention 'tasks.py'
 CELERY_IMPORTS = ('edd.remote_tasks',)
 
-####################################################################################################
+###################################################################################################
 # Configure database backend to store task state and results
-####################################################################################################
+###################################################################################################
 CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND')
 
 # prevent errors due to database connection timeouts while traffic is relatively low.

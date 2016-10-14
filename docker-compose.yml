@@ -92,6 +92,7 @@ services:
     links:
       - postgres
       - rabbitmq
+      - redis
       - smtp
       - solr
     volumes:

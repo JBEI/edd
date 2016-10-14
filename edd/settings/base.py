@@ -85,6 +85,7 @@ EMAIL_HOST_USER = ''
 EMAIL_HOST_PASSWORD = ''
 EMAIL_PORT = 25
 
+
 ###################################################################################################
 # Basic Django configuration
 ###################################################################################################
@@ -141,6 +142,7 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'main.utilities.EDDSettingsMiddleware',
+    'main.utilities.EDDImportCheckMiddleware',
 )
 
 
