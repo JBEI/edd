@@ -101,14 +101,11 @@ class GCMSTests(TestCase):
 # SKYLINE
 class SkylineTests (TestCase):
     def test_1(self):
-        from cStringIO import StringIO
         file_name = os.path.join(test_dir, "skyline.csv")
-        data = open(file_name, "U").read().splitlines()
-        out = StringIO()
-        r = skyline.ParseCSV(data).show_by_protein(out=out).export()
-        assert (out.getvalue().startswith("File   A   B   C   D"))
-        assert ("4  22  35  35  23" in out.getvalue())
-        assert (['4', 'A', 22] in r['rows'])
+        parser = skyline.SkylineParser()
+        with open(file_name, 'U') as file:
+            result = parser.export(file)
+            assert(['4', 'A', 22] in result['rows'])
 
 
 ########################################################################

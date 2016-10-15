@@ -63,6 +63,7 @@ class SbmlExport(object):
         self._forms = {}
         self._match_fields = {}
         self._match_sbml_warnings = []
+        self._export_errors = []
         self._max = self._min = None
         self._points = None
         self._density = []
@@ -265,6 +266,7 @@ class SbmlExport(object):
         time_form = SbmlExportSelectionForm(
             t_range=t_range, points=points, line=self._selection.lines[0], data=payload, **kwargs
         )
+        time_form.sbml_warnings.extend(self._export_errors)
         return time_form
 
     def init_forms(self, payload, context):
@@ -440,15 +442,23 @@ class SbmlExport(object):
         for mlist in self._measures.itervalues():
             for m in mlist:
                 if m.is_carbon_ratio():
-                    magnitudes = models.MeasurementValue.objects.filter(
+                    points = models.MeasurementValue.objects.filter(
                         measurement=m, x__0=time,
-                    ).values_list('y')[0][0]
-                    combined = ['%s(0.02)' % v for v in magnitudes]
-                    # pad out to 13 elements
-                    combined += ['-'] * (13 - len(magnitudes))
-                    name = m.measurement_type.short_name
-                    value = '\t'.join(combined)
-                    notes[m.assay.protocol.name].append('%s\tM-0\t%s' % (name, value))
+                    )
+                    if points.exists():
+                        # only get first value object, unwrap values_list tuple to get y-array
+                        magnitudes = points.values_list('y')[0][0]
+                        combined = ['%s(0.02)' % v for v in magnitudes]
+                        # pad out to 13 elements
+                        combined += ['-'] * (13 - len(magnitudes))
+                        name = m.measurement_type.short_name
+                        value = '\t'.join(combined)
+                        notes[m.assay.protocol.name].append('%s\tM-0\t%s' % (name, value))
+                    else:
+                        logger.warning(
+                            "No vector data found for %(measurement)s at %(time)s",
+                            {'measurement': m, 'time': time}
+                        )
         if self._sbml_model.isSetNotes():
             notes_obj = self._sbml_model.getNotes()
         else:
@@ -499,10 +509,20 @@ class SbmlExport(object):
         )
         for m in m_inter:
             points = {p.x[0] for p in m.values if self._min <= p.x[0] <= self._max}
-            if self._points:
-                self._points.intersection_update(points)
-            else:
+            if self._points is None:
                 self._points = points
+            elif self._points:
+                self._points.intersection_update(points)
+                if not self._points:
+                    # Adding warning as soon as no valid timepoints found
+                    self._export_errors.append(
+                        _('Including measurement %(type_name)s results in no valid export '
+                          'timepoints; consider excluding this measurement, or enable '
+                          'interpolation for the %(protocol)s protocol.') % {
+                            'type_name': m.measurement_type.type_name,
+                            'protocol': m.assay.protocol.name,
+                        }
+                    )
 
     def _update_reaction(self, builder, our_reactions, time):
         # loop over all template reactions, if in our_reactions set bounds, notes, etc
@@ -972,7 +992,7 @@ class SbmlMatchReactions(SbmlForm):
         return super(SbmlMatchReactions, self).clean()
 
 
-class SbmlExportSelectionForm(forms.Form):
+class SbmlExportSelectionForm(SbmlForm):
     """ Form determining output timepoint and filename for an SBML download. """
     time_select = forms.DecimalField(
         help_text=_('Select the time to compute fluxes for embedding in SBML template'),
@@ -989,13 +1009,14 @@ class SbmlExportSelectionForm(forms.Form):
     def __init__(self, t_range, points=None, line=None, *args, **kwargs):
         super(SbmlExportSelectionForm, self).__init__(*args, **kwargs)
         time_field = self.fields['time_select']
-        if points and len(points):
+        if points is not None:
+            initial = points[0] if points else None
             self.fields['time_select'] = forms.TypedChoiceField(
                 choices=[('%s' % t, '%s hr' % t) for t in points],
                 coerce=Decimal,
                 empty_value=None,
                 help_text=time_field.help_text,
-                initial=points[0],
+                initial=initial,
                 label=time_field.label,
             )
         else:

@@ -1,97 +1,94 @@
+# coding: utf-8
+from __future__ import division, unicode_literals
 
 """
 Reformat CSV output from the program Skyline to consolidate MS peak areas for
 individual peptides or proteins.
 """
 
-from __future__ import division
-from edd_utils.parsers import util
-from collections import defaultdict
-import os.path
-import json
-import sys
+import re
 
-class Record (object) :
-  def __init__ (self, fields) :
-    self.sample = fields[0]
-    self.protein = fields[1]
-    self.peptide = fields[2]
-    try :
-      self.area = float(fields[3])
-    except ValueError :
-      self.area = 0
+from collections import defaultdict, namedtuple
+from decimal import Decimal
+from itertools import ifilter, imap, product
 
-class ParseCSV (object) :
-  __slots__ = ["table"]
-  def __init__ (self, lines) :
-    self.table = []
-    for line in lines :
-      line = line.strip()
-      if (line == "") :
-        continue
-      else :
-        fields = line.split(",")
-        assert (len(fields) == 4)
-        if (not fields[0].startswith("File")) :
-          self.table.append(Record(fields))
+from .util import RawImportRecord
 
-  @property
-  def proteins (self) :
-    return sorted(list(set([ rec.protein for rec in self.table ])))
 
-  @property
-  def samples (self) :
-    samples = []
-    for rec in self.table :
-      if (not rec.sample in samples) :
-        samples.append(rec.sample)
-    return samples
+Record = namedtuple('Record', ['sample', 'protein', 'peptide', 'area', ])
+decimal_pattern = re.compile(r'^[-+]?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?')
 
-  def group_by_protein (self, include_header=True) :
-    by_protein = defaultdict(float)
-    samples = self.samples
-    for record in self.table :
-      by_protein[(record.sample, record.protein)] += record.area
-    table = []
-    if include_header :
-      table.append(["File"] + self.proteins)
-    for sample in samples :
-      row = [ sample ]
-      for protein in self.proteins :
-        area_sum = by_protein.get((sample, protein), None)
-        row.append(area_sum)
-      table.append(row)
-    return table
 
-  def show_by_protein (self, out=sys.stdout) :
-    table = self.group_by_protein()
-    for row in util.format_rows_for_minimum_field_size(table) :
-      print >> out, " ".join(row)
-    return self
+class SkylineParser(object):
+    __slots__ = []
 
-  def compress_rows (self, include_header=True) :
-    rows = []
-    if (include_header) :
-      rows.append([ "File", "Protein", "Total_Area" ])
-    for sample in self.samples :
-      by_protein = defaultdict(float)
-      for record in self.table :
-        if (record.sample == sample) :
-          by_protein[record.protein] += record.area
-      for protein in sorted(by_protein.keys()) :
-        rows.append([ sample, protein, by_protein[protein] ])
-    return rows
+    def export(self, input_data):
+        """ This "export" takes a two-dimensional array of input data and creates a data structure
+            used by the old proteomics skyline conversion tool. """
+        samples = set()
+        proteins = set()
+        summed_areas = defaultdict(Decimal)
+        n_records = 0
+        errors = []
+        for item in self._input_to_generator(input_data):
+            n_records += 1
+            samples.add(item.sample)
+            proteins.add(item.protein)
+            try:
+                summed_areas[(item.sample, item.protein)] += Decimal(item.area)
+            except ValueError:
+                errors.append('Could not parse area "%s"' % (item.area, ))
+        samples = sorted(samples)
+        proteins = sorted(proteins)
+        # 'short and wide'
+        export_table = [
+            [sample] + [summed_areas[(sample, protein)] for protein in proteins]
+            for sample in samples
+        ]
+        # 'tall and skinny'
+        rows = [
+            [sample, protein, summed_areas[(sample, protein)], ]
+            for (sample, protein) in product(samples, proteins)
+        ]
+        return {
+            'n_records': n_records,
+            'n_proteins': len(proteins),
+            'n_samples': len(samples),
+            'by_protein': export_table,
+            'rows': rows,
+            'errors': errors,
+        }
 
-  def export (self, n_expected=None) :
-    return {
-      "n_records" : len(self.table),
-      "n_proteins" : len(self.proteins),
-      "n_samples" : len(self.samples),
-      "by_protein" : self.group_by_protein(),
-      "rows" : self.compress_rows(),
-      "errors" : [],
-    }
+    def getRawImportRecordsAsJSON(self, spreadsheet):
+        """ Create RawImportRecord objects from a spreadsheet input.
 
-if (__name__ == "__main__") :
-  data = open(sys.argv[1], "U").read().splitlines()
-  ParseCSV(data).show_by_protein()
+            :param spreadsheet: 2D spreadsheet data
+        """
+        rows = self.export(spreadsheet)['rows']
+        return [
+            RawImportRecord(
+                kind='skyline',
+                assay_name=item[0],
+                # TODO: extract timestamp value from item[0]
+                data=[[None, item[2]]],
+                line_name=item[0],
+                name=item[1],
+            ).to_json()
+            for item in rows
+        ]
+
+    def _input_to_generator(self, input_data):
+        # the input_data could be a 2D array parsed from excel or CSV
+        if isinstance(input_data, list):
+            return (Record(*item) for item in ifilter(self._header_or_blank, input_data))
+        # or input_data could be a file with lines of CSV text
+        return (
+            Record(*cols)
+            for cols in ifilter(self._header_or_blank, imap(self._split_to_columns, input_data))
+        )
+
+    def _header_or_blank(self, row):
+        return (len(row) == 4) and decimal_pattern.match(row[3])
+
+    def _split_to_columns(self, line):
+        return line.split(',')

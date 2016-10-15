@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
 This is for parsing the output of HPLC machines.
@@ -9,7 +8,10 @@ import chardet
 import logging
 import re
 
-from collections import OrderedDict, namedtuple
+from collections import defaultdict, OrderedDict, namedtuple
+from decimal import Decimal
+from itertools import imap
+
 from .util import RawImportRecord
 
 
@@ -43,19 +45,20 @@ def iterate_as_lines(stream):
         yield line
 
 
-class HPLC_Parse_Missing_Argument_Exception(Exception):
+class HplcError(Exception):
     pass
 
 
-class HPLC_Parse_No_Header_Exception(Exception):
+class HplcInputError(HplcError):
     pass
 
 
-class HPLC_Parse_Misaligned_Blocks_Exception(Exception):
+class HplcAlignmentError(HplcError):
     pass
 
 
 CompoundRecord = namedtuple('CompoundRecord', ['compound', 'line', 'assay', 'timepoints', ])
+CompoundEntry = namedtuple('CompoundEntry', ['compound', 'amount'])
 
 
 class HPLC_Parser(object):
@@ -66,17 +69,13 @@ class HPLC_Parser(object):
     def __init__(self, input_stream):
 
         if not input_stream:
-            raise HPLC_Parse_Missing_Argument_Exception("No data stream provided")
+            raise HplcInputError("No data stream provided")
 
         self.input_stream = input_stream   # The stream that is being parsed
         self.decoded_stream = None
 
-        # samples format: { 'Sample Name': [Compound_Entry('compound', 'amount'), ...], ... }
+        # samples format: { 'Sample Name': [CompoundEntry('compound', 'amount'), ...], ... }
         self.samples = OrderedDict()       # The final data resulting from batch parsing
-        self.compound_entry = namedtuple('Compound_Entry', ['compound', 'amount'])
-
-        self.compound_record = namedtuple(
-            'Compound_Record', ['compound', 'line', 'assay', 'timepoints'])
 
         self.has_parsed = False
         self.formatted_results = None
@@ -86,10 +85,10 @@ class HPLC_Parser(object):
         self.sample_name_regex = re.compile(r'(.*)_HPLC@([0-9]+(?:\.[0-9]*)?)(?:_([^@]+))?')
 
         # Integer indices for standard format parsing
-        self.amount_begin_position = None
-        self.amount_end_position = None
-        self.compound_begin_position = None
-        self.compound_end_position = None
+        self.amount_begin = None
+        self.amount_end = None
+        self.compound_begin = None
+        self.compound_end = None
 
         self.expected_row_count = None
         self.current_line = 0
@@ -106,42 +105,7 @@ class HPLC_Parser(object):
         if self.has_parsed:
             return self.formatted_results
         self.has_parsed = True
-
-        # Apparently the HPLC machine generates documents in UTF-16?
-        # Iterating over unknown UTF lines in an io stream gives rather unpredictable results.
-        # There is no perfect way to determine the encoding while still parsing the stream,
-        # unless we use an iterator and buffer everything accumulated while guessing,
-        # then decode our buffer all at once using the guess, and pass the rest of the stream to
-        # another iterator with the guess explicit:
-
-        #   binary_chunks = iter(partial(input.read, 1), "")
-        #   for unicode_chunk in iterdecode(binary_chunks, encoding):
-        #       yield unicode_chunk
-
-        # ...And since HPLC files are really never very big, we're going to forget about
-        # stream parsing, and just slurp it all in here, detect the encoding, then decode
-        # it all at once.
-
-        # Future reference:
-        # http://blog.etianen.com/blog/2013/10/05/python-unicode-streams/
-        # https://github.com/facelessuser/Rummage/blob/master/rummage/rummage/rumcore/text_decode.py
-        # http://chardet.readthedocs.org/en/latest/usage.html
-
-        raw_string = self.input_stream.read()
-        chardet_result = chardet.detect(raw_string)
-        if chardet_result is None:
-            raise HPLC_Parse_No_Header_Exception("unable to determine encoding of document")
-
-        encoding = chardet_result['encoding']
-        logger.info("detected encoding %s", encoding)
-        try:
-            decoded_string = raw_string.decode(encoding)
-        except Exception:
-            raise HPLC_Parse_No_Header_Exception(
-                "unable to decode document using guessed unocide type %s", encoding
-            )
-
-        self.decoded_stream = iterate_as_lines(decoded_string)
+        self.decoded_stream = self._decode_input_stream()
 
         # TODO: Verify that long sample names don't clip!
         #        ...This can't be test without interacting with the HPLC machine.
@@ -185,47 +149,66 @@ class HPLC_Parser(object):
                 # get the name of the sample related to the row
                 new_sample_name = line[:section_widths[0]].strip()
 
+                if new_sample_name:
+                    sample_name = new_sample_name
+                    self.samples.setdefault(sample_name, list())
                 if not new_sample_name and not sample_name:
                     logger.error(
-                        "Continuation entry specified before sample name entry. Can't interpret."
+                        "Continuation entry specified before sample name entry.\n\t%d: %s",
+                        line_number, line.strip()
                     )
                     break
 
-                if new_sample_name:
-                    # ensure no collision with previous sample names by adding a #
-                    if new_sample_name in self.samples:
-                        new_sample_name += u'-2'  # first sample has no #, begin next with 'name-2'
-                        i = 3  # if name-2 is taken, begin counting up from 'name-3'
-                        while new_sample_name in self.samples:
-                            last_dash_index = new_sample_name.rindex('-')
-                            new_sample_name = "%s%s" % (new_sample_name[:last_dash_index+1], i)
-                            i += 1
-                    sample_name = new_sample_name
-                    self.samples[sample_name] = []
-                    logger.debug("sample_name: %s", sample_name)
-
                 # collect the other data items - grab amounts & compounds
-                amount_string = line[
-                    self.amount_begin_position:
-                    self.amount_end_position].strip()
-
-                compound_string = line[
-                    self.compound_begin_position:
-                    self.compound_end_position].strip()
+                amount = line[self.amount_begin:self.amount_end].strip()
+                compound = line[self.compound_begin:self.compound_end].strip()
 
                 # Put the value into our data structure
-                if amount_string != u'-' and compound_string != u'-':
-                    self.samples[sample_name].append(
-                        self.compound_entry(compound_string, amount_string))
+                if amount != '-' and compound != '-':
+                    self.samples[sample_name].append(CompoundEntry(compound, amount))
 
         logger.info("HPLC parsing finished.")
 
         self.formatted_results = self._format_samples_for_raw_input_record()
         return self.formatted_results
 
+    def _decode_input_stream(self):
+        # Apparently the HPLC machine generates documents in UTF-16?
+        # Iterating over unknown UTF lines in an io stream gives rather unpredictable results.
+        # There is no perfect way to determine the encoding while still parsing the stream,
+        # unless we use an iterator and buffer everything accumulated while guessing,
+        # then decode our buffer all at once using the guess, and pass the rest of the stream to
+        # another iterator with the guess explicit:
+
+        #   binary_chunks = iter(partial(input.read, 1), "")
+        #   for unicode_chunk in iterdecode(binary_chunks, encoding):
+        #       yield unicode_chunk
+
+        # ...And since HPLC files are really never very big, we're going to forget about
+        # stream parsing, and just slurp it all in here, detect the encoding, then decode
+        # it all at once.
+
+        # Future reference:
+        # http://blog.etianen.com/blog/2013/10/05/python-unicode-streams/
+        # https://github.com/facelessuser/Rummage/blob/master/rummage/rummage/rumcore/text_decode.py
+        # http://chardet.readthedocs.org/en/latest/usage.html
+
+        raw_string = self.input_stream.read()
+        chardet_result = chardet.detect(raw_string)
+        if chardet_result is None:
+            raise HplcInputError("unable to determine encoding of document")
+
+        encoding = chardet_result['encoding']
+        logger.info("detected encoding %s", encoding)
+        try:
+            return iterate_as_lines(raw_string.decode(encoding))
+        except Exception:
+            raise HplcInputError("unable to decode document using guessed encoding %s", encoding)
+
     def _format_samples_for_raw_input_record(self):
 
-        compound_record_dict = {}  # { compound: [ compound_record_for_assay1, ... ], ... }
+        # { compound: [ compound_record_for_assay1, ... ], ... }
+        compound_record_dict = defaultdict(list)
 
         for (name, sample) in self.samples.iteritems():
             # Collects the DB names from the name.
@@ -245,31 +228,13 @@ class HPLC_Parser(object):
 
             # create formatted record for each compund entry
             for entry in sample:
-                selected_record = None
                 try:
-                    value = float(entry.amount)
+                    value = Decimal(entry.amount)
+                    record = CompoundRecord(entry.compound, line, assay, [[time or 0, value]])
+                    compound_record_dict[entry.compound].append(record)
                 except ValueError:
                     logger.warning('Could not interpret value %s', entry.amount)
                     continue
-                if entry.compound not in compound_record_dict:
-                    compound_record_dict[entry.compound] = []
-                for record in compound_record_dict[entry.compound]:
-                    # check assay and line, may be different if on a different sample
-                    if record.assay == assay:
-                        if record.line == line:
-                            selected_record = record
-                if not selected_record:
-                    record = CompoundRecord(
-                        entry.compound,
-                        line,
-                        assay,
-                        [[time or 0, value]])
-                    compound_record_dict[entry.compound].append(record)
-                else:
-                    selected_record.timepoints.append([time or 0, value])
-
-        # TODO: in importer: None(timepoint) -> WARNING
-        # TODO: in importer: None(assay) -> `None`
 
         compound_records = []
         for key in compound_record_dict:
@@ -292,11 +257,11 @@ class HPLC_Parser(object):
             if "*** End of Report ***" in line:
                 break
             if line == '':
-                raise HPLC_Parse_No_Header_Exception(
+                raise HplcInputError(
                     "unable to find header: EOF encountered at line %d",
                     self.current_line)
             if i >= HPLC_Parser.max_header_line_count:
-                raise HPLC_Parse_No_Header_Exception(
+                raise HplcInputError(
                     "unable to find header: header not closed after %d lines",
                     HPLC_Parser.max_header_line_count)
         return header_block
@@ -337,9 +302,7 @@ class HPLC_Parser(object):
     def _extract_column_headers_from_multiline_text(self, section_widths, table_header):
 
         # collect the multiline text
-        column_headers = []
-        for section_width in section_widths:
-            column_headers.append('')
+        column_headers = [''] * len(section_widths)
         for line in table_header:
             section_width_carryover = 0
             for (section_index, section_width) in enumerate(section_widths):
@@ -364,87 +327,51 @@ class HPLC_Parser(object):
                     section_width_carryover = 1
                 column_headers[section_index] += segment
 
-        # clean up the column headers
-        for i in range(len(column_headers)):
-            column_headers[i] = column_headers[i].split()
-
-        # each sample is indexed by sample name
-
-        # each value is indexed by column header
-        for column_header_index in range(len(column_headers)):
-            header = u""
-            for header_part in column_headers[column_header_index]:
-                header += u" " + header_part
-            if len(header) > 0:
-                header = header[1:]
-            column_headers[column_header_index] = header
+        # each value is indexed by column header, clean up headers
+        for i, header_tokens in enumerate(imap(lambda h: h.split(), column_headers)):
+            header = ' '.join(header_tokens)
+            column_headers[i] = header
 
             logger.debug("header: %s", header)
 
             if header.startswith('Amount'):
-                self.amount_begin_position = (sum(
-                    section_widths[:column_header_index]) +
-                    len(section_widths[:column_header_index]))
-                self.amount_end_position = (section_widths[column_header_index] +
-                                            self.amount_begin_position)
-                logger.debug("Amount Begin: %s    End %s",
-                             self.amount_begin_position, self.amount_end_position)
+                self.amount_begin = sum(section_widths[:i]) + len(section_widths[:i])
+                self.amount_end = section_widths[i] + self.amount_begin
             elif header.startswith('Compound'):
-                self.compound_begin_position = (sum(
-                    section_widths[:column_header_index]) +
-                    len(section_widths[:column_header_index]))
-                self.compound_end_position = (
-                    section_widths[column_header_index] +
-                    self.compound_begin_position)
-                logger.debug("Compound Begin: %s    End %s",
-                             self.compound_begin_position,
-                             self.compound_end_position)
+                self.compound_begin = sum(section_widths[:i]) + len(section_widths[:i])
+                self.compound_end = section_widths[i] + self.compound_begin
 
         return column_headers
 
-    def _parse_96_well_format_block(self,
-                                    sample_names,
-                                    compounds,
-                                    column_headers,
-                                    section_widths):
+    def _parse_96_well_format_block(self, sample_names, compounds, column_headers, section_widths):
         """Reads in a single block of data from file"""
 
-        end_of_block = False
-        line_number = 0
-        while not end_of_block:
-            line = next(self.decoded_stream)
-            self.current_line += 1
+        for line_number, line in enumerate(self.decoded_stream):
+            self.current_line = line_number
 
             if self.expected_row_count and line_number > self.expected_row_count:
-                raise HPLC_Parse_Misaligned_Blocks_Exception("More rows found then expected!")
+                raise HplcAlignmentError("More rows found then expected!")
 
             if line.startswith('#'):
-                end_of_block = True
                 if self.expected_row_count and line_number < self.expected_row_count:
-                    raise HPLC_Parse_Misaligned_Blocks_Exception("Less rows found then expected!")
+                    raise HplcAlignmentError("Less rows found then expected!")
+                break
 
-            for index in range(len(column_headers)):
-                if "Sample" in column_headers[index]:
-                    begin_position = (sum(section_widths[:index]) +
-                                      len(section_widths[:index]))
+            for index, header in enumerate(column_headers):
+                if "Sample" in header:
+                    begin_position = sum(section_widths[:index]) + len(section_widths[:index])
                     end_position = section_widths[index] + begin_position
                     name = line[begin_position:end_position].strip()
                     # sample names is implicitly indexed by line_number
                     sample_names.append(name)
-                elif "Amount" in column_headers[index]:
-                    begin_position = (sum(section_widths[:index]) +
-                                      len(section_widths[:index]))
+                elif "Amount" in header:
+                    begin_position = sum(section_widths[:index]) + len(section_widths[:index])
                     end_position = section_widths[index] + begin_position
                     amount = line[begin_position:end_position].strip()
-
-                    if float(amount) == 0.0:
+                    if Decimal(amount) == 0.0:
                         continue
-
                     compound = column_headers[index].replace("Amount", "").strip()
-
-                    compounds.append((line_number, self.compound_entry(compound, amount)))
-
-            line_number += 1
+                    compounds.append((line_number, CompoundEntry(compound, amount)))
 
         return sample_names, compounds
 
@@ -489,56 +416,3 @@ class HPLC_Parser(object):
                 self.samples[sample_name].append(compound)
             else:
                 self.samples[sample_name] = [compound]
-
-# testing hook
-if __name__ == "__main__":
-    import io
-    import os
-    import sys
-
-    logger = logging.getLogger(__name__)
-
-    if len(sys.argv) is not 2:
-        print("usage: python hplc_parser.py input_file_path")
-        sys.exit(1)
-
-    log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-
-    logging.basicConfig(
-        filename='hplc_parser.log',
-        level=logging.DEBUG,
-        format=log_format)
-
-    # echo all debug statements to stdout
-    formatter = logging.Formatter(log_format)
-    sh = logging.StreamHandler(sys.stdout)
-    sh.setLevel(logging.DEBUG)
-    sh.setFormatter(formatter)
-    logger.addHandler(sh)
-
-    # parse the provided filepath
-    input_file_path = sys.argv[1]
-
-    if not os.path.exists(input_file_path):
-        raise IOError("Error: unable to locate file %s" % input_file_path)
-
-    with io.open(input_file_path, "r", encoding='utf-16') as input_file:
-        p = HPLC_Parser(input_file)
-        compound_records = p.parse_hplc()
-        hplc_protocol_string = "hplc"
-
-        result = []
-        for record in compound_records:
-            metadata = {}
-            raw_record = RawImportRecord(
-                hplc_protocol_string,
-                record.compound,
-                record.line,
-                record.assay,
-                record.timepoints,  # warning: shallow copy(s)
-                metadata)
-            result.append(raw_record)
-
-    # activate interactive debugger with our information inside
-    import IPython
-    IPython.embed(banner1="\n\nparse function returned, values stored in dict 'samples'")

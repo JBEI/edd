@@ -538,7 +538,7 @@ var EDDTableImport;
         RawInputStep.prototype.reprocessRawData = function () {
             var mode, delimiter, processor, input;
             mode = this.selectMajorKindStep.interpretationMode;
-            this.ignoreGaps();
+            this.ignoreGaps(); // TODO: Are these necessary?
             this.transpose();
             this.separatorType();
             this.gridFromTextField = [];

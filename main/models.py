@@ -1212,7 +1212,7 @@ class Line(EDDObject):
             into integers, and return the next highest integer for creating a new assay.  (This
             will result in duplication of names for Assays of different protocols under the same
             Line, but the frontend displays Assay.long_name, which should be unique.) """
-        if isinstance(protocol, str):  # assume Protocol.name
+        if isinstance(protocol, string_types):  # assume Protocol.name
             protocol = Protocol.objects.get(name=protocol)
         assays = self.assay_set.filter(protocol=protocol)
         existing_assay_numbers = []
