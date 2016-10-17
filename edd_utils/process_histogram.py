@@ -49,10 +49,14 @@ def process_file(filename):
             evalues = list(map(lambda e: Enum(*e), enumerate(values)))
             # sum of all cells is population count
             count = sum(values)
-            # cell value multiplied by bin value across all bins, averaged
-            mean = sum(map(lambda v: bins[v.index] * v.value, evalues)) / count
-            # cell value multiplied by square of difference from bin to mean, averaged
-            variance = sum(map(lambda v: ((bins[v.index] - mean) ** 2) * v.value, evalues)) / count
+            if count:
+                # cell value multiplied by bin value across all bins, averaged
+                mean = sum(map(lambda v: bins[v.index] * v.value, evalues)) / count
+                # cell value multiplied by square of difference from bin to mean, averaged
+                variance = sum(map(lambda v: ((bins[v.index] - mean) ** 2) * v.value, evalues)) / count
+            else:
+                mean = Decimal(0.)
+                variance = Decimal(0.)
             # quantize to limit precision based on bin size
             mean = mean.quantize(halfstep)
             variance = variance.quantize(halfstep)
