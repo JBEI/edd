@@ -477,7 +477,7 @@ class DataGrid {
         // Remove all the grouping title rows from the table as well, if they were there
         var rowGroupSpec = this._spec.tableRowGroupSpec;
         rowGroupSpec.forEach((rowGroup) => {
-            var r = rowGroup.replicateGroupTitleRow;
+            var r = rowGroup.replicateGroupTable ;
             if (r.parentNode) { // As with regular rows, we're assuming the row is a child only of this table body.
                 this._tableBody.removeChild(r);
             }
@@ -539,7 +539,7 @@ class DataGrid {
             });
              rowGroupSpec.forEach((rowGroup) => {
                 striping = 1 - striping;
-                frag.appendChild(rowGroup.replicateGroupTitleRow);
+                frag.appendChild(rowGroup.replicateGroupTable );
             });
             var lineColumnLabels = $(this._tableBody).children("tr:first").next();
             $(frag).insertAfter(lineColumnLabels);
@@ -745,10 +745,10 @@ class DataGrid {
             var replicateIds = this._findReplicateLines(replicates, oneGroup);
             oneGroup.memberRecords = [];
             var clicks = true;
+                var table = oneGroup.replicateGroupTableJQ = $(oneGroup.replicateGroupTable = document.createElement("table"))
+                    .addClass('groupHeaderTable');
                 var row = oneGroup.replicateGroupTitleRowJQ = $(oneGroup.replicateGroupTitleRow = document.createElement("tr"))
-                    .addClass('groupHeader').click(() => {
-                        //collapse and expand replicate groups
-                        //var clicks = $(this).data('clicks');
+                    .appendTo(table).addClass('groupHeader').click(() => {
                         if (clicks) {
                             this._expandRowGroup(index, replicateIds);
                             clicks = false;
@@ -756,7 +756,6 @@ class DataGrid {
                             this._collapseRowGroup(index, replicateIds);
                             clicks = true;
                         }
-                       // $(this).data("clicks", !clicks);
                     });
                 var cell = $(document.createElement("td")).appendTo(row).text(" " + oneGroup.name).addClass('groupReplicateRow');
                 if (this._totalColumnCount > 1) {
@@ -2142,6 +2141,8 @@ class DataGridRowGroupSpec {
     disclosed:boolean;
     replicateGroupTitleRow:HTMLElement;
     replicateGroupTitleRowJQ:JQuery;
+    replicateGroupTableJQ:JQuery;
+    replicateGroupTable:HTMLElement;
     memberRecords:DataGridRecord[];
 
     constructor(label:string) {
