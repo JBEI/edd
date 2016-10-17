@@ -1,4 +1,4 @@
-#EDD Use Cases
+# EDD Use Cases
 
 This document captures some of the high-level use cases for EDD. It's not intended as an exhaustive guide to EDD's features, but more of an overview of the expected user base and some of users' differing needs from EDD's major features.
 
@@ -22,15 +22,15 @@ Experiment definition in EDD often follows one of two broad workflows:
 
 Scientists need to import their data into EDD in the simplest fashion possible, and with a minimum knowledge of EDD and its internals. Students and postdoc turnover is high at JBEI, and even for long-term employees, many spend most of their time in the lab and will have long gaps between uses of EDD, during which they're likely to forget part or all of their training.
 
-### Measurement Visualization
+## Measurement Visualization
  
  1. __Guiding experiments / analysis:__ for cases where simple visualizations provided by EDD are enough, experimenters can view their data directly in the EDD UI and use it to guide decisionmaking for further experiment design, or for where to focus further analysis. Ideally, some experimentors will be able to export publication-quality results directly from EDD's user interface without the need for other tools.  EDD's goal is to support the most common ~80% of visualization needs, and experimentors who need less commonly-used visualizations should use or create other tools developed for that purpose.
 
  2. __Filtering exports:__ another common use case for EDD's visualization tools is to filter down just the data of interest for export, or for automated definition of follow-up experiments based on data already captured in EDD. For example, researchers may do an initial experiment to search the paramater space for likely areas of investigation, use EDD's visuals to identify further required experiments, and then use the visualization filtering options to clone a subset of lines into a new study to avoid duplicate data entry.
 
  3. __Reviewing results:__ paper reviewers internal and external to JBEI may want to review experimental measurement data during the process of reviewing or attempting to reproduce experimental results. 
- 
-### Metadata Visualization
+
+## Metadata Visualization
  
  1. __'Omics-as-a-service pipelines__: Measurement / analysis pipelines in place at JBEI use EDD's experiment metadata to capture and communicate important experimental conditions in a standard format.  For example, before conducting Proteomics experiments on behalf of JBEI researchers, Chris will often review the experiment setup and and provide guidance to the researcher before creating a worklist or performing any measurements.
  
