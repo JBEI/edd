@@ -744,16 +744,19 @@ class DataGrid {
             var replicates = this._groupReplicates();
             var replicateIds = this._findReplicateLines(replicates, oneGroup);
             oneGroup.memberRecords = [];
+            var clicks = true;
                 var row = oneGroup.replicateGroupTitleRowJQ = $(oneGroup.replicateGroupTitleRow = document.createElement("tr"))
                     .addClass('groupHeader').click(() => {
                         //collapse and expand replicate groups
-                        var clicks = $(this).data('clicks');
+                        //var clicks = $(this).data('clicks');
                         if (clicks) {
-                            this._collapseRowGroup(index, replicateIds);
-                        } else {
                             this._expandRowGroup(index, replicateIds);
+                            clicks = false;
+                        } else {
+                            this._collapseRowGroup(index, replicateIds);
+                            clicks = true;
                         }
-                        $(this).data("clicks", !clicks);
+                       // $(this).data("clicks", !clicks);
                     });
                 var cell = $(document.createElement("td")).appendTo(row).text(" " + oneGroup.name).addClass('groupReplicateRow');
                 if (this._totalColumnCount > 1) {
@@ -762,6 +765,7 @@ class DataGrid {
         });
         return this;
     }
+
 
     /**
      * this function returns the lines associated with a replicate group
