@@ -546,7 +546,7 @@ class DataGrid {
         }
 
         //hacky way to show lines that were hidden from grouping replicates
-        if ($('#linesGroupStudyReplicatesCB0').prop('checked')) {
+        if ($('#linesGroupStudyReplicatesCB0').prop('checked') === false) {
             var lines = $(frag).children();
             _.each(lines, function(line) {
                 $(line).show()
