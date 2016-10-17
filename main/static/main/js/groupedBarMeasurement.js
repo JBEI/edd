@@ -17,7 +17,18 @@
         data, nested, typeNames, xValues, yvalueIds, x_name, xValueLabels,
         sortedXvalues, div, x_xValue, lineID, meas, y, wordLength;
 
-
+    if (type === 'x') {
+         var entries = d3.nest(type)
+        .key(function (d) {
+            return d[type];
+        })
+        .entries(assayMeasurements);
+        var timeMeasurements = _.clone(assayMeasurements);
+        var nestedByTime = findAllTime(entries);
+        var howManyToInsertObj = findMaxTimeDifference(nestedByTime);
+        console.log(howManyToInsertObj);
+        insertFakeValues(entries, howManyToInsertObj, timeMeasurements);
+    }
     //x axis scale for type
     x_name = d3.scale.ordinal()
         .rangeRoundBands([0, graphSet.width], 0.1);
@@ -35,12 +46,21 @@
     div = d3.select("body").append("div")
         .attr("class", "tooltip2")
         .style("opacity", 0);
-    
-    meas = d3.nest()
+
+    if (type === 'x') {
+        meas = d3.nest()
+        .key(function (d) {
+            return d.y_unit;
+        })
+        .entries(timeMeasurements);
+
+    } else {
+       meas = d3.nest()
         .key(function (d) {
             return d.y_unit;
         })
         .entries(assayMeasurements);
+    }
 
     // if there is no data - show no data error message
     if (assayMeasurements.length === 0) {
@@ -66,7 +86,18 @@
     }))
     }
 
-    // nest data by type (ie measurement) and by x value
+    if (type === 'x') {
+        // nest data by type (ie measurement) and by x value
+        nested = d3.nest(type)
+            .key(function (d) {
+                return d[type];
+            })
+            .key(function (d) {
+                return parseFloat(d.x);
+            })
+            .entries(timeMeasurements);
+    } else {
+        // nest data by type (ie measurement) and by x value
     nested = d3.nest(type)
             .key(function (d) {
                 return d[type];
@@ -75,6 +106,8 @@
                 return parseFloat(d.x);
             })
             .entries(assayMeasurements);
+    }
+
 
     //insert y value to distinguish between lines
     data = getXYValues(nested);
@@ -197,8 +230,12 @@
             })
             .enter().append("g")
             .attr("class", function (d) {
+                if (d.lineName.includes(' ')) {
+                    d.lineName = d.lineName.split(' ').join('');
+                }
+                  // if (d.lineName.includes('/'))
                 return 'value value-' + d.lineName;
-            })
+             })
             .attr("transform", function (d) {
                 return "translate(" + lineID(d.key) + ",0)";
             })
@@ -257,4 +294,50 @@
            d3.selectAll(typeClass[type] + ' .x.axis text').remove()
         }
     }
+}
+
+// this function takes in data nested by type and returns and object with time points as keys and length of nested
+// values as values.. {6: 6, 7: 6, 8: 6}
+function findAllTime(values) {
+    var times = {};
+    _.each(values, function(value) {
+        times[value.key] = value.values.length;
+    });
+    return times;
+}
+
+//this function returns time value as key and how many time points need to be added as value.
+function findMaxTimeDifference(obj) {
+    var values = _.values(obj);
+    var max = Math.max.apply(null, values);
+    for (var key in obj) {
+        obj[key] = max - obj[key]
+    }
+    return obj
+}
+
+function insertFakeValues(obj, differenceObj, assayMeasurements) {
+    var count = 0;
+     _.each(obj, function(d) {
+        var howMany = differenceObj[d.key];
+        while (count < howMany) {
+            insertFakeTime(assayMeasurements, d.key, d.values[0].y_unit);
+            count++;
+        }
+    });
+    return obj;
+}
+
+
+
+function insertFakeTime(array, key, y_unit) {
+    key = parseFloat(key);
+    array.push({
+          'color': 'white',
+          'x': key,
+          'y': null,
+          'y_unit': y_unit,
+          'name': '',
+          'lineName': 'n/a'
+        })
 }
