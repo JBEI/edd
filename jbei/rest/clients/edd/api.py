@@ -703,6 +703,9 @@ class EddApi(RestApiClient):
         # Note: although it's normally best to abstract the URLs away from clients, in this case
         # clients will need the URL to push study link updates to ICE.
         base_url = alternate_base_url if alternate_base_url else self.base_url
+
+        # chop off a trailing slash in the base_url, if present
+        base_url = base_url if base_url.endswith('/') else base_url[:len(base_url)-1]
         return "%s/study/%s/" % (base_url, study_pk)
 
 
