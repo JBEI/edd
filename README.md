@@ -395,6 +395,6 @@ but this is the safest upgrade process (though also the most time-consuming):
 [5]:    https://docs.docker.com/machine/overview/
 [6]:    http://typescriptlang.org/
 [7]:    https://docs.docker.com/engine/installation/linux/
-[8]:    Configuration.md
+[8]:    docs/Configuration.md
 [9]:    jbei/README.md
 [10]:   https://github.com/JBEI/ice
