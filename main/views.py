@@ -415,7 +415,7 @@ class StudyDetailView(generic.DetailView):
                 'study': self.object,
             },
             context_instance=RequestContext(request),
-            )
+        )
 
     def handle_measurement_update(self, request, context):
         measure_ids = request.POST.get('measureId', '')
@@ -501,6 +501,9 @@ class StudyDetailView(generic.DetailView):
         if type(view_or_valid) == bool:
             # boolean means a response to same page, with flag noting whether form was valid
             return self.post_response(request, context, view_or_valid)
+        elif isinstance(view_or_valid, HttpResponse):
+            # got a response, directly return
+            return view_or_valid
         else:
             # otherwise got a view function, call it
             return view_or_valid(request, *args, **kwargs)
