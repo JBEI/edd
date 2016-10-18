@@ -10,8 +10,8 @@ Regardless of the exact process used to define experimental parameters, there's 
 sufficient metadata in EDD to allow the experiment to be fully understood by readers, as well as 
 reproduced later (at least in combination with the associated paper). The standard English 
 description of experimental conditions captured in scientific publications can't be automatically 
-processed, and is often insufficient to reproduce the experiment later on.  Experement 
-reproducability is a much larger issue than can be entirely solved by EDD, but EDD can provide a 
+processed, and is often insufficient to reproduce the experiment later on.  Experiment 
+reproducability is a much larger issue that can't be entirely solved by EDD, but EDD can provide a 
 standard format for capturing experimental conditions, as well as some help in reviewing whether a 
 minimal set of metadata have been captured for posterity.
 
@@ -29,7 +29,7 @@ Experiment definition in EDD often follows one of two broad workflows:
    populate the experiment definition may not be the same as the ones who later review it and 
    generate the worklist. Another important purpose of experiment definition is to capture and 
    convey experimental design parameters to the researchers who are running the measurement 
-   platforms, ßsince some conditions will affect how they do their work. 
+   platforms, since some conditions will affect how they do their work. 
 
    EDD users who don't take advantage of worklists may still want to predifine experimental 
    parameters to save work later during data entry into EDD (e.g. when importing large / preexisting
@@ -93,7 +93,7 @@ of EDD, during which they're likely to forget part or all of their training.
  
  3. __Reviewing results:__ readers of JBEI publications may want to review the actual measurements 
     and experimental conditions captured in EDD to understand publications or to help in reproducing 
-    experiments.
+    experiments.  They may also want to compare experimental conditions between similar studies.
  
 
 ## Exporting Measurements / Metadata
