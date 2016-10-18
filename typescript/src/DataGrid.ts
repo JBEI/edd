@@ -67,7 +67,8 @@ class DataGrid {
             .addClass('dataTable sortable dragboxes hastablecontrols')
             .append(tableBody);
 
-        var tableHeaderRow = $(document.createElement("tr")).addClass('header');
+        var tHeadRow = $(document.createElement('thead'));
+        var tableHeaderRow = $(document.createElement("tr")).addClass('header').appendTo(tHeadRow);
         var tableHeaderCell = $(this._tableHeaderCell = document.createElement("th"))
             .appendTo(tableHeaderRow);
         if (dataGridSpec.tableSpec.name) {
@@ -81,14 +82,14 @@ class DataGrid {
 
         // If we're asked to show the header, then add it to the table.  Otherwise we will leave it off.
         if (dataGridSpec.tableSpec.showHeader) {
-            tableBody.append(tableHeaderRow);
+            tHeadRow.insertBefore(tableBody);
         }
 
         // Apply the default column visibility settings.
         this.prepareColumnVisibility();
 
         var headerRows = this._headerRows = this._buildTableHeaders();
-        this._headerRows.forEach((v) => tableBody.append(v));
+        this._headerRows.forEach((v) => tHeadRow.append(v));
 
         setTimeout( () => this._initializeTableData(), 1 );
     }
@@ -541,8 +542,7 @@ class DataGrid {
                 striping = 1 - striping;
                 frag.appendChild(rowGroup.replicateGroupTable );
             });
-            var lineColumnLabels = $(this._tableBody).children("tr:first").next();
-            $(frag).insertAfter(lineColumnLabels);
+            $(frag).insertBefore($(this._tableBody));
         }
 
         //hacky way to show lines that were hidden from grouping replicates
@@ -745,7 +745,7 @@ class DataGrid {
             var replicateIds = this._findReplicateLines(replicates, oneGroup);
             oneGroup.memberRecords = [];
             var clicks = true;
-                var table = oneGroup.replicateGroupTableJQ = $(oneGroup.replicateGroupTable = document.createElement("table"))
+                var table = oneGroup.replicateGroupTableJQ = $(oneGroup.replicateGroupTable = document.createElement("tbody"))
                     .addClass('groupHeaderTable');
                 var row = oneGroup.replicateGroupTitleRowJQ = $(oneGroup.replicateGroupTitleRow = document.createElement("tr"))
                     .appendTo(table).addClass('groupHeader').click(() => {
