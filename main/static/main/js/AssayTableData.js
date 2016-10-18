@@ -38,19 +38,12 @@ var EDDTableImport;
     // As soon as the window load signal is sent, call back to the server for the set of reference records
     // that will be used to disambiguate labels in imported data.
     function onWindowLoad() {
-        var atdata_url, queryTime;
+        var atdata_url;
         atdata_url = "/study/" + EDDData.currentStudyID + "/assaydata";
         $('.disclose').find('a.discloseLink').on('click', EDDTableImport.disclose);
         // Populate ATData and EDDData objects via AJAX calls
-        //queryTime = new Date();
         jQuery.ajax(atdata_url, {
             "success": function (data) {
-                // compute & log elapsed time since the query was initiated
-                //var elapsedSeconds: number, receiptTime: Date;
-                //receiptTime = new Date();
-                //elapsedSeconds = (receiptTime.getTime() - queryTime.getTime()) / 1000;
-                //console.log('onReferenceRecordsLoad(): Received study data from the server after',
-                //    elapsedSeconds, ' s');
                 $.extend(ATData, data.ATData);
                 $.extend(EDDData, data.EDDData);
                 EDDTableImport.onReferenceRecordsLoad();
@@ -518,7 +511,7 @@ var EDDTableImport;
             // with a range in between based on the length of the input data.
             // This way a person making a minor correction to a small data set can see
             // their results more quickly, but we don't overload when working on large sets.
-            delay = Math.max(500, Math.min(3000, $('#step2textarea').val().length * 10));
+            delay = Math.max(500, Math.min(3000, $('#step2textarea').val().length));
             this.inputRefreshTimerID = setTimeout(this.reprocessRawData.bind(this), delay);
         };
         RawInputStep.prototype.getProcessorForMode = function (mode) {
@@ -2069,12 +2062,13 @@ var EDDTableImport;
             parentDiv = $(ev.target).parent();
             allSelected = true;
             checkboxes = $(parentDiv).find('.' + TypeDisambiguationStep.STEP_4_TOGGLE_ROW_CHECKBOX);
-            // inspect all the checkboxes in this subsection to see their selection state
-            checkboxes.each(function (index, elt) {
+            checkboxes.toArray().some(function (elt) {
                 var checkbox = $(elt);
-                if (!checkbox.is(':checked')) {
+                if (!checkbox.prop('checked')) {
                     allSelected = false;
+                    return true; // break; for the Array.some() loop
                 }
+                return false;
             });
             // un/check all checkboxes based on their previous state
             checkboxes.each(function (index, elt) {
@@ -2674,6 +2668,7 @@ var EDDTableImport;
             $('<div>').text(name).appendTo(this.row.insertCell());
             this.build(body, name, i);
         }
+        // Empty base implementation for children to override
         DisambiguationRow.prototype.build = function (body, name, i) {
         };
         DisambiguationRow.prototype.detach = function () {
@@ -2705,21 +2700,12 @@ var EDDTableImport;
                 var tableCell = $(elt);
                 tableCell.toggleClass('disabledTextLabel', !enabled);
                 // manage text input(s)
-                tableCell.find(':input').each(function (index, elt) {
-                    var textInput = $(elt);
-                    // clear / disable the visible input so it doesn't get submitted with the form
-                    textInput.prop('disabled', !enabled);
-                });
+                // clear / disable the visible input so it doesn't get submitted with the form
+                tableCell.find(':input').prop('disabled', !enabled);
                 // manage hidden input(s)
-                tableCell.find(':hidden').each(function (index, elt) {
-                    var hiddenInput = $(elt);
-                    hiddenInput.toggleClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS, enabled);
-                });
+                tableCell.find(':hidden').toggleClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS, enabled);
                 // manage dropdowns
-                tableCell.find('select').each(function (index, elt) {
-                    var hiddenInput = $(elt);
-                    hiddenInput.toggleClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS, enabled);
-                });
+                tableCell.find('select').toggleClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS, enabled);
             });
         };
         return DisambiguationRow;
@@ -2760,6 +2746,7 @@ var EDDTableImport;
                     .data('type', auto)
                     .addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS);
             });
+            // TODO: These size attributes should be handled in CSS, possibly by create_autocomplete.
             this.typeHiddenObj = this.typeObj
                 .attr('size', 45)
                 .next()
@@ -2806,7 +2793,7 @@ var EDDTableImport;
             var lineInputId = 'disamLineInput' + this.visibleIndex;
             var lineNameInput = $('<input type="text" class="autocomp ui-autocomplete-input">')
                 .data('setByUser', false)
-                .prop('id', lineInputId)
+                .attr('id', lineInputId)
                 .val("(Create New)")
                 .addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS)
                 .appendTo(parentElement);
@@ -2924,10 +2911,6 @@ var EDDTableImport;
                 }
                 return true;
             });
-            var endTime = new Date();
-            var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
-            //console.log("End of TypeDisambiguationStep.disambiguateAnAssayOrLine(). Elapsed" +
-            //    " time: ", elapsedSeconds, " s");
             return selections;
         };
         return LineDisambiguationRow;

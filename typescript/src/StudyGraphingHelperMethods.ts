@@ -16,7 +16,7 @@ StudyHelper = {
      * this function takes in the graphDiv element and returns an array of 4 buttons
      */
     getSelectorElement:function (element) {
-        if ($(element).prop('id') != 'maingraph') {
+        if ($(element).attr('id') != 'maingraph') {
             var selector = element.siblings().eq(1);
             return $(selector).children();
         } else {

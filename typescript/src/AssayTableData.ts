@@ -122,22 +122,14 @@ module EDDTableImport {
     // As soon as the window load signal is sent, call back to the server for the set of reference records
     // that will be used to disambiguate labels in imported data.
     export function onWindowLoad(): void {
-        var atdata_url:string, queryTime;
+        var atdata_url:string;
 
         atdata_url = "/study/" + EDDData.currentStudyID + "/assaydata";
 
         $('.disclose').find('a.discloseLink').on('click', EDDTableImport.disclose);
         // Populate ATData and EDDData objects via AJAX calls
-        //queryTime = new Date();
         jQuery.ajax(atdata_url, {
             "success": function(data) {
-                // compute & log elapsed time since the query was initiated
-                //var elapsedSeconds: number, receiptTime: Date;
-                //receiptTime = new Date();
-                //elapsedSeconds = (receiptTime.getTime() - queryTime.getTime()) / 1000;
-
-                //console.log('onReferenceRecordsLoad(): Received study data from the server after',
-                //    elapsedSeconds, ' s');
                 $.extend(ATData, data.ATData);
                 $.extend(EDDData, data.EDDData);
                 EDDTableImport.onReferenceRecordsLoad();
@@ -714,7 +706,7 @@ module EDDTableImport {
             // with a range in between based on the length of the input data.
             // This way a person making a minor correction to a small data set can see
             // their results more quickly, but we don't overload when working on large sets.
-            delay = Math.max(500, Math.min(3000, $('#step2textarea').val().length * 10));
+            delay = Math.max(500, Math.min(3000, $('#step2textarea').val().length));
 
             this.inputRefreshTimerID = setTimeout(this.reprocessRawData.bind(this), delay);
         }
@@ -2579,13 +2571,15 @@ module EDDTableImport {
             allSelected = true;
             checkboxes = $(parentDiv).find('.' + TypeDisambiguationStep.STEP_4_TOGGLE_ROW_CHECKBOX);
 
-            // inspect all the checkboxes in this subsection to see their selection state
-            checkboxes.each((index: number, elt: Element) => {
+            checkboxes.toArray().some((elt: any): boolean => {
                 var checkbox = $(elt);
-                if (!checkbox.is(':checked')) {
+                if (!checkbox.prop('checked')) {
                     allSelected = false;
+                    return true;  // break; for the Array.some() loop
                 }
+                return false;
             });
+
 
             // un/check all checkboxes based on their previous state
             checkboxes.each((index: number, elt: Element) => {
@@ -3348,6 +3342,7 @@ module EDDTableImport {
         }
 
 
+        // Empty base implementation for children to override
         build(body:HTMLTableElement, name, i) {
 
 
@@ -3393,23 +3388,14 @@ module EDDTableImport {
                 tableCell.toggleClass('disabledTextLabel', !enabled);
 
                 // manage text input(s)
-                tableCell.find(':input').each((index:number, elt: Element): void => {
-                    var textInput = $(elt);
-                    // clear / disable the visible input so it doesn't get submitted with the form
-                    textInput.prop('disabled', !enabled);
-                });
+                // clear / disable the visible input so it doesn't get submitted with the form
+                tableCell.find(':input').prop('disabled', !enabled);
 
                 // manage hidden input(s)
-                tableCell.find(':hidden').each((index: number, elt: Element): void => {
-                    var hiddenInput = $(elt);
-                    hiddenInput.toggleClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS, enabled);
-                });
+                tableCell.find(':hidden').toggleClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS, enabled);
 
                 // manage dropdowns
-                tableCell.find('select').each((index: number, elt: Element): void => {
-                    var hiddenInput = $(elt);
-                    hiddenInput.toggleClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS, enabled);
-                });
+                tableCell.find('select').toggleClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS, enabled);
             });
         }
     }
@@ -3466,6 +3452,7 @@ module EDDTableImport {
                     .data('type', auto)
                     .addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS);
             });
+            // TODO: These size attributes should be handled in CSS, possibly by create_autocomplete.
             this.typeHiddenObj = this.typeObj
                 .attr('size', 45)
                 .next()
@@ -3514,7 +3501,7 @@ module EDDTableImport {
             var lineInputId = 'disamLineInput' + this.visibleIndex;
             var lineNameInput = $('<input type="text" class="autocomp ui-autocomplete-input">')
                 .data('setByUser', false)
-                .prop('id', lineInputId)
+                .attr('id', lineInputId)
                 .val("(Create New)")
                 .addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS)
                 .appendTo(parentElement);
@@ -3633,11 +3620,6 @@ module EDDTableImport {
                 }
                 return true;
             });
-
-            var endTime = new Date();
-            var elapsedSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
-            //console.log("End of TypeDisambiguationStep.disambiguateAnAssayOrLine(). Elapsed" +
-            //    " time: ", elapsedSeconds, " s");
             return selections;
         }
     }
@@ -3914,17 +3896,17 @@ module EDDTableImport {
         userSelectedAcknowledgeAllButton():void {
             // check whether all of the boxes are already checked
             var allSelected:boolean = true;
-            for(let stepCheckboxes of this.warningInputs) {
-                for(let checkbox of stepCheckboxes) {
-                    if(!checkbox.is(':checked')) {
+            for (let stepCheckboxes of this.warningInputs) {
+                for (let checkbox of stepCheckboxes) {
+                    if (!checkbox.is(':checked')) {
                         allSelected = false;
                         break;
                     }
                 }
             }
             // check or uncheck all of the boxes (some checked will result in all being checked)
-            for(let stepCheckboxes of this.warningInputs) {
-                for(let checkbox of stepCheckboxes) {
+            for (let stepCheckboxes of this.warningInputs) {
+                for (let checkbox of stepCheckboxes) {
                     checkbox.prop('checked', !allSelected);
                 }
             }

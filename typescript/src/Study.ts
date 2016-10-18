@@ -1636,7 +1636,7 @@ module StudyD {
      */
     function uncheckEventHandler(labels) {
         _.each(labels, function(label){
-            var id = $(label).prev().prop('id');
+            var id = $(label).prev().attr('id');
             $('#' + id).change(function() {
                     var ischecked= $(this).is(':checked');
                     if(!ischecked)
