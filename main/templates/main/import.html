@@ -419,126 +419,152 @@
   <div class="disabledStepLabel wait off" id="processingStep3Label">Processing input from
     Step 3</div>
 
-  <div class="sectionContent off" id="masterTimestampDiv">
-    <table class="formTable" style="margin-left:1em;">
-      <tr>
-        <td style="vertical-align:middle;">
-          <label for="masterTimestamp">
-            <span>Time for all measurements:</span>
+  <div class="disambiguationSections">
+
+    <div class="sectionContent off" id="masterTimestampDiv">
+
+      <h3>Time for all measurements</h3>
+      <table>
+        <tr>
+          <td style="vertical-align:middle;">
             <input type="text" size="6" name="masterTimestamp" id="masterTimestamp" value="" />
             <span>hours</span>
-          </label>
-        </td>
-      </tr>
-    </table>
-    <span id="masterTimestampRequiredPrompt" class="off missingSingleFormInput">Required. No
-      measurement has a time.</span>
+          </td>
+          <td>
+            <span id="masterTimestampRequiredPrompt" class="off missingSingleFormInput">
+              Required. No measurement has a time.
+            </span>
+          </td>
+        </tr>
+      </table>
+
+    </div>
+
+    <div class="sectionContent off" id="masterLineDiv">
+
+      <h3>Line for all data</h3>
+      <table>
+        <tr>
+          <td>
+            <label for="masterLine">
+              <select name="masterLine" id="masterLine">
+                <option value="new">(Create New)</option>
+                {% for line in study.line_set.all %}
+                <option value="{{ line.pk }}">{{ line.name }}</option>
+                {% endfor %}
+              </select>
+            </label>
+          </td>
+        </tr>
+      </table>
+
+    </div>
+
+    <div class="sectionContent off" id="masterAssayLineDiv">
+
+      <h3>Assay for all data</h3>
+      <table>
+        <tr>
+          <td>
+            <label for="masterAssay">
+              <select name="masterAssay" id="masterAssay">
+                <option value="new">(Create New)</option>
+              </select>
+            </label>
+            <label for="masterAssayLine" id="masterLineSpan">
+              <span>for Line:</span>
+              <select name="masterAssayLine" id="masterAssayLine">
+                <option value="new">(Create New)</option>
+                {% for line in study.line_set.all %}
+                <option value="{{ line.pk }}">{{ line.name }}</option>
+                {% endfor %}
+              </select>
+            </label>
+          </td>
+        </tr>
+      </table>
+
+    </div>
+
+    <div class="sectionContent off" id="masterMTypeDiv">
+
+      <h3>Measurement Type for all data</h3>
+      <table>
+        <thead>
+          <th>Compartment</th>
+          <th>Type</th>
+          <th>Units</th>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <input class="autocomp" type="text" size="20" name="masterMComp" id="masterMComp"
+                  value="" style="margin-right: 2px;">
+              <input type="hidden" id="masterMCompValue" name="masterMCompValue">
+            </td><td>
+              <input class="autocomp" type="text" size="45" name="masterMType" id="masterMType"
+                  value="" style="margin-right: 2px;">
+              <input type="hidden" id="masterMTypeValue" name="masterMTypeValue">
+            </td><td>
+              <input class="autocomp" type="text" size="15" name="masterMUnits" id="masterMUnits"
+                  value="">
+              <input type="hidden" id="masterMUnitsValue" name="masterMUnitsValue">
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+    </div>
+
+    <div class="sectionContent off" id="masterUnitDiv">
+      <h3>Units for all data</h3>
+      <table>
+        <tr>
+          <td>
+            <label for="masterUnits">
+              <input type="text" size="15" name="masterUnits" id="masterUnits" value="" />
+              <input type="hidden" name="masterUnitsValue" />
+            </label>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="sectionContent off" id="disambiguateLinesSection">
+      <h3>Lines</h3>
+      {# This section filled in via TypeScript if needed #}
+    </div>
+
+    <div class="sectionContent off" id="disambiguateAssaysSection">
+      <h3>Assays</h3>
+      {# This section filled in via TypeScript if needed #}
+    </div>
+
+    <div class="sectionContent off" id="disambiguateMeasurementsSection">
+      <h3>Measurement Types</h3>
+      <div id="noCompartmentWarning" class="statusMessage neutral">
+        Make sure you specify a cellular compartment (Intracellular/Extracellular) for your mass
+          distribution measurements.
+      </div>
+      <table id="disambiguateMeasurementsTable" cellspacing="0">
+        <thead>
+          <th colspan="2">{# Empty placeholder for checkbox and label columns #}</th>
+          <th>Compartment</th>
+          <th>Type</th>
+          <th>Units</th>
+        </thead>
+        <tbody>
+        </tbody>
+      </table>
+    </div>
+
+    <div id="disambiguateMetadataSection" class="off">
+      <h3>Metadata Types</h3>
+      {# This section filled in via TypeScript if needed #}
+    </div>
+
   </div>
 
-  <div class="sectionContent off" id="masterLineDiv">
-    <table class="formTable" style="margin-left:1em;">
-      <tr>
-        <td style="vertical-align:middle;">
-          <label for="masterLine">
-            <span>Line for the all data:</span>
-            <select name="masterLine" id="masterLine">
-              <option value="new">(Create New)</option>
-              {% for line in study.line_set.all %}
-              <option value="{{ line.pk }}">{{ line.name }}</option>
-              {% endfor %}
-            </select>
-          </label>
-        </td>
-      </tr>
-    </table>
-  </div>
-
-  <div class="sectionContent off" id="masterAssayLineDiv">
-    <table class="formTable" style="margin-left:1em;">
-      <tr>
-        <td style="vertical-align:middle;">
-          <label for="masterAssay">
-            <span>Assay for the all data:</span>
-            <select name="masterAssay" id="masterAssay">
-              <option value="new">(Create New)</option>
-            </select>
-          </label>
-          <label for="masterAssayLine" id="masterLineSpan">
-            <span>for Line:</span>
-            <select name="masterAssayLine" id="masterAssayLine">
-              <option value="new">(Create New)</option>
-              {% for line in study.line_set.all %}
-              <option value="{{ line.pk }}">{{ line.name }}</option>
-              {% endfor %}
-            </select>
-          </label>
-        </td>
-      </tr>
-    </table>
-  </div>
-
-  <div class="sectionContent off" id="masterMTypeDiv">
-    <table class="formTable" style="margin-left:1em;">
-      <tr>
-        <td>
-          <p>Measurement Type for all data:</p>
-        </td>
-        <td>
-          <input class="autocomp" type="text" size="4" name="masterMComp" id="masterMComp"
-              value="" style="margin-right: 2px;" />
-          <input type="hidden" id="masterMCompValue" name="masterMCompValue" />
-        </td>
-        <td>
-          <input class="autocomp" type="text" size="45" name="masterMType" id="masterMType"
-              value="" style="margin-right: 2px;" />
-          <input type="hidden" id="masterMTypeValue" name="masterMTypeValue" />
-        </td>
-        <td>
-          <input class="autocomp" type="text" size="15" name="masterMUnits" id="masterMUnits"
-              value="" />
-          <input type="hidden" id="masterMUnitsValue" name="masterMUnitsValue" />
-        </td>
-      </tr>
-    </table>
-  </div>
-
-  <div class="sectionContent off" id="masterUnitDiv">
-    <label for="masterUnits">
-      <span>Units for all data:</span>
-      <input type="text" size="15" name="masterUnits" id="masterUnits" value="" />
-      <input type="hidden" name="masterUnitsValue" />
-    </label>
-  </div>
-
-  <div class="sectionContent disambiguationSection off" id="disambiguateLinesSection">
-    <h3>Lines</h3>
-    {# This section filled in via TypeScript if needed #}
-  </div>
-
-  <div class="sectionContent disambiguationSection off" id="disambiguateAssaysSection">
-    <h3>Assays</h3>
-    {# This section filled in via TypeScript if needed #}
-  </div>
-
-  <div class="sectionContent disambiguationSection off" id="disambiguateMeasurementsSection">
-    <h3>Measurement Types</h3>
-    <p id="noCompartmentWarning" class="statusMessage neutral">Make sure you specify a cellular
-      compartment (Intracellular/Extracellular) for your mass distribution measurements.</p>
-    <table id="disambiguateMeasurementsTable" cellspacing="0">
-      <thead>
-        <th colspan="2">{# Empty placeholder for checkbox and label columns #}</th>
-        <th>Compartment</th>
-        <th>Type</th>
-        <th>Units</th>
-      </thead>
-      <tbody>
-      </tbody>
-    </table>
-  </div>
-
-  <div id="disambiguateMetadataSection" class="sectionContent disambiguationSection off">
-    <h3>Metadata Types</h3>
-  </div>
 </div>
 
 <!-- Step 5 -->

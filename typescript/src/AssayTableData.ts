@@ -122,7 +122,7 @@ module EDDTableImport {
     // As soon as the window load signal is sent, call back to the server for the set of reference records
     // that will be used to disambiguate labels in imported data.
     export function onWindowLoad(): void {
-        var atdata_url: string;
+        var atdata_url:string;
 
         atdata_url = "/study/" + EDDData.currentStudyID + "/assaydata";
 
@@ -516,7 +516,7 @@ module EDDTableImport {
             }
 
             // Collect the data based on the settings
-            if (rawInputStep.transpose) {
+            if (rawInputStep.transpose()) {
                 // first row becomes Y-markers as-is
                 rawInputStep.gridRowMarkers = parsed.input.shift() || [];
                 rawInputStep.gridFromTextField = (parsed.input[0] || []).map(
@@ -688,17 +688,27 @@ module EDDTableImport {
             }
         }
 
+
+        // Start a timer to wait before calling the routine that remakes the graph.
+        // This way we're not bothering the user with the long redraw process when
+        // they are making fast edits.
         queueReprocessRawData(): void {
-            // Start a timer to wait before calling the routine that remakes the graph.
-            // This way we're not bothering the user with the long redraw process when
-            // they are making fast edits.
-            if(this.haveInputData) {
+            var delay: number;
+
+            if (this.haveInputData) {
                 processingFileCallback();
             }
             if (this.inputRefreshTimerID) {
                 clearTimeout(this.inputRefreshTimerID);
             }
-            this.inputRefreshTimerID = setTimeout(this.reprocessRawData.bind(this), 3000);
+
+            // Wait at least 1/2 second, at most 3 seconds,
+            // with a range in between based on the length of the input data.
+            // This way a person making a minor correction to a small data set can see
+            // their results more quickly, but we don't overload when working on large sets.
+            delay = Math.max(500, Math.min(3000, $('#step2textarea').val().length));
+
+            this.inputRefreshTimerID = setTimeout(this.reprocessRawData.bind(this), delay);
         }
 
         getProcessorForMode(mode: string): RawModeProcessor {
@@ -723,7 +733,7 @@ module EDDTableImport {
 
             mode = this.selectMajorKindStep.interpretationMode;
 
-            this.ignoreGaps();
+            this.ignoreGaps();    // TODO: Are these necessary?
             this.transpose();
             this.separatorType();
 
@@ -1078,18 +1088,23 @@ module EDDTableImport {
         // This handles insertion of a tab into the textarea.
         // May be glitchy.
         suppressNormalTab(e: JQueryKeyEventObject): boolean {
-            var input: HTMLInputElement, text: string;
+            var input: HTMLInputElement, text: string, selStart: number, selEnd: number;
             this.haveInputData = true;
             if (e.which === 9) {
                 input = <HTMLInputElement>e.target;
+                // These need to be read out before they are destroyed by altering the value of the element.
+                var selStart = input.selectionStart;
+                var selEnd = input.selectionEnd;
                 text = $(input).val();
                 // set value to itself with selection replaced by a tab character
                 $(input).val([
-                    text.substring(0, input.selectionStart),
-                    text.substring(input.selectionEnd)
+                    text.substring(0, selStart),
+                    text.substring(selEnd)
                 ].join('\t'));
                 // put caret at right position again
-                input.selectionStart = input.selectionEnd = input.selectionStart + 1;
+                selEnd = selStart + 1;
+                input.selectionStart = selEnd;
+                input.selectionEnd = selEnd;
                 return false;
             }
             return true;
@@ -1447,7 +1462,7 @@ module EDDTableImport {
                         ]
                     ],
                     ['First Column Is...', [
-                        ['Timestamp', TypeEnum.Timestamp],
+                        ['Time (in hours)', TypeEnum.Timestamp],
                             ['Metadata Name', TypeEnum.Metadata_Name],
                             ['Measurement Type', TypeEnum.Measurement_Type]
                         ]
@@ -2294,13 +2309,6 @@ module EDDTableImport {
         }
     }
 
-    interface AutoCache {
-        comp: any,
-        meta: any,
-        unit: any,
-        metabolite: any
-    }
-
 
     // The class responsible for everything in the "Step 4" box that you see on the data import page.
     export class TypeDisambiguationStep {
@@ -2314,20 +2322,18 @@ module EDDTableImport {
 
         masterAssaysOptionsDisplayedForProtocol: number;
         // For disambuguating Lines
-        lineObjSets: any;
-        currentlyVisibleLineObjSets: any[];
+        lineObjSets: { [index:string]: LineDisambiguationRow};
+        currentlyVisibleLineObjSets: LineDisambiguationRow[];
         // For disambuguating Assays (really Assay/Line combinations)
-        assayObjSets: any;
-        currentlyVisibleAssayObjSets: any[];
+        assayObjSets: { [index:string]: AssayDisambiguationRow};
+        currentlyVisibleAssayObjSets: AssayDisambiguationRow[];
         // For disambuguating measurement types
         measurementObjSets: any;
         currentlyVisibleMeasurementObjSets: any[];
         // For disambuguating metadata
-        metadataObjSets: any;
+        metadataObjSets: { [index:string]: MetadataDisambiguationRow};
         // To give unique ID values to each autocomplete entity we create
         autoCompUID: number;
-
-        autoCache: AutoCache;
 
         selectMajorKindStep: SelectMajorKindStep;
         nextStepCallback: any;
@@ -2339,11 +2345,11 @@ module EDDTableImport {
         errorMessages:ImportMessage[];
         warningMessages:ImportMessage[];
 
-        STEP_4_USER_INPUT_CLASS: string = "step4_user_input";
-        STEP_4_REQUIRED_INPUT_CLASS: string = "step4_required_input";
-        STEP_4_TOGGLE_ROW_CHECKBOX: string = 'toggleAllButton';
-        STEP_4_TOGGLE_SUBSECTION_CLASS: string = 'step4SubsectionToggle';
-        STEP_4_SUBSECTION_REQUIRED_CLASS: string = 'step4RequiredSubsectionLabel';
+        static STEP_4_USER_INPUT_CLASS: string = "step4_user_input";
+        static STEP_4_REQUIRED_INPUT_CLASS: string = "step4_required_input";
+        static STEP_4_TOGGLE_ROW_CHECKBOX: string = 'toggleAllButton';
+        static STEP_4_TOGGLE_SUBSECTION_CLASS: string = 'step4SubsectionToggle';
+        static STEP_4_SUBSECTION_REQUIRED_CLASS: string = 'step4RequiredSubsectionLabel';
 
         TOGGLE_ALL_THREASHOLD:number = 4;
         DUPLICATE_CONTROLS_THRESHOLD:number = 10;
@@ -2360,13 +2366,6 @@ module EDDTableImport {
             this.metadataObjSets = {};
             this.autoCompUID = 0;
             this.masterAssaysOptionsDisplayedForProtocol = 0;
-
-            this.autoCache = {
-                comp: {},
-                meta: {},
-                unit: {},
-                metabolite: {}
-            };
 
             this.selectMajorKindStep = selectMajorKindStep;
             this.identifyStructuresStep = identifyStructuresStep;
@@ -2387,20 +2386,20 @@ module EDDTableImport {
             $('#masterTimestamp').on('input', this.queueReparseThisStep.bind(this));
             $('#resetstep4').on('click', this.resetDisambiguationFields.bind(this));
 
-            $(masterInputSelectors).addClass(this.STEP_4_USER_INPUT_CLASS);
+            $(masterInputSelectors).addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS);
 
             // mark all the "master" inputs (or for autocompletes, their paired hidden input) as
             // required input for this step. Note that some of the controls referenced here are
             // hidden inputs that are different from "masterInputSelectors" specified above.
             // Also note that the 'required input' marking will be ignored when each is
             // marked as invisible (even the type="hidden" ones)
-            $('#masterTimestamp').addClass(this.STEP_4_REQUIRED_INPUT_CLASS);
-            $("#masterLine").addClass(this.STEP_4_REQUIRED_INPUT_CLASS);
-            $('#masterAssay').addClass(this.STEP_4_REQUIRED_INPUT_CLASS);
-            $('#masterAssayLine').addClass(this.STEP_4_REQUIRED_INPUT_CLASS);
-            $('#masterMCompValue').addClass(this.STEP_4_REQUIRED_INPUT_CLASS);
-            $('#masterMTypeValue').addClass(this.STEP_4_REQUIRED_INPUT_CLASS);
-            $('#masterMUnitsValue').addClass(this.STEP_4_REQUIRED_INPUT_CLASS);
+            $('#masterTimestamp').addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
+            $("#masterLine").addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
+            $('#masterAssay').addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
+            $('#masterAssayLine').addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
+            $('#masterMCompValue').addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
+            $('#masterMTypeValue').addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
+            $('#masterMUnitsValue').addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
 
             // enable autocomplete on statically defined fields
             EDD_auto.setup_field_autocomplete('#masterMComp', 'MeasurementCompartment');
@@ -2410,7 +2409,7 @@ module EDDTableImport {
         }
 
         setAllInputsEnabled(enabled: boolean) {
-            var allUserInputs: JQuery = $("." + this.STEP_4_USER_INPUT_CLASS);
+            var allUserInputs: JQuery = $("." + TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS);
 
             allUserInputs.each(function (index: number, domElement: Element) {
                 var input = $(domElement);
@@ -2513,8 +2512,8 @@ module EDDTableImport {
 
             // remove toggle buttons and labels dynamically added for some subsections
             // (easier than leaving them in place)
-            $('.' + this.STEP_4_TOGGLE_SUBSECTION_CLASS).remove();
-            $('.' + this.STEP_4_SUBSECTION_REQUIRED_CLASS).remove();
+            $('.' + TypeDisambiguationStep.STEP_4_TOGGLE_SUBSECTION_CLASS).remove();
+            $('.' + TypeDisambiguationStep.STEP_4_SUBSECTION_REQUIRED_CLASS).remove();
 
             hasRequiredInitialInput = this.identifyStructuresStep.requiredInputsProvided();
 
@@ -2533,10 +2532,9 @@ module EDDTableImport {
             this.remakeMeasurementSection();
             this.remakeMetadataSection();
 
-
             // add a listener to all the required input fields so we can detect when they're changed
             // and know whether or not to allow continuation to the subsequent step
-            $('.' + this.STEP_4_REQUIRED_INPUT_CLASS).on('input', ()=> {
+            $('.' + TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS).on('input', ()=> {
                this.queueReparseThisStep();
             });
 
@@ -2562,7 +2560,7 @@ module EDDTableImport {
         makeToggleAllButton(objectsLabel: string): JQuery {
             return $('<button type="button">')
                 .text('Select All ' + objectsLabel)
-                .addClass(this.STEP_4_TOGGLE_SUBSECTION_CLASS)
+                .addClass(TypeDisambiguationStep.STEP_4_TOGGLE_SUBSECTION_CLASS)
                 .on('click', this.toggleAllSubsectionItems.bind(this))
         }
 
@@ -2571,21 +2569,23 @@ module EDDTableImport {
 
             parentDiv = $(ev.target).parent();
             allSelected = true;
-            checkboxes = $(parentDiv).find('.' + this.STEP_4_TOGGLE_ROW_CHECKBOX);
+            checkboxes = $(parentDiv).find('.' + TypeDisambiguationStep.STEP_4_TOGGLE_ROW_CHECKBOX);
 
-            // inspect all the checkboxes in this subsection to see their selection state
-            checkboxes.each((index: number, elt: Element) => {
+            checkboxes.toArray().some((elt: any): boolean => {
                 var checkbox = $(elt);
-                if(!checkbox.is(':checked')) {
+                if (!checkbox.prop('checked')) {
                     allSelected = false;
+                    return true;  // break; for the Array.some() loop
                 }
+                return false;
             });
+
 
             // un/check all checkboxes based on their previous state
             checkboxes.each((index: number, elt: Element) => {
                 var checkbox = $(elt);
                 checkbox.prop('checked', !allSelected);
-                this.toggleTableRowEnabled(checkbox);
+                DisambiguationRow.toggleTableRowEnabled(checkbox);
             });
 
             this.queueReparseThisStep();
@@ -2608,11 +2608,11 @@ module EDDTableImport {
             uniqueLineNames = this.identifyStructuresStep.uniqueLineNames;
 
             this.currentlyVisibleLineObjSets.forEach((disam:any): void => {
-                disam.rowElementJQ.detach();
+                disam.detach();
             });
             $('#disambiguateLinesTable').remove();
 
-            this.lineObjSets = [];
+            this.lineObjSets = {};
 
             if (uniqueLineNames.length === 0) {
                 hasRequiredInitialInputs = this.identifyStructuresStep.requiredInputsProvided();
@@ -2650,28 +2650,14 @@ module EDDTableImport {
                     selectedLineIdInput:JQuery;
                 disam = this.lineObjSets[name];
                 if (!disam) {
-                    disam = {};
-                    defaultSel = this.disambiguateAnAssayOrLine(name, i);
-                    // First make a table row, and save a reference to it
-                    row = <HTMLTableRowElement>body.insertRow();
-
-                    this.addIgnoreCheckbox(row);
-
-                    disam.rowElementJQ = $(row);
-                    // Next, add a table cell with the string we are disambiguating
-                    $('<div>').text(name).appendTo(row.insertCell());
-                    // Now build another table cell that will contain the pulldowns
-                    cell = $(row.insertCell()).css('text-align', 'left');
-                    this.appendLineAutoselect(cell, disam, defaultSel, i);
-                    disam.selectLineElements.nameInput.data('visibleIndex', i);
-                    disam.selectLineElements.selectedId.val("new");
+                    disam = new LineDisambiguationRow(body, name, i);
                     this.lineObjSets[name] = disam;
                 }
-                disam.rowElementJQ.appendTo(body);
+                disam.appendTo(body);
                 this.currentlyVisibleLineObjSets.push(disam);
             });
 
-            if(uniqueLineNames.length > this.DUPLICATE_CONTROLS_THRESHOLD) {
+            if (uniqueLineNames.length > this.DUPLICATE_CONTROLS_THRESHOLD) {
                 this.addToggleAllButton(parentDiv, 'Lines');
                 this.addRequiredInputLabel(parentDiv, requiredInputText);
             }
@@ -2704,7 +2690,7 @@ module EDDTableImport {
 
             // remove stale data from previous run of this step
             this.currentlyVisibleAssayObjSets.forEach((disam:any): void => {
-                disam.rowElementJQ.detach();
+                disam.detach();
             });
             this.currentlyVisibleAssayObjSets = [];
             $('#disambiguateAssaysTable').remove();
@@ -2761,121 +2747,28 @@ module EDDTableImport {
                     selectedLineIdInput: JQuery;
                 disam = this.assayObjSets[assayName];
                 if (!disam) {
-                    disam = {};
-                    defaultSelection = this.disambiguateAnAssayOrLine(assayName, i);
-                    // First make a table row, and save a reference to it
-                    row = <HTMLTableRowElement>tableBody.insertRow();
+                    disam = new AssayDisambiguationRow(tableBody, assayName, i);
                     nRows++;
-
-                    this.addIgnoreCheckbox(row);
-
-                    disam.rowElementJQ = $(row);
-                    // Next, add a table cell with the string we are disambiguating
-                    $('<div>').text(assayName).appendTo(row.insertCell());
-
-                    /////////////////////////////////////////////////////////////////////////////
-                    // Set up a combo box for selecting the assay
-                    /////////////////////////////////////////////////////////////////////////////
-                    cell = $(row.insertCell()).css('text-align', 'left');
-                    assayId = 'disamAssay' + i;
-                    aSelect = $('<select>').appendTo(cell)
-                        .data({ 'setByUser': false })
-                        .attr('name', 'disamAssay' + i)
-                        .attr('id', assayId)
-                        .addClass(this.STEP_4_USER_INPUT_CLASS)
-                        .addClass(this.STEP_4_REQUIRED_INPUT_CLASS);
-                    disam.selectAssayJQElement = aSelect;
-                    $('<option>').text('(Create New Assay)').appendTo(aSelect).val('named_or_new')
-                        .prop('selected', !defaultSelection.assayID);
-
-                    // add options to the assay combo box
-                    (ATData.existingAssays[masterProtocol] || []).forEach((id: number): void => {
-                        var assay: AssayRecord, line: LineRecord, protocol: any;
-                        assay = EDDData.Assays[id];
-                        line = EDDData.Lines[assay.lid];
-                        protocol = EDDData.Protocols[assay.pid];
-                        $('<option>').text([line.name, protocol.name, assay.name].join('-'))
-                            .appendTo(aSelect).val(id.toString())
-                            .prop('selected', defaultSelection.assayID === id);
-                    });
-
-                    // a span to contain the text label for the Line pulldown, and the pulldown itself
-                    cell = $('<span>').text('for Line: ').toggleClass('off', !!defaultSelection.assayID)
-                        .appendTo(cell);
-
-                    /////////////////////////////////////////////////////////////////////////////
-                    // Set up an autocomplete for the line (autocomplete is important for
-                    // efficiency for studies with many lines).
-                    /////////////////////////////////////////////////////////////////////////////
-                    this.appendLineAutoselect(cell, disam, defaultSelection, i);
                     this.assayObjSets[assayName] = disam;
                 }
                 disam.selectAssayJQElement.data({ 'visibleIndex': i });
-                disam.rowElementJQ.appendTo(tableBody);
+                disam.appendTo(tableBody);
                 this.currentlyVisibleAssayObjSets.push(disam);
             });
 
-            if(uniqueAssayNames.length > this.DUPLICATE_CONTROLS_THRESHOLD) {
+            if (uniqueAssayNames.length > this.DUPLICATE_CONTROLS_THRESHOLD) {
                 var warningText: string;
                 this.addToggleAllButton(parentDiv, 'Assays');
                 this.addRequiredInputLabel(parentDiv, requiredInputText);
             }
         }
 
+
         addRequiredInputLabel(parentDiv: JQuery, text: string): JQuery {
-            var adding = [this.STEP_4_SUBSECTION_REQUIRED_CLASS, 'off', 'missingSingleFormInput'];
+            var adding = [TypeDisambiguationStep.STEP_4_SUBSECTION_REQUIRED_CLASS, 'off', 'missingSingleFormInput'];
             return $('<div>').text(text)
                 .addClass(adding.join(' '))
                 .appendTo(parentDiv);
-        }
-
-        appendLineAutoselect(parentElement:JQuery, disam, defaultSelection, i:number): void {
-            // create a text input to gather user input
-            var lineInputId = 'disamLineInput' + i;
-            var lineNameInput = $('<input type="text" class="autocomp ui-autocomplete-input">')
-                .data('setByUser', false)
-                .prop('id', lineInputId)
-                .val("(Create New)")
-                .addClass(this.STEP_4_USER_INPUT_CLASS)
-                .appendTo(parentElement);
-
-            // create a hidden form field to store the selected value
-            var selectedLineIdInput = $('<input type=hidden>')
-                .appendTo(parentElement)
-                .attr('id', 'disamLine' + i)
-                .attr('name', 'disamLine' + i)
-                .val("new")
-                .addClass(this.STEP_4_REQUIRED_INPUT_CLASS);
-
-            // set up autocomplete for using controls created above
-            var model_name: string = "StudyLines";
-            var opt = {
-                'search_extra': { 'study':  EDDData.currentStudyID }};
-            EDD_auto.setup_field_autocomplete(lineNameInput,
-                model_name,
-                EDDData.Lines,
-                opt,
-                [{"name": "(Create New)", "id": "new"}]);
-
-            // save references to both the input and the hidden form field that stores the
-            // selected value
-            disam.selectLineElements = {
-                "nameInput": lineNameInput,
-                "selectedId": selectedLineIdInput,
-            };
-
-            // auto-select the line name if possible
-            if (defaultSelection.lineID) {
-                // search for the line ID corresponding to this name.
-                // ATData.existingLines is of type {id: number; n: string;}[]
-                (ATData.existingLines || []).forEach((line: any) => {  // TODO: possible optimization here -- no need for linear search
-                    if (defaultSelection.lineID === line.id) {
-                        lineNameInput.val(line.n);
-                        selectedLineIdInput.val(line.id.toString());
-                        return false; // stop looping
-                    }
-                });
-            }
         }
 
 
@@ -2932,10 +2825,10 @@ module EDDTableImport {
             if (mode === 'skyline') {
                 $('#masterUnitDiv').removeClass('off')
                     .find('[name=masterUnits]')
-                        .addClass(this.STEP_4_USER_INPUT_CLASS)
+                        .addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS)
                     .end()
                     .find('[name=masterUnitsValue]')
-                        .addClass(this.STEP_4_REQUIRED_INPUT_CLASS)
+                        .addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS)
                     .end()
                 return;
             }
@@ -2952,44 +2845,12 @@ module EDDTableImport {
                 var disam: any, isMdv: boolean;
                 disam = this.measurementObjSets[name];
                 if (disam && disam.rowElementJQ) {
-                    disam.rowElementJQ.appendTo(body);
+                    disam.appendTo(body);
                 } else {
-                    disam = {};
-                    row = <HTMLTableRowElement>body.insertRow();
-
-                    // ignore checkbox.
-                    this.addIgnoreCheckbox(row);
-
-                    disam.rowElementJQ = $(row);
-                    $('<div>').text(name).appendTo(row.insertCell());
-
-                    // create autocompletes
-                    ['compObj', 'typeObj', 'unitsObj'].forEach((auto: string): void => {
-                        var cell: JQuery = $(row.insertCell()).addClass('disamDataCell');
-                        disam[auto] = EDD_auto.create_autocomplete(cell)
-                            .data('type', auto)
-                            .addClass(this.STEP_4_USER_INPUT_CLASS);
-                    });
-                    disam.typeHiddenObj = disam.typeObj.next();
-                    disam.compHiddenObj = disam.compObj.next();
-                    disam.unitsHiddenObj = disam.unitsObj.next();
-
-                    $(row).on('change', 'input[type=hidden]', (ev: JQueryInputEventObject): void => {
-                        // only watch for changes on the hidden portion, let autocomplete work
-                        that.userChangedMeasurementDisam(ev.target);
-                    });
-                    EDD_auto.setup_field_autocomplete(
-                        disam.compObj.attr('size', 25), 'MeasurementCompartment', this.autoCache.comp
-                    );
-                    EDD_auto.setup_field_autocomplete(
-                        disam.typeObj.attr('size', 45), 'GenericOrMetabolite', this.autoCache.metabolite
-                    );
-                    EDD_auto.initial_search(disam.typeObj, name);
-                    EDD_auto.setup_field_autocomplete(
-                        disam.unitsObj.attr('size', 10), 'MeasurementUnit', this.autoCache.unit
-                    );
+                    disam = new MeasurementDisambiguationRow(body, name, i);
                     this.measurementObjSets[name] = disam;
                 }
+                // TODO sizing should be handled in CSS
                 disam.compObj.data('visibleIndex', i);
                 disam.typeObj.data('visibleIndex', i);
                 disam.unitsObj.data('visibleIndex', i);
@@ -3001,9 +2862,9 @@ module EDDTableImport {
                 disam.unitsHiddenObj.toggleClass('off', isMdv);
 
                 // Set required inputs as required
-                disam.compHiddenObj.addClass(this.STEP_4_REQUIRED_INPUT_CLASS);
-                disam.typeHiddenObj.addClass(this.STEP_4_REQUIRED_INPUT_CLASS);
-                disam.unitsHiddenObj.toggleClass(this.STEP_4_REQUIRED_INPUT_CLASS, !isMdv);
+                disam.compHiddenObj.addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
+                disam.typeHiddenObj.addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
+                disam.unitsHiddenObj.toggleClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS, !isMdv);
 
                 this.currentlyVisibleMeasurementObjSets.push(disam);
             });
@@ -3018,18 +2879,6 @@ module EDDTableImport {
             );
         }
 
-        addIgnoreCheckbox(row: HTMLTableRowElement): JQuery {
-            var checkbox: JQuery;
-            // ignore checkbox. allows import for buttoned up file formats (e.g. biolector,
-            // HPLC) to selectively ignore parts of the input file that aren't necessary
-            checkbox = $('<input type="checkbox">')
-                .prop('checked', true)
-                .addClass(this.STEP_4_USER_INPUT_CLASS)
-                .addClass(this.STEP_4_TOGGLE_ROW_CHECKBOX)
-                .appendTo(row.insertCell())
-                .on('change', this.userChangedRowEnabled.bind(this));
-            return checkbox;
-        }
 
         remakeMetadataSection(): void {
             var body: HTMLTableElement,
@@ -3046,7 +2895,7 @@ module EDDTableImport {
 
             parentDiv = $('#disambiguateMetadataSection');
 
-            if(uniqueMetadataNames.length > this.TOGGLE_ALL_THREASHOLD) {
+            if (uniqueMetadataNames.length > this.TOGGLE_ALL_THREASHOLD) {
                 this.addToggleAllButton(parentDiv, 'Metadata Types');
             }
 
@@ -3063,76 +2912,22 @@ module EDDTableImport {
                     ignoreChkbx: JQuery, typeDisambiguationStep: TypeDisambiguationStep;
                 disam = this.metadataObjSets[name];
                 if (disam && disam.rowElementJQ) {
-                    disam.rowElementJQ.appendTo(body);
+                    disam.appendTo(body);
                 } else {
-                    disam = {};
-                    row = <HTMLTableRowElement>body.insertRow();
-                    disam.rowElementJQ = $(row);
-
-                    // ignore checkbox
-                    this.addIgnoreCheckbox(row);
-
-                    // metadata input text
-                    $('<div>').text(name).appendTo(row.insertCell());
-
-                    // resolution autocomplete
-                    disam.metaObj = EDD_auto.create_autocomplete(row.insertCell())
-                        .val(name)
-                        .addClass(this.STEP_4_USER_INPUT_CLASS);
-                    disam.metaHiddenObj = disam.metaObj
-                        .next()
-                        .addClass(this.STEP_4_REQUIRED_INPUT_CLASS);
+                    disam = new MetadataDisambiguationRow(body, name, i);
                     this.metadataObjSets[name] = disam;
 
                 }
                 disam.metaObj.attr('name', 'disamMeta' + i).addClass('autocomp_altype')
                     .next().attr('name', 'disamMetaHidden' + i);
-                EDD_auto.setup_field_autocomplete(disam.metaObj, 'AssayLineMetadataType', this.autoCache.meta);
             });
 
-            if(uniqueMetadataNames.length > this.DUPLICATE_CONTROLS_THRESHOLD) {
+            if (uniqueMetadataNames.length > this.DUPLICATE_CONTROLS_THRESHOLD) {
                 this.addToggleAllButton(parentDiv, 'Metadata Types');
             }
+
         }
 
-        userChangedRowEnabled(ev: JQueryInputEventObject): void {
-            var checkbox: JQuery, enabled: boolean;
-
-            // get paired hidden / visible autocomplete inputs in the same table row as the checkbox
-            // and enable/disable/require them as appropriate
-            checkbox = $(ev.target);
-            this.toggleTableRowEnabled(checkbox);
-            this.queueReparseThisStep();
-        }
-
-        toggleTableRowEnabled(checkbox: JQuery) {
-            var enabled = checkbox.is(':checked');
-
-            // iterate over cells in the row
-            checkbox.parent().nextAll().each((index: number, elt: Element): void => {
-                var tableCell: JQuery = $(elt);
-                tableCell.toggleClass('disabledTextLabel', !enabled);
-
-                // manage text input(s)
-                tableCell.find(':input').each((index:number, elt: Element): void => {
-                    var textInput = $(elt);
-                    // clear / disable the visible input so it doesn't get submitted with the form
-                    textInput.prop('disabled', !enabled);
-                });
-
-                // manage hidden input(s)
-                tableCell.find(':hidden').each((index: number, elt: Element): void => {
-                    var hiddenInput = $(elt);
-                    hiddenInput.toggleClass(this.STEP_4_REQUIRED_INPUT_CLASS, enabled);
-                });
-
-                // manage dropdowns
-                tableCell.find('select').each((index: number, elt: Element): void => {
-                    var hiddenInput = $(elt);
-                    hiddenInput.toggleClass(this.STEP_4_REQUIRED_INPUT_CLASS, enabled);
-                });
-            });
-        }
 
         // We call this when any of the 'master' pulldowns are changed in Step 4.
         // Such changes may affect the available contents of some of the pulldowns in the step.
@@ -3155,7 +2950,7 @@ module EDDTableImport {
             }
             v = changed.data('visibleIndex') || 0;
             this.currentlyVisibleLineObjSets.slice(v).forEach((obj: any): void => {
-                var textInput: JQuery = obj.selectLineElements.nameInput;
+                var textInput: JQuery = obj.lineNameInput;
                 if (textInput.data('setByUser')) {
                     return;
                 }
@@ -3242,85 +3037,6 @@ module EDDTableImport {
                 return false;
             });
             $('#noCompartmentWarning').toggleClass('off', mode !== 'mdv' || allSet);
-        }
-
-        disambiguateAnAssayOrLine(assayOrLine: string, currentIndex: number):any {
-            var selections: any,
-                highest: number,
-                assays: number[];
-            selections = {
-                lineID: 0,
-                assayID: 0
-            };
-            highest = 0;
-            // ATData.existingAssays is type {[index: string]: number[]}
-            assays = ATData.existingAssays[this.selectMajorKindStep.masterProtocol] || [];
-            assays.every((id: number, i: number): boolean => {
-                var assay: AssayRecord, line: LineRecord, protocol: any, name: string;
-                assay = EDDData.Assays[id];
-                line = EDDData.Lines[assay.lid];
-                protocol = EDDData.Protocols[assay.pid];
-                name = [line.name, protocol.name, assay.name].join('-');
-                if (assayOrLine.toLowerCase() === name.toLowerCase()) {
-                    // The full Assay name, even case-insensitive, is the best match
-                    selections.assayID = id;
-                    return false;  // do not need to continue
-                } else if (highest < 0.8 && assayOrLine === assay.name) {
-                    // An exact-case match with the Assay name fragment alone is second-best.
-                    highest = 0.8;
-                    selections.assayID = id;
-                } else if (highest < 0.7 && assay.name.indexOf(assayOrLine) >= 0) {
-                    // Finding the whole string inside the Assay name fragment is pretty good
-                    highest = 0.7;
-                    selections.assayID = id;
-                } else if (highest < 0.6 && line.name.indexOf(assayOrLine) >= 0) {
-                    // Finding the whole string inside the originating Line name is good too.
-                    // It means that the user may intend to pair with this Assay even though the
-                    // Assay name is different.
-                    highest = 0.6;
-                    selections.assayID = id;
-                } else if (highest < 0.4 &&
-                    (new RegExp('(^|\\W)' + assay.name + '(\\W|$)', 'g')).test(assayOrLine)) {
-                    // Finding the Assay name fragment within the whole string, as a whole word, is
-                    // our last option.
-                    highest = 0.4;
-                    selections.assayID = id;
-                } else if (highest < 0.3 && currentIndex === i) {
-                    // If all else fails, choose Assay of current index in sorted order.
-                    highest = 0.3;
-                    selections.assayID = id;
-                }
-                return true;
-            });
-            // Now we repeat the practice, separately, for the Line pulldown.
-            highest = 0;
-            // ATData.existingLines is type {id: number; n: string;}[]
-            (ATData.existingLines || []).every((line: any, i: number): boolean => {
-                if (assayOrLine === line.n) {
-                    // The Line name, case-sensitive, is the best match
-                    selections.lineID = line.id;
-                    return false;  // do not need to continue
-                } else if (highest < 0.8 && assayOrLine.toLowerCase() === line.n.toLowerCase()) {
-                    // The same thing case-insensitive is second best.
-                    highest = 0.8;
-                    selections.lineID = line.id;
-                } else if (highest < 0.7 && assayOrLine.indexOf(line.n) >= 0) {
-                    // Finding the Line name within the string is odd, but good.
-                    highest = 0.7;
-                    selections.lineID = line.id;
-                } else if (highest < 0.6 && line.n.indexOf(assayOrLine) >= 0) {
-                    // Finding the string within the Line name is also good.
-                    highest = 0.6;
-                    selections.lineID = line.id;
-                } else if (highest < 0.5 && currentIndex === i) {
-                    // Again, if all else fails, just choose the Line that matches the current index
-                    // in sorted order, in a loop.
-                    highest = 0.5;
-                    selections.lineID = line.id;
-                }
-                return true;
-            });
-            return selections;
         }
 
 
@@ -3415,7 +3131,8 @@ module EDDTableImport {
                     if (set.line_name !== null) {
                         lineDisam = this.lineObjSets[set.line_name];
                         if (lineDisam) {
-                            lineIdInput = lineDisam.selectLineElements.selectedId;
+                            lineIdInput = lineDisam.selectedLineIdInput;
+
                             // if we've disabled import for the associated line, skip adding this
                             // measurement to the list
                             if (lineIdInput.prop('disabled')) {
@@ -3437,7 +3154,7 @@ module EDDTableImport {
                                 return;  // continue to the next loop iteration parsedSets.forEach
                             }
                             assay_id = assaySelect.val();
-                            lineIdInput = assayDisam.selectLineElements.selectedId;
+                            lineIdInput = assayDisam.selectedLineIdInput;
                             lineId = lineIdInput.val();
                         }
                     }
@@ -3564,7 +3281,7 @@ module EDDTableImport {
                     continue;
                 }
 
-                sectionRequiredInputs = subsection.find('.' + this.STEP_4_REQUIRED_INPUT_CLASS).toArray();
+                sectionRequiredInputs = subsection.find('.' + TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS).toArray();
 
                 for(let input_id of sectionRequiredInputs) {
                     var input = $(input_id);
@@ -3574,7 +3291,7 @@ module EDDTableImport {
                 }
 
                 hasEnabledInputs = sectionRequiredInputs.length !== 0;
-                subsection.find('.' + this.STEP_4_SUBSECTION_REQUIRED_CLASS).toggleClass('off', hasEnabledInputs);
+                subsection.find('.' + TypeDisambiguationStep.STEP_4_SUBSECTION_REQUIRED_CLASS).toggleClass('off', hasEnabledInputs);
 
                 if(!hasEnabledInputs) {
                     return false;
@@ -3583,7 +3300,7 @@ module EDDTableImport {
 
             // test that all required inputs currently visible / enabled on the form have a valid
             // value. Note: this check is very similar to, but distinct from, the one above.
-            var allRequiredInputs = $('.' + this.STEP_4_REQUIRED_INPUT_CLASS);
+            var allRequiredInputs = $('.' + TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
             for(let input_id of allRequiredInputs.toArray()) {
                 var input = $(input_id);
 
@@ -3599,6 +3316,363 @@ module EDDTableImport {
             return allRequiredInputs.length > 0;
         }
     }
+
+
+
+    export class DisambiguationRow {
+
+        row:HTMLTableRowElement;
+        rowElementJQ:JQuery;
+        ignoreCheckbox:JQuery;
+        visibleIndex:number;
+
+
+        constructor(body:HTMLTableElement, name, i) {
+            this.visibleIndex = i;
+
+            // First make a table row, and save a reference to it
+            this.row = body.insertRow();
+            this.rowElementJQ = $(this.row);
+            this.addIgnoreCheckbox();
+
+            // Next, add a table cell with the string we are disambiguating
+            $('<div>').text(name).appendTo(this.row.insertCell());
+
+            this.build(body, name, i);
+        }
+
+
+        // Empty base implementation for children to override
+        build(body:HTMLTableElement, name, i) {
+
+
+        }
+
+
+        detach() {
+            this.rowElementJQ.detach();
+        }
+
+
+        appendTo(body:HTMLTableElement) {
+            this.rowElementJQ.appendTo(body);
+        }
+
+
+        addIgnoreCheckbox() {
+            // ignore checkbox. allows import for buttoned up file formats (e.g. biolector,
+            // HPLC) to selectively ignore parts of the input file that aren't necessary
+            this.ignoreCheckbox = $('<input type="checkbox">')
+                .prop('checked', true)
+                .addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS)
+                .addClass(TypeDisambiguationStep.STEP_4_TOGGLE_ROW_CHECKBOX)
+                .appendTo(this.row.insertCell())
+                .on('change', this.userChangedRowEnabled.bind(this));
+        }
+
+
+        userChangedRowEnabled(): void {
+            DisambiguationRow.toggleTableRowEnabled(this.ignoreCheckbox);
+            EDDTableImport.typeDisambiguationStep.queueReparseThisStep();
+        }
+
+
+        // get paired hidden / visible autocomplete inputs in the same table row as the checkbox
+        // and enable/disable/require them as appropriate
+        static toggleTableRowEnabled(checkbox: JQuery) {
+            var enabled = checkbox.is(':checked');
+
+            // iterate over cells in the row
+            checkbox.parent().nextAll().each((index: number, elt: Element): void => {
+                var tableCell: JQuery = $(elt);
+                tableCell.toggleClass('disabledTextLabel', !enabled);
+
+                // manage text input(s)
+                // clear / disable the visible input so it doesn't get submitted with the form
+                tableCell.find(':input').prop('disabled', !enabled);
+
+                // manage hidden input(s)
+                tableCell.find(':hidden').toggleClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS, enabled);
+
+                // manage dropdowns
+                tableCell.find('select').toggleClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS, enabled);
+            });
+        }
+    }
+
+
+
+    export class MetadataDisambiguationRow extends DisambiguationRow {
+
+        metaObj:JQuery;
+        metaHiddenObj:JQuery;
+
+        // Cache for re-use of autocomplete objects
+        static autoCache:any = {};
+
+
+        build(body:HTMLTableElement, name, i) {
+
+            this.metaObj = EDD_auto.create_autocomplete(this.row.insertCell())
+                .val(name)
+                .addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS);
+            this.metaHiddenObj = this.metaObj
+                .next()
+                .addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
+            this.metaObj.attr('name', 'disamMeta' + i).addClass('autocomp_altype')
+                .next().attr('name', 'disamMetaHidden' + i);
+            EDD_auto.setup_field_autocomplete(this.metaObj, 'AssayLineMetadataType', MetadataDisambiguationRow.autoCache);
+        }
+    }
+
+
+
+    export class MeasurementDisambiguationRow extends DisambiguationRow {
+
+        compObj:JQuery;
+        typeObj:JQuery;
+        unitsObj:JQuery;
+
+        typeHiddenObj:JQuery;
+        compHiddenObj:JQuery;
+        unitsHiddenObj:JQuery;
+
+        // Caches for re-use of autocomplete fields
+        static compAutoCache:any = {};
+        static metaboliteAutoCache:any = {};
+        static unitAutoCache:any = {};
+
+
+        build(body:HTMLTableElement, name, i) {
+
+            // create autocompletes
+            ['compObj', 'typeObj', 'unitsObj'].forEach((auto: string): void => {
+                var cell: JQuery = $(this.row.insertCell()).addClass('disamDataCell');
+                this[auto] = EDD_auto.create_autocomplete(cell)
+                    .data('type', auto)
+                    .addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS);
+            });
+            // TODO: These size attributes should be handled in CSS, possibly by create_autocomplete.
+            this.typeHiddenObj = this.typeObj
+                .attr('size', 45)
+                .next()
+                .addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
+            this.compHiddenObj = this.compObj
+                .attr('size', 20)
+                .next()
+                .addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
+            this.unitsHiddenObj = this.unitsObj
+                .attr('size', 10)
+                .next()
+                .addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
+
+            $(this.row).on('change', 'input[type=hidden]', (ev: JQueryInputEventObject): void => {
+                // only watch for changes on the hidden portion, let autocomplete work
+                EDDTableImport.typeDisambiguationStep.userChangedMeasurementDisam(ev.target);
+            });
+            EDD_auto.setup_field_autocomplete(this.compObj, 'MeasurementCompartment', MeasurementDisambiguationRow.compAutoCache);
+            EDD_auto.setup_field_autocomplete(this.typeObj, 'GenericOrMetabolite', MeasurementDisambiguationRow.metaboliteAutoCache);
+            EDD_auto.initial_search(this.typeObj, name);
+            EDD_auto.setup_field_autocomplete(this.unitsObj, 'MeasurementUnit', MeasurementDisambiguationRow.unitAutoCache);
+        }
+    }
+
+
+
+    export class LineDisambiguationRow extends DisambiguationRow {
+
+        lineNameInput:JQuery;
+        selectedLineIdInput:JQuery;
+
+
+        build(body:HTMLTableElement, name, i) {
+            var defaultSel:any, cell:JQuery;
+
+            defaultSel = LineDisambiguationRow.disambiguateAnAssayOrLine(name, i);
+            cell = $(this.row.insertCell()).css('text-align', 'left');
+            this.appendLineAutoselect(cell, defaultSel);
+            this.lineNameInput.data('visibleIndex', i);
+            this.selectedLineIdInput.val("new");
+        }
+
+
+        appendLineAutoselect(parentElement:JQuery, defaultSelection): void {
+            // create a text input to gather user input
+            var lineInputId = 'disamLineInput' + this.visibleIndex;
+            var lineNameInput = $('<input type="text" class="autocomp ui-autocomplete-input">')
+                .data('setByUser', false)
+                .attr('id', lineInputId)
+                .val("(Create New)")
+                .addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS)
+                .appendTo(parentElement);
+
+            // create a hidden form field to store the selected value
+            var selectedLineIdInput = $('<input type=hidden>')
+                .appendTo(parentElement)
+                .attr('id', 'disamLine' + this.visibleIndex)
+                .attr('name', 'disamLine' + this.visibleIndex)
+                .val("new")
+                .addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
+
+            // set up autocomplete for using controls created above
+            var model_name: string = "StudyLines";
+            var opt = {
+                'search_extra': { 'study':  EDDData.currentStudyID }};
+            EDD_auto.setup_field_autocomplete(lineNameInput,
+                model_name,
+                EDDData.Lines,
+                opt,
+                [{"name": "(Create New)", "id": "new"}]);
+
+            // save references to both the input and the hidden form field that stores the
+            // selected value
+            this.lineNameInput = lineNameInput;
+            this.selectedLineIdInput = selectedLineIdInput;
+
+            // auto-select the line name if possible
+            if (defaultSelection.lineID) {
+                // search for the line ID corresponding to this name.
+                // ATData.existingLines is of type {id: number; n: string;}[]
+                (ATData.existingLines || []).forEach((line: any) => {  // TODO: possible optimization here -- no need for linear search
+                    if (defaultSelection.lineID === line.id) {
+                        lineNameInput.val(line.n);
+                        selectedLineIdInput.val(line.id.toString());
+                        return false; // stop looping
+                    }
+                });
+            }
+        }
+
+
+        static disambiguateAnAssayOrLine(assayOrLine: string, currentIndex: number):any {
+            // console.log("Start of TypeDisambiguationStep.disambiguateAnAssayOrLine()");
+            var startTime = new Date();
+            var selections: any, highest: number, assays: number[];
+            selections = {
+                lineID: 0,
+                assayID: 0
+            };
+            highest = 0;
+            // ATData.existingAssays is type {[index: string]: number[]}
+            assays = ATData.existingAssays[EDDTableImport.selectMajorKindStep.masterProtocol] || [];
+            assays.every((id: number, i: number): boolean => {
+                var assay: AssayRecord, line: LineRecord, protocol: any, name: string;
+                assay = EDDData.Assays[id];
+                line = EDDData.Lines[assay.lid];
+                protocol = EDDData.Protocols[assay.pid];
+                name = [line.name, protocol.name, assay.name].join('-');
+                if (assayOrLine.toLowerCase() === name.toLowerCase()) {
+                    // The full Assay name, even case-insensitive, is the best match
+                    selections.assayID = id;
+                    return false;  // do not need to continue
+                } else if (highest < 0.8 && assayOrLine === assay.name) {
+                    // An exact-case match with the Assay name fragment alone is second-best.
+                    highest = 0.8;
+                    selections.assayID = id;
+                } else if (highest < 0.7 && assay.name.indexOf(assayOrLine) >= 0) {
+                    // Finding the whole string inside the Assay name fragment is pretty good
+                    highest = 0.7;
+                    selections.assayID = id;
+                } else if (highest < 0.6 && line.name.indexOf(assayOrLine) >= 0) {
+                    // Finding the whole string inside the originating Line name is good too.
+                    // It means that the user may intend to pair with this Assay even though the
+                    // Assay name is different.
+                    highest = 0.6;
+                    selections.assayID = id;
+                } else if (highest < 0.4 &&
+                    (new RegExp('(^|\\W)' + assay.name + '(\\W|$)', 'g')).test(assayOrLine)) {
+                    // Finding the Assay name fragment within the whole string, as a whole word, is our
+                    // last option.
+                    highest = 0.4;
+                    selections.assayID = id;
+                } else if (highest < 0.3 && currentIndex === i) {
+                    // If all else fails, choose Assay of current index in sorted order.
+                    highest = 0.3;
+                    selections.assayID = id;
+                }
+                return true;
+            });
+            // Now we repeat the practice, separately, for the Line pulldown.
+            highest = 0;
+            // ATData.existingLines is type {id: number; n: string;}[]
+            (ATData.existingLines || []).every((line: any, i: number): boolean => {
+                if (assayOrLine === line.n) {
+                    // The Line name, case-sensitive, is the best match
+                    selections.lineID = line.id;
+                    return false;  // do not need to continue
+                } else if (highest < 0.8 && assayOrLine.toLowerCase() === line.n.toLowerCase()) {
+                    // The same thing case-insensitive is second best.
+                    highest = 0.8;
+                    selections.lineID = line.id;
+                } else if (highest < 0.7 && assayOrLine.indexOf(line.n) >= 0) {
+                    // Finding the Line name within the string is odd, but good.
+                    highest = 0.7;
+                    selections.lineID = line.id;
+                } else if (highest < 0.6 && line.n.indexOf(assayOrLine) >= 0) {
+                    // Finding the string within the Line name is also good.
+                    highest = 0.6;
+                    selections.lineID = line.id;
+                } else if (highest < 0.5 && currentIndex === i) {
+                    // Again, if all else fails, just choose the Line that matches the current index
+                    // in sorted order, in a loop.
+                    highest = 0.5;
+                    selections.lineID = line.id;
+                }
+                return true;
+            });
+            return selections;
+        }
+    }
+
+
+
+    export class AssayDisambiguationRow extends LineDisambiguationRow {
+
+        selectAssayJQElement:JQuery;
+
+        build(body:HTMLTableElement, name, i) {
+            var defaultSel:any, cell:JQuery, aSelect: JQuery;
+
+            defaultSel = LineDisambiguationRow.disambiguateAnAssayOrLine(name, i);
+
+            /////////////////////////////////////////////////////////////////////////////
+            // Set up a combo box for selecting the assay
+            /////////////////////////////////////////////////////////////////////////////
+            cell = $(this.row.insertCell()).css('text-align', 'left');
+            aSelect = $('<select>').appendTo(cell)
+                .data({ 'setByUser': false })
+                .attr('name', 'disamAssay' + i)
+                .attr('id', 'disamAssay' + i)
+                .addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS)
+                .addClass(TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
+            this.selectAssayJQElement = aSelect;
+            $('<option>').text('(Create New Assay)').appendTo(aSelect).val('named_or_new')
+                .prop('selected', !defaultSel.assayID);
+
+            // add options to the assay combo box
+            (ATData.existingAssays[EDDTableImport.selectMajorKindStep.masterProtocol] || []).forEach((id: number): void => {
+                var assay: AssayRecord, line: LineRecord, protocol: any;
+                assay = EDDData.Assays[id];
+                line = EDDData.Lines[assay.lid];
+                protocol = EDDData.Protocols[assay.pid];
+                $('<option>').text([line.name, protocol.name, assay.name].join('-'))
+                    .appendTo(aSelect).val(id.toString())
+                    .prop('selected', defaultSel.assayID === id);
+            });
+
+            // a span to contain the text label for the Line pulldown, and the pulldown itself
+            cell = $('<span>').text('for Line: ').toggleClass('off', !!defaultSel.assayID)
+                .appendTo(cell);
+
+            /////////////////////////////////////////////////////////////////////////////
+            // Set up an autocomplete for the line (autocomplete is important for
+            // efficiency for studies with many lines).
+            /////////////////////////////////////////////////////////////////////////////
+            this.appendLineAutoselect(cell, defaultSel);
+        }
+    }
+
+
 
     // The class responsible for everything in the "Step 4" box that you see on the data import page.
     // Aggregates & displays a user-relevant/actionable summary of the import process prior to final
@@ -3822,17 +3896,17 @@ module EDDTableImport {
         userSelectedAcknowledgeAllButton():void {
             // check whether all of the boxes are already checked
             var allSelected:boolean = true;
-            for(let stepCheckboxes of this.warningInputs) {
-                for(let checkbox of stepCheckboxes) {
-                    if(!checkbox.is(':checked')) {
+            for (let stepCheckboxes of this.warningInputs) {
+                for (let checkbox of stepCheckboxes) {
+                    if (!checkbox.is(':checked')) {
                         allSelected = false;
                         break;
                     }
                 }
             }
             // check or uncheck all of the boxes (some checked will result in all being checked)
-            for(let stepCheckboxes of this.warningInputs) {
-                for(let checkbox of stepCheckboxes) {
+            for (let stepCheckboxes of this.warningInputs) {
+                for (let checkbox of stepCheckboxes) {
                     checkbox.prop('checked', !allSelected);
                 }
             }
