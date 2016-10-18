@@ -19,14 +19,21 @@
 
     if (type === 'x') {
          var entries = d3.nest(type)
-        .key(function (d) {
-            return d[type];
-        })
-        .entries(assayMeasurements);
+            .key(function (d) {
+                return d[type];
+            })
+            .entries(assayMeasurements);
+
         var timeMeasurements = _.clone(assayMeasurements);
         var nestedByTime = findAllTime(entries);
         var howManyToInsertObj = findMaxTimeDifference(nestedByTime);
         var max = Math.max.apply(null, _.values(howManyToInsertObj));
+        if (max > 400) {
+            $(typeClass[type]).prepend("<p class='noData'>Too many missing data fields. Please filter</p>");
+            $('.tooMuchData').remove();
+        } else {
+            $('.noData').remove();
+        }
         insertFakeValues(entries, howManyToInsertObj, timeMeasurements);
     }
     //x axis scale for type
@@ -47,20 +54,12 @@
         .attr("class", "tooltip2")
         .style("opacity", 0);
 
-    if (type === 'x') {
+    var d3_entries = type === 'x' ? timeMeasurements : assayMeasurements;
         meas = d3.nest()
         .key(function (d) {
             return d.y_unit;
         })
-        .entries(timeMeasurements);
-
-    } else {
-       meas = d3.nest()
-        .key(function (d) {
-            return d.y_unit;
-        })
-        .entries(assayMeasurements);
-    }
+        .entries(d3_entries);
 
     // if there is no data - show no data error message
     if (assayMeasurements.length === 0) {
@@ -232,10 +231,7 @@
             })
             .enter().append("g")
             .attr("class", function (d) {
-                if (d.lineName.includes(' ')) {
-                    d.lineName = d.lineName.split(' ').join('');
-                }
-                  // if (d.lineName.includes('/'))
+                d.lineName = d.lineName.split(' ').join('');
                 return 'value value-' + d.lineName;
              })
             .attr("transform", function (d) {

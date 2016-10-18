@@ -56,11 +56,10 @@ function findAllTime(values) {
 function findMaxTimeDifference(obj) {
     var values = _.values(obj);
     var max = Math.max.apply(null, values);
-
     $.each(obj, function(key, value) {
         obj[key] = max - value;
     });
-    return obj
+    return obj;
 }
 
 /**
@@ -77,7 +76,7 @@ function insertFakeValues(obj, differenceObj, assayMeasurements) {
      _.each(obj, function(d) {
         var howMany = differenceObj[d.key];
         while (count < howMany) {
-                insertFakeTime(assayMeasurements, d.key, d.values[0].y_unit);
+            insertFakeTime(assayMeasurements, d.key, d.values[0].y_unit);
             count++;
         }
     });
@@ -92,5 +91,5 @@ function insertFakeTime(array, key, y_unit) {
           'y_unit': y_unit,
           'name': '',
           'lineName': 'n/a'
-        })
+        });
 }
