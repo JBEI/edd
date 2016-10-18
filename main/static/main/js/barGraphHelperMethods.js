@@ -56,9 +56,10 @@ function findAllTime(values) {
 function findMaxTimeDifference(obj) {
     var values = _.values(obj);
     var max = Math.max.apply(null, values);
-    for (var key in obj) {
-        obj[key] = max - obj[key]
-    }
+
+    $.each(obj, function(key, value) {
+        obj[key] = max - value;
+    });
     return obj
 }
 
@@ -70,7 +71,6 @@ function findMaxTimeDifference(obj) {
  * @param differenceObj
  * @param assayMeasurements
  * @param type
- * @returns {*}
  */
 function insertFakeValues(obj, differenceObj, assayMeasurements) {
     var count = 0;
@@ -81,7 +81,6 @@ function insertFakeValues(obj, differenceObj, assayMeasurements) {
             count++;
         }
     });
-//   return obj;
 }
 
 function insertFakeTime(array, key, y_unit) {
