@@ -2729,7 +2729,7 @@ class DataGridAssays extends DataGrid {
                 };
                 var singleAssayObj = GraphHelperMethods.transformSingleLineItem(dataObj);
 
-                if (line.control) set.iscontrol = true;
+                if (line.control) singleAssayObj.iscontrol = true;
                 dataSets.push(singleAssayObj);
             });
         });
@@ -3196,11 +3196,8 @@ class DataGridSpecAssays extends DataGridSpecBase {
 
 
     generateMeasuringTimesCells(gridSpec:DataGridSpecAssays, index:string):DataGridDataCell[] {
-        var tupleTimeCount = (value, key) => { return [[ key, value ]]; },
-            sortByTime = (a:any, b:any) => {
-                var y = parseFloat(a[0]), z = parseFloat(b[0]);
-                return (<any>(y > z) - <any>(z > y));
-            },
+        var tupleTimeCount = (value, key) => { return [[ [parseFloat(key)], [value] ]]; },
+            sortByTime = (a, b) => { return a[0] - b[0]; },
             svgCellForTimeCounts = (ids:any[]) => {
                 var consolidated, svg = '', timeCount = {};
                 // count values at each x for all measurements

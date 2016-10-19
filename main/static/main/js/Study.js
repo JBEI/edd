@@ -2367,7 +2367,7 @@ var DataGridAssays = (function (_super) {
                 };
                 var singleAssayObj = GraphHelperMethods.transformSingleLineItem(dataObj);
                 if (line.control)
-                    set.iscontrol = true;
+                    singleAssayObj.iscontrol = true;
                 dataSets.push(singleAssayObj);
             });
         });
@@ -2752,10 +2752,7 @@ var DataGridSpecAssays = (function (_super) {
         });
     };
     DataGridSpecAssays.prototype.generateMeasuringTimesCells = function (gridSpec, index) {
-        var tupleTimeCount = function (value, key) { return [[key, value]]; }, sortByTime = function (a, b) {
-            var y = parseFloat(a[0]), z = parseFloat(b[0]);
-            return ((y > z) - (z > y));
-        }, svgCellForTimeCounts = function (ids) {
+        var tupleTimeCount = function (value, key) { return [[[parseFloat(key)], [value]]]; }, sortByTime = function (a, b) { return a[0] - b[0]; }, svgCellForTimeCounts = function (ids) {
             var consolidated, svg = '', timeCount = {};
             // count values at each x for all measurements
             ids.forEach(function (measureId) {
