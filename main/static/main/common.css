@@ -736,8 +736,24 @@ table.filterCriteriaTable input[type="checkbox"] {
 div.filterHead {
     padding:4px 8px 2px 2px;
     margin:0px;
+    vertical-align: bottom;
 }
-div.filterHead > span {
+div.filterHead > span.filterClearIcon, div.filterHeadSearch > span.filterClearIcon {
+    display: inline-block;
+    width:12px;
+    height:12px;
+    opacity:0;
+    margin:0 1px -2px 3px;
+    background-image: url(images/clear_checkboxes_icon.png);
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+div.filterHead > span.filterClearIcon.enabled, div.filterHeadSearch > span.filterClearIcon.enabled {
+    cursor: pointer;
+    opacity:0.75;
+}
+div.filterHead > span.filterTitle {
     color:black;
     padding:0px;
     margin:5px 0px 2px 2px;
@@ -750,7 +766,7 @@ div.filterHeadSearch {
 div.filterHeadSearch > input[type="text"] {
     color:black;
     padding:0px 8px 0px 6px;
-    margin:0px;
+    margin:0px 0px 0px 1px;
     font-weight: bold;
     font-size:11px;
     border-radius: 7px;

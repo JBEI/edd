@@ -323,10 +323,12 @@ var StudyD;
         };
         // Create all the container HTML objects
         GenericFilterSection.prototype.createContainerObjects = function () {
+            var _this = this;
             var sBoxID = 'filter' + this.sectionShortLabel + 'SearchBox', sBox;
             this.filterColumnDiv = $("<div>").addClass('filterColumn')[0];
-            var textTitle = $("<span>").text(this.sectionTitle)[0];
-            this.plaintextTitleDiv = $("<div>").addClass('filterHead').append(textTitle)[0];
+            var textTitle = $("<span>").addClass('filterTitle').text(this.sectionTitle);
+            var clearIcon = $("<span>").addClass('filterClearIcon');
+            this.plaintextTitleDiv = $("<div>").addClass('filterHead').append(clearIcon).append(textTitle)[0];
             $(sBox = document.createElement("input"))
                 .attr({
                 'id': sBoxID,
@@ -336,7 +338,17 @@ var StudyD;
             });
             sBox.setAttribute('type', 'text'); // JQuery .attr() cannot set this
             this.searchBox = sBox;
-            this.searchBoxTitleDiv = $("<div>").addClass('filterHeadSearch').append(sBox)[0];
+            // We need two clear iccons for the two versions of the header
+            var searchClearIcon = $("<span>").addClass('filterClearIcon');
+            this.searchBoxTitleDiv = $("<div>").addClass('filterHeadSearch').append(searchClearIcon).append(sBox)[0];
+            this.clearIcons = clearIcon.add(searchClearIcon);
+            this.clearIcons.on('click', function (ev) {
+                console.log('clearing');
+                $.each(_this.checkboxes || {}, function (uniqueId, checkbox) {
+                    checkbox.prop('checked', false);
+                });
+                return false;
+            });
             this.scrollZoneDiv = $("<div>").addClass('filterCriteriaScrollZone')[0];
             this.filteringTable = $("<table>")
                 .addClass('filterCriteriaTable dragboxes')
@@ -479,6 +491,7 @@ var StudyD;
                     _this.anyCheckboxesChecked = true;
                 currentCheckboxState[uniqueId] = current;
             });
+            this.clearIcons.toggleClass('enabled', this.anyCheckboxesChecked);
             v = v.trim(); // Remove leading and trailing whitespace
             v = v.toLowerCase();
             v = v.replace(/\s\s*/, ' '); // Replace internal whitespace with single spaces
