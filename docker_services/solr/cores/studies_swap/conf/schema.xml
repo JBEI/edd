@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<schema name="resmgmt" version="1.4">
+    <types>
+        <fieldType name="string" class="solr.StrField" sortMissingLast="true" omitNorms="true" />
+        <fieldType name="boolean" class="solr.BoolField" sortMissingLast="true" omitNorms="true" />
+        <fieldType name="tlong" class="solr.TrieLongField" precisionStep="8" omitNorms="true"
+                positionIncrementGap="0" />
+        <fieldType name="tdouble" class="solr.TrieDoubleField" precisionStep="0"
+                omitNorms="true" positionIncrementGap="0" />
+        <fieldType name="date" class="solr.TrieDateField" omitNorms="true" precisionStep="0"
+                positionIncrementGap="0" />
+        <fieldType name="tdate" class="solr.TrieDateField" omitNorms="true" precisionStep="6"
+                positionIncrementGap="0" />
+        <!-- Text field normalized to lower-case form -->
+        <fieldType name="text_lower" class="solr.TextField" positionIncrementGap="10">
+            <analyzer>
+                <tokenizer class="solr.WhitespaceTokenizerFactory" />
+                <filter class="solr.LowerCaseFilterFactory" />
+            </analyzer>
+        </fieldType>
+        <!-- Text field normalized to lower-case, without tokenizing on spaces -->
+        <fieldType name="tag_lower" class="solr.TextField" positionIncrementGap="10">
+            <analyzer>
+                <tokenizer class="solr.KeywordTokenizerFactory" />
+                <filter class="solr.LowerCaseFilterFactory" />
+            </analyzer>
+        </fieldType>
+        <!-- Text field normalized to lower-case, taking only first 30 characters, for sorting -->
+        <fieldType name="sort_lower" class="solr.TextField" positionIncrementGap="10">
+            <analyzer>
+                <tokenizer class="solr.PatternTokenizerFactory" pattern="^.{0,30}" group="0" />
+                <filter class="solr.LowerCaseFilterFactory" />
+            </analyzer>
+        </fieldType>
+        <!-- value in form of ([0-9a-fA-F-]+)@Name, or a ID/UUID followed by at-sign and a name -->
+        <fieldType name="idval" class="solr.TextField" indexed="true" stored="true" omitNorms="true"
+                multiValued="true">
+            <!-- index will be getting the ID@Name combo -->
+            <analyzer type="index">
+                <tokenizer class="solr.KeywordTokenizerFactory" />
+                <filter class="solr.LowerCaseFilterFactory" />
+                <!-- only index/search the ID/UUID -->
+                <filter class="solr.PatternReplaceFilterFactory" pattern="^([0-9a-f-]+)@.*$"
+                        replacement="$1" />
+            </analyzer>
+            <!-- query will only be getting the ID/UUID portion -->
+            <analyzer type="query">
+                <tokenizer class="solr.KeywordTokenizerFactory" />
+                <filter class="solr.LowerCaseFilterFactory" />
+            </analyzer>
+        </fieldType>
+        <fieldType name="idval_value" class="solr.TextField" indexed="true" stored="false"
+                omitNorms="true" multiValued="true">
+            <!-- index will be getting the ID@Name combo -->
+            <analyzer type="index">
+                <tokenizer class="solr.KeywordTokenizerFactory" />
+                <filter class="solr.LowerCaseFilterFactory" />
+                <!-- only index/search the name portion -->
+                <filter class="solr.PatternReplaceFilterFactory" pattern="^[0-9a-fA-F-]+@(.*)$"
+                        replacement="$1" />
+                <!-- turn the name portion into ngrams -->
+                <filter class="solr.NGramFilterFactory" minGramSize="2" maxGramSize="24" />
+                <!-- any ngram containing any whitespace replaced with empty string -->
+                <filter class="solr.PatternReplaceFilterFactory" pattern="^.*\s+.*$"
+                        replacement="" />
+                <!-- length filter discards replaced empty strings -->
+                <filter class="solr.LengthFilterFactory" min="2" max="24"/>
+            </analyzer>
+            <!-- query will only be getting the Name portion -->
+            <analyzer type="query">
+                <tokenizer class="solr.WhitespaceTokenizerFactory" />
+                <filter class="solr.LowerCaseFilterFactory" />
+            </analyzer>
+        </fieldType>
+        <!-- n-gram field type for substring matching -->
+        <fieldType name="ngram" class="solr.TextField" positionIncrementGap="100" stored="false"
+                multiValued="true">
+            <analyzer type="index">
+                <tokenizer class="solr.WhitespaceTokenizerFactory" />
+                <filter class="solr.LowerCaseFilterFactory" />
+                <filter class="solr.NGramFilterFactory" minGramSize="2" maxGramSize="24" />
+            </analyzer>
+            <analyzer type="query">
+                <tokenizer class="solr.WhitespaceTokenizerFactory" />
+                <filter class="solr.LowerCaseFilterFactory" />
+            </analyzer>
+        </fieldType>
+    </types>
+
+    <fields>
+        <!--
+          == Incoming document fields:
+          ==    id
+          ==    name
+          ==    description
+          ==    creator
+          ==    contact
+          ==    created
+          ==    modified
+          ==    active
+          ==    attachment_count
+          ==    comment_count
+          ==    metabolite
+          ==    protocol
+          ==    part
+          ==    aclr
+          ==    aclw
+          -->
+        <!-- a unique key for the study document -->
+        <field name="id" type="string" indexed="true" stored="true" required="true" />
+        <!-- name of the study -->
+        <field name="name" type="text_lower" indexed="true" stored="true" />
+        <!-- description of the study -->
+        <field name="description" type="text_lower" indexed="true" stored="true" />
+        <!-- study creator (id), name, and email; Initials are stored but not indexed -->
+        <field name="creator" type="tlong" indexed="true" stored="true" />
+        <field name="creator_email" type="text_lower" indexed="true" stored="true" />
+        <field name="creator_name" type="text_lower" indexed="true" stored="true" />
+        <field name="initials" type="string" indexed="true" stored="true" />
+        <!-- study contact (email address?), and ngram form for substring matches -->
+        <field name="contact" type="text_lower" indexed="true" stored="true" />
+        <!-- creation timestamp of study -->
+        <field name="created" type="tdate" indexed="true" stored="true" />
+        <!-- modification timestamp of study; should be saved as NOW every update -->
+        <field name="modified" type="tdate" indexed="true" stored="true" />
+        <!-- global flag to show/hide a particular study -->
+        <field name="active" type="boolean" indexed="true" stored="true" />
+        <!-- possibly nice-to-have field to show if a study has attachments (icon?), filter on
+                studies with attachments, etc.
+                Maybe add a multiValued field with ID values to an attachments core? -->
+        <field name="attachment_count" type="tlong" indexed="true" stored="true" />
+        <!-- possibly nice-to-have field to show if a study has comments (icon?), filter on studies
+                with comments, etc.
+                Maybe add a multiValued field with ID values to a comments core? -->
+        <field name="comment_count" type="tlong" indexed="true" stored="true" />
+        <!-- tags for metabolites referenced in the study lines; index ID part of ID@Name -->
+        <field name="metabolite" type="idval" indexed="true" stored="true" multiValued="true" />
+        <!-- tags for protocols referenced in the study lines; index ID part of ID@Name -->
+        <field name="protocol" type="idval" indexed="true" stored="true" multiValued="true" />
+        <!-- tags for ICE/Registry parts in the study lines; index UUID part of UUID@Name -->
+        <field name="part" type="idval" indexed="true" stored="true" multiValued="true" />
+        <!-- tags for permissions to read; any search from EDD should add a fq= parameter to search
+                tag format should be "u:uid" for users, "g:id" for groups
+                e.g. searches run by me would use
+                &fq=aclr:"u:024051"&fq=aclr:"g:JBEI"&fq=aclr:"g:Informatics" -->
+        <field name="aclr" type="tag_lower" indexed="true" stored="true" multiValued="true" />
+        <!-- tags for permissions to write, same format as aclr -->
+        <field name="aclw" type="tag_lower" indexed="true" stored="true" multiValued="true" />
+        
+        <!--
+          == Generated fields:
+          ==    _version_
+          ==    name_ng
+          ==    name_s
+          ==    description_ng
+          ==    desc_s
+          ==    contact_ng
+          ==    metabolite_name
+          ==    protocol_name
+          ==    part_name
+          -->
+        <!-- special _version_ field needed for some newer Solr features -->
+        <field name="_version_" type="tlong" indexed="true" stored="true" />
+        <!-- field needed for default request handlers, not actually used -->
+        <field name="text" type="text_lower" indexed="true" stored="false" multiValued="true" />
+        <!-- name of the study in ngram form for substring matches -->
+        <field name="name_ng" type="ngram" indexed="true" stored="false" />
+        <!-- name of the study in sort_lower form for sorting -->
+        <field name="name_s" type="sort_lower" indexed="true" stored="false" multiValued="false" />
+        <!-- description of the study in ngram form for substring matches -->
+        <field name="description_ng" type="ngram" indexed="true" stored="false" />
+        <!-- description of the study in sort_lower form for sorting -->
+        <field name="desc_s" type="sort_lower" indexed="true" stored="false" multiValued="false" />
+        <!-- study creator (email, name) in ngram form for substring matches -->
+        <field name="creator_ng" type="ngram" indexed="true" stored="false" />
+        <!-- study creator in sort_lower form for sorting -->
+        <field name="creator_s" type="sort_lower" indexed="true" stored="false" multiValued="false" />
+        <!-- study contact (email) in ngram form for substring matches -->
+        <field name="contact_ng" type="ngram" indexed="true" stored="false" />
+        <!-- tags for metabolites referenced in the study lines; index Name part of ID@Name -->
+        <field name="metabolite_name" type="idval_value" indexed="true" stored="false"
+                multiValued="true" />
+        <!-- tags for protocols referenced in the study lines; index Name part of ID@Name -->
+        <field name="protocol_name" type="idval_value" indexed="true" stored="false"
+                multiValued="true" />
+        <!-- tags for ICE/Registry parts in the study lines; index Name part of UUID@Name -->
+        <field name="part_name" type="idval_value" indexed="true" stored="false"
+                multiValued="true" />
+    </fields>
+
+    <uniqueKey>id</uniqueKey>
+    
+    <!-- copy ngram fields -->
+    <copyField source="name" dest="name_ng" />
+    <copyField source="name" dest="name_s" />
+    <copyField source="description" dest="description_ng" />
+    <copyField source="description" dest="desc_s" />
+    <copyField source="creator_email" dest="creator_ng" />
+    <copyField source="creator_name" dest="creator_ng" />
+    <copyField source="creator_name" dest="creator_s" />
+    <copyField source="contact" dest="contact_ng" />
+    <copyField source="metabolite" dest="metabolite_name" />
+    <copyField source="protocol" dest="protocol_name" />
+    <copyField source="part" dest="part_name" />
+
+</schema>

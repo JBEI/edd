@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<schema name="resmgmt" version="1.4">
+    <types>
+        <fieldType name="string" class="solr.StrField" sortMissingLast="true" omitNorms="true" />
+        <fieldType name="boolean" class="solr.BoolField" sortMissingLast="true" omitNorms="true" />
+        <fieldType name="tlong" class="solr.TrieLongField" precisionStep="8" omitNorms="true"
+                positionIncrementGap="0" />
+        <fieldType name="tdouble" class="solr.TrieDoubleField" precisionStep="0"
+                omitNorms="true" positionIncrementGap="0" />
+        <fieldType name="date" class="solr.TrieDateField" omitNorms="true" precisionStep="0"
+                positionIncrementGap="0" />
+        <fieldType name="tdate" class="solr.TrieDateField" omitNorms="true" precisionStep="6"
+                positionIncrementGap="0" />
+        <!-- Text field normalized to lower-case form -->
+        <fieldType name="text_lower" class="solr.TextField" positionIncrementGap="10">
+            <analyzer>
+                <tokenizer class="solr.WhitespaceTokenizerFactory" />
+                <filter class="solr.LowerCaseFilterFactory" />
+            </analyzer>
+        </fieldType>
+        <!-- Text field normalized to lower-case, without tokenizing on spaces -->
+        <fieldType name="tag_lower" class="solr.TextField" positionIncrementGap="10">
+            <analyzer>
+                <tokenizer class="solr.KeywordTokenizerFactory" />
+                <filter class="solr.LowerCaseFilterFactory" />
+            </analyzer>
+        </fieldType>
+        <!-- Text field normalized to lower-case, taking only first 30 characters, for sorting -->
+        <fieldType name="sort_lower" class="solr.TextField" positionIncrementGap="10">
+            <analyzer>
+                <tokenizer class="solr.PatternTokenizerFactory" pattern="^.{0,30}" group="0" />
+                <filter class="solr.LowerCaseFilterFactory" />
+            </analyzer>
+        </fieldType>
+        <!-- value in form of ([0-9a-fA-F-]+)@Name, or a ID/UUID followed by at-sign and a name -->
+        <fieldType name="idval" class="solr.TextField" indexed="true" stored="true" omitNorms="true"
+                multiValued="true">
+            <!-- index will be getting the ID@Name combo -->
+            <analyzer type="index">
+                <tokenizer class="solr.KeywordTokenizerFactory" />
+                <filter class="solr.LowerCaseFilterFactory" />
+                <!-- only index/search the ID/UUID -->
+                <filter class="solr.PatternReplaceFilterFactory" pattern="^([0-9a-f-]+)@.*$"
+                        replacement="$1" />
+            </analyzer>
+            <!-- query will only be getting the ID/UUID portion -->
+            <analyzer type="query">
+                <tokenizer class="solr.KeywordTokenizerFactory" />
+                <filter class="solr.LowerCaseFilterFactory" />
+            </analyzer>
+        </fieldType>
+        <fieldType name="idval_value" class="solr.TextField" indexed="true" stored="false"
+                omitNorms="true" multiValued="true">
+            <!-- index will be getting the ID@Name combo -->
+            <analyzer type="index">
+                <tokenizer class="solr.KeywordTokenizerFactory" />
+                <filter class="solr.LowerCaseFilterFactory" />
+                <!-- only index/search the name portion -->
+                <filter class="solr.PatternReplaceFilterFactory" pattern="^[0-9a-fA-F-]+@(.*)$"
+                        replacement="$1" />
+                <!-- turn the name portion into ngrams -->
+                <filter class="solr.NGramFilterFactory" minGramSize="2" maxGramSize="24" />
+                <!-- any ngram containing any whitespace replaced with empty string -->
+                <filter class="solr.PatternReplaceFilterFactory" pattern="^.*\s+.*$"
+                        replacement="" />
+                <!-- length filter discards replaced empty strings -->
+                <filter class="solr.LengthFilterFactory" min="2" max="24"/>
+            </analyzer>
+            <!-- query will only be getting the Name portion -->
+            <analyzer type="query">
+                <tokenizer class="solr.WhitespaceTokenizerFactory" />
+                <filter class="solr.LowerCaseFilterFactory" />
+            </analyzer>
+        </fieldType>
+        <!-- n-gram field type for substring matching -->
+        <fieldType name="ngram" class="solr.TextField" positionIncrementGap="100" stored="false"
+                multiValued="true">
+            <analyzer type="index">
+                <tokenizer class="solr.WhitespaceTokenizerFactory" />
+                <filter class="solr.LowerCaseFilterFactory" />
+                <filter class="solr.NGramFilterFactory" minGramSize="2" maxGramSize="24" />
+            </analyzer>
+            <analyzer type="query">
+                <tokenizer class="solr.WhitespaceTokenizerFactory" />
+                <filter class="solr.LowerCaseFilterFactory" />
+            </analyzer>
+        </fieldType>
+        <!-- edge n-gram field type for matching start of tokens, split on non-alphanum -->
+        <fieldType name="edge_ngram" class="solr.TextField" positionIncrementGap="100"
+                stored="false" multiValued="true">
+            <analyzer type="index">
+                <tokenizer class="solr.WhitespaceTokenizerFactory" />
+                <filter class="solr.LowerCaseFilterFactory" />
+                <filter class="solr.EdgeNGramFilterFactory" minGramSize="2" maxGramSize="24" />
+            </analyzer>
+            <analyzer type="query">
+                <tokenizer class="solr.WhitespaceTokenizerFactory" />
+                <filter class="solr.LowerCaseFilterFactory" />
+            </analyzer>
+        </fieldType>
+    </types>
+
+    <fields>
+        <!--
+          == Incoming document fields:
+          ==    id
+          ==    name
+          ==    code
+          ==    charge
+          ==    carbons
+          ==    mass
+          ==    formula
+          ==    tags
+          ==    source
+          -->
+        <!-- a unique key for the measurement type document -->
+        <field name="id" type="string" indexed="true" stored="true" required="true" />
+        <!-- name of the measurement type -->
+        <field name="name" type="text_lower" indexed="true" stored="true" />
+        <!-- short name / SBML code of the measurement type -->
+        <field name="code" type="text_lower" indexed="true" stored="true" />
+        <!-- flag for the family of the measurement type -->
+        <field name="family" type="text_lower" indexed="true" stored="true" />
+        <!-- source of measurement type property data -->
+        <field name="source" type="tag_lower" indexed="true" stored="true" />
+
+        <!-- == metabolite-specific fields == -->
+        <!-- metabolite physical properties -->
+        <field name="m_charge" type="tlong" indexed="true" stored="true" />
+        <field name="m_carbons" type="tlong" indexed="true" stored="true" />
+        <field name="m_mass" type="tdouble" indexed="true" stored="true" />
+        <!-- molecular formula stored, not indexed -->
+        <field name="m_formula" type="string" indexed="false" stored="true" />
+        <!-- tags added to metabolite -->
+        <field name="m_tags" type="tag_lower" indexed="true" stored="true" multiValued="true" />
+
+        <!-- == protein-specific fields == -->
+        <!-- protein physical properties -->
+        <field name="p_length" type="tlong" indexed="true" stored="true" />
+        <field name="p_mass" type="tlong" indexed="true" stored="true" />
+
+        <!--
+          == Generated fields:
+          ==    _version_
+          ==    name_ng
+          ==    name_edge
+          ==    name_s
+          -->
+        <!-- special _version_ field needed for some newer Solr features -->
+        <field name="_version_" type="tlong" indexed="true" stored="true" />
+        <!-- field needed for default request handlers, not actually used -->
+        <field name="text" type="text_lower" indexed="true" stored="false" multiValued="true" />
+        <!-- name of the study in ngram form for substring matches -->
+        <field name="name_ng" type="ngram" indexed="true" stored="false" />
+        <field name="name_edge" type="edge_ngram" indexed="true" stored="false" />
+        <!-- name of the metabolite in sort_lower form for sorting -->
+        <field name="name_s" type="sort_lower" indexed="true" stored="false" multiValued="false" />
+    </fields>
+
+    <uniqueKey>id</uniqueKey>
+    
+    <!-- copy ngram fields -->
+    <copyField source="name" dest="name_ng" />
+    <copyField source="name" dest="name_edge" />
+    <copyField source="name" dest="name_s" />
+
+</schema>
