@@ -106,13 +106,15 @@ var StudyD;
         // claim to be "useful".
         ProgressiveFilteringWidget.prototype.repopulateFilteringSection = function () {
             var _this = this;
-            this.filterTableJQ.children().detach();
             var dark = false;
             $.each(this.allFilters, function (i, widget) {
                 if (widget.isFilterUseful()) {
                     widget.addToParent(_this.filterTableJQ[0]);
                     widget.applyBackgroundStyle(dark);
                     dark = !dark;
+                }
+                else {
+                    widget.detach();
                 }
             });
         };
@@ -341,10 +343,10 @@ var StudyD;
             // We need two clear iccons for the two versions of the header
             var searchClearIcon = $("<span>").addClass('filterClearIcon');
             this.searchBoxTitleDiv = $("<div>").addClass('filterHeadSearch').append(searchClearIcon).append(sBox)[0];
-            this.clearIcons = clearIcon.add(searchClearIcon);
+            this.clearIcons = clearIcon.add(searchClearIcon); // Consolidate the two JQuery elements into one
             this.clearIcons.on('click', function (ev) {
-                console.log('clearing');
-                $.each(_this.checkboxes || {}, function (uniqueId, checkbox) {
+                // Changing the checked status will automatically trigger a refresh event
+                $.each(_this.checkboxes || {}, function (id, checkbox) {
                     checkbox.prop('checked', false);
                 });
                 return false;
@@ -402,6 +404,9 @@ var StudyD;
         GenericFilterSection.prototype.addToParent = function (parentDiv) {
             parentDiv.appendChild(this.filterColumnDiv);
         };
+        GenericFilterSection.prototype.detach = function () {
+            $(this.filterColumnDiv).detach();
+        };
         GenericFilterSection.prototype.applyBackgroundStyle = function (darker) {
             $(this.filterColumnDiv).removeClass(darker ? 'stripeRowB' : 'stripeRowA');
             $(this.filterColumnDiv).addClass(darker ? 'stripeRowA' : 'stripeRowB');
@@ -411,7 +416,8 @@ var StudyD;
         // a search box and scrollbar.
         GenericFilterSection.prototype.populateTable = function () {
             var _this = this;
-            var fCol = $(this.filterColumnDiv).empty();
+            var fCol = $(this.filterColumnDiv);
+            fCol.children().detach();
             // Only use the scrolling container div if the size of the list warrants it, because
             // the scrolling container div declares a large padding margin for the scroll bar,
             // and that padding margin would be an empty waste of space otherwise.
@@ -433,7 +439,7 @@ var StudyD;
             var colorObj = graphHelper.renderColor(EDDData.Lines);
             //add color obj to EDDData 
             EDDData['color'] = colorObj;
-            //line label color based on graph color of line 
+            // line label color based on graph color of line 
             if (this.sectionTitle === "Line") {
                 var colors = {};
                 //create new colors object with line names a keys and color hex as values 

@@ -177,13 +177,14 @@ module StudyD {
         // Clear out any old filters in the filtering section, and add in the ones that
         // claim to be "useful".
         repopulateFilteringSection(): void {
-            this.filterTableJQ.children().detach();
             var dark:boolean = false;
             $.each(this.allFilters, (i, widget) => {
                 if (widget.isFilterUseful()) {
                     widget.addToParent(this.filterTableJQ[0]);
                     widget.applyBackgroundStyle(dark);
                     dark = !dark;
+                } else {
+                    widget.detach();
                 }
             });
         }
@@ -476,11 +477,11 @@ module StudyD {
             var searchClearIcon = $("<span>").addClass('filterClearIcon');
             this.searchBoxTitleDiv = $("<div>").addClass('filterHeadSearch').append(searchClearIcon).append(sBox)[0];
 
-            this.clearIcons = clearIcon.add(searchClearIcon);
+            this.clearIcons = clearIcon.add(searchClearIcon);    // Consolidate the two JQuery elements into one
 
             this.clearIcons.on('click', (ev) => {
-                console.log('clearing');
-                $.each(this.checkboxes || {}, (uniqueId: number, checkbox: JQuery) => {
+                // Changing the checked status will automatically trigger a refresh event
+                $.each(this.checkboxes || {}, (id: number, checkbox: JQuery) => {
                     checkbox.prop('checked', false);
                 });
                 return false;
@@ -549,6 +550,11 @@ module StudyD {
         }
 
 
+        detach():void {
+            $(this.filterColumnDiv).detach();
+        }
+
+
         applyBackgroundStyle(darker:boolean):void {
             $(this.filterColumnDiv).removeClass(darker ? 'stripeRowB' : 'stripeRowA');
             $(this.filterColumnDiv).addClass(darker ? 'stripeRowA' : 'stripeRowB');
@@ -559,7 +565,8 @@ module StudyD {
         // filtering value represented.  If there are more than 15 values, the filter gets
         // a search box and scrollbar.
         populateTable():void {
-            var fCol = $(this.filterColumnDiv).empty();
+            var fCol = $(this.filterColumnDiv);
+            fCol.children().detach();
             // Only use the scrolling container div if the size of the list warrants it, because
             // the scrolling container div declares a large padding margin for the scroll bar,
             // and that padding margin would be an empty waste of space otherwise.
@@ -585,8 +592,8 @@ module StudyD {
             //add color obj to EDDData 
             EDDData['color'] = colorObj;
             
-            //line label color based on graph color of line 
-            if (this.sectionTitle === "Line") {
+            // line label color based on graph color of line 
+            if (this.sectionTitle === "Line") {    // TODO: Find a better way to identify this section
                 var colors:any = {};
 
                 //create new colors object with line names a keys and color hex as values 
