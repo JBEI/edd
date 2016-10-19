@@ -1,4 +1,12 @@
-# Remaining work before use
+# `maintain_ice_links.py'
+
+This document is draft technical documentation for `maintain_ice_links.py`. The purpose of the script
+is to scan linked EDD and ICE instances for inconsistencies,  then to update ICE's experiment 
+links to reference the EDD studies that the strains are used in.  From within JBEI's network, 
+see [SYNBIO-1190](https://support.jbei.org/browse/SYNBIO-1190) for a more detailed discussion.
+
+
+## Remaining work before use
 
 At the time of writing, this script is close, but not yet ready for production use.  Further work on
 it has been deferred in favor of higher priority work, especially because as it nears completion and
@@ -21,7 +29,7 @@ done before using this script on the production databases:
   so it correctly handles its parameter related to `alternate_base_url`, if used elsewhere in the script.
   See the [relevant commit](https://repo.jbei.org/projects/EDD/repos/edd-django/commits/f4c1b36850d14b981c1cb6dd24932b4e9c63d3eb#jbei/rest/clients/edd/api.py)
 * __Resolve dry run / actual run differences in detected__
-   * # of up-to-date links changes -- appears that since earlier tests, something has changed that
+   * of up-to-date links changes -- appears that since earlier tests, something has changed that
      broke the `-dry run` feature and caused it to start actually updating links in ICE. Despite 
 	 warnings in the code and documentation, it's dangerous to leave this feature broken, and fixing
 	 it may reveal other problems in the immature API / this script
@@ -41,7 +49,7 @@ done before using this script on the production databases:
    add in the hundreds of missing links from ICE to EDD noted during recent tests.  Can potentially 
    be revisited later.
 
-# Running the Script
+## Running the Script
 
 __Options__: there are many, mostly for helping to test the script in various environments or in 
 different stages of development.  It's best to just run 
@@ -54,14 +62,14 @@ hour each, though little effort has gone into optimizing the runtime on this scr
 have to run often, and should run mostly unsupervised, so it's probably not worth the effort to 
 optimize.
 
-# Limitations
+## Limitations
 
 1. The `-update_strain_text` option hasn't been fully tested at present. See EDD-XXX and ICE-XXX. 
 Probably need some additional input on whether / how to go about this (alias?)
 2. Not optimized. First pass at this script is just to get it working, and unclear whether 
 optimization work will be worth the additional development time / complexity.
 
-# Maintenance Concerns
+## Maintenance Concerns
 The scripts `-dry_run` option is an important feature for speeding up the testing process for large 
 changes to the script or related REST API's.  However, it depends on wrapper classes that descend 
 from IceApi and EddApi. If you alter the script to use different methods of those Api's, it's 
@@ -71,7 +79,7 @@ pasting commands that have the `-no_warn` option already set to hide the prompt.
 his option was used heavily during initial testing of the script, but is purposefully removed from 
 examples below.
 
-#Testing process for maintain_ice_links.py
+##Testing process for maintain_ice_links.py
 
 See below for sample instructions for testing maintain_ice_links.py against local 
 deployments of EDD and ICE.  This is a general outline for the initial testing performed 
@@ -81,12 +89,12 @@ problems encountered during some variants of the testing process. Note that test
 work, but behave a bit strangely with regard to user input when piped to `tee`. You might want to 
 run a few times without `tee` to figure out what's being asked for during the login process.
 
-## Be on the wired JBEI network
+### Be on the wired JBEI network
 With current LBNL IT policy and EDD software, you won't be able to directly connect to 
 postgres.jbei.org or to login on your local EDD instance unless you're connected to the wired 
 network.
 
-## Create reference database dumps so tests are repeatable
+### Create reference database dumps so tests are repeatable
 This may seem like overkill, but it's very helpful to make results comparable across multiple runs 
 while squashing bugs.
 
@@ -107,7 +115,7 @@ replace database name to `ice_local_test`
 
 Replace database name 'eddprod' with 'edd'
 
-## Start local EDD / ICE
+### Start local EDD / ICE
 If EDD/ICE are newly installed in the test environment, look below at "Set Predictable State".
 * EDD
 
@@ -118,7 +126,7 @@ If EDD/ICE are newly installed in the test environment, look below at "Set Predi
     cd ../ice
     mvn:jetty run
 	
-## Confirm admin access to ICE / EDD
+### Confirm admin access to ICE / EDD
 * Log in via the web interfaces to confirm your account has admin access
    * EDD will have an 'Administration' link at top right if your account has administrator or some 
    accellerated privileges. The script doesn't currently have fine-grained checks for this, so it 
@@ -129,13 +137,13 @@ If EDD/ICE are newly installed in the test environment, look below at "Set Predi
 	user.is_superuser = True
 	user.save()
 
-## Set Predictable Database State
+### Set Predictable Database State
 Use the included reset_docker_databases.sh script to simplify repeated database restores to a known
 state.  You'll have to copy and edit reset_docker_database.conf-example to match your local 
 configuration, then run the script to drop and restore both EDD and ICE databases.
 	
 	
-## Configure which target deployments are searched/modified by the script
+### Configure which target deployments are searched/modified by the script
 
 Edit jbei.edd.rest.scripts.local_settings.py to set target deployments, for example, for local 
 EDD/ICE instances:
@@ -151,12 +159,8 @@ EDD/ICE instances:
     VERIFY_ICE_CERT = False
     
     DEFAULT_LOCALE = b'en_US.UTF-8'  # override Docker container default to work in OSX
-
-
-
-
 	
-## Run the script (dry run)
+### Run the script (dry run)
 Doing a dry run first helps to quickly identify configuration / software syntax errors without 
 polluting the test databases with partial changes. If making significant changes to the script, or 
 following significant changes to EDD / ICE, consider using the `-test_edd_strain_limit` option to 
@@ -174,7 +178,7 @@ development laptop.
     python -m jbei.edd.rest.scripts.maintain_ice_links -username mark.forrer \
 	   -dry_run -scan_ice_entries -test_edd_url https://edd.jbei.org/ 2>&1 | tee 1-dry-run.txt
 	
-## Run the script (actual run)
+### Run the script (actual run)
 Do a full run of the script, and consider using a combination of grep / summary stastics computed by 
 the script to identify logic errors.  Also consider checking for unexpected differences in summary 
 results from the dry run mode (which is a bit brittle) Comparisons of this type nearly always turn 
@@ -183,7 +187,7 @@ up bugs that would otherwise go undetected.
     python -m jbei.edd.rest.scripts.maintain_ice_links -username mark.forrer -scan_ice_entries \
 	   -test_edd_url https://edd.jbei.org/ 2>&1 | tee 2-first-run.txt
 	
-## Re-Run the script
+### Re-Run the script
 Do a second full run of the script to make sure all of the changes attempted by the first run 
 actually stuck. A lot of effort went into writing the consistency checks that cause the script to
 update ICE's links. Use them to help.
