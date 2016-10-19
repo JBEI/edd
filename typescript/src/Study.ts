@@ -3196,22 +3196,20 @@ class DataGridSpecAssays extends DataGridSpecBase {
 
 
     generateMeasuringTimesCells(gridSpec:DataGridSpecAssays, index:string):DataGridDataCell[] {
-        var tupleTimeCount = (value, key) => { return [[ [parseFloat(key)], [value] ]]; },
-            sortByTime = (a, b) => { return a[0] - b[0]; },
-            svgCellForTimeCounts = (ids:any[]) => {
+        var svgCellForTimeCounts = (ids:any[]) => {
                 var consolidated, svg = '', timeCount = {};
                 // count values at each x for all measurements
                 ids.forEach((measureId) => {
                     var measure:any = EDDData.AssayMeasurements[measureId] || {},
-                        data:any[] = measure.values || [];
-                    data.forEach((point) => {
+                        points:number[][][] = measure.values || [];
+                    points.forEach((point:number[][]) => {
                         timeCount[point[0][0]] = timeCount[point[0][0]] || 0;
                         // Typescript compiler does not like using increment operator on expression
                         ++timeCount[point[0][0]];
                     });
                 });
-                // map the counts to [x, y] tuples, sorted by x value
-                consolidated = $.map(timeCount, tupleTimeCount).sort(sortByTime);
+                // map the counts to [x, y] tuples
+                consolidated = $.map(timeCount, (value, key) => [[ [parseFloat(key)], [value] ]]);
                 // generate SVG string
                 if (consolidated.length) {
                     svg = gridSpec.assembleSVGStringForDataPoints(consolidated, '');
@@ -3233,8 +3231,8 @@ class DataGridSpecAssays extends DataGridSpecBase {
             'metaboliteValueToCell': (value) => {
                 var measure = value.measure || {},
                     format = measure.format === 1 ? 'carbon' : '',
-                    data = value.measure.values || [],
-                    svg = gridSpec.assembleSVGStringForDataPoints(data, format);
+                    points = value.measure.values || [],
+                    svg = gridSpec.assembleSVGStringForDataPoints(points, format);
                 return new DataGridDataCell(gridSpec, index, {
                     'contentString': svg
                 });
