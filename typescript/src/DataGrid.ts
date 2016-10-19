@@ -449,7 +449,6 @@ class DataGrid {
         return checkedBoxes;
     }
 
-
     applySortIndicators() {
         if (this._headerRows) {
             $(this._headerRows).find('.sortedup, .sorteddown').removeClass('sortedup sorteddown');
@@ -458,7 +457,6 @@ class DataGrid {
             $(sort.spec.element).addClass(sort.asc ? 'sorteddown' : 'sortedup');
         });
     }
-
 
     arrangeTableDataRows():DataGrid {
         var striping = 1;
