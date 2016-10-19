@@ -480,7 +480,7 @@ class DataGrid {
         rowGroupSpec.forEach((rowGroup) => {
             var r = rowGroup.replicateGroupTable ;
             if (r.parentNode) { // As with regular rows, we're assuming the row is a child only of this table body.
-                this._tableBody.removeChild(r);
+                r.parentNode.removeChild(r);
             }
             // While we're here, reset the member record arrays.  We need to rebuild them post-filtering.
             rowGroup.memberRecords = [];
@@ -549,7 +549,8 @@ class DataGrid {
         if ($('#linesGroupStudyReplicatesCB0').prop('checked') === false) {
             var lines = $(frag).children();
             _.each(lines, function(line) {
-                $(line).show()
+                $(line).removeClass('replicateLineShow');
+                $(line).show();
             })
             }
 
