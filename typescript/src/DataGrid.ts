@@ -521,6 +521,8 @@ class DataGrid {
 
         } else {    // The more complicated, grouped method:
 
+            var stripeStyles = ['stripeRowA','stripeRowB'];
+            var stripeStylesJoin = stripeStyles.join(' ');
 
             filteredSequence.forEach((s) => {
                 var rowGroup = rowGroupSpec[this._spec.getRowGroupMembership(s)];
@@ -541,9 +543,14 @@ class DataGrid {
              rowGroupSpec.forEach((rowGroup) => {
                 striping = 1 - striping;
                 frag.appendChild(rowGroup.replicateGroupTable );
+                if (this._spec.tableSpec.applyStriping) {
+                    rowGroup.replicateGroupTitleRowJQ
+                        .removeClass(stripeStylesJoin).addClass(stripeStyles[striping]).end();
+                }
             });
             $(frag).insertBefore($(this._tableBody));
-        }
+
+            }
 
         //hacky way to show lines that were hidden from grouping replicates
         if ($('#linesGroupStudyReplicatesCB0').prop('checked') === false) {
@@ -551,9 +558,8 @@ class DataGrid {
             _.each(lines, function(line) {
                 $(line).removeClass('replicateLineShow');
                 $(line).show();
-            })
-            }
-
+            });
+        }
         // Remember that we last sorted by this column
         this._tableBody.appendChild(frag);
 
