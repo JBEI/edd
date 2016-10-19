@@ -201,7 +201,8 @@ information on the available options.
 
 * `maintain_ice_links.py` This work-in-progress script supports scanning linked EDD/ICE deployments 
   and maintaining the association between EDD experiments and ICE parts, which can become out-of-date
-  under some circumstances (e.g. downtime or communication failure).
+  under some circumstances (e.g. downtime or communication failure). See the 
+  [draft technical documentation][1] for this script.
 
 #### Running Command Line Tools
 
@@ -237,8 +238,7 @@ notebooks). The present versions of these libraries are still in active developm
 
 See `api.py` modules for EDD and ICE under `jbei/rest/clients/`, as well as other supporting modules.
 
-
-
+[1]:    edd/rest/scripts/Maintain_Links.md
 
 
 
