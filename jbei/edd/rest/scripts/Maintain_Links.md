@@ -44,10 +44,13 @@ done before using this script on the production databases:
   which are more divergent than the production deployments, and therefore more useful for 
   identifying problems that should be resolved by `maintain_ice-links.py`, and for testing its 
   features (some of which are needed, but don't yet occur in the production databases).
- * __Clarify / fix `-update_strain_text`__: need to brush up memory of how EDD strains are named 
+* __Clarify / fix `-update_strain_text`__: need to brush up memory of how EDD strains are named 
    (e.g. if ICE strain has an alias). This feature isn't scrictly required for an initial run to
    add in the hundreds of missing links from ICE to EDD noted during recent tests.  Can potentially 
    be revisited later.
+* __Clarify summary output re: ICE scan__ on first look following a successful scan, it appears that
+  some strains were skipped. In fact, an optimization was used to avoid reprocessing strains that
+  were used in EDD.
 
 ## Running the Script
 
