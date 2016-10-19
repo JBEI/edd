@@ -1429,7 +1429,7 @@ var StudyD;
      */
     function uncheckEventHandler(labels) {
         _.each(labels, function (label) {
-            var id = $(label).prev().prop('id');
+            var id = $(label).prev().attr('id');
             $('#' + id).change(function () {
                 var ischecked = $(this).is(':checked');
                 if (!ischecked)
@@ -2398,12 +2398,13 @@ var DataGridSpecAssays = (function (_super) {
         this.assayIDsInProtocol = [];
         $.each(EDDData.Assays, function (assayId, assay) {
             var line;
-            if (_this.protocolID !== assay.pid) {
-            }
-            else if (!(line = EDDData.Lines[assay.lid]) || !line.active) {
-            }
-            else {
-                _this.assayIDsInProtocol.push(assay.id);
+            // skip assays for other protocols
+            if (_this.protocolID === assay.pid) {
+                line = EDDData.Lines[assay.lid];
+                // skip assays without a valid line or with a disabled line
+                if (line && line.active) {
+                    _this.assayIDsInProtocol.push(assay.id);
+                }
             }
         });
     };
@@ -2555,11 +2556,12 @@ var DataGridSpecAssays = (function (_super) {
     };
     // The colspan value for all the cells that are assay-level (not measurement-level) is based on
     // the number of measurements for the respective record. Specifically, it's the number of
-    // metabolite measurements, plus 1 if there are transcriptomics measurements, plus 1 if there
+    // metabolite and general measurements, plus 1 if there are transcriptomics measurements, plus 1 if there
     // are proteomics measurements, all added together.  (Or 1, whichever is higher.)
     DataGridSpecAssays.prototype.rowSpanForRecord = function (index) {
         var rec = EDDData.Assays[index];
-        var v = ((rec.metabolites || []).length +
+        var v = ((rec.general || []).length +
+            (rec.metabolites || []).length +
             ((rec.transcriptions || []).length ? 1 : 0) +
             ((rec.proteins || []).length ? 1 : 0)) || 1;
         return v;
@@ -2658,7 +2660,6 @@ var DataGridSpecAssays = (function (_super) {
         return cells;
     };
     DataGridSpecAssays.prototype.generateMeasurementNameCells = function (gridSpec, index) {
-        var record = EDDData.Assays[index];
         return gridSpec.generateMeasurementCells(gridSpec, index, {
             'metaboliteToValue': function (measureId) {
                 var measure = EDDData.AssayMeasurements[measureId] || {}, mtype = EDDData.MeasurementTypes[measure.type] || {};

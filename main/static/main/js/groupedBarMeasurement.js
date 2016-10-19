@@ -17,30 +17,49 @@
         data, nested, typeNames, xValues, yvalueIds, x_name, xValueLabels,
         sortedXvalues, div, x_xValue, lineID, meas, y, wordLength;
 
+    if (type === 'x') {
+         var entries = d3.nest(type)
+            .key(function (d) {
+                return d[type];
+            })
+            .entries(assayMeasurements);
 
+        var timeMeasurements = _.clone(assayMeasurements);
+        var nestedByTime = findAllTime(entries);
+        var howManyToInsertObj = findMaxTimeDifference(nestedByTime);
+        var max = Math.max.apply(null, _.values(howManyToInsertObj));
+        if (max > 400) {
+            $(typeClass[type]).prepend("<p class='noData'>Too many missing data fields. Please filter</p>");
+            $('.tooMuchData').remove();
+        } else {
+            $('.noData').remove();
+        }
+        insertFakeValues(entries, howManyToInsertObj, timeMeasurements);
+    }
     //x axis scale for type
     x_name = d3.scale.ordinal()
         .rangeRoundBands([0, graphSet.width], 0.1);
-    
+
     //x axis scale for x values
     x_xValue = d3.scale.ordinal();
-    
+
     //x axis scale for line id to differentiate multiple lines associated with the same name/type
     lineID = d3.scale.ordinal();
 
     // y axis range scale
     y = d3.scale.linear()
         .range([graphSet.height, 0]);
-    
+
     div = d3.select("body").append("div")
         .attr("class", "tooltip2")
         .style("opacity", 0);
-    
-    meas = d3.nest()
+
+    var d3_entries = type === 'x' ? timeMeasurements : assayMeasurements;
+        meas = d3.nest()
         .key(function (d) {
             return d.y_unit;
         })
-        .entries(assayMeasurements);
+        .entries(d3_entries);
 
     // if there is no data - show no data error message
     if (assayMeasurements.length === 0) {
@@ -51,6 +70,8 @@
     } else {
         $('.noData').remove();
     }
+
+
 
     for (var i = 0; i < numUnits; i++) {
         yRange.push(d3.scale.linear().rangeRound([graphSet.height, 0]));
@@ -66,7 +87,18 @@
     }))
     }
 
-    // nest data by type (ie measurement) and by x value
+    if (type === 'x') {
+        // nest data by type (ie measurement) and by x value
+        nested = d3.nest(type)
+            .key(function (d) {
+                return d[type];
+            })
+            .key(function (d) {
+                return parseFloat(d.x);
+            })
+            .entries(timeMeasurements);
+    } else {
+        // nest data by type (ie measurement) and by x value
     nested = d3.nest(type)
             .key(function (d) {
                 return d[type];
@@ -75,6 +107,8 @@
                 return parseFloat(d.x);
             })
             .entries(assayMeasurements);
+    }
+
 
     //insert y value to distinguish between lines
     data = getXYValues(nested);
@@ -197,8 +231,9 @@
             })
             .enter().append("g")
             .attr("class", function (d) {
+                d.lineName = d.lineName.split(' ').join('');
                 return 'value value-' + d.lineName;
-            })
+             })
             .attr("transform", function (d) {
                 return "translate(" + lineID(d.key) + ",0)";
             })

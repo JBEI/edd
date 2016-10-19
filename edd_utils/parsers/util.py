@@ -1,23 +1,27 @@
-from __future__ import division
+# coding: utf-8
+from __future__ import division, unicode_literals
+
 import copy
 
 
 class RawImportRecord(object):
     """
-    A "raw" record for measurement import, suitable for passing to Step 2 of the EDD Data Table Import page.
-    Think of it as a crude form of an Assay (only one measurement type allowed, and its value array).
-    It provides a series of data points, and places for strings meant to be resolved into record identifiers
-    (by Step 4 in the front end for example) such as Line/Assay, Measurement (name of General/Metabolite/Gene/etc),
-    and Metadata names/values.
-    The import page submits a complementary data structure back to the server, including the original fields but
-    also resolving the ambiguous strings to primary keys of real records.  The server uses both structures to finalize the submission.
-    (In some situations - like small tab/csv documents - the parsing is all done client-side, and in that case the client
-    does not receive any original RawImportRecords from the server.)
-    The eventual goal is to standardize part of the data import pipeline across different sources and/or document types.
-    (It may be necessary to subclass RawImportRecord if a given data source needs to transmit additional fields.)
+    A "raw" record for measurement import, suitable for passing to Step 2 of the EDD Data Table
+    Import page. Think of it as a crude form of an Assay (only one measurement type allowed, and
+    its value array). It provides a series of data points, and places for strings meant to be
+    resolved into record identifiers (by Step 4 in the front end for example) such as Line/Assay,
+    Measurement (name of General/Metabolite/Gene/etc), and Metadata names/values. The import page
+    submits a complementary data structure back to the server, including the original fields but
+    also resolving the ambiguous strings to primary keys of real records.  The server uses both
+    structures to finalize the submission. (In some situations - like small tab/csv documents -
+    the parsing is all done client-side, and in that case the client does not receive any original
+    RawImportRecords from the server.) The eventual goal is to standardize part of the data import
+    pipeline across different sources and/or document types. (It may be necessary to subclass
+    RawImportRecord if a given data source needs to transmit additional fields.)
     """
 
-    def __init__(self, kind="std", name="NoName", line_name=None, assay_name=None, data=[], metadataName={}):
+    def __init__(self, kind="std", name="NoName", line_name=None, assay_name=None, data=[],
+                 metadataName={}):
         self.kind = kind
         self.assay_name = assay_name
         self.line_name = line_name
@@ -27,7 +31,7 @@ class RawImportRecord(object):
 
     def __repr__(self):
         return "<%s RawImportRecord '%s', A:'%s', %s data points>" % (
-            self.kind, self.name, self.assay_name, len(self.data))
+            self.kind, self.measurement_name, self.assay_name, len(self.data))
 
     def to_json(self, depth=0):
         return {
@@ -38,16 +42,3 @@ class RawImportRecord(object):
             "metadata_by_name": self.metadata_by_name,
             "data": self.data,
         }
-
-
-def format_rows_for_minimum_field_size (table) :
-  """
-  Given a 2D table of arbitrary values that we want to print in neat columns,
-  determine the column widths and return an equivalent formatted table.
-  """
-  transposed = [ [ row[k] for row in table ] for k in range(len(table[0])) ]
-  lengths = [ max([ len(str(cell)) for cell in col ]) for col in transposed ]
-  formats = [ "%%%ds" % n for n in lengths ]
-  formatted = [ [ formats[k] % cell for k, cell in enumerate(row) ]
-                for row in table ]
-  return formatted

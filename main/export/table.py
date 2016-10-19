@@ -416,15 +416,14 @@ class WorklistExport(TableExport):
         lines = self.selection.lines
         protocol = self.worklist.protocol
         table = tables['all']
-        counter = 0
-        for i, (pk, line) in enumerate(lines):
+        # lines is a QuerySet of the lines to use in worklist creation
+        for i, line in enumerate(lines):
             # build row with study/line info
             row = self._output_row_with_line(line, protocol)
-            table['%s' % (pk, )] = row
+            table[str(line.pk)] = row
             # when modulus set, insert 'blank' row every modulus rows
             if self.options.blank_mod and not (i + 1) % self.options.blank_mod:
-                counter += 1
                 blank = self._output_row_with_line(
-                    None, protocol, columns=self.options.blank_columns, blank=counter,
+                    None, protocol, columns=self.options.blank_columns
                 )
                 table['blank%s' % i] = blank

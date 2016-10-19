@@ -4,6 +4,13 @@
 #   example overrides in configuration to use in development environments -- will be created from
 #   running the init-config.sh script. Change the values here to alter the settings used when
 #   launching with the `docker-compose` commands.
+# *********************
+# SECURITY:
+# **********************
+# Note that defaults configured in this file MUST keep default EDD installs secure so that clients
+# who install EDD out-of-the-box aren't introducing security risks or exposing services unintentionally.
+#
+#
 # To use the docker-compose.yml file without these overrides, launch Docker Compose like this:
 #   docker-compose -f docker-compose.yml {COMMAND}
 # To use the docker-compose.yml file with different overrides, launch Docker Compose like this:
@@ -12,40 +19,40 @@
 # while any lists or dictionaries are merged.
 version: '2'
 services:
-  postgres:
-    # Make the postgres 5432 port available on the Docker host external network
-    ports:
-      - '5432:5432'
-  redis:
-    # Make the redis 6379 port available on the Docker host external network
-    ports:
-      - '6379:6379'
-  solr:
-    # Make the solr 8983 port available on the Docker host external network
-    ports:
-      - '8983:8983'
-  rabbitmq:
-    # Make the rabbitmq management 15672 port available on the Docker host external network
-    ports:
-      - '15672:15672'
-  flower:
-    # Make the flower 5555 port available on the Docker host external network
-    ports:
-      - '5555:5555'
-  edd:
-    # Add EDD_DEBUG=true to the base EDD container environment
-    environment:
-      EDD_DEBUG: "true"
+#  postgres:
+#    # Make the postgres 5432 port available on the Docker host external network
+#    ports:
+#      - '5432:5432'
+#  redis:
+#    # Make the redis 6379 port available on the Docker host external network
+#    ports:
+#      - '6379:6379'|
+#  solr:
+#    # Make the solr 8983 port available on the Docker host external network
+#    ports:
+#      - '8983:8983'
+#  rabbitmq:
+#    # Make the rabbitmq management 15672 port available on the Docker host external network
+#    ports:
+#      - '15672:15672'
+#  flower:
+#    # Make the flower 5555 port available on the Docker host external network
+#    ports:
+#      - '5555:5555'
+#  edd:
+#    # Add EDD_DEBUG=true to the base EDD container environment
+#    environment:
+#      EDD_DEBUG: "true"
   appserver:
     # Only include the POSTGRES_DUMP variables in the development override file
     environment:
       POSTGRES_DUMP_FILE: ${POSTGRES_DUMP_FILE}
       POSTGRES_DUMP_URL: ${POSTGRES_DUMP_URL}
-    # Make the http 8000 port available on the Docker host external network
-    ports:
-      - '8000:8000'
-      # Alternate configuration: make appserver port 8000 accessible to Docker localhost:8400
-      #- '127.0.0.1:8400:8000'
+#    # Make the http 8000 port available on the Docker host external network
+#    ports:
+#      - '8000:8000'
+#      # Alternate configuration: make appserver port 8000 accessible to Docker localhost:8400
+#      - '127.0.0.1:8400:8000'
   nginx:
     # Make the http/https ports available on the Docker host external network
     ports:

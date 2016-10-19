@@ -187,24 +187,31 @@
     </div>
     <div class="pageSection pageSectionTabContent" id="overviewSection">
         <div class="sectionContent">
-            <div class="btn-group" data-toggle="buttons" id="chartType">
-                <label class="btn btn-default btn-sm active line">
-                    <input value="linechart" type="radio" autocomplete="off" checked />
-                    <img src="{% static 'main/images/chart_curve.png' %}" />
-                </label>
-                <label class="btn btn-default btn-sm" style="margin-right: 20px;">
-                    <input type="radio" autocomplete="off" />
-                    <img src="{% static 'main/images/chart_bar.png' %}" />
-                </label>
-                <label class="btn btn-default btn-sm groupByTimeBar hidden">
-                    <input value="timeBar" type="radio" autocomplete="off" />Time
-                </label>
-                <label class="btn btn-default btn-sm groupByProteinBar hidden">
-                    <input type="radio" autocomplete="off" value="barAssay" />Line
-                </label>
-                <label class="btn btn-default btn-sm groupByMeasurementBar hidden">
-                    <input type="radio" value="groupedMeasurement" autocomplete="off" />Measurement
-                </label>
+            <div class="btn-toolbar">
+                <div class="btn-group" data-toggle="buttons" id="chartType">
+                    <label class="btn btn-default btn-sm active line">
+                        <input value="linechart" type="radio" autocomplete="off" checked />
+                        <img src="{% static 'main/images/chart_curve.png' %}" />
+                    </label>
+                    <label class="btn btn-default btn-sm" style="margin-right: 20px;">
+                        <input type="radio" autocomplete="off" />
+                        <img src="{% static 'main/images/chart_bar.png' %}" />
+                    </label>
+                    <label class="btn btn-default btn-sm groupByTimeBar hidden">
+                        <input value="timeBar" type="radio" autocomplete="off" />Time
+                    </label>
+                    <label class="btn btn-default btn-sm groupByProteinBar hidden">
+                        <input type="radio" autocomplete="off" value="barAssay" />Line
+                    </label>
+                    <label class="btn btn-default btn-sm groupByMeasurementBar hidden">
+                        <input type="radio" value="groupedMeasurement" autocomplete="off" />Measurement
+                    </label>
+                </div>
+                {% if writable %}
+                <div class="btn-group" style="float: right;">
+                    <a class="btn btn-sm btn-info" href="/study/{{ study.id }}/import">Import Files</a>
+                </div>
+                {% endif %}
             </div>
         </div>
         <div class="linechart">
@@ -240,9 +247,6 @@
     </div>
 
     {% if writable %}
-    <div class="bare-header">
-        <a href="/study/{{ study.id }}/import">Import tabular data...</a>
-    </div>
     <div class="pageSection minor disclose{% if not new_line.is_editing and new_line.errors|length == 0 %} discloseHide{% endif %}" id="lineMain">
         <div class="sectionHead">
             <span class="discloseLink"><a href="#">{% if new_line.is_editing %}Edit Line{% else %}Add A New Line{% endif %}</a></span>
@@ -253,8 +257,8 @@
                 {% csrf_token %}
                 {{ new_line.as_p }}
                 <p class="line-edit-meta">
-                    <span class="label">
-                        <input type="text" class="autocomp autocomp_ltype" placeholder="Metadata Type" size="12" />
+                    <span class="edd-label">
+                        <input type="text" class="autocomp autocomp_ltype" placeholder="Metadata Type" size="14" />
                         <input type="hidden" class="line-meta-type" value="" />
                     </span>
                     <input type="text" class="line-meta-value" placeholder="Metadata Value" />

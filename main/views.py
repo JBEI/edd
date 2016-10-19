@@ -13,7 +13,6 @@ from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django.db import transaction
 from django.db.models import Count, Prefetch, Q
-from django.db.transaction import atomic
 from django.http import (
     Http404, HttpResponse, HttpResponseNotAllowed, HttpResponseRedirect, JsonResponse,
 )
@@ -25,13 +24,14 @@ from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 from django.views import generic
 from django.views.decorators.csrf import ensure_csrf_cookie
-from io import BytesIO
 
 from . import autocomplete
 from .importer import (
-    TableImport, import_rna_seq, import_rnaseq_edgepro, interpret_edgepro_data,
+    import_rna_seq, import_rnaseq_edgepro, interpret_edgepro_data,
     interpret_raw_rna_seq_data,
 )
+from .importer.parser import find_parser
+from .importer.table import import_task
 from .export.forms import (ExportOptionForm, ExportSelectionForm,  WorklistForm,)
 from .export.sbml import SbmlExport
 from .export.table import ExportSelection, TableExport, WorklistExport
@@ -46,8 +46,8 @@ from .models import (
 from .signals import study_modified
 from .solr import StudySearch
 from .utilities import (
-    JSONDecimalEncoder, get_edddata_carbon_sources, get_edddata_measurement, get_edddata_misc,
-    get_edddata_strains, get_edddata_study, get_edddata_users,
+    EDDImportTasks, JSONDecimalEncoder, get_edddata_carbon_sources, get_edddata_measurement,
+    get_edddata_misc, get_edddata_strains, get_edddata_study, get_edddata_users,
 )
 
 logger = logging.getLogger(__name__)
@@ -415,7 +415,7 @@ class StudyDetailView(generic.DetailView):
                 'study': self.object,
             },
             context_instance=RequestContext(request),
-            )
+        )
 
     def handle_measurement_update(self, request, context):
         measure_ids = request.POST.get('measureId', '')
@@ -501,6 +501,9 @@ class StudyDetailView(generic.DetailView):
         if type(view_or_valid) == bool:
             # boolean means a response to same page, with flag noting whether form was valid
             return self.post_response(request, context, view_or_valid)
+        elif isinstance(view_or_valid, HttpResponse):
+            # got a response, directly return
+            return view_or_valid
         else:
             # otherwise got a view function, call it
             return view_or_valid(request, *args, **kwargs)
@@ -914,11 +917,15 @@ def study_import_table(request, study):
                 '%(key)s : %(value)s' % {'key': key, 'value': request.POST[key]}
                 for key in sorted(request.POST)
             ]))
-
-        table = TableImport(model, request.user, request=request)
         try:
-            added = table.import_data(request.POST)
-            messages.success(request, 'Imported %s measurement values.' % added)
+            result = import_task.delay(study, request.user.pk, request.POST)
+            tasks = EDDImportTasks(request.session)
+            tasks.add_task_id(result.id)
+            messages.success(
+                request,
+                'Data is submitted for import. You may continue to use EDD, another message will '
+                'appear once the import is complete.'
+            )
         except RuntimeError as e:
             logger.exception('Data import failed: %s', e.message)
 
@@ -956,74 +963,25 @@ def utilities_parse_import_file(request):
     edd_file_type = request.META.get('HTTP_X_EDD_FILE_TYPE')
     edd_import_mode = request.META.get('HTTP_X_EDD_IMPORT_MODE')
 
-    if edd_import_mode == "biolector":
+    parse_fn = find_parser(edd_import_mode, edd_file_type)
+    if parse_fn:
         try:
-            from edd_utils.parsers import biolector
-            # We pass the request directly along, so it can be read as a stream by the parser
-            result = biolector.getRawImportRecordsAsJSON(request, 0)
+            result = parse_fn(request)
             return JsonResponse({
-                "file_type": "xml",
-                "file_data": result,
+                'file_type': result.file_type,
+                'file_data': result.parsed_data,
             })
-        except ImportError as e:
-            return JsonResponse({
-                "python_error": "jbei_tools module required to handle XML table input."
-            })
-    if edd_file_type == "excel":
-        try:
-            from edd_utils.parsers import excel
-            data = request.read()
-            result = excel.import_xlsx_tables(file=BytesIO(data))
-            return JsonResponse({
-                "file_type": "xlsx",
-                "file_data": result,
-            })
-        except ImportError as e:
-            return JsonResponse({
-                "python_error": "jbei_tools module required to handle Excel table input."
-            })
-        except ValueError as e:
-            return JsonResponse({"python_error": str(e)})
         except Exception as e:
-            return JsonResponse({
-                "file_type": "csv",
-                "file_data": data,
-            })
-    if edd_import_mode == "hplc":
-        try:
-            from edd_utils.parsers.hplc import (
-                getRawImportRecordsAsJSON, HPLC_Parse_Missing_Argument_Exception,
-                HPLC_Parse_No_Header_Exception, HPLC_Parse_Misaligned_Blocks_Exception
-                )
-            try:
-                result = getRawImportRecordsAsJSON(request)
-                return JsonResponse({
-                    "file_type": "hplc",
-                    "file_data": result,
-                })
-                # TODO: better exception messages.
-            except HPLC_Parse_Missing_Argument_Exception as e:
-                return JsonResponse({
-                    "python_exception": "HPLC parsing failed: input stream None"
-                })
-            except HPLC_Parse_No_Header_Exception as e:
-                return JsonResponse({
-                    "python_exception": "HPLC parsing failed: unable to find header!"
-                })
-            except HPLC_Parse_Misaligned_Blocks_Exception as e:
-                return JsonResponse({
-                    "python_exception": "HPLC parsing failed: mismatched row count amoung blocks!"
-                })
-        except ImportError as e:
-            logger.exception('Failed to load module %s', e)
-            return JsonResponse({
-                "python_error": "jbei_tools module required to handle HPLC file input."
-            })
-
-    return JsonResponse({
-        "python_error": "The uploaded file could not be interpreted as either an Excel "
-                        "spreadsheet or an XML file.  Please check that the contents are "
-                        "formatted correctly. (Word documents are not allowed!)"})
+            logger.exception('Import file parse failed: %s', e)
+            return JsonResponse({'python_error': str(e)}, status=500)
+    return JsonResponse(
+        {
+            "python_error": "The uploaded file could not be interpreted as either an Excel "
+                            "spreadsheet or an XML file.  Please check that the contents are "
+                            "formatted correctly. (Word documents are not allowed!)"
+        },
+        code=500
+    )
 
 
 # /study/<study_id>/import/rnaseq

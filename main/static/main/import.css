@@ -67,6 +67,9 @@ div.fileDropInfoIcon {
     background-position: center; 
     background-image: url(images/dropzone-csv-over.png);
 }
+div.fileDropInfoIcon.text {
+    background-image: url(images/dropzone-text-over.png);
+}
 div.fileDropInfoIcon.excel {
     background-image: url(images/dropzone-excel-over.png);
 }
@@ -235,46 +238,43 @@ div.dataTableDiv table tr > td.disabledInput {
 
 /* The Step 4 disambiguation section */
 
-div.disambiguationSection {
-	padding:0em 0em 3px 0em;
-	border-bottom:0px solid;
-	border-left:0px solid;
-	border-right:0px solid;
-	border-top:1px solid #6CA5E9;
+div.disambiguationSections > div {
+	padding:6px 0em 3px 0em;
 }
 
-div.disambiguationSection h3 {
-	font-size: 11px;
-	margin:1px 0px 5px 0px;
+div.disambiguationSections h3 {
+	font-size: 13px;
+	margin:0.5em 0px 5px 0.5em;
+
 }
 
-div.disambiguationSection table {
+div.disambiguationSections > div table {
 /*	width:100%; */
 	border:0px solid;
 	margin:0px 0px 8px 1.2em;
 	padding:0px;
 }
 
-div.disambiguationSection table tr {
+div.disambiguationSections > div table tr {
 	border:0px solid;
 }
-div.disambiguationSection table tr > td {
+div.disambiguationSections > div table tr > td {
 	vertical-align:middle;
-	padding:1px 3px 0px 2px;
+	padding:1px 2px 0px 2px;
 	border:0px solid;
 	text-align:left;
 }
-div.disambiguationSection table tr > td.disamDataCell {
+div.disambiguationSections > div table tr > td.disamDataCell {
 	padding:1px 2px 0px 0px;
 }
 
-div.disambiguationSection table tr > th {
-	text-align:center;
+div.disambiguationSections > div table tr > th {
+	text-align:left;
 	font-weight:normal;
 	font-size: 9px;
-	padding:0px;
+	padding:0px 0px 5px 10px;
 }
-div.disambiguationSection table tr > td > div {
+div.disambiguationSections > div table tr > td > div {
 	font-size: 12px;
 	line-height:13px;
 	font-weight:bold;
@@ -287,14 +287,19 @@ div.disambiguationSection table tr > td > div {
 	-moz-border-radius: 4px;
 	border:1px solid #ACD1FF;
 }
-div.disambiguationSection table tr > td select {
+div.disambiguationSections > div table tr > td select {
 	margin:0px 3px 0px 3px;
 }
-div.disambiguationSection table tr > td > span {
-	font-size: 11px;
-	margin:0px 0px 0px 2px;
+div.disambiguationSections > div table tr > td > p {
+	font-size: 13px;
+	margin:0px 2px 0px 2px;
+	padding:0;
 }
-div.disambiguationSection table tr > td input[type="text"] {
+div.disambiguationSections > div table tr > td > span {
+	font-size: 13px;
+	margin:0px 0px 0px 4px;
+}
+div.disambiguationSections > div table tr > td input[type="text"] {
 	margin:0px 2px 0px 0px;
 }
 
