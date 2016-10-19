@@ -1261,9 +1261,24 @@ class MeasurementType(models.Model, EDDSerialize):
     type_name = models.CharField(max_length=255)
     short_name = models.CharField(max_length=255, blank=True, null=True)
     type_group = models.CharField(max_length=8, choices=Group.GROUP_CHOICE, default=Group.GENERIC)
+    type_source = models.ForeignKey(
+        Datasource, blank=True, null=True,
+    )
 
     def to_solr_value(self):
         return '%(id)s@%(name)s' % {'id': self.pk, 'name': self.type_name}
+
+    def to_solr_json(self):
+        """ Convert the MeasurementType model to a dict structure formatted for Solr JSON. """
+        source = self._source_name if hasattr(self, '_source_name') else self.type_source.name
+        return {
+            'id': self.id,
+            'name': self.type_name,
+            'code': self.short_name,
+            'family': self.type_group,
+            # use the annotated attr if present, otherwise must make a new query
+            'source': source,
+        }
 
     def to_json(self, depth=0):
         return {
@@ -1347,6 +1362,16 @@ class Metabolite(MeasurementType):
             "tags": self.tags,
         })
 
+    def to_solr_json(self):
+        """ Convert the MeasurementType model to a dict structure formatted for Solr JSON. """
+        return dict(super(Metabolite, self).to_json(), **{
+            'm_charge': self.charge,
+            'm_carbons': self.carbon_count,
+            'm_mass': self.molar_mass,
+            'm_formula': self.molecular_formula,
+            'm_tags': list(self.tags),
+        })
+
     def save(self, *args, **kwargs):
         if self.carbon_count is None:
             self.carbon_count = self.extract_carbon_count()
@@ -1408,6 +1433,13 @@ class ProteinIdentifier(MeasurementType):
         r'([OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9](?:[A-Z][A-Z0-9]{2}[0-9]){1,2})'  # the ID
         r'(?:\|(\w+))?'  # optional name
     )
+
+    def to_solr_json(self):
+        """ Convert the MeasurementType model to a dict structure formatted for Solr JSON. """
+        return dict(super(ProteinIdentifier, self).to_json(), **{
+            'p_length': self.length,
+            'p_mass': self.mass,
+        })
 
     @classmethod
     def match_accession_id(cls, text):

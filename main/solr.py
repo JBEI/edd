@@ -365,6 +365,26 @@ class UserSearch(SolrSearch):
         return queryopt
 
 
+class MeasurementTypeSearch(SolrSearch):
+    """ API to manage searching for measurement types via Solr index """
+
+    def __init__(self, core='metabolite', *args, **kwargs):
+        super(MeasurementTypeSearch, self).__init__(core=core, *args, **kwargs)
+
+    @staticmethod
+    def get_queryset():
+        return models.MeasurementType.objects.annotate(_source_name=F('type_source__name'))
+
+    def get_queryopt(self, query, **kwargs):
+        queryopt = super(MeasurementTypeSearch, self).get_queryopt(query, **kwargs)
+        queryopt['defType'] = 'edismax'
+        queryopt['qf'] = ' '.join([
+            'name^10', 'name_edge^5', 'name_ng^2', 'code^10', 'formula', 'tags',
+        ])
+        queryopt['q.alt'] = '*:*'
+        return queryopt
+
+
 class MetaboliteSearch(SolrSearch):
     """ API to manage searching for metabolites via Solr index """
 
@@ -373,7 +393,7 @@ class MetaboliteSearch(SolrSearch):
 
     @staticmethod
     def get_queryset():
-        return models.Metabolite.objects.annotate(_source_name=F('source__name'))
+        return models.Metabolite.objects.annotate(_source_name=F('type_source__name'))
 
     def get_queryopt(self, query, **kwargs):
         queryopt = super(MetaboliteSearch, self).get_queryopt(query, **kwargs)
@@ -385,24 +405,4 @@ class MetaboliteSearch(SolrSearch):
         return queryopt
 
     def get_solr_payload(self, obj):
-        if isinstance(obj, models.Metabolite):
-            return {
-                'id': obj.id,
-                'name': obj.type_name,
-                'code': obj.short_name,
-                'charge': obj.charge,
-                'carbons': obj.carbon_count,
-                'mass': obj.molar_mass,
-                'formula': obj.molecular_formula,
-                'tags': list(obj.tags),
-                # use the annotated attr if present, otherwise must make a new query
-                'source': obj._source_name if hasattr(obj, '_source_name') else obj.source.name,
-            }
-        # still supporting 'metaboliteish'
-        elif (isinstance(obj, models.MeasurementType) and
-              obj.type_group == models.MeasurementType.Group.GENERIC):
-            return {
-                'id': obj.id,
-                'name': obj.type_name,
-            }
-        return None
+        return obj.to_solr_json()
