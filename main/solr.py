@@ -5,7 +5,6 @@ import json
 import logging
 import requests
 
-from builtins import str
 from django.conf import settings as django_settings
 from django.db.models import Count, F, Prefetch
 from itertools import ifilter, islice
@@ -49,17 +48,14 @@ class SolrSearch(object):
         Clears the index, deleting everything.
         :raises IOError if an error occurs during the attempt
         """
-
         # build the request
         url = self.url + '/update/json'
         command = '{"delete":{"query":"*:*"},"commit":{}}'
         headers = {'content-type': 'application/json'}
-
         # issue the request (raises IOError)
         response = requests.post(url, data=command, headers=headers, timeout=timeout)
-
-        if response.status_code != requests.codes.ok:
-            response.raise_for_status()  # raises HttpError (extends IOError)
+        response.raise_for_status()  # raises HttpError (extends IOError)
+        return self
 
     def get_solr_payload(self, obj):
         return obj.to_solr_json()
@@ -78,24 +74,21 @@ class SolrSearch(object):
 
     def remove(self, docs=[]):
         """
-            Updates Solr with a list of objects to remove from the index.
+        Updates Solr with a list of objects to remove from the index.
 
-            :param docs: an iterable of objects with an id property
+        :param docs: an iterable of objects with an id property
 
-            :raises IOError: if an error occurs during the removal attempt. Note that removals
-            are performed iteratively, so it's possible that some succeeded before the error
-            occurred.
+        :raises IOError: if an error occurs during the removal attempt. Note that removals are
+            performed iteratively, so it's possible that some succeeded before the error occurred.
         """
         # Does no permissions checking; permissions already valid if called from Study pre_delete
         # signal, but other clients must do their own permission checks.
         url = self.url + '/update/json'
         # proactively log input to help diagnose integration errors, if they occur
-        logger.info("%(class_name)s.%(method_name)s: %(params)s" % {
-            'class_name': self.__class__.__name__,
-            'method_name': self.remove.__name__,
-            'params': 'url=%(url)s, doc ids = %(doc_ids)s' % {
-                'doc_ids': str([doc.id for doc in docs]),
-                'url': url, }})
+        logger.info('%(cls)s deleting from solr index with: %(ids)s' % {
+            'cls': self.__class__.__name__,
+            'ids': [doc.id for doc in docs],
+        })
         command = '{"delete":{"query":"id:%s"},"commit":{}}'
         headers = {'content-type': 'application/json'}
         for doc in docs:
@@ -106,22 +99,13 @@ class SolrSearch(object):
                     headers=headers,
                     timeout=timeout,
                 )
+                response.raise_for_status()
             # catch / re-raise communication errors after logging some helpful context re: where
             # the error occurred
             except IOError as err:
                 # log the doc id on which the error occurred, then re-raise the error
                 logger.error('Error removing data from Solr index. Failed on doc id %s', doc.id)
                 raise err
-            else:
-                # if we got an error response from Solr, log some context re: when the error
-                # occurred, then raise an HttpError (extents IOError noted in docstring / thrown
-                # above)
-                if response.status_code != requests.codes.ok:
-                    # log the doc id on which the problem occurred, then raise an HttpError
-                    logger.error(
-                        'Error removing data from Solr index. Failed on doc id %s', doc.id
-                    )
-                    response.raise_for_status()
 
     def search(self, queryopt={'q': '*:*', 'wt': 'json', }):
         """
@@ -134,22 +118,16 @@ class SolrSearch(object):
             queryopt['q'] = queryopt['q'] + '*'
 
         # proactively log input to help diagnose integration errors, if they occur
-        logger.info("%(class_name)s.%(method_name)s: %(params)s" % {
-            'class_name': self.__class__.__name__,
-            'method_name': self.search.__name__,
-            'params': ('queryopt=%s' % str(queryopt))
+        logger.info('%(cls)s searching solr index with: %(queryopt)s' % {
+            'cls': self.__class__.__name__,
+            'queryopt': queryopt,
         })
 
         # contact Solr / raise any IOErrors that arise
         response = requests.get(self.url + '/select', params=queryopt, timeout=timeout)
+        response.raise_for_status()
 
-        if response.status_code == requests.codes.ok:
-            return response.json()
-        else:
-            # if we got an error response from Solr, log some context re: when the error
-            # occurred, then raise an HttpError (extents IOError noted in docstring maybe thrown
-            # by GET above)
-            response.raise_for_status()
+        return response.json()
 
     def query(self, query, **kwargs):
         """ Runs a query against the Solr core, translating options to the Solr syntax.
@@ -205,11 +183,8 @@ class SolrSearch(object):
                 headers=headers,
                 timeout=timeout,
             )
-
-            # if we received a valid response with an HTTP error code, raise HttpException (
-            # extends IOError that may also be raised above)
-            if response.status_code != requests.codes.ok:
-                response.raise_for_status()
+            # if we received a valid response with an HTTP error code, raise HttpException
+            response.raise_for_status()
 
             # if the add worked, send commit command
             add_json = response.json()
@@ -219,15 +194,40 @@ class SolrSearch(object):
                 headers=headers,
                 timeout=timeout,
             )  # raises IOError
-            if response.status_code == requests.codes.ok:
-                logger.info('%(cls)s commit successful with IDs: %(ids)s' % {
-                    'cls': self.__class__.__name__,
-                    'ids': ids,
-                })
-                response_list.append(add_json)
-            else:
-                response.raise_for_status()  # raises HttpError (extends IOError)
+            response.raise_for_status()  # raises HttpError (extends IOError)
+            logger.info('%(cls)s commit successful with IDs: %(ids)s' % {
+                'cls': self.__class__.__name__,
+                'ids': ids,
+            })
+            response_list.append(add_json)
         return response_list
+
+    def swap(self):
+        """
+        Change this search object to point to the swap index. All other search objects will
+        continue to use the main index.
+        """
+        if self.core.endswith('_swap'):
+            self.core = self.core[:self.core.rfind('_swap')]
+        else:
+            self.core = self.core + '_swap'
+        return self
+
+    def swap_execute(self):
+        """
+        Change this search object AND ALL OTHERS to point to the swap index. Use this to handle
+        long-running re-index tasks; update everything in the swap index, then replace the main
+        index with the swap index.
+        """
+        url = self.settings['URL'] + 'admin/cores'
+        params = {
+            'action': 'SWAP',
+            'other': self.swap().core,
+            'core': self.swap().core,
+        }
+        response = requests.get(url, params=params, timeout=timeout)
+        response.raise_for_status()
+        return self
 
     @property
     def url(self):

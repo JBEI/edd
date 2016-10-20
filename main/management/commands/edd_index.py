@@ -17,23 +17,26 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         print("Clearing user index")
-        self.user_core.clear()
+        self.user_core.swap().clear()
         users_qs = self.user_core.get_queryset()
         user_updates = map(self._copy_groups, users_qs)
         print("Indexing %s users" % users_qs.count())
         self.user_core.update(user_updates)
+        self.user_core.swap_execute()
 
         print("Clearing studies index")
-        self.study_core.clear()
+        self.study_core.swap().clear()
         study_qs = self.study_core.get_queryset()
         print("Indexing %s studies" % study_qs.count())
         self.study_core.update(study_qs)
+        self.study_core.swap_execute()
 
         print("Clearing metabolite index")
-        self.measurement_core.clear()
+        self.measurement_core.swap().clear()
         metabolite_qs = solr.MeasurementTypeSearch.get_queryset()
         print("Indexing %s metabolites" % metabolite_qs.count())
         self.measurement_core.update(metabolite_qs)
+        self.measurement_core.swap_execute()
 
     def _copy_groups(self, user):
         # Normally should use the following line:
