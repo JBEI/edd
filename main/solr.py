@@ -7,7 +7,9 @@ import requests
 
 from builtins import str
 from django.conf import settings as django_settings
-from django.db.models import F
+from django.db.models import Count, F, Prefetch
+from itertools import ifilter, islice
+from six import string_types
 
 from . import models, utilities
 
@@ -181,47 +183,51 @@ class SolrSearch(object):
 
         :param docs: an iterable of objects with a to_solr_json method to update in Solr. Must
             have an id attribute.
-        :return: Solr's JSON response, if the add was successfully performed.
+        :return: list of Solr's JSON response(s), if the update was successfully performed.
         :raises IOError: if an error occurs during the update attempt
         """
         url = self.url + '/update/json'
-        payload = filter(lambda d: d is not None, map(self.get_solr_payload, docs))
-
-        # proactively log input to help diagnose integration errors, if they occur
-        logger.info("%(class_name)s.%(method_name)s: %(params)s" % {
-            'class_name': self.__class__.__name__, 'method_name': self.update.__name__,
-            'params': 'url=%(url)s, doc ids = %(doc_ids)s' % {
-                'doc_ids': str([doc.id for doc in docs]),
-                'url': url,
-            }
-        })
+        payload = ifilter(lambda d: d is not None, map(self.get_solr_payload, docs))
+        response_list = []
 
         headers = {'content-type': 'application/json'}
-        # make an initial request to do the add / raise IOError if it occurs
-        response = requests.post(
-            url,
-            data=json.dumps(payload, cls=utilities.JSONDecimalEncoder),
-            headers=headers,
-            timeout=timeout,
-        )
+        # Send updates in groups of 50
+        for group in iter(lambda: list(islice(payload, 50)), []):
+            ids = map(lambda item: item.get('id'), group)
+            logger.info('%(cls)s updating solr index with IDs: %(ids)s' % {
+                'cls': self.__class__.__name__,
+                'ids': ids,
+            })
+            # make an initial request to do the add / raise IOError if it occurs
+            response = requests.post(
+                url,
+                data=json.dumps(group, cls=utilities.JSONDecimalEncoder),
+                headers=headers,
+                timeout=timeout,
+            )
 
-        # if we received a valid response with an HTTP error code, raise HttpException (
-        # extends IOError that may also be raised above)
-        if response.status_code != requests.codes.ok:
-            response.raise_for_status()
+            # if we received a valid response with an HTTP error code, raise HttpException (
+            # extends IOError that may also be raised above)
+            if response.status_code != requests.codes.ok:
+                response.raise_for_status()
 
-        # if the add worked, send commit command
-        add_json = response.json()
-        response = requests.post(
-            url,
-            data='{"commit":{}}',
-            headers=headers,
-            timeout=timeout,
-        )  # raises IOError
-        if response.status_code == requests.codes.ok:
-            return add_json
-        else:
-            response.raise_for_status()  # raises HttpError (extends IOError)
+            # if the add worked, send commit command
+            add_json = response.json()
+            response = requests.post(
+                url,
+                data='{"commit":{}}',
+                headers=headers,
+                timeout=timeout,
+            )  # raises IOError
+            if response.status_code == requests.codes.ok:
+                logger.info('%(cls)s commit successful with IDs: %(ids)s' % {
+                    'cls': self.__class__.__name__,
+                    'ids': ids,
+                })
+                response_list.append(add_json)
+            else:
+                response.raise_for_status()  # raises HttpError (extends IOError)
+        return response_list
 
     @property
     def url(self):
@@ -262,6 +268,27 @@ class StudySearch(SolrSearch):
         return (
             ' OR '.join(map(lambda r: 'aclr:'+r, acl)),
             ' OR '.join(map(lambda w: 'aclw:'+w, acl)),
+        )
+
+    @staticmethod
+    def get_queryset():
+        return models.Study.objects.select_related(
+            'contact',
+            'updated__mod_by__userprofile',
+            'created__mod_by__userprofile',
+        ).annotate(
+            _file_count=Count('files'),
+            _comment_count=Count('comments'),
+        ).prefetch_related(
+            Prefetch(
+                'userpermission_set',
+                queryset=models.UserPermission.objects.select_related('user'),
+            ),
+            Prefetch(
+                'grouppermission_set',
+                queryset=models.GroupPermission.objects.select_related('group'),
+            ),
+            'everyonepermission_set',
         )
 
     def query(self, query='', options={}):
@@ -324,6 +351,14 @@ class UserSearch(SolrSearch):
     def __init__(self, core='users', *args, **kwargs):
         super(UserSearch, self).__init__(core=core, *args, **kwargs)
 
+    @staticmethod
+    def get_queryset():
+        return models.User.objects.select_related(
+            'userprofile',
+        ).prefetch_related(
+            'userprofile__institutions',
+        )
+
     def query(self, query='is_active:true', options={}):
         """ Run a query against the Users Solr index.
 
@@ -368,12 +403,19 @@ class UserSearch(SolrSearch):
 class MeasurementTypeSearch(SolrSearch):
     """ API to manage searching for measurement types via Solr index """
 
-    def __init__(self, core='metabolite', *args, **kwargs):
+    def __init__(self, core='measurement', *args, **kwargs):
         super(MeasurementTypeSearch, self).__init__(core=core, *args, **kwargs)
 
     @staticmethod
     def get_queryset():
-        return models.MeasurementType.objects.annotate(_source_name=F('type_source__name'))
+        return models.MeasurementType.objects.annotate(
+            _source_name=F('type_source__name'),
+        ).select_related(
+            'metabolite',
+            'proteinidentifier',
+            'geneidentifier',
+            'phosphor',
+        )
 
     def get_queryopt(self, query, **kwargs):
         queryopt = super(MeasurementTypeSearch, self).get_queryopt(query, **kwargs)
@@ -382,27 +424,23 @@ class MeasurementTypeSearch(SolrSearch):
             'name^10', 'name_edge^5', 'name_ng^2', 'code^10', 'formula', 'tags',
         ])
         queryopt['q.alt'] = '*:*'
-        return queryopt
-
-
-class MetaboliteSearch(SolrSearch):
-    """ API to manage searching for metabolites via Solr index """
-
-    def __init__(self, core='metabolite', *args, **kwargs):
-        super(MetaboliteSearch, self).__init__(core=core, *args, **kwargs)
-
-    @staticmethod
-    def get_queryset():
-        return models.Metabolite.objects.annotate(_source_name=F('type_source__name'))
-
-    def get_queryopt(self, query, **kwargs):
-        queryopt = super(MetaboliteSearch, self).get_queryopt(query, **kwargs)
-        queryopt['defType'] = 'edismax'
-        queryopt['qf'] = ' '.join([
-            'name^10', 'name_edge^5', 'name_ng^2', 'code^10', 'formula', 'tags',
-        ])
-        queryopt['q.alt'] = '*:*'
+        if kwargs.get('family', None):
+            family = kwargs['family']
+            if isinstance(family, string_types):
+                queryopt['fq'] = 'family:%s' % family
+            else:
+                queryopt['fq'] = ['family:%s' % f for f in family].join(' OR ')
         return queryopt
 
     def get_solr_payload(self, obj):
-        return obj.to_solr_json()
+        try:
+            if obj.type_group == models.MeasurementType.Group.METABOLITE:
+                item = obj.metabolite
+            elif obj.type_group == models.MeasurementType.Group.PROTEINID:
+                item = obj.proteinidentifier
+            else:
+                item = obj
+        except Exception as e:
+            logger.exception('Could not load detailed info on measurement type %s', obj.type_name)
+            item = obj
+        return item.to_solr_json()

@@ -526,6 +526,8 @@ class EDDObject(EDDMetadata, EDDSerialize):
         return self.created.format_timestamp()
 
     def get_attachment_count(self):
+        if hasattr(self, '_file_count'):
+            return self._file_count
         return self.files.count()
 
     @property
@@ -537,6 +539,8 @@ class EDDObject(EDDMetadata, EDDSerialize):
         return self.comments.order_by('created__mod_time').all()
 
     def get_comment_count(self):
+        if hasattr(self, '_comment_count'):
+            return self._comment_count
         return self.comments.count()
 
     @classmethod
@@ -1270,14 +1274,24 @@ class MeasurementType(models.Model, EDDSerialize):
 
     def to_solr_json(self):
         """ Convert the MeasurementType model to a dict structure formatted for Solr JSON. """
-        source = self._source_name if hasattr(self, '_source_name') else self.type_source.name
+        source_name = None
+        # Check if this is coming from a child MeasurementType, and ref the base type
+        if hasattr(self, 'measurementtype_ptr'):
+            mtype = self.measurementtype_ptr
+        # check for annotated source attribute on self and base type
+        if hasattr(self, '_source_name'):
+            source_name = self._source_name
+        elif hasattr(mtype, '_source_name'):
+            source_name = mtype._source_name
+        elif self.type_source:
+            source_name = self.type_source.name
         return {
             'id': self.id,
             'name': self.type_name,
             'code': self.short_name,
             'family': self.type_group,
             # use the annotated attr if present, otherwise must make a new query
-            'source': source,
+            'source': source_name,
         }
 
     def to_json(self, depth=0):
@@ -1364,7 +1378,7 @@ class Metabolite(MeasurementType):
 
     def to_solr_json(self):
         """ Convert the MeasurementType model to a dict structure formatted for Solr JSON. """
-        return dict(super(Metabolite, self).to_json(), **{
+        return dict(super(Metabolite, self).to_solr_json(), **{
             'm_charge': self.charge,
             'm_carbons': self.carbon_count,
             'm_mass': self.molar_mass,
@@ -1436,7 +1450,7 @@ class ProteinIdentifier(MeasurementType):
 
     def to_solr_json(self):
         """ Convert the MeasurementType model to a dict structure formatted for Solr JSON. """
-        return dict(super(ProteinIdentifier, self).to_json(), **{
+        return dict(super(ProteinIdentifier, self).to_solr_json(), **{
             'p_length': self.length,
             'p_mass': self.mass,
         })
