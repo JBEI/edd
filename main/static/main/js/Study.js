@@ -2367,7 +2367,7 @@ var DataGridAssays = (function (_super) {
                 };
                 var singleAssayObj = GraphHelperMethods.transformSingleLineItem(dataObj);
                 if (line.control)
-                    set.iscontrol = true;
+                    singleAssayObj.iscontrol = true;
                 dataSets.push(singleAssayObj);
             });
         });
@@ -2752,22 +2752,19 @@ var DataGridSpecAssays = (function (_super) {
         });
     };
     DataGridSpecAssays.prototype.generateMeasuringTimesCells = function (gridSpec, index) {
-        var tupleTimeCount = function (value, key) { return [[key, value]]; }, sortByTime = function (a, b) {
-            var y = parseFloat(a[0]), z = parseFloat(b[0]);
-            return ((y > z) - (z > y));
-        }, svgCellForTimeCounts = function (ids) {
+        var svgCellForTimeCounts = function (ids) {
             var consolidated, svg = '', timeCount = {};
             // count values at each x for all measurements
             ids.forEach(function (measureId) {
-                var measure = EDDData.AssayMeasurements[measureId] || {}, data = measure.values || [];
-                data.forEach(function (point) {
+                var measure = EDDData.AssayMeasurements[measureId] || {}, points = measure.values || [];
+                points.forEach(function (point) {
                     timeCount[point[0][0]] = timeCount[point[0][0]] || 0;
                     // Typescript compiler does not like using increment operator on expression
                     ++timeCount[point[0][0]];
                 });
             });
-            // map the counts to [x, y] tuples, sorted by x value
-            consolidated = $.map(timeCount, tupleTimeCount).sort(sortByTime);
+            // map the counts to [x, y] tuples
+            consolidated = $.map(timeCount, function (value, key) { return [[[parseFloat(key)], [value]]]; });
             // generate SVG string
             if (consolidated.length) {
                 svg = gridSpec.assembleSVGStringForDataPoints(consolidated, '');
@@ -2786,7 +2783,7 @@ var DataGridSpecAssays = (function (_super) {
                 return ((y > z) - (z > y));
             },
             'metaboliteValueToCell': function (value) {
-                var measure = value.measure || {}, format = measure.format === 1 ? 'carbon' : '', data = value.measure.values || [], svg = gridSpec.assembleSVGStringForDataPoints(data, format);
+                var measure = value.measure || {}, format = measure.format === 1 ? 'carbon' : '', points = value.measure.values || [], svg = gridSpec.assembleSVGStringForDataPoints(points, format);
                 return new DataGridDataCell(gridSpec, index, {
                     'contentString': svg
                 });

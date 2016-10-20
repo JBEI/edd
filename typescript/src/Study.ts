@@ -2729,7 +2729,7 @@ class DataGridAssays extends DataGrid {
                 };
                 var singleAssayObj = GraphHelperMethods.transformSingleLineItem(dataObj);
 
-                if (line.control) set.iscontrol = true;
+                if (line.control) singleAssayObj.iscontrol = true;
                 dataSets.push(singleAssayObj);
             });
         });
@@ -3196,25 +3196,20 @@ class DataGridSpecAssays extends DataGridSpecBase {
 
 
     generateMeasuringTimesCells(gridSpec:DataGridSpecAssays, index:string):DataGridDataCell[] {
-        var tupleTimeCount = (value, key) => { return [[ key, value ]]; },
-            sortByTime = (a:any, b:any) => {
-                var y = parseFloat(a[0]), z = parseFloat(b[0]);
-                return (<any>(y > z) - <any>(z > y));
-            },
-            svgCellForTimeCounts = (ids:any[]) => {
+        var svgCellForTimeCounts = (ids:any[]) => {
                 var consolidated, svg = '', timeCount = {};
                 // count values at each x for all measurements
                 ids.forEach((measureId) => {
                     var measure:any = EDDData.AssayMeasurements[measureId] || {},
-                        data:any[] = measure.values || [];
-                    data.forEach((point) => {
+                        points:number[][][] = measure.values || [];
+                    points.forEach((point:number[][]) => {
                         timeCount[point[0][0]] = timeCount[point[0][0]] || 0;
                         // Typescript compiler does not like using increment operator on expression
                         ++timeCount[point[0][0]];
                     });
                 });
-                // map the counts to [x, y] tuples, sorted by x value
-                consolidated = $.map(timeCount, tupleTimeCount).sort(sortByTime);
+                // map the counts to [x, y] tuples
+                consolidated = $.map(timeCount, (value, key) => [[ [parseFloat(key)], [value] ]]);
                 // generate SVG string
                 if (consolidated.length) {
                     svg = gridSpec.assembleSVGStringForDataPoints(consolidated, '');
@@ -3236,8 +3231,8 @@ class DataGridSpecAssays extends DataGridSpecBase {
             'metaboliteValueToCell': (value) => {
                 var measure = value.measure || {},
                     format = measure.format === 1 ? 'carbon' : '',
-                    data = value.measure.values || [],
-                    svg = gridSpec.assembleSVGStringForDataPoints(data, format);
+                    points = value.measure.values || [],
+                    svg = gridSpec.assembleSVGStringForDataPoints(points, format);
                 return new DataGridDataCell(gridSpec, index, {
                     'contentString': svg
                 });
