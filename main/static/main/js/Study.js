@@ -106,13 +106,15 @@ var StudyD;
         // claim to be "useful".
         ProgressiveFilteringWidget.prototype.repopulateFilteringSection = function () {
             var _this = this;
-            this.filterTableJQ.children().detach();
             var dark = false;
             $.each(this.allFilters, function (i, widget) {
                 if (widget.isFilterUseful()) {
                     widget.addToParent(_this.filterTableJQ[0]);
                     widget.applyBackgroundStyle(dark);
                     dark = !dark;
+                }
+                else {
+                    widget.detach();
                 }
             });
         };
@@ -323,10 +325,12 @@ var StudyD;
         };
         // Create all the container HTML objects
         GenericFilterSection.prototype.createContainerObjects = function () {
+            var _this = this;
             var sBoxID = 'filter' + this.sectionShortLabel + 'SearchBox', sBox;
             this.filterColumnDiv = $("<div>").addClass('filterColumn')[0];
-            var textTitle = $("<span>").text(this.sectionTitle)[0];
-            this.plaintextTitleDiv = $("<div>").addClass('filterHead').append(textTitle)[0];
+            var textTitle = $("<span>").addClass('filterTitle').text(this.sectionTitle);
+            var clearIcon = $("<span>").addClass('filterClearIcon');
+            this.plaintextTitleDiv = $("<div>").addClass('filterHead').append(clearIcon).append(textTitle)[0];
             $(sBox = document.createElement("input"))
                 .attr({
                 'id': sBoxID,
@@ -336,7 +340,17 @@ var StudyD;
             });
             sBox.setAttribute('type', 'text'); // JQuery .attr() cannot set this
             this.searchBox = sBox;
-            this.searchBoxTitleDiv = $("<div>").addClass('filterHeadSearch').append(sBox)[0];
+            // We need two clear iccons for the two versions of the header
+            var searchClearIcon = $("<span>").addClass('filterClearIcon');
+            this.searchBoxTitleDiv = $("<div>").addClass('filterHeadSearch').append(searchClearIcon).append(sBox)[0];
+            this.clearIcons = clearIcon.add(searchClearIcon); // Consolidate the two JQuery elements into one
+            this.clearIcons.on('click', function (ev) {
+                // Changing the checked status will automatically trigger a refresh event
+                $.each(_this.checkboxes || {}, function (id, checkbox) {
+                    checkbox.prop('checked', false);
+                });
+                return false;
+            });
             this.scrollZoneDiv = $("<div>").addClass('filterCriteriaScrollZone')[0];
             this.filteringTable = $("<table>")
                 .addClass('filterCriteriaTable dragboxes')
@@ -390,6 +404,9 @@ var StudyD;
         GenericFilterSection.prototype.addToParent = function (parentDiv) {
             parentDiv.appendChild(this.filterColumnDiv);
         };
+        GenericFilterSection.prototype.detach = function () {
+            $(this.filterColumnDiv).detach();
+        };
         GenericFilterSection.prototype.applyBackgroundStyle = function (darker) {
             $(this.filterColumnDiv).removeClass(darker ? 'stripeRowB' : 'stripeRowA');
             $(this.filterColumnDiv).addClass(darker ? 'stripeRowA' : 'stripeRowB');
@@ -399,7 +416,8 @@ var StudyD;
         // a search box and scrollbar.
         GenericFilterSection.prototype.populateTable = function () {
             var _this = this;
-            var fCol = $(this.filterColumnDiv).empty();
+            var fCol = $(this.filterColumnDiv);
+            fCol.children().detach();
             // Only use the scrolling container div if the size of the list warrants it, because
             // the scrolling container div declares a large padding margin for the scroll bar,
             // and that padding margin would be an empty waste of space otherwise.
@@ -421,7 +439,7 @@ var StudyD;
             var colorObj = graphHelper.renderColor(EDDData.Lines);
             //add color obj to EDDData 
             EDDData['color'] = colorObj;
-            //line label color based on graph color of line 
+            // line label color based on graph color of line 
             if (this.sectionTitle === "Line") {
                 var colors = {};
                 //create new colors object with line names a keys and color hex as values 
@@ -479,6 +497,7 @@ var StudyD;
                     _this.anyCheckboxesChecked = true;
                 currentCheckboxState[uniqueId] = current;
             });
+            this.clearIcons.toggleClass('enabled', this.anyCheckboxesChecked);
             v = v.trim(); // Remove leading and trailing whitespace
             v = v.toLowerCase();
             v = v.replace(/\s\s*/, ' '); // Replace internal whitespace with single spaces

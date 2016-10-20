@@ -177,13 +177,14 @@ module StudyD {
         // Clear out any old filters in the filtering section, and add in the ones that
         // claim to be "useful".
         repopulateFilteringSection(): void {
-            this.filterTableJQ.children().detach();
             var dark:boolean = false;
             $.each(this.allFilters, (i, widget) => {
                 if (widget.isFilterUseful()) {
                     widget.addToParent(this.filterTableJQ[0]);
                     widget.applyBackgroundStyle(dark);
                     dark = !dark;
+                } else {
+                    widget.detach();
                 }
             });
         }
@@ -407,6 +408,7 @@ module StudyD {
 
         // References to HTML elements created by the filter
         filterColumnDiv: HTMLElement;
+        clearIcons: JQuery;
         plaintextTitleDiv: HTMLElement;
         searchBox: HTMLInputElement;
         searchBoxTitleDiv: HTMLElement;
@@ -458,8 +460,9 @@ module StudyD {
             var sBoxID: string = 'filter' + this.sectionShortLabel + 'SearchBox',
                 sBox: HTMLInputElement;
             this.filterColumnDiv = $("<div>").addClass('filterColumn')[0];
-            var textTitle = $("<span>").text(this.sectionTitle)[0];
-            this.plaintextTitleDiv = $("<div>").addClass('filterHead').append(textTitle)[0];
+            var textTitle = $("<span>").addClass('filterTitle').text(this.sectionTitle);
+            var clearIcon = $("<span>").addClass('filterClearIcon');
+            this.plaintextTitleDiv = $("<div>").addClass('filterHead').append(clearIcon).append(textTitle)[0];
 
             $(sBox = document.createElement("input"))
                 .attr({
@@ -470,7 +473,19 @@ module StudyD {
                 });
             sBox.setAttribute('type', 'text'); // JQuery .attr() cannot set this
             this.searchBox = sBox;
-            this.searchBoxTitleDiv = $("<div>").addClass('filterHeadSearch').append(sBox)[0];
+            // We need two clear iccons for the two versions of the header
+            var searchClearIcon = $("<span>").addClass('filterClearIcon');
+            this.searchBoxTitleDiv = $("<div>").addClass('filterHeadSearch').append(searchClearIcon).append(sBox)[0];
+
+            this.clearIcons = clearIcon.add(searchClearIcon);    // Consolidate the two JQuery elements into one
+
+            this.clearIcons.on('click', (ev) => {
+                // Changing the checked status will automatically trigger a refresh event
+                $.each(this.checkboxes || {}, (id: number, checkbox: JQuery) => {
+                    checkbox.prop('checked', false);
+                });
+                return false;
+            });
 
             this.scrollZoneDiv = $("<div>").addClass('filterCriteriaScrollZone')[0];
             this.filteringTable = $("<table>")
@@ -535,6 +550,11 @@ module StudyD {
         }
 
 
+        detach():void {
+            $(this.filterColumnDiv).detach();
+        }
+
+
         applyBackgroundStyle(darker:boolean):void {
             $(this.filterColumnDiv).removeClass(darker ? 'stripeRowB' : 'stripeRowA');
             $(this.filterColumnDiv).addClass(darker ? 'stripeRowA' : 'stripeRowB');
@@ -545,7 +565,8 @@ module StudyD {
         // filtering value represented.  If there are more than 15 values, the filter gets
         // a search box and scrollbar.
         populateTable():void {
-            var fCol = $(this.filterColumnDiv).empty();
+            var fCol = $(this.filterColumnDiv);
+            fCol.children().detach();
             // Only use the scrolling container div if the size of the list warrants it, because
             // the scrolling container div declares a large padding margin for the scroll bar,
             // and that padding margin would be an empty waste of space otherwise.
@@ -571,8 +592,8 @@ module StudyD {
             //add color obj to EDDData 
             EDDData['color'] = colorObj;
             
-            //line label color based on graph color of line 
-            if (this.sectionTitle === "Line") {
+            // line label color based on graph color of line 
+            if (this.sectionTitle === "Line") {    // TODO: Find a better way to identify this section
                 var colors:any = {};
 
                 //create new colors object with line names a keys and color hex as values 
@@ -635,6 +656,7 @@ module StudyD {
                 if (current === 'C') this.anyCheckboxesChecked = true;
                 currentCheckboxState[uniqueId] = current;
             });
+            this.clearIcons.toggleClass('enabled', this.anyCheckboxesChecked);
 
             v = v.trim();                // Remove leading and trailing whitespace
             v = v.toLowerCase();
