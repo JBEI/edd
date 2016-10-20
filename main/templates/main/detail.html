@@ -207,11 +207,6 @@
                         <input type="radio" value="groupedMeasurement" autocomplete="off" />Measurement
                     </label>
                 </div>
-                {% if writable %}
-                <div class="btn-group" style="float: right;">
-                    <a class="btn btn-sm btn-info" href="/study/{{ study.id }}/import">Import Files</a>
-                </div>
-                {% endif %}
             </div>
         </div>
         <div class="linechart">
@@ -247,6 +242,11 @@
     </div>
 
     {% if writable %}
+    <div class="btn-toolbar bare-header">
+        <div class="btn-group">
+            <a class="btn btn-sm btn-info" href="/study/{{ study.id }}/import">Import Files</a>
+        </div>
+    </div>
     <div class="pageSection minor disclose{% if not new_line.is_editing and new_line.errors|length == 0 %} discloseHide{% endif %}" id="lineMain">
         <div class="sectionHead">
             <span class="discloseLink"><a href="#">{% if new_line.is_editing %}Edit Line{% else %}Add A New Line{% endif %}</a></span>
