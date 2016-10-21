@@ -762,14 +762,11 @@ module EDDTableImport {
             // We'll process csv files locally.
             if ((ft === 'csv' || ft === 'txt') &&
                     (mode === 'std' || mode === 'tr' || mode === 'pr')) {
-                $('#processingFileLocallyLabel').removeClass('off');
-                $('#step2textarea').attr("disabled", "disabled");
                 fileContainer.skipProcessRaw = false;
                 fileContainer.skipUpload = true;
             }
             // Except for skyline files, which should be summed server-side
             else if ((ft === 'csv' || ft === 'txt') && (mode === 'skyline')) {
-                this.showFileDropped(fileContainer);
                 fileContainer.skipProcessRaw = true;
                 fileContainer.skipUpload = false;
             }
@@ -780,30 +777,28 @@ module EDDTableImport {
                     mode === 'pr' ||
                     mode === 'mdv' ||
                     mode === 'skyline')) {
-                this.showFileDropped(fileContainer);
                 fileContainer.skipProcessRaw = true;
                 fileContainer.skipUpload = false;
-                return;
             }
             // HPLC reports need to be sent for server-side processing
             else if ((ft === 'csv' || ft === 'txt') &&
                     (mode === 'hplc')) {
-                this.showFileDropped(fileContainer);
                 fileContainer.skipProcessRaw = true;
                 fileContainer.skipUpload = false;
-                return;
             }
             // Biolector XML also needs to be sent for server-side processing
             else if (ft === 'xml' && mode === 'biolector') {
-                this.showFileDropped(fileContainer);
                 fileContainer.skipProcessRaw = true;
                 fileContainer.skipUpload = false;
-                return;
             }
             // By default, skip any further processing
             else {
                 fileContainer.skipProcessRaw = true;
                 fileContainer.skipUpload = true;
+            }
+
+            if (!fileContainer.skipProcessRaw || !fileContainer.skipUpload) {
+                this.showFileDropped(fileContainer);
             }
         }
 
@@ -902,6 +897,7 @@ module EDDTableImport {
         // Reset and show the info box that appears when a file is dropped,
         // and reveal the text entry area.
         showFileDropped(fileContainer): void {
+            var processingMessage:string = '';
             // Set the icon image properly
             $('#fileDropInfoIcon').removeClass('xml');
             $('#fileDropInfoIcon').removeClass('text');
@@ -917,10 +913,15 @@ module EDDTableImport {
             $('#fileDropInfoArea').removeClass('off');
             $('#fileDropInfoSending').removeClass('off');
             $('#fileDropInfoName').text(fileContainer.file.name)
-            $('#fileUploadMessage').text(
-                'Sending ' + Utl.JS.sizeToString(fileContainer.file.size) + ' To Server...'
-            );
-            // $('#fileDropInfoLog').empty();
+
+            if (!fileContainer.skipUpload) {
+                processingMessage = 'Sending ' + Utl.JS.sizeToString(fileContainer.file.size) + ' To Server...';
+                $('#fileDropInfoLog').empty();
+            } else if (!fileContainer.skipProcessRaw) {
+                processingMessage = 'Processing ' + Utl.JS.sizeToString(fileContainer.file.size) + '...';
+                $('#fileDropInfoLog').empty();
+            }
+            $('#fileUploadMessage').text(processingMessage);
             this.activeDraggedFile = fileContainer;
         }
 

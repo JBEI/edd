@@ -344,18 +344,6 @@ select.disamStd {
 
 /************************************************************************************************/
 
-#processingFileLocallyLabel {
-	margin: 0px;
-	padding: 0px;
-	position:relative;
-	text-align:center;
-	top: 120px;
-    width: 100%;
-	z-index: 100;
-	font-size: 300%;
-	float:top;
-}
-
 .sectionContent table {
 	border-spacing: 10px
 }
