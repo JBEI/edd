@@ -193,7 +193,7 @@ Three types of code are provided in this package:
 2. Special-purpose scripts that use the Python API's to accomplish a task
 3. General utility code, mostly in support of #1
 
-### Python API's <a name='python_apis>
+### Python API's <a name="python_apis">
 
 Client-side Python libraries for accessing ICE's and EDD's REST API's are currently under 
 development, but are already in limited production use by EDD and by its command line tools.
@@ -201,33 +201,33 @@ These libraries aren't mature yet, but may already be helpful for other uses (e.
 iPython notebooks). This code is still in active development, and is likely to change (including 
 breaking API changes) over time. Feel free to use it, but use at your own risk!
 
-See `api.py` modules for EDD and ICE under `jbei/rest/clients/`, as well as other supporting modules.
-Both modules are designed to follow a similar usage pattern.
+See `api.py` modules for EDD and ICE under [`jbei/rest/clients/`][8], as well as other supporting modules.
+Both modules are designed to follow a similar usage pattern. The example below shows how to use
+EDDApi, but IceApi is very similar.
 
-Sample client-side use of EddApi (IceApi is similar):
+__Sample client-side use of EddApi__
 
-	from jbei.rest.auth import EddSessionAuth
-	from jbei.rest.clients import EddApi
-	from jbei.utils import session_login
-	
-	# prompt terminal user for credentials and log in
+    from jbei.rest.auth import EddSessionAuth
+    from jbei.rest.clients import EddApi
+    from jbei.utils import session_login
+    
+    # prompt terminal user for credentials and log in
     edd_login_details = session_login(EddSessionAuth, EDD_URL, 'EDD',
                                       username_arg=args.username, 
-									  password_arg=args.password,
-									  print_result=True,
+                                      password_arg=args.password,
+                                      print_result=True,
                                       timeout=EDD_REQUEST_TIMEOUT)
     edd_session_auth = edd_login_details.session_auth
-	
-	# instantiate and configure an EddApi instance
+
+    # instantiate and configure an EddApi instance
     edd = EddApi(base_url=EDD_URL, auth=edd_session_auth)
-    edd.write_enabled = True
     edd.timeout = EDD_REQUEST_TIMEOUT
-	
-	# get descriptive data for a study
-	study = edd.get_study(1)
-	
+
+    # get descriptive data for a study
+    study = edd.get_study(1)
+
 For examples of more advanced use, see usage of EddApi in the main() methods of 
-[`create_lines.py`][8] or [`maintain_ice_links.py`][9]
+[`create_lines.py`][9] or [`maintain_ice_links.py`][10]
 
 ### Command Line Tools
 
@@ -275,8 +275,9 @@ Get help for a script: append `--help` to the command
 [5]:    https://repo.jbei.org/projects/EDD/repos/edd-django/browse
 [6]:    http://jasonkarns.com/blog/subdirectory-checkouts-with-git-sparse-checkout/
 [7]:    https://repo.jbei.org/projects/EDD/repos/edd-django/browse/jbei/
-[8]:    edd/rest/scripts/create_lines.py
-[9]:    edd/rest/scripts/maintain_ice_links.py
+[8]:    jbei/rest/clients/
+[9]:    edd/rest/scripts/create_lines.py
+[10]:   edd/rest/scripts/maintain_ice_links.py
 
 
 
