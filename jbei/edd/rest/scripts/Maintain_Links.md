@@ -103,24 +103,27 @@ while squashing bugs.
 
 ### Dump the ICE test database:
 
-* Create the dump
+* Create the dump: 
 
-    pg_dump -Fp -C -E UTF8 -h postgres.jbei.org -U mark.forrer -d test_regdb -f ice_test_dump.sql
-
+  `pg_dump -Fp -C -E UTF8 -h postgres.jbei.org -U mark.forrer -d test_regdb -f ice_test_dump.sql`
 * Replace user/database names to `ice_local_test` / `reguser` to avoid having to change local ICE 
   config
 
 ### Dump the ICE prod database:
 
 * Create the dump
-    pg_dump -Fp -C -E UTF8 -h postgres.jbei.org -U mark.forrer -d regdb -f ice_prod_dump.sql
+
+  `pg_dump -Fp -C -E UTF8 -h postgres.jbei.org -U mark.forrer -d regdb -f ice_prod_dump.sql`
+
 * Replace database name to `ice_local_test`
 
 ### Dump the EDD prod database:
 
-    pg_dump -Fp -C -E UTF8 -h postgres.jbei.org -U mark.forrer -d eddprod -f edd_prod_dump.sql
+* Create the dump
 
-Replace database name 'eddprod' with 'edd'
+  `pg_dump -Fp -C -E UTF8 -h postgres.jbei.org -U mark.forrer -d eddprod -f edd_prod_dump.sql`
+
+* Replace database name 'eddprod' with 'edd'
 
 ### Start local EDD / ICE
 If EDD/ICE are newly installed in the test environment, look below at "Set Predictable State".
