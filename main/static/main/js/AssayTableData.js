@@ -555,13 +555,10 @@ var EDDTableImport;
             // We'll process csv files locally.
             if ((ft === 'csv' || ft === 'txt') &&
                 (mode === 'std' || mode === 'tr' || mode === 'pr')) {
-                $('#processingFileLocallyLabel').removeClass('off');
-                $('#step2textarea').attr("disabled", "disabled");
                 fileContainer.skipProcessRaw = false;
                 fileContainer.skipUpload = true;
             }
             else if ((ft === 'csv' || ft === 'txt') && (mode === 'skyline')) {
-                this.showFileDropped(fileContainer);
                 fileContainer.skipProcessRaw = true;
                 fileContainer.skipUpload = false;
             }
@@ -570,27 +567,24 @@ var EDDTableImport;
                 mode === 'pr' ||
                 mode === 'mdv' ||
                 mode === 'skyline')) {
-                this.showFileDropped(fileContainer);
                 fileContainer.skipProcessRaw = true;
                 fileContainer.skipUpload = false;
-                return;
             }
             else if ((ft === 'csv' || ft === 'txt') &&
                 (mode === 'hplc')) {
-                this.showFileDropped(fileContainer);
                 fileContainer.skipProcessRaw = true;
                 fileContainer.skipUpload = false;
-                return;
             }
             else if (ft === 'xml' && mode === 'biolector') {
-                this.showFileDropped(fileContainer);
                 fileContainer.skipProcessRaw = true;
                 fileContainer.skipUpload = false;
-                return;
             }
             else {
                 fileContainer.skipProcessRaw = true;
                 fileContainer.skipUpload = true;
+            }
+            if (!fileContainer.skipProcessRaw || !fileContainer.skipUpload) {
+                this.showFileDropped(fileContainer);
             }
         };
         // This function is passed the usual fileContainer object, but also a reference to the
@@ -672,6 +666,7 @@ var EDDTableImport;
         // Reset and show the info box that appears when a file is dropped,
         // and reveal the text entry area.
         RawInputStep.prototype.showFileDropped = function (fileContainer) {
+            var processingMessage = '';
             // Set the icon image properly
             $('#fileDropInfoIcon').removeClass('xml');
             $('#fileDropInfoIcon').removeClass('text');
@@ -689,8 +684,15 @@ var EDDTableImport;
             $('#fileDropInfoArea').removeClass('off');
             $('#fileDropInfoSending').removeClass('off');
             $('#fileDropInfoName').text(fileContainer.file.name);
-            $('#fileUploadMessage').text('Sending ' + Utl.JS.sizeToString(fileContainer.file.size) + ' To Server...');
-            // $('#fileDropInfoLog').empty();
+            if (!fileContainer.skipUpload) {
+                processingMessage = 'Sending ' + Utl.JS.sizeToString(fileContainer.file.size) + ' To Server...';
+                $('#fileDropInfoLog').empty();
+            }
+            else if (!fileContainer.skipProcessRaw) {
+                processingMessage = 'Processing ' + Utl.JS.sizeToString(fileContainer.file.size) + '...';
+                $('#fileDropInfoLog').empty();
+            }
+            $('#fileUploadMessage').text(processingMessage);
             this.activeDraggedFile = fileContainer;
         };
         RawInputStep.prototype.reset = function () {
@@ -1260,6 +1262,7 @@ var EDDTableImport;
                 }
                 else if (pulldown === TypeEnum.Timestamp ||
                     pulldown === TypeEnum.Metadata_Name ||
+                    pulldown === TypeEnum.Protein_Name ||
                     pulldown === TypeEnum.Measurement_Type) {
                     hlLabel = true;
                 }
@@ -1447,7 +1450,7 @@ var EDDTableImport;
             // This mode means we make a new "set" for each cell in the table, rather than
             // the standard method of making a new "set" for each column in the table.
             var singleMode;
-            var single, nonSingle, earliestName;
+            var singleCompatibleCount, singleNotCompatibleCount, earliestName;
             var grid = this.rawInputStep.getGrid();
             var gridRowMarkers = this.rawInputStep.gridRowMarkers;
             var ignoreDataGaps = this.rawInputStep.ignoreDataGaps;
@@ -1570,35 +1573,36 @@ var EDDTableImport;
             }
             // If we're not using pre-processed records, we need to use the pulldown settings in this step
             // (usually set by the user) to determine what mode we're in.
-            single = 0;
-            nonSingle = 0;
+            singleCompatibleCount = 0;
+            singleNotCompatibleCount = 0;
             earliestName = null;
             // Look for the presence of "single measurement type" rows, and rows of all other single-item types
             grid.forEach(function (_, y) {
                 var pulldown;
-                if (_this.activeRowFlags[y]) {
-                    pulldown = _this.pulldownSettings[y];
-                    if (pulldown === TypeEnum.Measurement_Type || pulldown === TypeEnum.Protein_Name) {
-                        single++; // Single Measurement Name or Single Protein Name
-                    }
-                    else if (pulldown === TypeEnum.Metadata_Name || pulldown === TypeEnum.Timestamp) {
-                        nonSingle++;
-                    }
-                    else if (pulldown === TypeEnum.Assay_Line_Names && earliestName === null) {
-                        earliestName = y;
-                    }
+                if (!_this.activeRowFlags[y]) {
+                    return;
+                } // Skip inactive rows
+                pulldown = _this.pulldownSettings[y];
+                if (pulldown === TypeEnum.Measurement_Type || pulldown === TypeEnum.Protein_Name) {
+                    singleCompatibleCount++; // Single Measurement Name or Single Protein Name
+                }
+                else if (pulldown === TypeEnum.Metadata_Name || pulldown === TypeEnum.Timestamp) {
+                    singleNotCompatibleCount++;
+                }
+                else if (pulldown === TypeEnum.Assay_Line_Names && earliestName === null) {
+                    earliestName = y;
                 }
             });
             // Only use this mode if the table is entirely free of single-timestamp and
-            // single-metadata rows, and has at least one "single measurement" row, and at
+            // single-metadata rows, and has at least one "single measurement" or "single protein" row, and at
             // least one "Assay/Line names" row.
             // (Note that requirement of an "Assay/Line names" row prevents this mode from being
-            // enabled when the page is in 'Transcriptomics' or 'Proteomics' mode.)
-            singleMode = (single > 0 && nonSingle === 0 && earliestName !== null) ? true : false;
+            // enabled when the page is in 'Transcriptomics' mode.)
+            singleMode = (singleCompatibleCount > 0 && singleNotCompatibleCount === 0 && earliestName !== null) ? true : false;
             // A "set" for every cell of the table, with the timestamp to be determined later.
             if (singleMode) {
                 this.colObjects.forEach(function (_, c) {
-                    var cellValue, set;
+                    var cellValue;
                     if (!_this.activeColFlags[c]) {
                         return;
                     }
@@ -1613,6 +1617,7 @@ var EDDTableImport;
                     }
                     grid.forEach(function (row, r) {
                         var pulldown, label, value, timestamp;
+                        var rawSet;
                         if (!_this.activeRowFlags[r] || !_this.activeFlags[r][c]) {
                             return;
                         }
@@ -1638,7 +1643,7 @@ var EDDTableImport;
                             // or a protein value, return without making a set.
                             return;
                         }
-                        set = {
+                        rawSet = {
                             kind: _this.selectMajorKindStep.interpretationMode,
                             line_name: null,
                             assay_name: cellValue,
@@ -1646,7 +1651,7 @@ var EDDTableImport;
                             metadata_by_name: {},
                             data: [[null, value]]
                         };
-                        _this.parsedSets.push(set);
+                        _this.parsedSets.push(rawSet);
                     });
                 });
                 return;
@@ -2449,7 +2454,7 @@ var EDDTableImport;
             droppedDatasetsForMissingTime = 0;
             parsedSets.forEach(function (set, setIndex) {
                 var assayDisam, // TODO: need types for the disam objects
-                assay_id, assaySelect, compartmentId, lineDisam, lineId, lineIdInput, measDisam, metaDisam, measurementTypeId, unitsId, metaDataById, metaDataByName, metaDataPresent, metaId, resolvedSet;
+                assay_id, assaySelect, compartmentId, lineDisam, lineId, lineIdInput, measDisam, metaDisam, measurementTypeId, unitsId, resolvedData, metaDataById, metaDataByName, metaDataPresent, metaId, resolvedSet;
                 lineId = 'new'; // A convenient default
                 assay_id = 'named_or_new';
                 measurementTypeId = null;
@@ -2538,24 +2543,25 @@ var EDDTableImport;
                         }
                     }
                 });
+                resolvedData = set.data; // Ideally we would clone this.
                 // If we haven't seen any timestamps during data accumulation, it means we need
                 // the user to pick a master timestamp.  In that situation, any given set will
                 // have at most one data point in it, with the timestamp in the data point set to
                 // 'null'.  Here we resolve it to a valid timestamp. If there is no master
                 // timestamp selected, we drop the data point, but make the set anyway since it
                 // might carry metadata.
-                if (!seenAnyTimestamps && set.data[0]) {
+                if (!seenAnyTimestamps && resolvedData[0]) {
                     if (!isNaN(masterTime)) {
-                        set.data[0][0] = masterTime;
+                        resolvedData[0][0] = masterTime;
                     }
                     else {
-                        set.data = [];
+                        resolvedData = [];
                         droppedDatasetsForMissingTime++;
                     }
                 }
                 // If we have no data, and no metadata that survived resolving, don't make the set.
                 // (return continues to the next loop iteration)
-                if (set.data.length < 1 && !metaDataPresent) {
+                if (resolvedData.length < 1 && !metaDataPresent) {
                     return;
                 }
                 resolvedSet = {
@@ -2565,7 +2571,7 @@ var EDDTableImport;
                     assay_name: set.assay_name,
                     measurement_name: set.measurement_name,
                     metadata_by_name: metaDataByName,
-                    data: set.data,
+                    data: resolvedData,
                     // Add new disambiguation-specific fields
                     protocol_id: masterProtocol,
                     line_id: lineId,
@@ -2827,7 +2833,6 @@ var EDDTableImport;
             }
         };
         LineDisambiguationRow.disambiguateAnAssayOrLine = function (assayOrLine, currentIndex) {
-            // console.log("Start of TypeDisambiguationStep.disambiguateAnAssayOrLine()");
             var startTime = new Date();
             var selections, highest, assays;
             selections = {

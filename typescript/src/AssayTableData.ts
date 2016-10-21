@@ -2060,27 +2060,12 @@ module EDDTableImport {
                             assay_name: cellValue,
                             measurement_name: m_name,
                             metadata_by_name: {},
-                            data: []
-                        };
-                        var donk = {
-                            kind: this.selectMajorKindStep.interpretationMode,
-                            line_name: null,
-                            assay_name: cellValue,
-                            measurement_name: m_name,
-                            metadata_by_name: {},
-                            data:<any>[]
+                            data:[[null, value]]
                         };
 
-                        var farts:(string | number)[][] = [[null, value]];
-
-                        rawSet.data = farts;    // FAILS ?????
-                        donk.data = farts;      // WORKS ?????
-                        console.log(rawSet);
-                        console.log(donk);
                         this.parsedSets.push(rawSet);
                     });
                 });
-//                console.log(this.parsedSets);
                 return;
             }
 
@@ -3103,8 +3088,6 @@ module EDDTableImport {
             resolvedSets = [];
             droppedDatasetsForMissingTime = 0;
 
-            console.log(parsedSets);
-
             parsedSets.forEach((set: RawImportSet, setIndex: number): void => {
                 var assayDisam: any,  // TODO: need types for the disam objects
                     assay_id: string,
@@ -3117,6 +3100,7 @@ module EDDTableImport {
                     metaDisam: any,
                     measurementTypeId: string,
                     unitsId: string,
+                    resolvedData: (string | number)[][],
                     metaDataById: {[id:string]: string},
                     metaDataByName: {[name:string]: string},
                     metaDataPresent: boolean,
@@ -3216,24 +3200,25 @@ module EDDTableImport {
                     }
                 });
 
+                resolvedData = set.data;    // Ideally we would clone this.
                 // If we haven't seen any timestamps during data accumulation, it means we need
                 // the user to pick a master timestamp.  In that situation, any given set will
                 // have at most one data point in it, with the timestamp in the data point set to
                 // 'null'.  Here we resolve it to a valid timestamp. If there is no master
                 // timestamp selected, we drop the data point, but make the set anyway since it
                 // might carry metadata.
-                if (!seenAnyTimestamps && set.data[0]) {
+                if (!seenAnyTimestamps && resolvedData[0]) {
                     if (!isNaN(masterTime)) {
-                        set.data[0][0] = masterTime;
+                        resolvedData[0][0] = masterTime;
                     } else {
-                        set.data = [];
+                        resolvedData = [];
                         droppedDatasetsForMissingTime++;
                     }
                 }
 
                 // If we have no data, and no metadata that survived resolving, don't make the set.
                 // (return continues to the next loop iteration)
-                if (set.data.length < 1 && !metaDataPresent) { return; }
+                if (resolvedData.length < 1 && !metaDataPresent) { return; }
 
                 resolvedSet = {
                     // Copy across the fields from the RawImportSet record
@@ -3242,7 +3227,7 @@ module EDDTableImport {
                     assay_name:        set.assay_name,
                     measurement_name:  set.measurement_name,
                     metadata_by_name:  metaDataByName,
-                    data:              set.data,
+                    data:              resolvedData,
                     // Add new disambiguation-specific fields
                     protocol_id:       masterProtocol,
                     line_id:           lineId,
@@ -3293,17 +3278,17 @@ module EDDTableImport {
             // loop over subsections that must have at least one input, making sure that all the
             // visible ones have at least one required input that isn't ignored.
             requiredInputSubsectionSelectors = ['#disambiguateAssaysSection', '#disambiguateLinesSection'];
-            for(let selector of requiredInputSubsectionSelectors) {
+            for (let selector of requiredInputSubsectionSelectors) {
                 var hasEnabledInputs;
                 subsection = $(selector);
 
-                if(subsection.hasClass('off')) {
+                if (subsection.hasClass('off')) {
                     continue;
                 }
 
                 sectionRequiredInputs = subsection.find('.' + TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS).toArray();
 
-                for(let input_id of sectionRequiredInputs) {
+                for (let input_id of sectionRequiredInputs) {
                     var input = $(input_id);
                     if((!input.val()) && !(input.prop('disabled') || input.hasClass('off'))) {
                         return false;
@@ -3313,7 +3298,7 @@ module EDDTableImport {
                 hasEnabledInputs = sectionRequiredInputs.length !== 0;
                 subsection.find('.' + TypeDisambiguationStep.STEP_4_SUBSECTION_REQUIRED_CLASS).toggleClass('off', hasEnabledInputs);
 
-                if(!hasEnabledInputs) {
+                if (!hasEnabledInputs) {
                     return false;
                 }
             }
@@ -3321,7 +3306,7 @@ module EDDTableImport {
             // test that all required inputs currently visible / enabled on the form have a valid
             // value. Note: this check is very similar to, but distinct from, the one above.
             var allRequiredInputs = $('.' + TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
-            for(let input_id of allRequiredInputs.toArray()) {
+            for (let input_id of allRequiredInputs.toArray()) {
                 var input = $(input_id);
 
                 // if the input has no value, but wasn't hidden from the display by the 'off'
@@ -3565,7 +3550,6 @@ module EDDTableImport {
 
 
         static disambiguateAnAssayOrLine(assayOrLine: string, currentIndex: number):any {
-            // console.log("Start of TypeDisambiguationStep.disambiguateAnAssayOrLine()");
             var startTime = new Date();
             var selections: any, highest: number, assays: number[];
             selections = {
