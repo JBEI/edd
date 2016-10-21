@@ -2011,7 +2011,7 @@ module EDDTableImport {
             if (singleMode) {
 
                 this.colObjects.forEach((_, c: number): void => {
-                    var cellValue: string, set: RawImportSet;
+                    var cellValue: string;
 
                     if (!this.activeColFlags[c]) {
                         return;
@@ -2028,6 +2028,7 @@ module EDDTableImport {
                     }
                     grid.forEach((row: string[], r: number): void => {
                         var pulldown: number, label: string, value: string, timestamp: number;
+                        var rawSet: RawImportSet;
                         if (!this.activeRowFlags[r] || !this.activeFlags[r][c]) {
                             return;
                         }
@@ -2053,17 +2054,33 @@ module EDDTableImport {
                             return;
                         }
 
-                        set = {
+                        rawSet = {
                             kind: this.selectMajorKindStep.interpretationMode,
                             line_name: null,
                             assay_name: cellValue,
                             measurement_name: m_name,
                             metadata_by_name: {},
-                            data: [[null, value]]
+                            data: []
                         };
-                        this.parsedSets.push(set);
+                        var donk = {
+                            kind: this.selectMajorKindStep.interpretationMode,
+                            line_name: null,
+                            assay_name: cellValue,
+                            measurement_name: m_name,
+                            metadata_by_name: {},
+                            data:<any>[]
+                        };
+
+                        var farts:(string | number)[][] = [[null, value]];
+
+                        rawSet.data = farts;    // FAILS ?????
+                        donk.data = farts;      // WORKS ?????
+                        console.log(rawSet);
+                        console.log(donk);
+                        this.parsedSets.push(rawSet);
                     });
                 });
+//                console.log(this.parsedSets);
                 return;
             }
 
@@ -3085,6 +3102,8 @@ module EDDTableImport {
 
             resolvedSets = [];
             droppedDatasetsForMissingTime = 0;
+
+            console.log(parsedSets);
 
             parsedSets.forEach((set: RawImportSet, setIndex: number): void => {
                 var assayDisam: any,  // TODO: need types for the disam objects
