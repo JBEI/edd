@@ -129,12 +129,12 @@ while squashing bugs.
 If EDD/ICE are newly installed in the test environment, look below at "Set Predictable State".
 * EDD
 
-    cd edd
-    docker-compose up -d	
+      cd edd
+      docker-compose up -d	
 * Start ICE
 
-    cd ../ice
-    mvn:jetty run
+      cd ../ice
+      mvn:jetty run
 	
 ### Confirm admin access to ICE / EDD
 * Log in via the web interfaces to confirm your account has admin access
@@ -142,10 +142,11 @@ If EDD/ICE are newly installed in the test environment, look below at "Set Predi
    accellerated privileges. The script doesn't currently have fine-grained checks for this, so it 
    may fail later (though it will be relatively early in the process)
 * ICE: `update accounts set type = 'ADMIN' where email = 'mark.forrer@lbl.gov';`
-* EDD:
-    user = User.objects.get(username='mark.forrer')
-	user.is_superuser = True
-	user.save()
+* EDD
+
+      user = User.objects.get(username='mark.forrer')
+      user.is_superuser = True
+      user.save()
 
 ### Set Predictable Database State
 Use the included reset_docker_databases.sh script to simplify repeated database restores to a known
@@ -195,7 +196,7 @@ results from the dry run mode (which is a bit brittle) Comparisons of this type 
 up bugs that would otherwise go undetected.
 
     python -m jbei.edd.rest.scripts.maintain_ice_links -username mark.forrer -scan_ice_entries \
-	   -test_edd_url https://edd.jbei.org/ 2>&1 | tee 2-first-run.txt
+           -test_edd_url https://edd.jbei.org/ 2>&1 | tee 2-first-run.txt
 	
 ### Re-Run the script
 Do a second full run of the script to make sure all of the changes attempted by the first run 
@@ -203,7 +204,7 @@ actually stuck. A lot of effort went into writing the consistency checks that ca
 update ICE's links. Use them to help.
 
     python -m jbei.edd.rest.scripts.maintain_ice_links -username mark.forrer -scan_ice_entries \
-	   -test_edd_url https://edd.jbei.org/ 2>&1 | tee 3-second-run.txt
+          -test_edd_url https://edd.jbei.org/ 2>&1 | tee 3-second-run.txt
 	
 ### Consider repeating tests on test databases
 As used presently at JBEI, the EDD/ICE test database contents have diverged significantly from 
