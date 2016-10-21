@@ -640,7 +640,7 @@ class SbmlExportSettingsForm(SbmlForm):
     """ Form used for selecting settings on SBML exports. """
     sbml_template = forms.ModelChoiceField(
         # TODO: potentially narrow options based on current user?
-        models.SBMLTemplate.objects.all(),
+        models.SBMLTemplate.objects.exclude(biomass_exchange_name=''),
         label=_('SBML Template'),
     )
 
