@@ -1,4 +1,4 @@
-# `maintain_ice_links.py'
+# maintain_ice_links.py
 
 This document is draft technical documentation for `maintain_ice_links.py`. The purpose of the script
 is to scan linked EDD and ICE instances for inconsistencies,  then to update ICE's experiment 
@@ -82,7 +82,7 @@ pasting commands that have the `-no_warn` option already set to hide the prompt.
 his option was used heavily during initial testing of the script, but is purposefully removed from 
 examples below.
 
-##Testing process for maintain_ice_links.py
+## Testing process for maintain_ice_links.py
 
 See below for sample instructions for testing maintain_ice_links.py against local 
 deployments of EDD and ICE.  This is a general outline for the initial testing performed 
@@ -103,14 +103,18 @@ while squashing bugs.
 
 ### Dump the ICE test database:
 
-pg_dump -Fp -C -E UTF8 -h postgres.jbei.org -U mark.forrer -d test_regdb -f ice_test_dump.sql
+* Create the dump
 
-replace user/database names to ice_local_test / reguser to avoid having to change local ICE config
+    pg_dump -Fp -C -E UTF8 -h postgres.jbei.org -U mark.forrer -d test_regdb -f ice_test_dump.sql
+
+* Replace user/database names to `ice_local_test` / `reguser` to avoid having to change local ICE 
+  config
 
 ### Dump the ICE prod database:
 
+* Create the dump
     pg_dump -Fp -C -E UTF8 -h postgres.jbei.org -U mark.forrer -d regdb -f ice_prod_dump.sql
-replace database name to `ice_local_test`
+* Replace database name to `ice_local_test`
 
 ### Dump the EDD prod database:
 
@@ -173,14 +177,14 @@ the faster/most useful portion of the script that only examines strains found in
 Always save the script's output to file, since it takes around an hour for each full run on a 
 development laptop.
 
-* You can help to test the `-dry-run` option by commenting out the lines that set the `write_enabled` 
-  flag for the EDD/ICE client side API instances created just following the initial user login. The 
-  base level API code should raise Exceptions if any real mutator methods accidentally get called 
-  (e.g. because of easy-to-miss maintenance oversights)
+You can help to test the `-dry-run` option by commenting out the lines that set the `write_enabled` 
+property for the EDD/ICE client side API instances created just following the initial user login. 
+The base level API code should raise Exceptions if any real mutator methods accidentally get called 
+(e.g. because of easy-to-miss maintenance oversights)
 
     python -m jbei.edd.rest.scripts.maintain_ice_links -username mark.forrer \
-	   -dry_run -scan_ice_entries -test_edd_url https://edd.jbei.org/ 2>&1 | tee 1-dry-run.txt
-	
+           -dry_run -scan_ice_entries -test_edd_url https://edd.jbei.org/ 2>&1 | tee 1-dry-run.txt
+
 ### Run the script (actual run)
 Do a full run of the script, and consider using a combination of grep / summary stastics computed by 
 the script to identify logic errors.  Also consider checking for unexpected differences in summary 
