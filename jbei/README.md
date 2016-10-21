@@ -5,12 +5,10 @@ web applications at the API level. Code here is a work in progress, and should e
 versioned and distributed independently of (though coordinated with) specific application code
  such as EDD or ICE.
 
-<em>If you aren't familiar with what an [API](https://en.wikipedia.org/wiki/Application_programming_interface)
+<em>If you aren't familiar with what an [API][1]
 is, you probably shouldn't write your own code using these scripts, or <font color="red"><u>you
 should do so with help and with great care to avoid destroying important scientific data hosted in
-JBEI's
-web applications.</u></font>
-.</em>
+JBEI's web applications.</u></font>.</em>
 
 This initial version of these scripts and API's are only supported for the purpose of automating
 line creation in EDD. Feel free to write your own code against the API's defined here, but expect
@@ -33,8 +31,8 @@ not always be obvious).
 
 This stuff can be intimidating! Ask for help!
 
-## Set up a Python 2 environment to run this code
-### Mac OSX
+## Set up a Python 2 environment to run this code<a name=setup_python_env>
+### Mac OSX<a name=setup_python_mac>
 
 These directions are based on an older version of the EDD installation process, and haven't been 
 updated for El Capitan or Sierra. Unfortunately, they won't presently work on El Capitan, and 
@@ -58,7 +56,7 @@ the minimal dependencies for scripts that interact with, but aren't an integral 
     * Run the command below to stablish `/usr/include`:
 
          ``sudo ln -s `xcrun --show-sdk-path`/usr/include /usr/include``
-2. Install (Homebrew)[http://brew.sh/] <a name="HomeBrew"/>
+2. Install (Homebrew)[3] <a name="HomeBrew"/>
 
         ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
         brew doctor
@@ -83,7 +81,7 @@ the minimal dependencies for scripts that interact with, but aren't an integral 
 
     `defaults write com.apple.finder AppleShowAllFiles YES`
 
-5. Create a [virtual environment](http://docs.python-guide.org/en/latest/dev/virtualenvs/) to
+5. Create a [virtual environment][4] to
    isolate dependencies for these scripts from other Python code on your computer. Even if you don't
    do any other Python work at present, it's best to start off on the right foot in case you need to
    do so later on.
@@ -127,10 +125,10 @@ created.
 
 #### Check out code to run the scripts
 	
-* Download scripts from [the Bitbucket repo](https://repo.jbei.org/projects/EDD/repos/edd-django/browse). 
+* Download scripts from [the Bitbucket repo][5]. 
   These files may eventually be hosted elsewhere, but for now the initial versions are being 
   developed/maintained concurrently with EDD.
-* Do a [sparse checkout](http://jasonkarns.com/blog/subdirectory-checkouts-with-git-sparse-checkout/) 
+* Do a [sparse checkout][6] 
   to get just the subsection of EDD code that you need to run these scripts. You won't want the 
   whole application codebase. For example, run the following commands:
    * Create and initialize your local repo (replacing the sample on the last line below with
@@ -174,7 +172,7 @@ From the repository directory you configured, just run
 
 Keep in mind that new code may have been added in a different branch or in a different directory
 than where your sparse checkout is looking for it! You can always browse the rest of the code in
-[BitBucket](https://repo.jbei.org/projects/EDD/repos/edd-django/browse/jbei/) if that's needed.
+[BitBucket][7] if that's needed.
 	
 #### Configure the target URL's for the script
 
@@ -184,11 +182,52 @@ edit configuration files to adjust which URL's are used to access those deployme
 * `jbei/edd/rest/scripts/settings.py` contains the default settings used by all the scripts in this
  directory. Its purpose is to set defaults used by the scripts to contact EDD and ICE.  If you need 
  to change the defaults in this file, create a `local_settings.py` in the same directory, and any 
- values defined in `local_settings.py` will override the defaults, but not show up as edits when 
+ values defined in `local_settings.py` will override the defaults, but won't show up as edits when 
  you use `git` to check out the latest code. 
  
-## Provided scripts
+## Provided Code
 
+Three types of code are provided in this package:
+
+1. Python API's for accessing JBEI's web applications
+2. Special-purpose scripts that use the Python API's to accomplish a task
+3. General utility code, mostly in support of #1
+
+### Python API's <a name="python_apis">
+
+Client-side Python libraries for accessing ICE's and EDD's REST API's are currently under 
+development, but are already in limited production use by EDD and by its command line tools.
+These libraries aren't mature yet, but may already be helpful for other uses (e.g. in researchers' 
+iPython notebooks). This code is still in active development, and is likely to change (including 
+breaking API changes) over time. Feel free to use it, but use at your own risk!
+
+See `api.py` modules for EDD and ICE under [`jbei/rest/clients/`][8], as well as other supporting modules.
+Both modules are designed to follow a similar usage pattern. The example below shows how to use
+EDDApi, but IceApi is very similar.
+
+__Sample client-side use of EddApi__
+
+    from jbei.rest.auth import EddSessionAuth
+    from jbei.rest.clients import EddApi
+    from jbei.utils import session_login
+    
+    # prompt terminal user for credentials and log in
+    edd_login_details = session_login(EddSessionAuth, EDD_URL, 'EDD',
+                                      username_arg=args.username, 
+                                      password_arg=args.password,
+                                      print_result=True,
+                                      timeout=EDD_REQUEST_TIMEOUT)
+    edd_session_auth = edd_login_details.session_auth
+
+    # instantiate and configure an EddApi instance
+    edd = EddApi(base_url=EDD_URL, auth=edd_session_auth)
+    edd.timeout = EDD_REQUEST_TIMEOUT
+
+    # get descriptive data for a study
+    study = edd.get_study(1)
+
+For examples of more advanced use, see usage of EddApi in the main() methods of 
+[`create_lines.py`][9] or [`maintain_ice_links.py`][10]
 
 ### Command Line Tools
 
@@ -201,7 +240,8 @@ information on the available options.
 
 * `maintain_ice_links.py` This work-in-progress script supports scanning linked EDD/ICE deployments 
   and maintaining the association between EDD experiments and ICE parts, which can become out-of-date
-  under some circumstances (e.g. downtime or communication failure).
+  under some circumstances (e.g. downtime or communication failure). See the 
+  [draft technical documentation][2] for this script.
 
 #### Running Command Line Tools
 
@@ -227,19 +267,17 @@ Get help for a script: append `--help` to the command
       -s, -silent        skip user prompts to verify CSV content
       -study STUDY       the number of the EDD study to create the new lines in
 
-### Python API's
 
-Client-side Python libraries for accessing ICE's and EDD's REST API's are currently under 
-development, but are already in limited production use by EDD and by its command line tools.
-These libraries aren't yet mature, but may be helpful for other uses (e.g. in researchers' iPython
-notebooks). The present versions of these libraries are still in active development, and are likely
- to change (including breaking API changes) over time. Feel free to use them, but use at your own risk!
-
-See `api.py` modules for EDD and ICE under `jbei/rest/clients/`, as well as other supporting modules.
-
-
-
-
+[1]:    https://en.wikipedia.org/wiki/Application_programming_interface
+[2]:    edd/rest/scripts/Maintain_Links.md
+[3]:    http://brew.sh/
+[4]:    http://docs.python-guide.org/en/latest/dev/virtualenvs/
+[5]:    https://repo.jbei.org/projects/EDD/repos/edd-django/browse
+[6]:    http://jasonkarns.com/blog/subdirectory-checkouts-with-git-sparse-checkout/
+[7]:    https://repo.jbei.org/projects/EDD/repos/edd-django/browse/jbei/
+[8]:    rest/clients/
+[9]:    edd/rest/scripts/create_lines.py
+[10]:   edd/rest/scripts/maintain_ice_links.py
 
 
 

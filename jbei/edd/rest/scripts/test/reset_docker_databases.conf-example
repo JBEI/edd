@@ -1,0 +1,23 @@
+# reset_docker_databases.conf-example
+# This file defines configuration parameters for reset_docker_databases.sh
+# Copy this file to reset_docker_databases.conf and edit to match your local configuration.
+
+# code checkout directories
+EDD_DIR="/Users/mark.forrer/code/edd"
+ICE_DIR="/Users/mark.forrer/code/ice"
+
+# database names
+EDD_DB_NAME="edd"
+ICE_DB_NAME="ice_local_test"
+
+# dump files to load
+DUMP_PARENT_DIR="/Users/mark.forrer/Desktop/2016-10-05 ICE Link Maintenance Test"
+EDD_DUMP_FILE="$DUMP_PARENT_DIR/edd_prod_dump.sql"
+ICE_DUMP_FILE="$DUMP_PARENT_DIR/ice_prod_dump.sql"
+
+# other configuration
+DOCKER_MACHINE="default"
+
+# optional. If defined, this value will be used instead of the IP of the Docker machine identified
+# by DOCKER_MACHINE above.
+# POSTGRES_HOST="postgres.jbei.org"

@@ -160,12 +160,19 @@ class Performance(object):
         print('Total run time: %s' % to_human_relevant_delta(total_runtime.total_seconds()))
         values_dict = OrderedDict()
 
-        values_dict['EDD strain scan duration'] = (to_human_relevant_delta(
-                self.edd_strain_scan_time.total_seconds()) if self.edd_strain_scan_time else
-                'Not performed')
-        values_dict['ICE entry scan duration:'] = (to_human_relevant_delta(
-                self.ice_entry_scan_time.total_seconds()) if self.ice_entry_scan_time else
-                                                   'Not performed')
+        edd_duration_key = 'EDD strain scan duration'
+        ice_duration_key = 'ICE entry scan duration:'
+        values_dict[edd_duration_key] = 'Not performed'
+        values_dict[ice_duration_key] = 'Not performed'
+
+        if self.edd_strain_scan_time:
+            values_dict[edd_duration_key] = (to_human_relevant_delta(
+                self.edd_strain_scan_time.total_seconds()))
+
+        if self.ice_entry_scan_time:
+            values_dict[ice_duration_key] = (to_human_relevant_delta(
+                self.ice_entry_scan_time.total_seconds()))
+
         values_dict['Total EDD communication time'] = to_human_relevant_delta(
                 self.edd_communication_time.total_seconds())
         values_dict['Total ICE communication time'] = to_human_relevant_delta(
@@ -404,7 +411,7 @@ class ProcessingSummary:
         self._existing_links_processed += 1
         self._skipped_external_links += 1
 
-        logger.warning('Leaving external link to %(link_url)s in place from ICE part '
+        logger.warning('Leaving external or malformed link to %(link_url)s in place from ICE part '
                        '%(part_id)s (uuid %(entry_uuid)s)' % {
                            'link_url': link.url, 'part_id': ice_entry.part_id,
                            'entry_uuid': ice_entry.uuid,
@@ -753,11 +760,10 @@ class ProcessingSummary:
 
         # account for configurability of whether ICE entries are scanned independent of their
         # relation to what's directly referenced from EDD
-        entries_found = self.total_ice_entries_found if self.total_ice_entries_found else \
-            self.total_ice_entries_processed
-        percent_processed = (
-                            self.total_ice_entries_processed / entries_found) * 100 if \
-            entries_found else 0
+        entries_found = (self.total_ice_entries_found if self.total_ice_entries_found else
+                         self.total_ice_entries_processed)
+        percent_processed = ((self.total_ice_entries_processed / entries_found) * 100
+                             if entries_found else 0)
         scanned_ice_entries = bool(self.total_ice_entries_found)
         scanned = 'were NOT' if not scanned_ice_entries else 'WERE'
 
@@ -817,7 +823,7 @@ class ProcessingSummary:
                 '%d', self._test_links_pruned, grouping=True)
         links_processed['Valid links skipped'] = locale.format(
                 '%d', self._valid_links_skipped, grouping=True)
-        links_processed['External links skipped'] = locale.format(
+        links_processed['External or malformed links skipped'] = locale.format(
                 '%d', self._skipped_external_links, grouping=True)
         links_processed['Duplicate links removed'] = locale.format(
                 '%d', self._duplicate_links_removed, grouping=True)
@@ -839,7 +845,6 @@ def print_shared_entry_processing_summary(entry, initial_entry_experiment_links_
               'link_count': initial_entry_experiment_links_count,
               'runtime': to_human_relevant_delta(runtime_seconds),
           })
-
 
 INTEGER_PATTERN = re.compile(r'^\d+$')
 
@@ -973,6 +978,10 @@ def main():
     print('\tSettings module:\t%s' % os.environ['ICE_SETTINGS_MODULE'])
     print('\t\tEDD URL:\t%s' % EDD_URL)
     print('\t\tICE URL:\t%s' % ICE_URL)
+    if not VERIFY_EDD_CERT:
+        print('\t\tVerify EDD SSL cert:\t%s' % ('Yes' if VERIFY_EDD_CERT else 'No'))
+    if not VERIFY_ICE_CERT:
+        print('\t\tVerify ICE SSL cert:\t%s' % ('Yes' if VERIFY_ICE_CERT else 'No'))
     print('\tCommand-line arguments:')
     if args.username:
         print('\t\tEDD/ICE Username:\t%s' % args.username)
@@ -1090,8 +1099,9 @@ def main():
                                           verify_ssl_cert=VERIFY_EDD_CERT)
         edd_session_auth = edd_login_details.session_auth
 
-        edd = (EddApi(edd_session_auth, EDD_URL, verify=VERIFY_EDD_CERT) if not args.dry_run else
-               EddTestStub(edd_session_auth, EDD_URL))
+        edd = (EddApi(edd_session_auth, EDD_URL, verify=VERIFY_EDD_CERT) if not
+        args.dry_run else
+               EddTestStub(edd_session_auth, EDD_URL, verify=VERIFY_EDD_CERT))
         edd.write_enabled = args.update_edd_strain_text
         edd.result_limit = EDD_RESULT_PAGE_SIZE
         edd.timeout = EDD_REQUEST_TIMEOUT
@@ -1257,7 +1267,7 @@ def scan_edd_strains(processing_inputs, processing_summary, overall_performance)
     overall_performance.completed_edd_strain_scan()
     if not hit_test_limit:
         print('')
-    print('Done processing %(strain_count)d DD strains in %(elapsed_time)s' % {
+    print('Done processing %(strain_count)d EDD strains in %(elapsed_time)s' % {
         'strain_count': processing_summary.total_edd_strains_processed,
         'elapsed_time': to_human_relevant_delta(
                 overall_performance.edd_strain_scan_time.total_seconds())
@@ -1582,7 +1592,7 @@ def process_matching_strain(edd_strain, ice_entry, process_all_ice_entry_links,
             unprocessed_strain_experiment_links.pop(study_url, None)
 
             # if no up-to-date link was found to this EDD study, find all links to the study
-            # that are using dated URL schemes, then pdate or remove them as appropriate.
+            # that are using dated URL schemes, then update or remove them as appropriate.
             if not strain_to_study_link:
                 dated_url_variations = build_dated_url_variations(study.pk, processing_inputs)
 
@@ -1595,7 +1605,7 @@ def process_matching_strain(edd_strain, ice_entry, process_all_ice_entry_links,
                         found_dated_urls[dated_url_variant] = dated_link
 
                         # updated only the first dated URL that refers to this study. If updated,
-                        # others would be duplicates, so remove them.
+                        # others would be duplicates, so we'll remove them.
                         if len(found_dated_urls) == 1:
                             old_study_name = (dated_link.label if dated_link else None)
 
@@ -1608,8 +1618,8 @@ def process_matching_strain(edd_strain, ice_entry, process_all_ice_entry_links,
                             # TODO: SYNBIO-1350: use entry.uuid to remove workaround after
                             # prerequisite SYNBIO-1207 is complete.
                             workaround_ice_id = ice_entry.id
-                            ice.link_entry_to_study(workaround_ice_id, study.pk, study_url, study.name,
-                                                    old_study_name=old_study_name,
+                            ice.link_entry_to_study(workaround_ice_id, study.pk, study_url,
+                                                    study.name, old_study_name=old_study_name,
                                                     old_study_url=dated_link.url, logger=logger)
                             if processing_inputs.perl_study_url_pattern.match(dated_url_variant):
                                 processing_summary.updated_perl_link(ice_entry, dated_link)
@@ -1638,8 +1648,9 @@ def process_matching_strain(edd_strain, ice_entry, process_all_ice_entry_links,
                         existing_valid_study_links[
                             strain_to_study_link.url.lower()] = strain_to_study_link
                         processing_summary.skipped_valid_link(ice_entry, strain_to_study_link)
+
             # if no link to the study has been found, or if one exists with an unmaintained
-            # name, create / rename the link
+            # name, create / update the link
             else:
                 old_study_name = strain_to_study_link.label if strain_to_study_link else None
                 ice.link_entry_to_study(ice_entry_uuid, study.pk, study_url, study.name, logger,

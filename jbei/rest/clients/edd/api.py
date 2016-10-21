@@ -370,7 +370,7 @@ class EddApi(RestApiClient):
         result sets. Query_url is the entire URL for the search, including query parameters (for
         example, the value returned for next_page as a result of a prior search). If present,
         all other parameters will be ignored.
-        :param local_pk: the integer primary key that idetifies the strain within this EDD
+        :param local_pk: the integer primary key that identifies the strain within this EDD
         deployment
         :param registry_id: the registry id (UUID) to search for
         :param registry_url_regex: the registry URL to search for
@@ -646,7 +646,7 @@ class EddApi(RestApiClient):
         strain_id = str(local_pk) if local_pk else str(registry_id)
 
         # build the URL for this strain resource
-        url = '%(base_url)s/rest/strain/%(strain_id)s' % {
+        url = '%(base_url)s/rest/strain/%(strain_id)s/' % {
             'base_url': self.base_url, 'strain_id': strain_id,
         }
 
@@ -703,6 +703,9 @@ class EddApi(RestApiClient):
         # Note: although it's normally best to abstract the URLs away from clients, in this case
         # clients will need the URL to push study link updates to ICE.
         base_url = alternate_base_url if alternate_base_url else self.base_url
+
+        # chop off a trailing slash in the base_url, if present
+        base_url = base_url if base_url.endswith('/') else base_url[:len(base_url)-1]
         return "%s/study/%s/" % (base_url, study_pk)
 
 
