@@ -275,7 +275,7 @@ Get help for a script: append `--help` to the command
 [5]:    https://repo.jbei.org/projects/EDD/repos/edd-django/browse
 [6]:    http://jasonkarns.com/blog/subdirectory-checkouts-with-git-sparse-checkout/
 [7]:    https://repo.jbei.org/projects/EDD/repos/edd-django/browse/jbei/
-[8]:    jbei/rest/clients/
+[8]:    rest/clients/
 [9]:    edd/rest/scripts/create_lines.py
 [10]:   edd/rest/scripts/maintain_ice_links.py
 
