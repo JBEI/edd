@@ -1629,6 +1629,7 @@ module EDDTableImport {
                     hlRow = true;
                 } else if (pulldown === TypeEnum.Timestamp ||
                     pulldown === TypeEnum.Metadata_Name ||
+                    pulldown === TypeEnum.Protein_Name ||
                     pulldown === TypeEnum.Measurement_Type) {
                     hlLabel = true;
                 }
@@ -1838,7 +1839,7 @@ module EDDTableImport {
             // This mode means we make a new "set" for each cell in the table, rather than
             // the standard method of making a new "set" for each column in the table.
             var singleMode: boolean;
-            var single: number, nonSingle: number, earliestName: number;
+            var singleCompatibleCount: number, singleNotCompatibleCount: number, earliestName: number;
 
             var grid = this.rawInputStep.getGrid();
             var gridRowMarkers = this.rawInputStep.gridRowMarkers;
@@ -1982,30 +1983,29 @@ module EDDTableImport {
             // If we're not using pre-processed records, we need to use the pulldown settings in this step
             // (usually set by the user) to determine what mode we're in.
 
-            single = 0;
-            nonSingle = 0;
+            singleCompatibleCount = 0;
+            singleNotCompatibleCount = 0;
             earliestName = null;
             // Look for the presence of "single measurement type" rows, and rows of all other single-item types
             grid.forEach((_, y: number): void => {
                 var pulldown: number;
-                if (this.activeRowFlags[y]) {
-                    pulldown = this.pulldownSettings[y];
-                    if (pulldown === TypeEnum.Measurement_Type || pulldown === TypeEnum.Protein_Name) {
-                        single++; // Single Measurement Name or Single Protein Name
-                    } else if (pulldown === TypeEnum.Metadata_Name || pulldown === TypeEnum.Timestamp) {
-                        nonSingle++;
-                    } else if (pulldown === TypeEnum.Assay_Line_Names && earliestName === null) {
-                        earliestName = y;
-                    }
+                if (!this.activeRowFlags[y]) { return; }    // Skip inactive rows
+                pulldown = this.pulldownSettings[y];
+                if (pulldown === TypeEnum.Measurement_Type || pulldown === TypeEnum.Protein_Name) {
+                    singleCompatibleCount++; // Single Measurement Name or Single Protein Name
+                } else if (pulldown === TypeEnum.Metadata_Name || pulldown === TypeEnum.Timestamp) {
+                    singleNotCompatibleCount++;
+                } else if (pulldown === TypeEnum.Assay_Line_Names && earliestName === null) {
+                    earliestName = y;
                 }
             });
 
             // Only use this mode if the table is entirely free of single-timestamp and
-            // single-metadata rows, and has at least one "single measurement" row, and at
+            // single-metadata rows, and has at least one "single measurement" or "single protein" row, and at
             // least one "Assay/Line names" row.
             // (Note that requirement of an "Assay/Line names" row prevents this mode from being
-            // enabled when the page is in 'Transcriptomics' or 'Proteomics' mode.)
-            singleMode = (single > 0 && nonSingle === 0 && earliestName !== null) ? true : false;
+            // enabled when the page is in 'Transcriptomics' mode.)
+            singleMode = (singleCompatibleCount > 0 && singleNotCompatibleCount === 0 && earliestName !== null) ? true : false;
 
             // A "set" for every cell of the table, with the timestamp to be determined later.
             if (singleMode) {
@@ -3151,7 +3151,7 @@ module EDDTableImport {
                             assaySelect = assayDisam.selectAssayJQElement;
                             // if we've disabled import for this assay, skip adding this
                             // measurement to the list
-                            if(assaySelect.is(':disabled')) {
+                            if (assaySelect.is(':disabled')) {
                                 return;  // continue to the next loop iteration parsedSets.forEach
                             }
                             assay_id = assaySelect.val();
@@ -3172,7 +3172,7 @@ module EDDTableImport {
                             unitsId = measDisam.unitsHiddenObj.val() || "1";
                             // If we've disabled import for measurements of this type, skip adding
                             // this measurement to the list
-                            if(measDisam.typeHiddenObj.is(':disabled')) {
+                            if (measDisam.typeHiddenObj.is(':disabled')) {
                                 return;  // continue to the next loop iteration parsedSets.forEach
                             }
                         }
@@ -3236,7 +3236,7 @@ module EDDTableImport {
                 resolvedSets.push(resolvedSet);
             });
 
-            if(resolvedSets.length === 0) {
+            if (resolvedSets.length === 0) {
                 this.errorMessages.push(new ImportMessage('All of the measurements and ' +
                     ' metadata have been excluded from import. Please select some data to' +
                     ' import.'));
