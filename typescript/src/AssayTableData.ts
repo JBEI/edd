@@ -1960,7 +1960,7 @@ module EDDTableImport {
                         // Copy across the fields from the RawImportSet record
                         kind: rawSet.kind,
                         line_name: rawSet.line_name,
-                        assay_name: rawSet.assay_name,
+                        assay_name: an,
                         measurement_name: rawSet.measurement_name,
                         metadata_by_name: rawSet.metadata_by_name,
                         data: reassembledData
