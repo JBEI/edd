@@ -1,6 +1,14 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+"""
+Example file for processing histograms out of Jake Beal's analysis pipeline.
+
+`parse_name` would be different for every run, until a standard naming scheme is developed.
+`process_file` should be adapted to run in a pipeline instead of as a shell session.
+Example code of what to put in a shell session is in a large comment block at the end of the file.
+"""
+
 import re
 import sys
 import pprint
