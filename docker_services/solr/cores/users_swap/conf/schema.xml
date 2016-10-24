@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<schema name="resmgmt" version="1.4">
+    <types>
+        <fieldType name="string" class="solr.StrField" sortMissingLast="true" omitNorms="true" />
+        <fieldType name="boolean" class="solr.BoolField" sortMissingLast="true" omitNorms="true" />
+        <fieldType name="tlong" class="solr.TrieLongField" precisionStep="8" omitNorms="true"
+                positionIncrementGap="0" />
+        <fieldType name="tdouble" class="solr.TrieDoubleField" precisionStep="0"
+                omitNorms="true" positionIncrementGap="0" />
+        <fieldType name="date" class="solr.TrieDateField" omitNorms="true" precisionStep="0"
+                positionIncrementGap="0" />
+        <fieldType name="tdate" class="solr.TrieDateField" omitNorms="true" precisionStep="6"
+                positionIncrementGap="0" />
+        <!-- Text field normalized to lower-case form -->
+        <fieldType name="text_lower" class="solr.TextField" positionIncrementGap="10">
+            <analyzer>
+                <tokenizer class="solr.WhitespaceTokenizerFactory" />
+                <filter class="solr.LowerCaseFilterFactory" />
+            </analyzer>
+        </fieldType>
+        <!-- Text field normalized to lower-case, without tokenizing on spaces -->
+        <fieldType name="tag_lower" class="solr.TextField" positionIncrementGap="10">
+            <analyzer>
+                <tokenizer class="solr.KeywordTokenizerFactory" />
+                <filter class="solr.LowerCaseFilterFactory" />
+            </analyzer>
+        </fieldType>
+        <!-- value in form of ([0-9a-fA-F-]+)@Name, or a ID/UUID followed by at-sign and a name -->
+        <fieldType name="idval" class="solr.TextField" indexed="true" stored="true" omitNorms="true"
+                multiValued="true">
+            <!-- index will be getting the ID@Name combo -->
+            <analyzer type="index">
+                <tokenizer class="solr.KeywordTokenizerFactory" />
+                <filter class="solr.LowerCaseFilterFactory" />
+                <!-- only index/search the ID/UUID -->
+                <filter class="solr.PatternReplaceFilterFactory" pattern="^([0-9a-f-]+)@.*$"
+                        replacement="$1" />
+            </analyzer>
+            <!-- query will only be getting the ID/UUID portion -->
+            <analyzer type="query">
+                <tokenizer class="solr.KeywordTokenizerFactory" />
+                <filter class="solr.LowerCaseFilterFactory" />
+            </analyzer>
+        </fieldType>
+        <fieldType name="idval_value" class="solr.TextField" indexed="true" stored="false"
+                omitNorms="true" multiValued="true">
+            <!-- index will be getting the ID@Name combo -->
+            <analyzer type="index">
+                <tokenizer class="solr.KeywordTokenizerFactory" />
+                <filter class="solr.LowerCaseFilterFactory" />
+                <!-- only index/search the name portion -->
+                <filter class="solr.PatternReplaceFilterFactory" pattern="^[0-9a-fA-F-]+@(.*)$"
+                        replacement="$1" />
+                <!-- turn the name portion into ngrams -->
+                <filter class="solr.NGramFilterFactory" minGramSize="2" maxGramSize="24" />
+                <!-- any ngram containing any whitespace replaced with empty string -->
+                <filter class="solr.PatternReplaceFilterFactory" pattern="^.*\s+.*$"
+                        replacement="" />
+                <!-- length filter discards replaced empty strings -->
+                <filter class="solr.LengthFilterFactory" min="2" max="24"/>
+            </analyzer>
+            <!-- query will only be getting the Name portion -->
+            <analyzer type="query">
+                <tokenizer class="solr.WhitespaceTokenizerFactory" />
+                <filter class="solr.LowerCaseFilterFactory" />
+            </analyzer>
+        </fieldType>
+        <!-- n-gram field type for substring matching -->
+        <fieldType name="ngram" class="solr.TextField" positionIncrementGap="100" stored="false"
+                multiValued="true">
+            <analyzer type="index">
+                <tokenizer class="solr.WhitespaceTokenizerFactory" />
+                <filter class="solr.LowerCaseFilterFactory" />
+                <filter class="solr.NGramFilterFactory" minGramSize="2" maxGramSize="24" />
+            </analyzer>
+            <analyzer type="query">
+                <tokenizer class="solr.WhitespaceTokenizerFactory" />
+                <filter class="solr.LowerCaseFilterFactory" />
+            </analyzer>
+        </fieldType>
+    </types>
+
+    <fields>
+        <!--
+          == Incoming document fields:
+          ==    id
+          ==    username
+          ==    name (first, last, etc)
+          ==    email
+          ==    initials
+          ==    group (format ID@NAME)
+          ==    institution (format ID@NAME)
+          ==    date_joined
+          ==    last_login
+          ==    is_active
+          ==    is_staff
+          ==    is_superuser
+          -->
+        <!-- a unique key for the user document -->
+        <field name="id" type="string" indexed="true" stored="true" required="true" />
+        <!-- login of the user -->
+        <field name="username" type="text_lower" indexed="true" stored="true" />
+        <!-- fullname of the user; search with name -->
+        <field name="fullname" type="text_lower" indexed="false" stored="true" />
+        <!-- name(s) of the user -->
+        <field name="name" type="text_lower" indexed="true" stored="true" multiValued="true" />
+        <!-- user email(s) -->
+        <field name="email" type="text_lower" indexed="true" stored="true" multiValued="true" />
+        <!-- initials used to abbreviate a user -->
+        <field name="initials" type="string" indexed="false" stored="true" />
+        <!-- user group(s) -->
+        <field name="group" type="idval" indexed="true" stored="true" multiValued="true" />
+        <!-- user institution(s) -->
+        <field name="institution" type="idval" indexed="true" stored="true" multiValued="true" />
+        <!-- date user account on EDD created -->
+        <field name="date_joined" type="tdate" indexed="true" stored="true" />
+        <!-- date user account last authenticated to EDD -->
+        <field name="last_login" type="tdate" indexed="true" stored="true" />
+        <!-- flag to show/hide a particular user -->
+        <field name="is_active" type="boolean" indexed="true" stored="true" />
+        <!-- flag to indicate staff privledges to EDD -->
+        <field name="is_staff" type="boolean" indexed="true" stored="true" />
+        <!-- flag to indicate admin privledges to EDD -->
+        <field name="is_superuser" type="boolean" indexed="true" stored="true" />
+
+        <!--
+          == Generated fields:
+          ==    _version_
+          ==    name_ng (username, name, email)
+          ==    initial_lower
+          ==    group_ng
+          ==    institution_ng
+          -->
+        <!-- special _version_ field needed for some newer Solr features -->
+        <field name="_version_" type="tlong" indexed="true" stored="true" />
+        <!-- field needed for default request handlers, not actually used -->
+        <field name="text" type="text_lower" indexed="true" stored="false" multiValued="true" />
+        <!-- name(s) of user in ngram form for substring matches -->
+        <field name="name_ng" type="ngram" indexed="true" stored="false" />
+        <!-- description of the study in ngram form for substring matches -->
+        <field name="initial_lower" type="text_lower" indexed="true" stored="false" />
+        <!-- groups for user; index NAME part of ID@NAME -->
+        <field name="group_ng" type="idval_value" indexed="true" stored="false"
+                multiValued="true" />
+        <!-- institutions for user; index NAME part of ID@NAME -->
+        <field name="institution_ng" type="idval_value" indexed="true" stored="false"
+                multiValued="true" />
+    </fields>
+
+    <uniqueKey>id</uniqueKey>
+    
+    <!-- copy ngram fields -->
+    <copyField source="username" dest="name_ng" />
+    <copyField source="name" dest="name_ng" />
+    <copyField source="email" dest="name_ng" />
+    <copyField source="initials" dest="initial_lower" />
+    <copyField source="group" dest="group_ng" />
+    <copyField source="institution" dest="institution_ng" />
+
+</schema>

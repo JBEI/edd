@@ -63,7 +63,7 @@ def search_group(request):
 
 def search_metaboliteish(request):
     """ Autocomplete for "metaboliteish" values; metabolites and general measurements. """
-    core = solr.MetaboliteSearch()
+    core = solr.MeasurementTypeSearch()
     term = request.GET.get('term', '')
     found = core.query(query=term)
     return JsonResponse({

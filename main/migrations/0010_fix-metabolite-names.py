@@ -138,7 +138,7 @@ def insert_bigg_metabolites(apps, schema_editor):
                 m.molecular_formula = entry[2]
                 m.carbon_count = extract_carbon_count(entry[2])
                 m.charge = entry[3]
-                m.source = ds
+                m.type_source = ds
                 m.save()
                 # more than one, merge remaining into first
                 for x in existing[1:]:
@@ -152,7 +152,7 @@ def insert_bigg_metabolites(apps, schema_editor):
                     molecular_formula=entry[2],
                     carbon_count=extract_carbon_count(entry[2]),
                     charge=entry[3],
-                    source=ds,
+                    type_source=ds,
                 )
     except Exception:
         logger.exception('Failed importing BIGG metabolite selections')

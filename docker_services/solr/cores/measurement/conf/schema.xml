@@ -113,23 +113,32 @@
           ==    tags
           ==    source
           -->
-        <!-- a unique key for the study document -->
+        <!-- a unique key for the measurement type document -->
         <field name="id" type="string" indexed="true" stored="true" required="true" />
-        <!-- name of the metabolite -->
+        <!-- name of the measurement type -->
         <field name="name" type="text_lower" indexed="true" stored="true" />
-        <!-- short name / SBML code of the metabolite -->
+        <!-- short name / SBML code of the measurement type -->
         <field name="code" type="text_lower" indexed="true" stored="true" />
-        <!-- metabolite physical properties -->
-        <field name="charge" type="tlong" indexed="true" stored="true" />
-        <field name="carbons" type="tlong" indexed="true" stored="true" />
-        <field name="mass" type="tdouble" indexed="true" stored="true" />
-        <!-- molecular formula stored, not indexed -->
-        <field name="formula" type="string" indexed="false" stored="true" />
-        <!-- tags added to metabolite -->
-        <field name="tags" type="tag_lower" indexed="true" stored="true" multiValued="true" />
-        <!-- source of metabolite property data -->
+        <!-- flag for the family of the measurement type -->
+        <field name="family" type="text_lower" indexed="true" stored="true" />
+        <!-- source of measurement type property data -->
         <field name="source" type="tag_lower" indexed="true" stored="true" />
-        
+
+        <!-- == metabolite-specific fields == -->
+        <!-- metabolite physical properties -->
+        <field name="m_charge" type="tlong" indexed="true" stored="true" />
+        <field name="m_carbons" type="tlong" indexed="true" stored="true" />
+        <field name="m_mass" type="tdouble" indexed="true" stored="true" />
+        <!-- molecular formula stored, not indexed -->
+        <field name="m_formula" type="string" indexed="false" stored="true" />
+        <!-- tags added to metabolite -->
+        <field name="m_tags" type="tag_lower" indexed="true" stored="true" multiValued="true" />
+
+        <!-- == protein-specific fields == -->
+        <!-- protein physical properties -->
+        <field name="p_length" type="tlong" indexed="true" stored="true" />
+        <field name="p_mass" type="tlong" indexed="true" stored="true" />
+
         <!--
           == Generated fields:
           ==    _version_

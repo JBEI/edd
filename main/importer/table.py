@@ -431,7 +431,7 @@ class TableImport(object):
                     p = ProteinIdentifier.objects.create(
                         type_name=measurement_name,
                         short_name=uniprot_id,
-                        source=self._load_datasource(),
+                        type_source=self._load_datasource(),
                     )
                     found_type = MType(compartment, p.pk, units_id)
         return found_type
