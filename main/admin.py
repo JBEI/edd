@@ -19,6 +19,7 @@ from django_auth_ldap.backend import LDAPBackend
 
 import logging
 
+from . import models
 from .export.sbml import validate_sbml_attachment
 from .forms import (
     MeasurementTypeAutocompleteWidget, MetadataTypeAutocompleteWidget, RegistryAutocompleteWidget,
@@ -297,11 +298,11 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
     def get_fields(self, request, obj=None):
         return [
             ('type_name', 'short_name', ),
-            'study_list',
+            'type_source', 'study_list',
         ]
 
     def get_list_display(self, request):
-        return ['type_name', 'short_name', '_study_count', ]
+        return ['type_name', 'short_name', '_study_count', 'type_source', ]
 
     def get_merge_autowidget(self):
         return MeasurementTypeAutocompleteWidget
@@ -325,7 +326,7 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
         return qs
 
     def get_readonly_fields(self, request, obj=None):
-        return ['study_list', ]
+        return ['type_source', 'study_list', ]
 
     def get_search_fields(self, request):
         return ['type_name', 'short_name', ]
@@ -352,6 +353,13 @@ class MeasurementTypeAdmin(admin.ModelAdmin):
             'form': form,
         })
     merge_with_action.short_description = 'Merge records into …'
+
+    def save_model(self, request, obj, form, change):
+        # Save Datasource of editing user first
+        source = models.Datasource(name=request.user.username)
+        source.save()
+        obj.type_source = source
+        super(MeasurementTypeAdmin, self).save_model(request, obj, form, change)
 
     def study_list(self, instance):
         qs = Study.objects.filter(line__assay__measurement__measurement_type=instance).distinct()
@@ -400,14 +408,14 @@ class MetaboliteAdmin(MeasurementTypeAdmin):
     def get_fields(self, request, obj=None):
         return super(MetaboliteAdmin, self).get_fields(request, obj) + [
             ('molecular_formula', 'molar_mass', 'charge', ),  # grouping in tuple puts in a row
-            'source', 'study_list',
+            'type_source', 'study_list',
         ]
 
     def get_list_display(self, request):
         # complete override
         return [
             'type_name', 'short_name', 'molecular_formula', 'molar_mass', 'charge', '_tags',
-            '_study_count', 'source'
+            '_study_count', 'type_source'
         ]
 
     def get_merge_autowidget(self):
@@ -416,11 +424,11 @@ class MetaboliteAdmin(MeasurementTypeAdmin):
 
     def get_queryset(self, request):
         qs = super(MetaboliteAdmin, self).get_queryset(request)
-        qs = qs.select_related('source')
+        qs = qs.select_related('type_source')
         return qs
 
     def get_readonly_fields(self, request, obj=None):
-        return ['source', 'study_list', ]
+        return ['type_source', 'study_list', ]
 
     def _tags(self, obj):
         return ', '.join(obj.tags)
@@ -457,13 +465,13 @@ class ProteinAdmin(MeasurementTypeAdmin):
     def get_fields(self, request, obj=None):
         return super(ProteinAdmin, self).get_fields(request, obj) + [
             ('length', 'mass',),
-            'source', 'study_list',
+            'type_source', 'study_list',
         ]
 
     def get_list_display(self, request):
         # complete override
         return [
-            'type_name', 'short_name', 'length', 'mass', '_study_count', 'source',
+            'type_name', 'short_name', 'length', 'mass', '_study_count', 'type_source',
         ]
 
     def get_merge_autowidget(self):
@@ -472,11 +480,11 @@ class ProteinAdmin(MeasurementTypeAdmin):
 
     def get_queryset(self, request):
         qs = super(ProteinAdmin, self).get_queryset(request)
-        qs = qs.select_related('source')
+        qs = qs.select_related('type_source')
         return qs
 
     def get_readonly_fields(self, request, obj=None):
-        return ['source', 'study_list', ]
+        return ['type_source', 'study_list', ]
 
     def get_search_results(self, request, queryset, search_term):
         search_term = ProteinIdentifier.match_accession_id(search_term)
