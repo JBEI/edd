@@ -175,6 +175,25 @@
             })
             .entries(meas[index].values);
 
+
+        //hide values if there are different time points
+        if (type != 'x') {
+            var nestedByTime = findAllTime(data);
+            var howManyToInsertObj = findMaxTimeDifference(nestedByTime);
+            var max = Math.max.apply(null, _.values(howManyToInsertObj));
+            if (max > 0) {
+                var graphSvg = $(typeClass[type])[0];
+                $('.tooMuchData').remove();
+                $(graphSvg).prepend("<p class='noData'>Too many missing data fields. Please filter</p>");
+                 //get word length
+            wordLength = getSum(typeNames);
+            d3.selectAll(typeClass[type] + ' .x.axis text').remove()
+            return svg;
+            } else {
+                $('.noData').remove();
+            }
+        }
+
         //right axis
         if (index == 0) {
             graphSet.create_y_axis(graphSet, meas[index].key, y, svg);
