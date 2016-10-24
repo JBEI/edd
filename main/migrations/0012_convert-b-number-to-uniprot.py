@@ -93,7 +93,7 @@ class ProteinUpdate(object):
             protein.short_name = uniprot['id']
             protein.length = uniprot['length']
             protein.mass = uniprot['mass']
-            protein.source = self._ds
+            protein.type_source = self._ds
             protein.save()
         return uniprot['id']
 
