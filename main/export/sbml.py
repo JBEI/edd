@@ -604,9 +604,9 @@ class SbmlExport(object):
             try:
                 # TODO: change to .order_by('x__0') once Django supports ordering on transform
                 # https://code.djangoproject.com/ticket/24747
-                values = models.MeasurementValue.objects.filter(
+                values = list(models.MeasurementValue.objects.filter(
                     measurement__in=measurements
-                ).select_related('measurement__y_units').order_by('x')
+                ).select_related('measurement__y_units').order_by('x'))
                 # convert units
                 for v in values:
                     units = v.measurement.y_units
@@ -640,7 +640,7 @@ class SbmlExportSettingsForm(SbmlForm):
     """ Form used for selecting settings on SBML exports. """
     sbml_template = forms.ModelChoiceField(
         # TODO: potentially narrow options based on current user?
-        models.SBMLTemplate.objects.all(),
+        models.SBMLTemplate.objects.exclude(biomass_exchange_name=''),
         label=_('SBML Template'),
     )
 

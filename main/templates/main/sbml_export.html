@@ -11,7 +11,7 @@
     $(this).closest('.disclose').toggleClass('discloseHide');
     return false;
   }
-  $(window).load(function () {
+  $(window).on('load', function () {
     $('.disclose').find('a.discloseLink').on('click', disclose);
   });
   </script>
