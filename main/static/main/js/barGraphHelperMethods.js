@@ -93,3 +93,75 @@ function insertFakeTime(array, key, y_unit) {
           'lineName': 'n/a'
         });
 }
+
+/**
+ * This function takes in nested data by name then time and returns and object with line name as key, and
+ * an object as value containing time points as keys and how many time points as values.
+ * @param nestedByName
+ * @returns {{}}
+ */
+function findTimeValuesForName(nestedByName) {
+    var times = {};
+    nestedByName.forEach(function(value) {
+        var arr = {};
+        _.each(value.values, function(d) {
+            arr[d.key] = d.values.length;
+        });
+        times[value.key] = arr;
+    });
+    return times;
+}
+
+function getMaxValue(time) {
+    var max = 0;
+    $.each(time, function(key, value) {
+        $.each(value, function(key, value) {
+            if (value > max) {
+                max = value;
+            }
+        })
+    });
+    return max;
+}
+
+function filterTimePoints(data, timePoint) {
+    var newData = [];
+    _.each(data, function(dataPoint) {
+        if (dataPoint.x === timePoint) {
+            newData.push(dataPoint);
+        }
+    });
+    return newData;
+}
+
+function addButtons(graphSvg, dataByUnit, timePoints, type) {
+    _.each(timePoints, function(point) {
+                $(graphSvg).append('<button>' + point + '</button>').addClass(point).on('click', function() {
+                    var newPoints = filterTimePoints(dataByUnit, point);
+                    data = d3.nest(type)
+                    .key(function (d) {
+                        return d[type];
+                    })
+                    .key(function (d) {
+                        return parseFloat(d.x);
+                    })
+                    .entries(newPoints);
+                    return
+                })
+            });
+}
+
+function getTimePoints(getTimes) {
+     var obj = {};
+            $.each(getTimes, function(key, value) {
+
+                $.each(value, function(key, value) {
+                    if (obj.hasOwnProperty(key)) {
+                        obj[key] += 1;
+                    } else {
+                        obj[key] = 0;
+                    }
+                });
+            });
+    return obj;
+}

@@ -180,15 +180,24 @@
         if (type != 'x') {
             var nestedByTime = findAllTime(data);
             var howManyToInsertObj = findMaxTimeDifference(nestedByTime);
-            var max = Math.max.apply(null, _.values(howManyToInsertObj));
-            if (max > 0) {
-                var graphSvg = $(typeClass[type])[0];
+            var max1 = Math.max.apply(null, _.values(howManyToInsertObj));
+            var time = findTimeValuesForName(data);
+            var getTimes = _.values(time);
+            var findTimePoints = getTimePoints(getTimes);
+
+            var graphSvg = $(typeClass[type])[0];
+            var timePoints = _.keys(findTimePoints);
+            console.log(timePoints);
+            addButtons(graphSvg, meas[index].values, timePoints, type);
+
+            if (max1 > 0) {
                 $('.tooMuchData').remove();
                 $(graphSvg).prepend("<p class='noData'>Too many missing data fields. Please filter</p>");
                  //get word length
             wordLength = getSum(typeNames);
-            d3.selectAll(typeClass[type] + ' .x.axis text').remove()
+            d3.selectAll(typeClass[type] + ' .x.axis text').remove();
             return svg;
+            break;
             } else {
                 $('.noData').remove();
             }
