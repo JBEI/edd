@@ -762,14 +762,11 @@ module EDDTableImport {
             // We'll process csv files locally.
             if ((ft === 'csv' || ft === 'txt') &&
                     (mode === 'std' || mode === 'tr' || mode === 'pr')) {
-                $('#processingFileLocallyLabel').removeClass('off');
-                $('#step2textarea').attr("disabled", "disabled");
                 fileContainer.skipProcessRaw = false;
                 fileContainer.skipUpload = true;
             }
             // Except for skyline files, which should be summed server-side
             else if ((ft === 'csv' || ft === 'txt') && (mode === 'skyline')) {
-                this.showFileDropped(fileContainer);
                 fileContainer.skipProcessRaw = true;
                 fileContainer.skipUpload = false;
             }
@@ -780,30 +777,28 @@ module EDDTableImport {
                     mode === 'pr' ||
                     mode === 'mdv' ||
                     mode === 'skyline')) {
-                this.showFileDropped(fileContainer);
                 fileContainer.skipProcessRaw = true;
                 fileContainer.skipUpload = false;
-                return;
             }
             // HPLC reports need to be sent for server-side processing
             else if ((ft === 'csv' || ft === 'txt') &&
                     (mode === 'hplc')) {
-                this.showFileDropped(fileContainer);
                 fileContainer.skipProcessRaw = true;
                 fileContainer.skipUpload = false;
-                return;
             }
             // Biolector XML also needs to be sent for server-side processing
             else if (ft === 'xml' && mode === 'biolector') {
-                this.showFileDropped(fileContainer);
                 fileContainer.skipProcessRaw = true;
                 fileContainer.skipUpload = false;
-                return;
             }
             // By default, skip any further processing
             else {
                 fileContainer.skipProcessRaw = true;
                 fileContainer.skipUpload = true;
+            }
+
+            if (!fileContainer.skipProcessRaw || !fileContainer.skipUpload) {
+                this.showFileDropped(fileContainer);
             }
         }
 
@@ -875,6 +870,7 @@ module EDDTableImport {
             $('#step2textarea').toggleClass('off', missingStep1Inputs);
         }
 
+
         // Reset and hide the info box that appears when a file is dropped,
         // and reveal the text entry area
         // This also clears the "processedSetsAvailable" flag because it assumes that
@@ -902,6 +898,7 @@ module EDDTableImport {
         // Reset and show the info box that appears when a file is dropped,
         // and reveal the text entry area.
         showFileDropped(fileContainer): void {
+            var processingMessage:string = '';
             // Set the icon image properly
             $('#fileDropInfoIcon').removeClass('xml');
             $('#fileDropInfoIcon').removeClass('text');
@@ -917,10 +914,15 @@ module EDDTableImport {
             $('#fileDropInfoArea').removeClass('off');
             $('#fileDropInfoSending').removeClass('off');
             $('#fileDropInfoName').text(fileContainer.file.name)
-            $('#fileUploadMessage').text(
-                'Sending ' + Utl.JS.sizeToString(fileContainer.file.size) + ' To Server...'
-            );
-            // $('#fileDropInfoLog').empty();
+
+            if (!fileContainer.skipUpload) {
+                processingMessage = 'Sending ' + Utl.JS.sizeToString(fileContainer.file.size) + ' To Server...';
+                $('#fileDropInfoLog').empty();
+            } else if (!fileContainer.skipProcessRaw) {
+                processingMessage = 'Processing ' + Utl.JS.sizeToString(fileContainer.file.size) + '...';
+                $('#fileDropInfoLog').empty();
+            }
+            $('#fileUploadMessage').text(processingMessage);
             this.activeDraggedFile = fileContainer;
         }
 
@@ -1198,18 +1200,16 @@ module EDDTableImport {
         selectMajorKindStep: SelectMajorKindStep;
         nextStepCallback: any;
 
-        interpretRowTypePullDownTImerID: number;
-
         warningMessages:ImportMessage[];
         errorMessages:ImportMessage[];
 
-        MODES_WITH_DATA_TABLE: string[]; // Step 1 modes in which the data table gets displayed
-        MODES_WITH_GRAPH: string[];
+        static MODES_WITH_DATA_TABLE: string[] = ['std', 'tr', 'pr', 'mdv']; // Step 1 modes in which the data table gets displayed
+        static MODES_WITH_GRAPH: string[] = ['std', 'biolector', 'hplc'];
 
-        DISABLED_PULLDOWN_LABEL:string = '--';
-        DEFAULT_STEP3_PULLDOWN_VALUE:number;
+        static DISABLED_PULLDOWN_LABEL: string = '--';
+        static DEFAULT_PULLDOWN_VALUE: number = 0;
 
-        DUPLICATE_LEGEND_THRESHOLD:number = 10;
+        static DUPLICATE_LEGEND_THRESHOLD:number = 10;
 
 
         constructor(selectMajorKindStep: SelectMajorKindStep, rawInputStep: RawInputStep, nextStepCallback: any) {
@@ -1260,11 +1260,8 @@ module EDDTableImport {
                 .on('dblclick', 'td', this.singleValueDisablerF.bind(this));
 
             $('#resetstep3').on('click', this.resetEnabledFlagMarkers.bind(this));
-
-            this.MODES_WITH_DATA_TABLE = ['std', 'tr', 'pr', 'mdv'];
-            this.MODES_WITH_GRAPH = ['std', 'biolector', 'hplc'];
-            this.DEFAULT_STEP3_PULLDOWN_VALUE = 0;
         }
+
 
         // called to inform this step that the immediately preceding step has begun processing
         // its inputs. The assumption is that the processing is taking place until the next call to
@@ -1274,6 +1271,7 @@ module EDDTableImport {
             $('#enterDataInStep2').addClass('off');
             $('#dataTableDiv').find("input,button,textarea,select").attr("disabled", "disabled");
         }
+
 
         previousStepChanged(): void {
             var prevStepComplete: boolean,
@@ -1291,7 +1289,7 @@ module EDDTableImport {
 
             mode = this.selectMajorKindStep.interpretationMode;
             graph = $('#graphDiv');
-            this.graphEnabled = this.MODES_WITH_GRAPH.indexOf(mode) >= 0;
+            this.graphEnabled = IdentifyStructuresStep.MODES_WITH_GRAPH.indexOf(mode) >= 0;
             showGraph = this.graphEnabled && prevStepComplete;
             graph.toggleClass('off', !showGraph);
 
@@ -1302,7 +1300,9 @@ module EDDTableImport {
             // Empty the data table whether we remake it or not...
             $('#dataTableDiv').empty();
 
-            showDataTable = this.MODES_WITH_DATA_TABLE.indexOf(mode) >= 0;
+            showDataTable = IdentifyStructuresStep.MODES_WITH_DATA_TABLE.indexOf(mode) >= 0;
+            $('#step3UpperLegend').toggleClass('off', !showDataTable);
+
             if (showDataTable) {
                 gridRowMarkers.forEach((value: string, i: number): void => {
                     var type: any;
@@ -1414,6 +1414,7 @@ module EDDTableImport {
             });
         }
 
+
         constructDataTable(mode: string, grid: any, gridRowMarkers: any): void {
             var body: HTMLTableElement,
                 colgroup: JQuery,
@@ -1434,7 +1435,7 @@ module EDDTableImport {
             controlCols = ['checkbox', 'pulldown', 'label'];
             if (mode === 'tr') {
                 pulldownOptions = [
-                    [ this.DISABLED_PULLDOWN_LABEL, this.DEFAULT_STEP3_PULLDOWN_VALUE],
+                    [ IdentifyStructuresStep.DISABLED_PULLDOWN_LABEL, IdentifyStructuresStep.DEFAULT_PULLDOWN_VALUE],
                     ['Entire Row Is...', [
                             ['Gene Names', TypeEnum.Gene_Names],
                             ['RPKM Values', TypeEnum.RPKM_Values]
@@ -1443,7 +1444,7 @@ module EDDTableImport {
                 ];
             } else if (mode === 'pr') {
                 pulldownOptions = [
-                    [ this.DISABLED_PULLDOWN_LABEL, this.DEFAULT_STEP3_PULLDOWN_VALUE],
+                    [ IdentifyStructuresStep.DISABLED_PULLDOWN_LABEL, IdentifyStructuresStep.DEFAULT_PULLDOWN_VALUE],
                     ['Entire Row Is...', [
                             ['Assay/Line Names', TypeEnum.Assay_Line_Names],
                         ]
@@ -1455,7 +1456,7 @@ module EDDTableImport {
                 ];
             } else {
                 pulldownOptions = [
-                    [ this.DISABLED_PULLDOWN_LABEL, this.DEFAULT_STEP3_PULLDOWN_VALUE],
+                    [ IdentifyStructuresStep.DISABLED_PULLDOWN_LABEL, IdentifyStructuresStep.DEFAULT_PULLDOWN_VALUE],
                     ['Entire Row Is...', [
                             ['Assay/Line Names', TypeEnum.Assay_Line_Names],
                             ['Measurement Types', TypeEnum.Measurement_Types]
@@ -1584,8 +1585,8 @@ module EDDTableImport {
 
             lowerLegendId = 'step3LowerLegend';
             lowerLegend = $('#' + lowerLegendId);
-            if(grid.length > this.DUPLICATE_LEGEND_THRESHOLD) {
-                if(!lowerLegend.length) {
+            if (grid.length > IdentifyStructuresStep.DUPLICATE_LEGEND_THRESHOLD) {
+                if (!lowerLegend.length) {
                     $('#step3UpperLegend')
                         .clone()
                         .attr('id', lowerLegendId)
@@ -1628,6 +1629,7 @@ module EDDTableImport {
                     hlRow = true;
                 } else if (pulldown === TypeEnum.Timestamp ||
                     pulldown === TypeEnum.Metadata_Name ||
+                    pulldown === TypeEnum.Protein_Name ||
                     pulldown === TypeEnum.Measurement_Type) {
                     hlLabel = true;
                 }
@@ -1670,7 +1672,7 @@ module EDDTableImport {
 
                     // if the cell will be ignored because no selection has been made for its row,
                     // change the background so it's obvious that it won't be used
-                    ignoreRow = (pulldown === this.DEFAULT_STEP3_PULLDOWN_VALUE) && !disableCell;
+                    ignoreRow = (pulldown === IdentifyStructuresStep.DEFAULT_PULLDOWN_VALUE) && !disableCell;
                     cellJQ.toggleClass('missingInterpretationRow', ignoreRow);
                     rowLabelCell.toggleClass('missingInterpretationRow', ignoreRow);
                 });
@@ -1683,6 +1685,7 @@ module EDDTableImport {
                 $(box).toggleClass('disabledInput', toggle);
             });
         }
+
 
         changedRowDataTypePulldown(index: number, value: number): void {
             var selected: number;
@@ -1764,6 +1767,7 @@ module EDDTableImport {
             this.interpretRowDataTypePulldowns();
         }
 
+
         // update state as a result of row datatype pulldown selection
         interpretRowDataTypePulldowns(): void {
             var grid = this.rawInputStep.getGrid();
@@ -1773,6 +1777,7 @@ module EDDTableImport {
             this.queueGraphRemake();
             this.nextStepCallback();
         }
+
 
         toggleTableRow(box: Element): void {
             var input: number, checkbox: JQuery, pulldown:JQuery;
@@ -1807,6 +1812,7 @@ module EDDTableImport {
             this.nextStepCallback();
         }
 
+
         resetEnabledFlagMarkers(): void {
 
             var grid = this.rawInputStep.getGrid();
@@ -1837,7 +1843,7 @@ module EDDTableImport {
             // This mode means we make a new "set" for each cell in the table, rather than
             // the standard method of making a new "set" for each column in the table.
             var singleMode: boolean;
-            var single: number, nonSingle: number, earliestName: number;
+            var singleCompatibleCount: number, singleNotCompatibleCount: number, earliestName: number;
 
             var grid = this.rawInputStep.getGrid();
             var gridRowMarkers = this.rawInputStep.gridRowMarkers;
@@ -1981,36 +1987,35 @@ module EDDTableImport {
             // If we're not using pre-processed records, we need to use the pulldown settings in this step
             // (usually set by the user) to determine what mode we're in.
 
-            single = 0;
-            nonSingle = 0;
+            singleCompatibleCount = 0;
+            singleNotCompatibleCount = 0;
             earliestName = null;
             // Look for the presence of "single measurement type" rows, and rows of all other single-item types
             grid.forEach((_, y: number): void => {
                 var pulldown: number;
-                if (this.activeRowFlags[y]) {
-                    pulldown = this.pulldownSettings[y];
-                    if (pulldown === TypeEnum.Measurement_Type || pulldown === TypeEnum.Protein_Name) {
-                        single++; // Single Measurement Name or Single Protein Name
-                    } else if (pulldown === TypeEnum.Metadata_Name || pulldown === TypeEnum.Timestamp) {
-                        nonSingle++;
-                    } else if (pulldown === TypeEnum.Assay_Line_Names && earliestName === null) {
-                        earliestName = y;
-                    }
+                if (!this.activeRowFlags[y]) { return; }    // Skip inactive rows
+                pulldown = this.pulldownSettings[y];
+                if (pulldown === TypeEnum.Measurement_Type || pulldown === TypeEnum.Protein_Name) {
+                    singleCompatibleCount++; // Single Measurement Name or Single Protein Name
+                } else if (pulldown === TypeEnum.Metadata_Name || pulldown === TypeEnum.Timestamp) {
+                    singleNotCompatibleCount++;
+                } else if (pulldown === TypeEnum.Assay_Line_Names && earliestName === null) {
+                    earliestName = y;
                 }
             });
 
             // Only use this mode if the table is entirely free of single-timestamp and
-            // single-metadata rows, and has at least one "single measurement" row, and at
+            // single-metadata rows, and has at least one "single measurement" or "single protein" row, and at
             // least one "Assay/Line names" row.
             // (Note that requirement of an "Assay/Line names" row prevents this mode from being
-            // enabled when the page is in 'Transcriptomics' or 'Proteomics' mode.)
-            singleMode = (single > 0 && nonSingle === 0 && earliestName !== null) ? true : false;
+            // enabled when the page is in 'Transcriptomics' mode.)
+            singleMode = (singleCompatibleCount > 0 && singleNotCompatibleCount === 0 && earliestName !== null) ? true : false;
 
             // A "set" for every cell of the table, with the timestamp to be determined later.
             if (singleMode) {
 
                 this.colObjects.forEach((_, c: number): void => {
-                    var cellValue: string, set: RawImportSet;
+                    var cellValue: string;
 
                     if (!this.activeColFlags[c]) {
                         return;
@@ -2027,6 +2032,7 @@ module EDDTableImport {
                     }
                     grid.forEach((row: string[], r: number): void => {
                         var pulldown: number, label: string, value: string, timestamp: number;
+                        var rawSet: RawImportSet;
                         if (!this.activeRowFlags[r] || !this.activeFlags[r][c]) {
                             return;
                         }
@@ -2052,15 +2058,16 @@ module EDDTableImport {
                             return;
                         }
 
-                        set = {
+                        rawSet = {
                             kind: this.selectMajorKindStep.interpretationMode,
                             line_name: null,
                             assay_name: cellValue,
                             measurement_name: m_name,
                             metadata_by_name: {},
-                            data: [[null, value]]
+                            data:[[null, value]]
                         };
-                        this.parsedSets.push(set);
+
+                        this.parsedSets.push(rawSet);
                     });
                 });
                 return;
@@ -2284,7 +2291,7 @@ module EDDTableImport {
 
             // if the current mode doesn't require input from this step, just return true
             // if the previous step had input
-            if(this.MODES_WITH_DATA_TABLE.indexOf(mode) < 0) {
+            if (IdentifyStructuresStep.MODES_WITH_DATA_TABLE.indexOf(mode) < 0) {
                 return this.rawInputStep.haveInputData;
             }
 
@@ -2297,7 +2304,7 @@ module EDDTableImport {
                 }
                 var inputSelector = this.pulldownObjects[row];
                 var comboBox = $(inputSelector);
-                if(comboBox.val() == this.DEFAULT_STEP3_PULLDOWN_VALUE) { //NOTE: typecomparison breaks it!
+                if(comboBox.val() == IdentifyStructuresStep.DEFAULT_PULLDOWN_VALUE) { // NOTE: typecomparison breaks it!
                     $('#missingStep3InputDiv').removeClass('off');
                     return false;
                 }
@@ -3097,6 +3104,7 @@ module EDDTableImport {
                     metaDisam: any,
                     measurementTypeId: string,
                     unitsId: string,
+                    resolvedData: (string | number)[][],
                     metaDataById: {[id:string]: string},
                     metaDataByName: {[name:string]: string},
                     metaDataPresent: boolean,
@@ -3150,7 +3158,7 @@ module EDDTableImport {
                             assaySelect = assayDisam.selectAssayJQElement;
                             // if we've disabled import for this assay, skip adding this
                             // measurement to the list
-                            if(assaySelect.is(':disabled')) {
+                            if (assaySelect.is(':disabled')) {
                                 return;  // continue to the next loop iteration parsedSets.forEach
                             }
                             assay_id = assaySelect.val();
@@ -3171,7 +3179,7 @@ module EDDTableImport {
                             unitsId = measDisam.unitsHiddenObj.val() || "1";
                             // If we've disabled import for measurements of this type, skip adding
                             // this measurement to the list
-                            if(measDisam.typeHiddenObj.is(':disabled')) {
+                            if (measDisam.typeHiddenObj.is(':disabled')) {
                                 return;  // continue to the next loop iteration parsedSets.forEach
                             }
                         }
@@ -3196,24 +3204,25 @@ module EDDTableImport {
                     }
                 });
 
+                resolvedData = set.data;    // Ideally we would clone this.
                 // If we haven't seen any timestamps during data accumulation, it means we need
                 // the user to pick a master timestamp.  In that situation, any given set will
                 // have at most one data point in it, with the timestamp in the data point set to
                 // 'null'.  Here we resolve it to a valid timestamp. If there is no master
                 // timestamp selected, we drop the data point, but make the set anyway since it
                 // might carry metadata.
-                if (!seenAnyTimestamps && set.data[0]) {
+                if (!seenAnyTimestamps && resolvedData[0]) {
                     if (!isNaN(masterTime)) {
-                        set.data[0][0] = masterTime;
+                        resolvedData[0][0] = masterTime;
                     } else {
-                        set.data = [];
+                        resolvedData = [];
                         droppedDatasetsForMissingTime++;
                     }
                 }
 
                 // If we have no data, and no metadata that survived resolving, don't make the set.
                 // (return continues to the next loop iteration)
-                if (set.data.length < 1 && !metaDataPresent) { return; }
+                if (resolvedData.length < 1 && !metaDataPresent) { return; }
 
                 resolvedSet = {
                     // Copy across the fields from the RawImportSet record
@@ -3222,7 +3231,7 @@ module EDDTableImport {
                     assay_name:        set.assay_name,
                     measurement_name:  set.measurement_name,
                     metadata_by_name:  metaDataByName,
-                    data:              set.data,
+                    data:              resolvedData,
                     // Add new disambiguation-specific fields
                     protocol_id:       masterProtocol,
                     line_id:           lineId,
@@ -3235,7 +3244,7 @@ module EDDTableImport {
                 resolvedSets.push(resolvedSet);
             });
 
-            if(resolvedSets.length === 0) {
+            if (resolvedSets.length === 0) {
                 this.errorMessages.push(new ImportMessage('All of the measurements and ' +
                     ' metadata have been excluded from import. Please select some data to' +
                     ' import.'));
@@ -3273,17 +3282,17 @@ module EDDTableImport {
             // loop over subsections that must have at least one input, making sure that all the
             // visible ones have at least one required input that isn't ignored.
             requiredInputSubsectionSelectors = ['#disambiguateAssaysSection', '#disambiguateLinesSection'];
-            for(let selector of requiredInputSubsectionSelectors) {
+            for (let selector of requiredInputSubsectionSelectors) {
                 var hasEnabledInputs;
                 subsection = $(selector);
 
-                if(subsection.hasClass('off')) {
+                if (subsection.hasClass('off')) {
                     continue;
                 }
 
                 sectionRequiredInputs = subsection.find('.' + TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS).toArray();
 
-                for(let input_id of sectionRequiredInputs) {
+                for (let input_id of sectionRequiredInputs) {
                     var input = $(input_id);
                     if((!input.val()) && !(input.prop('disabled') || input.hasClass('off'))) {
                         return false;
@@ -3293,7 +3302,7 @@ module EDDTableImport {
                 hasEnabledInputs = sectionRequiredInputs.length !== 0;
                 subsection.find('.' + TypeDisambiguationStep.STEP_4_SUBSECTION_REQUIRED_CLASS).toggleClass('off', hasEnabledInputs);
 
-                if(!hasEnabledInputs) {
+                if (!hasEnabledInputs) {
                     return false;
                 }
             }
@@ -3301,7 +3310,7 @@ module EDDTableImport {
             // test that all required inputs currently visible / enabled on the form have a valid
             // value. Note: this check is very similar to, but distinct from, the one above.
             var allRequiredInputs = $('.' + TypeDisambiguationStep.STEP_4_REQUIRED_INPUT_CLASS);
-            for(let input_id of allRequiredInputs.toArray()) {
+            for (let input_id of allRequiredInputs.toArray()) {
                 var input = $(input_id);
 
                 // if the input has no value, but wasn't hidden from the display by the 'off'
@@ -3545,7 +3554,6 @@ module EDDTableImport {
 
 
         static disambiguateAnAssayOrLine(assayOrLine: string, currentIndex: number):any {
-            // console.log("Start of TypeDisambiguationStep.disambiguateAnAssayOrLine()");
             var startTime = new Date();
             var selections: any, highest: number, assays: number[];
             selections = {
