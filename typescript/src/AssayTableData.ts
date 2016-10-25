@@ -870,6 +870,7 @@ module EDDTableImport {
             $('#step2textarea').toggleClass('off', missingStep1Inputs);
         }
 
+
         // Reset and hide the info box that appears when a file is dropped,
         // and reveal the text entry area
         // This also clears the "processedSetsAvailable" flag because it assumes that
@@ -1199,18 +1200,16 @@ module EDDTableImport {
         selectMajorKindStep: SelectMajorKindStep;
         nextStepCallback: any;
 
-        interpretRowTypePullDownTImerID: number;
-
         warningMessages:ImportMessage[];
         errorMessages:ImportMessage[];
 
-        MODES_WITH_DATA_TABLE: string[]; // Step 1 modes in which the data table gets displayed
-        MODES_WITH_GRAPH: string[];
+        static MODES_WITH_DATA_TABLE: string[] = ['std', 'tr', 'pr', 'mdv']; // Step 1 modes in which the data table gets displayed
+        static MODES_WITH_GRAPH: string[] = ['std', 'biolector', 'hplc'];
 
-        DISABLED_PULLDOWN_LABEL:string = '--';
-        DEFAULT_STEP3_PULLDOWN_VALUE:number;
+        static DISABLED_PULLDOWN_LABEL: string = '--';
+        static DEFAULT_PULLDOWN_VALUE: number = 0;
 
-        DUPLICATE_LEGEND_THRESHOLD:number = 10;
+        static DUPLICATE_LEGEND_THRESHOLD:number = 10;
 
 
         constructor(selectMajorKindStep: SelectMajorKindStep, rawInputStep: RawInputStep, nextStepCallback: any) {
@@ -1261,11 +1260,8 @@ module EDDTableImport {
                 .on('dblclick', 'td', this.singleValueDisablerF.bind(this));
 
             $('#resetstep3').on('click', this.resetEnabledFlagMarkers.bind(this));
-
-            this.MODES_WITH_DATA_TABLE = ['std', 'tr', 'pr', 'mdv'];
-            this.MODES_WITH_GRAPH = ['std', 'biolector', 'hplc'];
-            this.DEFAULT_STEP3_PULLDOWN_VALUE = 0;
         }
+
 
         // called to inform this step that the immediately preceding step has begun processing
         // its inputs. The assumption is that the processing is taking place until the next call to
@@ -1275,6 +1271,7 @@ module EDDTableImport {
             $('#enterDataInStep2').addClass('off');
             $('#dataTableDiv').find("input,button,textarea,select").attr("disabled", "disabled");
         }
+
 
         previousStepChanged(): void {
             var prevStepComplete: boolean,
@@ -1292,7 +1289,7 @@ module EDDTableImport {
 
             mode = this.selectMajorKindStep.interpretationMode;
             graph = $('#graphDiv');
-            this.graphEnabled = this.MODES_WITH_GRAPH.indexOf(mode) >= 0;
+            this.graphEnabled = IdentifyStructuresStep.MODES_WITH_GRAPH.indexOf(mode) >= 0;
             showGraph = this.graphEnabled && prevStepComplete;
             graph.toggleClass('off', !showGraph);
 
@@ -1303,7 +1300,9 @@ module EDDTableImport {
             // Empty the data table whether we remake it or not...
             $('#dataTableDiv').empty();
 
-            showDataTable = this.MODES_WITH_DATA_TABLE.indexOf(mode) >= 0;
+            showDataTable = IdentifyStructuresStep.MODES_WITH_DATA_TABLE.indexOf(mode) >= 0;
+            $('#step3UpperLegend').toggleClass('off', !showDataTable);
+
             if (showDataTable) {
                 gridRowMarkers.forEach((value: string, i: number): void => {
                     var type: any;
@@ -1415,6 +1414,7 @@ module EDDTableImport {
             });
         }
 
+
         constructDataTable(mode: string, grid: any, gridRowMarkers: any): void {
             var body: HTMLTableElement,
                 colgroup: JQuery,
@@ -1435,7 +1435,7 @@ module EDDTableImport {
             controlCols = ['checkbox', 'pulldown', 'label'];
             if (mode === 'tr') {
                 pulldownOptions = [
-                    [ this.DISABLED_PULLDOWN_LABEL, this.DEFAULT_STEP3_PULLDOWN_VALUE],
+                    [ IdentifyStructuresStep.DISABLED_PULLDOWN_LABEL, IdentifyStructuresStep.DEFAULT_PULLDOWN_VALUE],
                     ['Entire Row Is...', [
                             ['Gene Names', TypeEnum.Gene_Names],
                             ['RPKM Values', TypeEnum.RPKM_Values]
@@ -1444,7 +1444,7 @@ module EDDTableImport {
                 ];
             } else if (mode === 'pr') {
                 pulldownOptions = [
-                    [ this.DISABLED_PULLDOWN_LABEL, this.DEFAULT_STEP3_PULLDOWN_VALUE],
+                    [ IdentifyStructuresStep.DISABLED_PULLDOWN_LABEL, IdentifyStructuresStep.DEFAULT_PULLDOWN_VALUE],
                     ['Entire Row Is...', [
                             ['Assay/Line Names', TypeEnum.Assay_Line_Names],
                         ]
@@ -1456,7 +1456,7 @@ module EDDTableImport {
                 ];
             } else {
                 pulldownOptions = [
-                    [ this.DISABLED_PULLDOWN_LABEL, this.DEFAULT_STEP3_PULLDOWN_VALUE],
+                    [ IdentifyStructuresStep.DISABLED_PULLDOWN_LABEL, IdentifyStructuresStep.DEFAULT_PULLDOWN_VALUE],
                     ['Entire Row Is...', [
                             ['Assay/Line Names', TypeEnum.Assay_Line_Names],
                             ['Measurement Types', TypeEnum.Measurement_Types]
@@ -1585,8 +1585,8 @@ module EDDTableImport {
 
             lowerLegendId = 'step3LowerLegend';
             lowerLegend = $('#' + lowerLegendId);
-            if(grid.length > this.DUPLICATE_LEGEND_THRESHOLD) {
-                if(!lowerLegend.length) {
+            if (grid.length > IdentifyStructuresStep.DUPLICATE_LEGEND_THRESHOLD) {
+                if (!lowerLegend.length) {
                     $('#step3UpperLegend')
                         .clone()
                         .attr('id', lowerLegendId)
@@ -1672,7 +1672,7 @@ module EDDTableImport {
 
                     // if the cell will be ignored because no selection has been made for its row,
                     // change the background so it's obvious that it won't be used
-                    ignoreRow = (pulldown === this.DEFAULT_STEP3_PULLDOWN_VALUE) && !disableCell;
+                    ignoreRow = (pulldown === IdentifyStructuresStep.DEFAULT_PULLDOWN_VALUE) && !disableCell;
                     cellJQ.toggleClass('missingInterpretationRow', ignoreRow);
                     rowLabelCell.toggleClass('missingInterpretationRow', ignoreRow);
                 });
@@ -1685,6 +1685,7 @@ module EDDTableImport {
                 $(box).toggleClass('disabledInput', toggle);
             });
         }
+
 
         changedRowDataTypePulldown(index: number, value: number): void {
             var selected: number;
@@ -1766,6 +1767,7 @@ module EDDTableImport {
             this.interpretRowDataTypePulldowns();
         }
 
+
         // update state as a result of row datatype pulldown selection
         interpretRowDataTypePulldowns(): void {
             var grid = this.rawInputStep.getGrid();
@@ -1775,6 +1777,7 @@ module EDDTableImport {
             this.queueGraphRemake();
             this.nextStepCallback();
         }
+
 
         toggleTableRow(box: Element): void {
             var input: number, checkbox: JQuery, pulldown:JQuery;
@@ -1808,6 +1811,7 @@ module EDDTableImport {
             this.queueGraphRemake();
             this.nextStepCallback();
         }
+
 
         resetEnabledFlagMarkers(): void {
 
@@ -2287,7 +2291,7 @@ module EDDTableImport {
 
             // if the current mode doesn't require input from this step, just return true
             // if the previous step had input
-            if(this.MODES_WITH_DATA_TABLE.indexOf(mode) < 0) {
+            if (IdentifyStructuresStep.MODES_WITH_DATA_TABLE.indexOf(mode) < 0) {
                 return this.rawInputStep.haveInputData;
             }
 
@@ -2300,7 +2304,7 @@ module EDDTableImport {
                 }
                 var inputSelector = this.pulldownObjects[row];
                 var comboBox = $(inputSelector);
-                if(comboBox.val() == this.DEFAULT_STEP3_PULLDOWN_VALUE) { //NOTE: typecomparison breaks it!
+                if(comboBox.val() == IdentifyStructuresStep.DEFAULT_PULLDOWN_VALUE) { // NOTE: typecomparison breaks it!
                     $('#missingStep3InputDiv').removeClass('off');
                     return false;
                 }

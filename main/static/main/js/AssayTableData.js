@@ -898,8 +898,6 @@ var EDDTableImport;
     // Interpret the current grid and the settings on the current table into EDD-friendly sets.
     var IdentifyStructuresStep = (function () {
         function IdentifyStructuresStep(selectMajorKindStep, rawInputStep, nextStepCallback) {
-            this.DISABLED_PULLDOWN_LABEL = '--';
-            this.DUPLICATE_LEGEND_THRESHOLD = 10;
             this.rawInputStep = rawInputStep;
             this.rowLabelCells = [];
             this.colCheckboxCells = [];
@@ -937,9 +935,6 @@ var EDDTableImport;
                 .on('mouseover mouseout', 'td', this.highlighterF.bind(this))
                 .on('dblclick', 'td', this.singleValueDisablerF.bind(this));
             $('#resetstep3').on('click', this.resetEnabledFlagMarkers.bind(this));
-            this.MODES_WITH_DATA_TABLE = ['std', 'tr', 'pr', 'mdv'];
-            this.MODES_WITH_GRAPH = ['std', 'biolector', 'hplc'];
-            this.DEFAULT_STEP3_PULLDOWN_VALUE = 0;
         }
         // called to inform this step that the immediately preceding step has begun processing
         // its inputs. The assumption is that the processing is taking place until the next call to
@@ -958,7 +953,7 @@ var EDDTableImport;
             $('#dataTableDiv').toggleClass('off', !prevStepComplete);
             mode = this.selectMajorKindStep.interpretationMode;
             graph = $('#graphDiv');
-            this.graphEnabled = this.MODES_WITH_GRAPH.indexOf(mode) >= 0;
+            this.graphEnabled = IdentifyStructuresStep.MODES_WITH_GRAPH.indexOf(mode) >= 0;
             showGraph = this.graphEnabled && prevStepComplete;
             graph.toggleClass('off', !showGraph);
             gridRowMarkers = this.rawInputStep.gridRowMarkers;
@@ -966,7 +961,8 @@ var EDDTableImport;
             ignoreDataGaps = this.rawInputStep.ignoreDataGaps;
             // Empty the data table whether we remake it or not...
             $('#dataTableDiv').empty();
-            showDataTable = this.MODES_WITH_DATA_TABLE.indexOf(mode) >= 0;
+            showDataTable = IdentifyStructuresStep.MODES_WITH_DATA_TABLE.indexOf(mode) >= 0;
+            $('#step3UpperLegend').toggleClass('off', !showDataTable);
             if (showDataTable) {
                 gridRowMarkers.forEach(function (value, i) {
                     var type;
@@ -1082,7 +1078,7 @@ var EDDTableImport;
             controlCols = ['checkbox', 'pulldown', 'label'];
             if (mode === 'tr') {
                 pulldownOptions = [
-                    [this.DISABLED_PULLDOWN_LABEL, this.DEFAULT_STEP3_PULLDOWN_VALUE],
+                    [IdentifyStructuresStep.DISABLED_PULLDOWN_LABEL, IdentifyStructuresStep.DEFAULT_PULLDOWN_VALUE],
                     ['Entire Row Is...', [
                             ['Gene Names', TypeEnum.Gene_Names],
                             ['RPKM Values', TypeEnum.RPKM_Values]
@@ -1092,7 +1088,7 @@ var EDDTableImport;
             }
             else if (mode === 'pr') {
                 pulldownOptions = [
-                    [this.DISABLED_PULLDOWN_LABEL, this.DEFAULT_STEP3_PULLDOWN_VALUE],
+                    [IdentifyStructuresStep.DISABLED_PULLDOWN_LABEL, IdentifyStructuresStep.DEFAULT_PULLDOWN_VALUE],
                     ['Entire Row Is...', [
                             ['Assay/Line Names', TypeEnum.Assay_Line_Names],
                         ]
@@ -1105,7 +1101,7 @@ var EDDTableImport;
             }
             else {
                 pulldownOptions = [
-                    [this.DISABLED_PULLDOWN_LABEL, this.DEFAULT_STEP3_PULLDOWN_VALUE],
+                    [IdentifyStructuresStep.DISABLED_PULLDOWN_LABEL, IdentifyStructuresStep.DEFAULT_PULLDOWN_VALUE],
                     ['Entire Row Is...', [
                             ['Assay/Line Names', TypeEnum.Assay_Line_Names],
                             ['Measurement Types', TypeEnum.Measurement_Types]
@@ -1220,7 +1216,7 @@ var EDDTableImport;
             });
             lowerLegendId = 'step3LowerLegend';
             lowerLegend = $('#' + lowerLegendId);
-            if (grid.length > this.DUPLICATE_LEGEND_THRESHOLD) {
+            if (grid.length > IdentifyStructuresStep.DUPLICATE_LEGEND_THRESHOLD) {
                 if (!lowerLegend.length) {
                     $('#step3UpperLegend')
                         .clone()
@@ -1299,7 +1295,7 @@ var EDDTableImport;
                     cellJQ.toggleClass('disabledInput', disableCell);
                     // if the cell will be ignored because no selection has been made for its row,
                     // change the background so it's obvious that it won't be used
-                    ignoreRow = (pulldown === _this.DEFAULT_STEP3_PULLDOWN_VALUE) && !disableCell;
+                    ignoreRow = (pulldown === IdentifyStructuresStep.DEFAULT_PULLDOWN_VALUE) && !disableCell;
                     cellJQ.toggleClass('missingInterpretationRow', ignoreRow);
                     rowLabelCell.toggleClass('missingInterpretationRow', ignoreRow);
                 });
@@ -1864,7 +1860,7 @@ var EDDTableImport;
             var mode = this.selectMajorKindStep.interpretationMode;
             // if the current mode doesn't require input from this step, just return true
             // if the previous step had input
-            if (this.MODES_WITH_DATA_TABLE.indexOf(mode) < 0) {
+            if (IdentifyStructuresStep.MODES_WITH_DATA_TABLE.indexOf(mode) < 0) {
                 return this.rawInputStep.haveInputData;
             }
             // otherwise, require user input for every non-ignored row
@@ -1875,7 +1871,7 @@ var EDDTableImport;
                 }
                 var inputSelector = this.pulldownObjects[row];
                 var comboBox = $(inputSelector);
-                if (comboBox.val() == this.DEFAULT_STEP3_PULLDOWN_VALUE) {
+                if (comboBox.val() == IdentifyStructuresStep.DEFAULT_PULLDOWN_VALUE) {
                     $('#missingStep3InputDiv').removeClass('off');
                     return false;
                 }
@@ -1883,6 +1879,11 @@ var EDDTableImport;
             $('#missingStep3InputDiv').addClass('off');
             return this.parsedSets.length > 0;
         };
+        IdentifyStructuresStep.MODES_WITH_DATA_TABLE = ['std', 'tr', 'pr', 'mdv']; // Step 1 modes in which the data table gets displayed
+        IdentifyStructuresStep.MODES_WITH_GRAPH = ['std', 'biolector', 'hplc'];
+        IdentifyStructuresStep.DISABLED_PULLDOWN_LABEL = '--';
+        IdentifyStructuresStep.DEFAULT_PULLDOWN_VALUE = 0;
+        IdentifyStructuresStep.DUPLICATE_LEGEND_THRESHOLD = 10;
         return IdentifyStructuresStep;
     }());
     EDDTableImport.IdentifyStructuresStep = IdentifyStructuresStep;
