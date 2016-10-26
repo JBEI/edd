@@ -133,35 +133,3 @@ function filterTimePoints(data, timePoint) {
     });
     return newData;
 }
-
-function addButtons(graphSvg, dataByUnit, timePoints, type) {
-    _.each(timePoints, function(point) {
-                $(graphSvg).append('<button>' + point + '</button>').addClass(point).on('click', function() {
-                    var newPoints = filterTimePoints(dataByUnit, point);
-                    data = d3.nest(type)
-                    .key(function (d) {
-                        return d[type];
-                    })
-                    .key(function (d) {
-                        return parseFloat(d.x);
-                    })
-                    .entries(newPoints);
-                    return
-                })
-            });
-}
-
-function getTimePoints(getTimes) {
-     var obj = {};
-            $.each(getTimes, function(key, value) {
-
-                $.each(value, function(key, value) {
-                    if (obj.hasOwnProperty(key)) {
-                        obj[key] += 1;
-                    } else {
-                        obj[key] = 0;
-                    }
-                });
-            });
-    return obj;
-}
