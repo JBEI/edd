@@ -453,7 +453,8 @@ class SbmlExport(object):
                         combined += ['-'] * (13 - len(magnitudes))
                         name = m.measurement_type.short_name
                         value = '\t'.join(combined)
-                        notes[m.assay.protocol.name].append('%s\tM-0\t%s' % (name, value))
+                        # TODO: find a better way to store/update this magic string
+                        notes['LCMSLabelData'].append(' %s\tM-0\t%s' % (name, value))
                     else:
                         logger.warning(
                             "No vector data found for %(measurement)s at %(time)s",
