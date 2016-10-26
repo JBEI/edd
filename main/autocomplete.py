@@ -84,15 +84,15 @@ def search_metadata(request, context):
         'Line', and 'Study'. """
     term = request.GET.get('term', '')
     re_term = re.escape(term)
-    filters = [
+    term_filters = [
         Q(type_name__iregex=re_term),
         Q(group__group_name__iregex=re_term),
-        AUTOCOMPLETE_METADATA_LOOKUP.get(context, Q()),
     ]
-    q_filter = reduce(operator.or_, filters, Q())
-    found = edd_models.MetadataType.objects.filter(q_filter)[:DEFAULT_RESULT_COUNT]
+    type_filter = AUTOCOMPLETE_METADATA_LOOKUP.get(context, Q())
+    q_filter = reduce(operator.or_, term_filters, Q()) & type_filter
+    found_qs = edd_models.MetadataType.objects.filter(q_filter).select_related('group')
     return JsonResponse({
-        'rows': [item.to_json() for item in found],
+        'rows': [item.to_json() for item in found_qs[:DEFAULT_RESULT_COUNT]],
     })
 
 
