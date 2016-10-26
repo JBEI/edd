@@ -3511,7 +3511,7 @@ module EDDTableImport {
             var lineNameInput = $('<input type="text" class="autocomp ui-autocomplete-input">')
                 .data('setByUser', false)
                 .attr('id', lineInputId)
-                .val("(Create New)")
+                .attr('placeholder', '(Create New)')
                 .addClass(TypeDisambiguationStep.STEP_4_USER_INPUT_CLASS)
                 .appendTo(parentElement);
 
