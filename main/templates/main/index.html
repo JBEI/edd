@@ -38,6 +38,11 @@
         </div>
     </div>
     {% endif %}
+    <p>Last viewed:
+    {% for study in latest_viewed_studies %}
+        <a href="{% url 'main:detail' study.id %}">{{ study.name }}</a>{% if not forloop.last %},{% endif %}
+    {% endfor %}
+    </p>
     <div class="pageSection">
         <table id="studiesTable"></table>
     </div>

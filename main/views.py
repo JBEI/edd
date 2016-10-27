@@ -25,7 +25,7 @@ from django.utils.translation import ugettext_lazy as _
 from django.views import generic
 from django.views.decorators.csrf import ensure_csrf_cookie
 
-from . import autocomplete
+from . import autocomplete, redis
 from .importer import (
     import_rna_seq, import_rnaseq_edgepro, interpret_edgepro_data,
     interpret_raw_rna_seq_data,
@@ -92,6 +92,7 @@ class StudyCreateView(generic.edit.CreateView):
     View for request to create a study, and the index page.
     """
     form_class = CreateStudyForm
+    model = Study
     template_name = 'main/create_study.html'
 
     def form_valid(self, form):
@@ -119,6 +120,19 @@ class StudyCreateView(generic.edit.CreateView):
 class StudyIndexView(StudyCreateView):
     template_name = 'main/index.html'
 
+    def get_context_data(self, **kwargs):
+        context = super(StudyIndexView, self).get_context_data(**kwargs)
+        lvs = redis.LatestViewedStudies(self.request.user)
+        # just doing filter will lose the order
+        latest_qs = self.get_queryset().filter(pk__in=lvs)
+        # so create a dict of string-casted pk to study
+        latest_by_pk = {str(s.pk): s for s in latest_qs}
+        # and a mapping of lvs to retain order
+        latest = map(lambda pk: latest_by_pk.get(pk, None), lvs)
+        # filter out the Nones
+        context['latest_viewed_studies'] = filter(bool, latest)
+        return context
+
 
 class StudyDetailView(generic.DetailView):
     """ Study details page, displays line/assay data. """
@@ -127,6 +141,9 @@ class StudyDetailView(generic.DetailView):
 
     def get_context_data(self, **kwargs):
         context = super(StudyDetailView, self).get_context_data(**kwargs)
+        instance = self.get_object()
+        lvs = redis.LatestViewedStudies(self.request.user)
+        lvs.viewed_study(instance)
         context['edit_study'] = CreateStudyForm(instance=self.get_object(), prefix='study')
         context['new_assay'] = AssayForm(prefix='assay')
         context['new_attach'] = CreateAttachmentForm()
