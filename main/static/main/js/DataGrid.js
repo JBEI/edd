@@ -38,7 +38,8 @@ var DataGrid = (function () {
             .attr({ 'cellpadding': 0, 'cellspacing': 0 })
             .addClass('dataTable sortable dragboxes hastablecontrols')
             .append(tableBody);
-        var tableHeaderRow = $(document.createElement("tr")).addClass('header');
+        var tHeadRow = $(document.createElement('thead'));
+        var tableHeaderRow = $(document.createElement("tr")).addClass('header').appendTo(tHeadRow);
         var tableHeaderCell = $(this._tableHeaderCell = document.createElement("th"))
             .appendTo(tableHeaderRow);
         if (dataGridSpec.tableSpec.name) {
@@ -51,12 +52,12 @@ var DataGrid = (function () {
         }
         // If we're asked to show the header, then add it to the table.  Otherwise we will leave it off.
         if (dataGridSpec.tableSpec.showHeader) {
-            tableBody.append(tableHeaderRow);
+            tHeadRow.insertBefore(tableBody);
         }
         // Apply the default column visibility settings.
         this.prepareColumnVisibility();
         var headerRows = this._headerRows = this._buildTableHeaders();
-        this._headerRows.forEach(function (v) { return tableBody.append(v); });
+        this._headerRows.forEach(function (v) { return tHeadRow.append(v); });
         setTimeout(function () { return _this._initializeTableData(); }, 1);
     }
     // Breaking up the initial table creation into two stages allows the browser to render a preliminary
@@ -385,13 +386,9 @@ var DataGrid = (function () {
         // Remove all the grouping title rows from the table as well, if they were there
         var rowGroupSpec = this._spec.tableRowGroupSpec;
         rowGroupSpec.forEach(function (rowGroup) {
-            var r = rowGroup.disclosedTitleRow;
+            var r = rowGroup.replicateGroupTable;
             if (r.parentNode) {
-                _this._tableBody.removeChild(r);
-            }
-            r = rowGroup.undisclosedTitleRow;
-            if (r.parentNode) {
-                _this._tableBody.removeChild(r);
+                r.parentNode.removeChild(r);
             }
             // While we're here, reset the member record arrays.  We need to rebuild them post-filtering.
             rowGroup.memberRecords = [];
@@ -432,33 +429,33 @@ var DataGrid = (function () {
                 var rowGroup = rowGroupSpec[_this._spec.getRowGroupMembership(s)];
                 rowGroup.memberRecords.push(_this._recordElements[s]);
             });
+            //iterate over the different replicate groups
+            _.each(rowGroupSpec, function (grouping) {
+                //find the assay ids associated with the replicate group
+                var replicateIds = _this._findReplicateLines(_this._groupReplicates(), grouping);
+                //find the lines associated with the replicate group
+                var lines = _this.addReplicateRows(replicateIds);
+                _.each(lines, function (line) {
+                    //hide the lines associated with the replicate group
+                    $(line).hide();
+                });
+            });
             rowGroupSpec.forEach(function (rowGroup) {
-                if (rowGroup.memberRecords.length < 1) {
-                    // If there's nothing in the group (may have all been filtered out) skip it
-                    return;
-                }
                 striping = 1 - striping;
+                frag.appendChild(rowGroup.replicateGroupTable);
                 if (_this._spec.tableSpec.applyStriping) {
-                    rowGroup.undisclosedTitleRowJQ.add(rowGroup.disclosedTitleRowJQ)
+                    rowGroup.replicateGroupTitleRowJQ
                         .removeClass(stripeStylesJoin).addClass(stripeStyles[striping]).end();
                 }
-                if (!rowGroup.disclosed) {
-                    // If the group is not disclosed, just print the "undisclosed" title row, and skip the
-                    // rows themselves (but invert the striping value so the striping pattern isn't disturbed)
-                    frag.appendChild(rowGroup.undisclosedTitleRow);
-                    return;
-                }
-                frag.appendChild(rowGroup.disclosedTitleRow);
-                rowGroup.memberRecords.forEach(function (record) {
-                    striping = 1 - striping;
-                    if (_this._spec.tableSpec.applyStriping) {
-                        record.applyStriping(striping);
-                    }
-                    var rows = record.getElements();
-                    rows.forEach(function (row) {
-                        frag.appendChild(row);
-                    });
-                });
+            });
+            $(frag).insertBefore($(this._tableBody));
+        }
+        //hacky way to show lines that were hidden from grouping replicates
+        if ($('#linesGroupStudyReplicatesCB0').prop('checked') === false) {
+            var lines = $(frag).children();
+            _.each(lines, function (line) {
+                $(line).removeClass('replicateLineShow');
+                $(line).show();
             });
         }
         // Remember that we last sorted by this column
@@ -630,23 +627,45 @@ var DataGrid = (function () {
         var _this = this;
         this._spec.tableRowGroupSpec.forEach(function (oneGroup, index) {
             oneGroup.disclosed = true;
+            var replicates = _this._groupReplicates();
+            var replicateIds = _this._findReplicateLines(replicates, oneGroup);
             oneGroup.memberRecords = [];
-            var row = oneGroup.disclosedTitleRowJQ = $(oneGroup.disclosedTitleRow = document.createElement("tr"))
-                .addClass('groupHeader').click(function () { return _this._collapseRowGroup(index); });
-            var cell = $(document.createElement("td")).appendTo(row);
-            $(document.createElement("div")).appendTo(cell).text("\u25BA " + oneGroup.name);
-            if (_this._totalColumnCount > 1) {
-                cell.attr('colspan', _this._totalColumnCount);
-            }
-            row = oneGroup.undisclosedTitleRowJQ = $(oneGroup.undisclosedTitleRow = document.createElement("tr"))
-                .addClass('groupHeader').click(function () { return _this._expandRowGroup(index); });
-            cell = $(document.createElement("td")).appendTo(row);
-            $(document.createElement("div")).appendTo(cell).text("\u25BC " + oneGroup.name);
+            var clicks = true;
+            var table = oneGroup.replicateGroupTableJQ = $(oneGroup.replicateGroupTable = document.createElement("tbody"))
+                .addClass('groupHeaderTable');
+            var row = oneGroup.replicateGroupTitleRowJQ = $(oneGroup.replicateGroupTitleRow = document.createElement("tr"))
+                .appendTo(table).addClass('groupHeader').click(function () {
+                if (clicks) {
+                    _this._expandRowGroup(index, replicateIds);
+                    clicks = false;
+                }
+                else {
+                    _this._collapseRowGroup(index, replicateIds);
+                    clicks = true;
+                }
+            });
+            var cell = $(document.createElement("td")).appendTo(row).text(" " + oneGroup.name).addClass('groupReplicateRow');
             if (_this._totalColumnCount > 1) {
                 cell.attr('colspan', _this._totalColumnCount);
             }
         });
         return this;
+    };
+    /**
+     * this function returns the lines associated with a replicate group
+     * @param replicates - array of ids associated with replicate
+     * @param oneGroup is the replicate name
+     * @returns {Array} of lines that are associate with the said replicate name
+     * @private
+     */
+    DataGrid.prototype._findReplicateLines = function (replicates, oneGroup) {
+        var groupedIds = []; //returns ids associated with replicate id.
+        $.each(replicates, function (key) {
+            if (EDDData.Lines[replicates[key]].name === oneGroup.name) {
+                groupedIds.push(key);
+            }
+        });
+        return groupedIds;
     };
     // Handle the "sortable" CSS class in a table.
     DataGrid.prototype._prepareSortable = function () {
@@ -661,17 +680,63 @@ var DataGrid = (function () {
         $(this._optionsLabel).removeClass('pulldownMenuLabelOn').addClass('pulldownMenuLabelOff');
         $(this._optionsMenuBlockElement).addClass('off');
     };
-    DataGrid.prototype._collapseRowGroup = function (groupIndex) {
+    /**
+     * this function hides the lines and collapses the replicate dropdown
+     * @param groupIndex
+     * @param replicateIds
+     * @private
+     */
+    DataGrid.prototype._collapseRowGroup = function (groupIndex, replicateIds) {
         var _this = this;
         var rowGroup = this._spec.tableRowGroupSpec[groupIndex];
         rowGroup.disclosed = false;
+        var lines = this.addReplicateRows(replicateIds);
+        $(rowGroup.replicateGroupTitleRow).removeClass('replicate');
+        _.each(lines, function (line) {
+            $(line).hide();
+        });
         this.scheduleTimer('arrangeTableDataRows', function () { return _this.arrangeTableDataRows(); });
     };
-    DataGrid.prototype._expandRowGroup = function (groupIndex) {
-        var _this = this;
+    /**
+     * this function opens the dropdown on a replicate group and shows the lines associated with
+     * the replicate group
+     * @param groupIndex
+     * @param replicateIds
+     * @private
+     */
+    DataGrid.prototype._expandRowGroup = function (groupIndex, replicateIds) {
         var rowGroup = this._spec.tableRowGroupSpec[groupIndex];
         rowGroup.disclosed = true;
-        this.scheduleTimer('arrangeTableDataRows', function () { return _this.arrangeTableDataRows(); });
+        var lines = this.addReplicateRows(replicateIds);
+        $(rowGroup.replicateGroupTitleRow).addClass('replicate');
+        _.each(lines, function (line) {
+            $(line).show().addClass('replicateLineShow');
+            $(rowGroup.replicateGroupTitleRow).after(line);
+        });
+    };
+    /**
+     * this function finds the lines associated with their replicate group id.
+     * @returns {} line id as key and the replicate id the line is associated with
+     * @private
+     */
+    DataGrid.prototype._groupReplicates = function () {
+        var lines = EDDData.Lines;
+        var rows = {};
+        $.each(lines, function (key) {
+            if (lines[key].replicate) {
+                rows[lines[key].id] = lines[key].replicate;
+            }
+        });
+        return rows;
+    };
+    /**
+     * this function gets the line elements associated with a replicate id
+     * @param idArray
+     * @returns {Array}
+     */
+    DataGrid.prototype.addReplicateRows = function (idArray) {
+        var _this = this;
+        return $.map(idArray, function (id) { return $('[value=' + id + ']', _this._table).parents('tr').filter(':first'); });
     };
     DataGrid.prototype.turnOnRowGrouping = function () {
         var _this = this;
