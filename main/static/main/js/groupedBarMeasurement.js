@@ -176,17 +176,17 @@
             .entries(meas[index].values);
 
 
-        //hide values if there are different time points
+        // //hide values if there are different time points
         if (type != 'x') {
             var nestedByTime = findAllTime(data);
             var howManyToInsertObj = findMaxTimeDifference(nestedByTime);
             var max = Math.max.apply(null, _.values(howManyToInsertObj));
             var graphSvg = $(typeClass[type])[0];
 
-            if (max > 0) {
+            if (max > 1) {
                 $('.tooMuchData').remove();
-                $(graphSvg).prepend("<p class='tooMuchData'>Too many missing data fields</p>" +
-                    "<p class=' tooMuchData'>Recommend filtering by protocol</p>");
+                var rects = d3.selectAll(typeClass[type] +  ' rect')[0];
+                StudyHelper.svgWidth(graphSvg, rects);
                  //get word length
             wordLength = getSum(typeNames);
             d3.selectAll(typeClass[type] + ' .x.axis text').remove();
@@ -314,4 +314,5 @@
            d3.selectAll(typeClass[type] + ' .x.axis text').remove()
         }
     }
-}
+
+ }
