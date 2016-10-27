@@ -4,21 +4,28 @@
 #   example overrides in configuration to use in development environments -- will be created from
 #   running the init-config.sh script. Change the values here to alter the settings used when
 #   launching with the `docker-compose` commands.
-# *********************
+
 # SECURITY:
-# **********************
 # Note that defaults configured in this file MUST keep default EDD installs secure so that clients
-# who install EDD out-of-the-box aren't introducing security risks or exposing services unintentionally.
-#
-#
+#   who install EDD out-of-the-box aren't introducing security risks or exposing services
+#   unintentionally.
+
 # To use the docker-compose.yml file without these overrides, launch Docker Compose like this:
 #   docker-compose -f docker-compose.yml {COMMAND}
+
 # To use the docker-compose.yml file with different overrides, launch Docker Compose like this:
 #   docker-compose -f docker-compose.yml -f different.yml {COMMAND}
+
 # Order matters when specifying overrides! Any scalar values will use the last specified value,
-# while any lists or dictionaries are merged.
+#   while any lists or dictionaries are merged.
+
 version: '2'
+
 services:
+
+# Uncomment a service block to override the settings for that block. Examples below override
+#   settings to expose service ports to the Docker host.
+
 #  postgres:
 #    # Make the postgres 5432 port available on the Docker host external network
 #    ports:
@@ -26,7 +33,7 @@ services:
 #  redis:
 #    # Make the redis 6379 port available on the Docker host external network
 #    ports:
-#      - '6379:6379'|
+#      - '6379:6379'
 #  solr:
 #    # Make the solr 8983 port available on the Docker host external network
 #    ports:
@@ -39,20 +46,41 @@ services:
 #    # Make the flower 5555 port available on the Docker host external network
 #    ports:
 #      - '5555:5555'
-#  edd:
-#    # Add EDD_DEBUG=true to the base EDD container environment
-#    environment:
-#      EDD_DEBUG: "true"
-  appserver:
-    # Only include the POSTGRES_DUMP variables in the development override file
+
+# Override settings for EDD base image
+  edd:
     environment:
-      POSTGRES_DUMP_FILE: ${POSTGRES_DUMP_FILE}
-      POSTGRES_DUMP_URL: ${POSTGRES_DUMP_URL}
-#    # Make the http 8000 port available on the Docker host external network
+
+# Override settings for EDD application container(s).
+  appserver:
+    environment:
+
+      # Set the deployment environment flag. Supported values are DEVELOPMENT, PRODUCTION, TEST;
+      #   or any of those strings followed by an arbitrary suffix.
+      # DEVELOPMENT prefix will run the django development server and auto-restart when code
+      #   changes are detected (NOT SUITABLE FOR PRODUCTION).
+      # DEVELOPMENT/TEST/INTEGRATION-prefixed values will also create obvious labeling differences
+      #   in the UI to make them easy to distinguish, and to help prevent accidental data changes
+      #   in production during the testing process.
+      EDD_DEPLOYMENT_ENVIRONMENT: "TEST"
+      # Uncomment below to run EDD in debug mode
+      # EDD_DEBUG: "true"
+
+      # The POSTGRES_DUMP variables control cloning of a database prior to EDD launch.
+      POSTGRES_DUMP_FILE: ''
+      POSTGRES_DUMP_URL: ''
+      # Uncomment below lines to copy values from environment on launch, rather than hard-coding
+      # POSTGRES_DUMP_FILE: ${POSTGRES_DUMP_FILE}
+      # POSTGRES_DUMP_URL: ${POSTGRES_DUMP_URL}
+
+# Uncomment the below section to specify how ports for the main application server are exposed.      
 #    ports:
+#      # Make the http 8000 port available on the Docker host external network
 #      - '8000:8000'
 #      # Alternate configuration: make appserver port 8000 accessible to Docker localhost:8400
 #      - '127.0.0.1:8400:8000'
+
+# Override settings for the nginx webserver and proxy
   nginx:
     # Make the http/https ports available on the Docker host external network
     ports:
