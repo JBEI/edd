@@ -588,8 +588,9 @@ class ImportTests(TestCase):
             Study.objects.get(name="Test Study 1"),
             User.objects.get(username="admin"),
         )
-        added = table.import_data(self.get_form())
+        (added, updated) = table.import_data(self.get_form())
         self.assertEqual(added, 10)
+        self.assertEqual(updated, 0)
         data_literal = ("""[[(0.0, 0.1), (1.0, 0.2), (2.0, 0.4), (4.0, 1.7), (8.0, 5.9)], """
                         """[(0.0, 0.2), (1.0, 0.4), (2.0, 0.6), (4.0, 0.8), (8.0, 1.2)]]""")
         assays = Line.objects.get(name="L1").assay_set.all()
