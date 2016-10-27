@@ -1566,7 +1566,8 @@ module StudyD {
     function remakeMainGraphArea(force?:boolean) {
 
         //stop spinner
-       this.spinner.stop();
+        this.spinner.stop();
+        //hide div
         $('.blankSvg').hide();
 
         var postFilteringMeasurements:any[],
